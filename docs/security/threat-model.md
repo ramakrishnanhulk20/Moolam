@@ -47,6 +47,7 @@ listed last, on purpose.
 | `attest` | Attest from a random address | policy.isReceiver check | to be run |
 | `attest` | Attest through the receiver from a fake forwarder | ReceiverTemplate checks msg.sender is the forwarder | to be run |
 | `attest` | Spam attestations | 64 per passport cap | to be run |
+| Receiver `onReport` | Replay a report whose first transmission reverted, or replay it on another chain | the report carries the chain id and a per-passport monotonic timestamp; the receiver rejects a repeat, an older one, or a foreign chain | to be run |
 | `flag` / `resolve` | Take the bond without resolving | resolver-only, pull payments, balance invariant | to be run |
 | `withdraw` | Reentrancy | ReentrancyGuard and checks-effects-interactions | to be run |
 | `rescueNative` | Owner drains bonds | rescue amount excludes totalBonds and totalOwed | to be run |
@@ -70,6 +71,11 @@ listed last, on purpose.
   through an image proxy because of its 100 KB response cap. If the proxy lies,
   the attestation is wrong. The attestation is one signal next to the
   signatures, not the source of truth.
+- **A stolen wallet can rebind the passkey.** Rotating a passkey needs the
+  wallet plus an assertion from the new key, not the old one, so whoever
+  controls the wallet controls the binding. We chose that so a lost passkey
+  does not strand the account. Passports already registered keep their
+  original signatures either way.
 - **Software keys.** Mera-derived persona keys are software keys in page memory
   while a session is open. A malicious dependency in the page could read them.
 - **IPFS liveness.** If the pinned files disappear, the on-chain record still
