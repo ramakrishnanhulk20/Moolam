@@ -119,14 +119,38 @@ async function main(): Promise<void> {
     title: "moolam-spike.jpg",
     claimGenerator: "moolam-verifier-spike/0.1.0",
     action: "c2pa.created",
+    softBinding: { phash: originalPrint.phash, blockhash: originalPrint.blockhash },
   });
   await writeFile(path.join(assetDir, "signed.jpg"), signed);
+
+  // The verify service reads this file by default, so running the spike is also
+  // what gives a fresh clone something to match against.
+  const passports = [
+    {
+      id: originalPrint.sha256,
+      phash: originalPrint.phash.toString(),
+      blockhash: originalPrint.blockhash,
+      creator: "0x0000000000000000000000000000000000000001",
+      parentId: null,
+      registeredAt: Math.floor(Date.now() / 1000),
+      metadataURI: "ipfs://moolam-spike-placeholder",
+    },
+  ];
+  await writeFile(path.join(assetDir, "passports.json"), `${JSON.stringify(passports, null, 2)}
+`, "utf8");
 
   const signedManifest = await readManifest(signed);
   const manifestBytes = signed.length - jpg.length;
   console.log(`C2PA embed: ok, manifest bytes ${manifestBytes}`);
   console.log(
     `C2PA read back: present=${signedManifest.present} actions=[${(signedManifest.actions ?? []).join(", ")}]`,
+  );
+  console.log(`  soft binding    ${signedManifest.softBinding?.alg ?? "none"}`);
+  console.log(
+    `  binding matches ${
+      signedManifest.softBinding?.phash === originalPrint.phash &&
+      signedManifest.softBinding?.blockhash === originalPrint.blockhash
+    }`,
   );
   console.log(`  title           ${signedManifest.title ?? "none"}`);
   console.log(`  claim generator ${signedManifest.claimGenerator ?? "none"}`);

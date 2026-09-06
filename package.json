@@ -10,7 +10,10 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "spike:verifier": "npm run spike --workspace packages/verifier"
+    "spike:verifier": "npm run spike --workspace packages/verifier",
+    "test:verifier": "npm run test --workspace packages/verifier",
+    "robustness": "npm run robustness --workspace packages/verifier",
+    "dev:verifier": "npm run dev --workspace packages/verifier"
   },
   "allowScripts": {
     "@contentauth/c2pa-node@0.9.3": true,

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import sharp from "sharp";
+import type { Hex } from "./types.js";
 
 const require = createRequire(import.meta.url);
 
@@ -11,7 +12,7 @@ const imghash = require("imghash") as {
   hash: (input: Buffer | string, bits?: number, format?: "hex" | "binary") => Promise<string>;
 };
 
-export type Hex = `0x${string}`;
+export type { Hex };
 
 export interface Fingerprint {
   sha256: Hex;

@@ -1,2 +1,5 @@
 test-assets/
 dist/
+corpus/*.jpg
+corpus/*.jpeg
+corpus/*.png

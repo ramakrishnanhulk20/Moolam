@@ -4,7 +4,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Builder, LocalSigner, Reader } from "@contentauth/c2pa-node";
-import type { Hex } from "./fingerprint.js";
+import type { Hex } from "./types.js";
+
+export interface SoftBinding {
+  alg: string;
+  phash: bigint;
+  blockhash: Hex;
+}
 
 export interface ManifestSummary {
   present: boolean;
@@ -13,7 +19,20 @@ export interface ManifestSummary {
   claimGenerator?: string;
   actions?: string[];
   ingredients?: number;
+  softBinding?: SoftBinding;
 }
+
+/**
+ * Our entry in the C2PA soft binding algorithm list: the 64-bit pHash and the
+ * 256-bit blockhash of the image, concatenated. The version suffix is part of
+ * the name so a later change to either hash gets its own identifier rather than
+ * quietly breaking every reader.
+ */
+export const SOFT_BINDING_ALG = "com.moolam.phash-blockhash.v1";
+
+const SOFT_BINDING_LABEL = "c2pa.soft-binding";
+const PHASH_BYTES = 8;
+const BLOCKHASH_BYTES = 32;
 
 const AI_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia";
 
@@ -58,17 +77,72 @@ export async function readManifest(bytes: Buffer): Promise<ManifestSummary> {
 
   const generator = active.claim_generator_info?.[0];
   const manifestStore = extractManifestStore(bytes);
+  const softBinding = parseSoftBinding(active.assertions ?? []);
 
   return {
     present: true,
     manifestHash:
       manifestStore === null ? undefined : `0x${createHash("sha256").update(manifestStore).digest("hex")}`,
-    title: active.title,
+    title: active.title ?? undefined,
     claimGenerator:
-      generator === undefined ? active.claim_generator : `${generator.name} ${generator.version ?? ""}`.trim(),
+      generator === undefined
+        ? (active.claim_generator ?? undefined)
+        : `${generator.name} ${generator.version ?? ""}`.trim(),
     actions,
     ingredients: active.ingredients?.length ?? 0,
+    softBinding,
   };
+}
+
+/**
+ * Pulls our fingerprint back out of a c2pa.soft-binding assertion.
+ *
+ * The C2PA library hands CBOR byte strings back as base64, so the 40 byte value
+ * is decoded here: eight bytes of big-endian pHash then 32 bytes of blockhash.
+ * Anything with a different algorithm name or a wrong length is treated as
+ * absent rather than guessed at.
+ */
+function parseSoftBinding(assertions: { label?: string; data?: unknown }[]): SoftBinding | undefined {
+  for (const assertion of assertions) {
+    if (!assertion.label?.startsWith(SOFT_BINDING_LABEL)) {
+      continue;
+    }
+    const data = assertion.data as
+      | { alg?: string; blocks?: { value?: unknown }[] }
+      | undefined;
+    if (data?.alg !== SOFT_BINDING_ALG) {
+      continue;
+    }
+    const raw = data.blocks?.[0]?.value;
+    const value = decodeAssertionBytes(raw);
+    if (value === null || value.length !== PHASH_BYTES + BLOCKHASH_BYTES) {
+      continue;
+    }
+    return {
+      alg: data.alg,
+      phash: value.readBigUInt64BE(0),
+      blockhash: `0x${value.subarray(PHASH_BYTES).toString("hex")}`,
+    };
+  }
+  return undefined;
+}
+
+function decodeAssertionBytes(raw: unknown): Buffer | null {
+  if (typeof raw === "string") {
+    return Buffer.from(raw, "base64");
+  }
+  if (Array.isArray(raw) && raw.every((entry) => typeof entry === "number")) {
+    return Buffer.from(raw as number[]);
+  }
+  return null;
+}
+
+export interface EmbedOptions {
+  title: string;
+  claimGenerator: string;
+  action: string;
+  softBinding: { phash: bigint; blockhash: Hex };
+  digitalSourceType?: string;
 }
 
 /**
@@ -76,14 +150,17 @@ export async function readManifest(bytes: Buffer): Promise<ManifestSummary> {
  * bytes. The create intent marks the image as a new work and, unless another
  * digital source type is passed, declares it AI generated.
  *
- * Throws when the buffer is empty, when the options are incomplete, when no
- * signing identity can be resolved, or when the C2PA library rejects the
- * container.
+ * The soft binding is required, not optional. A hard binding breaks the moment
+ * a platform re-encodes the file, so without the fingerprint in the manifest
+ * there is nothing left to match a re-uploaded copy against. It is written as a
+ * c2pa.soft-binding assertion in the shape the C2PA 2.1 spec gives in section
+ * 18.9: one alg name, one block, and the fingerprint as a CBOR byte string.
+ *
+ * Throws when the buffer is empty, when the options are incomplete, when the
+ * fingerprint is the wrong size, when no signing identity can be resolved, or
+ * when the C2PA library rejects the container.
  */
-export async function embedManifest(
-  bytes: Buffer,
-  opts: { title: string; claimGenerator: string; action: string; digitalSourceType?: string },
-): Promise<Buffer> {
+export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<Buffer> {
   if (bytes.length === 0) {
     throw new Error("embedManifest needs a non-empty image buffer");
   }
@@ -101,6 +178,7 @@ export async function embedManifest(
   });
   builder.setIntent({ create: sourceType });
   builder.addAssertion("c2pa.actions", { actions: [{ action: opts.action, digitalSourceType: sourceType }] }, "Cbor");
+  builder.addAssertion(SOFT_BINDING_LABEL, softBindingAssertion(opts.softBinding), "Cbor");
 
   const signer = loadSigner();
   const destination: { buffer: Buffer | null } = { buffer: null };
@@ -110,6 +188,36 @@ export async function embedManifest(
     throw new Error("embedManifest signed the image but got no bytes back");
   }
   return destination.buffer;
+}
+
+/**
+ * Builds the c2pa.soft-binding assertion body.
+ *
+ * The value is handed over as an array of byte values because that is the one
+ * form the C2PA library turns into a real CBOR byte string; a Uint8Array is
+ * rejected outright and a base64 string is ambiguous to other readers. `pad` is
+ * a required field in the spec's soft-binding-map, so a single zero byte is
+ * written for it, and `scope` is left empty because the fingerprint covers the
+ * whole still image rather than a region or a timespan.
+ */
+function softBindingAssertion(binding: { phash: bigint; blockhash: Hex }): unknown {
+  if (binding.phash < 0n || binding.phash > 0xffffffffffffffffn) {
+    throw new Error("embedManifest needs a phash that fits in 64 bits");
+  }
+  const blockhashHex = binding.blockhash.startsWith("0x") ? binding.blockhash.slice(2) : binding.blockhash;
+  if (!/^[0-9a-fA-F]{64}$/.test(blockhashHex)) {
+    throw new Error(`embedManifest needs a ${BLOCKHASH_BYTES} byte blockhash prefixed with 0x`);
+  }
+
+  const value = Buffer.alloc(PHASH_BYTES + BLOCKHASH_BYTES);
+  value.writeBigUInt64BE(binding.phash, 0);
+  Buffer.from(blockhashHex, "hex").copy(value, PHASH_BYTES);
+
+  return {
+    alg: SOFT_BINDING_ALG,
+    pad: [0],
+    blocks: [{ scope: {}, value: [...value] }],
+  };
 }
 
 /**
