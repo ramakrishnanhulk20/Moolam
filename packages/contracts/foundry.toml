@@ -10,6 +10,9 @@ optimizer_runs = 200
 via_ir = false
 bytecode_hash = "none"
 deny = "warnings"
+# The deploy, agent and proof scripts read and write deployments/monad-mainnet.json. That folder is
+# the only part of the disk a script can reach.
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
 
 [lint]
 # Two exceptions to deny-on-warning, both about code that is never deployed as ours.
@@ -40,3 +43,8 @@ tab_width = 4
 
 [rpc_endpoints]
 monad_mainnet = "${MONAD_MAINNET_RPC_URL}"
+
+# Monadscan is Etherscan style and needs an API key Ram has not created yet, so the key may be
+# empty here. Sourcify verification through MonadVision needs no key and is the default path.
+[etherscan]
+monad = { key = "${MONADSCAN_API_KEY}", chain = 143, url = "https://api.monadscan.com/api" }

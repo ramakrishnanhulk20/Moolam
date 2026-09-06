@@ -358,6 +358,25 @@ contract MoolamRegistryTest is Test {
         registry.register(p, auth, agentSig);
     }
 
+    function test_registerAndAppendEditRejectAZeroFingerprintVersion() public {
+        PassportInput memory p = _input(keccak256("noversion"));
+        p.fingerprintVersion = 0;
+        WebAuthn.WebAuthnAuth memory auth = _creatorAuth(p);
+        bytes memory agentSig = _agentSig(p);
+
+        vm.expectRevert(MoolamRegistry.InvalidFingerprintVersion.selector);
+        registry.register(p, auth, agentSig);
+
+        bytes32 parent = _registerDefault();
+        PassportInput memory edit = _editOf(parent, keccak256("edit-noversion"));
+        edit.fingerprintVersion = 0;
+        bytes memory editSig = _agentSig(edit);
+
+        vm.prank(creator);
+        vm.expectRevert(MoolamRegistry.InvalidFingerprintVersion.selector);
+        registry.appendEdit(edit, editSig);
+    }
+
     function test_registerRejectsAPassedDeadline() public {
         PassportInput memory p = _input(keccak256("stale"));
         p.deadline = uint64(block.timestamp - 1);
@@ -769,6 +788,34 @@ contract MoolamRegistryTest is Test {
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(MoolamRegistry.DisputeAlreadyOpen.selector, id));
         registry.flag{value: BOND}(id, "ipfs://evidence");
+    }
+
+    function test_flagIsRefusedOnceAChallengeWasUpheld() public {
+        bytes32 id = _registerDefault();
+        _flag(stranger, id);
+
+        vm.prank(resolver);
+        registry.resolve(id, true);
+
+        vm.deal(stranger, 1 ether);
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(MoolamRegistry.PassportAlreadyDisputed.selector, id));
+        registry.flag{value: BOND}(id, "ipfs://evidence-two");
+    }
+
+    function test_flagIsAllowedAgainAfterARejectedDispute() public {
+        bytes32 id = _registerDefault();
+        _flag(stranger, id);
+
+        vm.prank(resolver);
+        registry.resolve(id, false);
+
+        _flag(stranger, id);
+
+        Dispute memory d = registry.getDispute(id);
+        assertEq(uint8(d.status), uint8(DisputeStatus.Open));
+        assertEq(d.challenger, stranger);
+        assertEq(registry.totalBonds(), BOND);
     }
 
     function test_flagIsBlockedWhilePaused() public {

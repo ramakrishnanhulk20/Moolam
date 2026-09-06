@@ -39,6 +39,10 @@ contract MoolamReceiverTest is Test {
 
     bytes32 internal passportId = keccak256("image-under-review");
 
+    // The workflow stamps each report with the second it ran. Any fixed value works here as long
+    // as the replay tests move relative to it.
+    uint64 internal constant EXECUTED_AT = 1_800_000_000;
+
     event VerificationAttested(
         bytes32 indexed passportId, address indexed receiver, bool matched, uint16 distance, bytes32 recomputed
     );
@@ -85,10 +89,18 @@ contract MoolamReceiverTest is Test {
 
     function _report(bytes32 id, bool matched, uint16 distance, bytes32 recomputed)
         internal
+        view
+        returns (bytes memory)
+    {
+        return _report(block.chainid, EXECUTED_AT, id, matched, distance, recomputed);
+    }
+
+    function _report(uint256 chainId, uint64 executedAt, bytes32 id, bool matched, uint16 distance, bytes32 recomputed)
+        internal
         pure
         returns (bytes memory)
     {
-        return abi.encode(id, matched, distance, recomputed);
+        return abi.encode(chainId, executedAt, id, matched, distance, recomputed);
     }
 
     function _metadata() internal pure returns (bytes memory) {
@@ -126,6 +138,53 @@ contract MoolamReceiverTest is Test {
         assertTrue(page[0].matched);
         assertEq(page[0].distance, 4);
         assertEq(page[0].recomputed, keccak256("recomputed"));
+        assertEq(moolamReceiver.lastExecutedAt(passportId), EXECUTED_AT);
+    }
+
+    function test_theSameReportSentTwiceIsRefused() public {
+        bytes memory report = _report(passportId, true, 4, keccak256("recomputed"));
+
+        vm.prank(forwarder);
+        moolamReceiver.onReport(_metadata(), report);
+
+        vm.prank(forwarder);
+        vm.expectRevert(
+            abi.encodeWithSelector(MoolamReceiver.StaleReport.selector, passportId, EXECUTED_AT, EXECUTED_AT)
+        );
+        moolamReceiver.onReport(_metadata(), report);
+
+        assertEq(registry.attestationCount(passportId), 1);
+    }
+
+    function test_aReportBuiltForAnotherChainIsRefused() public {
+        uint256 otherChain = block.chainid + 1;
+
+        vm.prank(forwarder);
+        vm.expectRevert(abi.encodeWithSelector(MoolamReceiver.WrongChain.selector, otherChain, block.chainid));
+        moolamReceiver.onReport(
+            _metadata(), _report(otherChain, EXECUTED_AT, passportId, true, 4, keccak256("recomputed"))
+        );
+
+        assertEq(registry.attestationCount(passportId), 0);
+        assertEq(moolamReceiver.lastExecutedAt(passportId), 0);
+    }
+
+    function test_anOlderReportAfterANewerOneIsRefused() public {
+        vm.prank(forwarder);
+        moolamReceiver.onReport(
+            _metadata(), _report(block.chainid, EXECUTED_AT + 60, passportId, true, 4, keccak256("newer"))
+        );
+
+        vm.prank(forwarder);
+        vm.expectRevert(
+            abi.encodeWithSelector(MoolamReceiver.StaleReport.selector, passportId, EXECUTED_AT, EXECUTED_AT + 60)
+        );
+        moolamReceiver.onReport(
+            _metadata(), _report(block.chainid, EXECUTED_AT, passportId, false, 40, keccak256("older"))
+        );
+
+        assertEq(registry.attestationCount(passportId), 1);
+        assertEq(moolamReceiver.lastExecutedAt(passportId), EXECUTED_AT + 60);
     }
 
     function test_aReportFromAnyOtherAddressIsRefused() public {

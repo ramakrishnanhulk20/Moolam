@@ -82,6 +82,25 @@
   },
   {
     "type": "function",
+    "name": "lastExecutedAt",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "onReport",
     "inputs": [
       {
@@ -403,8 +422,45 @@
   },
   {
     "type": "error",
+    "name": "StaleReport",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "reported",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "lastSeen",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "WorkflowNameRequiresAuthorValidation",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongChain",
+    "inputs": [
+      {
+        "name": "reported",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

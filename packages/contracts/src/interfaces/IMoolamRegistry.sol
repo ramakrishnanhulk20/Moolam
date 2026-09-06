@@ -13,6 +13,8 @@ enum Kind {
 
 /// @notice The signed claim a creator submits. Every field is inside the EIP-712 digest, so any
 ///         change to any field invalidates both the passkey signature and the agent signature.
+///         fingerprintVersion must be at least 1: a zero would leave a record whose phash cannot
+///         be recomputed later because nobody knows which algorithm produced it.
 struct PassportInput {
     bytes32 exactHash;
     bytes32 parentId;
@@ -101,7 +103,8 @@ interface IMoolamRegistry {
     function bindPasskey(bytes32 qx, bytes32 qy, WebAuthn.WebAuthnAuth calldata auth) external;
 
     /// @notice Registers an original image and mints its passport token.
-    /// @param p The passport input. parentId must be zero and kind must not be Edited.
+    /// @param p The passport input. parentId must be zero, kind must not be Edited, and
+    ///        fingerprintVersion must not be zero so the record names the algorithm behind phash.
     /// @param creatorAuth The creator's WebAuthn assertion over hashPassport(p).
     /// @param generatorSig The generator agent owner's ECDSA signature over the same digest.
     ///        Must be empty when kind is Captured.
@@ -111,7 +114,8 @@ interface IMoolamRegistry {
         returns (uint256 tokenId);
 
     /// @notice Records an edit of an existing passport and mints the child token.
-    /// @param p The passport input. parentId must exist and kind must be Edited.
+    /// @param p The passport input. parentId must exist, kind must be Edited, and
+    ///        fingerprintVersion must not be zero.
     /// @param generatorSig The generator agent owner's ECDSA signature, or empty when no agent
     ///        touched the edit.
     /// @return tokenId The minted token id, which equals uint256(p.exactHash).
@@ -124,7 +128,9 @@ interface IMoolamRegistry {
     /// @param recomputed The fingerprint the verifier computed.
     function attest(bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed) external;
 
-    /// @notice Opens a dispute against a passport, backed by a bond.
+    /// @notice Opens a dispute against a passport, backed by a bond. A passport already marked
+    ///         disputed by an upheld challenge cannot be flagged again, but one whose challenge
+    ///         was rejected can.
     /// @param passportId The passport being challenged.
     /// @param evidenceURI Where the challenger's evidence lives. Its keccak256 hash is stored.
     function flag(bytes32 passportId, string calldata evidenceURI) external payable;

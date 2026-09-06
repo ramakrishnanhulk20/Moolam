@@ -16,7 +16,13 @@ contract MoolamReceiver is ReceiverTemplate {
     /// @notice The registry this receiver writes into.
     IMoolamRegistry public immutable REGISTRY;
 
+    mapping(bytes32 passportId => uint64 executedAt) private _lastExecutedAt;
+
     error ZeroAddress();
+    /// @notice The report was built for a different chain.
+    error WrongChain(uint256 reported, uint256 expected);
+    /// @notice The report is not newer than the last one already recorded for this passport.
+    error StaleReport(bytes32 passportId, uint64 reported, uint64 lastSeen);
 
     /// @notice Deploys the receiver and locks it to one registry.
     /// @param forwarder The Chainlink KeystoneForwarder that is allowed to call onReport.
@@ -26,12 +32,35 @@ contract MoolamReceiver is ReceiverTemplate {
         REGISTRY = IMoolamRegistry(registry);
     }
 
-    /// @dev Decodes one verification result and records it. Reverting here is safe: Chainlink
-    ///      retries a failed report with a higher gas limit, and the registry rejects an unknown
-    ///      passport id rather than storing a result for something that does not exist.
+    /// @notice The workflow timestamp of the newest report this contract accepted for a passport.
+    /// @param passportId The passport to read.
+    /// @return The executedAt value from that report, zero when no report has landed yet.
+    function lastExecutedAt(bytes32 passportId) external view returns (uint64) {
+        return _lastExecutedAt[passportId];
+    }
+
+    /// @dev Decodes one verification result and records it. Chainlink's own consumer guidance says
+    ///      a report whose first transmission reverted can be sent again, and the same signed
+    ///      report can be delivered on another chain, so the payload carries the chain it was built
+    ///      for and the moment the workflow ran. Both are checked before anything is written, which
+    ///      turns a replay into a revert instead of a duplicate attestation.
+    ///      Reverts WrongChain, StaleReport, and whatever the registry itself refuses.
     function _processReport(bytes calldata report) internal override {
-        (bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed) =
-            abi.decode(report, (bytes32, bool, uint16, bytes32));
+        (
+            uint256 chainId,
+            uint64 executedAt,
+            bytes32 passportId,
+            bool matched,
+            uint16 distance,
+            bytes32 recomputed
+        ) = abi.decode(report, (uint256, uint64, bytes32, bool, uint16, bytes32));
+
+        if (chainId != block.chainid) revert WrongChain(chainId, block.chainid);
+
+        uint64 lastSeen = _lastExecutedAt[passportId];
+        if (executedAt <= lastSeen) revert StaleReport(passportId, executedAt, lastSeen);
+
+        _lastExecutedAt[passportId] = executedAt;
 
         REGISTRY.attest(passportId, matched, distance, recomputed);
     }

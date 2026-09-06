@@ -143,6 +143,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     error NotParentOwner(address caller);
     error InvalidCreator();
     error InvalidKind();
+    error InvalidFingerprintVersion();
     error EmptyMetadataURI();
     error SignatureExpired(uint64 deadline);
     error InvalidPublicKey();
@@ -155,6 +156,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     error PassportNotFound(bytes32 passportId);
     error AttestationCapReached(bytes32 passportId);
     error DisputeAlreadyOpen(bytes32 passportId);
+    error PassportAlreadyDisputed(bytes32 passportId);
     error InvalidBond(uint256 sent, uint256 required);
     error NotResolver(address caller);
     error NoOpenDispute(bytes32 passportId);
@@ -240,7 +242,8 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     ///      msg.sender, which is what lets a relayer pay the gas for a creator.
     ///      Reverts InvalidExactHash on a zero hash, PassportAlreadyExists on a repeat,
     ///      ParentNotAllowed when parentId is set, InvalidCreator on a zero creator, InvalidKind
-    ///      when kind is Edited, EmptyMetadataURI on an empty URI, SignatureExpired past the
+    ///      when kind is Edited, InvalidFingerprintVersion when the version byte is zero,
+    ///      EmptyMetadataURI on an empty URI, SignatureExpired past the
     ///      deadline, PasskeyNotBound when the creator has no key, InvalidPasskeySignature,
     ///      InvalidAgentId, UnknownAgent, InvalidGeneratorSignature. Emits PassportRegistered.
     /// @param p The passport input.
@@ -258,6 +261,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         if (p.parentId != bytes32(0)) revert ParentNotAllowed();
         if (p.creator == address(0)) revert InvalidCreator();
         if (p.kind == Kind.Edited) revert InvalidKind();
+        if (p.fingerprintVersion == 0) revert InvalidFingerprintVersion();
         if (bytes(p.metadataURI).length == 0) revert EmptyMetadataURI();
         // forge-lint: disable-next-line(block-timestamp)
         if (p.deadline < block.timestamp) revert SignatureExpired(p.deadline);
@@ -282,6 +286,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     ///      Reverts InvalidParent on a zero parent, ParentNotFound when the parent is unknown,
     ///      NotParentOwner when the caller does not control the parent, InvalidCreator when the
     ///      creator field is not the parent owner, InvalidKind when kind is not Edited,
+    ///      InvalidFingerprintVersion when the version byte is zero,
     ///      InvalidExactHash, PassportAlreadyExists, EmptyMetadataURI, SignatureExpired,
     ///      InvalidGeneratorSignature, UnknownAgent. Emits PassportRegistered.
     /// @param p The passport input with parentId set and kind Edited.
@@ -297,6 +302,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         if (p.exactHash == bytes32(0)) revert InvalidExactHash();
         if (_passports[p.exactHash].registeredAt != 0) revert PassportAlreadyExists(p.exactHash);
         if (p.kind != Kind.Edited) revert InvalidKind();
+        if (p.fingerprintVersion == 0) revert InvalidFingerprintVersion();
         if (bytes(p.metadataURI).length == 0) revert EmptyMetadataURI();
         // forge-lint: disable-next-line(block-timestamp)
         if (p.deadline < block.timestamp) revert SignatureExpired(p.deadline);
@@ -351,7 +357,11 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     /// @notice Opens a dispute against a passport, backed by a bond.
     /// @dev The bond is held by this contract and never sent anywhere until resolve runs, so a
     ///      flag costs the challenger nothing but the gas if they turn out to be right.
-    ///      Reverts PassportNotFound, DisputeAlreadyOpen, InvalidBond. Emits PassportFlagged.
+    ///      A passport whose challenge was already upheld cannot be flagged again: the record
+    ///      already says disputed, so a second bond would be burned for nothing. A passport whose
+    ///      challenge was rejected can be flagged again with fresh evidence.
+    ///      Reverts PassportNotFound, DisputeAlreadyOpen, PassportAlreadyDisputed, InvalidBond.
+    ///      Emits PassportFlagged.
     /// @param passportId The passport being challenged.
     /// @param evidenceURI Where the evidence lives. Only its keccak256 hash is stored.
     function flag(bytes32 passportId, string calldata evidenceURI) external payable nonReentrant whenNotPaused {
@@ -359,6 +369,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
 
         Dispute storage dispute = _disputes[passportId];
         if (dispute.status == DisputeStatus.Open) revert DisputeAlreadyOpen(passportId);
+        if (dispute.status == DisputeStatus.Upheld) revert PassportAlreadyDisputed(passportId);
 
         uint256 required = IVerifierPolicy(_POLICY).disputeBond();
         if (msg.value != required) revert InvalidBond(msg.value, required);

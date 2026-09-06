@@ -26,3 +26,6 @@ generated/
 *.log
 .DS_Store
 Thumbs.db
+
+# forge script dry runs
+packages/contracts/broadcast/**/dry-run/

@@ -4,7 +4,15 @@
   "version": "0.1.0",
   "description": "Moolam passport registry, verifier policy and Chainlink CRE receiver contracts.",
   "scripts": {
-    "lint": "solhint \"src/**/*.sol\""
+    "lint": "solhint \"src/**/*.sol\"",
+    "test": "forge test -n monad",
+    "test:fork": "forge test --match-path \"test/fork/*\" -vv -n monad",
+    "gas": "forge test --gas-report --no-match-path \"test/fork/*\" -n monad",
+    "abi": "forge inspect MoolamRegistry abi --json > abi/MoolamRegistry.json && forge inspect VerifierPolicy abi --json > abi/VerifierPolicy.json && forge inspect MoolamReceiver abi --json > abi/MoolamReceiver.json",
+    "deploy:mainnet": "forge script script/Deploy.s.sol --rpc-url monad_mainnet -n monad --gas-estimate-multiplier 110 --slow --broadcast && forge script script/Deploy.s.sol --sig \"record()\" --rpc-url monad_mainnet -n monad",
+    "verify:mainnet": "forge verify-contract --chain-id 143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/ $POLICY src/VerifierPolicy.sol:VerifierPolicy && forge verify-contract --chain-id 143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/ $REGISTRY src/MoolamRegistry.sol:MoolamRegistry && forge verify-contract --chain-id 143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/ $RECEIVER src/MoolamReceiver.sol:MoolamReceiver",
+    "agent:register": "forge script script/RegisterAgent.s.sol --rpc-url monad_mainnet -n monad --gas-estimate-multiplier 110 --broadcast && forge script script/RegisterAgent.s.sol --sig \"verify()\" --rpc-url monad_mainnet -n monad",
+    "prove:live": "forge script script/LiveProof.s.sol --rpc-url monad_mainnet -n monad --gas-estimate-multiplier 110 --slow --broadcast && forge script script/LiveProof.s.sol --sig \"links()\" --rpc-url monad_mainnet -n monad"
   },
   "devDependencies": {
     "solhint": "6.2.4"

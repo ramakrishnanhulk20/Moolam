@@ -1824,6 +1824,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidFingerprintVersion",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidGeneratorSignature",
     "inputs": []
   },
@@ -1957,6 +1962,17 @@
         "name": "wallet",
         "type": "address",
         "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "PassportAlreadyDisputed",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ]
   },

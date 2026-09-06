@@ -70,6 +70,8 @@ contract MoolamRegistryFuzzTest is Test {
     ) public {
         vm.assume(exactHash != bytes32(0));
         vm.assume(bytes(metadataURI).length != 0);
+        // Version zero is a rejected input, not a well formed one, so it belongs in the unit tests.
+        vm.assume(fingerprintVersion != 0);
 
         PassportInput memory p = PassportInput({
             exactHash: exactHash,
