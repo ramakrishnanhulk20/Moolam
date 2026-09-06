@@ -1,0 +1,28 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# private planning files and third-party material, never published
+PLAN.md
+STATE.md
+DECISIONS.md
+INTAKE.md
+reference/
+kitchen/
+
+# dependencies and build output
+node_modules/
+.next/
+.next-verify/
+dist/
+out/
+cache/
+artifacts/
+typechain-types/
+coverage/
+lcov.info
+generated/
+*.log
+.DS_Store
+Thumbs.db

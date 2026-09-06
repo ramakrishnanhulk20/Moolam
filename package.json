@@ -1,0 +1,19 @@
+{
+  "name": "moolam",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Moolam: a passport for every AI-generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "spike:verifier": "npm run spike --workspace packages/verifier"
+  },
+  "allowScripts": {
+    "@contentauth/c2pa-node@0.9.3": true,
+    "esbuild@0.28.2": true
+  }
+}
