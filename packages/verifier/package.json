@@ -1,0 +1,24 @@
+{
+  "name": "@moolam/verifier",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Image fingerprinting and C2PA manifest reading and writing for Moolam.",
+  "type": "module",
+  "scripts": {
+    "spike": "tsx scripts/spike.ts"
+  },
+  "dependencies": {
+    "@contentauth/c2pa-node": "0.9.3",
+    "imghash": "1.1.4",
+    "sharp": "0.35.4",
+    "sharp-phash": "2.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
