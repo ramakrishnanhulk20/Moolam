@@ -1,0 +1,22 @@
+{
+  "name": "@moolam/indexer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Envio HyperIndex indexer for the Moolam passport registry on Monad.",
+  "type": "module",
+  "scripts": {
+    "codegen": "envio codegen",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "envio": "3.9.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

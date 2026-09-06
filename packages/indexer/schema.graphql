@@ -1,0 +1,100 @@
+type Passport {
+  id: ID!
+  creator: Creator! @index
+  parent: Passport @index
+  children: [Passport!]! @derivedFrom(field: "parent")
+  root: Passport! @index
+  depth: Int! @index
+  generator: Generator @index
+  kind: Int! @index
+  phash: BigInt! @index
+  blockhash: String!
+  manifestHash: String!
+  fingerprintVersion: Int!
+  metadataURI: String!
+  owner: String! @index
+  registeredAt: BigInt! @index
+  registeredBlock: BigInt!
+  txHash: String!
+  disputed: Boolean! @index
+  attestationCount: Int!
+  matchedCount: Int!
+  mismatchedCount: Int!
+  attestations: [Attestation!]! @derivedFrom(field: "passport")
+  dispute: Dispute
+}
+
+type Creator {
+  id: ID!
+  passports: [Passport!]! @derivedFrom(field: "creator")
+  passportCount: Int!
+  editCount: Int!
+  passkey: Passkey
+  firstSeenAt: BigInt! @index
+}
+
+type Passkey {
+  id: ID!
+  qx: String!
+  qy: String!
+  nonce: BigInt!
+  boundAt: BigInt!
+}
+
+type Generator {
+  id: ID!
+  passports: [Passport!]! @derivedFrom(field: "generator")
+  passportCount: Int!
+  matchedCount: Int!
+  mismatchedCount: Int!
+  disputesUpheld: Int!
+  trustScore: Int! @index
+  firstSeenAt: BigInt!
+}
+
+type Attestation {
+  id: ID!
+  passport: Passport! @index
+  receiver: String! @index
+  matched: Boolean!
+  distance: Int!
+  recomputed: String!
+  at: BigInt! @index
+}
+
+type Dispute {
+  id: ID!
+  passport: Passport! @index
+  challenger: String! @index
+  bond: BigInt!
+  evidenceHash: String!
+  evidenceURI: String!
+  status: Int! @index
+  openedAt: BigInt! @index
+  resolvedAt: BigInt
+  resolver: String
+}
+
+type Receiver {
+  id: ID!
+  active: Boolean! @index
+  since: BigInt!
+}
+
+type DailyStats {
+  id: ID!
+  registrations: Int!
+  edits: Int!
+  attestations: Int!
+  disputes: Int!
+  uniqueCreators: Int!
+}
+
+type GlobalStats {
+  id: ID!
+  passports: Int!
+  creators: Int!
+  generators: Int!
+  attestations: Int!
+  disputes: Int!
+}

@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: moolam
+description: Moolam passport registry index on Monad
+contracts:
+  - name: MoolamRegistry
+    abi_file_path: ./abis/MoolamRegistry.json
+    handler: src/EventHandlers.ts
+    events:
+      - event: PasskeyBound
+      - event: PassportRegistered
+      - event: VerificationAttested
+      - event: PassportFlagged
+      - event: DisputeResolved
+      - event: Transfer
+  - name: VerifierPolicy
+    abi_file_path: ./abis/VerifierPolicy.json
+    handler: src/EventHandlers.ts
+    events:
+      - event: ReceiverAdded
+      - event: ReceiverRemoved
+# Every passport row records the transaction that created it, so the app can link
+# straight to the explorer without a second lookup.
+field_selection:
+  transaction_fields:
+    - hash
+chains:
+  - id: 143
+    start_block: 0
+    contracts:
+      - name: MoolamRegistry
+        address: "0x0000000000000000000000000000000000000001"
+      - name: VerifierPolicy
+        address: "0x0000000000000000000000000000000000000002"
