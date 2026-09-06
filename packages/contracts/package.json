@@ -1,0 +1,12 @@
+{
+  "name": "@moolam/contracts",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Moolam passport registry, verifier policy and Chainlink CRE receiver contracts.",
+  "scripts": {
+    "lint": "solhint \"src/**/*.sol\""
+  },
+  "devDependencies": {
+    "solhint": "6.2.4"
+  }
+}

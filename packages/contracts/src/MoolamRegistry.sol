@@ -48,7 +48,9 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     uint256 public constant MAX_ATTESTATIONS = 64;
 
     bytes32 private constant PASSPORT_TYPEHASH = keccak256(
-        "Passport(bytes32 exactHash,bytes32 parentId,address creator,uint256 generatorAgentId,uint64 phash,bytes32 blockhash256,bytes32 manifestHash,uint8 kind,uint8 fingerprintVersion,string metadataURI,uint64 deadline)"
+        "Passport(bytes32 exactHash,bytes32 parentId,address creator,uint256 generatorAgentId,"
+        "uint64 phash,bytes32 blockhash256,bytes32 manifestHash,uint8 kind,uint8 fingerprintVersion,"
+        "string metadataURI,uint64 deadline)"
     );
 
     bytes32 private constant BIND_TYPEHASH = keccak256("Bind(address wallet,bytes32 qx,bytes32 qy,uint256 nonce)");
@@ -69,7 +71,23 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     mapping(address wallet => uint256 nonce) private _bindNonces;
     mapping(address who => uint256 amount) private _withdrawable;
 
+    /// @notice A wallet bound or rotated the passkey that signs its passports.
+    /// @param wallet The wallet the key now belongs to.
+    /// @param qx The passkey public key x coordinate.
+    /// @param qy The passkey public key y coordinate.
+    /// @param nonce The bind nonce this signature consumed.
     event PasskeyBound(address indexed wallet, bytes32 qx, bytes32 qy, uint256 nonce);
+    /// @notice A new passport was written. Indexers build the whole provenance graph from this.
+    /// @param passportId The sha256 of the exact image bytes, and the token id.
+    /// @param creator The wallet that owns the token.
+    /// @param generatorAgentId The ERC-8004 agent that generated the image, zero if none.
+    /// @param parentId The passport this one was edited from, zero for an original.
+    /// @param phash The 64 bit perceptual hash.
+    /// @param blockhash256 The 256 bit block hash recorded with the image.
+    /// @param manifestHash The sha256 of the C2PA manifest store, zero when there is none.
+    /// @param kind 0 Generated, 1 Captured, 2 Edited.
+    /// @param fingerprintVersion Which fingerprint algorithm produced phash.
+    /// @param metadataURI Where the image, manifest and thumbnail live.
     event PassportRegistered(
         bytes32 indexed passportId,
         address indexed creator,
@@ -82,14 +100,37 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         uint8 fingerprintVersion,
         string metadataURI
     );
+    /// @notice A listed verifier rechecked a passport and recorded the result.
+    /// @param passportId The passport that was rechecked.
+    /// @param receiver The listed receiver that wrote the result.
+    /// @param matched Whether the recomputed fingerprint matched the recorded one.
+    /// @param distance The perceptual hash distance measured.
+    /// @param recomputed The fingerprint the verifier computed.
     event VerificationAttested(
         bytes32 indexed passportId, address indexed receiver, bool matched, uint16 distance, bytes32 recomputed
     );
+    /// @notice Someone challenged a passport and posted a bond.
+    /// @param passportId The passport being challenged.
+    /// @param challenger Who opened the dispute.
+    /// @param bond The bond held by this contract until the dispute is settled.
+    /// @param evidenceHash The keccak256 of the evidence URI, stored so the URI cannot be swapped.
+    /// @param evidenceURI Where the evidence lives.
     event PassportFlagged(
         bytes32 indexed passportId, address indexed challenger, uint256 bond, bytes32 evidenceHash, string evidenceURI
     );
+    /// @notice A dispute was settled.
+    /// @param passportId The passport that was disputed.
+    /// @param upheld True when the challenge stood and the passport is now marked disputed.
+    /// @param resolver The resolver that settled it.
     event DisputeResolved(bytes32 indexed passportId, bool upheld, address indexed resolver);
+    /// @notice Someone pulled the native token they were owed.
+    /// @param who The address that pulled.
+    /// @param amount How much left the contract.
     event Withdrawn(address indexed who, uint256 amount);
+    /// @notice The owner moved stranded value out. Never touches a bond or an unclaimed credit.
+    /// @param token The ERC-20 moved, or the zero address for native token.
+    /// @param to Where it went.
+    /// @param amount How much moved.
     event Rescued(address indexed token, address indexed to, uint256 amount);
 
     error ZeroAddress();
@@ -218,6 +259,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         if (p.creator == address(0)) revert InvalidCreator();
         if (p.kind == Kind.Edited) revert InvalidKind();
         if (bytes(p.metadataURI).length == 0) revert EmptyMetadataURI();
+        // forge-lint: disable-next-line(block-timestamp)
         if (p.deadline < block.timestamp) revert SignatureExpired(p.deadline);
 
         Passkey memory key = _passkeys[p.creator];
@@ -256,6 +298,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         if (_passports[p.exactHash].registeredAt != 0) revert PassportAlreadyExists(p.exactHash);
         if (p.kind != Kind.Edited) revert InvalidKind();
         if (bytes(p.metadataURI).length == 0) revert EmptyMetadataURI();
+        // forge-lint: disable-next-line(block-timestamp)
         if (p.deadline < block.timestamp) revert SignatureExpired(p.deadline);
 
         uint256 parentTokenId = uint256(p.parentId);
@@ -297,6 +340,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
                 matched: matched,
                 distance: distance,
                 recomputed: recomputed,
+                // forge-lint: disable-next-line(unsafe-typecast)
                 at: uint64(block.timestamp)
             })
         );
@@ -310,7 +354,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     ///      Reverts PassportNotFound, DisputeAlreadyOpen, InvalidBond. Emits PassportFlagged.
     /// @param passportId The passport being challenged.
     /// @param evidenceURI Where the evidence lives. Only its keccak256 hash is stored.
-    function flag(bytes32 passportId, string calldata evidenceURI) external payable whenNotPaused nonReentrant {
+    function flag(bytes32 passportId, string calldata evidenceURI) external payable nonReentrant whenNotPaused {
         if (_passports[passportId].registeredAt == 0) revert PassportNotFound(passportId);
 
         Dispute storage dispute = _disputes[passportId];
@@ -325,6 +369,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
             bond: msg.value,
             evidenceHash: evidenceHash,
             status: DisputeStatus.Open,
+            // forge-lint: disable-next-line(unsafe-typecast)
             openedAt: uint64(block.timestamp)
         });
         totalBonds += msg.value;
@@ -400,7 +445,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     /// @param token The ERC-20 to move.
     /// @param to Where to send it.
     /// @param amount How much to send.
-    function rescueERC20(address token, address to, uint256 amount) external onlyOwner nonReentrant {
+    function rescueERC20(address token, address to, uint256 amount) external nonReentrant onlyOwner {
         if (to == address(0)) revert ZeroAddress();
         emit Rescued(token, to, amount);
         IERC20(token).safeTransfer(to, amount);
@@ -411,7 +456,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     ///      credit can never be swept by the owner.
     ///      Reverts ZeroAddress, NothingToRescue, TransferFailed. Emits Rescued.
     /// @param to Where to send the surplus.
-    function rescueNative(address to) external onlyOwner nonReentrant {
+    function rescueNative(address to) external nonReentrant onlyOwner {
         if (to == address(0)) revert ZeroAddress();
 
         uint256 amount = address(this).balance - totalBonds - totalOwed;
@@ -525,6 +570,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
             manifestHash: p.manifestHash,
             kind: p.kind,
             fingerprintVersion: p.fingerprintVersion,
+            // forge-lint: disable-next-line(unsafe-typecast)
             registeredAt: uint64(block.timestamp),
             disputed: false,
             metadataURI: p.metadataURI
@@ -546,6 +592,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         tokenId = uint256(p.exactHash);
         // _mint, not _safeMint: no ERC721Received callback, so minting hands control to nobody
         // and there is no reentrancy surface at the end of register or appendEdit.
+        // forge-lint: disable-next-line(unsafe-oz-erc721-mint)
         _mint(to, tokenId);
     }
 
@@ -558,16 +605,21 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
 
         if (agentId == 0) revert InvalidAgentId();
 
-        address agentOwner;
-        try IERC721(_AGENT_IDENTITY).ownerOf(agentId) returns (address owner_) {
-            agentOwner = owner_;
-        } catch {
-            revert UnknownAgent(agentId);
-        }
-        if (agentOwner == address(0)) revert UnknownAgent(agentId);
+        address agentOwner = _agentOwnerOf(agentId);
 
         (address recovered, ECDSA.RecoverError err,) = ECDSA.tryRecover(digest, signature);
         if (err != ECDSA.RecoverError.NoError || recovered != agentOwner) revert InvalidGeneratorSignature();
+    }
+
+    function _agentOwnerOf(uint256 agentId) private view returns (address) {
+        // The ERC-8004 registry reverts on an unknown id, so a bad agent id must not bubble up
+        // as the registry's own error and confuse a caller about which contract refused.
+        try IERC721(_AGENT_IDENTITY).ownerOf(agentId) returns (address owner_) {
+            if (owner_ == address(0)) revert UnknownAgent(agentId);
+            return owner_;
+        } catch {
+            revert UnknownAgent(agentId);
+        }
     }
 
     function _pageBounds(uint256 length, uint256 offset, uint256 limit)

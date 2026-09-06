@@ -11,6 +11,21 @@ via_ir = false
 bytecode_hash = "none"
 deny = "warnings"
 
+[lint]
+# Two exceptions to deny-on-warning, both about code that is never deployed as ours.
+# The Chainlink receiver template is vendored verbatim, license header and all, so its style is
+# theirs to set. Linting it would only tempt us to edit code we must not change.
+# Test files trip the deployment lints by design: they cast timestamps, send value to fuzzed
+# addresses and ignore return values on purpose.
+ignore = [
+    "src/vendor/chainlink/ReceiverTemplate.sol",
+    "src/vendor/chainlink/IReceiver.sol",
+    "src/vendor/chainlink/IERC165.sol",
+    "test/*.sol",
+    "test/mocks/*.sol",
+    "test/utils/*.sol",
+]
+
 [profile.default.fuzz]
 runs = 512
 

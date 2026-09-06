@@ -43,14 +43,42 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     address private _treasury;
     uint256 private _disputeBond;
 
+    /// @notice A change was put in the queue and its 24 hour clock started.
+    /// @param id The change id, keccak256 of the operation tag and its encoded data.
+    /// @param op Which operation was queued.
+    /// @param data The encoded argument the operation will apply.
+    /// @param executeAfter The timestamp from which execute will work.
     event ChangeQueued(bytes32 indexed id, bytes32 indexed op, bytes data, uint64 executeAfter);
+
+    /// @notice A queued change ran.
+    /// @param id The change id.
     event ChangeExecuted(bytes32 indexed id);
+
+    /// @notice A queued change was dropped before it ran.
+    /// @param id The change id.
     event ChangeCancelled(bytes32 indexed id);
+
+    /// @notice An address may now write attestations.
+    /// @param receiver The listed receiver.
     event ReceiverAdded(address indexed receiver);
+
+    /// @notice An address may no longer write attestations.
+    /// @param receiver The receiver that was dropped.
     event ReceiverRemoved(address indexed receiver);
+
+    /// @notice The dispute resolver changed.
+    /// @param resolver The new resolver.
     event ResolverSet(address indexed resolver);
+
+    /// @notice The treasury changed.
+    /// @param treasury The new treasury.
     event TreasurySet(address indexed treasury);
+
+    /// @notice The dispute bond changed.
+    /// @param bond The new bond in wei.
     event DisputeBondSet(uint256 bond);
+
+    /// @notice The setup window closed. From here on every widening of trust waits 24 hours.
     event BootstrapFinalized();
 
     error ZeroAddress();
@@ -175,6 +203,7 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     function execute(bytes32 id) external onlyOwner {
         PendingChange memory change = _pending[id];
         if (change.executeAfter == 0) revert UnknownChange();
+        // forge-lint: disable-next-line(block-timestamp)
         if (block.timestamp < change.executeAfter) revert ChangeNotReady(change.executeAfter);
 
         delete _pending[id];
@@ -211,6 +240,7 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
         id = keccak256(abi.encode(op, data));
         if (_pending[id].executeAfter != 0) revert ChangeAlreadyQueued();
 
+        // forge-lint: disable-next-line(unsafe-typecast)
         uint64 executeAfter = uint64(block.timestamp) + CHANGE_DELAY;
         _pending[id] = PendingChange({op: op, executeAfter: executeAfter, data: data});
         emit ChangeQueued(id, op, data, executeAfter);
