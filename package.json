@@ -15,10 +15,12 @@
     "robustness": "npm run robustness --workspace packages/verifier",
     "dev:verifier": "npm run dev --workspace packages/verifier",
     "codegen:indexer": "npm run codegen --workspace packages/indexer",
-    "test:indexer": "npm run test --workspace packages/indexer"
+    "test:indexer": "npm run test --workspace packages/indexer",
+    "test:agents": "npm run test --workspace packages/agents",
+    "proof:anvil": "npm run proof --workspace packages/agents"
   },
   "allowScripts": {
     "@contentauth/c2pa-node@0.9.3": true,
-    "esbuild@0.28.2": true
+    "esbuild@0.27.2": true
   }
 }

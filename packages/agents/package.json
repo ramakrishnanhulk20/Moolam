@@ -1,0 +1,26 @@
+{
+  "name": "@moolam/agents",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The shared TypeScript client for the Moolam registry: digests, passkey signing, and the bind, register and edit transactions.",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run --reporter=verbose",
+    "proof": "tsx scripts/anvil-proof.ts"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "dotenv": "17.4.2",
+    "viem": "2.54.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
