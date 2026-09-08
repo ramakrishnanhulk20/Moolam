@@ -1,0 +1,20 @@
+Moolam attack: revoked-session-signer
+REFUSED
+
+run         2026-09-08T09:45:55.906Z
+command     npm run prove
+network     Monad mainnet, chain 143
+registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+
+the app's key is no longer a signer on the creator's wallet, and Privy refuses it
+
+creator wallet      0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+signers before      none
+signers now         none
+
+appendEdit attempted with the app's session key:
+  HTTP 401 no code: No valid authorization signatures were provided. Your payload may be malformed or your signing keys may be incorrect or expired. Docs: https://docs.privy.io/api-reference/authorization-signatures
+
+The same key wrote a real edit while the permission stood, in step 6 of
+kitchen/reports/WO-4-output.txt. The creator keeps the wallet either way: what is granted
+and taken back is only the app's ability to sign on it.

@@ -20,6 +20,7 @@
     "proof:anvil": "npm run proof --workspace packages/agents",
     "seed": "npm run seed --workspace packages/agents",
     "prove:privy": "npm run prove:privy --workspace packages/agents",
+    "prove": "tsx packages/agents/scripts/prove.ts",
     "reputation:post": "npm run reputation:post --workspace packages/verifier --",
     "agent": "npm run agent --workspace packages/agents --"
   },

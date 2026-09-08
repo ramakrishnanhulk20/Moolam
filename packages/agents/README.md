@@ -79,6 +79,8 @@ npm run test:agents     16 tests: the digests against the contract, the whole wr
 npm run proof:anvil     deploy, bind, three passports and an edit on a fork, with gas per step
 npm run seed            one real passport on Monad mainnet, files pinned to IPFS. Spends MON.
 npm run prove:privy     the four Privy features, live on Monad mainnet. Spends MON.
+npm run prove           the prove-it run: one image, six mangled copies, a stripped copy, a
+                        forgery and twelve attacks, live on Monad mainnet. Spends about 0.4 MON.
 npm run agent -- "..."  the demo agent: draws a picture, signs it, pins it, registers its
                         passport on Monad mainnet. Spends MON and a cent or two of OpenAI credit.
 npm run agent -- --verify path/to/file.jpg
@@ -90,6 +92,57 @@ they fork Monad mainnet locally, so the ERC-8004 Identity Registry at
 `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` is the real contract with real state, while the
 balances are anvil's play money. The contracts are compiled by Foundry, so run `forge build` in
 `packages/contracts` first if `out/` is missing.
+
+## The prove-it run
+
+`npm run prove` from the repo root is the one command that exercises the whole promise against
+Monad mainnet and prints a table anyone can read. It takes about two minutes and prints six
+sections, each ending in PASS or FAIL with a transaction hash or the exact refusal.
+
+1. **Register.** Draws a picture nobody has registered before, signs a C2PA manifest into it, pins
+   four files to IPFS, has the creator's passkey and the generator agent sign the same digest, and
+   registers the passport on mainnet. Prints the token id and the explorer link.
+2. **Survive.** Puts that image through six real journeys: re-encoded at quality 60, resized to a
+   quarter, rotated 90 degrees, mirrored, screenshotted, and passed through two rounds of social
+   resizing. Every copy goes through the verify service over HTTP. Prints the bit distance and the
+   confidence for each.
+3. **Strip.** Removes every scrap of metadata, checks the C2PA manifest is really gone, and asks
+   again. This is the case the soft binding exists for.
+4. **Forge.** Tries to register the same bytes again under a second creator, which the chain
+   refuses with PassportAlreadyExists. Then registers a re-encoded copy as a fresh original under
+   that second creator, which the chain cannot refuse, and shows the verify service naming both
+   records with the older one first. Moolam records who registered first, and says so.
+5. **Attacks.** The twelve attacks in `docs/security/threat-model.md`, executed. Each one writes
+   its full output to `docs/security/attacks/<name>.txt`.
+6. **Summary.** One table of the sections, one of the attacks, with the file each is saved in.
+
+Every section also prints one line saying what it does not prove.
+
+The run starts the verify service itself, the same way `npm run dev:verifier` does, on
+`VERIFIER_PORT` (4010 by default) with `PASSPORT_SOURCE=json`, and stops it at the end. It refuses
+to start if something is already listening on that port, so stop your own dev copy first. The
+passport file it reads is written from what the chain says, never from what the run sent, and it
+lives in the gitignored `.moolam/prove-passports.json`.
+
+Needs in the root `.env`, all read automatically:
+
+| variable | why |
+| --- | --- |
+| `MONAD_MAINNET_RPC_URL` | where every read and transaction goes |
+| `DEPLOYER_PRIVATE_KEY` | the creator's wallet: it owns the demo ERC-8004 agent and pays the gas |
+| `PROOF_P256_PRIVATE_KEY` | that creator's passkey, the P-256 key the WebAuthn assertion is made with |
+| `PINATA_JWT` | pinning the image, the thumbnail, the manifest and the metadata to IPFS |
+| `VERIFIER_PRIVATE_KEY` | the outsider wallet the attacks are sent from. It holds no role in Moolam |
+| `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` | the two attacks that Privy's enclave refuses, and the second creator's wallet in the forgery |
+
+Run `npm run prove:privy` once before the first prove run: it creates the Privy wallets, the second
+creator and its passkey, which the forgery and two of the attacks use. The contracts must be
+compiled, so run `forge build` in `packages/contracts` if `out/` is missing.
+
+The last run cost 0.2745 MON from the creator's wallet and 0.0919 MON from the outsider's, so about
+0.37 MON in all, at roughly 100 gwei. Ten of those transactions are meant to revert, and Monad
+charges the gas limit that was declared whether a transaction succeeds or not. The full transcript
+is saved to `kitchen/reports/WO-8-prove.txt`.
 
 ## Seeding a passport
 

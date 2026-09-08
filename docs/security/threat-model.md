@@ -1,9 +1,10 @@
 # Moolam threat model
 
-Draft one, written before the attack scripts exist. Every claim below gets a
-script that tries to break it against the live network before submission, and
-the results replace the "to be run" markers. Weaknesses we did not fix are
-listed last, on purpose.
+Every claim below has been attacked. The Proof column says what happened and
+names the file the output is saved in: an attack sent against the live contracts
+on Monad mainnet where that is possible, and a Foundry test where mainnet cannot
+reach the code path. `npm run prove` runs the whole set again. Weaknesses we did
+not fix are listed last, on purpose.
 
 ## What Moolam promises
 
@@ -35,25 +36,25 @@ listed last, on purpose.
 
 | Entry point | Attack | What stops it | Proof |
 |---|---|---|---|
-| `register` | Replay a valid registration on another contract or chain | EIP-712 domain includes chain id and contract address | to be run |
-| `register` | Reuse the same signatures for a second passport | exactHash is the id; duplicates revert | to be run |
-| `register` | Forge the creator signature | WebAuthn assertion verified against the bound P-256 key; the digest is the challenge | to be run |
-| `register` | Forge the generator signature | ECDSA recovery must equal `ownerOf(agentId)` on the ERC-8004 registry | to be run |
-| `register` | Point at a nonexistent agent | `ownerOf` reverts; wrapped and turned into UnknownAgent | to be run |
-| `register` | Use a stale signature | deadline in the signed struct | to be run |
-| `bindPasskey` | Bind a key the caller does not hold | the assertion signs the wallet, key and nonce | to be run |
-| `appendEdit` | Append an edit to someone else's passport | caller must own the parent or be approved | to be run |
-| `appendEdit` | Use a revoked session signer | Privy refuses the signature server-side; the chain sees no transaction. Proof shows the refusal | to be run |
-| `attest` | Attest from a random address | policy.isReceiver check | to be run |
-| `attest` | Attest through the receiver from a fake forwarder | ReceiverTemplate checks msg.sender is the forwarder | to be run |
-| `attest` | Spam attestations | 64 per passport cap | to be run |
-| Receiver `onReport` | Replay a report whose first transmission reverted, or replay it on another chain | the report carries the chain id and a per-passport monotonic timestamp; the receiver rejects a repeat, an older one, or a foreign chain | to be run |
-| `flag` / `resolve` | Take the bond without resolving | resolver-only, pull payments, balance invariant | to be run |
-| `withdraw` | Reentrancy | ReentrancyGuard and checks-effects-interactions | to be run |
-| `rescueNative` | Owner drains bonds | rescue amount excludes totalBonds and totalOwed | to be run |
-| VerifierPolicy | Add a receiver instantly after bootstrap | 24-hour queue; only removal is instant | to be run |
-| Verifier API | Oversized or non-image upload | 20 MB cap, schema validation, 400 | to be run |
-| Verifier API | Request floods | 60 per minute per IP, 429 | to be run |
+| `register` | Replay a valid registration on another contract or chain | EIP-712 domain includes chain id and contract address | refused, `MoolamRegistry.t.sol` test_theSameInputOnAnotherContractCannotBeReplayed |
+| `register` | Reuse the same signatures for a second passport | exactHash is the id; duplicates revert | refused on mainnet, PassportAlreadyExists, section 4 of the `npm run prove` output |
+| `register` | Forge the creator signature | WebAuthn assertion verified against the bound P-256 key; the digest is the challenge | refused on mainnet, InvalidPasskeySignature, `attacks/passkey-replay.txt` |
+| `register` | Forge the generator signature | ECDSA recovery must equal `ownerOf(agentId)` on the ERC-8004 registry | refused on mainnet, InvalidGeneratorSignature, `attacks/generator-signature-forged.txt` |
+| `register` | Point at a nonexistent agent | `ownerOf` reverts; wrapped and turned into UnknownAgent | refused on mainnet, UnknownAgent, `attacks/unknown-agent.txt` |
+| `register` | Use a stale signature | deadline in the signed struct | refused on mainnet, SignatureExpired, `attacks/expired-deadline.txt` |
+| `bindPasskey` | Bind a key the caller does not hold | the assertion signs the wallet, key and nonce | refused, `MoolamRegistry.t.sol` test_bindPasskeyRejectsASignatureOverTheWrongDigest and test_bindPasskeyNonceStopsAnOldAssertionBeingReplayed |
+| `appendEdit` | Append an edit to someone else's passport | caller must own the parent or be approved | refused on mainnet, NotParentOwner, `attacks/edit-by-non-owner.txt` |
+| `appendEdit` | Use a revoked session signer | Privy refuses the signature server-side; the chain sees no transaction. Proof shows the refusal | refused by Privy, no transaction, `attacks/revoked-session-signer.txt` |
+| `attest` | Attest from a random address | policy.isReceiver check | refused on mainnet, NotReceiver, `attacks/attest-from-stranger.txt` |
+| `attest` | Attest through the receiver from a fake forwarder | ReceiverTemplate checks msg.sender is the forwarder | refused on mainnet, InvalidSender, `attacks/report-from-fake-forwarder.txt` |
+| `attest` | Spam attestations | 64 per passport cap | refused at 64, `MoolamRegistry.t.sol` test_attestStopsAtTheCap |
+| Receiver `onReport` | Replay a report whose first transmission reverted, or replay it on another chain | the report carries the chain id and a per-passport monotonic timestamp; the receiver rejects a repeat, an older one, or a foreign chain | refused, StaleReport and WrongChain, `attacks/receiver-replay-and-wrong-chain.txt`, proved by `MoolamReceiver.t.sol` because only Chainlink's forwarder can reach the check |
+| `flag` / `resolve` | Take the bond without resolving | resolver-only, pull payments, balance invariant | refused on mainnet, InvalidBond and NotResolver, `attacks/dispute-money-rules.txt` |
+| `withdraw` | Reentrancy | ReentrancyGuard and checks-effects-interactions | no reentrancy path found: testFuzz_withdrawNeverPaysTwice and invariant_balanceCoversEveryLiability; the live refusal with nothing owed is NothingToWithdraw in `attacks/dispute-money-rules.txt` |
+| `rescueNative` | Owner drains bonds | rescue amount excludes totalBonds and totalOwed | refused, `MoolamRegistry.t.sol` test_rescueNativeCannotTouchBondsOrCredits |
+| VerifierPolicy | Add a receiver instantly after bootstrap | 24-hour queue; only removal is instant | refused, `VerifierPolicy.t.sol` test_queueAddReceiverWaitsTheFullDelay and test_finalizeBootstrapClosesTheWindowForGood |
+| Verifier API | Oversized or non-image upload | 20 MB cap, schema validation, 400 | refused live, 413 and 400, `attacks/verifier-api-limits.txt` |
+| Verifier API | Request floods | 60 per minute per IP, 429 | refused live, 429 on the 61st request, `attacks/verifier-api-limits.txt` |
 | Image itself | Re-encode, resize, re-upload, strip metadata | perceptual fingerprints, measured: 0 bits moved | measured in WO-0a |
 | Image itself | Rotate or mirror | eight dihedral fingerprints at query time | measured in WO-2 |
 

@@ -1,0 +1,37 @@
+Moolam attack: verifier-api-limits
+REFUSED
+
+run         2026-09-08T09:45:55.906Z
+command     npm run prove
+network     Monad mainnet, chain 143
+registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+
+413 on 25 MB, 400 on a text file, 403 on a loopback URL, 429 on the 61st request
+
+service             http://127.0.0.1:4010
+
+REFUSED  a 25 MB upload
+          expected HTTP 413, got 413
+          {"error":"the image is larger than the 20971520 byte limit"}
+REFUSED  a text file dressed as an image
+          expected HTTP 400, got 400
+          {"error":"the upload is not an image we can read: Input buffer contains unsupported image format"}
+REFUSED  a URL pointing at 127.0.0.1
+          expected HTTP 403, got 403
+          {"error":"refusing to fetch 127.0.0.1: not a public address"}
+REFUSED  61 requests in one minute (first refusal at request 61)
+          expected HTTP 429, got 429
+          {"statusCode":429,"error":"Too Many Requests","message":"Rate limit exceeded, retry in 1 minute"}
+
+The flood waited 47 seconds for the rate limit window to close first, so
+the count starts from nothing. Requests are counted on the socket address, so a caller
+cannot pick their own bucket by sending a header.
+
+The 25 MB upload is sent twice, because the way a client frames the body can change the
+answer. The first check above uses the framing curl and a browser use. The same 25 MB sent
+through Node's own FormData answered 413: {"error":"the image is larger than the 20971520 byte limit"}
+Node's FormData writes the body in exact 64 KB blocks, and this check has also seen that
+framing answered 400 with "not an image" rather than 413, because @fastify/multipart raises
+its too-large error from inside its read loop and does not see the truncation when the cap
+falls on a block boundary. Both answers are refusals, and either way the file stream is cut
+off at 20 MB, so nothing past the cap is ever buffered.

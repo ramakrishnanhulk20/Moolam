@@ -1,0 +1,23 @@
+Moolam attack: edit-by-non-owner
+REFUSED
+
+run         2026-09-08T09:45:55.906Z
+command     npm run prove
+network     Monad mainnet, chain 143
+registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+
+NotParentOwner: an outsider tries to hang an edit off someone else's passport, on chain in 0x0383ebaa4c410a6720633c965210c5dca30f4147a9b72ae43ade638acddd8b72
+
+parent passport     0x674bd51df521babc6c897816b2a5ec2a69548ec5c82d825ea6404b6435f5f31b
+held by             0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+caller              0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7, not approved for that token
+
+attack      append an edit to a passport somebody else holds
+call        appendEdit on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+expected    NotParentOwner
+eth_call    refused with NotParentOwner, by the live contract at the same gas limit
+sent        0x0383ebaa4c410a6720633c965210c5dca30f4147a9b72ae43ade638acddd8b72
+            https://monadvision.com/tx/0x0383ebaa4c410a6720633c965210c5dca30f4147a9b72ae43ade638acddd8b72
+receipt     reverted in block 103007334, 150,000 gas used of the 150,000 limit set
+result      REFUSED

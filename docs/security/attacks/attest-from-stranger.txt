@@ -1,0 +1,24 @@
+Moolam attack: attest-from-stranger
+REFUSED
+
+run         2026-09-08T09:45:55.906Z
+command     npm run prove
+network     Monad mainnet, chain 143
+registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+
+NotReceiver: a stranger claims the image checked out, on chain in 0x503fa991c04ba28b2dd1592183694efa2e2f704e727e25e18ade3a29d01479cd
+
+policy              0xD46E62776Cc5804Ee49d80c67732833d7E700A6e
+listed receiver     0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4
+caller              0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+the policy is the only list the registry reads, and adding to it waits 24 hours in the open.
+
+attack      write a verification result without being a listed receiver
+call        attest on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+expected    NotReceiver
+eth_call    refused with NotReceiver, by the live contract at the same gas limit
+sent        0x503fa991c04ba28b2dd1592183694efa2e2f704e727e25e18ade3a29d01479cd
+            https://monadvision.com/tx/0x503fa991c04ba28b2dd1592183694efa2e2f704e727e25e18ade3a29d01479cd
+receipt     reverted in block 103007338, 150,000 gas used of the 150,000 limit set
+result      REFUSED

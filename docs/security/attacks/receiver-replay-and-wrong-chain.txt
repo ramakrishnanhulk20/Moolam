@@ -1,0 +1,27 @@
+Moolam attack: receiver-replay-and-wrong-chain
+REFUSED
+
+run         2026-09-08T09:45:55.906Z
+command     npm run prove
+network     Monad mainnet, chain 143
+registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+
+covered by three Foundry tests, not by a mainnet transaction: only Chainlink's forwarder can reach the check
+
+receiver            0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4
+forwarder on chain  0x76c9cf548b4179F8901cda1f8623568b58215E62
+last report seen    0 for passport 0x674bd51df521babc6c897816b2a5ec2a69548ec5c82d825ea6404b6435f5f31b
+
+onReport refuses anything that is not the forwarder before it decodes a byte, which is the
+attack in report-from-fake-forwarder.txt and it is executed live. The replay and wrong chain
+checks sit behind that door, inside _processReport, so reaching them on mainnet would mean
+sending from Chainlink's own forwarder address. Nobody can, and that is the point.
+
+packages/contracts/test/MoolamReceiver.t.sol, run with npm test in packages/contracts:
+  test_theSameReportSentTwiceIsRefused          StaleReport
+  test_anOlderReportAfterANewerOneIsRefused     StaleReport
+  test_aReportBuiltForAnotherChainIsRefused     WrongChain
+
+Each of those deploys the same receiver, pranks the forwarder address, delivers a report,
+and expects the named custom error on the second delivery, on the older one, and on the one
+built for chain 1.

@@ -1,0 +1,45 @@
+Moolam attack: dispute-money-rules
+REFUSED
+
+run         2026-09-08T09:45:55.906Z
+command     npm run prove
+network     Monad mainnet, chain 143
+registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+
+three refusals: InvalidBond, NotResolver, NothingToWithdraw
+
+caller              0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+bond the policy asks for  1000000000000000000 wei
+
+1. flag with no bond attached
+   attack      open a dispute without posting the bond
+   call        flag on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+   from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+   expected    InvalidBond
+   eth_call    refused with InvalidBond, by the live contract at the same gas limit
+   sent        0xc952a674fab348c6f5356c2995c42213310003495f18180014fd374648fb0a69
+               https://monadvision.com/tx/0xc952a674fab348c6f5356c2995c42213310003495f18180014fd374648fb0a69
+   receipt     reverted in block 103007360, 150,000 gas used of the 150,000 limit set
+   result      REFUSED
+
+2. resolve, sent by someone who is not the resolver the policy names
+   attack      settle a dispute without being the resolver
+   call        resolve on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+   from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+   expected    NotResolver
+   eth_call    refused with NotResolver, by the live contract at the same gas limit
+   sent        0x4c8b4120690cdb7e9ea731405b207069f2a607f5ba624ac39530e50d0c4b4aea
+               https://monadvision.com/tx/0x4c8b4120690cdb7e9ea731405b207069f2a607f5ba624ac39530e50d0c4b4aea
+   receipt     reverted in block 103007363, 150,000 gas used of the 150,000 limit set
+   result      REFUSED
+
+3. withdraw, with no credit standing to this address
+   attack      withdraw with nothing owed
+   call        withdraw on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+   from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+   expected    NothingToWithdraw
+   eth_call    refused with NothingToWithdraw, by the live contract at the same gas limit
+   sent        0x300831eb03685fedbb0e6e18afa1a9364582d4345297b97324f2495d595090f1
+               https://monadvision.com/tx/0x300831eb03685fedbb0e6e18afa1a9364582d4345297b97324f2495d595090f1
+   receipt     reverted in block 103007365, 150,000 gas used of the 150,000 limit set
+   result      REFUSED
