@@ -1,10 +1,10 @@
 Moolam attack: dispute-money-rules
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
 three refusals: InvalidBond, NotResolver, NothingToWithdraw
 
@@ -13,33 +13,33 @@ bond the policy asks for  1000000000000000000 wei
 
 1. flag with no bond attached
    attack      open a dispute without posting the bond
-   call        flag on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+   call        flag on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
    from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
    expected    InvalidBond
    eth_call    refused with InvalidBond, by the live contract at the same gas limit
-   sent        0xc952a674fab348c6f5356c2995c42213310003495f18180014fd374648fb0a69
-               https://monadvision.com/tx/0xc952a674fab348c6f5356c2995c42213310003495f18180014fd374648fb0a69
-   receipt     reverted in block 103007360, 150,000 gas used of the 150,000 limit set
+   sent        0xd3e598f8c942a8aa3ec76965a535a9fefaadc52f55edde859934d6e8193b1808
+               https://monadvision.com/tx/0xd3e598f8c942a8aa3ec76965a535a9fefaadc52f55edde859934d6e8193b1808
+   receipt     reverted in block 103059488, 150,000 gas used of the 150,000 limit set
    result      REFUSED
 
 2. resolve, sent by someone who is not the resolver the policy names
    attack      settle a dispute without being the resolver
-   call        resolve on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+   call        resolve on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
    from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
    expected    NotResolver
    eth_call    refused with NotResolver, by the live contract at the same gas limit
-   sent        0x4c8b4120690cdb7e9ea731405b207069f2a607f5ba624ac39530e50d0c4b4aea
-               https://monadvision.com/tx/0x4c8b4120690cdb7e9ea731405b207069f2a607f5ba624ac39530e50d0c4b4aea
-   receipt     reverted in block 103007363, 150,000 gas used of the 150,000 limit set
+   sent        0x831f84ded39677f1d76593f7b0d2b271ac012aaf33e3e64b5592883254b377a2
+               https://monadvision.com/tx/0x831f84ded39677f1d76593f7b0d2b271ac012aaf33e3e64b5592883254b377a2
+   receipt     reverted in block 103059491, 150,000 gas used of the 150,000 limit set
    result      REFUSED
 
 3. withdraw, with no credit standing to this address
    attack      withdraw with nothing owed
-   call        withdraw on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+   call        withdraw on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
    from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
    expected    NothingToWithdraw
    eth_call    refused with NothingToWithdraw, by the live contract at the same gas limit
-   sent        0x300831eb03685fedbb0e6e18afa1a9364582d4345297b97324f2495d595090f1
-               https://monadvision.com/tx/0x300831eb03685fedbb0e6e18afa1a9364582d4345297b97324f2495d595090f1
-   receipt     reverted in block 103007365, 150,000 gas used of the 150,000 limit set
+   sent        0xc08c586f8672494f8be18143720147e351cb21aed2809f2e6db23c323ccf3472
+               https://monadvision.com/tx/0xc08c586f8672494f8be18143720147e351cb21aed2809f2e6db23c323ccf3472
+   receipt     reverted in block 103059494, 150,000 gas used of the 150,000 limit set
    result      REFUSED

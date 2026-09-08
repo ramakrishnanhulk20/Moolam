@@ -1,24 +1,24 @@
 Moolam attack: passkey-replay
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-InvalidPasskeySignature: the creator's own assertion, replayed on a different image hash, on chain in 0x45bb56b31cd0e112ab697e96766901bb80b2c2819196cad0ff46513dbdc55b09
+InvalidPasskeySignature: the creator's own assertion, replayed on a different image hash, on chain in 0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
 
-original passport   0x674bd51df521babc6c897816b2a5ec2a69548ec5c82d825ea6404b6435f5f31b
-replayed onto       0xaa73a4dc2c852763d90f2568354ffb44c670a79280fee3dca3bd31eabf9ee5d3
+original passport   0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80
+replayed onto       0x435c606870c96fe8ad766ed41a3aac724f45e808cf01be98e8d58e503c2e8ee0
 the assertion and the agent signature are byte for byte the ones that registered the
 original passport. Only exactHash changed, and the digest they signed changed with it.
 
 attack      replay the creator's passkey assertion on a changed record
-call        register on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+call        register on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 from        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
 expected    InvalidPasskeySignature
 eth_call    refused with InvalidPasskeySignature, by the live contract at the same gas limit
-sent        0x45bb56b31cd0e112ab697e96766901bb80b2c2819196cad0ff46513dbdc55b09
-            https://monadvision.com/tx/0x45bb56b31cd0e112ab697e96766901bb80b2c2819196cad0ff46513dbdc55b09
-receipt     reverted in block 103007320, 400,000 gas used of the 400,000 limit set
+sent        0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
+            https://monadvision.com/tx/0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
+receipt     reverted in block 103059450, 400,000 gas used of the 400,000 limit set
 result      REFUSED

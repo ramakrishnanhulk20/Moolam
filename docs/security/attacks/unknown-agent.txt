@@ -1,12 +1,12 @@
 Moolam attack: unknown-agent
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-UnknownAgent: agent 10000000000 does not exist on the ERC-8004 registry, on chain in 0xd130ed7083f90ba2f2c045c8da3da38171ba5d77c2781270ef0e6bf4b59ae9fa
+UnknownAgent: agent 10000000000 does not exist on the ERC-8004 registry, on chain in 0x0a7d1d03f63bf455bf62893c4078176191944cb73691c9603649023727d2f979
 
 identity registry   0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
 claimed agent       10000000000
@@ -14,11 +14,11 @@ the creator's passkey signature is valid over this record, so the refusal is ent
 ownerOf read on the live ERC-8004 registry failing.
 
 attack      claim an agent id that was never registered
-call        register on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+call        register on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 from        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
 expected    UnknownAgent
 eth_call    refused with UnknownAgent, by the live contract at the same gas limit
-sent        0xd130ed7083f90ba2f2c045c8da3da38171ba5d77c2781270ef0e6bf4b59ae9fa
-            https://monadvision.com/tx/0xd130ed7083f90ba2f2c045c8da3da38171ba5d77c2781270ef0e6bf4b59ae9fa
-receipt     reverted in block 103007327, 400,000 gas used of the 400,000 limit set
+sent        0x0a7d1d03f63bf455bf62893c4078176191944cb73691c9603649023727d2f979
+            https://monadvision.com/tx/0x0a7d1d03f63bf455bf62893c4078176191944cb73691c9603649023727d2f979
+receipt     reverted in block 103059456, 400,000 gas used of the 400,000 limit set
 result      REFUSED

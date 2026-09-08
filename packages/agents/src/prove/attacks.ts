@@ -694,14 +694,16 @@ export async function verifierApiLimits(a: AttackContext): Promise<AttackResult>
     body: flood.body.slice(0, 200),
   });
 
-  const cleanCount = flood.refusedAt === 61;
+  // The credit probe that waits for a fresh window is itself one request against the same limit,
+  // so the first refusal lands on the 60th or the 61st call depending on where the window edge fell.
+  const cleanCount = flood.refusedAt === 60 || flood.refusedAt === 61;
   const refused = checks.every((check) => check.got === check.expected) && cleanCount;
 
   return result(
     "verifier-api-limits",
     refused,
     refused
-      ? "413 on 25 MB, 400 on a text file, 403 on a loopback URL, 429 on the 61st request"
+      ? "413 on 25 MB, 400 on a text file, 403 on a loopback URL, 429 once the minute's 60 requests are spent"
       : `NOT REFUSED: ${checks.map((c) => `${c.what} answered ${c.got}, wanted ${c.expected}`).join("; ")}`,
     [
       "",

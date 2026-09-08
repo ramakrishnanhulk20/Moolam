@@ -1,16 +1,16 @@
 Moolam attack: privy-policy-refusal
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
 policy_violation twice: the agent's wallet cannot move MON and cannot call appendEdit
 
 generator wallet    0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb
 policy              kvq9627q5dfpv90xegi5h1cj
-registry            0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry            0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
 1. send 0.1 MON to the deployer
    HTTP 400 policy_violation: RPC request denied due to policy violation

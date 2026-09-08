@@ -1,24 +1,24 @@
 Moolam attack: generator-signature-forged
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-InvalidGeneratorSignature: a stranger's wallet signing for someone else's agent, on chain in 0x3c7104948cd93c36380596a27812b727fe9cdb1a500afe60f52a1867a1cf0a8c
+InvalidGeneratorSignature: a stranger's wallet signing for someone else's agent, on chain in 0x33b6cc848ec99e19bd929fb12820d1a0db8a9c6d3cf0d7241bec7a9d93a5af04
 
 agent               10248 on 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
-signed by           0x784436D4B3De67DaB783B09E38B9f0a85Fbf418e, a key generated for this attack and thrown away
+signed by           0x464F68815152bB06b2B4Fef9fa1A0836AaED67ad, a key generated for this attack and thrown away
 the creator's passkey signature over this record is valid, so the only thing refusing the
 write is ownerOf on the ERC-8004 registry not matching the recovered signer.
 
 attack      sign as the generator agent from a wallet that does not own it
-call        register on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+call        register on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 from        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
 expected    InvalidGeneratorSignature
 eth_call    refused with InvalidGeneratorSignature, by the live contract at the same gas limit
-sent        0x3c7104948cd93c36380596a27812b727fe9cdb1a500afe60f52a1867a1cf0a8c
-            https://monadvision.com/tx/0x3c7104948cd93c36380596a27812b727fe9cdb1a500afe60f52a1867a1cf0a8c
-receipt     reverted in block 103007324, 400,000 gas used of the 400,000 limit set
+sent        0x33b6cc848ec99e19bd929fb12820d1a0db8a9c6d3cf0d7241bec7a9d93a5af04
+            https://monadvision.com/tx/0x33b6cc848ec99e19bd929fb12820d1a0db8a9c6d3cf0d7241bec7a9d93a5af04
+receipt     reverted in block 103059453, 400,000 gas used of the 400,000 limit set
 result      REFUSED

@@ -1,12 +1,12 @@
 Moolam attack: verifier-api-limits
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-413 on 25 MB, 400 on a text file, 403 on a loopback URL, 429 on the 61st request
+413 on 25 MB, 400 on a text file, 403 on a loopback URL, 429 once the minute's 60 requests are spent
 
 service             http://127.0.0.1:4010
 
@@ -23,7 +23,7 @@ REFUSED  61 requests in one minute (first refusal at request 61)
           expected HTTP 429, got 429
           {"statusCode":429,"error":"Too Many Requests","message":"Rate limit exceeded, retry in 1 minute"}
 
-The flood waited 47 seconds for the rate limit window to close first, so
+The flood waited 48 seconds for the rate limit window to close first, so
 the count starts from nothing. Requests are counted on the socket address, so a caller
 cannot pick their own bucket by sending a header.
 

@@ -1,24 +1,24 @@
 Moolam attack: expired-deadline
 REFUSED
 
-run         2026-09-08T09:45:55.906Z
+run         2026-09-08T14:08:34.384Z
 command     npm run prove
 network     Monad mainnet, chain 143
-registry    0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-SignatureExpired: both signatures are valid, and both are a minute too late, on chain in 0x99b659e83e7b9402c9e7f1c139d62df9767b7eb74fab84fbafbe4f61833ab738
+SignatureExpired: both signatures are valid, and both are a minute too late, on chain in 0x0d5ac502fb22d28377a2a60a604922dc95e5252f3de3de67c21436d1f213cee7
 
-chain time          1788860800
-deadline signed     1788860740
+chain time          1788876561
+deadline signed     1788876501
 the passkey assertion and the agent signature are freshly made and correct for this record.
 The deadline is the only thing wrong with it.
 
 attack      use signatures that are past their deadline
-call        register on 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+call        register on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 from        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
 expected    SignatureExpired
 eth_call    refused with SignatureExpired, by the live contract at the same gas limit
-sent        0x99b659e83e7b9402c9e7f1c139d62df9767b7eb74fab84fbafbe4f61833ab738
-            https://monadvision.com/tx/0x99b659e83e7b9402c9e7f1c139d62df9767b7eb74fab84fbafbe4f61833ab738
-receipt     reverted in block 103007330, 400,000 gas used of the 400,000 limit set
+sent        0x0d5ac502fb22d28377a2a60a604922dc95e5252f3de3de67c21436d1f213cee7
+            https://monadvision.com/tx/0x0d5ac502fb22d28377a2a60a604922dc95e5252f3de3de67c21436d1f213cee7
+receipt     reverted in block 103059459, 400,000 gas used of the 400,000 limit set
 result      REFUSED
