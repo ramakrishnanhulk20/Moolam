@@ -29,3 +29,6 @@ Thumbs.db
 
 # forge script dry runs
 packages/contracts/broadcast/**/dry-run/
+
+# per-run broadcast artifacts; run-latest.json is kept
+packages/contracts/broadcast/**/run-1*.json
