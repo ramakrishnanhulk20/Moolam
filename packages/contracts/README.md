@@ -64,6 +64,18 @@ Chain 143. Every command below sends real MON, and every one of them declares it
 `--gas-estimate-multiplier 110`, because Monad bills the limit you declare rather than the gas you
 use, so Foundry's default 130 would overpay by a fifth.
 
+The live deployment, block 103054771, all three verified on MonadVision through Sourcify:
+
+| Contract | Address |
+|---|---|
+| VerifierPolicy | 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 |
+| MoolamRegistry | 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0 |
+| MoolamReceiver | 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 |
+
+The first mainnet deployment (registry 0xeBeeD7A422531789aa009a9c45CC10C84dF12119, block 102977372)
+is superseded by the addresses above. `deployments/monad-mainnet.json` stays the source of truth for
+every script.
+
 ```
 npm run deploy:mainnet      deploy the three contracts, pin the receiver, close the bootstrap
 npm run agent:register      register the demo generator agent on the ERC-8004 registry

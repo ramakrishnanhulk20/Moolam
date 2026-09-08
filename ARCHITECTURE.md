@@ -120,15 +120,18 @@ flowchart TD
 
 ## 5. The interface the app and the indexer use
 
-Live on Monad mainnet (chain 143), deployed in block 102977372 and verified on MonadVision:
+Live on Monad mainnet (chain 143), deployed in block 103054771 and verified on MonadVision:
 
 | Contract | Address |
 |---|---|
-| MoolamRegistry | 0xeBeeD7A422531789aa009a9c45CC10C84dF12119 |
-| VerifierPolicy | 0xD46E62776Cc5804Ee49d80c67732833d7E700A6e |
-| MoolamReceiver | 0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4 |
+| MoolamRegistry | 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0 |
+| VerifierPolicy | 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 |
+| MoolamReceiver | 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 |
 | ERC-8004 Identity Registry (Monad's) | 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 |
 | Chainlink Keystone Forwarder (production) | 0x76c9cf548b4179F8901cda1f8623568b58215E62 |
+
+The first mainnet deployment (registry 0xeBeeD7A422531789aa009a9c45CC10C84dF12119, block
+102977372) is superseded by the addresses above.
 
 The demo generator is agent 10248 on the identity registry. ABIs live in `packages/contracts/abi/`.
 

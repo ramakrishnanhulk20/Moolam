@@ -15,7 +15,7 @@ const CHAIN = 143;
 // config.yaml starts the index at the block the contracts were deployed in, and
 // a simulated event before that block is filtered out before any handler runs.
 // Every block number below is an offset from the deploy block for that reason.
-const DEPLOY_BLOCK = 102977372;
+const DEPLOY_BLOCK = 103054771;
 
 const DAY_ONE = 1768471200; // 2026-01-15T10:00:00Z
 const DAY_TWO = 1768557600; // 2026-01-16T10:00:00Z
