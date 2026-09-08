@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { FETCH_TIMEOUT_MS } from "../env.js";
-import type { Hex, PassportRecord } from "../types.js";
+import type { PassportRecord } from "../types.js";
+import { hex } from "./hex.js";
 import type { PassportSource } from "./PassportSource.js";
 
 /**
@@ -29,12 +30,6 @@ const DEFAULT_PAGE_SIZE = 500;
  * registry will hold before this source is replaced by a streaming read.
  */
 const MAX_PAGES = 10_000;
-
-const hex = (bytes: number): z.ZodType<Hex> =>
-  z
-    .string()
-    .regex(new RegExp(`^0x[0-9a-fA-F]{${bytes * 2}}$`), `must be 0x followed by ${bytes * 2} hex characters`)
-    .transform((value) => value.toLowerCase() as Hex);
 
 /**
  * Envio serves a GraphQL BigInt as a decimal string. A JSON number is accepted

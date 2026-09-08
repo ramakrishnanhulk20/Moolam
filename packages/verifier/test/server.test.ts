@@ -1,35 +1,19 @@
-// Covers the HTTP surface: health, a good upload, rejected bodies, unknown
-// routes and the rate limit. Requests go through fastify.inject, so no port is
-// bound.
+// Covers the HTTP surface: health, a good upload, rejected bodies, the refused
+// fetch targets, unknown routes, the match concurrency gate and the rate limit.
+// Requests go through fastify.inject, so no port is bound.
 // Does NOT cover the remote URL fetch path against a real network, and does not
 // cover TLS or any deployment concern.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { fingerprint } from "../src/fingerprint.js";
-import { buildServer } from "../src/server.js";
+import { buildServer, concurrencyGate } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
-import { makeImage, recordFor } from "./helpers.js";
+import { makeImage, makeOversizeImage, multipartBody, recordFor } from "./helpers.js";
 
 function sourceOf(records: PassportRecord[]): PassportSource {
   return { load: async () => records };
-}
-
-function multipartBody(field: string, filename: string, contentType: string, content: Buffer): {
-  payload: Buffer;
-  headers: Record<string, string>;
-} {
-  const boundary = "----moolamtest";
-  const head = Buffer.from(
-    `--${boundary}\r\nContent-Disposition: form-data; name="${field}"; filename="${filename}"\r\n` +
-      `Content-Type: ${contentType}\r\n\r\n`,
-  );
-  const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
-  return {
-    payload: Buffer.concat([head, content, tail]),
-    headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
-  };
 }
 
 describe("verify service", () => {
@@ -66,8 +50,17 @@ describe("verify service", () => {
     expect(body.manifest.present).toBe(false);
   });
 
-  it("refuses to fetch loopback, private and localhost URLs", async () => {
-    for (const url of ["http://127.0.0.1/x.jpg", "http://10.0.0.8/x.jpg", "http://localhost:4010/x.jpg", "http://[::1]/x.jpg"]) {
+  it("refuses to fetch loopback, private and localhost URLs, in every spelling", async () => {
+    for (const url of [
+      "http://127.0.0.1/x.jpg",
+      "http://10.0.0.8/x.jpg",
+      "http://localhost:4010/x.jpg",
+      "http://[::1]/x.jpg",
+      "http://[::ffff:127.0.0.1]/x.jpg",
+      "http://[::ffff:a9fe:a9fe]/x.jpg",
+      "http://0x7f000001/x.jpg",
+      "http://2130706433/x.jpg",
+    ]) {
       const response = await app.inject({ method: "POST", url: "/verify", payload: { url } });
       expect(response.statusCode, url).toBe(403);
       expect(response.json().error).toContain("not a public address");
@@ -88,6 +81,14 @@ describe("verify service", () => {
     expect(response.json().error).toMatch(/not an image/);
   });
 
+  it("refuses an image over the pixel limit with 413 and says why", async () => {
+    const { payload, headers } = multipartBody("file", "bomb.jpg", "image/jpeg", await makeOversizeImage());
+    const response = await app.inject({ method: "POST", url: "/verify", payload, headers });
+
+    expect(response.statusCode).toBe(413);
+    expect(response.json().error).toMatch(/pixel limit/);
+  }, 30_000);
+
   it("returns 400 when the multipart field is not called file", async () => {
     const { payload, headers } = multipartBody("photo", "a.jpg", "image/jpeg", registered);
     const response = await app.inject({ method: "POST", url: "/verify", payload, headers });
@@ -100,6 +101,38 @@ describe("verify service", () => {
     const response = await app.inject({ method: "GET", url: "/nope" });
     expect(response.statusCode).toBe(404);
     expect(response.json().error).toMatch(/no route/);
+  });
+});
+
+describe("concurrencyGate", () => {
+  it("never runs more than its limit at once and still finishes every task", async () => {
+    const gate = concurrencyGate(2);
+    let running = 0;
+    let peak = 0;
+
+    const results = await Promise.all(
+      Array.from({ length: 8 }, (_unused, i) =>
+        gate(async () => {
+          running += 1;
+          peak = Math.max(peak, running);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          running -= 1;
+          return i;
+        }),
+      ),
+    );
+
+    expect(peak).toBe(2);
+    expect(results).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("frees the slot when a task throws", async () => {
+    const gate = concurrencyGate(1);
+
+    await expect(gate(async () => {
+      throw new Error("decode failed");
+    })).rejects.toThrow(/decode failed/);
+    await expect(gate(async () => "next in line")).resolves.toBe("next in line");
   });
 });
 

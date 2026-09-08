@@ -28,7 +28,8 @@ const MAX_MATCHES = 20;
  * Matches an image against the registry.
  *
  * The exact-bytes sha256 of the image is tried first: a hit there means the
- * file is byte for byte a registered passport and nothing else needs deciding.
+ * file is byte for byte a registered passport and nothing else needs deciding,
+ * so the eight rotated copies are never built and the work stops at one decode.
  * Otherwise all eight rotated and mirrored copies of the query are fingerprinted
  * and each is run through the index, so a quarter-turned or mirrored re-upload
  * is caught even though its raw pHash is 30 of 64 bits away from the original.
@@ -46,8 +47,7 @@ export async function matchImage(
   // The identity variant is a PNG re-encode, so its sha256 is the hash of that
   // PNG and not of the file the caller sent. The exact lookup has to use the
   // fingerprint of the original bytes, which is also what a caller wants back.
-  const [queried, rotated] = await Promise.all([fingerprint(bytes), dihedralFingerprints(bytes)]);
-  const variants: Record<DihedralName, Fingerprint> = { ...rotated, identity: queried };
+  const queried = await fingerprint(bytes);
 
   const exactRecord = exactLookup(queried.sha256);
   if (exactRecord !== undefined) {
@@ -60,6 +60,9 @@ export async function matchImage(
     };
     return { exact: exactRecord.id, best: exactMatch, matches: [exactMatch], confidence: 1, queried };
   }
+
+  const rotated = await dihedralFingerprints(bytes);
+  const variants: Record<DihedralName, Fingerprint> = { ...rotated, identity: queried };
 
   const bestByRecord = new Map<Hex, Match>();
   for (const name of Object.keys(variants) as DihedralName[]) {

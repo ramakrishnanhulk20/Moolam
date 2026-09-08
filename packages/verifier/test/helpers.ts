@@ -55,3 +55,43 @@ export function blockhashWithBits(bits: number): Hex {
   }
   return `0x${Buffer.from(bytes).toString("hex")}` as Hex;
 }
+
+/**
+ * A small JPEG that unpacks to 48 megapixels, past the decode limit. Flat
+ * colour, so the file is a few hundred kilobytes and the upload path is not the
+ * thing under test.
+ */
+export async function makeOversizeImage(): Promise<Buffer> {
+  return await sharp({ create: { width: 8000, height: 6000, channels: 3, background: "#204060" } })
+    .jpeg({ quality: 30 })
+    .toBuffer();
+}
+
+/** A JPEG that stores its pixels sideways and carries EXIF orientation 6, as a phone camera does. */
+export async function makeRotatedImage(seed: number): Promise<{ tagged: Buffer; upright: Buffer }> {
+  const source = await makeImage(seed);
+  const sideways = await sharp(source).rotate(270).jpeg({ quality: 92 }).toBuffer();
+  return {
+    tagged: await sharp(sideways).withMetadata({ orientation: 6 }).jpeg({ quality: 92 }).toBuffer(),
+    upright: await sharp(sideways).rotate(90).jpeg({ quality: 92 }).toBuffer(),
+  };
+}
+
+/** A multipart body with one file part, the shape both verify routes read. */
+export function multipartBody(
+  field: string,
+  filename: string,
+  contentType: string,
+  content: Buffer,
+): { payload: Buffer; headers: Record<string, string> } {
+  const boundary = "----moolamtest";
+  const head = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="${field}"; filename="${filename}"\r\n` +
+      `Content-Type: ${contentType}\r\n\r\n`,
+  );
+  const tail = Buffer.from(`\r\n--${boundary}--\r\n`);
+  return {
+    payload: Buffer.concat([head, content, tail]),
+    headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+  };
+}

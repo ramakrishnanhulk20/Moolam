@@ -1,9 +1,7 @@
 import type { x402HTTPResourceServer } from "@x402/core/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { readManifest, type ManifestSummary } from "../c2pa.js";
-import { MAX_UPLOAD_BYTES } from "../env.js";
-import { matchImage, type MatchResult } from "../match.js";
 import { contextFor } from "../x402/plugin.js";
+import { readUpload, statusOf, verifyBytes } from "./shared.js";
 
 /**
  * POST /verify/paid: the same answer as /verify, behind an x402 payment.
@@ -57,7 +55,7 @@ export async function verifyPaidRoutes(
 
     let payload: { result: unknown; manifest: unknown };
     try {
-      payload = await verifyUpload(request, app);
+      payload = await verifyBytes(app, await readUpload(request));
     } catch (error) {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);
@@ -69,12 +67,23 @@ export async function verifyPaidRoutes(
     }
 
     if (processed.type === "payment-verified") {
-      const settled = await payments.processSettlement(
-        processed.paymentPayload,
-        processed.paymentRequirements,
-        processed.declaredExtensions,
-        { request: context, responseBody: Buffer.from(JSON.stringify(payload)) },
-      );
+      let settled: Awaited<ReturnType<typeof payments.processSettlement>>;
+      try {
+        settled = await payments.processSettlement(
+          processed.paymentPayload,
+          processed.paymentRequirements,
+          processed.declaredExtensions,
+          { request: context, responseBody: Buffer.from(JSON.stringify(payload)) },
+        );
+      } catch (error) {
+        // The answer is already computed but nobody has been charged, so the
+        // authorisation is released rather than left standing against the payer.
+        const reason = error instanceof Error ? error.message : String(error);
+        await processed.cancellationDispatcher.cancel({ reason: "handler_failed", responseStatus: 502 });
+        request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: settlement threw");
+        return reply.code(502).send({ error: `the payment could not be settled: ${reason}` });
+      }
+
       if (!settled.success) {
         request.log.error({ ip: request.ip, url: request.url, reason: settled.errorReason }, "payment did not settle");
         return reply.code(settled.response.status).headers(settled.response.headers).send(settled.response.body ?? {});
@@ -84,78 +93,4 @@ export async function verifyPaidRoutes(
 
     return reply.send(payload);
   });
-}
-
-class BadUpload extends Error {
-  readonly statusCode: number;
-  constructor(message: string, statusCode = 400) {
-    super(message);
-    this.statusCode = statusCode;
-  }
-}
-
-function statusOf(error: unknown): number {
-  return error instanceof BadUpload ? error.statusCode : 400;
-}
-
-async function verifyUpload(
-  request: FastifyRequest,
-  app: FastifyInstance,
-): Promise<{ result: unknown; manifest: unknown }> {
-  if (!request.isMultipart()) {
-    throw new BadUpload('send the image in a multipart field named "file"');
-  }
-
-  const part = await request.file({ limits: { fileSize: MAX_UPLOAD_BYTES } });
-  if (part === undefined || part.fieldname !== "file") {
-    throw new BadUpload('send the image in a multipart field named "file"');
-  }
-
-  let bytes: Buffer;
-  try {
-    bytes = await part.toBuffer();
-  } catch (error) {
-    if ((error as { code?: string }).code === "FST_REQ_FILE_TOO_LARGE") {
-      throw new BadUpload(`the image is larger than the ${MAX_UPLOAD_BYTES} byte limit`, 413);
-    }
-    throw error;
-  }
-  if (bytes.length === 0) {
-    throw new BadUpload("the uploaded file is empty");
-  }
-
-  let result: MatchResult;
-  let manifest: ManifestSummary;
-  try {
-    [result, manifest] = await Promise.all([
-      matchImage(bytes, app.verifier.index, app.verifier.lookupExact),
-      readManifest(bytes),
-    ]);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new BadUpload(`the upload is not an image we can read: ${detail}`);
-  }
-
-  return { result: renderResult(result), manifest: renderManifest(manifest) };
-}
-
-/** The 64-bit pHash goes out as a decimal string, never a double, exactly as the free route sends it. */
-function renderResult(result: MatchResult): unknown {
-  return {
-    exact: result.exact,
-    best: result.best,
-    matches: result.matches,
-    confidence: result.confidence,
-    queried: { ...result.queried, phash: result.queried.phash.toString() },
-  };
-}
-
-function renderManifest(manifest: ManifestSummary): unknown {
-  if (manifest.softBinding === undefined) {
-    return manifest;
-  }
-  return {
-    ...manifest,
-    softBinding: { ...manifest.softBinding, phash: manifest.softBinding.phash.toString() },
-  };
 }

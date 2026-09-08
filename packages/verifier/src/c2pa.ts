@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Builder, LocalSigner, Reader } from "@contentauth/c2pa-node";
+import { env } from "./env.js";
 import type { Hex } from "./types.js";
 
 export interface SoftBinding {
@@ -280,27 +281,49 @@ function sniffMimeType(bytes: Buffer): string {
 }
 
 /**
- * Resolves the signing identity. A real deployment points the two environment
- * variables at its own certificate. With nothing set, a throwaway ES256 chain
- * is generated once into test-assets/certs, which is gitignored and never
- * leaves this machine.
+ * Resolves the signing identity from the two validated environment values.
  *
- * The chain has to be generated because the npm package of
- * @contentauth/c2pa-node ships only dist, scripts and src, so the test
- * certificates that live in its repository are not installed with it.
+ * The certificate and the key are one identity, so they are taken together: set
+ * both to sign with your own, or neither to sign with the throwaway development
+ * chain. Setting one alone used to pair a real certificate with the development
+ * key, which produces a manifest that no reader can verify, so it now stops the
+ * caller instead.
+ *
+ * With nothing set, a throwaway ES256 chain is generated once into
+ * test-assets/certs, which is gitignored and never leaves this machine. The
+ * chain has to be generated because the npm package of @contentauth/c2pa-node
+ * ships only dist, scripts and src, so the test certificates that live in its
+ * repository are not installed with it.
+ *
+ * Throws when only one of the two paths is set, or when a path is set and no
+ * file is there.
  */
-function loadSigner(): LocalSigner {
-  const certPath = process.env.MOOLAM_C2PA_CERT_PATH ?? path.join(devCertDir, "chain.cert.pem");
-  const keyPath = process.env.MOOLAM_C2PA_KEY_PATH ?? path.join(devCertDir, "signer.key.pem");
-
-  if (!existsSync(certPath) || !existsSync(keyPath)) {
-    if (process.env.MOOLAM_C2PA_CERT_PATH !== undefined || process.env.MOOLAM_C2PA_KEY_PATH !== undefined) {
-      throw new Error(`no signing certificate or key found at ${certPath} and ${keyPath}`);
-    }
-    generateDevSigningIdentity();
+export function loadSigner(
+  paths: { certPath?: string; keyPath?: string } = {
+    certPath: env.MOOLAM_C2PA_CERT_PATH,
+    keyPath: env.MOOLAM_C2PA_KEY_PATH,
+  },
+): LocalSigner {
+  const { certPath, keyPath } = paths;
+  if ((certPath === undefined) !== (keyPath === undefined)) {
+    throw new Error(
+      "MOOLAM_C2PA_CERT_PATH and MOOLAM_C2PA_KEY_PATH go together: set both to sign with your own identity, or neither to use the development one",
+    );
   }
 
-  return LocalSigner.newSigner(readFileSync(certPath), readFileSync(keyPath), "es256");
+  if (certPath !== undefined && keyPath !== undefined) {
+    if (!existsSync(certPath) || !existsSync(keyPath)) {
+      throw new Error(`no signing certificate or key found at ${certPath} and ${keyPath}`);
+    }
+    return LocalSigner.newSigner(readFileSync(certPath), readFileSync(keyPath), "es256");
+  }
+
+  const devCert = path.join(devCertDir, "chain.cert.pem");
+  const devKey = path.join(devCertDir, "signer.key.pem");
+  if (!existsSync(devCert) || !existsSync(devKey)) {
+    generateDevSigningIdentity();
+  }
+  return LocalSigner.newSigner(readFileSync(devCert), readFileSync(devKey), "es256");
 }
 
 /**

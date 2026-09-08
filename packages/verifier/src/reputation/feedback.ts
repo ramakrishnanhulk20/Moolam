@@ -1,5 +1,6 @@
 import { keccak256, stringToHex, type Transport } from "viem";
 import { env } from "../env.js";
+import { PHASH_MATCH_THRESHOLD } from "../fingerprint.js";
 import type { Hex } from "../types.js";
 import {
   FEEDBACK_TAG_KIND,
@@ -10,8 +11,6 @@ import {
   writeClient,
 } from "./registry.js";
 
-/** A perfect match scores 100 and every wrong bit costs 10, so 10 bits or worse scores 0. */
-const POINTS_PER_BIT = 10;
 const MAX_SCORE = 100;
 
 /** The 64-bit pHash is the widest distance a verification can report. */
@@ -63,13 +62,25 @@ export interface ReputationSummary {
   decimals: number;
 }
 
-/** Turns a match into a 0 to 100 score. A mismatch is 0, whatever the distance says. */
+/**
+ * Turns a match into a 0 to 100 score, on the same scale the matcher uses.
+ *
+ * The score falls from 100 at an exact fingerprint to 9 at the widest distance
+ * that still counts as a match, so every real match posts a positive number and
+ * only a mismatch posts nothing:
+ *
+ *   score = round(100 * (1 - distance / (PHASH_MATCH_THRESHOLD + 1)))
+ *
+ * Dividing by the threshold plus one is what keeps the last matching bit worth
+ * something. A mismatch is 0, whatever the distance says.
+ */
 export function scoreFor(matched: boolean, distance: number): number {
   assertDistance(distance);
   if (!matched) {
     return 0;
   }
-  return Math.max(0, MAX_SCORE - POINTS_PER_BIT * distance);
+  const scaled = MAX_SCORE * (1 - distance / (PHASH_MATCH_THRESHOLD + 1));
+  return Math.max(0, Math.round(scaled));
 }
 
 /**

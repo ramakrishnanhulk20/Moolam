@@ -7,6 +7,7 @@ import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
 import { HammingIndex } from "./index.js";
+import { matchImage, type MatchResult } from "./match.js";
 import { healthRoutes } from "./routes/health.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
@@ -18,10 +19,46 @@ import type { Hex, PassportRecord } from "./types.js";
 
 const RATE_LIMIT_PER_MINUTE = 60;
 
+/**
+ * How many images may be matched at the same time.
+ *
+ * Matching decodes the picture nine times over, so the rate limit alone does
+ * not bound memory: sixty large uploads inside one minute would all decode at
+ * once. Two runs in flight keeps the peak to roughly two decodes while queued
+ * callers simply wait their turn.
+ */
+const MAX_CONCURRENT_MATCHES = 2;
+
 export interface Verifier {
   index: HammingIndex;
   lookupExact: (sha256: Hex) => PassportRecord | undefined;
   version: string;
+  /** Matches an image, waiting for a free slot so heavy uploads cannot pile up. */
+  runMatch: (bytes: Buffer) => Promise<MatchResult>;
+}
+
+/**
+ * A first come, first served gate that lets `limit` tasks run at once.
+ *
+ * A caller that arrives while the gate is full parks on a promise and is woken
+ * by whichever task finishes next, so nothing spins and nothing is dropped.
+ */
+export function concurrencyGate(limit: number): <T>(task: () => Promise<T>) => Promise<T> {
+  let running = 0;
+  const waiting: (() => void)[] = [];
+
+  return async <T>(task: () => Promise<T>): Promise<T> => {
+    if (running >= limit || waiting.length > 0) {
+      await new Promise<void>((resolve) => waiting.push(resolve));
+    }
+    running += 1;
+    try {
+      return await task();
+    } finally {
+      running -= 1;
+      waiting.shift()?.();
+    }
+  };
 }
 
 declare module "fastify" {
@@ -83,10 +120,15 @@ export async function buildServer(
   const records = await source.load();
   const byId = new Map<Hex, PassportRecord>(records.map((record) => [record.id, record]));
 
+  const index = new HammingIndex(records);
+  const lookupExact = (sha256: Hex): PassportRecord | undefined => byId.get(sha256.toLowerCase() as Hex);
+  const gate = concurrencyGate(MAX_CONCURRENT_MATCHES);
+
   app.decorate("verifier", {
-    index: new HammingIndex(records),
-    lookupExact: (sha256: Hex) => byId.get(sha256.toLowerCase() as Hex),
+    index,
+    lookupExact,
     version,
+    runMatch: (bytes: Buffer) => gate(() => matchImage(bytes, index, lookupExact)),
   });
 
   await app.register(multipart, {

@@ -37,7 +37,7 @@ interface Sent {
 }
 
 /** A chain that answers every call viem makes, records the signed transaction, and confirms it. */
-function fakeChain(options: { summary?: [bigint, bigint, number] } = {}): {
+function fakeChain(options: { summary?: [bigint, bigint, number]; estimateReverts?: string } = {}): {
   transport: ReturnType<typeof custom>;
   sent: Sent[];
   calls: { method: string; params: unknown }[];
@@ -67,6 +67,9 @@ function fakeChain(options: { summary?: [bigint, bigint, number] } = {}): {
             transactions: [],
           };
         case "eth_estimateGas":
+          if (options.estimateReverts !== undefined) {
+            throw new Error(`execution reverted: ${options.estimateReverts}`);
+          }
           return toHex(GAS_ESTIMATE);
         case "eth_sendRawTransaction": {
           const raw = (params as ViemHex[])[0] as ViemHex;
@@ -108,16 +111,16 @@ function fakeChain(options: { summary?: [bigint, bigint, number] } = {}): {
 }
 
 describe("scoreFor", () => {
-  it("gives a perfect match 100 and takes 10 points per wrong bit", () => {
+  it("runs from 100 at an exact fingerprint down to 9 at the matching threshold", () => {
     expect(scoreFor(true, 0)).toBe(100);
-    expect(scoreFor(true, 1)).toBe(90);
-    expect(scoreFor(true, 9)).toBe(10);
+    expect(scoreFor(true, 5)).toBe(55);
+    expect(scoreFor(true, 10)).toBe(9);
   });
 
   it("never goes below zero, and a mismatch scores zero at any distance", () => {
-    expect(scoreFor(true, 10)).toBe(0);
     expect(scoreFor(true, 64)).toBe(0);
     expect(scoreFor(false, 0)).toBe(0);
+    expect(scoreFor(false, 10)).toBe(0);
   });
 
   it("refuses a distance that is not a whole number of bits in range", () => {
@@ -141,7 +144,7 @@ describe("verificationSummary", () => {
       passportId: PASSPORT,
       matched: true,
       distanceBits: 1,
-      score: 90,
+      score: 91,
     });
   });
 });
@@ -169,7 +172,7 @@ describe("postFeedback", () => {
     expect(decoded.functionName).toBe("giveFeedback");
     expect(decoded.args).toEqual([
       10_248n,
-      90n,
+      91n,
       0,
       "moolam",
       "verification",
@@ -177,7 +180,7 @@ describe("postFeedback", () => {
       METADATA_URI,
       result.feedbackHash,
     ]);
-    expect(result.score).toBe(90);
+    expect(result.score).toBe(91);
     expect(result.signer.toLowerCase()).toBe(SIGNER);
     expect(result.gasUsed).toBe(285_431n);
   });
@@ -216,6 +219,28 @@ describe("postFeedback", () => {
     await expect(postFeedback({ ...base, metadataURI: "  " })).rejects.toThrow(/metadataURI/);
     await expect(postFeedback({ ...base, distance: 70 })).rejects.toThrow(/between 0 and 64/);
     expect(chain.sent).toHaveLength(0);
+  });
+
+  it("broadcasts nothing when the chain rejects the call at gas estimation", async () => {
+    // The registry refuses feedback from the agent's own owner. That refusal
+    // arrives as a revert on the estimate, which runs before anything is
+    // signed, so a self-rating never reaches the mempool.
+    const chain = fakeChain({ estimateReverts: "Self-feedback not allowed" });
+
+    await expect(
+      postFeedback({
+        agentId: 10_248n,
+        matched: true,
+        distance: 1,
+        passportId: PASSPORT,
+        metadataURI: METADATA_URI,
+        signerKey: SIGNER_KEY,
+        transport: chain.transport,
+      }),
+    ).rejects.toThrow(/Self-feedback not allowed/);
+
+    expect(chain.sent).toHaveLength(0);
+    expect(chain.calls.some((entry) => entry.method === "eth_sendRawTransaction")).toBe(false);
   });
 });
 

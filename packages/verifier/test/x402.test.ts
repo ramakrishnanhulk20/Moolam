@@ -1,20 +1,23 @@
 // Covers the paid verify route: the 402 answer and its terms when payment is
-// switched on, and the 404 when it is off. The facilitator is a stub, so no
+// switched on, the 404 when it is off, and what happens when settlement fails
+// after the answer is already computed. The facilitator is a stub, so no
 // request leaves the machine and no USDC moves.
 // Does NOT cover a real payment: verifying a signature, settling it, and the
 // PAYMENT-RESPONSE header are the facilitator's job and need a funded client
-// wallet, which this suite does not have.
+// wallet, which this suite does not have. The settlement test drives the route
+// with a stand-in payment server rather than a signed payment, so it proves our
+// handling and not the x402 library's.
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import type { FacilitatorClient } from "@x402/core/server";
+import type { FacilitatorClient, x402HTTPResourceServer } from "@x402/core/server";
 import { fingerprint } from "../src/fingerprint.js";
 import { parseEnv } from "../src/env.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
 import { buildPaymentServer, X402_NETWORK } from "../src/x402/plugin.js";
-import { makeImage, recordFor } from "./helpers.js";
+import { makeImage, multipartBody, recordFor } from "./helpers.js";
 
 const PAY_TO = "0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7";
 
@@ -93,6 +96,44 @@ describe("paid verify route", () => {
 
     expect(health.statusCode).toBe(200);
     expect((health.json() as { records: number }).records).toBe(1);
+  });
+});
+
+describe("settlement failure", () => {
+  it("cancels the authorisation and answers 502 when the facilitator throws while settling", async () => {
+    const cancel = vi.fn(async () => undefined);
+    const payments = {
+      initialize: async () => undefined,
+      processHTTPRequest: async () => ({
+        type: "payment-verified",
+        paymentPayload: {},
+        paymentRequirements: {},
+        declaredExtensions: [],
+        cancellationDispatcher: { cancel },
+      }),
+      processSettlement: async () => {
+        throw new Error("facilitator refused the settle call");
+      },
+    } as unknown as x402HTTPResourceServer;
+
+    const image = await makeImage(23);
+    const app = await buildServer({
+      source: sourceOf([recordFor(await fingerprint(image))]),
+      logger: false,
+      payments,
+    });
+    await app.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const response = await app.inject({ method: "POST", url: "/verify/paid", payload, headers });
+
+      expect(response.statusCode).toBe(502);
+      expect(response.json().error).toMatch(/could not be settled: facilitator refused the settle call/);
+      expect(cancel).toHaveBeenCalledWith({ reason: "handler_failed", responseStatus: 502 });
+    } finally {
+      await app.close();
+    }
   });
 });
 

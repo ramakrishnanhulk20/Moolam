@@ -1,13 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import type { Hex, PassportRecord } from "../types.js";
+import type { PassportRecord } from "../types.js";
+import { hex } from "./hex.js";
 import type { PassportSource } from "./PassportSource.js";
-
-const hex = (bytes: number): z.ZodType<Hex> =>
-  z
-    .string()
-    .regex(new RegExp(`^0x[0-9a-fA-F]{${bytes * 2}}$`), `must be 0x followed by ${bytes * 2} hex characters`)
-    .transform((value) => value.toLowerCase() as Hex);
 
 /**
  * phash arrives as a decimal string, not a JSON number, because a 64-bit hash

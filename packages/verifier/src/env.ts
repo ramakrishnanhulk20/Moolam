@@ -63,8 +63,8 @@ const schema = z
         message: "ENVIO_GRAPHQL_URL must be an absolute http or https URL",
       })
       .transform((value) => (value === undefined || value.length === 0 ? undefined : value)),
-    MOOLAM_C2PA_CERT_PATH: z.string().optional(),
-    MOOLAM_C2PA_KEY_PATH: z.string().optional(),
+    MOOLAM_C2PA_CERT_PATH: optionalText(),
+    MOOLAM_C2PA_KEY_PATH: optionalText(),
     MONAD_MAINNET_RPC_URL: z
       .string()
       .trim()
@@ -121,6 +121,14 @@ const schema = z
         message: "ENVIO_GRAPHQL_URL is required when PASSPORT_SOURCE is \"envio\"",
       });
     }
+    if ((value.MOOLAM_C2PA_CERT_PATH === undefined) !== (value.MOOLAM_C2PA_KEY_PATH === undefined)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["MOOLAM_C2PA_CERT_PATH"],
+        message:
+          "MOOLAM_C2PA_CERT_PATH and MOOLAM_C2PA_KEY_PATH go together: set both to sign with your own identity, or neither to use the development one",
+      });
+    }
     if (value.X402_ENABLED && value.X402_PAY_TO_ADDRESS === undefined) {
       ctx.addIssue({
         code: "custom",
@@ -129,6 +137,15 @@ const schema = z
       });
     }
   });
+
+/** An optional value where a blank line in .env means the same as no line at all. */
+function optionalText(): z.ZodType<string | undefined> {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value === undefined || value.length === 0 ? undefined : value));
+}
 
 /** An optional string that must match `pattern` when it is present and not blank. */
 function optionalPattern(pattern: RegExp, message: string): z.ZodType<string | undefined> {

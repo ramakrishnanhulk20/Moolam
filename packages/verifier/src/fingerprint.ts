@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 import type { Hex } from "./types.js";
 
 const require = createRequire(import.meta.url);
@@ -54,21 +54,77 @@ export const PHASH_MATCH_THRESHOLD = 10;
 export const BLOCKHASH_MATCH_THRESHOLD = 40;
 
 /**
+ * The most pixels we will decode from an image a stranger sent, 40 megapixels.
+ * Decoding is what costs memory, not the file: a 572 KB JPEG that unpacks to
+ * 100 megapixels took the service to 917 MB of resident memory. 40 megapixels
+ * covers every camera on sale and holds one decode to roughly 160 MB.
+ */
+export const MAX_IMAGE_PIXELS = 40_000_000;
+
+/** Raised when an image is over the pixel limit, so a route can answer 413 rather than 400. */
+export class ImageTooLarge extends Error {}
+
+export interface ImageHeader {
+  width: number;
+  height: number;
+  format: string;
+  /** The EXIF orientation tag, 1 when the file carries none. */
+  orientation: number;
+}
+
+/**
+ * Reads the header of an image and refuses one that would decode to more pixels
+ * than we are willing to hold. The header is parsed without decoding, so the
+ * refusal costs nothing.
+ *
+ * Throws ImageTooLarge past the pixel limit, and a plain Error when the bytes
+ * are not an image sharp can read.
+ */
+export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
+  let metadata: Metadata;
+  try {
+    metadata = await sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    if (/pixel limit/i.test(detail)) {
+      throw new ImageTooLarge(`the image is over the ${MAX_IMAGE_PIXELS} pixel limit this service decodes`);
+    }
+    throw error;
+  }
+
+  const width = metadata.width ?? 0;
+  const height = metadata.height ?? 0;
+  if (width * height > MAX_IMAGE_PIXELS) {
+    throw new ImageTooLarge(
+      `the image is ${width}x${height} pixels, over the ${MAX_IMAGE_PIXELS} pixel limit this service decodes`,
+    );
+  }
+  return { width, height, format: metadata.format ?? "unknown", orientation: metadata.orientation ?? 1 };
+}
+
+/**
  * Computes the three fingerprints Moolam stores for an image: the exact-bytes
  * sha256, a 64-bit pHash and a 256-bit blockhash, plus the pixel dimensions and
  * container format.
  *
- * Throws when the buffer is empty or is not an image sharp can decode.
+ * The sha256 is of the bytes exactly as they arrived. The two perceptual hashes
+ * are taken from the upright picture, so a sideways phone photo and the same
+ * photo turned the right way up fingerprint alike. The dimensions reported are
+ * the upright ones.
+ *
+ * Throws when the buffer is empty, when the image is over the pixel limit
+ * (ImageTooLarge), or when it is not an image sharp can decode.
  */
 export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
   if (bytes.length === 0) {
     throw new Error("fingerprint needs a non-empty image buffer");
   }
 
-  const metadata = await sharp(bytes).metadata();
+  const header = await readImageHeader(bytes);
+  const oriented = await orientedImage(bytes, header);
   const [phashBits, blockhashHex] = await Promise.all([
-    sharpPhash(bytes),
-    imghash.hash(bytes, BLOCKHASH_BITS_PER_ROW, "hex"),
+    sharpPhash(oriented.bytes),
+    imghash.hash(oriented.bytes, BLOCKHASH_BITS_PER_ROW, "hex"),
   ]);
 
   if (phashBits.length !== PHASH_BITS) {
@@ -82,10 +138,40 @@ export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
     sha256: `0x${createHash("sha256").update(bytes).digest("hex")}`,
     phash: BigInt(`0b${phashBits}`),
     blockhash: `0x${blockhashHex}`,
-    width: metadata.width ?? 0,
-    height: metadata.height ?? 0,
-    format: metadata.format ?? "unknown",
+    width: oriented.width,
+    height: oriented.height,
+    format: header.format,
   };
+}
+
+/**
+ * The pixels both hashes are taken from: the picture the way a person sees it,
+ * with any EXIF orientation already applied.
+ *
+ * A phone photo taken sideways stores its pixels rotated and leaves a tag
+ * saying which way up it goes. Hashing the stored pixels would give the same
+ * picture two different fingerprints depending on whether the viewer honoured
+ * the tag, so the rotation is applied here, once, and both hashes read the same
+ * buffer. The rewritten copy is a PNG because it is lossless: re-encoding to
+ * JPEG would add compression noise to the very thing being measured.
+ *
+ * A file with no rotation to apply is handed on untouched. Its stored pixels
+ * are already the upright ones, and skipping the re-encode keeps every
+ * fingerprint recorded before this check byte for byte reproducible.
+ */
+async function orientedImage(
+  bytes: Buffer,
+  header: ImageHeader,
+): Promise<{ bytes: Buffer; width: number; height: number }> {
+  if (header.orientation === 1) {
+    return { bytes, width: header.width, height: header.height };
+  }
+
+  const { data, info } = await sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS })
+    .rotate()
+    .png({ compressionLevel: 3 })
+    .toBuffer({ resolveWithObject: true });
+  return { bytes: data, width: info.width, height: info.height };
 }
 
 /** Counts the differing bits between two 64-bit pHashes. */

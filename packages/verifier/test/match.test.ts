@@ -4,12 +4,21 @@
 // per transform, which scripts/robustness.ts reports.
 
 import sharp from "sharp";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { dihedralFingerprints } from "../src/dihedral.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { HammingIndex } from "../src/index.js";
 import { matchImage } from "../src/match.js";
 import type { Hex, PassportRecord } from "../src/types.js";
 import { makeImage, recordFor } from "./helpers.js";
+
+// The real implementation is kept, wrapped in a spy, so the mirror test below
+// still measures real hashes while the exact-hit test can prove the eight
+// variants were never built.
+vi.mock("../src/dihedral.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../src/dihedral.js")>();
+  return { ...actual, dihedralFingerprints: vi.fn(actual.dihedralFingerprints) };
+});
 
 async function registryOf(seeds: number[]): Promise<{
   index: HammingIndex;
@@ -31,6 +40,18 @@ describe("matchImage", () => {
     expect(result.confidence).toBe(1);
     expect(result.best?.phashDistance).toBe(0);
     expect(result.queried.sha256).toBe(result.exact);
+  });
+
+  it("does no dihedral work when the bytes are an exact hit", async () => {
+    const { index, lookup, images } = await registryOf([21, 22]);
+    vi.mocked(dihedralFingerprints).mockClear();
+
+    const exact = await matchImage(images[0] as Buffer, index, lookup);
+    expect(exact.exact).not.toBeNull();
+    expect(dihedralFingerprints).not.toHaveBeenCalled();
+
+    await matchImage(await makeImage(98), index, lookup);
+    expect(dihedralFingerprints).toHaveBeenCalledTimes(1);
   });
 
   it("finds the passport behind a re-encoded and resized copy", async () => {

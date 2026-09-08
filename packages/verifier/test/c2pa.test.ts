@@ -3,10 +3,14 @@
 // any trust list, by design), nor manifest survival through a re-encode, which
 // scripts/robustness.ts measures and the README states plainly.
 
+import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SOFT_BINDING_ALG, embedManifest, readManifest } from "../src/c2pa.js";
+import { SOFT_BINDING_ALG, embedManifest, loadSigner, readManifest } from "../src/c2pa.js";
+import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { makeImage } from "./helpers.js";
+
+const DEV_CERT_DIR = path.join(PACKAGE_ROOT, "test-assets", "certs");
 
 describe("C2PA soft binding", () => {
   it("writes the fingerprint into the manifest and reads it back unchanged", async () => {
@@ -44,5 +48,25 @@ describe("C2PA soft binding", () => {
         softBinding: { phash: 1n, blockhash: "0xdeadbeef" },
       }),
     ).rejects.toThrow(/32 byte blockhash/);
+  });
+});
+
+describe("signing identity", () => {
+  it("refuses a certificate without its key, and a key without its certificate", () => {
+    const certPath = path.join(DEV_CERT_DIR, "chain.cert.pem");
+    const keyPath = path.join(DEV_CERT_DIR, "signer.key.pem");
+
+    expect(() => loadSigner({ certPath })).toThrow(/go together/);
+    expect(() => loadSigner({ keyPath })).toThrow(/go together/);
+  });
+
+  it("says which file is missing when both paths are set", () => {
+    expect(() =>
+      loadSigner({ certPath: path.join(DEV_CERT_DIR, "nothing.pem"), keyPath: path.join(DEV_CERT_DIR, "nowhere.pem") }),
+    ).toThrow(/no signing certificate or key found/);
+  });
+
+  it("falls back to the development identity when neither path is set", () => {
+    expect(loadSigner({})).toBeDefined();
   });
 });

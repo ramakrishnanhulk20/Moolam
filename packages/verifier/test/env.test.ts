@@ -39,4 +39,13 @@ describe("parseEnv", () => {
       /ENVIO_GRAPHQL_URL/,
     );
   });
+
+  it("takes the C2PA certificate and key as a pair or not at all", () => {
+    expect(() => parseEnv({ MOOLAM_C2PA_CERT_PATH: "certs/chain.pem" })).toThrow(/go together/);
+    expect(() => parseEnv({ MOOLAM_C2PA_KEY_PATH: "certs/signer.key.pem" })).toThrow(/go together/);
+
+    const both = parseEnv({ MOOLAM_C2PA_CERT_PATH: "certs/chain.pem", MOOLAM_C2PA_KEY_PATH: "certs/signer.key.pem" });
+    expect(both.MOOLAM_C2PA_CERT_PATH).toBe("certs/chain.pem");
+    expect(parseEnv({ MOOLAM_C2PA_CERT_PATH: "  " }).MOOLAM_C2PA_CERT_PATH).toBeUndefined();
+  });
 });

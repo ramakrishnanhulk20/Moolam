@@ -3,7 +3,12 @@ import type { Hex } from "viem";
 // The verifier package declares no "exports" and ships no build, so its modules are imported by
 // file path. Node, TypeScript and tsx all follow the workspace link to the TypeScript source.
 import { embedManifest, readManifest, type ManifestSummary } from "@moolam/verifier/src/c2pa.js";
-import { fingerprint, type Fingerprint } from "@moolam/verifier/src/fingerprint.js";
+import {
+  MAX_IMAGE_PIXELS,
+  fingerprint,
+  readImageHeader,
+  type Fingerprint,
+} from "@moolam/verifier/src/fingerprint.js";
 
 export type { Fingerprint, ManifestSummary };
 
@@ -40,6 +45,10 @@ export interface PrepareOptions {
  * a small baseline thumbnail the Chainlink verifier can fetch and decode, the fingerprint of the
  * signed bytes, and the hash of the manifest store the chain commits to.
  *
+ * The rotation an EXIF tag asks for is baked into the pixels before anything is signed, so the
+ * registered file, its fingerprint, the thumbnail and the hash Chainlink recomputes all describe
+ * one picture the same way up.
+ *
  * The soft binding written into the manifest is the fingerprint of the source pixels, and the
  * function refuses to continue if signing moved the perceptual hash, because a manifest that
  * describes a different picture than the one being registered is worse than no manifest.
@@ -52,8 +61,9 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
     throw new Error("prepareImage needs a non-empty image buffer.");
   }
 
-  const sourcePrint = await fingerprint(source);
-  const signed = await embedManifest(source, {
+  const upright = await uprightImage(source);
+  const sourcePrint = await fingerprint(upright);
+  const signed = await embedManifest(upright, {
     title: opts.title,
     claimGenerator: opts.claimGenerator,
     action: opts.action,
@@ -84,13 +94,35 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
 }
 
 /**
+ * Turns the picture the right way up and drops the EXIF orientation tag with it.
+ *
+ * A phone photo taken sideways stores its pixels rotated and leaves a tag saying which way up it
+ * goes. Readers that ignore the tag, including the Chainlink sandbox decoder, would then hash a
+ * different picture from the one the creator saw. Baking the rotation in removes the argument.
+ *
+ * A file with no rotation to apply is returned untouched, because re-encoding it would cost image
+ * quality for no gain.
+ */
+async function uprightImage(source: Buffer): Promise<Buffer> {
+  const header = await readImageHeader(source);
+  if (header.orientation === 1) {
+    return source;
+  }
+
+  const pipeline = sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate();
+  return header.format === "png"
+    ? await pipeline.png().toBuffer()
+    : await pipeline.jpeg({ quality: 95, progressive: false }).toBuffer();
+}
+
+/**
  * Shrinks the image until it fits the verifier's fetch budget.
  *
  * The output is a baseline JPEG on purpose: the Chainlink sandbox decodes with jpeg-js, which
  * reads baseline files only, so a progressive thumbnail would fail every verification.
  */
 async function makeThumbnail(image: Buffer): Promise<Buffer> {
-  const resized = sharp(image).resize({
+  const resized = sharp(image, { limitInputPixels: MAX_IMAGE_PIXELS }).resize({
     width: THUMBNAIL_LONGEST_SIDE,
     height: THUMBNAIL_LONGEST_SIDE,
     fit: "inside",

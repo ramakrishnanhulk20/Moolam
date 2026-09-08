@@ -3,9 +3,11 @@
 // scripts/robustness.ts measures, nor non-image input beyond the empty buffer.
 
 import { describe, expect, it } from "vitest";
-import { fingerprint, hamming64, hammingHex } from "../src/fingerprint.js";
+import { ImageTooLarge, MAX_IMAGE_PIXELS, fingerprint, hamming64, hammingHex } from "../src/fingerprint.js";
 import type { Hex } from "../src/types.js";
-import { makeImage } from "./helpers.js";
+import { HammingIndex } from "../src/index.js";
+import { matchImage } from "../src/match.js";
+import { makeImage, makeOversizeImage, makeRotatedImage, recordFor } from "./helpers.js";
 
 describe("fingerprint", () => {
   it("gives the same three hashes for the same bytes every time", async () => {
@@ -33,6 +35,38 @@ describe("fingerprint", () => {
 
   it("refuses an empty buffer", async () => {
     await expect(fingerprint(Buffer.alloc(0))).rejects.toThrow(/non-empty/);
+  });
+
+  it("refuses an image that unpacks to more pixels than the decode limit", async () => {
+    const bomb = await makeOversizeImage();
+
+    expect(bomb.length).toBeLessThan(1_000_000);
+    await expect(fingerprint(bomb)).rejects.toBeInstanceOf(ImageTooLarge);
+    await expect(fingerprint(bomb)).rejects.toThrow(new RegExp(`${MAX_IMAGE_PIXELS} pixel limit`));
+  }, 30_000);
+});
+
+describe("orientation", () => {
+  it("gives a sideways phone photo the same two hashes as its turned copy", async () => {
+    const { tagged, upright } = await makeRotatedImage(7);
+
+    const sideways = await fingerprint(tagged);
+    const turned = await fingerprint(upright);
+
+    expect(sideways.sha256).not.toBe(turned.sha256);
+    expect(sideways.width).toBe(turned.width);
+    expect(hamming64(sideways.phash, turned.phash)).toBeLessThanOrEqual(2);
+    expect(hammingHex(sideways.blockhash, turned.blockhash)).toBeLessThanOrEqual(2);
+  });
+
+  it("still matches the registered file itself exactly", async () => {
+    const { tagged } = await makeRotatedImage(8);
+    const record = recordFor(await fingerprint(tagged));
+    const byId = new Map([[record.id, record]]);
+
+    const result = await matchImage(tagged, new HammingIndex([record]), (sha256) => byId.get(sha256));
+    expect(result.exact).toBe(record.id);
+    expect(result.confidence).toBe(1);
   });
 });
 
