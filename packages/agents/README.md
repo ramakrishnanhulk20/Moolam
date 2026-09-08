@@ -79,6 +79,10 @@ npm run test:agents     16 tests: the digests against the contract, the whole wr
 npm run proof:anvil     deploy, bind, three passports and an edit on a fork, with gas per step
 npm run seed            one real passport on Monad mainnet, files pinned to IPFS. Spends MON.
 npm run prove:privy     the four Privy features, live on Monad mainnet. Spends MON.
+npm run agent -- "..."  the demo agent: draws a picture, signs it, pins it, registers its
+                        passport on Monad mainnet. Spends MON and a cent or two of OpenAI credit.
+npm run agent -- --verify path/to/file.jpg
+                        the same agent answering "who made this?" for any copy of an image.
 ```
 
 Both need `MONAD_MAINNET_RPC_URL` in the root `.env` and `anvil` on the path. Neither spends MON:
@@ -175,6 +179,68 @@ Needs in the root `.env`: `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATI
 Privy wallets with 12 MON each from the deployer, because Monad reserves 10 MON per account and a
 wallet below that cannot pay for anything.
 
+## The generator agent
+
+`npm run agent -- "a cinematic poster of a lighthouse in a storm, film grain"` is the demo a judge
+watches. A language model with four tools takes the prompt, and in one run it draws the picture,
+signs it with a C2PA manifest, pins four files to IPFS, and registers the passport on Monad
+mainnet. Every tool call and every tool result is printed as it happens, so nothing about the run
+has to be taken on trust, and the whole transcript is appended to `kitchen/reports/WO-7-transcript.txt`.
+
+The four tools are in `src/agent/tools.ts`:
+
+- **generate_image** draws the picture and keeps the bytes on this side of the model. Image bytes
+  never travel through the conversation, so the model cannot register a picture it imagined.
+- **register_passport** runs the whole write path: `prepareImage` for the C2PA signature and the
+  fingerprint, four pins to Pinata, the creator's passkey over the EIP-712 digest, this agent's own
+  signature produced inside Privy's enclave, then `register` sent by the agent's server wallet under
+  a policy that allows that one function on that one contract.
+- **verify_image** posts the file to the verify service, which is the only thing that can match a
+  re-encoded or rotated copy, then reads the passport it names straight off Monad, because the
+  service is not the authority on who signed what.
+- **lookup_agent** reads an owner and a registration card from the ERC-8004 Identity Registry.
+
+The agent cannot spend the wallet it uses. Privy's policy names `register` on the Moolam registry
+and typed data whose domain is that registry, and nothing else, so a compromised prompt cannot move
+MON, cannot call another contract, and cannot register an edit.
+
+### The models, and what they cost
+
+| Job | Default model | List price | Override |
+| --- | --- | --- | --- |
+| Brain | `gpt-5.4-nano` | 0.20 dollars per million input tokens, 1.25 per million output | `AGENT_TEXT_MODEL` |
+| Image | `gpt-image-1-mini` | 8 dollars per million image output tokens, about 1,200 tokens for one medium 1024 by 1024 picture | `AGENT_IMAGE_MODEL` |
+
+Both were the cheapest current option on the account's own `/v1/models` list on 2026-09-08. A whole
+generate run costs about one cent: the two recorded runs used 2,736 and 2,394 text tokens and one
+picture each. The brain speaks the OpenAI chat completions API, so pointing it at OpenRouter is two
+environment variables and no code change: set `AGENT_PROVIDER=openrouter` and, if you want a
+different model, `AGENT_TEXT_MODEL=openai/gpt-5.4-nano`. The image model has no OpenRouter fallback,
+because the images endpoint is OpenAI's own.
+
+Needs in the root `.env`: `OPENAI_API_KEY`, plus everything `npm run prove:privy` needs, because the
+agent uses the wallets that script created: the generator server wallet that owns ERC-8004 agent
+10249, and the creator wallet with its passkey bound. The agent refuses to spend gas and says which
+script to run if either is missing, or if the passkey on chain is not the one on this machine.
+
+### Answering "who made this?"
+
+The verify tool needs the verify service running:
+
+```
+PASSPORT_SOURCE=json PASSPORT_SOURCE_PATH=packages/agents/.moolam/passports.json \
+  VERIFIER_PORT=4010 npm run dev:verifier
+```
+
+`register_passport` writes each new passport into that JSON file after reading it back off Monad, so
+the file is a cache of the chain and never a source of its own. The service loads it once at boot,
+which is why it is started after a registration. In production the same records come from Envio with
+`PASSPORT_SOURCE=envio`.
+
+On the recorded run, a copy of the agent's own picture re-encoded down to JPEG quality 60, 44 KB from
+261 KB, came back matched at 0.97 confidence with the creator wallet, agent 10249 and the exact
+registration time.
+
 ## What each action costs
 
 Measured by `npm run proof:anvil`, saved in `kitchen/reports/WO-4a-anvil-proof.txt`. Anvil answers
@@ -192,7 +258,8 @@ the pure Solidity fallback. Monad bills the gas limit you declare, not the gas y
 
 On mainnet through Privy wallets, with the limit set to the estimate plus ten percent, the last
 `npm run prove:privy` run paid 0.0072 MON to rebind the passkey, 0.0422 MON to register and 0.0492
-MON to append an edit, all at 102 gwei.
+MON to append an edit, all at 102 gwei. The two agent runs recorded in the transcript paid the same
+0.0422 MON each, at limits of 413,769 and 413,782 gas.
 
 The gas figures the contracts package publishes are the ones to quote for mainnet: they are
 measured in Foundry's Monad network family, which prices gas the way the chain we ship on does.

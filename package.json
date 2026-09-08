@@ -19,7 +19,9 @@
     "test:agents": "npm run test --workspace packages/agents",
     "proof:anvil": "npm run proof --workspace packages/agents",
     "seed": "npm run seed --workspace packages/agents",
-    "prove:privy": "npm run prove:privy --workspace packages/agents"
+    "prove:privy": "npm run prove:privy --workspace packages/agents",
+    "reputation:post": "npm run reputation:post --workspace packages/verifier --",
+    "agent": "npm run agent --workspace packages/agents --"
   },
   "allowScripts": {
     "@contentauth/c2pa-node@0.9.3": true,
