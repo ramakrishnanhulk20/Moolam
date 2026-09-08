@@ -1,21 +1,23 @@
 {
   "agentIdentity": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
-  "block": 102977372,
+  "block": 103054771,
   "chainId": 143,
   "deployer": "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
   "forwarder": "0x76c9cf548b4179F8901cda1f8623568b58215E62",
-  "policy": "0xD46E62776Cc5804Ee49d80c67732833d7E700A6e",
-  "receiver": "0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4",
-  "registry": "0xeBeeD7A422531789aa009a9c45CC10C84dF12119",
-  "timestamp": 1788851743,
+  "policy": "0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821",
+  "receiver": "0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04",
+  "registry": "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
+  "timestamp": 1788875133,
   "txHashes": {
-    "policy": "0x1af193cb7139032ad5226d3c68847d28ff29256f5da6afa736a96c43b978c352",
+    "policy": "0xf26a824b68a0cacd0e3230d63bad930cdf8e7f085bad89c4988baec56a14756d",
     "policyCalls": [
       "0xec66ec7566f7502558d6cfc77b36ead0488d7a2253a13e2138e8717d64e5057d",
-      "0x530e825f362bdc61e530cd5b60ec6c7945ffb81a332b4aee3ed42c34fb806735"
+      "0x530e825f362bdc61e530cd5b60ec6c7945ffb81a332b4aee3ed42c34fb806735",
+      "0xda0263781556dfe42cc419c588f2797ba2e0fa38e6631ff09fd0a8fcdc18a70f",
+      "0x36a4fb11f5c8c0d2dd3c1c20943cdd0292ba4efabc0e1824075abf2f952b312f"
     ],
-    "receiver": "0xe95f90ad652813d731b141e29bdc128e3c6eec6dd18c351d039fbcac3f4f969b",
-    "registry": "0xbcbb6dc27221cbbacf6b7074b14352ef3462b27a9ebaa3851f1fc1097a945714"
+    "receiver": "0xf224ff6e7b2c49f0dfbe1928fd3526ec32e450b98e7f58b815d11727a33727dc",
+    "registry": "0x9724fc20e123545728144c32d848992c0ecffe382a91c528d20372a10baf1df6"
   },
   "demoAgentId": 10248
 }

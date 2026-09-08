@@ -32,8 +32,8 @@ const HEIGHT = 768;
 const SOURCE_QUALITY = 92;
 
 /** How long to wait for a freshly pinned file to answer on the public gateway. */
-const GATEWAY_ATTEMPTS = 5;
-const GATEWAY_PAUSE_MS = 3000;
+const GATEWAY_ATTEMPTS = 8;
+const GATEWAY_PAUSE_MS = 5_000;
 
 interface SeedState {
   runs: number;
@@ -294,7 +294,9 @@ async function getWithRetries(url: string, what: string): Promise<Response> {
     } catch (error) {
       last = error instanceof Error ? error.message : String(error);
     }
-    await new Promise((resolve) => setTimeout(resolve, GATEWAY_PAUSE_MS));
+    // The public gateway rate-limits bursts with a 429; that wants a long pause, not a fast retry.
+    const pause = last === "status 429" ? GATEWAY_PAUSE_MS * 4 : GATEWAY_PAUSE_MS;
+    await new Promise((resolve) => setTimeout(resolve, pause));
   }
   throw new Error(`The gateway never served the ${what} at ${url}: ${last}`);
 }

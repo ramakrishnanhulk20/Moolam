@@ -17,7 +17,9 @@ loadEnv({ path: join(REPO_ROOT, ".env"), quiet: true });
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 
 /** The public gateway the Chainlink workflow fetches thumbnails through. */
-export const PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
+// The public gateway rate-limits a busy address with 429s; an account's dedicated gateway is
+// limited per account instead, so it is preferred whenever the root .env names one.
+export const PINATA_GATEWAY = (process.env.PINATA_GATEWAY_URL ?? "").trim() || "https://gateway.pinata.cloud/ipfs/";
 
 const IPFS_SCHEME = "ipfs://";
 
