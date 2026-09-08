@@ -29,15 +29,19 @@ contract Deploy is Script {
     uint256 internal constant DISPUTE_BOND = 1 ether;
 
     string internal constant DEPLOYMENT_FILE = "deployments/monad-mainnet.json";
+    /// @dev The name in packages/workflow/moolam-verifier/workflow.yaml. CRE_WORKFLOW_NAME
+    ///      overrides it when a run needs a different workflow.
+    string internal constant DEFAULT_WORKFLOW_NAME = "moolam-verifier";
 
     error WrongChain(uint256 actual, uint256 expected);
     error IdentityRegistryHasNoCode(address agentIdentity);
-    error NothingRecorded();
+    error MissingWorkflowAuthor();
 
-    /// @notice Deploys the policy, the registry and the receiver, then lists the receiver and
-    ///         finalizes the policy bootstrap.
-    /// @dev Reverts WrongChain when pointed at anything but Monad mainnet and
-    ///      IdentityRegistryHasNoCode when the ERC-8004 registry is missing.
+    /// @notice Deploys the policy, the registry and the receiver, pins the receiver to the Moolam
+    ///         workflow, then lists the receiver and finalizes the policy bootstrap.
+    /// @dev Reverts WrongChain when pointed at anything but Monad mainnet,
+    ///      IdentityRegistryHasNoCode when the ERC-8004 registry is missing, and
+    ///      MissingWorkflowAuthor when CRE_WALLET_ADDRESS is not set to a real address.
     /// @return policy The deployed VerifierPolicy.
     /// @return registry The deployed MoolamRegistry.
     /// @return moolamReceiver The deployed MoolamReceiver.
@@ -48,10 +52,19 @@ contract Deploy is Script {
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerKey);
 
+        string memory workflowName = vm.envOr("CRE_WORKFLOW_NAME", DEFAULT_WORKFLOW_NAME);
+        address workflowAuthor = vm.envAddress("CRE_WALLET_ADDRESS");
+        if (workflowAuthor == address(0)) revert MissingWorkflowAuthor();
+
         vm.startBroadcast(deployerKey);
         policy = new VerifierPolicy(deployer, deployer, deployer, DISPUTE_BOND);
         registry = new MoolamRegistry(deployer, address(policy), AGENT_IDENTITY);
         moolamReceiver = new MoolamReceiver(FORWARDER, address(registry));
+        // The author goes in first. Chainlink's template refuses every report when a name is
+        // pinned without an author, so setting the name first would brick the receiver for as long
+        // as the two transactions are apart.
+        moolamReceiver.setExpectedAuthor(workflowAuthor);
+        moolamReceiver.setExpectedWorkflowName(workflowName);
         policy.bootstrapAddReceiver(address(moolamReceiver));
         policy.finalizeBootstrap();
         vm.stopBroadcast();
@@ -64,6 +77,8 @@ contract Deploy is Script {
         console2.log("MoolamReceiver  ", address(moolamReceiver));
         console2.log("agent identity  ", AGENT_IDENTITY);
         console2.log("forwarder       ", FORWARDER);
+        console2.log("workflow name   ", workflowName);
+        console2.log("workflow author ", workflowAuthor);
         console2.log("dispute bond    ", DISPUTE_BOND);
 
         if (vm.isContext(VmSafe.ForgeContext.ScriptBroadcast)) {
@@ -74,8 +89,9 @@ contract Deploy is Script {
     }
 
     /// @notice Fills in the transaction hashes and confirmed block of the last broadcast.
-    /// @dev Run after `run --broadcast`, without broadcasting. Reverts NothingRecorded when no
-    ///      broadcast artifact for this chain exists yet.
+    /// @dev Run after `run --broadcast`, without broadcasting. The vm.getBroadcast cheatcode
+    ///      itself reverts when no matching artifact for this chain exists, so a missing broadcast
+    ///      can never write zeros into the deployment file.
     function record() external {
         VmSafe.BroadcastTxSummary memory policyTx =
             vm.getBroadcast("VerifierPolicy", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Create);
@@ -85,8 +101,6 @@ contract Deploy is Script {
             vm.getBroadcast("MoolamReceiver", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Create);
         VmSafe.BroadcastTxSummary[] memory policyCalls =
             vm.getBroadcasts("VerifierPolicy", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Call);
-
-        if (policyTx.txHash == bytes32(0)) revert NothingRecorded();
 
         string memory hashes = "txHashes";
         string memory hashesJson = vm.serializeBytes32(hashes, "policy", policyTx.txHash);

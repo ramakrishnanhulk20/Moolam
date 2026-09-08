@@ -10,6 +10,16 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {VerifierPolicy} from "../src/VerifierPolicy.sol";
 
+// No receive and no fallback, so an empty call to it reverts. This is the wallet-shaped mistake
+// the treasury probe is there to catch.
+contract UnreachableTreasury {
+    uint256 public marker;
+}
+
+contract PayableTreasury {
+    receive() external payable {}
+}
+
 contract VerifierPolicyTest is Test {
     VerifierPolicy internal policy;
 
@@ -168,6 +178,28 @@ contract VerifierPolicyTest is Test {
         vm.expectRevert(VerifierPolicy.ChangeAlreadyQueued.selector);
         policy.queueAddReceiver(receiver);
         vm.stopPrank();
+    }
+
+    function test_queueSetTreasuryRefusesAContractNothingCanReach() public {
+        UnreachableTreasury unreachable = new UnreachableTreasury();
+
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSelector(VerifierPolicy.TreasuryCannotReceive.selector, address(unreachable)));
+        policy.queueSetTreasury(address(unreachable));
+    }
+
+    function test_queueSetTreasuryAcceptsAnEoaAndAContractThatCanTakePayment() public {
+        PayableTreasury payableTreasury = new PayableTreasury();
+        address eoa = makeAddr("eoaTreasury");
+
+        vm.startPrank(owner);
+        policy.queueSetTreasury(eoa);
+        bytes32 id = policy.queueSetTreasury(address(payableTreasury));
+        vm.warp(block.timestamp + policy.CHANGE_DELAY());
+        policy.execute(id);
+        vm.stopPrank();
+
+        assertEq(policy.treasury(), address(payableTreasury));
     }
 
     function test_queueAddReceiverRejectsAnAlreadyListedAddress() public {

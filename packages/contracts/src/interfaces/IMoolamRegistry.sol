@@ -113,7 +113,10 @@ interface IMoolamRegistry {
         external
         returns (uint256 tokenId);
 
-    /// @notice Records an edit of an existing passport and mints the child token.
+    /// @notice Records an edit of an existing passport and mints the child token. Only the wallet
+    ///         that owns the parent passport may call it. An ERC-721 approval lets someone move
+    ///         the token, not write history under the owner's name, so approved operators are
+    ///         refused here.
     /// @param p The passport input. parentId must exist, kind must be Edited, and
     ///        fingerprintVersion must not be zero.
     /// @param generatorSig The generator agent owner's ECDSA signature, or empty when no agent
@@ -143,6 +146,11 @@ interface IMoolamRegistry {
 
     /// @notice Pulls whatever the caller is owed. Works even while the registry is paused.
     function withdraw() external;
+
+    /// @notice Pulls whatever the caller is owed and sends it to another address. For a credited
+    ///         contract that cannot receive native token itself but can still make a call.
+    /// @param to Where the money should go.
+    function withdrawTo(address to) external;
 
     /// @notice Stops new registrations, edits and flags.
     function pause() external;

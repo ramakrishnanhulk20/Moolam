@@ -19,10 +19,14 @@ hours in the open so anyone watching can react. Removing a receiver is immediate
 compromised verifier has to stop writing in the same block someone notices.
 
 **MoolamReceiver.** Inherits Chainlink's own ReceiverTemplate, vendored word for word under
-`src/vendor/chainlink/`. The Chainlink KeystoneForwarder is the only address it accepts a report
-from. The report says which chain it was built for and the second the workflow ran, so a report
-that is replayed, or delivered on a second chain, is refused instead of double counted. It then
-calls `attest` on the registry, which checks the receiver against the policy list.
+`src/vendor/chainlink/`. Two things have to line up before it writes anything: the call comes from
+the Chainlink KeystoneForwarder, and the report metadata carries the workflow author and workflow
+name this receiver is pinned to. The deploy script pins both in the same batch as the deploy, using
+the template's own owner-only setters, and `script/ConfigureReceiver.s.sol` can repin or unpin the
+receiver later. Swapping the forwarder or the pinned identity is an owner action and each one emits
+an event. The report also says which chain it was built for and the second the workflow ran, so a
+report that is replayed, or delivered on a second chain, is refused instead of double counted. It
+then calls `attest` on the registry, which checks the receiver against the policy list.
 
 Why the passkey matters: the creator's signature is a real WebAuthn assertion, verified on chain
 through OpenZeppelin's `WebAuthn` library, which uses Monad's P-256 precompile at `0x0100`. Both
@@ -46,7 +50,7 @@ gas as Ethereum rather than as the chain we ship on.
 
 ```
 forge build                 compile, zero warnings
-npm test                    109 tests: unit, fuzz, invariant and mainnet fork
+npm test                    119 tests: unit, fuzz, invariant and mainnet fork
 npm run test:fork           the 5 fork tests only, against real Monad mainnet state
 npm run gas                 the gas table saved in kitchen/reports/WO-1a-gas.txt
 npm run abi                 regenerate the three ABIs in abi/
@@ -61,7 +65,7 @@ Chain 143. Every command below sends real MON, and every one of them declares it
 use, so Foundry's default 130 would overpay by a fifth.
 
 ```
-npm run deploy:mainnet      deploy the three contracts, list the receiver, close the bootstrap
+npm run deploy:mainnet      deploy the three contracts, pin the receiver, close the bootstrap
 npm run agent:register      register the demo generator agent on the ERC-8004 registry
 npm run prove:live          the prove-it run: bind a passkey, write three passports
 ```
@@ -73,9 +77,27 @@ forge script script/Deploy.s.sol --rpc-url monad_mainnet -n monad --gas-estimate
 forge script script/Deploy.s.sol --sig "record()" --rpc-url monad_mainnet -n monad
 ```
 
-`deploy:mainnet` runs in two halves. The first sends the five transactions and writes
+`deploy:mainnet` runs in two halves. The first sends the seven transactions and writes
 `deployments/monad-mainnet.json`; the second reads Foundry's own broadcast artifact and fills in the
 transaction hashes, because a script cannot see hashes for transactions it has not sent yet.
+
+### Pinning the receiver to the workflow
+
+The deploy does this for you. This script is for the receiver that is already on chain, and for the
+switch a simulation needs: `cre workflow simulate` talks through a mock forwarder that sends no
+workflow metadata, so a pinned receiver refuses every simulated report. Clear the pin, run the
+simulation, pin it again.
+
+```
+RECEIVER=$(node -p "require('./deployments/monad-mainnet.json').receiver")   forge script script/ConfigureReceiver.s.sol --rpc-url monad_mainnet -n monad   --gas-estimate-multiplier 110 --broadcast
+```
+
+It reads `CRE_WORKFLOW_NAME` (the name in `packages/workflow/moolam-verifier/workflow.yaml`) and
+`CRE_WALLET_ADDRESS` from `.env`. To unpin, set both to nothing in front of the same command:
+
+```
+CRE_WORKFLOW_NAME= CRE_WALLET_ADDRESS=0x0000000000000000000000000000000000000000   RECEIVER=$(node -p "require('./deployments/monad-mainnet.json').receiver")   forge script script/ConfigureReceiver.s.sol --rpc-url monad_mainnet -n monad   --gas-estimate-multiplier 110 --broadcast
+```
 
 ### Verifying on the explorers
 
@@ -106,27 +128,29 @@ forge verify-contract --chain-id 143 --etherscan-api-key $MONADSCAN_API_KEY \
 
 ### What a full mainnet run costs
 
-Measured from the dry run in `kitchen/reports/WO-1b-dryrun.txt`, priced at Monad's 100 gwei
+Measured from the dry run in `kitchen/reports/WO-10a-dryrun.txt`, priced at Monad's 100 gwei
 minimum base fee. These are gas limits, which is what Monad actually charges.
 
 | Step | Gas declared | Cost |
 | --- | --- | --- |
-| Deploy VerifierPolicy | 1,268,218 | 0.127 MON |
-| Deploy MoolamRegistry | 5,219,478 | 0.522 MON |
+| Deploy VerifierPolicy | 1,301,963 | 0.130 MON |
+| Deploy MoolamRegistry | 5,269,757 | 0.527 MON |
 | Deploy MoolamReceiver | 1,045,886 | 0.105 MON |
-| List the receiver and close the bootstrap | 47,647 | 0.005 MON |
+| Pin the receiver to the workflow author and name | 49,231 | 0.005 MON |
+| List the receiver and close the bootstrap | 47,661 | 0.005 MON |
 | Register the demo agent on ERC-8004 | 411,369 | 0.041 MON |
 | The live proof: bind, two passports, one edit | 1,483,570 | 0.148 MON |
-| **Everything, once** | **9,476,168** | **0.948 MON** |
+| **Everything, once** | **9,609,437** | **0.961 MON** |
 
 The deployer wallet needs roughly 1 MON of headroom on top of Monad's 10 MON reserve balance, which
 every account has to keep and cannot spend.
 
 ## What the tests prove
 
-109 tests across six files. 16 on the policy timelock, 71 on the registry covering every rule,
-every custom error and every event, 11 on the Chainlink receiver path including the replay and
-wrong chain refusals, 5 fuzz tests on the register and edit inputs and on the dispute money path,
+119 tests across six files. 18 on the policy timelock, 75 on the registry covering every rule,
+every custom error and every event, 15 on the Chainlink receiver path including the replay, wrong
+chain and wrong workflow identity refusals, 5 fuzz tests on the register and edit inputs and on the
+dispute money path,
 an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real
 Monad mainnet state.
 
@@ -152,11 +176,12 @@ limit around these figures rather than a fat safety buffer.
 | Action | Median gas | In plain English |
 | --- | --- | --- |
 | `bindPasskey` | 117,165 | One time per wallet. Proves the passkey belongs to the wallet before it can sign anything. |
-| `register` | 254,407 | The main one. Checks a real WebAuthn signature and an agent signature, writes the record, and mints the token. |
-| `appendEdit` | 299,900 | A little more than a register because it also links the child to its parent. No passkey prompt: holding the parent token is the authority. |
-| `attest` | 126,113 | What the Chainlink workflow pays to record one verification result. |
-| `flag` | 173,050 | Opening a dispute, including the bond going into escrow. |
-| `withdraw` | 40,700 | Pulling money out. Deliberately cheap and deliberately a pull, so nobody can be blocked. |
+| `register` | 254,429 | The main one. Checks a real WebAuthn signature and an agent signature, writes the record, and mints the token. |
+| `appendEdit` | 309,989 | A little more than a register because it also links the child to its parent. No passkey prompt: owning the parent token is the authority. |
+| `attest` | 126,089 | What the Chainlink workflow pays to record one verification result. |
+| `flag` | 172,939 | Opening a dispute, including the bond going into escrow. |
+| `withdraw` | 40,717 | Pulling money out. Deliberately cheap and deliberately a pull, so nobody can be blocked. |
+| `withdrawTo` | 41,226 | The same pull, sent to an address the caller names. |
 
 The live proof on a fork of mainnet came in a little higher per call, at 382,173 gas for the first
 register and 537,870 for the edit, because those passports carry a longer metadata URI and the first
@@ -181,6 +206,18 @@ be flagged again with new evidence.
 
 The attestation list per passport is capped at 64. The cap bounds storage growth and keeps a full
 read comfortably inside one block.
+
+Only the owner of the parent token may call `appendEdit`. An ERC-721 approval or an operator
+approved for all is a permission to trade the token, not a permission to sign the next chapter of
+its history, so both are refused. A session signer works because it acts from the owner's own
+wallet.
+
+Money owed is pulled, never pushed, and `withdrawTo` lets the caller name where it goes. That
+matters when the address with a credit is a contract that cannot take a plain native transfer, for
+example a treasury with no payable path: the credit is still the caller's own and is zeroed before
+anything is sent, so nobody can move anyone else's money. The policy also checks a candidate
+treasury at queue time by probing it with a zero value call, but that check is a heuristic and
+`withdrawTo` is the real escape hatch.
 
 There is no `receive` function. Native token only arrives as a dispute bond through `flag`, and
 `rescueNative` can only move a surplus that is not backing a bond or an unclaimed credit.

@@ -42,6 +42,10 @@ contract ERC8004ForkTest is Test {
     address internal owner = makeAddr("owner");
     address internal resolver = makeAddr("resolver");
     address internal treasury = makeAddr("treasury");
+    address internal creWallet = makeAddr("creWallet");
+
+    /// @dev The workflow name in packages/workflow/moolam-verifier/workflow.yaml.
+    string internal constant WORKFLOW_NAME = "moolam-verifier";
 
     uint256 internal agentOwnerKey = 0xA6E17;
     uint256 internal passkeyKey = 0x5EEDBEEF;
@@ -70,6 +74,9 @@ contract ERC8004ForkTest is Test {
         policy = new VerifierPolicy(owner, resolver, treasury, BOND);
         registry = new MoolamRegistry(owner, address(policy), AGENT_IDENTITY);
         moolamReceiver = new MoolamReceiver(FORWARDER, address(registry));
+        // Same two calls the deploy script makes right after `new`, author first.
+        moolamReceiver.setExpectedAuthor(creWallet);
+        moolamReceiver.setExpectedWorkflowName(WORKFLOW_NAME);
 
         vm.startPrank(owner);
         policy.bootstrapAddReceiver(address(moolamReceiver));
@@ -120,6 +127,8 @@ contract ERC8004ForkTest is Test {
         assertEq(registry.agentIdentity(), AGENT_IDENTITY);
         assertEq(address(moolamReceiver.REGISTRY()), address(registry));
         assertEq(moolamReceiver.getForwarderAddress(), FORWARDER);
+        assertEq(moolamReceiver.getExpectedAuthor(), creWallet);
+        assertTrue(moolamReceiver.getExpectedWorkflowName() != bytes10(0));
     }
 
     function test_aRealAgentIsMintedAndOwnedByTheWalletThatRegisteredIt() public view {

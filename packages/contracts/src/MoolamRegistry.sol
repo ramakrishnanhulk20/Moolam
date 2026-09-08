@@ -127,6 +127,11 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     /// @param who The address that pulled.
     /// @param amount How much left the contract.
     event Withdrawn(address indexed who, uint256 amount);
+    /// @notice Someone pulled what they were owed and sent it to another address.
+    /// @param who The address whose credit was spent.
+    /// @param to Where the money went.
+    /// @param amount How much left the contract.
+    event WithdrawnTo(address indexed who, address indexed to, uint256 amount);
     /// @notice The owner moved stranded value out. Never touches a bond or an unclaimed credit.
     /// @param token The ERC-20 moved, or the zero address for native token.
     /// @param to Where it went.
@@ -280,11 +285,13 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Records an edit of an existing passport and mints the child token.
-    /// @dev No passkey signature here. Holding the parent token, or being approved for it, is the
-    ///      authority, which is what lets an editing session sign many edits without a fresh
-    ///      biometric prompt each time.
+    /// @dev No passkey signature here. Holding the parent token is the authority, which is what
+    ///      lets an editing session sign many edits without a fresh biometric prompt each time.
+    ///      An ERC-721 approval is not enough. Approval is permission to move the token, granted
+    ///      to marketplaces and escrows, and it must never become permission to write history
+    ///      under the owner's name. A session signer edits from the owner's own wallet.
     ///      Reverts InvalidParent on a zero parent, ParentNotFound when the parent is unknown,
-    ///      NotParentOwner when the caller does not control the parent, InvalidCreator when the
+    ///      NotParentOwner when the caller is not the parent owner, InvalidCreator when the
     ///      creator field is not the parent owner, InvalidKind when kind is not Edited,
     ///      InvalidFingerprintVersion when the version byte is zero,
     ///      InvalidExactHash, PassportAlreadyExists, EmptyMetadataURI, SignatureExpired,
@@ -307,14 +314,8 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         // forge-lint: disable-next-line(block-timestamp)
         if (p.deadline < block.timestamp) revert SignatureExpired(p.deadline);
 
-        uint256 parentTokenId = uint256(p.parentId);
-        address parentOwner = ownerOf(parentTokenId);
-        if (
-            msg.sender != parentOwner && !isApprovedForAll(parentOwner, msg.sender)
-                && getApproved(parentTokenId) != msg.sender
-        ) {
-            revert NotParentOwner(msg.sender);
-        }
+        address parentOwner = ownerOf(uint256(p.parentId));
+        if (msg.sender != parentOwner) revert NotParentOwner(msg.sender);
         if (p.creator != parentOwner) revert InvalidCreator();
 
         _checkGenerator(p.generatorAgentId != 0, p.generatorAgentId, hashPassport(p), generatorSig);
@@ -426,16 +427,23 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     ///      Reverts NothingToWithdraw on a zero balance and TransferFailed if the send fails.
     ///      Emits Withdrawn.
     function withdraw() external nonReentrant {
-        uint256 amount = _withdrawable[msg.sender];
-        if (amount == 0) revert NothingToWithdraw();
-
-        _withdrawable[msg.sender] = 0;
-        totalOwed -= amount;
-
+        uint256 amount = _takeCredit();
         emit Withdrawn(msg.sender, amount);
+        _payOut(msg.sender, amount);
+    }
 
-        (bool ok,) = msg.sender.call{value: amount}("");
-        if (!ok) revert TransferFailed();
+    /// @notice Pulls whatever the caller is owed and sends it to an address the caller names.
+    /// @dev The escape hatch for a credited address that cannot hold native token itself, such as
+    ///      a treasury contract with no payable path. Nobody can move anyone else's credit: the
+    ///      balance spent is always the caller's own.
+    ///      Reverts ZeroAddress on a zero destination, NothingToWithdraw on a zero balance and
+    ///      TransferFailed if the send fails. Emits WithdrawnTo.
+    /// @param to Where the money should go.
+    function withdrawTo(address to) external nonReentrant {
+        if (to == address(0)) revert ZeroAddress();
+        uint256 amount = _takeCredit();
+        emit WithdrawnTo(msg.sender, to, amount);
+        _payOut(to, amount);
     }
 
     /// @notice Stops new registrations, edits and flags.
@@ -568,6 +576,24 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
         return _passports[bytes32(tokenId)].metadataURI;
+    }
+
+    function _takeCredit() private returns (uint256 amount) {
+        amount = _withdrawable[msg.sender];
+        if (amount == 0) revert NothingToWithdraw();
+
+        _withdrawable[msg.sender] = 0;
+        totalOwed -= amount;
+    }
+
+    // slither-disable-next-line arbitrary-send-eth
+    function _payOut(address to, uint256 amount) private {
+        // The destination is chosen by the caller on purpose, and that is the point of withdrawTo.
+        // What bounds it is the amount: _takeCredit has already zeroed the caller's own balance,
+        // so the only money that can leave here is money that caller was owed.
+        // forge-lint: disable-next-line(arbitrary-send-eth)
+        (bool ok,) = to.call{value: amount}("");
+        if (!ok) revert TransferFailed();
     }
 
     function _write(PassportInput calldata p, address to) private returns (uint256 tokenId) {

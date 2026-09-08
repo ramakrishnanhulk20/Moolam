@@ -606,6 +606,17 @@
   },
   {
     "type": "error",
+    "name": "TreasuryCannotReceive",
+    "inputs": [
+      {
+        "name": "who",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "UnknownChange",
     "inputs": []
   },

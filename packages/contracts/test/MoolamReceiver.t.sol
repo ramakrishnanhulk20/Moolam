@@ -30,6 +30,10 @@ contract MoolamReceiverTest is Test {
     address internal treasury = makeAddr("treasury");
     address internal forwarder = makeAddr("forwarder");
     address internal stranger = makeAddr("stranger");
+    address internal creWallet = makeAddr("creWallet");
+
+    /// @dev The workflow name in packages/workflow/moolam-verifier/workflow.yaml.
+    string internal constant WORKFLOW_NAME = "moolam-verifier";
 
     uint256 internal constant AGENT_ID = 7;
     uint256 internal passkeyKey = 0x5EEDBEEF;
@@ -106,7 +110,19 @@ contract MoolamReceiverTest is Test {
     function _metadata() internal pure returns (bytes memory) {
         // The production forwarder hands over a 64 byte slice: 32 workflow id, 10 workflow name,
         // 20 workflow owner, then a 2 byte report id.
-        return abi.encodePacked(bytes32(uint256(1)), bytes10("moolamver"), address(uint160(0xABCD)), bytes2(0));
+        return _metadata(bytes10("moolamver"), address(uint160(0xABCD)));
+    }
+
+    function _metadata(bytes10 workflowName, address workflowAuthor) internal pure returns (bytes memory) {
+        return abi.encodePacked(bytes32(uint256(1)), workflowName, workflowAuthor, bytes2(0));
+    }
+
+    /// @dev Pins the receiver the way the deploy script does and hands back the encoded name the
+    ///      template computed, which is the first ten hex characters of the sha256 of the name.
+    function _pinIdentity() internal returns (bytes10 encodedName) {
+        moolamReceiver.setExpectedAuthor(creWallet);
+        moolamReceiver.setExpectedWorkflowName(WORKFLOW_NAME);
+        encodedName = moolamReceiver.getExpectedWorkflowName();
     }
 
     function test_constructorWiresTheForwarderAndRegistry() public view {
@@ -216,6 +232,68 @@ contract MoolamReceiverTest is Test {
         vm.prank(stranger);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
         moolamReceiver.setForwarderAddress(stranger);
+
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        moolamReceiver.setExpectedAuthor(stranger);
+
+        vm.prank(stranger);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        moolamReceiver.setExpectedWorkflowName("stranger-workflow");
+    }
+
+    function test_aReportFromThePinnedWorkflowLands() public {
+        bytes10 encodedName = _pinIdentity();
+
+        vm.expectEmit(true, true, false, true, address(registry));
+        emit VerificationAttested(passportId, address(moolamReceiver), true, 4, keccak256("recomputed"));
+
+        vm.prank(forwarder);
+        moolamReceiver.onReport(
+            _metadata(encodedName, creWallet), _report(passportId, true, 4, keccak256("recomputed"))
+        );
+
+        assertEq(registry.attestationCount(passportId), 1);
+        assertEq(moolamReceiver.getExpectedAuthor(), creWallet);
+    }
+
+    function test_aReportCarryingAnotherWorkflowNameIsRefused() public {
+        bytes10 encodedName = _pinIdentity();
+        bytes10 otherName = bytes10("0badc0ffee");
+
+        vm.prank(forwarder);
+        vm.expectRevert(abi.encodeWithSelector(ReceiverTemplate.InvalidWorkflowName.selector, otherName, encodedName));
+        moolamReceiver.onReport(_metadata(otherName, creWallet), _report(passportId, true, 4, bytes32(0)));
+
+        assertEq(registry.attestationCount(passportId), 0);
+    }
+
+    function test_aReportCarryingAnotherAuthorIsRefused() public {
+        bytes10 encodedName = _pinIdentity();
+
+        vm.prank(forwarder);
+        vm.expectRevert(abi.encodeWithSelector(ReceiverTemplate.InvalidAuthor.selector, stranger, creWallet));
+        moolamReceiver.onReport(_metadata(encodedName, stranger), _report(passportId, true, 4, bytes32(0)));
+
+        assertEq(registry.attestationCount(passportId), 0);
+    }
+
+    function test_clearingThePinReopensTheReceiverForASimulation() public {
+        _pinIdentity();
+
+        // Chainlink's mock forwarder sends no workflow metadata during `cre workflow simulate`, so
+        // the pin has to come off for that run. ConfigureReceiver.s.sol does exactly these two
+        // calls, name first, so no report ever meets a name with no author behind it.
+        moolamReceiver.setExpectedWorkflowName("");
+        moolamReceiver.setExpectedAuthor(address(0));
+
+        assertEq(moolamReceiver.getExpectedAuthor(), address(0));
+        assertEq(moolamReceiver.getExpectedWorkflowName(), bytes10(0));
+
+        vm.prank(forwarder);
+        moolamReceiver.onReport(_metadata(), _report(passportId, true, 4, keccak256("recomputed")));
+
+        assertEq(registry.attestationCount(passportId), 1);
     }
 
     function test_aReportForAnUnknownPassportIsRefusedByTheRegistry() public {

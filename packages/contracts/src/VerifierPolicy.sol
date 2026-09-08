@@ -88,6 +88,7 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     error ChangeAlreadyQueued();
     error UnknownChange();
     error ChangeNotReady(uint64 executeAfter);
+    error TreasuryCannotReceive(address who);
 
     /// @notice Deploys the policy with its starting settings.
     /// @param initialOwner The owner. Uses two step transfer, so a typo cannot lose the contract.
@@ -180,11 +181,22 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     }
 
     /// @notice Queues a new treasury.
-    /// @dev Reverts ZeroAddress or ChangeAlreadyQueued. Emits ChangeQueued.
+    /// @dev A candidate with code is probed with an empty zero value call before it can be
+    ///      queued, which catches the common mistake of pointing the treasury at a contract that
+    ///      has no way to take native token at all. It is a heuristic and nothing more: a contract
+    ///      can pass this probe and still refuse a real payout. The registry's withdrawTo is the
+    ///      actual escape hatch, because a credited contract that can make a call can always send
+    ///      its own credit somewhere else. The probe runs before anything is written, and the
+    ///      caller is already the owner, so a candidate that calls back gains nothing.
+    ///      Reverts ZeroAddress, TreasuryCannotReceive or ChangeAlreadyQueued. Emits ChangeQueued.
     /// @param who The new treasury.
     /// @return id The change id.
     function queueSetTreasury(address who) external onlyOwner returns (bytes32 id) {
         if (who == address(0)) revert ZeroAddress();
+        if (who.code.length != 0) {
+            (bool reachable,) = who.call{value: 0}("");
+            if (!reachable) revert TreasuryCannotReceive(who);
+        }
         return _queue(OP_SET_TREASURY, abi.encode(who));
     }
 
@@ -243,6 +255,11 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
         // forge-lint: disable-next-line(unsafe-typecast)
         uint64 executeAfter = uint64(block.timestamp) + CHANGE_DELAY;
         _pending[id] = PendingChange({op: op, executeAfter: executeAfter, data: data});
+        // Reached after the treasury probe's zero value call, so the linter counts this as an
+        // event emitted after an external call. Every queue path is owner only and the pending
+        // entry is written before the emit, so a candidate that calls back can neither queue
+        // anything of its own nor change what this event reports.
+        // forge-lint: disable-next-line(reentrancy-events)
         emit ChangeQueued(id, op, data, executeAfter);
     }
 

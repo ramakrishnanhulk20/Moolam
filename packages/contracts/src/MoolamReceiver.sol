@@ -8,10 +8,15 @@ import {IMoolamRegistry} from "./interfaces/IMoolamRegistry.sol";
 /// @notice The one door a Chainlink CRE workflow uses to write a verification result into the
 ///         Moolam registry. The workflow refetches the image, recomputes its fingerprint, and the
 ///         Chainlink nodes agree on the answer before any of it reaches this contract.
-/// @dev Inherits Chainlink's ReceiverTemplate unchanged, so the forwarder check and the optional
-///      workflow id, owner and name checks are theirs, not ours. The registry then checks this
-///      contract against the VerifierPolicy list, which means a swap of the forwarder address by
-///      this contract's owner still cannot forge an attestation the policy has not allowed.
+/// @dev Inherits Chainlink's ReceiverTemplate unchanged, so the forwarder check and the workflow
+///      identity checks are theirs, not ours. The lock on this contract is those two together: the
+///      call must come from the Chainlink forwarder, and the report metadata must carry the
+///      workflow author and workflow name this contract is pinned to. The identity is not set in
+///      the constructor because the template stores it through owner-only setters, so the deploy
+///      script pins it in the same transaction batch and script/ConfigureReceiver.s.sol can repin
+///      it later. Swapping the forwarder or the pinned identity is an owner action and every one of
+///      them emits an event. The VerifierPolicy list is a separate control: it decides which
+///      receivers the registry will listen to at all, and it is not a second lock on this door.
 contract MoolamReceiver is ReceiverTemplate {
     /// @notice The registry this receiver writes into.
     IMoolamRegistry public immutable REGISTRY;
@@ -25,6 +30,9 @@ contract MoolamReceiver is ReceiverTemplate {
     error StaleReport(bytes32 passportId, uint64 reported, uint64 lastSeen);
 
     /// @notice Deploys the receiver and locks it to one registry.
+    /// @dev The workflow author and workflow name are pinned straight after deployment with the
+    ///      template's setExpectedAuthor and setExpectedWorkflowName. They are left open here
+    ///      because a simulation run uses Chainlink's mock forwarder, which sends no metadata.
     /// @param forwarder The Chainlink KeystoneForwarder that is allowed to call onReport.
     /// @param registry The Moolam registry that will receive the attestations.
     constructor(address forwarder, address registry) ReceiverTemplate(forwarder) {

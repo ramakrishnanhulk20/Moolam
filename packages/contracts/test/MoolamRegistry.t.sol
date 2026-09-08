@@ -31,6 +31,22 @@ contract RefusesNative {
     }
 }
 
+// A treasury that can be called but cannot be paid. Its fallback is not payable, so the policy's
+// zero value probe succeeds while a real payout reverts. This is the case withdrawTo exists for.
+contract TreasuryThatCannotBePaid {
+    MoolamRegistry private immutable REGISTRY;
+
+    constructor(MoolamRegistry registry) {
+        REGISTRY = registry;
+    }
+
+    function pullTo(address to) external {
+        REGISTRY.withdrawTo(to);
+    }
+
+    fallback() external {}
+}
+
 contract MoolamRegistryTest is Test {
     MoolamRegistry internal registry;
     VerifierPolicy internal policy;
@@ -73,6 +89,7 @@ contract MoolamRegistryTest is Test {
     );
     event DisputeResolved(bytes32 indexed passportId, bool upheld, address indexed resolver);
     event Withdrawn(address indexed who, uint256 amount);
+    event WithdrawnTo(address indexed who, address indexed to, uint256 amount);
     event Rescued(address indexed token, address indexed to, uint256 amount);
 
     function setUp() public {
@@ -525,7 +542,7 @@ contract MoolamRegistryTest is Test {
         assertEq(registry.getPassport(edit.exactHash).generatorAgentId, 0);
     }
 
-    function test_appendEditAcceptsAnApprovedSessionSigner() public {
+    function test_appendEditRefusesAnAddressApprovedForTheParentToken() public {
         bytes32 parent = _registerDefault();
         address session = makeAddr("session");
         PassportInput memory edit = _editOf(parent, keccak256("edit-approved"));
@@ -535,12 +552,14 @@ contract MoolamRegistryTest is Test {
         registry.approve(session, uint256(parent));
 
         vm.prank(session);
+        vm.expectRevert(abi.encodeWithSelector(MoolamRegistry.NotParentOwner.selector, session));
         registry.appendEdit(edit, agentSig);
 
-        assertEq(registry.ownerOf(uint256(edit.exactHash)), creator);
+        assertFalse(registry.passportExists(edit.exactHash));
+        assertEq(registry.childCount(parent), 0);
     }
 
-    function test_appendEditAcceptsAnOperatorApprovedForAll() public {
+    function test_appendEditRefusesAnOperatorApprovedForAll() public {
         bytes32 parent = _registerDefault();
         address operator = makeAddr("operator");
         PassportInput memory edit = _editOf(parent, keccak256("edit-operator"));
@@ -550,9 +569,11 @@ contract MoolamRegistryTest is Test {
         registry.setApprovalForAll(operator, true);
 
         vm.prank(operator);
+        vm.expectRevert(abi.encodeWithSelector(MoolamRegistry.NotParentOwner.selector, operator));
         registry.appendEdit(edit, agentSig);
 
-        assertEq(registry.ownerOf(uint256(edit.exactHash)), creator);
+        assertFalse(registry.passportExists(edit.exactHash));
+        assertEq(registry.childCount(parent), 0);
     }
 
     function test_appendEditRejectsAZeroParent() public {
@@ -933,6 +954,90 @@ contract MoolamRegistryTest is Test {
         vm.prank(address(refuser));
         vm.expectRevert(MoolamRegistry.TransferFailed.selector);
         registry.withdraw();
+    }
+
+    function test_withdrawToLetsATreasuryContractSendItsCreditOn() public {
+        TreasuryThatCannotBePaid holder = new TreasuryThatCannotBePaid(registry);
+        address destination = makeAddr("treasuryOwner");
+        bytes32 id = _registerDefault();
+        _flag(stranger, id);
+
+        vm.startPrank(owner);
+        bytes32 change = policy.queueSetTreasury(address(holder));
+        vm.warp(block.timestamp + policy.CHANGE_DELAY());
+        policy.execute(change);
+        vm.stopPrank();
+
+        vm.prank(resolver);
+        registry.resolve(id, false);
+        assertEq(registry.withdrawable(address(holder)), BOND);
+
+        vm.prank(address(holder));
+        vm.expectRevert(MoolamRegistry.TransferFailed.selector);
+        registry.withdraw();
+
+        uint256 before = destination.balance;
+
+        vm.expectEmit(true, true, false, true, address(registry));
+        emit WithdrawnTo(address(holder), destination, BOND);
+
+        holder.pullTo(destination);
+
+        assertEq(destination.balance, before + BOND);
+        assertEq(registry.withdrawable(address(holder)), 0);
+        assertEq(registry.totalOwed(), 0);
+        assertEq(address(registry).balance, 0);
+    }
+
+    function test_withdrawToRejectsAZeroDestinationAndAnEmptyCredit() public {
+        address elsewhere = makeAddr("elsewhere");
+
+        vm.prank(stranger);
+        vm.expectRevert(MoolamRegistry.ZeroAddress.selector);
+        registry.withdrawTo(address(0));
+
+        vm.prank(stranger);
+        vm.expectRevert(MoolamRegistry.NothingToWithdraw.selector);
+        registry.withdrawTo(elsewhere);
+    }
+
+    function test_withdrawToPaysOnceAndOnlyFromTheCallersOwnCredit() public {
+        address destination = makeAddr("destination");
+        bytes32 id = _registerDefault();
+        _flag(stranger, id);
+        vm.prank(resolver);
+        registry.resolve(id, true);
+
+        vm.prank(treasury);
+        vm.expectRevert(MoolamRegistry.NothingToWithdraw.selector);
+        registry.withdrawTo(destination);
+
+        vm.startPrank(stranger);
+        registry.withdrawTo(destination);
+        vm.expectRevert(MoolamRegistry.NothingToWithdraw.selector);
+        registry.withdrawTo(destination);
+        vm.stopPrank();
+
+        assertEq(destination.balance, BOND);
+        assertEq(registry.totalOwed(), 0);
+    }
+
+    function test_anEoaTreasuryStillPullsWithPlainWithdraw() public {
+        bytes32 id = _registerDefault();
+        _flag(stranger, id);
+        vm.prank(resolver);
+        registry.resolve(id, false);
+
+        uint256 before = treasury.balance;
+
+        vm.expectEmit(true, false, false, true, address(registry));
+        emit Withdrawn(treasury, BOND);
+
+        vm.prank(treasury);
+        registry.withdraw();
+
+        assertEq(treasury.balance, before + BOND);
+        assertEq(registry.withdrawable(treasury), 0);
     }
 
     function test_pauseAndUnpauseAreOwnerOnly() public {
