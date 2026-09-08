@@ -32,10 +32,10 @@ import { pinFile } from "../src/ipfs/pinata.js";
 import { isPolicyViolation, ownerContext, privyErrorText } from "../src/privy/client.js";
 import { signPassportAsGenerator } from "../src/privy/generatorSigner.js";
 import {
-  createPolicy,
   generatorPolicy,
-  policyExists,
+  livePolicyAddresses,
   sessionSignerPolicy,
+  syncPolicy,
 } from "../src/privy/policies.js";
 import {
   getOrCreateWallet,
@@ -104,6 +104,8 @@ interface GeneratorWallet {
   id: string;
   address: Hex;
   policyId: string;
+  /** The contracts Privy's live copy of the policy names, so the report prints fact, not intent. */
+  policyTargets: string[];
   agentId: bigint;
 }
 
@@ -147,7 +149,9 @@ async function main(): Promise<void> {
   say(
     `1. generator wallet: ${generator.address} policy: ${generator.policyId} agentId: ${generator.agentId}`,
   );
-  say(`   that policy allows register on ${addresses.registry} and nothing else`);
+  say(
+    `   read back from Privy: that policy allows register on ${generator.policyTargets.join(", ")} and nothing else`,
+  );
   say();
 
   const creator = await prepareCreator(ctx);
@@ -304,11 +308,17 @@ async function prepareGenerator(
   );
 
   // The policy is built before any MON moves, so a rejected rule costs nothing but a round trip.
-  let policyId = wallet.policyId;
-  if (!policyId || !(await policyExists(policyId))) {
-    policyId = await createPolicy(generatorPolicy(ctx.addresses.registry, ctx.addresses.chainId));
-    ctx.say(`Created the generator policy ${policyId}`);
-  }
+  // Every rule is rebuilt from the registry in the deployment file. A policy id cached before a
+  // redeploy still resolves, while every address inside it points at the contract that is gone.
+  const synced = await syncPolicy(
+    wallet.policyId,
+    generatorPolicy(ctx.addresses.registry, ctx.addresses.chainId),
+    ctx.addresses.registry,
+  );
+  const policyId = synced.policyId;
+  ctx.say(
+    `Generator policy ${policyId} ${synced.action}, rebuilt from registry ${ctx.addresses.registry}`,
+  );
 
   await fundIfNeeded(ctx, wallet.address, "generator");
 
@@ -335,7 +345,13 @@ async function prepareGenerator(
   updateStore({
     generator: { id: wallet.id, address: wallet.address, policyId, agentId: agentId.toString() },
   });
-  return { id: wallet.id, address: wallet.address, policyId, agentId };
+  return {
+    id: wallet.id,
+    address: wallet.address,
+    policyId,
+    policyTargets: await livePolicyAddresses(policyId),
+    agentId,
+  };
 }
 
 /** The agent id this wallet already owns on the ERC-8004 registry, or undefined when it owns none. */
@@ -569,13 +585,15 @@ async function prepareSessionSigner(
   creatorWalletId: string,
 ): Promise<{ keyQuorumId: string; policyId: string }> {
   const signer = await ensureSessionSigner();
-  let policyId = readStore().sessionSigner?.policyId;
-  if (!policyId || !(await policyExists(policyId))) {
-    policyId = await createPolicy(
-      sessionSignerPolicy(ctx.addresses.registry, ctx.addresses.chainId),
-    );
-    ctx.say(`Created the session signer policy ${policyId}`);
-  }
+  const synced = await syncPolicy(
+    readStore().sessionSigner?.policyId,
+    sessionSignerPolicy(ctx.addresses.registry, ctx.addresses.chainId),
+    ctx.addresses.registry,
+  );
+  const policyId = synced.policyId;
+  ctx.say(
+    `Session signer policy ${policyId} ${synced.action}, rebuilt from registry ${ctx.addresses.registry}`,
+  );
   updateStore({ sessionSigner: { keyQuorumId: signer.keyQuorumId, policyId } });
 
   const listed = await grantSessionSigner(creatorWalletId, {

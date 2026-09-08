@@ -1,7 +1,7 @@
 import type { PrivyClient } from "@privy-io/node";
 import type { Hex } from "viem";
 import { loadArtifact } from "../chain/artifacts.js";
-import { ownerPublicKey, privy } from "./client.js";
+import { ownerContext, ownerPublicKey, privy } from "./client.js";
 
 /** The exact shape Privy's policies().create takes, read off the installed SDK. */
 type PolicyRequest = Parameters<ReturnType<PrivyClient["policies"]>["create"]>[0];
@@ -135,18 +135,138 @@ export function sessionSignerPolicy(registry: Hex, chainId: number): PolicyReque
   };
 }
 
-/** Creates a policy and returns its id. Privy allows one policy per wallet, so each wallet gets one. */
-export async function createPolicy(request: PolicyRequest): Promise<string> {
+/** Anything shaped like an EVM address, used to find which contract a live rule actually names. */
+const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
+
+type Rules = PolicyRequest["rules"];
+
+/**
+ * Every contract address the rules name, lowercased and deduplicated.
+ *
+ * A policy built for one registry must never survive a redeploy. Reading the addresses straight
+ * out of the rules is what lets a caller compare a live policy against the current deployment
+ * instead of trusting the id it cached.
+ */
+export function policyAddresses(rules: Rules): string[] {
+  const found = new Set<string>();
+  for (const rule of rules) {
+    for (const condition of rule.conditions) {
+      const value = (condition as { value?: unknown }).value;
+      for (const item of Array.isArray(value) ? value : [value]) {
+        if (typeof item === "string" && ADDRESS.test(item)) found.add(item.toLowerCase());
+      }
+    }
+  }
+  return [...found];
+}
+
+/**
+ * The parts of a rule set that decide what Privy will allow, as one comparable string.
+ *
+ * The decoding ABI is left out because Privy does not echo it back the way it was sent, and the
+ * addresses are lowercased so a checksum difference does not look like a changed rule.
+ */
+function ruleSignature(rules: Rules): string {
+  return JSON.stringify(
+    rules.map((rule) => ({
+      method: rule.method,
+      action: rule.action,
+      conditions: rule.conditions.map((condition) => {
+        const item = condition as unknown as Record<string, unknown>;
+        const value = item.value;
+        return {
+          field_source: item.field_source,
+          field: item.field,
+          operator: item.operator,
+          value:
+            typeof value === "string" && ADDRESS.test(value) ? value.toLowerCase() : (value ?? null),
+        };
+      }),
+    })),
+  );
+}
+
+async function createPolicy(request: PolicyRequest): Promise<string> {
   const policy = await privy().policies().create(request);
   return policy.id;
 }
 
-/** Whether a policy id still exists on the Privy app, so a cached id from a past run is not trusted blindly. */
-export async function policyExists(policyId: string): Promise<boolean> {
+/** The live policy, or undefined when the id no longer resolves on this Privy app. */
+async function readPolicy(policyId: string): Promise<{ id: string; rules: Rules } | undefined> {
   try {
-    await privy().policies().get(policyId);
-    return true;
+    const policy = await privy().policies().get(policyId);
+    return { id: policy.id, rules: policy.rules as unknown as Rules };
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+export type PolicySyncAction = "created" | "updated" | "unchanged";
+
+/**
+ * Makes the policy Privy actually enforces match the rules this code builds for the registry that
+ * is deployed right now, and proves it by reading the policy back.
+ *
+ * A cached policy id that still resolves is not evidence of anything: after a registry redeploy
+ * the id is the same and every rule inside it still names the old contract, so the enclave refuses
+ * the register call and the refusal proves nothing. The whole rules array is rewritten rather than
+ * patched condition by condition, which is what stops a rule from being missed. The read-back
+ * throws unless the live policy names the current registry and nothing else.
+ */
+export async function syncPolicy(
+  cachedId: string | undefined,
+  request: PolicyRequest,
+  registry: Hex,
+): Promise<{ policyId: string; action: PolicySyncAction }> {
+  const target = registry.toLowerCase();
+  const wanted = policyAddresses(request.rules);
+  if (wanted.length !== 1 || wanted[0] !== target) {
+    throw new Error(
+      `The policy "${request.name}" was built for ${wanted.join(", ") || "no address"}, not for ${registry}.`,
+    );
+  }
+
+  const live = cachedId ? await readPolicy(cachedId) : undefined;
+  let policyId: string;
+  let action: PolicySyncAction;
+
+  if (!live) {
+    policyId = await createPolicy(request);
+    action = "created";
+  } else if (ruleSignature(live.rules) === ruleSignature(request.rules)) {
+    policyId = live.id;
+    action = "unchanged";
+  } else {
+    await privy().policies().update(live.id, {
+      name: request.name,
+      rules: request.rules,
+      authorization_context: ownerContext(),
+    });
+    policyId = live.id;
+    action = "updated";
+  }
+
+  const confirmed = await readPolicy(policyId);
+  if (!confirmed) {
+    throw new Error(`Privy did not return policy ${policyId} right after it was ${action}.`);
+  }
+  const names = policyAddresses(confirmed.rules);
+  if (names.length !== 1 || names[0] !== target) {
+    throw new Error(
+      `Privy policy ${policyId} names ${names.join(", ") || "no address"} in its rules, ` +
+        `not the deployed registry ${registry}.`,
+    );
+  }
+  if (ruleSignature(confirmed.rules) !== ruleSignature(request.rules)) {
+    throw new Error(`Privy policy ${policyId} does not match the rules Moolam asked for.`);
+  }
+
+  return { policyId, action };
+}
+
+/** The addresses the live policy names, read back from Privy so a report never prints a guess. */
+export async function livePolicyAddresses(policyId: string): Promise<string[]> {
+  const policy = await readPolicy(policyId);
+  if (!policy) throw new Error(`Privy has no policy ${policyId}.`);
+  return policyAddresses(policy.rules);
 }

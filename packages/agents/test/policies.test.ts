@@ -6,9 +6,10 @@
 
 import { describe, expect, it } from "vitest";
 import { MONAD_MAINNET } from "../src/chain/addresses.js";
-import { generatorPolicy, sessionSignerPolicy } from "../src/privy/policies.js";
+import { generatorPolicy, policyAddresses, sessionSignerPolicy } from "../src/privy/policies.js";
 
 const REGISTRY = "0x1cE43b76D0A4a1F1D1FEA9F2a8b32BE1c1f9F0aE";
+const REDEPLOYED_REGISTRY = "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0";
 const CHAIN_ID = MONAD_MAINNET.chainId;
 
 type Condition = Record<string, unknown>;
@@ -105,5 +106,27 @@ describe("session signer policy", () => {
       operator: "lte",
       value: "0x0",
     });
+  });
+});
+
+describe("a policy built after a registry redeploy", () => {
+  it("carries the new address in every rule of both policies and mentions the old one nowhere", () => {
+    const generator = generatorPolicy(REDEPLOYED_REGISTRY, CHAIN_ID);
+    const session = sessionSignerPolicy(REDEPLOYED_REGISTRY, CHAIN_ID);
+    const wanted = REDEPLOYED_REGISTRY.toLowerCase();
+
+    for (const policy of [generator, session]) {
+      expect(policyAddresses(policy.rules)).toEqual([wanted]);
+      for (const rule of policy.rules) {
+        const named = policyAddresses([rule]);
+        expect(named, `rule "${rule.name}" names no contract`).toEqual([wanted]);
+      }
+      expect(JSON.stringify(policy).toLowerCase()).not.toContain(REGISTRY.toLowerCase());
+    }
+
+    // The signing rule is the one a stale address hides in: a wrong verifyingContract is refused
+    // before the transaction is ever built, so the failure looks like a bad signature.
+    const signing = generator.rules.find((rule) => rule.method === "eth_signTypedData_v4");
+    expect(policyAddresses(signing ? [signing] : [])).toEqual([wanted]);
   });
 });
