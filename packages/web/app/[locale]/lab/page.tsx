@@ -1,4 +1,11 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { setRequestLocale } from "next-intl/server";
+import { Hero } from "@/components/hero/Hero";
+import { LabControls } from "@/components/hero/LabControls";
+
+// The still, the passport count and the record beside it are read from Monad on
+// every request. A prerendered copy would show whatever was true when the build
+// ran, which is not what live means to anyone looking at it.
+export const dynamic = "force-dynamic";
 
 /**
  * The hidden bench. Visual pieces are built and looked at here first, and only
@@ -7,16 +14,10 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 export default async function LabPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("lab");
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 py-24 sm:px-8">
-      <h1 className="rise font-display text-[clamp(2.5rem,8vw,6rem)] uppercase leading-[0.9] tracking-[-0.02em]">
-        {t("title")}
-      </h1>
-      <p className="rise mt-6 max-w-[52ch] text-sm text-text-muted" style={{ animationDelay: "80ms" }}>
-        {t("note")}
-      </p>
-    </div>
+    <LabControls>
+      <Hero locale={locale} />
+    </LabControls>
   );
 }

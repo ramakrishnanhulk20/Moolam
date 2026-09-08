@@ -1,0 +1,184 @@
+{
+  "measuredAt": "2026-09-08T14:11:20.183Z",
+  "verifier": {
+    "url": "http://localhost:4010",
+    "route": "POST /verify",
+    "records": 9
+  },
+  "registry": "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
+  "chainId": 143,
+  "passportId": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+  "imageCid": "bafybeidig23ixqssin5577gzqshz5xmpkxjr2pfpwtprizwfolgohm5dv4",
+  "imageBytes": 368362,
+  "registeredAt": 1788875248,
+  "note": "Every number here came from POST /verify on the running verifier, measured on the image at imageCid. shown lists the six steps the hero plays, in order; steps holds all fifteen the verifier runs, including the three that do not match at all.",
+  "original": {
+    "transform": "as-registered",
+    "confidence": 1,
+    "exact": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c"
+  },
+  "shown": [
+    "rotate-90",
+    "mirror",
+    "reencode-q60",
+    "reencode-q30",
+    "social-chain",
+    "resize-10"
+  ],
+  "steps": [
+    {
+      "transform": "rotate-90",
+      "confidence": 0.99,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 0,
+      "variant": "rot90",
+      "bytes": 228385
+    },
+    {
+      "transform": "rotate-180",
+      "confidence": 0.99,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 0,
+      "variant": "rot180",
+      "bytes": 233834
+    },
+    {
+      "transform": "mirror",
+      "confidence": 0.99,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 0,
+      "variant": "mirror",
+      "bytes": 233981
+    },
+    {
+      "transform": "screenshot",
+      "confidence": 0.99,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 0,
+      "variant": "identity",
+      "bytes": 67849
+    },
+    {
+      "transform": "strip-metadata",
+      "confidence": 0.99,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 0,
+      "variant": "identity",
+      "bytes": 233706
+    },
+    {
+      "transform": "resize-50",
+      "confidence": 0.9706829268292683,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 2,
+      "variant": "identity",
+      "bytes": 36807
+    },
+    {
+      "transform": "reencode-q60",
+      "confidence": 0.9513658536585365,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 4,
+      "variant": "identity",
+      "bytes": 54879
+    },
+    {
+      "transform": "reencode-q30",
+      "confidence": 0.9127317073170732,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 8,
+      "variant": "identity",
+      "bytes": 22953
+    },
+    {
+      "transform": "resize-25",
+      "confidence": 0.9127317073170732,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 0,
+      "blockhashDistance": 8,
+      "variant": "identity",
+      "bytes": 10292
+    },
+    {
+      "transform": "social-chain",
+      "confidence": 0.8626829268292683,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 2,
+      "blockhashDistance": 2,
+      "variant": "identity",
+      "bytes": 38075
+    },
+    {
+      "transform": "brightness-120",
+      "confidence": 0.8240487804878048,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 2,
+      "blockhashDistance": 6,
+      "variant": "identity",
+      "bytes": 239834
+    },
+    {
+      "transform": "resize-10",
+      "confidence": 0.800780487804878,
+      "matchedPassport": "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+      "phashDistance": 1,
+      "blockhashDistance": 14,
+      "variant": "identity",
+      "bytes": 2425
+    },
+    {
+      "transform": "crop-10",
+      "confidence": 0,
+      "matchedPassport": null,
+      "phashDistance": null,
+      "blockhashDistance": null,
+      "variant": null,
+      "bytes": 146935
+    },
+    {
+      "transform": "crop-25",
+      "confidence": 0,
+      "matchedPassport": null,
+      "phashDistance": null,
+      "blockhashDistance": null,
+      "variant": null,
+      "bytes": 62157
+    },
+    {
+      "transform": "watermark-text",
+      "confidence": 0,
+      "matchedPassport": null,
+      "phashDistance": null,
+      "blockhashDistance": null,
+      "variant": null,
+      "bytes": 226043
+    }
+  ],
+  "frames": {
+    "reencode-q60": {
+      "file": "/hero/frame-reencode-q60.jpg",
+      "bytes": 54879
+    },
+    "reencode-q30": {
+      "file": "/hero/frame-reencode-q30.jpg",
+      "bytes": 22953
+    },
+    "social-chain": {
+      "file": "/hero/frame-social-chain.jpg",
+      "bytes": 38075
+    },
+    "resize-10": {
+      "file": "/hero/frame-resize-10.jpg",
+      "bytes": 2425
+    }
+  },
+  "framesNote": "Produced by the verifier's own transforms() on the bytes at imageCid, so what the page shows is the file the numbers were measured on. rotate-90 and mirror are not here: turning and flipping change no pixels, so the page does those with a CSS transform on the same frame."
+}

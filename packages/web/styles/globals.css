@@ -163,3 +163,53 @@ body {
 .rise {
   animation: rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* Two accent candidates, switched by a data-accent attribute on any wrapper, so
+   the lab page can hold both side by side without a reload. Coral is the accent
+   Ram approved on Archegos; amber is the colour a stamp or a seal wants. */
+[data-accent="coral"] {
+  --accent: #ff7d55;
+  --accent-ink: #14100e;
+  --accent-soft: rgb(255 125 85 / 0.14);
+}
+
+[data-accent="amber"] {
+  --accent: #ffb020;
+  --accent-ink: #17110a;
+  --accent-soft: rgb(255 176 32 / 0.14);
+}
+
+/* Neither candidate carries enough contrast as small text on paper, so the light
+   theme takes a deeper mix of the same hue. */
+.light [data-accent="coral"] {
+  --accent: #d1481c;
+  --accent-ink: #fff6f2;
+  --accent-soft: rgb(209 72 28 / 0.12);
+}
+
+.light [data-accent="amber"] {
+  --accent: #a86a00;
+  --accent-ink: #fff8ec;
+  --accent-soft: rgb(168 106 0 / 0.13);
+}
+
+/* The repeated mark. A real element rather than a square glyph, because a glyph
+   square changes size and baseline with every face. Two candidates: the seal is
+   a filled square with a hollow square inset in it, the notch is the same square
+   with one corner cut away. */
+.motif {
+  position: relative;
+  display: inline-block;
+  background: var(--accent);
+}
+
+[data-motif="seal"] .motif::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border: 1px solid var(--accent-ink);
+}
+
+[data-motif="notch"] .motif {
+  clip-path: polygon(0 0, 100% 0, 100% 58%, 58% 100%, 0 100%);
+}

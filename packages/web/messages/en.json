@@ -65,7 +65,17 @@
   },
   "lab": {
     "title": "Lab",
-    "note": "Visual pieces are tried here before they reach a real screen. Nothing on this page is final and nothing links to it."
+    "note": "Visual pieces are tried here before they reach a real screen. Nothing on this page is final and nothing links to it.",
+    "accent": "Accent",
+    "accentCoral": "Coral",
+    "accentAmber": "Amber",
+    "motif": "Motif",
+    "motifSeal": "Seal",
+    "motifNotch": "Notch",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "heading": "Hero, work order 9b"
   },
   "verify": {
     "title": "Verify an image",
@@ -150,5 +160,37 @@
     "balanceError": "The balance could not be read: {reason}. Reload the page.",
     "noWallet": "You are logged in, but no wallet was created yet. Reload the page, or log in again.",
     "notConfigured": "Privy is not configured. Put NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local and restart the dev server."
+  },
+  "hero": {
+    "kicker": "Live on Monad mainnet",
+    "titleLineOne": "Every copy",
+    "titleLineTwo": "remembers.",
+    "lede": "Moolam writes an image's exact bytes and two perceptual fingerprints into a passport the moment it is made. Recompress it, shrink it to a tenth, turn it sideways, share it twice: the copy still finds its own record.",
+    "ctaVerify": "Verify an image",
+    "ctaStudio": "Open the studio",
+    "stillAlt": "The registered image this passport belongs to",
+    "credit": {
+      "passport": "Passport",
+      "agent": "Agent",
+      "agentNone": "no agent",
+      "creator": "Creator",
+      "registry": "Registry"
+    },
+    "meta": {
+      "network": "Monad mainnet, chain {chainId}",
+      "count": "{count, plural, =1 {# passport} other {# passports}}",
+      "countUnread": "passport count unread",
+      "chainlink": "Verified by Chainlink",
+      "registered": "Registered {date}"
+    },
+    "degrade": {
+      "kicker": "What a copy survives",
+      "heading": "Six ways to break it. One record.",
+      "asRegistered": "as registered",
+      "exactBytes": "exact bytes",
+      "match": "match",
+      "distance": "{phash} of 64, {blockhash} of 256",
+      "provenance": "Every figure here came from the Moolam verifier, run on passport {passport} on {date}. The crushed frames are the verifier's own output, not a filter."
+    }
   }
 }

@@ -1,4 +1,4 @@
-import { Anton, Inter_Tight, JetBrains_Mono, Noto_Sans_Tamil } from "next/font/google";
+import { IBM_Plex_Mono, Noto_Sans_Tamil, Space_Grotesk } from "next/font/google";
 
 /**
  * Two faces and a mono, self-hosted at build time by next/font.
@@ -6,22 +6,29 @@ import { Anton, Inter_Tight, JetBrains_Mono, Noto_Sans_Tamil } from "next/font/g
  * Swapping either face is one line here: the rest of the app only ever reads
  * the CSS variables, never a font name.
  */
-export const display = Anton({
+export const display = Space_Grotesk({
   subsets: ["latin"],
-  weight: "400",
+  weight: ["400", "500", "600", "700"],
   variable: "--font-display",
   display: "swap",
 });
 
-export const body = Inter_Tight({
+/**
+ * Headlines and body share one face on purpose. It is what keeps a page reading
+ * as a single object rather than a headline sitting on top of unrelated text.
+ * next/font serves both variables from the same downloaded files.
+ */
+export const body = Space_Grotesk({
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-body",
   display: "swap",
 });
 
-/** Hashes, addresses and ids only. Never body copy. */
-export const mono = JetBrains_Mono({
+/** Labels, hashes, addresses and ids only. Never body copy. */
+export const mono = IBM_Plex_Mono({
   subsets: ["latin"],
+  weight: ["400", "500"],
   variable: "--font-mono",
   display: "swap",
 });
