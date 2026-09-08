@@ -1,7 +1,7 @@
 // Covers the exact rules Moolam asks Privy to enforce inside its enclave: what the generator
 // agent's wallet may send and sign, and what the creator's session signer may do.
 // Does NOT cover Privy enforcing them. That was proven against the live app in
-// kitchen/reports/WO-7-transcript.txt, where a policy violation came back as a refusal with no
+// proofs/agent-transcript.txt, where a policy violation came back as a refusal with no
 // transaction signed. This file is the guard against the rules being loosened by accident.
 
 import { describe, expect, it } from "vitest";

@@ -16,7 +16,7 @@ import { transforms, type TransformName } from "../src/transforms.js";
 import type { DihedralName, Hex, PassportRecord } from "../src/types.js";
 
 const CORPUS_DIR = path.join(PACKAGE_ROOT, "corpus");
-const REPORT_PATH = path.join(PACKAGE_ROOT, "..", "..", "kitchen", "reports", "WO-2-robustness.txt");
+const REPORT_PATH = path.join(PACKAGE_ROOT, "..", "..", "proofs", "robustness.txt");
 const MIN_REAL_CORPUS = 10;
 const GENERATED_COUNT = 24;
 

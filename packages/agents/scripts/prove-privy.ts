@@ -58,7 +58,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(HERE, "..");
 const REPO_ROOT = join(PACKAGE_ROOT, "..", "..");
 const PASSKEY_FILE = join(PACKAGE_ROOT, ".moolam", "creator-passkey.json");
-const REPORT_FILE = join(REPO_ROOT, "kitchen", "reports", "WO-4-output.txt");
+const REPORT_FILE = join(REPO_ROOT, "proofs", "privy.txt");
 const SOURCE_IMAGE = join(REPO_ROOT, "packages", "verifier", "test-assets", "original.jpg");
 
 const EXPLORER_TX = "https://monadvision.com/tx/";

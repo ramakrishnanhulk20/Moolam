@@ -1,0 +1,40 @@
+Moolam verifier robustness
+
+Corpus: 24 generated images (corpus/ held 0, fewer than the 10 needed to use it)
+Originals: 24. Transformed copies measured: 360.
+Thresholds: phash <= 10 of 64 and blockhash <= 40 of 256.
+A match must clear both.
+
+direct match rate: the copy is fingerprinted as it arrives and looked up once.
+dihedral match rate: all eight rotated and mirrored variants of the copy are tried.
+mean phash and blockhash distance: to the copy's own original, under the closest of
+  the eight variants, so a rotated copy is measured after being turned back upright.
+false positives: distinct wrong originals returned, counted over every copy against
+  every other original in the corpus.
+
+transform       direct   dihedral  mean phash  mean blockhash  false positives 
+-------------------------------------------------------------------------------
+reencode-q60    96%      96%       0.7         3.9             0              
+reencode-q30    92%      92%       0.7         7.7             0              
+resize-50       100%     100%      0.7         2.9             0              
+resize-25       100%     100%      0.7         4.5             0              
+resize-10       100%     100%      0.9         13.6            0              
+crop-10         0%       0%        21.6        56.3            0              
+crop-25         0%       0%        29.7        85.7            0              
+rotate-90       0%       100%      0.7         1.8             0              
+rotate-180      0%       100%      0.7         1.8             0              
+mirror          0%       100%      0.7         1.9             0              
+brightness-120  96%      96%       1.5         13.3            0              
+watermark-text  29%      29%       7.2         42.3            0              
+screenshot      100%     100%      0.8         3.1             0              
+social-chain    100%     100%      0.5         4.3             0              
+strip-metadata  100%     100%      0.7         1.6             0              
+
+False positives across the whole run: 0.
+Transforms that did not match every image, with the worst single distance seen:
+  reencode-q60: matched 23 of 24, worst phash 2 of 64, worst blockhash 42 of 256
+  reencode-q30: matched 22 of 24, worst phash 2 of 64, worst blockhash 48 of 256
+  crop-10: matched 0 of 24, worst phash 35 of 64, worst blockhash 108 of 256
+  crop-25: matched 0 of 24, worst phash 38 of 64, worst blockhash 128 of 256
+  brightness-120: matched 23 of 24, worst phash 5 of 64, worst blockhash 78 of 256
+  watermark-text: matched 7 of 24, worst phash 17 of 64, worst blockhash 56 of 256

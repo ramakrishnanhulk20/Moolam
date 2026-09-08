@@ -45,7 +45,7 @@ import { heading, renderTable, verdict } from "../src/prove/table.js";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(HERE, "..");
 const REPO_ROOT = join(PACKAGE_ROOT, "..", "..");
-const REPORT_FILE = join(REPO_ROOT, "kitchen", "reports", "WO-8-prove.txt");
+const REPORT_FILE = join(REPO_ROOT, "proofs", "prove-it.txt");
 const ATTACKS_DIR = join(REPO_ROOT, "docs", "docs", "security", "attacks");
 const PASSPORTS_FILE = join(PACKAGE_ROOT, ".moolam", "prove-passports.json");
 const CREATOR_PASSKEY_FILE = join(PACKAGE_ROOT, ".moolam", "creator-passkey.json");
@@ -166,7 +166,7 @@ async function main(): Promise<void> {
       `  ${verdict(allSurvived)}: ${survivors.filter((row) => row.resolved).length} of ${survivors.length} copies resolve to ${original.passportId}.`,
     );
     say("  Not proved here: crops. Cutting 10 percent off each edge breaks both fingerprints. That is");
-    say("  measured in kitchen/reports/WO-2-robustness.txt and stated in the threat model.");
+    say("  measured in proofs/robustness.txt and stated in the threat model.");
     sections.push({
       number: "2",
       title: "Survive",

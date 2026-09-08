@@ -1,0 +1,45 @@
+Moolam Privy proof, live on Monad mainnet (chain 143).
+Started 2026-09-08T14:08:58.239Z
+Registry 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+Run id   moolam-privy-proof:1788876538239
+
+Reusing the generator server wallet 0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb
+Generator policy kvq9627q5dfpv90xegi5h1cj updated, rebuilt from registry 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+  generator balance 11.659 MON, no top up needed
+1. generator wallet: 0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb policy: kvq9627q5dfpv90xegi5h1cj agentId: 10249
+   read back from Privy: that policy allows register on 0xa19188801e5dc93cd925884d73e4dafc2bcb80c0 and nothing else
+
+Reusing the creator wallet 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+  creator balance 11.698 MON, no top up needed
+  the sponsored send was refused: HTTP 400 invalid_data: Gas sponsorship is not configured for chain eip155:143.
+2. creator wallet: 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6 passkey bound: 0x78624a296399edb1751b0b5d23c2cdf3d1d35dd086f96c3c1fecaeec57ba2801 (sponsored: no)
+   https://monadvision.com/tx/0x78624a296399edb1751b0b5d23c2cdf3d1d35dd086f96c3c1fecaeec57ba2801
+   sponsorship: not enabled, paid by wallet
+   Privy refused the sponsored send: HTTP 400 invalid_data: Gas sponsorship is not configured for chain eip155:143.
+
+  the agent signed the passport through Privy, recovered back to 0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb
+  metadata pinned at ipfs://bafkreifgjfb22gknsqtivnvq7kcs3qbv7sju5ghgt2ozxf5ipkvpncem7u
+3. register by generator under policy: 0x3e10ddedb9b04d1f3d980eec4abf6ba785de103f8b3e863927a86d77be44f84f tokenId 0xe014c6c2339f3f8b89b28d613b4105506e3016b086e33ab6af67436858441f86
+   https://monadvision.com/tx/0x3e10ddedb9b04d1f3d980eec4abf6ba785de103f8b3e863927a86d77be44f84f
+
+4. policy refusal (generator tried to transfer MON): policy_violation
+   Privy said: HTTP 400 policy_violation: RPC request denied due to policy violation
+   no transaction hash: the enclave refused to sign, so nothing reached Monad
+
+5. policy refusal (generator tried appendEdit): policy_violation
+   Privy said: HTTP 400 policy_violation: RPC request denied due to policy violation
+   same wallet, same contract, different function: the policy names register only
+
+Session signer policy a01egw372b5cdiz4wklc3lw0 updated, rebuilt from registry 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+The creator granted key quorum wcnq8qcljlggp4j5mjlcsv44 permission to append edits
+6. session signer appendEdit on creator's wallet: 0x3fe07b11828886047b8972ab8eeead3e2ac3748a7873d483fbb60e8cda539d2b tokenId 0x59b9e61a6227304b45dda62afea235e99c3102982d79be971c53543fccb6d62a
+   https://monadvision.com/tx/0x3fe07b11828886047b8972ab8eeead3e2ac3748a7873d483fbb60e8cda539d2b
+   signed by key quorum wcnq8qcljlggp4j5mjlcsv44 under policy a01egw372b5cdiz4wklc3lw0
+
+7. signer removed; appendEdit attempt refused: HTTP 401 no code: No valid authorization signatures were provided. Your payload may be malformed or your signing keys may be incorrect or expired. Docs: https://docs.privy.io/api-reference/authorization-signatures
+   signers now on 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6: none
+
+Gas. Monad charges the limit that was set, which is why the receipt repeats it as gasUsed.
+  bindPasskey limit 71,031 at 102 gwei, 0.0072 MON
+  register    limit 413,754 at 102 gwei, 0.0422 MON
+  appendEdit  limit 482,494 at 102 gwei, 0.0492 MON

@@ -1,0 +1,18 @@
+$ forge test --match-path "test/fork/*" -vv -n monad
+(Foundry 1.8.1 needs -n monad to fork a Monad chain: without it vm.createSelectFork refuses with
+ "cannot create a monad fork with an EVM instantiated for ethereum".)
+
+No files changed, compilation skipped
+
+Ran 5 tests for test/fork/ERC8004Fork.t.sol:ERC8004ForkTest
+[PASS] test_aGeneratedPassportSignedByTheRealAgentOwnerLands() (gas: 458148)
+[PASS] test_aRealAgentIsMintedAndOwnedByTheWalletThatRegisteredIt() (gas: 56989)
+Logs:
+  agent id minted on the canonical registry: 10248
+
+[PASS] test_aSignatureFromAWalletThatDoesNotOwnTheAgentIsRefused() (gas: 217640)
+[PASS] test_anAgentIdThatDoesNotExistOnTheCanonicalRegistryIsRefused() (gas: 162906)
+[PASS] test_theCanonicalRegistryIsLiveAndIsWhatTheContractReads() (gas: 98206)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 4.08s (2.24s CPU time)
+
+Ran 1 test suite in 4.10s (4.08s CPU time): 5 tests passed, 0 failed, 0 skipped (5 total tests)

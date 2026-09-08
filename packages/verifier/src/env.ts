@@ -27,6 +27,9 @@ const DEFAULT_FACILITATOR_URL = "https://x402-facilitator.molandak.org";
 
 const DEFAULT_X402_PRICE = "$0.05";
 
+/** Pinata's public gateway. An account's own dedicated gateway is preferred when .env names one. */
+const DEFAULT_PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
+
 // Shell variables win over the file, so a one-off VERIFIER_PORT=... still bites.
 const repoEnvFile = path.join(REPO_ROOT, ".env");
 if (existsSync(repoEnvFile)) {
@@ -105,6 +108,48 @@ const schema = z
       .refine((value) => /^\$[0-9]+(\.[0-9]{1,6})?$/.test(value), {
         message: "X402_PRICE must be a dollar amount such as $0.05",
       }),
+    PINATA_JWT: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => value === undefined || value.length === 0 || value.length >= 20, {
+        message: "PINATA_JWT is too short to be a Pinata API token",
+      })
+      .transform((value) => (value === undefined || value.length === 0 ? undefined : value)),
+    PINATA_GATEWAY_URL: z
+      .string()
+      .trim()
+      .default("")
+      .refine((value) => value.length === 0 || isHttpUrl(value), {
+        message: "PINATA_GATEWAY_URL must be an absolute http or https URL",
+      })
+      .transform((value) => (value.length === 0 ? DEFAULT_PINATA_GATEWAY : value)),
+    PRIVY_APP_ID: optionalPattern(
+      /^[a-z0-9]{20,32}$/i,
+      "PRIVY_APP_ID must be the 20 to 32 character app id from the Privy dashboard",
+    ),
+    CORS_ORIGINS: z
+      .string()
+      .trim()
+      .default("")
+      .transform((value, ctx) => {
+        const origins = value
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+        for (const origin of origins) {
+          if (!isExactOrigin(origin)) {
+            ctx.addIssue({
+              code: "custom",
+              message: `CORS_ORIGINS must be a comma separated list of exact origins such as https://moolam.app, and "${origin}" is not one`,
+            });
+            return z.NEVER;
+          }
+        }
+        return origins;
+      }),
+    PRIVY_JWKS_OVERRIDE_PATH: optionalText(),
+    NODE_ENV: optionalText(),
   })
   .superRefine((value, ctx) => {
     if (value.PASSPORT_SOURCE === "json" && value.PASSPORT_SOURCE_PATH.trim().length === 0) {
@@ -127,6 +172,14 @@ const schema = z
         path: ["MOOLAM_C2PA_CERT_PATH"],
         message:
           "MOOLAM_C2PA_CERT_PATH and MOOLAM_C2PA_KEY_PATH go together: set both to sign with your own identity, or neither to use the development one",
+      });
+    }
+    if (value.PRIVY_JWKS_OVERRIDE_PATH !== undefined && value.NODE_ENV === "production") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["PRIVY_JWKS_OVERRIDE_PATH"],
+        message:
+          "PRIVY_JWKS_OVERRIDE_PATH is for local tests only and is refused when NODE_ENV is production, because it would let anyone holding that key sign tokens this service accepts",
       });
     }
     if (value.X402_ENABLED && value.X402_PAY_TO_ADDRESS === undefined) {
@@ -155,6 +208,19 @@ function optionalPattern(pattern: RegExp, message: string): z.ZodType<string | u
     .optional()
     .refine((value) => value === undefined || value.length === 0 || pattern.test(value), { message })
     .transform((value) => (value === undefined || value.length === 0 ? undefined : value));
+}
+
+/**
+ * True for an origin the browser would send in an Origin header: scheme, host, optional port, and
+ * nothing else. A wildcard, a path or a trailing slash is refused, because CORS here is the list
+ * of sites allowed to spend Ram's Pinata account.
+ */
+function isExactOrigin(value: string): boolean {
+  if (!isHttpUrl(value)) {
+    return false;
+  }
+  const parsed = new URL(value);
+  return parsed.origin === value && !value.includes("*");
 }
 
 function isHttpUrl(value: string): boolean {
@@ -192,6 +258,12 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     X402_FACILITATOR_URL: source.X402_FACILITATOR_URL,
     X402_PAY_TO_ADDRESS: source.X402_PAY_TO_ADDRESS,
     X402_PRICE: source.X402_PRICE,
+    PINATA_JWT: source.PINATA_JWT,
+    PINATA_GATEWAY_URL: source.PINATA_GATEWAY_URL,
+    PRIVY_APP_ID: source.PRIVY_APP_ID,
+    CORS_ORIGINS: source.CORS_ORIGINS,
+    PRIVY_JWKS_OVERRIDE_PATH: source.PRIVY_JWKS_OVERRIDE_PATH,
+    NODE_ENV: source.NODE_ENV,
   });
 
   if (!result.success) {

@@ -1,0 +1,157 @@
+Moolam prove-it run: one image gets a passport, six mangled copies still find it, the C2PA
+manifest is stripped and it still finds it, a forgery is answered, and every attack in the
+threat model is executed. All of it against Monad mainnet.
+
+started     2026-09-08T14:08:34.384Z
+network     Monad mainnet, chain 143, block 103059303
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+policy      0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
+receiver    0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
+ERC-8004    0x8004A169FB4a3325136EB29fA0ceB6D2e539a432, demo agent 10248
+creator     0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c, 35.293 MON
+outsider    0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7, 11.488 MON
+            the outsider is the wallet the attacks are sent from. It is not the creator, not
+            a listed receiver, not the dispute resolver and not the owner of anything here.
+
+1. Register: a new image gets a passport
+========================================
+  passkey     already bound to 0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  image       1024 by 768, 359,430 bytes once the C2PA manifest is signed in
+  fingerprint phash 0x1cc38b3cb2cf36c3, blockhash 0x007f00ff00ff01ff001cc7ccc7e6e7c6c7c6c7e607e607c0007f00ff00ff01ff
+  manifest    present, soft binding com.moolam.phash-blockhash.v1
+  files       image ipfs://bafybeid3wtxhbw4a7whwa572snrwi5izb3qhng7jt5k5feobepmb7hrljq
+              thumb ipfs://bafkreifljrwwhipl7jq7kwbzw7yvlf6tgb4al55ifld5wig7io4wvzr5fq
+              meta  ipfs://bafkreih4rnovgkrj7auogdsgnrdhr2y5xfhtvaqxvap7sxxlkqg6jw76oi, public gateway answered 200
+  passport    0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80
+  token id    6593969731512395215369656128602156366827918451572334465114610626508984474240
+  registered  block 103059393, 2026-09-08T14:09:02.000Z
+  transaction 0xa791425b6a048864fe5fd803c70377e24c52c93b953ef3aaa18b2b9f3b321c9b
+              https://monadvision.com/tx/0xa791425b6a048864fe5fd803c70377e24c52c93b953ef3aaa18b2b9f3b321c9b
+  gas         376,104 used of a 376,104 limit, and Monad bills the limit
+  PASS: the passport is on Monad and its four files are on IPFS.
+  Not proved here: who the creator is offline. A passport proves which key signed and when,
+  not the identity of the person holding it.
+  service     started on http://127.0.0.1:4010, holding 1 passport
+
+2. Survive: six copies of the same picture
+==========================================
+  copy            bytes  matched as  phash    blockhash  confidence  resolves to the passport
+  ------------  -------  ----------  -------  ---------  ----------  ------------------------
+  reencode-q60   52,453  identity    0 of 64  0 of 256         0.99  yes
+  resize-25       8,806  identity    1 of 64  0 of 256         0.94  yes
+  rotate-90     221,822  rot90       0 of 64  0 of 256         0.99  yes
+  mirror        228,608  mirror      0 of 64  0 of 256         0.99  yes
+  screenshot     65,902  identity    1 of 64  0 of 256         0.94  yes
+  social-chain   35,238  identity    6 of 64  0 of 256         0.67  yes
+  PASS: 6 of 6 copies resolve to 0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80.
+  Not proved here: crops. Cutting 10 percent off each edge breaks both fingerprints. That is
+  measured in proofs/robustness.txt and stated in the threat model.
+
+3. Strip: the C2PA manifest removed entirely
+============================================
+  signed copy    C2PA manifest present: yes
+  stripped copy  C2PA manifest present: no, and the service read it as absent too
+  stripped copy  228,497 bytes
+  verify answer  phash 0 of 64, blockhash 0 of 256, confidence 0.99
+  PASS: the manifest is gone and the passport still resolves.
+  Not proved here: that the manifest was trustworthy to begin with. It is signed with a
+  throwaway certificate, so every reader marks it untrusted. The chain record carries the
+  signatures that matter.
+
+4. Forge: someone else tries to claim the picture
+=================================================
+  4a. the same bytes, a different creator
+      attack      register the same bytes again under a different creator
+      call        register on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+      from        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+      expected    PassportAlreadyExists
+      eth_call    refused with PassportAlreadyExists, by the live contract at the same gas limit
+      sent        0xa781ff7cc86cb35541bcc5b563411676668af56791db9db08763424aefb8bb73
+                  https://monadvision.com/tx/0xa781ff7cc86cb35541bcc5b563411676668af56791db9db08763424aefb8bb73
+      receipt     reverted in block 103059417, 400,000 gas used of the 400,000 limit set
+      result      REFUSED
+
+  4b. a re-encoded copy, registered as a fresh original by that second creator
+      passport    0xf094d9973fdb4d21e346ee5c39a828ab8d858d0ca2f5fa27f1e162c7f3e6d585
+      creator     0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+      transaction 0x52fad288fec67233c898a29c6d0aa89c120b0cbf1fcbc7b7d86edab88285f868
+                  https://monadvision.com/tx/0x52fad288fec67233c898a29c6d0aa89c120b0cbf1fcbc7b7d86edab88285f868
+      registered  2026-09-08T14:09:16.000Z, 14 seconds after the original
+      The chain accepted it, and it was always going to: different bytes are a different
+      image as far as a hash is concerned. What answers the theft is the next step.
+  service     started on http://127.0.0.1:4010, holding 2 passports
+
+  4c. a third copy, re-encoded at quality 30, handed to the verify service
+      passport                                                            creator                                     registered                phash
+      ------------------------------------------------------------------  ------------------------------------------  ------------------------  -------
+      0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80  0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c  2026-09-08T14:09:02.000Z  2 of 64
+      0xf094d9973fdb4d21e346ee5c39a828ab8d858d0ca2f5fa27f1e162c7f3e6d585  0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6  2026-09-08T14:09:16.000Z  2 of 64
+      The impostor's own file is still an exact byte match for the impostor's record
+      (0xf094d9973fdb4d21e346ee5c39a828ab8d858d0ca2f5fa27f1e162c7f3e6d585), and that record is the newer of the two.
+  PASS: the chain refused the duplicate with PassportAlreadyExists, and the
+  oldest passport for this picture is the first one, 0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80.
+  Not proved here: who really made the picture. Moolam records who registered first and says
+  so plainly in the threat model. For an AI image the two are the same moment, because the
+  generator registers before publication.
+
+5. Attacks: every claim in the threat model, executed
+=====================================================
+  PASS  passkey-replay
+        InvalidPasskeySignature: the creator's own assertion, replayed on a different image hash, on chain in 0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
+  PASS  generator-signature-forged
+        InvalidGeneratorSignature: a stranger's wallet signing for someone else's agent, on chain in 0x33b6cc848ec99e19bd929fb12820d1a0db8a9c6d3cf0d7241bec7a9d93a5af04
+  PASS  unknown-agent
+        UnknownAgent: agent 10000000000 does not exist on the ERC-8004 registry, on chain in 0x0a7d1d03f63bf455bf62893c4078176191944cb73691c9603649023727d2f979
+  PASS  expired-deadline
+        SignatureExpired: both signatures are valid, and both are a minute too late, on chain in 0x0d5ac502fb22d28377a2a60a604922dc95e5252f3de3de67c21436d1f213cee7
+  PASS  edit-by-non-owner
+        NotParentOwner: an outsider tries to hang an edit off someone else's passport, on chain in 0x1b06945bf88f347a7c071aae4320a7e724bbcb7b525581137ad76668ffc66b08
+  PASS  attest-from-stranger
+        NotReceiver: a stranger claims the image checked out, on chain in 0x615334b09ca21c4a08ec30ff17151588bb3907d976d3ea8c983b8b83895fe419
+  PASS  report-from-fake-forwarder
+        InvalidSender: a hand written report from the wrong sender, on chain in 0xf675b29e35fc053ab64761076eb4f92d4c9410da21b229fb0f9d8f05f21a03a5
+  PASS  receiver-replay-and-wrong-chain
+        covered by three Foundry tests, not by a mainnet transaction: only Chainlink's forwarder can reach the check
+  PASS  privy-policy-refusal
+        policy_violation twice: the agent's wallet cannot move MON and cannot call appendEdit
+  PASS  revoked-session-signer
+        the app's key is no longer a signer on the creator's wallet, and Privy refuses it
+  PASS  dispute-money-rules
+        three refusals: InvalidBond, NotResolver, NothingToWithdraw
+  PASS  verifier-api-limits
+        413 on 25 MB, 400 on a text file, 403 on a loopback URL, 429 once the minute's 60 requests are spent
+
+  PASS: 12 of 12 attacks refused, each for the reason the design gives.
+  Not proved here: an attack nobody thought of. This is the list in
+  docs/security/threat-model.md, self-audited, with no third party audit behind it.
+
+The run started the verify service itself on port 4010 with PASSPORT_SOURCE=json,
+and stopped it again just now. In production the same service reads passports from Envio.
+
+6. Summary
+==========
+  section      result  evidence
+  -----------  ------  ---------------------------------------------------------------------------------------------
+  1. Register  PASS    https://monadvision.com/tx/0xa791425b6a048864fe5fd803c70377e24c52c93b953ef3aaa18b2b9f3b321c9b
+  2. Survive   PASS    6 of 6 copies matched
+  3. Strip     PASS    manifest gone, confidence 0.99
+  4. Forge     PASS    PassportAlreadyExists, oldest passport is the first one
+  5. Attacks   PASS    12 of 12 refused
+
+  attack                           result   saved output
+  -------------------------------  -------  ---------------------------------------------------------
+  passkey-replay                   REFUSED  docs/security/attacks/passkey-replay.txt
+  generator-signature-forged       REFUSED  docs/security/attacks/generator-signature-forged.txt
+  unknown-agent                    REFUSED  docs/security/attacks/unknown-agent.txt
+  expired-deadline                 REFUSED  docs/security/attacks/expired-deadline.txt
+  edit-by-non-owner                REFUSED  docs/security/attacks/edit-by-non-owner.txt
+  attest-from-stranger             REFUSED  docs/security/attacks/attest-from-stranger.txt
+  report-from-fake-forwarder       REFUSED  docs/security/attacks/report-from-fake-forwarder.txt
+  receiver-replay-and-wrong-chain  REFUSED  docs/security/attacks/receiver-replay-and-wrong-chain.txt
+  privy-policy-refusal             REFUSED  docs/security/attacks/privy-policy-refusal.txt
+  revoked-session-signer           REFUSED  docs/security/attacks/revoked-session-signer.txt
+  dispute-money-rules              REFUSED  docs/security/attacks/dispute-money-rules.txt
+  verifier-api-limits              REFUSED  docs/security/attacks/verifier-api-limits.txt
+
+PASS: the Moolam prove-it run, end to end, against Monad mainnet.
+finished 2026-09-08T14:10:42.572Z, 128 seconds

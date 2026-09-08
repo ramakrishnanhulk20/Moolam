@@ -550,7 +550,7 @@ export async function revokedSessionSigner(a: AttackContext): Promise<AttackResu
       `  ${attempt.text}`,
       "",
       "The same key wrote a real edit while the permission stood, in step 6 of",
-      "kitchen/reports/WO-4-output.txt. The creator keeps the wallet either way: what is granted",
+      "proofs/privy.txt. The creator keeps the wallet either way: what is granted",
       "and taken back is only the app's ability to sign on it.",
     ],
   );

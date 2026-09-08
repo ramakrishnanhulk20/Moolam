@@ -4,7 +4,7 @@
 // calls viem makes, so the encoding and decoding are real and the network is not.
 // Does NOT cover the deployed registry's own rules. That it refuses the agent's
 // owner, and that it needs a non-empty client list, was proven with live eth_call
-// simulations recorded in kitchen/reports/WO-6a-reputation.txt, not here.
+// simulations recorded in proofs/reputation.txt, not here.
 
 import { describe, expect, it } from "vitest";
 import {

@@ -23,7 +23,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(HERE, "..");
 const REPO_ROOT = join(PACKAGE_ROOT, "..", "..");
 const STATE_FILE = join(PACKAGE_ROOT, ".moolam", "seed-state.json");
-const REPORT_FILE = join(REPO_ROOT, "kitchen", "reports", "WO-5b-seed.txt");
+const REPORT_FILE = join(REPO_ROOT, "proofs", "seed.txt");
 
 const EXPLORER_TX = "https://monadvision.com/tx/";
 

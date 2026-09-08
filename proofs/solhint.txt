@@ -1,0 +1,17 @@
+solhint 6.2.4 via: npx --yes solhint@latest "src/**/*.sol"
+Re-run on 2026-09-06 after the WO-1b changes to the registry and the receiver. Result: no errors,
+no warnings. The empty section below is the whole output.
+
+Config notes (.solhint.json):
+- src/vendor/** is excluded. The Chainlink ReceiverTemplate is vendored verbatim with its own
+  license header and floating ^0.8.0 pragma, so its style is theirs to set, not ours.
+- use-natspec author tag off. Files carry no author name by house rule.
+- import-path-check off. It resolves against node_modules and does not read Foundry remappings,
+  so it flags every OpenZeppelin import even though forge build resolves them.
+- avoid-low-level-calls and not-rely-on-time off. Native token payouts need call, and the
+  signature deadline and the 24 hour timelock are timestamp comparisons on purpose.
+- gas-* opinions off. Event indexing and struct field order are fixed by the published
+  interface the frontend, the indexer and the workflow are written against.
+
+--- output ---
+

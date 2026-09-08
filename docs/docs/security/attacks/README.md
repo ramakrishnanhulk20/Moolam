@@ -34,7 +34,7 @@ npm run prove
 That registers a fresh image on Monad mainnet, checks that six mangled copies and a metadata
 stripped copy still resolve to it, answers a forgery, then runs every attack above and rewrites
 these files. It spends about 0.4 MON. The full transcript lands in
-`kitchen/reports/WO-8-prove.txt`.
+`proofs/prove-it.txt`.
 
 ## What these outputs do not cover
 

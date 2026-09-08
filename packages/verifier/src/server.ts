@@ -1,14 +1,17 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
 import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import type { PrivyKeys } from "./auth/privy.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
 import { HammingIndex } from "./index.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { healthRoutes } from "./routes/health.js";
+import { prepareRoutes } from "./routes/prepare.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
 import { paymentServerFromEnv } from "./x402/plugin.js";
@@ -35,6 +38,7 @@ export interface Verifier {
   version: string;
   /** Matches an image, waiting for a free slot so heavy uploads cannot pile up. */
   runMatch: (bytes: Buffer) => Promise<MatchResult>;
+  runPrepare: <T>(task: () => Promise<T>) => Promise<T>;
 }
 
 /**
@@ -98,6 +102,11 @@ export function sourceFromEnv(): PassportSource {
  * The passport id is the sha256 of the registered bytes, which is what makes
  * the exact lookup a plain map hit.
  *
+ * The prepare route is mounted only when this host has both a Pinata token to
+ * pin with and a Privy app id to check creators against, or when a caller hands
+ * in its own key set. A host without them still verifies images; it just cannot
+ * be the studio's backend, and it says so once at boot instead of failing.
+ *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
  * the same either way, so switching payment on adds a route and changes nothing
@@ -106,7 +115,12 @@ export function sourceFromEnv(): PassportSource {
  * Throws when the source cannot be read or holds malformed records.
  */
 export async function buildServer(
-  options: { source?: PassportSource; logger?: boolean; payments?: x402HTTPResourceServer } = {},
+  options: {
+    source?: PassportSource;
+    logger?: boolean;
+    payments?: x402HTTPResourceServer;
+    prepare?: { keys?: PrivyKeys };
+  } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? true,
@@ -129,6 +143,16 @@ export async function buildServer(
     lookupExact,
     version,
     runMatch: (bytes: Buffer) => gate(() => matchImage(bytes, index, lookupExact)),
+    runPrepare: <T>(task: () => Promise<T>) => gate(task),
+  });
+
+  // The studio uploads straight from the browser, so the app's own origin has to
+  // be allowed by name. An origin that is not on the list gets no CORS header
+  // back, which the browser turns into a refusal on its side.
+  await app.register(cors, {
+    origin: env.CORS_ORIGINS.length === 0 ? false : env.CORS_ORIGINS,
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Authorization", "Content-Type"],
   });
 
   await app.register(multipart, {
@@ -147,6 +171,15 @@ export async function buildServer(
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
 
+  const canPrepare = env.PINATA_JWT !== undefined && env.PRIVY_APP_ID !== undefined;
+  if (options.prepare !== undefined || canPrepare) {
+    await app.register(prepareRoutes, options.prepare ?? {});
+  } else {
+    app.log.info(
+      "prepare route off: it needs PINATA_JWT to pin and PRIVY_APP_ID to check creators, and this host has neither or only one",
+    );
+  }
+
   const payments = options.payments ?? (env.X402_ENABLED ? paymentServerFromEnv() : undefined);
   if (payments !== undefined) {
     await app.register(verifyPaidRoutes, { payments });
@@ -163,7 +196,10 @@ export async function buildServer(
     return reply.code(status).send({ error: status >= 500 ? "verifier failed to handle the request" : error.message });
   });
 
-  app.log.info({ records: records.length, source: env.PASSPORT_SOURCE }, "passport index loaded");
+  app.log.info(
+    { records: records.length, source: env.PASSPORT_SOURCE, corsOrigins: env.CORS_ORIGINS.length },
+    "passport index loaded",
+  );
   return app;
 }
 

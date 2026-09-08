@@ -52,10 +52,10 @@ gas as Ethereum rather than as the chain we ship on.
 forge build                 compile, zero warnings
 npm test                    119 tests: unit, fuzz, invariant and mainnet fork
 npm run test:fork           the 5 fork tests only, against real Monad mainnet state
-npm run gas                 the gas table saved in kitchen/reports/WO-1a-gas.txt
+npm run gas                 the gas table saved in proofs/gas.txt
 npm run abi                 regenerate the three ABIs in abi/
-slither .                   static analysis, report in kitchen/reports/WO-1a-slither.txt
-npm run lint                style, report in kitchen/reports/WO-1a-solhint.txt
+slither .                   static analysis, report in proofs/slither.txt
+npm run lint                style, report in proofs/solhint.txt
 ```
 
 ## Going live on Monad mainnet
@@ -140,7 +140,7 @@ forge verify-contract --chain-id 143 --etherscan-api-key $MONADSCAN_API_KEY \
 
 ### What a full mainnet run costs
 
-Measured from the dry run in `kitchen/reports/WO-10a-dryrun.txt`, priced at Monad's 100 gwei
+Measured from the dry run in `proofs/deploy-dryrun.txt`, priced at Monad's 100 gwei
 minimum base fee. These are gas limits, which is what Monad actually charges.
 
 | Step | Gas declared | Cost |

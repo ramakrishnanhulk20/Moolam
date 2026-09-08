@@ -1,0 +1,158 @@
+Moolam seed run 1, live on Monad mainnet (chain 143).
+Started 2026-09-08T08:12:11.178Z
+Registry 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+Wallet   0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c, 74.033 MON
+Agent    10248 on the ERC-8004 registry at 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+Passkey  already bound to this wallet, no bind transaction needed.
+
+Source picture: 1024 by 768, 233,851 bytes, drawn from seed 1.
+
+Files on IPFS
+  image      ipfs://bafybeienw2edaerlbqet4kohkrktp2oycpyuyyfsg73slipga5tbhl5aza
+             https://gateway.pinata.cloud/ipfs/bafybeienw2edaerlbqet4kohkrktp2oycpyuyyfsg73slipga5tbhl5aza
+  thumbnail  ipfs://bafkreiadrkmfnk7qhu4slesz63jtm5a3k34rgxwh5jkjtblsllwukl3enq
+             https://gateway.pinata.cloud/ipfs/bafkreiadrkmfnk7qhu4slesz63jtm5a3k34rgxwh5jkjtblsllwukl3enq
+  manifest   ipfs://bafkreidltojnjucx7zanac2sve3cmtivl3rfnjf2a5rfuavepdtycveqeu
+             https://gateway.pinata.cloud/ipfs/bafkreidltojnjucx7zanac2sve3cmtivl3rfnjf2a5rfuavepdtycveqeu
+  metadata   ipfs://bafkreihcqcy7esv4kx4t7yei2sdkxu5o4tqctc6sgztti7i5oinf3wyxai
+             https://gateway.pinata.cloud/ipfs/bafkreihcqcy7esv4kx4t7yei2sdkxu5o4tqctc6sgztti7i5oinf3wyxai
+
+On chain
+  passport id  0x0da1a9806d60cedcd3773474cba419c8fa03721a67d348a38c4d32dbaa35530a
+  transaction  0x11a1978654ea8498b0378de17c3ebdbff1a1fb68452b95774c73736928c5792a
+               https://monadvision.com/tx/0x11a1978654ea8498b0378de17c3ebdbff1a1fb68452b95774c73736928c5792a
+  block        102,988,624
+  owner        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  agent        10248, kind Generated
+  phash        0xb760a41be03ec03c
+  manifest     0xc7c68f8a1af6317e8a75eea68468ea74c4dd1cc788dc5227d5905683d392b83e
+  metadataURI  ipfs://bafkreihcqcy7esv4kx4t7yei2sdkxu5o4tqctc6sgztti7i5oinf3wyxai
+  gas          376,178 used of a 376,178 limit, and Monad bills the limit: 0.0384 MON
+
+Thumbnail, fetched back through the public gateway the verifier uses
+  GET https://gateway.pinata.cloud/ipfs/bafkreiadrkmfnk7qhu4slesz63jtm5a3k34rgxwh5jkjtblsllwukl3enq
+  status 200, content-type image/jpeg, 23,769 bytes
+  size cap for the Chainlink fetch is 60,000 bytes: under
+  registered phash 0xb760a41be03ec03c
+  refetched  phash 0xb760a41be03ec03e
+  distance 1 of 64 bits, threshold 10: match
+
+
+Moolam seed run 2, live on Monad mainnet (chain 143).
+Started 2026-09-08T08:13:30.095Z
+Registry 0xeBeeD7A422531789aa009a9c45CC10C84dF12119
+Wallet   0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c, 73.995 MON
+Agent    10248 on the ERC-8004 registry at 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+Passkey  already bound to this wallet, no bind transaction needed.
+
+Source picture: 1024 by 768, 229,423 bytes, drawn from seed 2.
+
+Files on IPFS
+  image      ipfs://bafybeiatgrv2emvertq7pso62xncavl2na73rtvtwxhmxitz4jy5khd56e
+             https://gateway.pinata.cloud/ipfs/bafybeiatgrv2emvertq7pso62xncavl2na73rtvtwxhmxitz4jy5khd56e
+  thumbnail  ipfs://bafkreia4wakablktxbw3dy3eonmjh5kfrkhilp44i3nn3wrdpr7kwfxira
+             https://gateway.pinata.cloud/ipfs/bafkreia4wakablktxbw3dy3eonmjh5kfrkhilp44i3nn3wrdpr7kwfxira
+  manifest   ipfs://bafkreifh25jsp4b47aynekupvwbpw5fmz5tb6xmliiotq5h7f74qteufxq
+             https://gateway.pinata.cloud/ipfs/bafkreifh25jsp4b47aynekupvwbpw5fmz5tb6xmliiotq5h7f74qteufxq
+  metadata   ipfs://bafkreifsrqzdwddo2b4f2337lgybebksbwcm5ovpeagc34wom2vmfqvtdu
+             https://gateway.pinata.cloud/ipfs/bafkreifsrqzdwddo2b4f2337lgybebksbwcm5ovpeagc34wom2vmfqvtdu
+
+On chain
+  passport id  0x59bdee9f4478fcb4bab722ca2224bac05350ed3d1d0397a81c998a2b0ad24440
+  transaction  0x707ee02c69f9068d65ac8954c1077077a7a985508bd0eab78b11dc13261517c6
+               https://monadvision.com/tx/0x707ee02c69f9068d65ac8954c1077077a7a985508bd0eab78b11dc13261517c6
+  block        102,988,892
+  owner        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  agent        10248, kind Generated
+  phash        0x74e14d9f99d9414b
+  manifest     0x8bcc5e89aa0c77d7f481baa52507613a6a86cfa1b2d5ee27b76bfdb994920050
+  metadataURI  ipfs://bafkreifsrqzdwddo2b4f2337lgybebksbwcm5ovpeagc34wom2vmfqvtdu
+  gas          376,166 used of a 376,166 limit, and Monad bills the limit: 0.0384 MON
+
+Thumbnail, fetched back through the public gateway the verifier uses
+  GET https://gateway.pinata.cloud/ipfs/bafkreia4wakablktxbw3dy3eonmjh5kfrkhilp44i3nn3wrdpr7kwfxira
+  status 200, content-type image/jpeg, 24,583 bytes
+  size cap for the Chainlink fetch is 60,000 bytes: under
+  registered phash 0x74e14d9f99d9414b
+  refetched  phash 0x74e14d9f99d9414b
+  distance 0 of 64 bits, threshold 10: match
+
+
+Moolam seed run 3, live on Monad mainnet (chain 143).
+Started 2026-09-08T13:57:38.452Z
+Registry 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+Wallet   0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c, 35.692 MON
+Agent    10248 on the ERC-8004 registry at 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+Passkey  already bound to this wallet, no bind transaction needed.
+
+Source picture: 1024 by 768, 241,666 bytes, drawn from seed 3.
+
+Files on IPFS
+  image      ipfs://bafybeibhgjmm3mdkj34m4ds73fljty2m2ujh2ur2yhbjnnwbe4cmdnem5m
+             https://gateway.pinata.cloud/ipfs/bafybeibhgjmm3mdkj34m4ds73fljty2m2ujh2ur2yhbjnnwbe4cmdnem5m
+  thumbnail  ipfs://bafkreigrt5su5bsmmt2eibqpyxglivlugj5dde2ytel3vfu53atuwtkuby
+             https://gateway.pinata.cloud/ipfs/bafkreigrt5su5bsmmt2eibqpyxglivlugj5dde2ytel3vfu53atuwtkuby
+  manifest   ipfs://bafkreicafrke3ayksgy6guptjy3rbexpzunbkqxlgyehcpqppyiojhoxsy
+             https://gateway.pinata.cloud/ipfs/bafkreicafrke3ayksgy6guptjy3rbexpzunbkqxlgyehcpqppyiojhoxsy
+  metadata   ipfs://bafkreieol27csazguetnmsvk6jlnvtoo5fwp223aprzja6rqls25zxqj7a
+             https://gateway.pinata.cloud/ipfs/bafkreieol27csazguetnmsvk6jlnvtoo5fwp223aprzja6rqls25zxqj7a
+
+On chain
+  passport id  0x1d2c6a4f4bd0455cf8d1bbd801c579e03dc55f87d17252413dec9f6c0cd92625
+  transaction  0x50664d74897a3a6434671ed8ea09c8eaa02c826a40984811969ef4755955e96c
+               https://monadvision.com/tx/0x50664d74897a3a6434671ed8ea09c8eaa02c826a40984811969ef4755955e96c
+  block        103,057,206
+  owner        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  agent        10248, kind Generated
+  phash        0x613622c992676ce1
+  manifest     0x436b4a876ac74503f45b0b23c0a5cf2bd2ba78a6ae5a6d19e8c25b088c7a1627
+  metadataURI  ipfs://bafkreieol27csazguetnmsvk6jlnvtoo5fwp223aprzja6rqls25zxqj7a
+  gas          376,152 used of a 376,152 limit, and Monad bills the limit: 0.0384 MON
+
+Thumbnail, fetched back through the public gateway the verifier uses
+  GET https://gateway.pinata.cloud/ipfs/bafkreigrt5su5bsmmt2eibqpyxglivlugj5dde2ytel3vfu53atuwtkuby
+  status 200, content-type image/jpeg, 26,796 bytes
+  size cap for the Chainlink fetch is 60,000 bytes: under
+  registered phash 0x613622c992676ce1
+  refetched  phash 0x613622c992676ce1
+  distance 0 of 64 bits, threshold 10: match
+
+
+Moolam seed run 4, live on Monad mainnet (chain 143).
+Started 2026-09-08T14:00:57.757Z
+Registry 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+Wallet   0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c, 35.653 MON
+Agent    10248 on the ERC-8004 registry at 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+Passkey  already bound to this wallet, no bind transaction needed.
+
+Source picture: 1024 by 768, 245,354 bytes, drawn from seed 4.
+
+Files on IPFS
+  image      ipfs://bafybeibrafcdi3cxjs5tu75hrbcvlwholztndtldf3bs4vq5blkiploxoi
+             https://gateway.pinata.cloud/ipfs/bafybeibrafcdi3cxjs5tu75hrbcvlwholztndtldf3bs4vq5blkiploxoi
+  thumbnail  ipfs://bafkreiep4xzj3qx5g4yzwsgfy2crukixazqjg2agswmp6uytemhzgixz2u
+             https://gateway.pinata.cloud/ipfs/bafkreiep4xzj3qx5g4yzwsgfy2crukixazqjg2agswmp6uytemhzgixz2u
+  manifest   ipfs://bafkreifq6tpauv5i3v3vcrqncpjyu3tu27ygfy5uc3t3w6qor34rpxnxxm
+             https://gateway.pinata.cloud/ipfs/bafkreifq6tpauv5i3v3vcrqncpjyu3tu27ygfy5uc3t3w6qor34rpxnxxm
+  metadata   ipfs://bafkreiepr5tuj23bvva5rlu2f73b7nwrfbzewoh72udubucwhbmlixfh2m
+             https://gateway.pinata.cloud/ipfs/bafkreiepr5tuj23bvva5rlu2f73b7nwrfbzewoh72udubucwhbmlixfh2m
+
+On chain
+  passport id  0x5f66c389c9561e05141dc6276b80d82dd1eb356984535b1bfd0a83c6ae1e54ed
+  transaction  0x975d27b0d103d6d1df78c5ecbea14fd77b396b60146cf0f892c8b6ee8ac203af
+               https://monadvision.com/tx/0x975d27b0d103d6d1df78c5ecbea14fd77b396b60146cf0f892c8b6ee8ac203af
+  block        103,057,874
+  owner        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  agent        10248, kind Generated
+  phash        0x233ccc7872442123
+  manifest     0x697a77e428728d052da8e953577f90242efcc68e3a7dc1b6ceb5831745cb462a
+  metadataURI  ipfs://bafkreiepr5tuj23bvva5rlu2f73b7nwrfbzewoh72udubucwhbmlixfh2m
+  gas          376,200 used of a 376,200 limit, and Monad bills the limit: 0.0384 MON
+
+Thumbnail, fetched back through the public gateway the verifier uses
+  GET https://gateway.pinata.cloud/ipfs/bafkreiep4xzj3qx5g4yzwsgfy2crukixazqjg2agswmp6uytemhzgixz2u
+  status 200, content-type image/jpeg, 28,426 bytes
+  size cap for the Chainlink fetch is 60,000 bytes: under
+  registered phash 0x233ccc7872442123
+  refetched  phash 0x233ccc7872442123
+  distance 0 of 64 bits, threshold 10: match

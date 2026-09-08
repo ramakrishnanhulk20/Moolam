@@ -5,7 +5,7 @@ import { runAgent } from "../src/agent/run.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..", "..", "..");
-const TRANSCRIPT_FILE = join(REPO_ROOT, "kitchen", "reports", "WO-7-transcript.txt");
+const TRANSCRIPT_FILE = join(REPO_ROOT, "proofs", "agent-transcript.txt");
 
 const USAGE = [
   "Usage:",

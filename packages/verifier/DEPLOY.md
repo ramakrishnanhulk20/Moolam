@@ -53,8 +53,14 @@ the boot loudly and names the variable.
 | `X402_FACILITATOR_URL` | no | Defaults to the facilitator Monad runs, `https://x402-facilitator.molandak.org` |
 | `X402_PAY_TO_ADDRESS` | only when x402 is on | The address that collects the per-call fee |
 | `X402_PRICE` | no | Defaults to `$0.05` |
+| `PINATA_JWT` | yes for the studio | An API key made at app.pinata.cloud, the JWT it shows once. This is what `/prepare` pins with, so treat it as a spending secret |
+| `PINATA_GATEWAY_URL` | no | This Pinata account's dedicated gateway, ending in `/ipfs/`. Defaults to the public gateway, which rate-limits a busy address |
+| `PRIVY_APP_ID` | yes for the studio | The app id from dashboard.privy.io, the same one the web app signs users in with. `/prepare` accepts that app's access tokens and no other's |
+| `CORS_ORIGINS` | yes for the studio | Comma separated exact origins of the web app, such as `https://moolam.app,http://localhost:3000`. No wildcard, no trailing slash |
 
-`src/env.ts` reads no Pinata variables, so none are needed here.
+Without `PINATA_JWT` and `PRIVY_APP_ID` the container still boots and still
+verifies images. It logs one line saying the prepare route is off and answers 404
+on that path.
 
 ## Railway
 
@@ -99,6 +105,13 @@ Sourced from the Fly Dockerfile guide. Same rule about what is not on the page.
 
 ## The last step
 
-Whichever host wins, set `VERIFIER_BASE_URL` on Vercel to the deployed service
-URL so the web app's `/api/verify` route calls the hosted verifier instead of a
-laptop.
+Whichever host wins, the web app needs the deployed service URL twice on Vercel:
+as `VERIFIER_BASE_URL`, which the app's own `/api/verify` route calls from the
+server, and as `NEXT_PUBLIC_VERIFIER_URL`, which the browser calls directly for
+`/prepare`. A Vercel function cannot take a 20 MB upload, so the creator's image
+goes straight from their browser to this service.
+
+That direct call is a cross-origin request, so the host must also carry
+`CORS_ORIGINS` with the web app's exact origin in it, production and preview
+domains included. Miss it and the studio fails in the browser with a CORS error
+while curl against the same URL works perfectly.

@@ -1,0 +1,39 @@
+
+> moolam@0.1.0 proof:anvil
+> npm run proof --workspace packages/agents
+
+
+> @moolam/agents@0.1.0 proof
+> tsx scripts/anvil-proof.ts
+
+Moolam registry client, proved against a local fork of Monad mainnet.
+Nothing here spends MON. The ERC-8004 registry is the real one, forked.
+
+Forked Monad mainnet at block 102,746,454.
+
+#  Step                                                   Gas used  Transaction
+-  ----------------------------------------------------  ---------  --------------------
+1  Deploy policy, registry, receiver and wire them       6,901,250  5 transactions, listed below
+2  Bind the creator's passkey                              117,538  0x12e5286fbb35e0cb79e12530e05dae20fb32747bca646e37f2d75d52158bcba7
+3  Register the Captured photo                             308,911  0x53334589c87a0b930e6893981d780a675a80f994807cd635b0ded99867e501c2
+4  Register agent 10248 on the real ERC-8004 registry      450,903  0x137c3ee38a439c493ee933e43877db84aa797123eb7239bde9a019986ca4b847
+5  Register the Generated image, co-signed by the agent    371,986  0xae0796450f0fdbb740dd4c115ee8233965fa80a4cc4df0e1a49cf484613ff8d2
+6  Append the edit to its parent                           353,983  0xb5f4083d946b285b71a04af449ac45cf3e04fbda434908706a3a0f90bb754884
+
+Everything above, once: 8,504,571 gas.
+
+What the chain says afterwards:
+  Captured  0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c
+            owner 0x70997970C51812dc3A010C7d01b50e0d17dc79C8, agent 0, parent none
+  Generated 0x7b4732f365aa235556b4b11b8916fd544f10acc034ae7e0b9e39068becae1a50
+            owner 0x70997970C51812dc3A010C7d01b50e0d17dc79C8, agent 10248, parent none
+  Edited    0x9f0f2bde58513560923b5883ded38af5f13a15879f144fb17e44adde17252c35
+            owner 0x70997970C51812dc3A010C7d01b50e0d17dc79C8, agent 0, parent 0x7b4732f365aa235556b4b11b8916fd544f10acc034ae7e0b9e39068becae1a50
+
+Step 1 in full, and the contracts it left on the fork:
+  policy             0x8b342f4ddcc71af65e4d2da9cd00cc0e945cfd12 0xda077db0ac0a919304788a03c8b71c13268b8249b976584f7171d8957ff9a953
+  registry           0xe2307e3710d108cec7a4722a020a050681c835b3 0xb237dcdac52fc9010b6c73500540782a22b98e6561fe3e7c9aad9103623ab409
+  receiver           0xd28f3246f047efd4059b24fa1fa587ed9fa3e77f 0x2f63f03c943ed761540ab98be6025301ee31c8bb4f504060c2fd7b9b7e0c64ca
+  list the receiver                                             0x1f836e9937730be59546a901ab283818bf0337186439ed223d11cbe6f40d4e84
+  close the bootstrap                                            0xc05960db2ed60073e080d6ed2b40b72a6ab00bad7e26d60461e632b51d337879
+  ERC-8004           0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 (real, forked from mainnet)

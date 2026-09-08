@@ -142,7 +142,7 @@ compiled, so run `forge build` in `packages/contracts` if `out/` is missing.
 The last run cost 0.2745 MON from the creator's wallet and 0.0919 MON from the outsider's, so about
 0.37 MON in all, at roughly 100 gwei. Ten of those transactions are meant to revert, and Monad
 charges the gas limit that was declared whether a transaction succeeds or not. The full transcript
-is saved to `kitchen/reports/WO-8-prove.txt`.
+is saved to `proofs/prove-it.txt`.
 
 ## Seeding a passport
 
@@ -164,7 +164,7 @@ and then does the whole flow end to end on Monad mainnet:
 6. Fetches the thumbnail back through the public gateway and fingerprints it, to prove the file the
    Chainlink verifier will download really matches the fingerprint on chain.
 
-The output of every run is appended to `kitchen/reports/WO-5b-seed.txt`. The run counter lives in
+The output of every run is appended to `proofs/seed.txt`. The run counter lives in
 `packages/agents/.moolam/seed-state.json`, which is gitignored, so deleting it starts the numbering
 over and draws the same pictures again.
 
@@ -181,7 +181,7 @@ and `PINATA_JWT`. The two mainnet runs recorded in the report cost 376,178 and 3
 
 `npm run prove:privy` from the repo root runs the four Privy features that Moolam is built on,
 against Monad mainnet, and prints a transaction hash or the exact refusal for every one. The output
-is saved to `kitchen/reports/WO-4-output.txt`.
+is saved to `proofs/privy.txt`.
 
 **Server wallets with a policy.** The generator agent's key lives in Privy's secure enclave, not on
 our server. Its policy allows exactly two things: send a `register` call to the Moolam registry on
@@ -238,7 +238,7 @@ wallet below that cannot pay for anything.
 watches. A language model with four tools takes the prompt, and in one run it draws the picture,
 signs it with a C2PA manifest, pins four files to IPFS, and registers the passport on Monad
 mainnet. Every tool call and every tool result is printed as it happens, so nothing about the run
-has to be taken on trust, and the whole transcript is appended to `kitchen/reports/WO-7-transcript.txt`.
+has to be taken on trust, and the whole transcript is appended to `proofs/agent-transcript.txt`.
 
 The four tools are in `src/agent/tools.ts`:
 
@@ -296,7 +296,7 @@ registration time.
 
 ## What each action costs
 
-Measured by `npm run proof:anvil`, saved in `kitchen/reports/WO-4a-anvil-proof.txt`. Anvil answers
+Measured by `npm run proof:anvil`, saved in `proofs/anvil-proof.txt`. Anvil answers
 the P-256 precompile at `0x0100` the same way Monad does, checked directly against OpenZeppelin's
 own probe vector, so these figures are close to the real thing rather than the much larger cost of
 the pure Solidity fallback. Monad bills the gas limit you declare, not the gas you use.

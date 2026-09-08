@@ -25,7 +25,7 @@ which is committed and points TypeScript at it. Run codegen after any change to
 
 Nine handler tests pass against the generated types with the live mainnet
 addresses in `config.yaml`. The full output, with the codegen version and every
-test name, is in `kitchen/reports/WO-3c-tests.txt`.
+test name, is in `proofs/indexer-tests.txt`.
 
 `envio dev`, which runs the whole indexer against Monad locally, needs Docker and
 has not been run here. The Envio Cloud deployment below is the way this index

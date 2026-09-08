@@ -16,5 +16,5 @@ appendEdit attempted with the app's session key:
   HTTP 401 no code: No valid authorization signatures were provided. Your payload may be malformed or your signing keys may be incorrect or expired. Docs: https://docs.privy.io/api-reference/authorization-signatures
 
 The same key wrote a real edit while the permission stood, in step 6 of
-kitchen/reports/WO-4-output.txt. The creator keeps the wallet either way: what is granted
+proofs/privy.txt. The creator keeps the wallet either way: what is granted
 and taken back is only the app's ability to sign on it.

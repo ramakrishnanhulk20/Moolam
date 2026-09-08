@@ -59,6 +59,34 @@ curl -s -F "file=@packages/verifier/test-assets/original.jpg" http://localhost:4
 `GET /health` answers `{ ok, records, version }`, where `records` is how many
 passports the index is holding.
 
+`POST /prepare` is the studio's backend. A signed-in creator's browser sends the
+image straight here, with their Privy access token in an `Authorization: Bearer`
+header and two text fields, `title` and `kind` (`human` for now). The service
+turns the picture the right way up, embeds the Moolam C2PA manifest, fingerprints
+the signed bytes, builds the thumbnail, pins the image, the thumbnail, the
+manifest and the metadata to IPFS, and answers with the passport fields plus the
+four content ids. The browser adds its own wallet address and deadline, reads
+`hashPassport` from the registry, signs that with the creator's passkey and sends
+the transaction itself, so this service never holds a key that can write to the
+chain, and it never sends the image bytes back.
+
+```sh
+curl -s -X POST http://localhost:4000/prepare \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human"
+```
+
+It answers 401 for a missing, expired or foreign token, 400 for a bad title or
+kind, 413 over the 20 MB or 40 megapixel limits, 415 for a file that is not an
+image, 429 past 20 prepares an hour for one creator, and 502 with `pin-failed`
+when Pinata refuses. The route is mounted only when the host has both
+`PINATA_JWT` and `PRIVY_APP_ID`; without them the service still verifies images
+and says once at boot that the studio side is off.
+
+Browsers are only allowed to call any of this from an origin named in
+`CORS_ORIGINS`. Anything else gets no allow header back, which the browser turns
+into a refusal.
+
 `POST /verify/paid` is the same answer behind an x402 payment: 5 cents in USDC
 on Monad mainnet, settled by Monad's facilitator. It only exists when
 `X402_ENABLED=true`, and otherwise the path returns 404. Without a payment it
@@ -95,7 +123,7 @@ anything past either threshold is not a match at all and scores 0.
 ## What survives and what does not
 
 Measured over 24 images and 15 transforms, 360 copies in all. Full table in
-`kitchen/reports/WO-2-robustness.txt`, regenerate it with `npm run robustness`.
+`proofs/robustness.txt`, regenerate it with `npm run robustness`.
 
 | holds up | breaks |
 | --- | --- |
@@ -136,7 +164,7 @@ npm run reputation:post -- --passport 0x59bd...4440 --matched --distance 1
 
 The script reads the passport from the Moolam registry to find the generator
 agent and the metadata URI, prints the registry's summary before and after, and
-saves the whole run to `kitchen/reports/WO-6a-reputation.txt`. The score is
+saves the whole run to `proofs/reputation.txt`. The score is
 `round(100 * (1 - distance / 11))`, so an exact fingerprint scores 100, 1 bit
 scores 91, and 10 bits, the widest distance that still counts as a match, scores
 9. A mismatch is 0. The two tags are `moolam` and `verification`, `feedbackURI`
@@ -176,6 +204,10 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `X402_PAY_TO_ADDRESS` | who the USDC goes to, required when `X402_ENABLED` is true |
 | `X402_PRICE` | price per paid verification, default `$0.05` |
 | `X402_FACILITATOR_URL` | default `https://x402-facilitator.molandak.org`, Monad's facilitator |
+| `PINATA_JWT` | the Pinata API token `/prepare` pins with, from app.pinata.cloud |
+| `PINATA_GATEWAY_URL` | this account's dedicated IPFS gateway, default the public one |
+| `PRIVY_APP_ID` | the Privy app whose access tokens `/prepare` accepts |
+| `CORS_ORIGINS` | comma separated exact origins allowed to call this service from a browser |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.

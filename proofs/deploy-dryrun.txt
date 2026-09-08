@@ -1,0 +1,106 @@
+WO-10a deploy dry run, packages/contracts, 2026-09-08. No broadcast: nothing was sent.
+Command: forge script script/Deploy.s.sol --rpc-url monad_mainnet -n monad
+The RPC URL is redacted below. The receiver is pinned to the workflow in the same batch as the deploy.
+
+No files changed, compilation skipped
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - D:/Projects/Monad/packages/contracts\foundry-pp/DeployHelper78.sol
+ - D:/Projects/Monad/packages/contracts\foundry-pp/DeployHelper75.sol
+ - D:/Projects/Monad/packages/contracts\foundry-pp/DeployHelper77.sol
+Script ran successfully.
+
+== Return ==
+policy: contract VerifierPolicy 0x8476F112f59A110a98DB51BFcf0b7Dc5fe9F2337
+registry: contract MoolamRegistry 0x6960790F8f3Cd103584d1715de9950BB482DF798
+moolamReceiver: contract MoolamReceiver 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
+
+== Logs ==
+  chain id         143
+  deployer         0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  block            103015965
+  VerifierPolicy   0x8476F112f59A110a98DB51BFcf0b7Dc5fe9F2337
+  MoolamRegistry   0x6960790F8f3Cd103584d1715de9950BB482DF798
+  MoolamReceiver   0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
+  agent identity   0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+  forwarder        0x76c9cf548b4179F8901cda1f8623568b58215E62
+  workflow name    moolam-verifier
+  workflow author  0xC79620AF233a4434b03f6B57239F8A9E71B3C178
+  dispute bond     1000000000000000000
+  Dry run: no transaction was sent and no deployment file was written.
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 143
+
+Estimated max fee per gas: 203 gwei
+Estimated base fee per gas: 100 gwei
+Estimated max priority fee per gas: 3 gwei
+
+Estimated total gas used for script: 9117134
+
+Estimated amount required: 1.850778202 MON
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: D:/Projects/Monad/packages/contracts/broadcast\Deploy.s.sol\143\dry-run\run-latest.json
+
+Sensitive values saved to: D:/Projects/Monad/packages/contracts/cache\Deploy.s.sol\143\dry-run\run-latest.json
+
+
+==================================================================
+Second run, same script, with the --gas-estimate-multiplier 110 that npm run deploy:mainnet uses.
+This is the run the README cost table is measured from.
+Command: forge script script/Deploy.s.sol --rpc-url monad_mainnet -n monad --gas-estimate-multiplier 110
+
+No files changed, compilation skipped
+Warning: Detected artifacts built from source files that no longer exist. Run `forge clean` to make sure builds are in sync with project files.
+ - D:/Projects/Monad/packages/contracts\foundry-pp/DeployHelper78.sol
+ - D:/Projects/Monad/packages/contracts\foundry-pp/DeployHelper75.sol
+ - D:/Projects/Monad/packages/contracts\foundry-pp/DeployHelper77.sol
+Script ran successfully.
+
+== Return ==
+policy: contract VerifierPolicy 0x8476F112f59A110a98DB51BFcf0b7Dc5fe9F2337
+registry: contract MoolamRegistry 0x6960790F8f3Cd103584d1715de9950BB482DF798
+moolamReceiver: contract MoolamReceiver 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
+
+== Logs ==
+  chain id         143
+  deployer         0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  block            103016205
+  VerifierPolicy   0x8476F112f59A110a98DB51BFcf0b7Dc5fe9F2337
+  MoolamRegistry   0x6960790F8f3Cd103584d1715de9950BB482DF798
+  MoolamReceiver   0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
+  agent identity   0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
+  forwarder        0x76c9cf548b4179F8901cda1f8623568b58215E62
+  workflow name    moolam-verifier
+  workflow author  0xC79620AF233a4434b03f6B57239F8A9E71B3C178
+  dispute bond     1000000000000000000
+  Dry run: no transaction was sent and no deployment file was written.
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 143
+
+Estimated max fee per gas: 202.5 gwei
+Estimated base fee per gas: 100 gwei
+Estimated max priority fee per gas: 2.5 gwei
+
+Estimated total gas used for script: 7714498
+
+Estimated amount required: 1.562185845 MON
+
+==========================
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.
+
+Transactions saved to: D:/Projects/Monad/packages/contracts/broadcast\Deploy.s.sol\143\dry-run\run-latest.json
+
+Sensitive values saved to: D:/Projects/Monad/packages/contracts/cache\Deploy.s.sol\143\dry-run\run-latest.json
+

@@ -1,0 +1,42 @@
+
+> moolam@0.1.0 spike:verifier
+> npm run spike --workspace packages/verifier
+
+
+> @moolam/verifier@0.1.0 spike
+> tsx scripts/spike.ts
+
+Installed versions
+  sharp                    0.35.4
+  sharp-phash              2.2.0
+  imghash                  1.1.4
+  @contentauth/c2pa-node   0.9.3
+
+Source image: 1024x768 jpeg, 35316 bytes
+  sha256    0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c
+  phash     336b806a7e894e76
+  blockhash 0x000f003f187f3eff1878047c3c7d3c7b3e7f00ff01ff0007000300071fff3fff
+
+C2PA embed: ok, manifest bytes 51008
+C2PA read back: present=true actions=[c2pa.created]
+  title           moolam-spike.jpg
+  claim generator moolam-verifier-spike/0.1.0
+  manifest hash   0x43e6e3a61c1e49aae9135e12b0a6b354d0c56a27f11ca1cb2489cc5222e24e62
+  ingredients     0
+C2PA read of the unsigned source: present=false
+
+Signing moved the fingerprint by: phash 0 of 64, blockhash 0 of 256
+
+Transforms applied to the signed JPEG, compared against it
+transform         sha256 equal  phash dist  blockhash dist  phash match  blockhash match  c2pa manifest
+-------------------------------------------------------------------------------------------------------
+reencode-q60      no            0 of 64     0 of 256        yes          yes              gone
+resize-50         no            0 of 64     0 of 256        yes          yes              gone
+resize-25         no            0 of 64     0 of 256        yes          yes              gone
+crop-10           no            21 of 64    74 of 256       no           no               gone
+rotate-90         no            31 of 64    144 of 256      no           no               gone
+mirror            no            29 of 64    120 of 256      no           no               gone
+brightness-120    no            3 of 64     10 of 256       yes          yes              gone
+strip-metadata    no            0 of 64     0 of 256        yes          yes              gone
+
+Thresholds in use: phash <= 10 of 64, blockhash <= 40 of 256

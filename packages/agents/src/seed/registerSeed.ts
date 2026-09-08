@@ -13,14 +13,24 @@ import { loadDeployment, MONAD_MAINNET, type Addresses } from "../chain/addresse
 import { Kind, passportDigest, type PassportInput } from "../chain/eip712.js";
 import type { SoftwarePasskey } from "../chain/passkey.js";
 import { RegistryClient } from "../chain/registry.js";
+import {
+  AI_SOURCE_TYPE,
+  CAPTURED_DESCRIPTION,
+  CAPTURE_SOURCE_TYPE,
+  FINGERPRINT_VERSION,
+  GENERATED_DESCRIPTION,
+  fileSlug,
+  manifestDocument,
+  passportMetadata,
+  phashHex,
+  type PassportMetadata,
+} from "@moolam/verifier/src/metadata.js";
 import { pinFile, pinJson } from "../ipfs/pinata.js";
-import { prepareImage, type PreparedImage } from "../media/prepare.js";
+import { prepareImage } from "../media/prepare.js";
+
+export { phashHex };
 
 const CLAIM_GENERATOR = "moolam-seed/0.1.0";
-
-/** IPTC digital source types: what made the picture. C2PA readers key their labels off these. */
-const AI_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia";
-const CAPTURE_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCapture";
 
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
 
@@ -30,23 +40,12 @@ const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
  */
 const DEADLINE_WINDOW = 3600n;
 
-const FINGERPRINT_VERSION = 1;
-
 const registryViewAbi = parseAbi([
   "function getPasskey(address wallet) view returns (bytes32 qx, bytes32 qy)",
   "function passportExists(bytes32 id) view returns (bool)",
 ]);
 
-export interface SeedMetadata {
-  name: string;
-  description: string;
-  image: string;
-  thumbnail: string;
-  manifest: string;
-  generator: { agentId: string; registry: Hex };
-  fingerprint: { phash: string; blockhash: Hex; version: 1 };
-  createdAt: string;
-}
+export type SeedMetadata = PassportMetadata;
 
 export interface SeedContext {
   addresses: Addresses;
@@ -172,22 +171,16 @@ export async function registerSeed(opts: RegisterSeedOptions): Promise<SeedResul
   const thumbnail = await pinFile(prepared.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
   const manifest = await pinJson(manifestDocument(prepared), `${slug}-c2pa.json`);
 
-  const metadata: SeedMetadata = {
-    name: opts.title,
-    description: generated
-      ? "An image made by the Moolam demo generator agent. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record."
-      : "A photograph registered with Moolam. The creator signed this fingerprint with a passkey before the registry would write the record.",
+  const metadata = passportMetadata({
+    title: opts.title,
+    description: generated ? GENERATED_DESCRIPTION : CAPTURED_DESCRIPTION,
     image: image.uri,
     thumbnail: thumbnail.uri,
     manifest: manifest.uri,
-    generator: { agentId: agentId.toString(), registry: ctx.addresses.agentIdentity },
-    fingerprint: {
-      phash: phashHex(prepared.fingerprint.phash),
-      blockhash: prepared.fingerprint.blockhash as Hex,
-      version: FINGERPRINT_VERSION,
-    },
-    createdAt: new Date().toISOString(),
-  };
+    agentId,
+    identityRegistry: ctx.addresses.agentIdentity,
+    fingerprint: prepared.fingerprint,
+  });
   const metadataPin = await pinJson(metadata, `${slug}.json`);
 
   const deadline = (await ctx.publicClient.getBlock()).timestamp + DEADLINE_WINDOW;
@@ -221,41 +214,6 @@ export async function registerSeed(opts: RegisterSeedOptions): Promise<SeedResul
   } catch (error) {
     throw new Error(`The registry refused this passport: ${ctx.client.decodeError(error)}`);
   }
-}
-
-/** The 64 bit perceptual hash as it reads in the metadata and in the logs. */
-export function phashHex(phash: bigint): string {
-  return `0x${phash.toString(16).padStart(16, "0")}`;
-}
-
-/**
- * The readable copy of the C2PA manifest that gets pinned next to the image.
- *
- * The signed image itself carries the real manifest store; this document is the summary plus the
- * sha256 the chain commits to, so anyone can line the two up without a C2PA reader.
- */
-function manifestDocument(prepared: PreparedImage): unknown {
-  const binding = prepared.manifest.softBinding;
-  return {
-    manifestHash: prepared.manifestHash,
-    title: prepared.manifest.title,
-    claimGenerator: prepared.manifest.claimGenerator,
-    actions: prepared.manifest.actions,
-    ingredients: prepared.manifest.ingredients,
-    softBinding:
-      binding === undefined
-        ? undefined
-        : { alg: binding.alg, phash: phashHex(binding.phash), blockhash: binding.blockhash },
-    note: "manifestHash is the sha256 of the C2PA manifest store embedded in the image this document sits next to, and it is the value recorded on chain.",
-  };
-}
-
-function fileSlug(title: string, passportId: Hex): string {
-  const words = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return `${words.length === 0 ? "moolam" : words}-${passportId.slice(2, 10)}`;
 }
 
 function deployerKey(): Hex {
