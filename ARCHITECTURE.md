@@ -120,7 +120,17 @@ flowchart TD
 
 ## 5. The interface the app and the indexer use
 
-Addresses are filled in after the mainnet deploy (see STATE.md and the README).
+Live on Monad mainnet (chain 143), deployed in block 102977372 and verified on MonadVision:
+
+| Contract | Address |
+|---|---|
+| MoolamRegistry | 0xeBeeD7A422531789aa009a9c45CC10C84dF12119 |
+| VerifierPolicy | 0xD46E62776Cc5804Ee49d80c67732833d7E700A6e |
+| MoolamReceiver | 0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4 |
+| ERC-8004 Identity Registry (Monad's) | 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 |
+| Chainlink Keystone Forwarder (production) | 0x76c9cf548b4179F8901cda1f8623568b58215E62 |
+
+The demo generator is agent 10248 on the identity registry. ABIs live in `packages/contracts/abi/`.
 
 Writes:
 - `bindPasskey(qx, qy, auth)` from the creator's wallet, once per key.
