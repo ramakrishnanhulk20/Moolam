@@ -77,6 +77,78 @@
     "themeLight": "Light",
     "heading": "Hero, work order 9b"
   },
+  "story": {
+    "kicker": "Live on Monad mainnet",
+    "title": "Moolam",
+    "line": "Every image gets a passport.",
+    "scrollCue": "Scroll",
+    "noWebgl": "This browser could not open a 3D context, so the story is here as a page. Every figure on it is the same live read.",
+    "made": {
+      "kicker": "Made",
+      "title": "An AI made this one.",
+      "body": "Agent {agent} signed the fingerprint inside its own enclave before anybody had seen the picture.",
+      "readout": "Generator agent {agent}, ERC-8004 identity registry"
+    },
+    "sealed": {
+      "kicker": "Sealed",
+      "title": "The creator's passkey signed it.",
+      "body": "Monad recorded it in block {block}. Two signatures, one record, about a second.",
+      "bodyNoBlock": "Monad recorded it. Two signatures, one record, about a second.",
+      "readout": "Passport {passport}, registered {date}",
+      "unread": "This passport could not be read from the registry."
+    },
+    "shared": {
+      "kicker": "Shared",
+      "title": "Platforms strip the credential on upload.",
+      "body": "The copies keep travelling anyway: recompressed, shrunk to a tenth, turned, mirrored, run through a social pipeline. Every one of them has lost the file that said where it came from."
+    },
+    "verified": {
+      "kicker": "Verified",
+      "title": "Every copy still finds its record.",
+      "match": "match",
+      "matched": "matched",
+      "notMatched": "did not match",
+      "attestation": "Chainlink re-checked it and wrote the answer on chain: {result}, {distance} bits apart.",
+      "attestationOther": "Chainlink re-checked passport {passport} in this registry and wrote the answer on chain: {result}, {distance} bits apart.",
+      "noAttestation": "No independent re-check has been written for this passport yet.",
+      "provenance": "Figures measured by the Moolam verifier on passport {passport}, {date}."
+    },
+    "trusted": {
+      "kicker": "Trusted",
+      "title": "Trust an agent earns image by image.",
+      "agent": "Agent {agent}",
+      "score": "Score {score}",
+      "noScore": "No score yet",
+      "counts": "{verifications, plural, =1 {# verification} other {# verifications}}, {passports, plural, =1 {# passport} other {# passports}}",
+      "body": "Every check the verifier runs is written back to the ERC-8004 reputation registry under this agent's own id. Its standing is the sum of its work, not a claim on a website."
+    },
+    "tryIt": {
+      "kicker": "Try it",
+      "title": "Drop any copy of any image.",
+      "choose": "Choose a file",
+      "hint": "JPEG or PNG. It goes to the Moolam verifier, is fingerprinted three ways, and is not stored.",
+      "pending": "Fingerprinting and searching the registry",
+      "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then drop the file again.",
+      "error": "The check did not run: {reason}",
+      "noMatch": "Not registered",
+      "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
+      "exact": "exact bytes",
+      "match": "confidence",
+      "noManifest": "No C2PA manifest left in this file. The record found it anyway."
+    },
+    "close": {
+      "kicker": "Moolam",
+      "title": "Register once. Recognised anywhere.",
+      "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by Chainlink, and findable from any copy that survives the internet.",
+      "register": "Register a passport",
+      "verify": "Verify an image",
+      "passports": "Passports",
+      "attestations": "Verifications on chain",
+      "chain": "Monad chain",
+      "unread": "unread",
+      "error": "The index could not be read: {reason}"
+    }
+  },
   "verify": {
     "title": "Verify an image",
     "lede": "Upload any copy. Moolam fingerprints it three ways and searches every registered passport, so a resized or re-encoded file still finds its record.",

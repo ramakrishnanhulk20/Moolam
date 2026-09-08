@@ -213,3 +213,77 @@ body {
 [data-motif="notch"] .motif {
   clip-path: polygon(0 0, 100% 0, 100% 58%, 58% 100%, 0 100%);
 }
+
+/* The landing story is dark whatever the app theme is set to. Hearth has no
+   light mode at all for its scroll film, and for the same reason: a camera
+   flying through a dark field of glass plates is the piece, and a cream page
+   under it would be a different piece. The app screens keep both themes. */
+.story {
+  --bg: #0b0b0c;
+  --bg-raised: #121214;
+  --bg-sunken: #08080a;
+  --line: rgb(255 255 255 / 0.12);
+  --line-strong: rgb(255 255 255 / 0.26);
+  --text: #f5f3ef;
+  --text-muted: rgb(245 243 239 / 0.6);
+  --text-faint: rgb(245 243 239 / 0.46);
+
+  --accent: #ffb020;
+  --accent-ink: #17110a;
+  --accent-soft: rgb(255 176 32 / 0.12);
+
+  --status-verified: #3fbfa8;
+  --status-failed: #c2586f;
+
+  --scrim-from: rgb(11 11 12 / 0.92);
+  --scrim-to: rgb(11 11 12 / 0);
+  --grain-opacity: 0.055;
+  --grain-blend: overlay;
+
+  color-scheme: dark;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* The entrance on the first screen: the kicker, the title and the line rise in
+   turn, staggered with an inline animation-delay. */
+@keyframes story-enter {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.story-enter {
+  animation: story-enter 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* A spark running down the rule beside the scroll hint. */
+@keyframes scroll-spark {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(400%);
+    opacity: 0;
+  }
+}
+
+.scroll-spark {
+  animation: scroll-spark 2.4s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story .grain::after,
+  .scroll-spark {
+    display: none;
+  }
+}

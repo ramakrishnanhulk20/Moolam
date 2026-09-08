@@ -1,31 +1,27 @@
-import { IBM_Plex_Mono, Noto_Sans_Tamil, Space_Grotesk } from "next/font/google";
+import { Archivo, IBM_Plex_Mono, Inter, Noto_Sans_Tamil } from "next/font/google";
 
 /**
- * Two faces and a mono, self-hosted at build time by next/font.
+ * A display face with weight in it, a quiet body face, and a mono for figures.
  *
- * Swapping either face is one line here: the rest of the app only ever reads
+ * Swapping any of them is one line here: the rest of the app only ever reads
  * the CSS variables, never a font name.
  */
-export const display = Space_Grotesk({
+export const display = Archivo({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["500", "600", "700"],
   variable: "--font-display",
   display: "swap",
 });
 
-/**
- * Headlines and body share one face on purpose. It is what keeps a page reading
- * as a single object rather than a headline sitting on top of unrelated text.
- * next/font serves both variables from the same downloaded files.
- */
-export const body = Space_Grotesk({
+/** Body copy and UI text. Never headlines. */
+export const body = Inter({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600"],
   variable: "--font-body",
   display: "swap",
 });
 
-/** Labels, hashes, addresses and ids only. Never body copy. */
+/** Labels, hashes, addresses, ids and every readout. Never body copy. */
 export const mono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],

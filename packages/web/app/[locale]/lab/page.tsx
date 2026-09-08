@@ -1,10 +1,10 @@
 import { setRequestLocale } from "next-intl/server";
-import { Hero } from "@/components/hero/Hero";
-import { LabControls } from "@/components/hero/LabControls";
+import { StoryStage } from "@/components/story/StoryStage";
+import { storyData } from "@/components/story/data";
 
-// The still, the passport count and the record beside it are read from Monad on
-// every request. A prerendered copy would show whatever was true when the build
-// ran, which is not what live means to anyone looking at it.
+// Every plate, every figure and both counts are read on the request. A
+// prerendered copy would show whatever was true when the build ran, which is
+// not what live means to anyone looking at it.
 export const dynamic = "force-dynamic";
 
 /**
@@ -15,9 +15,14 @@ export default async function LabPage({ params }: { params: Promise<{ locale: st
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const data = await storyData();
+
+  // The story owns the whole window. The app header floats over its first
+  // screen rather than pushing it down, which is what makes the opening frame
+  // read as a shot rather than as a section under a navigation bar.
   return (
-    <LabControls>
-      <Hero locale={locale} />
-    </LabControls>
+    <div className="-mt-[73px]">
+      <StoryStage data={data} />
+    </div>
   );
 }
