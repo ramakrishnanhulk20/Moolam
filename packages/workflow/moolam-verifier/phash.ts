@@ -14,6 +14,23 @@
 const SAMPLE_SIZE = 32;
 const LOW_SIZE = 8;
 
+/**
+ * A read that refuses to hand back an undefined sample.
+ *
+ * Every index below is inside its array by construction, so this never throws in practice. It is
+ * written out because the verifier's test project compiles this file with checked indexed access,
+ * and because a fingerprint quietly built from a missing byte would be wrong rather than merely
+ * late. The local is annotated so the check also compiles under this package's own config, which
+ * does not add undefined to an indexed read.
+ */
+const at = (values: Float64Array | Uint8Array, index: number): number => {
+	const value: number | undefined = values[index];
+	if (value === undefined) {
+		throw new Error(`sample ${index} is outside a ${values.length} entry buffer`);
+	}
+	return value;
+};
+
 const SRGB_TO_LINEAR = new Float64Array(256);
 for (let i = 0; i < 256; i++) {
 	const c = i / 255;
@@ -23,17 +40,17 @@ for (let i = 0; i < 256; i++) {
 const linearToSrgb = (v: number): number =>
 	(v <= 0.0031308 ? v * 12.92 : 1.055 * Math.pow(v, 1 / 2.4) - 0.055) * 255;
 
-const COS: number[][] = [];
+// Flat rather than an array of rows: one indexed read per lookup instead of two, so the checked
+// read above stays cheap in the DCT's inner loop. Entry k * SAMPLE_SIZE + n is cos for row k, term n.
+const COS = new Float64Array(SAMPLE_SIZE * SAMPLE_SIZE);
 for (let k = 0; k < SAMPLE_SIZE; k++) {
-	const row: number[] = [];
 	for (let n = 0; n < SAMPLE_SIZE; n++) {
-		row.push(Math.cos(((2 * k + 1) / (2 * SAMPLE_SIZE)) * n * Math.PI));
+		COS[SAMPLE_SIZE * k + n] = Math.cos(((2 * k + 1) / (2 * SAMPLE_SIZE)) * n * Math.PI);
 	}
-	COS.push(row);
 }
 
-const SQRT: number[] = [];
-for (let i = 0; i < SAMPLE_SIZE; i++) SQRT.push(i === 0 ? 1 / Math.sqrt(2) : 1);
+const SQRT = new Float64Array(SAMPLE_SIZE);
+for (let i = 0; i < SAMPLE_SIZE; i++) SQRT[i] = i === 0 ? 1 / Math.sqrt(2) : 1;
 
 const grayGrid = (
 	pixels: Uint8Array,
@@ -46,12 +63,12 @@ const grayGrid = (
 		const base = i * channels;
 		if (channels === 3) {
 			const light =
-				0.2126 * SRGB_TO_LINEAR[pixels[base]] +
-				0.7152 * SRGB_TO_LINEAR[pixels[base + 1]] +
-				0.0722 * SRGB_TO_LINEAR[pixels[base + 2]];
+				0.2126 * at(SRGB_TO_LINEAR, at(pixels, base)) +
+				0.7152 * at(SRGB_TO_LINEAR, at(pixels, base + 1)) +
+				0.0722 * at(SRGB_TO_LINEAR, at(pixels, base + 2));
 			gray[i] = linearToSrgb(light);
 		} else {
-			gray[i] = pixels[base];
+			gray[i] = at(pixels, base);
 		}
 	}
 
@@ -70,7 +87,7 @@ const grayGrid = (
 				for (let x = Math.floor(x0); x < Math.ceil(x1); x++) {
 					const wx = Math.min(x + 1, x1) - Math.max(x, x0);
 					if (wx <= 0) continue;
-					sum += gray[y * width + x] * wx * wy;
+					sum += at(gray, y * width + x) * wx * wy;
 					weight += wx * wy;
 				}
 			}
@@ -93,7 +110,9 @@ const dct2d = (grid: Float64Array): Float64Array => {
 	for (let x = 0; x < SAMPLE_SIZE; x++) {
 		for (let v = 0; v < SAMPLE_SIZE; v++) {
 			let sum = 0;
-			for (let y = 0; y < SAMPLE_SIZE; y++) sum += COS[y][v] * grid[SAMPLE_SIZE * y + x];
+			for (let y = 0; y < SAMPLE_SIZE; y++) {
+				sum += at(COS, SAMPLE_SIZE * y + v) * at(grid, SAMPLE_SIZE * y + x);
+			}
 			alongY[SAMPLE_SIZE * x + v] = sum;
 		}
 	}
@@ -102,8 +121,10 @@ const dct2d = (grid: Float64Array): Float64Array => {
 	for (let u = 0; u < SAMPLE_SIZE; u++) {
 		for (let v = 0; v < SAMPLE_SIZE; v++) {
 			let sum = 0;
-			for (let x = 0; x < SAMPLE_SIZE; x++) sum += COS[x][u] * alongY[SAMPLE_SIZE * x + v];
-			dct[SAMPLE_SIZE * u + v] = (sum * SQRT[u] * SQRT[v]) / 4;
+			for (let x = 0; x < SAMPLE_SIZE; x++) {
+				sum += at(COS, SAMPLE_SIZE * x + u) * at(alongY, SAMPLE_SIZE * x + v);
+			}
+			dct[SAMPLE_SIZE * u + v] = (sum * at(SQRT, u) * at(SQRT, v)) / 4;
 		}
 	}
 	return dct;
@@ -112,7 +133,7 @@ const dct2d = (grid: Float64Array): Float64Array => {
 /**
  * The 64-bit fingerprint of one decoded image.
  *
- * @param pixels Interleaved samples, one byte each.
+ * @param pixels Interleaved samples, one byte each. Must hold width by height by channels bytes.
  * @param width Image width in pixels, must be at least 32.
  * @param height Image height in pixels, must be at least 32.
  * @param channels Samples per pixel: 3 for colour, 1 for grey. Any other count throws, because
@@ -130,20 +151,24 @@ export const perceptualHash = (
 	if (channels !== 3 && channels !== 1) {
 		throw new Error(`image has ${channels} samples per pixel, expected 3 for colour or 1 for grey`);
 	}
+	const expected = width * height * channels;
+	if (pixels.length < expected) {
+		throw new Error(`image needs ${expected} samples, got ${pixels.length}`);
+	}
 
 	const grid = grayGrid(pixels, width, height, channels);
 	const dct = dct2d(grid);
 
 	let total = 0;
 	for (let x = 0; x < LOW_SIZE; x++) {
-		for (let y = 0; y < LOW_SIZE; y++) total += dct[SAMPLE_SIZE * (x + 1) + y + 1];
+		for (let y = 0; y < LOW_SIZE; y++) total += at(dct, SAMPLE_SIZE * (x + 1) + y + 1);
 	}
 	const average = total / (LOW_SIZE * LOW_SIZE);
 
 	let hash = 0n;
 	for (let x = 0; x < LOW_SIZE; x++) {
 		for (let y = 0; y < LOW_SIZE; y++) {
-			hash = (hash << 1n) | (dct[SAMPLE_SIZE * (x + 1) + y + 1] > average ? 1n : 0n);
+			hash = (hash << 1n) | (at(dct, SAMPLE_SIZE * (x + 1) + y + 1) > average ? 1n : 0n);
 		}
 	}
 	return hash;

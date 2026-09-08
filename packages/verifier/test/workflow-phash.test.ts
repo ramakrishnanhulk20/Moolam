@@ -6,8 +6,8 @@
 
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { decodeJpeg } from "../../workflow/moolam-verifier/decode.ts";
-import { perceptualHash } from "../../workflow/moolam-verifier/phash.ts";
+import { decodeJpeg } from "../../workflow/moolam-verifier/decode.js";
+import { perceptualHash } from "../../workflow/moolam-verifier/phash.js";
 import { fingerprint, hamming64 } from "../src/fingerprint.js";
 
 const CORPUS_SIZE = 24;

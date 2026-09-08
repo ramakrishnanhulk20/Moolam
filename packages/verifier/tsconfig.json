@@ -10,7 +10,7 @@
     "declaration": true,
     "sourceMap": true,
     "outDir": "dist",
-    "rootDir": ".",
+    "rootDir": "..",
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
