@@ -3,11 +3,14 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import rateLimit from "@fastify/rate-limit";
 import multipart from "@fastify/multipart";
+import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
 import { HammingIndex } from "./index.js";
 import { healthRoutes } from "./routes/health.js";
 import { verifyRoutes } from "./routes/verify.js";
+import { verifyPaidRoutes } from "./routes/verifyPaid.js";
+import { paymentServerFromEnv } from "./x402/plugin.js";
 import { EnvioSource } from "./source/EnvioSource.js";
 import { JsonFileSource } from "./source/JsonFileSource.js";
 import type { PassportSource } from "./source/PassportSource.js";
@@ -58,9 +61,16 @@ export function sourceFromEnv(): PassportSource {
  * The passport id is the sha256 of the registered bytes, which is what makes
  * the exact lookup a plain map hit.
  *
+ * The paid route is mounted only when the environment enables it, or when a
+ * caller hands in its own payment server. Everything else about the service is
+ * the same either way, so switching payment on adds a route and changes nothing
+ * that already works.
+ *
  * Throws when the source cannot be read or holds malformed records.
  */
-export async function buildServer(options: { source?: PassportSource; logger?: boolean } = {}): Promise<FastifyInstance> {
+export async function buildServer(
+  options: { source?: PassportSource; logger?: boolean; payments?: x402HTTPResourceServer } = {},
+): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? true,
     bodyLimit: MAX_UPLOAD_BYTES,
@@ -97,6 +107,11 @@ export async function buildServer(options: { source?: PassportSource; logger?: b
 
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
+
+  const payments = options.payments ?? (env.X402_ENABLED ? paymentServerFromEnv() : undefined);
+  if (payments !== undefined) {
+    await app.register(verifyPaidRoutes, { payments });
+  }
 
   app.setNotFoundHandler((request, reply) => {
     request.log.warn({ ip: request.ip, method: request.method, url: request.url }, "rejected: unknown route");

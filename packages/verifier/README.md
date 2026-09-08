@@ -44,6 +44,14 @@ curl -s -F "file=@packages/verifier/test-assets/original.jpg" http://localhost:4
 `GET /health` answers `{ ok, records, version }`, where `records` is how many
 passports the index is holding.
 
+`POST /verify/paid` is the same answer behind an x402 payment: 5 cents in USDC
+on Monad mainnet, settled by Monad's facilitator. It only exists when
+`X402_ENABLED=true`, and otherwise the path returns 404. Without a payment it
+answers 402, the terms ride in the base64 `PAYMENT-REQUIRED` header, and the JSON
+body says in words what to do next. It takes a multipart `file` upload only. The
+free route also accepts a remote URL, and the checks that stop such a fetch from
+reaching a private address live in that route; the paid route does not copy them.
+
 Every caller gets 60 requests a minute, counted on the socket address so nobody
 can pick their own bucket by sending a header. Every rejection is logged with its
 reason. Unknown routes answer with JSON, not HTML.
@@ -87,6 +95,33 @@ Three honest notes on the numbers:
   other originals each. That is a clean result, but on a synthetic corpus of 24
   images, which is a much easier test than a registry of millions.
 
+## Writing the result back as reputation
+
+A verification is worth something to the next person only if it is recorded
+where they will look. Moolam writes each outcome to the ERC-8004 Reputation
+Registry on Monad mainnet at `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`, as
+feedback about the agent that generated the image.
+
+```sh
+npm run reputation:post -- --passport 0x59bd...4440 --matched --distance 1
+```
+
+The script reads the passport from the Moolam registry to find the generator
+agent and the metadata URI, prints the registry's summary before and after, and
+saves the whole run to `kitchen/reports/WO-6a-reputation.txt`. A match scores 100
+and loses 10 points per wrong pHash bit, so 1 bit is 90 and 10 bits or worse is
+0. A mismatch is 0. The two tags are `moolam` and `verification`, `feedbackURI`
+points at the passport's metadata, and `feedbackHash` is the keccak256 of the
+small JSON summary the script prints, so anyone can recompute it.
+
+Two facts about the deployed registry decided the design, both checked against
+the live contract rather than the specification. It has no feedback
+authorisation: `giveFeedback` takes eight plain arguments and no signature. And
+it refuses feedback from the agent's owner, which is what makes the record worth
+reading, so the verifier signs with its own wallet and never the deployer's. One
+post costs about 313,000 gas, and Monad charges the gas limit, so roughly 0.032
+MON at the price we paid.
+
 ## Using a real corpus
 
 The generated images are reproducible, not realistic: clean edges and even grain
@@ -99,10 +134,19 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | variable | meaning |
 | --- | --- |
 | `VERIFIER_PORT` | port to listen on, default 4000 |
-| `PASSPORT_SOURCE` | `json` today, `envio` is reserved for the indexer and not built |
+| `PASSPORT_SOURCE` | `json` for a local file, `envio` to read the indexer |
 | `PASSPORT_SOURCE_PATH` | the JSON passport file, default `test-assets/passports.json` |
+| `ENVIO_GRAPHQL_URL` | the Envio GraphQL endpoint, required when `PASSPORT_SOURCE=envio` |
 | `MOOLAM_C2PA_CERT_PATH` | signing certificate chain, optional |
 | `MOOLAM_C2PA_KEY_PATH` | signing key, optional |
+| `MONAD_MAINNET_RPC_URL` | where the reputation writer reads and sends, default `https://rpc.monad.xyz` |
+| `VERIFIER_PRIVATE_KEY` | the wallet that signs reputation feedback, never the agent owner's |
+| `VERIFIER_ADDRESS` | that wallet's address, the client a summary is read for |
+| `VERIFIER_BASE_URL` | the public URL of this service, used as the feedback endpoint |
+| `X402_ENABLED` | `true` mounts the paid route, `false` (the default) leaves it off |
+| `X402_PAY_TO_ADDRESS` | who the USDC goes to, required when `X402_ENABLED` is true |
+| `X402_PRICE` | price per paid verification, default `$0.05` |
+| `X402_FACILITATOR_URL` | default `https://x402-facilitator.molandak.org`, Monad's facilitator |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.

@@ -8,16 +8,20 @@
     "spike": "tsx scripts/spike.ts",
     "robustness": "tsx scripts/robustness.ts",
     "dev": "tsx src/server.ts",
+    "reputation:post": "tsx scripts/reputation-post.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "@contentauth/c2pa-node": "0.9.3",
     "@fastify/multipart": "10.1.1",
     "@fastify/rate-limit": "11.2.0",
+    "@x402/core": "2.25.0",
+    "@x402/evm": "2.25.0",
     "fastify": "5.12.3",
     "imghash": "1.1.4",
     "sharp": "0.35.4",
     "sharp-phash": "2.2.0",
+    "viem": "2.56.3",
     "zod": "4.5.4"
   },
   "devDependencies": {
