@@ -12,7 +12,7 @@ the exact interface the app and the indexer are written against.
 flowchart LR
     subgraph People and agents
         C[Creator<br/>Privy embedded wallet + passkey]
-        G[Generator agent<br/>Qwen 3.8 Max + Privy server wallet<br/>ERC-8004 identity]
+        G[Generator agent<br/>OpenAI model + Privy server wallet<br/>ERC-8004 identity]
         E[Editing app<br/>Privy session signer]
         V[Anyone verifying<br/>newsroom, platform, judge]
     end
@@ -59,7 +59,7 @@ sequenceDiagram
     participant W as CRE workflow
     participant RC as MoolamReceiver
 
-    A->>A: generate image (Qwen image model)
+    A->>A: generate image (OpenAI image model)
     A->>S: fingerprint(bytes): sha256, pHash, blockhash
     A->>S: embedManifest(bytes, soft binding)
     A->>F: upload image + manifest + thumbnail
