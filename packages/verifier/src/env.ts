@@ -47,6 +47,14 @@ const schema = z
       error: "PASSPORT_SOURCE must be \"json\" or \"envio\"",
     }).default("json"),
     PASSPORT_SOURCE_PATH: z.string().default(DEFAULT_PASSPORT_PATH),
+    ENVIO_GRAPHQL_URL: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => value === undefined || value.length === 0 || isHttpUrl(value), {
+        message: "ENVIO_GRAPHQL_URL must be an absolute http or https URL",
+      })
+      .transform((value) => (value === undefined || value.length === 0 ? undefined : value)),
     MOOLAM_C2PA_CERT_PATH: z.string().optional(),
     MOOLAM_C2PA_KEY_PATH: z.string().optional(),
   })
@@ -58,7 +66,23 @@ const schema = z
         message: "PASSPORT_SOURCE_PATH is required when PASSPORT_SOURCE is \"json\"",
       });
     }
+    if (value.PASSPORT_SOURCE === "envio" && value.ENVIO_GRAPHQL_URL === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["ENVIO_GRAPHQL_URL"],
+        message: "ENVIO_GRAPHQL_URL is required when PASSPORT_SOURCE is \"envio\"",
+      });
+    }
   });
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 export type Env = z.infer<typeof schema>;
 
@@ -75,6 +99,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     VERIFIER_PORT: source.VERIFIER_PORT,
     PASSPORT_SOURCE: source.PASSPORT_SOURCE,
     PASSPORT_SOURCE_PATH: source.PASSPORT_SOURCE_PATH,
+    ENVIO_GRAPHQL_URL: source.ENVIO_GRAPHQL_URL,
     MOOLAM_C2PA_CERT_PATH: source.MOOLAM_C2PA_CERT_PATH,
     MOOLAM_C2PA_KEY_PATH: source.MOOLAM_C2PA_KEY_PATH,
   });

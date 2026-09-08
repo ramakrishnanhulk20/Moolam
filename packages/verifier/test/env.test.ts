@@ -27,7 +27,16 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ PASSPORT_SOURCE: "json", PASSPORT_SOURCE_PATH: "  " })).toThrow(/PASSPORT_SOURCE_PATH/);
   });
 
-  it("accepts envio as a reserved source name", () => {
-    expect(parseEnv({ PASSPORT_SOURCE: "envio" }).PASSPORT_SOURCE).toBe("envio");
+  it("accepts envio only with an endpoint to read", () => {
+    expect(() => parseEnv({ PASSPORT_SOURCE: "envio" })).toThrow(/ENVIO_GRAPHQL_URL/);
+    const parsed = parseEnv({ PASSPORT_SOURCE: "envio", ENVIO_GRAPHQL_URL: "https://indexer.envio.dev/v1/graphql" });
+    expect(parsed.PASSPORT_SOURCE).toBe("envio");
+    expect(parsed.ENVIO_GRAPHQL_URL).toBe("https://indexer.envio.dev/v1/graphql");
+  });
+
+  it("names ENVIO_GRAPHQL_URL when it is not an http URL", () => {
+    expect(() => parseEnv({ PASSPORT_SOURCE: "envio", ENVIO_GRAPHQL_URL: "indexer.envio.dev" })).toThrow(
+      /ENVIO_GRAPHQL_URL/,
+    );
   });
 });

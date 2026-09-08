@@ -8,6 +8,7 @@ import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
 import { HammingIndex } from "./index.js";
 import { healthRoutes } from "./routes/health.js";
 import { verifyRoutes } from "./routes/verify.js";
+import { EnvioSource } from "./source/EnvioSource.js";
 import { JsonFileSource } from "./source/JsonFileSource.js";
 import type { PassportSource } from "./source/PassportSource.js";
 import type { Hex, PassportRecord } from "./types.js";
@@ -33,15 +34,18 @@ const version = (
 /**
  * Picks the passport source named in the environment.
  *
- * Throws for "envio", which is reserved for the indexer-backed source and not
- * built yet. Failing loudly beats booting with an empty index and telling every
- * caller their image is unregistered.
+ * Throws when "envio" is chosen without an endpoint. Failing loudly beats
+ * booting with an empty index and telling every caller their image is
+ * unregistered.
  */
 export function sourceFromEnv(): PassportSource {
   if (env.PASSPORT_SOURCE === "json") {
     return new JsonFileSource(env.PASSPORT_SOURCE_PATH);
   }
-  throw new Error('PASSPORT_SOURCE "envio" is reserved and not implemented yet; use "json"');
+  if (env.ENVIO_GRAPHQL_URL === undefined) {
+    throw new Error('PASSPORT_SOURCE "envio" needs ENVIO_GRAPHQL_URL');
+  }
+  return new EnvioSource({ url: env.ENVIO_GRAPHQL_URL });
 }
 
 /**
