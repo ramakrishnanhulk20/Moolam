@@ -1,0 +1,114 @@
+/* Amber #FFB020 is the one accent. Light mode uses a darker step of the same hue so
+   links clear the contrast bar on white; dark mode uses the accent itself. */
+
+:root {
+  --ifm-color-primary: #b87600;
+  --ifm-color-primary-dark: #a56b00;
+  --ifm-color-primary-darker: #9c6500;
+  --ifm-color-primary-darkest: #815300;
+  --ifm-color-primary-light: #ca8200;
+  --ifm-color-primary-lighter: #d38800;
+  --ifm-color-primary-lightest: #ef9a00;
+
+  --moolam-accent: #ffb020;
+
+  /* Infima leaves this transparent in light mode and lets the browser paint white
+     underneath. Paint it here instead, so the page never borrows a host background. */
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-toc-border-color: #e4e6ea;
+  --ifm-hr-border-color: #e4e6ea;
+
+  --ifm-code-font-size: 92%;
+  --ifm-font-family-base: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --ifm-font-family-monospace: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --ifm-heading-font-weight: 650;
+  --ifm-h1-font-size: 2.1rem;
+  --ifm-navbar-height: 3.75rem;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #ffb020;
+  --ifm-color-primary-dark: #ffa604;
+  --ifm-color-primary-darker: #f49e00;
+  --ifm-color-primary-darkest: #c98200;
+  --ifm-color-primary-light: #ffba3d;
+  --ifm-color-primary-lighter: #ffbf4b;
+  --ifm-color-primary-lightest: #ffcf76;
+
+  --ifm-background-color: #0d0e10;
+  --ifm-background-surface-color: #16181b;
+  --ifm-navbar-background-color: #0d0e10;
+  --ifm-footer-background-color: #0a0b0c;
+  --ifm-toc-border-color: #24262b;
+  --ifm-hr-border-color: #24262b;
+  --ifm-table-border-color: #24262b;
+  --ifm-table-stripe-background: rgba(255, 255, 255, 0.02);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 176, 32, 0.14);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  box-shadow: none;
+}
+
+.navbar__title {
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.footer {
+  border-top: 1px solid var(--ifm-toc-border-color);
+}
+
+.footer--dark {
+  --ifm-footer-background-color: #0a0b0c;
+  --ifm-footer-color: #9aa0a6;
+  --ifm-footer-link-color: #c9ced4;
+}
+
+.markdown h2 {
+  margin-top: 2.4rem;
+  padding-top: 1.4rem;
+  border-top: 1px solid var(--ifm-toc-border-color);
+}
+
+.markdown h2:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+/* Infima keeps markdown tables as scroll containers so a wide reference table cannot
+   push the page sideways on a phone. Only the type is changed here. */
+.markdown table {
+  font-size: 0.92rem;
+}
+
+.markdown table th {
+  text-align: left;
+  font-weight: 600;
+}
+
+.markdown table td code,
+.markdown table th code {
+  white-space: nowrap;
+}
+
+.theme-doc-markdown blockquote {
+  border-left: 3px solid var(--moolam-accent);
+}
+
+.pagination-nav__link:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+/* Mermaid renders on the page background, so give it a panel and room to breathe. */
+.docusaurus-mermaid-container {
+  overflow-x: auto;
+  padding: 1.25rem 0.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-toc-border-color);
+  border-radius: 8px;
+}

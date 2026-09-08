@@ -1,3 +1,9 @@
+---
+title: Threat model
+sidebar_label: Threat model
+sidebar_position: 2
+---
+
 # Moolam threat model
 
 Every claim below has been attacked. The Proof column says what happened and
@@ -12,8 +18,8 @@ not fix are listed last, on purpose.
 2. A passport carries a creator signature made by a passkey the creator bound,
    and, for generated images, a signature by the generator agent that the
    ERC-8004 registry says owns that agent id.
-3. An edit can only be appended by the current owner of the parent passport or
-   an operator the owner approved.
+3. An edit can only be appended by the current owner of the parent passport.
+   ERC-721 approvals and operators are refused; a marketplace listing grants no authoring power.
 4. Only receivers listed by the policy can attest, and the list changes only
    through a public 24-hour delay.
 5. Any copy of the image that survives as a picture (re-encoded, resized,
@@ -43,7 +49,7 @@ not fix are listed last, on purpose.
 | `register` | Point at a nonexistent agent | `ownerOf` reverts; wrapped and turned into UnknownAgent | refused on mainnet, UnknownAgent, `attacks/unknown-agent.txt` |
 | `register` | Use a stale signature | deadline in the signed struct | refused on mainnet, SignatureExpired, `attacks/expired-deadline.txt` |
 | `bindPasskey` | Bind a key the caller does not hold | the assertion signs the wallet, key and nonce | refused, `MoolamRegistry.t.sol` test_bindPasskeyRejectsASignatureOverTheWrongDigest and test_bindPasskeyNonceStopsAnOldAssertionBeingReplayed |
-| `appendEdit` | Append an edit to someone else's passport | caller must own the parent or be approved | refused on mainnet, NotParentOwner, `attacks/edit-by-non-owner.txt` |
+| `appendEdit` | Append an edit to someone else's passport | caller must own the parent; approvals and operators are refused | refused on mainnet, NotParentOwner, `attacks/edit-by-non-owner.txt` |
 | `appendEdit` | Use a revoked session signer | Privy refuses the signature server-side; the chain sees no transaction. Proof shows the refusal | refused by Privy, no transaction, `attacks/revoked-session-signer.txt` |
 | `attest` | Attest from a random address | policy.isReceiver check | refused on mainnet, NotReceiver, `attacks/attest-from-stranger.txt` |
 | `attest` | Attest through the receiver from a fake forwarder | ReceiverTemplate checks msg.sender is the forwarder | refused on mainnet, InvalidSender, `attacks/report-from-fake-forwarder.txt` |

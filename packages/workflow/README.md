@@ -8,7 +8,7 @@ themselves, and they have to agree with each other before anything is signed.
 
 ## What runs, in order
 
-1. **Trigger.** An EVM log trigger on the registry `0xeBeeD7A422531789aa009a9c45CC10C84dF12119`,
+1. **Trigger.** An EVM log trigger on the registry `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`,
    filtered to topic 0 of `PassportRegistered`, on `monad-mainnet` (chain id 143).
 2. **Read.** The workflow calls `getPassport(bytes32)` on the registry at the block the trigger log
    came from, and takes the stored fingerprint and the metadata URI from there. The event is only
@@ -83,12 +83,12 @@ commands are sent by the deployer wallet, which owns the receiver.
 
 ```bash
 # before the simulate --broadcast run: point the receiver at the simulation forwarder
-cast send 0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4 "setForwarderAddress(address)" \
+cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setForwarderAddress(address)" \
   0x9eF6468C5f37b976E57d52054c693269479A784d \
   --rpc-url $MONAD_MAINNET_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
 
 # after the run: put the production forwarder back
-cast send 0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4 "setForwarderAddress(address)" \
+cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setForwarderAddress(address)" \
   0x76c9cf548b4179F8901cda1f8623568b58215E62 \
   --rpc-url $MONAD_MAINNET_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
 ```

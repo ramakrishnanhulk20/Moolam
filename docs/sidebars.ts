@@ -1,0 +1,53 @@
+import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
+
+const sidebars: SidebarsConfig = {
+  docsSidebar: [
+    'intro',
+    {
+      type: 'category',
+      label: 'Concepts',
+      collapsed: false,
+      items: [
+        'concepts/how-it-works',
+        'concepts/why-monad',
+        'concepts/trust-model',
+        'concepts/fingerprints',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Developers',
+      items: [
+        'developers/architecture',
+        'developers/contracts',
+        'developers/verifier-service',
+        'developers/chainlink-workflow',
+        'developers/envio-indexer',
+        'developers/agents-and-privy',
+        'developers/prove-it',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'API Reference',
+      items: [
+        'api/registry',
+        'api/policy-and-receiver',
+        'api/events',
+        'api/verifier-endpoints',
+        'api/graphql',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Security',
+      items: [
+        'security/overview',
+        'security/threat-model',
+        'security/audits',
+      ],
+    },
+  ],
+};
+
+export default sidebars;
