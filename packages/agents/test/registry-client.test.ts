@@ -31,7 +31,7 @@ import { RegistryClient } from "../src/chain/registry.js";
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
 
 // Real fingerprints of packages/verifier/test-assets, measured by the verifier spike and recorded
-// in proofs/anvil.txt. Using the measured numbers keeps the digests honest.
+// in proofs/spike.txt. Using the measured numbers keeps the digests honest.
 const ORIGINAL_SHA256 = "0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c" as Hex;
 const ORIGINAL_PHASH = 0x336b806a7e894e76n;
 const ORIGINAL_BLOCKHASH =

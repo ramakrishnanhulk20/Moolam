@@ -19,11 +19,17 @@ passport commits to.
 | `src/chain/passkey.ts` | `SoftwarePasskey`, a P-256 key that signs the way a device passkey does. See the caveat below. |
 | `src/chain/registry.ts` | `RegistryClient`: read the bind nonce, bind a passkey, sign as a generator, register, append an edit, read a passport, mint an ERC-8004 identity, and turn a revert into the custom error name the contract raised. |
 | `src/chain/addresses.ts` | Reads the deployed addresses from `packages/contracts/deployments/monad-mainnet.json` and fails with the deploy command when that file is not there. |
-| `src/ipfs/pinata.ts` | Pins bytes and JSON to public IPFS through Pinata's v3 files endpoint. Reads `PINATA_JWT` at import, so a run fails before it spends gas rather than after. |
-| `src/media/prepare.ts` | Turns a raw picture into the C2PA signed JPEG, the fingerprint of those signed bytes, the sha256 of the manifest store, and a thumbnail. |
+| `src/ipfs/pinata.ts` | One line, re-exporting the Pinata client from `@moolam/verifier/src/ipfs/pinata.ts`. It reads `PINATA_JWT` at the moment of the first pin rather than at import, and every pin happens before any transaction is sent, so a run that dies there has spent no gas. |
+| `src/media/prepare.ts` | One line, re-exporting the prepare pipeline from `@moolam/verifier/src/prepare.ts`: the C2PA signed JPEG, the fingerprint of those signed bytes, the sha256 of the manifest store, and a thumbnail. |
 | `src/seed/registerSeed.ts` | Puts one passport on Monad mainnet, pinning everything before the transaction is sent. |
 | `src/privy/` | `client.ts` builds the client, `policies.ts` writes the rulebooks Privy's enclave enforces, `serverWallet.ts` creates and reuses wallets, `generatorSigner.ts` gets the agent's EIP-712 signature out of the enclave, `sessionSigner.ts` grants, uses and revokes the standing permission a creator gives the app. |
 | `src/chain/anvil.ts` | Starts a local anvil forked from Monad mainnet and deploys the three contracts onto it. Tests and the local proof only. |
+
+Pinning, the prepare pipeline and the metadata builder live in `@moolam/verifier` now, because the
+studio route needs all three and three routes into the registry should not pin three different
+shapes. The two rows above are one-line re-exports so nothing that imported them had to change, and
+`src/seed/registerSeed.ts` reads `@moolam/verifier/src/metadata.ts` directly for the document a
+passport's `metadataURI` points at.
 
 The field order in `PASSPORT_TYPES` is copied from `PASSPORT_TYPEHASH` in `MoolamRegistry.sol`.
 Change the order and every signature stops verifying, which is why the test suite compares both
@@ -47,7 +53,7 @@ touched the sensor. Here the key sits in process memory and nobody touched anyth
 `SoftwarePasskey` for agents, tests and scripts. A human creator's key must come from their own
 device through the browser's WebAuthn API, never from this class.
 
-## The four Privy features Moolam is built on
+## The Privy features Moolam is built on
 
 **Server wallets with a policy.** The generator agent's key lives in Privy's secure enclave, not on
 any Moolam server. Its policy allows exactly two things: send a `register` call to the Moolam
@@ -79,6 +85,15 @@ is granted through `wallets().update` with `additional_signers`, which is the se
 the React SDK calls `addSigners`. And the generator mints its ERC-8004 identity before its policy
 goes on, because the policy forbids calls to any other contract; a rerun skips that step and the
 wallet stays locked down.
+
+**Access tokens.** The last thing Moolam takes from Privy is not a wallet at all. A creator in the
+studio uploads a photo straight from their browser to the verify service, and it checks the Privy
+access token that session already carries before it pins anything: signed by the app's own key set,
+issuer `privy.io`, this app id in the audience, ES256, inside its expiry. That is what lets an
+upload endpoint spend Moolam's pinning account without a shared secret sitting in a browser, where
+it would not be secret. This one runs in the verify service rather than in this package, so it is
+covered by that package's tests and not by the mainnet run above. See
+[Verifier service](verifier-service).
 
 ## The generator agent
 
@@ -143,7 +158,7 @@ set -a; . .env; set +a
 | `npm run test:agents` | 22 tests across 4 files: the digests against the contract, the whole write path on a fork of Monad mainnet, the Privy policy shapes, and the refusals decoded to their error names. Spends no MON. |
 | `npm run proof:anvil` | Deploy, bind, three passports and an edit on a fork, with gas per step. Spends no MON. |
 | `npm run seed` | One real passport on Monad mainnet, files pinned to IPFS. Spends MON. |
-| `npm run prove:privy` | The four Privy features, live on Monad mainnet. Spends MON. |
+| `npm run prove:privy` | Server wallets under a policy, enclave signing, session signers and sponsorship, live on Monad mainnet. Spends MON. |
 | `npm run prove` | The prove-it run. Spends about 0.4 MON. See [Prove it](prove-it). |
 | `npm run agent -- "..."` | The demo agent. Spends MON and a cent or two of OpenAI credit. |
 | `npm run agent -- --verify path/to/file.jpg` | The same agent answering "who made this?" for any copy. |

@@ -9,7 +9,7 @@ import type { Hex } from "../src/types.js";
 
 const REPO_ROOT = path.resolve(PACKAGE_ROOT, "..", "..");
 const DEPLOYMENT_FILE = path.join(REPO_ROOT, "packages", "contracts", "deployments", "monad-mainnet.json");
-const REPORT_FILE = path.join(REPO_ROOT, "kitchen", "reports", "WO-6a-reputation.txt");
+const REPORT_FILE = path.join(REPO_ROOT, "proofs", "reputation.txt");
 const EXPLORER = "https://monadvision.com";
 
 /** The one Moolam function this script reads: the passport tells us who to rate and what to point at. */

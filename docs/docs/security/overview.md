@@ -77,7 +77,24 @@ megapixels, refused with 413 before a single pixel is decoded, because a 572 KB 
 100 megapixels.
 
 **Concurrency gate.** Two matches run at a time. Matching decodes the picture nine times over, so
-the rate limit alone does not bound memory. A third caller waits.
+the rate limit alone does not bound memory. A third caller waits. The studio's prepare route runs
+its decode, manifest and thumbnail behind the same gate.
+
+**The studio's upload route.** `POST /prepare` takes a creator's image straight from their browser,
+which makes it the one route that spends money on Moolam's behalf: four IPFS pins a call. It is
+gated on a Privy access token, checked against the app's published key set for the right issuer,
+this app id in the audience, ES256 and an expiry that has not passed. A token minted by another
+Privy app fails on the audience, and that is the check that stops a stranger's app spending the
+pinning account. Twenty prepares an hour, counted on the verified Privy user id, which a caller
+cannot choose. The route is mounted only when the host holds both a Pinata token and a Privy app id,
+so a verify-only deployment does not carry the surface at all, and the service holds no key that can
+write to the chain either way: the browser signs the passport and sends the transaction itself.
+
+**Browser origins.** Only the exact origins listed in `CORS_ORIGINS` get an allow header back, and
+an entry with a wildcard, a path or a trailing slash stops the boot instead of widening the list.
+`PRIVY_JWKS_OVERRIDE_PATH`, which points the token check at a local key file so tests can sign their
+own tokens, is refused when `NODE_ENV` is production, because anyone holding that key could
+otherwise mint tokens the service would accept.
 
 **Environment validation.** Every variable is checked at boot and a bad value names itself, so a bad
 configuration stops the service before it listens rather than after. The C2PA certificate and key

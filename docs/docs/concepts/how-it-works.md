@@ -22,7 +22,7 @@ MON. That is what stops a hijacked prompt from spending anything.
 
 ## 2. Sealed
 
-`prepareImage` in `packages/agents/src/media/prepare.ts` turns the raw picture into everything a
+`prepareImage` in `packages/verifier/src/prepare.ts` turns the raw picture into everything a
 passport needs. It signs a C2PA manifest into the JPEG carrying a soft binding, fingerprints those
 signed bytes, takes the sha256 of the manifest store, and builds a thumbnail. It refuses to
 continue if the signing moved the perceptual hash, because a manifest describing different pixels
@@ -42,6 +42,14 @@ written and the ERC-721 minted, with the image hash itself as the token id.
 
 Anyone may send that transaction. Authority comes from the two signatures, not from `msg.sender`,
 which is what lets a relayer pay a creator's gas.
+
+A photograph a person took goes the same way with two differences. The creator signs in with Privy,
+which gives them an embedded wallet, and binds a passkey to that wallet once. Their browser then
+sends the file to `POST /prepare` on the verify service, which signs the manifest, fingerprints the
+signed bytes and pins the four files, because a serverless function cannot take a 20 MB upload. The
+passkey signs the digest on their device and the embedded wallet sends `register` itself, with the
+gas sponsored through Privy where the app has sponsorship enabled. That passport is Captured rather
+than Generated: no generator agent, and one signature instead of two.
 
 ## 3. Shared
 

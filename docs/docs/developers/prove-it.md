@@ -122,6 +122,30 @@ That run cost 0.2745 MON from the creator's wallet and 0.0919 MON from the outsi
 MON in all at roughly 100 gwei. Ten of those transactions are meant to revert, and Monad charges
 the declared gas limit whether a transaction succeeds or not.
 
+## Where the outputs live
+
+Every proof output sits in `proofs/` at the root of the repository. The folder is public and
+committed, and each file is the output of the command beside it, so anyone can rerun the command and
+diff the result. The twelve attack transcripts are the exception: they stay under
+`docs/security/attacks/` because the [security pages](../security/audits) link to them as assets.
+
+| File | What it holds | Command |
+| --- | --- | --- |
+| [prove-it.txt](../../../proofs/prove-it.txt) | This run, all six sections, rewritten each time | `npm run prove` |
+| [privy.txt](../../../proofs/privy.txt) | The Privy wallet features, live on Monad mainnet | `npm run prove:privy` |
+| [seed.txt](../../../proofs/seed.txt) | One real passport per run, appended so the history stays | `npm run seed` |
+| [agent-transcript.txt](../../../proofs/agent-transcript.txt) | Every generator agent run, tool call by tool call, appended | `npm run agent -- "..."` |
+| [anvil-proof.txt](../../../proofs/anvil-proof.txt) | Deploy, bind, three passports and an edit on a mainnet fork, with gas per step | `npm run proof:anvil` |
+| [spike.txt](../../../proofs/spike.txt) | The verifier spike: a manifest signed into a generated image, then every transform measured against it | `npm run spike:verifier` |
+| [robustness.txt](../../../proofs/robustness.txt) | 24 images through 15 transforms, 360 copies, what survives and what does not | `npm run robustness` |
+| [reputation.txt](../../../proofs/reputation.txt) | The live reads of the ERC-8004 Reputation Registry and the feedback posted to it | Saved from `npm run reputation:post` |
+| [gas.txt](../../../proofs/gas.txt) | The Foundry gas report, priced the way Monad prices it | `npm run gas` in `packages/contracts` |
+| [fork-tests.txt](../../../proofs/fork-tests.txt) | The five fork tests against real Monad mainnet state | `npm run test:fork` |
+| [slither.txt](../../../proofs/slither.txt) | Static analysis, with every finding triaged by hand underneath | `slither .` |
+| [solhint.txt](../../../proofs/solhint.txt) | Style: no errors, no warnings | `npm run lint` in `packages/contracts` |
+| [deploy-dryrun.txt](../../../proofs/deploy-dryrun.txt) | The mainnet deploy simulated with nothing broadcast | `forge script script/Deploy.s.sol` without `--broadcast` |
+| [indexer-tests.txt](../../../proofs/indexer-tests.txt) | Envio codegen and the nine handler tests, run in WSL | `npm run test:indexer` |
+
 ## What it does not prove
 
 An attack nobody thought of. The list is the threat model, written by the people who built the

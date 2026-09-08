@@ -6,8 +6,10 @@ sidebar_position: 4
 
 # Verifier endpoints
 
-Three routes. Everything is JSON, including errors and 404s. The service listens on
-`VERIFIER_PORT`, which defaults to 4000.
+Four routes. Everything is JSON, including errors and 404s. The service listens on
+`VERIFIER_PORT`, which defaults to 4000. Two of the four are mounted only when the host is
+configured for them: `/verify/paid` needs `X402_ENABLED`, and `/prepare` needs a Pinata token and a
+Privy app id.
 
 ## POST /verify
 
@@ -121,6 +123,90 @@ and risk the two copies drifting, the paid route does not offer it.
 Payment is settled only after the match succeeds, so a failed verification never charges. When the
 handler fails after a payment was verified, the authorisation is cancelled rather than left
 standing against the payer.
+
+## POST /prepare
+
+Everything a signed-in creator needs before they sign a passport. The studio's browser posts the
+image straight here, because a Vercel function cannot take a 20 MB upload.
+
+Mounted only when the host has both `PINATA_JWT` and `PRIVY_APP_ID`. Otherwise the path does not
+exist and the service answers `404`.
+
+**Request.** A multipart body with three parts, in any order.
+
+| Part | Type | Rule |
+| --- | --- | --- |
+| `file` | file | The image. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
+| `title` | text | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
+| `kind` | text | `human` is the only value the studio takes today |
+
+**Headers.** `Authorization: Bearer <Privy access token>`, plus the multipart `Content-Type` the
+browser or curl sets. The token has to be signed by the app's own key set, carry the issuer
+`privy.io`, name this `PRIVY_APP_ID` in its audience, be inside its expiry, and use ES256.
+
+```bash
+curl -s -X POST http://localhost:4000/prepare \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human"
+```
+
+**Response.** `200` with the passport fields and the pinned files. The image bytes never come back:
+the caller already has them, and the answer has to sit in a browser's memory next to the upload.
+
+```ts
+{
+  passport: {
+    exactHash: `0x${string}`,      // sha256 of the pinned bytes, and the passport id
+    parentId: `0x${string}`,       // 32 zero bytes: a studio upload is an original
+    generatorAgentId: string,      // "0" as a decimal string: no agent made this one
+    phash: string,                 // decimal, for the reason given under /verify
+    blockhash256: `0x${string}`,
+    manifestHash: `0x${string}`,   // 32 zero bytes when nothing was embedded
+    kind: number,                  // 1, Captured
+    fingerprintVersion: number,    // 1
+    metadataURI: string            // ipfs://...
+  },
+  image: {
+    cid: string,
+    uri: string,                   // ipfs://...
+    gatewayUrl: string,
+    bytes: number,
+    width: number,
+    height: number
+  },
+  thumbnail: { cid: string, uri: string, gatewayUrl: string },
+  metadata: { cid: string, uri: string },
+  manifest: { embedded: true } | { embedded: false, reason: string },
+  preparedBy: string               // the Privy user id the token carried
+}
+```
+
+The browser adds its own wallet address and a deadline to those passport fields, reads
+`hashPassport` from the registry, signs that digest with the creator's passkey and sends `register`
+itself, so the service never holds a key that can write to the chain.
+
+`manifest.embedded` is `false` when the C2PA signer refused the file, an unusual container or a
+missing certificate. The upload still stands: `manifestHash` is 32 zero bytes, the fingerprint and
+the on-chain record work without a manifest, and `reason` says what happened, cut to 200 characters.
+
+**Status codes.**
+
+| Code | When |
+| --- | --- |
+| `200` | Prepared and pinned |
+| `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, or a `kind` other than `human` |
+| `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. A key set that cannot be fetched answers the same way, so a caller never learns the difference between a bad token and a bad network. `{ "error": "unauthorized" }` |
+| `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
+| `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }` |
+| `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the socket address when there is no valid one. This limit replaces the global 60 a minute on this path |
+| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither |
+
+**CORS.** A browser may call this service only from an origin listed in `CORS_ORIGINS`, and those
+are exact origins: `https://moolam.app`, never a wildcard, a path or a trailing slash. The allowed
+methods are `GET` and `POST`, and the allowed headers are `Authorization` and `Content-Type`. An
+origin that is not on the list gets no allow header back, which the browser turns into a refusal on
+its side; curl and any server-side caller are unaffected either way. With `CORS_ORIGINS` empty, no
+browser origin is allowed at all.
 
 ## GET /health
 

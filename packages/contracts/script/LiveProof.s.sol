@@ -23,7 +23,7 @@ contract LiveProof is Script {
     string internal constant EXPLORER = "https://monadvision.com/tx/";
 
     /// @dev Fingerprints of packages/verifier/test-assets/original.jpg, measured by the verifier
-    ///      spike and recorded in proofs/anvil.txt. The photo carries no C2PA
+    ///      spike and recorded in proofs/spike.txt. The photo carries no C2PA
     ///      manifest, so its manifest hash is zero.
     bytes32 internal constant ORIGINAL_SHA256 = 0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c;
     uint64 internal constant ORIGINAL_PHASH = 0x336b806a7e894e76;

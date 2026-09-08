@@ -31,6 +31,13 @@ was owed.
 `src/vendor/` is excluded from both linters. Chainlink's `ReceiverTemplate` is vendored verbatim
 with its own license header and floating pragma, so its style is Chainlink's to set.
 
+The full outputs are committed in `proofs/` at the root of the repository:
+[slither.txt](../../../proofs/slither.txt) with every finding triaged underneath,
+[solhint.txt](../../../proofs/solhint.txt), [gas.txt](../../../proofs/gas.txt) and
+[fork-tests.txt](../../../proofs/fork-tests.txt). The rest of the folder is listed in
+[Prove it](../developers/prove-it). The attack transcripts below are the exception: they live here
+in the docs site because these pages link to them.
+
 ## The twelve attack outputs
 
 Each file is the whole attempt: what was tried, what the live contract or the live service
