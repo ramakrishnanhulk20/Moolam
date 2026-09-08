@@ -1,0 +1,7 @@
+{
+  "chain": "monad-mainnet",
+  "registry": "0xeBeeD7A422531789aa009a9c45CC10C84dF12119",
+  "receiver": "0xcDf8698F8bdE1818E91f40cc011CB049833Ae0a4",
+  "gateway": "https://gateway.pinata.cloud/ipfs/",
+  "matchThreshold": 10
+}

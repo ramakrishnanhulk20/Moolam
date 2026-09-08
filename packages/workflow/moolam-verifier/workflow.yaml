@@ -1,0 +1,8 @@
+monad-mainnet:
+  user-workflow:
+    workflow-name: "moolam-verifier"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.json"
+    secrets-path: ""

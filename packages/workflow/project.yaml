@@ -1,0 +1,17 @@
+# CRE project settings. One group per target, chosen with --target on the CLI.
+#
+# monad-mainnet is the real one: the registry, the receiver and the workflow wallet all live on
+# Monad mainnet. staging-settings exists only for the decode spike, which never touches a chain.
+#
+# The RPC URL is read from the repository root .env, so no endpoint or key is written down here.
+# Pass it with: cre workflow simulate <workflow> --target monad-mainnet -e ../../.env
+
+staging-settings:
+  rpcs:
+    - chain-name: ethereum-testnet-sepolia
+      url: https://ethereum-sepolia-rpc.publicnode.com
+
+monad-mainnet:
+  rpcs:
+    - chain-name: monad-mainnet
+      url: ${MONAD_MAINNET_RPC_URL}
