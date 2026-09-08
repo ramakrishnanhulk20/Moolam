@@ -77,6 +77,7 @@ not fix are listed last, on purpose.
   controls the wallet controls the binding. We chose that so a lost passkey
   does not strand the account. Passports already registered keep their
   original signatures either way.
+- **Tunnelled IPv6 forms.** The fetch guard normalises IPv4-mapped IPv6 and blocks every private, loopback, link-local and metadata range, pinning the socket to the address it checked. It does not decode the IPv4 embedded in 6to4, NAT64 or Teredo addresses, so on a host with one of those tunnels configured they remain a path inward. The verifier is deployed without such tunnels.
 - **Software keys.** Mera-derived persona keys are software keys in page memory
   while a session is open. A malicious dependency in the page could read them.
 - **IPFS liveness.** If the pinned files disappear, the on-chain record still
