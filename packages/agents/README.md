@@ -38,6 +38,12 @@ manifest that describes different pixels than the registered ones is worse than 
 build the passport input, sign it with the creator's passkey and with the agent owner's wallet,
 then register. Everything is pinned before the transaction is sent, so a failed upload costs no gas.
 
+**`src/privy/`** is the Privy side: `client.ts` builds the client and the authorization context
+from the root `.env`, `policies.ts` writes the rulebooks Privy's enclave enforces, `serverWallet.ts`
+creates and reuses the wallets and sends transactions from them, `generatorSigner.ts` gets the
+agent's EIP-712 signature out of the enclave, and `sessionSigner.ts` grants, uses and revokes the
+standing permission a creator gives the app.
+
 **`src/chain/anvil.ts`** starts a local anvil forked from Monad mainnet and deploys the three
 contracts onto it. Tests and the local proof only. It repeats what `script/Deploy.s.sol` does
 rather than running it, because that script writes the mainnet deployment file and would overwrite
@@ -72,6 +78,7 @@ npm run test:agents     16 tests: the digests against the contract, the whole wr
                         fork of Monad mainnet, and six refusals decoded to their error names
 npm run proof:anvil     deploy, bind, three passports and an edit on a fork, with gas per step
 npm run seed            one real passport on Monad mainnet, files pinned to IPFS. Spends MON.
+npm run prove:privy     the four Privy features, live on Monad mainnet. Spends MON.
 ```
 
 Both need `MONAD_MAINNET_RPC_URL` in the root `.env` and `anvil` on the path. Neither spends MON:
@@ -113,6 +120,61 @@ Needs in the root `.env`: `MONAD_MAINNET_RPC_URL`, `DEPLOYER_PRIVATE_KEY`, `PROO
 and `PINATA_JWT`. The two mainnet runs recorded in the report cost 376,178 and 376,166 gas, about
 0.0384 MON each at the price of the day, because Monad bills the gas limit rather than the gas used.
 
+## Proving the Privy side
+
+`npm run prove:privy` from the repo root runs the four Privy features that Moolam is built on,
+against Monad mainnet, and prints a transaction hash or the exact refusal for every one. The output
+is saved to `kitchen/reports/WO-4-output.txt`.
+
+**Server wallets with a policy.** The generator agent's key lives in Privy's secure enclave, not on
+our server. Its policy allows exactly two things: send a `register` call to the Moolam registry on
+chain 143 carrying no MON, and sign an EIP-712 message whose domain is that same registry. Privy
+denies any method or destination no rule names, so the agent cannot move funds, cannot call another
+contract, and cannot sign for another app even if this machine is taken over.
+
+**The agent's signature comes out of the enclave.** `register` only writes a Generated passport if
+the owner of the ERC-8004 agent signed the same digest the creator's passkey signed. That signature
+is produced by Privy typed data signing, and the script recovers the address from it locally before
+spending gas, so the run fails on this machine rather than on chain if the two ever disagree.
+
+**Session signers.** The creator owns their wallet. They grant the app a separate key, registered
+with Privy as a one of one key quorum, permission to sign on that wallet, scoped by a second policy
+that allows `appendEdit` and nothing else. That is what lets an editing session write ten edits
+without ten passkey prompts. When the permission is taken back, the same call from the same key is
+refused by Privy before it can reach Monad.
+
+**Gas sponsorship.** The creator's first transaction is attempted with `sponsor: true`. On the run
+recorded in the report, Privy answered `HTTP 400 invalid_data: Gas sponsorship is not enabled`, so
+the script printed `sponsorship: not enabled, paid by wallet` and the wallet paid. Turning it on is
+a dashboard setting under Wallet Infrastructure, App pays, with Monad ticked. Nothing in the output
+claims a sponsored transaction that did not happen.
+
+What a judge sees, in the order the script prints it:
+
+1. The generator's wallet address, its policy id, and the ERC-8004 agent id it owns.
+2. The creator's wallet and the passkey bind transaction, with whether it was sponsored.
+3. A passport registered by the generator wallet under that policy, with the token id.
+4. The same wallet refused when it tries to send MON: `policy_violation`, no transaction.
+5. The same wallet refused when it tries `appendEdit`: same contract, wrong function.
+6. An edit written on the creator's wallet by the app's session signer, co-signed by the agent.
+7. The permission revoked, and the same call refused with Privy's own error text.
+
+Two honest notes. There is no browser in this proof, so the creator's wallet is a Privy server
+wallet standing in for the embedded wallet a user would get on login, and the session signer is
+granted through `wallets().update` with `additional_signers`, which is the server side of what the
+React SDK calls `addSigners`. And the generator mints its ERC-8004 identity before its policy goes
+on, because the policy forbids calls to any other contract; a rerun skips that step and the wallet
+stays locked down.
+
+The wallet ids, the policy ids and the agent id are cached in `packages/agents/.moolam/wallets.json`
+so a second run reuses everything and only sends the three transactions. The app's session key and
+the creator's passkey key live next to it in the same gitignored folder and are never printed.
+
+Needs in the root `.env`: `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY`,
+`MONAD_MAINNET_RPC_URL`, `DEPLOYER_PRIVATE_KEY` and `PINATA_JWT`. The first run funds the two
+Privy wallets with 12 MON each from the deployer, because Monad reserves 10 MON per account and a
+wallet below that cannot pay for anything.
+
 ## What each action costs
 
 Measured by `npm run proof:anvil`, saved in `kitchen/reports/WO-4a-anvil-proof.txt`. Anvil answers
@@ -127,6 +189,10 @@ the pure Solidity fallback. Monad bills the gas limit you declare, not the gas y
 | Register an agent on ERC-8004 | 450,903 | One time per agent. Paid to the ERC-8004 registry, not to us. |
 | Register a Generated image | 371,986 | The Captured cost plus the agent signature check and the ERC-8004 ownership read. |
 | Append an edit | 353,983 | No passkey prompt. Holding the parent token is the authority. |
+
+On mainnet through Privy wallets, with the limit set to the estimate plus ten percent, the last
+`npm run prove:privy` run paid 0.0072 MON to rebind the passkey, 0.0422 MON to register and 0.0492
+MON to append an edit, all at 102 gwei.
 
 The gas figures the contracts package publishes are the ones to quote for mainnet: they are
 measured in Foundry's Monad network family, which prices gas the way the chain we ship on does.

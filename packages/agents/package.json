@@ -7,12 +7,14 @@
   "scripts": {
     "test": "vitest run --reporter=verbose",
     "proof": "tsx scripts/anvil-proof.ts",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "prove:privy": "tsx scripts/prove-privy.ts"
   },
   "dependencies": {
     "@moolam/verifier": "*",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
+    "@privy-io/node": "0.34.0",
     "dotenv": "17.4.2",
     "sharp": "0.35.4",
     "viem": "2.54.0",
