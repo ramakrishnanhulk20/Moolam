@@ -6,13 +6,17 @@
   "type": "module",
   "scripts": {
     "test": "vitest run --reporter=verbose",
-    "proof": "tsx scripts/anvil-proof.ts"
+    "proof": "tsx scripts/anvil-proof.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
+    "@moolam/verifier": "*",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "dotenv": "17.4.2",
-    "viem": "2.54.0"
+    "sharp": "0.35.4",
+    "viem": "2.54.0",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@types/node": "26.4.1",

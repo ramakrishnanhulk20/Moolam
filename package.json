@@ -17,7 +17,8 @@
     "codegen:indexer": "npm run codegen --workspace packages/indexer",
     "test:indexer": "npm run test --workspace packages/indexer",
     "test:agents": "npm run test --workspace packages/agents",
-    "proof:anvil": "npm run proof --workspace packages/agents"
+    "proof:anvil": "npm run proof --workspace packages/agents",
+    "seed": "npm run seed --workspace packages/agents"
   },
   "allowScripts": {
     "@contentauth/c2pa-node@0.9.3": true,
