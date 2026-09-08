@@ -139,9 +139,6 @@ export async function buildServer(
     max: RATE_LIMIT_PER_MINUTE,
     timeWindow: "1 minute",
     keyGenerator: (request) => request.ip,
-    onExceeding: (request) => {
-      request.log.warn({ ip: request.ip, url: request.url }, "rate limit approaching");
-    },
     onExceeded: (request) => {
       request.log.warn({ ip: request.ip, url: request.url }, "rejected: rate limit exceeded");
     },
