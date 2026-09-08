@@ -25,9 +25,12 @@ field_selection:
     - hash
 chains:
   - id: 143
-    start_block: 0
+    # The block the three contracts were deployed in on Monad mainnet, from
+    # packages/contracts/deployments/monad-mainnet.json. Nothing this index cares
+    # about exists before it, so starting earlier only costs sync time.
+    start_block: 102977372
     contracts:
       - name: MoolamRegistry
-        address: "0x0000000000000000000000000000000000000001"
+        address: "0xeBeeD7A422531789aa009a9c45CC10C84dF12119"
       - name: VerifierPolicy
-        address: "0x0000000000000000000000000000000000000002"
+        address: "0xD46E62776Cc5804Ee49d80c67732833d7E700A6e"

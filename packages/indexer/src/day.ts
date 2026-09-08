@@ -1,4 +1,4 @@
-import type { HandlerContext } from "envio";
+import type { EvmOnEventContext } from "envio";
 import { GLOBAL_STATS_ID, dayId } from "./ids.js";
 
 export type DailyDelta = {
@@ -24,7 +24,7 @@ export type GlobalDelta = {
 /// runs every handler twice and throws the first run's writes away, so any total
 /// kept outside the database would be counted twice.
 export async function bumpDaily(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   blockTimestampSeconds: number,
   delta: DailyDelta,
 ): Promise<void> {
@@ -48,9 +48,30 @@ export async function bumpDaily(
   });
 }
 
+/// Records that this creator was active on the day the block landed in, and says
+/// whether that is the first time today.
+///
+/// The marker row is the only way to count distinct creators per day: a counter
+/// alone cannot tell a returning creator from a new one, and reading every
+/// passport of the day back would grow with the day's traffic. The row is written
+/// once and never updated, so the preload phase's doubled run cannot double-count.
+export async function markCreatorActive(
+  context: EvmOnEventContext,
+  blockTimestampSeconds: number,
+  creatorId: string,
+): Promise<boolean> {
+  const id = `${dayId(blockTimestampSeconds)}-${creatorId}`;
+  const seen = await context.CreatorDay.get(id);
+  if (seen !== undefined) {
+    return false;
+  }
+  context.CreatorDay.set({ id });
+  return true;
+}
+
 /// Adds to the single row of running totals for the whole index.
 export async function bumpGlobal(
-  context: HandlerContext,
+  context: EvmOnEventContext,
   delta: GlobalDelta,
 ): Promise<void> {
   const row = await context.GlobalStats.getOrCreate({

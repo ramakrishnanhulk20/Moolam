@@ -5,39 +5,31 @@ passports, the edit tree, verification results, disputes, passkey bindings, and
 the per-creator, per-generator and per-day counters. Built on Envio HyperIndex V3
 (`envio` 3.9.0), which syncs from HyperSync rather than an RPC node.
 
-## Nothing here has been run yet
+## Running it (Linux only)
 
-`envio codegen` only runs on Linux, and WSL2 is still being installed on the
-build machine. So the handlers, the tests and this README were written against
-Envio's published API, not against generated code, and none of it has executed.
-What that means in practice:
-
-- `src/generated-shape.d.ts` is a hand-written stand-in for the types codegen
-  will emit. It is what lets the handlers and tests type-check today:
-  `npx tsc --noEmit -p packages/indexer` reports 0 errors with it and 50 without
-  it, the first of which is envio's own "Run 'envio codegen' to generate handler
-  types from config.yaml". **Delete the stand-in the first time `envio codegen`
-  runs.** It declares the `envio` module ambiently,
-  and an ambient declaration wins over the real package in `node_modules` and
-  hides every export it does not list. That was measured, not assumed; the
-  commands and the exact TypeScript error are in
-  `kitchen/reports/WO-3b-notes.txt`, section 5.
-- The first `envio codegen` and `vitest run` may still turn up mismatches
-  between the stand-in and the real generated types. Treat the first green test
-  run as the proof, not this file.
-- `config.yaml` still points at placeholder addresses
-  `0x...0001` and `0x...0002`. Swap in the real ones from
-  `packages/contracts/deployments/` and set `start_block` to the deploy block
-  before deploying the index, or it will sync nothing.
-
-## Commands
-
-Run from the repo root:
+`envio codegen` and the test indexer are Linux builds, so on this Windows machine
+everything runs inside WSL2 Ubuntu with Node 22 from nvm, and `packages/indexer`
+has its own Linux `node_modules` installed with `npm install --no-workspaces` so
+it never disturbs the repo root install.
 
 ```sh
-npm run codegen:indexer   # envio codegen, writes .envio/types.d.ts
-npm run test:indexer      # vitest run, the handler tests
+wsl -e bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; cd /mnt/d/Projects/Monad && npm run codegen:indexer'
+wsl -e bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; cd /mnt/d/Projects/Monad && npm run test:indexer'
 ```
+
+On a Linux or macOS machine the two `npm run` commands are all you need.
+
+Codegen writes `.envio/types.d.ts`, which is git-ignored, and `envio-env.d.ts`,
+which is committed and points TypeScript at it. Run codegen after any change to
+`config.yaml` or `schema.graphql`, or the handler types go stale.
+
+Nine handler tests pass against the generated types with the live mainnet
+addresses in `config.yaml`. The full output, with the codegen version and every
+test name, is in `kitchen/reports/WO-3c-tests.txt`.
+
+`envio dev`, which runs the whole indexer against Monad locally, needs Docker and
+has not been run here. The Envio Cloud deployment below is the way this index
+goes live.
 
 ## The entities
 
@@ -69,11 +61,15 @@ mirrors the contract's `DisputeStatus` enum: 1 open, 2 upheld, 3 rejected.
 `since` is when the current active or inactive state started, so it moves on
 every change.
 
+**CreatorDay.** A marker row per creator per UTC day, keyed `<day>-<creator>`,
+with nothing in it but the key. It is what lets `DailyStats.uniqueCreators` count
+distinct creators without reading the day's passports back.
+
 **DailyStats** and **GlobalStats.** Counters for the charts. `registrations` is
 every passport registered that day and `edits` is the subset of those that had a
 parent, so edits are counted inside registrations, not beside them. `disputes`
-counts challenges raised. `uniqueCreators` counts creators whose very first
-passport landed that day (see the known gap below).
+counts challenges raised. `uniqueCreators` counts the distinct creators who
+registered something that day, so a creator who posts five times counts once.
 
 Addresses are stored lowercase everywhere, including entity ids. Envio hands them
 back EIP-55 checksummed, so the handlers lowercase them first: one casing rule
@@ -89,14 +85,6 @@ than a meaningless 100, and an upheld dispute counts double against it because a
 human resolver agreeing the record was wrong is far stronger evidence than one
 verifier's hash missing by a few bits.
 
-## Known gap
-
-`DailyStats.uniqueCreators` currently counts creators whose first ever passport
-landed that day, not distinct creators active that day. Counting the second one
-properly needs a small marker entity in `schema.graphql`, something like
-`type DailyCreator { id: ID! }` keyed `<day>-<creator>` and written with
-`getOrCreate`, and `schema.graphql` was out of scope for this work order.
-
 ## Deploying on Envio Cloud
 
 Ram's part, once the contract addresses are in `config.yaml` and the repo is
@@ -110,6 +98,13 @@ pushed:
 
 Envio Cloud builds with pnpm 10.32.0 and expects Node 24 or newer, and it needs a
 `package.json` in that root directory with `envio` pinned in `dependencies`,
-which `packages/indexer/package.json` has. The free development plan allows three
-indexers per organisation and three deployments each, and deletes a deployment
-that has processed 100,000 events, used 5GB, or served no requests for 7 days.
+which `packages/indexer/package.json` has. Every import in `src` and `test`
+resolves inside this folder, so the build does not need the rest of the monorepo.
+No `pnpm-workspace.yaml` was added here, because that is a guess until a real
+Cloud build runs: if the first Cloud build fails while installing, add a
+`pnpm-workspace.yaml` in this folder containing `packages: []` and redeploy, and
+tell the team it was needed.
+
+The free development plan allows three indexers per organisation and three
+deployments each, and deletes a deployment that has processed 100,000 events,
+used 5GB, or served no requests for 7 days.

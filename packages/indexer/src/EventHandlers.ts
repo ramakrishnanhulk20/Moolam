@@ -1,6 +1,6 @@
 import { indexer } from "envio";
 
-import { bumpDaily, bumpGlobal } from "./day.js";
+import { bumpDaily, bumpGlobal, markCreatorActive } from "./day.js";
 import {
   addressId,
   attestationId,
@@ -141,10 +141,16 @@ indexer.onEvent(
       }
     }
 
+    const firstTodayForCreator = await markCreatorActive(
+      context,
+      event.block.timestamp,
+      creatorId,
+    );
+
     await bumpDaily(context, event.block.timestamp, {
       registrations: 1,
       edits: isEdit ? 1 : 0,
-      uniqueCreators: existingCreator === undefined ? 1 : 0,
+      uniqueCreators: firstTodayForCreator ? 1 : 0,
     });
     await bumpGlobal(context, {
       passports: 1,

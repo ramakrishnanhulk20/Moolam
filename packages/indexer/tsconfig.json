@@ -11,6 +11,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "generated/**/*.d.ts"],
+  "include": ["envio-env.d.ts", "src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules"]
 }

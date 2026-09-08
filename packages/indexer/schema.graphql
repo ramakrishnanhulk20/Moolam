@@ -81,6 +81,13 @@ type Receiver {
   since: BigInt!
 }
 
+# One marker row per creator per UTC day, keyed "<day>-<creator>". Its only job
+# is to answer "have we already counted this creator today", which is what turns
+# DailyStats.uniqueCreators into distinct creators active that day.
+type CreatorDay {
+  id: ID!
+}
+
 type DailyStats {
   id: ID!
   registrations: Int!

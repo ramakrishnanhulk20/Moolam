@@ -3,19 +3,19 @@
 //
 // NOT COVERED HERE: anything below the handlers. These tests do not check that
 // config.yaml decodes the real ABIs, they do not run against Monad, and they do
-// not exercise reorg handling or the GraphQL layer. The ReceiverAdded and
-// ReceiverRemoved handlers are written but not tested here, because WO-3 did not
-// list them. Every assertion below is about what the handlers write, not about
-// what the registry contract enforces, which is covered by the Foundry tests in
-// packages/contracts.
-//
-// These tests have never been executed. `envio codegen` needs Linux and WSL2 is
-// still being installed on this machine, so nothing here has run yet.
+// not exercise reorg handling or the GraphQL layer. Every assertion below is
+// about what the handlers write, not about what the registry contract enforces,
+// which is covered by the Foundry tests in packages/contracts.
 
 import { describe, expect, it } from "vitest";
 import { createTestIndexer } from "envio";
 
 const CHAIN = 143;
+
+// config.yaml starts the index at the block the contracts were deployed in, and
+// a simulated event before that block is filtered out before any handler runs.
+// Every block number below is an offset from the deploy block for that reason.
+const DEPLOY_BLOCK = 102977372;
 
 const DAY_ONE = 1768471200; // 2026-01-15T10:00:00Z
 const DAY_TWO = 1768557600; // 2026-01-16T10:00:00Z
@@ -50,7 +50,7 @@ function registration(options: {
     contract: "MoolamRegistry" as const,
     event: "PassportRegistered" as const,
     block: {
-      number: options.blockNumber ?? 100,
+      number: options.blockNumber ?? DEPLOY_BLOCK + 100,
       timestamp: options.timestamp ?? DAY_ONE,
     },
     transaction: { hash: options.txHash ?? hash(0xaa) },
@@ -109,9 +109,9 @@ describe("Moolam indexer handlers", () => {
       chains: {
         [CHAIN]: {
           simulate: [
-            registration({ id: root, blockNumber: 100 }),
-            registration({ id: firstEdit, parentId: root, blockNumber: 101 }),
-            registration({ id: secondEdit, parentId: firstEdit, blockNumber: 102 }),
+            registration({ id: root, blockNumber: DEPLOY_BLOCK + 100 }),
+            registration({ id: firstEdit, parentId: root, blockNumber: DEPLOY_BLOCK + 101 }),
+            registration({ id: secondEdit, parentId: firstEdit, blockNumber: DEPLOY_BLOCK + 102 }),
           ],
         },
       },
@@ -149,7 +149,7 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "VerificationAttested",
-              block: { number: 101, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 101, timestamp: DAY_ONE },
               transaction: { hash: attestationTx },
               logIndex: 0,
               params: {
@@ -163,7 +163,7 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "VerificationAttested",
-              block: { number: 102, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 102, timestamp: DAY_ONE },
               transaction: { hash: attestationTx },
               logIndex: 1,
               params: {
@@ -213,7 +213,7 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "VerificationAttested",
-              block: { number: 101, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 101, timestamp: DAY_ONE },
               transaction: { hash: hash(0xdd) },
               logIndex: 0,
               params: {
@@ -227,7 +227,7 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "PassportFlagged",
-              block: { number: 102, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 102, timestamp: DAY_ONE },
               transaction: { hash: hash(0xf1) },
               params: {
                 passportId: id,
@@ -240,7 +240,7 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "DisputeResolved",
-              block: { number: 103, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 103, timestamp: DAY_ONE },
               transaction: { hash: hash(0xf3) },
               params: { passportId: id, upheld: true, resolver: RESOLVER },
             },
@@ -260,10 +260,10 @@ describe("Moolam indexer handlers", () => {
     expect(dispute.resolvedAt).toBe(BigInt(DAY_ONE));
 
     // One matched recheck against one upheld challenge, which counts double:
-    // 100 * (1 + 1) / (1 + 0 + 2 + 2) rounds to 33.
+    // 100 * (1 + 1) / (1 + 0 + 2 + 2) is 40, down from the 50 it started at.
     const generator = await indexer.Generator.getOrThrow(AGENT_ID.toString());
     expect(generator.disputesUpheld).toBe(1);
-    expect(generator.trustScore).toBe(33);
+    expect(generator.trustScore).toBe(40);
 
     const day = await indexer.DailyStats.getOrThrow("2026-01-15");
     expect(day.disputes).toBe(1);
@@ -284,14 +284,14 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "Transfer",
-              block: { number: 100, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 100, timestamp: DAY_ONE },
               transaction: { hash: hash(0xaa) },
               params: { from: ZERO_ADDRESS, to: CREATOR, tokenId },
             },
             {
               contract: "MoolamRegistry",
               event: "Transfer",
-              block: { number: 200, timestamp: DAY_TWO },
+              block: { number: DEPLOY_BLOCK + 200, timestamp: DAY_TWO },
               transaction: { hash: hash(0xab) },
               params: { from: CREATOR, to: BUYER, tokenId },
             },
@@ -321,7 +321,7 @@ describe("Moolam indexer handlers", () => {
             {
               contract: "MoolamRegistry",
               event: "PasskeyBound",
-              block: { number: 99, timestamp: DAY_ONE },
+              block: { number: DEPLOY_BLOCK + 99, timestamp: DAY_ONE },
               transaction: { hash: hash(0xa9) },
               params: {
                 wallet: CREATOR,
@@ -356,10 +356,11 @@ describe("Moolam indexer handlers", () => {
       chains: {
         [CHAIN]: {
           simulate: [
-            registration({ id: hash(1), blockNumber: 100, timestamp: DAY_ONE }),
+            registration({ id: hash(1), blockNumber: DEPLOY_BLOCK + 100, timestamp: DAY_ONE }),
+            registration({ id: hash(2), blockNumber: DEPLOY_BLOCK + 101, timestamp: DAY_ONE }),
             registration({
-              id: hash(2),
-              blockNumber: 200,
+              id: hash(3),
+              blockNumber: DEPLOY_BLOCK + 200,
               timestamp: DAY_TWO,
               creator: OTHER_CREATOR,
             }),
@@ -368,8 +369,10 @@ describe("Moolam indexer handlers", () => {
       },
     });
 
+    // Two registrations from the same wallet on day one, so the day counts two
+    // registrations and one creator active.
     const first = await indexer.DailyStats.getOrThrow("2026-01-15");
-    expect(first.registrations).toBe(1);
+    expect(first.registrations).toBe(2);
     expect(first.uniqueCreators).toBe(1);
 
     const second = await indexer.DailyStats.getOrThrow("2026-01-16");
@@ -377,9 +380,66 @@ describe("Moolam indexer handlers", () => {
     expect(second.uniqueCreators).toBe(1);
 
     const global = await indexer.GlobalStats.getOrThrow("global");
-    expect(global.passports).toBe(2);
+    expect(global.passports).toBe(3);
     expect(global.creators).toBe(2);
-    // Both passports name the same generating agent, so it is counted once.
+    // Every passport names the same generating agent, so it is counted once.
     expect(global.generators).toBe(1);
+  });
+
+  it("records a verifier the policy allows as an active receiver", async () => {
+    const indexer = createTestIndexer();
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            {
+              contract: "VerifierPolicy",
+              event: "ReceiverAdded",
+              block: { number: DEPLOY_BLOCK + 90, timestamp: DAY_ONE },
+              transaction: { hash: hash(0xb1) },
+              params: { receiver: RECEIVER },
+            },
+          ],
+        },
+      },
+    });
+
+    const receiver = await indexer.Receiver.getOrThrow(RECEIVER);
+    expect(receiver.active).toBe(true);
+    expect(receiver.since).toBe(BigInt(DAY_ONE));
+  });
+
+  it("keeps the receiver row and marks it inactive when the policy removes it", async () => {
+    const indexer = createTestIndexer();
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            {
+              contract: "VerifierPolicy",
+              event: "ReceiverAdded",
+              block: { number: DEPLOY_BLOCK + 90, timestamp: DAY_ONE },
+              transaction: { hash: hash(0xb1) },
+              params: { receiver: RECEIVER },
+            },
+            {
+              contract: "VerifierPolicy",
+              event: "ReceiverRemoved",
+              block: { number: DEPLOY_BLOCK + 200, timestamp: DAY_TWO },
+              transaction: { hash: hash(0xb2) },
+              params: { receiver: RECEIVER },
+            },
+          ],
+        },
+      },
+    });
+
+    // The row stays so old attestations still name a receiver the API knows.
+    // "since" moves to the removal, because it is when the current state started.
+    const receiver = await indexer.Receiver.getOrThrow(RECEIVER);
+    expect(receiver.active).toBe(false);
+    expect(receiver.since).toBe(BigInt(DAY_TWO));
   });
 });
