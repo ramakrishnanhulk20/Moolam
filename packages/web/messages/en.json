@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "title": "Moolam",
+    "description": "A passport for every AI generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy."
+  },
+  "header": {
+    "brand": "Moolam",
+    "tagline": "Passports for generated images",
+    "theme": "Theme",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "language": "Language",
+    "locale": {
+      "en": "EN",
+      "ta": "TA"
+    },
+    "nav": {
+      "home": "Home",
+      "verify": "Verify",
+      "studio": "Studio"
+    }
+  },
+  "footer": {
+    "network": "Monad mainnet, chain {chainId}",
+    "registry": "Registry",
+    "index": "Index: {source}",
+    "sourceChain": "the chain",
+    "sourceEnvio": "Envio",
+    "sourceVerifier": "the verifier service"
+  },
+  "common": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "explorer": "View on MonadVision",
+    "loading": "Loading",
+    "unknown": "unknown",
+    "yes": "Yes",
+    "no": "No",
+    "swapNotice": "Placeholder art. The real still lands with the hero build."
+  },
+  "kind": {
+    "0": "Generated",
+    "1": "Captured",
+    "2": "Edited"
+  },
+  "home": {
+    "kicker": "Live on Monad mainnet",
+    "title": "Every generated image carries its own record.",
+    "lede": "Moolam writes the exact bytes and two perceptual fingerprints of an image into a passport at the moment it is made, so any copy of it can be traced back to the creator and the agent that made it.",
+    "ctaVerify": "Verify an image",
+    "ctaStudio": "Open the studio",
+    "latest": {
+      "heading": "Latest passports",
+      "subheading": "Read live from the registry, newest first.",
+      "pending": "Reading the registry.",
+      "empty": "No passports yet. Register one and it appears here within a block.",
+      "error": "The registry could not be read: {reason}. Check the RPC endpoint in packages/web/.env.local and reload.",
+      "columnId": "Passport",
+      "columnCreator": "Creator",
+      "columnAgent": "Agent",
+      "columnWhen": "Registered",
+      "agentNone": "no agent",
+      "open": "Open"
+    }
+  },
+  "lab": {
+    "title": "Lab",
+    "note": "Visual pieces are tried here before they reach a real screen. Nothing on this page is final and nothing links to it."
+  },
+  "verify": {
+    "title": "Verify an image",
+    "lede": "Upload any copy. Moolam fingerprints it three ways and searches every registered passport, so a resized or re-encoded file still finds its record.",
+    "choose": "Choose an image",
+    "chosen": "Selected: {name}",
+    "hint": "JPEG or PNG, up to 20 MB. The file goes to the Moolam verifier and is not stored.",
+    "submit": "Verify",
+    "pending": "Fingerprinting the image and searching the registry.",
+    "matched": "Match found",
+    "exact": "Exact bytes match",
+    "none": "No passport matches this image.",
+    "noneHint": "Cropped copies do not match yet. Try the file as it came out of the generator.",
+    "confidence": "Confidence",
+    "phashDistance": "pHash distance",
+    "blockhashDistance": "Blockhash distance",
+    "variant": "Orientation",
+    "manifestPresent": "C2PA manifest still attached",
+    "manifestMissing": "No C2PA manifest left in this file",
+    "openPassport": "Open the passport",
+    "error": "The check did not run: {reason}",
+    "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then try again.",
+    "noFile": "Pick an image first."
+  },
+  "passport": {
+    "title": "Passport",
+    "pending": "Reading the registry.",
+    "notFound": "No passport with that id. Check the id, or find it from the verify page.",
+    "error": "The registry could not be read: {reason}. Reload the page.",
+    "creator": "Creator",
+    "owner": "Owner",
+    "agent": "Generator agent",
+    "registered": "Registered",
+    "kind": "Kind",
+    "phash": "pHash",
+    "blockhash": "Blockhash",
+    "manifestHash": "Manifest hash",
+    "metadata": "Metadata",
+    "parent": "Edited from",
+    "disputed": "Disputed",
+    "attestations": {
+      "heading": "Verifications",
+      "empty": "No verification has been written for this passport yet. The Chainlink workflow adds one when it re-checks the image.",
+      "matched": "matched",
+      "notMatched": "did not match",
+      "distance": "{distance} bits apart",
+      "receiver": "Written by",
+      "at": "At"
+    },
+    "children": {
+      "heading": "Edits",
+      "empty": "No edit has been registered from this passport."
+    }
+  },
+  "agent": {
+    "title": "Agent",
+    "pending": "Reading the identity registry.",
+    "notFound": "No agent with that id on the ERC-8004 identity registry.",
+    "error": "The identity registry could not be read: {reason}. Reload the page.",
+    "owner": "Owner",
+    "uri": "Agent URI",
+    "card": "Agent card",
+    "cardMissing": "The agent card could not be read from its URI.",
+    "reputation": {
+      "heading": "Reputation",
+      "summary": "{count, plural, =1 {# verification} other {# verifications}} recorded",
+      "score": "Average score",
+      "empty": "No feedback recorded for this agent yet. The verifier writes one after every check it runs.",
+      "error": "The reputation registry could not be read: {reason}."
+    }
+  },
+  "studio": {
+    "title": "Studio",
+    "lede": "Log in and Moolam creates a wallet for you on Monad. No extension, no seed phrase. Registering and editing passports arrives here in the next build.",
+    "login": "Log in",
+    "logout": "Log out",
+    "loggedOut": "You are not logged in. Use email, Google or a passkey and a wallet is created for you.",
+    "connecting": "Opening the login window.",
+    "wallet": "Embedded wallet",
+    "balance": "Balance",
+    "balancePending": "Reading the balance from Monad.",
+    "balanceError": "The balance could not be read: {reason}. Reload the page.",
+    "noWallet": "You are logged in, but no wallet was created yet. Reload the page, or log in again.",
+    "notConfigured": "Privy is not configured. Put NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local and restart the dev server."
+  }
+}
