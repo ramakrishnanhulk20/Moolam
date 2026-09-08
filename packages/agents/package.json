@@ -19,7 +19,7 @@
     "dotenv": "17.4.2",
     "openai": "7.10.0",
     "sharp": "0.35.4",
-    "viem": "2.54.0",
+    "viem": "2.56.3",
     "zod": "4.5.4"
   },
   "devDependencies": {
