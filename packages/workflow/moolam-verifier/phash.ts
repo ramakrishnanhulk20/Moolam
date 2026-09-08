@@ -44,7 +44,7 @@ const grayGrid = (
 	const gray = new Float64Array(width * height);
 	for (let i = 0; i < width * height; i++) {
 		const base = i * channels;
-		if (channels >= 3) {
+		if (channels === 3) {
 			const light =
 				0.2126 * SRGB_TO_LINEAR[pixels[base]] +
 				0.7152 * SRGB_TO_LINEAR[pixels[base + 1]] +
@@ -81,12 +81,42 @@ const grayGrid = (
 };
 
 /**
+ * The 2D DCT of the 32 by 32 grid, as `dct[SAMPLE_SIZE * u + v]` where u runs along x.
+ *
+ * The transform is separable, so this runs it once along y and once along x instead of summing
+ * over both axes for every output coefficient: 65,536 multiplications instead of 1,048,576. The
+ * result is the same, which matters because the workflow's verdict has to agree bit for bit with
+ * the verifier's own fingerprint.
+ */
+const dct2d = (grid: Float64Array): Float64Array => {
+	const alongY = new Float64Array(SAMPLE_SIZE * SAMPLE_SIZE);
+	for (let x = 0; x < SAMPLE_SIZE; x++) {
+		for (let v = 0; v < SAMPLE_SIZE; v++) {
+			let sum = 0;
+			for (let y = 0; y < SAMPLE_SIZE; y++) sum += COS[y][v] * grid[SAMPLE_SIZE * y + x];
+			alongY[SAMPLE_SIZE * x + v] = sum;
+		}
+	}
+
+	const dct = new Float64Array(SAMPLE_SIZE * SAMPLE_SIZE);
+	for (let u = 0; u < SAMPLE_SIZE; u++) {
+		for (let v = 0; v < SAMPLE_SIZE; v++) {
+			let sum = 0;
+			for (let x = 0; x < SAMPLE_SIZE; x++) sum += COS[x][u] * alongY[SAMPLE_SIZE * x + v];
+			dct[SAMPLE_SIZE * u + v] = (sum * SQRT[u] * SQRT[v]) / 4;
+		}
+	}
+	return dct;
+};
+
+/**
  * The 64-bit fingerprint of one decoded image.
  *
  * @param pixels Interleaved samples, one byte each.
  * @param width Image width in pixels, must be at least 32.
  * @param height Image height in pixels, must be at least 32.
- * @param channels Samples per pixel: 3 or 4 are treated as colour, 1 as already grey.
+ * @param channels Samples per pixel: 3 for colour, 1 for grey. Any other count throws, because
+ * guessing which bytes are which colour would quietly change the fingerprint.
  */
 export const perceptualHash = (
 	pixels: Uint8Array,
@@ -97,41 +127,23 @@ export const perceptualHash = (
 	if (width < SAMPLE_SIZE || height < SAMPLE_SIZE) {
 		throw new Error(`image is ${width}x${height}, too small to fingerprint`);
 	}
+	if (channels !== 3 && channels !== 1) {
+		throw new Error(`image has ${channels} samples per pixel, expected 3 for colour or 1 for grey`);
+	}
 
 	const grid = grayGrid(pixels, width, height, channels);
-
-	const signal: number[][] = [];
-	for (let x = 0; x < SAMPLE_SIZE; x++) {
-		const column: number[] = [];
-		for (let y = 0; y < SAMPLE_SIZE; y++) column.push(grid[SAMPLE_SIZE * y + x]);
-		signal.push(column);
-	}
-
-	const dct: number[][] = [];
-	for (let u = 0; u < SAMPLE_SIZE; u++) {
-		const row: number[] = [];
-		for (let v = 0; v < SAMPLE_SIZE; v++) {
-			let sum = 0;
-			for (let i = 0; i < SAMPLE_SIZE; i++) {
-				for (let j = 0; j < SAMPLE_SIZE; j++) {
-					sum += COS[i][u] * COS[j][v] * signal[i][j];
-				}
-			}
-			row.push((sum * SQRT[u] * SQRT[v]) / 4);
-		}
-		dct.push(row);
-	}
+	const dct = dct2d(grid);
 
 	let total = 0;
 	for (let x = 0; x < LOW_SIZE; x++) {
-		for (let y = 0; y < LOW_SIZE; y++) total += dct[x + 1][y + 1];
+		for (let y = 0; y < LOW_SIZE; y++) total += dct[SAMPLE_SIZE * (x + 1) + y + 1];
 	}
 	const average = total / (LOW_SIZE * LOW_SIZE);
 
 	let hash = 0n;
 	for (let x = 0; x < LOW_SIZE; x++) {
 		for (let y = 0; y < LOW_SIZE; y++) {
-			hash = (hash << 1n) | (dct[x + 1][y + 1] > average ? 1n : 0n);
+			hash = (hash << 1n) | (dct[SAMPLE_SIZE * (x + 1) + y + 1] > average ? 1n : 0n);
 		}
 	}
 	return hash;

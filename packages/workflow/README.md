@@ -10,18 +10,32 @@ themselves, and they have to agree with each other before anything is signed.
 
 1. **Trigger.** An EVM log trigger on the registry `0xeBeeD7A422531789aa009a9c45CC10C84dF12119`,
    filtered to topic 0 of `PassportRegistered`, on `monad-mainnet` (chain id 143).
-2. **Read.** The workflow calls `getPassport(bytes32)` on the registry at the last finalized block
-   and takes the stored fingerprint and the metadata URI from there. The event is only the alarm
-   clock; a forged log carries no weight because every value used is read back out of the registry.
+2. **Read.** The workflow calls `getPassport(bytes32)` on the registry at the block the trigger log
+   came from, and takes the stored fingerprint and the metadata URI from there. The event is only
+   the alarm clock; a forged log carries no weight because every value used is read back out of the
+   registry. If that read comes back empty it is tried twice more, two seconds apart, and only then
+   does the run fail. Each attempt is logged.
+
+   Why that block and not the finalized one: a log trigger fires at Chainlink's default confidence
+   of `SAFE`, which is ahead of the last finalized block, so a read pinned to finality can go
+   looking for a registration the finalized state does not hold yet. The EVM client takes the block
+   height as `blockNumber(n)` for an exact block, or the constants `LATEST_BLOCK_NUMBER` and
+   `LAST_FINALIZED_BLOCK_NUMBER`; `log.blockNumber` arrives as a protobuf big integer, so
+   `protoBigIntToBigint` converts it first. Reading at the log's own block also means every node
+   reads the same state whatever height its own RPC has reached, which is what the retries are
+   for: a node a block or two behind, not a chain that has changed its mind.
 3. **Fetch.** Inside node mode, each node reads the passport's metadata document (an `ipfs://` file
    through the gateway, or an inline `data:application/json,` document), then downloads the
    thumbnail it names. Two HTTP requests per run, against a limit of five.
 4. **Fingerprint.** `decode.ts` decodes the JPEG with jpeg-js, pure JavaScript because the sandbox
    is QuickJS on WebAssembly with no native modules. `phash.ts` recomputes the same 64-bit
    fingerprint the verifier stores: grey through linear light, 32 by 32, 2D DCT, the 8 by 8 block
-   next to the DC term, one bit per coefficient above that block's average. Measured against
-   sharp-phash on the verifier's 17 test images it lands 0 to 2 bits away, against a match
-   threshold of 10.
+   next to the DC term, one bit per coefficient above that block's average. The DCT is run in its
+   separable form, once along each axis, which is 65,536 multiplications instead of 1,048,576 for
+   the same result. `packages/verifier/test/workflow-phash.test.ts` holds the two fingerprints
+   against each other on 24 generated images: identical on 11 of them, never more than 2 bits
+   apart, against a match threshold of 10. The same test proves the separable DCT gives the same
+   64 bits as the plain double sum it replaced.
 5. **Consensus.** The node function returns only `{ recomputed, distance, matched }`, and
    `consensusIdenticalAggregation` requires a quorum of nodes to have produced the identical
    verdict. The image bytes never go through consensus, so a CDN serving a slightly different
@@ -42,6 +56,7 @@ themselves, and they have to agree with each other before anything is signed.
 | `moolam-verifier/decode.ts` | JPEG decoding inside the sandbox |
 | `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, match threshold |
 | `spike/decode-spike.ts` | The throwaway run that proved a JPEG can be decoded in the sandbox at all |
+| `../verifier/test/workflow-phash.test.ts` | Holds this fingerprint against the verifier's sharp based one |
 
 ## Running it
 
@@ -103,4 +118,6 @@ One attestation is one Monad transaction from the CRE wallet: about 267,000 gas 
 receiver path in the contract tests, with `attest` itself at most 154,000 of that. The gas limit is
 capped at 1,000,000 in `workflow.ts`. At Monad mainnet gas prices that is a fraction of a cent per
 verified image. The workflow's own compute, one JPEG decode and a 32 by 32 DCT, took about 550 ms
-in the simulator, well inside the five minute execution budget.
+in the simulator when the DCT still summed over both axes, so that figure is now an upper bound.
+Either way it is well inside the five minute execution budget, and the three retry attempts on the
+registry read can add at most four seconds of waiting to it.

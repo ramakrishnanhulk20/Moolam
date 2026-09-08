@@ -1,12 +1,14 @@
 import {
+	blockNumber,
 	bytesToHex,
 	consensusIdenticalAggregation,
 	cre,
 	encodeCallMsg,
 	getNetwork,
-	LAST_FINALIZED_BLOCK_NUMBER,
+	LATEST_BLOCK_NUMBER,
 	logTriggerConfig,
 	prepareReportRequest,
+	protoBigIntToBigint,
 	TxStatus,
 	type EVMLog,
 	type NodeRuntime,
@@ -62,6 +64,19 @@ const PASSPORT_REGISTERED_TOPIC = keccak256(
  * passport whose attestation list is long, and still caps what one run can spend.
  */
 const GAS_LIMIT = "1000000";
+
+/**
+ * How many times the registry read is tried before the run gives up, and how long it waits between
+ * tries. A log trigger fires at Chainlink's default confidence of SAFE, which runs ahead of the
+ * last finalized block, so a read pinned to finality can look for a passport the finalized state
+ * does not hold yet. The read is pinned to the block the log came from instead: that block already
+ * contains the registration, and every node reads the same state whatever height its own RPC has
+ * reached. The retries cover the node whose RPC has not caught up to that block yet. Three tries
+ * and two seconds between them is at most four seconds added to a five minute execution budget,
+ * and three of the fifteen contract reads a run is allowed.
+ */
+const READ_ATTEMPTS = 3;
+const READ_RETRY_MS = 2000;
 
 const IPFS_SCHEME = "ipfs://";
 const JSON_DATA_URI = "data:application/json,";
@@ -154,6 +169,28 @@ const verifyThumbnail = (
 	};
 };
 
+/** One `getPassport` call at a fixed block height, decoded. Throws when the node cannot serve it. */
+const readPassport = (
+	runtime: Runtime<Config>,
+	evmClient: InstanceType<typeof cre.capabilities.EVMClient>,
+	config: Config,
+	callData: Hex,
+	readAt: ReturnType<typeof blockNumber>,
+) => {
+	const call = evmClient
+		.callContract(runtime, {
+			call: encodeCallMsg({ from: zeroAddress, to: config.registry as Address, data: callData }),
+			blockNumber: readAt,
+		})
+		.result();
+
+	return decodeFunctionResult({
+		abi: registryAbi,
+		functionName: "getPassport",
+		data: bytesToHex(call.data),
+	});
+};
+
 export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): string => {
 	const config = runtime.config;
 
@@ -173,28 +210,36 @@ export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): str
 
 	// The event is only the wake-up call. Everything the attestation is built from is read back out
 	// of the registry, so a forged log cannot talk this workflow into signing a report about it.
-	const call = evmClient
-		.callContract(runtime, {
-			call: encodeCallMsg({
-				from: zeroAddress,
-				to: config.registry as Address,
-				data: encodeFunctionData({
-					abi: registryAbi,
-					functionName: "getPassport",
-					args: [passportId],
-				}),
-			}),
-			blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
-		})
-		.result();
+	const triggerBlock = log.blockNumber ? protoBigIntToBigint(log.blockNumber) : undefined;
+	const readAt = triggerBlock === undefined ? LATEST_BLOCK_NUMBER : blockNumber(triggerBlock);
+	const where = triggerBlock === undefined ? "the latest block" : `block ${triggerBlock}`;
 
-	const passport = decodeFunctionResult({
+	const callData = encodeFunctionData({
 		abi: registryAbi,
 		functionName: "getPassport",
-		data: bytesToHex(call.data),
+		args: [passportId],
 	});
-	if (passport.registeredAt === 0n) {
-		throw new Error(`passport ${passportId} is not in the registry`);
+
+	let passport: ReturnType<typeof readPassport> | undefined;
+	let lastFailure = "";
+	for (let attempt = 1; attempt <= READ_ATTEMPTS; attempt++) {
+		try {
+			const candidate = readPassport(runtime, evmClient, config, callData, readAt);
+			if (candidate.registeredAt !== 0n) {
+				passport = candidate;
+				break;
+			}
+			lastFailure = "the registry has no record at that block yet";
+		} catch (error) {
+			lastFailure = error instanceof Error ? error.message : String(error);
+		}
+		runtime.log(
+			`getPassport at ${where} attempt ${attempt} of ${READ_ATTEMPTS} failed: ${lastFailure}`,
+		);
+		if (attempt < READ_ATTEMPTS) sleep(READ_RETRY_MS);
+	}
+	if (!passport) {
+		throw new Error(`passport ${passportId} is not in the registry at ${where}: ${lastFailure}`);
 	}
 
 	const storedPhash = toHex64(passport.phash);

@@ -26,6 +26,9 @@ export const decodeJpeg = (bytes: Uint8Array): DecodedImage => {
 
 	// useTArray keeps jpeg-js on Uint8Array instead of Node's Buffer, which does not exist here.
 	// formatAsRGBA off drops the alpha channel nobody needs and saves a quarter of the memory.
+	// With that flag off jpeg-js writes three interleaved channels whatever the file holds: a grey
+	// JPEG is copied into R, G and B, and a CMYK or YCCK JPEG is converted to RGB inside its own
+	// copyToImageData. So `channels` below is 3 for every JPEG this decoder accepts.
 	const image = decode(bytes, { useTArray: true, formatAsRGBA: false });
 
 	if (!image.width || !image.height) {
