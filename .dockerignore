@@ -1,0 +1,28 @@
+# Keeps the build context to the files packages/verifier/Dockerfile actually
+# copies. Windows node_modules hold Windows binaries and must never reach a
+# Linux image, so they are excluded at every depth.
+**/node_modules
+**/dist
+**/build
+**/.next
+**/.next-verify
+**/.docusaurus
+.git
+.env
+.env.*
+kitchen
+reference
+docs
+packages/web
+packages/indexer
+packages/workflow
+packages/contracts/out
+packages/contracts/cache
+packages/contracts/broadcast
+*.md
+**/*.md
+
+# npm ci validates the root lockfile against every workspace manifest, so each
+# workspace package.json has to stay in the context even when its source does not.
+!packages/web/package.json
+!packages/indexer/package.json
