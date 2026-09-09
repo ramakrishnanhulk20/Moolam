@@ -105,11 +105,10 @@ Sourced from the Fly Dockerfile guide. Same rule about what is not on the page.
 
 ## The last step
 
-Whichever host wins, the web app needs the deployed service URL twice on Vercel:
-as `VERIFIER_BASE_URL`, which the app's own `/api/verify` route calls from the
-server, and as `NEXT_PUBLIC_VERIFIER_URL`, which the browser calls directly for
-`/prepare`. A Vercel function cannot take a 20 MB upload, so the creator's image
-goes straight from their browser to this service.
+Whichever host wins, the web app needs the deployed service URL once on Vercel,
+as `NEXT_PUBLIC_VERIFIER_URL`: the browser calls `/verify` and `/prepare` on this
+service directly, with no route of the app in between. A Vercel function cannot
+take a 20 MB upload, so every image goes straight from the browser to this service.
 
 That direct call is a cross-origin request, so the host must also carry
 `CORS_ORIGINS` with the web app's exact origin in it, production and preview
