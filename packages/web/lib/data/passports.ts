@@ -163,3 +163,81 @@ async function scanBackwards(head: bigint, limit: number) {
   }
   return found;
 }
+
+/** One row of a creator's or a generator's list of passports. */
+export interface PassportListing {
+  id: Hex;
+  kind: number;
+  registeredAt: bigint;
+  registeredBlock: bigint;
+  metadataURI: string;
+}
+
+const LISTING_FIELDS = "id kind registeredAt registeredBlock metadataURI";
+
+/**
+ * Every passport one creator registered, newest first.
+ *
+ * The address is lowercased because the index stores it that way, so a
+ * checksummed address from a wallet still finds its rows. This reads Envio
+ * only: the chain fallback would need a log scan per creator, which is a
+ * different and much slower thing than the strip's one query.
+ */
+export async function passportsByCreator(address: Hex, limit = 24): Promise<PassportListing[]> {
+  return await listPassports(
+    `query PassportsByCreator($creator: String!, $limit: Int!) {
+      Passport(where: { creator_id: { _eq: $creator } }, order_by: { registeredAt: desc }, limit: $limit) {
+        ${LISTING_FIELDS}
+      }
+    }`,
+    { creator: address.toLowerCase(), limit },
+  );
+}
+
+/** Every passport one generating agent signed for, newest first. */
+export async function passportsByGenerator(agentId: bigint | string, limit = 24): Promise<PassportListing[]> {
+  return await listPassports(
+    `query PassportsByGenerator($generator: String!, $limit: Int!) {
+      Passport(where: { generator_id: { _eq: $generator } }, order_by: { registeredAt: desc }, limit: $limit) {
+        ${LISTING_FIELDS}
+      }
+    }`,
+    { generator: agentId.toString(), limit },
+  );
+}
+
+async function listPassports(query: string, variables: Record<string, unknown>): Promise<PassportListing[]> {
+  const response = await fetch(envioUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query, variables }),
+    signal: AbortSignal.timeout(10_000),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`the Envio endpoint answered ${response.status}`);
+  }
+
+  const body = (await response.json()) as {
+    errors?: { message: string }[];
+    data?: {
+      Passport: { id: Hex; kind: number; registeredAt: string; registeredBlock: string; metadataURI: string }[];
+    };
+  };
+
+  if (body.errors !== undefined && body.errors.length > 0) {
+    throw new Error(body.errors.map((entry) => entry.message).join("; "));
+  }
+  if (body.data === undefined) {
+    throw new Error("the Envio endpoint returned no data block");
+  }
+
+  return body.data.Passport.map((row) => ({
+    id: row.id,
+    kind: row.kind,
+    registeredAt: BigInt(row.registeredAt),
+    registeredBlock: BigInt(row.registeredBlock),
+    metadataURI: row.metadataURI,
+  }));
+}

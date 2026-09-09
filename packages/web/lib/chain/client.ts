@@ -48,12 +48,18 @@ export function shortHex(value: string, lead = 6, tail = 4): string {
   return value.length <= lead + tail + 2 ? value : `${value.slice(0, lead + 2)}…${value.slice(-tail)}`;
 }
 
-const IPFS_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
+/**
+ * Where ipfs:// is read through. The shared gateway.pinata.cloud is the
+ * fallback and it rate limits hard on a page full of thumbnails, so
+ * NEXT_PUBLIC_IPFS_GATEWAY points at the account's own gateway. A missing
+ * trailing slash is added here rather than left to break every URL.
+ */
+const IPFS_GATEWAY = publicEnv.ipfsGateway.endsWith("/") ? publicEnv.ipfsGateway : `${publicEnv.ipfsGateway}/`;
 
 /**
  * Turns a stored URI into something a browser can open. ipfs:// is rewritten to
- * the same public gateway the verifier reads through; anything else is left
- * alone so a bad value is visible rather than silently hidden.
+ * the gateway; anything else is left alone so a bad value is visible rather
+ * than silently hidden.
  */
 export function gatewayUrl(uri: string): string {
   return uri.startsWith("ipfs://") ? `${IPFS_GATEWAY}${uri.slice("ipfs://".length)}` : uri;
