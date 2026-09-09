@@ -1,0 +1,553 @@
+{
+  "_glossary": {
+    "passport": "passeport",
+    "creator": "créateur",
+    "generatorAgent": "agent générateur",
+    "verify": "vérifier",
+    "attestation": "vérification indépendante inscrite sur la chaîne",
+    "editChain": "chaîne de retouches",
+    "dispute": "contestation",
+    "passkey": "clé d’accès",
+    "registry": "registre",
+    "index": "index",
+    "fingerprint": "empreinte",
+    "networkFee": "frais de réseau",
+    "block": "bloc"
+  },
+  "meta": {
+    "title": "Moolam",
+    "description": "Un passeport pour chaque image générée par IA, inscrit sur Monad à l’instant où elle est créée et vérifiable depuis n’importe quelle copie ré-encodée."
+  },
+  "header": {
+    "brand": "Moolam",
+    "tagline": "Des passeports pour les images générées",
+    "theme": "Thème",
+    "themeDark": "Sombre",
+    "themeLight": "Clair",
+    "language": "Langue",
+    "nav": {
+      "home": "Accueil",
+      "verify": "Vérifier une image",
+      "studio": "Enregistrer une image"
+    }
+  },
+  "footer": {
+    "network": "Monad mainnet, chaîne {chainId}",
+    "registry": "Registre",
+    "index": "Index : {source}",
+    "sourceChain": "la chaîne",
+    "sourceEnvio": "Envio",
+    "sourceVerifier": "le service de vérification"
+  },
+  "common": {
+    "copy": "Copier",
+    "copied": "Copié",
+    "explorer": "Voir sur MonadVision",
+    "loading": "Chargement",
+    "unknown": "inconnu",
+    "yes": "Oui",
+    "no": "Non",
+    "swapNotice": "Visuel provisoire. L’image définitive arrive avec le hero."
+  },
+  "kind": {
+    "0": "Générée",
+    "1": "Photographiée",
+    "2": "Retouchée"
+  },
+  "story": {
+    "kicker": "En direct sur Monad mainnet",
+    "title": "Moolam",
+    "line": "Chaque image reçoit un passeport.",
+    "scrollCue": "Faites défiler",
+    "noWebgl": "Ce navigateur n’a pas pu ouvrir de contexte 3D, l’histoire est donc ici sous forme de page. Chaque chiffre qu’elle affiche vient de la même lecture en direct.",
+    "made": {
+      "kicker": "Créée",
+      "title": "Celle-ci, c’est une IA qui l’a faite.",
+      "body": "L’agent {agent} a signé l’empreinte dans sa propre enclave avant que personne n’ait vu l’image.",
+      "readout": "Agent générateur {agent}, registre d’identité ERC-8004"
+    },
+    "sealed": {
+      "kicker": "Scellée",
+      "title": "La clé d’accès du créateur l’a signée.",
+      "body": "Monad l’a inscrite dans le bloc {block}. Deux signatures, un enregistrement, une seconde environ.",
+      "bodyNoBlock": "Monad l’a inscrite. Deux signatures, un enregistrement, une seconde environ.",
+      "readout": "Passeport {passport}, enregistré le {date}",
+      "unread": "Ce passeport n’a pas pu être lu dans le registre."
+    },
+    "shared": {
+      "kicker": "Partagée",
+      "title": "Les plateformes effacent le certificat à l’envoi.",
+      "body": "Les copies continuent de circuler quand même : recompressées, réduites au dixième, tournées, inversées, passées par un réseau social. Toutes ont perdu le fichier qui disait d’où elles venaient."
+    },
+    "verified": {
+      "kicker": "Vérifiée",
+      "title": "Chaque copie retrouve son enregistrement.",
+      "match": "correspondance",
+      "matched": "a correspondu",
+      "notMatched": "n’a pas correspondu",
+      "attestation": "Chainlink l’a revérifiée et a inscrit la réponse sur la chaîne : {result}, à {distance} bits d’écart.",
+      "attestationOther": "Chainlink a revérifié le passeport {passport} de ce registre et a inscrit la réponse sur la chaîne : {result}, à {distance} bits d’écart.",
+      "noAttestation": "Aucune contre-vérification indépendante n’a encore été inscrite pour ce passeport.",
+      "provenance": "Chiffres mesurés par le vérificateur Moolam sur le passeport {passport}, {date}."
+    },
+    "trusted": {
+      "kicker": "De confiance",
+      "title": "Une confiance qu’un agent gagne image après image.",
+      "agent": "Agent {agent}",
+      "score": "Score {score}",
+      "noScore": "Pas encore de score",
+      "counts": "{verifications, plural, =1 {# vérification} other {# vérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
+      "body": "Chaque contrôle mené par le vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de l’agent. Sa réputation est la somme de son travail, pas une promesse sur un site."
+    },
+    "tryIt": {
+      "kicker": "Essayez",
+      "title": "Déposez ici n’importe quelle copie de n’importe quelle image, ou choisissez un fichier",
+      "choose": "Choisir un fichier",
+      "hint": "JPEG ou PNG. Le fichier part vers le vérificateur Moolam, reçoit trois empreintes et n’est pas conservé.",
+      "pending": "Calcul des empreintes et recherche dans le registre",
+      "offline": "Le service de vérification ne répond pas. Lancez-le avec npm run dev:verifier depuis la racine du dépôt, puis redéposez le fichier.",
+      "error": "Le contrôle n’a pas eu lieu : {reason}",
+      "tooLarge": "Ce fichier dépasse 20 Mo. Essayez une copie plus légère.",
+      "notAnImage": "Ce n’est pas un fichier image. Déposez un JPEG, un PNG ou un WebP.",
+      "rateLimited": "Trop de contrôles en une minute. Attendez un instant et réessayez.",
+      "noMatch": "Pas enregistrée",
+      "noMatchBody": "Aucun passeport du registre ne correspond à cette image. Un fichier sorti d’un générateur et jamais enregistré ressemble exactement à ça.",
+      "exact": "octets exacts",
+      "match": "confiance",
+      "noManifest": "Plus aucun manifeste C2PA dans ce fichier. L’enregistrement a été retrouvé quand même."
+    },
+    "close": {
+      "kicker": "Moolam",
+      "title": "Enregistrée une fois. Reconnue partout.",
+      "body": "Un passeport pour chaque image générée, inscrit sur Monad à l’instant où elle est créée, revérifié par Chainlink, et retrouvable depuis n’importe quelle copie qui survit à internet.",
+      "register": "Enregistrer une image",
+      "verify": "Vérifier une image",
+      "passports": "Passeports",
+      "attestations": "Vérifications sur la chaîne",
+      "chain": "Chaîne Monad",
+      "unread": "non lu",
+      "error": "L’index n’a pas pu être lu : {reason}"
+    }
+  },
+  "verify": {
+    "title": "Vérifier une image",
+    "lede": "Envoyez n’importe quelle copie. Moolam en calcule trois empreintes et fouille tous les passeports enregistrés, si bien qu’un fichier redimensionné ou ré-encodé retrouve son enregistrement.",
+    "choose": "Choisir une image",
+    "chosen": "Sélectionné : {name}",
+    "hint": "JPEG, PNG ou WebP, jusqu’à 20 Mo. Le fichier part vers le vérificateur Moolam et n’est pas conservé.",
+    "submit": "Vérifier",
+    "pending": "Calcul des empreintes de l’image et recherche dans le registre.",
+    "matched": "Correspondance trouvée",
+    "exact": "Octets identiques",
+    "none": "Aucun passeport ne correspond à cette image.",
+    "noneHint": "Les copies recadrées ne correspondent pas encore. Essayez le fichier tel qu’il est sorti du générateur.",
+    "confidence": "Confiance",
+    "phashDistance": "Distance pHash",
+    "blockhashDistance": "Distance blockhash",
+    "variant": "Orientation",
+    "manifestPresent": "Manifeste C2PA toujours présent",
+    "manifestMissing": "Plus aucun manifeste C2PA dans ce fichier",
+    "openPassport": "Ouvrir le passeport",
+    "error": "Le contrôle n’a pas eu lieu : {reason}",
+    "offline": "Le service de vérification ne répond pas. Lancez-le avec npm run dev:verifier depuis la racine du dépôt, puis réessayez.",
+    "noFile": "Choisissez d’abord une image.",
+    "kicker": "Contrôlez n’importe quelle copie",
+    "rail": "Vérifier",
+    "dropTitle": "Glissez une image ici.",
+    "replace": "En choisir une autre",
+    "privacy": "Votre navigateur envoie le fichier au vérificateur lui-même. Il est empreinté, comparé, puis jeté.",
+    "checkingHeading": "On lit l’image, pas le nom du fichier.",
+    "checkingDetail": "Trois empreintes, les huit orientations, puis une recherche dans tous les passeports enregistrés. Quelques secondes.",
+    "idleHeading": "Pas encore de réponse",
+    "idleBody": "Déposez un fichier. La réponse arrive sur cette fiche.",
+    "steps": {
+      "fingerprint": "Empreinter le fichier de trois façons : les octets exacts, un hachage perceptuel, un hachage par blocs.",
+      "rotate": "Essayer les huit manières dont l’image peut être tournée ou inversée.",
+      "search": "Chercher dans tous les passeports enregistrés et répondre avec le plus proche."
+    },
+    "noMatchLabel": "Pas enregistrée",
+    "registerCta": "Enregistrer cette image",
+    "untitled": "Sans titre",
+    "noPicture": "Image indisponible sur IPFS pour le moment",
+    "measured": "Ce qui a été mesuré",
+    "queriedSize": "Taille",
+    "queriedPhash": "pHash",
+    "queriedSha": "Octets exacts",
+    "queriedBlockhash": "Blockhash",
+    "bits": "{count} bits sur {of}",
+    "others": "{count, plural, =1 {# autre passeport était dans la marge} other {# autres passeports étaient dans la marge}}, et celui-ci était le plus proche.",
+    "openAgent": "Agent {id}",
+    "lookupFailed": "Le registre n’a pas répondu pour cet identifiant. Il a peut-être un ou deux blocs de retard.",
+    "problemLabel": "Le contrôle n’a pas eu lieu",
+    "problem": {
+      "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Envoyez une copie plus légère.",
+      "notAnImage": "Ce fichier n’a pas pu être lu comme une image. JPEG, PNG ou WebP.",
+      "rateLimited": "Trop de contrôles depuis ici. Attendez une minute et réessayez.",
+      "badRequest": "Le vérificateur a refusé cette requête.",
+      "badResponse": "Le vérificateur a répondu dans une forme que cette page ne connaît pas.",
+      "serviceFailed": "Le vérificateur n’a pas pu terminer ce contrôle.",
+      "refused": "Le vérificateur a rejeté cette requête."
+    },
+    "orientation": {
+      "identity": "Dans le même sens",
+      "rot90": "Tournée d’un quart de tour",
+      "rot180": "Tournée à l’envers",
+      "rot270": "Tournée de trois quarts de tour",
+      "mirror": "Inversée",
+      "mirror-rot90": "Inversée, quart de tour",
+      "mirror-rot180": "Inversée, à l’envers",
+      "mirror-rot270": "Inversée, trois quarts de tour"
+    }
+  },
+  "passport": {
+    "title": "Passeport",
+    "pending": "Lecture du registre.",
+    "notFound": "Aucun passeport avec cet identifiant. Vérifiez l’identifiant, ou retrouvez-le depuis la page de vérification.",
+    "error": "Le registre n’a pas pu être lu : {reason}. Rechargez la page.",
+    "creator": "Créateur",
+    "owner": "Propriétaire",
+    "agent": "Agent générateur",
+    "registered": "Enregistré",
+    "kind": "Type",
+    "phash": "pHash",
+    "blockhash": "Blockhash",
+    "manifestHash": "Hachage du manifeste",
+    "metadata": "Métadonnées",
+    "parent": "Retouchée à partir de",
+    "disputed": "Contestée",
+    "attestations": {
+      "heading": "Revérifiée, par quelqu’un d’autre",
+      "empty": "Aucune vérification n’a encore été inscrite pour ce passeport. Le workflow Chainlink en ajoute une quand il revérifie l’image.",
+      "matched": "a correspondu",
+      "notMatched": "n’a pas correspondu",
+      "distance": "{distance} bits sur 64",
+      "receiver": "Inscrite par",
+      "at": "Le",
+      "kicker": "Le deuxième avis",
+      "body": "N’importe qui peut dire qu’une image est la sienne. Ici c’est différent : un vérificateur indépendant a récupéré l’image, l’a hachée de nouveau et a inscrit la réponse sur Monad.",
+      "distanceLabel": "Distance",
+      "byChainlink": "Vérifiée de façon indépendante par Chainlink",
+      "byReceiver": "Inscrite par un récepteur autorisé",
+      "recomputed": "pHash recalculé",
+      "openTx": "Transaction {hash}",
+      "noTransaction": "L’index ne porte pas la transaction de celle-ci."
+    },
+    "children": {
+      "heading": "Retouches",
+      "empty": "Aucune retouche n’a été enregistrée à partir de ce passeport.",
+      "edits": "Enregistrées à partir de celle-ci"
+    },
+    "untitled": "Sans titre",
+    "noPicture": "Image indisponible sur IPFS pour le moment",
+    "fingerprintVersion": "Empreinte v{version}",
+    "record": "L’enregistrement",
+    "passkeyBound": "Le compte de ce créateur a une clé d’accès liée sur la chaîne.",
+    "passkeyNone": "Aucune clé d’accès n’est liée au compte de ce créateur.",
+    "noAgent": "Aucun agent générateur. Celle-ci a été enregistrée comme photographie.",
+    "agentNumber": "Agent {id}",
+    "about": "À propos",
+    "prompt": "Consigne",
+    "fingerprints": "Les empreintes",
+    "fingerprintsBody": "Un vérificateur récupère l’image, la hache de nouveau et compare avec celles-ci. Rien ici ne dépend du nom du fichier ni de ce que prétendent les métadonnées.",
+    "exactHash": "Octets exacts",
+    "passportId": "Identifiant du passeport",
+    "tokenId": "L’identifiant du passeport est aussi son identifiant de jeton ERC-721",
+    "standing": {
+      "verified": "Contrôlée par un vérificateur indépendant",
+      "mismatched": "Une contre-vérification n’a pas correspondu",
+      "disputed": "Contestée",
+      "unverified": "Pas encore revérifiée"
+    },
+    "check": {
+      "kicker": "Contrôlez une copie",
+      "heading": "Votre copie, c’est bien cette image ?",
+      "body": "Déposez ici n’importe quelle copie. Elle part vers le vérificateur, qui l’empreinte et répond face à ce passeport, pas face au nom du fichier.",
+      "choose": "Choisir une image",
+      "hint": "Une copie redimensionnée, ré-encodée, tournée ou inversée correspond toujours. Un recadrage, pas encore.",
+      "checking": "Contrôle de cette copie",
+      "failed": "Le contrôle n’a pas eu lieu.",
+      "none": "Cette copie ne correspond à aucun passeport.",
+      "same": "Oui. C’est la même image.",
+      "sameExact": "Oui. Octet pour octet, c’est ce fichier.",
+      "different": "Non. Cette copie appartient à un autre passeport."
+    },
+    "dispute": {
+      "kicker": "Contestée",
+      "body": "Quelqu’un a déposé une caution derrière l’affirmation que cet enregistrement est faux. La caution est retenue par le registre jusqu’au règlement de la contestation.",
+      "challenger": "Contestataire",
+      "bond": "Caution",
+      "mon": "{amount} MON",
+      "openedAt": "Ouverte",
+      "evidence": "Hachage de la preuve",
+      "status": {
+        "open": "Ouverte, pas encore tranchée",
+        "upheld": "Retenue : la contestation avait raison",
+        "rejected": "Rejetée : l’enregistrement tient"
+      }
+    }
+  },
+  "agent": {
+    "title": "Agent",
+    "notFound": "Aucun agent avec cet identifiant dans le registre d’identité ERC-8004.",
+    "error": "Le registre d’identité n’a pas pu être lu : {reason}. Rechargez la page.",
+    "owner": "Propriétaire",
+    "uri": "URI de l’agent",
+    "cardMissing": "La fiche de l’agent n’a pas pu être lue depuis son URI.",
+    "reputation": {
+      "heading": "Réputation",
+      "summary": "{count, plural, =1 {# vérification enregistrée} other {# vérifications enregistrées}}",
+      "score": "Score moyen",
+      "empty": "Aucun retour enregistré pour cet agent. Le vérificateur en écrit un après chaque contrôle qu’il mène.",
+      "error": "Le registre de réputation n’a pas pu être lu : {reason}.",
+      "body": "Les retours sont inscrits dans le registre de réputation ERC-8004 canonique par ceux qui les laissent, sous les étiquettes moolam et verification. Cette page lit le résumé de ces deux étiquettes et applique les décimales annoncées par le registre.",
+      "registry": "Registre {address}"
+    },
+    "unnamed": "La fiche de cet agent ne porte aucun nom",
+    "identityRegistry": "Registre d’identité",
+    "active": "Actif",
+    "index": {
+      "heading": "Ce que l’index a compté",
+      "trustScore": "Indice de confiance",
+      "trustScoreBody": "Sur 100, à partir des contre-vérifications réussies, de celles qui ont échoué et de toute contestation retenue. Lissé, pour qu’un contrôle chanceux ne suffise pas à faire 100.",
+      "passportCount": "Passeports",
+      "matchedCount": "Contre-vérifications réussies",
+      "mismatchedCount": "Contre-vérifications manquées",
+      "disputesUpheld": "Contestations retenues",
+      "since": "Vu pour la première fois {when}",
+      "empty": "L’index n’a pas encore vu cet agent signer un passeport.",
+      "error": "L’index n’a pas pu être lu : {reason}."
+    },
+    "signs": {
+      "heading": "Comment cet agent signe",
+      "body": "Un identifiant d’agent vaut exactement ce que vaut le compte qui le détient. Le registre vérifie ce lien lui-même, à chaque enregistrement, avant d’écrire quoi que ce soit.",
+      "sign": {
+        "title": "L’agent signe l’empreinte",
+        "body": "Le compte qui détient l’agent {id} signe le condensé EIP-712 du passeport : les hachages, le créateur, l’identifiant de l’agent et une échéance. L’image ne sort jamais de l’empreinte."
+      },
+      "recover": {
+        "title": "Le registre retrouve le signataire",
+        "body": "Le contrat retrouve l’adresse à partir de cette signature. Rien n’est pris pour argent comptant de la part de celui qui envoie la transaction."
+      },
+      "own": {
+        "title": "Ce doit être le propriétaire",
+        "body": "L’adresse retrouvée est comparée à ownerOf dans le registre d’identité ERC-8004. En cas d’écart, l’enregistrement échoue avec InvalidGeneratorSignature et aucun passeport n’existe."
+      },
+      "registry": "Registre {address}",
+      "identity": "Identité {address}",
+      "privy": "Où vit la clé",
+      "privyBody": "Ces valeurs viennent de la fiche de l’agent lui-même, pas de cette application.",
+      "privyWallet": "Identifiant de compte Privy",
+      "privyPolicy": "Politique"
+    },
+    "works": {
+      "heading": "Ce qu’il a signé",
+      "source": "Depuis l’index",
+      "empty": "Aucun passeport ne nomme encore cet agent.",
+      "error": "L’index n’a pas pu être lu : {reason}.",
+      "untitled": "Sans titre",
+      "noThumbnail": "Aucune vignette épinglée"
+    }
+  },
+  "studio": {
+    "kicker": "Studio",
+    "title": "Enregistrer une image",
+    "lede": "Connectez-vous, déverrouillez une fois avec cet appareil, et chaque image que vous créez reçoit son propre enregistrement sur Monad : empreintée, signée par vous, et retrouvable depuis n’importe quelle copie qui survit à internet.",
+    "rail": "Studio Moolam",
+    "opening": "Ouverture de votre compte",
+    "noWallet": "Vous êtes connecté, mais aucun compte n’a encore été créé sur Monad. Rechargez la page, ou déconnectez-vous et reconnectez-vous.",
+    "notConfigured": "Privy n’est pas configuré, personne ne peut donc se connecter ici. Mettez NEXT_PUBLIC_PRIVY_APP_ID dans packages/web/.env.local et redémarrez le serveur de développement.",
+    "signOut": "Se déconnecter",
+    "identity": {
+      "account": "Connecté en tant que",
+      "wallet": "Votre compte",
+      "network": "Réseau",
+      "monad": "Monad mainnet, chaîne {chainId}",
+      "gas": "Frais de réseau",
+      "gasClaimed": "Payés par Moolam via Privy",
+      "gasProven": "Payés par Moolam. Votre solde n’a pas bougé.",
+      "gasOwn": "Payés sur votre propre solde",
+      "kindEmail": "votre e-mail",
+      "kindGoogle": "votre compte Google",
+      "kindPhone": "votre numéro de téléphone",
+      "kindPasskey": "une clé d’accès, sans e-mail au dossier",
+      "kindAccount": "ce compte"
+    },
+    "signedOut": {
+      "kicker": "Vous n’êtes pas connecté",
+      "heading": "Connectez-vous et un compte est créé pour vous",
+      "body": "Aucun portefeuille à installer, aucune phrase secrète à noter. Connectez-vous avec votre e-mail, votre compte Google ou une clé d’accès, et Privy crée un compte sur Monad à votre nom.",
+      "button": "Se connecter et créer mon compte",
+      "methods": "E-mail, Google ou clé d’accès. Quel que soit votre choix, le compte est le vôtre.",
+      "points": {
+        "wallet": {
+          "label": "Votre compte",
+          "body": "Créé dès la connexion, gardé par Privy, et personne chez Moolam ne peut signer avec."
+        },
+        "passkey": {
+          "label": "Votre signature",
+          "body": "Le déverrouillage par empreinte ou par visage de cet appareil signe chaque image. Il ne quitte jamais l’appareil."
+        },
+        "gas": {
+          "label": "Les frais de réseau",
+          "body": "Moolam les paie via Privy, donc enregistrer une image ne vous coûte rien."
+        }
+      }
+    },
+    "passkey": {
+      "reading": "Vérification : ce compte a-t-il déjà une clé d’accès",
+      "unreadable": "Monad n’a pas pu être lu, cette page ne sait donc pas si votre compte a déjà une clé d’accès : {reason}. Rechargez la page."
+    },
+    "bind": {
+      "kicker": "Une étape de réglage",
+      "heading": "Liez cet appareil à votre compte",
+      "headingAgain": "Utilisez plutôt le déverrouillage de cet appareil",
+      "body": "Votre compte ne porte encore aucune signature. Liez une fois le déverrouillage de cet appareil et il devient la signature de chaque image que vous enregistrez.",
+      "plain": "Une clé d’accès, c’est l’empreinte, le visage ou le code que cet appareil utilise déjà. Elle reste sur l’appareil : Moolam ne voit jamais que la moitié publique.",
+      "button": "Utiliser le déverrouillage de cet appareil",
+      "buttonAgain": "Lier le déverrouillage de cet appareil",
+      "creating": "Création d’une clé d’accès sur cet appareil",
+      "waiting": "En attente de votre empreinte ou de votre visage",
+      "sending": "Envoi vers Monad, frais de réseau pris en charge",
+      "confirming": "En attente de l’inscription de votre clé d’accès par Monad",
+      "doneLabel": "Liée",
+      "doneBody": "Cet appareil signe désormais pour votre compte. Enregistrez une image et il demandera votre déverrouillage une fois.",
+      "txLink": "Transaction {hash}",
+      "walletLink": "Votre compte {wallet} sur MonadVision",
+      "rebind": "Lier un autre appareil"
+    },
+    "recover": {
+      "kicker": "Un autre appareil a signé ici",
+      "heading": "Votre clé d’accès a été créée ailleurs",
+      "body": "Monad dit que ce compte a déjà une clé d’accès, et ce navigateur ne l’a jamais utilisée. Déverrouillez ici avec cette clé et vous pouvez continuer, ou liez plutôt cet appareil.",
+      "button": "Déverrouiller avec ma clé d’accès",
+      "bindInstead": "Lier cet appareil à la place",
+      "waiting": "En attente de votre empreinte ou de votre visage",
+      "otherDevice": "Si cette clé d’accès vit sur votre téléphone ou un autre ordinateur, ouvrez Moolam là-bas, ou liez cet appareil. Lier remplace l’ancienne et coûte une transaction."
+    },
+    "register": {
+      "kicker": "Prêt",
+      "heading": "Donnez son passeport à une image",
+      "body": "Une image à la fois. Elle est empreintée puis épinglée, vous la signez avec votre déverrouillage, et Moolam l’envoie sur Monad.",
+      "drop": "Déposez une image ici",
+      "choose": "Choisir un fichier",
+      "hint": "JPEG, PNG ou WebP, jusqu’à 20 Mo. Moolam intègre un manifeste C2PA, empreinte les octets signés et épingle le fichier sur IPFS.",
+      "replace": "En choisir une autre",
+      "title": "Titre",
+      "titlePlaceholder": "Qu’est-ce que cette image ?",
+      "titleHint": "Il part dans le manifeste et dans les métadonnées, gardez donc le nom que vous donneriez à l’image.",
+      "submit": "Enregistrer cette image",
+      "balance": "Votre compte détient {mon} MON.",
+      "steps": {
+        "prepare": {
+          "waiting": "Empreinter et épingler le fichier, une dizaine de secondes",
+          "running": "Empreinte et épinglage, une dizaine de secondes",
+          "done": "Empreintée, manifeste intégré, épinglée sur IPFS",
+          "failed": "Le fichier n’a pas été préparé"
+        },
+        "sign": {
+          "waiting": "Signez-la avec votre déverrouillage",
+          "running": "En attente de votre empreinte ou de votre visage",
+          "done": "Signée sur cet appareil",
+          "failed": "Elle n’a pas été signée"
+        },
+        "send": {
+          "waiting": "Envoyer sur Monad, frais de réseau pris en charge",
+          "running": "Envoi sur Monad, frais de réseau pris en charge",
+          "watching": "En attente de l’inscription du passeport par Monad",
+          "pending": "Envoyée, et Monad ne l’a pas encore affichée",
+          "done": "Inscrite sur Monad",
+          "failed": "Elle n’a pas atteint Monad"
+        }
+      },
+      "doneLabel": "Enregistrée",
+      "doneHeading": "Cette image a désormais un passeport",
+      "doneBody": "N’importe quelle copie, redimensionnée, ré-encodée ou tournée sur le côté, peut remonter jusqu’à cet enregistrement depuis la page de vérification.",
+      "passportId": "Passeport",
+      "block": "Bloc",
+      "blockPending": "Arrive de l’index",
+      "when": "Enregistrée",
+      "fee": "Frais de réseau",
+      "feeSponsored": "Payés par Moolam via Privy",
+      "feeOwn": "Payés sur votre propre solde",
+      "openPassport": "Ouvrir le passeport",
+      "openTx": "Transaction {hash}",
+      "openAddress": "Votre compte {wallet} sur MonadVision",
+      "openImage": "L’image épinglée",
+      "another": "Enregistrer une autre image"
+    },
+    "receipt": {
+      "heading": "Ce qui vient de se passer",
+      "body": "Chaque étape est tamponnée ici dès qu’elle arrive. Rien dans cette liste n’est une supposition.",
+      "empty": "Rien pour l’instant. Connectez-vous et le premier tampon apparaît.",
+      "account": "Connecté",
+      "accountDetail": "Privy l’a vérifié avant qu’un compte soit créé.",
+      "wallet": "Votre compte sur Monad",
+      "walletDetail": "Créé à la connexion. Aucune phrase secrète, aucune clé détenue par Moolam.",
+      "passkey": "Clé d’accès liée",
+      "passkeyDetail": "La moitié publique du déverrouillage de cet appareil, conservée par le registre.",
+      "fingerprint": "Hachage exact",
+      "fingerprintDetail": "{width} sur {height} pixels. Manifeste C2PA intégré : {manifest}.",
+      "manifestYes": "oui",
+      "manifestNo": "non",
+      "pinned": "Épinglée sur IPFS",
+      "pinnedDetail": "Les octets signés, la vignette et les métadonnées sont tous partis sur IPFS.",
+      "signed": "Condensé que vous avez signé",
+      "signedDetail": "Lu depuis le contrat, signé par votre déverrouillage, contrôlé ici avant l’envoi.",
+      "sent": "Envoyée sur Monad",
+      "sentSponsored": "Frais de réseau payés par Moolam via Privy.",
+      "sentOwn": "Frais de réseau payés sur votre propre solde.",
+      "written": "Inscrite sur Monad",
+      "blockValue": "Inscrite dans le bloc {block}",
+      "blockPending": "Inscrite. Le numéro de bloc vient de l’index."
+    },
+    "passports": {
+      "heading": "Vos passeports",
+      "source": "Lus en direct depuis l’index",
+      "reading": "Lecture de tout ce que ce compte a enregistré.",
+      "unreadable": "Vos passeports n’ont pas pu être lus : {reason}. Rechargez la page.",
+      "empty": "Rien d’enregistré depuis ce compte pour l’instant. La première image que vous enregistrez apparaît ici en un bloc.",
+      "noThumbnail": "Aucune vignette",
+      "untitled": "Sans titre"
+    },
+    "failure": {
+      "serviceOffline": "Le service de vérification Moolam ne répond pas, rien n’a donc été envoyé. Réessayez dans un instant.",
+      "signedOut": "Votre session a expiré. Reconnectez-vous et l’envoi fonctionnera.",
+      "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Exportez-le plus léger et réessayez.",
+      "notAnImage": "Ce fichier n’est ni un JPEG, ni un PNG, ni un WebP. Choisissez un fichier image.",
+      "rateLimited": "Ce compte a préparé 20 images dans la dernière heure, ce qui est la limite. Réessayez plus tard.",
+      "pinFailed": "L’image n’a pas pu être épinglée sur IPFS, rien n’a donc été enregistré. Réessayez dans un instant.",
+      "badRequest": "Le service de vérification a refusé cet envoi. Ce qu’il a dit se trouve ci-dessous.",
+      "badResponse": "Le service de vérification a répondu dans une forme que cette page ne comprend pas, rien n’a donc été signé. Réessayez.",
+      "authCheck": "La signature de votre appareil serait refusée par le registre, elle n’a donc pas été envoyée. Réessayez, et utilisez le déverrouillage que vous avez lié.",
+      "passkeyCancelled": "La demande de déverrouillage a été fermée ou a expiré. Rien n’a été signé.",
+      "passkeyOrigin": "Cette clé d’accès appartient à un autre site, cette page ne peut donc pas s’en servir.",
+      "passkeyUnsupported": "Ce navigateur ou cet appareil ne peut pas créer le type de clé d’accès dont le registre a besoin. Essayez un navigateur avec déverrouillage par empreinte ou par visage.",
+      "passkeyOther": "Le déverrouillage n’est pas allé au bout. Votre appareil a dit ceci :",
+      "alreadyRegistered": "Cette image exacte est déjà enregistrée. Le premier enregistrement l’emporte, ouvrez donc le passeport qui la détient.",
+      "expired": "L’heure de validité de cette signature est passée. Enregistrez l’image de nouveau.",
+      "notBound": "Monad dit que votre compte ne porte aucune clé d’accès. Liez le déverrouillage de cet appareil, puis enregistrez l’image.",
+      "badSignature": "Le registre a refusé cette signature. Signez de nouveau avec le déverrouillage lié à ce compte.",
+      "badKey": "Le registre a refusé cette clé d’accès. Liez de nouveau le déverrouillage de cet appareil.",
+      "paused": "Le registre est en pause, rien ne peut être enregistré pour l’instant. Réessayez plus tard.",
+      "wrongWallet": "L’image a été signée pour un autre compte que celui qui l’envoie. Rechargez la page et enregistrez de nouveau.",
+      "rejected": "Le registre a refusé ce passeport. L’erreur qu’il a donnée se trouve ci-dessous.",
+      "reverted": "Monad a refusé cette transaction. L’erreur donnée par le contrat se trouve ci-dessous.",
+      "sponsorship": "Privy n’a pas voulu payer les frais de réseau de cette transaction. Ce qu’il a dit se trouve ci-dessous. Vous pouvez envoyer la même transaction en payant les frais vous-même.",
+      "confirmPending": "Votre envoi a été accepté et Monad ne l’a pas encore affiché. Il peut encore arriver, rien n’a donc été envoyé une deuxième fois. Ouvrez votre compte ci-dessous pour regarder, ou redemandez à Monad.",
+      "sendCancelled": "Vous avez fermé la confirmation, rien n’a été envoyé.",
+      "sendFailed": "Cette étape n’est pas allée au bout. Les mots du réseau se trouvent ci-dessous. Réessayez dans un instant.",
+      "unknown": "Quelque chose a échoué avant tout envoi. Le message se trouve ci-dessous.",
+      "fileMissing": "Choisissez d’abord une image.",
+      "titleMissing": "Donnez d’abord un titre à l’image. Il part dans le manifeste."
+    },
+    "actions": {
+      "signIn": "Se reconnecter",
+      "bind": "Lier cet appareil",
+      "openPassport": "Ouvrir ce passeport",
+      "unsponsored": "L’envoyer et payer les frais moi-même",
+      "again": "Réessayer",
+      "recheck": "Redemander à Monad",
+      "openAddress": "Ouvrir {wallet} sur MonadVision"
+    }
+  }
+}

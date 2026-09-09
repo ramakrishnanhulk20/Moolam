@@ -1,4 +1,19 @@
 {
+  "_glossary": {
+    "passport": "passport",
+    "creator": "creator",
+    "generatorAgent": "generator agent",
+    "verify": "verify",
+    "attestation": "independent re-check written on chain",
+    "editChain": "edit chain",
+    "dispute": "dispute",
+    "passkey": "passkey",
+    "registry": "registry",
+    "index": "index",
+    "fingerprint": "fingerprint",
+    "networkFee": "network fee",
+    "block": "block"
+  },
   "meta": {
     "title": "Moolam",
     "description": "A passport for every AI generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy."
@@ -10,10 +25,6 @@
     "themeDark": "Dark",
     "themeLight": "Light",
     "language": "Language",
-    "locale": {
-      "en": "EN",
-      "ta": "TA"
-    },
     "nav": {
       "home": "Home",
       "verify": "Verify an image",

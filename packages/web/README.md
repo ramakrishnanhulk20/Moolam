@@ -4,7 +4,7 @@ The Moolam app. It reads passports, agents and verification results from Monad
 mainnet, takes an image upload and finds the passport it belongs to, and gives a
 creator a wallet without a seed phrase.
 
-This package is the shell: routing, the two themes, the two languages, the
+This package is the shell: routing, the two themes, the ten languages, the
 providers, the live readers and every screen's pending, empty and error state.
 The hero and the rest of the visual work land in later builds, which is why the
 home page carries a `SWAP: hero` comment where the real one goes.
@@ -42,9 +42,19 @@ The verify page needs the verifier service. Start it from the repo root with
 | `/[locale]/lab` | The hidden bench for visual work. Nothing links to it. |
 | `/api/passports` | The newest passports as JSON. |
 
-`/en` and `/ta` exist today. Another language is two steps: add the code to
-`lib/i18n/routing.ts` and drop a matching file into `messages/`. No component
+Ten languages exist today: `/en`, `/ta`, `/hi`, `/zh`, `/ja`, `/ko`, `/es`,
+`/fr`, `/de` and `/pt`. Every one carries the same 432 keys, and each message
+file opens with a `_glossary` block so the product words stay the same word
+throughout that language. The switch in the header lists all ten in their own
+script and marks the current one.
+
+Another language is three steps: add the code and its native name to
+`lib/i18n/routing.ts`, drop a matching file into `messages/`, and, if it needs
+glyphs the Latin faces do not carry, add its face to `lib/fonts.ts`. No component
 holds a string of its own.
+
+Numbers, dates and hashes are never translated. They go through `Intl` with the
+page's locale, from `next-intl`'s formatter.
 
 ## Where the data comes from
 
@@ -93,9 +103,12 @@ before a page renders rather than inside a fetch later.
   entrances in client components, and a plain CSS `rise` class does the same for
   anything rendered on the server. Nothing heavy runs for a visitor whose system
   asks for reduced motion.
-- **Fonts.** `lib/fonts.ts`, self-hosted at build by `next/font`. Swapping either
-  face is one line there. Tamil has its own face in the same stack, because
-  neither Latin face carries the glyphs.
+- **Fonts.** `lib/fonts.ts`, self-hosted at build by `next/font`. Swapping any
+  face is one line there. The Latin faces carry no Tamil, Devanagari, Chinese,
+  Japanese or Korean glyphs, so those five languages each bring their own Noto
+  face. They all define the same `--font-script` variable and the layout puts
+  exactly one of them on `<html>` for the locale being read, so a reader only
+  ever fetches the face their page draws with.
 - **Wallets.** `components/providers/PrivyProvider.tsx`: email, Google and
   passkey login, a wallet created on first login, Monad mainnet as the only
   chain, and wagmi wired through `@privy-io/wagmi` so ordinary wagmi hooks read

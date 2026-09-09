@@ -1,14 +1,20 @@
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useTransition } from "react";
-import { routing, usePathname, useRouter } from "@/lib/i18n/routing";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { localeLabels, routing, usePathname, useRouter } from "@/lib/i18n/routing";
 
 /**
  * Switches language without leaving the page: the pathname next-intl hands back
  * has the locale segment stripped, so the same route is re-rendered in the other
  * language with its params intact.
+ *
+ * Ten languages will not sit in a header row at 375 px, so the current one is
+ * the button and the rest live in a panel under it. Each is named in its own
+ * script, which is the only name a reader who needs it can recognise.
  */
 export function LocaleSwitch() {
   const t = useTranslations("header");
@@ -16,30 +22,106 @@ export function LocaleSwitch() {
   const pathname = usePathname();
   const params = useParams();
   const [pending, startTransition] = useTransition();
-  const active = typeof params.locale === "string" ? params.locale : routing.defaultLocale;
+  const [open, setOpen] = useState(false);
+  const reduced = useIsReducedMotion();
+  const shell = useRef<HTMLDivElement>(null);
+  const raw = typeof params.locale === "string" ? params.locale : routing.defaultLocale;
+  const active = (routing.locales as readonly string[]).includes(raw) ? raw : routing.defaultLocale;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointer = (event: PointerEvent) => {
+      if (shell.current !== null && !shell.current.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const choose = (locale: string) => {
+    setOpen(false);
+    if (locale === active) return;
+    startTransition(() => {
+      router.replace(pathname, { locale: locale as (typeof routing.locales)[number] });
+    });
+  };
 
   return (
-    <div className="flex items-center gap-1" aria-label={t("language")}>
-      {routing.locales.map((locale) => (
-        <button
-          key={locale}
-          type="button"
-          disabled={pending}
-          aria-current={locale === active ? "true" : undefined}
-          onClick={() =>
-            startTransition(() => {
-              router.replace(pathname, { locale });
-            })
-          }
-          className={
-            locale === active
-              ? "rounded-[8px] border border-accent px-2.5 py-1.5 text-xs uppercase tracking-[0.18em] text-accent"
-              : "rounded-[8px] border border-transparent px-2.5 py-1.5 text-xs uppercase tracking-[0.18em] text-text-faint transition-colors duration-200 hover:border-line hover:text-text"
-          }
-        >
-          {t(`locale.${locale}`)}
-        </button>
-      ))}
+    <div ref={shell} className="relative">
+      <button
+        type="button"
+        aria-label={t("language")}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        disabled={pending}
+        onClick={() => setOpen((was) => !was)}
+        className={`flex items-center gap-2 rounded-[8px] border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition-colors duration-200 ${
+          open ? "border-accent text-accent" : "border-line text-text-muted hover:border-accent hover:text-accent"
+        }`}
+      >
+        <span className="motif h-[7px] w-[7px]" aria-hidden />
+        <span className="max-w-[9ch] truncate normal-case tracking-[0.06em]">
+          {localeLabels[active as keyof typeof localeLabels]}
+        </span>
+      </button>
+
+      <AnimatePresence>
+        {open ? (
+          <motion.ul
+            role="listbox"
+            aria-label={t("language")}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+            // The header wraps on a phone and this control lands on the left of
+            // the second row, so the panel hangs from the same edge it does. From
+            // the width where the bar is one row again, it hangs from the right.
+            className="absolute start-0 top-[calc(100%+8px)] z-50 max-h-[70vh] w-[13.5rem] overflow-y-auto border border-line bg-bg-raised py-1 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.9)] backdrop-blur-md sm:start-auto sm:end-0"
+          >
+            {routing.locales.map((locale, index) => {
+              const current = locale === active;
+              return (
+                <li key={locale}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={current}
+                    onClick={() => choose(locale)}
+                    className={`group flex w-full items-center gap-3 px-4 py-2.5 text-start transition-colors duration-200 ${
+                      current ? "text-accent" : "text-text-muted hover:bg-accent-soft hover:text-text"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className={
+                        current
+                          ? "motif h-[7px] w-[7px] shrink-0"
+                          : "h-[7px] w-[7px] shrink-0 border border-line-strong transition-colors duration-200 group-hover:border-accent"
+                      }
+                    />
+                    <span className="flex-1 truncate text-sm">{localeLabels[locale]}</span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                      {locale}
+                    </span>
+                  </button>
+                  {index === routing.locales.length - 1 ? null : (
+                    <span className="mx-4 block h-px bg-line/60" aria-hidden />
+                  )}
+                </li>
+              );
+            })}
+          </motion.ul>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

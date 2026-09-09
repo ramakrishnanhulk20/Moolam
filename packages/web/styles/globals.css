@@ -75,9 +75,9 @@
   --color-disputed: var(--status-disputed);
   --color-failed: var(--status-failed);
 
-  --font-display: var(--font-display), var(--font-tamil), ui-sans-serif, sans-serif;
-  --font-body: var(--font-body), var(--font-tamil), ui-sans-serif, sans-serif;
-  --font-mono: var(--font-mono), ui-monospace, monospace;
+  --font-display: var(--font-display), var(--font-script, ui-sans-serif), ui-sans-serif, sans-serif;
+  --font-body: var(--font-body), var(--font-script, ui-sans-serif), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-mono), var(--font-script, ui-monospace), ui-monospace, monospace;
 
   --radius-button: 8px;
 }
@@ -94,8 +94,17 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-body), var(--font-tamil), ui-sans-serif, sans-serif;
+  font-family: var(--font-body), var(--font-script, ui-sans-serif), ui-sans-serif, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Chinese, Japanese, Korean and Devanagari letters fill the whole em box, so the
+   tight leading the Latin display face is set with makes two lines touch. The big
+   figures keep the leading they were designed with: those are Latin digits in
+   every language, and every one of them carries tabular-nums. Tamil already gets
+   its leading picked per heading by components/studio/leading.ts. */
+:where(html:lang(zh), html:lang(ja), html:lang(ko), html:lang(hi)) .font-display:not(.tabular-nums) {
+  line-height: 1.16;
 }
 
 ::selection {

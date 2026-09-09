@@ -36,8 +36,11 @@ export async function Works({
         <p className="mt-10 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>
       ) : (
         <ul className="mt-10 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+          {/* min-w-0 on the tile or the truncated title sets the grid track: a
+              nowrap line reports its full width as its minimum, so one long title
+              pushes the whole column past the screen on a phone. */}
           {works.map((work) => (
-            <li key={work.id} className="group bg-bg-raised">
+            <li key={work.id} className="group min-w-0 bg-bg-raised">
               <Link href={`/passport/${work.id}`} className="block">
                 <div className="grain relative aspect-[4/3] overflow-hidden bg-bg-sunken">
                   {work.thumbnailUrl === undefined ? (
