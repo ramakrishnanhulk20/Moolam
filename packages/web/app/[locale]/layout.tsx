@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
@@ -64,11 +65,31 @@ export default async function LocaleLayout({
                 <div className="flex min-h-dvh flex-col">
                   <header className="app-header sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
                     <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:px-8">
+                      {/* The lockup files carry clear space on every side, so the box is 63 px
+                          tall for 24 px of cap height and the negative margin keeps the bar the
+                          height the ink asks for. The theme class picks the variant, and the
+                          story pages force the dark one because that header is dark whatever the
+                          theme says. */}
                       <Link
                         href="/"
-                        className="font-display text-2xl uppercase leading-none tracking-[0.06em] transition-colors duration-200 hover:text-accent"
+                        className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70"
                       >
-                        {t("brand")}
+                        <Image
+                          src="/brand/seal-o/lockup-horizontal-dark.svg"
+                          alt={t("brand")}
+                          width={160}
+                          height={63}
+                          unoptimized
+                          className="hidden dark:block [body:has([data-story])_&]:block"
+                        />
+                        <Image
+                          src="/brand/seal-o/lockup-horizontal-light.svg"
+                          alt={t("brand")}
+                          width={160}
+                          height={63}
+                          unoptimized
+                          className="block dark:hidden [body:has([data-story])_&]:hidden"
+                        />
                       </Link>
                       <span className="hidden text-xs uppercase tracking-[0.24em] text-text-faint md:inline">
                         {t("tagline")}

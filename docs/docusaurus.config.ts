@@ -57,10 +57,11 @@ const config: Config = {
       respectPrefersColorScheme: false,
     },
     navbar: {
-      title: 'Moolam',
+      // The lockup carries the word, so a title next to it would set Moolam twice.
       logo: {
         alt: 'Moolam',
-        src: 'img/logo.svg',
+        src: 'img/logo-light.svg',
+        srcDark: 'img/logo.svg',
       },
       items: [
         {

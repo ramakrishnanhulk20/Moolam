@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { ImageResponse } from "next/og";
 import type { AbiEvent } from "viem";
 import { DEPLOY_BLOCK, addresses, chain, registryAbi } from "@/lib/chain/client";
@@ -95,6 +96,22 @@ async function face(weight: 400 | 700, text: string): Promise<ArrayBuffer | null
   }
 }
 
+/**
+ * The stacked lockup exactly as it was drawn. The file is read rather than
+ * redrawn here, so the card can never drift from the mark in the header, the
+ * tab and the docs. If the read fails the card still draws, with the word set
+ * in the display face.
+ */
+const lockup: Promise<string | null> = readFile(
+  new URL("../public/brand/seal-o/lockup-stacked-dark.svg", import.meta.url),
+)
+  .then((file) => `data:image/svg+xml;base64,${file.toString("base64")}`)
+  .catch(() => null);
+
+// The file carries clear space of about a sixth of the box above and below the
+// artwork. The bleed takes that back so the card is laid out on the ink.
+const LOCKUP = { width: 569, height: 380, bleed: -60 };
+
 const GRAIN =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
@@ -108,10 +125,11 @@ const LINE = "Every image gets a passport";
 const FOOT = "REGISTRY passports registered 0123456789abcdefABCDEFx.";
 
 export default async function Card() {
-  const [count, heavy, plain] = await Promise.all([
+  const [count, heavy, plain, mark] = await Promise.all([
     passportCount(),
     face(700, "Moolam0123456789"),
     face(400, `${KICKER}${LINE}${FOOT}`),
+    lockup,
   ]);
 
   const display = heavy === null ? "sans-serif" : "ArchivoDisplay";
@@ -151,30 +169,37 @@ export default async function Card() {
           }}
         />
 
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <div style={{ display: "flex", width: 34, height: 34, background: ACCENT, padding: 8 }}>
-            <div style={{ display: "flex", width: "100%", height: "100%", border: `3px solid ${GROUND}` }} />
-          </div>
+        <div style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", color: "rgba(245,243,239,0.62)", fontSize: 22, letterSpacing: 6 }}>
             {KICKER}
           </div>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              display: "flex",
-              fontFamily: display,
-              fontSize: 208,
-              fontWeight: 700,
-              letterSpacing: -8,
-              color: "#F5F3EF",
-              lineHeight: 1,
-            }}
-          >
-            Moolam
-          </div>
-          <div style={{ display: "flex", marginTop: 26, fontSize: 40, color: "rgba(245,243,239,0.72)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          {mark === null ? (
+            <div
+              style={{
+                display: "flex",
+                fontFamily: display,
+                fontSize: 208,
+                fontWeight: 700,
+                letterSpacing: -8,
+                color: "#F5F3EF",
+                lineHeight: 1,
+              }}
+            >
+              Moolam
+            </div>
+          ) : (
+            <img
+              src={mark}
+              width={LOCKUP.width}
+              height={LOCKUP.height}
+              alt=""
+              style={{ marginTop: LOCKUP.bleed, marginBottom: LOCKUP.bleed, marginLeft: -62 }}
+            />
+          )}
+          <div style={{ display: "flex", marginTop: 22, fontSize: 40, color: "rgba(245,243,239,0.72)" }}>
             {LINE}
           </div>
         </div>

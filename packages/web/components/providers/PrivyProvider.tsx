@@ -46,6 +46,7 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
           accentColor: "#ffb7c5",
           walletChainType: "ethereum-only",
           landingHeader: "Moolam",
+          logo: "/brand/seal-o/mark.svg",
         },
       }}
     >
