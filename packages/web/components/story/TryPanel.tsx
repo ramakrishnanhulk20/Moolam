@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import { forwardTouchMove, forwardTouchStart, forwardWheel, probe, progress, resetProbe } from "@/components/story/signals";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
-import { VerifierError, verify, type VerifyResponse } from "@/lib/verifier/client";
+import { VerifierError, verify, type VerifierCode, type VerifyResponse } from "@/lib/verifier/client";
 
 type State =
   | { kind: "idle" }
@@ -179,15 +179,22 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
 }
 
 /**
- * What went wrong, in a sentence rather than a status code.
- *
- * The verify service answers a failure with its own words, so the reason a
- * reader sees is the reason the service gave. Only the one case with no words
- * behind it, a service that never answered at all, is written here.
+ * The refusals a reader can act on, in this app's words. Anything outside this
+ * table has no advice worth giving, so the service's own sentence travels
+ * through instead of being paraphrased into something vaguer.
  */
+const REFUSALS: Partial<Record<VerifierCode, string>> = {
+  offline: "offline",
+  "too-large": "tooLarge",
+  "not-an-image": "notAnImage",
+  "rate-limited": "rateLimited",
+};
+
+/** What went wrong, in a sentence rather than a status code. */
 function refusal(error: unknown, t: (key: string, values?: Record<string, string>) => string): string {
   if (error instanceof VerifierError) {
-    return error.code === "offline" ? t("offline") : t("error", { reason: error.message });
+    const key = REFUSALS[error.code];
+    return key === undefined ? t("error", { reason: error.message }) : t(key);
   }
   return t("error", { reason: error instanceof Error ? error.message : String(error) });
 }

@@ -236,6 +236,33 @@ describe("the register panel", () => {
     expect(markup).not.toContain("pay the fee myself");
   });
 
+  it("paints a timed out wait as pending, never as the failure red", () => {
+    const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+    const timedOut = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "done", send: "failed" },
+      prepared: PREPARED,
+      failure: { key: "confirmPending", next: "recheck", address: wallet },
+    } as RegisterState;
+    const waiting = render("en", createElement(RegisterPanel, { state: timedOut, wallet, ...handlers, onRecheck: NOOP }));
+    expect(waiting).toContain('data-step="send" data-tone="pending"');
+    expect(waiting).toContain("border border-text-muted bg-transparent");
+    expect(waiting).toContain('role="status"');
+    expect(waiting).not.toContain("failed");
+
+    const broken = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "done", send: "failed" },
+      prepared: PREPARED,
+      failure: { key: "sendFailed", reason: "the node refused it", next: "again" },
+    } as RegisterState;
+    const red = render("en", createElement(RegisterPanel, { state: broken, ...handlers }));
+    expect(red).toContain('data-step="send" data-tone="failed"');
+    expect(red).toContain("bg-failed");
+    expect(red).toContain('role="alert"');
+    expect(red).not.toContain('data-tone="pending"');
+  });
+
   it("shows the passport once it is written, with the block and the links", () => {
     const state = {
       ...initialRegisterState,

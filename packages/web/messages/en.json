@@ -43,40 +43,6 @@
     "1": "Captured",
     "2": "Edited"
   },
-  "home": {
-    "kicker": "Live on Monad mainnet",
-    "title": "Every generated image carries its own record.",
-    "lede": "Moolam writes the exact bytes and two perceptual fingerprints of an image into a passport at the moment it is made, so any copy of it can be traced back to the creator and the agent that made it.",
-    "ctaVerify": "Verify an image",
-    "ctaStudio": "Open the studio",
-    "latest": {
-      "heading": "Latest passports",
-      "subheading": "Read live from the registry, newest first.",
-      "pending": "Reading the registry.",
-      "empty": "No passports yet. Register one and it appears here within a block.",
-      "error": "The registry could not be read: {reason}. Check the RPC endpoint in packages/web/.env.local and reload.",
-      "columnId": "Passport",
-      "columnCreator": "Creator",
-      "columnAgent": "Agent",
-      "columnWhen": "Registered",
-      "agentNone": "no agent",
-      "open": "Open"
-    }
-  },
-  "lab": {
-    "title": "Lab",
-    "note": "Visual pieces are tried here before they reach a real screen. Nothing on this page is final and nothing links to it.",
-    "accent": "Accent",
-    "accentCoral": "Coral",
-    "accentAmber": "Amber",
-    "motif": "Motif",
-    "motifSeal": "Seal",
-    "motifNotch": "Notch",
-    "theme": "Theme",
-    "themeDark": "Dark",
-    "themeLight": "Light",
-    "heading": "Hero, work order 9b"
-  },
   "story": {
     "kicker": "Live on Monad mainnet",
     "title": "Moolam",
@@ -124,12 +90,15 @@
     },
     "tryIt": {
       "kicker": "Try it",
-      "title": "Drop any copy of any image.",
+      "title": "Drop any copy of any image here, or choose a file",
       "choose": "Choose a file",
       "hint": "JPEG or PNG. It goes to the Moolam verifier, is fingerprinted three ways, and is not stored.",
       "pending": "Fingerprinting and searching the registry",
       "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then drop the file again.",
       "error": "The check did not run: {reason}",
+      "tooLarge": "That file is over 20 MB. Try a smaller copy.",
+      "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
+      "rateLimited": "Too many checks in a minute. Wait a moment and try again.",
       "noMatch": "Not registered",
       "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
       "exact": "exact bytes",
@@ -140,7 +109,7 @@
       "kicker": "Moolam",
       "title": "Register once. Recognised anywhere.",
       "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by Chainlink, and findable from any copy that survives the internet.",
-      "register": "Register a passport",
+      "register": "Register an image",
       "verify": "Verify an image",
       "passports": "Passports",
       "attestations": "Verifications on chain",
@@ -308,12 +277,10 @@
   },
   "agent": {
     "title": "Agent",
-    "pending": "Reading the identity registry.",
     "notFound": "No agent with that id on the ERC-8004 identity registry.",
     "error": "The identity registry could not be read: {reason}. Reload the page.",
     "owner": "Owner",
     "uri": "Agent URI",
-    "card": "Agent card",
     "cardMissing": "The agent card could not be read from its URI.",
     "reputation": {
       "heading": "Reputation",
@@ -570,38 +537,6 @@
       "again": "Try again",
       "recheck": "Ask Monad again",
       "openAddress": "Open {wallet} on MonadVision"
-    }
-  },
-  "hero": {
-    "kicker": "Live on Monad mainnet",
-    "titleLineOne": "Every copy",
-    "titleLineTwo": "remembers.",
-    "lede": "Moolam writes an image's exact bytes and two perceptual fingerprints into a passport the moment it is made. Recompress it, shrink it to a tenth, turn it sideways, share it twice: the copy still finds its own record.",
-    "ctaVerify": "Verify an image",
-    "ctaStudio": "Open the studio",
-    "stillAlt": "The registered image this passport belongs to",
-    "credit": {
-      "passport": "Passport",
-      "agent": "Agent",
-      "agentNone": "no agent",
-      "creator": "Creator",
-      "registry": "Registry"
-    },
-    "meta": {
-      "network": "Monad mainnet, chain {chainId}",
-      "count": "{count, plural, =1 {# passport} other {# passports}}",
-      "countUnread": "passport count unread",
-      "chainlink": "Verified by Chainlink",
-      "registered": "Registered {date}"
-    },
-    "degrade": {
-      "kicker": "What a copy survives",
-      "heading": "Six ways to break it. One record.",
-      "asRegistered": "as registered",
-      "exactBytes": "exact bytes",
-      "match": "match",
-      "distance": "{phash} of 64, {blockhash} of 256",
-      "provenance": "Every figure here came from the Moolam verifier, run on passport {passport} on {date}. The crushed frames are the verifier's own output, not a filter."
     }
   }
 }

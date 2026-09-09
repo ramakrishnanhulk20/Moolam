@@ -6,7 +6,16 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
-import { STEPS, checkImage, isBusy, isRegistered, passportId, type RegisterState, type Step } from "@/lib/studio/flow";
+import {
+  STEPS,
+  checkImage,
+  isBusy,
+  isRegistered,
+  passportId,
+  type RegisterState,
+  type Step,
+  type StepState,
+} from "@/lib/studio/flow";
 import type { Failure } from "@/lib/studio/problems";
 import { FailureNote } from "./FailureNote";
 import { useHeadingLeading } from "./leading";
@@ -199,40 +208,58 @@ export function RegisterPanel({
   );
 }
 
+/** What a row is painted as, which is not always what the reducer stored. */
+type Tone = StepState | "pending";
+
+const NUMBER_TONE: Record<Tone, string> = {
+  waiting: "text-text-faint",
+  running: "text-accent",
+  done: "text-accent",
+  failed: "text-failed",
+  pending: "text-text-muted",
+};
+
+const MARKER_TONE: Record<Tone, string> = {
+  waiting: "bg-line-strong",
+  running: "animate-pulse bg-accent",
+  done: "bg-verified",
+  failed: "bg-failed",
+  pending: "border border-text-muted bg-transparent",
+};
+
+const LABEL_TONE: Record<Tone, string> = {
+  waiting: "text-text-faint",
+  running: "text-text",
+  done: "text-verified",
+  failed: "text-text",
+  pending: "text-text-muted",
+};
+
 function StepRow({ step, index, state }: { step: Step; index: number; state: RegisterState }) {
   const t = useTranslations("studio");
   const status = state.steps[step];
+
+  // A send that ran out of patience is not a send that failed. The transaction
+  // was accepted and may still land, so the row waits in the muted ink with a
+  // hollow marker. The red is kept for the sends that really did not make it.
+  const tone: Tone =
+    step === "send" && status === "failed" && state.failure?.key === "confirmPending" ? "pending" : status;
 
   // Once the send is out, the wait is no longer about sending: it is about
   // Monad showing the passport, which is the thing actually being watched.
   const label =
     step === "send" && status === "running" && state.confirming
       ? t("register.steps.send.watching")
-      : step === "send" && status === "failed" && state.failure?.key === "confirmPending"
+      : tone === "pending"
         ? t("register.steps.send.pending")
         : t(`register.steps.${step}.${status}`);
 
   return (
-    <li className="flex items-start gap-5 py-4">
-      <span
-        className={`mt-0.5 font-mono text-[11px] tabular-nums ${
-          status === "waiting" ? "text-text-faint" : status === "failed" ? "text-failed" : "text-accent"
-        }`}
-      >
+    <li data-step={step} data-tone={tone} className="flex items-start gap-5 py-4">
+      <span className={`mt-0.5 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span
-        aria-hidden
-        className={`mt-1.5 h-2 w-2 shrink-0 ${
-          status === "done"
-            ? "bg-verified"
-            : status === "failed"
-              ? "bg-failed"
-              : status === "running"
-                ? "animate-pulse bg-accent"
-                : "bg-line-strong"
-        }`}
-      />
+      <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -241,9 +268,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.25 }}
-            className={`block text-sm leading-relaxed ${
-              status === "waiting" ? "text-text-faint" : status === "done" ? "text-verified" : "text-text"
-            }`}
+            className={`block text-sm leading-relaxed ${LABEL_TONE[tone]}`}
           >
             {label}
           </motion.span>

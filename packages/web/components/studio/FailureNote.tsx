@@ -40,15 +40,22 @@ export function FailureNote({
   };
   const action = failure.next === undefined ? undefined : handlers[failure.next];
 
+  // A send that is still out is not a send that failed, so it does not get the
+  // red or the alert role. It waits in the muted ink, like the step above it.
+  const pending = failure.key === "confirmPending";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      role="alert"
-      className="border-s-2 border-failed bg-failed/5 ps-4 py-3"
+      role={pending ? "status" : "alert"}
+      data-tone={pending ? "pending" : "failed"}
+      className={`border-s-2 ps-4 py-3 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
-      <p className="max-w-[54ch] text-sm leading-relaxed text-failed">{t(`failure.${failure.key}`)}</p>
+      <p className={`max-w-[54ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {t(`failure.${failure.key}`)}
+      </p>
       {failure.reason === undefined ? null : (
         <p className="mt-2 max-w-[54ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
           {failure.reason}
