@@ -73,11 +73,14 @@ that allows `appendEdit` and nothing else. That is what lets an editing session 
 without ten passkey prompts. When the permission is taken back, the same call from the same key is
 refused by Privy before it can reach Monad.
 
-**Gas sponsorship.** The creator's first transaction is attempted with `sponsor: true`. On the
-recorded run, Privy answered `HTTP 400 invalid_data: Gas sponsorship is not enabled`, so the script
-printed `sponsorship: not enabled, paid by wallet` and the wallet paid. Turning it on is a
-dashboard setting under Wallet Infrastructure, App pays, with Monad ticked. Nothing in the output
-claims a sponsored transaction that did not happen.
+**Gas sponsorship.** The creator's first transaction is sent with `sponsor: true`. On the recorded
+run it was on: Privy routed the bind as a sponsored EIP-7702 user operation, its bundler sent it
+through the ERC-4337 entry point, it landed in block 103263011, and the creator paid nothing. Privy
+answers such a send with a transaction id and an empty hash, so the client polls Privy's transactions
+endpoint until the hash appears and never resends once the chain shows the first send landed. Turning
+sponsorship on is a dashboard setting under Wallet Infrastructure, Fee sponsorship, with Monad in the
+supported chains and credits added. Nothing in the output claims a sponsored transaction that did not
+happen.
 
 Two honest notes on that proof. There is no browser in it, so the creator's wallet is a Privy
 server wallet standing in for the embedded wallet a user would get on login, and the session signer
