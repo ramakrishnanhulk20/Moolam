@@ -38,10 +38,9 @@ The verify page needs the verifier service. Start it from the repo root with
 | `/[locale]/verify` | Upload any copy of an image and see which passport it matches. |
 | `/[locale]/passport/[id]` | One passport: the record, its verifications and its edits. |
 | `/[locale]/agent/[id]` | One generator agent: its card and its ERC-8004 reputation. |
-| `/[locale]/studio` | Log in with Privy and see the embedded wallet and its MON balance. |
+| `/[locale]/studio` | Sign in with Privy, bind the passkey on this device once, register an image with the network fee paid by Moolam. |
 | `/[locale]/lab` | The hidden bench for visual work. Nothing links to it. |
 | `/api/passports` | The newest passports as JSON. |
-| `/api/verify` | Passes an upload to the verifier service. The browser never talks to it directly. |
 
 `/en` and `/ta` exist today. Another language is two steps: add the code to
 `lib/i18n/routing.ts` and drop a matching file into `messages/`. No component
@@ -63,8 +62,11 @@ Everything on every screen is read live. There is no sample data anywhere.
   `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` set it queries Envio; without it, it reads the
   registry's own `PassportRegistered` events. The footer prints which one
   answered, on every page.
-- **Verification:** the browser posts to `/api/verify`, which forwards the file
-  to the verifier service at `VERIFIER_BASE_URL`.
+- **Verification and preparation:** the browser posts straight to the verify
+  service at `NEXT_PUBLIC_VERIFIER_URL` (`/verify` for anyone, `/prepare` with the
+  creator's Privy access token from the studio). The service allows the app's origin
+  through `CORS_ORIGINS`, which is why a 20 MB upload works on Vercel: no function
+  sits in the middle.
 
 ## Environment
 
