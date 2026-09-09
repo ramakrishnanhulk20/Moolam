@@ -291,7 +291,14 @@ finished 2026-09-08T14:10:42.572Z, 128 seconds
 
 ### The click path
 
-[[judge path through the app: filled when the screens ship]]
+Open the live app (the link row above carries the URL once the Vercel deploy is up; on this machine it is http://localhost:3210). Two minutes, no wallet, no seed phrase:
+
+1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
+2. Open "Verify an image" in the header, press "Choose an image", pick any copy of a registered image (a re-encoded, resized or mirrored copy works), then press "Verify". The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached. An unregistered picture answers plainly that it is not registered and offers the studio.
+3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network and "Network fee: paid by Moolam through Privy".
+4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
+5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
+6. Open the passport page from the receipt: the poster, the facts, the attestations (a Chainlink line when the CRE workflow has re-checked it), the lineage and a "check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
 
 ---
 
@@ -363,9 +370,9 @@ curl against the same URL works.
 | --- | --- | --- |
 | Contracts | `npm test` from `packages/contracts` | 119 |
 | Verify service | `npm run test:verifier` | 98 |
-| Chain client and agents | `npm run test:agents` | 22 |
+| Chain client and agents | `npm run test:agents` | 30 |
 | Indexer | `npm run test:indexer` | 9 |
-| Web app | `npm test` from `packages/web` | 53 |
+| Web app | `npm test` from `packages/web` | 137 |
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -516,9 +523,9 @@ no trailing slash.
 | --- | --- | --- |
 | Contracts | 119 | 18 on the policy timelock, 75 on the registry covering every rule, custom error and event, 15 on the Chainlink receiver path, 5 fuzz tests, an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real Monad mainnet state |
 | Verify service | 98 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare route and its token checks |
-| Chain client and agents | 22 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, and six refusals decoded to their error names |
+| Chain client and agents | 30 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, and the sponsored-send handling (hash polling, refusal classification, the nonce guard) |
 | Indexer | 9 | The handlers against the generated Envio types with the live mainnet addresses |
-| Web app | 53 | The passkey, CBOR, DER and calldata libraries, and the verifier client |
+| Web app | 137 | The passkey, CBOR, DER and calldata libraries, the verifier client, the studio flow and its confirm-by-state, the verify answer and the trust pages |
 
 The six invariants all held: the contract balance always covers every liability, the bond total
 always equals the sum of open disputes, every edit points at a parent that exists, no image id is
