@@ -6,8 +6,9 @@ creator a wallet without a seed phrase.
 
 This package is the shell: routing, the two themes, the ten languages, the
 providers, the live readers and every screen's pending, empty and error state.
-The hero and the rest of the visual work land in later builds, which is why the
-home page carries a `SWAP: hero` comment where the real one goes.
+The home page is the story: eight beats of one real image getting a passport,
+flown as a camera move through a field of the passports registered most
+recently, with every figure in the captions read on the request.
 
 ## Running it
 
@@ -34,7 +35,7 @@ The verify page needs the verifier service. Start it from the repo root with
 | Route | What it is |
 | --- | --- |
 | `/` | Sends the visitor to the default language. |
-| `/[locale]` | The home page: the placeholder hero and the newest passports, read live. |
+| `/[locale]` | The home page: the eight-beat story, flown through the newest passports, read live. |
 | `/[locale]/verify` | Upload any copy of an image and see which passport it matches. |
 | `/[locale]/passport/[id]` | One passport: the record, its verifications and its edits. |
 | `/[locale]/agent/[id]` | One generator agent: its card and its ERC-8004 reputation. |
@@ -50,8 +51,9 @@ script and marks the current one.
 
 Another language is three steps: add the code and its native name to
 `lib/i18n/routing.ts`, drop a matching file into `messages/`, and, if it needs
-glyphs the Latin faces do not carry, add its face to `lib/fonts.ts`. No component
-holds a string of its own.
+glyphs the Latin faces do not carry, add a one-face module under
+`lib/fonts/script/` and its code to the map in `components/ScriptFace.tsx`. No
+component holds a string of its own.
 
 Numbers, dates and hashes are never translated. They go through `Intl` with the
 page's locale, from `next-intl`'s formatter.
@@ -68,10 +70,11 @@ Everything on every screen is read live. There is no sample data anywhere.
   agent card is whatever `tokenURI` points at, including a `data:` URI.
 - **Reputation:** `lib/chain/reputation.ts`, from the ERC-8004 reputation
   registry, filtered by the two tags the verifier writes.
-- **The latest-passports strip:** `lib/data/source.ts` picks the index. With
-  `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` set it queries Envio; without it, it reads the
-  registry's own `PassportRegistered` events. The footer prints which one
-  answered, on every page.
+- **The newest passports**, which are the plates the home page's field is built
+  from and the answer `/api/passports` gives: `lib/data/source.ts` picks the
+  index. With `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` set it queries Envio; without it,
+  it reads the registry's own `PassportRegistered` events. The footer prints
+  which one answered, on every page.
 - **Verification and preparation:** the browser posts straight to the verify
   service at `NEXT_PUBLIC_VERIFIER_URL` (`/verify` for anyone, `/prepare` with the
   creator's Privy access token from the studio). The service allows the app's origin
@@ -86,9 +89,10 @@ browser, so nothing secret may carry that prefix.
 | variable | meaning |
 | --- | --- |
 | `NEXT_PUBLIC_PRIVY_APP_ID` | Privy app id. Without it every page still works and the studio says Privy is not configured. |
-| `NEXT_PUBLIC_MONAD_RPC_URL` | Monad mainnet RPC. Defaults to `https://rpc1.monad.xyz`, which allows a wide `eth_getLogs` range. `https://rpc.monad.xyz` caps it at 100 blocks and the strip then falls back to a slow backwards scan. |
+| `NEXT_PUBLIC_MONAD_RPC_URL` | Monad mainnet RPC. Defaults to `https://rpc1.monad.xyz`, which allows a wide `eth_getLogs` range. `https://rpc.monad.xyz` caps it at 100 blocks and the reader then falls back to a slow backwards scan. |
 | `NEXT_PUBLIC_ENVIO_GRAPHQL_URL` | Optional. Set it to read passports from Envio instead of the chain. |
-| `VERIFIER_BASE_URL` | Server side only. Where the verifier service listens, `http://localhost:4010` in development. |
+| `NEXT_PUBLIC_VERIFIER_URL` | The verifier service as the browser reaches it, `http://localhost:4010` in development. Uploads go straight there, so it has to be an address a browser can open. |
+| `NEXT_PUBLIC_IPFS_GATEWAY` | The gateway every stored `ipfs://` URI is read through. Keep the trailing slash. The shared Pinata gateway works and rate limits hard on a page full of thumbnails. |
 
 The values are checked at boot in `lib/env.ts`, so a malformed URL names itself
 before a page renders rather than inside a fetch later.
@@ -101,14 +105,21 @@ before a page renders rather than inside a fetch later.
 - **Motion.** Lenis smooth scroll and GSAP's ScrollTrigger share one animation
   frame loop in `components/providers/LenisProvider.tsx`. Framer Motion handles
   entrances in client components, and a plain CSS `rise` class does the same for
-  anything rendered on the server. Nothing heavy runs for a visitor whose system
-  asks for reduced motion.
+  anything rendered on the server. The home page's camera move is React Three
+  Fiber, browser only, driven by the one beat table in
+  `components/story/beats.ts`. A reader who has asked for less motion, or a
+  browser that cannot open a WebGL context, gets the same eight beats and the
+  same live figures stacked down a still page instead.
 - **Fonts.** `lib/fonts.ts`, self-hosted at build by `next/font`. Swapping any
   face is one line there. The Latin faces carry no Tamil, Devanagari, Chinese,
   Japanese or Korean glyphs, so those five languages each bring their own Noto
-  face. They all define the same `--font-script` variable and the layout puts
-  exactly one of them on `<html>` for the locale being read, so a reader only
-  ever fetches the face their page draws with.
+  face, one per file under `lib/fonts/script/`. All ten languages share one Next
+  route, and `next/font` puts its stylesheet wherever the face is imported, so
+  importing those five anywhere the layout can see them would ship all five to
+  every reader. `components/ScriptFace.tsx` loads exactly one of them by dynamic
+  import instead and writes its family onto `<html>` as `--font-script`: an
+  English page carries 43 `@font-face` rules and 10.7 KB of gzipped CSS, a
+  Japanese page 168 and 43.8 KB, and neither carries a script it does not draw.
 - **Wallets.** `components/providers/PrivyProvider.tsx`: email, Google and
   passkey login, a wallet created on first login, Monad mainnet as the only
   chain, and wagmi wired through `@privy-io/wagmi` so ordinary wagmi hooks read

@@ -5,6 +5,7 @@ import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
 import type { ReactNode } from "react";
 import { LocaleSwitch } from "@/components/LocaleSwitch";
+import { ScriptFace } from "@/components/ScriptFace";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
@@ -12,7 +13,7 @@ import { PrivyProvider } from "@/components/providers/PrivyProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { CHAIN_ID, MONAD_EXPLORER, addresses } from "@/lib/chain/client";
 import { activeSource } from "@/lib/data/source";
-import { fontVariables, scriptFontClass } from "@/lib/fonts";
+import { fontVariables } from "@/lib/fonts";
 import { Link, routing } from "@/lib/i18n/routing";
 import "@/styles/globals.css";
 
@@ -56,8 +57,9 @@ export default async function LocaleLayout({
   ] as const;
 
   return (
-    <html lang={locale} className={`${fontVariables} ${scriptFontClass(locale)}`} suppressHydrationWarning>
+    <html lang={locale} className={fontVariables} suppressHydrationWarning>
       <body className="min-h-dvh bg-bg text-text antialiased">
+        <ScriptFace locale={locale} />
         <ThemeProvider>
           <IntlProvider locale={locale} timeZone={timeZone} messages={messages as Record<string, unknown>}>
             <PrivyProvider>

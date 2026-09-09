@@ -107,6 +107,16 @@ body {
   line-height: 1.16;
 }
 
+/* The mono kickers are tracked out to 0.24 or 0.28 em, which is what capitalised
+   Latin labels want. Devanagari and the CJK scripts have no capitals and much
+   wider letterforms, so the same space pulls a label apart into loose characters.
+   Everything else keeps the tracking it was set with, including the footer at
+   0.16 em and the header tagline, which is not mono. */
+:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko))
+  :is(.tracking-\[0\.24em\], .tracking-\[0\.28em\]).font-mono.uppercase {
+  letter-spacing: 0.08em;
+}
+
 ::selection {
   background: var(--accent);
   color: var(--accent-ink);
