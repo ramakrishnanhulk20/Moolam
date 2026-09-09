@@ -1,7 +1,7 @@
 Moolam attack: privy-policy-refusal
 REFUSED
 
-run         2026-09-08T14:08:34.384Z
+run         2026-09-09T09:17:19.321Z
 command     npm run prove
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0

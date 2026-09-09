@@ -1,12 +1,12 @@
 Moolam attack: attest-from-stranger
 REFUSED
 
-run         2026-09-08T14:08:34.384Z
+run         2026-09-09T09:17:19.321Z
 command     npm run prove
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-NotReceiver: a stranger claims the image checked out, on chain in 0x615334b09ca21c4a08ec30ff17151588bb3907d976d3ea8c983b8b83895fe419
+NotReceiver: a stranger claims the image checked out, on chain in 0x35b3b83d1b5f112859b9e1cdcf01b9e38da631825baafb784516a9f9fd99aff3
 
 policy              0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
 listed receiver     0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
@@ -18,7 +18,7 @@ call        attest on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
 expected    NotReceiver
 eth_call    refused with NotReceiver, by the live contract at the same gas limit
-sent        0x615334b09ca21c4a08ec30ff17151588bb3907d976d3ea8c983b8b83895fe419
-            https://monadvision.com/tx/0x615334b09ca21c4a08ec30ff17151588bb3907d976d3ea8c983b8b83895fe419
-receipt     reverted in block 103059466, 150,000 gas used of the 150,000 limit set
+sent        0x35b3b83d1b5f112859b9e1cdcf01b9e38da631825baafb784516a9f9fd99aff3
+            https://monadvision.com/tx/0x35b3b83d1b5f112859b9e1cdcf01b9e38da631825baafb784516a9f9fd99aff3
+receipt     reverted in block 103287357, 150,000 gas used of the 150,000 limit set
 result      REFUSED

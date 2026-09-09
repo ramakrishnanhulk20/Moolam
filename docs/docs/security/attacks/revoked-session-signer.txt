@@ -1,7 +1,7 @@
 Moolam attack: revoked-session-signer
 REFUSED
 
-run         2026-09-08T14:08:34.384Z
+run         2026-09-09T09:17:19.321Z
 command     npm run prove
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
@@ -9,7 +9,7 @@ registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 the app's key is no longer a signer on the creator's wallet, and Privy refuses it
 
 creator wallet      0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
-signers before      wcnq8qcljlggp4j5mjlcsv44
+signers before      none
 signers now         none
 
 appendEdit attempted with the app's session key:

@@ -1,12 +1,12 @@
 Moolam attack: report-from-fake-forwarder
 REFUSED
 
-run         2026-09-08T14:08:34.384Z
+run         2026-09-09T09:17:19.321Z
 command     npm run prove
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-InvalidSender: a hand written report from the wrong sender, on chain in 0xf675b29e35fc053ab64761076eb4f92d4c9410da21b229fb0f9d8f05f21a03a5
+InvalidSender: a hand written report from the wrong sender, on chain in 0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4
 
 receiver            0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
 caller              0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
@@ -18,7 +18,7 @@ call        onReport on 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
 from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
 expected    InvalidSender
 eth_call    refused with InvalidSender, by the live contract at the same gas limit
-sent        0xf675b29e35fc053ab64761076eb4f92d4c9410da21b229fb0f9d8f05f21a03a5
-            https://monadvision.com/tx/0xf675b29e35fc053ab64761076eb4f92d4c9410da21b229fb0f9d8f05f21a03a5
-receipt     reverted in block 103059469, 150,000 gas used of the 150,000 limit set
+sent        0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4
+            https://monadvision.com/tx/0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4
+receipt     reverted in block 103287361, 150,000 gas used of the 150,000 limit set
 result      REFUSED

@@ -1,15 +1,15 @@
 Moolam attack: passkey-replay
 REFUSED
 
-run         2026-09-08T14:08:34.384Z
+run         2026-09-09T09:17:19.321Z
 command     npm run prove
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-InvalidPasskeySignature: the creator's own assertion, replayed on a different image hash, on chain in 0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
+InvalidPasskeySignature: the creator's own assertion, replayed on a different image hash, on chain in 0xf99e40ccc6e51621bec3442644c2fb8c43f55c376a773b46672f3d4e5be3b54c
 
-original passport   0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80
-replayed onto       0x435c606870c96fe8ad766ed41a3aac724f45e808cf01be98e8d58e503c2e8ee0
+original passport   0x1d9dfdba01c1ef72921337f08fafab55375f6cca15b704e2b04280a7fa6dab6e
+replayed onto       0xd8781b706acaaba3a6b6da51ba47dd2aaa20da7dcc39ebcf373debdd412eb76d
 the assertion and the agent signature are byte for byte the ones that registered the
 original passport. Only exactHash changed, and the digest they signed changed with it.
 
@@ -18,7 +18,7 @@ call        register on 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 from        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
 expected    InvalidPasskeySignature
 eth_call    refused with InvalidPasskeySignature, by the live contract at the same gas limit
-sent        0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
-            https://monadvision.com/tx/0xdbe4d04c24edc63c1085938e33910fcc5e387fd9301bcc7b4ffcf113e0e5afb0
-receipt     reverted in block 103059450, 400,000 gas used of the 400,000 limit set
+sent        0xf99e40ccc6e51621bec3442644c2fb8c43f55c376a773b46672f3d4e5be3b54c
+            https://monadvision.com/tx/0xf99e40ccc6e51621bec3442644c2fb8c43f55c376a773b46672f3d4e5be3b54c
+receipt     reverted in block 103287337, 400,000 gas used of the 400,000 limit set
 result      REFUSED
