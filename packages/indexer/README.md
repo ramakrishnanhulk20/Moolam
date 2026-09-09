@@ -108,3 +108,5 @@ tell the team it was needed.
 The free development plan allows three indexers per organisation and three
 deployments each, and deletes a deployment that has processed 100,000 events,
 used 5GB, or served no requests for 7 days.
+
+Run the tests with `npm test` from this folder inside WSL: the package script resolves the Linux vitest installed here, while a bare `npx vitest` from this folder picks the Windows install at the repo root and fails on its native binding.
