@@ -1,7 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { p256 } from "@noble/curves/nist.js";
+import { APIError } from "@privy-io/node";
 import {
   bytesToHex,
   createPublicClient,
@@ -29,7 +30,7 @@ import { bindDigest, Kind, passportDigest, type PassportInput } from "../src/cha
 import { SoftwarePasskey } from "../src/chain/passkey.js";
 import { RegistryClient } from "../src/chain/registry.js";
 import { pinFile } from "../src/ipfs/pinata.js";
-import { isPolicyViolation, ownerContext, privyErrorText } from "../src/privy/client.js";
+import { isPolicyViolation, ownerContext, privy, privyErrorText } from "../src/privy/client.js";
 import { signPassportAsGenerator } from "../src/privy/generatorSigner.js";
 import {
   generatorPolicy,
@@ -42,6 +43,8 @@ import {
   readStore,
   sendFromWallet,
   setWalletPolicies,
+  SponsoredSendFailed,
+  SponsoredSendPending,
   updateStore,
   walletPolicyIds,
   type StoredWallet,
@@ -76,6 +79,13 @@ const GAS_MARGIN_PERCENT = 110n;
  */
 const REFUSED_CALL_GAS = 400_000n;
 
+/** A 32 byte transaction hash, which is what Privy reports once it has one. */
+const TX_HASH = /^0x[0-9a-f]{64}$/i;
+
+/** How far back the registry's own logs are searched for a bind, and how wide each query is. */
+const LOG_LOOKBACK = 2_000n;
+const LOG_WINDOW = 100n;
+
 const FINGERPRINT_VERSION = 1;
 const DEADLINE_WINDOW = 3600n;
 const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
@@ -91,7 +101,7 @@ const registryAbi = loadArtifact("MoolamRegistry").abi;
 
 type Deployer = WalletClient<Transport, Chain, Account>;
 
-interface Context {
+export interface Context {
   addresses: Addresses;
   publicClient: PublicClient;
   deployer: Deployer;
@@ -161,7 +171,12 @@ async function main(): Promise<void> {
     `2. creator wallet: ${creator.address} passkey bound: ${bind.hash} (sponsored: ${bind.sponsored ? "yes" : "no"})`,
   );
   say(`   ${EXPLORER_TX}${bind.hash}`);
-  if (!bind.sponsored) {
+  if (bind.sponsored) {
+    say("   sponsorship: on, the app paid the gas, not the creator's wallet");
+    if (bind.userOperationHash) {
+      say(`   Privy routed it as user operation ${bind.userOperationHash}`);
+    }
+  } else {
     say("   sponsorship: not enabled, paid by wallet");
     if (bind.sponsorError) say(`   Privy refused the sponsored send: ${bind.sponsorError}`);
   }
@@ -452,19 +467,28 @@ async function creatorPasskey(): Promise<SoftwarePasskey> {
   return SoftwarePasskey.fromPrivateKey(privateKey);
 }
 
+export interface BoundPasskey {
+  hash: Hex;
+  sponsored: boolean;
+  gasLimit: bigint;
+  /** What Privy said when it turned the sponsored send down, printed as it came. */
+  sponsorError?: string;
+  userOperationHash?: string;
+}
+
 /**
  * Binds the creator's passkey to their Privy wallet, sponsored when the app has sponsorship on.
  *
  * The passkey signature is the authority the registry checks. Privy's wallet only sends the call
- * and pays for it. When the sponsored attempt comes back refused, the wallet pays instead and the
- * refusal is printed rather than swallowed.
+ * and pays for it. A refusal is printed and the wallet pays instead. Anything that is not a
+ * refusal is treated as a send that may already be on chain, and the bind nonce settles it.
  */
-async function bindCreatorPasskey(
+export async function bindCreatorPasskey(
   ctx: Context,
   creator: StoredWallet,
   passkey: SoftwarePasskey,
   owner: ReturnType<typeof ownerContext>,
-): Promise<{ hash: Hex; sponsored: boolean; gasLimit: bigint; sponsorError?: string }> {
+): Promise<BoundPasskey> {
   const nonce = await ctx.registry.bindNonce(creator.address);
   const digest = bindDigest(creator.address, passkey.qx, passkey.qy, nonce, ctx.registry.domain);
   const onChain = await ctx.registry.hashBind(creator.address, passkey.qx, passkey.qy, nonce);
@@ -478,33 +502,144 @@ async function bindCreatorPasskey(
     args: [passkey.qx, passkey.qy, passkey.sign(digest)],
   });
   const gasLimit = await estimate(ctx, creator.address, ctx.addresses.registry, data);
-
-  let sponsorError: string | undefined;
-  try {
-    const sponsored = await sendFromWallet(creator.id, {
-      to: ctx.addresses.registry,
-      data,
-      gasLimit,
-      chainId: ctx.addresses.chainId,
-      sponsor: true,
-      context: owner,
-    });
-    await confirm(ctx, sponsored.hash, "bindPasskey");
-    return { hash: sponsored.hash, sponsored: true, gasLimit };
-  } catch (error) {
-    sponsorError = privyErrorText(error);
-    ctx.say(`  the sponsored send was refused: ${sponsorError}`);
-  }
-
-  const sent = await sendFromWallet(creator.id, {
+  const call = {
     to: ctx.addresses.registry,
     data,
     gasLimit,
     chainId: ctx.addresses.chainId,
     context: owner,
-  });
+  };
+
+  let sponsorError: string;
+  try {
+    const sponsored = await sendFromWallet(creator.id, { ...call, sponsor: true });
+    await confirm(ctx, sponsored.hash, "bindPasskey");
+    return {
+      hash: sponsored.hash,
+      sponsored: true,
+      gasLimit,
+      userOperationHash: sponsored.userOperationHash,
+    };
+  } catch (error) {
+    if (!isPrivyRefusal(error)) {
+      return await settleSponsoredBind(ctx, creator, nonce, gasLimit, error);
+    }
+    sponsorError = privyErrorText(error);
+    ctx.say(`  Privy refused the sponsored send before submitting it: ${sponsorError}`);
+  }
+
+  const sent = await sendFromWallet(creator.id, call);
   await confirm(ctx, sent.hash, "bindPasskey");
   return { hash: sent.hash, sponsored: false, gasLimit, sponsorError };
+}
+
+/**
+ * Whether Privy turned a request down before it submitted anything.
+ *
+ * Only an HTTP 4xx from Privy counts: a policy violation, invalid data, a key it would not accept.
+ * A sponsored send that stalled, one Privy later reported dead, and a receipt wait that timed out
+ * are not refusals. Calling one of those a refusal is what made an earlier run send a second bind
+ * on top of one that had already landed, and the second one reverted.
+ */
+export function isPrivyRefusal(error: unknown): boolean {
+  if (error instanceof SponsoredSendPending || error instanceof SponsoredSendFailed) return false;
+  if (!(error instanceof APIError)) return false;
+  return typeof error.status === "number" && error.status >= 400 && error.status < 500;
+}
+
+/**
+ * Works out what happened to a sponsored bind that neither reported a hash nor was refused.
+ *
+ * The bind nonce is the honest witness: the registry only moves it when a bind succeeded. If it
+ * moved, this run's bind is already written and a second one would revert, so the hash is hunted
+ * down through Privy and then through the registry's own logs. If it did not move, nothing is
+ * assumed and the run stops with the transaction id to look up.
+ */
+async function settleSponsoredBind(
+  ctx: Context,
+  creator: StoredWallet,
+  nonce: bigint,
+  gasLimit: bigint,
+  error: unknown,
+): Promise<BoundPasskey> {
+  const transactionId =
+    error instanceof SponsoredSendPending || error instanceof SponsoredSendFailed
+      ? error.transactionId
+      : undefined;
+  const named = transactionId
+    ? `Privy transaction ${transactionId}`
+    : "the send, which carried no Privy transaction id,";
+  const detail = error instanceof Error ? error.message : String(error);
+  const now = await ctx.registry.bindNonce(creator.address);
+
+  if (now === nonce) {
+    throw new Error(
+      `The sponsored bind is unresolved. ${detail} The bind nonce is still ${nonce}, so nothing was written, and no unsponsored bind was sent because ${named} may still land. Check it on Privy before running this again.`,
+    );
+  }
+
+  ctx.say(`  the sponsored bind did land: the bind nonce moved from ${nonce} to ${now}`);
+  const found =
+    (transactionId ? await bindHashFromPrivy(transactionId) : undefined) ??
+    (await bindHashFromLogs(ctx, creator.address, nonce));
+  if (!found) {
+    throw new Error(
+      `The sponsored bind landed but its hash is nowhere to be found: ${named} reports none, and the registry logged no PasskeyBound for ${creator.address} at nonce ${nonce} within the last ${LOG_LOOKBACK} blocks.`,
+    );
+  }
+  await confirm(ctx, found.hash, "bindPasskey");
+  return {
+    hash: found.hash,
+    sponsored: true,
+    gasLimit,
+    userOperationHash: found.userOperationHash,
+  };
+}
+
+/** The hash Privy holds for a transaction id, once it has one. */
+async function bindHashFromPrivy(
+  transactionId: string,
+): Promise<{ hash: Hex; userOperationHash?: string } | undefined> {
+  const transaction = await privy().transactions().get(transactionId);
+  const hash = transaction.transaction_hash ?? "";
+  if (!TX_HASH.test(hash)) return undefined;
+  return { hash: hash as Hex, userOperationHash: transaction.user_operation_hash };
+}
+
+/**
+ * The transaction that bound this wallet's passkey at this nonce, read from the registry's logs.
+ *
+ * This is the last resort when Privy still has no hash. Monad caps how wide an eth_getLogs range
+ * may be, so the search walks backwards in small windows rather than asking for the whole span.
+ */
+async function bindHashFromLogs(
+  ctx: Context,
+  wallet: Hex,
+  nonce: bigint,
+): Promise<{ hash: Hex; userOperationHash?: string } | undefined> {
+  const latest = await ctx.publicClient.getBlockNumber();
+  const floor = latest > LOG_LOOKBACK ? latest - LOG_LOOKBACK : 0n;
+
+  for (let toBlock = latest; toBlock >= floor; ) {
+    const fromBlock = toBlock > floor + LOG_WINDOW ? toBlock - LOG_WINDOW : floor;
+    const logs = await ctx.publicClient.getLogs({
+      address: ctx.addresses.registry,
+      fromBlock,
+      toBlock,
+    });
+    const bound = parseEventLogs({
+      abi: registryAbi,
+      eventName: "PasskeyBound",
+      logs,
+    }) as unknown as { args: { wallet: Hex; nonce: bigint }; transactionHash: Hex }[];
+    const match = bound.find(
+      (log) => log.args.nonce === nonce && log.args.wallet.toLowerCase() === wallet.toLowerCase(),
+    );
+    if (match) return { hash: match.transactionHash };
+    if (fromBlock === floor) return undefined;
+    toBlock = fromBlock - 1n;
+  }
+  return undefined;
 }
 
 /** The passport the generator registers: its own agent id, the creator's passkey, one policy. */
@@ -779,7 +914,13 @@ function deployerKey(): Hex {
   return key as Hex;
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+// Running this file starts the proof; importing it, as the tests do, does not.
+// The comparison is lowercased because Windows hands back the drive letter in either case.
+const entry = process.argv[1];
+const here = fileURLToPath(import.meta.url).toLowerCase();
+if (entry !== undefined && resolve(entry).toLowerCase() === here) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}

@@ -200,16 +200,28 @@ that allows `appendEdit` and nothing else. That is what lets an editing session 
 without ten passkey prompts. When the permission is taken back, the same call from the same key is
 refused by Privy before it can reach Monad.
 
-**Gas sponsorship.** The creator's first transaction is attempted with `sponsor: true`. On the run
-recorded in the report, Privy answered `HTTP 400 invalid_data: Gas sponsorship is not enabled`, so
-the script printed `sponsorship: not enabled, paid by wallet` and the wallet paid. Turning it on is
-a dashboard setting under Wallet Infrastructure, App pays, with Monad ticked. Nothing in the output
-claims a sponsored transaction that did not happen.
+**Gas sponsorship.** The creator's first transaction is attempted with `sponsor: true`. With
+sponsorship configured for Monad in the dashboard, under Wallet Infrastructure, App pays, Privy
+submits it through its own relayer and answers with a transaction id, sometimes before it has a
+hash to give. The client waits on that id until Privy reports the hash, rather than handing back an
+empty string that a receipt wait would sit on until it timed out.
+
+Only an HTTP 4xx from Privy, sent before anything was submitted, counts as a refusal: a policy
+violation, or sponsorship that is not configured. Then the refusal text is printed and the wallet
+pays instead. A wait that ran out is not a refusal, because that send may still be on its way. In
+that case the script re-reads the creator's bind nonce on the registry, which only moves when a
+bind succeeded. If it moved, the sponsored bind is already written, so the script finds that
+transaction through Privy or through the registry's `PasskeyBound` logs and reports it. If it did
+not move, the run stops and names the Privy transaction to look up. It never sends a second bind on
+top of one that may have landed, because the first one consumed the nonce the second was signed
+for. Line 2 of `proofs/privy.txt` says which of these happened on the last run, and nothing in the
+output claims a sponsored transaction that did not happen.
 
 What a judge sees, in the order the script prints it:
 
 1. The generator's wallet address, its policy id, and the ERC-8004 agent id it owns.
-2. The creator's wallet and the passkey bind transaction, with whether it was sponsored.
+2. The creator's wallet and the passkey bind transaction: sponsored, with the user operation
+   Privy routed it through when it came back with one, or not sponsored with Privy's own words.
 3. A passport registered by the generator wallet under that policy, with the token id.
 4. The same wallet refused when it tries to send MON: `policy_violation`, no transaction.
 5. The same wallet refused when it tries `appendEdit`: same contract, wrong function.
@@ -231,6 +243,14 @@ Needs in the root `.env`: `PRIVY_APP_ID`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATI
 `MONAD_MAINNET_RPC_URL`, `DEPLOYER_PRIVATE_KEY` and `PINATA_JWT`. The first run funds the two
 Privy wallets with 12 MON each from the deployer, because Monad reserves 10 MON per account and a
 wallet below that cannot pay for anything.
+
+Gas, in plain English. On the last recorded run, binding the passkey cost 0.0072 MON, registering
+a passport 0.0434 MON and appending an edit 0.0492 MON, all at 102 gwei, and the script prints the
+limit, the price and the MON for each one at the end. Monad bills the gas limit that was declared
+rather than the gas that was used, which is why the limit is what those numbers are worked out
+from. When sponsorship is on, the app pays for the creator's bind and the creator's own MON is
+untouched; the generator's `register` and the session signer's `appendEdit` are always paid by the
+wallet that sends them.
 
 ## The generator agent
 

@@ -1,4 +1,9 @@
-<h1 align="center">Moolam</h1>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="packages/web/public/brand/seal-o/lockup-stacked-dark.svg">
+    <img src="packages/web/public/brand/seal-o/lockup-stacked-light.svg" alt="Moolam" width="320">
+  </picture>
+</p>
 
 <p align="center">
   <strong>Every image gets a passport on Monad that survives re-encoding, and anyone can verify any copy.</strong><br>
@@ -70,8 +75,10 @@ one copy with every scrap of metadata removed all resolved back to the same pass
   created by someone who touched the sensor and passed its biometric or PIN.
 - Anyone may send the `register` transaction. Authority comes from the two signatures rather than
   from `msg.sender`, which is what lets a relayer pay a creator's gas. Privy gas sponsorship is a
-  dashboard setting for this app; on the recorded run it was still off, the script printed
-  `sponsorship: not enabled, paid by wallet`, and the wallet paid.
+  dashboard setting for this app, and on the recorded run it was on: the creator's bind went out as
+  a sponsored EIP-7702 user operation, landed in block 103263011 from Privy's bundler through the
+  ERC-4337 entry point, the script printed `sponsorship: on, the app paid the gas, not the creator's
+  wallet`, and the creator paid nothing.
 
 ### For AI agents
 
