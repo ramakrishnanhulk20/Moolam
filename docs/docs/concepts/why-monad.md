@@ -35,8 +35,8 @@ Median gas per action, from the contracts package:
 | --- | --- |
 | `bindPasskey` | 117,165 |
 | `register` | 254,429 |
-| `appendEdit` | 309,989 |
-| `attest` | 126,089 |
+| `appendEdit` | 299,849 |
+| `attest` | 126,113 |
 | `flag` | 172,939 |
 | `withdraw` | 40,717 |
 

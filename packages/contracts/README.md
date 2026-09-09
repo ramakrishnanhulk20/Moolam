@@ -189,8 +189,8 @@ limit around these figures rather than a fat safety buffer.
 | --- | --- | --- |
 | `bindPasskey` | 117,165 | One time per wallet. Proves the passkey belongs to the wallet before it can sign anything. |
 | `register` | 254,429 | The main one. Checks a real WebAuthn signature and an agent signature, writes the record, and mints the token. |
-| `appendEdit` | 309,989 | A little more than a register because it also links the child to its parent. No passkey prompt: owning the parent token is the authority. |
-| `attest` | 126,089 | What the Chainlink workflow pays to record one verification result. |
+| `appendEdit` | 299,849 | A little more than a register because it also links the child to its parent. No passkey prompt: owning the parent token is the authority. |
+| `attest` | 126,113 | What the Chainlink workflow pays to record one verification result. |
 | `flag` | 172,939 | Opening a dispute, including the bond going into escrow. |
 | `withdraw` | 40,717 | Pulling money out. Deliberately cheap and deliberately a pull, so nobody can be blocked. |
 | `withdrawTo` | 41,226 | The same pull, sent to an address the caller names. |

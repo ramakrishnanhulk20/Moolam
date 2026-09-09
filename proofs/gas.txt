@@ -1,124 +1,133 @@
-forge test --gas-report --no-match-path "test/fork/*" -n monad, run from packages/contracts on 2026-09-06.
-The -n monad flag puts Foundry in Monad's network family, which prices gas the way the target
-chain does. The fork suite is excluded here because it needs the network; its report is
-proofs/fork-tests.txt.
+
+> @moolam/contracts@0.1.0 gas
+> forge test --gas-report --no-match-path "test/fork/*" -n monad
 
 No files changed, compilation skipped
 
-Ran 16 tests for test/VerifierPolicy.t.sol:VerifierPolicyTest
-[PASS] testFuzz_queuedBondIsWhateverWasQueued(uint256) (runs: 512, μ: 244171, ~: 244184)
+Ran 15 tests for test/MoolamReceiver.t.sol:MoolamReceiverTest
+[PASS] test_aReportBuiltForAnotherChainIsRefused() (gas: 102966)
+[PASS] test_aReportCarryingAnotherAuthorIsRefused() (gas: 221498)
+[PASS] test_aReportCarryingAnotherWorkflowNameIsRefused() (gas: 221799)
+[PASS] test_aReportForAnUnknownPassportIsRefusedByTheRegistry() (gas: 130345)
+[PASS] test_aReportForTheWrongWorkflowIdIsRefused() (gas: 116097)
+[PASS] test_aReportFromAnyOtherAddressIsRefused() (gas: 82787)
+[PASS] test_aReportFromTheForwarderLandsAsAnAttestation() (gas: 266748)
+[PASS] test_aReportFromThePinnedWorkflowLands() (gas: 385849)
+[PASS] test_anOlderReportAfterANewerOneIsRefused() (gas: 296801)
+[PASS] test_clearingThePinReopensTheReceiverForASimulation() (gas: 462188)
+[PASS] test_constructorRejectsAZeroForwarderOrRegistry() (gas: 19451)
+[PASS] test_constructorWiresTheForwarderAndRegistry() (gas: 71555)
+[PASS] test_theRegistryRefusesTheReceiverOnceThePolicyDropsIt() (gas: 175876)
+[PASS] test_theSameReportSentTwiceIsRefused() (gas: 276984)
+[PASS] test_theWorkflowIdSetterIsOwnerOnly() (gas: 155556)
+Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 32.57ms (5.11ms CPU time)
+
+Ran 75 tests for test/MoolamRegistry.t.sol:MoolamRegistryTest
+[PASS] test_anEoaTreasuryStillPullsWithPlainWithdraw() (gas: 766550)
+[PASS] test_appendEditIsBlockedWhilePaused() (gas: 471426)
+[PASS] test_appendEditRecordsTheChildAndMintsToTheParentOwner() (gas: 854763)
+[PASS] test_appendEditRefusesAnAddressApprovedForTheParentToken() (gas: 562744)
+[PASS] test_appendEditRefusesAnOperatorApprovedForAll() (gas: 553869)
+[PASS] test_appendEditRejectsACreatorThatIsNotTheParentOwner() (gas: 445451)
+[PASS] test_appendEditRejectsAParentThatDoesNotExist() (gas: 74434)
+[PASS] test_appendEditRejectsASignatureWhenNoAgentIsNamed() (gas: 472800)
+[PASS] test_appendEditRejectsAZeroExactHashAndADuplicate() (gas: 474025)
+[PASS] test_appendEditRejectsAZeroParent() (gas: 65543)
+[PASS] test_appendEditRejectsAnAgentSignatureFromTheWrongWallet() (gas: 498685)
+[PASS] test_appendEditRejectsAnEmptyMetadataURIAndAPassedDeadline() (gas: 491919)
+[PASS] test_appendEditRejectsAnUnknownAgent() (gas: 491966)
+[PASS] test_appendEditRejectsSomeoneWhoDoesNotHoldTheParent() (gas: 445506)
+[PASS] test_appendEditRejectsTheWrongKind() (gas: 436273)
+[PASS] test_appendEditWorksWithNoAgentAtAll() (gas: 706007)
+[PASS] test_attestRecordsTheResult() (gas: 561389)
+[PASS] test_attestRejectsAPassportThatDoesNotExist() (gas: 79738)
+[PASS] test_attestRejectsAnAddressThePolicyDoesNotList() (gas: 425276)
+[PASS] test_attestStillWorksWhilePaused() (gas: 570047)
+[PASS] test_attestStopsAtTheCap() (gas: 8616190)
+[PASS] test_attestStopsOnceThePolicyDropsTheReceiver() (gas: 478840)
+[PASS] test_bindPasskeyNonceStopsAnOldAssertionBeingReplayed() (gas: 99018)
+[PASS] test_bindPasskeyRefusesAnAssertionWithoutUserPresence() (gas: 100054)
+[PASS] test_bindPasskeyRefusesAnAssertionWithoutUserVerification() (gas: 100089)
+[PASS] test_bindPasskeyRejectsASignatureOverTheWrongDigest() (gas: 88511)
+[PASS] test_bindPasskeyRejectsAZeroPublicKey() (gas: 67108)
+[PASS] test_bindPasskeyStoresTheKeyAndBumpsTheNonce() (gas: 207531)
+[PASS] test_constructorExposesItsWiring() (gas: 95757)
+[PASS] test_constructorRejectsZeroAddressesAndNonContractIdentity() (gas: 19770)
+[PASS] test_flagHoldsTheBond() (gas: 607437)
+[PASS] test_flagIsAllowedAgainAfterARejectedDispute() (gas: 823324)
+[PASS] test_flagIsBlockedWhilePaused() (gas: 484629)
+[PASS] test_flagIsRefusedOnceAChallengeWasUpheld() (gas: 758317)
+[PASS] test_flagRejectsAnUnknownPassportAWrongBondAndASecondOpenDispute() (gas: 774830)
+[PASS] test_ownerTransferTakesTwoSteps() (gas: 148180)
+[PASS] test_pauseAndUnpauseAreOwnerOnly() (gas: 550120)
+[PASS] test_readsPageAndClipToWhatExists() (gas: 834967)
+[PASS] test_registerAcceptsACapturedImageWithNoAgent() (gas: 342205)
+[PASS] test_registerAndAppendEditRejectAZeroFingerprintVersion() (gas: 566770)
+[PASS] test_registerIsBlockedWhilePaused() (gas: 170060)
+[PASS] test_registerRejectsACapturedImageThatCarriesASignature() (gas: 149050)
+[PASS] test_registerRejectsACapturedImageThatNamesAnAgent() (gas: 123315)
+[PASS] test_registerRejectsACreatorWithNoBoundPasskey() (gas: 132752)
+[PASS] test_registerRejectsAGeneratedImageWithNoAgentId() (gas: 148940)
+[PASS] test_registerRejectsAMalformedGeneratorSignature() (gas: 142749)
+[PASS] test_registerRejectsAParentId() (gas: 122769)
+[PASS] test_registerRejectsAPassedDeadline() (gas: 123896)
+[PASS] test_registerRejectsAPasskeySignatureFromAnotherDevice() (gas: 155666)
+[PASS] test_registerRejectsAPasskeySignatureOverAnotherPassport() (gas: 140003)
+[PASS] test_registerRejectsASignatureFromSomeoneWhoDoesNotOwnTheAgent() (gas: 174854)
+[PASS] test_registerRejectsAZeroCreator() (gas: 122386)
+[PASS] test_registerRejectsAZeroExactHash() (gas: 117157)
+[PASS] test_registerRejectsAnAgentIdNobodyRegistered() (gas: 168134)
+[PASS] test_registerRejectsAnEmptyMetadataURI() (gas: 122866)
+[PASS] test_registerRejectsTheEditedKind() (gas: 122770)
+[PASS] test_registerRejectsTheSameImageTwice() (gas: 486374)
+[PASS] test_registerWritesThePassportAndMintsToTheCreator() (gas: 466410)
+[PASS] test_rescueERC20MovesStrandedTokens() (gas: 766532)
+[PASS] test_rescueERC20RejectsAZeroDestinationAndAStranger() (gas: 680303)
+[PASS] test_rescueNativeCannotTouchBondsOrCredits() (gas: 776673)
+[PASS] test_rescueNativeMovesOnlyTheSurplus() (gas: 663783)
+[PASS] test_rescueNativeRejectsAZeroDestinationAndAStranger() (gas: 113506)
+[PASS] test_resolveRejectedCreditsTheTreasury() (gas: 782477)
+[PASS] test_resolveRejectsAnyoneButTheResolverAndAClosedDispute() (gas: 868373)
+[PASS] test_resolveUpheldCreditsTheChallengerAndMarksThePassport() (gas: 776245)
+[PASS] test_theSameInputOnAnotherContractCannotBeReplayed() (gas: 37296)
+[PASS] test_tokenURIRevertsForAnUnmintedId() (gas: 39366)
+[PASS] test_withdrawPaysOutAndZeroesTheCredit() (gas: 796186)
+[PASS] test_withdrawRejectsAZeroBalance() (gas: 70439)
+[PASS] test_withdrawSurfacesAFailedTransfer() (gas: 856836)
+[PASS] test_withdrawToLetsATreasuryContractSendItsCreditOn() (gas: 1303063)
+[PASS] test_withdrawToPaysOnceAndOnlyFromTheCallersOwnCredit() (gas: 896667)
+[PASS] test_withdrawToRejectsAZeroDestinationAndAnEmptyCredit() (gas: 106570)
+[PASS] test_withdrawWorksWhilePaused() (gas: 816096)
+Suite result: ok. 75 passed; 0 failed; 0 skipped; finished in 229.28ms (114.49ms CPU time)
+
+Ran 18 tests for test/VerifierPolicy.t.sol:VerifierPolicyTest
+[PASS] testFuzz_queuedBondIsWhateverWasQueued(uint256) (runs: 512, μ: 244407, ~: 244206)
 [PASS] test_bootstrapAddReceiverListsImmediately() (gas: 100080)
-[PASS] test_bootstrapAddReceiverRejectsZeroAndDuplicate() (gas: 159980)
+[PASS] test_bootstrapAddReceiverRejectsZeroAndDuplicate() (gas: 159935)
 [PASS] test_bootstrapIsOwnerOnly() (gas: 60077)
 [PASS] test_cancelDropsAQueuedChange() (gas: 328851)
 [PASS] test_constructorRejectsZeroResolverOrTreasury() (gas: 19753)
-[PASS] test_constructorStoresSettings() (gas: 90883)
-[PASS] test_everyPrivilegedCallIsOwnerOnly() (gas: 277299)
-[PASS] test_executeRejectsAnUnknownChangeId() (gas: 68718)
-[PASS] test_finalizeBootstrapClosesTheWindowForGood() (gas: 172008)
-[PASS] test_queueAddReceiverRejectsAnAlreadyListedAddress() (gas: 128609)
+[PASS] test_constructorStoresSettings() (gas: 90905)
+[PASS] test_everyPrivilegedCallIsOwnerOnly() (gas: 277366)
+[PASS] test_executeRejectsAnUnknownChangeId() (gas: 68696)
+[PASS] test_finalizeBootstrapClosesTheWindowForGood() (gas: 172074)
+[PASS] test_queueAddReceiverRejectsAnAlreadyListedAddress() (gas: 128631)
 [PASS] test_queueAddReceiverWaitsTheFullDelay() (gas: 448541)
 [PASS] test_queueRejectsZeroAddressAndDuplicates() (gas: 303065)
-[PASS] test_queueSetResolverTreasuryAndBond() (gas: 644834)
-[PASS] test_removeReceiverIsImmediate() (gas: 194412)
-[PASS] test_removeReceiverRejectsAnAddressThatIsNotListed() (gas: 67933)
-Suite result: ok. 16 passed; 0 failed; 0 skipped; finished in 199.39ms (182.90ms CPU time)
-
-Ran 11 tests for test/MoolamReceiver.t.sol:MoolamReceiverTest
-[PASS] test_aReportBuiltForAnotherChainIsRefused() (gas: 102886)
-[PASS] test_aReportForAnUnknownPassportIsRefusedByTheRegistry() (gas: 130287)
-[PASS] test_aReportForTheWrongWorkflowIdIsRefused() (gas: 115972)
-[PASS] test_aReportFromAnyOtherAddressIsRefused() (gas: 82629)
-[PASS] test_aReportFromTheForwarderLandsAsAnAttestation() (gas: 266711)
-[PASS] test_anOlderReportAfterANewerOneIsRefused() (gas: 296696)
-[PASS] test_constructorRejectsAZeroForwarderOrRegistry() (gas: 19473)
-[PASS] test_constructorWiresTheForwarderAndRegistry() (gas: 71643)
-[PASS] test_theRegistryRefusesTheReceiverOnceThePolicyDropsIt() (gas: 175818)
-[PASS] test_theSameReportSentTwiceIsRefused() (gas: 276802)
-[PASS] test_theWorkflowIdSetterIsOwnerOnly() (gas: 91509)
-Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 199.77ms (6.71ms CPU time)
-
-Ran 71 tests for test/MoolamRegistry.t.sol:MoolamRegistryTest
-[PASS] test_appendEditAcceptsAnApprovedSessionSigner() (gas: 850824)
-[PASS] test_appendEditAcceptsAnOperatorApprovedForAll() (gas: 844228)
-[PASS] test_appendEditIsBlockedWhilePaused() (gas: 471316)
-[PASS] test_appendEditRecordsTheChildAndMintsToTheParentOwner() (gas: 854781)
-[PASS] test_appendEditRejectsACreatorThatIsNotTheParentOwner() (gas: 445478)
-[PASS] test_appendEditRejectsAParentThatDoesNotExist() (gas: 74500)
-[PASS] test_appendEditRejectsASignatureWhenNoAgentIsNamed() (gas: 472827)
-[PASS] test_appendEditRejectsAZeroExactHashAndADuplicate() (gas: 474003)
-[PASS] test_appendEditRejectsAZeroParent() (gas: 65521)
-[PASS] test_appendEditRejectsAnAgentSignatureFromTheWrongWallet() (gas: 498668)
-[PASS] test_appendEditRejectsAnEmptyMetadataURIAndAPassedDeadline() (gas: 491853)
-[PASS] test_appendEditRejectsAnUnknownAgent() (gas: 491949)
-[PASS] test_appendEditRejectsSomeoneWhoDoesNotHoldTheParent() (gas: 462334)
-[PASS] test_appendEditRejectsTheWrongKind() (gas: 436185)
-[PASS] test_appendEditWorksWithNoAgentAtAll() (gas: 706036)
-[PASS] test_attestRecordsTheResult() (gas: 561323)
-[PASS] test_attestRejectsAPassportThatDoesNotExist() (gas: 79716)
-[PASS] test_attestRejectsAnAddressThePolicyDoesNotList() (gas: 425254)
-[PASS] test_attestStillWorksWhilePaused() (gas: 569915)
-[PASS] test_attestStopsAtTheCap() (gas: 8616102)
-[PASS] test_attestStopsOnceThePolicyDropsTheReceiver() (gas: 478774)
-[PASS] test_bindPasskeyNonceStopsAnOldAssertionBeingReplayed() (gas: 99170)
-[PASS] test_bindPasskeyRefusesAnAssertionWithoutUserPresence() (gas: 100098)
-[PASS] test_bindPasskeyRefusesAnAssertionWithoutUserVerification() (gas: 100244)
-[PASS] test_bindPasskeyRejectsASignatureOverTheWrongDigest() (gas: 88467)
-[PASS] test_bindPasskeyRejectsAZeroPublicKey() (gas: 67042)
-[PASS] test_bindPasskeyStoresTheKeyAndBumpsTheNonce() (gas: 207619)
-[PASS] test_constructorExposesItsWiring() (gas: 95647)
-[PASS] test_constructorRejectsZeroAddressesAndNonContractIdentity() (gas: 19726)
-[PASS] test_flagHoldsTheBond() (gas: 607593)
-[PASS] test_flagIsAllowedAgainAfterARejectedDispute() (gas: 823612)
-[PASS] test_flagIsBlockedWhilePaused() (gas: 484696)
-[PASS] test_flagIsRefusedOnceAChallengeWasUpheld() (gas: 758495)
-[PASS] test_flagRejectsAnUnknownPassportAWrongBondAndASecondOpenDispute() (gas: 775230)
-[PASS] test_ownerTransferTakesTwoSteps() (gas: 148136)
-[PASS] test_pauseAndUnpauseAreOwnerOnly() (gas: 550054)
-[PASS] test_readsPageAndClipToWhatExists() (gas: 834952)
-[PASS] test_registerAcceptsACapturedImageWithNoAgent() (gas: 342183)
-[PASS] test_registerAndAppendEditRejectAZeroFingerprintVersion() (gas: 566682)
-[PASS] test_registerIsBlockedWhilePaused() (gas: 170038)
-[PASS] test_registerRejectsACapturedImageThatCarriesASignature() (gas: 149006)
-[PASS] test_registerRejectsACapturedImageThatNamesAnAgent() (gas: 123338)
-[PASS] test_registerRejectsACreatorWithNoBoundPasskey() (gas: 132730)
-[PASS] test_registerRejectsAGeneratedImageWithNoAgentId() (gas: 148874)
-[PASS] test_registerRejectsAMalformedGeneratorSignature() (gas: 142794)
-[PASS] test_registerRejectsAParentId() (gas: 122814)
-[PASS] test_registerRejectsAPassedDeadline() (gas: 123896)
-[PASS] test_registerRejectsAPasskeySignatureFromAnotherDevice() (gas: 155733)
-[PASS] test_registerRejectsAPasskeySignatureOverAnotherPassport() (gas: 140045)
-[PASS] test_registerRejectsASignatureFromSomeoneWhoDoesNotOwnTheAgent() (gas: 174766)
-[PASS] test_registerRejectsAZeroCreator() (gas: 122386)
-[PASS] test_registerRejectsAZeroExactHash() (gas: 117157)
-[PASS] test_registerRejectsAnAgentIdNobodyRegistered() (gas: 168068)
-[PASS] test_registerRejectsAnEmptyMetadataURI() (gas: 122889)
-[PASS] test_registerRejectsTheEditedKind() (gas: 122748)
-[PASS] test_registerRejectsTheSameImageTwice() (gas: 486308)
-[PASS] test_registerWritesThePassportAndMintsToTheCreator() (gas: 466477)
-[PASS] test_rescueERC20MovesStrandedTokens() (gas: 766597)
-[PASS] test_rescueERC20RejectsAZeroDestinationAndAStranger() (gas: 680281)
-[PASS] test_rescueNativeCannotTouchBondsOrCredits() (gas: 777024)
-[PASS] test_rescueNativeMovesOnlyTheSurplus() (gas: 663893)
-[PASS] test_rescueNativeRejectsAZeroDestinationAndAStranger() (gas: 113748)
-[PASS] test_resolveRejectedCreditsTheTreasury() (gas: 782499)
-[PASS] test_resolveRejectsAnyoneButTheResolverAndAClosedDispute() (gas: 868330)
-[PASS] test_resolveUpheldCreditsTheChallengerAndMarksThePassport() (gas: 776311)
-[PASS] test_theSameInputOnAnotherContractCannotBeReplayed() (gas: 37363)
-[PASS] test_tokenURIRevertsForAnUnmintedId() (gas: 39344)
-[PASS] test_withdrawPaysOutAndZeroesTheCredit() (gas: 796159)
-[PASS] test_withdrawRejectsAZeroBalance() (gas: 70422)
-[PASS] test_withdrawSurfacesAFailedTransfer() (gas: 856757)
-[PASS] test_withdrawWorksWhilePaused() (gas: 816026)
-Suite result: ok. 71 passed; 0 failed; 0 skipped; finished in 210.93ms (86.48ms CPU time)
+[PASS] test_queueSetResolverTreasuryAndBond() (gas: 654972)
+[PASS] test_queueSetTreasuryAcceptsAnEoaAndAContractThatCanTakePayment() (gas: 483297)
+[PASS] test_queueSetTreasuryRefusesAContractNothingCanReach() (gas: 173221)
+[PASS] test_removeReceiverIsImmediate() (gas: 194346)
+[PASS] test_removeReceiverRejectsAnAddressThatIsNotListed() (gas: 67955)
+Suite result: ok. 18 passed; 0 failed; 0 skipped; finished in 269.81ms (268.21ms CPU time)
 
 Ran 5 tests for test/MoolamRegistry.fuzz.t.sol:MoolamRegistryFuzzTest
-[PASS] testFuzz_appendEditAlwaysHangsOffALiveParent(bytes32,bytes32) (runs: 512, μ: 714901, ~: 713086)
-[PASS] testFuzz_disputeMoneyIsConserved(uint256,bool,address) (runs: 512, μ: 1056947, ~: 1055101)
-[PASS] testFuzz_registerRefusesATamperedField(bytes32,uint64,uint64) (runs: 512, μ: 125125, ~: 125223)
-[PASS] testFuzz_registerStoresExactlyWhatWasSigned(bytes32,uint64,bytes32,bytes32,uint8,string,uint64) (runs: 512, μ: 439431, ~: 414545)
-[PASS] testFuzz_withdrawNeverPaysTwice(uint8) (runs: 512, μ: 856101, ~: 809600)
-Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 211.05ms (972.50ms CPU time)
+[PASS] testFuzz_appendEditAlwaysHangsOffALiveParent(bytes32,bytes32) (runs: 512, μ: 714557, ~: 713047)
+[PASS] testFuzz_disputeMoneyIsConserved(uint256,bool,address) (runs: 512, μ: 1056973, ~: 1055217)
+[PASS] testFuzz_registerRefusesATamperedField(bytes32,uint64,uint64) (runs: 512, μ: 125165, ~: 125245)
+[PASS] testFuzz_registerStoresExactlyWhatWasSigned(bytes32,uint64,bytes32,bytes32,uint8,string,uint64) (runs: 512, μ: 438634, ~: 414417)
+[PASS] testFuzz_withdrawNeverPaysTwice(uint8) (runs: 512, μ: 863125, ~: 849216)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 272.76ms (1.25s CPU time)
 
 Ran 1 test for test/MoolamRegistry.invariants.t.sol:MoolamRegistryInvariantsTest
 [PASS]
@@ -134,137 +143,147 @@ MoolamRegistryInvariantsTest invariants:
 ╭-----------------+------------+-------+---------+----------╮
 | Contract        | Selector   | Calls | Reverts | Discards |
 +===========================================================+
-| RegistryHandler | appendEdit | 1134  | 0       | 0        |
+| RegistryHandler | appendEdit | 1123  | 0       | 0        |
 |-----------------+------------+-------+---------+----------|
-| RegistryHandler | attest     | 1167  | 0       | 0        |
+| RegistryHandler | attest     | 1205  | 0       | 0        |
 |-----------------+------------+-------+---------+----------|
-| RegistryHandler | flag       | 1223  | 0       | 0        |
+| RegistryHandler | flag       | 1181  | 0       | 0        |
 |-----------------+------------+-------+---------+----------|
-| RegistryHandler | register   | 1193  | 0       | 0        |
+| RegistryHandler | register   | 1160  | 0       | 0        |
 |-----------------+------------+-------+---------+----------|
-| RegistryHandler | resolve    | 1191  | 0       | 0        |
+| RegistryHandler | resolve    | 1177  | 0       | 0        |
 |-----------------+------------+-------+---------+----------|
-| RegistryHandler | setPaused  | 1215  | 0       | 0        |
+| RegistryHandler | setPaused  | 1202  | 0       | 0        |
 |-----------------+------------+-------+---------+----------|
-| RegistryHandler | withdraw   | 1069  | 0       | 0        |
+| RegistryHandler | withdraw   | 1144  | 0       | 0        |
 ╰-----------------+------------+-------+---------+----------╯
 
-Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.36s (3.36s CPU time)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 4.44s (4.41s CPU time)
 
-╭------------------------------------------------+-----------------+-------+--------+--------+---------╮
-| src/MoolamReceiver.sol:MoolamReceiver Contract |                 |       |        |        |         |
-+======================================================================================================+
-| Deployment Cost                                | Deployment Size |       |        |        |         |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-|                                              0 |            4367 |       |        |        |         |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-|                                                |                 |       |        |        |         |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| Function Name                                  | Min             | Avg   | Median | Max    | # Calls |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| REGISTRY                                       |             248 |   248 |    248 |    248 |       1 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| getForwarderAddress                            |            8340 |  8340 |   8340 |   8340 |       1 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| lastExecutedAt                                 |            8481 |  8481 |   8481 |   8481 |       3 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| onReport                                       |           32451 | 95378 |  66577 | 193386 |      10 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| owner                                          |             405 |   405 |    405 |    405 |       1 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| setExpectedWorkflowId                          |           29699 | 40446 |  40446 |  51193 |       2 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| setForwarderAddress                            |           29928 | 29928 |  29928 |  29928 |       1 |
-|------------------------------------------------+-----------------+-------+--------+--------+---------|
-| supportsInterface                              |             396 |   415 |    415 |    434 |       2 |
-╰------------------------------------------------+-----------------+-------+--------+--------+---------╯
+╭------------------------------------------------+-----------------+--------+--------+--------+---------╮
+| src/MoolamReceiver.sol:MoolamReceiver Contract |                 |        |        |        |         |
++=======================================================================================================+
+| Deployment Cost                                | Deployment Size |        |        |        |         |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                              0 |            4367 |        |        |        |         |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                                |                 |        |        |        |         |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| Function Name                                  | Min             | Avg    | Median | Max    | # Calls |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| REGISTRY                                       |             248 |    248 |    248 |    248 |       1 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| getExpectedAuthor                              |             385 |    385 |    385 |    385 |       2 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| getExpectedWorkflowName                        |             336 |   6736 |   8336 |   8336 |       5 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| getForwarderAddress                            |            8340 |   8340 |   8340 |   8340 |       1 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| lastExecutedAt                                 |            8481 |   8481 |   8481 |   8481 |       3 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| onReport                                       |           32451 | 100693 |  66577 | 194636 |      14 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| owner                                          |             405 |    405 |    405 |    405 |       1 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| setExpectedAuthor                              |           29995 |  45080 |  51546 |  51546 |       6 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| setExpectedWorkflowId                          |           29699 |  40446 |  40446 |  51193 |       2 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| setExpectedWorkflowName                        |           30363 |  54537 |  65541 |  65541 |       6 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| setForwarderAddress                            |           29928 |  29928 |  29928 |  29928 |       1 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| supportsInterface                              |             396 |    415 |    415 |    434 |       2 |
+╰------------------------------------------------+-----------------+--------+--------+--------+---------╯
 
 ╭------------------------------------------------+-----------------+--------+--------+--------+---------╮
 | src/MoolamRegistry.sol:MoolamRegistry Contract |                 |        |        |        |         |
 +=======================================================================================================+
 | Deployment Cost                                | Deployment Size |        |        |        |         |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-|                                              0 |           22539 |        |        |        |         |
+|                                              0 |           22749 |        |        |        |         |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 |                                                |                 |        |        |        |         |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | Function Name                                  | Min             | Avg    | Median | Max    | # Calls |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| MAX_ATTESTATIONS                               |             227 |    227 |    227 |    227 |       8 |
+| MAX_ATTESTATIONS                               |             249 |    249 |    249 |    249 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| acceptOwnership                                |           34349 |  34349 |  34349 |  34349 |       1 |
+| acceptOwnership                                |           34371 |  34371 |  34371 |  34371 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| agentIdentity                                  |             267 |    267 |    267 |    267 |       1 |
+| agentIdentity                                  |             289 |    289 |    289 |    289 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| appendEdit                                     |           33732 | 251859 | 299900 | 370868 |    1037 |
+| appendEdit                                     |           33732 | 252263 | 299849 | 362561 |     984 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | approve                                        |           60988 |  60988 |  60988 |  60988 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| attest                                         |           41498 |  92665 | 126113 | 154285 |     814 |
+| attest                                         |           41498 |  93295 | 126113 | 154297 |     873 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| attestationCount                               |            8511 |   8511 |   8511 |   8511 |      14 |
+| attestationCount                               |            8533 |   8533 |   8533 |   8533 |      11 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| bindNonce                                      |            8583 |   8583 |   8583 |   8583 |      72 |
+| bindNonce                                      |            8583 |   8583 |   8583 |   8583 |      76 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| bindPasskey                                    |           30900 | 112944 | 117165 | 117165 |      93 |
+| bindPasskey                                    |           30900 | 113278 | 117165 | 117165 |     101 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| childCount                                     |             556 |   8525 |   8556 |   8556 |     259 |
+| childCount                                     |             578 |   8547 |   8578 |   8578 |     261 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| flag                                           |           42072 | 128557 | 173050 | 183850 |    1370 |
+| flag                                           |           41961 | 131388 | 172939 | 183739 |    1296 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| getAttestations                                |             993 |  10206 |  10431 |  18431 |       7 |
+| getAttestations                                |            1015 |  10140 |  10453 |  18453 |       5 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | getChildren                                    |             972 |   7320 |   9320 |   9669 |       4 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | getDispute                                     |            9592 |   9592 |   9592 |   9592 |       4 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| getPasskey                                     |            8808 |   8808 |   8808 |   8808 |       1 |
+| getPasskey                                     |            8830 |   8830 |   8830 |   8830 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| getPassport                                    |            3519 |  13694 |  11519 |  27887 |     522 |
+| getPassport                                    |            3497 |  13772 |  11497 |  27865 |     522 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| hashBind                                       |            1090 |   1090 |   1090 |   1090 |      94 |
+| hashBind                                       |            1002 |   1002 |   1002 |   1002 |     102 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| hashPassport                                   |            2307 |   2316 |   2316 |   2334 |    3628 |
+| hashPassport                                   |            2307 |   2316 |   2316 |   2370 |    3551 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | name                                           |            1194 |   1194 |   1194 |   1194 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| owner                                          |             407 |   5740 |   8407 |   8407 |       3 |
+| owner                                          |             429 |   5762 |   8429 |   8429 |       3 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| ownerOf                                        |            8692 |   8692 |   8692 |   8692 |    1279 |
+| ownerOf                                        |            8692 |   8692 |   8692 |   8692 |    1224 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| passportExists                                 |            8546 |   8546 |   8546 |   8546 |    2216 |
+| passportExists                                 |            8524 |   8524 |   8524 |   8524 |    2131 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| pause                                          |           29550 |  42294 |  50810 |  50810 |     637 |
+| pause                                          |           29572 |  41985 |  50832 |  50832 |     637 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| paused                                         |             430 |   8425 |   8430 |   8430 |    1960 |
+| paused                                         |             430 |   8425 |   8430 |   8430 |    1873 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | policy                                         |             257 |    257 |    257 |    257 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| register                                       |           41800 | 215087 | 254407 | 380802 |    2548 |
+| register                                       |           41800 | 215763 | 254429 | 441300 |    2521 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| rescueERC20                                    |           41563 |  59803 |  41786 |  96060 |       3 |
+| rescueERC20                                    |           41585 |  59825 |  41808 |  96082 |       3 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| rescueNative                                   |           41003 |  50201 |  41633 |  85512 |       5 |
+| rescueNative                                   |           40893 |  50091 |  41523 |  85402 |       5 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| resolve                                        |           52069 | 112457 | 116236 | 141236 |     779 |
+| resolve                                        |           52091 | 111968 | 116258 | 133258 |     784 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| setApprovalForAll                              |           52117 |  52117 |  52117 |  52117 |       1 |
+| setApprovalForAll                              |           52139 |  52139 |  52139 |  52139 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| symbol                                         |            1216 |   1216 |   1216 |   1216 |       1 |
+| symbol                                         |            1238 |   1238 |   1238 |   1238 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| tokenURI                                       |            1631 |   5133 |   5133 |   8635 |       2 |
+| tokenURI                                       |            1653 |   5155 |   5155 |   8657 |       2 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| totalBonds                                     |             413 |   4443 |   8413 |   8413 |     518 |
+| totalBonds                                     |             391 |   4421 |   8391 |   8391 |     518 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| totalOwed                                      |             325 |    340 |    325 |   8325 |     514 |
+| totalOwed                                      |             370 |    416 |    370 |   8370 |     515 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| transferOwnership                              |           51785 |  51785 |  51785 |  51785 |       1 |
+| transferOwnership                              |           51763 |  51763 |  51763 |  51763 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| unpause                                        |           29725 |  31360 |  29725 |  33804 |     591 |
+| unpause                                        |           29725 |  31388 |  29725 |  33804 |     581 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| withdraw                                       |           40700 |  45870 |  40700 |  63328 |    2624 |
+| withdraw                                       |           40717 |  45530 |  40717 |  63408 |    2753 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| withdrawable                                   |             560 |   4622 |   8560 |   8560 |     516 |
+| withdrawTo                                     |           32773 |  51143 |  41226 |  99267 |       5 |
+|------------------------------------------------+-----------------+--------+--------+--------+---------|
+| withdrawable                                   |             582 |   4659 |   8582 |   8582 |     518 |
 ╰------------------------------------------------+-----------------+--------+--------+--------+---------╯
 
 ╭------------------------------------------------+-----------------+--------+--------+--------+---------╮
@@ -272,47 +291,47 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.36s (3.36s CPU ti
 +=======================================================================================================+
 | Deployment Cost                                | Deployment Size |        |        |        |         |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-|                                              0 |            5307 |        |        |        |         |
+|                                              0 |            5448 |        |        |        |         |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 |                                                |                 |        |        |        |         |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | Function Name                                  | Min             | Avg    | Median | Max    | # Calls |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| CHANGE_DELAY                                   |             335 |    335 |    335 |    335 |     517 |
+| CHANGE_DELAY                                   |             335 |    335 |    335 |    335 |     519 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | OP_ADD_RECEIVER                                |             292 |    292 |    292 |    292 |       2 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| bootstrapAddReceiver                           |           29918 |  58451 |  59597 |  59597 |      96 |
+| bootstrapAddReceiver                           |           29918 |  58539 |  59597 |  59597 |     104 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | bootstrapped                                   |             336 |   4336 |   4336 |   8336 |       2 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | cancel                                         |           29765 |  40732 |  38331 |  54101 |       3 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| disputeBond                                    |             368 |   8354 |   8368 |   8368 |    1179 |
+| disputeBond                                    |             368 |   8354 |   8368 |   8368 |    1157 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| execute                                        |           29721 |  59264 |  59297 |  84880 |     522 |
+| execute                                        |           29721 |  59270 |  59297 |  84880 |     524 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| finalizeBootstrap                              |           29462 |  49906 |  50354 |  50354 |      93 |
+| finalizeBootstrap                              |           29462 |  49941 |  50354 |  50354 |     101 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | getPendingChange                               |            9702 |   9702 |   9702 |   9702 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| isReceiver                                     |             594 |   8574 |   8594 |   8594 |     827 |
+| isReceiver                                     |             594 |   8584 |   8594 |   8594 |     886 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | owner                                          |            8394 |   8394 |   8394 |   8394 |       1 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | queueAddReceiver                               |           29759 |  77628 |  46903 | 132847 |       7 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| queueSetDisputeBond                            |           29700 | 124063 | 124384 | 135340 |     516 |
+| queueSetDisputeBond                            |           29700 | 124004 | 124372 | 135424 |     516 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | queueSetResolver                               |           29826 |  61522 |  30049 | 124691 |       3 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| queueSetTreasury                               |           29758 |  61457 |  29981 | 124634 |       3 |
+| queueSetTreasury                               |           29758 |  91406 | 134772 | 135060 |       7 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
 | removeReceiver                                 |           30046 |  39124 |  42447 |  42447 |       5 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| resolver                                       |             319 |   8308 |   8319 |   8319 |     781 |
+| resolver                                       |             319 |   8308 |   8319 |   8319 |     786 |
 |------------------------------------------------+-----------------+--------+--------+--------+---------|
-| treasury                                       |             395 |    395 |    395 |    395 |     286 |
+| treasury                                       |             395 |    421 |    395 |   8395 |     299 |
 ╰------------------------------------------------+-----------------+--------+--------+--------+---------╯
 
 ╭---------------------------------------------------------------+-----------------+--------+--------+--------+---------╮
@@ -320,29 +339,27 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.36s (3.36s CPU ti
 +======================================================================================================================+
 | Deployment Cost                                               | Deployment Size |        |        |        |         |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-|                                                       3061343 |           14342 |        |        |        |         |
+|                                                       3061079 |           14342 |        |        |        |         |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
 |                                                               |                 |        |        |        |         |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
 | Function Name                                                 | Min             | Avg    | Median | Max    | # Calls |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| appendEdit                                                    |            8470 | 265804 | 156823 | 535493 |    1138 |
+| appendEdit                                                    |            8470 | 250776 | 156801 | 535420 |    1126 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| attest                                                        |            8627 |  87346 |  88584 | 192611 |    1171 |
+| attest                                                        |            8627 |  91491 |  88584 | 192623 |    1208 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| flag                                                          |            8426 | 143294 | 113972 | 331758 |    1229 |
+| flag                                                          |            8426 | 137210 | 113861 | 331647 |    1189 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
 | passportCount                                                 |            8389 |   8389 |   8389 |   8389 |       1 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| passports                                                     |             647 |   1789 |    647 |   8647 |       7 |
+| register                                                      |          148910 | 342146 | 455022 | 499822 |    1163 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| register                                                      |          148932 | 342388 | 455010 | 499822 |    1197 |
+| resolve                                                       |            8518 |  42621 |   8518 | 188983 |    1181 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| resolve                                                       |            8518 |  42097 |   8518 | 196961 |    1197 |
+| setPaused                                                     |           58998 |  66152 |  59013 |  80122 |    1210 |
 |---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| setPaused                                                     |           58991 |  66255 |  61040 |  80100 |    1220 |
-|---------------------------------------------------------------+-----------------+--------+--------+--------+---------|
-| withdraw                                                      |           70061 |  76043 |  78430 | 100968 |    1073 |
+| withdraw                                                      |           70078 |  75537 |  78447 | 101061 |    1148 |
 ╰---------------------------------------------------------------+-----------------+--------+--------+--------+---------╯
 
 ╭----------------------------------------------+-----------------+-------+--------+-------+---------╮
@@ -361,6 +378,20 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.36s (3.36s CPU ti
 | transfer                                     |           63500 | 63500 |  63500 | 63500 |       1 |
 ╰----------------------------------------------+-----------------+-------+--------+-------+---------╯
 
+╭-------------------------------------------------------------+-----------------+--------+--------+--------+---------╮
+| test/MoolamRegistry.t.sol:TreasuryThatCannotBePaid Contract |                 |        |        |        |         |
++====================================================================================================================+
+| Deployment Cost                                             | Deployment Size |        |        |        |         |
+|-------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                                      104041 |             381 |        |        |        |         |
+|-------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+|                                                             |                 |        |        |        |         |
+|-------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+| Function Name                                               | Min             | Avg    | Median | Max    | # Calls |
+|-------------------------------------------------------------+-----------------+--------+--------+--------+---------|
+| pullTo                                                      |          109858 | 109858 | 109858 | 109858 |       1 |
+╰-------------------------------------------------------------+-----------------+--------+--------+--------+---------╯
+
 ╭-------------------------------------------------------------+-----------------+-------+--------+-------+---------╮
 | test/mocks/MockAgentIdentity.sol:MockAgentIdentity Contract |                 |       |        |       |         |
 +==================================================================================================================+
@@ -372,10 +403,10 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 3.36s (3.36s CPU ti
 |-------------------------------------------------------------+-----------------+-------+--------+-------+---------|
 | Function Name                                               | Min             | Avg   | Median | Max   | # Calls |
 |-------------------------------------------------------------+-----------------+-------+--------+-------+---------|
-| mint                                                        |           80551 | 80551 |  80551 | 80551 |      88 |
+| mint                                                        |           80551 | 80551 |  80551 | 80551 |      96 |
 |-------------------------------------------------------------+-----------------+-------+--------+-------+---------|
-| ownerOf                                                     |            8524 |  8558 |   8559 |  8559 |    2553 |
+| ownerOf                                                     |            8524 |  8558 |   8559 |  8559 |    2503 |
 ╰-------------------------------------------------------------+-----------------+-------+--------+-------+---------╯
 
 
-Ran 5 test suites in 3.46s (4.18s CPU time): 104 tests passed, 0 failed, 0 skipped (104 total tests)
+Ran 5 test suites in 4.56s (5.24s CPU time): 114 tests passed, 0 failed, 0 skipped (114 total tests)

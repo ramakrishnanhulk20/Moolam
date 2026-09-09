@@ -565,11 +565,11 @@ in Foundry's Monad network family so the pricing matches the chain this ships on
 | Action | Median gas | At 100 gwei |
 | --- | --- | --- |
 | `bindPasskey`, once per wallet | 117,165 | 0.0117 MON |
-| `register`, the main one | 254,407 | 0.0254 MON |
-| `appendEdit` | 299,900 | 0.0300 MON |
+| `register`, the main one | 254,429 | 0.0254 MON |
+| `appendEdit` | 299,849 | 0.0300 MON |
 | `attest`, what a verification result costs | 126,113 | 0.0126 MON |
-| `flag`, opening a dispute with its bond | 173,050 | 0.0173 MON |
-| `withdraw` | 40,700 | 0.0041 MON |
+| `flag`, opening a dispute with its bond | 172,939 | 0.0173 MON |
+| `withdraw` | 40,717 | 0.0041 MON |
 
 The real mainnet register in the prove-it run came in higher, at **376,104 gas, about 0.0376 MON**,
 because that passport carries a longer metadata URI and the first touch of the ERC-8004 registry in
