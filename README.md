@@ -538,20 +538,33 @@ contracts, and each one saved its full output under
 [docs/docs/security/attacks/](docs/docs/security/attacks/):
 
 ```
+6. Summary
+==========
+  section      result  evidence
+  -----------  ------  ---------------------------------------------------------------------------------------------
+  1. Register  PASS    https://monadvision.com/tx/0x599b33957f4efced343ee93c88acd48e6339b1afed08078d3bedd61a078e5834
+  2. Survive   PASS    6 of 6 copies matched
+  3. Strip     PASS    manifest gone, confidence 0.99
+  4. Forge     PASS    PassportAlreadyExists, oldest passport is the first one
+  5. Attacks   PASS    12 of 12 refused
+
   attack                           result   saved output
-  -------------------------------  -------  ---------------------------------------------------------
-  passkey-replay                   REFUSED  docs/security/attacks/passkey-replay.txt
-  generator-signature-forged       REFUSED  docs/security/attacks/generator-signature-forged.txt
-  unknown-agent                    REFUSED  docs/security/attacks/unknown-agent.txt
-  expired-deadline                 REFUSED  docs/security/attacks/expired-deadline.txt
-  edit-by-non-owner                REFUSED  docs/security/attacks/edit-by-non-owner.txt
-  attest-from-stranger             REFUSED  docs/security/attacks/attest-from-stranger.txt
-  report-from-fake-forwarder       REFUSED  docs/security/attacks/report-from-fake-forwarder.txt
-  receiver-replay-and-wrong-chain  REFUSED  docs/security/attacks/receiver-replay-and-wrong-chain.txt
-  privy-policy-refusal             REFUSED  docs/security/attacks/privy-policy-refusal.txt
-  revoked-session-signer           REFUSED  docs/security/attacks/revoked-session-signer.txt
-  dispute-money-rules              REFUSED  docs/security/attacks/dispute-money-rules.txt
-  verifier-api-limits              REFUSED  docs/security/attacks/verifier-api-limits.txt
+  -------------------------------  -------  --------------------------------------------------------------
+  passkey-replay                   REFUSED  docs/docs/security/attacks/passkey-replay.txt
+  generator-signature-forged       REFUSED  docs/docs/security/attacks/generator-signature-forged.txt
+  unknown-agent                    REFUSED  docs/docs/security/attacks/unknown-agent.txt
+  expired-deadline                 REFUSED  docs/docs/security/attacks/expired-deadline.txt
+  edit-by-non-owner                REFUSED  docs/docs/security/attacks/edit-by-non-owner.txt
+  attest-from-stranger             REFUSED  docs/docs/security/attacks/attest-from-stranger.txt
+  report-from-fake-forwarder       REFUSED  docs/docs/security/attacks/report-from-fake-forwarder.txt
+  receiver-replay-and-wrong-chain  REFUSED  docs/docs/security/attacks/receiver-replay-and-wrong-chain.txt
+  privy-policy-refusal             REFUSED  docs/docs/security/attacks/privy-policy-refusal.txt
+  revoked-session-signer           REFUSED  docs/docs/security/attacks/revoked-session-signer.txt
+  dispute-money-rules              REFUSED  docs/docs/security/attacks/dispute-money-rules.txt
+  verifier-api-limits              REFUSED  docs/docs/security/attacks/verifier-api-limits.txt
+
+PASS: the Moolam prove-it run, end to end, against Monad mainnet.
+finished 2026-09-09T09:19:22.530Z, 123 seconds
 ```
 
 The six copies in section 2 of the same run, every one resolving to the same passport:
