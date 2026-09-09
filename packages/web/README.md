@@ -14,7 +14,7 @@ home page carries a `SWAP: hero` comment where the real one goes.
 From the repo root:
 
 ```sh
-npm run dev:web     # http://localhost:3000
+npm run dev:web -- -p 3210   # http://localhost:3210
 npm run build:web   # a production build
 npm run lint:web
 ```

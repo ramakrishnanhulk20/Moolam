@@ -84,8 +84,10 @@ not fix are listed last, on purpose.
   does not strand the account. Passports already registered keep their
   original signatures either way.
 - **Tunnelled IPv6 forms.** The fetch guard normalises IPv4-mapped IPv6 and blocks every private, loopback, link-local and metadata range, pinning the socket to the address it checked. It does not decode the IPv4 embedded in 6to4, NAT64 or Teredo addresses, so on a host with one of those tunnels configured they remain a path inward. The verifier is deployed without such tunnels.
-- **Software keys.** Mera-derived persona keys are software keys in page memory
-  while a session is open. A malicious dependency in the page could read them.
+- **Software keys.** The seed, agent and proof scripts sign with a software passkey (a P-256 key held in
+  process memory on the operator machine) so they can run unattended; a creator in the studio signs with the
+  passkey in their own device authenticator, which never leaves it. The verifier posts reputation feedback
+  from a plain key in its host environment, so a compromised host could post feedback in its name.
 - **IPFS liveness.** If the pinned files disappear, the on-chain record still
   proves the hashes but the image is gone from our storage. Anyone holding a
   copy can re-verify it.
