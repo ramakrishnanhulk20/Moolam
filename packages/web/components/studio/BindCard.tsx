@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { BindState } from "@/lib/studio/binding";
 import { FailureNote } from "./FailureNote";
@@ -18,11 +19,18 @@ import { useHeadingLeading } from "./leading";
 export function BindCard({
   state,
   rebind = false,
+  wallet,
+  confirming = false,
   onBind,
+  onRecheck,
 }: {
   state: BindState;
   rebind?: boolean;
+  /** Only for the fallback link, when a sponsored send landed without handing back a hash. */
+  wallet?: Hex;
+  confirming?: boolean;
   onBind: () => void;
+  onRecheck?: () => void;
 }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
@@ -50,7 +58,7 @@ export function BindCard({
         <div className="mt-8 border-s-2 border-verified ps-4">
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-verified">{t("bind.doneLabel")}</p>
           <p className="mt-2 max-w-[54ch] text-sm leading-relaxed text-text">{t("bind.doneBody")}</p>
-          {state.txHash === null ? null : (
+          {state.txHash !== null ? (
             <a
               href={`${MONAD_EXPLORER}/tx/${state.txHash}`}
               target="_blank"
@@ -58,6 +66,15 @@ export function BindCard({
               className="mt-3 inline-block font-mono text-xs text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
             >
               {t("bind.txLink", { hash: shortHex(state.txHash) })}
+            </a>
+          ) : wallet === undefined ? null : (
+            <a
+              href={`${MONAD_EXPLORER}/address/${wallet}`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-block font-mono text-xs text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
+            >
+              {t("bind.walletLink", { wallet: shortHex(wallet) })}
             </a>
           )}
         </div>
@@ -74,13 +91,13 @@ export function BindCard({
 
           {state.stage === "creating" ? <WaitLabel text={t("bind.creating")} /> : null}
           {state.stage === "waiting" ? <WaitLabel text={t("bind.waiting")} /> : null}
-          {state.stage === "sending" ? <WaitLabel text={t("bind.sending")} /> : null}
+          {state.stage === "sending" ? <WaitLabel text={confirming ? t("bind.confirming") : t("bind.sending")} /> : null}
         </div>
       )}
 
       {state.failure === null ? null : (
         <div className="mt-7">
-          <FailureNote failure={state.failure} onAgain={onBind} onBind={onBind} />
+          <FailureNote failure={state.failure} onAgain={onBind} onBind={onBind} onRecheck={onRecheck} />
         </div>
       )}
     </motion.section>

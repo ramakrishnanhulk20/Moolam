@@ -1,7 +1,9 @@
+import type { Hex } from "viem";
 import { decodeRegistryError } from "@/lib/chain/calldata";
 import { explainPasskeyError } from "@/lib/passkey/browser";
 import type { AuthProblem } from "@/lib/passkey/verify";
 import { VerifierError } from "@/lib/verifier/client";
+import { ConfirmTimeout } from "./confirm";
 
 /**
  * One failure, turned into the line the screen prints and the one thing the
@@ -16,7 +18,9 @@ export interface Failure {
   key: string;
   reason?: string;
   /** The one button offered under the message. */
-  next?: "signIn" | "bind" | "openPassport" | "unsponsored" | "again";
+  next?: "signIn" | "bind" | "openPassport" | "unsponsored" | "again" | "recheck";
+  /** An account to open on MonadVision, shown when the message asks the reader to go and look. */
+  address?: Hex;
 }
 
 /** Which part of the flow threw, because the same DOMException means different things in each. */
@@ -59,16 +63,21 @@ const REVERT_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
 };
 
 /**
- * Whether Privy refused to pay the network fee.
+ * Whether Privy refused to pay the network fee before the transaction was
+ * submitted.
  *
  * Privy answers a spent or absent gas allowance with a message rather than a
- * code, so the words are what there is to match on. A false positive here only
- * offers the creator a second button, and a false negative would hide why the
- * transaction never left, so the match is deliberately loose.
+ * code, so the words are what there is to match on. The match is loose because
+ * a false positive only offers a second button. A wait that timed out is a
+ * different thing entirely: the sponsored send may already have landed, so
+ * sending it again would be the expensive mistake, and it never counts here.
  */
 export function isSponsorshipRefusal(error: unknown): boolean {
+  if (error instanceof ConfirmTimeout) {
+    return false;
+  }
   const text = messageOf(error).toLowerCase();
-  return /sponsor|gas ?policy|paymaster|credit/.test(text);
+  return /sponsor|policy|paymaster|credit|not configured/.test(text);
 }
 
 /** Whether the person closed the wallet prompt themselves, which is not a failure to apologise for. */
@@ -80,7 +89,11 @@ function isUserRejection(error: unknown): boolean {
   return /user (rejected|denied|declined)|rejected the request|cancell?ed/i.test(messageOf(error));
 }
 
-export function describeFailure(error: unknown, stage: Stage): Failure {
+export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Failure {
+  if (error instanceof ConfirmTimeout) {
+    return { key: "confirmPending", next: "recheck", address: wallet ?? error.wallet };
+  }
+
   if (error instanceof VerifierError) {
     const mapped = VERIFIER_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
     return { ...mapped, reason: error.message };

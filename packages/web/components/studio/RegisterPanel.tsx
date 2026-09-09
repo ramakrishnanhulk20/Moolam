@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import type { Hex } from "viem";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
 import { STEPS, checkImage, isBusy, isRegistered, passportId, type RegisterState, type Step } from "@/lib/studio/flow";
@@ -17,20 +18,25 @@ import { useHeadingLeading } from "./leading";
  */
 export function RegisterPanel({
   state,
+  wallet,
   onChoose,
   onTitle,
   onRegister,
   onReset,
   onUnsponsored,
   onBind,
+  onRecheck,
 }: {
   state: RegisterState;
+  /** Only for the fallback link, when a sponsored send landed without handing back a hash. */
+  wallet?: Hex;
   onChoose: (file: File) => void;
   onTitle: (title: string) => void;
   onRegister: () => void;
   onReset: () => void;
   onUnsponsored: () => void;
   onBind: () => void;
+  onRecheck?: () => void;
 }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
@@ -67,7 +73,7 @@ export function RegisterPanel({
   }
 
   if (done) {
-    return <Registered state={state} onReset={onReset} />;
+    return <Registered state={state} wallet={wallet} onReset={onReset} />;
   }
 
   return (
@@ -185,6 +191,7 @@ export function RegisterPanel({
             onAgain={onRegister}
             onBind={onBind}
             onUnsponsored={onUnsponsored}
+            onRecheck={onRecheck}
           />
         </div>
       )}
@@ -195,6 +202,15 @@ export function RegisterPanel({
 function StepRow({ step, index, state }: { step: Step; index: number; state: RegisterState }) {
   const t = useTranslations("studio");
   const status = state.steps[step];
+
+  // Once the send is out, the wait is no longer about sending: it is about
+  // Monad showing the passport, which is the thing actually being watched.
+  const label =
+    step === "send" && status === "running" && state.confirming
+      ? t("register.steps.send.watching")
+      : step === "send" && status === "failed" && state.failure?.key === "confirmPending"
+        ? t("register.steps.send.pending")
+        : t(`register.steps.${step}.${status}`);
 
   return (
     <li className="flex items-start gap-5 py-4">
@@ -220,7 +236,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
-            key={status}
+            key={label}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
@@ -229,7 +245,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
               status === "waiting" ? "text-text-faint" : status === "done" ? "text-verified" : "text-text"
             }`}
           >
-            {t(`register.steps.${step}.${status}`)}
+            {label}
           </motion.span>
         </AnimatePresence>
       </span>
@@ -237,7 +253,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
   );
 }
 
-function Registered({ state, onReset }: { state: RegisterState; onReset: () => void }) {
+function Registered({ state, wallet, onReset }: { state: RegisterState; wallet?: Hex; onReset: () => void }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const format = useFormatter();
@@ -273,7 +289,11 @@ function Registered({ state, onReset }: { state: RegisterState; onReset: () => v
 
         <dl className="mt-8 grid gap-x-8 gap-y-5 border-t border-line pt-6 sm:grid-cols-2">
           <Row label={t("register.passportId")} value={id ?? ""} mono />
-          <Row label={t("register.block")} value={state.block === null ? "" : state.block.toString()} mono />
+          <Row
+            label={t("register.block")}
+            value={state.block === null ? t("register.blockPending") : state.block.toString()}
+            mono={state.block !== null}
+          />
           <Row
             label={t("register.when")}
             value={
@@ -294,7 +314,7 @@ function Registered({ state, onReset }: { state: RegisterState; onReset: () => v
               {t("register.openPassport")}
             </Link>
           )}
-          {state.txHash === null ? null : (
+          {state.txHash !== null ? (
             <a
               href={`${MONAD_EXPLORER}/tx/${state.txHash}`}
               target="_blank"
@@ -302,6 +322,15 @@ function Registered({ state, onReset }: { state: RegisterState; onReset: () => v
               className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
             >
               {t("register.openTx", { hash: shortHex(state.txHash) })}
+            </a>
+          ) : wallet === undefined ? null : (
+            <a
+              href={`${MONAD_EXPLORER}/address/${wallet}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            >
+              {t("register.openAddress", { wallet: shortHex(wallet) })}
             </a>
           )}
           {state.prepared === null ? null : (

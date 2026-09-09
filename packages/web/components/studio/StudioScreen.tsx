@@ -56,7 +56,14 @@ function Studio() {
             ) : studio.binding.status === "unreadable" ? (
               <Notice text={t("passkey.unreadable", { reason: studio.binding.error ?? "" })} tone="failed" />
             ) : studio.binding.status === "unbound" || rebinding ? (
-              <BindCard state={studio.bind} rebind={rebinding} onBind={studio.actions.bindThisDevice} />
+              <BindCard
+                state={studio.bind}
+                rebind={rebinding}
+                wallet={studio.wallet}
+                confirming={studio.confirming}
+                onBind={studio.actions.bindThisDevice}
+                onRecheck={studio.actions.recheck}
+              />
             ) : studio.binding.status === "bound-elsewhere" ? (
               <RecoverCard
                 busy={studio.recovering}
@@ -67,12 +74,14 @@ function Studio() {
             ) : (
               <RegisterPanel
                 state={studio.register}
+                wallet={studio.wallet}
                 onChoose={studio.actions.choose}
                 onTitle={studio.actions.setTitle}
                 onRegister={studio.actions.registerImage}
                 onReset={studio.actions.reset}
                 onUnsponsored={studio.actions.retryUnsponsored}
                 onBind={toBind}
+                onRecheck={studio.actions.recheck}
               />
             )}
 

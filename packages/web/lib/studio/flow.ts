@@ -23,6 +23,8 @@ export interface RegisterState {
   txHash: Hex | null;
   block: bigint | null;
   registeredAt: number | null;
+  /** True while the send is out and the screen is watching Monad for the passport. */
+  confirming: boolean;
   /** True once the creator has chosen to pay the fee from their own balance. */
   unsponsored: boolean;
   failure: Failure | null;
@@ -35,7 +37,8 @@ export type RegisterAction =
   | { type: "prepared"; prepared: PrepareResponse }
   | { type: "signed"; digest: Hex }
   | { type: "sent"; txHash: Hex }
-  | { type: "confirmed"; block: bigint; at: number }
+  | { type: "watching" }
+  | { type: "confirmed"; block: bigint | null; at: number }
   | { type: "failed"; failure: Failure }
   | { type: "reset" };
 
@@ -48,6 +51,7 @@ export const initialRegisterState: RegisterState = {
   txHash: null,
   block: null,
   registeredAt: null,
+  confirming: false,
   unsponsored: false,
   failure: null,
 };
@@ -66,6 +70,7 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
       return {
         ...state,
         failure: null,
+        confirming: false,
         unsponsored: action.unsponsored ?? state.unsponsored,
         steps: { ...state.steps, [action.step]: "running" },
       };
@@ -75,15 +80,18 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
       return { ...state, digest: action.digest, steps: { ...state.steps, sign: "done" } };
     case "sent":
       return { ...state, txHash: action.txHash };
+    case "watching":
+      return { ...state, confirming: true, failure: null, steps: { ...state.steps, send: "running" } };
     case "confirmed":
       return {
         ...state,
         block: action.block,
         registeredAt: action.at,
+        confirming: false,
         steps: { ...state.steps, send: "done" },
       };
     case "failed":
-      return { ...state, failure: action.failure, steps: markRunningFailed(state.steps) };
+      return { ...state, confirming: false, failure: action.failure, steps: markRunningFailed(state.steps) };
     case "reset":
       return initialRegisterState;
   }

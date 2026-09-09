@@ -76,6 +76,32 @@ describe("the cards before the first transaction", () => {
     expect(waiting).toContain("Waiting for your fingerprint or face unlock");
   });
 
+  it("names the chain state it is watching, and falls back to the account link with no hash", () => {
+    const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+
+    const watching = render(
+      "en",
+      createElement(BindCard, {
+        state: { stage: "sending", qx: null, qy: null, txHash: null, failure: null },
+        confirming: true,
+        wallet,
+        onBind: NOOP,
+      }),
+    );
+    expect(watching).toContain("Waiting for Monad to record your passkey");
+
+    const bound = render(
+      "en",
+      createElement(BindCard, {
+        state: { stage: "bound", qx: null, qy: null, txHash: null, failure: null },
+        wallet,
+        onBind: NOOP,
+      }),
+    );
+    expect(bound).toContain(`https://monadvision.com/address/${wallet}`);
+    expect(bound).toContain("on MonadVision");
+  });
+
   it("shows a failure with the one thing to do next", () => {
     const markup = render(
       "en",
@@ -181,6 +207,35 @@ describe("the register panel", () => {
     expect(markup).toContain("Fingerprinted, manifest embedded, pinned to IPFS");
   });
 
+  it("says what it is watching while Monad is asked for the passport", () => {
+    const state = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "done", send: "running" },
+      prepared: PREPARED,
+      confirming: true,
+    } as RegisterState;
+    const markup = render("en", createElement(RegisterPanel, { state, ...handlers }));
+    expect(markup).toContain("Waiting for Monad to record the passport");
+    expect(markup).not.toContain("Sending to Monad, network fee sponsored");
+  });
+
+  it("offers a second look at Monad, never a second send, when the wait runs out", () => {
+    const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+    const state = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "done", send: "failed" },
+      prepared: PREPARED,
+      failure: { key: "confirmPending", next: "recheck", address: wallet },
+    } as RegisterState;
+    const markup = render("en", createElement(RegisterPanel, { state, wallet, ...handlers, onRecheck: NOOP }));
+    expect(markup).toContain("nothing has been sent a second time");
+    expect(markup).toContain("Ask Monad again");
+    expect(markup).toContain("Sent, and Monad has not shown it yet");
+    expect(markup).not.toContain("It did not reach Monad");
+    expect(markup).toContain(`https://monadvision.com/address/${wallet}`);
+    expect(markup).not.toContain("pay the fee myself");
+  });
+
   it("shows the passport once it is written, with the block and the links", () => {
     const state = {
       ...initialRegisterState,
@@ -233,8 +288,30 @@ describe("the stub that fills as the creator moves", () => {
     expect(markup).toContain("ram@example.com");
     expect(markup).toContain("Passkey bound");
     expect(markup).toContain("1600 by 1200 pixels");
-    expect(markup).toContain("Block 103059393");
+    expect(markup).toContain("Recorded in block 103059393");
     expect(markup).toContain("Network fee paid by Moolam through Privy");
+  });
+
+  it("names the block only once it is known, and says where it is coming from until then", () => {
+    const studio = {
+      authenticated: true,
+      account: { kind: "email", value: "ram@example.com" },
+      wallet: "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
+      binding: { status: "bound", passkey: { qx: `0x${"aa".repeat(32)}`, qy: `0x${"bb".repeat(32)}` } },
+      bind: { txHash: null },
+      register: {
+        ...initialRegisterState,
+        prepared: PREPARED,
+        txHash: null,
+        block: null,
+        registeredAt: 1_788_876_542_000,
+      },
+    } as unknown as Studio;
+
+    const markup = render("en", createElement(Receipt, { studio }));
+    expect(markup).toContain("Written to Monad");
+    expect(markup).toContain("The block number comes from the index");
+    expect(markup).not.toContain("Recorded in block");
   });
 
   it("says plainly that nothing has happened yet", () => {

@@ -3,6 +3,7 @@ import { encodeErrorResult } from "viem";
 import { registryAbi } from "@/lib/chain/client";
 import { VerifierError } from "@/lib/verifier/client";
 import { accountName } from "@/lib/studio/account";
+import { ConfirmTimeout } from "@/lib/studio/confirm";
 import { bindReducer, initialBindState } from "@/lib/studio/binding";
 import { checkImage, initialRegisterState, isBusy, isRegistered, passportId, registerReducer } from "@/lib/studio/flow";
 import { passportArt } from "@/lib/studio/metadata";
@@ -210,5 +211,35 @@ describe("the picture on a passport row", () => {
     expect(passportArt({ image: "ipfs://full" }).uri).toBe("ipfs://full");
     expect(passportArt({ image: 7 })).toEqual({});
     expect(passportArt("not a document")).toEqual({});
+  });
+});
+
+describe("when the unsponsored retry is offered", () => {
+  const WALLET = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+
+  it("offers it only when Privy refused before anything was submitted", () => {
+    for (const words of [
+      "Gas sponsorship is not enabled for this app",
+      "insufficient credits left",
+      "the gas policy rejected this request",
+      "fee sponsorship is not configured for chain 143",
+    ]) {
+      expect(describeFailure(new Error(words), "send").next).toBe("unsponsored");
+    }
+  });
+
+  it("never offers it after a wait ran out, because the sponsored send may have landed", () => {
+    const pending = new ConfirmTimeout(WALLET);
+    expect(isSponsorshipRefusal(pending)).toBe(false);
+    expect(describeFailure(pending, "send")).toMatchObject({
+      key: "confirmPending",
+      next: "recheck",
+      address: WALLET,
+    });
+  });
+
+  it("never offers it for a receipt that timed out on a hash that was never one", () => {
+    const timeout = new Error('Timed out while waiting for transaction with hash "" to be confirmed.');
+    expect(describeFailure(timeout, "send").next).toBe("again");
   });
 });

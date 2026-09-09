@@ -165,11 +165,16 @@ function collect(studio: Studio, t: Translate, format: Format): Mark[] {
     });
   }
 
-  if (studio.register.block !== null && studio.register.registeredAt !== null) {
+  if (studio.register.registeredAt !== null) {
     marks.push({
       key: "written",
       label: t("receipt.written"),
-      value: t("receipt.blockValue", { block: studio.register.block.toString() }),
+      // The block is only named once it is known. A sponsored send that came
+      // back without a hash has none until the index catches up.
+      value:
+        studio.register.block === null
+          ? t("receipt.blockPending")
+          : t("receipt.blockValue", { block: studio.register.block.toString() }),
       detail: format.dateTime(new Date(studio.register.registeredAt), { dateStyle: "medium", timeStyle: "short" }),
       tone: "verified",
     });

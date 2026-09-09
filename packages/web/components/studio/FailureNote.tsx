@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import type { Hex } from "viem";
+import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { Failure } from "@/lib/studio/problems";
 import { Link } from "@/lib/i18n/routing";
 
@@ -18,6 +19,7 @@ export function FailureNote({
   onSignIn,
   onBind,
   onUnsponsored,
+  onRecheck,
 }: {
   failure: Failure;
   passportId?: Hex | null;
@@ -25,6 +27,7 @@ export function FailureNote({
   onSignIn?: () => void;
   onBind?: () => void;
   onUnsponsored?: () => void;
+  onRecheck?: () => void;
 }) {
   const t = useTranslations("studio");
 
@@ -33,6 +36,7 @@ export function FailureNote({
     signIn: onSignIn,
     bind: onBind,
     unsponsored: onUnsponsored,
+    recheck: onRecheck,
   };
   const action = failure.next === undefined ? undefined : handlers[failure.next];
 
@@ -49,6 +53,17 @@ export function FailureNote({
         <p className="mt-2 max-w-[54ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
           {failure.reason}
         </p>
+      )}
+
+      {failure.address === undefined ? null : (
+        <a
+          href={`${MONAD_EXPLORER}/address/${failure.address}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 block font-mono text-[11px] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
+        >
+          {t("actions.openAddress", { wallet: shortHex(failure.address) })}
+        </a>
       )}
 
       {failure.next === "openPassport" && passportId != null ? (

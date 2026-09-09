@@ -241,3 +241,122 @@ async function listPassports(query: string, variables: Record<string, unknown>):
     metadataURI: row.metadataURI,
   }));
 }
+
+/** Where the index says one passport was written: the block, and the transaction that carried it. */
+export interface PassportRegistration {
+  registeredBlock: bigint;
+  txHash: Hex;
+}
+
+/**
+ * The block and the transaction hash for one passport, or null when the index
+ * has not seen it yet.
+ *
+ * The registry stores neither: a passport record carries its timestamp, and the
+ * transaction that wrote it only exists in the log. So when a wallet answers a
+ * send without a hash, this is where the receipt's transaction link comes from.
+ * Ids are lowercased because the index stores a bytes32 that way.
+ */
+export async function passportRegistration(id: Hex): Promise<PassportRegistration | null> {
+  const query = `query PassportRegistration($id: String!) {
+    Passport(where: { id: { _eq: $id } }, limit: 1) {
+      registeredBlock
+      txHash
+    }
+  }`;
+
+  const response = await fetch(envioUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query, variables: { id: id.toLowerCase() } }),
+    signal: AbortSignal.timeout(10_000),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`the Envio endpoint answered ${response.status}`);
+  }
+
+  const body = (await response.json()) as {
+    errors?: { message: string }[];
+    data?: { Passport: { registeredBlock: string; txHash: string }[] };
+  };
+
+  if (body.errors !== undefined && body.errors.length > 0) {
+    throw new Error(body.errors.map((entry) => entry.message).join("; "));
+  }
+  if (body.data === undefined) {
+    throw new Error("the Envio endpoint returned no data block");
+  }
+
+  const row = body.data.Passport[0];
+  return row === undefined ? null : { registeredBlock: BigInt(row.registeredBlock), txHash: row.txHash as Hex };
+}
+
+/** What the index has counted for one generating agent, in the index's own field names. */
+export interface GeneratorRecord {
+  passportCount: number;
+  matchedCount: number;
+  mismatchedCount: number;
+  disputesUpheld: number;
+  /** 0 to 100, smoothed, from packages/indexer/src/trust.ts. */
+  trustScore: number;
+  firstSeenAt: bigint;
+}
+
+/**
+ * The Generator row for one agent, or null when the index has never seen it
+ * sign a passport.
+ *
+ * These counts exist only in the index: the registry stores the agent id on
+ * each passport and nothing that adds them up. A page that shows them has to
+ * say where they came from, which is what the "index" line under them does.
+ */
+export async function generatorRecord(agentId: bigint | string): Promise<GeneratorRecord | null> {
+  const query = `query GeneratorById($id: String!) {
+    Generator(where: { id: { _eq: $id } }) {
+      passportCount
+      matchedCount
+      mismatchedCount
+      disputesUpheld
+      trustScore
+      firstSeenAt
+    }
+  }`;
+
+  const response = await fetch(envioUrl(), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ query, variables: { id: agentId.toString() } }),
+    signal: AbortSignal.timeout(10_000),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`the Envio endpoint answered ${response.status}`);
+  }
+
+  const body = (await response.json()) as {
+    errors?: { message: string }[];
+    data?: {
+      Generator: {
+        passportCount: number;
+        matchedCount: number;
+        mismatchedCount: number;
+        disputesUpheld: number;
+        trustScore: number;
+        firstSeenAt: string;
+      }[];
+    };
+  };
+
+  if (body.errors !== undefined && body.errors.length > 0) {
+    throw new Error(body.errors.map((entry) => entry.message).join("; "));
+  }
+  if (body.data === undefined) {
+    throw new Error("the Envio endpoint returned no data block");
+  }
+
+  const row = body.data.Generator[0];
+  return row === undefined ? null : { ...row, firstSeenAt: BigInt(row.firstSeenAt) };
+}

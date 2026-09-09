@@ -170,7 +170,54 @@
     "openPassport": "Open the passport",
     "error": "The check did not run: {reason}",
     "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then try again.",
-    "noFile": "Pick an image first."
+    "noFile": "Pick an image first.",
+    "kicker": "Check any copy",
+    "rail": "Verify",
+    "dropTitle": "Drag an image in.",
+    "replace": "Choose another",
+    "privacy": "Your browser sends the file to the verifier itself. It is fingerprinted, matched and dropped.",
+    "checkingHeading": "Reading the picture, not the file name.",
+    "checkingDetail": "Three fingerprints, all eight orientations, then a search of every registered passport. A few seconds.",
+    "idleHeading": "No answer yet",
+    "idleBody": "Drop a file on the left. The answer lands on this card.",
+    "steps": {
+      "fingerprint": "Fingerprint the file three ways: the exact bytes, a perceptual hash, a block hash.",
+      "rotate": "Try all eight ways the picture could be turned or mirrored.",
+      "search": "Search every registered passport and answer with the closest one."
+    },
+    "noMatchLabel": "Not registered",
+    "registerCta": "Register this image",
+    "untitled": "Untitled",
+    "noPicture": "Image unavailable from IPFS right now",
+    "measured": "What was measured",
+    "queriedSize": "Size",
+    "queriedPhash": "pHash",
+    "queriedSha": "Exact bytes",
+    "queriedBlockhash": "Blockhash",
+    "bits": "{count} of {of} bits",
+    "others": "{count, plural, =1 {# other passport was in range} other {# other passports were in range}}, and this one was closest.",
+    "openAgent": "Agent {id}",
+    "lookupFailed": "The registry has not answered for that id. It may be a block or two behind.",
+    "problemLabel": "The check did not run",
+    "problem": {
+      "tooLarge": "That file is over the 20 MB limit. Send a smaller copy.",
+      "notAnImage": "That file could not be read as an image. JPEG, PNG or WebP.",
+      "rateLimited": "Too many checks from here. Wait a minute and try again.",
+      "badRequest": "The verifier would not take that request.",
+      "badResponse": "The verifier answered in a shape this page does not know.",
+      "serviceFailed": "The verifier could not finish this check.",
+      "refused": "The verifier refused this request."
+    },
+    "orientation": {
+      "identity": "The same way up",
+      "rot90": "Turned a quarter turn",
+      "rot180": "Turned upside down",
+      "rot270": "Turned three quarters",
+      "mirror": "Mirrored",
+      "mirror-rot90": "Mirrored, quarter turn",
+      "mirror-rot180": "Mirrored, upside down",
+      "mirror-rot270": "Mirrored, three quarter turn"
+    }
   },
   "passport": {
     "title": "Passport",
@@ -189,17 +236,74 @@
     "parent": "Edited from",
     "disputed": "Disputed",
     "attestations": {
-      "heading": "Verifications",
+      "heading": "Checked again, by someone else",
       "empty": "No verification has been written for this passport yet. The Chainlink workflow adds one when it re-checks the image.",
       "matched": "matched",
       "notMatched": "did not match",
-      "distance": "{distance} bits apart",
+      "distance": "{distance} of 64 bits",
       "receiver": "Written by",
-      "at": "At"
+      "at": "At",
+      "kicker": "The second opinion",
+      "body": "Anyone can say a picture is theirs. This part is different: an independent verifier fetched the image, hashed it again and wrote the answer back on Monad.",
+      "distanceLabel": "Distance",
+      "byChainlink": "Verified independently by Chainlink",
+      "byReceiver": "Written by an allowed receiver",
+      "recomputed": "Recomputed pHash",
+      "openTx": "Transaction {hash}",
+      "noTransaction": "The index does not carry the transaction for this one."
     },
     "children": {
       "heading": "Edits",
-      "empty": "No edit has been registered from this passport."
+      "empty": "No edit has been registered from this passport.",
+      "edits": "Edits from this one"
+    },
+    "untitled": "Untitled",
+    "noPicture": "Image unavailable from IPFS right now",
+    "fingerprintVersion": "Fingerprint v{version}",
+    "record": "The record",
+    "passkeyBound": "This creator's wallet has a passkey bound on chain.",
+    "passkeyNone": "No passkey is bound to this creator's wallet.",
+    "noAgent": "No generating agent. This one was registered as a photograph.",
+    "agentNumber": "Agent {id}",
+    "about": "About",
+    "prompt": "Prompt",
+    "fingerprints": "The fingerprints",
+    "fingerprintsBody": "A verifier fetches the picture, hashes it again and compares it with these. Nothing here depends on the file name or on anything the metadata claims.",
+    "exactHash": "Exact bytes",
+    "passportId": "Passport id",
+    "tokenId": "The passport id is also its ERC-721 token id",
+    "standing": {
+      "verified": "Checked by an independent verifier",
+      "mismatched": "A re-check did not match",
+      "disputed": "Disputed",
+      "unverified": "Not re-checked yet"
+    },
+    "check": {
+      "kicker": "Check a copy",
+      "heading": "Is your copy this picture?",
+      "body": "Drop any copy here. It goes to the verifier, which fingerprints it and answers against this passport, not against the file name.",
+      "choose": "Choose an image",
+      "hint": "A resized, re-encoded, turned or mirrored copy still matches. A crop does not, yet.",
+      "checking": "Checking this copy",
+      "failed": "The check did not run.",
+      "none": "This copy matches no passport at all.",
+      "same": "Yes. This is the same picture.",
+      "sameExact": "Yes. Byte for byte, this is the file.",
+      "different": "No. This copy belongs to a different passport."
+    },
+    "dispute": {
+      "kicker": "Challenged",
+      "body": "Someone put a bond behind a claim that this record is wrong. The bond is held by the registry until the dispute is settled.",
+      "challenger": "Challenger",
+      "bond": "Bond",
+      "mon": "{amount} MON",
+      "openedAt": "Opened",
+      "evidence": "Evidence hash",
+      "status": {
+        "open": "Open, and not yet settled",
+        "upheld": "Upheld: the challenge was right",
+        "rejected": "Rejected: the record stands"
+      }
     }
   },
   "agent": {
@@ -216,7 +320,54 @@
       "summary": "{count, plural, =1 {# verification} other {# verifications}} recorded",
       "score": "Average score",
       "empty": "No feedback recorded for this agent yet. The verifier writes one after every check it runs.",
-      "error": "The reputation registry could not be read: {reason}."
+      "error": "The reputation registry could not be read: {reason}.",
+      "body": "Feedback is written to the canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification. This page reads the summary of those two tags and applies the decimals the registry reports.",
+      "registry": "Registry {address}"
+    },
+    "unnamed": "This agent's card carries no name",
+    "identityRegistry": "Identity registry",
+    "active": "Active",
+    "index": {
+      "heading": "What the index has counted",
+      "trustScore": "Trust score",
+      "trustScoreBody": "Out of 100, from re-checks that matched, re-checks that did not, and any upheld dispute. Smoothed, so one lucky check cannot make it 100.",
+      "passportCount": "Passports",
+      "matchedCount": "Re-checks matched",
+      "mismatchedCount": "Re-checks missed",
+      "disputesUpheld": "Disputes upheld",
+      "since": "First seen {when}",
+      "empty": "The index has not seen this agent sign a passport yet.",
+      "error": "The index could not be read: {reason}."
+    },
+    "signs": {
+      "heading": "How this agent signs",
+      "body": "An agent id is worth exactly as much as the wallet that owns it. The registry checks that link itself, on every registration, before it writes anything.",
+      "sign": {
+        "title": "The agent signs the fingerprint",
+        "body": "The wallet that owns agent {id} signs the EIP-712 Passport digest: the hashes, the creator, the agent id and a deadline. The picture never leaves the fingerprint."
+      },
+      "recover": {
+        "title": "The registry recovers the signer",
+        "body": "The contract recovers the address from that signature itself. Nothing is taken on trust from whoever sent the transaction."
+      },
+      "own": {
+        "title": "It has to be the owner",
+        "body": "The recovered address is compared with ownerOf on the ERC-8004 identity registry. If they differ, the registration reverts with InvalidGeneratorSignature and no passport exists."
+      },
+      "registry": "Registry {address}",
+      "identity": "Identity {address}",
+      "privy": "Where the key lives",
+      "privyBody": "These values come from the agent's own card, not from this app.",
+      "privyWallet": "Privy wallet id",
+      "privyPolicy": "Policy"
+    },
+    "works": {
+      "heading": "What it has signed",
+      "source": "From the index",
+      "empty": "No passport names this agent yet.",
+      "error": "The index could not be read: {reason}.",
+      "untitled": "Untitled",
+      "noThumbnail": "No thumbnail pinned"
     }
   },
   "studio": {
@@ -279,9 +430,11 @@
       "creating": "Making a passkey on this device",
       "waiting": "Waiting for your fingerprint or face unlock",
       "sending": "Sending it to Monad, network fee sponsored",
+      "confirming": "Waiting for Monad to record your passkey",
       "doneLabel": "Bound",
       "doneBody": "This device now signs for your account. Register an image and it will ask for your unlock once.",
       "txLink": "Transaction {hash}",
+      "walletLink": "Your account {wallet} on MonadVision",
       "rebind": "Bind a different device"
     },
     "recover": {
@@ -322,6 +475,8 @@
         "send": {
           "waiting": "Send it to Monad, network fee sponsored",
           "running": "Sending to Monad, network fee sponsored",
+          "watching": "Waiting for Monad to record the passport",
+          "pending": "Sent, and Monad has not shown it yet",
           "done": "Written to Monad",
           "failed": "It did not reach Monad"
         }
@@ -331,12 +486,14 @@
       "doneBody": "Any copy of it, resized, re-encoded or turned sideways, can be traced back to this record from the verify page.",
       "passportId": "Passport",
       "block": "Block",
+      "blockPending": "Coming from the index",
       "when": "Registered",
       "fee": "Network fee",
       "feeSponsored": "Paid by Moolam through Privy",
       "feeOwn": "Paid from your own balance",
       "openPassport": "Open the passport",
       "openTx": "Transaction {hash}",
+      "openAddress": "Your account {wallet} on MonadVision",
       "openImage": "The pinned image",
       "another": "Register another image"
     },
@@ -362,7 +519,8 @@
       "sentSponsored": "Network fee paid by Moolam through Privy.",
       "sentOwn": "Network fee paid from your own balance.",
       "written": "Written to Monad",
-      "blockValue": "Block {block}"
+      "blockValue": "Recorded in block {block}",
+      "blockPending": "Recorded. The block number comes from the index."
     },
     "passports": {
       "heading": "Your passports",
@@ -397,6 +555,7 @@
       "rejected": "The registry refused this passport. The error it gave is below.",
       "reverted": "Monad refused this transaction. The error the contract gave is below.",
       "sponsorship": "Privy would not pay the network fee for this transaction. What it said is below. You can send the same transaction and pay the fee yourself.",
+      "confirmPending": "Your send was accepted and Monad has not shown it yet. It may still land, so nothing has been sent a second time. Open your account below to look, or ask Monad again.",
       "sendCancelled": "You closed the confirmation, so nothing was sent.",
       "sendFailed": "This step did not finish. The network's own words are below. Try again in a moment.",
       "unknown": "Something went wrong before anything was sent. The message is below.",
@@ -408,7 +567,9 @@
       "bind": "Bind this device",
       "openPassport": "Open that passport",
       "unsponsored": "Send it and pay the fee myself",
-      "again": "Try again"
+      "again": "Try again",
+      "recheck": "Ask Monad again",
+      "openAddress": "Open {wallet} on MonadVision"
     }
   },
   "hero": {
