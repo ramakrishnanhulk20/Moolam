@@ -60,9 +60,12 @@ GraphQL. The verify service reads its passport index from there.
 
 ## Where to go next
 
+- [Quick start](getting-started/quick-start) is two minutes in the live app: verify a copy, then
+  register an image of your own.
 - [How it works](concepts/how-it-works) walks the life of one passport from generation to
   verification.
 - [Architecture](developers/architecture) has the three diagrams and the interface.
 - [Prove it](developers/prove-it) is the one command that runs the whole promise against mainnet.
 - [Threat model](security/threat-model) lists every claim, the attack against it, and the file the
   output is saved in.
+- [FAQ](faq) answers the questions a creator and a judge each ask first.

@@ -5,6 +5,16 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
+      label: 'Getting Started',
+      collapsed: false,
+      items: [
+        'getting-started/quick-start',
+        'getting-started/sign-in-and-account',
+        'getting-started/your-first-passport',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Concepts',
       collapsed: false,
       items: [
@@ -12,6 +22,18 @@ const sidebars: SidebarsConfig = {
         'concepts/why-monad',
         'concepts/trust-model',
         'concepts/fingerprints',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Guides',
+      items: [
+        'guides/register-an-image',
+        'guides/verify-a-copy',
+        'guides/read-a-passport',
+        'guides/agents-and-generated-images',
+        'guides/edits-and-lineage',
+        'guides/disputes',
       ],
     },
     {
@@ -47,6 +69,7 @@ const sidebars: SidebarsConfig = {
         'security/audits',
       ],
     },
+    'faq',
   ],
 };
 
