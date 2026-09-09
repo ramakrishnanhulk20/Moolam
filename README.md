@@ -372,7 +372,7 @@ curl against the same URL works.
 | Verify service | `npm run test:verifier` | 98 |
 | Chain client and agents | `npm run test:agents` | 30 |
 | Indexer | `npm run test:indexer` | 9 |
-| Web app | `npm test` from `packages/web` | 137 |
+| Web app | `npm test` from `packages/web` | 143 |
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -525,7 +525,7 @@ no trailing slash.
 | Verify service | 98 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare route and its token checks |
 | Chain client and agents | 30 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, and the sponsored-send handling (hash polling, refusal classification, the nonce guard) |
 | Indexer | 9 | The handlers against the generated Envio types with the live mainnet addresses |
-| Web app | 137 | The passkey, CBOR, DER and calldata libraries, the verifier client, the studio flow and its confirm-by-state, the verify answer and the trust pages |
+| Web app | 143 | The passkey, CBOR, DER and calldata libraries, the verifier client, the studio flow and its confirm-by-state, the verify answer and the trust pages |
 
 The six invariants all held: the contract balance always covers every liability, the bond total
 always equals the sum of open disputes, every edit points at a parent that exists, no image id is
@@ -533,9 +533,9 @@ ever minted twice, attestations only ever come from an address the policy lists,
 appears while the registry is paused. Each test file opens with a note saying what it does not
 cover.
 
-Every attack in the [threat model](docs/docs/security/threat-model.md) was executed against the live
-contracts, and each one saved its full output under
-[docs/docs/security/attacks/](docs/docs/security/attacks/):
+The summary of the latest prove-it run follows, then every attack in the
+[threat model](docs/docs/security/threat-model.md) executed against the live contracts, each with its
+full output saved under [docs/docs/security/attacks/](docs/docs/security/attacks/):
 
 ```
 6. Summary
