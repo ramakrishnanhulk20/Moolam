@@ -37,3 +37,6 @@ packages/contracts/broadcast/**/run-1*.json
 
 # local tooling config
 .claude/
+
+# The Linux install inside WSL writes its own lockfile here; the root lockfile is the one that counts.
+packages/indexer/package-lock.json
