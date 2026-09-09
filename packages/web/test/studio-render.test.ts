@@ -1,0 +1,292 @@
+import { describe, expect, it, vi } from "vitest";
+import { createElement, type FunctionComponent, type ReactElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
+import en from "@/messages/en.json";
+import ta from "@/messages/ta.json";
+import { BindCard } from "@/components/studio/BindCard";
+import { IdentityStrip } from "@/components/studio/IdentityStrip";
+import { RecoverCard } from "@/components/studio/RecoverCard";
+import { SignedOut } from "@/components/studio/SignedOut";
+import { RegisterPanel } from "@/components/studio/RegisterPanel";
+import { Receipt } from "@/components/studio/Receipt";
+import { YourPassports } from "@/components/studio/YourPassports";
+import type { Studio } from "@/lib/studio/useStudio";
+import { initialRegisterState, type RegisterState } from "@/lib/studio/flow";
+import type { PrepareResponse } from "@/lib/verifier/client";
+
+// next-intl's navigation helpers reach for next/navigation, which only resolves
+// inside the bundler. The link is the one thing these cards use from it.
+vi.mock("@/lib/i18n/routing", () => ({
+  Link: (props: { href: string; children?: unknown }) =>
+    createElement("a", { href: props.href }, props.children as never),
+}));
+
+/**
+ * The cards a creator meets before any transaction, rendered for real in both
+ * languages. This does not click anything: it proves the markup builds and
+ * every string it asks for exists, which is what a missing message key or a
+ * broken prop would break first.
+ */
+function render(locale: "en" | "ta", node: ReactElement): string {
+  // The provider's own props type demands children, which createElement passes
+  // as an argument rather than a prop.
+  const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
+    locale: string;
+    messages: unknown;
+    timeZone: string;
+  }>;
+
+  return renderToStaticMarkup(
+    createElement(Provider, { locale, messages: locale === "en" ? en : ta, timeZone: "Asia/Kolkata" }, node),
+  );
+}
+
+const NOOP = () => undefined;
+
+describe("the cards before the first transaction", () => {
+  it("renders the signed out card in both languages", () => {
+    const english = render("en", createElement(SignedOut, { onSignIn: NOOP }));
+    expect(english).toContain("Sign in and create my account");
+    expect(english).toContain("no seed phrase to write down");
+
+    const tamil = render("ta", createElement(SignedOut, { onSignIn: NOOP }));
+    expect(tamil).toContain("உள்நுழைந்து கணக்கை உருவாக்கு");
+  });
+
+  it("renders the bind card at every stage it can be in", () => {
+    for (const stage of ["idle", "creating", "waiting", "sending", "bound"] as const) {
+      const markup = render(
+        "en",
+        createElement(BindCard, {
+          state: { stage, qx: null, qy: null, txHash: `0x${"11".repeat(32)}`, failure: null },
+          onBind: NOOP,
+        }),
+      );
+      expect(markup.length).toBeGreaterThan(0);
+    }
+
+    const waiting = render(
+      "en",
+      createElement(BindCard, {
+        state: { stage: "waiting", qx: null, qy: null, txHash: null, failure: null },
+        onBind: NOOP,
+      }),
+    );
+    expect(waiting).toContain("Waiting for your fingerprint or face unlock");
+  });
+
+  it("shows a failure with the one thing to do next", () => {
+    const markup = render(
+      "en",
+      createElement(BindCard, {
+        state: {
+          stage: "idle",
+          qx: null,
+          qy: null,
+          txHash: null,
+          failure: { key: "passkeyCancelled", reason: "NotAllowedError", next: "again" },
+        },
+        onBind: NOOP,
+      }),
+    );
+    expect(markup).toContain("The unlock prompt was closed or it timed out");
+    expect(markup).toContain("Try again");
+  });
+
+  it("renders the recovery card for a passkey on another device", () => {
+    const markup = render(
+      "en",
+      createElement(RecoverCard, { busy: true, failure: null, onRecover: NOOP, onBindInstead: NOOP }),
+    );
+    expect(markup).toContain("Your passkey was set up somewhere else");
+    expect(markup).toContain("Waiting for your fingerprint or face unlock");
+  });
+
+  it("says who is paying the fee, and only claims it is proven once it is", () => {
+    const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+
+    const claimed = render(
+      "en",
+      createElement(IdentityStrip, {
+        account: { kind: "email", value: "ram@example.com" },
+        wallet,
+        sponsorship: "claimed",
+        onSignOut: NOOP,
+      }),
+    );
+    expect(claimed).toContain("Paid by Moolam through Privy");
+    expect(claimed).toContain("ram@example.com");
+    expect(claimed).toContain("Monad mainnet, chain 143");
+
+    const proven = render(
+      "en",
+      createElement(IdentityStrip, {
+        account: { kind: "passkey" },
+        wallet,
+        sponsorship: "proven",
+        onSignOut: NOOP,
+      }),
+    );
+    expect(proven).toContain("Your balance did not move");
+    expect(proven).toContain("a passkey, with no email on file");
+  });
+});
+
+const PREPARED = {
+  passport: {
+    exactHash: `0x${"ab".repeat(32)}`,
+    parentId: `0x${"00".repeat(32)}`,
+    generatorAgentId: "0",
+    phash: "7840506850305415717",
+    blockhash256: `0x${"11".repeat(32)}`,
+    manifestHash: `0x${"22".repeat(32)}`,
+    kind: 1,
+    fingerprintVersion: 1,
+    metadataURI: "ipfs://metadata",
+  },
+  image: { cid: "cid", uri: "ipfs://image", gatewayUrl: "https://gateway/image", bytes: 10, width: 1600, height: 1200 },
+  thumbnail: { cid: "thumb", uri: "ipfs://thumb", gatewayUrl: "https://gateway/thumb" },
+  metadata: { cid: "meta", uri: "ipfs://metadata" },
+  manifest: { embedded: true },
+  preparedBy: "did:privy:someone",
+} as unknown as PrepareResponse;
+
+describe("the register panel", () => {
+  const handlers = {
+    onChoose: NOOP,
+    onTitle: NOOP,
+    onRegister: NOOP,
+    onReset: NOOP,
+    onUnsponsored: NOOP,
+    onBind: NOOP,
+  };
+
+  it("opens with the three steps written out before anything runs", () => {
+    const markup = render("en", createElement(RegisterPanel, { state: initialRegisterState, ...handlers }));
+    expect(markup).toContain("Drop an image here");
+    expect(markup).toContain("Fingerprint and pin the file, about ten seconds");
+    expect(markup).toContain("Sign it with your unlock");
+    expect(markup).toContain("Send it to Monad, network fee sponsored");
+  });
+
+  it("names what it is waiting for while the passkey step runs", () => {
+    const state = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "running", send: "waiting" },
+      prepared: PREPARED,
+    } as RegisterState;
+    const markup = render("en", createElement(RegisterPanel, { state, ...handlers }));
+    expect(markup).toContain("Waiting for your fingerprint or face unlock");
+    expect(markup).toContain("Fingerprinted, manifest embedded, pinned to IPFS");
+  });
+
+  it("shows the passport once it is written, with the block and the links", () => {
+    const state = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "done", send: "done" },
+      prepared: PREPARED,
+      digest: `0x${"cd".repeat(32)}`,
+      txHash: `0x${"ef".repeat(32)}`,
+      block: 103_059_393n,
+      registeredAt: 1_788_876_542_000,
+    } as RegisterState;
+    const markup = render("en", createElement(RegisterPanel, { state, ...handlers }));
+    expect(markup).toContain("This image now has a passport");
+    expect(markup).toContain("103059393");
+    expect(markup).toContain(`/passport/0x${"ab".repeat(32)}`);
+    expect(markup).toContain("Paid by Moolam through Privy");
+  });
+
+  it("offers the passport that already holds the image when the registry refuses a repeat", () => {
+    const state = {
+      ...initialRegisterState,
+      steps: { prepare: "done", sign: "done", send: "failed" },
+      prepared: PREPARED,
+      failure: { key: "alreadyRegistered", reason: "PassportAlreadyExists", next: "openPassport" },
+    } as RegisterState;
+    const markup = render("en", createElement(RegisterPanel, { state, ...handlers }));
+    expect(markup).toContain("This exact image is already registered");
+    expect(markup).toContain(`/passport/0x${"ab".repeat(32)}`);
+  });
+});
+
+describe("the stub that fills as the creator moves", () => {
+  it("stamps only what has actually happened", () => {
+    const studio = {
+      authenticated: true,
+      account: { kind: "email", value: "ram@example.com" },
+      wallet: "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
+      binding: { status: "bound", passkey: { qx: `0x${"aa".repeat(32)}`, qy: `0x${"bb".repeat(32)}` } },
+      bind: { txHash: `0x${"11".repeat(32)}` },
+      register: {
+        ...initialRegisterState,
+        prepared: PREPARED,
+        digest: `0x${"cd".repeat(32)}`,
+        txHash: `0x${"ef".repeat(32)}`,
+        block: 103_059_393n,
+        registeredAt: 1_788_876_542_000,
+      },
+    } as unknown as Studio;
+
+    const markup = render("en", createElement(Receipt, { studio }));
+    expect(markup).toContain("ram@example.com");
+    expect(markup).toContain("Passkey bound");
+    expect(markup).toContain("1600 by 1200 pixels");
+    expect(markup).toContain("Block 103059393");
+    expect(markup).toContain("Network fee paid by Moolam through Privy");
+  });
+
+  it("says plainly that nothing has happened yet", () => {
+    const studio = {
+      authenticated: false,
+      account: { kind: "account" },
+      wallet: undefined,
+      binding: { status: "reading", passkey: null },
+      bind: { txHash: null },
+      register: initialRegisterState,
+    } as unknown as Studio;
+
+    expect(render("en", createElement(Receipt, { studio }))).toContain("Nothing yet");
+  });
+});
+
+describe("the creator's own passports", () => {
+  it("says the list is empty in words, never with a placeholder row", () => {
+    const markup = render(
+      "en",
+      createElement(YourPassports, {
+        passports: { status: "ready", passports: [], error: null, refresh: NOOP },
+      }),
+    );
+    expect(markup).toContain("Nothing registered from this account yet");
+    expect(markup).not.toContain("<img");
+  });
+
+  it("renders a row from the index with its thumbnail and its block", () => {
+    const markup = render(
+      "en",
+      createElement(YourPassports, {
+        passports: {
+          status: "ready",
+          error: null,
+          refresh: NOOP,
+          passports: [
+            {
+              id: `0x${"ab".repeat(32)}`,
+              kind: 1,
+              registeredAt: 1_788_876_542n,
+              registeredBlock: 103_059_393n,
+              metadataURI: "ipfs://metadata",
+              title: "A morning",
+              imageUrl: "https://gateway/thumb",
+            },
+          ],
+        },
+      }),
+    );
+    expect(markup).toContain("A morning");
+    expect(markup).toContain("https://gateway/thumb");
+    expect(markup).toContain("Captured");
+  });
+});

@@ -16,8 +16,8 @@
     },
     "nav": {
       "home": "Home",
-      "verify": "Verify",
-      "studio": "Studio"
+      "verify": "Verify an image",
+      "studio": "Register an image"
     }
   },
   "footer": {
@@ -220,18 +220,196 @@
     }
   },
   "studio": {
-    "title": "Studio",
-    "lede": "Log in and Moolam creates a wallet for you on Monad. No extension, no seed phrase. Registering and editing passports arrives here in the next build.",
-    "login": "Log in",
-    "logout": "Log out",
-    "loggedOut": "You are not logged in. Use email, Google or a passkey and a wallet is created for you.",
-    "connecting": "Opening the login window.",
-    "wallet": "Embedded wallet",
-    "balance": "Balance",
-    "balancePending": "Reading the balance from Monad.",
-    "balanceError": "The balance could not be read: {reason}. Reload the page.",
-    "noWallet": "You are logged in, but no wallet was created yet. Reload the page, or log in again.",
-    "notConfigured": "Privy is not configured. Put NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local and restart the dev server."
+    "kicker": "Studio",
+    "title": "Register an image",
+    "lede": "Sign in, unlock with this device once, then every image you make gets its own record on Monad: fingerprinted, signed by you, and findable from any copy that survives the internet.",
+    "rail": "Moolam studio",
+    "opening": "Opening your account",
+    "noWallet": "You are signed in, but no account was created on Monad yet. Reload the page, or sign out and sign in again.",
+    "notConfigured": "Privy is not configured, so nobody can sign in here. Put NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local and restart the dev server.",
+    "signOut": "Sign out",
+    "identity": {
+      "account": "Signed in as",
+      "wallet": "Your account",
+      "network": "Network",
+      "monad": "Monad mainnet, chain {chainId}",
+      "gas": "Network fee",
+      "gasClaimed": "Paid by Moolam through Privy",
+      "gasProven": "Paid by Moolam. Your balance did not move.",
+      "gasOwn": "Paid from your own balance",
+      "kindEmail": "your email",
+      "kindGoogle": "your Google account",
+      "kindPhone": "your phone number",
+      "kindPasskey": "a passkey, with no email on file",
+      "kindAccount": "this account"
+    },
+    "signedOut": {
+      "kicker": "You are not signed in",
+      "heading": "Sign in and an account is made for you",
+      "body": "There is no wallet to install and no seed phrase to write down. Sign in with your email, your Google account or a passkey, and Privy creates an account on Monad in your name.",
+      "button": "Sign in and create my account",
+      "methods": "Email, Google or a passkey. Whichever you choose, the account is yours.",
+      "points": {
+        "wallet": {
+          "label": "Your account",
+          "body": "Made the moment you sign in, held by Privy, and nobody at Moolam can sign with it."
+        },
+        "passkey": {
+          "label": "Your signature",
+          "body": "The fingerprint or face unlock on this device signs each image. It never leaves the device."
+        },
+        "gas": {
+          "label": "The network fee",
+          "body": "Moolam pays it through Privy, so registering an image costs you nothing."
+        }
+      }
+    },
+    "passkey": {
+      "reading": "Checking whether this account already has a passkey",
+      "unreadable": "Monad could not be read, so this page does not know whether your account has a passkey yet: {reason}. Reload the page."
+    },
+    "bind": {
+      "kicker": "One setup step",
+      "heading": "Link this device to your account",
+      "headingAgain": "Use this device's unlock instead",
+      "body": "Your account has no signature on it yet. Bind the unlock on this device once and it becomes the signature on every image you register.",
+      "plain": "A passkey is the fingerprint, face unlock or PIN this device already uses. It stays on the device: Moolam only ever sees the public half.",
+      "button": "Use this device's unlock",
+      "buttonAgain": "Bind this device's unlock",
+      "creating": "Making a passkey on this device",
+      "waiting": "Waiting for your fingerprint or face unlock",
+      "sending": "Sending it to Monad, network fee sponsored",
+      "doneLabel": "Bound",
+      "doneBody": "This device now signs for your account. Register an image and it will ask for your unlock once.",
+      "txLink": "Transaction {hash}",
+      "rebind": "Bind a different device"
+    },
+    "recover": {
+      "kicker": "Another device signed here",
+      "heading": "Your passkey was set up somewhere else",
+      "body": "Monad says this account already has a passkey, and this browser has never used it. Unlock with that passkey here and you can carry on, or bind this device instead.",
+      "button": "Unlock with my passkey",
+      "bindInstead": "Bind this device instead",
+      "waiting": "Waiting for your fingerprint or face unlock",
+      "otherDevice": "If that passkey lives on your phone or another laptop, open Moolam there, or bind this device instead. Binding replaces the old one and costs one transaction."
+    },
+    "register": {
+      "kicker": "Ready",
+      "heading": "Give an image its passport",
+      "body": "One picture at a time. It is fingerprinted and pinned, you sign it with your unlock, and Moolam sends it to Monad.",
+      "drop": "Drop an image here",
+      "choose": "Choose a file",
+      "hint": "JPEG, PNG or WebP, up to 20 MB. Moolam embeds a C2PA manifest, fingerprints the signed bytes and pins the file to IPFS.",
+      "replace": "Choose another",
+      "title": "Title",
+      "titlePlaceholder": "What is this picture?",
+      "titleHint": "It goes into the manifest and the metadata, so keep it the name you would call the picture.",
+      "submit": "Register this image",
+      "balance": "Your account holds {mon} MON.",
+      "steps": {
+        "prepare": {
+          "waiting": "Fingerprint and pin the file, about ten seconds",
+          "running": "Fingerprinting and pinning, about ten seconds",
+          "done": "Fingerprinted, manifest embedded, pinned to IPFS",
+          "failed": "The file was not prepared"
+        },
+        "sign": {
+          "waiting": "Sign it with your unlock",
+          "running": "Waiting for your fingerprint or face unlock",
+          "done": "Signed on this device",
+          "failed": "It was not signed"
+        },
+        "send": {
+          "waiting": "Send it to Monad, network fee sponsored",
+          "running": "Sending to Monad, network fee sponsored",
+          "done": "Written to Monad",
+          "failed": "It did not reach Monad"
+        }
+      },
+      "doneLabel": "Registered",
+      "doneHeading": "This image now has a passport",
+      "doneBody": "Any copy of it, resized, re-encoded or turned sideways, can be traced back to this record from the verify page.",
+      "passportId": "Passport",
+      "block": "Block",
+      "when": "Registered",
+      "fee": "Network fee",
+      "feeSponsored": "Paid by Moolam through Privy",
+      "feeOwn": "Paid from your own balance",
+      "openPassport": "Open the passport",
+      "openTx": "Transaction {hash}",
+      "openImage": "The pinned image",
+      "another": "Register another image"
+    },
+    "receipt": {
+      "heading": "What just happened",
+      "body": "Every step gets stamped here as it lands. Nothing on this list is a guess.",
+      "empty": "Nothing yet. Sign in and the first stamp appears.",
+      "account": "Signed in",
+      "accountDetail": "Privy verified this before an account was made.",
+      "wallet": "Your account on Monad",
+      "walletDetail": "Created on sign in. No seed phrase, and no key Moolam holds.",
+      "passkey": "Passkey bound",
+      "passkeyDetail": "The public half of this device's unlock, stored by the registry.",
+      "fingerprint": "Exact hash",
+      "fingerprintDetail": "{width} by {height} pixels. C2PA manifest embedded: {manifest}.",
+      "manifestYes": "yes",
+      "manifestNo": "no",
+      "pinned": "Pinned to IPFS",
+      "pinnedDetail": "The signed bytes, the thumbnail and the metadata all went to IPFS.",
+      "signed": "Digest you signed",
+      "signedDetail": "Read from the contract, signed by your unlock, checked here before it was sent.",
+      "sent": "Sent to Monad",
+      "sentSponsored": "Network fee paid by Moolam through Privy.",
+      "sentOwn": "Network fee paid from your own balance.",
+      "written": "Written to Monad",
+      "blockValue": "Block {block}"
+    },
+    "passports": {
+      "heading": "Your passports",
+      "source": "Read live from the index",
+      "reading": "Reading everything this account has registered.",
+      "unreadable": "Your passports could not be read: {reason}. Reload the page.",
+      "empty": "Nothing registered from this account yet. The first image you register appears here within a block.",
+      "noThumbnail": "No thumbnail",
+      "untitled": "Untitled"
+    },
+    "failure": {
+      "serviceOffline": "The Moolam verify service is not answering, so nothing was uploaded. Try again in a moment.",
+      "signedOut": "Your session has expired. Sign in again and the upload will work.",
+      "tooLarge": "That file is over the 20 MB limit. Export it smaller and try again.",
+      "notAnImage": "That file is not a JPEG, a PNG or a WebP image. Choose an image file.",
+      "rateLimited": "This account has prepared 20 images in the last hour, which is the limit. Try again later.",
+      "pinFailed": "The image could not be pinned to IPFS, so nothing was registered. Try again in a moment.",
+      "badRequest": "The verify service refused this upload. What it said is below.",
+      "badResponse": "The verify service answered in a shape this page does not understand, so nothing was signed. Try again.",
+      "authCheck": "The signature from your device would be refused by the registry, so it was not sent. Try again, and use the same unlock you bound.",
+      "passkeyCancelled": "The unlock prompt was closed or it timed out. Nothing was signed.",
+      "passkeyOrigin": "This passkey belongs to a different website, so this page cannot use it.",
+      "passkeyUnsupported": "This browser or device cannot make the kind of passkey the registry needs. Try a browser with fingerprint or face unlock.",
+      "passkeyOther": "The unlock did not finish. Your device said this:",
+      "alreadyRegistered": "This exact image is already registered. The first registration wins, so open the passport that holds it.",
+      "expired": "The hour that signature was good for has passed. Register the image again.",
+      "notBound": "Monad says your account has no passkey on it. Bind this device's unlock, then register the image.",
+      "badSignature": "The registry refused that signature. Sign again with the unlock you bound to this account.",
+      "badKey": "The registry refused that passkey. Bind this device's unlock again.",
+      "paused": "The registry is paused, so nothing can be registered right now. Try again later.",
+      "wrongWallet": "The image was signed for a different account than the one sending it. Reload the page and register again.",
+      "rejected": "The registry refused this passport. The error it gave is below.",
+      "reverted": "Monad refused this transaction. The error the contract gave is below.",
+      "sponsorship": "Privy would not pay the network fee for this transaction. What it said is below. You can send the same transaction and pay the fee yourself.",
+      "sendCancelled": "You closed the confirmation, so nothing was sent.",
+      "sendFailed": "This step did not finish. The network's own words are below. Try again in a moment.",
+      "unknown": "Something went wrong before anything was sent. The message is below.",
+      "fileMissing": "Choose an image first.",
+      "titleMissing": "Give the picture a title first. It goes into the manifest."
+    },
+    "actions": {
+      "signIn": "Sign in again",
+      "bind": "Bind this device",
+      "openPassport": "Open that passport",
+      "unsponsored": "Send it and pay the fee myself",
+      "again": "Try again"
+    }
   },
   "hero": {
     "kicker": "Live on Monad mainnet",
