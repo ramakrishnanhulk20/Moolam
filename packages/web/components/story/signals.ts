@@ -1,12 +1,12 @@
 /**
- * Scroll progress and the verify answer, published as plain mutable numbers.
+ * Scroll position and the verify answer, published as plain mutable numbers.
  *
  * The scene writes these inside its render loop and the readouts over it read
  * them from their own animation frame. Putting any of it in React state would
  * mean re-rendering the page sixty times a second against the same frame
  * budget the camera is using.
  */
-export const beat = {
+export const progress = {
   /** 0 to 1 across the whole story. */
   scroll: 0,
   made: 0,

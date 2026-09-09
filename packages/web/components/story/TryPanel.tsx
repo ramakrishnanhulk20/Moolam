@@ -2,36 +2,25 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { beat, forwardTouchMove, forwardTouchStart, forwardWheel, probe, resetProbe } from "@/components/story/signals";
+import { forwardTouchMove, forwardTouchStart, forwardWheel, probe, progress, resetProbe } from "@/components/story/signals";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
-
-interface VerifyMatch {
-  id: `0x${string}`;
-  phashDistance: number;
-  blockhashDistance: number;
-  variant: string;
-  score: number;
-}
-
-interface VerifyAnswer {
-  result: { exact: `0x${string}` | null; best: VerifyMatch | null; confidence: number };
-  manifest: { present: boolean };
-}
+import { VerifierError, verify, type VerifyResponse } from "@/lib/verifier/client";
 
 type State =
   | { kind: "idle" }
   | { kind: "pending"; name: string }
   | { kind: "error"; message: string }
-  | { kind: "done"; name: string; answer: VerifyAnswer };
+  | { kind: "done"; name: string; answer: VerifyResponse };
 
 /**
  * The beat a judge can touch: drop any copy of any image and the running
  * verifier answers, on the plate and in words.
  *
- * The panel is pinned over the scene and fades in on the eighth page of scroll.
- * Opacity alone would leave the button in the tab order while the camera is
- * still flying, so the whole subtree is inert until it is actually on screen.
+ * The panel is pinned over the scene and fades in with the offer beat, straight
+ * from the beats table. Opacity alone would leave the button in the tab order
+ * while the camera is still flying, so the whole subtree is inert until it is
+ * actually on screen.
  */
 export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string | null) => void; pinned?: boolean }) {
   const t = useTranslations("story.tryIt");
@@ -51,7 +40,7 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
     const loop = () => {
       const node = shell.current;
       if (node !== null) {
-        const shown = Math.min(beat.offer, 1 - beat.close);
+        const shown = Math.min(progress.offer, 1 - progress.close);
         node.style.opacity = String(shown);
         const next = shown <= 0.5;
         if (next !== hidden) {
@@ -92,30 +81,15 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
     probe.confidence = 0;
     setState({ kind: "pending", name: file.name });
 
-    const body = new FormData();
-    body.append("file", file, file.name);
-
     try {
-      const response = await fetch("/api/verify", { method: "POST", body });
-      const payload = (await response.json()) as VerifyAnswer & { error?: string };
-
-      if (!response.ok) {
-        probe.state = "refused";
-        setState({
-          kind: "error",
-          message:
-            payload.error === "verifier-unreachable" ? t("offline") : t("error", { reason: payload.error ?? String(response.status) }),
-        });
-        return;
-      }
-
-      const matched = payload.result.exact !== null || payload.result.best !== null;
+      const answer = await verify({ file });
+      const matched = answer.result.exact !== null || answer.result.best !== null;
       probe.state = matched ? "matched" : "refused";
-      probe.confidence = payload.result.confidence;
-      setState({ kind: "done", name: file.name, answer: payload });
+      probe.confidence = answer.result.confidence;
+      setState({ kind: "done", name: file.name, answer });
     } catch (error) {
       probe.state = "refused";
-      setState({ kind: "error", message: t("error", { reason: error instanceof Error ? error.message : String(error) }) });
+      setState({ kind: "error", message: refusal(error, t) });
     }
   }
 
@@ -204,7 +178,21 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
   );
 }
 
-function Answer({ answer, name }: { answer: VerifyAnswer; name: string }) {
+/**
+ * What went wrong, in a sentence rather than a status code.
+ *
+ * The verify service answers a failure with its own words, so the reason a
+ * reader sees is the reason the service gave. Only the one case with no words
+ * behind it, a service that never answered at all, is written here.
+ */
+function refusal(error: unknown, t: (key: string, values?: Record<string, string>) => string): string {
+  if (error instanceof VerifierError) {
+    return error.code === "offline" ? t("offline") : t("error", { reason: error.message });
+  }
+  return t("error", { reason: error instanceof Error ? error.message : String(error) });
+}
+
+function Answer({ answer, name }: { answer: VerifyResponse; name: string }) {
   const t = useTranslations("story.tryIt");
   const id = answer.result.exact ?? answer.result.best?.id ?? null;
 

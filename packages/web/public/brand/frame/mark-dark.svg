@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Moolam">
+  <g transform="translate(0 0) scale(1)">
+  <mask id="cut-dark" maskUnits="userSpaceOnUse" x="-2" y="-2" width="104" height="104">
+  <path fill="#fff" d="M-2 -2H102V102H-2Z"/>
+  <path fill="#000" d="M52 -4L104 -4L104 48L52 48Z"/>
+  </mask>
+  <path mask="url(#cut-dark)" fill="none" stroke="#FFB7C5" stroke-width="10" d="M5 29L71 29L71 95L5 95Z"/>
+  <path fill="#FFB7C5" fill-rule="evenodd" d="M56 0L100 0L100 44L56 44ZM65.79 9.79L90.21 9.79L90.21 34.21L65.79 34.21ZM69.09 13.09L86.91 13.09L86.91 30.91L69.09 30.91Z"/>
+  </g>
+</svg>

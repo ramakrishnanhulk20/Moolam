@@ -1,16 +1,19 @@
-/* Amber #FFB020 is the one accent. Light mode uses a darker step of the same hue so
-   links clear the contrast bar on white; dark mode uses the accent itself. */
+/* Light pink #FFB7C5 is the one accent, the same one the app and the seal carry.
+   Light mode uses a deep step of the same hue so links clear the contrast bar on
+   white (6.7:1); dark mode uses the pink itself. */
 
 :root {
-  --ifm-color-primary: #b87600;
-  --ifm-color-primary-dark: #a56b00;
-  --ifm-color-primary-darker: #9c6500;
-  --ifm-color-primary-darkest: #815300;
-  --ifm-color-primary-light: #ca8200;
-  --ifm-color-primary-lighter: #d38800;
-  --ifm-color-primary-lightest: #ef9a00;
+  --ifm-color-primary: #a92a48;
+  --ifm-color-primary-dark: #8c233c;
+  --ifm-color-primary-darker: #802037;
+  --ifm-color-primary-darkest: #6c1b2e;
+  --ifm-color-primary-light: #c63154;
+  --ifm-color-primary-lighter: #ce385c;
+  --ifm-color-primary-lightest: #d34d6c;
 
-  --moolam-accent: #ffb020;
+  /* The pink itself is too faint on white for a rule, so light mode carries the
+     deep step and dark mode the pink. */
+  --moolam-accent: #a92a48;
 
   /* Infima leaves this transparent in light mode and lets the browser paint white
      underneath. Paint it here instead, so the page never borrows a host background. */
@@ -29,13 +32,15 @@
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #ffb020;
-  --ifm-color-primary-dark: #ffa604;
-  --ifm-color-primary-darker: #f49e00;
-  --ifm-color-primary-darkest: #c98200;
-  --ifm-color-primary-light: #ffba3d;
-  --ifm-color-primary-lighter: #ffbf4b;
-  --ifm-color-primary-lightest: #ffcf76;
+  --ifm-color-primary: #ffb7c5;
+  --ifm-color-primary-dark: #ff93a8;
+  --ifm-color-primary-darker: #ff849c;
+  --ifm-color-primary-darkest: #ff6b87;
+  --ifm-color-primary-light: #ffdbe2;
+  --ifm-color-primary-lighter: #ffeaee;
+  --ifm-color-primary-lightest: #fff4f6;
+
+  --moolam-accent: #ffb7c5;
 
   --ifm-background-color: #0d0e10;
   --ifm-background-surface-color: #16181b;
@@ -45,7 +50,7 @@
   --ifm-hr-border-color: #24262b;
   --ifm-table-border-color: #24262b;
   --ifm-table-stripe-background: rgba(255, 255, 255, 0.02);
-  --docusaurus-highlighted-code-line-bg: rgba(255, 176, 32, 0.14);
+  --docusaurus-highlighted-code-line-bg: rgba(255, 183, 197, 0.14);
 }
 
 .navbar {

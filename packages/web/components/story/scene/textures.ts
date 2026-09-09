@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { ACCENT, ACCENT_LIFT, ACCENT_RGB } from "@/components/story/palette";
 
 const cache = new Map<string, Promise<THREE.Texture>>();
 
@@ -55,7 +56,7 @@ export function noiseTexture(size = 128): THREE.DataTexture {
  * eyebrows and the favicon carry, drawn once at a size that stays sharp when
  * the camera is close to the plate.
  */
-export function sealTexture(accent = "#FFB020"): THREE.CanvasTexture {
+export function sealTexture(accent = ACCENT): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -81,7 +82,7 @@ export function sealTexture(accent = "#FFB020"): THREE.CanvasTexture {
  * A row of mono glyphs standing in for the credential a platform strips on
  * upload. It falls off one of the copies in the fourth beat.
  */
-export function credentialTexture(text: string, accent = "#FFB020"): THREE.CanvasTexture {
+export function credentialTexture(text: string, accent = ACCENT): THREE.CanvasTexture {
   const width = 512;
   const height = 64;
   const canvas = document.createElement("canvas");
@@ -112,9 +113,9 @@ export function glowTexture(): THREE.CanvasTexture {
 
   if (context !== null) {
     const gradient = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-    gradient.addColorStop(0, "rgba(255,196,90,0.95)");
-    gradient.addColorStop(0.35, "rgba(255,176,32,0.42)");
-    gradient.addColorStop(1, "rgba(255,176,32,0)");
+    gradient.addColorStop(0, `rgba(${ACCENT_LIFT}, 0.95)`);
+    gradient.addColorStop(0.35, `rgba(${ACCENT_RGB}, 0.42)`);
+    gradient.addColorStop(1, `rgba(${ACCENT_RGB}, 0)`);
     context.fillStyle = gradient;
     context.fillRect(0, 0, size, size);
   }

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" role="img" aria-label="Moolam">
+  <mask id="c" maskUnits="userSpaceOnUse" x="0" y="0" width="16" height="16">
+  <path fill="#fff" d="M0 0H16V16H0Z"/>
+  <path fill="#000" d="M7 -2L18 -2L18 9L7 9Z"/>
+  </mask>
+  <path mask="url(#c)" fill="none" stroke="#FFB7C5" stroke-width="3" d="M1.5 6.5L9.5 6.5L9.5 14.5L1.5 14.5Z"/>
+  <path fill="#FFB7C5" d="M9 0L16 0L16 7L9 7Z"/>
+</svg>

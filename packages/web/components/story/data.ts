@@ -1,18 +1,10 @@
 import type { Hex } from "viem";
-import { DEMO_AGENT_ID, reason } from "@/lib/chain/client";
+import { DEMO_AGENT_ID, gatewayUrl, reason } from "@/lib/chain/client";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
 import { getReputation, getReputationClients } from "@/lib/chain/reputation";
 import { latestPassports } from "@/lib/data/passports";
 import { activeSource, envioUrl } from "@/lib/data/source";
 import degrade from "@/public/hero/degrade.json";
-
-/**
- * The account's own Pinata gateway. The shared gateway.pinata.cloud takes
- * longer than half a minute to answer for these content ids, which is a blank
- * plate on the first screen, so the story reads through the gateway that
- * pinned them.
- */
-const GATEWAY = "https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/";
 
 const METADATA_TIMEOUT_MS = 8_000;
 const INDEX_TIMEOUT_MS = 10_000;
@@ -368,7 +360,7 @@ async function pictureFor(uri: string): Promise<Picture | null> {
   }
 
   try {
-    const response = await fetch(url(uri), {
+    const response = await fetch(gatewayUrl(uri), {
       signal: AbortSignal.timeout(METADATA_TIMEOUT_MS),
       // Content addressed: the answer can never change under this id.
       next: { revalidate: 3600 },
@@ -390,11 +382,7 @@ async function pictureFor(uri: string): Promise<Picture | null> {
   }
 
   return {
-    full: url(image ?? (thumbnail as string)),
-    thumbnail: url(thumbnail ?? (image as string)),
+    full: gatewayUrl(image ?? (thumbnail as string)),
+    thumbnail: gatewayUrl(thumbnail ?? (image as string)),
   };
-}
-
-function url(uri: string): string {
-  return uri.startsWith("ipfs://") ? `${GATEWAY}${uri.slice("ipfs://".length)}` : uri;
 }

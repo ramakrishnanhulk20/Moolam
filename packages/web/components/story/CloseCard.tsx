@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
-import { beat, forwardTouchMove, forwardTouchStart, forwardWheel } from "@/components/story/signals";
+import { forwardTouchMove, forwardTouchStart, forwardWheel, progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { CHAIN_ID } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
@@ -28,8 +28,8 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
     const loop = () => {
       const node = shell.current;
       if (node !== null) {
-        node.style.opacity = String(beat.close);
-        const next = beat.close <= 0.5;
+        node.style.opacity = String(progress.close);
+        const next = progress.close <= 0.5;
         if (next !== hidden) {
           hidden = next;
           node.inert = next;

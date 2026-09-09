@@ -43,7 +43,7 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
         supportedChains: [monad],
         appearance: {
           theme: resolvedTheme === "light" ? "light" : "dark",
-          accentColor: "#ff4d1c",
+          accentColor: "#ffb7c5",
           walletChainType: "ethereum-only",
           landingHeader: "Moolam",
         },

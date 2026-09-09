@@ -18,9 +18,9 @@
   --text-muted: #9a99a4;
   --text-faint: #6a6975;
 
-  --accent: #ff4d1c;
-  --accent-ink: #0a0505;
-  --accent-soft: rgb(255 77 28 / 0.14);
+  --accent: #ffb7c5;
+  --accent-ink: #0b0b0c;
+  --accent-soft: rgb(255 183 197 / 0.14);
 
   --status-verified: #3fbfa8;
   --status-pending: #5b8def;
@@ -43,9 +43,9 @@
   --text-muted: #56534b;
   --text-faint: #7c7871;
 
-  --accent: #d63a0c;
-  --accent-ink: #fff8f5;
-  --accent-soft: rgb(214 58 12 / 0.12);
+  --accent: #a92a48;
+  --accent-ink: #fff5f7;
+  --accent-soft: rgb(169 42 72 / 0.12);
 
   --status-verified: #17786a;
   --status-pending: #2f5bb8;
@@ -164,39 +164,9 @@ body {
   animation: rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Two accent candidates, switched by a data-accent attribute on any wrapper, so
-   the lab page can hold both side by side without a reload. Coral is the accent
-   Ram approved on Archegos; amber is the colour a stamp or a seal wants. */
-[data-accent="coral"] {
-  --accent: #ff7d55;
-  --accent-ink: #14100e;
-  --accent-soft: rgb(255 125 85 / 0.14);
-}
-
-[data-accent="amber"] {
-  --accent: #ffb020;
-  --accent-ink: #17110a;
-  --accent-soft: rgb(255 176 32 / 0.14);
-}
-
-/* Neither candidate carries enough contrast as small text on paper, so the light
-   theme takes a deeper mix of the same hue. */
-.light [data-accent="coral"] {
-  --accent: #d1481c;
-  --accent-ink: #fff6f2;
-  --accent-soft: rgb(209 72 28 / 0.12);
-}
-
-.light [data-accent="amber"] {
-  --accent: #a86a00;
-  --accent-ink: #fff8ec;
-  --accent-soft: rgb(168 106 0 / 0.13);
-}
-
-/* The repeated mark. A real element rather than a square glyph, because a glyph
-   square changes size and baseline with every face. Two candidates: the seal is
-   a filled square with a hollow square inset in it, the notch is the same square
-   with one corner cut away. */
+/* The repeated mark: a filled square with a hollow square inset in it, the seal.
+   A real element rather than a square glyph, because a glyph square changes size
+   and baseline with every face. The same shape is the favicon and the social card. */
 .motif {
   position: relative;
   display: inline-block;
@@ -208,10 +178,6 @@ body {
   position: absolute;
   inset: 22%;
   border: 1px solid var(--accent-ink);
-}
-
-[data-motif="notch"] .motif {
-  clip-path: polygon(0 0, 100% 0, 100% 58%, 58% 100%, 0 100%);
 }
 
 /* The landing story is dark whatever the app theme is set to. Hearth has no
@@ -228,9 +194,9 @@ body {
   --text-muted: rgb(245 243 239 / 0.6);
   --text-faint: rgb(245 243 239 / 0.46);
 
-  --accent: #ffb020;
-  --accent-ink: #17110a;
-  --accent-soft: rgb(255 176 32 / 0.12);
+  --accent: #ffb7c5;
+  --accent-ink: #0b0b0c;
+  --accent-soft: rgb(255 183 197 / 0.12);
 
   --status-verified: #3fbfa8;
   --status-failed: #c2586f;
@@ -243,6 +209,35 @@ body {
   color-scheme: dark;
   background: var(--bg);
   color: var(--text);
+}
+
+/* The header over the story only. The story is dark whatever the theme says, so
+   the bar borrows its light text and its pink accent. Every other page keeps the
+   themed header. */
+body:has([data-story]) .app-header {
+  --text: #f5f3ef;
+  --text-muted: rgb(245 243 239 / 0.72);
+  --text-faint: rgb(245 243 239 / 0.5);
+  --line: rgb(255 255 255 / 0.16);
+  --accent: #ffb7c5;
+  --accent-ink: #0b0b0c;
+
+  color: var(--text);
+}
+
+/* The film never scrolls under the bar: the scene owns the window and the story
+   scrolls inside it, so the bar can lose its background entirely and float on
+   the shot. */
+body:has([data-story="film"]) .app-header {
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+
+/* The still page does scroll under it, so it keeps a ground to sit on. */
+body:has([data-story="still"]) .app-header {
+  background: rgb(11 11 12 / 0.88);
+  border-color: rgb(255 255 255 / 0.12);
 }
 
 /* The entrance on the first screen: the kicker, the title and the line rise in

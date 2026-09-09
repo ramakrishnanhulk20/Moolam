@@ -5,7 +5,9 @@ import type { StoryBeat } from "@/components/story/LandingStory";
 import { CloseCard } from "@/components/story/CloseCard";
 import { TryPanel } from "@/components/story/TryPanel";
 import type { StoryData } from "@/components/story/data";
-import { degradeSteps } from "@/components/hero/still";
+import { ACCENT_RGB } from "@/components/story/palette";
+import { degradeSteps } from "@/components/story/measurements";
+import { BEAT } from "@/components/story/beats";
 
 /**
  * The same eight beats with the camera taken out.
@@ -29,14 +31,14 @@ export function StillStory({
   const picture = data.focal?.picture ?? null;
 
   return (
-    <div className="grain relative w-full bg-bg">
+    <div className="grain relative w-full bg-bg" data-story="still">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(58% 50% at 74% 20%, rgba(255,176,32,0.14), transparent 62%)," +
-            "radial-gradient(48% 55% at 12% 72%, rgba(255,176,32,0.05), transparent 66%)",
+            `radial-gradient(58% 50% at 74% 20%, rgba(${ACCENT_RGB}, 0.14), transparent 62%),` +
+            `radial-gradient(48% 55% at 12% 72%, rgba(${ACCENT_RGB}, 0.05), transparent 66%)`,
         }}
       />
 
@@ -61,7 +63,7 @@ export function StillStory({
         </section>
 
         {beats.map((entry) => (
-          <section key={entry.key} className={entry.align === "end" ? "text-end" : ""}>
+          <section key={entry.key} className={BEAT[entry.key].align === "end" ? "text-end" : ""}>
             {entry.body}
             {entry.key === "sealed" && picture !== null && <Still src={picture} />}
             {entry.key === "shared" && <Frames />}

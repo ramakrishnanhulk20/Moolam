@@ -11,68 +11,50 @@ import { CloseCard } from "@/components/story/CloseCard";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
 import { TryPanel } from "@/components/story/TryPanel";
-import { beat, probe, scroller } from "@/components/story/signals";
+import { probe, progress, scroller } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
-import { degradeSteps, measurement } from "@/components/hero/still";
+import { degradeSteps, measurement } from "@/components/story/measurements";
+import { BEAT, CAMERA_KEYS, PAGES, captionCue, played, span, type Beat, type BeatName } from "@/components/story/beats";
 import { shortHex } from "@/lib/chain/client";
 
-const PAGES = 9;
-
-/** Where each caption is pinned, in pages of scroll. */
-const CAPTION_PAGE = { made: 1, sealed: 2, shared: 3, verified: 4.5, trusted: 6 } as const;
-
-type Key = { at: number; pos: [number, number, number]; look: [number, number, number] };
-
 /**
- * The camera path. Nine named positions, blended with a smoothstep, then the
- * camera eases toward the blended point every frame, so a fast scroll pulls the
- * camera rather than teleporting it.
+ * The camera, read off the beats table.
+ *
+ * Two poses per beat, blended with a smoothstep, then the camera eases toward
+ * the blended point every frame so a fast scroll pulls the camera rather than
+ * teleporting it. `framing` and `reach` are the phone's two corrections, applied
+ * here so the table itself only ever describes the wide shot.
  */
-const KEYS: Key[] = [
-  { at: 0.0, pos: [0.9, 0.35, 7.4], look: [0, 0, 0] },
-  { at: 0.09, pos: [0.55, 0.2, 5.4], look: [0, 0, 0] },
-  { at: 0.17, pos: [0.35, 0.05, 3.75], look: [0, 0, 0] },
-  { at: 0.26, pos: [-0.75, 0.42, 3.5], look: [0.06, -0.05, 0] },
-  { at: 0.34, pos: [0.3, 0.12, 4.1], look: [0, 0, 0] },
-  { at: 0.42, pos: [1.4, 0.8, 6.4], look: [0.2, 0, 0] },
-  { at: 0.5, pos: [2.6, 1.2, 8.2], look: [0.5, 0.1, -0.5] },
-  { at: 0.58, pos: [2.1, 1.7, 6.0], look: [1.7, 1.4, 1.2] },
-  { at: 0.66, pos: [0.7, 0.55, 4.3], look: [0.1, 0.05, 0.2] },
-  { at: 0.72, pos: [0.2, 0.1, 3.7], look: [0, 0, 0] },
-  { at: 0.79, pos: [-1.9, 0.4, 4.6], look: [-0.45, 0.05, 0] },
-  { at: 0.86, pos: [-0.75, 0.05, 3.9], look: [-0.2, 0, 0] },
-  { at: 0.93, pos: [0.3, 0.25, 5.4], look: [0, 0, 0] },
-  { at: 1.0, pos: [0.6, 0.9, 8.6], look: [0, -0.3, -2] },
-];
-
-function sampleKeys(t: number, outPos: THREE.Vector3, outLook: THREE.Vector3) {
+function sampleKeys(
+  t: number,
+  framing: number,
+  reach: number,
+  outPos: THREE.Vector3,
+  outLook: THREE.Vector3,
+) {
   const clamped = Math.min(1, Math.max(0, t));
-  let a = KEYS[0];
-  let b = KEYS[KEYS.length - 1];
-  for (let index = 0; index < KEYS.length - 1; index += 1) {
-    if (clamped >= KEYS[index].at && clamped <= KEYS[index + 1].at) {
-      a = KEYS[index];
-      b = KEYS[index + 1];
+  let a = CAMERA_KEYS[0];
+  let b = CAMERA_KEYS[CAMERA_KEYS.length - 1];
+  for (let index = 0; index < CAMERA_KEYS.length - 1; index += 1) {
+    if (clamped >= CAMERA_KEYS[index].at && clamped <= CAMERA_KEYS[index + 1].at) {
+      a = CAMERA_KEYS[index];
+      b = CAMERA_KEYS[index + 1];
       break;
     }
   }
-  const span = b.at - a.at || 1;
-  const raw = (clamped - a.at) / span;
+  const gap = b.at - a.at || 1;
+  const raw = (clamped - a.at) / gap;
   const k = raw * raw * (3 - 2 * raw);
   outPos.set(
-    a.pos[0] + (b.pos[0] - a.pos[0]) * k,
-    a.pos[1] + (b.pos[1] - a.pos[1]) * k,
-    a.pos[2] + (b.pos[2] - a.pos[2]) * k,
+    a.pose.pos[0] + (b.pose.pos[0] - a.pose.pos[0]) * k,
+    a.pose.pos[1] + (b.pose.pos[1] - a.pose.pos[1]) * k,
+    (a.pose.pos[2] + (b.pose.pos[2] - a.pose.pos[2]) * k) * reach,
   );
   outLook.set(
-    a.look[0] + (b.look[0] - a.look[0]) * k,
-    a.look[1] + (b.look[1] - a.look[1]) * k,
-    a.look[2] + (b.look[2] - a.look[2]) * k,
+    (a.pose.look[0] + (b.pose.look[0] - a.pose.look[0]) * k) * framing,
+    a.pose.look[1] + (b.pose.look[1] - a.pose.look[1]) * k,
+    a.pose.look[2] + (b.pose.look[2] - a.pose.look[2]) * k,
   );
-}
-
-function ramp(t: number, start: number, span: number): number {
-  return THREE.MathUtils.clamp((t - start) / span, 0, 1);
 }
 
 function World({
@@ -81,6 +63,8 @@ function World({
   plateCount,
   particles,
   spread,
+  framing,
+  reach,
   credential,
   dropped,
 }: {
@@ -89,6 +73,14 @@ function World({
   plateCount: number;
   spread: number;
   particles: number;
+  /**
+   * How far the shot pushes the plate off to one side, so the words have the
+   * other. A phone stacks the words at the bottom of the frame instead, so it
+   * takes almost none of it or the plate leaves the screen.
+   */
+  framing: number;
+  /** How much further back a phone stands, so a plate this close still fits the narrow frame. */
+  reach: number;
   credential: string;
   dropped: string | null;
 }) {
@@ -122,33 +114,34 @@ function World({
     const t = scroll.offset;
     const k = Math.min(1, delta * 3.2);
 
-    sampleKeys(t, pos, look);
+    sampleKeys(t, framing, reach, pos, look);
     camera.position.lerp(pos, k);
     smoothLook.current.lerp(look, k);
     camera.lookAt(smoothLook.current);
 
-    approach.current = ramp(t, 0.02, 0.1);
-    made.current = ramp(t, 0.12, 0.1);
-    sealed.current = ramp(t, 0.235, 0.085);
-    shared.current = ramp(t, 0.345, 0.13);
-    verified.current = ramp(t, 0.52, 0.14);
+    approach.current = span(t, BEAT.opening.captionEnd, BEAT.made.start);
+    made.current = played(t, BEAT.made);
+    sealed.current = played(t, BEAT.sealed);
+    shared.current = played(t, BEAT.shared, 0.85);
+    verified.current = played(t, BEAT.verified, 0.85);
 
-    // The field dims while the camera is close to one plate, and comes back up
-    // for the last screen, where the story is about how many there are.
-    fade.current = 1 - 0.68 * ramp(t, 0.1, 0.08) * (1 - ramp(t, 0.8, 0.1));
+    // The field dims while the camera is in among one plate, and comes back up
+    // for the last beat, which is about how many of them there are.
+    fade.current =
+      1 - 0.68 * span(t, BEAT.opening.captionEnd, BEAT.made.start) * (1 - span(t, BEAT.close.start, BEAT.close.start + 0.04));
 
-    const offer = ramp(t, 0.775, 0.06);
-    probing.current = offer * (1 - ramp(t, 0.885, 0.06)) * (probe.state === "idle" ? 0.35 : 1);
+    const offer = captionCue(t, BEAT.offer).shown;
+    probing.current = offer * (probe.state === "idle" ? 0.35 : 1);
     answer.current = probe.state === "matched" ? 1 : probe.state === "refused" ? 2 : verified.current > 0.98 ? 1 : 0;
 
-    beat.scroll = t;
-    beat.made = made.current;
-    beat.sealed = sealed.current;
-    beat.shared = shared.current;
-    beat.verified = verified.current;
-    beat.trusted = ramp(t, 0.665, 0.08);
-    beat.offer = offer;
-    beat.close = ramp(t, 0.885, 0.06);
+    progress.scroll = t;
+    progress.made = made.current;
+    progress.sealed = sealed.current;
+    progress.shared = shared.current;
+    progress.verified = verified.current;
+    progress.trusted = played(t, BEAT.trusted);
+    progress.offer = offer;
+    progress.close = captionCue(t, BEAT.close).shown;
   });
 
   return (
@@ -202,9 +195,8 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
 }
 
 export interface StoryBeat {
-  key: string;
-  page: number;
-  align: "start" | "end";
+  /** The beat in the table these words belong to. The table owns the timing and the side. */
+  key: BeatName;
   body: ReactNode;
 }
 
@@ -225,8 +217,6 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
   return [
     {
       key: "made",
-      page: CAPTION_PAGE.made,
-      align: "start",
       body: (
         <>
           <Eyebrow>{t("made.kicker")}</Eyebrow>
@@ -238,8 +228,6 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
     },
     {
       key: "sealed",
-      page: CAPTION_PAGE.sealed,
-      align: "start",
       body: (
         <>
           <Eyebrow>{t("sealed.kicker")}</Eyebrow>
@@ -255,8 +243,6 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
     },
     {
       key: "shared",
-      page: CAPTION_PAGE.shared,
-      align: "end",
       body: (
         <>
           <Eyebrow className="sm:justify-end">{t("shared.kicker")}</Eyebrow>
@@ -267,8 +253,6 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
     },
     {
       key: "verified",
-      page: CAPTION_PAGE.verified,
-      align: "start",
       body: (
         <>
           <Eyebrow>{t("verified.kicker")}</Eyebrow>
@@ -296,8 +280,6 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
     },
     {
       key: "trusted",
-      page: CAPTION_PAGE.trusted,
-      align: "end",
       body: (
         <>
           <Eyebrow className="sm:justify-end">{t("trusted.kicker")}</Eyebrow>
@@ -354,7 +336,7 @@ export function LandingStory({ data }: { data: StoryData }) {
     <SceneBoundary fallback={<StillStory data={data} beats={beats} noWebgl />}>
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
           to the scene, so the wheel is handed straight to it. */}
-      <div className="grain relative h-[100svh] w-full overflow-hidden bg-bg" data-lenis-prevent>
+      <div className="grain relative h-[100svh] w-full overflow-hidden bg-bg" data-story="film" data-lenis-prevent>
         <Canvas
           // A phone is a tall, narrow window on the same field, so it needs a
           // wider lens to see more than one plate at a time.
@@ -369,6 +351,8 @@ export function LandingStory({ data }: { data: StoryData }) {
               plateCount={small ? 20 : 40}
               particles={small ? 110 : 220}
               spread={small ? 0.55 : 1}
+              framing={small ? 0.3 : 1}
+              reach={small ? 1.4 : 1}
               credential={credential}
               dropped={dropped}
             />
@@ -402,16 +386,19 @@ export function LandingStory({ data }: { data: StoryData }) {
           }}
         />
 
-        {/* The captions ride the same scroll as the camera but live outside the
-            canvas, so the scrim above the scene still sits behind the words. */}
-        <CaptionLayer>
-          <Opening title={t("title")} kicker={t("kicker")} line={t("line")} />
+        {/* The captions live outside the canvas, so the film scrim over the scene
+            still sits behind the words. Each one is on screen for exactly the beat
+            it belongs to, and the travel between two beats carries no words at all. */}
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+          <Caption cue={BEAT.opening}>
+            <Opening kicker={t("kicker")} title={t("title")} line={t("line")} />
+          </Caption>
           {beats.map((entry) => (
-            <Caption key={entry.key} page={entry.page} align={entry.align}>
+            <Caption key={entry.key} cue={BEAT[entry.key]}>
               {entry.body}
             </Caption>
           ))}
-        </CaptionLayer>
+        </div>
 
         <TryPanel onPreview={setDropped} />
         <CloseCard data={data} />
@@ -421,24 +408,28 @@ export function LandingStory({ data }: { data: StoryData }) {
   );
 }
 
-function CaptionLayer({ children }: { children: ReactNode }) {
-  const inner = useRef<HTMLDivElement>(null);
+/**
+ * One caption, on screen for exactly as long as its beat runs.
+ *
+ * The opacity and the small rise are written straight to the node from an
+ * animation frame. The story is already spending its frame budget on the camera,
+ * and none of this needs React to render again.
+ */
+function Caption({ cue, children }: { cue: Beat; children: ReactNode }) {
+  const node = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let frame = 0;
-    let shown = -1;
+    let last = -1;
 
     const loop = () => {
-      const node = inner.current;
-      const stage = node?.parentElement;
-      if (node != null && stage != null) {
-        const y = -beat.scroll * (PAGES - 1) * stage.clientHeight;
-        if (y !== shown) {
-          shown = y;
-          node.style.transform = `translate3d(0, ${y}px, 0)`;
-          // The captions step aside for the panel a visitor can use, so the two
-          // never share a screen on a phone.
-          node.style.opacity = String(1 - Math.max(beat.offer, beat.close));
+      const el = node.current;
+      if (el !== null) {
+        const { shown, y } = captionCue(progress.scroll, cue);
+        if (shown !== last) {
+          last = shown;
+          el.style.opacity = String(shown);
+          el.style.transform = `translate3d(0, ${y.toFixed(2)}px, 0)`;
         }
       }
       frame = requestAnimationFrame(loop);
@@ -446,53 +437,40 @@ function CaptionLayer({ children }: { children: ReactNode }) {
 
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [cue]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-      <div ref={inner} className="absolute inset-x-0 top-0" style={{ willChange: "transform" }}>
-        {children}
-      </div>
+    <div
+      ref={node}
+      data-beat={cue.name}
+      className="pointer-events-none absolute inset-0 flex items-end px-5 pb-24 pt-[73px] sm:items-center sm:px-8 lg:px-14"
+      style={{ opacity: cue.captionStart <= 0 ? 1 : 0, willChange: "transform, opacity" }}
+    >
+      <div className={`mx-auto w-full max-w-[100rem] ${cue.align === "end" ? "sm:text-end" : ""}`}>{children}</div>
     </div>
   );
 }
 
 function Opening({ kicker, title, line }: { kicker: string; title: string; line: string }) {
   return (
-    <div
-      className="pointer-events-none absolute inset-x-0 flex items-end px-5 pb-24 pt-[73px] sm:items-center sm:px-8 sm:pb-0 lg:px-14"
-      style={{ top: 0, height: "100svh" }}
-    >
-      <div className="mx-auto w-full max-w-[100rem]">
-        <p className="story-enter flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
-          <span className="motif h-[9px] w-[9px]" />
-          {kicker}
-        </p>
-        <h1
-          className="story-enter mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]"
-          style={{ animationDelay: "90ms" }}
-        >
-          {title}
-        </h1>
-        <p
-          className="story-enter mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted"
-          style={{ animationDelay: "180ms" }}
-        >
-          {line}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function Caption({ children, page, align }: { children: ReactNode; page: number; align: "start" | "end" }) {
-  return (
-    <div
-      className="pointer-events-none absolute inset-x-0 flex items-end px-5 pb-24 pt-[73px] sm:items-center sm:px-8 sm:pb-0 lg:px-14"
-      style={{ top: `${page * 100}svh`, height: "100svh" }}
-    >
-      <div className={`mx-auto w-full max-w-[100rem] ${align === "end" ? "sm:text-end" : ""}`}>{children}</div>
-    </div>
+    <>
+      <p className="story-enter flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+        <span className="motif h-[9px] w-[9px]" />
+        {kicker}
+      </p>
+      <h1
+        className="story-enter mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]"
+        style={{ animationDelay: "90ms" }}
+      >
+        {title}
+      </h1>
+      <p
+        className="story-enter mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted"
+        style={{ animationDelay: "180ms" }}
+      >
+        {line}
+      </p>
+    </>
   );
 }
 
@@ -547,8 +525,8 @@ function Ladder({ label }: { label: string }) {
     let shownIndex = -1;
 
     const loop = () => {
-      const at = Math.min(steps.length - 1, Math.floor(beat.verified * steps.length));
-      if (at !== shownIndex && beat.verified > 0) {
+      const at = Math.min(steps.length - 1, Math.floor(progress.verified * steps.length));
+      if (at !== shownIndex && progress.verified > 0) {
         shownIndex = at;
         if (name.current !== null) {
           name.current.textContent = steps[at].transform;

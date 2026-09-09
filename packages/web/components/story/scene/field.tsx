@@ -13,10 +13,11 @@ import {
   sequence,
   type Degrade,
 } from "./textures";
+import { ACCENT, REFUSED, VERIFIED } from "@/components/story/palette";
 
-export const AMBER = new THREE.Color("#FFB020");
-export const TEAL = new THREE.Color("#3FBFA8");
-export const REFUSED = new THREE.Color("#C2586F");
+export const ACCENT_COLOR = new THREE.Color(ACCENT);
+export const MATCHED_COLOR = new THREE.Color(VERIFIED);
+export const REFUSED_COLOR = new THREE.Color(REFUSED);
 
 /** One drifting plate in the field. */
 export interface FieldPlate {
@@ -171,7 +172,7 @@ function Plate({ plate, fade }: { plate: FieldPlate; fade: RefObject<number> }) 
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
           ref={edge}
-          color={AMBER}
+          color={ACCENT_COLOR}
           transparent
           opacity={0}
           depthWrite={false}
@@ -262,7 +263,7 @@ function Gather({
   return (
     <instancedMesh key={count} ref={mesh} args={[undefined, undefined, count]} frustumCulled={false}>
       <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial color={AMBER} transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} />
+      <meshBasicMaterial color={ACCENT_COLOR} transparent opacity={0.9} depthWrite={false} blending={THREE.AdditiveBlending} />
     </instancedMesh>
   );
 }
@@ -273,7 +274,7 @@ export interface FocalRefs {
   made: RefObject<number>;
   sealed: RefObject<number>;
   verified: RefObject<number>;
-  /** 0 amber, 1 teal for a match, 2 red for a refusal. */
+  /** 0 the accent, 1 teal for a match, 2 red for a refusal. */
   answer: RefObject<number>;
   probe: RefObject<number>;
 }
@@ -361,7 +362,7 @@ export function FocalPlate({
     }
 
     if (edge.current !== null) {
-      const target = answer >= 2 ? REFUSED : answer >= 1 ? TEAL : AMBER;
+      const target = answer >= 2 ? REFUSED_COLOR : answer >= 1 ? MATCHED_COLOR : ACCENT_COLOR;
       edgeColor.lerp(target, 0.08);
       edge.current.color.copy(edgeColor);
       const pulse = 0.2 + Math.sin(time * 1.6) * 0.04;
@@ -393,7 +394,7 @@ export function FocalPlate({
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
           ref={edge}
-          color={AMBER}
+          color={ACCENT_COLOR}
           transparent
           opacity={0}
           depthWrite={false}
@@ -547,7 +548,7 @@ function Copy({
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial
           ref={edge}
-          color={AMBER}
+          color={ACCENT_COLOR}
           transparent
           opacity={0}
           depthWrite={false}

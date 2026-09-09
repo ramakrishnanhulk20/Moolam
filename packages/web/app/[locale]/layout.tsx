@@ -62,7 +62,7 @@ export default async function LocaleLayout({
             <PrivyProvider>
               <LenisProvider>
                 <div className="flex min-h-dvh flex-col">
-                  <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
+                  <header className="app-header sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
                     <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:px-8">
                       <Link
                         href="/"
