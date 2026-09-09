@@ -1,0 +1,117 @@
+import { getTranslations } from "next-intl/server";
+import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
+import type { AgentCard } from "./card";
+
+/**
+ * How a passport gets this agent's name on it, and only what the code proves.
+ *
+ * The registry recovers the generator signature and compares the recovered
+ * address with ownerOf on the ERC-8004 identity registry, so an agent id is
+ * worth exactly as much as the wallet that owns it. The Privy line only appears
+ * when the agent's own card records a wallet or a policy: this app does not
+ * claim where a key lives.
+ */
+export async function Signing({ agentId, card, uri }: { agentId: bigint; card: AgentCard | null; uri: string }) {
+  const t = await getTranslations("agent.signs");
+  const a = await getTranslations("agent");
+  const steps = ["sign", "recover", "own"] as const;
+  const inline = uri.startsWith("data:");
+
+  return (
+    <section className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
+      <div className="grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
+        <div className="rise">
+          <h2 className="max-w-[14ch] font-display text-[clamp(1.8rem,4vw,3rem)] font-semibold uppercase leading-[0.95] tracking-[-0.03em]">
+            {t("heading")}
+          </h2>
+          <p className="mt-6 max-w-[42ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+        </div>
+
+        <div className="rise" style={{ animationDelay: "90ms" }}>
+          <ol className="border-t border-line">
+            {steps.map((step, index) => (
+              <li key={step} className="flex items-start gap-6 border-b border-line py-6">
+                <span className="mt-1 font-mono text-[11px] tabular-nums text-accent">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="min-w-0">
+                  <p className="font-display text-lg leading-snug tracking-[-0.01em]">{t(`${step}.title`)}</p>
+                  <p className="mt-2 max-w-[56ch] text-sm leading-relaxed text-text-muted">
+                    {t(`${step}.body`, { id: agentId.toString() })}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
+            <a
+              href={`${MONAD_EXPLORER}/address/${addresses.registry}`}
+              target="_blank"
+              rel="noreferrer"
+              className="transition-colors duration-200 hover:text-accent"
+            >
+              {t("registry", { address: shortHex(addresses.registry) })}
+            </a>
+            <a
+              href={`${MONAD_EXPLORER}/address/${addresses.agentIdentity}`}
+              target="_blank"
+              rel="noreferrer"
+              className="transition-colors duration-200 hover:text-accent"
+            >
+              {t("identity", { address: shortHex(addresses.agentIdentity) })}
+            </a>
+          </div>
+
+          <div className="mt-6">
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{a("uri")}</p>
+            <p className="mt-1.5 break-all font-mono text-xs leading-relaxed text-text-muted">
+              {inline ? (
+                // A card carried inline in the token URI: there is nothing to open, so it is shown as it is stored.
+                uri
+              ) : (
+                <a
+                  href={gatewayUrl(uri)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="transition-colors duration-200 hover:text-accent"
+                >
+                  {uri}
+                </a>
+              )}
+            </p>
+          </div>
+
+          {card?.privy == null ? null : (
+            <div className="mt-10 border border-line bg-bg-raised p-6">
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("privy")}</p>
+              <p className="mt-4 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("privyBody")}</p>
+              <dl className="mt-5 space-y-4">
+                {card.privy.walletId === undefined ? null : (
+                  <div>
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                      {t("privyWallet")}
+                    </dt>
+                    <dd className="mt-1.5 break-all font-mono text-sm">{card.privy.walletId}</dd>
+                  </div>
+                )}
+                {card.privy.policyIds.length === 0 ? null : (
+                  <div>
+                    <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                      {t("privyPolicy")}
+                    </dt>
+                    <dd className="mt-1.5 space-y-1 break-all font-mono text-sm">
+                      {card.privy.policyIds.map((policy) => (
+                        <p key={policy}>{policy}</p>
+                      ))}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}

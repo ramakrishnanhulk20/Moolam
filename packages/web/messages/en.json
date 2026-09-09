@@ -154,7 +154,7 @@
     "lede": "Upload any copy. Moolam fingerprints it three ways and searches every registered passport, so a resized or re-encoded file still finds its record.",
     "choose": "Choose an image",
     "chosen": "Selected: {name}",
-    "hint": "JPEG or PNG, up to 20 MB. The file goes to the Moolam verifier and is not stored.",
+    "hint": "JPEG, PNG or WebP, up to 20 MB. The file goes to the Moolam verifier and is not stored.",
     "submit": "Verify",
     "pending": "Fingerprinting the image and searching the registry.",
     "matched": "Match found",
@@ -179,7 +179,7 @@
     "checkingHeading": "Reading the picture, not the file name.",
     "checkingDetail": "Three fingerprints, all eight orientations, then a search of every registered passport. A few seconds.",
     "idleHeading": "No answer yet",
-    "idleBody": "Drop a file on the left. The answer lands on this card.",
+    "idleBody": "Drop a file in. The answer lands on this card.",
     "steps": {
       "fingerprint": "Fingerprint the file three ways: the exact bytes, a perceptual hash, a block hash.",
       "rotate": "Try all eight ways the picture could be turned or mirrored.",
@@ -255,7 +255,7 @@
     "children": {
       "heading": "Edits",
       "empty": "No edit has been registered from this passport.",
-      "edits": "Edits from this one"
+      "edits": "Registered from this one"
     },
     "untitled": "Untitled",
     "noPicture": "Image unavailable from IPFS right now",

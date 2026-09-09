@@ -1,9 +1,35 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
-import { MONAD_EXPLORER, REPUTATION_REGISTRY, addresses, gatewayUrl, reason } from "@/lib/chain/client";
+import { AgentPoster } from "@/components/agent/AgentPoster";
+import { readCard } from "@/components/agent/card";
+import { Signing } from "@/components/agent/Signing";
+import { Standing } from "@/components/agent/Standing";
+import { Works } from "@/components/agent/Works";
+import { signedWorks, type SignedWork } from "@/components/agent/signed";
 import { AgentNotFound } from "@/lib/chain/agents";
+import { reason } from "@/lib/chain/client";
 import { getAgent, getReputation, getReputationClients } from "@/lib/chain/registry";
+import { generatorRecord, type GeneratorRecord } from "@/lib/data/passports";
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; id: string }>;
+}): Promise<Metadata> {
+  const { locale, id } = await params;
+  const t = await getTranslations({ locale, namespace: "agent" });
+  return { title: `${t("title")} ${id}` };
+}
+
+/**
+ * One ERC-8004 agent: who owns it, what its card says, how it has held up, how
+ * a passport gets its name on it, and every picture it has signed.
+ *
+ * The identity and the reputation are read from the two canonical registries on
+ * Monad. The counts and the list come from the index, which is the only place
+ * they exist. Nothing on this page is written here.
+ */
 export default async function AgentPage({
   params,
 }: {
@@ -12,7 +38,6 @@ export default async function AgentPage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("agent");
-  const common = await getTranslations("common");
 
   if (!/^[0-9]+$/.test(id)) {
     return <Notice text={t("notFound")} />;
@@ -38,99 +63,39 @@ export default async function AgentPage({
     reputationError = reason(error);
   }
 
-  const card = agent.card as { name?: string; description?: string } | null;
-  const score = reputation === null ? 0 : Number(reputation.value) / 10 ** reputation.decimals;
+  let record: GeneratorRecord | null = null;
+  let recordError: string | null = null;
+  try {
+    record = await generatorRecord(agentId);
+  } catch (error) {
+    recordError = reason(error);
+  }
+
+  let works: SignedWork[] = [];
+  let worksError: string | null = null;
+  try {
+    works = await signedWorks(agentId);
+  } catch (error) {
+    worksError = reason(error);
+  }
+
+  const card = readCard(agent.card);
 
   return (
-    <article className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
-      <header className="rise max-w-[62ch]">
-        <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint">
-          {t("title")} {agentId.toString()}
-        </p>
-        <h1 className="mt-4 font-display text-[clamp(2.5rem,7vw,5.5rem)] uppercase leading-[0.9] tracking-[-0.01em]">
-          {card?.name ?? t("card")}
-        </h1>
-        {card?.description === undefined ? null : (
-          <p className="mt-5 text-base leading-relaxed text-text-muted">{card.description}</p>
-        )}
-        {agent.card === null ? <p className="mt-5 text-sm text-text-muted">{t("cardMissing")}</p> : null}
-      </header>
+    <article>
+      <AgentPoster agentId={agentId} owner={agent.owner} card={card} works={works} />
 
-      <div className="mt-14 grid gap-14 border-t border-line pt-8 lg:grid-cols-[1fr_1fr]">
-        <section className="rise" style={{ animationDelay: "80ms" }}>
-          <dl className="grid gap-6 sm:grid-cols-2">
-            <div>
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-faint">{t("owner")}</dt>
-              <dd className="mt-1.5 break-all font-mono text-sm">
-                <a
-                  href={`${MONAD_EXPLORER}/address/${agent.owner}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="transition-colors duration-200 hover:text-accent"
-                >
-                  {agent.owner}
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-faint">{t("uri")}</dt>
-              <dd className="mt-1.5 break-all font-mono text-sm text-text-muted">
-                {agent.uri.startsWith("data:") ? (
-                  agent.uri.slice(0, 48)
-                ) : (
-                  <a
-                    href={gatewayUrl(agent.uri)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="transition-colors duration-200 hover:text-accent"
-                  >
-                    {agent.uri}
-                  </a>
-                )}
-              </dd>
-            </div>
-          </dl>
+      <Standing
+        reputation={reputation}
+        reputationError={reputationError}
+        record={record}
+        recordError={recordError}
+        locale={locale}
+      />
 
-          <p className="mt-8 break-all font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint">
-            <a
-              href={`${MONAD_EXPLORER}/address/${addresses.agentIdentity}`}
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors duration-200 hover:text-accent"
-            >
-              {common("explorer")}
-            </a>
-          </p>
-        </section>
+      <Signing agentId={agentId} card={card} uri={agent.uri} />
 
-        <section className="rise" style={{ animationDelay: "160ms" }}>
-          <h2 className="font-display text-2xl uppercase tracking-[0.04em]">{t("reputation.heading")}</h2>
-          {reputationError !== null ? (
-            <p className="mt-4 max-w-[46ch] text-sm text-failed">
-              {t("reputation.error", { reason: reputationError })}
-            </p>
-          ) : reputation === null || reputation.count === 0n ? (
-            <p className="mt-4 max-w-[46ch] text-sm text-text-muted">{t("reputation.empty")}</p>
-          ) : (
-            <div className="mt-6 flex flex-wrap items-end gap-x-10 gap-y-4">
-              <p className="font-display text-[clamp(3rem,9vw,6rem)] leading-[0.85] text-accent">
-                {score.toFixed(score % 1 === 0 ? 0 : 1)}
-              </p>
-              <div className="pb-2">
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-faint">
-                  {t("reputation.score")}
-                </p>
-                <p className="mt-1 text-sm text-text-muted">
-                  {t("reputation.summary", { count: Number(reputation.count) })}
-                </p>
-              </div>
-            </div>
-          )}
-          <p className="mt-8 break-all font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint">
-            {REPUTATION_REGISTRY}
-          </p>
-        </section>
-      </div>
+      <Works works={works} error={worksError} locale={locale} />
     </article>
   );
 }
@@ -138,7 +103,11 @@ export default async function AgentPage({
 function Notice({ text, tone }: { text: string; tone?: "failed" }) {
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-24 sm:px-8">
-      <p className={tone === "failed" ? "rise max-w-[52ch] text-base text-failed" : "rise max-w-[52ch] text-base text-text-muted"}>
+      <p
+        className={
+          tone === "failed" ? "rise max-w-[52ch] text-base text-failed" : "rise max-w-[52ch] text-base text-text-muted"
+        }
+      >
         {text}
       </p>
     </div>
