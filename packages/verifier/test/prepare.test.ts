@@ -1,17 +1,20 @@
 // Covers POST /prepare with Pinata answered by a stub at the fetch layer: a real JPEG comes back
 // as the passport fields the browser signs, the sha256 in the answer is the sha256 of the bytes
-// that were actually pinned, and a missing token, a bad title and a text file are each refused.
+// that were actually pinned, every accepted upload format leaves with a readable manifest, and a
+// missing token, a bad title and a text file are each refused.
 // Does NOT cover a real pin to Pinata (the live check in the work order does that), the remote
 // JWKS fetch, or the per-user rate limit reaching 20 in an hour.
 
 import { SignJWT, generateKeyPair } from "jose";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { readManifest } from "../src/c2pa.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
+import { fileSlug } from "../src/metadata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
-import { makeImage } from "./helpers.js";
+import { makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
 
 // env.ts validates once at import, so the token and the app id have to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The token is a fake: every call
@@ -143,6 +146,50 @@ describe("POST /prepare", () => {
     expect(answer.preparedBy).toBe("did:privy:studio-user");
     expect(JSON.stringify(answer)).not.toContain("test-token-not-a-real-pinata-jwt");
   }, 60_000);
+
+  it("embeds a readable manifest whatever format the creator uploads", async () => {
+    const uploads = [
+      { format: "jpeg", type: "image/jpeg", bytes: await makeImage(21) },
+      { format: "png", type: "image/png", bytes: await makeImage(22, "png") },
+      { format: "webp", type: "image/webp", bytes: await makeImage(23, "webp") },
+      { format: "progressive-jpeg", type: "image/jpeg", bytes: await makeProgressiveImage(24) },
+      { format: "rotated-jpeg", type: "image/jpeg", bytes: (await makeRotatedImage(25)).tagged },
+    ];
+
+    for (const upload of uploads) {
+      const title = `Format ${upload.format}`;
+      const { payload, headers } = body({
+        file: { name: `upload-${upload.format}`, type: upload.type, bytes: upload.bytes },
+        fields: { title, kind: "human" },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: `Bearer ${await token("did:privy:format-user")}` },
+        remoteAddress: "203.0.113.23",
+      });
+
+      expect(response.statusCode, upload.format).toBe(200);
+      const answer = response.json();
+      expect(answer.manifest, upload.format).toEqual({ embedded: true });
+      expect(answer.passport.manifestHash, upload.format).toMatch(/^0x[0-9a-f]{64}$/);
+      expect(answer.passport.manifestHash, upload.format).not.toBe(`0x${"00".repeat(32)}`);
+
+      const pinnedImage = pinned.get(`${fileSlug(title, answer.passport.exactHash)}.jpg`);
+      expect(pinnedImage, upload.format).toBeDefined();
+      const print = await fingerprint(pinnedImage as Buffer);
+      expect(print.format, upload.format).toBe("jpeg");
+      expect(answer.passport.exactHash, upload.format).toBe(print.sha256);
+
+      const manifest = await readManifest(pinnedImage as Buffer);
+      expect(manifest.present, upload.format).toBe(true);
+      expect(manifest.manifestHash, upload.format).toBe(answer.passport.manifestHash);
+      expect(manifest.softBinding?.phash, upload.format).toBe(print.phash);
+      expect(manifest.softBinding?.blockhash, upload.format).toBe(print.blockhash);
+    }
+  }, 180_000);
 
   it("refuses a request with no token before it reads the upload", async () => {
     const pinsBefore = pinned.size;

@@ -13,7 +13,7 @@ const HEIGHT = 480;
  * near-identical block hash and quietly turn the distance assertions into
  * nonsense.
  */
-export async function makeImage(seed: number, format: "jpeg" | "png" = "jpeg"): Promise<Buffer> {
+export async function makeImage(seed: number, format: "jpeg" | "png" | "webp" = "jpeg"): Promise<Buffer> {
   const hue = (seed * 47) % 360;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}">
     <rect width="${WIDTH}" height="${HEIGHT}" fill="hsl(${hue},55%,22%)"/>
@@ -24,7 +24,22 @@ export async function makeImage(seed: number, format: "jpeg" | "png" = "jpeg"): 
   </svg>`;
 
   const pipeline = sharp(Buffer.from(svg));
-  return format === "png" ? pipeline.png().toBuffer() : pipeline.jpeg({ quality: 92 }).toBuffer();
+  if (format === "png") {
+    return await pipeline.png().toBuffer();
+  }
+  if (format === "webp") {
+    return await pipeline.webp({ quality: 90 }).toBuffer();
+  }
+  return await pipeline.jpeg({ quality: 92 }).toBuffer();
+}
+
+/**
+ * The same picture stored in progressive scans instead of one pass. Photoshop and several phone
+ * apps save this way, and the Chainlink sandbox decoder cannot read it, so the prepare pipeline
+ * has to re-encode rather than pass it through.
+ */
+export async function makeProgressiveImage(seed: number): Promise<Buffer> {
+  return await sharp(await makeImage(seed)).jpeg({ quality: 92, progressive: true }).toBuffer();
 }
 
 /** Builds a passport record whose id is the sha256 of the bytes, as the registry stores it. */

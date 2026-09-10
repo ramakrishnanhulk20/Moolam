@@ -19,6 +19,15 @@ export const THUMBNAIL_MAX_BYTES = 60_000;
 /** Longest side of the thumbnail in pixels. Small enough to decode fast, large enough to hash. */
 export const THUMBNAIL_LONGEST_SIDE = 512;
 
+/**
+ * Quality for the baseline JPEG every upload is normalised to before signing. High enough that one
+ * re-encode of a creator's PNG is invisible next to the JPEG the studio would have pinned anyway.
+ */
+const NORMALISED_QUALITY = 95;
+
+/** What a transparent pixel becomes once the picture is a JPEG, which has no alpha channel. */
+const FLATTEN_BACKGROUND = "#ffffff";
+
 const QUALITY_START = 85;
 const QUALITY_FLOOR = 30;
 const QUALITY_STEP = 5;
@@ -43,9 +52,10 @@ export interface PrepareOptions {
  * a small baseline thumbnail the Chainlink verifier can fetch and decode, the fingerprint of the
  * signed bytes, and the hash of the manifest store the chain commits to.
  *
- * The rotation an EXIF tag asks for is baked into the pixels before anything is signed, so the
- * registered file, its fingerprint, the thumbnail and the hash Chainlink recomputes all describe
- * one picture the same way up.
+ * Whatever the creator brought, JPEG or PNG or WebP, becomes one upright baseline JPEG before
+ * anything is signed, and the rotation an EXIF tag asks for is baked into the pixels there. The
+ * registered file, its fingerprint, the thumbnail and the hash Chainlink recomputes then all
+ * describe one picture, in one container, the same way up.
  *
  * The soft binding written into the manifest is the fingerprint of the source pixels, and the
  * function refuses to continue if signing moved the perceptual hash, because a manifest that
@@ -59,6 +69,7 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
     throw new Error("prepareImage needs a non-empty image buffer.");
   }
 
+  const format = (await readImageHeader(source)).format;
   const upright = await uprightImage(source);
   const sourcePrint = await fingerprint(upright);
   const signed = await embedManifest(upright, {
@@ -71,15 +82,19 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
 
   const signedPrint = await fingerprint(signed);
   if (signedPrint.phash !== sourcePrint.phash) {
-    throw new Error("Signing changed the perceptual hash, so the soft binding would describe other pixels.");
+    throw new Error(
+      `Signing changed the perceptual hash of this ${format} upload, so the soft binding would describe other pixels.`,
+    );
   }
 
   const manifest = await readManifest(signed);
   if (!manifest.present || manifest.manifestHash === undefined) {
-    throw new Error("The signed image carries no manifest this reader can find.");
+    throw new Error(`The signed JPEG made from this ${format} upload carries no manifest this reader can find.`);
   }
   if (manifest.softBinding === undefined) {
-    throw new Error("The signed manifest lost its soft binding, so a re-encoded copy could never be matched.");
+    throw new Error(
+      `The manifest signed into this ${format} upload lost its soft binding, so a re-encoded copy could never be matched.`,
+    );
   }
 
   return {
@@ -92,25 +107,45 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
 }
 
 /**
- * Turns the picture the right way up and drops the EXIF orientation tag with it.
+ * Turns whatever the creator uploaded into one upright baseline JPEG.
  *
- * A phone photo taken sideways stores its pixels rotated and leaves a tag saying which way up it
- * goes. Readers that ignore the tag, including the Chainlink sandbox decoder, would then hash a
- * different picture from the one the creator saw. Baking the rotation in removes the argument.
+ * Two problems are solved by the same re-encode. First, orientation: a phone photo taken sideways
+ * stores its pixels rotated and leaves a tag saying which way up it goes, and readers that ignore
+ * the tag, including the Chainlink sandbox decoder, would hash a different picture from the one the
+ * creator saw. Baking the rotation in removes the argument.
  *
- * A file with no rotation to apply is returned untouched, because re-encoding it would cost image
- * quality for no gain.
+ * Second, the container. The C2PA library will sign a PNG or a WebP, but the manifest store it
+ * writes into those containers is not one this service can pull back out and hash, so a PNG upload
+ * used to lose its manifest at the last step and get pinned unsigned. Everything downstream expects
+ * a JPEG anyway: the pinned file is named .jpg and served as image/jpeg, and the sandbox decoder
+ * reads baseline JPEG only. Converting here means the pinned bytes, the manifest, the fingerprints
+ * and the thumbnail all describe one file.
+ *
+ * A JPEG that is already upright and already baseline is handed back untouched, because re-encoding
+ * it would cost image quality for no gain.
+ *
+ * Transparency is flattened onto white, since a JPEG has no alpha channel to carry it.
  */
 export async function uprightImage(source: Buffer): Promise<Buffer> {
   const header = await readImageHeader(source);
-  if (header.orientation === 1) {
+  if (header.format === "jpeg" && header.orientation === 1 && !(await isProgressive(source))) {
     return source;
   }
 
-  const pipeline = sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate();
-  return header.format === "png"
-    ? await pipeline.png().toBuffer()
-    : await pipeline.jpeg({ quality: 95, progressive: false }).toBuffer();
+  return await sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS })
+    .rotate()
+    .flatten({ background: FLATTEN_BACKGROUND })
+    .jpeg({ quality: NORMALISED_QUALITY, progressive: false })
+    .toBuffer();
+}
+
+/**
+ * True for a JPEG stored in progressive scans. The Chainlink sandbox decodes with jpeg-js, which
+ * reads baseline files only, so a progressive upload has to be re-encoded rather than passed on.
+ */
+async function isProgressive(source: Buffer): Promise<boolean> {
+  const metadata = await sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
+  return metadata.isProgressive === true;
 }
 
 /**
