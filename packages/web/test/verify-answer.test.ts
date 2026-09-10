@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_UPLOAD_BYTES, percent, readAnswer, tooLarge, verifyProblem } from "@/components/verify/answer";
+import { percent, readAnswer, verifyProblem } from "@/components/verify/answer";
 import { VerifierError, verifyResponseSchema } from "@/lib/verifier/client";
 
 const ID = `0x${"1a".repeat(32)}`;
@@ -88,12 +88,5 @@ describe("what a reader is told when the check does not run", () => {
 
   it("keeps the words of anything thrown that is not a VerifierError", () => {
     expect(verifyProblem(new Error("the browser gave up"))).toEqual({ key: "problem.badResponse", reason: "the browser gave up" });
-  });
-});
-
-describe("the size check that runs before the upload", () => {
-  it("passes a small file and stops one over twenty megabytes", () => {
-    expect(tooLarge({ size: 4_000_000 } as File)).toBe(false);
-    expect(tooLarge({ size: MAX_UPLOAD_BYTES + 1 } as File)).toBe(true);
   });
 });

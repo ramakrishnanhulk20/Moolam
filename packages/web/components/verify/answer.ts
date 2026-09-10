@@ -94,11 +94,6 @@ export function verifyProblem(error: unknown): Problem {
   return { key: "problem.badResponse", reason: error instanceof Error ? error.message : String(error) };
 }
 
-/** Whether this file is over the limit, checked before anything is uploaded. */
-export function tooLarge(file: File): boolean {
-  return file.size > MAX_UPLOAD_BYTES;
-}
-
 /**
  * What is wrong with a file the reader just chose, or null when it is worth
  * uploading. The size and type test is the shared one in lib/upload, so this

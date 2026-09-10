@@ -266,6 +266,8 @@
       "hint": "Eine verkleinerte, neu kodierte, gedrehte oder gespiegelte Kopie passt weiterhin. Ein Ausschnitt noch nicht.",
       "checking": "Diese Kopie wird geprüft",
       "failed": "Die Prüfung lief nicht.",
+      "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Schick eine kleinere Kopie.",
+      "notAnImage": "Das ist keine Bilddatei. Zieh ein JPEG, PNG oder WebP her.",
       "none": "Diese Kopie passt zu gar keinem Pass.",
       "same": "Ja. Das ist dasselbe Bild.",
       "sameExact": "Ja. Byte für Byte ist das die Datei.",

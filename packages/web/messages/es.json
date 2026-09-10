@@ -266,6 +266,8 @@
       "hint": "Una copia reescalada, recodificada, girada o reflejada sigue coincidiendo. Un recorte todavía no.",
       "checking": "Comprobando esta copia",
       "failed": "La comprobación no se ejecutó.",
+      "tooLarge": "Ese archivo pasa del límite de 20 MB. Envía una copia más pequeña.",
+      "notAnImage": "Eso no es un archivo de imagen. Suelta un JPEG, un PNG o un WebP.",
       "none": "Esta copia no coincide con ningún pasaporte.",
       "same": "Sí. Es la misma imagen.",
       "sameExact": "Sí. Byte a byte, es el mismo archivo.",

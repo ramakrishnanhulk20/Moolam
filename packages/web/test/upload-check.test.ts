@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import en from "@/messages/en.json";
@@ -12,13 +14,26 @@ vi.mock("@/lib/i18n/routing", () => ({
 }));
 
 const { localRefusal } = await import("@/components/story/TryPanel");
-const { copyRefusal } = await import("@/components/passport/CheckCopy");
+const { copyRefusal, sentenceFor } = await import("@/components/passport/CheckCopy");
 
 /** A file of a stated size without allocating the bytes, which a 21 MB case would. */
 function sized(name: string, type: string, size: number): File {
   const file = new File([new Uint8Array(1)], name, { type });
   Object.defineProperty(file, "size", { value: size });
   return file;
+}
+
+/**
+ * The message files are read off disk rather than imported one by one, so a
+ * language added later is checked without anyone remembering to list it here.
+ */
+const MESSAGES = fileURLToPath(new URL("../messages/", import.meta.url));
+
+function panelOf(file: string): Record<string, string> {
+  const messages = JSON.parse(readFileSync(`${MESSAGES}${file}`, "utf8")) as {
+    passport: { check: Record<string, string> };
+  };
+  return messages.passport.check;
 }
 
 const tooBig = sized("holiday.jpg", "image/jpeg", 21 * 1024 * 1024);
@@ -68,13 +83,30 @@ describe("what each page says about a file it refuses", () => {
     expect(en.verify.problem.notAnImage.length).toBeGreaterThan(0);
   });
 
-  it("gives the passport page its own sentence and the file's own words", () => {
-    // The panel prints one refusal line, so both codes take it and the reason
-    // under it is what separates a 21 MB photo from a text file.
-    expect(copyRefusal(tooBig)).toEqual({ key: "failed", reason: "holiday.jpg 22.0 MB" });
-    expect(copyRefusal(notAnImage)).toEqual({ key: "failed", reason: "notes.txt text/plain" });
+  it("gives the passport panel a sentence per code, not the file's type", () => {
+    expect(copyRefusal(tooBig)).toEqual({ key: "tooLarge" });
+    expect(copyRefusal(notAnImage)).toEqual({ key: "notAnImage" });
     expect(copyRefusal(new File(["x"], "picture.webp", { type: "image/webp" }))).toBeNull();
-    expect(en.passport.check.failed.length).toBeGreaterThan(0);
+  });
+
+  it("prints that sentence in prose, and keeps the general line for the verifier", () => {
+    const panel = en.passport.check as Record<string, string>;
+
+    expect(panel[sentenceFor(copyRefusal(notAnImage)!)]).toBe("That is not an image file. Drop a JPEG, PNG or WebP.");
+    expect(panel[sentenceFor(copyRefusal(tooBig)!)]).toBe("That file is over the 20 MB limit. Send a smaller copy.");
+    // A code raised by the service, which this panel has no advice for.
+    expect(sentenceFor({ key: "problem.rateLimited", reason: "slow down" })).toBe("failed");
+  });
+
+  it("says both sentences in every language the site serves", () => {
+    const files = readdirSync(MESSAGES).filter((name) => name.endsWith(".json"));
+    expect(files).toHaveLength(10);
+
+    for (const file of files) {
+      const panel = panelOf(file);
+      expect(panel.tooLarge?.length ?? 0, file).toBeGreaterThan(0);
+      expect(panel.notAnImage?.length ?? 0, file).toBeGreaterThan(0);
+    }
   });
 
   it("never reaches the network to refuse a file", async () => {

@@ -266,6 +266,8 @@
       "hint": "Une copie redimensionnée, ré-encodée, tournée ou inversée correspond toujours. Un recadrage, pas encore.",
       "checking": "Contrôle de cette copie",
       "failed": "Le contrôle n’a pas eu lieu.",
+      "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Envoyez une copie plus légère.",
+      "notAnImage": "Ce n’est pas un fichier image. Déposez un JPEG, un PNG ou un WebP.",
       "none": "Cette copie ne correspond à aucun passeport.",
       "same": "Oui. C’est la même image.",
       "sameExact": "Oui. Octet pour octet, c’est ce fichier.",

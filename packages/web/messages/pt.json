@@ -267,6 +267,8 @@
       "hint": "Uma cópia redimensionada, recodificada, girada ou espelhada ainda bate. Um corte ainda não.",
       "checking": "Conferindo esta cópia",
       "failed": "A conferência não rodou.",
+      "tooLarge": "Esse arquivo passa do limite de 20 MB. Mande uma cópia menor.",
+      "notAnImage": "Isso não é um arquivo de imagem. Solte um JPEG, PNG ou WebP.",
       "none": "Esta cópia não bate com passaporte nenhum.",
       "same": "Sim. É a mesma imagem.",
       "sameExact": "Sim. Byte a byte, é este arquivo.",

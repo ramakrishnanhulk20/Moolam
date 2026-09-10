@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { readAnswer, percent, verifyProblem, type Answer, type Problem } from "@/components/verify/answer";
-import { checkImage } from "@/lib/upload/checkImage";
+import { checkImage, type RefusalCode } from "@/lib/upload/checkImage";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { verify } from "@/lib/verifier/client";
@@ -113,10 +113,12 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
               </p>
             ) : state.kind === "problem" ? (
               <div>
-                <p className="max-w-[46ch] text-sm leading-relaxed text-failed">{t("failed")}</p>
-                <p className="mt-2 max-w-[46ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
-                  {state.problem.reason ?? ""}
-                </p>
+                <p className="max-w-[46ch] text-sm leading-relaxed text-failed">{t(sentenceFor(state.problem))}</p>
+                {state.problem.reason === undefined ? null : (
+                  <p className="mt-2 max-w-[46ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
+                    {state.problem.reason}
+                  </p>
+                )}
               </div>
             ) : (
               <Verdict answer={state.answer} name={state.name} passportId={passportId} />
@@ -128,17 +130,32 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
   );
 }
 
+/** The two refusals this panel has its own sentence for, in the passport.check namespace. */
+const REFUSALS: Record<RefusalCode, string> = {
+  "too-large": "tooLarge",
+  "not-an-image": "notAnImage",
+};
+
 /**
  * What this page says about a file it refuses on its own, or null when the file
  * is worth sending. The size and type test is the shared one in lib/upload, so a
  * text file or a 30 MB photo is answered here instead of travelling to the
- * verifier first. This panel carries a single refusal sentence, "failed", so
- * both codes land on it and the file's own words go on the line underneath: its
- * type, or its size when it is over the limit.
+ * verifier first. Each code gets the sentence that says what to do next, the
+ * same way the verify page and the studio answer, so nobody is left reading a
+ * MIME type to work out what went wrong.
  */
 export function copyRefusal(file: File): Problem | null {
   const refusal = checkImage(file);
-  return refusal === null ? null : { key: "failed", reason: `${file.name} ${refusal.reason}` };
+  return refusal === null ? null : { key: REFUSALS[refusal.code] };
+}
+
+/**
+ * Which sentence a problem takes. The two the browser catches have their own
+ * words; anything the verifier raises keeps the general line with the service's
+ * own message under it, since this panel has no advice for those.
+ */
+export function sentenceFor(problem: Problem): string {
+  return Object.values(REFUSALS).includes(problem.key) ? problem.key : "failed";
 }
 
 function Verdict({ answer, name, passportId }: { answer: Answer; name: string; passportId: Hex }) {

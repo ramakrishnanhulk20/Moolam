@@ -266,6 +266,8 @@
       "hint": "A resized, re-encoded, turned or mirrored copy still matches. A crop does not, yet.",
       "checking": "Checking this copy",
       "failed": "The check did not run.",
+      "tooLarge": "That file is over the 20 MB limit. Send a smaller copy.",
+      "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
       "none": "This copy matches no passport at all.",
       "same": "Yes. This is the same picture.",
       "sameExact": "Yes. Byte for byte, this is the file.",
