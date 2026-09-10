@@ -2,3 +2,6 @@
 /build
 /.docusaurus
 .cache-loader
+
+.vercel
+.env*
