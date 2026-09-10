@@ -43,5 +43,4 @@ packages/indexer/package-lock.json
 
 .vercel
 
-.vercel
 .env*
