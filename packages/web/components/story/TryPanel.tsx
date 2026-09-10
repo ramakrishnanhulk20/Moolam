@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import { forwardTouchMove, forwardTouchStart, forwardWheel, probe, progress, resetProbe } from "@/components/story/signals";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
+import { checkImage } from "@/lib/upload/checkImage";
 import { VerifierError, verify, type VerifierCode, type VerifyResponse } from "@/lib/verifier/client";
 
 type State =
@@ -70,6 +71,20 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
     [],
   );
 
+  /**
+   * A file this browser already knows the service would refuse never leaves the
+   * machine: the panel answers on the spot, with the same sentence a refusal
+   * from the service would have printed.
+   */
+  function take(file: File) {
+    const refused = localRefusal(file);
+    if (refused !== null) {
+      setState({ kind: "error", message: t(refused) });
+      return;
+    }
+    void check(file);
+  }
+
   async function check(file: File) {
     if (preview.current !== null) {
       URL.revokeObjectURL(preview.current);
@@ -98,7 +113,7 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
     setOver(false);
     const file = event.dataTransfer.files?.[0];
     if (file !== undefined) {
-      void check(file);
+      take(file);
     }
   }
 
@@ -145,7 +160,7 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
             onChange={(event) => {
               const file = event.target.files?.[0];
               if (file !== undefined) {
-                void check(file);
+                take(file);
               }
             }}
           />
@@ -189,6 +204,20 @@ const REFUSALS: Partial<Record<VerifierCode, string>> = {
   "not-an-image": "notAnImage",
   "rate-limited": "rateLimited",
 };
+
+/**
+ * The line for a file this browser refuses on its own, or null when the file is
+ * worth sending. It answers with the same message keys a refusal from the
+ * service uses, so one problem reads as one sentence however it was caught.
+ */
+export function localRefusal(file: File): string | null {
+  const refusal = checkImage(file);
+  if (refusal === null) {
+    return null;
+  }
+  // Both codes the shared check can raise are named in the table above.
+  return REFUSALS[refusal.code] ?? "error";
+}
 
 /** What went wrong, in a sentence rather than a status code. */
 function refusal(error: unknown, t: (key: string, values?: Record<string, string>) => string): string {

@@ -1,5 +1,6 @@
 import type { Hex } from "viem";
 import type { PrepareResponse } from "@/lib/verifier/client";
+import { checkImage as checkUpload, type RefusalCode } from "@/lib/upload/checkImage";
 import type { Failure } from "./problems";
 
 /**
@@ -97,25 +98,22 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
   }
 }
 
-/** The verify service refuses anything larger, so the browser says so first rather than uploading it. */
-export const MAX_IMAGE_BYTES = 20 * 1024 * 1024;
-
-const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+/** Which line under "studio.failure" a refused file gets. */
+const UPLOAD_KEYS: Record<RefusalCode, string> = {
+  "too-large": "tooLarge",
+  "not-an-image": "notAnImage",
+};
 
 /**
  * What is wrong with a chosen file, before a byte leaves the machine.
  *
- * The service checks the same two things and its answer is still the one that
- * counts, but a creator should not spend a 40 MB upload to be told the limit.
+ * The size and type test is the shared one in lib/upload, so the studio, the
+ * story's try panel and the verify page refuse the same files. Only the message
+ * key is the studio's own.
  */
 export function checkImage(file: File): Failure | null {
-  if (!IMAGE_TYPES.includes(file.type)) {
-    return { key: "notAnImage", reason: file.type === "" ? file.name : file.type };
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    return { key: "tooLarge", reason: `${(file.size / 1_000_000).toFixed(1)} MB` };
-  }
-  return null;
+  const refusal = checkUpload(file);
+  return refusal === null ? null : { key: UPLOAD_KEYS[refusal.code], reason: refusal.reason };
 }
 
 export function isRegistered(state: RegisterState): boolean {

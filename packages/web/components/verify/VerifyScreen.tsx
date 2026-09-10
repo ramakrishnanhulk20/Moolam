@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useHeadingLeading } from "@/components/studio/leading";
 import { verify } from "@/lib/verifier/client";
 import { AnswerCard, type Stage } from "./AnswerCard";
-import { readAnswer, tooLarge, verifyProblem } from "./answer";
+import { chosenProblem, readAnswer, verifyProblem } from "./answer";
 import { matchedPassport } from "./lookup";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
@@ -44,9 +44,12 @@ export function VerifyScreen() {
     if (chosen === undefined) {
       return;
     }
-    if (tooLarge(chosen)) {
+    // A file the service would refuse is refused here instead, so the answer is
+    // instant and nothing is uploaded to earn it.
+    const problem = chosenProblem(chosen);
+    if (problem !== null) {
       setFile(null);
-      setStage({ kind: "problem", problem: { key: "problem.tooLarge", reason: `${chosen.name} ${fileSize(chosen)}` } });
+      setStage({ kind: "problem", problem: { ...problem, reason: `${chosen.name} ${fileSize(chosen)}` } });
       return;
     }
     setFile(chosen);

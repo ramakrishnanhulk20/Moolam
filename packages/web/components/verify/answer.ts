@@ -1,5 +1,9 @@
 import type { Hex } from "viem";
 import { VerifierError, type Match, type VerifyResponse } from "@/lib/verifier/client";
+import { checkImage, MAX_UPLOAD_BYTES } from "@/lib/upload/checkImage";
+
+/** The limit lives in lib/upload with the check; the passport page reads it from here. */
+export { MAX_UPLOAD_BYTES };
 
 /**
  * What the verify service said, in the shape the screen draws.
@@ -90,14 +94,18 @@ export function verifyProblem(error: unknown): Problem {
   return { key: "problem.badResponse", reason: error instanceof Error ? error.message : String(error) };
 }
 
-/**
- * The largest file the service accepts, MAX_UPLOAD_BYTES in packages/verifier.
- * A browser that checks the size first spares a reader a 20 MB upload that the
- * service was always going to refuse.
- */
-export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
-
 /** Whether this file is over the limit, checked before anything is uploaded. */
 export function tooLarge(file: File): boolean {
   return file.size > MAX_UPLOAD_BYTES;
+}
+
+/**
+ * What is wrong with a file the reader just chose, or null when it is worth
+ * uploading. The size and type test is the shared one in lib/upload, so this
+ * page refuses exactly what the service would have refused, and says it without
+ * sending the file anywhere.
+ */
+export function chosenProblem(file: File): Problem | null {
+  const refusal = checkImage(file);
+  return refusal === null ? null : { key: PROBLEMS[refusal.code] };
 }
