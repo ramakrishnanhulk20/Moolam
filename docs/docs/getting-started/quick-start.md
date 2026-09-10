@@ -9,7 +9,7 @@ sidebar_position: 1
 Two minutes, two things: ask the registry which passport a copy belongs to, then put an image of
 your own into it. Nothing here needs a wallet extension, a seed phrase or any MON.
 
-The app is at https://moolam-rams-projects-86cea8eb.vercel.app. It is a Next.js app deployed on Vercel, and it reads Monad mainnet
+The app is at https://moolam.vercel.app. It is a Next.js app deployed on Vercel, and it reads Monad mainnet
 directly, so what you see on it is the chain.
 
 ## 1. Check a copy, before signing in to anything

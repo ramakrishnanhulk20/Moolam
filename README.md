@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="https://moolam-rams-projects-86cea8eb.vercel.app">Live App</a> &nbsp;|&nbsp;
-  <a href="https://moolam-docs-rams-projects-86cea8eb.vercel.app">Documentation</a> &nbsp;|&nbsp;
+  <a href="https://moolam.vercel.app">Live App</a> &nbsp;|&nbsp;
+  <a href="https://moolam-docs.vercel.app">Documentation</a> &nbsp;|&nbsp;
   <a href="https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0">Contracts on MonadVision</a>
 </p>
 
@@ -292,7 +292,7 @@ finished 2026-09-08T14:10:42.572Z, 128 seconds
 
 ### The click path
 
-Open the live app at https://moolam-rams-projects-86cea8eb.vercel.app (on this machine, http://localhost:3210). Two minutes, no wallet, no seed phrase:
+Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). Two minutes, no wallet, no seed phrase:
 
 1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
 2. Open "Verify an image" in the header, press "Choose an image", pick any copy of a registered image (a re-encoded, resized or mirrored copy works), then press "Verify". The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached. An unregistered picture answers plainly that it is not registered and offers the studio.
