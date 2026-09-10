@@ -105,7 +105,7 @@
       "kicker": "试一试",
       "title": "把任何图片的任何副本拖进来，或者选一个文件",
       "choose": "选择文件",
-      "hint": "JPEG 或 PNG。文件送到 Moolam 验证服务，取三种指纹，并不保存。",
+      "hint": "JPEG、PNG 或 WebP。文件送到 Moolam 验证服务，取三种指纹，并不保存。",
       "pending": "正在取指纹并搜索登记处",
       "offline": "验证服务没有响应。在仓库根目录运行 npm run dev:verifier，然后再把文件拖进来。",
       "error": "这次核对没有跑起来：{reason}",

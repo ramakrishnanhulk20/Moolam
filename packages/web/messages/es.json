@@ -103,7 +103,7 @@
       "kicker": "Pruébalo",
       "title": "Suelta aquí cualquier copia de cualquier imagen, o elige un archivo",
       "choose": "Elegir un archivo",
-      "hint": "JPEG o PNG. Va al verificador de Moolam, se le toman tres huellas y no se guarda.",
+      "hint": "JPEG, PNG o WebP. Va al verificador de Moolam, se le toman tres huellas y no se guarda.",
       "pending": "Tomando la huella y buscando en el registro",
       "offline": "El servicio de verificación no responde. Arráncalo con npm run dev:verifier desde la raíz del repositorio y vuelve a soltar el archivo.",
       "error": "La comprobación no se ejecutó: {reason}",

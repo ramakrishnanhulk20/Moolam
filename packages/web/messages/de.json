@@ -103,7 +103,7 @@
       "kicker": "Ausprobieren",
       "title": "Zieh irgendeine Kopie irgendeines Bildes hierher, oder wähle eine Datei",
       "choose": "Datei wählen",
-      "hint": "JPEG oder PNG. Sie geht an den Moolam Prüfdienst, bekommt drei Fingerabdrücke und wird nicht gespeichert.",
+      "hint": "JPEG, PNG oder WebP. Sie geht an den Moolam Prüfdienst, bekommt drei Fingerabdrücke und wird nicht gespeichert.",
       "pending": "Fingerabdruck wird genommen und das Register durchsucht",
       "offline": "Der Prüfdienst antwortet nicht. Starte ihn mit npm run dev:verifier aus dem Wurzelverzeichnis, dann zieh die Datei noch einmal her.",
       "error": "Die Prüfung lief nicht: {reason}",

@@ -103,7 +103,7 @@
       "kicker": "Essayez",
       "title": "Déposez ici n’importe quelle copie de n’importe quelle image, ou choisissez un fichier",
       "choose": "Choisir un fichier",
-      "hint": "JPEG ou PNG. Le fichier part vers le vérificateur Moolam, reçoit trois empreintes et n’est pas conservé.",
+      "hint": "JPEG, PNG ou WebP. Le fichier part vers le vérificateur Moolam, reçoit trois empreintes et n’est pas conservé.",
       "pending": "Calcul des empreintes et recherche dans le registre",
       "offline": "Le service de vérification ne répond pas. Lancez-le avec npm run dev:verifier depuis la racine du dépôt, puis redéposez le fichier.",
       "error": "Le contrôle n’a pas eu lieu : {reason}",

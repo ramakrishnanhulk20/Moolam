@@ -12,6 +12,7 @@ vi.mock("@/lib/i18n/routing", () => ({
 }));
 
 const { localRefusal } = await import("@/components/story/TryPanel");
+const { copyRefusal } = await import("@/components/passport/CheckCopy");
 
 /** A file of a stated size without allocating the bytes, which a 21 MB case would. */
 function sized(name: string, type: string, size: number): File {
@@ -67,10 +68,20 @@ describe("what each page says about a file it refuses", () => {
     expect(en.verify.problem.notAnImage.length).toBeGreaterThan(0);
   });
 
+  it("gives the passport page its own sentence and the file's own words", () => {
+    // The panel prints one refusal line, so both codes take it and the reason
+    // under it is what separates a 21 MB photo from a text file.
+    expect(copyRefusal(tooBig)).toEqual({ key: "failed", reason: "holiday.jpg 22.0 MB" });
+    expect(copyRefusal(notAnImage)).toEqual({ key: "failed", reason: "notes.txt text/plain" });
+    expect(copyRefusal(new File(["x"], "picture.webp", { type: "image/webp" }))).toBeNull();
+    expect(en.passport.check.failed.length).toBeGreaterThan(0);
+  });
+
   it("never reaches the network to refuse a file", async () => {
     const fetching = vi.spyOn(globalThis, "fetch");
     localRefusal(tooBig);
     chosenProblem(notAnImage);
+    copyRefusal(notAnImage);
     expect(fetching).not.toHaveBeenCalled();
     fetching.mockRestore();
   });

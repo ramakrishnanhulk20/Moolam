@@ -104,7 +104,7 @@
       "kicker": "Experimente",
       "title": "Solte aqui qualquer cópia de qualquer imagem, ou escolha um arquivo",
       "choose": "Escolher um arquivo",
-      "hint": "JPEG ou PNG. Vai para o verificador da Moolam, recebe três impressões e não é guardado.",
+      "hint": "JPEG, PNG ou WebP. Vai para o verificador da Moolam, recebe três impressões e não é guardado.",
       "pending": "Tirando a impressão e procurando no registro",
       "offline": "O serviço de verificação não responde. Suba ele com npm run dev:verifier a partir da raiz do repositório e solte o arquivo de novo.",
       "error": "A conferência não rodou: {reason}",

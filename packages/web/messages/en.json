@@ -103,7 +103,7 @@
       "kicker": "Try it",
       "title": "Drop any copy of any image here, or choose a file",
       "choose": "Choose a file",
-      "hint": "JPEG or PNG. It goes to the Moolam verifier, is fingerprinted three ways, and is not stored.",
+      "hint": "JPEG, PNG or WebP. It goes to the Moolam verifier, is fingerprinted three ways, and is not stored.",
       "pending": "Fingerprinting and searching the registry",
       "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then drop the file again.",
       "error": "The check did not run: {reason}",

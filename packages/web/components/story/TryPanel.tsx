@@ -155,7 +155,7 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
           <input
             ref={input}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0];
