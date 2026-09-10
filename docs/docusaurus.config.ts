@@ -9,7 +9,7 @@ const config: Config = {
   tagline: 'A passport for every AI-generated image, on Monad',
   favicon: 'img/favicon.svg',
 
-  url: 'https://moolam-docs.vercel.app',
+  url: 'https://moolam-docs-rams-projects-86cea8eb.vercel.app',
   baseUrl: '/',
   trailingSlash: false,
 
