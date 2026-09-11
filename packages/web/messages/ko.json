@@ -30,7 +30,8 @@
     "nav": {
       "home": "홈",
       "verify": "이미지 검증",
-      "studio": "이미지 등록"
+      "studio": "이미지 등록",
+      "docs": "문서"
     }
   },
   "footer": {
@@ -553,5 +554,21 @@
       "recheck": "Monad에 다시 묻기",
       "openAddress": "MonadVision에서 {wallet} 열기"
     }
+  },
+  "docs": {
+    "home": "문서",
+    "sections": "섹션",
+    "menu": "목차",
+    "close": "닫기",
+    "search": "문서 검색",
+    "searchPlaceholder": "문서 검색",
+    "shortcut": "Ctrl K",
+    "noResults": "결과가 없습니다",
+    "onThisPage": "이 페이지의 목차",
+    "previous": "이전",
+    "next": "다음",
+    "copy": "복사",
+    "copied": "복사됨",
+    "diagram": "다이어그램을 그리는 중"
   }
 }

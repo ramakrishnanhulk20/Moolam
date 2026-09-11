@@ -30,7 +30,8 @@
     "nav": {
       "home": "ホーム",
       "verify": "画像を検証",
-      "studio": "画像を登録"
+      "studio": "画像を登録",
+      "docs": "ドキュメント"
     }
   },
   "footer": {
@@ -553,5 +554,21 @@
       "recheck": "Monad にもう一度尋ねる",
       "openAddress": "MonadVision で {wallet} を開く"
     }
+  },
+  "docs": {
+    "home": "ドキュメント",
+    "sections": "セクション",
+    "menu": "目次",
+    "close": "閉じる",
+    "search": "ドキュメントを検索",
+    "searchPlaceholder": "ドキュメントを検索",
+    "shortcut": "Ctrl K",
+    "noResults": "見つかりませんでした",
+    "onThisPage": "このページの内容",
+    "previous": "前のページ",
+    "next": "次のページ",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "diagram": "図を描画しています"
   }
 }

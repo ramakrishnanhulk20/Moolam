@@ -123,7 +123,7 @@ outsider    0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7, 11.396 MON
 
   PASS: 12 of 12 attacks refused, each for the reason the design gives.
   Not proved here: an attack nobody thought of. This is the list in
-  docs/docs/security/threat-model.md, self-audited, with no third party audit behind it.
+  docs/security/threat-model.md, self-audited, with no third party audit behind it.
 
 The run started the verify service itself on port 4013 with PASSPORT_SOURCE=json,
 and stopped it again just now. In production the same service reads passports from Envio.
@@ -140,18 +140,18 @@ and stopped it again just now. In production the same service reads passports fr
 
   attack                           result   saved output
   -------------------------------  -------  --------------------------------------------------------------
-  passkey-replay                   REFUSED  docs/docs/security/attacks/passkey-replay.txt
-  generator-signature-forged       REFUSED  docs/docs/security/attacks/generator-signature-forged.txt
-  unknown-agent                    REFUSED  docs/docs/security/attacks/unknown-agent.txt
-  expired-deadline                 REFUSED  docs/docs/security/attacks/expired-deadline.txt
-  edit-by-non-owner                REFUSED  docs/docs/security/attacks/edit-by-non-owner.txt
-  attest-from-stranger             REFUSED  docs/docs/security/attacks/attest-from-stranger.txt
-  report-from-fake-forwarder       REFUSED  docs/docs/security/attacks/report-from-fake-forwarder.txt
-  receiver-replay-and-wrong-chain  REFUSED  docs/docs/security/attacks/receiver-replay-and-wrong-chain.txt
-  privy-policy-refusal             REFUSED  docs/docs/security/attacks/privy-policy-refusal.txt
-  revoked-session-signer           REFUSED  docs/docs/security/attacks/revoked-session-signer.txt
-  dispute-money-rules              REFUSED  docs/docs/security/attacks/dispute-money-rules.txt
-  verifier-api-limits              REFUSED  docs/docs/security/attacks/verifier-api-limits.txt
+  passkey-replay                   REFUSED  docs/security/attacks/passkey-replay.txt
+  generator-signature-forged       REFUSED  docs/security/attacks/generator-signature-forged.txt
+  unknown-agent                    REFUSED  docs/security/attacks/unknown-agent.txt
+  expired-deadline                 REFUSED  docs/security/attacks/expired-deadline.txt
+  edit-by-non-owner                REFUSED  docs/security/attacks/edit-by-non-owner.txt
+  attest-from-stranger             REFUSED  docs/security/attacks/attest-from-stranger.txt
+  report-from-fake-forwarder       REFUSED  docs/security/attacks/report-from-fake-forwarder.txt
+  receiver-replay-and-wrong-chain  REFUSED  docs/security/attacks/receiver-replay-and-wrong-chain.txt
+  privy-policy-refusal             REFUSED  docs/security/attacks/privy-policy-refusal.txt
+  revoked-session-signer           REFUSED  docs/security/attacks/revoked-session-signer.txt
+  dispute-money-rules              REFUSED  docs/security/attacks/dispute-money-rules.txt
+  verifier-api-limits              REFUSED  docs/security/attacks/verifier-api-limits.txt
 
 PASS: the Moolam prove-it run, end to end, against Monad mainnet.
 finished 2026-09-09T09:19:22.530Z, 123 seconds

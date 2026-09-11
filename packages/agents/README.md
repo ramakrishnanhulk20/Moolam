@@ -112,8 +112,8 @@ sections, each ending in PASS or FAIL with a transaction hash or the exact refus
    refuses with PassportAlreadyExists. Then registers a re-encoded copy as a fresh original under
    that second creator, which the chain cannot refuse, and shows the verify service naming both
    records with the older one first. Moolam records who registered first, and says so.
-5. **Attacks.** The twelve attacks in `docs/docs/security/threat-model.md`, executed. Each one
-   writes its full output to `docs/docs/security/attacks/<name>.txt`.
+5. **Attacks.** The twelve attacks in `docs/security/threat-model.md`, executed. Each one
+   writes its full output to `docs/security/attacks/<name>.txt`.
 6. **Summary.** One table of the sections, one of the attacks, with the file each is saved in.
 
 Every section also prints one line saying what it does not prove.

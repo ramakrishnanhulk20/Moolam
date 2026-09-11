@@ -28,7 +28,8 @@
     "nav": {
       "home": "Home",
       "verify": "Verify an image",
-      "studio": "Register an image"
+      "studio": "Register an image",
+      "docs": "Docs"
     }
   },
   "footer": {
@@ -551,5 +552,21 @@
       "recheck": "Ask Monad again",
       "openAddress": "Open {wallet} on MonadVision"
     }
+  },
+  "docs": {
+    "home": "Documentation",
+    "sections": "Sections",
+    "menu": "Contents",
+    "close": "Close",
+    "search": "Search docs",
+    "searchPlaceholder": "Search the documentation",
+    "shortcut": "Ctrl K",
+    "noResults": "Nothing found",
+    "onThisPage": "On this page",
+    "previous": "Previous",
+    "next": "Next",
+    "copy": "Copy",
+    "copied": "Copied",
+    "diagram": "Drawing the diagram"
   }
 }

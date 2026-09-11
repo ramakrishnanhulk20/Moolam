@@ -13,8 +13,6 @@ kitchen/
 
 # dependencies and build output
 node_modules/
-docs/build/
-docs/.docusaurus/
 .next/
 .next-verify/
 dist/

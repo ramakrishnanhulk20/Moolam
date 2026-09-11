@@ -46,7 +46,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = join(HERE, "..");
 const REPO_ROOT = join(PACKAGE_ROOT, "..", "..");
 const REPORT_FILE = join(REPO_ROOT, "proofs", "prove-it.txt");
-const ATTACKS_DIR = join(REPO_ROOT, "docs", "docs", "security", "attacks");
+const ATTACKS_DIR = join(REPO_ROOT, "docs", "security", "attacks");
 const PASSPORTS_FILE = join(PACKAGE_ROOT, ".moolam", "prove-passports.json");
 const CREATOR_PASSKEY_FILE = join(PACKAGE_ROOT, ".moolam", "creator-passkey.json");
 
@@ -314,7 +314,7 @@ async function main(): Promise<void> {
       `  ${verdict(allRefused)}: ${attacks.filter((attack) => attack.refused).length} of ${attacks.length} attacks refused, each for the reason the design gives.`,
     );
     say("  Not proved here: an attack nobody thought of. This is the list in");
-    say("  docs/docs/security/threat-model.md, self-audited, with no third party audit behind it.");
+    say("  docs/security/threat-model.md, self-audited, with no third party audit behind it.");
     sections.push({
       number: "5",
       title: "Attacks",
@@ -346,7 +346,7 @@ async function main(): Promise<void> {
       attacks.map((attack) => [
         attack.name,
         attack.refused ? "REFUSED" : "NOT REFUSED",
-        `docs/docs/security/attacks/${attack.name}.txt`,
+        `docs/security/attacks/${attack.name}.txt`,
       ]),
     ).map((line) => `  ${line}`),
   );

@@ -28,7 +28,8 @@
     "nav": {
       "home": "Inicio",
       "verify": "Verificar una imagen",
-      "studio": "Registrar una imagen"
+      "studio": "Registrar una imagen",
+      "docs": "Documentación"
     }
   },
   "footer": {
@@ -551,5 +552,21 @@
       "recheck": "Volver a preguntar a Monad",
       "openAddress": "Abrir {wallet} en MonadVision"
     }
+  },
+  "docs": {
+    "home": "Documentación",
+    "sections": "Secciones",
+    "menu": "Contenido",
+    "close": "Cerrar",
+    "search": "Buscar en la documentación",
+    "searchPlaceholder": "Buscar en la documentación",
+    "shortcut": "Ctrl K",
+    "noResults": "Sin resultados",
+    "onThisPage": "En esta página",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "diagram": "Dibujando el diagrama"
   }
 }

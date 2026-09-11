@@ -1,7 +1,0 @@
-# Docusaurus build output and generated files
-/build
-/.docusaurus
-.cache-loader
-
-.vercel
-.env*

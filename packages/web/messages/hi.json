@@ -29,7 +29,8 @@
     "nav": {
       "home": "मुखपृष्ठ",
       "verify": "तस्वीर सत्यापित करें",
-      "studio": "तस्वीर दर्ज करें"
+      "studio": "तस्वीर दर्ज करें",
+      "docs": "दस्तावेज़"
     }
   },
   "footer": {
@@ -552,5 +553,21 @@
       "recheck": "Monad से दोबारा पूछें",
       "openAddress": "MonadVision पर {wallet} खोलें"
     }
+  },
+  "docs": {
+    "home": "दस्तावेज़",
+    "sections": "खंड",
+    "menu": "विषय सूची",
+    "close": "बंद करें",
+    "search": "दस्तावेज़ में खोजें",
+    "searchPlaceholder": "दस्तावेज़ में खोजें",
+    "shortcut": "Ctrl K",
+    "noResults": "कुछ नहीं मिला",
+    "onThisPage": "इस पृष्ठ पर",
+    "previous": "पिछला",
+    "next": "अगला",
+    "copy": "कॉपी",
+    "copied": "कॉपी हो गया",
+    "diagram": "आरेख बन रहा है"
   }
 }

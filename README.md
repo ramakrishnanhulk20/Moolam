@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://moolam.vercel.app">Live App</a> &nbsp;|&nbsp;
-  <a href="https://moolam-docs.vercel.app">Documentation</a> &nbsp;|&nbsp;
+  <a href="https://moolam.vercel.app/en/docs">Documentation</a> &nbsp;|&nbsp;
   <a href="https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0">Contracts on MonadVision</a>
 </p>
 
@@ -463,7 +463,7 @@ including entity ids, so query with lowercase addresses.
 
 ERC-721 `Moolam Content Passport` (`MOOLAM`), EIP-712 domain name `Moolam`, version `1`. The token
 id of a passport is `uint256(passportId)`, and `passportId` is the sha256 of the exact image bytes.
-Full reference in [docs/docs/api/registry.md](docs/docs/api/registry.md).
+Full reference in [docs/api/registry.md](docs/api/registry.md).
 
 | Function | Who may call | What it does | Notable reverts |
 | --- | --- | --- | --- |
@@ -504,7 +504,7 @@ OpenZeppelin's unmodified ERC-721 surface.
 ### The verify service
 
 Four routes, all JSON including errors. Full reference in
-[docs/docs/api/verifier-endpoints.md](docs/docs/api/verifier-endpoints.md).
+[docs/api/verifier-endpoints.md](docs/api/verifier-endpoints.md).
 
 | Route | What it takes | What it answers | Mounted when |
 | --- | --- | --- | --- |
@@ -535,8 +535,8 @@ appears while the registry is paused. Each test file opens with a note saying wh
 cover.
 
 The summary of the latest prove-it run follows, then every attack in the
-[threat model](docs/docs/security/threat-model.md) executed against the live contracts, each with its
-full output saved under [docs/docs/security/attacks/](docs/docs/security/attacks/):
+[threat model](docs/security/threat-model.md) executed against the live contracts, each with its
+full output saved under [docs/security/attacks/](docs/security/attacks/):
 
 ```
 6. Summary
@@ -551,18 +551,18 @@ full output saved under [docs/docs/security/attacks/](docs/docs/security/attacks
 
   attack                           result   saved output
   -------------------------------  -------  --------------------------------------------------------------
-  passkey-replay                   REFUSED  docs/docs/security/attacks/passkey-replay.txt
-  generator-signature-forged       REFUSED  docs/docs/security/attacks/generator-signature-forged.txt
-  unknown-agent                    REFUSED  docs/docs/security/attacks/unknown-agent.txt
-  expired-deadline                 REFUSED  docs/docs/security/attacks/expired-deadline.txt
-  edit-by-non-owner                REFUSED  docs/docs/security/attacks/edit-by-non-owner.txt
-  attest-from-stranger             REFUSED  docs/docs/security/attacks/attest-from-stranger.txt
-  report-from-fake-forwarder       REFUSED  docs/docs/security/attacks/report-from-fake-forwarder.txt
-  receiver-replay-and-wrong-chain  REFUSED  docs/docs/security/attacks/receiver-replay-and-wrong-chain.txt
-  privy-policy-refusal             REFUSED  docs/docs/security/attacks/privy-policy-refusal.txt
-  revoked-session-signer           REFUSED  docs/docs/security/attacks/revoked-session-signer.txt
-  dispute-money-rules              REFUSED  docs/docs/security/attacks/dispute-money-rules.txt
-  verifier-api-limits              REFUSED  docs/docs/security/attacks/verifier-api-limits.txt
+  passkey-replay                   REFUSED  docs/security/attacks/passkey-replay.txt
+  generator-signature-forged       REFUSED  docs/security/attacks/generator-signature-forged.txt
+  unknown-agent                    REFUSED  docs/security/attacks/unknown-agent.txt
+  expired-deadline                 REFUSED  docs/security/attacks/expired-deadline.txt
+  edit-by-non-owner                REFUSED  docs/security/attacks/edit-by-non-owner.txt
+  attest-from-stranger             REFUSED  docs/security/attacks/attest-from-stranger.txt
+  report-from-fake-forwarder       REFUSED  docs/security/attacks/report-from-fake-forwarder.txt
+  receiver-replay-and-wrong-chain  REFUSED  docs/security/attacks/receiver-replay-and-wrong-chain.txt
+  privy-policy-refusal             REFUSED  docs/security/attacks/privy-policy-refusal.txt
+  revoked-session-signer           REFUSED  docs/security/attacks/revoked-session-signer.txt
+  dispute-money-rules              REFUSED  docs/security/attacks/dispute-money-rules.txt
+  verifier-api-limits              REFUSED  docs/security/attacks/verifier-api-limits.txt
 
 PASS: the Moolam prove-it run, end to end, against Monad mainnet.
 finished 2026-09-09T09:19:22.530Z, 123 seconds
@@ -633,9 +633,9 @@ Moolam/
 │   │
 │   ├── workflow/           The Chainlink CRE workflow that recomputes the fingerprint independently
 │   │
-│   └── web/                The Next.js app: passports, agents, verification, the creator studio
+│   └── web/                The Next.js app: passports, agents, verification, the studio, the docs
 │
-├── docs/                   The Docusaurus documentation site
+├── docs/                   The documentation, 30 markdown pages the app renders at /en/docs
 ├── proofs/                 Every proof output: prove-it, gas, slither, robustness, seeds, transcripts
 ├── ARCHITECTURE.md         The three diagrams and the exact interface
 └── .env.example            Every variable, with a comment on where the value comes from
@@ -668,8 +668,8 @@ Moolam/
 
 ## Security
 
-The full account is in the [security overview](docs/docs/security/overview.md) and the
-[threat model](docs/docs/security/threat-model.md), which lists every claim, the attack against it,
+The full account is in the [security overview](docs/security/overview.md) and the
+[threat model](docs/security/threat-model.md), which lists every claim, the attack against it,
 and the file the output is saved in.
 
 ### What is in the code

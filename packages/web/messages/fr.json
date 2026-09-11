@@ -28,7 +28,8 @@
     "nav": {
       "home": "Accueil",
       "verify": "Vérifier une image",
-      "studio": "Enregistrer une image"
+      "studio": "Enregistrer une image",
+      "docs": "Documentation"
     }
   },
   "footer": {
@@ -551,5 +552,21 @@
       "recheck": "Redemander à Monad",
       "openAddress": "Ouvrir {wallet} sur MonadVision"
     }
+  },
+  "docs": {
+    "home": "Documentation",
+    "sections": "Sections",
+    "menu": "Sommaire",
+    "close": "Fermer",
+    "search": "Rechercher dans la documentation",
+    "searchPlaceholder": "Rechercher dans la documentation",
+    "shortcut": "Ctrl K",
+    "noResults": "Aucun résultat",
+    "onThisPage": "Sur cette page",
+    "previous": "Précédent",
+    "next": "Suivant",
+    "copy": "Copier",
+    "copied": "Copié",
+    "diagram": "Tracé du schéma"
   }
 }

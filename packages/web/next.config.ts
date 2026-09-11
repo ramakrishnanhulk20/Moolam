@@ -18,6 +18,14 @@ const nextConfig: NextConfig = {
   distDir: process.env.NEXT_DIST_DIR ?? ".next",
   turbopack: { root: repoRoot },
   outputFileTracingRoot: repoRoot,
+
+  // The documentation pages and the proof transcripts live above this package,
+  // so the routes that read them say so rather than having the bundler guess.
+  outputFileTracingIncludes: {
+    "/[locale]/docs/[[...slug]]": ["../../docs/**/*.md", "../../docs/nav.json"],
+    "/docs-files/[...path]": ["../../docs/**/*.txt", "../../proofs/**/*.txt"],
+    "/docs-search": ["../../docs/**/*.md", "../../docs/nav.json"],
+  },
 };
 
 export default withNextIntl(nextConfig);

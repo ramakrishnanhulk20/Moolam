@@ -1,0 +1,168 @@
+{
+  "nav": [
+    {
+      "type": "page",
+      "slug": "intro",
+      "title": "Moolam",
+      "label": "Introduction"
+    },
+    {
+      "type": "section",
+      "title": "Getting Started",
+      "open": true,
+      "pages": [
+        {
+          "slug": "getting-started/quick-start",
+          "title": "Quick start"
+        },
+        {
+          "slug": "getting-started/sign-in-and-account",
+          "title": "Sign in and account"
+        },
+        {
+          "slug": "getting-started/your-first-passport",
+          "title": "Your first passport"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Concepts",
+      "open": true,
+      "pages": [
+        {
+          "slug": "concepts/how-it-works",
+          "title": "How it works"
+        },
+        {
+          "slug": "concepts/why-monad",
+          "title": "Why Monad"
+        },
+        {
+          "slug": "concepts/trust-model",
+          "title": "Trust model"
+        },
+        {
+          "slug": "concepts/fingerprints",
+          "title": "Fingerprints"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Guides",
+      "pages": [
+        {
+          "slug": "guides/register-an-image",
+          "title": "Register an image"
+        },
+        {
+          "slug": "guides/verify-a-copy",
+          "title": "Verify a copy"
+        },
+        {
+          "slug": "guides/read-a-passport",
+          "title": "Read a passport"
+        },
+        {
+          "slug": "guides/agents-and-generated-images",
+          "title": "Agents and generated images"
+        },
+        {
+          "slug": "guides/edits-and-lineage",
+          "title": "Edits and lineage"
+        },
+        {
+          "slug": "guides/disputes",
+          "title": "Disputes"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Developers",
+      "pages": [
+        {
+          "slug": "developers/architecture",
+          "title": "Architecture"
+        },
+        {
+          "slug": "developers/contracts",
+          "title": "Contracts"
+        },
+        {
+          "slug": "developers/verifier-service",
+          "title": "Verifier service"
+        },
+        {
+          "slug": "developers/chainlink-workflow",
+          "title": "Chainlink CRE workflow",
+          "label": "Chainlink workflow"
+        },
+        {
+          "slug": "developers/envio-indexer",
+          "title": "Envio indexer"
+        },
+        {
+          "slug": "developers/agents-and-privy",
+          "title": "Agents and Privy"
+        },
+        {
+          "slug": "developers/prove-it",
+          "title": "Prove it"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "API Reference",
+      "pages": [
+        {
+          "slug": "api/registry",
+          "title": "MoolamRegistry"
+        },
+        {
+          "slug": "api/policy-and-receiver",
+          "title": "VerifierPolicy and MoolamReceiver",
+          "label": "Policy and receiver"
+        },
+        {
+          "slug": "api/events",
+          "title": "Events"
+        },
+        {
+          "slug": "api/verifier-endpoints",
+          "title": "Verifier endpoints"
+        },
+        {
+          "slug": "api/graphql",
+          "title": "GraphQL"
+        }
+      ]
+    },
+    {
+      "type": "section",
+      "title": "Security",
+      "pages": [
+        {
+          "slug": "security/overview",
+          "title": "Security overview",
+          "label": "Overview"
+        },
+        {
+          "slug": "security/threat-model",
+          "title": "Threat model"
+        },
+        {
+          "slug": "security/audits",
+          "title": "Audits"
+        }
+      ]
+    },
+    {
+      "type": "page",
+      "slug": "faq",
+      "title": "FAQ"
+    }
+  ]
+}
