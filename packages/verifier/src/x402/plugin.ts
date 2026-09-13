@@ -7,7 +7,7 @@ import {
   type HTTPRequestContext,
 } from "@x402/core/server";
 import { ExactEvmScheme } from "@x402/evm/exact/server";
-import type { FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { env } from "../env.js";
 
 /** Monad mainnet in the CAIP-2 form x402 uses. The facilitator settles USDC here. */
@@ -16,18 +16,48 @@ export const X402_NETWORK = "eip155:143";
 /** The one paid route. The pattern is the key x402 matches a request against. */
 export const PAID_VERIFY_ROUTE = "POST /verify/paid";
 
-/** Reads the two payment headers, v2 first, so an older client still works. */
-export function paymentHeaderOf(adapter: HTTPAdapter): string | undefined {
-  return adapter.getHeader("payment-signature") ?? adapter.getHeader("x-payment");
+/** The path half of that pattern: what a request's own path has to equal. */
+export const PAID_VERIFY_PATH = PAID_VERIFY_ROUTE.slice(PAID_VERIFY_ROUTE.indexOf(" ") + 1);
+
+/** The header a v2 client carries its payment in, and the only name x402 asks for. */
+export const PAYMENT_SIGNATURE_HEADER = "payment-signature";
+
+/** Where a v1 client puts the same base64 payload. */
+const V1_PAYMENT_HEADER = "x-payment";
+
+/**
+ * Refuses to mount the paid route where payment is not being collected.
+ *
+ * x402 matches a request against its route table by path, and the table holds
+ * one key, PAID_VERIFY_ROUTE. Registering this plugin under a prefix would move
+ * the route out from under that key, and every request would arrive with no
+ * payment required. This turns that mistake into a failure to boot.
+ *
+ * @throws when the route would not sit at the path x402 is watching.
+ */
+export function assertPaidRoute(app: FastifyInstance): void {
+  const mounted = `${app.prefix}${PAID_VERIFY_PATH}`;
+  if (mounted !== PAID_VERIFY_PATH) {
+    throw new Error(`the paid verify route must be mounted at ${PAID_VERIFY_PATH}, not at ${mounted}`);
+  }
 }
 
 /** Bridges a Fastify request to the shape x402 reads. */
 export class FastifyRequestAdapter implements HTTPAdapter {
   constructor(private readonly request: FastifyRequest) {}
 
+  /**
+   * The x402 runtime only ever asks for the v2 header name, so a v1 client's
+   * X-PAYMENT is answered under that name. Without this an older client looks
+   * to the runtime like it sent nothing and is asked to pay again.
+   */
   getHeader(name: string): string | undefined {
-    const value = this.request.headers[name.toLowerCase()];
-    return Array.isArray(value) ? value[0] : value;
+    const asked = name.toLowerCase();
+    const value = this.rawHeader(asked);
+    if (value !== undefined || asked !== PAYMENT_SIGNATURE_HEADER) {
+      return value;
+    }
+    return this.rawHeader(V1_PAYMENT_HEADER);
   }
 
   getMethod(): string {
@@ -54,6 +84,11 @@ export class FastifyRequestAdapter implements HTTPAdapter {
   getBody(): unknown {
     return this.request.body;
   }
+
+  private rawHeader(name: string): string | undefined {
+    const value = this.request.headers[name];
+    return Array.isArray(value) ? value[0] : value;
+  }
 }
 
 /** The request context x402 matches routes and payment headers against. */
@@ -63,7 +98,6 @@ export function contextFor(request: FastifyRequest): HTTPRequestContext {
     adapter,
     path: adapter.getPath(),
     method: adapter.getMethod(),
-    paymentHeader: paymentHeaderOf(adapter),
   };
 }
 

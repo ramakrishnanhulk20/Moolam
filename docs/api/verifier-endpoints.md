@@ -118,7 +118,12 @@ and risk the two copies drifting, the paid route does not offer it.
 | `400`, `403`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
+| `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
+
+A settlement the facilitator has broadcast but not yet confirmed also answers `200`, with a pending
+receipt, and a repeat of the same payment inside ten minutes is answered from this process's memory
+without settling again.
 
 Payment is settled only after the match succeeds, so a failed verification never charges. When the
 handler fails after a payment was verified, the authorisation is cancelled rather than left
