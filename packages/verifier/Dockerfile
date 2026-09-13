@@ -31,6 +31,10 @@ FROM node:26-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     VERIFIER_PORT=4010
 WORKDIR /app
+# The C2PA signer makes its development certificate with openssl at first use,
+# and a host without it now refuses to mount /prepare rather than answering
+# with unsigned files.
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=prod-deps --chown=node:node /app/packages/verifier/node_modules ./packages/verifier/node_modules
 # src/server.ts reads this file for the version it reports on /health.
