@@ -4,7 +4,7 @@ import { AdaptiveDpr, Preload, ScrollControls, useScroll } from "@react-three/dr
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { Component, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
 import { CloseCard } from "@/components/story/CloseCard";
@@ -14,6 +14,7 @@ import { TryPanel } from "@/components/story/TryPanel";
 import { probe, progress, scroller } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { degradeSteps, measurement } from "@/components/story/measurements";
+import { createTierState, nextTier, startTier, tierLevel } from "@/components/story/tier";
 import { BEAT, CAMERA_KEYS, PAGES, captionCue, played, span, type Beat, type BeatName } from "@/components/story/beats";
 import { shortHex } from "@/lib/chain/client";
 
@@ -67,6 +68,8 @@ function World({
   reach,
   credential,
   dropped,
+  start,
+  onTier,
 }: {
   data: StoryData;
   pictures: string[];
@@ -83,6 +86,10 @@ function World({
   reach: number;
   credential: string;
   dropped: string | null;
+  /** The tier this screen begins on, before any frame has been timed. */
+  start: number;
+  /** Called once per change, never per frame. */
+  onTier: (tier: number) => void;
 }) {
   const scroll = useScroll();
   const { camera } = useThree();
@@ -110,7 +117,14 @@ function World({
   const answer = useRef(0);
   const probing = useRef(0);
 
-  useFrame((_, delta) => {
+  // The tier controller lives in a ref: the frame times arrive sixty times a
+  // second and only the handful of them that move the tier are worth a render.
+  const tier = useRef(createTierState(start));
+  useEffect(() => {
+    tier.current = createTierState(start);
+  }, [start]);
+
+  useFrame(({ clock }, delta) => {
     const t = scroll.offset;
     const k = Math.min(1, delta * 3.2);
 
@@ -142,6 +156,12 @@ function World({
     progress.trusted = played(t, BEAT.trusted);
     progress.offer = offer;
     progress.close = captionCue(t, BEAT.close).shown;
+
+    const measured = nextTier(tier.current, delta * 1000, clock.elapsedTime * 1000);
+    if (measured.tier !== tier.current.tier) {
+      onTier(measured.tier);
+    }
+    tier.current = measured;
   });
 
   return (
@@ -311,50 +331,99 @@ export function LandingStory({ data }: { data: StoryData }) {
   const t = useTranslations("story");
   const reduced = useReducedMotion();
   const [webgl] = useState(canDrawWebGL);
-  const still = reduced === true || !webgl;
-  const beats = useBeats(data, still);
+  const filmStill = reduced === true || !webgl;
   const [small, setSmall] = useState(false);
   const [dropped, setDropped] = useState<string | null>(null);
+  const [start, setStart] = useState(0);
+  const [tier, setTier] = useState(0);
+  const carried = useRef<number | null>(null);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
-    const read = () => setSmall(query.matches);
+    // A screen that crosses the phone breakpoint is a different machine as far
+    // as the field is concerned, so the measurement begins again from its tier.
+    const read = () => {
+      const at = startTier(window.innerWidth);
+      setSmall(query.matches);
+      setStart(at);
+      setTier(at);
+    };
     read();
     query.addEventListener("change", read);
     return () => query.removeEventListener("change", read);
   }, []);
+
+  const level = tierLevel(tier);
+  const still = filmStill || level.still;
+  const beats = useBeats(data, still);
+  const dpr = useMemo(() => [1, level.dpr] as [number, number], [level.dpr]);
+
+  const onTier = useCallback((next: number) => {
+    if (tierLevel(next).still) {
+      // The scene is about to go: hold where the reader had got to so the still
+      // page can open at the same point in the story.
+      carried.current = progress.scroll;
+    }
+    setTier(next);
+  }, []);
+
+  // Lenis drives the window scroll on every other page and syncs itself from a
+  // native scroll event, so moving the window here is enough.
+  useEffect(() => {
+    const at = carried.current;
+    if (!still || at === null) {
+      return;
+    }
+    carried.current = null;
+    const frame = requestAnimationFrame(() => {
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      window.scrollTo({ top: Math.max(0, room * at), behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [still]);
 
   const pictures = useMemo(() => [...new Set(data.plates.map((plate) => plate.picture))], [data.plates]);
 
   const credential = data.focal === null ? "c2pa manifest" : `c2pa ${shortHex(data.focal.creator, 6, 4)}`;
 
   if (still) {
-    return <StillStory data={data} beats={beats} noWebgl={!webgl && reduced !== true} />;
+    return (
+      <div data-story-tier={tier}>
+        <StillStory data={data} beats={beats} noWebgl={!webgl && reduced !== true} />
+      </div>
+    );
   }
 
   return (
     <SceneBoundary fallback={<StillStory data={data} beats={beats} noWebgl />}>
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
           to the scene, so the wheel is handed straight to it. */}
-      <div className="grain relative h-[100svh] w-full overflow-hidden bg-bg" data-story="film" data-lenis-prevent>
+      <div
+        className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
+        data-story="film"
+        data-story-tier={tier}
+        data-lenis-prevent
+      >
         <Canvas
           // A phone is a tall, narrow window on the same field, so it needs a
           // wider lens to see more than one plate at a time.
           camera={{ position: [0.9, 0.35, 7.4], fov: small ? 54 : 40 }}
-          dpr={small ? [1, 1.3] : [1, 1.75]}
+          dpr={dpr}
           gl={{ antialias: true, powerPreference: "high-performance" }}
         >
           <ScrollControls pages={PAGES} damping={0.22}>
             <World
               data={data}
               pictures={pictures}
-              plateCount={small ? 20 : 40}
-              particles={small ? 110 : 220}
+              plateCount={level.plates}
+              particles={level.particles}
               spread={small ? 0.55 : 1}
               framing={small ? 0.3 : 1}
               reach={small ? 1.4 : 1}
               credential={credential}
               dropped={dropped}
+              start={start}
+              onTier={onTier}
             />
           </ScrollControls>
           <AdaptiveDpr pixelated />
