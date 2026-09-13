@@ -57,10 +57,44 @@ the boot loudly and names the variable.
 | `PINATA_GATEWAY_URL` | no | This Pinata account's dedicated gateway, ending in `/ipfs/`. Defaults to the public gateway, which rate-limits a busy address |
 | `PRIVY_APP_ID` | yes for the studio | The app id from dashboard.privy.io, the same one the web app signs users in with. `/prepare` accepts that app's access tokens and no other's |
 | `CORS_ORIGINS` | yes for the studio | Comma separated exact origins of the web app, such as `https://moolam.app,http://localhost:3000`. No wildcard, no trailing slash |
+| `OPENAI_API_KEY` | yes for `/generate` | A key from platform.openai.com. Every call spends money, so scope it to this project and watch the usage page |
+| `OPENROUTER_API_KEY` | no | Used only when there is no OpenAI key. Then set `AGENT_IMAGE_MODEL` to the vendor-prefixed name, `openai/gpt-image-1-mini` |
+| `AGENT_IMAGE_MODEL` | no | Defaults to `gpt-image-1-mini`, the cheapest image model on the account |
+| `AGENT_IMAGE_BASE_URL` | no | Another endpoint for the same API. Leave unset |
+| `PRIVY_APP_SECRET` | yes for `/generate` | The app secret from the same Privy dashboard page as the app id |
+| `PRIVY_AUTHORIZATION_KEY` | yes for `/generate` | The authorization key that owns the agent's server wallet. Privy's SDK signs each request with it locally and never sends it |
+| `GENERATOR_WALLET_ID` | yes for `/generate` | The `generator.id` in `packages/agents/.moolam/wallets.json`, written by `npm run prove:privy`. It is a handle, not a secret, but the wallet only signs for the holder of the authorization key |
+| `GENERATOR_WALLET_ADDRESS` | no | The `generator.address` from the same file. Left unset the service asks Privy for it once at the first signature |
+| `GENERATOR_AGENT_ID` | no | Defaults to `10249`, the `generator.agentId` in that file: the ERC-8004 identity the wallet owns |
+| `MOOLAM_REGISTRY_ADDRESS` | no | Defaults to the deployed registry in `packages/contracts/deployments/monad-mainnet.json`. The container ships only this package's source, so the address cannot be read from that file at runtime |
+| `GENERATE_PER_DAY` | no | Defaults to 3 pictures per creator per rolling 24 hours |
 
 Without `PINATA_JWT` and `PRIVY_APP_ID` the container still boots and still
 verifies images. It logs one line saying the prepare route is off and answers 404
-on that path.
+on that path. `/generate` needs all of those plus an image model key, the two
+Privy secrets and the wallet id, and it says the same kind of line and answers 404
+when one is missing.
+
+## What the generate route costs
+
+One picture is a medium 1024 by 1024 image from `gpt-image-1-mini`. That model's
+published price is 8 dollars per million image output tokens and a medium square
+is around a thousand of them, so on the order of a cent or two a picture, plus
+four IPFS pins on the Pinata plan and no gas at all: this service never sends a
+transaction. At the default `GENERATE_PER_DAY` of 3 that is a few cents per
+creator per day, and a hundred creators spending their whole allowance every day
+would be a few dollars a day. Lower the number before a public launch if that is
+not a bill you want.
+
+Do not take those cents from this page. Every success writes one log line,
+`generate: picture drawn`, with the model and the tokens it billed, so the real
+figure comes from the running service. The one live check against the real model
+and the real Pinata took 35 seconds end to end for a 1024 square, so budget the
+client for a minute per request rather than a second.
+
+The count lives in the service's memory, so a restart gives everyone their
+allowance back and two copies of the container count separately. That is the
+known hole, and it is cents wide.
 
 ## Railway
 

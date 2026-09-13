@@ -10,6 +10,7 @@ import type { PrivyKeys } from "./auth/privy.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
 import { HammingIndex } from "./index.js";
 import { matchImage, type MatchResult } from "./match.js";
+import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
 import { verifyRoutes } from "./routes/verify.js";
@@ -107,6 +108,11 @@ export function sourceFromEnv(): PassportSource {
  * in its own key set. A host without them still verifies images; it just cannot
  * be the studio's backend, and it says so once at boot instead of failing.
  *
+ * The generate route needs everything prepare needs plus a key for the image
+ * model and the Privy credentials that let it ask the enclave to sign as the
+ * generator agent, so it is mounted on the same terms and says once at boot when
+ * it is off.
+ *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
  * the same either way, so switching payment on adds a route and changes nothing
@@ -120,6 +126,7 @@ export async function buildServer(
     logger?: boolean;
     payments?: x402HTTPResourceServer;
     prepare?: { keys?: PrivyKeys };
+    generate?: { keys?: PrivyKeys };
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -177,6 +184,20 @@ export async function buildServer(
   } else {
     app.log.info(
       "prepare route off: it needs PINATA_JWT to pin and PRIVY_APP_ID to check creators, and this host has neither or only one",
+    );
+  }
+
+  const canGenerate =
+    canPrepare &&
+    (env.OPENAI_API_KEY !== undefined || env.OPENROUTER_API_KEY !== undefined) &&
+    env.PRIVY_APP_SECRET !== undefined &&
+    env.PRIVY_AUTHORIZATION_KEY !== undefined &&
+    env.GENERATOR_WALLET_ID !== undefined;
+  if (options.generate !== undefined || canGenerate) {
+    await app.register(generateRoutes, options.generate ?? {});
+  } else {
+    app.log.info(
+      "generate route off: on top of what /prepare needs it wants an image model key, PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY and GENERATOR_WALLET_ID, and this host is missing at least one",
     );
   }
 

@@ -83,6 +83,46 @@ when Pinata refuses. The route is mounted only when the host has both
 `PINATA_JWT` and `PRIVY_APP_ID`; without them the service still verifies images
 and says once at boot that the studio side is off.
 
+`POST /generate` is the same thing for a picture the creator did not take. A
+signed-in creator sends a prompt, a title, their wallet address and a deadline as
+JSON, with their Privy access token in the same `Authorization: Bearer` header.
+The generator agent draws the picture with the image model, the service prepares
+and pins it exactly as `/prepare` does, and then the agent signs the generator
+half of the passport with its own wallet. That key lives in a Privy enclave under
+a policy that allows one thing, an EIP-712 `Passport` signature on the Moolam
+registry's domain, so a break-in here still cannot move the agent's money or sign
+for another app. The browser adds the creator's passkey signature over the same
+struct and sends one sponsored transaction.
+
+```sh
+curl -s -X POST http://localhost:4010/generate \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"A lighthouse in a monsoon storm, thick oils","title":"Lighthouse","creator":"0xYourWallet","deadline":1788878000}'
+```
+
+It answers with the passport fields, `generatorSig`, the four content ids, the
+model that drew it, the agent's id and wallet, and what is left of the caller's
+daily allowance. The prompt is the only text that reaches the model, so nothing
+this service says about itself can end up inside a manifest. The agent signs last,
+over the bytes that were actually pinned, so a mismatch reverts on chain instead
+of binding a signature to a different picture.
+
+Order of refusals: 401 for a missing, expired or foreign token, 400 for a prompt
+outside 8 to 600 characters, a title outside 1 to 120, a creator that is not an
+address, or a deadline that is not between 10 minutes and 2 hours ahead, 400
+`prompt-refused` with the provider's own words when the model's safety system
+turns the prompt down, 429 `quota` past `GENERATE_PER_DAY` pictures in a rolling
+24 hours, 502 `model-failed`, `pin-failed` or `sign-failed` for the three outside
+services, and 503 `busy` when both drawing slots have been full for 90 seconds.
+The token is checked and the allowance is taken before a cent is spent.
+
+The allowance is counted in this process's memory against the verified Privy user
+id, which a caller cannot choose. It is gone on a restart and two copies of the
+service count separately, which is a deliberate trade: the worst case is a few
+extra cents of image spend, and the alternative is a Redis this service does not
+otherwise need.
+
 Browsers are only allowed to call any of this from an origin named in
 `CORS_ORIGINS`. Anything else gets no allow header back, which the browser turns
 into a refusal.
@@ -206,8 +246,19 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `X402_FACILITATOR_URL` | default `https://x402-facilitator.molandak.org`, Monad's facilitator |
 | `PINATA_JWT` | the Pinata API token `/prepare` pins with, from app.pinata.cloud |
 | `PINATA_GATEWAY_URL` | this account's dedicated IPFS gateway, default the public one |
-| `PRIVY_APP_ID` | the Privy app whose access tokens `/prepare` accepts |
+| `PRIVY_APP_ID` | the Privy app whose access tokens `/prepare` and `/generate` accept |
 | `CORS_ORIGINS` | comma separated exact origins allowed to call this service from a browser |
+| `PRIVY_APP_SECRET` | that app's secret, from the same dashboard page. `/generate` only |
+| `PRIVY_AUTHORIZATION_KEY` | the authorization key that owns the agent's server wallet, so the enclave will sign for it |
+| `GENERATOR_WALLET_ID` | the Privy wallet id of the generator agent, recorded by `npm run prove:privy` in `packages/agents/.moolam/wallets.json` |
+| `GENERATOR_WALLET_ADDRESS` | that wallet's address, optional. Left unset it is read from Privy once; set, it is checked against Privy and a mismatch stops the signing |
+| `GENERATOR_AGENT_ID` | the agent's ERC-8004 identity, default `10249`, the id `wallets.json` records next to the wallet |
+| `MOOLAM_REGISTRY_ADDRESS` | the registry the generator signs against, default the deployed `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`. Change it only after a redeploy |
+| `OPENAI_API_KEY` | the image model key from platform.openai.com. This is spending money, so treat it like the Pinata token |
+| `OPENROUTER_API_KEY` | used instead when there is no OpenAI key. Set `AGENT_IMAGE_MODEL` to the vendor-prefixed name as well |
+| `AGENT_IMAGE_MODEL` | which model draws, default `gpt-image-1-mini` |
+| `AGENT_IMAGE_BASE_URL` | a different endpoint for that model, optional |
+| `GENERATE_PER_DAY` | how many pictures one creator may have drawn in 24 hours, default 3 |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.

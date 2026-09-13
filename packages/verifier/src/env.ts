@@ -30,6 +30,24 @@ const DEFAULT_X402_PRICE = "$0.05";
 /** Pinata's public gateway. An account's own dedicated gateway is preferred when .env names one. */
 const DEFAULT_PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
 
+/**
+ * The deployed Moolam registry on Monad mainnet, from
+ * packages/contracts/deployments/monad-mainnet.json. The container ships only this package's
+ * source, so the address cannot be read from that file at runtime; it is the EIP-712 domain the
+ * generator agent signs against, and a redeploy is the one thing that changes it.
+ */
+const DEFAULT_MOOLAM_REGISTRY = "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0";
+
+/** The ERC-8004 identity the generator agent owns, minted by the Privy proof. */
+const DEFAULT_GENERATOR_AGENT_ID = "10249";
+
+/**
+ * How many pictures one signed-in creator may have drawn a day. Three is about 9 cents of image
+ * model spend per creator, which is what keeps a public route off the OpenAI key and the Pinata
+ * plan.
+ */
+const DEFAULT_GENERATE_PER_DAY = "3";
+
 // Shell variables win over the file, so a one-off VERIFIER_PORT=... still bites.
 const repoEnvFile = path.join(REPO_ROOT, ".env");
 if (existsSync(repoEnvFile)) {
@@ -128,6 +146,62 @@ const schema = z
       /^[a-z0-9]{20,32}$/i,
       "PRIVY_APP_ID must be the 20 to 32 character app id from the Privy dashboard",
     ),
+    PRIVY_APP_SECRET: optionalText(),
+    PRIVY_AUTHORIZATION_KEY: optionalText(),
+    OPENAI_API_KEY: optionalMinLength(20, "OPENAI_API_KEY is too short to be an OpenAI API key"),
+    OPENROUTER_API_KEY: optionalMinLength(
+      20,
+      "OPENROUTER_API_KEY is too short to be an OpenRouter API key",
+    ),
+    AGENT_IMAGE_MODEL: optionalText(),
+    AGENT_IMAGE_BASE_URL: z
+      .string()
+      .trim()
+      .optional()
+      .refine((value) => value === undefined || value.length === 0 || isHttpUrl(value), {
+        message: "AGENT_IMAGE_BASE_URL must be an absolute http or https URL",
+      })
+      .transform((value) => (value === undefined || value.length === 0 ? undefined : value)),
+    GENERATOR_WALLET_ID: optionalText(),
+    GENERATOR_WALLET_ADDRESS: optionalPattern(
+      /^0x[0-9a-fA-F]{40}$/,
+      "GENERATOR_WALLET_ADDRESS must be 0x followed by 40 hex characters",
+    ),
+    GENERATOR_AGENT_ID: z
+      .string()
+      .trim()
+      .default(DEFAULT_GENERATOR_AGENT_ID)
+      .transform((value, ctx) => {
+        const text = value.length === 0 ? DEFAULT_GENERATOR_AGENT_ID : value;
+        if (!/^[0-9]+$/.test(text) || BigInt(text) === 0n) {
+          ctx.addIssue({ code: "custom", message: "GENERATOR_AGENT_ID must be a positive whole number" });
+          return z.NEVER;
+        }
+        return BigInt(text);
+      }),
+    GENERATE_PER_DAY: z
+      .string()
+      .trim()
+      .default(DEFAULT_GENERATE_PER_DAY)
+      .transform((value, ctx) => {
+        const count = Number(value.length === 0 ? DEFAULT_GENERATE_PER_DAY : value);
+        if (!Number.isInteger(count) || count < 1 || count > 1000) {
+          ctx.addIssue({
+            code: "custom",
+            message: "GENERATE_PER_DAY must be a whole number between 1 and 1000",
+          });
+          return z.NEVER;
+        }
+        return count;
+      }),
+    MOOLAM_REGISTRY_ADDRESS: z
+      .string()
+      .trim()
+      .default(DEFAULT_MOOLAM_REGISTRY)
+      .transform((value) => (value.length === 0 ? DEFAULT_MOOLAM_REGISTRY : value))
+      .refine((value) => /^0x[0-9a-fA-F]{40}$/.test(value), {
+        message: "MOOLAM_REGISTRY_ADDRESS must be 0x followed by 40 hex characters",
+      }),
     CORS_ORIGINS: z
       .string()
       .trim()
@@ -200,6 +274,16 @@ function optionalText(): z.ZodType<string | undefined> {
     .transform((value) => (value === undefined || value.length === 0 ? undefined : value));
 }
 
+/** An optional secret that is only checked for being long enough to be the real thing. */
+function optionalMinLength(length: number, message: string): z.ZodType<string | undefined> {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .refine((value) => value === undefined || value.length === 0 || value.length >= length, { message })
+    .transform((value) => (value === undefined || value.length === 0 ? undefined : value));
+}
+
 /** An optional string that must match `pattern` when it is present and not blank. */
 function optionalPattern(pattern: RegExp, message: string): z.ZodType<string | undefined> {
   return z
@@ -261,6 +345,17 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     PINATA_JWT: source.PINATA_JWT,
     PINATA_GATEWAY_URL: source.PINATA_GATEWAY_URL,
     PRIVY_APP_ID: source.PRIVY_APP_ID,
+    PRIVY_APP_SECRET: source.PRIVY_APP_SECRET,
+    PRIVY_AUTHORIZATION_KEY: source.PRIVY_AUTHORIZATION_KEY,
+    OPENAI_API_KEY: source.OPENAI_API_KEY,
+    OPENROUTER_API_KEY: source.OPENROUTER_API_KEY,
+    AGENT_IMAGE_MODEL: source.AGENT_IMAGE_MODEL,
+    AGENT_IMAGE_BASE_URL: source.AGENT_IMAGE_BASE_URL,
+    GENERATOR_WALLET_ID: source.GENERATOR_WALLET_ID,
+    GENERATOR_WALLET_ADDRESS: source.GENERATOR_WALLET_ADDRESS,
+    GENERATOR_AGENT_ID: source.GENERATOR_AGENT_ID,
+    GENERATE_PER_DAY: source.GENERATE_PER_DAY,
+    MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,
     PRIVY_JWKS_OVERRIDE_PATH: source.PRIVY_JWKS_OVERRIDE_PATH,
     NODE_ENV: source.NODE_ENV,
