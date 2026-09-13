@@ -1,5 +1,8 @@
 /** Too many generations were already in flight for this caller's wait to be worth serving. */
 export class Busy extends Error {
+  /** A queue this long is the service being unavailable for a moment, not the caller's mistake. */
+  readonly statusCode = 503;
+
   constructor(waitedMs: number) {
     super(`no generation slot came free within ${Math.round(waitedMs / 1000)} seconds`);
     this.name = "Busy";

@@ -54,6 +54,24 @@ const DEFAULT_EDITS_PER_DAY = "5";
  */
 const DEFAULT_GENERATE_PER_DAY = "3";
 
+/**
+ * How often the passport index is rebuilt from the source. A minute is well inside the time it
+ * takes a creator to register an image and then go and verify it, and a rebuild of a few thousand
+ * records costs milliseconds.
+ */
+const DEFAULT_INDEX_REFRESH_MS = 60_000;
+
+/**
+ * How long a verification waits for a free matching slot before the caller is told the service is
+ * busy. Thirty seconds is far longer than a match takes, so reaching it means a real queue.
+ */
+const DEFAULT_MATCH_WAIT_MS = 30_000;
+
+/** The routes a host can insist on in EXPECT_ROUTES. /verify and /health are always mounted. */
+export const EXPECTABLE_ROUTES = ["prepare", "generate", "edit", "verify/paid"] as const;
+
+export type ExpectedRoute = (typeof EXPECTABLE_ROUTES)[number];
+
 // Shell variables win over the file, so a one-off VERIFIER_PORT=... still bites.
 const repoEnvFile = path.join(REPO_ROOT, ".env");
 if (existsSync(repoEnvFile)) {
@@ -251,6 +269,29 @@ const schema = z
         }
         return origins;
       }),
+    TRUST_PROXY: z.string().trim().default(""),
+    INDEX_REFRESH_MS: milliseconds("INDEX_REFRESH_MS", DEFAULT_INDEX_REFRESH_MS, 0),
+    MATCH_WAIT_MS: milliseconds("MATCH_WAIT_MS", DEFAULT_MATCH_WAIT_MS, 1),
+    EXPECT_ROUTES: z
+      .string()
+      .trim()
+      .default("")
+      .transform((value, ctx) => {
+        const names = value
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+        for (const name of names) {
+          if (!(EXPECTABLE_ROUTES as readonly string[]).includes(name)) {
+            ctx.addIssue({
+              code: "custom",
+              message: `EXPECT_ROUTES must be a comma separated list of ${EXPECTABLE_ROUTES.join(", ")}, and "${name}" is not one`,
+            });
+            return z.NEVER;
+          }
+        }
+        return names as ExpectedRoute[];
+      }),
     PRIVY_JWKS_OVERRIDE_PATH: optionalText(),
     NODE_ENV: optionalText(),
   })
@@ -293,6 +334,30 @@ const schema = z
       });
     }
   });
+
+/**
+ * A whole number of milliseconds, with a default and a floor. The ceiling of a day is there so a
+ * value pasted in seconds by mistake, or a stray extra zero, is refused at boot rather than
+ * turning a timer off in practice.
+ */
+function milliseconds(name: string, fallback: number, min: number): z.ZodType<number> {
+  const DAY_MS = 86_400_000;
+  return z
+    .string()
+    .trim()
+    .default(String(fallback))
+    .transform((value, ctx) => {
+      const parsed = Number(value.length === 0 ? fallback : value);
+      if (!Number.isInteger(parsed) || parsed < min || parsed > DAY_MS) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${name} must be a whole number of milliseconds between ${min} and ${DAY_MS}`,
+        });
+        return z.NEVER;
+      }
+      return parsed;
+    });
+}
 
 /** An optional value where a blank line in .env means the same as no line at all. */
 function optionalText(): z.ZodType<string | undefined> {
@@ -389,6 +454,10 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GENERATE_PER_DAY: source.GENERATE_PER_DAY,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,
+    TRUST_PROXY: source.TRUST_PROXY,
+    INDEX_REFRESH_MS: source.INDEX_REFRESH_MS,
+    MATCH_WAIT_MS: source.MATCH_WAIT_MS,
+    EXPECT_ROUTES: source.EXPECT_ROUTES,
     PRIVY_JWKS_OVERRIDE_PATH: source.PRIVY_JWKS_OVERRIDE_PATH,
     NODE_ENV: source.NODE_ENV,
   });

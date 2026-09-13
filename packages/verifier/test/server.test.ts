@@ -1,13 +1,14 @@
 // Covers the HTTP surface: health, a good upload, rejected bodies, the refused
-// fetch targets, unknown routes, the match concurrency gate and the rate limit.
+// fetch targets, unknown routes, the body limits and the rate limit.
 // Requests go through fastify.inject, so no port is bound.
-// Does NOT cover the remote URL fetch path against a real network, and does not
-// cover TLS or any deployment concern.
+// Does NOT cover the remote URL fetch path against a real network, does not cover
+// the boot refusals or the match gate giving up, which are in boot.test.ts, and
+// does not cover TLS or any deployment concern.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { fingerprint } from "../src/fingerprint.js";
-import { buildServer, concurrencyGate } from "../src/server.js";
+import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
 import { makeImage, makeOversizeImage, multipartBody, recordFor } from "./helpers.js";
@@ -104,36 +105,30 @@ describe("verify service", () => {
   });
 });
 
-describe("concurrencyGate", () => {
-  it("never runs more than its limit at once and still finishes every task", async () => {
-    const gate = concurrencyGate(2);
-    let running = 0;
-    let peak = 0;
+describe("body limits", () => {
+  it("refuses a 20 KB JSON body with 413 and still takes a 5 MB upload", async () => {
+    const app = await buildServer({ source: sourceOf([]), logger: false });
+    await app.ready();
 
-    const results = await Promise.all(
-      Array.from({ length: 8 }, (_unused, i) =>
-        gate(async () => {
-          running += 1;
-          peak = Math.max(peak, running);
-          await new Promise((resolve) => setTimeout(resolve, 5));
-          running -= 1;
-          return i;
-        }),
-      ),
-    );
+    try {
+      const fat = JSON.stringify({ url: `https://example.com/${"a".repeat(20 * 1024)}.jpg` });
+      const json = await app.inject({
+        method: "POST",
+        url: "/verify",
+        payload: fat,
+        headers: { "content-type": "application/json" },
+      });
+      expect(json.statusCode).toBe(413);
 
-    expect(peak).toBe(2);
-    expect(results).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
-  });
-
-  it("frees the slot when a task throws", async () => {
-    const gate = concurrencyGate(1);
-
-    await expect(gate(async () => {
-      throw new Error("decode failed");
-    })).rejects.toThrow(/decode failed/);
-    await expect(gate(async () => "next in line")).resolves.toBe("next in line");
-  });
+      const { payload, headers } = multipartBody("file", "big.jpg", "image/jpeg", Buffer.alloc(5 * 1024 * 1024, 7));
+      const upload = await app.inject({ method: "POST", url: "/verify", payload, headers });
+      expect(upload.statusCode).not.toBe(413);
+      expect(upload.statusCode).toBe(400);
+      expect(upload.json().error).toMatch(/not an image/);
+    } finally {
+      await app.close();
+    }
+  }, 30_000);
 });
 
 describe("rate limit", () => {

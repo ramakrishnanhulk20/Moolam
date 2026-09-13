@@ -7,7 +7,9 @@ import multipart from "@fastify/multipart";
 import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import type { PrivyKeys } from "./auth/privy.js";
-import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
+import { checkRegistry } from "./boot/registryChecks.js";
+import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute } from "./env.js";
+import { waitingGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { editRoutes } from "./routes/edit.js";
@@ -34,6 +36,16 @@ const RATE_LIMIT_PER_MINUTE = 60;
  */
 const MAX_CONCURRENT_MATCHES = 2;
 
+/**
+ * The cap on a body this service will parse into memory.
+ *
+ * Only the JSON and text parsers go through it. The multipart parser reads the request stream
+ * itself and is bounded by its own fileSize limit, so uploads are still 20 MB. 16 KB is far more
+ * than a { "url": "..." } body or a generate prompt needs, and it means an unauthenticated caller
+ * cannot make this process buffer megabytes before a single check has run.
+ */
+const MAX_JSON_BODY_BYTES = 16 * 1024;
+
 export interface Verifier {
   index: HammingIndex;
   lookupExact: (sha256: Hex) => PassportRecord | undefined;
@@ -41,30 +53,63 @@ export interface Verifier {
   /** Matches an image, waiting for a free slot so heavy uploads cannot pile up. */
   runMatch: (bytes: Buffer) => Promise<MatchResult>;
   runPrepare: <T>(task: () => Promise<T>) => Promise<T>;
+  /** Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand. */
+  reload: () => Promise<void>;
+  /** The routes this host mounted, so /health can say what it is able to serve. */
+  routes: string[];
+}
+
+/** The index and the exact-lookup map, replaced together so no request sees a half-built pair. */
+interface LoadedIndex {
+  index: HammingIndex;
+  byId: Map<Hex, PassportRecord>;
+}
+
+async function loadIndex(source: PassportSource): Promise<LoadedIndex> {
+  const records = await source.load();
+  return {
+    index: new HammingIndex(records),
+    byId: new Map<Hex, PassportRecord>(records.map((record) => [record.id, record])),
+  };
 }
 
 /**
- * A first come, first served gate that lets `limit` tasks run at once.
+ * The variables a route named in EXPECT_ROUTES is missing, in the words a .env file uses.
  *
- * A caller that arrives while the gate is full parks on a promise and is woken
- * by whichever task finishes next, so nothing spins and nothing is dropped.
+ * Every entry is checked, not just the first, so one failed boot names the whole list to fix.
  */
-export function concurrencyGate(limit: number): <T>(task: () => Promise<T>) => Promise<T> {
-  let running = 0;
-  const waiting: (() => void)[] = [];
-
-  return async <T>(task: () => Promise<T>): Promise<T> => {
-    if (running >= limit || waiting.length > 0) {
-      await new Promise<void>((resolve) => waiting.push(resolve));
-    }
-    running += 1;
-    try {
-      return await task();
-    } finally {
-      running -= 1;
-      waiting.shift()?.();
-    }
+function missingVariablesFor(route: ExpectedRoute): string[] {
+  const missing: string[] = [];
+  const alsoNeedsPrepare = (): void => {
+    if (env.PINATA_JWT === undefined) missing.push("PINATA_JWT");
+    if (env.PRIVY_APP_ID === undefined) missing.push("PRIVY_APP_ID");
   };
+
+  if (route === "prepare") {
+    alsoNeedsPrepare();
+  }
+  if (route === "generate") {
+    alsoNeedsPrepare();
+    if (env.OPENAI_API_KEY === undefined && env.OPENROUTER_API_KEY === undefined) {
+      missing.push("OPENAI_API_KEY or OPENROUTER_API_KEY");
+    }
+    if (env.PRIVY_APP_SECRET === undefined) missing.push("PRIVY_APP_SECRET");
+    if (env.PRIVY_AUTHORIZATION_KEY === undefined) missing.push("PRIVY_AUTHORIZATION_KEY");
+    if (env.GENERATOR_WALLET_ID === undefined) missing.push("GENERATOR_WALLET_ID");
+  }
+  if (route === "edit") {
+    alsoNeedsPrepare();
+    if (env.PRIVY_APP_SECRET === undefined) missing.push("PRIVY_APP_SECRET");
+    if (env.PRIVY_AUTHORIZATION_KEY === undefined) missing.push("PRIVY_AUTHORIZATION_KEY");
+    if (env.PRIVY_EDIT_SIGNER_ID === undefined) missing.push("PRIVY_EDIT_SIGNER_ID");
+    if (env.PRIVY_EDIT_POLICY_ID === undefined) missing.push("PRIVY_EDIT_POLICY_ID");
+  }
+  if (route === "verify/paid") {
+    if (!env.X402_ENABLED) missing.push("X402_ENABLED");
+    if (env.X402_PAY_TO_ADDRESS === undefined) missing.push("X402_PAY_TO_ADDRESS");
+    if (env.VERIFIER_BASE_URL.length === 0) missing.push("VERIFIER_BASE_URL");
+  }
+  return missing;
 }
 
 declare module "fastify" {
@@ -95,11 +140,13 @@ export function sourceFromEnv(): PassportSource {
 }
 
 /**
- * Builds the verify service and loads the passport index once at boot.
+ * Builds the verify service and loads the passport index.
  *
  * The index is read into memory rather than queried per request because a
  * Hamming search is a full scan by design, and rebuilding it per call would put
- * a file read in front of every verification.
+ * a file read in front of every verification. It is rebuilt in the background
+ * every INDEX_REFRESH_MS so an image registered a minute ago verifies, which a
+ * load-once index could never do; a refresh that fails keeps the copy in hand.
  *
  * The passport id is the sha256 of the registered bytes, which is what makes
  * the exact lookup a plain map hit.
@@ -123,7 +170,9 @@ export function sourceFromEnv(): PassportSource {
  * the same either way, so switching payment on adds a route and changes nothing
  * that already works.
  *
- * Throws when the source cannot be read or holds malformed records.
+ * Throws when the source cannot be read or holds malformed records, when x402 is on without a
+ * base URL to quote, when EXPECT_ROUTES names a route this host cannot mount, and when the
+ * registry check finds the chain disagreeing with what this host would sign.
  */
 export async function buildServer(
   options: {
@@ -133,30 +182,103 @@ export async function buildServer(
     prepare?: { keys?: PrivyKeys };
     generate?: { keys?: PrivyKeys };
     edit?: { keys?: PrivyKeys };
+    checks?: { registry?: () => Promise<void> };
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
     logger: options.logger ?? true,
-    bodyLimit: MAX_UPLOAD_BYTES,
-    // req.ip must come from the socket. Trusting a proxy header here would let
-    // any caller pick their own rate-limit bucket.
-    trustProxy: false,
+    bodyLimit: MAX_JSON_BODY_BYTES,
+    // Behind a proxy, request.ip has to come from the forwarded header or every caller in the
+    // world shares one rate-limit bucket. TRUST_PROXY names which hops may be believed. It is
+    // never `true` and never a hop count: Fastify 5.12 reads `true` as "take the leftmost
+    // forwarded entry", and that entry is written by the caller, which would hand every caller a
+    // bucket of their own choosing.
+    trustProxy: env.TRUST_PROXY === "" ? false : env.TRUST_PROXY,
   });
 
   const source = options.source ?? sourceFromEnv();
-  const records = await source.load();
-  const byId = new Map<Hex, PassportRecord>(records.map((record) => [record.id, record]));
+  let current = await loadIndex(source);
+  const lookupExact = (sha256: Hex): PassportRecord | undefined => current.byId.get(sha256.toLowerCase() as Hex);
+  const gate = waitingGate(MAX_CONCURRENT_MATCHES, env.MATCH_WAIT_MS);
 
-  const index = new HammingIndex(records);
-  const lookupExact = (sha256: Hex): PassportRecord | undefined => byId.get(sha256.toLowerCase() as Hex);
-  const gate = concurrencyGate(MAX_CONCURRENT_MATCHES);
+  const reload = async (): Promise<void> => {
+    try {
+      // One assignment, so an in-flight request reads either the old pair or the new one.
+      current = await loadIndex(source);
+      app.log.info({ records: current.index.size }, "passport index refreshed");
+    } catch (error) {
+      app.log.warn(
+        { reason: error instanceof Error ? error.message : String(error) },
+        "index refresh failed, serving the copy already loaded",
+      );
+    }
+  };
+
+  const canPrepare = env.PINATA_JWT !== undefined && env.PRIVY_APP_ID !== undefined;
+  const canGenerate =
+    canPrepare &&
+    (env.OPENAI_API_KEY !== undefined || env.OPENROUTER_API_KEY !== undefined) &&
+    env.PRIVY_APP_SECRET !== undefined &&
+    env.PRIVY_AUTHORIZATION_KEY !== undefined &&
+    env.GENERATOR_WALLET_ID !== undefined;
+  const canEdit =
+    canPrepare &&
+    env.PRIVY_APP_SECRET !== undefined &&
+    env.PRIVY_AUTHORIZATION_KEY !== undefined &&
+    env.PRIVY_EDIT_SIGNER_ID !== undefined &&
+    env.PRIVY_EDIT_POLICY_ID !== undefined;
+
+  // The paid route quotes its own address to the payer, so a host that does not know its public
+  // URL must not serve it: the quote would name nothing and the payment could not be matched back.
+  if (env.X402_ENABLED && env.VERIFIER_BASE_URL.length === 0) {
+    throw new Error("VERIFIER_BASE_URL is required when X402_ENABLED is true");
+  }
+
+  const payments = options.payments ?? (env.X402_ENABLED ? paymentServerFromEnv() : undefined);
+  const mounts: Record<ExpectedRoute, boolean> = {
+    prepare: options.prepare !== undefined || canPrepare,
+    generate: options.generate !== undefined || canGenerate,
+    edit: options.edit !== undefined || canEdit,
+    "verify/paid": payments !== undefined,
+  };
+
+  const refusals = env.EXPECT_ROUTES.filter((route) => !mounts[route]).map((route) => {
+    const missing = missingVariablesFor(route);
+    return `${route} needs ${missing.length === 0 ? "settings this host does not have" : missing.join(", ")}`;
+  });
+  if (refusals.length > 0) {
+    throw new Error(`EXPECT_ROUTES names routes this host cannot mount: ${refusals.join("; ")}`);
+  }
+
+  // The generator signs passports offline, so a registry or an agent owner that does not match
+  // this host's settings produces signatures the chain rejects one image at a time. Read it once
+  // here instead. The default reads the chain, so it is only used for a route the environment
+  // itself mounts, and never under a test runner: a caller that wires the route with its own keys
+  // passes its own check.
+  const defaultCheck =
+    canGenerate && env.NODE_ENV !== "test" ? async (): Promise<void> => await checkRegistry(env) : undefined;
+  const registryCheck = options.checks?.registry ?? defaultCheck;
+  if (mounts.generate && registryCheck !== undefined) {
+    await registryCheck();
+  }
 
   app.decorate("verifier", {
-    index,
+    get index(): HammingIndex {
+      return current.index;
+    },
     lookupExact,
     version,
-    runMatch: (bytes: Buffer) => gate(() => matchImage(bytes, index, lookupExact)),
+    runMatch: (bytes: Buffer) => gate(() => matchImage(bytes, current.index, lookupExact)),
     runPrepare: <T>(task: () => Promise<T>) => gate(task),
+    reload,
+    routes: [
+      "verify",
+      ...(mounts["verify/paid"] ? ["verify/paid"] : []),
+      ...(mounts.prepare ? ["prepare"] : []),
+      ...(mounts.generate ? ["generate"] : []),
+      ...(mounts.edit ? ["edit"] : []),
+      "health",
+    ],
   });
 
   // The studio uploads straight from the browser, so the app's own origin has to
@@ -184,8 +306,7 @@ export async function buildServer(
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
 
-  const canPrepare = env.PINATA_JWT !== undefined && env.PRIVY_APP_ID !== undefined;
-  if (options.prepare !== undefined || canPrepare) {
+  if (mounts.prepare) {
     await app.register(prepareRoutes, options.prepare ?? {});
   } else {
     app.log.info(
@@ -193,13 +314,7 @@ export async function buildServer(
     );
   }
 
-  const canGenerate =
-    canPrepare &&
-    (env.OPENAI_API_KEY !== undefined || env.OPENROUTER_API_KEY !== undefined) &&
-    env.PRIVY_APP_SECRET !== undefined &&
-    env.PRIVY_AUTHORIZATION_KEY !== undefined &&
-    env.GENERATOR_WALLET_ID !== undefined;
-  if (options.generate !== undefined || canGenerate) {
+  if (mounts.generate) {
     await app.register(generateRoutes, options.generate ?? {});
   } else {
     app.log.info(
@@ -207,13 +322,7 @@ export async function buildServer(
     );
   }
 
-  const canEdit =
-    canPrepare &&
-    env.PRIVY_APP_SECRET !== undefined &&
-    env.PRIVY_AUTHORIZATION_KEY !== undefined &&
-    env.PRIVY_EDIT_SIGNER_ID !== undefined &&
-    env.PRIVY_EDIT_POLICY_ID !== undefined;
-  if (options.edit !== undefined || canEdit) {
+  if (mounts.edit) {
     await app.register(editRoutes, options.edit ?? {});
   } else {
     app.log.info(
@@ -221,7 +330,6 @@ export async function buildServer(
     );
   }
 
-  const payments = options.payments ?? (env.X402_ENABLED ? paymentServerFromEnv() : undefined);
   if (payments !== undefined) {
     await app.register(verifyPaidRoutes, { payments });
   }
@@ -237,8 +345,25 @@ export async function buildServer(
     return reply.code(status).send({ error: status >= 500 ? "verifier failed to handle the request" : error.message });
   });
 
+  if (env.INDEX_REFRESH_MS > 0) {
+    const timer = setInterval(() => {
+      void reload();
+    }, env.INDEX_REFRESH_MS);
+    // A refresh that is only waiting for its next tick must not keep the process alive.
+    timer.unref();
+    app.addHook("onClose", async () => {
+      clearInterval(timer);
+    });
+  }
+
   app.log.info(
-    { records: records.length, source: env.PASSPORT_SOURCE, corsOrigins: env.CORS_ORIGINS.length },
+    {
+      records: current.index.size,
+      source: env.PASSPORT_SOURCE,
+      corsOrigins: env.CORS_ORIGINS.length,
+      routes: app.verifier.routes,
+      refreshMs: env.INDEX_REFRESH_MS,
+    },
     "passport index loaded",
   );
   return app;

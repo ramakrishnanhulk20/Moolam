@@ -30,7 +30,7 @@ Windows `node_modules` and the web app out of the context.
 | CPU | 1 shared vCPU. A match is CPU bound for well under a second |
 | Port | 4010, and the server binds `0.0.0.0` |
 | User | runs as the non-root `node` user |
-| Health | `GET /health` returns `{"ok":true,"records":N,"version":"0.1.0"}`. The image also declares a Docker `HEALTHCHECK` on the same path |
+| Health | `GET /health` returns `{"ok":true,"records":N,"version":"0.2.0","routes":["verify","prepare","generate","edit","health"]}`, where `routes` is what this host actually mounted. The image also declares a Docker `HEALTHCHECK` on the same path |
 
 ## Environment
 
@@ -71,6 +71,10 @@ the boot loudly and names the variable.
 | `PRIVY_EDIT_SIGNER_ID` | yes for `/edit` | The key quorum whose one member is the public half of `PRIVY_AUTHORIZATION_KEY`. `npm run edit:quorum` in `packages/agents` creates it under the name `moolam-edit-signer`, prints the id and writes it into the root `.env`; copy that id here. The browser passes the same id to `addSigners`, so the value here and the value the web app uses must match |
 | `PRIVY_EDIT_POLICY_ID` | yes for `/edit` | The policy id that quorum is held to, built by `sessionSignerPolicy` in `packages/agents/src/privy/policies.ts` and recorded in `packages/agents/.moolam/wallets.json`. A wallet whose grant does not carry it is answered 409 `no-signer` |
 | `EDITS_PER_DAY` | no | Defaults to 5 edits per creator per rolling 24 hours |
+| `TRUST_PROXY` | yes behind a proxy | Which hops may set the caller's address: a comma separated list of addresses, CIDR ranges, or the words `loopback`, `linklocal`, `uniquelocal`. Empty, the default, believes nothing and reads the socket, which behind a proxy puts every caller in one rate-limit bucket |
+| `INDEX_REFRESH_MS` | no | How often the passport index is rebuilt from the source, in milliseconds. Defaults to 60000. `0` turns the refresh off and the index is then whatever was loaded at boot |
+| `EXPECT_ROUTES` | no | Routes this host must be able to mount or it refuses to boot, comma separated from `prepare`, `generate`, `edit`, `verify/paid`. Empty, the default, mounts whatever the keys allow and logs the rest as off |
+| `MATCH_WAIT_MS` | no | How long a verification waits for a free matching slot before the caller is answered 503 `busy`, in milliseconds. Defaults to 30000 |
 
 Without `PINATA_JWT` and `PRIVY_APP_ID` the container still boots and still
 verifies images. It logs one line saying the prepare route is off and answers 404
@@ -132,6 +136,14 @@ two pages do not state is marked as a dashboard check rather than guessed.
    a Dockerfile that is not at the root of the source directory. The filename must
    stay exactly `Dockerfile`.
 4. Add the environment variables from the table above as service variables.
+   Two of them matter only on a host like this one. Set `TRUST_PROXY` to
+   `loopback,uniquelocal,100.64.0.0/10`, which covers Railway's own edge, and then
+   validate it: log `request.ip` once on the real host and check it is the
+   caller's address and not the proxy's, because a list that is too short puts
+   every caller in one rate-limit bucket and a list that is too long lets a caller
+   choose their own. Set `EXPECT_ROUTES=prepare,generate,edit` so a deploy that is
+   missing a key stops at boot instead of serving a service with routes quietly
+   switched off.
 5. Port and health check path: neither guide covers how Railway picks the port or
    where the health check path is set. Check the dashboard. The container listens
    on 4010 and answers `GET /health`. If Railway injects its own port variable,

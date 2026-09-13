@@ -3,6 +3,7 @@ import { z } from "zod";
 import { readManifest, type ManifestSummary } from "../c2pa.js";
 import { FETCH_TIMEOUT_MS, MAX_UPLOAD_BYTES } from "../env.js";
 import { ImageTooLarge } from "../fingerprint.js";
+import { Busy } from "../generate/gate.js";
 import type { MatchResult } from "../match.js";
 import { BlockedTarget, UnreachableTarget, safeFetch } from "../net/safeFetch.js";
 
@@ -19,9 +20,16 @@ const urlBodySchema = z.object({
   url: z.string().refine(isHttpUrl, "url must be an absolute http or https URL"),
 });
 
-/** The status a route answers with for an error raised while reading or matching. */
+/**
+ * The status a route answers with for an error raised while reading or matching.
+ *
+ * Any error that carries its own status is believed, which is how a full match gate answers 503
+ * without this function knowing what a gate is. Everything else is treated as the caller's
+ * mistake, because that is what nearly every failure on this path is.
+ */
 export function statusOf(error: unknown): number {
-  return error instanceof BadRequest ? error.statusCode : 400;
+  const carried = (error as { statusCode?: unknown } | null)?.statusCode;
+  return typeof carried === "number" ? carried : 400;
 }
 
 /**
@@ -115,7 +123,9 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
  * uploads queues instead of decoding all at once.
  *
  * Throws BadRequest: 413 when the image is over the pixel limit, 400 when it is
- * not an image we can decode.
+ * not an image we can decode. Throws Busy, which carries 503, when no slot came
+ * free in time: that is the service being full, not a bad upload, and turning it
+ * into a 400 would tell the caller to change an image that is fine.
  */
 export async function verifyBytes(
   app: FastifyInstance,
@@ -126,6 +136,9 @@ export async function verifyBytes(
   try {
     [result, manifest] = await Promise.all([app.verifier.runMatch(bytes), readManifest(bytes)]);
   } catch (error) {
+    if (error instanceof Busy) {
+      throw error;
+    }
     if (error instanceof ImageTooLarge) {
       throw new BadRequest(error.message, 413);
     }

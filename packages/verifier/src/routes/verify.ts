@@ -5,9 +5,11 @@ import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
  * POST /verify: takes an image, returns the passport it belongs to.
  *
  * Accepts either a multipart upload in a field named "file" or a JSON body of
- * { "url": "..." }. Both are capped at 20 MB, and the URL form is fetched
- * server-side with a 10 second timeout, refusing any address inside our own
- * network before and after every redirect.
+ * { "url": "..." }. The upload and the fetched image are capped at 20 MB, the JSON body at 16 KB,
+ * and the URL form is fetched server-side with a 10 second timeout, refusing any address inside
+ * our own network before and after every redirect.
+ *
+ * Answers 503 `busy` when no matching slot came free in time.
  */
 export async function verifyRoutes(app: FastifyInstance): Promise<void> {
   app.post("/verify", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -18,7 +20,9 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);
       request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /verify");
-      return reply.code(status).send({ error: reason });
+      // A full gate is the one failure the caller can do nothing about but retry, so it goes out
+      // as the same one word the other busy routes use rather than an internal wait time.
+      return reply.code(status).send({ error: status === 503 ? "busy" : reason });
     }
   });
 }
