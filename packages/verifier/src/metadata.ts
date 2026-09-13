@@ -19,7 +19,7 @@ export const GENERATED_DESCRIPTION =
   "An image made by the Moolam demo generator agent. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.";
 
 export const CAPTURED_DESCRIPTION =
-  "A photograph registered with Moolam. The creator signed this fingerprint with a passkey before the registry would write the record.";
+  "A picture registered with Moolam from a file its creator uploaded. The creator signed this fingerprint with a passkey before the registry would write the record.";
 
 export interface PassportMetadata {
   name: string;

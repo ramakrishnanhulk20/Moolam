@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { NavEntry } from "@/lib/docs/tree";
 import { Link } from "@/lib/i18n/routing";
 import { DocsSearch } from "./Search";
@@ -64,43 +65,60 @@ export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
         </div>
       </div>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            className="fixed inset-0 z-[70] lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.16 }}
-          >
-            <button
-              type="button"
-              aria-label={t("close")}
-              onClick={() => setOpen(false)}
-              className="absolute inset-0 cursor-default bg-bg/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ x: "-100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-              className="relative h-full w-[19rem] max-w-[86vw] overflow-y-auto border-r border-line-strong bg-bg-raised px-5 py-6"
-            >
-              <div className="mb-5 flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint">{t("home")}</span>
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="rounded-[8px] border border-line px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-                >
-                  {t("close")}
-                </button>
-              </div>
-              <DocsTree nav={nav} onGo={() => setOpen(false)} />
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      {/* The bar filters what is behind it, and a backdrop filter makes an
+          element the containing block for anything fixed inside it, so a drawer
+          rendered here opened as tall as the bar itself. It goes into the body,
+          where fixed still means the window. The drawer is closed while the page
+          is rendered on the server, so it puts nothing in either tree until
+          somebody opens it. */}
+      {typeof document === "undefined"
+        ? null
+        : createPortal(<ContentsDrawer nav={nav} open={open} onClose={() => setOpen(false)} />, document.body)}
     </div>
+  );
+}
+
+/** The tree on a phone: the whole window, with the list scrolling inside it. */
+function ContentsDrawer({ nav, open, onClose }: { nav: NavEntry[]; open: boolean; onClose: () => void }) {
+  const t = useTranslations("docs");
+
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="fixed inset-0 z-[70] lg:hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.16 }}
+        >
+          <button
+            type="button"
+            aria-label={t("close")}
+            onClick={onClose}
+            className="absolute inset-0 cursor-default bg-bg/80 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ x: "-100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="relative h-full w-[19rem] max-w-[86vw] overflow-y-auto border-r border-line-strong bg-bg-raised px-5 py-6"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint">{t("home")}</span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-[8px] border border-line px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+              >
+                {t("close")}
+              </button>
+            </div>
+            <DocsTree nav={nav} onGo={onClose} />
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

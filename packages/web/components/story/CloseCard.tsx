@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { forwardTouchMove, forwardTouchStart, forwardWheel, progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { CHAIN_ID } from "@/lib/chain/client";
@@ -19,6 +19,20 @@ import { Link } from "@/lib/i18n/routing";
 export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: boolean }) {
   const t = useTranslations("story.close");
   const shell = useRef<HTMLDivElement>(null);
+  const [wide, setWide] = useState(false);
+
+  // From 640 px the card owns the whole window, header included, and the film
+  // hands the scroll on at the end, which lifts it by the footer's height. The
+  // top inset below is what keeps the headline clear of the bar after that lift,
+  // and it only applies to the wide framing: on a phone the card already sits in
+  // the lower half of the window.
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 640px)");
+    const read = () => setWide(query.matches);
+    read();
+    query.addEventListener("change", read);
+    return () => query.removeEventListener("change", read);
+  }, []);
 
   useEffect(() => {
     if (!pinned) {
@@ -60,7 +74,6 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
       value: data.attestationCount === null ? t("unread") : data.attestationCount.toString(),
       label: t("attestations"),
     },
-    { key: "chain", value: CHAIN_ID.toString(), label: t("chain") },
   ];
 
   return (
@@ -68,7 +81,18 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
       ref={shell}
       inert={pinned ? true : undefined}
       aria-hidden={pinned ? "true" : undefined}
-      style={pinned ? { opacity: 0 } : undefined}
+      style={
+        pinned
+          ? {
+              opacity: 0,
+              // The bar's height twice: the stylesheet already holds one for the
+              // bar itself, and the second is the room the card needs after the
+              // film hands the scroll on. safe center keeps the card centred
+              // while it fits and never lets it start above that inset.
+              ...(wide ? { paddingTop: "calc(var(--header-h) * 2)", alignItems: "safe center" } : {}),
+            }
+          : undefined
+      }
       className={pinned ? "story-close story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : ""}
     >
       <div
@@ -110,7 +134,10 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
           </Link>
         </div>
 
-        <dl className="mt-5 grid grid-cols-3 gap-x-4 border-t border-line pt-3 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
+        {/* A phone has the lower half of the window for the whole card, so the
+            room the third figure used to take is given back to the line under
+            the row rather than added to it. */}
+        <dl className="mt-3 grid grid-cols-2 gap-x-4 border-t border-line pt-2 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
           {figures.map((figure) => (
             <div key={figure.key}>
               <dt className="font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em]">
@@ -122,6 +149,12 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             </div>
           ))}
         </dl>
+
+        {/* Where the two counts were written. It sat in the row as a third
+            figure, where a chain id read as a count of something. */}
+        <p className="mt-1 font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:mt-4 sm:text-[11px] sm:tracking-[0.16em]">
+          {t("chain", { chainId: CHAIN_ID })}
+        </p>
 
         {data.error !== null && <p className="mt-6 max-w-[52ch] text-sm text-failed">{t("error", { reason: data.error })}</p>}
       </div>

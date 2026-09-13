@@ -168,7 +168,16 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
       <Still passport={passport} exact={answer.kind === "exact"} />
 
       <div className="p-7 sm:p-9">
-        <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+        {/* The plain answer first, in the same words the passport page's drop
+            gives. The confidence and the two distances are the working under it,
+            not the verdict. */}
+        <p className="max-w-[24ch] font-display text-[clamp(1.5rem,3vw,2.3rem)] font-semibold leading-[1.04] tracking-[-0.035em] text-verified">
+          {answer.kind === "exact"
+            ? t("verdictExact", { title: passport?.title ?? t("untitled") })
+            : t("verdict", { title: passport?.title ?? t("untitled") })}
+        </p>
+
+        <div className="mt-7 flex flex-wrap items-end gap-x-6 gap-y-2">
           <p className="font-display text-[clamp(3.4rem,9vw,6rem)] font-semibold leading-[0.8] tracking-[-0.05em] tabular-nums text-accent">
             {percent(answer.confidence)}
             <span className="ps-1 align-top text-[0.28em] tracking-normal">%</span>

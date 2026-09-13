@@ -193,9 +193,16 @@ export function isBusy(state: RegisterState): boolean {
   return ALL_STEPS.some((step) => state.steps[step] === "running");
 }
 
-/** The passport id is the sha256 of the signed bytes, which is what prepare handed back. */
+/**
+ * The passport id is the sha256 of the signed bytes, which is what prepare
+ * handed back.
+ *
+ * A duplicate refused at prepare never gets that far: nothing was pinned and
+ * nothing was prepared, and the only id in the room is the one the service named
+ * in its refusal. Without it the "open that passport" button has nowhere to go.
+ */
 export function passportId(state: RegisterState): Hex | null {
-  return state.prepared?.passport.exactHash ?? null;
+  return state.prepared?.passport.exactHash ?? state.failure?.passportId ?? null;
 }
 
 function markRunningFailed(steps: Record<Step, StepState>): Record<Step, StepState> {

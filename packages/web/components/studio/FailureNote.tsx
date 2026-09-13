@@ -1,9 +1,11 @@
 "use client";
 
+import { usePrivy } from "@privy-io/react-auth";
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { isPrivyConfigured } from "@/lib/env";
 import type { Failure } from "@/lib/studio/problems";
 import { Link } from "@/lib/i18n/routing";
 
@@ -77,14 +79,22 @@ export function FailureNote({
         </a>
       )}
 
-      {failure.next === "openPassport" && passportId != null ? (
+      {/* The refusal's own id wins: it names the passport that already holds this
+          picture, and it is the only one there is when the duplicate was caught
+          before anything was prepared. */}
+      {failure.next === "openPassport" && (failure.passportId ?? passportId) != null ? (
         <Link
-          href={`/passport/${passportId}`}
+          href={`/passport/${failure.passportId ?? passportId}`}
           className="mt-4 inline-block rounded-[8px] border border-accent px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-accent transition-transform duration-200 hover:-translate-y-0.5"
         >
           {t("actions.openPassport")}
         </Link>
       ) : null}
+
+      {/* Signing out is the studio's own account button, not a step of the
+          register flow, so it is offered here rather than threaded through every
+          card that can raise this failure. */}
+      {failure.next === "signOut" && isPrivyConfigured ? <SignOutButton label={t("actions.signOut")} /> : null}
 
       {action === undefined ? null : (
         <button
@@ -96,5 +106,19 @@ export function FailureNote({
         </button>
       )}
     </motion.div>
+  );
+}
+
+function SignOutButton({ label }: { label: string }) {
+  const { logout } = usePrivy();
+
+  return (
+    <button
+      type="button"
+      onClick={() => void logout()}
+      className="mt-4 rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+    >
+      {label}
+    </button>
   );
 }

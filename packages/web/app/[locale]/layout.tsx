@@ -107,6 +107,8 @@ export default async function LocaleLayout({
                           width={160}
                           height={63}
                           unoptimized
+                          loading="eager"
+                          fetchPriority="high"
                           data-lockup="dark"
                           className="hidden dark:block [body:has([data-story])_&]:block"
                         />
@@ -116,6 +118,8 @@ export default async function LocaleLayout({
                           width={160}
                           height={63}
                           unoptimized
+                          loading="eager"
+                          fetchPriority="high"
                           data-lockup="light"
                           className="block dark:hidden [body:has([data-story])_&]:hidden"
                         />

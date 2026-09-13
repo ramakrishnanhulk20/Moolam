@@ -26,14 +26,17 @@ export function groups(value: string, size = GROUP): string[] {
 /**
  * A hash or an address, wrapped at points somebody chose.
  *
- * break-all lets a 66 character id break after any character, which at 375 px
- * splits it mid group and leaves one letter alone on the second line. The value
- * is drawn as groups of eight with a break opportunity between them instead, so
- * a wrapped address still reads as an address.
+ * The value is drawn as groups of eight with a break opportunity between them,
+ * so a wrapped address still reads as an address rather than leaving one letter
+ * alone on the second line. break-all is the floor under that: a value the
+ * grouping leaves whole, such as the metadata line "IPFS bafkrei...", is one
+ * 60 character word, and without it that word sets the width of the whole
+ * column and pushes a 375 px page sideways. It is the same class the footer
+ * address uses.
  */
 export function Mono({ value, className }: { value: string; className?: string }) {
   return (
-    <span className={className === undefined ? "font-mono" : `font-mono ${className}`}>
+    <span className={className === undefined ? "font-mono break-all" : `font-mono break-all ${className}`}>
       {groups(value).map((group, index) => (
         <Fragment key={`${index}-${group}`}>
           {index === 0 ? null : <wbr />}

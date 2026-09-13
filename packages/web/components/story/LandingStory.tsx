@@ -649,13 +649,28 @@ export function Readout({ children, className = "" }: { children: ReactNode; cla
  *
  * The six transforms and their confidences were measured by posting the real
  * files to the running verifier, and the numbers are written straight onto the
- * two nodes from an animation frame so the scene never shares a render with
+ * three nodes from an animation frame so the scene never shares a render with
  * them.
+ *
+ * The caption is the same measurement in words. On its own the row read
+ * "0.91 REENCODE-Q30 / MATCH", which is the verifier's vocabulary and nobody
+ * else's.
  */
 export function Ladder({ label }: { label: string }) {
+  const t = useTranslations("story.verified");
   const name = useRef<HTMLSpanElement>(null);
   const value = useRef<HTMLSpanElement>(null);
+  const said = useRef<HTMLSpanElement>(null);
   const steps = useMemo(() => degradeSteps(), []);
+
+  const spoken = useCallback(
+    (transform: string) => (t.has(`copies.${transform}`) ? t(`copies.${transform}`) : transform),
+    [t],
+  );
+  const measured = useCallback(
+    (confidence: number) => t("similarity", { value: confidence.toFixed(2), result: label }),
+    [label, t],
+  );
 
   useEffect(() => {
     let frame = 0;
@@ -666,10 +681,13 @@ export function Ladder({ label }: { label: string }) {
       if (at !== shownIndex && progress.verified > 0) {
         shownIndex = at;
         if (name.current !== null) {
-          name.current.textContent = steps[at].transform;
+          name.current.textContent = spoken(steps[at].transform);
         }
         if (value.current !== null) {
           value.current.textContent = steps[at].confidence.toFixed(2);
+        }
+        if (said.current !== null) {
+          said.current.textContent = measured(steps[at].confidence);
         }
       }
       frame = requestAnimationFrame(loop);
@@ -677,7 +695,7 @@ export function Ladder({ label }: { label: string }) {
 
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [steps]);
+  }, [measured, spoken, steps]);
 
   return (
     <div className="mt-7 flex items-end gap-4">
@@ -688,10 +706,12 @@ export function Ladder({ label }: { label: string }) {
         {steps[0].confidence.toFixed(2)}
       </span>
       <span className="pb-2">
-        <span ref={name} className="block font-mono text-[12px] uppercase tracking-[0.14em] text-text">
-          {steps[0].transform}
+        <span ref={name} className="block max-w-[26ch] font-mono text-[12px] uppercase tracking-[0.14em] text-text">
+          {spoken(steps[0].transform)}
         </span>
-        <span className="block font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">{label}</span>
+        <span ref={said} className="block max-w-[26ch] font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">
+          {measured(steps[0].confidence)}
+        </span>
       </span>
     </div>
   );

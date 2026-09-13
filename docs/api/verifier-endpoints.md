@@ -434,7 +434,7 @@ picture is a change to another one.
 | `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused |
 | `502` | `{ "error": "send-pending", "transactionId": "...", "hash": "0x..." }`, the hash only when Privy reported one. Privy took the transaction and the chain did not show it inside the wait. It may still land, so a caller must check the chain and must never send it again |
 | `502` | `privy-unavailable` or `chain-unavailable`: Privy or the Monad RPC did not answer while the parent, the owner and the signer were being checked. That all happens before the allowance is taken, so nothing was sent and nothing was spent |
-| `503` | `busy`. Two edits were already in flight |
+| `503` | `busy`. The shared decode gate, which matching, prepares and edits all queue on, stayed full for thirty seconds |
 
 The parent is checked first, because it is the one claim in the request that costs nothing to settle.
 Then the signer, then the ownership, then the allowance, and only then is a pin or a transaction

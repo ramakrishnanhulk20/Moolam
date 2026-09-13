@@ -308,6 +308,12 @@ describe("what to tell the creator", () => {
       "prepare",
     );
     expect(failure).toEqual({ key: "alreadyRegistered", next: "openPassport", passportId: ID });
+
+    // Nothing was prepared, so the refusal's own id is the only one the button
+    // could use.
+    const state = registerReducer(initialRegisterState, { type: "failed", failure });
+    expect(state.prepared).toBeNull();
+    expect(passportId(state)).toBe(ID);
   });
 
   it("tells an upload that found the decode gate full to wait, the same as a drawing does", () => {
