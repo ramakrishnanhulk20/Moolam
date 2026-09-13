@@ -7,9 +7,13 @@ title: Register an image
 Everything the studio can be in, and everything it can say when a step does not finish. If you just
 want the happy path, read [Your first passport](../getting-started/your-first-passport) instead.
 
-The studio is at "Register an image" in the header. It takes human uploads, which register as
-Captured passports with no generator agent. A picture an AI made registers through the agent
-instead, and that path is in
+The studio is at "Register an image" in the header, and it has two ways in. Upload a picture you
+already have and it registers as a Captured passport with one signature, yours. Ask the generator
+agent for one and it registers as a Generated passport with two, the agent's and yours, over the
+same digest. Everything after the picture exists is the same code on both paths: the same prepare,
+the same passkey check, the same send.
+
+What the agent is, how its key is held and what its own page shows are in
 [Agents and generated images](agents-and-generated-images).
 
 ## What the file has to be
@@ -24,6 +28,23 @@ instead, and that path is in
 
 The pixel cap exists because a 572 KB JPEG can unpack to 100 megapixels. The hourly cap exists
 because every prepare spends four IPFS pins and about a second of CPU.
+
+## What a prompt has to be
+
+| Limit | Value | Where it is enforced |
+| --- | --- | --- |
+| Prompt | 8 to 600 characters | The browser checks first, then the service refuses anything outside |
+| Title | 1 to 120 characters | The same on both sides |
+| How often | 3 pictures a day per signed-in account | The service, counted on the Privy user id from your token, over a rolling 24 hours |
+| At once | 2 pictures being drawn across the whole service | The service. A fourth caller waits, and is told the agent is busy rather than held forever |
+
+Three a day is about nine cents of image model spend per account, which is what keeps a public
+button off the model bill. The count is held in the service's memory, so a redeploy hands everyone a
+fresh day.
+
+Nothing is added to what you type. The prompt is the only text that reaches the model, so nothing
+the service says about itself can end up inside the manifest of a picture you then register in your
+own name.
 
 ## The states, in order
 
@@ -62,10 +83,17 @@ The unlock path is a read, not a write: the passkey signs a throwaway challenge 
 filter, and the browser checks the answer against the key the chain already holds. That is how this
 browser learns which credential belongs to your account without spending a transaction to find out.
 
+### The choice
+
+Above both panels, headed "Two ways in": "Upload a picture", with "One you already made. Your unlock
+signs it.", and "Make one with the agent", with "The agent draws it and signs it beside you." The
+accent edge slides between the two, and the panel under them changes with the choice. Nothing is
+sent by choosing.
+
 ### Ready to register
 
-The card reads "Ready" over "Give an image its passport". Drop area, title field, and "Register
-this image". Three step rows sit under the button and light up in order.
+The upload panel. The card reads "Ready" over "Give an image its passport". Drop area, title field,
+and "Register this image". Three step rows sit under the button and light up in order.
 
 ### Preparing
 
@@ -99,6 +127,64 @@ Finishes as "Written to Monad".
 the time, who paid the fee, and links to the passport page, the transaction on MonadVision, the
 pinned image and "Register another image".
 
+## The agent path, state by state
+
+The same account, the same passkey and the same send. What changes is where the picture comes from
+and that a second signature has to be on the passport before the registry takes it.
+
+### Ready to ask
+
+"The agent" over "Let the agent draw it". A prompt box with a character counter, three example
+prompts under "Or start from one of these", a title field, and "Make and register". The day's count
+sits under the button as "0 of 3 today", and when it is spent the button is off and the line reads
+"Today's pictures are used up." with the time the next one opens up.
+
+### Drawing
+
+"The agent is drawing this, up to sixty seconds". The plate beside the steps says the same thing,
+and before that it reads "The picture appears here the moment the agent is done with it." The model
+gets sixty seconds and is not retried past it.
+
+Finishes as "Drawn by" and the model's name, with the picture on the plate.
+
+### Pinning
+
+"Pinning to IPFS". The picture, its thumbnail, the readable copy of the C2PA manifest and the
+metadata go up, the same four files the upload path pins. Nothing has been signed yet, so a failure
+here costs no gas.
+
+Finishes as "Pinned to IPFS".
+
+### The agent signs
+
+"The agent is signing". The service asks Privy's enclave for the agent's EIP-712 signature over the
+final pinned bytes. The agent's seal fills in with its id and the wallet that signed, under one
+line: "Signed by a Privy server wallet under a policy that allows only this."
+
+Finishes as "Signed by the agent".
+
+### Waiting for the passkey
+
+"Waiting for your passkey", over the same digest the agent just signed. Your seal fills in beside
+the agent's.
+
+Finishes as "Signed on this device".
+
+### Sending
+
+"Sending to Monad, network fee sponsored", then "Waiting for Monad to record the passport". The same
+send, the same 90 second watch, the same simulation first.
+
+Both signatures are good for thirty minutes from the moment the service builds the passport. The
+window is that long because the agent signs as soon as the picture is pinned and a person may take a
+minute deciding whether they want it. Past it the registry answers `SignatureExpired`.
+
+### Generated
+
+"An agent made this, and you both signed for it", with the kind, the agent that drew it, the model,
+the title and the prompt, then links to the passport, "The agent's record", the transaction, your
+account, the pinned image and "Make another".
+
 ## Every failure, and what to do next
 
 Each row is the exact sentence the screen prints, and the single button it offers under it. Where
@@ -127,6 +213,28 @@ the service or the browser had its own words, they are printed underneath in mon
 The size and type messages appear here too, because the service checks both again and its answer is
 the one that counts.
 
+### While the agent draws
+
+The retry button on this path reads "Make it again" rather than "Try again", because trying again
+here is not resending the same picture. It draws a new one and spends a slot from the day's count,
+so the button says so.
+
+| Message | What happened | Button |
+| --- | --- | --- |
+| "Write a few more words. The agent needs at least eight characters to draw from." | The browser checked the prompt before spending a request | none |
+| "That prompt is longer than 600 characters. Shorten it and ask again." | The same check, at the other end | none |
+| "You have had every picture the agent draws for one account in a day. The count under the button says when the next one opens up." | The service answered 429 on the daily cap | none |
+| "The model would not draw this prompt. Its own reason is below. Edit the prompt and ask again." | The model's safety system turned the prompt down, a 400. Its own words are printed underneath | none |
+| "The model did not finish this picture. It may have drawn before it failed, so that one still counts against today's total." | A 502 after the request went out | "Make it again" |
+| "The image could not be pinned to IPFS, so nothing was registered. Try again in a moment." | Pinata refused a pin, so the service answered 502 | "Make it again" |
+| "The picture was drawn and pinned, and the agent's wallet would not sign the passport. Try again. If it keeps happening, the policy on the agent's wallet is the likely cause." | The service could not get the agent's signature out of Privy's enclave, a 502 | "Make it again" |
+| "The agent is already drawing as many pictures as it can at once. Try again in a minute." | Two pictures were already being drawn and no slot came free, a 503 | "Make it again" |
+
+Which of these cost you one of the day's three is worth saying plainly. A prompt the model refused
+and a request that never got a drawing slot both hand the count back, because nothing was drawn. A
+model that failed part way keeps it, and so do a failed pin and a failed agent signature, because by
+then the picture had been drawn and billed. The two length checks never reach the service at all.
+
 ### At the passkey prompt
 
 | Message | What happened | Button |
@@ -149,7 +257,7 @@ guessed at.
 | Message | Contract error | Button |
 | --- | --- | --- |
 | "This exact image is already registered. The first registration wins, so open the passport that holds it." | `PassportAlreadyExists` | "Open that passport" |
-| "The hour that signature was good for has passed. Register the image again." | `SignatureExpired`. Signatures are good for one hour from the moment the browser builds them | "Try again" |
+| "The hour that signature was good for has passed. Register the image again." | `SignatureExpired`. An upload's signature is good for one hour from the moment the browser builds it, and a generated one for thirty minutes from the moment the service does | "Try again" |
 | "Monad says your account has no passkey on it. Bind this device's unlock, then register the image." | `PasskeyNotBound` | "Bind this device" |
 | "The registry refused that signature. Sign again with the unlock you bound to this account." | `InvalidPasskeySignature` | "Try again" |
 | "The registry refused that passkey. Bind this device's unlock again." | `InvalidPublicKey` | "Bind this device" |

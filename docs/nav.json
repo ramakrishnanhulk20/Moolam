@@ -65,6 +65,10 @@
           "title": "Read a passport"
         },
         {
+          "slug": "guides/explore",
+          "title": "Explore the registry"
+        },
+        {
           "slug": "guides/agents-and-generated-images",
           "title": "Agents and generated images"
         },

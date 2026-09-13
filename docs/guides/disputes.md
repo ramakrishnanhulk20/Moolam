@@ -8,8 +8,9 @@ A passport is a permanent record, and permanent records need a way to be argued 
 involve deleting them. Moolam's answer is a bonded challenge: anyone can flag a record, it costs
 them money to be wrong, and the outcome is written next to the record rather than replacing it.
 
-No dispute has been filed on Monad mainnet yet. Everything below is the deployed code and its test
-coverage, not a recorded event.
+No dispute has been filed on Monad mainnet yet. The screens below are live against the deployed
+contracts, and what they would show is the deployed code and its test coverage rather than a
+recorded event.
 
 ## Who can flag
 
@@ -99,13 +100,85 @@ until the dispute is settled."
 | Field | What it shows |
 | --- | --- |
 | The status | "Open, and not yet settled", "Upheld: the challenge was right", or "Rejected: the record stands" |
+| "The claim" | What the challenger typed, printed only when it can be proved to be theirs. See below |
 | "Challenger" | The address that flagged it, linked to MonadVision |
 | "Bond" | The bond in MON |
 | "Opened" | The block timestamp on the dispute |
 | "Evidence hash" | The keccak256 of the evidence URI, in full |
+| The outcome | "Waiting for the resolver named by the policy." while it is open, then what the resolver did and where the bond went |
+
+The claim is printed carefully. The words ride inside the transaction as a
+`data:text/plain;charset=utf-8` URI, so they are public and permanent, but the chain stores only
+their keccak256. The page reads the URI from the index, hashes it itself, and prints the words only
+when that hash matches the one on the record. An evidence URI that points somewhere else instead of
+carrying text says so: "The evidence for this challenge points somewhere else:".
 
 The poster at the top of the page changes too. A dispute outranks every other standing, so the word
 over the title reads "Disputed" whatever the re-checks said.
+
+## Flagging one from the page
+
+Under the facts on a passport page, one line: "Dispute this passport". It opens in place rather than
+leading anywhere, because a record nobody has challenged should not lead with an accusation.
+
+Three readers never see it at all: anyone signed out, the wallet that holds the passport, which
+cannot usefully dispute itself, and every reader of a passport that already has an open challenge,
+because the registry refuses a second one.
+
+Opened, it reads "Put a bond behind the claim" over what it costs: "A dispute costs a bond of 1 MON.
+The resolver named by the policy settles it: if they agree with you, the bond is credited back to
+you. If they do not, it goes to the treasury." The bond and your own balance sit side by side, with
+the one line that matters about money: "Moolam pays the network fee. It cannot pay the bond: that is
+your own MON, and it leaves your account the moment this lands."
+
+Type into "What is wrong with this record", between 20 and 500 characters. The hint says what becomes
+of it: "It travels inside the transaction, so it is public and permanent." Then press "Flag with 1
+MON".
+
+Two steps: "Waiting for your account" while the transaction is put together and sent, then "Sending
+the challenge" and "Waiting for Monad to show it". It finishes as "The challenge is on the record",
+with the block, the transaction, and your bond under one line: "Held by the registry itself until the
+dispute is settled. Nobody can move it."
+
+The refusals are the contract's own, read back from the simulation rather than guessed:
+
+| Message | What happened |
+| --- | --- |
+| "Your account is ... MON short of the bond. Moolam pays the network fee, but the bond has to be your own MON." | The balance was read before anything was sent |
+| "The bond changed while this panel was open, so the registry refused this amount. It has been read again, so try once more." | `InvalidBond`. The policy's bond had moved |
+| "Somebody has already challenged this passport, and the registry allows one open dispute at a time." | `DisputeAlreadyOpen` |
+| "This passport is already marked disputed, so it cannot be challenged again." | `PassportAlreadyDisputed` |
+| "New records and new challenges are paused on the registry right now." | `EnforcedPause` |
+| "The window was closed before the transaction went out. Nothing was sent and nothing was spent." | You dismissed the wallet prompt |
+
+## The resolver console
+
+Every open challenge in one place, at `/resolve`. Anyone can read it. Only the address the policy
+names can settle anything on it, and the page says so in its own lede.
+
+It is in no menu and no sitemap, by design: it is a working screen for one address, not a page to
+find by browsing.
+
+The head of it names the resolver the policy holds today, with the rule underneath: "The policy
+contract names one address, and changing it waits 24 hours in the open, so anyone watching can react
+before it takes effect." A reader signed in as that address sees "You are the resolver". Anybody else
+signed in is told plainly that the registry would refuse anything sent from there.
+
+Each open dispute is one row: the picture and the title, the passport, the claim, the challenger, the
+bond and when it was opened, then two buttons with what each one does written next to it. "Uphold
+marks the record disputed for good and credits the bond back to the challenger." "Reject leaves the
+record standing and credits the bond to the treasury." With nothing open the page says "No challenge
+is open. Nothing here is waiting on you."
+
+The list comes from two places, each doing the thing only it can. The index answers which disputes
+are open, because the registry keeps no list of them. Then every row is read again from the registry
+itself before it is shown, because the index can be behind and the resolver is about to spend
+somebody's bond on what this page says. Where the two disagree about the evidence, the claim is not
+printed and the row says to read the record itself before settling it.
+
+Under the rows sits "What the registry owes you", with the reason it is there: "Money here is pulled,
+never pushed. A settled dispute records a credit, and nothing reaches an account until that account
+asks for it." Whoever is owed presses "Withdraw" with the amount on it.
 
 ## What a dispute does not do
 

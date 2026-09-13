@@ -12,19 +12,31 @@ It needs no sign in and no wallet. Anyone can check anything.
 ## Running a check
 
 Open "Verify an image" from the header. Drop a file on "Drag an image in." or press "Choose an
-image". JPEG, PNG or WebP, up to 20 MB. Then press "Verify".
+image". JPEG, PNG or WebP, up to 20 MB.
 
-Your browser sends the file straight to the Moolam verify service, not through the app's own
-server. The page says so under the button: "Your browser sends the file to the verifier itself. It
-is fingerprinted, matched and dropped."
+That is the whole interaction. Choosing or dropping the file starts the check, with no second button
+between the file and the answer. There used to be one, it taught nobody anything, and the panel on
+the home page already answered in place, so the two screens behaved differently for no reason.
 
-While the answer card waits, it lists what is about to happen:
+Your browser sends the file straight to the Moolam verify service, not through the app's own server.
+The line under the drop area says so and names the host it is actually sending to: "Your browser
+sends the file straight to", the host, "the Moolam verify service. It is fingerprinted there,
+matched against the registry, and never stored."
+
+A file the browser can already tell the service would refuse, over 20 MB or not an image, is refused
+right there, so the answer is instant and nothing was uploaded to earn it.
+
+Until then the answer card reads "No answer yet" over "Drop a file in. The answer lands on this
+card." While the check runs it leads with "Reading the picture, not the file name." over "Three
+fingerprints, all eight orientations, then a search of every registered passport. A few seconds.",
+and lists what is about to happen:
 
 1. "Fingerprint the file three ways: the exact bytes, a perceptual hash, a block hash."
 2. "Try all eight ways the picture could be turned or mirrored."
 3. "Search every registered passport and answer with the closest one."
 
-Then it turns over.
+Then it turns over. Once a file is in, the button beside the drop area reads "Checking" while the
+check runs and "Verify another" when it is done. The one over the chosen picture is "Choose another".
 
 ## What the answer card means
 

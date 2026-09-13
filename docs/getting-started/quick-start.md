@@ -43,11 +43,21 @@ Press "Register an image" in the header.
 2. Press "Use this device's unlock". Your device asks for a fingerprint, a face or a PIN twice:
    once to make the passkey, once to sign the message that attaches it to your account. Moolam
    sends that to Monad and pays the network fee. The card reads "Bound" when it lands.
-3. Drop a picture on "Drop an image here", type something in "Title", and press "Register this
-   image". Three steps run in order: the file is fingerprinted and pinned to IPFS, your device asks
-   for your unlock once more, and the transaction goes to Monad.
-4. The card turns into "This image now has a passport", with the passport id, the block, and links
-   to the passport page, the transaction and the pinned file.
+3. Pick one of the two ways in, headed "Two ways in": "Upload a picture", one you already made, or
+   "Make one with the agent", which draws it for you. The panel under the choice changes with it.
+
+**Uploading.** Drop a picture on "Drop an image here", type something in "Title", and press
+"Register this image". Three steps run in order: the file is fingerprinted and pinned to IPFS, your
+device asks for your unlock once more, and the transaction goes to Monad. The card turns into "This
+image now has a passport", with the passport id, the block, and links to the passport page, the
+transaction and the pinned file.
+
+**With the agent.** Type a prompt, or press one of the three under "Or start from one of these",
+give it a title, and press "Make and register". Five steps run: the agent draws the picture, the
+picture is pinned to IPFS, the agent signs the passport with its own wallet, your unlock signs the
+same passport, and the transaction goes to Monad. The card turns into "An agent made this, and you
+both signed for it", with the model that drew it and a link to the agent's own page. The line under
+the button reads "1 of 3 today", which is the daily allowance per account.
 
 Register the same file a second time and the registry refuses it. First registration wins, and the
 screen offers you the passport that already holds it.
@@ -55,7 +65,9 @@ screen offers you the passport that already holds it.
 ## Where to go next
 
 - [Sign in and account](sign-in-and-account) explains what the account is and who pays the fee.
-- [Your first passport](your-first-passport) walks the passkey and the three register steps slowly,
-  with every wait and every failure.
+- [Your first passport](your-first-passport) walks the passkey and both register paths slowly, with
+  every wait and every failure.
 - [Verify a copy](../guides/verify-a-copy) says what the answer card means and what does not match.
+- [Explore the registry](../guides/explore) is every passport on Monad in one grid, with the filters
+  over it.
 - [How it works](../concepts/how-it-works) is the life of one passport end to end.

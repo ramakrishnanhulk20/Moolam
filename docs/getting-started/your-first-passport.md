@@ -4,8 +4,8 @@ title: Your first passport
 
 # Your first passport
 
-One setup step, then three steps per image. This page walks all of them slowly, with the wait each
-one shows and what to do when one does not finish.
+One setup step, then three steps for a picture you upload or five for one the agent draws. This page
+walks all of them slowly, with the wait each one shows and what to do when one does not finish.
 
 ## What a passkey is here
 
@@ -46,7 +46,19 @@ your account prove it holds the key by signing a bind digest with it, and it con
 the same signed bind can never be replayed. The rules are in the
 [trust model](../concepts/trust-model).
 
-## Registering an image
+## Two ways in
+
+Once the device is bound, the studio offers a choice headed "Two ways in", and the panel under it
+changes with the one you pick.
+
+| Choice | The note under it | What signs the passport |
+| --- | --- | --- |
+| "Upload a picture" | "One you already made. Your unlock signs it." | Your passkey, once. The passport registers as Captured |
+| "Make one with the agent" | "The agent draws it and signs it beside you." | The agent's wallet and your passkey, both over the same digest. The passport registers as Generated |
+
+Both end in one transaction and one record. The difference is how many names are on it.
+
+## Registering an image you already have
 
 Drop a picture on "Drop an image here" or press "Choose a file". JPEG, PNG or WebP, up to 20 MB.
 Give it a "Title": it goes into the C2PA manifest and the pinned metadata, so use the name you
@@ -73,6 +85,47 @@ The card then turns into "This image now has a passport" with the passport id, t
 who paid the fee, and four links: the passport page, the transaction, the pinned image and
 "Register another image".
 
+## Letting the agent draw it
+
+Press "Make one with the agent" and the panel reads "Let the agent draw it" over one line of what is
+about to happen: "Say what you want. The generator agent draws it, pins it, and signs the passport
+with its own wallet. You sign the same passport with your unlock. Two signatures, one transaction."
+
+Type into "Prompt", or press one of the three offered under "Or start from one of these". The counter
+under the box counts what you have typed against the limit, "37 of 600 characters", and the hint says
+what becomes of the words: "Between 8 and 600 characters. Your prompt is kept in the metadata, so it
+stays readable next to the picture." Give it a "Title" as well, then press "Make and register".
+
+Five steps run instead of three, and the empty plate beside them fills in as they go. Before the
+model answers it reads "The picture appears here the moment the agent is done with it."
+
+| Line on screen | What is happening |
+| --- | --- |
+| "The agent is drawing this, up to sixty seconds" | The image model draws the picture. It finishes as "Drawn by" the model that made it |
+| "Pinning to IPFS" | The picture, its thumbnail, the C2PA manifest and the metadata go to IPFS, before any signature is asked for |
+| "The agent is signing" | The agent's wallet signs the EIP-712 digest inside Privy's enclave. It finishes as "Signed by the agent" |
+| "Waiting for your passkey" | Your device signs the same digest. It finishes as "Signed on this device" |
+| "Sending to Monad, network fee sponsored" | The transaction goes out, then "Waiting for Monad to record the passport" |
+
+Two seals sit under the plate, headed "Two signatures, one transaction" over one line: "The registry
+takes this passport only when both names are on it. Watch them arrive." The agent's seal names the
+agent id and the wallet that signed, with "Signed by a Privy server wallet under a policy that
+allows only this." underneath. Yours reads "Your fingerprint or face unlock, on this device, over
+the same digest."
+
+Both signatures are good for thirty minutes, which is the window the service signs against. It is
+long because the agent signs the moment the picture is pinned and you may take a minute looking at
+it before you unlock. Past the half hour the registry answers `SignatureExpired` and the screen
+offers to make it again, which draws a new picture rather than resending the old one.
+
+The finished card reads "An agent made this, and you both signed for it", with the kind, the agent
+that drew it, the model, your title and your prompt, then links to the passport, "The agent's
+record", the transaction, your account and the pinned image.
+
+Under the button, all the way through, is the day's count: "1 of 3 today", with "Your next one opens
+up at" and a time. Three a day per account is what keeps a public button off an image model bill.
+When they are used up the line reads "Today's pictures are used up." instead.
+
 ## The receipt
 
 Down the right of the studio is a stub headed "What just happened", with one line under it: "Every
@@ -83,6 +136,10 @@ account on Monad", "Passkey bound", "Exact hash", "Pinned to IPFS", "Digest you 
 Monad", "Written to Monad". Nothing is stamped before its answer is in hand, which is why the block
 number can arrive after the rest: it reads "Recorded. The block number comes from the index." until
 the indexer catches up.
+
+A run through the agent stamps the same list, because both paths hand the receipt the same prepared
+block. It does not name the agent. The agent id and the wallet that signed are on the seal beside
+the picture and on the finished card.
 
 ## Registering the same image twice
 

@@ -4,10 +4,11 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Four routes. Everything is JSON, including errors and 404s. The service listens on
-`VERIFIER_PORT`, which defaults to 4000. Two of the four are mounted only when the host is
-configured for them: `/verify/paid` needs `X402_ENABLED`, and `/prepare` needs a Pinata token and a
-Privy app id.
+Six routes. Everything is JSON, including errors and 404s. The service listens on `VERIFIER_PORT`,
+which defaults to 4000. Four of the six are mounted only when the host is configured for them:
+`/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id, and
+`/generate` and `/edit` each need those plus their own keys. An unmounted route answers `404` like
+any other path that does not exist.
 
 ## POST /verify
 
@@ -150,6 +151,11 @@ facilitator pays the settlement gas) and `X402_VERIFIER_URL` from the repo root 
 prints:
 
 ```
+Moolam paid verification over x402, on Monad mainnet.
+Verifier https://.../verify/paid
+Payer    0x...
+Image    .../packages/verifier/test-assets/original.jpg
+
 Terms offered and accepted:
   scheme    exact on eip155:143
   price     0.05 USDC (50000 atomic units)
@@ -158,13 +164,17 @@ Terms offered and accepted:
   valid for 300 seconds
 
 Signing the transfer authorisation and sending the image ...
-Settled. Transaction 0x... on eip155:143, paid by 0x...
+Settled. Transaction 0x... on eip155:143, paid by 0x....
 
 Verification:
   these exact bytes are registered, passport 0xb95adc...354c
   confidence 1
   C2PA manifest not in the file
 ```
+
+When the facilitator has broadcast the transfer but not yet seen it confirmed, the middle line reads
+"Broadcast but not confirmed yet." with the transaction and "The facilitator finishes it." instead,
+and the verification still prints.
 
 A wallet with no USDC gets the facilitator's refusal instead, printed as
 `Refused: the verifier answered 402: insufficient_funds`, and the script exits non-zero. Nothing is
@@ -253,6 +263,171 @@ methods are `GET` and `POST`, and the allowed headers are `Authorization` and `C
 origin that is not on the list gets no allow header back, which the browser turns into a refusal on
 its side; curl and any server-side caller are unaffected either way. With `CORS_ORIGINS` empty, no
 browser origin is allowed at all.
+
+## POST /generate
+
+The generator agent draws a picture for a signed-in creator and co-signs its passport. The creator's
+browser adds their passkey signature over the same struct and sends the transaction, so this route
+never holds a key that can write to the chain.
+
+Mounted only when the host has everything `/prepare` needs plus an image model key
+(`OPENAI_API_KEY` or `OPENROUTER_API_KEY`), `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and
+`GENERATOR_WALLET_ID`. Otherwise the path does not exist and the service answers `404`.
+
+**Request.** A JSON body, with the creator's Privy access token in an `Authorization: Bearer` header.
+
+| Field | Type | Rule |
+| --- | --- | --- |
+| `prompt` | string | 8 to 600 characters after trimming. It is the only text that reaches the model: nothing is added around it |
+| `title` | string | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
+| `creator` | string | `0x` and 40 hex characters. The wallet that will sign and send, and it goes inside what the agent signs |
+| `deadline` | number or numeric string | Unix seconds, between 10 minutes and 2 hours from now. The studio asks for 30 minutes |
+
+```bash
+curl -s -X POST http://localhost:4000/generate \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"prompt":"a fishing boat leaving a harbour at first light","title":"First light","creator":"0x...","deadline":1788878000}'
+```
+
+**Response.** `200` with the passport fields, the agent's signature over them, and the pinned files.
+
+```ts
+{
+  passport: {
+    exactHash: `0x${string}`,      // sha256 of the pinned bytes, and the passport id
+    parentId: `0x${string}`,       // 32 zero bytes: a generated picture is an original
+    creator: `0x${string}`,        // the address from the request, checksummed
+    generatorAgentId: string,      // decimal, the ERC-8004 id that signed
+    phash: string,                 // decimal, for the reason given under /verify
+    blockhash256: `0x${string}`,
+    manifestHash: `0x${string}`,   // 32 zero bytes when nothing was embedded
+    kind: number,                  // 0, Generated
+    fingerprintVersion: number,    // 1
+    metadataURI: string,           // ipfs://...
+    deadline: string               // the deadline from the request, as a decimal string
+  },
+  generatorSig: `0x${string}`,     // the agent owner's EIP-712 signature over that struct
+  image: { cid, uri, gatewayUrl, bytes, width, height },
+  thumbnail: { cid, uri, gatewayUrl },
+  metadata: { cid, uri },
+  manifest: { embedded: true } | { embedded: false, reason: string },
+  model: string,                   // what drew it, also pinned in the metadata
+  agent: { id: string, wallet: `0x${string}` },
+  quota: { used: number, limit: number, resetsAt: number },
+  preparedBy: string               // the Privy user id the token carried
+}
+```
+
+The agent signs over the final pinned bytes, not the model's output, so the signature covers exactly
+what the passport id is computed from. The browser must send these fields unchanged: `creator` and
+`deadline` are inside what was signed, and the registry checks both.
+
+**Status codes.**
+
+| Code | When |
+| --- | --- |
+| `200` | Drawn, pinned and signed |
+| `400` | A field outside its rule, or a deadline outside the 10 minute to 2 hour window. The reason names the field |
+| `400` | `{ "error": "prompt-refused", "reason": "..." }` when the model's safety system turns the prompt down. The day's allowance is given back |
+| `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. `{ "error": "unauthorized" }` |
+| `429` | Past `GENERATE_PER_DAY` in a rolling 24 hours, counted on the Privy user id. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
+| `502` | `model-failed`, `pin-failed` or `sign-failed`: the image model, Pinata or Privy's enclave would not play |
+| `503` | `busy`. Two pictures were already being drawn and no slot came free inside 90 seconds. The allowance is given back |
+
+**The allowance.** `GENERATE_PER_DAY`, three by default, per verified Privy user id over a rolling 24
+hours. A refused prompt and a request that never got a drawing slot hand the slot back. A model that
+failed part way keeps it, because it may have drawn and been billed before it failed, and so do a
+failed pin and a failed signature, which both happen after the picture exists. The count lives in the
+service's memory, so a redeploy resets it and two copies of the service would count separately. The
+global 60 requests a minute applies to this path as well.
+
+## POST /edit
+
+The owner of a passport appends an edited version of it with no passkey prompt. The transaction goes
+out from the owner's own Privy wallet, asked for with this app's authorization key under a policy
+that allows `appendEdit` on the Moolam registry and nothing else.
+
+Mounted only when the host has everything `/prepare` needs plus `PRIVY_APP_SECRET`,
+`PRIVY_AUTHORIZATION_KEY`, `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID`. Otherwise the path does
+not exist and the service answers `404`.
+
+**The two ids, on both sides.** The browser names the same pair when it asks Privy for the grant,
+through `NEXT_PUBLIC_PRIVY_SIGNER_ID` and `NEXT_PUBLIC_PRIVY_EDIT_POLICY_ID`. They have to be the
+same signer id and the same policy id the service holds: the service reads the signers on the wallet,
+looks for its own `PRIVY_EDIT_SIGNER_ID`, and refuses the edit unless that signer carries
+`PRIVY_EDIT_POLICY_ID`. A grant made without the policy is refused, because a signer with no policy
+on it could do more than append an edit and this route promises it cannot.
+
+**Request.** A multipart body with one file and three text parts, in any order, and the owner's Privy
+access token in an `Authorization: Bearer` header.
+
+| Part | Type | Rule |
+| --- | --- | --- |
+| `file` | file | The edited image. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
+| `title` | text | 1 to 120 characters after trimming |
+| `parentId` | text | `0x` and 64 hex characters, the passport being edited |
+| `note` | text | Optional, up to 280 characters saying what changed. It is pinned beside the picture with the parent's id |
+
+```bash
+curl -s -X POST http://localhost:4000/edit \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@edited.jpg" -F "title=Kadal at dawn, warmer" \
+  -F "parentId=0x75bf..." -F "note=Lifted the shadows and cropped the right edge."
+```
+
+**Response.** `200` with the child passport, the transaction it went out in, and the pinned files.
+
+```ts
+{
+  child: {
+    exactHash: `0x${string}`,      // sha256 of the pinned bytes, and the child's passport id
+    parentId: `0x${string}`,       // the parent from the request
+    creator: `0x${string}`,        // the owner's wallet, read from the Privy user record
+    generatorAgentId: string,      // "0": an edit carries no agent
+    phash: string,
+    blockhash256: `0x${string}`,
+    manifestHash: `0x${string}`,
+    kind: number,                  // 2, Edited
+    fingerprintVersion: number,    // 1
+    metadataURI: string,
+    deadline: string               // 30 minutes out, though the send happens within seconds
+  },
+  tokenId: string,                 // the ERC-721 id, the image hash as a decimal
+  hash: `0x${string}`,             // the transaction
+  sponsored: boolean,
+  image: { cid, uri, gatewayUrl, bytes, width, height },
+  thumbnail: { cid, uri, gatewayUrl },
+  metadata: { cid, uri },
+  manifest: { embedded: true } | { embedded: false, reason: string },
+  quota: { used: number, limit: number, resetsAt: number }
+}
+```
+
+The wallet comes from the Privy user record, never from the request, and the ownership check is read
+from the chain before anything is spent. The manifest written into an edit records the action
+`c2pa.edited` rather than `c2pa.created`, which is the one place inside the file that says this
+picture is a change to another one.
+
+**Status codes.**
+
+| Code | When |
+| --- | --- |
+| `200` | Pinned and sent |
+| `400` | Not a multipart body, no `file` part, a file part under another name, a `title` outside 1 to 120 characters, a `parentId` that is not 32 bytes of hex, or a `note` over 280 characters |
+| `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
+| `403` | `not-owner`. The registry says this wallet does not hold the parent |
+| `404` | `no-parent`. The registry has no passport with that id |
+| `409` | `no-signer`. This app is not a signer on that wallet, or its signer does not carry the edit policy. A Privy user id this app does not know answers the same way |
+| `413` | Over the 20 MB byte limit, or over 40 megapixels |
+| `415` | `not-an-image` |
+| `429` | Past `EDITS_PER_DAY` in a rolling 24 hours. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
+| `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused |
+| `503` | `busy`. Two edits were already in flight |
+
+The parent is checked first, because it is the one claim in the request that costs nothing to settle.
+Then the signer, then the ownership, then the allowance, and only then is a pin or a transaction
+spent.
 
 ## GET /health
 

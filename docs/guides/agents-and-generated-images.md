@@ -7,9 +7,10 @@ title: Agents and generated images
 A photograph gets one signature. A generated image gets two, and the second one is what makes it an
 AI provenance record rather than a timestamp.
 
-The studio takes human uploads today, and registers them as Captured passports with no generator
-agent. A picture an AI made registers through the agent that made it, which is the path this page
-describes.
+An upload registers as a Captured passport with no generator agent. A picture an AI made registers
+through the agent that made it, and that is the path this page describes. There are two ways in to
+it: the button in the studio, "Make one with the agent", and the command line agent in
+`@moolam/agents`. Both end in the same two signatures on the same record.
 
 ## What an agent is
 
@@ -17,7 +18,12 @@ An agent's identity is an ERC-8004 token on Monad's canonical Identity Registry 
 `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, minted once and owned by a wallet. Moolam does not
 mint it, does not control it, and reads exactly one thing from it: `ownerOf(agentId)`. That makes an
 agent's history portable, and it means an agent id is worth exactly as much as the wallet that owns
-it. The demo generator in this deployment is agent 10248.
+it.
+
+Two agents have signed passports in this deployment. Agent 10248 is the demo generator the seed
+script signs with. Agent 10249 is the one whose key is a Privy server wallet under a policy, and it
+is the one the studio's agent path and `npm run agent` both sign with. Both are listed on the
+"Agents" page with what the index has counted for each.
 
 The agent's key is a Privy server wallet. It lives in Privy's secure enclave, not on any Moolam
 server, under a policy that allows exactly two things: send a `register` call to the Moolam registry
@@ -57,30 +63,65 @@ refusals are in the fork tests and in the saved attack outputs.
 Anyone may send the transaction. Authority comes from the two signatures, not from `msg.sender`,
 which is what lets a relayer pay a creator's gas.
 
+## The same path from the studio
+
+"Make one with the agent" runs those five steps for a creator with no command line and no key of
+their own. The click path is in
+[Your first passport](../getting-started/your-first-passport); what is different underneath is worth
+naming.
+
+The drawing, the pinning and the agent's signature all happen in the verify service, behind
+`POST /generate` and a check of the creator's Privy access token. The creator's browser then adds its
+own passkey signature over the same struct and sends the transaction itself. So the half of the
+agent's policy that allows a `register` call is not used on this path at all: the service asks the
+enclave for a signature and nothing else, and it holds no key that can write to the chain.
+
+The order of work is what makes the answer safe to act on. The token is checked and the day's
+allowance is taken before a cent is spent, the picture is drawn, signed into a C2PA manifest and
+pinned, and only then, over the final pinned bytes, does the agent sign. Both signatures are good for
+thirty minutes, which covers a person reading the picture before they decide to keep it.
+
+The creator's address and that deadline are inside what the agent signed, so a picture drawn for one
+account cannot be registered by another. The registry checks the creator itself and reverts
+`InvalidCreator` if they differ.
+
+The prompt and the model are pinned in the passport's metadata, which is what makes a generated
+record worth more than a timestamp: it says what made these pixels and what it was asked for. The
+route's fields, its status codes and its allowance are in
+[Verifier endpoints](../api/verifier-endpoints).
+
 ## What the agent page shows
 
-Open any agent from a passport's "Generator agent" link, or from an agent link on a verify result.
+Open any agent from the "Agents" page in the header, from a passport's "Generator agent" link, or
+from an agent link on a verify result. An id nobody has signed a Moolam passport with gets no page:
+the ERC-8004 registry is shared by everyone on Monad, so most ids on it belong to other teams.
 
 **The contact sheet.** Every picture the agent has signed, tiled behind its name, with the owner
 address and the identity registry underneath. An agent that has signed nothing gets the seal on a
 dark plate rather than an empty grid.
 
-**Reputation.** Two numbers, deliberately kept apart, because one is a claim someone signed and the
-other is a calculation.
+**Reputation.** Two numbers, deliberately kept apart, because one is a calculation over what actually
+happened and the other is a claim someone signed.
 
-- On the left, the ERC-8004 Reputation Registry's own summary, read from the canonical registry on
-  Monad mainnet under the tags `moolam` and `verification`. The page says who writes it: "Feedback
-  is written to the canonical ERC-8004 reputation registry by whoever left it, under the tags
-  moolam and verification. This page reads the summary of those two tags and applies the decimals
-  the registry reports." The registry refuses feedback from the agent's own owner, which is what
-  makes it worth reading, so the Moolam verifier signs with its own wallet. With nothing recorded it
-  says "No feedback recorded for this agent yet. The verifier writes one after every check it runs."
-- On the right, "What the index has counted": a "Trust score" out of 100, "Passports", "Re-checks
-  matched", "Re-checks missed" and "Disputes upheld". The score is
-  `round(100 * (matched + 1) / (matched + mismatched + 2 * disputesUpheld + 2))`, and the page says
-  why it is smoothed: "Out of 100, from re-checks that matched, re-checks that did not, and any
-  upheld dispute. Smoothed, so one lucky check cannot make it 100." A brand new agent starts at a
-  neutral 50 rather than a meaningless 100, and an upheld dispute counts double against it.
+The page leads with the calculation, under "What the index has counted": a "Trust score" out of 100,
+then "Passports", "Re-checks matched", "Re-checks missed" and "Disputes upheld". The score is
+`round(100 * (matched + 1) / (matched + mismatched + 2 * disputesUpheld + 2))`, and the page says why
+it is smoothed: "Out of 100, from re-checks that matched, re-checks that did not, and any upheld
+dispute. Smoothed, so one lucky check cannot make it 100." A brand new agent starts at a neutral 50
+rather than a meaningless 100, and an upheld dispute counts double against it. The same score and the
+same four counts are what the "Agents" page ranks on.
+
+The ERC-8004 Reputation Registry's own average comes second, and is marked as such on the page: "A
+second number, not the headline". It is read from the canonical registry on Monad mainnet under the
+tags `moolam` and `verification`, and the page says who writes it: "Feedback is written to the
+canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification.
+This page reads the summary of those two tags and applies the decimals the registry reports." The
+registry refuses feedback from the agent's own owner, which is what makes it worth reading, so the
+Moolam verifier signs with its own wallet. With nothing recorded it says "No feedback recorded for
+this agent yet. The verifier writes one after every check it runs."
+
+It is second because anyone may write into it, while the index's counts are added up from the chain's
+own re-checks and disputes. An average a stranger can push on is not the number to lead with.
 
 **How this agent signs.** Three steps with the contract's own behaviour under each: "The agent signs
 the fingerprint", "The registry recovers the signer", "It has to be the owner". The third one names
@@ -113,4 +154,5 @@ That posts the file to the verify service, then reads the passport it names stra
 because the service is not the authority on who signed what.
 
 The package, the tools, the models and the environment it needs are in
-[Agents and Privy](../developers/agents-and-privy).
+[Agents and Privy](../developers/agents-and-privy). Every agent the index has seen, ranked, is in
+[Explore the registry](explore).

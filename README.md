@@ -80,6 +80,16 @@ one copy with every scrap of metadata removed all resolved back to the same pass
   a sponsored EIP-7702 user operation, landed in block 103263011 from Privy's bundler through the
   ERC-4337 entry point, the script printed `sponsorship: on, the app paid the gas, not the creator's
   wallet`, and the creator paid nothing.
+- Two ways into the studio. "Upload a picture" registers a file you already have. "Make one with the
+  agent" takes a prompt of 8 to 600 characters: the generator agent draws the picture, the service
+  pins it, and the agent signs the generator half of the passport with its own Privy server wallet.
+  Your passkey then signs the same digest, and both signatures ride one sponsored transaction. A
+  creator may have three pictures drawn in a rolling 24 hours, and the count sits under the button.
+- "Allow edits from this app" on a passport you own grants a Privy signer once, held to a policy
+  that allows `appendEdit` on the Moolam registry and nothing else. After that, drop the edited
+  picture, say what changed and press "Add this edit": the child passport is pinned and sent from
+  your own wallet with the fee sponsored and no passkey prompt. Five edits a day, and "Revoke" takes
+  the permission back.
 
 ### For AI agents
 
@@ -103,6 +113,13 @@ one copy with every scrap of metadata removed all resolved back to the same pass
 - The fingerprint is written into the C2PA manifest as a soft binding under the algorithm name
   `com.moolam.phash-blockhash.v1`, which is the part that survives a re-upload. Strip the manifest
   and the fingerprint still matches against the on-chain registry.
+- In the browser it is one step. Open "Verify an image", press "Choose an image" or drop a file, and
+  picking it starts the check: no account, no upload button, and the service keeps nothing. The card
+  answers with the passport, the confidence, both fingerprint distances, which of the eight
+  orientations found it, and whether a C2PA manifest is still attached. "Verify another" clears it.
+- Every passport page carries its own "Check a copy" drop, which answers against that one passport
+  rather than the whole registry: "Yes. This is the same picture.", "Yes. Byte for byte, this is the
+  file." or "No. This copy belongs to a different passport."
 
 ### For the record
 
@@ -114,9 +131,24 @@ one copy with every scrap of metadata removed all resolved back to the same pass
   disputes, and a per-generator trust score of
   `round(100 * (matched + 1) / (matched + mismatched + 2 * disputesUpheld + 2))`, so a new agent
   starts at a neutral 50 rather than a meaningless 100.
-- Anyone who disagrees with a record can post a bond and call `flag`. The resolver named by
-  `VerifierPolicy` settles it. Money is pulled, never pushed, and the owner can never sweep an open
-  bond or an unclaimed credit.
+- Anyone who disagrees with a record can challenge it. "Dispute this passport" on the passport page
+  puts up the bond the policy sets, 1 MON today, and a reason of 20 to 500 characters that travels
+  inside the transaction, so it is public and permanent. The registry stores only the keccak256 of
+  the evidence, which is what stops the words being swapped afterwards. The resolver named by
+  `VerifierPolicy` settles it from the console at `/resolve`, where "Uphold" credits the bond back
+  to the challenger and "Reject" credits it to the treasury. Money is pulled, never pushed, and the
+  owner can never sweep an open bond or an unclaimed credit.
+- "Explore" is the whole registry, newest first, with chips for "Generated", "Captured", "Edits",
+  "Re-checked", "With manifest" and "Disputed", a search by passport id and a filter by agent. The
+  rule it sorts by is printed on the page rather than hidden: "Newest first, and seed test images
+  sort last". "Agents" ranks every generator the index has seen by its trust score, with the formula
+  beside it.
+- A passport link unfurls as its own card. Each passport page builds an Open Graph and a Twitter
+  image from the pinned thumbnail, the title and the block it was registered in, so what a reader
+  sees before clicking is read from the record rather than written by hand.
+- The footer of every page carries three live readings: the verify service and how many passports it
+  holds, the index and its block, and the chain and its block. Each read is capped at three seconds
+  and held for thirty, and anything that does not answer says "unreachable" rather than going quiet.
 
 ---
 
@@ -262,16 +294,19 @@ flowchart TD
 
 ## The two-minute judge path
 
-### The click path (two minutes, no setup)
+### The click path (no setup, no wallet)
 
-Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). Two minutes, no wallet, no seed phrase:
+Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). The first six steps are the two minutes, with no wallet and no seed phrase. Steps 7 to 9 are the agent, the edit and the registry, for anyone who wants the rest of it:
 
 1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
-2. Open "Verify an image" in the header, press "Choose an image", pick any copy of a registered image (a re-encoded, resized or mirrored copy works), then press "Verify". The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached. An unregistered picture answers plainly that it is not registered and offers the studio.
-3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network and "Network fee: paid by Moolam through Privy".
+2. Open "Verify an image" in the header and press "Choose an image", or drop a file on the card. Picking it starts the check, so there is no upload button to find. Any copy of a registered image works: re-encoded, resized or mirrored. The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached, and "Verify another" clears it. An unregistered picture answers plainly that it is not registered and offers the studio.
+3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network, and "Network fee" reading "Paid by Moolam through Privy".
 4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
 5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
-6. Open the passport page from the receipt: the poster, the facts, the attestations (a Chainlink line when the CRE workflow has re-checked it), the lineage and a "check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
+6. Open the passport page from the receipt: the poster, the facts, the attestations (a Chainlink line when the CRE workflow has re-checked it), the lineage and a "Check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
+7. Back in "Register an image", press "Make one with the agent". Type a prompt or press one of the three examples, give it a title, and press "Make and register". The plate lights while the agent draws, the picture lands, and under "Two signatures, one transaction" the agent's seal fills with "Signed by the agent" before your device's unlock fills yours. One sponsored transaction carries both. The receipt names the model, agent 10249 and the new passport.
+8. Open a passport you own and scroll to its lineage. Press "Allow edits from this app": Privy asks once, and the signer it adds is held to a policy that allows `appendEdit` on the registry and nothing else. Drop an edited copy, add a title and a line on what changed, then press "Add this edit". It pins, sends from your own account with the fee sponsored, and the tree above redraws with the child. No passkey prompt on this one, and "Revoke" takes the permission back.
+9. Finish on "Explore" in the header: every passport on Monad, newest first, with the chips, the search by passport id and "Load more" for the rest. "Agents" beside it ranks the generators by trust score. Both read the live index, and both say so when it does not answer.
 
 ---
 
@@ -373,10 +408,10 @@ curl against the same URL works.
 | Package | Command | Tests |
 | --- | --- | --- |
 | Contracts | `npm test` from `packages/contracts` | 119 |
-| Verify service | `npm run test:verifier` | 98 |
-| Chain client and agents | `npm run test:agents` | 30 |
+| Verify service | `npm run test:verifier` | 115 |
+| Chain client and agents | `npm run test:agents` | 36 |
 | Indexer | `npm run test:indexer` | 9 |
-| Web app | `npm test` from `packages/web` | 143 |
+| Web app | `npm test` from `packages/web` | 384 |
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -506,15 +541,20 @@ OpenZeppelin's unmodified ERC-721 surface.
 
 ### The verify service
 
-Four routes, all JSON including errors. Full reference in
+Six routes, all JSON including errors. Full reference in
 [docs/api/verifier-endpoints.md](docs/api/verifier-endpoints.md).
 
-| Route | What it takes | What it answers | Mounted when |
-| --- | --- | --- | --- |
-| `POST /verify` | A multipart `file`, or `{ "url": "https://..." }`. 20 MB and 40 megapixels | `{ result, manifest }`. 400, 403 on a private or loopback address, 413, 429 past 60 a minute, 502 | always |
-| `POST /verify/paid` | A multipart `file` only | The same body behind an x402 payment, 5 cents in USDC on Monad by default. 402 carries the terms | `X402_ENABLED=true`, else 404 |
-| `POST /prepare` | A multipart `file`, `title` and `kind`, with a Privy access token in `Authorization: Bearer` | The passport fields plus the four pinned content ids. 401, 415, 429 past 20 an hour per creator, 502 `pin-failed` | `PINATA_JWT` and `PRIVY_APP_ID` are set, else 404 |
-| `GET /health` | nothing | `{ ok, records, version }`, where `records` is how many passports the index holds | always |
+| Route | Who may call it | What it takes and answers | What it costs the caller | Mounted when |
+| --- | --- | --- | --- | --- |
+| `POST /verify` | anyone, no account | A multipart `file`, or `{ "url": "https://..." }`. 20 MB and 40 megapixels. Answers `{ result, manifest }`. 400, 403 on a private or loopback address, 413, 429, 502 | nothing, at 60 requests a minute per socket address | always |
+| `POST /verify/paid` | anyone holding USDC on Monad | A multipart `file` only, and the same answer behind an x402 payment. Without one, 402 with the terms in the header | $0.05 in USDC and no gas: the facilitator submits the transfer and pays for it | `X402_ENABLED=true`, else 404 |
+| `POST /prepare` | a signed-in creator, Privy access token in `Authorization: Bearer` | A multipart `file`, `title` and `kind`. Fingerprints, embeds the manifest, pins four files, answers the passport fields plus the four content ids. 401, 415, 429, 502 `pin-failed` | nothing, at 20 prepares an hour per creator | `PINATA_JWT` and `PRIVY_APP_ID` are set, else 404 |
+| `POST /generate` | the same token | JSON `prompt`, `title`, `creator` and `deadline`. The agent draws and signs, the service pins, and it answers the passport fields, `generatorSig`, the model and the agent. 400 `prompt-refused`, 429 `quota`, 502 `model-failed`, 503 `busy` | nothing, at three pictures a day per creator. Moolam pays the image model | on top of `/prepare`, an image model key, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and `GENERATOR_WALLET_ID` |
+| `POST /edit` | the same token, from a creator who granted the edit signer | A multipart `file`, `title`, `parentId` and `note`. Pins the child and sends `appendEdit` from the creator's own wallet. 404 `no-parent`, 409 `no-signer`, 403 `not-owner`, 429 `quota`, 502 `send-failed` with the registry's own error name | nothing, at five edits a day per creator. Privy sponsors the gas | on top of `/prepare`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY`, `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID` |
+| `GET /health` | anyone | `{ ok, records, version }`, where `records` is how many passports the index holds | nothing | always |
+
+The paid route is built and switched off: `X402_ENABLED` is `false` on the live service today, so
+`POST /verify/paid` answers 404 there until the wallet that collects is set alongside it.
 
 Browsers reach any of it only from an exact origin listed in `CORS_ORIGINS`. No wildcard, no path,
 no trailing slash.
@@ -526,10 +566,10 @@ no trailing slash.
 | Suite | Tests | What it covers |
 | --- | --- | --- |
 | Contracts | 119 | 18 on the policy timelock, 75 on the registry covering every rule, custom error and event, 15 on the Chainlink receiver path, 5 fuzz tests, an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real Monad mainnet state |
-| Verify service | 98 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare route and its token checks |
-| Chain client and agents | 30 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, and the sponsored-send handling (hash polling, refusal classification, the nonce guard) |
+| Verify service | 115 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks and quotas, and the x402 path including a settlement that is broadcast but still unconfirmed |
+| Chain client and agents | 36 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
 | Indexer | 9 | The handlers against the generated Envio types with the live mainnet addresses |
-| Web app | 143 | The passkey, CBOR, DER and calldata libraries, the verifier client, the studio flow and its confirm-by-state, the verify answer and the trust pages |
+| Web app | 384 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the edit panel, the dispute panel and the resolver console, the verify answer, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
 
 The six invariants all held: the contract balance always covers every liability, the bond total
 always equals the sum of open disputes, every edit points at a parent that exists, no image id is
@@ -626,8 +666,8 @@ Moolam/
 │   │   ├── abi/            the three ABIs the app and the indexer read
 │   │   └── deployments/    monad-mainnet.json, the source of truth for every script
 │   │
-│   ├── verifier/           The verify service: fingerprints, C2PA, the eight orientations, /prepare
-│   │   └── src/            fingerprint, dihedral, match, c2pa, prepare, routes, the x402 and auth guards
+│   ├── verifier/           The verify service: fingerprints, C2PA, the eight orientations, six routes
+│   │   └── src/            fingerprint, dihedral, match, c2pa, prepare, generate, edit, routes, guards
 │   │
 │   ├── agents/             The shared TypeScript client, the generator agent, and every proof script
 │   │   └── src/            chain (digests, passkey, registry), privy, media, ipfs, seed, prove, agent
@@ -636,9 +676,12 @@ Moolam/
 │   │
 │   ├── workflow/           The Chainlink CRE workflow that recomputes the fingerprint independently
 │   │
-│   └── web/                The Next.js app: passports, agents, verification, the studio, the docs
+│   └── web/                The Next.js app: passports, explore, agents, the studio, disputes, docs
+│       ├── app/[locale]/   home, verify, studio, explore, agents, passport, agent, resolve, docs
+│       ├── components/     explore, agents, resolve, passport, studio, verify, story, status, docs
+│       └── lib/            passport (owner, edit), disputes, status, docs, chain, data, verifier
 │
-├── docs/                   The documentation, 30 markdown pages the app renders at /en/docs
+├── docs/                   Content only: the markdown pages the app renders at /en/docs
 ├── proofs/                 Every proof output: prove-it, gas, slither, robustness, seeds, transcripts
 ├── ARCHITECTURE.md         The three diagrams and the exact interface
 └── .env.example            Every variable, with a comment on where the value comes from
@@ -692,7 +735,15 @@ and the file the output is saved in.
   action.
 - Off chain: an SSRF guard that normalises and pins every address it checks, 60 requests a minute
   per socket address, a 20 MB and 40 megapixel cap, a concurrency gate of two matches at a time, and
-  Privy access token checks on the one route that spends money.
+  a Privy access token checked on every route that spends money or writes to the chain.
+- The signer a creator grants for edits is held to a Privy policy that names one function on one
+  contract: `appendEdit` on the Moolam registry, carrying no MON. It cannot register, resolve,
+  withdraw, move a token or reach any other contract. A wallet that granted the signer without that
+  policy is refused before Privy is asked to sign, and revoking the signer ends the permission.
+- Quotas are counted against the Privy user id inside the verified token, which a caller cannot
+  choose: three generated pictures and five edits per creator in a rolling 24 hours, on top of 20
+  prepares an hour. They live in the service's memory, so a restart hands the allowance back and two
+  copies count separately, which is the trade taken rather than running a Redis nothing else needs.
 - Static analysis: slither reports 0 high and 6 medium across 41 contracts and 102 detectors, all
   six checked by hand and recorded as false positives in [proofs/slither.txt](proofs/slither.txt).
   solhint is clean.

@@ -53,6 +53,8 @@ Full request and response shapes are in the [API reference](../api/verifier-endp
 | `POST /verify` | Takes a multipart `file` upload or a JSON body of `{ "url": "..." }`, returns the matching passport and any manifest |
 | `POST /verify/paid` | The same answer behind an x402 payment. Multipart upload only. Mounted only when `X402_ENABLED=true`, otherwise the path answers 404 |
 | `POST /prepare` | The studio's backend. Takes a signed-in creator's image with their Privy access token in an `Authorization: Bearer` header, pins the image, its thumbnail, the manifest and the metadata, and returns the passport fields their browser signs. Mounted only when the host has both `PINATA_JWT` and `PRIVY_APP_ID` |
+| `POST /generate` | The studio's other way in. Draws a picture from a signed-in creator's prompt, pins it, and returns the passport fields with the generator agent's signature already on them. Mounted only with an image model key, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and `GENERATOR_WALLET_ID` on top of what `/prepare` needs |
+| `POST /edit` | Appends an edited version of a passport for the owner, sent from their own wallet through the signer they granted. Mounted only with `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY`, `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID` on top of what `/prepare` needs |
 | `GET /health` | `{ ok, records, version }`, where `records` is how many passports the index holds |
 
 Both verify routes read uploads, match and render their answer through the same shared code, so the
@@ -97,6 +99,67 @@ The route is mounted only when the host has both `PINATA_JWT` and `PRIVY_APP_ID`
 service still verifies images, says once at boot that the studio side is off, and answers 404 on
 that path. Full request and response shapes are in the
 [API reference](../api/verifier-endpoints).
+
+## Drawing a picture for a creator
+
+`POST /generate` is the studio's second way in. A signed-in creator sends a prompt and a title, the
+generator agent draws the picture, and the answer comes back with the agent's EIP-712 signature
+already on the passport. The creator's browser adds their passkey signature over the same struct and
+sends the transaction, so this route never holds a key that can write to the chain either.
+
+The agent's key lives in a Privy enclave under a policy that allows one signature on one domain, the
+Moolam registry's, so this service can ask for that and can do nothing else with the agent's wallet.
+
+The order of work is what makes the answer safe to act on:
+
+1. The token is checked and the day's allowance is taken, before a cent is spent.
+2. The picture is drawn, with sixty seconds and no retry.
+3. It is signed into a C2PA manifest carrying the soft binding, fingerprinted and pinned, four files
+   the same as an upload.
+4. Only then, over the final pinned bytes, does the agent sign.
+
+The prompt is the only text that reaches the model. There is no wrapper around it, so nothing this
+service says about itself can end up inside the manifest of a picture a creator then registers in
+their own name.
+
+**Three pictures a day per creator.** `GENERATE_PER_DAY`, counted on the verified Privy user id over
+a rolling 24 hours, which is about nine cents of image model spend per account. A refused prompt and
+a request that never got a drawing slot give the slot back. A model that failed part way keeps it,
+because it may have drawn and been billed first, and so do a failed pin and a failed signature. The
+count is held in this process's memory: a redeploy hands everyone a fresh day, and two copies of the
+service would count separately. That is deliberate, and the alternative is a Redis this service does
+not otherwise need.
+
+**Two drawings at once.** The model call and the C2PA signing run behind the same shape of gate
+`/verify` uses. Pinning and signing happen outside it, because they are network waits holding nothing
+heavy in memory. A caller who would queue longer than 90 seconds is told the agent is busy rather
+than having a connection held open on nothing.
+
+## Appending an edit for an owner
+
+`POST /edit` is the one route here that sends a transaction, and it sends it from somebody else's
+wallet on purpose.
+
+The owner grants this app a signer on their own Privy wallet, scoped by a policy that allows
+`appendEdit` on the Moolam registry and nothing else. The browser then uploads the edited picture and
+this service does the rest: prepare and pin the way `/prepare` does, build the child passport that
+points at the parent, and send `appendEdit` from the owner's wallet with the app's authorization key,
+gas sponsored by Privy. The owner stays the sender on chain, which is what the registry requires, and
+this service never holds a key that could move their money.
+
+Two things a caller cannot assert. The wallet comes from the Privy user record rather than from the
+request, and the ownership of the parent is read from the chain before anything is spent.
+
+The signer is checked against both ids, not one. The service looks for its own
+`PRIVY_EDIT_SIGNER_ID` among the signers on that wallet, and refuses the edit unless that signer
+carries `PRIVY_EDIT_POLICY_ID`. A grant made without the policy is turned down with the same answer
+as no grant at all, because a signer with no policy on it could do more than append an edit, and this
+route promises it cannot.
+
+The call is estimated against current state before anything is broadcast, so a registry that would
+refuse the edit refuses it while nothing has been signed or spent, and the revert name comes back
+with the answer. `EDITS_PER_DAY`, five by default, caps how many one creator may append in a rolling
+24 hours, on the same counter shape as the drawing allowance.
 
 ## The limits, and why each one exists
 
@@ -187,7 +250,17 @@ service before it listens rather than after.
 | `X402_FACILITATOR_URL` | Default `https://x402-facilitator.molandak.org`, Monad's facilitator |
 | `PINATA_JWT` | The token `/prepare` pins with. An API key made at app.pinata.cloud, the JWT it shows once. It spends a plan, so treat it as a spending secret |
 | `PINATA_GATEWAY_URL` | This Pinata account's dedicated gateway, ending in `/ipfs/`. Defaults to the public one, which rate-limits a busy address |
-| `PRIVY_APP_ID` | The app id from dashboard.privy.io, the same app the web app signs users in with. `/prepare` accepts that app's access tokens and no other's |
+| `PRIVY_APP_ID` | The app id from dashboard.privy.io, the same app the web app signs users in with. `/prepare`, `/generate` and `/edit` accept that app's access tokens and no other's |
+| `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` | The server side credentials `/generate` and `/edit` act with. Spending secrets, both |
+| `OPENAI_API_KEY` or `OPENROUTER_API_KEY` | What `/generate` draws with. Either one turns the route on |
+| `AGENT_IMAGE_MODEL`, `AGENT_IMAGE_BASE_URL` | Which image model, and where it lives. Both optional |
+| `GENERATOR_WALLET_ID`, `GENERATOR_WALLET_ADDRESS` | The agent's Privy server wallet, created by the agent scripts and recorded in `packages/agents/.moolam/wallets.json` |
+| `GENERATOR_AGENT_ID` | The ERC-8004 id that wallet owns, default `10249`. It goes inside every passport `/generate` signs |
+| `GENERATE_PER_DAY` | Pictures per creator in a rolling 24 hours, default 3 |
+| `PRIVY_EDIT_SIGNER_ID` | The key quorum `/edit` signs with, whose one member is the public half of `PRIVY_AUTHORIZATION_KEY`. The browser names the same id when it asks for the grant |
+| `PRIVY_EDIT_POLICY_ID` | The policy that quorum is held to: `appendEdit` on the Moolam registry, no MON, nothing else. A signer without it is refused |
+| `EDITS_PER_DAY` | Edits per creator in a rolling 24 hours, default 5 |
+| `MOOLAM_REGISTRY_ADDRESS` | The registry the agent's signature is bound to and `/edit` sends to. Defaults to the mainnet deployment |
 | `CORS_ORIGINS` | Comma separated exact origins allowed to call this service from a browser, such as `https://moolam.app,http://localhost:3000`. No wildcard, no path, no trailing slash |
 | `PRIVY_JWKS_OVERRIDE_PATH` | A local JWKS file for tests that sign their own tokens. Refused when `NODE_ENV` is production, because anyone holding that key could then mint tokens this service accepts |
 

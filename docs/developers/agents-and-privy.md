@@ -71,6 +71,21 @@ that allows `appendEdit` and nothing else. That is what lets an editing session 
 without ten passkey prompts. When the permission is taken back, the same call from the same key is
 refused by Privy before it can reach Monad.
 
+**Signers granted from the browser.** That grant is asked for on the passport page itself, through
+the React SDK: `addSigners({ address, signers: [{ signerId, policyIds }] })`, naming this app's key
+quorum and the edit policy, with Privy asking the creator in its own window. The verify service then
+reads the signers on that wallet before it acts, looks for its own signer id, and refuses unless that
+signer carries the policy id, so a grant made without the policy is worth nothing to it. Taking it
+back is `removeSigners({ address })`, which clears every signer on the wallet: Privy's browser SDK
+has no call that removes one by id, so the panel says what is being given up before it runs.
+
+**A server wallet acting for a signed-in creator.** The generator agent's wallet signs passports for
+whoever is in the studio, not for the developer who set it up. The creator's own address and a
+deadline are inside the struct the enclave signs, the browser adds that creator's passkey signature
+over the same struct, and the browser sends the transaction. So the agent's wallet spends nothing on
+this path, the creator never holds the agent's key, and a picture drawn for one account cannot be
+registered by another: the registry checks the creator itself and reverts `InvalidCreator`.
+
 **Gas sponsorship.** The creator's first transaction is sent with `sponsor: true`. On the recorded
 run it was on: Privy routed the bind as a sponsored EIP-7702 user operation, its bundler sent it
 through the ERC-4337 entry point, it landed in block 103263011, and the creator paid nothing. Privy
@@ -83,17 +98,20 @@ happen.
 Two honest notes on that proof. There is no browser in it, so the creator's wallet is a Privy
 server wallet standing in for the embedded wallet a user would get on login, and the session signer
 is granted through `wallets().update` with `additional_signers`, which is the server side of what
-the React SDK calls `addSigners`. And the generator mints its ERC-8004 identity before its policy
-goes on, because the policy forbids calls to any other contract; a rerun skips that step and the
-wallet stays locked down.
+the React SDK calls `addSigners`. The app does that half in the browser for real now, on the
+creator's own embedded wallet, but the recorded proof is still the server side of it. And the
+generator mints its ERC-8004 identity before its policy goes on, because the policy forbids calls to
+any other contract; a rerun skips that step and the wallet stays locked down.
 
 **Access tokens.** The last thing Moolam takes from Privy is not a wallet at all. A creator in the
 studio uploads a photo straight from their browser to the verify service, and it checks the Privy
 access token that session already carries before it pins anything: signed by the app's own key set,
 issuer `privy.io`, this app id in the audience, ES256, inside its expiry. That is what lets an
 upload endpoint spend Moolam's pinning account without a shared secret sitting in a browser, where
-it would not be secret. This one runs in the verify service rather than in this package, so it is
-covered by that package's tests and not by the mainnet run above. See
+it would not be secret. The same check stands in front of the drawing and the edit routes, and it is
+what their daily allowances are counted on, because the user id inside a verified token is not
+something a caller can choose. These run in the verify service rather than in this package, so they
+are covered by that package's tests and not by the mainnet run above. See
 [Verifier service](verifier-service).
 
 ## The generator agent
@@ -160,6 +178,7 @@ set -a; . .env; set +a
 | `npm run proof:anvil` | Deploy, bind, three passports and an edit on a fork, with gas per step. Spends no MON. |
 | `npm run seed` | One real passport on Monad mainnet, files pinned to IPFS. Spends MON. |
 | `npm run prove:privy` | Server wallets under a policy, enclave signing, session signers and sponsorship, live on Monad mainnet. Spends MON. |
+| `npm run edit:quorum` | Creates the key quorum the edit route signs with, whose one member is the public half of `PRIVY_AUTHORIZATION_KEY`, and writes `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID` into the root `.env`. Run once per deployment. Spends no MON. |
 | `npm run prove` | The prove-it run. Spends about 0.4 MON. See [Prove it](prove-it). |
 | `npm run agent -- "..."` | The demo agent. Spends MON and a cent or two of OpenAI credit. |
 | `npm run agent -- --verify path/to/file.jpg` | The same agent answering "who made this?" for any copy. |

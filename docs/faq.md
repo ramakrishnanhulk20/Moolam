@@ -43,6 +43,46 @@ the studio only claims it was paid that way after reading your balance either si
 transaction. If sponsorship is ever off, the screen says so and offers to send the same transaction
 from your own balance instead.
 
+## Who pays for what
+
+Moolam pays the network fee on every write through Privy's sponsorship: registering an upload,
+registering a picture the agent drew, and appending an edit. It also pays the image model and the
+IPFS pinning, which is why the agent is capped at three pictures a day per account and edits at five.
+
+One thing is yours to pay. A dispute bond is your own MON, currently 1, and the screen says so before
+the button: "Moolam pays the network fee. It cannot pay the bond: that is your own MON, and it leaves
+your account the moment this lands." A paid verification over x402 is the other one, at 5 cents in
+USDC and no gas, because the facilitator pays the settlement itself.
+
+## What draws the picture when the agent makes one
+
+An image model, `gpt-image-1-mini` by default, at 1024 by 1024 and medium quality, which is about a
+cent a picture. A host can point it at a different model or at OpenRouter with two environment
+variables. Your prompt is the only text that reaches it: nothing is wrapped around it, so nothing the
+service says about itself can end up inside the manifest of a picture registered in your name. The
+prompt and the model that answered are both pinned in the passport's metadata, so the record says
+what made the pixels and what it was asked for.
+
+## What can the signer I grant for edits actually do
+
+Append an edit to a passport you hold. That is the whole list. It is a key Privy holds for this app,
+registered as a one of one quorum on your own wallet and scoped by a policy that names `appendEdit`
+on the Moolam registry. It cannot register a new original, cannot move funds and cannot call another
+contract, because the policy names one function on one contract, and the verify service refuses to
+use a signer that does not carry that policy. Press "Revoke" and Privy refuses the next call from the
+same key before it can reach Monad. Revoking clears every signer on the wallet rather than only this
+app's, because Privy's browser SDK has no call that removes one by id.
+
+## Why does my passport say it has not been re-checked yet
+
+Because nobody has re-checked it yet, and the page will not pretend otherwise. A re-check is an
+independent verifier fetching the pinned thumbnail, hashing it again and writing the answer on chain,
+and the Chainlink CRE workflow is what does it here. It needs the thumbnail reachable through an IPFS
+gateway and a quorum of nodes agreeing on the same verdict before anything is written, so a fresh
+passport reads "Not re-checked yet", which is the honest word for registered and nothing more. On
+Explore, the plates with a lit R mark are the ones that have one, and the "Re-checked" chip shows
+only those.
+
 ## Can I use my own wallet
 
 Not in the app today. The studio signs in with email, Google or a passkey, and Privy creates an
@@ -132,10 +172,11 @@ edit from it.
 
 ## Can I register a photograph rather than AI output
 
-Yes, and that is what the studio does today. A photo registers as a Captured passport with one
-signature, yours, and no generator agent. A picture an AI made carries a second signature from the
-wallet that owns the agent's ERC-8004 identity, and registers through the agent, which is described
-in [Agents and generated images](guides/agents-and-generated-images).
+Yes. The studio offers both, under "Two ways in". A photo you upload registers as a Captured passport
+with one signature, yours, and no generator agent. "Make one with the agent" registers a Generated
+passport carrying a second signature from the wallet that owns the agent's ERC-8004 identity, over
+the same digest your passkey signs. Both are described in
+[Agents and generated images](guides/agents-and-generated-images).
 
 ## What does a passport actually prove
 
