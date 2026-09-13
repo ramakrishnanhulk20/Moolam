@@ -38,7 +38,17 @@
     "index": "Index: {source}",
     "sourceChain": "die Kette",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "der Prüfdienst"
+    "sourceVerifier": "der Prüfdienst",
+    "status": {
+      "verifier": "Prüfdienst",
+      "index": "Index",
+      "chain": "Kette",
+      "live": "aktiv",
+      "behind": "{blocks, number} Blöcke zurück",
+      "unreachable": "nicht erreichbar",
+      "block": "Block {block, number}",
+      "records": "{count, number} Einträge"
+    }
   },
   "common": {
     "copy": "Kopieren",

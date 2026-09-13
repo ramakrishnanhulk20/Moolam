@@ -40,7 +40,17 @@
     "index": "インデックス: {source}",
     "sourceChain": "チェーン",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "検証サービス"
+    "sourceVerifier": "検証サービス",
+    "status": {
+      "verifier": "検証サービス",
+      "index": "インデックス",
+      "chain": "チェーン",
+      "live": "稼働中",
+      "behind": "{blocks, number} ブロック遅延",
+      "unreachable": "応答なし",
+      "block": "ブロック {block, number}",
+      "records": "{count, number} 件"
+    }
   },
   "common": {
     "copy": "コピー",

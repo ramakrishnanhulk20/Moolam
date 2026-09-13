@@ -38,7 +38,17 @@
     "index": "Index: {source}",
     "sourceChain": "the chain",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "the verifier service"
+    "sourceVerifier": "the verifier service",
+    "status": {
+      "verifier": "Verify service",
+      "index": "Index",
+      "chain": "Chain",
+      "live": "live",
+      "behind": "behind by {blocks, number} blocks",
+      "unreachable": "unreachable",
+      "block": "block {block, number}",
+      "records": "{count, number} records"
+    }
   },
   "common": {
     "copy": "Copy",

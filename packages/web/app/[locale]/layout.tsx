@@ -3,7 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { LocaleSwitch } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -11,8 +11,10 @@ import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
 import { PrivyProvider } from "@/components/providers/PrivyProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { StatusPending, SystemStatus } from "@/components/status/SystemStatus";
 import { CHAIN_ID, MONAD_EXPLORER, addresses } from "@/lib/chain/client";
 import { activeSource } from "@/lib/data/source";
+import { hasIndex } from "@/lib/status/read";
 import { fontVariables } from "@/lib/fonts";
 import { Link, routing } from "@/lib/i18n/routing";
 import "@/styles/globals.css";
@@ -118,7 +120,7 @@ export default async function LocaleLayout({
                   <main className="flex-1">{children}</main>
 
                   <footer className="border-t border-line">
-                    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-2 px-5 py-6 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint sm:flex-row sm:items-center sm:justify-between sm:px-8">
+                    <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-x-8 gap-y-3 px-5 py-6 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-8">
                       <span>{f("network", { chainId: CHAIN_ID })}</span>
                       <a
                         href={`${MONAD_EXPLORER}/address/${addresses.registry}`}
@@ -129,6 +131,22 @@ export default async function LocaleLayout({
                         {f("registry")} {addresses.registry}
                       </a>
                       <span>{f("index", { source: f(`source${source[0].toUpperCase()}${source.slice(1)}`) })}</span>
+                      {/* The three services, read while the page is rendered. The boundary
+                          keeps a slow service off the critical path: the rest of the footer
+                          is already on screen while the line is still waiting. */}
+                      <Suspense
+                        fallback={
+                          <StatusPending
+                            labels={[
+                              f("status.verifier"),
+                              ...(hasIndex() ? [f("status.index")] : []),
+                              f("status.chain"),
+                            ]}
+                          />
+                        }
+                      >
+                        <SystemStatus />
+                      </Suspense>
                     </div>
                   </footer>
                 </div>

@@ -38,7 +38,17 @@
     "index": "குறியீடு: {source}",
     "sourceChain": "செயின்",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "சரிபார்ப்பு சேவை"
+    "sourceVerifier": "சரிபார்ப்பு சேவை",
+    "status": {
+      "verifier": "சரிபார்ப்பு சேவை",
+      "index": "குறியீடு",
+      "chain": "செயின்",
+      "live": "இயங்குகிறது",
+      "behind": "{blocks, number} பிளாக் பின்தங்கியுள்ளது",
+      "unreachable": "பதில் இல்லை",
+      "block": "பிளாக் {block, number}",
+      "records": "{count, number} பதிவுகள்"
+    }
   },
   "common": {
     "copy": "நகலெடு",

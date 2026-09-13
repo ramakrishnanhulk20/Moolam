@@ -40,7 +40,17 @@
     "index": "인덱스: {source}",
     "sourceChain": "체인",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "검증 서비스"
+    "sourceVerifier": "검증 서비스",
+    "status": {
+      "verifier": "검증 서비스",
+      "index": "인덱스",
+      "chain": "체인",
+      "live": "정상",
+      "behind": "{blocks, number} 블록 지연",
+      "unreachable": "응답 없음",
+      "block": "블록 {block, number}",
+      "records": "{count, number}건"
+    }
   },
   "common": {
     "copy": "복사",

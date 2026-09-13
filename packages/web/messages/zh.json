@@ -40,7 +40,17 @@
     "index": "索引：{source}",
     "sourceChain": "链上",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "验证服务"
+    "sourceVerifier": "验证服务",
+    "status": {
+      "verifier": "验证服务",
+      "index": "索引",
+      "chain": "链",
+      "live": "正常",
+      "behind": "落后 {blocks, number} 个区块",
+      "unreachable": "无法连接",
+      "block": "区块 {block, number}",
+      "records": "{count, number} 条记录"
+    }
   },
   "common": {
     "copy": "复制",

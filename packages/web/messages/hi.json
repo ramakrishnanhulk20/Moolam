@@ -39,7 +39,17 @@
     "index": "इंडेक्स: {source}",
     "sourceChain": "चेन",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "सत्यापन सेवा"
+    "sourceVerifier": "सत्यापन सेवा",
+    "status": {
+      "verifier": "सत्यापन सेवा",
+      "index": "इंडेक्स",
+      "chain": "चेन",
+      "live": "सक्रिय",
+      "behind": "{blocks, number} ब्लॉक पीछे",
+      "unreachable": "उपलब्ध नहीं",
+      "block": "ब्लॉक {block, number}",
+      "records": "{count, number} रिकॉर्ड"
+    }
   },
   "common": {
     "copy": "कॉपी करें",

@@ -38,7 +38,17 @@
     "index": "Índice: {source}",
     "sourceChain": "la cadena",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "el servicio de verificación"
+    "sourceVerifier": "el servicio de verificación",
+    "status": {
+      "verifier": "Servicio de verificación",
+      "index": "Índice",
+      "chain": "Cadena",
+      "live": "activo",
+      "behind": "{blocks, number} bloques por detrás",
+      "unreachable": "no responde",
+      "block": "bloque {block, number}",
+      "records": "{count, number} registros"
+    }
   },
   "common": {
     "copy": "Copiar",

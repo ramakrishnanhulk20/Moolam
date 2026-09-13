@@ -652,3 +652,36 @@ body:has([data-story="still"]) .app-header {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* The footer's live line. Only a service that is answering gets a dot that
+   breathes, so a red one sits still and reads as a fault rather than as
+   decoration. The reduced-motion rule at the top of this file stops the
+   breathing for anyone who asked for less movement. */
+.status-line .status-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--text-faint);
+}
+
+.status-line .status-dot.is-live {
+  background: var(--status-verified);
+  animation: status-breathe 2.6s ease-in-out infinite;
+}
+
+.status-line .status-dot.is-down {
+  background: var(--status-failed);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-failed) 20%, transparent);
+}
+
+@keyframes status-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--status-verified) 55%, transparent);
+  }
+
+  55% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--status-verified) 0%, transparent);
+  }
+}

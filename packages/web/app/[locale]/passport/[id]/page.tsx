@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
-import { readArt } from "@/components/passport/art";
+import { readArt, type Art } from "@/components/passport/art";
 import { Attestations } from "@/components/passport/Attestations";
 import { CheckCopy } from "@/components/passport/CheckCopy";
 import { DisputeNote } from "@/components/passport/DisputeNote";
@@ -20,17 +20,43 @@ import {
   getPassport,
 } from "@/lib/chain/registry";
 import type { Attestation, Dispute, Passport } from "@/lib/chain/registry";
+import { passportShareMetadata } from "./opengraph-image";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
+/**
+ * The head for one record, so a passport link pasted into a chat shows the
+ * picture, its title and its block rather than the app's generic card.
+ *
+ * The title and the words come from the pinned metadata, read the same way the
+ * page reads them. A gateway that will not answer costs the title, never the
+ * page: the card and the head both fall back to the short id.
+ */
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }): Promise<Metadata> {
   const { locale, id } = await params;
-  const t = await getTranslations({ locale, namespace: "passport" });
-  return { title: `${t("title")} ${id.slice(0, 10)}` };
+  const meta = await getTranslations({ locale, namespace: "meta" });
+
+  let art: Art | null = null;
+  if (ID_PATTERN.test(id)) {
+    try {
+      const passport = await getPassport(id as Hex);
+      art = passport === null ? null : await readArt(passport.metadataURI);
+    } catch {
+      // The head is worth no failed page. The short id stands in.
+    }
+  }
+
+  return passportShareMetadata({
+    locale,
+    id,
+    title: art?.title,
+    description: art?.description,
+    fallbackDescription: meta("description"),
+  });
 }
 
 /**
