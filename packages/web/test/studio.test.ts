@@ -6,9 +6,11 @@ import { accountName } from "@/lib/studio/account";
 import { ConfirmTimeout } from "@/lib/studio/confirm";
 import { bindReducer, initialBindState } from "@/lib/studio/binding";
 import { checkImage, initialRegisterState, isBusy, isRegistered, passportId, registerReducer } from "@/lib/studio/flow";
+import { PROMPT_MAX, atLimit, checkPrompt, generateDeadline } from "@/lib/studio/generate";
 import { passportArt } from "@/lib/studio/metadata";
 import { AuthCheckFailed, describeFailure, isSponsorshipRefusal } from "@/lib/studio/problems";
-import type { PrepareResponse } from "@/lib/verifier/client";
+import { passportInputFromGenerated } from "@/lib/chain/calldata";
+import type { GenerateResponse, PrepareResponse } from "@/lib/verifier/client";
 
 const ID = `0x${"ab".repeat(32)}` as const;
 
@@ -85,7 +87,7 @@ describe("the three steps", () => {
     state = registerReducer(state, { type: "sent", txHash: `0x${"ef".repeat(32)}` });
     state = registerReducer(state, { type: "confirmed", block: 123n, at: 1_700_000_000_000 });
 
-    expect(state.steps).toEqual({ prepare: "done", sign: "done", send: "done" });
+    expect(state.steps).toMatchObject({ prepare: "done", sign: "done", send: "done" });
     expect(isRegistered(state)).toBe(true);
     expect(isBusy(state)).toBe(false);
     expect(passportId(state)).toBe(ID);
@@ -99,7 +101,7 @@ describe("the three steps", () => {
     state = registerReducer(state, { type: "start", step: "sign" });
     state = registerReducer(state, { type: "failed", failure: { key: "passkeyCancelled" } });
 
-    expect(state.steps).toEqual({ prepare: "done", sign: "failed", send: "waiting" });
+    expect(state.steps).toMatchObject({ prepare: "done", sign: "failed", send: "waiting" });
     expect(state.prepared).not.toBeNull();
     expect(state.failure?.key).toBe("passkeyCancelled");
   });
@@ -113,6 +115,96 @@ describe("the three steps", () => {
     expect(state.prepared).toBeNull();
     expect(state.steps.prepare).toBe("waiting");
     expect(state.title).toBe("A morning");
+  });
+});
+
+const CREATOR = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+
+const DRAWN = {
+  passport: {
+    ...PREPARED.passport,
+    creator: CREATOR,
+    generatorAgentId: "10249",
+    kind: 0,
+    deadline: "1788878733",
+  },
+  generatorSig: `0x${"cd".repeat(65)}`,
+  image: PREPARED.image,
+  thumbnail: PREPARED.thumbnail,
+  metadata: PREPARED.metadata,
+  manifest: { embedded: true },
+  model: "gpt-image-1",
+  agent: { id: "10249", wallet: "0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb" },
+  quota: { used: 1, limit: 3, resetsAt: 1788961533 },
+  preparedBy: "did:privy:someone",
+} as unknown as GenerateResponse;
+
+describe("the agent path", () => {
+  it("stamps drawing, pinning and the agent signature together, then the passkey and the send", () => {
+    let state = registerReducer(initialRegisterState, { type: "mode", mode: "generate" });
+    state = registerReducer(state, { type: "title", title: "First light" });
+    state = registerReducer(state, { type: "prompt", prompt: "a fishing boat at first light" });
+    state = registerReducer(state, { type: "start", step: "draw" });
+
+    expect(isBusy(state)).toBe(true);
+    expect(state.steps).toMatchObject({ draw: "running", pin: "waiting", agentSign: "waiting" });
+
+    state = registerReducer(state, { type: "drawn", response: DRAWN });
+    expect(state.steps).toMatchObject({ draw: "done", pin: "done", agentSign: "done", sign: "waiting" });
+    expect(state.generated?.generatorSig).toBe(`0x${"cd".repeat(65)}`);
+    expect(state.quota).toEqual({ used: 1, limit: 3, resetsAt: 1788961533 });
+    // The receipt column reads the prepared block, so the agent's answer fills it too.
+    expect(passportId(state)).toBe(ID);
+
+    state = registerReducer(state, { type: "start", step: "sign" });
+    state = registerReducer(state, { type: "signed", digest: `0x${"cd".repeat(32)}` });
+    state = registerReducer(state, { type: "start", step: "send" });
+    state = registerReducer(state, { type: "confirmed", block: 123n, at: 1_700_000_000_000 });
+
+    expect(isRegistered(state)).toBe(true);
+    expect(isBusy(state)).toBe(false);
+  });
+
+  it("names the retry after what it would really do, and keeps today's count through a refusal", () => {
+    let state = registerReducer(initialRegisterState, { type: "mode", mode: "generate" });
+    state = registerReducer(state, { type: "start", step: "draw" });
+    state = registerReducer(state, {
+      type: "failed",
+      failure: { key: "quotaReached" },
+      quota: { used: 3, limit: 3, resetsAt: 1788961533 },
+    });
+
+    expect(state.steps.draw).toBe("failed");
+    expect(state.quota).toEqual({ used: 3, limit: 3, resetsAt: 1788961533 });
+    expect(atLimit(state.quota)).toBe(true);
+
+    const expired = registerReducer(state, { type: "failed", failure: { key: "expired", next: "again" } });
+    expect(expired.failure?.next).toBe("generateAgain");
+    expect(expired.quota).toEqual({ used: 3, limit: 3, resetsAt: 1788961533 });
+  });
+
+  it("leaves the upload path's retry alone", () => {
+    const state = registerReducer(initialRegisterState, { type: "failed", failure: { key: "expired", next: "again" } });
+    expect(state.failure?.next).toBe("again");
+  });
+
+  it("refuses a prompt the service would refuse, before a picture is paid for", () => {
+    expect(checkPrompt("  a boat  ")?.key).toBe("promptTooShort");
+    expect(checkPrompt("x".repeat(PROMPT_MAX + 1))?.key).toBe("promptTooLong");
+    expect(checkPrompt("a fishing boat at first light")).toBeNull();
+  });
+
+  it("asks for a thirty minute window, which is what the creator has to sign inside", () => {
+    expect(generateDeadline(1_700_000_000_000)).toBe(1_700_001_800n);
+  });
+
+  it("signs the agent's struct untouched, creator and deadline included", () => {
+    const input = passportInputFromGenerated(DRAWN.passport);
+    expect(input.creator).toBe(CREATOR);
+    expect(input.deadline).toBe(1_788_878_733n);
+    expect(input.generatorAgentId).toBe(10249n);
+    expect(input.kind).toBe(0);
+    expect(input.phash.toString()).toBe(DRAWN.passport.phash);
   });
 });
 

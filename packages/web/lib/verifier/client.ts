@@ -16,7 +16,34 @@ const hexWord = z
 /** 64 bit hashes and agent ids travel as decimal strings, never as doubles. */
 const decimal = z.string().regex(/^\d+$/, "expected a decimal string");
 
+const addressWord = z
+  .string()
+  .regex(/^0x[0-9a-fA-F]{40}$/, "expected a 20 byte address")
+  .transform((value) => value as Hex);
+
+/**
+ * The agent's signature, 64 or 65 bytes. Privy signs 65, and the registry's
+ * checker takes the shorter compact form too, so both are let through rather
+ * than pinning the browser to one wallet's habit.
+ */
+const signatureWord = z
+  .string()
+  .regex(/^0x(?:[0-9a-fA-F]{128}|[0-9a-fA-F]{130})$/, "expected a 64 or 65 byte signature")
+  .transform((value) => value as Hex);
+
 const cidSchema = z.object({ cid: z.string().min(1), uri: z.string().min(1) });
+
+const manifestSchema = z.union([
+  z.object({ embedded: z.literal(true) }),
+  z.object({ embedded: z.literal(false), reason: z.string().optional() }),
+]);
+
+/** How many pictures this creator has had from the agent today, and when the oldest one drops out. */
+export const quotaSchema = z.object({
+  used: z.number().int().nonnegative(),
+  limit: z.number().int().nonnegative(),
+  resetsAt: z.number().int().positive(),
+});
 
 export const prepareResponseSchema = z.object({
   passport: z.object({
@@ -38,10 +65,45 @@ export const prepareResponseSchema = z.object({
   }),
   thumbnail: cidSchema.extend({ gatewayUrl: z.string().min(1) }),
   metadata: cidSchema,
-  manifest: z.union([
-    z.object({ embedded: z.literal(true) }),
-    z.object({ embedded: z.literal(false), reason: z.string().optional() }),
-  ]),
+  manifest: manifestSchema,
+  preparedBy: z.string().min(1),
+});
+
+/**
+ * What the agent hands back after it has drawn, pinned and signed.
+ *
+ * The passport block carries two fields prepare does not: the creator it drew
+ * for and the deadline it signed against. Both are the agent's, not the
+ * browser's, because the agent's signature is already over them, so the
+ * creator's passkey has to sign exactly what came back.
+ */
+export const generateResponseSchema = z.object({
+  passport: z.object({
+    exactHash: hexWord,
+    parentId: hexWord,
+    creator: addressWord,
+    generatorAgentId: decimal,
+    phash: decimal,
+    blockhash256: hexWord,
+    manifestHash: hexWord,
+    kind: z.number().int().min(0).max(2),
+    fingerprintVersion: z.number().int().min(1).max(255),
+    metadataURI: z.string().min(1),
+    deadline: decimal,
+  }),
+  generatorSig: signatureWord,
+  image: cidSchema.extend({
+    gatewayUrl: z.string().min(1),
+    bytes: z.number().int().nonnegative(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  }),
+  thumbnail: cidSchema.extend({ gatewayUrl: z.string().min(1) }),
+  metadata: cidSchema,
+  manifest: manifestSchema,
+  model: z.string().min(1),
+  agent: z.object({ id: decimal, wallet: addressWord }),
+  quota: quotaSchema,
   preparedBy: z.string().min(1),
 });
 
@@ -89,7 +151,9 @@ export const verifyResponseSchema = z.object({
 });
 
 export type PrepareResponse = z.infer<typeof prepareResponseSchema>;
+export type GenerateResponse = z.infer<typeof generateResponseSchema>;
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
+export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
 
 export type VerifierCode =
@@ -98,6 +162,11 @@ export type VerifierCode =
   | "too-large"
   | "not-an-image"
   | "rate-limited"
+  | "quota"
+  | "prompt-refused"
+  | "model-failed"
+  | "sign-failed"
+  | "busy"
   | "pin-failed"
   | "offline"
   | "bad-response";
@@ -106,12 +175,15 @@ export type VerifierCode =
 export class VerifierError extends Error {
   readonly status: number;
   readonly code: VerifierCode;
+  /** Only on a refused generation: what the creator has already used today. */
+  readonly quota?: QuotaState;
 
-  constructor(code: VerifierCode, status: number, message: string) {
+  constructor(code: VerifierCode, status: number, message: string, quota?: QuotaState) {
     super(message);
     this.name = "VerifierError";
     this.code = code;
     this.status = status;
+    this.quota = quota;
   }
 }
 
@@ -140,6 +212,38 @@ export async function prepare(options: {
   });
 }
 
+/**
+ * Asks the generator agent for a picture and its half of the signature.
+ *
+ * The service draws, embeds the manifest, pins everything and signs the
+ * passport with the agent's Privy wallet. Nothing reaches the chain here: the
+ * browser adds the creator's passkey signature over the same struct and sends
+ * the one transaction.
+ *
+ * The deadline is the window both signatures are good for, in unix seconds,
+ * and the service refuses anything under ten minutes or over two hours.
+ */
+export async function generate(options: {
+  prompt: string;
+  title: string;
+  creator: Hex;
+  deadline: bigint | number;
+  accessToken: string;
+  signal?: AbortSignal;
+}): Promise<GenerateResponse> {
+  const body = JSON.stringify({
+    prompt: options.prompt,
+    title: options.title,
+    creator: options.creator,
+    deadline: options.deadline.toString(),
+  });
+
+  return await post("/generate", body, generateResponseSchema, {
+    signal: options.signal,
+    headers: { authorization: `Bearer ${options.accessToken}`, "content-type": "application/json" },
+  });
+}
+
 /** Matches an image against the registry. No sign in: anyone may check a picture. */
 export async function verify(options: { file: File; signal?: AbortSignal }): Promise<VerifyResponse> {
   const body = new FormData();
@@ -154,7 +258,7 @@ export function verifierUrl(path: string): string {
 
 async function post<T>(
   path: string,
-  body: FormData,
+  body: BodyInit,
   schema: z.ZodType<T>,
   options: { signal?: AbortSignal; headers?: Record<string, string> },
 ): Promise<T> {
@@ -175,7 +279,7 @@ async function post<T>(
   }
 
   if (!response.ok) {
-    throw new VerifierError(codeFor(response.status), response.status, await failureMessage(response));
+    throw await failureOf(response);
   }
 
   let payload: unknown;
@@ -196,6 +300,20 @@ async function post<T>(
 
   return parsed.data;
 }
+
+/**
+ * The failures /generate names in the body rather than in the status, because
+ * one status covers several of them: 400 is a bad field or a refused prompt,
+ * and 502 is any one of the three outside services.
+ */
+const BODY_CODES: Record<string, VerifierCode> = {
+  quota: "quota",
+  "prompt-refused": "prompt-refused",
+  "model-failed": "model-failed",
+  "sign-failed": "sign-failed",
+  busy: "busy",
+  "pin-failed": "pin-failed",
+};
 
 function codeFor(status: number): VerifierCode {
   if (status === 401 || status === 403) {
@@ -219,15 +337,29 @@ function codeFor(status: number): VerifierCode {
   return "bad-response";
 }
 
-/** The routes answer failures as { error: "..." }, and anything else is reported as the status. */
-async function failureMessage(response: Response): Promise<string> {
+/**
+ * The routes answer failures as { error: "..." }, sometimes with the model's
+ * own reason or the quota beside it, and anything else is reported as the
+ * status.
+ */
+async function failureOf(response: Response): Promise<VerifierError> {
+  let body: { error?: unknown; reason?: unknown; quota?: unknown } = {};
   try {
-    const body = (await response.json()) as { error?: unknown };
-    if (typeof body.error === "string" && body.error.length > 0) {
-      return body.error;
-    }
+    body = (await response.json()) as typeof body;
   } catch {
     // A body that is not JSON says nothing useful, so the status speaks instead.
   }
-  return `the verify service answered ${response.status}`;
+
+  const named = typeof body.error === "string" ? BODY_CODES[body.error] : undefined;
+  const code = named ?? codeFor(response.status);
+
+  const message =
+    typeof body.reason === "string" && body.reason.length > 0
+      ? body.reason
+      : typeof body.error === "string" && body.error.length > 0
+        ? body.error
+        : `the verify service answered ${response.status}`;
+
+  const quota = quotaSchema.safeParse(body.quota);
+  return new VerifierError(code, response.status, message, quota.success ? quota.data : undefined);
 }

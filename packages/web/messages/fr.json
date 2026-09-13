@@ -437,6 +437,17 @@
       "waiting": "En attente de votre empreinte ou de votre visage",
       "otherDevice": "Si cette clé d’accès vit sur votre téléphone ou un autre ordinateur, ouvrez Moolam là-bas, ou liez cet appareil. Lier remplace l’ancienne et coûte une transaction."
     },
+    "choice": {
+      "kicker": "Deux façons d'entrer",
+      "upload": {
+        "label": "Téléverser une image",
+        "note": "Une que vous avez déjà faite. Votre déverrouillage la signe."
+      },
+      "generate": {
+        "label": "La faire faire à l'agent",
+        "note": "L'agent la dessine et la signe à côté de vous."
+      }
+    },
     "register": {
       "kicker": "Prêt",
       "heading": "Donnez son passeport à une image",
@@ -487,6 +498,86 @@
       "openAddress": "Votre compte {wallet} sur MonadVision",
       "openImage": "L’image épinglée",
       "another": "Enregistrer une autre image"
+    },
+    "generate": {
+      "kicker": "L'agent",
+      "heading": "Laissez l'agent la dessiner",
+      "body": "Dites ce que vous voulez. L'agent générateur la dessine, l'épingle sur IPFS et signe le passeport avec son propre portefeuille. Vous signez le même passeport avec votre déverrouillage. Deux signatures, une transaction.",
+      "prompt": "Consigne",
+      "promptPlaceholder": "Un bateau de pêche quittant le port aux premières lueurs, vu depuis l'eau",
+      "promptHint": "Entre 8 et 600 caractères. Votre consigne reste dans les métadonnées, lisible à côté de l'image.",
+      "counter": "{count} caractères sur {max}",
+      "examplesLabel": "Ou partez de l'une de celles-ci",
+      "examples": {
+        "one": "Un bateau de pêche quittant le port aux premières lueurs, vu bas depuis l'eau",
+        "two": "Une rue mouillée la nuit, une seule enseigne allumée, personne dans le cadre",
+        "three": "Une carte en papier d'un littoral, pliée et usée, photographiée à plat sur un bureau"
+      },
+      "title": "Titre",
+      "titlePlaceholder": "Comment doit s'appeler cette image ?",
+      "titleHint": "Il va dans le manifeste et dans les métadonnées, à côté de la consigne.",
+      "submit": "La faire et l'enregistrer",
+      "quota": "{used} sur {limit} aujourd'hui",
+      "quotaResets": "La suivante se libère à {time}.",
+      "quotaSpent": "Les images du jour sont épuisées. La suivante se libère à {time}.",
+      "plateWaiting": "L'image apparaît ici dès que l'agent en a fini avec elle.",
+      "plateDrawing": "L'agent dessine ceci",
+      "plateLabel": "Générée",
+      "model": "Dessinée par {model}",
+      "steps": {
+        "draw": {
+          "waiting": "L'agent dessine l'image, jusqu'à soixante secondes",
+          "running": "L'agent dessine ceci, jusqu'à soixante secondes",
+          "done": "Dessinée par {model}",
+          "failed": "L'image n'a pas été dessinée"
+        },
+        "pin": {
+          "waiting": "Épingler l'image, sa vignette et ses métadonnées sur IPFS",
+          "running": "Épinglage sur IPFS",
+          "done": "Épinglée sur IPFS",
+          "failed": "Elle n'a pas été épinglée"
+        },
+        "agentSign": {
+          "waiting": "L'agent signe le passeport avec son propre portefeuille",
+          "running": "L'agent signe",
+          "done": "Signée par l'agent",
+          "failed": "L'agent n'a pas signé"
+        },
+        "sign": {
+          "waiting": "Signez le même passeport avec votre déverrouillage",
+          "running": "En attente de votre passkey",
+          "done": "Signée sur cet appareil",
+          "failed": "Elle n'a pas été signée"
+        },
+        "send": {
+          "waiting": "Envoyer sur Monad, frais de réseau pris en charge",
+          "running": "Envoi sur Monad, frais de réseau pris en charge",
+          "watching": "En attente de l’inscription du passeport par Monad",
+          "pending": "Envoyée, et Monad ne l’a pas encore affichée",
+          "done": "Inscrite sur Monad",
+          "failed": "Elle n’a pas atteint Monad"
+        }
+      },
+      "signatures": {
+        "heading": "Deux signatures, une transaction",
+        "body": "Le registre n'accepte ce passeport qu'avec les deux noms dessus. Regardez-les arriver.",
+        "agent": "L'agent",
+        "agentWaiting": "Signe dès que l'image est épinglée",
+        "agentDetail": "Signée par un portefeuille serveur Privy sous une politique qui n'autorise que cela.",
+        "agentId": "Agent {id}",
+        "agentWallet": "Portefeuille {wallet}",
+        "you": "Vous",
+        "youWaiting": "Votre déverrouillage signe le même passeport",
+        "youDetail": "Votre doigt ou votre visage, sur cet appareil, sur le même digest."
+      },
+      "openAgent": "La fiche de l'agent",
+      "doneLabel": "Générée",
+      "doneHeading": "Un agent a fait ceci, et vous avez signé tous les deux",
+      "doneBody": "Le passeport dit quel agent l'a dessinée et quel compte l'a demandée. N'importe quelle copie de l'image ramène à cet enregistrement depuis la page de vérification.",
+      "kind": "Type",
+      "agentRow": "Dessinée par",
+      "modelRow": "Modèle",
+      "another": "En faire une autre"
     },
     "receipt": {
       "heading": "Ce qui vient de se passer",
@@ -551,7 +642,14 @@
       "sendFailed": "Cette étape n’est pas allée au bout. Les mots du réseau se trouvent ci-dessous. Réessayez dans un instant.",
       "unknown": "Quelque chose a échoué avant tout envoi. Le message se trouve ci-dessous.",
       "fileMissing": "Choisissez d’abord une image.",
-      "titleMissing": "Donnez d’abord un titre à l’image. Il part dans le manifeste."
+      "titleMissing": "Donnez d’abord un titre à l’image. Il part dans le manifeste.",
+      "quotaReached": "Vous avez eu toutes les images que l'agent dessine pour un compte en une journée. Le compteur sous le bouton dit quand la suivante se libère.",
+      "promptRefused": "Le modèle n'a pas voulu dessiner cette consigne. Sa propre raison est ci-dessous. Modifiez la consigne et redemandez.",
+      "modelFailed": "Le modèle n'a pas terminé cette image. Il a pu dessiner avant d'échouer, donc celle-ci compte quand même dans le total du jour.",
+      "agentSignFailed": "L'image a été dessinée et épinglée, et le portefeuille de l'agent n'a pas voulu signer le passeport. Réessayez. Si cela persiste, la politique posée sur le portefeuille de l'agent en est la cause la plus probable.",
+      "agentBusy": "L'agent dessine déjà autant d'images qu'il le peut à la fois. Réessayez dans une minute.",
+      "promptTooShort": "Écrivez quelques mots de plus. L'agent a besoin d'au moins huit caractères.",
+      "promptTooLong": "Cette consigne dépasse 600 caractères. Raccourcissez-la et redemandez."
     },
     "actions": {
       "signIn": "Se reconnecter",
@@ -560,7 +658,8 @@
       "unsponsored": "L’envoyer et payer les frais moi-même",
       "again": "Réessayer",
       "recheck": "Redemander à Monad",
-      "openAddress": "Ouvrir {wallet} sur MonadVision"
+      "openAddress": "Ouvrir {wallet} sur MonadVision",
+      "generateAgain": "En refaire une"
     }
   },
   "docs": {

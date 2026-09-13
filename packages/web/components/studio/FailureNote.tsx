@@ -16,6 +16,7 @@ export function FailureNote({
   failure,
   passportId,
   onAgain,
+  onGenerateAgain,
   onSignIn,
   onBind,
   onUnsponsored,
@@ -24,6 +25,8 @@ export function FailureNote({
   failure: Failure;
   passportId?: Hex | null;
   onAgain?: () => void;
+  /** The agent path's retry: it draws a new picture rather than resending the last one. */
+  onGenerateAgain?: () => void;
   onSignIn?: () => void;
   onBind?: () => void;
   onUnsponsored?: () => void;
@@ -33,6 +36,7 @@ export function FailureNote({
 
   const handlers: Record<string, (() => void) | undefined> = {
     again: onAgain,
+    generateAgain: onGenerateAgain,
     signIn: onSignIn,
     bind: onBind,
     unsponsored: onUnsponsored,

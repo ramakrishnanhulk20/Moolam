@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   VerifierError,
+  generate,
+  generateResponseSchema,
   prepare,
   prepareResponseSchema,
   verify,
@@ -36,6 +38,44 @@ const preparePayload = {
   },
   metadata: { cid: "bafkreimetadata", uri: "ipfs://bafkreimetadata" },
   manifest: { embedded: true },
+  preparedBy: "did:privy:cm123",
+};
+
+const CREATOR = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c";
+
+const generatePayload = {
+  passport: {
+    exactHash: WORD,
+    parentId: `0x${"00".repeat(32)}`,
+    creator: CREATOR,
+    generatorAgentId: "10249",
+    phash: "17297841240124424192",
+    blockhash256: WORD,
+    manifestHash: WORD,
+    kind: 0,
+    fingerprintVersion: 1,
+    metadataURI: "ipfs://bafkreimetadata",
+    deadline: "1788878733",
+  },
+  generatorSig: `0x${"cd".repeat(65)}`,
+  image: {
+    cid: "bafkreiimage",
+    uri: "ipfs://bafkreiimage",
+    gatewayUrl: "https://gateway.pinata.cloud/ipfs/bafkreiimage",
+    bytes: 208383,
+    width: 1024,
+    height: 1024,
+  },
+  thumbnail: {
+    cid: "bafkreithumb",
+    uri: "ipfs://bafkreithumb",
+    gatewayUrl: "https://gateway.pinata.cloud/ipfs/bafkreithumb",
+  },
+  metadata: { cid: "bafkreimetadata", uri: "ipfs://bafkreimetadata" },
+  manifest: { embedded: true },
+  model: "gpt-image-1",
+  agent: { id: "10249", wallet: "0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb" },
+  quota: { used: 1, limit: 3, resetsAt: 1788961533 },
   preparedBy: "did:privy:cm123",
 };
 
@@ -96,6 +136,24 @@ describe("the response schemas", () => {
     expect(prepareResponseSchema.safeParse(phashAsNumber).success).toBe(false);
   });
 
+  it("accepts what /generate answers with, deadline and agent signature included", () => {
+    const parsed = generateResponseSchema.parse(generatePayload);
+    expect(parsed.passport.deadline).toBe("1788878733");
+    expect(parsed.passport.creator).toBe(CREATOR);
+    expect(parsed.agent.id).toBe("10249");
+    expect(parsed.quota).toEqual({ used: 1, limit: 3, resetsAt: 1788961533 });
+  });
+
+  it("refuses a generate answer whose signature is the wrong length or whose deadline is a number", () => {
+    expect(generateResponseSchema.safeParse({ ...generatePayload, generatorSig: "0xdead" }).success).toBe(false);
+
+    const deadlineAsNumber = {
+      ...generatePayload,
+      passport: { ...generatePayload.passport, deadline: 1788878733 },
+    };
+    expect(generateResponseSchema.safeParse(deadlineAsNumber).success).toBe(false);
+  });
+
   it("refuses a verify answer with a hash that is not 32 bytes or a variant it does not know", () => {
     const shortHash = { ...verifyPayload, result: { ...verifyPayload.result, queried: { ...verifyPayload.result.queried, sha256: "0xabcd" } } };
     expect(verifyResponseSchema.safeParse(shortHash).success).toBe(false);
@@ -123,6 +181,31 @@ describe("prepare and verify over a stubbed fetch", () => {
     expect(body.get("title")).toBe("Kadal at dawn");
     expect(body.get("kind")).toBe("human");
     expect(body.get("file")).toBeInstanceOf(File);
+  });
+
+  it("posts the prompt, the title, the creator and the deadline as JSON with the token", async () => {
+    const fetchStub = stubFetch(200, generatePayload);
+
+    const result = await generate({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "token-123",
+    });
+    expect(result.model).toBe("gpt-image-1");
+    expect(result.generatorSig).toBe(`0x${"cd".repeat(65)}`);
+
+    const [url, init] = fetchStub.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("http://localhost:4010/generate");
+    expect((init.headers as Record<string, string>).authorization).toBe("Bearer token-123");
+    expect((init.headers as Record<string, string>)["content-type"]).toBe("application/json");
+    expect(JSON.parse(init.body as string)).toEqual({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: "1788878733",
+    });
   });
 
   it("posts verify with no token and reads the match back", async () => {
@@ -159,6 +242,53 @@ describe("VerifierError", () => {
       expect(failure.message).toBe(message);
     });
   }
+
+  it("reads the generate failures out of the body, not the status", async () => {
+    const asked = {
+      prompt: "a fishing boat at first light",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "t",
+    };
+
+    const refused: [number, unknown, string, string][] = [
+      [400, { error: "prompt-refused", reason: "the safety system turned this prompt down" }, "prompt-refused", "the safety system turned this prompt down"],
+      [502, { error: "model-failed" }, "model-failed", "model-failed"],
+      [502, { error: "sign-failed" }, "sign-failed", "sign-failed"],
+      [503, { error: "busy" }, "busy", "busy"],
+    ];
+
+    for (const [status, body, code, message] of refused) {
+      stubFetch(status, body);
+      const failure = await generate(asked).catch((error) => error);
+      expect(failure).toBeInstanceOf(VerifierError);
+      expect(failure.code).toBe(code);
+      expect(failure.message).toBe(message);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the quota block from a refused generation, and 429 without one stays rate limited", async () => {
+    const asked = {
+      prompt: "a fishing boat at first light",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "t",
+    };
+
+    stubFetch(429, { error: "quota", quota: { used: 3, limit: 3, resetsAt: 1788961533 } });
+    const refused = await generate(asked).catch((error) => error);
+    expect(refused.code).toBe("quota");
+    expect(refused.quota).toEqual({ used: 3, limit: 3, resetsAt: 1788961533 });
+
+    vi.unstubAllGlobals();
+    stubFetch(429, { error: "Too Many Requests" });
+    const limited = await generate(asked).catch((error) => error);
+    expect(limited.code).toBe("rate-limited");
+    expect(limited.quota).toBeUndefined();
+  });
 
   it("says offline when the service cannot be reached", async () => {
     vi.stubGlobal(

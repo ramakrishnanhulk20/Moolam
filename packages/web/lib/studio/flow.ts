@@ -1,25 +1,40 @@
 import type { Hex } from "viem";
-import type { PrepareResponse } from "@/lib/verifier/client";
+import type { GenerateResponse, PrepareResponse, QuotaState } from "@/lib/verifier/client";
 import { checkImage as checkUpload, type RefusalCode } from "@/lib/upload/checkImage";
+import { asGenerateFailure } from "./generate";
 import type { Failure } from "./problems";
 
 /**
- * The three honest steps between a picture and a passport, and where the
- * creator is in them.
+ * The honest steps between a picture and a passport, and where the creator is
+ * in them.
  *
  * The screen never invents a step it did not run: every row here is one thing
  * that actually happens, and a row only reads done once its answer is in hand.
+ * The upload path runs three. The agent path runs five, and its first three
+ * land together because the service draws, pins and signs inside one answer.
  */
-export type Step = "prepare" | "sign" | "send";
+export type Step = "prepare" | "draw" | "pin" | "agentSign" | "sign" | "send";
 export type StepState = "waiting" | "running" | "done" | "failed";
 
+/** Which way this picture is being made: the creator's file, or the agent's. */
+export type Mode = "upload" | "generate";
+
 export const STEPS: readonly Step[] = ["prepare", "sign", "send"];
+export const GENERATE_STEPS: readonly Step[] = ["draw", "pin", "agentSign", "sign", "send"];
+
+const ALL_STEPS: readonly Step[] = ["prepare", "draw", "pin", "agentSign", "sign", "send"];
 
 export interface RegisterState {
+  mode: Mode;
   file: File | null;
   title: string;
+  prompt: string;
   steps: Record<Step, StepState>;
   prepared: PrepareResponse | null;
+  /** The agent's answer, whole: its signature, the model that drew, and the quota. Only on the agent path. */
+  generated: GenerateResponse | null;
+  /** What this creator has spent today, kept across a refusal so the panel can still show it. */
+  quota: QuotaState | null;
   digest: Hex | null;
   txHash: Hex | null;
   block: bigint | null;
@@ -32,22 +47,38 @@ export interface RegisterState {
 }
 
 export type RegisterAction =
+  | { type: "mode"; mode: Mode }
   | { type: "choose"; file: File }
   | { type: "title"; title: string }
+  | { type: "prompt"; prompt: string }
   | { type: "start"; step: Step; unsponsored?: boolean }
   | { type: "prepared"; prepared: PrepareResponse }
+  | { type: "drawn"; response: GenerateResponse }
   | { type: "signed"; digest: Hex }
   | { type: "sent"; txHash: Hex }
   | { type: "watching" }
   | { type: "confirmed"; block: bigint | null; at: number }
-  | { type: "failed"; failure: Failure }
+  | { type: "failed"; failure: Failure; quota?: QuotaState }
   | { type: "reset" };
 
+const WAITING: Record<Step, StepState> = {
+  prepare: "waiting",
+  draw: "waiting",
+  pin: "waiting",
+  agentSign: "waiting",
+  sign: "waiting",
+  send: "waiting",
+};
+
 export const initialRegisterState: RegisterState = {
+  mode: "upload",
   file: null,
   title: "",
-  steps: { prepare: "waiting", sign: "waiting", send: "waiting" },
+  prompt: "",
+  steps: WAITING,
   prepared: null,
+  generated: null,
+  quota: null,
   digest: null,
   txHash: null,
   block: null,
@@ -63,10 +94,29 @@ export const initialRegisterState: RegisterState = {
  */
 export function registerReducer(state: RegisterState, action: RegisterAction): RegisterState {
   switch (action.type) {
+    case "mode":
+      // Switching sides starts a clean run. What was typed for the other one is
+      // kept, so a creator who looks at both does not lose their title.
+      return {
+        ...initialRegisterState,
+        mode: action.mode,
+        title: state.title,
+        prompt: state.prompt,
+        quota: state.quota,
+      };
     case "choose":
-      return { ...initialRegisterState, file: action.file, title: state.title };
+      return {
+        ...initialRegisterState,
+        mode: state.mode,
+        file: action.file,
+        title: state.title,
+        prompt: state.prompt,
+        quota: state.quota,
+      };
     case "title":
       return { ...state, title: action.title };
+    case "prompt":
+      return { ...state, prompt: action.prompt };
     case "start":
       return {
         ...state,
@@ -77,6 +127,17 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
       };
     case "prepared":
       return { ...state, prepared: action.prepared, steps: { ...state.steps, prepare: "done" } };
+    case "drawn":
+      // One answer carries all three: the picture, the pins and the agent's
+      // signature over the pinned bytes. They stamp together because that is
+      // when they became true.
+      return {
+        ...state,
+        prepared: action.response,
+        generated: action.response,
+        quota: action.response.quota,
+        steps: { ...state.steps, draw: "done", pin: "done", agentSign: "done" },
+      };
     case "signed":
       return { ...state, digest: action.digest, steps: { ...state.steps, sign: "done" } };
     case "sent":
@@ -92,9 +153,17 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         steps: { ...state.steps, send: "done" },
       };
     case "failed":
-      return { ...state, confirming: false, failure: action.failure, steps: markRunningFailed(state.steps) };
+      return {
+        ...state,
+        confirming: false,
+        // Every retry on the agent path draws a new picture, so the button that
+        // offers it is named for that wherever the failure came from.
+        failure: state.mode === "generate" ? asGenerateFailure(action.failure) : action.failure,
+        quota: action.quota ?? state.quota,
+        steps: markRunningFailed(state.steps),
+      };
     case "reset":
-      return initialRegisterState;
+      return { ...initialRegisterState, mode: state.mode, quota: state.quota };
   }
 }
 
@@ -121,7 +190,7 @@ export function isRegistered(state: RegisterState): boolean {
 }
 
 export function isBusy(state: RegisterState): boolean {
-  return STEPS.some((step) => state.steps[step] === "running");
+  return ALL_STEPS.some((step) => state.steps[step] === "running");
 }
 
 /** The passport id is the sha256 of the signed bytes, which is what prepare handed back. */
@@ -131,7 +200,7 @@ export function passportId(state: RegisterState): Hex | null {
 
 function markRunningFailed(steps: Record<Step, StepState>): Record<Step, StepState> {
   const next = { ...steps };
-  for (const step of STEPS) {
+  for (const step of ALL_STEPS) {
     if (next[step] === "running") {
       next[step] = "failed";
     }

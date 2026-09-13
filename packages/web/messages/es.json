@@ -437,6 +437,17 @@
       "waiting": "Esperando tu huella o tu cara",
       "otherDevice": "Si esa clave de acceso está en tu móvil o en otro portátil, abre Moolam allí, o vincula este dispositivo. Vincularlo sustituye al anterior y cuesta una transacción."
     },
+    "choice": {
+      "kicker": "Dos maneras de entrar",
+      "upload": {
+        "label": "Subir una imagen",
+        "note": "Una que ya hiciste. La firmas con tu desbloqueo."
+      },
+      "generate": {
+        "label": "Que la haga el agente",
+        "note": "El agente la dibuja y la firma junto a ti."
+      }
+    },
     "register": {
       "kicker": "Listo",
       "heading": "Dale su pasaporte a una imagen",
@@ -487,6 +498,86 @@
       "openAddress": "Tu cuenta {wallet} en MonadVision",
       "openImage": "La imagen fijada",
       "another": "Registrar otra imagen"
+    },
+    "generate": {
+      "kicker": "El agente",
+      "heading": "Deja que la dibuje el agente",
+      "body": "Di lo que quieres. El agente generador la dibuja, la fija en IPFS y firma el pasaporte con su propia cuenta. Tú firmas el mismo pasaporte con tu desbloqueo. Dos firmas, una transacción.",
+      "prompt": "Instrucción",
+      "promptPlaceholder": "Una barca de pesca saliendo del puerto con la primera luz, vista desde el agua",
+      "promptHint": "Entre 8 y 600 caracteres. Tu instrucción queda en los metadatos, legible junto a la imagen.",
+      "counter": "{count} de {max} caracteres",
+      "examplesLabel": "O empieza por una de estas",
+      "examples": {
+        "one": "Una barca de pesca saliendo del puerto con la primera luz, vista baja desde el agua",
+        "two": "Una calle mojada de noche, un solo rótulo encendido, nadie en el encuadre",
+        "three": "Un mapa de papel de una costa, doblado y gastado, fotografiado plano sobre una mesa"
+      },
+      "title": "Título",
+      "titlePlaceholder": "¿Cómo se va a llamar esta imagen?",
+      "titleHint": "Va al manifiesto y a los metadatos, junto a la instrucción.",
+      "submit": "Hacerla y registrarla",
+      "quota": "{used} de {limit} hoy",
+      "quotaResets": "La siguiente se libera a las {time}.",
+      "quotaSpent": "Las imágenes de hoy están gastadas. La siguiente se libera a las {time}.",
+      "plateWaiting": "La imagen aparece aquí en cuanto el agente termina con ella.",
+      "plateDrawing": "El agente está dibujando esto",
+      "plateLabel": "Generada",
+      "model": "Dibujada por {model}",
+      "steps": {
+        "draw": {
+          "waiting": "El agente dibuja la imagen, hasta sesenta segundos",
+          "running": "El agente está dibujando esto, hasta sesenta segundos",
+          "done": "Dibujada por {model}",
+          "failed": "La imagen no se dibujó"
+        },
+        "pin": {
+          "waiting": "Fijar la imagen, su miniatura y sus metadatos en IPFS",
+          "running": "Fijando en IPFS",
+          "done": "Fijada en IPFS",
+          "failed": "No se fijó"
+        },
+        "agentSign": {
+          "waiting": "El agente firma el pasaporte con su propia cuenta",
+          "running": "El agente está firmando",
+          "done": "Firmada por el agente",
+          "failed": "El agente no firmó"
+        },
+        "sign": {
+          "waiting": "Firma el mismo pasaporte con tu desbloqueo",
+          "running": "Esperando tu passkey",
+          "done": "Firmada en este dispositivo",
+          "failed": "No se firmó"
+        },
+        "send": {
+          "waiting": "Enviar a Monad, comisión de red patrocinada",
+          "running": "Enviando a Monad, comisión de red patrocinada",
+          "watching": "Esperando a que Monad anote el pasaporte",
+          "pending": "Enviada, y Monad todavía no la muestra",
+          "done": "Escrita en Monad",
+          "failed": "No llegó a Monad"
+        }
+      },
+      "signatures": {
+        "heading": "Dos firmas, una transacción",
+        "body": "El registro acepta este pasaporte solo con los dos nombres puestos. Míralos llegar.",
+        "agent": "El agente",
+        "agentWaiting": "Firma en cuanto la imagen esté fijada",
+        "agentDetail": "Firmada por una cuenta de servidor de Privy bajo una política que solo permite esto.",
+        "agentId": "Agente {id}",
+        "agentWallet": "Cuenta {wallet}",
+        "you": "Tú",
+        "youWaiting": "Tu desbloqueo firma el mismo pasaporte",
+        "youDetail": "Tu huella o tu cara, en este dispositivo, sobre el mismo digest."
+      },
+      "openAgent": "La ficha del agente",
+      "doneLabel": "Generada",
+      "doneHeading": "Esto lo hizo un agente, y los dos firmasteis por ello",
+      "doneBody": "El pasaporte dice qué agente la dibujó y qué cuenta la pidió. Cualquier copia de la imagen lleva de vuelta a este registro desde la página de verificación.",
+      "kind": "Tipo",
+      "agentRow": "Dibujada por",
+      "modelRow": "Modelo",
+      "another": "Hacer otra"
     },
     "receipt": {
       "heading": "Lo que acaba de pasar",
@@ -551,7 +642,14 @@
       "sendFailed": "Este paso no terminó. Abajo están las palabras de la red. Inténtalo de nuevo en un momento.",
       "unknown": "Algo salió mal antes de enviar nada. El mensaje está abajo.",
       "fileMissing": "Elige primero una imagen.",
-      "titleMissing": "Ponle antes un título a la imagen. Va dentro del manifiesto."
+      "titleMissing": "Ponle antes un título a la imagen. Va dentro del manifiesto.",
+      "quotaReached": "Ya has tenido todas las imágenes que el agente dibuja para una cuenta en un día. La cuenta que hay bajo el botón dice cuándo se libera la siguiente.",
+      "promptRefused": "El modelo no quiso dibujar esta instrucción. Su propio motivo está abajo. Cámbiala y pídelo otra vez.",
+      "modelFailed": "El modelo no terminó esta imagen. Puede que dibujara antes de fallar, así que esa sigue contando en el total de hoy.",
+      "agentSignFailed": "La imagen se dibujó y se fijó, y la cuenta del agente no quiso firmar el pasaporte. Inténtalo otra vez. Si sigue pasando, lo más probable es la política sobre la cuenta del agente.",
+      "agentBusy": "El agente ya está dibujando todas las imágenes que puede a la vez. Inténtalo dentro de un minuto.",
+      "promptTooShort": "Escribe unas palabras más. El agente necesita al menos ocho caracteres.",
+      "promptTooLong": "Esa instrucción pasa de 600 caracteres. Acórtala y pídelo otra vez."
     },
     "actions": {
       "signIn": "Entrar otra vez",
@@ -560,7 +658,8 @@
       "unsponsored": "Enviarla y pagar yo la comisión",
       "again": "Reintentar",
       "recheck": "Volver a preguntar a Monad",
-      "openAddress": "Abrir {wallet} en MonadVision"
+      "openAddress": "Abrir {wallet} en MonadVision",
+      "generateAgain": "Generar otra vez"
     }
   },
   "docs": {

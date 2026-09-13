@@ -6,8 +6,11 @@ import { useState } from "react";
 import { isPrivyConfigured } from "@/lib/env";
 import { useStudio } from "@/lib/studio/useStudio";
 import { useHeadingLeading } from "./leading";
+import { isBusy } from "@/lib/studio/flow";
 import { BindCard } from "./BindCard";
+import { GeneratePanel } from "./GeneratePanel";
 import { IdentityStrip } from "./IdentityStrip";
+import { PathChoice } from "./PathChoice";
 import { Receipt } from "./Receipt";
 import { RecoverCard } from "./RecoverCard";
 import { RegisterPanel } from "./RegisterPanel";
@@ -72,17 +75,41 @@ function Studio() {
                 onBindInstead={toBind}
               />
             ) : (
-              <RegisterPanel
-                state={studio.register}
-                wallet={studio.wallet}
-                onChoose={studio.actions.choose}
-                onTitle={studio.actions.setTitle}
-                onRegister={studio.actions.registerImage}
-                onReset={studio.actions.reset}
-                onUnsponsored={studio.actions.retryUnsponsored}
-                onBind={toBind}
-                onRecheck={studio.actions.recheck}
-              />
+              <>
+                <PathChoice
+                  mode={studio.register.mode}
+                  busy={isBusy(studio.register)}
+                  onMode={studio.actions.setMode}
+                />
+
+                <div className="mt-6">
+                  {studio.register.mode === "generate" ? (
+                    <GeneratePanel
+                      state={studio.register}
+                      wallet={studio.wallet}
+                      onPrompt={studio.actions.setPrompt}
+                      onTitle={studio.actions.setTitle}
+                      onGenerate={studio.actions.generateImage}
+                      onReset={studio.actions.reset}
+                      onUnsponsored={studio.actions.retryUnsponsored}
+                      onBind={toBind}
+                      onRecheck={studio.actions.recheck}
+                    />
+                  ) : (
+                    <RegisterPanel
+                      state={studio.register}
+                      wallet={studio.wallet}
+                      onChoose={studio.actions.choose}
+                      onTitle={studio.actions.setTitle}
+                      onRegister={studio.actions.registerImage}
+                      onReset={studio.actions.reset}
+                      onUnsponsored={studio.actions.retryUnsponsored}
+                      onBind={toBind}
+                      onRecheck={studio.actions.recheck}
+                    />
+                  )}
+                </div>
+              </>
             )}
 
             {studio.register.failure?.next === "unsponsored" && studio.balance !== null ? (

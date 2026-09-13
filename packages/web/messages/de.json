@@ -437,6 +437,17 @@
       "waiting": "Warten auf deinen Finger oder dein Gesicht",
       "otherDevice": "Wenn jener Passkey auf deinem Telefon oder einem anderen Rechner liegt, öffne Moolam dort, oder binde dieses Gerät an. Das Anbinden ersetzt den alten und kostet eine Transaktion."
     },
+    "choice": {
+      "kicker": "Zwei Wege hinein",
+      "upload": {
+        "label": "Bild hochladen",
+        "note": "Eines, das du schon gemacht hast. Deine Entsperrung signiert es."
+      },
+      "generate": {
+        "label": "Der Agent macht eins",
+        "note": "Der Agent zeichnet es und signiert es neben dir."
+      }
+    },
     "register": {
       "kicker": "Bereit",
       "heading": "Gib einem Bild seinen Pass",
@@ -487,6 +498,86 @@
       "openAddress": "Dein Konto {wallet} auf MonadVision",
       "openImage": "Das angeheftete Bild",
       "another": "Noch ein Bild eintragen"
+    },
+    "generate": {
+      "kicker": "Der Agent",
+      "heading": "Lass den Agenten zeichnen",
+      "body": "Sag, was du willst. Der Generator-Agent zeichnet es, heftet es an IPFS und signiert den Pass mit seiner eigenen Wallet. Du signierst denselben Pass mit deiner Entsperrung. Zwei Signaturen, eine Transaktion.",
+      "prompt": "Prompt",
+      "promptPlaceholder": "Ein Fischerboot, das im ersten Licht den Hafen verlässt, vom Wasser aus gesehen",
+      "promptHint": "Zwischen 8 und 600 Zeichen. Dein Prompt bleibt in den Metadaten, also lesbar neben dem Bild.",
+      "counter": "{count} von {max} Zeichen",
+      "examplesLabel": "Oder fang mit einem davon an",
+      "examples": {
+        "one": "Ein Fischerboot, das im ersten Licht den Hafen verlässt, tief vom Wasser aus gesehen",
+        "two": "Eine regennasse Straße bei Nacht, ein Ladenschild leuchtet, niemand im Bild",
+        "three": "Eine Papierkarte einer Küste, gefaltet und abgegriffen, flach auf einem Schreibtisch fotografiert"
+      },
+      "title": "Titel",
+      "titlePlaceholder": "Wie soll dieses Bild heißen?",
+      "titleHint": "Er geht in das Manifest und in die Metadaten, neben den Prompt.",
+      "submit": "Machen und eintragen",
+      "quota": "{used} von {limit} heute",
+      "quotaResets": "Das nächste wird um {time} frei.",
+      "quotaSpent": "Die Bilder für heute sind aufgebraucht. Das nächste wird um {time} frei.",
+      "plateWaiting": "Das Bild erscheint hier, sobald der Agent damit fertig ist.",
+      "plateDrawing": "Der Agent zeichnet das gerade",
+      "plateLabel": "Generiert",
+      "model": "Gezeichnet von {model}",
+      "steps": {
+        "draw": {
+          "waiting": "Der Agent zeichnet das Bild, bis zu sechzig Sekunden",
+          "running": "Der Agent zeichnet das gerade, bis zu sechzig Sekunden",
+          "done": "Gezeichnet von {model}",
+          "failed": "Das Bild wurde nicht gezeichnet"
+        },
+        "pin": {
+          "waiting": "Bild, Vorschau und Metadaten an IPFS heften",
+          "running": "Wird an IPFS geheftet",
+          "done": "An IPFS geheftet",
+          "failed": "Es wurde nicht angeheftet"
+        },
+        "agentSign": {
+          "waiting": "Der Agent signiert den Pass mit seiner eigenen Wallet",
+          "running": "Der Agent signiert",
+          "done": "Vom Agenten signiert",
+          "failed": "Der Agent hat nicht signiert"
+        },
+        "sign": {
+          "waiting": "Signier denselben Pass mit deiner Entsperrung",
+          "running": "Warten auf deinen Passkey",
+          "done": "Auf diesem Gerät signiert",
+          "failed": "Es wurde nicht signiert"
+        },
+        "send": {
+          "waiting": "An Monad schicken, Netzgebühr übernommen",
+          "running": "Wird an Monad geschickt, Netzgebühr übernommen",
+          "watching": "Warten, bis Monad den Pass notiert hat",
+          "pending": "Geschickt, und Monad zeigt ihn noch nicht",
+          "done": "Auf Monad geschrieben",
+          "failed": "Es hat Monad nicht erreicht"
+        }
+      },
+      "signatures": {
+        "heading": "Zwei Signaturen, eine Transaktion",
+        "body": "Die Registry nimmt diesen Pass nur, wenn beide Namen darauf stehen. Sieh zu, wie sie ankommen.",
+        "agent": "Der Agent",
+        "agentWaiting": "Signiert, sobald das Bild angeheftet ist",
+        "agentDetail": "Signiert von einer Privy-Server-Wallet unter einer Richtlinie, die nur das erlaubt.",
+        "agentId": "Agent {id}",
+        "agentWallet": "Wallet {wallet}",
+        "you": "Du",
+        "youWaiting": "Deine Entsperrung signiert denselben Pass",
+        "youDetail": "Dein Finger oder dein Gesicht, auf diesem Gerät, über demselben Digest."
+      },
+      "openAgent": "Der Eintrag des Agenten",
+      "doneLabel": "Generiert",
+      "doneHeading": "Ein Agent hat das gemacht, und ihr habt beide dafür signiert",
+      "doneBody": "Der Pass sagt, welcher Agent es gezeichnet hat und welches Konto danach gefragt hat. Jede Kopie des Bildes führt von der Prüfseite aus zu diesem Eintrag zurück.",
+      "kind": "Art",
+      "agentRow": "Gezeichnet von",
+      "modelRow": "Modell",
+      "another": "Noch eins machen"
     },
     "receipt": {
       "heading": "Was gerade passiert ist",
@@ -551,7 +642,14 @@
       "sendFailed": "Dieser Schritt kam nicht durch. Die eigenen Worte des Netzes stehen unten. Versuch es gleich noch einmal.",
       "unknown": "Etwas ging schief, bevor irgendetwas geschickt wurde. Die Meldung steht unten.",
       "fileMissing": "Wähl zuerst ein Bild.",
-      "titleMissing": "Gib dem Bild zuerst einen Titel. Er geht in das Manifest."
+      "titleMissing": "Gib dem Bild zuerst einen Titel. Er geht in das Manifest.",
+      "quotaReached": "Du hattest heute schon jedes Bild, das der Agent für ein Konto zeichnet. Die Zählung unter dem Knopf sagt, wann das nächste frei wird.",
+      "promptRefused": "Das Modell wollte diesen Prompt nicht zeichnen. Seine eigene Begründung steht unten. Ändere den Prompt und frag noch einmal.",
+      "modelFailed": "Das Modell hat dieses Bild nicht fertig gezeichnet. Es kann vorher gezeichnet und abgerechnet haben, also zählt es trotzdem zum heutigen Stand.",
+      "agentSignFailed": "Das Bild wurde gezeichnet und angeheftet, und die Wallet des Agenten wollte den Pass nicht signieren. Versuch es noch einmal. Wenn es dabei bleibt, ist die Richtlinie auf der Wallet des Agenten die wahrscheinliche Ursache.",
+      "agentBusy": "Der Agent zeichnet schon so viele Bilder, wie er gleichzeitig kann. Versuch es in einer Minute noch einmal.",
+      "promptTooShort": "Schreib ein paar Wörter mehr. Der Agent braucht mindestens acht Zeichen.",
+      "promptTooLong": "Dieser Prompt ist länger als 600 Zeichen. Kürze ihn und frag noch einmal."
     },
     "actions": {
       "signIn": "Neu anmelden",
@@ -560,7 +658,8 @@
       "unsponsored": "Schicken und die Gebühr selbst zahlen",
       "again": "Noch einmal versuchen",
       "recheck": "Monad noch einmal fragen",
-      "openAddress": "{wallet} auf MonadVision öffnen"
+      "openAddress": "{wallet} auf MonadVision öffnen",
+      "generateAgain": "Noch einmal machen"
     }
   },
   "docs": {

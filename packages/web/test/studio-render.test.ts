@@ -9,11 +9,13 @@ import { IdentityStrip } from "@/components/studio/IdentityStrip";
 import { RecoverCard } from "@/components/studio/RecoverCard";
 import { SignedOut } from "@/components/studio/SignedOut";
 import { RegisterPanel } from "@/components/studio/RegisterPanel";
+import { GeneratePanel } from "@/components/studio/GeneratePanel";
+import { PathChoice } from "@/components/studio/PathChoice";
 import { Receipt } from "@/components/studio/Receipt";
 import { YourPassports } from "@/components/studio/YourPassports";
 import type { Studio } from "@/lib/studio/useStudio";
 import { initialRegisterState, type RegisterState } from "@/lib/studio/flow";
-import type { PrepareResponse } from "@/lib/verifier/client";
+import type { GenerateResponse, PrepareResponse } from "@/lib/verifier/client";
 
 // next-intl's navigation helpers reach for next/navigation, which only resolves
 // inside the bundler. The link is the one thing these cards use from it.
@@ -290,6 +292,170 @@ describe("the register panel", () => {
     const markup = render("en", createElement(RegisterPanel, { state, ...handlers }));
     expect(markup).toContain("This exact image is already registered");
     expect(markup).toContain(`/passport/0x${"ab".repeat(32)}`);
+  });
+});
+
+const DRAWN = {
+  passport: {
+    ...PREPARED.passport,
+    creator: "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
+    generatorAgentId: "10249",
+    kind: 0,
+    deadline: "1788878733",
+  },
+  generatorSig: `0x${"cd".repeat(65)}`,
+  image: PREPARED.image,
+  thumbnail: PREPARED.thumbnail,
+  metadata: PREPARED.metadata,
+  manifest: { embedded: true },
+  model: "gpt-image-1",
+  agent: { id: "10249", wallet: "0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb" },
+  quota: { used: 1, limit: 3, resetsAt: 1788961533 },
+  preparedBy: "did:privy:someone",
+} as unknown as GenerateResponse;
+
+describe("the agent panel", () => {
+  const handlers = {
+    onPrompt: NOOP,
+    onTitle: NOOP,
+    onGenerate: NOOP,
+    onReset: NOOP,
+    onUnsponsored: NOOP,
+    onBind: NOOP,
+  };
+
+  const generating = { ...initialRegisterState, mode: "generate" } as RegisterState;
+
+  it("offers both ways in, in both languages", () => {
+    const english = render("en", createElement(PathChoice, { mode: "upload", busy: false, onMode: NOOP }));
+    expect(english).toContain("Upload a picture");
+    expect(english).toContain("Make one with the agent");
+
+    const tamil = render("ta", createElement(PathChoice, { mode: "generate", busy: false, onMode: NOOP }));
+    expect(tamil.length).toBeGreaterThan(0);
+  });
+
+  it("opens with the prompt box, the examples and the five steps written out", () => {
+    const markup = render("en", createElement(GeneratePanel, { state: generating, ...handlers }));
+    expect(markup).toContain("The agent draws the picture, up to sixty seconds");
+    expect(markup).toContain("The agent signs the passport with its own wallet");
+    expect(markup).toContain("Sign the same passport with your unlock");
+    expect(markup).toContain("Send it to Monad, network fee sponsored");
+    expect(markup).toContain("0 of 600 characters");
+    expect(markup).toContain("A fishing boat leaving a harbour at first light");
+    // Neither signature has happened yet, so neither seal is filled.
+    expect(markup).toContain('data-signed="false"');
+    expect(markup).not.toContain('data-signed="true"');
+  });
+
+  it("names the wait honestly while the agent draws", () => {
+    const state = {
+      ...generating,
+      prompt: "a fishing boat at first light",
+      steps: { ...generating.steps, draw: "running" },
+    } as RegisterState;
+    const markup = render("en", createElement(GeneratePanel, { state, ...handlers }));
+    expect(markup).toContain("The agent is drawing this");
+  });
+
+  it("shows the agent signature, its id and its wallet the moment the answer lands", () => {
+    const state = {
+      ...generating,
+      steps: { ...generating.steps, draw: "done", pin: "done", agentSign: "done", sign: "running" },
+      prepared: DRAWN,
+      generated: DRAWN,
+      quota: DRAWN.quota,
+    } as RegisterState;
+    const markup = render("en", createElement(GeneratePanel, { state, ...handlers }));
+    expect(markup).toContain("Drawn by gpt-image-1");
+    expect(markup).toContain("Pinned to IPFS");
+    expect(markup).toContain("Signed by the agent");
+    expect(markup).toContain("Agent 10249");
+    expect(markup).toContain("Privy server wallet under a policy that allows only this");
+    expect(markup).toContain("Waiting for your passkey");
+    expect(markup).toContain("1 of 3 today");
+    expect(markup).toContain('data-signed="true"');
+  });
+
+  it("fills the second seal once this device has signed", () => {
+    const state = {
+      ...generating,
+      steps: { ...generating.steps, draw: "done", pin: "done", agentSign: "done", sign: "done", send: "running" },
+      prepared: DRAWN,
+      generated: DRAWN,
+      digest: `0x${"cd".repeat(32)}`,
+    } as RegisterState;
+    const markup = render("en", createElement(GeneratePanel, { state, ...handlers }));
+    expect(markup.match(/data-signed="true"/g)).toHaveLength(2);
+    expect(markup).toContain("Sending to Monad, network fee sponsored");
+  });
+
+  it("ends on a receipt that names the kind, the agent and the model", () => {
+    const state = {
+      ...generating,
+      steps: { ...generating.steps, draw: "done", pin: "done", agentSign: "done", sign: "done", send: "done" },
+      prepared: DRAWN,
+      generated: DRAWN,
+      title: "First light",
+      prompt: "a fishing boat at first light",
+      digest: `0x${"cd".repeat(32)}`,
+      txHash: `0x${"ef".repeat(32)}`,
+      registeredAt: 1_788_876_542_000,
+    } as RegisterState;
+    const markup = render("en", createElement(GeneratePanel, { state, ...handlers }));
+    expect(markup).toContain("An agent made this, and you both signed for it");
+    expect(markup).toContain("Generated");
+    expect(markup).toContain("gpt-image-1");
+    expect(markup).toContain("/agent/10249");
+    expect(markup).toContain(`/passport/0x${"ab".repeat(32)}`);
+  });
+
+  it("says what a refused prompt and a spent quota mean, and offers the right button", () => {
+    const refused = {
+      ...generating,
+      steps: { ...generating.steps, draw: "failed" },
+      failure: { key: "promptRefused", reason: "the safety system turned this prompt down" },
+    } as RegisterState;
+    const markup = render("en", createElement(GeneratePanel, { state: refused, ...handlers }));
+    expect(markup).toContain("The model would not draw this prompt");
+    expect(markup).toContain("the safety system turned this prompt down");
+
+    const spent = {
+      ...generating,
+      steps: { ...generating.steps, draw: "failed" },
+      quota: { used: 3, limit: 3, resetsAt: 1788961533 },
+      failure: { key: "quotaReached" },
+    } as RegisterState;
+    const atLimit = render("en", createElement(GeneratePanel, { state: spent, ...handlers }));
+    expect(atLimit).toContain("3 of 3 today");
+    expect(atLimit).toContain("pictures are used up");
+    expect(atLimit).toContain("You have had every picture the agent draws");
+    // No retry button on a quota: there is nothing to retry until tomorrow.
+    expect(atLimit).not.toContain("Make it again");
+
+    const expired = {
+      ...generating,
+      steps: { ...generating.steps, draw: "done", pin: "done", agentSign: "done", sign: "done", send: "failed" },
+      prepared: DRAWN,
+      generated: DRAWN,
+      failure: { key: "expired", reason: "SignatureExpired", next: "generateAgain" },
+    } as RegisterState;
+    const stale = render("en", createElement(GeneratePanel, { state: expired, ...handlers }));
+    expect(stale).toContain("Make it again");
+  });
+
+  it("renders the whole agent panel in Tamil", () => {
+    const state = {
+      ...generating,
+      steps: { ...generating.steps, draw: "done", pin: "done", agentSign: "done", sign: "running" },
+      prepared: DRAWN,
+      generated: DRAWN,
+      quota: DRAWN.quota,
+    } as RegisterState;
+    const markup = render("ta", createElement(GeneratePanel, { state, ...handlers }));
+    expect(markup).toContain("gpt-image-1");
+    expect(markup).toContain("10249");
+    expect(markup.length).toBeGreaterThan(0);
   });
 });
 

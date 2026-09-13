@@ -18,7 +18,7 @@ export interface Failure {
   key: string;
   reason?: string;
   /** The one button offered under the message. */
-  next?: "signIn" | "bind" | "openPassport" | "unsponsored" | "again" | "recheck";
+  next?: "signIn" | "bind" | "openPassport" | "unsponsored" | "again" | "generateAgain" | "recheck";
   /** An account to open on MonadVision, shown when the message asks the reader to go and look. */
   address?: Hex;
 }
@@ -43,6 +43,11 @@ const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
   "too-large": { key: "tooLarge" },
   "not-an-image": { key: "notAnImage" },
   "rate-limited": { key: "rateLimited" },
+  quota: { key: "quotaReached" },
+  "prompt-refused": { key: "promptRefused" },
+  "model-failed": { key: "modelFailed", next: "again" },
+  "sign-failed": { key: "agentSignFailed", next: "again" },
+  busy: { key: "agentBusy", next: "again" },
   "pin-failed": { key: "pinFailed", next: "again" },
   "bad-request": { key: "badRequest" },
   "bad-response": { key: "badResponse", next: "again" },
@@ -96,7 +101,9 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
 
   if (error instanceof VerifierError) {
     const mapped = VERIFIER_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
-    return { ...mapped, reason: error.message };
+    // Some failures are named in the body and nothing more, so printing the
+    // service's word under the sentence would only repeat the code back.
+    return error.message === error.code ? { ...mapped } : { ...mapped, reason: error.message };
   }
 
   if (error instanceof AuthCheckFailed) {

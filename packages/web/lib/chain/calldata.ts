@@ -1,7 +1,7 @@
 import { decodeErrorResult, encodeFunctionData, type Hex } from "viem";
 import { registryAbi } from "./client";
 import type { WebAuthnAuth } from "@/lib/passkey/webauthn";
-import type { PrepareResponse } from "@/lib/verifier/client";
+import type { GenerateResponse, PrepareResponse } from "@/lib/verifier/client";
 
 /**
  * The registry's PassportInput, field for field and in the same order as
@@ -54,6 +54,30 @@ export function passportInputFrom(
     fingerprintVersion: prepared.fingerprintVersion,
     metadataURI: prepared.metadataURI,
     deadline: BigInt(Math.floor(now / 1000)) + SIGNATURE_WINDOW_SECONDS,
+  };
+}
+
+/**
+ * Turns what the agent drew and signed into the struct the creator signs.
+ *
+ * Nothing is added here, unlike the upload path: the agent's signature is
+ * already over this exact struct, creator and deadline included, so a browser
+ * that replaced either field would send two signatures over two different
+ * digests and the registry would refuse the second one.
+ */
+export function passportInputFromGenerated(generated: GenerateResponse["passport"]): PassportInput {
+  return {
+    exactHash: generated.exactHash,
+    parentId: generated.parentId,
+    creator: generated.creator,
+    generatorAgentId: BigInt(generated.generatorAgentId),
+    phash: BigInt(generated.phash),
+    blockhash256: generated.blockhash256,
+    manifestHash: generated.manifestHash,
+    kind: generated.kind,
+    fingerprintVersion: generated.fingerprintVersion,
+    metadataURI: generated.metadataURI,
+    deadline: BigInt(generated.deadline),
   };
 }
 

@@ -4,15 +4,16 @@ import { usePrivy, useSendTransaction, useWallets, type ConnectedWallet } from "
 import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { CHAIN_ID, addresses, chain } from "@/lib/chain/client";
-import { bindPasskeyCalldata, passportInputFrom, registerCalldata } from "@/lib/chain/calldata";
+import { bindPasskeyCalldata, passportInputFrom, passportInputFromGenerated, registerCalldata } from "@/lib/chain/calldata";
 import { bindNonce, hashBind, hashPassport } from "@/lib/chain/registry";
 import { createPasskey, rememberCredential, signDigest } from "@/lib/passkey/browser";
 import { checkAuth } from "@/lib/passkey/verify";
-import { prepare } from "@/lib/verifier/client";
+import { VerifierError, generate, prepare } from "@/lib/verifier/client";
 import { accountName, type AccountName, type SignedInUser } from "./account";
 import { bindReducer, initialBindState, type BindState } from "./binding";
 import { confirmBind, confirmRegister, transactionHash } from "./confirm";
-import { initialRegisterState, registerReducer, type RegisterState } from "./flow";
+import { initialRegisterState, registerReducer, type Mode, type RegisterState } from "./flow";
+import { checkPrompt, generateDeadline } from "./generate";
 import { AuthCheckFailed, describeFailure, type Failure } from "./problems";
 import { useCreatorPassports, type CreatorPassports } from "./useCreatorPassports";
 import { usePasskeyBinding, type Binding } from "./usePasskeyBinding";
@@ -50,7 +51,11 @@ export interface Studio {
     recoverThisDevice: () => Promise<void>;
     choose: (file: File) => void;
     setTitle: (title: string) => void;
+    setPrompt: (prompt: string) => void;
+    setMode: (mode: Mode) => void;
     registerImage: () => Promise<void>;
+    /** The agent draws and signs, then this device signs, then one transaction goes out. */
+    generateImage: () => Promise<void>;
     retryUnsponsored: () => Promise<void>;
     /** Asks Monad again about a write that was accepted but has not shown up. Sends nothing. */
     recheck: () => Promise<void>;
@@ -368,6 +373,76 @@ export function useStudio(): Studio {
     await sendRegister(data, prepared.passport.exactHash, false);
   }, [binding, embedded, getAccessToken, register.file, register.title, sendRegister, wallet]);
 
+  /**
+   * The agent path, end to end.
+   *
+   * The service draws, pins and signs in one answer, and what comes back is
+   * signed: the creator address and the deadline inside it are the agent's, so
+   * the passkey signs that struct untouched and the registry sees two
+   * signatures over one digest. Everything after the signing, the send, the
+   * sponsorship and the wait on Monad, is the upload path's own code.
+   */
+  const generateImage = useCallback(async () => {
+    if (embedded === undefined || wallet === undefined || binding.passkey === null) {
+      return;
+    }
+    if (register.title.trim().length === 0) {
+      dispatchRegister({ type: "failed", failure: { key: "titleMissing" } });
+      return;
+    }
+    const badPrompt = checkPrompt(register.prompt);
+    if (badPrompt !== null) {
+      dispatchRegister({ type: "failed", failure: badPrompt });
+      return;
+    }
+
+    const rpId = window.location.hostname;
+
+    dispatchRegister({ type: "start", step: "draw" });
+    let drawn;
+    try {
+      const token = await getAccessToken();
+      if (token === null) {
+        throw new Error("this session has no access token, so the verify service cannot be called");
+      }
+      drawn = await generate({
+        prompt: register.prompt.trim(),
+        title: register.title.trim(),
+        creator: wallet,
+        deadline: generateDeadline(),
+        accessToken: token,
+      });
+      dispatchRegister({ type: "drawn", response: drawn });
+    } catch (error) {
+      dispatchRegister({
+        type: "failed",
+        failure: describeFailure(error, "prepare"),
+        quota: error instanceof VerifierError ? error.quota : undefined,
+      });
+      return;
+    }
+
+    dispatchRegister({ type: "start", step: "sign" });
+    let data: Hex;
+    try {
+      const input = passportInputFromGenerated(drawn.passport);
+      const digest = await hashPassport(input);
+      const signed = await signDigest({ rpId, digest, credentialId: binding.credentialId });
+      const check = await checkAuth(signed.auth, digest, binding.passkey.qx, binding.passkey.qy);
+      if (!check.ok) {
+        throw new AuthCheckFailed(check.problem, check.message);
+      }
+      data = registerCalldata(input, signed.auth, drawn.generatorSig);
+      pending.current = { data, exactHash: drawn.passport.exactHash };
+      dispatchRegister({ type: "signed", digest });
+    } catch (error) {
+      dispatchRegister({ type: "failed", failure: describeFailure(error, stageOf(error), wallet) });
+      return;
+    }
+
+    await sendRegister(data, drawn.passport.exactHash, false);
+  }, [binding, embedded, getAccessToken, register.prompt, register.title, sendRegister, wallet]);
+
   const retryUnsponsored = useCallback(async () => {
     if (pending.current !== null) {
       await sendRegister(pending.current.data, pending.current.exactHash, true);
@@ -403,7 +478,10 @@ export function useStudio(): Studio {
       recoverThisDevice,
       choose: (file: File) => dispatchRegister({ type: "choose", file }),
       setTitle: (title: string) => dispatchRegister({ type: "title", title }),
+      setPrompt: (prompt: string) => dispatchRegister({ type: "prompt", prompt }),
+      setMode: (mode: Mode) => dispatchRegister({ type: "mode", mode }),
       registerImage,
+      generateImage,
       retryUnsponsored,
       recheck,
       reset: () => dispatchRegister({ type: "reset" }),

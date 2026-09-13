@@ -439,6 +439,17 @@
       "waiting": "等待你的指纹或面容",
       "otherDevice": "如果那把通行密钥在你的手机或另一台电脑上，就在那边打开 Moolam，或者绑定这台设备。绑定会替换掉旧的，并需要一笔交易。"
     },
+    "choice": {
+      "kicker": "两条路",
+      "upload": {
+        "label": "上传一张图片",
+        "note": "你已经做好的那张，由你的解锁签名。"
+      },
+      "generate": {
+        "label": "让智能体来画",
+        "note": "智能体画好，并和你一起签名。"
+      }
+    },
     "register": {
       "kicker": "准备就绪",
       "heading": "给一张图它的护照",
@@ -489,6 +500,86 @@
       "openAddress": "在 MonadVision 上查看你的账户 {wallet}",
       "openImage": "已固定的图片",
       "another": "再登记一张图片"
+    },
+    "generate": {
+      "kicker": "智能体",
+      "heading": "让智能体来画",
+      "body": "写下你想要的画面。生成智能体把它画出来，固定到 IPFS，并用自己的钱包为通行证签名。同一份通行证，你用解锁签名。两个签名，一笔交易。",
+      "prompt": "提示词",
+      "promptPlaceholder": "天刚亮时驶出港口的渔船，从水面看过去",
+      "promptHint": "8 到 600 个字符。提示词会留在元数据里，和图片一起可读。",
+      "counter": "{max} 个字符中的 {count} 个",
+      "examplesLabel": "或者从这几条开始",
+      "examples": {
+        "one": "天刚亮时驶出港口的渔船，从贴近水面的低处看过去",
+        "two": "夜里被雨打湿的街道，只有一块店招亮着，画面里没有人",
+        "three": "一张海岸线的纸质地图，折过也磨旧了，平铺在桌面上拍下"
+      },
+      "title": "标题",
+      "titlePlaceholder": "这张图片该叫什么？",
+      "titleHint": "它会和提示词一起写进清单和元数据。",
+      "submit": "生成并登记",
+      "quota": "今天 {limit} 张中的 {used} 张",
+      "quotaResets": "下一张在 {time} 放开。",
+      "quotaSpent": "今天的额度用完了。下一张在 {time} 放开。",
+      "plateWaiting": "智能体一画完，图片就出现在这里。",
+      "plateDrawing": "智能体正在画这张",
+      "plateLabel": "生成",
+      "model": "由 {model} 画出",
+      "steps": {
+        "draw": {
+          "waiting": "智能体作画，最多六十秒",
+          "running": "智能体正在画这张，最多六十秒",
+          "done": "由 {model} 画出",
+          "failed": "这张没有画出来"
+        },
+        "pin": {
+          "waiting": "把图片、缩略图和元数据固定到 IPFS",
+          "running": "正在固定到 IPFS",
+          "done": "已固定到 IPFS",
+          "failed": "没有固定成功"
+        },
+        "agentSign": {
+          "waiting": "智能体用自己的钱包为通行证签名",
+          "running": "智能体正在签名",
+          "done": "智能体已签名",
+          "failed": "智能体没有签名"
+        },
+        "sign": {
+          "waiting": "用你的解锁为同一份通行证签名",
+          "running": "等待你的通行密钥",
+          "done": "已在本机签名",
+          "failed": "没有完成签名"
+        },
+        "send": {
+          "waiting": "发往 Monad，网络费已代付",
+          "running": "正在发往 Monad，网络费已代付",
+          "watching": "等待 Monad 记下这本护照",
+          "pending": "已发出，Monad 还没有显示",
+          "done": "已写入 Monad",
+          "failed": "没有送达 Monad"
+        }
+      },
+      "signatures": {
+        "heading": "两个签名，一笔交易",
+        "body": "只有两个名字都在，登记合约才会收下这份通行证。看着它们到齐。",
+        "agent": "智能体",
+        "agentWaiting": "图片固定好就签名",
+        "agentDetail": "由一个 Privy 服务器钱包签名，其策略只允许这一件事。",
+        "agentId": "智能体 {id}",
+        "agentWallet": "钱包 {wallet}",
+        "you": "你",
+        "youWaiting": "你的解锁会为同一份通行证签名",
+        "youDetail": "本机上的指纹或人脸，对同一个摘要签名。"
+      },
+      "openAgent": "智能体的记录",
+      "doneLabel": "生成",
+      "doneHeading": "这张由智能体画成，你们两个都签了名",
+      "doneBody": "通行证写明了是哪个智能体画的、哪个账户要的。这张图片的任何副本，都能从验证页回到这条记录。",
+      "kind": "类型",
+      "agentRow": "作画",
+      "modelRow": "模型",
+      "another": "再做一张"
     },
     "receipt": {
       "heading": "刚刚发生了什么",
@@ -553,7 +644,14 @@
       "sendFailed": "这一步没有走完。网络自己的说法在下面。稍后再试一次。",
       "unknown": "在发出任何东西之前就出了问题。消息在下面。",
       "fileMissing": "请先选一张图片。",
-      "titleMissing": "请先给这张图片取个标题。它会写进清单。"
+      "titleMissing": "请先给这张图片取个标题。它会写进清单。",
+      "quotaReached": "智能体一天为一个账户画的额度，你已经全部用完。按钮下面的计数会告诉你下一张什么时候放开。",
+      "promptRefused": "模型不愿意画这条提示词。它给出的理由在下面。改一下提示词再问一次。",
+      "modelFailed": "模型没有把这张画完。它可能在失败前已经画过，所以这一张仍然计入今天的额度。",
+      "agentSignFailed": "图片已经画好并固定，但智能体的钱包没有为通行证签名。再试一次。如果一直这样，最可能的原因是那个钱包上的策略。",
+      "agentBusy": "智能体同时能画的数量已经排满了。过一分钟再试。",
+      "promptTooShort": "再多写几个字。智能体至少需要八个字符。",
+      "promptTooLong": "这条提示词超过 600 个字符。缩短一点再问一次。"
     },
     "actions": {
       "signIn": "重新登录",
@@ -562,7 +660,8 @@
       "unsponsored": "我自己付费发出",
       "again": "再试一次",
       "recheck": "再问一次 Monad",
-      "openAddress": "在 MonadVision 上打开 {wallet}"
+      "openAddress": "在 MonadVision 上打开 {wallet}",
+      "generateAgain": "再生成一张"
     }
   },
   "docs": {

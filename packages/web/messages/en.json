@@ -437,6 +437,17 @@
       "waiting": "Waiting for your fingerprint or face unlock",
       "otherDevice": "If that passkey lives on your phone or another laptop, open Moolam there, or bind this device instead. Binding replaces the old one and costs one transaction."
     },
+    "choice": {
+      "kicker": "Two ways in",
+      "upload": {
+        "label": "Upload a picture",
+        "note": "One you already made. Your unlock signs it."
+      },
+      "generate": {
+        "label": "Make one with the agent",
+        "note": "The agent draws it and signs it beside you."
+      }
+    },
     "register": {
       "kicker": "Ready",
       "heading": "Give an image its passport",
@@ -487,6 +498,86 @@
       "openAddress": "Your account {wallet} on MonadVision",
       "openImage": "The pinned image",
       "another": "Register another image"
+    },
+    "generate": {
+      "kicker": "The agent",
+      "heading": "Let the agent draw it",
+      "body": "Say what you want. The generator agent draws it, pins it, and signs the passport with its own wallet. You sign the same passport with your unlock. Two signatures, one transaction.",
+      "prompt": "Prompt",
+      "promptPlaceholder": "A fishing boat leaving a harbour at first light, seen from the water",
+      "promptHint": "Between 8 and 600 characters. Your prompt is kept in the metadata, so it stays readable next to the picture.",
+      "counter": "{count} of {max} characters",
+      "examplesLabel": "Or start from one of these",
+      "examples": {
+        "one": "A fishing boat leaving a harbour at first light, seen low from the water",
+        "two": "A rain-wet street at night, one shop sign lit, nobody in the frame",
+        "three": "A paper map of a coastline, folded and worn, photographed flat on a desk"
+      },
+      "title": "Title",
+      "titlePlaceholder": "What should this picture be called?",
+      "titleHint": "It goes into the manifest and the metadata, beside the prompt.",
+      "submit": "Make and register",
+      "quota": "{used} of {limit} today",
+      "quotaResets": "Your next one opens up at {time}.",
+      "quotaSpent": "Today's pictures are used up. The next one opens up at {time}.",
+      "plateWaiting": "The picture appears here the moment the agent is done with it.",
+      "plateDrawing": "The agent is drawing this",
+      "plateLabel": "Generated",
+      "model": "Drawn by {model}",
+      "steps": {
+        "draw": {
+          "waiting": "The agent draws the picture, up to sixty seconds",
+          "running": "The agent is drawing this, up to sixty seconds",
+          "done": "Drawn by {model}",
+          "failed": "The picture was not drawn"
+        },
+        "pin": {
+          "waiting": "Pin the picture, its thumbnail and its metadata to IPFS",
+          "running": "Pinning to IPFS",
+          "done": "Pinned to IPFS",
+          "failed": "It was not pinned"
+        },
+        "agentSign": {
+          "waiting": "The agent signs the passport with its own wallet",
+          "running": "The agent is signing",
+          "done": "Signed by the agent",
+          "failed": "The agent did not sign"
+        },
+        "sign": {
+          "waiting": "Sign the same passport with your unlock",
+          "running": "Waiting for your passkey",
+          "done": "Signed on this device",
+          "failed": "It was not signed"
+        },
+        "send": {
+          "waiting": "Send it to Monad, network fee sponsored",
+          "running": "Sending to Monad, network fee sponsored",
+          "watching": "Waiting for Monad to record the passport",
+          "pending": "Sent, and Monad has not shown it yet",
+          "done": "Written to Monad",
+          "failed": "It did not reach Monad"
+        }
+      },
+      "signatures": {
+        "heading": "Two signatures, one transaction",
+        "body": "The registry takes this passport only when both names are on it. Watch them arrive.",
+        "agent": "The agent",
+        "agentWaiting": "Signs once the picture is pinned",
+        "agentDetail": "Signed by a Privy server wallet under a policy that allows only this.",
+        "agentId": "Agent {id}",
+        "agentWallet": "Wallet {wallet}",
+        "you": "You",
+        "youWaiting": "Your unlock signs the same passport",
+        "youDetail": "Your fingerprint or face unlock, on this device, over the same digest."
+      },
+      "openAgent": "The agent's record",
+      "doneLabel": "Generated",
+      "doneHeading": "An agent made this, and you both signed for it",
+      "doneBody": "The passport says which agent drew it and which account asked for it. Any copy of the picture leads back to this record from the verify page.",
+      "kind": "Kind",
+      "agentRow": "Drawn by",
+      "modelRow": "Model",
+      "another": "Make another"
     },
     "receipt": {
       "heading": "What just happened",
@@ -551,7 +642,14 @@
       "sendFailed": "This step did not finish. The network's own words are below. Try again in a moment.",
       "unknown": "Something went wrong before anything was sent. The message is below.",
       "fileMissing": "Choose an image first.",
-      "titleMissing": "Give the picture a title first. It goes into the manifest."
+      "titleMissing": "Give the picture a title first. It goes into the manifest.",
+      "quotaReached": "You have had every picture the agent draws for one account in a day. The count under the button says when the next one opens up.",
+      "promptRefused": "The model would not draw this prompt. Its own reason is below. Edit the prompt and ask again.",
+      "modelFailed": "The model did not finish this picture. It may have drawn before it failed, so that one still counts against today's total.",
+      "agentSignFailed": "The picture was drawn and pinned, and the agent's wallet would not sign the passport. Try again. If it keeps happening, the policy on the agent's wallet is the likely cause.",
+      "agentBusy": "The agent is already drawing as many pictures as it can at once. Try again in a minute.",
+      "promptTooShort": "Write a few more words. The agent needs at least eight characters to draw from.",
+      "promptTooLong": "That prompt is longer than 600 characters. Shorten it and ask again."
     },
     "actions": {
       "signIn": "Sign in again",
@@ -560,7 +658,8 @@
       "unsponsored": "Send it and pay the fee myself",
       "again": "Try again",
       "recheck": "Ask Monad again",
-      "openAddress": "Open {wallet} on MonadVision"
+      "openAddress": "Open {wallet} on MonadVision",
+      "generateAgain": "Make it again"
     }
   },
   "docs": {
