@@ -262,7 +262,23 @@ flowchart TD
 
 ## The two-minute judge path
 
-### One command, against Monad mainnet
+### The click path (two minutes, no setup)
+
+Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). Two minutes, no wallet, no seed phrase:
+
+1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
+2. Open "Verify an image" in the header, press "Choose an image", pick any copy of a registered image (a re-encoded, resized or mirrored copy works), then press "Verify". The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached. An unregistered picture answers plainly that it is not registered and offers the studio.
+3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network and "Network fee: paid by Moolam through Privy".
+4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
+5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
+6. Open the passport page from the receipt: the poster, the facts, the attestations (a Chainlink line when the CRE workflow has re-checked it), the lineage and a "check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
+
+---
+
+### The one command that proves the backend
+
+It needs a clone, Foundry, the `.env` file from the Quick Start and a mainnet wallet holding about
+0.4 MON, so it is the deeper proof rather than the first two minutes. What it does:
 
 ```sh
 npm run prove
@@ -289,19 +305,6 @@ saying what it does not prove. The last lines of the recorded run, saved in
 PASS: the Moolam prove-it run, end to end, against Monad mainnet.
 finished 2026-09-08T14:10:42.572Z, 128 seconds
 ```
-
-### The click path
-
-Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). Two minutes, no wallet, no seed phrase:
-
-1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
-2. Open "Verify an image" in the header, press "Choose an image", pick any copy of a registered image (a re-encoded, resized or mirrored copy works), then press "Verify". The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached. An unregistered picture answers plainly that it is not registered and offers the studio.
-3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network and "Network fee: paid by Moolam through Privy".
-4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
-5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
-6. Open the passport page from the receipt: the poster, the facts, the attestations (a Chainlink line when the CRE workflow has re-checked it), the lineage and a "check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
-
----
 
 ## Quick Start
 
