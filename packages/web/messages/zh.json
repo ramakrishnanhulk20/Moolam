@@ -260,6 +260,95 @@
       "empty": "还没有从这本护照登记出任何编辑版本。",
       "edits": "由这一本登记而来"
     },
+    "edit": {
+      "kicker": "这本是你的，可以编辑",
+      "heading": "添加一个编辑版本",
+      "body": "上传编辑后的图片，再写一行改了什么。它会被固定、取指纹，并作为这本护照的子护照登记，由你自己的账户发出。",
+      "notConfigured": "这套部署还没有配置签名者，所以暂时不能从这里添加编辑版本。",
+      "signer": {
+        "what": "签名者是你给这个应用的一项权限，让它替你在护照上添加编辑版本；Privy 执行的策略把它限制在这一件事上。",
+        "policy": "该策略只允许在 Moolam 登记表上调用 appendEdit，别的都不行。",
+        "grant": "允许这个应用添加编辑版本",
+        "granting": "Privy 正在请求你的许可",
+        "granted": "这个应用可以从你的钱包添加编辑版本",
+        "revoke": "撤销",
+        "revoking": "正在撤销"
+      },
+      "form": {
+        "drop": "把编辑后的图片拖到这里",
+        "choose": "选择一张图片",
+        "hint": "JPEG、PNG 或 WebP，最大 20 MB。固定之前会在文件里写入一份新的 C2PA 清单。",
+        "replace": "更换",
+        "title": "标题",
+        "titlePlaceholder": "破晓的海，调暖了一些",
+        "note": "改了什么",
+        "notePlaceholder": "提亮了暗部，裁掉了右边。",
+        "noteHint": "可填，最多 {limit} 个字符。它会和图片一起固定，紧挨着母护照的 id。",
+        "noteLeft": "还剩 {left}",
+        "submit": "添加这个编辑版本"
+      },
+      "allowance": "今天已用 {used}／{limit} 次编辑",
+      "steps": {
+        "pin": {
+          "waiting": "固定编辑后的图片",
+          "running": "正在固定编辑后的图片",
+          "done": "编辑后的图片已固定",
+          "failed": "编辑后的图片没有固定成功"
+        },
+        "send": {
+          "waiting": "从你的账户发出",
+          "running": "正在从你的账户发出，由应用的密钥在编辑策略下签名，网络费已代付",
+          "watching": "已从你的账户发出，应用的密钥完成了签名。等待 Monad 显示。",
+          "pending": "已发出，Monad 还没有显示",
+          "done": "已登记",
+          "failed": "这次编辑没有送达登记表"
+        }
+      },
+      "done": {
+        "label": "已登记",
+        "body": "这个编辑版本自己就是一本链上护照，并写明这一本是它的母本。任何人都可以拿副本来比对。",
+        "child": "子护照",
+        "block": "区块",
+        "blockPending": "尚未读到",
+        "fee": "费用",
+        "feeSponsored": "由 Privy 代付，你没有花钱。",
+        "edits": "这本护照的编辑版本",
+        "resets": "额度在 {at} 恢复。",
+        "open": "打开这个编辑版本",
+        "openTx": "交易 {hash}",
+        "another": "再添加一个编辑版本"
+      },
+      "failure": {
+        "noSigner": "在编辑策略下，这个应用还不是你钱包上的签名者。再授权一次，编辑就能发出去。",
+        "notOwner": "这个账户不持有这本护照，所以不能给它添加编辑版本。",
+        "noParent": "登记表里没有这个 id 的护照，所以没有可以添加编辑版本的对象。",
+        "quota": "今天的 {limit} 次里已经用掉 {used} 次。额度在 {at} 恢复。",
+        "sendFailed": "登记表拒绝了这次编辑，什么都没有记录。",
+        "signFailed": "Privy 没有为这次发送签名，什么都没有记录。",
+        "pinFailed": "编辑后的图片没能固定到 IPFS，所以什么都没有发出。",
+        "busy": "服务已经在同时处理它能处理的全部编辑。请稍后再试。",
+        "offline": "校验服务没有应答，所以什么都没有发出。",
+        "signedOut": "这个会话已经退出登录，服务不会接受这次编辑。",
+        "tooLarge": "这个文件超过了 20 MB 的上限。请选一份小一点的副本。",
+        "notAnImage": "这不是图片文件。请选 JPEG、PNG 或 WebP。",
+        "rateLimited": "这里的请求暂时太多了。稍等一下再试。",
+        "badRequest": "服务拒绝了这个请求。",
+        "badResponse": "服务返回的格式，这个应用看不懂。",
+        "confirmPending": "编辑已被接受，Monad 还没有显示。它仍可能落块，所以不要再发一次。",
+        "fileMissing": "请先选择编辑后的图片。",
+        "titleMissing": "请先给这个编辑版本写个标题。",
+        "grantDeclined": "权限没有给出，所以这个应用仍然不能添加编辑版本。",
+        "grantFailed": "Privy 没能把签名者加到你的钱包上。",
+        "unknown": "这次编辑没有完成。"
+      },
+      "actions": {
+        "grant": "允许这个应用添加编辑版本",
+        "again": "再试一次",
+        "recheck": "再问一次 Monad",
+        "signIn": "登录"
+      },
+      "lineageNote": "编辑版本由持有人通过一个 Privy 签名者添加，其策略只允许 appendEdit。"
+    },
     "untitled": "无标题",
     "noPicture": "此刻无法从 IPFS 取得图片",
     "fingerprintVersion": "指纹 v{version}",

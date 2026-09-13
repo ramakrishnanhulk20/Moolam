@@ -258,6 +258,95 @@
       "empty": "No edit has been registered from this passport.",
       "edits": "Registered from this one"
     },
+    "edit": {
+      "kicker": "Yours to edit",
+      "heading": "Add an edited version",
+      "body": "Upload the edited picture with a line on what changed. It is pinned, fingerprinted and registered as a child of this passport, sent from your own account.",
+      "notConfigured": "No signer is set up on this deployment, so an edit cannot be added from here yet.",
+      "signer": {
+        "what": "A signer is a permission you give this app to add edits to your passports, limited to that one action by a policy Privy enforces.",
+        "policy": "The policy allows appendEdit on the Moolam registry and nothing else.",
+        "grant": "Allow edits from this app",
+        "granting": "Privy is asking for your permission",
+        "granted": "This app can add edits from your wallet",
+        "revoke": "Revoke",
+        "revoking": "Taking it back"
+      },
+      "form": {
+        "drop": "Drop the edited picture here",
+        "choose": "Choose a picture",
+        "hint": "JPEG, PNG or WebP, up to 20 MB. A fresh C2PA manifest is written into it before it is pinned.",
+        "replace": "Replace",
+        "title": "Title",
+        "titlePlaceholder": "Kadal at dawn, warmer",
+        "note": "What changed",
+        "notePlaceholder": "Lifted the shadows and cropped the right edge.",
+        "noteHint": "Optional, up to {limit} characters. It is pinned with the picture, next to the parent's id.",
+        "noteLeft": "{left} left",
+        "submit": "Add this edit"
+      },
+      "allowance": "{used} of {limit} edits today",
+      "steps": {
+        "pin": {
+          "waiting": "Pin the edited picture",
+          "running": "Pinning the edited picture",
+          "done": "The edited picture is pinned",
+          "failed": "The edited picture was not pinned"
+        },
+        "send": {
+          "waiting": "Send it from your account",
+          "running": "Sending from your account, signed by the app's key under the edit policy, gas sponsored",
+          "watching": "Sent from your account, signed by the app's key under the edit policy. Waiting for Monad to show it.",
+          "pending": "Sent, and Monad has not shown it yet",
+          "done": "Recorded",
+          "failed": "The edit did not reach the registry"
+        }
+      },
+      "done": {
+        "label": "Recorded",
+        "body": "The edit is on chain as its own passport, carrying this one as its parent. Anyone can check a copy against it.",
+        "child": "Child passport",
+        "block": "Block",
+        "blockPending": "Not read yet",
+        "fee": "Fee",
+        "feeSponsored": "Sponsored by Privy. You paid nothing.",
+        "edits": "Edits on this passport",
+        "resets": "The allowance comes back at {at}.",
+        "open": "Open the edit",
+        "openTx": "Transaction {hash}",
+        "another": "Add another edit"
+      },
+      "failure": {
+        "noSigner": "This app does not hold a signer on your wallet under the edit policy. Grant it again and the edit can go out.",
+        "notOwner": "This account does not hold this passport, so it cannot add an edit to it.",
+        "noParent": "The registry has no passport with this id, so there is nothing to add an edit to.",
+        "quota": "That is {used} of {limit} edits for today. The allowance comes back at {at}.",
+        "sendFailed": "The registry refused the edit, so nothing was recorded.",
+        "signFailed": "Privy would not sign the send, so nothing was recorded.",
+        "pinFailed": "The edited picture could not be pinned to IPFS, so nothing was sent.",
+        "busy": "The service is running as many edits at once as it can. Try again in a moment.",
+        "offline": "The verify service did not answer, so nothing was sent.",
+        "signedOut": "This session is signed out, so the service would not take the edit.",
+        "tooLarge": "That file is over the 20 MB limit. Choose a smaller copy.",
+        "notAnImage": "That is not an image file. Choose a JPEG, PNG or WebP.",
+        "rateLimited": "Too many requests from here for now. Wait a moment and try again.",
+        "badRequest": "The service turned the request down.",
+        "badResponse": "The service answered in a shape this app does not know.",
+        "confirmPending": "The edit was accepted and Monad has not shown it yet. It may still land, so it must not be sent again.",
+        "fileMissing": "Choose the edited picture first.",
+        "titleMissing": "Give the edit a title first.",
+        "grantDeclined": "The permission was not given, so this app still cannot add edits.",
+        "grantFailed": "Privy could not add the signer to your wallet.",
+        "unknown": "The edit did not go through."
+      },
+      "actions": {
+        "grant": "Allow edits from this app",
+        "again": "Try again",
+        "recheck": "Ask Monad again",
+        "signIn": "Sign in"
+      },
+      "lineageNote": "Edits are added by the owner through a Privy signer with a policy that allows only appendEdit."
+    },
     "untitled": "Untitled",
     "noPicture": "Image unavailable from IPFS right now",
     "fingerprintVersion": "Fingerprint v{version}",

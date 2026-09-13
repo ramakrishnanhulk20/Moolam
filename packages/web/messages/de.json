@@ -258,6 +258,95 @@
       "empty": "Aus diesem Pass wurde keine Bearbeitung eingetragen.",
       "edits": "Aus diesem eingetragen"
     },
+    "edit": {
+      "kicker": "Deiner, zum Bearbeiten",
+      "heading": "Eine bearbeitete Fassung hinzufügen",
+      "body": "Lade das bearbeitete Bild hoch, mit einer Zeile dazu, was du geändert hast. Es wird gepinnt, mit einem Fingerabdruck versehen und als Kind dieses Passes eingetragen, geschickt aus deinem eigenen Konto.",
+      "notConfigured": "Auf dieser Installation ist kein Unterzeichner eingerichtet, deshalb lässt sich hier noch keine Bearbeitung hinzufügen.",
+      "signer": {
+        "what": "Ein Unterzeichner ist eine Erlaubnis, die du dieser App gibst, um Bearbeitungen zu deinen Pässen hinzuzufügen; eine Richtlinie, die Privy durchsetzt, beschränkt sie auf genau diese eine Handlung.",
+        "policy": "Die Richtlinie erlaubt appendEdit im Moolam-Register und sonst nichts.",
+        "grant": "Bearbeitungen aus dieser App erlauben",
+        "granting": "Privy fragt nach deiner Erlaubnis",
+        "granted": "Diese App darf Bearbeitungen aus deiner Wallet hinzufügen",
+        "revoke": "Zurücknehmen",
+        "revoking": "Wird zurückgenommen"
+      },
+      "form": {
+        "drop": "Lege das bearbeitete Bild hier ab",
+        "choose": "Ein Bild wählen",
+        "hint": "JPEG, PNG oder WebP, bis 20 MB. Vor dem Pinnen wird ein frisches C2PA-Manifest hineingeschrieben.",
+        "replace": "Ersetzen",
+        "title": "Titel",
+        "titlePlaceholder": "Das Meer im Morgengrauen, wärmer",
+        "note": "Was geändert wurde",
+        "notePlaceholder": "Die Schatten angehoben und den rechten Rand beschnitten.",
+        "noteHint": "Freiwillig, bis zu {limit} Zeichen. Es wird mit dem Bild gepinnt, neben der Id des Mutterpasses.",
+        "noteLeft": "noch {left}",
+        "submit": "Diese Bearbeitung hinzufügen"
+      },
+      "allowance": "{used} von {limit} Bearbeitungen heute",
+      "steps": {
+        "pin": {
+          "waiting": "Das bearbeitete Bild pinnen",
+          "running": "Das bearbeitete Bild wird gepinnt",
+          "done": "Das bearbeitete Bild ist gepinnt",
+          "failed": "Das bearbeitete Bild wurde nicht gepinnt"
+        },
+        "send": {
+          "waiting": "Aus deinem Konto schicken",
+          "running": "Wird aus deinem Konto geschickt, vom Schlüssel der App unter der Bearbeitungsrichtlinie signiert, Netzgebühr übernommen",
+          "watching": "Aus deinem Konto geschickt und vom Schlüssel der App signiert. Warten, bis Monad sie zeigt.",
+          "pending": "Geschickt, und Monad zeigt sie noch nicht",
+          "done": "Eingetragen",
+          "failed": "Die Bearbeitung hat das Register nicht erreicht"
+        }
+      },
+      "done": {
+        "label": "Eingetragen",
+        "body": "Die Bearbeitung steht als eigener Pass in der Kette und führt diesen hier als Mutter. Jeder kann eine Kopie damit abgleichen.",
+        "child": "Kindpass",
+        "block": "Block",
+        "blockPending": "Noch nicht gelesen",
+        "fee": "Gebühr",
+        "feeSponsored": "Von Privy übernommen. Du hast nichts bezahlt.",
+        "edits": "Bearbeitungen dieses Passes",
+        "resets": "Das Kontingent kommt um {at} zurück.",
+        "open": "Die Bearbeitung öffnen",
+        "openTx": "Transaktion {hash}",
+        "another": "Noch eine Bearbeitung hinzufügen"
+      },
+      "failure": {
+        "noSigner": "Diese App hat unter der Bearbeitungsrichtlinie keinen Unterzeichner auf deiner Wallet. Erteile ihn erneut, dann kann die Bearbeitung raus.",
+        "notOwner": "Dieses Konto hält diesen Pass nicht, es kann ihm also keine Bearbeitung hinzufügen.",
+        "noParent": "Das Register hat keinen Pass mit dieser Id, es gibt also nichts, wozu eine Bearbeitung passt.",
+        "quota": "Das sind {used} von {limit} Bearbeitungen für heute. Das Kontingent kommt um {at} zurück.",
+        "sendFailed": "Das Register hat die Bearbeitung abgelehnt, es wurde nichts eingetragen.",
+        "signFailed": "Privy hat den Versand nicht signiert, es wurde nichts eingetragen.",
+        "pinFailed": "Das bearbeitete Bild ließ sich nicht auf IPFS pinnen, also wurde nichts geschickt.",
+        "busy": "Der Dienst führt so viele Bearbeitungen gleichzeitig aus, wie er kann. Versuch es gleich noch einmal.",
+        "offline": "Der Prüfdienst hat nicht geantwortet, also wurde nichts geschickt.",
+        "signedOut": "Diese Sitzung ist abgemeldet, deshalb hat der Dienst die Bearbeitung nicht angenommen.",
+        "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Wähle eine kleinere Kopie.",
+        "notAnImage": "Das ist keine Bilddatei. Wähle ein JPEG, PNG oder WebP.",
+        "rateLimited": "Zurzeit kommen zu viele Anfragen von hier. Warte einen Moment und versuch es noch einmal.",
+        "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
+        "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
+        "confirmPending": "Die Bearbeitung wurde angenommen und Monad zeigt sie noch nicht. Sie kann noch ankommen, sie darf also nicht erneut geschickt werden.",
+        "fileMissing": "Wähle zuerst das bearbeitete Bild.",
+        "titleMissing": "Gib der Bearbeitung zuerst einen Titel.",
+        "grantDeclined": "Die Erlaubnis wurde nicht gegeben, diese App kann also weiterhin keine Bearbeitungen hinzufügen.",
+        "grantFailed": "Privy konnte den Unterzeichner nicht zu deiner Wallet hinzufügen.",
+        "unknown": "Die Bearbeitung ist nicht durchgegangen."
+      },
+      "actions": {
+        "grant": "Bearbeitungen aus dieser App erlauben",
+        "again": "Noch einmal versuchen",
+        "recheck": "Monad noch einmal fragen",
+        "signIn": "Anmelden"
+      },
+      "lineageNote": "Bearbeitungen trägt die Besitzerin oder der Besitzer über einen Privy-Unterzeichner ein, dessen Richtlinie nur appendEdit erlaubt."
+    },
     "untitled": "Ohne Titel",
     "noPicture": "Bild ist gerade nicht über IPFS erreichbar",
     "fingerprintVersion": "Fingerabdruck v{version}",

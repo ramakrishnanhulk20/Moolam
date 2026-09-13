@@ -107,6 +107,42 @@ export const generateResponseSchema = z.object({
   preparedBy: z.string().min(1),
 });
 
+/**
+ * What /edit answers with once the child passport is on chain.
+ *
+ * The child block is the passport the service built and sent: the same fields the registry
+ * stores, with the parent it was appended to. The hash is a real one, because the route waits
+ * for Privy's relayer to report it before answering.
+ */
+export const editResponseSchema = z.object({
+  child: z.object({
+    exactHash: hexWord,
+    parentId: hexWord,
+    creator: addressWord,
+    generatorAgentId: decimal,
+    phash: decimal,
+    blockhash256: hexWord,
+    manifestHash: hexWord,
+    kind: z.number().int().min(0).max(2),
+    fingerprintVersion: z.number().int().min(1).max(255),
+    metadataURI: z.string().min(1),
+    deadline: decimal,
+  }),
+  tokenId: decimal,
+  hash: hexWord,
+  sponsored: z.boolean(),
+  image: cidSchema.extend({
+    gatewayUrl: z.string().min(1),
+    bytes: z.number().int().nonnegative(),
+    width: z.number().int().positive(),
+    height: z.number().int().positive(),
+  }),
+  thumbnail: cidSchema.extend({ gatewayUrl: z.string().min(1) }),
+  metadata: cidSchema,
+  manifest: manifestSchema,
+  quota: quotaSchema,
+});
+
 const matchSchema = z.object({
   id: hexWord,
   phashDistance: z.number().int().nonnegative(),
@@ -151,6 +187,7 @@ export const verifyResponseSchema = z.object({
 });
 
 export type PrepareResponse = z.infer<typeof prepareResponseSchema>;
+export type EditResponse = z.infer<typeof editResponseSchema>;
 export type GenerateResponse = z.infer<typeof generateResponseSchema>;
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
@@ -166,6 +203,10 @@ export type VerifierCode =
   | "prompt-refused"
   | "model-failed"
   | "sign-failed"
+  | "no-signer"
+  | "not-owner"
+  | "no-parent"
+  | "send-failed"
   | "busy"
   | "pin-failed"
   | "offline"
@@ -241,6 +282,37 @@ export async function generate(options: {
   return await post("/generate", body, generateResponseSchema, {
     signal: options.signal,
     headers: { authorization: `Bearer ${options.accessToken}`, "content-type": "application/json" },
+  });
+}
+
+/**
+ * Appends an edited version of a passport the caller owns.
+ *
+ * Nothing is signed in the browser. The owner has already granted this app a signer on their
+ * Privy wallet, held to appendEdit by a policy, so the service pins the edited picture and sends
+ * the one transaction from the owner's own wallet with gas sponsored. The answer carries the
+ * child passport, its transaction hash and what is left of today's allowance.
+ *
+ * The note is what the owner says they changed, up to 280 characters, and travels with the pinned
+ * metadata rather than on chain.
+ */
+export async function edit(options: {
+  file: File;
+  title: string;
+  parentId: Hex;
+  note: string;
+  accessToken: string;
+  signal?: AbortSignal;
+}): Promise<EditResponse> {
+  const body = new FormData();
+  body.append("file", options.file);
+  body.append("title", options.title);
+  body.append("parentId", options.parentId);
+  body.append("note", options.note);
+
+  return await post("/edit", body, editResponseSchema, {
+    signal: options.signal,
+    headers: { authorization: `Bearer ${options.accessToken}` },
   });
 }
 
@@ -326,6 +398,10 @@ const BODY_CODES: Record<string, VerifierCode> = {
   "sign-failed": "sign-failed",
   busy: "busy",
   "pin-failed": "pin-failed",
+  "no-signer": "no-signer",
+  "not-owner": "not-owner",
+  "no-parent": "no-parent",
+  "send-failed": "send-failed",
 };
 
 function codeFor(status: number): VerifierCode {

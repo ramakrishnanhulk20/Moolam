@@ -258,6 +258,95 @@
       "empty": "Aucune retouche n’a été enregistrée à partir de ce passeport.",
       "edits": "Enregistrées à partir de celle-ci"
     },
+    "edit": {
+      "kicker": "À vous de la retoucher",
+      "heading": "Ajouter une version retouchée",
+      "body": "Envoyez l'image retouchée avec une ligne sur ce qui a changé. Elle est épinglée, empreintée et enregistrée comme fille de ce passeport, envoyée depuis votre propre compte.",
+      "notConfigured": "Aucun signataire n'est configuré sur ce déploiement, donc une retouche ne peut pas encore être ajoutée d'ici.",
+      "signer": {
+        "what": "Un signataire est une permission que vous donnez à cette app pour ajouter des retouches à vos passeports, limitée à cette seule action par une politique que Privy applique.",
+        "policy": "La politique autorise appendEdit sur le registre Moolam, et rien d'autre.",
+        "grant": "Autoriser les retouches depuis cette app",
+        "granting": "Privy demande votre permission",
+        "granted": "Cette app peut ajouter des retouches depuis votre portefeuille",
+        "revoke": "Révoquer",
+        "revoking": "Retrait en cours"
+      },
+      "form": {
+        "drop": "Déposez ici l'image retouchée",
+        "choose": "Choisir une image",
+        "hint": "JPEG, PNG ou WebP, jusqu'à 20 Mo. Un nouveau manifeste C2PA y est écrit avant l'épinglage.",
+        "replace": "Remplacer",
+        "title": "Titre",
+        "titlePlaceholder": "La mer à l'aube, plus chaude",
+        "note": "Ce qui a changé",
+        "notePlaceholder": "J'ai relevé les ombres et recadré le bord droit.",
+        "noteHint": "Facultatif, jusqu'à {limit} caractères. C'est épinglé avec l'image, à côté de l'id du passeport mère.",
+        "noteLeft": "{left} restants",
+        "submit": "Ajouter cette retouche"
+      },
+      "allowance": "{used} retouches sur {limit} aujourd'hui",
+      "steps": {
+        "pin": {
+          "waiting": "Épingler l'image retouchée",
+          "running": "Épinglage de l'image retouchée",
+          "done": "L'image retouchée est épinglée",
+          "failed": "L'image retouchée n'a pas été épinglée"
+        },
+        "send": {
+          "waiting": "L'envoyer depuis votre compte",
+          "running": "Envoi depuis votre compte, signé par la clé de l'app sous la politique de retouche, frais de réseau pris en charge",
+          "watching": "Envoyée depuis votre compte et signée par la clé de l'app. En attente de son apparition sur Monad.",
+          "pending": "Envoyée, et Monad ne l'a pas encore affichée",
+          "done": "Enregistrée",
+          "failed": "La retouche n'a pas atteint le registre"
+        }
+      },
+      "done": {
+        "label": "Enregistrée",
+        "body": "La retouche est sur la chaîne comme passeport à part entière, avec celui-ci pour mère. N'importe qui peut y comparer une copie.",
+        "child": "Passeport fille",
+        "block": "Bloc",
+        "blockPending": "Pas encore lu",
+        "fee": "Frais",
+        "feeSponsored": "Pris en charge par Privy. Vous n'avez rien payé.",
+        "edits": "Retouches de ce passeport",
+        "resets": "Le quota revient à {at}.",
+        "open": "Ouvrir la retouche",
+        "openTx": "Transaction {hash}",
+        "another": "Ajouter une autre retouche"
+      },
+      "failure": {
+        "noSigner": "Cette app n'a pas de signataire sur votre portefeuille sous la politique de retouche. Accordez-le à nouveau et la retouche pourra partir.",
+        "notOwner": "Ce compte ne détient pas ce passeport, il ne peut donc pas y ajouter de retouche.",
+        "noParent": "Le registre n'a aucun passeport avec cet id, il n'y a donc rien à retoucher.",
+        "quota": "Cela fait {used} retouches sur {limit} pour aujourd'hui. Le quota revient à {at}.",
+        "sendFailed": "Le registre a refusé la retouche, rien n'a été enregistré.",
+        "signFailed": "Privy n'a pas signé l'envoi, rien n'a été enregistré.",
+        "pinFailed": "L'image retouchée n'a pas pu être épinglée sur IPFS, rien n'a été envoyé.",
+        "busy": "Le service traite déjà autant de retouches qu'il le peut. Réessayez dans un instant.",
+        "offline": "Le service de vérification n'a pas répondu, rien n'a été envoyé.",
+        "signedOut": "Cette session est déconnectée, le service n'a donc pas accepté la retouche.",
+        "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Choisissez une copie plus légère.",
+        "notAnImage": "Ce n'est pas un fichier image. Choisissez un JPEG, un PNG ou un WebP.",
+        "rateLimited": "Trop de requêtes depuis ici pour le moment. Patientez un instant et réessayez.",
+        "badRequest": "Le service a refusé la requête.",
+        "badResponse": "Le service a répondu dans une forme que cette app ne connaît pas.",
+        "confirmPending": "La retouche a été acceptée et Monad ne l'a pas encore affichée. Elle peut encore arriver, il ne faut donc pas la renvoyer.",
+        "fileMissing": "Choisissez d'abord l'image retouchée.",
+        "titleMissing": "Donnez d'abord un titre à la retouche.",
+        "grantDeclined": "La permission n'a pas été donnée, cette app ne peut toujours pas ajouter de retouche.",
+        "grantFailed": "Privy n'a pas pu ajouter le signataire à votre portefeuille.",
+        "unknown": "La retouche n'est pas passée."
+      },
+      "actions": {
+        "grant": "Autoriser les retouches depuis cette app",
+        "again": "Réessayer",
+        "recheck": "Redemander à Monad",
+        "signIn": "Se connecter"
+      },
+      "lineageNote": "Les retouches sont ajoutées par le détenteur, via un signataire Privy dont la politique n'autorise que appendEdit."
+    },
     "untitled": "Sans titre",
     "noPicture": "Image indisponible sur IPFS pour le moment",
     "fingerprintVersion": "Empreinte v{version}",

@@ -57,6 +57,11 @@ export async function Lineage({ parentId, edits }: { parentId: Hex; edits: Hex[]
             ))}
           </ol>
         )}
+
+        {/* Says what a reader is looking at: who may add an edit here, and what holds them to it. */}
+        <p className="mt-6 max-w-[46ch] border-t border-line pt-5 text-xs leading-relaxed text-text-faint">
+          {t("edit.lineageNote")}
+        </p>
       </div>
     </section>
   );

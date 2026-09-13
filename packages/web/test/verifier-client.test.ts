@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   VerifierError,
+  edit,
+  editResponseSchema,
   generate,
   generateResponseSchema,
   prepare,
@@ -42,6 +44,42 @@ const preparePayload = {
 };
 
 const CREATOR = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c";
+const PARENT_ID = `0x${"3f".repeat(32)}`;
+
+const editPayload = {
+  child: {
+    exactHash: WORD,
+    parentId: PARENT_ID,
+    creator: CREATOR,
+    generatorAgentId: "0",
+    phash: "17297841240124424192",
+    blockhash256: WORD,
+    manifestHash: WORD,
+    kind: 2,
+    fingerprintVersion: 1,
+    metadataURI: "ipfs://bafkreiedited",
+    deadline: "1788878733",
+  },
+  tokenId: "77045069988464985183988543906144022395969906830851064729409639142441101033899",
+  hash: `0x${"1c".repeat(32)}`,
+  sponsored: true,
+  image: {
+    cid: "bafkreiedited",
+    uri: "ipfs://bafkreiedited",
+    gatewayUrl: "https://gateway.pinata.cloud/ipfs/bafkreiedited",
+    bytes: 305221,
+    width: 1024,
+    height: 1024,
+  },
+  thumbnail: {
+    cid: "bafkreieditedthumb",
+    uri: "ipfs://bafkreieditedthumb",
+    gatewayUrl: "https://gateway.pinata.cloud/ipfs/bafkreieditedthumb",
+  },
+  metadata: { cid: "bafkreieditedmeta", uri: "ipfs://bafkreieditedmeta" },
+  manifest: { embedded: true },
+  quota: { used: 1, limit: 5, resetsAt: 1788961533 },
+};
 
 const generatePayload = {
   passport: {
@@ -325,5 +363,87 @@ describe("VerifierError", () => {
     const failure = await verify({ file: imageFile(), signal: controller.signal }).catch((error) => error);
     expect(failure).not.toBeInstanceOf(VerifierError);
     expect((failure as Error).name).toBe("AbortError");
+  });
+});
+
+describe("the edit the owner appends without a passkey", () => {
+  it("accepts what /edit answers with, the child passport and its parent", () => {
+    const parsed = editResponseSchema.parse(editPayload);
+    expect(parsed.child.parentId).toBe(PARENT_ID);
+    expect(parsed.child.kind).toBe(2);
+    expect(parsed.sponsored).toBe(true);
+    expect(parsed.quota).toEqual({ used: 1, limit: 5, resetsAt: 1788961533 });
+  });
+
+  it("refuses an answer whose hash is not a transaction hash, or whose quota is missing", () => {
+    expect(editResponseSchema.safeParse({ ...editPayload, hash: "0x" }).success).toBe(false);
+
+    const withoutQuota: Record<string, unknown> = { ...editPayload };
+    delete withoutQuota.quota;
+    expect(editResponseSchema.safeParse(withoutQuota).success).toBe(false);
+  });
+
+  it("posts the picture, the title, the parent and the note with the access token", async () => {
+    const fetchStub = stubFetch(200, editPayload);
+
+    const result = await edit({
+      file: imageFile(),
+      title: "Kadal at dawn, warmer",
+      parentId: PARENT_ID,
+      note: "Lifted the shadows and cropped the right edge.",
+      accessToken: "token-123",
+    });
+    expect(result.child.exactHash).toBe(WORD);
+
+    const [url, init] = fetchStub.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("http://localhost:4010/edit");
+    expect((init.headers as Record<string, string>).authorization).toBe("Bearer token-123");
+
+    const body = init.body as FormData;
+    expect(body.get("title")).toBe("Kadal at dawn, warmer");
+    expect(body.get("parentId")).toBe(PARENT_ID);
+    expect(body.get("note")).toBe("Lifted the shadows and cropped the right edge.");
+    expect(body.get("file")).toBeInstanceOf(File);
+  });
+
+  it("reads the edit refusals out of the body rather than the status", async () => {
+    const asked = {
+      file: imageFile(),
+      title: "Kadal at dawn, warmer",
+      parentId: PARENT_ID as `0x${string}`,
+      note: "",
+      accessToken: "t",
+    };
+
+    const refused: [number, unknown, string, string][] = [
+      [409, { error: "no-signer" }, "no-signer", "no-signer"],
+      [403, { error: "not-owner" }, "not-owner", "not-owner"],
+      [404, { error: "no-parent" }, "no-parent", "no-parent"],
+      [502, { error: "send-failed", reason: "PassportAlreadyExists" }, "send-failed", "PassportAlreadyExists"],
+      [503, { error: "busy" }, "busy", "busy"],
+    ];
+
+    for (const [status, body, code, message] of refused) {
+      stubFetch(status, body);
+      const failure = await edit(asked).catch((error) => error);
+      expect(failure).toBeInstanceOf(VerifierError);
+      expect(failure.code).toBe(code);
+      expect(failure.message).toBe(message);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the allowance from a refused edit", async () => {
+    stubFetch(429, { error: "quota", quota: { used: 5, limit: 5, resetsAt: 1788961533 } });
+
+    const failure = await edit({
+      file: imageFile(),
+      title: "x",
+      parentId: PARENT_ID as `0x${string}`,
+      note: "",
+      accessToken: "t",
+    }).catch((error) => error);
+    expect(failure.code).toBe("quota");
+    expect(failure.quota).toEqual({ used: 5, limit: 5, resetsAt: 1788961533 });
   });
 });

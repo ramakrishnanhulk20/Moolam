@@ -5,6 +5,7 @@ import { readArt, type Art } from "@/components/passport/art";
 import { Attestations } from "@/components/passport/Attestations";
 import { CheckCopy } from "@/components/passport/CheckCopy";
 import { DisputeNote } from "@/components/passport/DisputeNote";
+import { EditPanel } from "@/components/passport/EditPanel";
 import { Facts } from "@/components/passport/Facts";
 import { indexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
@@ -148,6 +149,8 @@ export default async function PassportPage({
         <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
           <div className="rise">
             <Lineage parentId={passport.parentId} edits={edits} />
+            {/* Only the wallet that holds this passport ever sees this panel. */}
+            <EditPanel parentId={passport.id} owner={owner} />
           </div>
           <div className="rise" style={{ animationDelay: "90ms" }}>
             <CheckCopy passportId={passport.id} />

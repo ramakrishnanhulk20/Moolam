@@ -259,6 +259,95 @@
       "empty": "Nenhuma edição foi registrada a partir deste passaporte.",
       "edits": "Registradas a partir desta"
     },
+    "edit": {
+      "kicker": "Seu, para editar",
+      "heading": "Adicione uma versão editada",
+      "body": "Envie a imagem editada com uma linha sobre o que mudou. Ela é fixada, ganha impressão digital e é registrada como filha deste passaporte, saindo da sua própria conta.",
+      "notConfigured": "Esta instalação não tem assinante configurado, então ainda não dá para adicionar uma edição por aqui.",
+      "signer": {
+        "what": "Um assinante é uma permissão que você dá a este app para adicionar edições aos seus passaportes, limitada a essa única ação por uma política que a Privy aplica.",
+        "policy": "A política permite appendEdit no registro da Moolam e nada mais.",
+        "grant": "Permitir edições a partir deste app",
+        "granting": "A Privy está pedindo sua permissão",
+        "granted": "Este app pode adicionar edições a partir da sua carteira",
+        "revoke": "Revogar",
+        "revoking": "Retirando a permissão"
+      },
+      "form": {
+        "drop": "Solte aqui a imagem editada",
+        "choose": "Escolher uma imagem",
+        "hint": "JPEG, PNG ou WebP, até 20 MB. Antes de fixar, um manifesto C2PA novo é escrito no arquivo.",
+        "replace": "Trocar",
+        "title": "Título",
+        "titlePlaceholder": "O mar ao amanhecer, mais quente",
+        "note": "O que mudou",
+        "notePlaceholder": "Levantei as sombras e cortei a borda direita.",
+        "noteHint": "Opcional, até {limit} caracteres. Fica fixado junto com a imagem, ao lado do id do passaporte de origem.",
+        "noteLeft": "faltam {left}",
+        "submit": "Adicionar esta edição"
+      },
+      "allowance": "{used} de {limit} edições hoje",
+      "steps": {
+        "pin": {
+          "waiting": "Fixar a imagem editada",
+          "running": "Fixando a imagem editada",
+          "done": "A imagem editada está fixada",
+          "failed": "A imagem editada não foi fixada"
+        },
+        "send": {
+          "waiting": "Enviar da sua conta",
+          "running": "Enviando da sua conta, assinada pela chave do app sob a política de edição, taxa de rede patrocinada",
+          "watching": "Enviada da sua conta e assinada pela chave do app. Esperando a Monad mostrar.",
+          "pending": "Enviada, e a Monad ainda não mostrou",
+          "done": "Registrada",
+          "failed": "A edição não chegou ao registro"
+        }
+      },
+      "done": {
+        "label": "Registrada",
+        "body": "A edição está na cadeia como passaporte próprio, trazendo este aqui como origem. Qualquer um pode comparar uma cópia com ela.",
+        "child": "Passaporte filho",
+        "block": "Bloco",
+        "blockPending": "Ainda não lido",
+        "fee": "Taxa",
+        "feeSponsored": "Patrocinada pela Privy. Você não pagou nada.",
+        "edits": "Edições deste passaporte",
+        "resets": "A cota volta às {at}.",
+        "open": "Abrir a edição",
+        "openTx": "Transação {hash}",
+        "another": "Adicionar outra edição"
+      },
+      "failure": {
+        "noSigner": "Este app não tem um assinante na sua carteira sob a política de edição. Conceda de novo e a edição poderá sair.",
+        "notOwner": "Esta conta não tem este passaporte, então não pode adicionar uma edição a ele.",
+        "noParent": "O registro não tem nenhum passaporte com esse id, então não há a que adicionar uma edição.",
+        "quota": "Já são {used} de {limit} edições de hoje. A cota volta às {at}.",
+        "sendFailed": "O registro recusou a edição, então nada foi gravado.",
+        "signFailed": "A Privy não assinou o envio, então nada foi gravado.",
+        "pinFailed": "A imagem editada não pôde ser fixada no IPFS, então nada foi enviado.",
+        "busy": "O serviço está tocando quantas edições consegue ao mesmo tempo. Tente de novo daqui a pouco.",
+        "offline": "O serviço de verificação não respondeu, então nada foi enviado.",
+        "signedOut": "Esta sessão está desconectada, então o serviço não aceitou a edição.",
+        "tooLarge": "Esse arquivo passa do limite de 20 MB. Escolha uma cópia menor.",
+        "notAnImage": "Isso não é um arquivo de imagem. Escolha um JPEG, PNG ou WebP.",
+        "rateLimited": "Por ora são pedidos demais vindos daqui. Espere um momento e tente de novo.",
+        "badRequest": "O serviço recusou o pedido.",
+        "badResponse": "O serviço respondeu num formato que este app não conhece.",
+        "confirmPending": "A edição foi aceita e a Monad ainda não mostrou. Ela ainda pode entrar, então não deve ser enviada de novo.",
+        "fileMissing": "Escolha primeiro a imagem editada.",
+        "titleMissing": "Dê primeiro um título à edição.",
+        "grantDeclined": "A permissão não foi dada, então este app continua sem poder adicionar edições.",
+        "grantFailed": "A Privy não conseguiu adicionar o assinante à sua carteira.",
+        "unknown": "A edição não foi adiante."
+      },
+      "actions": {
+        "grant": "Permitir edições a partir deste app",
+        "again": "Tentar de novo",
+        "recheck": "Perguntar à Monad de novo",
+        "signIn": "Entrar"
+      },
+      "lineageNote": "As edições são adicionadas por quem tem o passaporte, através de um assinante da Privy com uma política que só permite appendEdit."
+    },
     "untitled": "Sem título",
     "noPicture": "Imagem indisponível no IPFS agora",
     "fingerprintVersion": "Impressão v{version}",
