@@ -70,6 +70,8 @@ export default async function LocaleLayout({
 
   const nav = [
     { href: "/", label: t("nav.home") },
+    { href: "/explore", label: t("nav.explore") },
+    { href: "/agents", label: t("nav.agents") },
     { href: "/docs", label: t("nav.docs") },
     { href: "/verify", label: t("nav.verify") },
     { href: "/studio", label: t("nav.studio") },

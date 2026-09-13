@@ -31,9 +31,11 @@
     "menuClose": "메뉴 닫기",
     "nav": {
       "home": "홈",
+      "explore": "둘러보기",
+      "agents": "에이전트",
+      "docs": "문서",
       "verify": "이미지 검증",
-      "studio": "이미지 등록",
-      "docs": "문서"
+      "studio": "이미지 등록"
     },
     "themeToLight": "라이트 테마로 바꾸기",
     "themeToDark": "다크 테마로 바꾸기",
@@ -72,6 +74,69 @@
     "0": "생성",
     "1": "촬영",
     "2": "편집"
+  },
+  "explore": {
+    "kicker": "둘러보기",
+    "title": "레지스트리",
+    "rail": "Monad 위의 모든 여권",
+    "lede": "Monad에 등록된 모든 이미지를 최신순으로, 이 페이지가 열릴 때 인덱스에서 읽어 옵니다. 하나를 열면 지문과 manifest, 그리고 기록된 모든 재확인을 볼 수 있습니다.",
+    "counts": {
+      "total": "여권",
+      "generated": "생성",
+      "rechecked": "재확인됨"
+    },
+    "countsError": "집계를 읽지 못했습니다: {reason}.",
+    "countsMissing": "응답한 인덱스가 없습니다",
+    "sortRule": "최신순, 시드 테스트 이미지는 맨 뒤",
+    "chipsLabel": "레지스트리 거르기",
+    "chips": {
+      "all": "전체",
+      "generated": "생성",
+      "captured": "촬영",
+      "edits": "편집",
+      "rechecked": "재확인됨",
+      "manifest": "manifest 있음",
+      "disputed": "이의 있음"
+    },
+    "searchLabel": "여권 id로 검색",
+    "searchPlaceholder": "여권 id",
+    "searchAction": "검색",
+    "agentFilter": "에이전트 {id}",
+    "clearAgent": "에이전트 필터 지우기",
+    "marks": {
+      "manifest": "이미지와 함께 C2PA manifest 고정",
+      "rechecked": "체인에서 재확인됨",
+      "chainlink": "Chainlink가 재확인",
+      "disputed": "이의 있음"
+    },
+    "untitled": "제목 없음",
+    "noPicture": "게이트웨이에 이미지가 없습니다",
+    "seedCard": "시드 테스트 이미지",
+    "loadMore": "더 보기",
+    "loading": "불러오는 중",
+    "end": "조건에 맞는 여권은 여기까지입니다.",
+    "shown": "{count, number}건 표시",
+    "empty": "이 조건에 맞는 여권이 아직 없습니다.",
+    "error": "인덱스를 읽지 못했습니다: {reason}."
+  },
+  "agents": {
+    "kicker": "에이전트",
+    "title": "에이전트",
+    "rail": "ERC-8004 생성자",
+    "lede": "여권에 서명한 것을 인덱스가 본 모든 생성 에이전트와, 각각에 대해 센 모든 숫자입니다. 많이 서명한 순서입니다.",
+    "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+    "formulaLink": "점수를 구하는 방법",
+    "agentId": "에이전트 {id}",
+    "unnamed": "이 에이전트의 카드에는 이름이 없습니다",
+    "since": "처음 확인 {when}",
+    "trustScore": "신뢰 점수",
+    "passports": "여권",
+    "matched": "일치한 재확인",
+    "mismatched": "어긋난 재확인",
+    "upheld": "받아들여진 이의",
+    "seeWorks": "이 에이전트의 여권 보기",
+    "empty": "여권에 서명한 에이전트를 인덱스가 아직 보지 못했습니다.",
+    "error": "인덱스를 읽지 못했습니다: {reason}."
   },
   "story": {
     "kicker": "Monad 메인넷에서 실시간 가동",
@@ -916,5 +981,13 @@
       "confirmPending": "접수됐고 Monad가 아직 보여 주지 않았습니다. 아직 기록될 수 있으므로 다시 보내면 안 됩니다.",
       "unknown": "처리되지 않았습니다."
     }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Moolam에 없습니다",
+    "lede": "이 페이지는 없거나, 이 여권 또는 에이전트가 Moolam에 없습니다.",
+    "explore": "레지스트리 둘러보기",
+    "verify": "이미지 검증",
+    "docs": "문서 읽기"
   }
 }

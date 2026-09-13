@@ -52,9 +52,9 @@ export function sitemapEntries(input: {
   return [...pages, ...records];
 }
 
-/** The three app pages plus every docs page the tree names, in tree order. */
+/** The five app pages plus every docs page the tree names, in tree order. */
 export function pagePaths(): string[] {
-  return ["/", "/verify", "/studio", ...navPages().map((page) => pageHref(page.slug))];
+  return ["/", "/explore", "/agents", "/verify", "/studio", ...navPages().map((page) => pageHref(page.slug))];
 }
 
 /**

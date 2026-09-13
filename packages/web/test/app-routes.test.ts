@@ -92,9 +92,9 @@ describe("what the sitemap lists", () => {
 });
 
 describe("the pages the sitemap builds itself from", () => {
-  it("starts with the three app pages and then every docs page in the tree", () => {
+  it("starts with the five app pages and then every docs page in the tree", () => {
     const paths = pagePaths();
-    expect(paths.slice(0, 4)).toEqual(["/", "/verify", "/studio", "/docs"]);
+    expect(paths.slice(0, 6)).toEqual(["/", "/explore", "/agents", "/verify", "/studio", "/docs"]);
     expect(paths).toContain("/docs/developers/architecture");
     expect(paths.length).toBeGreaterThan(20);
   });

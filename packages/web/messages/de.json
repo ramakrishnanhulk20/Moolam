@@ -29,9 +29,11 @@
     "menuClose": "Menü schließen",
     "nav": {
       "home": "Start",
+      "explore": "Entdecken",
+      "agents": "Agenten",
+      "docs": "Dokumentation",
       "verify": "Bild prüfen",
-      "studio": "Bild eintragen",
-      "docs": "Dokumentation"
+      "studio": "Bild eintragen"
     },
     "themeToLight": "Zum hellen Thema wechseln",
     "themeToDark": "Zum dunklen Thema wechseln",
@@ -70,6 +72,69 @@
     "0": "Erzeugt",
     "1": "Fotografiert",
     "2": "Bearbeitet"
+  },
+  "explore": {
+    "kicker": "Entdecken",
+    "title": "Das Register",
+    "rail": "Jeder Pass auf Monad",
+    "lede": "Jedes auf Monad eingetragene Bild, das neueste zuerst, beim Laden dieser Seite aus dem Index gelesen. Ein Klick zeigt den Fingerabdruck, das manifest und jede Nachprüfung, die dazu notiert wurde.",
+    "counts": {
+      "total": "Pässe",
+      "generated": "Erzeugt",
+      "rechecked": "Nachgeprüft"
+    },
+    "countsError": "Die Zahlen konnten nicht gelesen werden: {reason}.",
+    "countsMissing": "kein Index hat geantwortet",
+    "sortRule": "Neueste zuerst, Testbilder stehen hinten",
+    "chipsLabel": "Register filtern",
+    "chips": {
+      "all": "Alle",
+      "generated": "Erzeugt",
+      "captured": "Fotografiert",
+      "edits": "Bearbeitungen",
+      "rechecked": "Nachgeprüft",
+      "manifest": "Mit manifest",
+      "disputed": "Bestritten"
+    },
+    "searchLabel": "Nach Pass-Id suchen",
+    "searchPlaceholder": "Pass-Id",
+    "searchAction": "Suchen",
+    "agentFilter": "Agent {id}",
+    "clearAgent": "Agentenfilter entfernen",
+    "marks": {
+      "manifest": "C2PA-manifest mit dem Bild angeheftet",
+      "rechecked": "Auf der Kette nachgeprüft",
+      "chainlink": "Von Chainlink nachgeprüft",
+      "disputed": "Bestritten"
+    },
+    "untitled": "Ohne Titel",
+    "noPicture": "Kein Bild am Gateway",
+    "seedCard": "Testbild",
+    "loadMore": "Mehr laden",
+    "loading": "Lädt",
+    "end": "Das sind alle Pässe, die passen.",
+    "shown": "{count, number} zu sehen",
+    "empty": "Noch passt kein Pass zu diesem Filter.",
+    "error": "Der Index konnte nicht gelesen werden: {reason}."
+  },
+  "agents": {
+    "kicker": "Agenten",
+    "title": "Agenten",
+    "rail": "ERC-8004-Generatoren",
+    "lede": "Jeder erzeugende Agent, den der Index einen Pass hat unterschreiben sehen, mit allem, was er für ihn zählt. Die fleißigsten zuerst.",
+    "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+    "formulaLink": "Wie der Wert entsteht",
+    "agentId": "Agent {id}",
+    "unnamed": "Die Karte dieses Agenten trägt keinen Namen",
+    "since": "Zuerst gesehen am {when}",
+    "trustScore": "Vertrauenswert",
+    "passports": "Pässe",
+    "matched": "Treffende Nachprüfungen",
+    "mismatched": "Verfehlte Nachprüfungen",
+    "upheld": "Bestätigte Einsprüche",
+    "seeWorks": "Seine Pässe ansehen",
+    "empty": "Der Index hat noch keinen Agenten einen Pass unterschreiben sehen.",
+    "error": "Der Index konnte nicht gelesen werden: {reason}."
   },
   "story": {
     "kicker": "Live auf Monad Mainnet",
@@ -914,5 +979,13 @@
       "confirmPending": "Es wurde angenommen und Monad zeigt es noch nicht. Es kann noch eintreffen, also darf es nicht erneut gesendet werden.",
       "unknown": "Das ist nicht durchgegangen."
     }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Nicht auf Moolam",
+    "lede": "Diese Seite gibt es nicht, oder dieser Pass oder Agent ist nicht auf Moolam.",
+    "explore": "Register entdecken",
+    "verify": "Bild prüfen",
+    "docs": "Dokumentation lesen"
   }
 }

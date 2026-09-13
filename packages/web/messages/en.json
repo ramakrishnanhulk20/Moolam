@@ -29,9 +29,11 @@
     "menuClose": "Close menu",
     "nav": {
       "home": "Home",
+      "explore": "Explore",
+      "agents": "Agents",
+      "docs": "Docs",
       "verify": "Verify an image",
-      "studio": "Register an image",
-      "docs": "Docs"
+      "studio": "Register an image"
     },
     "themeToLight": "Switch to the light theme",
     "themeToDark": "Switch to the dark theme",
@@ -70,6 +72,69 @@
     "0": "Generated",
     "1": "Captured",
     "2": "Edited"
+  },
+  "explore": {
+    "kicker": "Explore",
+    "title": "The registry",
+    "rail": "Every passport on Monad",
+    "lede": "Every picture registered on Monad, newest first, read from the index while this page loads. Open one for its fingerprint, its manifest and every re-check written against it.",
+    "counts": {
+      "total": "Passports",
+      "generated": "Generated",
+      "rechecked": "Re-checked"
+    },
+    "countsError": "The counts could not be read: {reason}.",
+    "countsMissing": "no index answered",
+    "sortRule": "Newest first, and seed test images sort last",
+    "chipsLabel": "Filter the registry",
+    "chips": {
+      "all": "All",
+      "generated": "Generated",
+      "captured": "Captured",
+      "edits": "Edits",
+      "rechecked": "Re-checked",
+      "manifest": "With manifest",
+      "disputed": "Disputed"
+    },
+    "searchLabel": "Search by passport id",
+    "searchPlaceholder": "Passport id",
+    "searchAction": "Search",
+    "agentFilter": "Agent {id}",
+    "clearAgent": "Clear the agent filter",
+    "marks": {
+      "manifest": "C2PA manifest pinned with the picture",
+      "rechecked": "Re-checked on chain",
+      "chainlink": "Re-checked by Chainlink",
+      "disputed": "Disputed"
+    },
+    "untitled": "Untitled",
+    "noPicture": "No picture on the gateway",
+    "seedCard": "Seed test image",
+    "loadMore": "Load more",
+    "loading": "Loading",
+    "end": "That is every passport that matches.",
+    "shown": "{count, number} shown",
+    "empty": "No passport matches this filter yet.",
+    "error": "The index could not be read: {reason}."
+  },
+  "agents": {
+    "kicker": "Agents",
+    "title": "Agents",
+    "rail": "ERC-8004 generators",
+    "lede": "Every generating agent the index has seen sign a passport, with everything it has counted for each one. The busiest first.",
+    "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+    "formulaLink": "How the score is worked out",
+    "agentId": "Agent {id}",
+    "unnamed": "This agent's card carries no name",
+    "since": "First seen {when}",
+    "trustScore": "Trust score",
+    "passports": "Passports",
+    "matched": "Re-checks matched",
+    "mismatched": "Re-checks missed",
+    "upheld": "Disputes upheld",
+    "seeWorks": "See its passports",
+    "empty": "The index has not seen an agent sign a passport yet.",
+    "error": "The index could not be read: {reason}."
   },
   "story": {
     "kicker": "Live on Monad mainnet",
@@ -914,5 +979,13 @@
       "confirmPending": "It was accepted and Monad has not shown it yet. It may still land, so it must not be sent again.",
       "unknown": "That did not go through."
     }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Not on Moolam",
+    "lede": "This page does not exist, or this passport or agent is not on Moolam.",
+    "explore": "Explore the registry",
+    "verify": "Verify an image",
+    "docs": "Read the docs"
   }
 }

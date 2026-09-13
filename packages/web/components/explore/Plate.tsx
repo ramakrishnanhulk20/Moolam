@@ -1,0 +1,121 @@
+"use client";
+
+import { useFormatter, useTranslations } from "next-intl";
+import { shortHex } from "@/lib/chain/client";
+import { Link } from "@/lib/i18n/routing";
+import { isTestCard, type ExplorePlate } from "./sort";
+
+/**
+ * One plate: the picture, the seal, and the three marks that say what the
+ * registry holds about it.
+ *
+ * The same language as the plates in the film on the home page, drawn in CSS
+ * rather than WebGL because a grid of forty of them has to work on a phone.
+ * A gateway that will not serve the picture leaves the plate dark with the seal
+ * on it, never a broken image icon.
+ */
+export function Plate({ plate }: { plate: ExplorePlate }) {
+  const t = useTranslations("explore");
+  const kinds = useTranslations("kind");
+  const format = useFormatter();
+  const test = isTestCard(plate.title);
+
+  return (
+    <Link
+      href={`/passport/${plate.id}`}
+      className="group relative block aspect-[4/5] min-w-0 overflow-hidden bg-bg-sunken outline-offset-[-2px]"
+    >
+      {plate.thumbnailUrl === null ? (
+        <span className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center">
+          <span className="motif h-7 w-7 opacity-70 transition-opacity duration-500 group-hover:opacity-100" />
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint">{t("noPicture")}</span>
+        </span>
+      ) : (
+        // The pinned thumbnail, the same file a verifier fetches when it re-checks this picture.
+        <img
+          src={plate.thumbnailUrl}
+          alt=""
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07]"
+        />
+      )}
+
+      <span className="grain pointer-events-none absolute inset-0" />
+      <span className="scrim pointer-events-none absolute inset-0" />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-500 group-hover:border-accent/60"
+      />
+
+      <span className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+        <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-text-muted">
+          <span className="motif h-[7px] w-[7px] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
+          {kinds(String(plate.kind))}
+        </span>
+        <span className="flex items-center gap-1">
+          <Mark on={plate.manifest} letter="M" label={t("marks.manifest")} tone="accent" />
+          <Mark
+            on={plate.rechecked}
+            letter="R"
+            label={plate.chainlink ? t("marks.chainlink") : t("marks.rechecked")}
+            tone="verified"
+          />
+          <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="failed" />
+        </span>
+      </span>
+
+      <span className="pointer-events-none absolute inset-x-0 bottom-0 p-3 pt-8 sm:p-4">
+        <span className="block truncate font-display text-[0.95rem] font-semibold leading-tight tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent sm:text-[1.05rem]">
+          {plate.title ?? t("untitled")}
+        </span>
+        <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[9px] uppercase tracking-[0.16em] text-text-faint">
+          <span>{shortHex(plate.id, 6, 4)}</span>
+          <span aria-hidden className="h-[8px] w-px bg-line-strong" />
+          <span>{format.dateTime(new Date(plate.registeredAt * 1000), { dateStyle: "medium" })}</span>
+          {test ? (
+            <>
+              <span aria-hidden className="h-[8px] w-px bg-line-strong" />
+              <span className="text-text-faint">{t("seedCard")}</span>
+            </>
+          ) : null}
+        </span>
+        <span
+          aria-hidden
+          className="mt-3 block h-px w-0 bg-accent transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:w-full"
+        />
+      </span>
+    </Link>
+  );
+}
+
+/** One of the three marks. Lit when the registry says so, a dim outline when it does not. */
+function Mark({
+  on,
+  letter,
+  label,
+  tone,
+}: {
+  on: boolean;
+  letter: string;
+  label: string;
+  tone: "accent" | "verified" | "failed";
+}) {
+  const lit =
+    tone === "accent"
+      ? "border-accent text-accent"
+      : tone === "verified"
+        ? "border-verified text-verified"
+        : "border-failed text-failed";
+
+  return (
+    <span
+      title={on ? label : undefined}
+      className={`flex h-[15px] w-[15px] items-center justify-center rounded-[3px] border font-mono text-[8px] leading-none ${
+        on ? lit : "border-line-strong/60 text-transparent"
+      }`}
+    >
+      {letter}
+      {on ? <span className="sr-only">{label}</span> : null}
+    </span>
+  );
+}

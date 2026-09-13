@@ -31,9 +31,11 @@
     "menuClose": "メニューを閉じる",
     "nav": {
       "home": "ホーム",
+      "explore": "一覧",
+      "agents": "エージェント",
+      "docs": "ドキュメント",
       "verify": "画像を検証",
-      "studio": "画像を登録",
-      "docs": "ドキュメント"
+      "studio": "画像を登録"
     },
     "themeToLight": "ライトテーマに切り替える",
     "themeToDark": "ダークテーマに切り替える",
@@ -72,6 +74,69 @@
     "0": "生成",
     "1": "撮影",
     "2": "編集"
+  },
+  "explore": {
+    "kicker": "一覧",
+    "title": "レジストリ",
+    "rail": "Monad 上のすべてのパスポート",
+    "lede": "Monad に登録されたすべての画像を、新しい順に、このページが開くたびインデックスから読み出します。ひとつ開けば、指紋、manifest、そこに書かれた再検証がすべて見えます。",
+    "counts": {
+      "total": "パスポート",
+      "generated": "生成",
+      "rechecked": "再検証済み"
+    },
+    "countsError": "件数を読み取れませんでした: {reason}。",
+    "countsMissing": "応答したインデックスがありません",
+    "sortRule": "新しい順、シードのテスト画像は最後",
+    "chipsLabel": "レジストリを絞り込む",
+    "chips": {
+      "all": "すべて",
+      "generated": "生成",
+      "captured": "撮影",
+      "edits": "編集",
+      "rechecked": "再検証済み",
+      "manifest": "manifest あり",
+      "disputed": "異議あり"
+    },
+    "searchLabel": "パスポート id で検索",
+    "searchPlaceholder": "パスポート id",
+    "searchAction": "検索",
+    "agentFilter": "エージェント {id}",
+    "clearAgent": "エージェントの絞り込みを外す",
+    "marks": {
+      "manifest": "画像と一緒に C2PA manifest をピン留め",
+      "rechecked": "チェーン上で再検証済み",
+      "chainlink": "Chainlink が再検証",
+      "disputed": "異議あり"
+    },
+    "untitled": "無題",
+    "noPicture": "ゲートウェイに画像がありません",
+    "seedCard": "シードのテスト画像",
+    "loadMore": "さらに読み込む",
+    "loading": "読み込み中",
+    "end": "条件に合うパスポートは以上です。",
+    "shown": "{count, number} 件表示",
+    "empty": "この条件に合うパスポートはまだありません。",
+    "error": "インデックスを読み取れませんでした: {reason}。"
+  },
+  "agents": {
+    "kicker": "エージェント",
+    "title": "エージェント",
+    "rail": "ERC-8004 ジェネレーター",
+    "lede": "パスポートに署名したとインデックスが見たすべての生成エージェントと、そこで数えられたすべての数字。署名の多い順です。",
+    "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+    "formulaLink": "スコアの求め方",
+    "agentId": "エージェント {id}",
+    "unnamed": "このエージェントのカードに名前はありません",
+    "since": "初回 {when}",
+    "trustScore": "信頼スコア",
+    "passports": "パスポート",
+    "matched": "一致した再検証",
+    "mismatched": "外れた再検証",
+    "upheld": "認められた異議",
+    "seeWorks": "このエージェントのパスポート",
+    "empty": "パスポートに署名したエージェントを、インデックスはまだ見ていません。",
+    "error": "インデックスを読み取れませんでした: {reason}。"
   },
   "story": {
     "kicker": "Monad メインネットで稼働中",
@@ -916,5 +981,13 @@
       "confirmPending": "受け付けられ、Monad はまだ表示していません。これから記録される可能性があるため、再送してはいけません。",
       "unknown": "うまくいきませんでした。"
     }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Moolam にありません",
+    "lede": "このページは存在しないか、このパスポートまたはエージェントが Moolam にありません。",
+    "explore": "レジストリを見る",
+    "verify": "画像を検証",
+    "docs": "ドキュメントを読む"
   }
 }

@@ -29,9 +29,11 @@
     "menuClose": "Fermer le menu",
     "nav": {
       "home": "Accueil",
+      "explore": "Explorer",
+      "agents": "Agents",
+      "docs": "Documentation",
       "verify": "Vérifier une image",
-      "studio": "Enregistrer une image",
-      "docs": "Documentation"
+      "studio": "Enregistrer une image"
     },
     "themeToLight": "Passer au thème clair",
     "themeToDark": "Passer au thème sombre",
@@ -70,6 +72,69 @@
     "0": "Générée",
     "1": "Photographiée",
     "2": "Retouchée"
+  },
+  "explore": {
+    "kicker": "Explorer",
+    "title": "Le registre",
+    "rail": "Chaque passeport sur Monad",
+    "lede": "Chaque image enregistrée sur Monad, la plus récente d'abord, lue dans l'index pendant le chargement de cette page. Ouvrez-en une pour voir son empreinte, son manifest et chaque vérification inscrite à son sujet.",
+    "counts": {
+      "total": "Passeports",
+      "generated": "Générées",
+      "rechecked": "Vérifiées"
+    },
+    "countsError": "Les totaux n'ont pas pu être lus : {reason}.",
+    "countsMissing": "aucun index n'a répondu",
+    "sortRule": "Les plus récentes d'abord, et les images de test passent en dernier",
+    "chipsLabel": "Filtrer le registre",
+    "chips": {
+      "all": "Toutes",
+      "generated": "Générées",
+      "captured": "Photographiées",
+      "edits": "Retouches",
+      "rechecked": "Vérifiées",
+      "manifest": "Avec manifest",
+      "disputed": "Contestées"
+    },
+    "searchLabel": "Chercher par identifiant de passeport",
+    "searchPlaceholder": "Identifiant de passeport",
+    "searchAction": "Chercher",
+    "agentFilter": "Agent {id}",
+    "clearAgent": "Retirer le filtre d'agent",
+    "marks": {
+      "manifest": "Manifest C2PA épinglé avec l'image",
+      "rechecked": "Vérifiée sur la chaîne",
+      "chainlink": "Vérifiée par Chainlink",
+      "disputed": "Contestée"
+    },
+    "untitled": "Sans titre",
+    "noPicture": "Aucune image sur la passerelle",
+    "seedCard": "Image de test",
+    "loadMore": "Voir plus",
+    "loading": "Chargement",
+    "end": "Voilà tous les passeports qui correspondent.",
+    "shown": "{count, number} affichés",
+    "empty": "Aucun passeport ne correspond encore à ce filtre.",
+    "error": "L'index n'a pas pu être lu : {reason}."
+  },
+  "agents": {
+    "kicker": "Agents",
+    "title": "Agents",
+    "rail": "Générateurs ERC-8004",
+    "lede": "Chaque agent générateur que l'index a vu signer un passeport, avec tout ce qu'il compte pour lui. Les plus actifs en premier.",
+    "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+    "formulaLink": "Comment l'indice est calculé",
+    "agentId": "Agent {id}",
+    "unnamed": "La carte de cet agent ne porte pas de nom",
+    "since": "Vu pour la première fois le {when}",
+    "trustScore": "Indice de confiance",
+    "passports": "Passeports",
+    "matched": "Vérifications concordantes",
+    "mismatched": "Vérifications manquées",
+    "upheld": "Contestations retenues",
+    "seeWorks": "Voir ses passeports",
+    "empty": "L'index n'a encore vu aucun agent signer un passeport.",
+    "error": "L'index n'a pas pu être lu : {reason}."
   },
   "story": {
     "kicker": "En direct sur Monad mainnet",
@@ -914,5 +979,13 @@
       "confirmPending": "Cela a été accepté et Monad ne l'a pas encore montré. Cela peut encore aboutir, il ne faut donc pas renvoyer.",
       "unknown": "Cela n'a pas abouti."
     }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Pas sur Moolam",
+    "lede": "Cette page n'existe pas, ou ce passeport ou cet agent n'est pas sur Moolam.",
+    "explore": "Explorer le registre",
+    "verify": "Vérifier une image",
+    "docs": "Lire la documentation"
   }
 }

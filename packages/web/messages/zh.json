@@ -31,9 +31,11 @@
     "menuClose": "关闭菜单",
     "nav": {
       "home": "首页",
+      "explore": "浏览",
+      "agents": "智能体",
+      "docs": "文档",
       "verify": "验证图片",
-      "studio": "登记图片",
-      "docs": "文档"
+      "studio": "登记图片"
     },
     "themeToLight": "切换到浅色主题",
     "themeToDark": "切换到深色主题",
@@ -72,6 +74,69 @@
     "0": "生成",
     "1": "拍摄",
     "2": "编辑"
+  },
+  "explore": {
+    "kicker": "浏览",
+    "title": "登记处",
+    "rail": "Monad 上的每一本护照",
+    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，可以看到它的指纹、它的 manifest，以及写给它的每一次复核。",
+    "counts": {
+      "total": "护照",
+      "generated": "生成",
+      "rechecked": "已复核"
+    },
+    "countsError": "无法读取计数：{reason}。",
+    "countsMissing": "没有索引应答",
+    "sortRule": "最新的在前，种子测试图片排在最后",
+    "chipsLabel": "筛选登记处",
+    "chips": {
+      "all": "全部",
+      "generated": "生成",
+      "captured": "拍摄",
+      "edits": "编辑",
+      "rechecked": "已复核",
+      "manifest": "带 manifest",
+      "disputed": "有争议"
+    },
+    "searchLabel": "按护照 id 搜索",
+    "searchPlaceholder": "护照 id",
+    "searchAction": "搜索",
+    "agentFilter": "智能体 {id}",
+    "clearAgent": "清除智能体筛选",
+    "marks": {
+      "manifest": "随图片固定了 C2PA manifest",
+      "rechecked": "已在链上复核",
+      "chainlink": "由 Chainlink 复核",
+      "disputed": "有争议"
+    },
+    "untitled": "无标题",
+    "noPicture": "网关上没有图片",
+    "seedCard": "种子测试图片",
+    "loadMore": "加载更多",
+    "loading": "加载中",
+    "end": "符合条件的护照都在这里了。",
+    "shown": "已显示 {count, number} 条",
+    "empty": "还没有护照符合这个筛选。",
+    "error": "无法读取索引：{reason}。"
+  },
+  "agents": {
+    "kicker": "智能体",
+    "title": "智能体",
+    "rail": "ERC-8004 生成方",
+    "lede": "索引见过在护照上签名的每一个生成智能体，以及为它记下的全部数字。签得最多的排在前面。",
+    "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+    "formulaLink": "这个分数怎么算出来",
+    "agentId": "智能体 {id}",
+    "unnamed": "这个智能体的卡片没有名字",
+    "since": "首次出现 {when}",
+    "trustScore": "信任分",
+    "passports": "护照",
+    "matched": "复核一致",
+    "mismatched": "复核不一致",
+    "upheld": "成立的争议",
+    "seeWorks": "查看它的护照",
+    "empty": "索引还没有见过任何智能体在护照上签名。",
+    "error": "无法读取索引：{reason}。"
   },
   "story": {
     "kicker": "在 Monad 主网上实时运行",
@@ -916,5 +981,13 @@
       "confirmPending": "交易已被接受，Monad 还没有显示。它仍可能落账，因此不能重复发送。",
       "unknown": "没有成功。"
     }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "不在 Moolam 上",
+    "lede": "这个页面不存在，或者这本护照、这个智能体不在 Moolam 上。",
+    "explore": "浏览登记处",
+    "verify": "验证图片",
+    "docs": "阅读文档"
   }
 }
