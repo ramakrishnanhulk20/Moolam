@@ -42,3 +42,4 @@ packages/indexer/package-lock.json
 .vercel
 
 .env*
+BACKLOG.md
