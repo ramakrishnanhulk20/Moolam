@@ -14,6 +14,17 @@ export const PINATA_GATEWAY = env.PINATA_GATEWAY_URL;
 
 const IPFS_SCHEME = "ipfs://";
 
+/**
+ * How long one upload gets before it is abandoned. Six times the JSON fetch timeout because this
+ * request carries the whole picture, up to the 20 MB upload limit, over a home connection.
+ */
+const PIN_TIMEOUT_MS = 60_000;
+
+export interface PinOptions {
+  /** How long one upload gets. Tests pass a short one; nothing in the service overrides it. */
+  timeoutMs?: number;
+}
+
 const uploadResponseSchema = z.object({
   data: z.object({
     cid: z.string().min(1),
@@ -24,14 +35,15 @@ const uploadResponseSchema = z.object({
 /**
  * Pins bytes to public IPFS and returns the content id.
  *
- * Throws when the buffer is empty, when Pinata refuses the upload, or when the answer is not the
- * shape their API documents. A 5xx is retried once, because a gateway hiccup in the middle of a
- * seed run would otherwise cost a whole set of uploads.
+ * Throws when the buffer is empty, when Pinata refuses the upload, when an upload stalls past the
+ * timeout, or when the answer is not the shape their API documents. A 5xx is retried once, because
+ * a gateway hiccup in the middle of a seed run would otherwise cost a whole set of uploads.
  */
 export async function pinFile(
   bytes: Buffer,
   name: string,
   contentType: string,
+  options: PinOptions = {},
 ): Promise<{ cid: string; uri: `ipfs://${string}`; size: number }> {
   if (bytes.length === 0) {
     throw new Error(`Refusing to pin ${name}: there are no bytes to pin.`);
@@ -47,7 +59,7 @@ export async function pinFile(
   form.append("network", "public");
   form.append("name", name);
 
-  const data = await upload(form, name);
+  const data = await upload(form, name, options.timeoutMs ?? PIN_TIMEOUT_MS);
   return { cid: data.cid, uri: `${IPFS_SCHEME}${data.cid}`, size: data.size ?? bytes.length };
 }
 
@@ -78,14 +90,21 @@ export function gatewayUrl(uri: string): string {
   return `${PINATA_GATEWAY}${path}`;
 }
 
-async function upload(form: FormData, what: string): Promise<{ cid: string; size?: number }> {
+async function upload(
+  form: FormData,
+  what: string,
+  timeoutMs: number,
+): Promise<{ cid: string; size?: number }> {
   let lastServerError = "";
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
+    // A fresh signal per attempt: a retry after a stall needs its own clock, not the remains of
+    // the first one's.
     const response = await fetch(UPLOAD_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${readToken()}` },
       body: form,
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
     if (response.status >= 500) {

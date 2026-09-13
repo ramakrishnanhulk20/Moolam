@@ -1,12 +1,15 @@
-// Covers POST /generate with the image model, Pinata and the Privy signer all stubbed: the whole
-// route from a signed-in creator's prompt to a passport the browser can co-sign, the generator
-// signature recovering to the wallet that made it, the daily quota on a fake clock, a prompt the
-// model refuses, a body that does not parse, and the waiting gate giving up.
-// Does NOT cover the real image model, a real pin, or Privy actually signing: the live check in
-// the work order does all three against the hosted services. It also does not cover the browser
-// side, which adds the passkey signature and sends the transaction.
+// Covers POST /generate with the image model, Pinata, the caller's wallet list and the Privy
+// signer all stubbed: the whole route from a signed-in creator's prompt to a passport the browser
+// can co-sign, the generator signature recovering to the wallet that made it, a creator address
+// that is not the caller's, a deadline that runs out while the picture is drawn, the daily quota
+// on a fake clock and which failures give a quota slot back, a prompt the model refuses, a body
+// that does not parse, and the waiting gate giving up.
+// Does NOT cover the real image model, a real pin, or Privy actually signing or listing wallets:
+// the live check in the work order does all of those against the hosted services. It also does
+// not cover the browser side, which adds the passkey signature and sends the transaction.
 
 import { SignJWT, generateKeyPair } from "jose";
+import { APIError, APIConnectionError } from "openai";
 import { getAddress, recoverAddress, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -35,7 +38,10 @@ const stubs = vi.hoisted(() => ({
   createImage: vi.fn(),
   sign: vi.fn(),
   wallet: vi.fn(),
+  embeddedWallets: vi.fn(),
 }));
+
+vi.mock("../src/auth/wallet.js", () => ({ embeddedWallets: stubs.embeddedWallets }));
 
 vi.mock("../src/generate/imageModel.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/generate/imageModel.js")>()),
@@ -48,7 +54,7 @@ vi.mock("../src/generate/generatorSigner.js", async (importOriginal) => ({
   signPassportAsGenerator: stubs.sign,
 }));
 
-const { PromptRefused } = await import("../src/generate/imageModel.js");
+const { PromptRefused, billedOrUnknown } = await import("../src/generate/imageModel.js");
 const { generatorDomain } = await import("../src/generate/generatorSigner.js");
 const { buildServer } = await import("../src/server.js");
 
@@ -59,6 +65,13 @@ const emptySource: PassportSource = { load: async () => [] };
 
 /** Every file the stub was asked to pin, by the name the route gave it. */
 const pinned = new Map<string, Buffer>();
+
+/**
+ * What Privy says the signed-in caller's own embedded wallets are. The route asks with the user
+ * id alone, so one list stands for every user in this file, and a test that needs a mismatch asks
+ * for an address that is not on it.
+ */
+let callerWallets: Hex[] = [];
 let signing: CryptoKey;
 let verifying: CryptoKey;
 let agent: PrivateKeyAccount;
@@ -127,6 +140,14 @@ describe("POST /generate", () => {
           message: input,
         }),
     );
+    callerWallets = [
+      "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6",
+      "0x2222222222222222222222222222222222222222",
+      "0x3333333333333333333333333333333333333333",
+      "0x4444444444444444444444444444444444444444",
+      "0x5555555555555555555555555555555555555555",
+    ].map((address) => getAddress(address as Hex));
+    stubs.embeddedWallets.mockImplementation(async () => callerWallets);
     stubs.createImage.mockImplementation(async (prompt: string) => ({
       bytes: await makeImage(prompt.length % 40),
       model: MODEL,
@@ -283,12 +304,87 @@ describe("POST /generate", () => {
     }
   });
 
+  it("refuses 403 creator-mismatch when the creator is not one of the caller's wallets", async () => {
+    const callsBefore = stubs.createImage.mock.calls.length;
+
+    const response = await ask("did:privy:mismatch-user", {
+      prompt: PROMPT,
+      title: "Someone else's wallet",
+      creator: "0x9999999999999999999999999999999999999999",
+      deadline: deadline(),
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toEqual({ error: "creator-mismatch" });
+    expect(stubs.createImage.mock.calls.length).toBe(callsBefore);
+  });
+
+  it("refuses to sign when drawing ate the deadline, and the picture still costs a slot", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-01T09:00:00Z"));
+    const user = "did:privy:deadline-user";
+    const creator = "0x5555555555555555555555555555555555555555";
+    const asked = Math.floor(Date.now() / 1000) + 700;
+
+    // The picture is drawn and pinned, and by the time it is ready only 50 seconds of the window
+    // are left, which is less than the passkey prompt alone takes.
+    stubs.createImage.mockImplementationOnce(async (prompt: string) => {
+      vi.setSystemTime(Date.now() + 650_000);
+      return { bytes: await makeImage(prompt.length % 40), model: MODEL, promptUsed: prompt };
+    });
+
+    const refused = await ask(user, { prompt: PROMPT, title: "Slow draw", creator, deadline: asked });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json()).toEqual({ error: "deadline-passed" });
+
+    const next = await ask(user, { prompt: PROMPT, title: "Second try", creator, deadline: deadline() });
+    expect(next.statusCode).toBe(200);
+    expect(next.json().quota).toEqual({ used: 2, limit: 2, resetsAt: expect.any(Number) });
+    vi.useRealTimers();
+  }, 60_000);
+
+  it("hands the slot back when the provider refused the call, and keeps it when it may have billed", async () => {
+    const user = "did:privy:billing-user";
+    const creator = "0x4444444444444444444444444444444444444444";
+    const body = (title: string) => ({ prompt: PROMPT, title, creator, deadline: deadline() });
+
+    stubs.createImage.mockRejectedValueOnce(new APIError(403, { message: "your key cannot use this model" }, undefined, undefined));
+    const refused = await ask(user, body("Refused by the provider"));
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "model-failed" });
+
+    stubs.createImage.mockRejectedValueOnce(new APIError(500, { message: "the provider fell over" }, undefined, undefined));
+    const broke = await ask(user, body("Provider fell over"));
+    expect(broke.statusCode).toBe(502);
+
+    // The 403 gave its slot back and the 500 kept its own, so one of the two allowed pictures is
+    // already spent and the one that works is the last of the day.
+    const drawn = await ask(user, body("The one that works"));
+    expect(drawn.statusCode).toBe(200);
+    expect(drawn.json().quota).toEqual({ used: 2, limit: 2, resetsAt: expect.any(Number) });
+    expect((await ask(user, body("One too many"))).statusCode).toBe(429);
+  }, 60_000);
+
   it("is not mounted on a host without the generator's own variables", async () => {
     const bare = await buildServer({ source: emptySource, logger: false });
     await bare.ready();
     const response = await bare.inject({ method: "POST", url: "/generate", payload: {} });
     expect(response.statusCode).toBe(404);
     await bare.close();
+  });
+});
+
+describe("what a failed image call may have cost", () => {
+  it("counts a 4xx as never drawn, and a 5xx, a connection error or anything else as maybe drawn", () => {
+    const refused = (status: 400 | 403 | 429 | 500) =>
+      new APIError(status, { message: "no picture for you" }, undefined, undefined);
+
+    expect(billedOrUnknown(refused(400))).toBe(false);
+    expect(billedOrUnknown(refused(403))).toBe(false);
+    expect(billedOrUnknown(refused(429))).toBe(false);
+    expect(billedOrUnknown(refused(500))).toBe(true);
+    expect(billedOrUnknown(new APIConnectionError({ message: "the socket died" }))).toBe(true);
+    expect(billedOrUnknown(new Error("something else entirely"))).toBe(true);
   });
 });
 

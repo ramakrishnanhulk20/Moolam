@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import { embedManifest, readManifest, type ManifestSummary } from "./c2pa.js";
+import { SignerRefusedFile, SignerUnavailable, embedManifest, readManifest, type ManifestSummary } from "./c2pa.js";
 import {
   MAX_IMAGE_PIXELS,
   fingerprint,
@@ -7,6 +7,7 @@ import {
   type Fingerprint,
   type Hex,
 } from "./fingerprint.js";
+import { manifestDocument } from "./metadata.js";
 
 export type { Fingerprint, ManifestSummary };
 
@@ -38,6 +39,34 @@ export interface PreparedImage {
   fingerprint: Fingerprint;
   manifestHash: Hex;
   manifest: ManifestSummary;
+}
+
+/** A passport with no manifest commits to no manifest store, so the chain records 32 zero bytes. */
+const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
+
+/**
+ * What a caller may tell the person who uploaded the picture when the manifest is missing.
+ *
+ * It is a fixed sentence rather than the signer's own words on purpose: those words can carry the
+ * path of the certificate this host signs with, and no answer from a public route should.
+ */
+export const NOT_EMBEDDED_REASON = "the manifest could not be embedded in this file";
+
+export interface PreparedResult {
+  /** The bytes that get pinned, and whose sha256 becomes the passport id. */
+  bytes: Buffer;
+  thumbnail: Buffer;
+  print: Fingerprint;
+  manifestHash: Hex;
+  manifestDoc?: unknown;
+  embedded: boolean;
+  /** Only when the manifest is missing, and always the fixed sentence above. */
+  reason?: string;
+  /**
+   * What the signer actually said, for the log line at the call site. It never goes in an answer:
+   * it can name a file path on this host.
+   */
+  detail?: string;
 }
 
 export interface PrepareOptions {
@@ -104,6 +133,51 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
     manifestHash: manifest.manifestHash,
     manifest,
   };
+}
+
+/**
+ * Prepares a picture for pinning, with the manifest when the signer takes the file and without it
+ * when the signer will not.
+ *
+ * A file this one C2PA signer refuses should not cost the creator their upload: the fingerprint
+ * and the on-chain record work with no manifest at all, they just lose the provenance that travels
+ * inside the file, and the answer says which of the two happened.
+ *
+ * A host that cannot sign anything is the opposite case and is not softened here: SignerUnavailable
+ * comes straight back out, so the service refuses instead of handing every caller an unsigned
+ * picture and a 200.
+ */
+export async function prepareOrFallback(source: Buffer, options: PrepareOptions): Promise<PreparedResult> {
+  try {
+    const prepared = await prepareImage(source, options);
+    return {
+      bytes: prepared.original,
+      thumbnail: prepared.thumbnail,
+      print: prepared.fingerprint,
+      manifestHash: prepared.manifestHash,
+      manifestDoc: manifestDocument(prepared),
+      embedded: true,
+    };
+  } catch (error) {
+    if (error instanceof SignerUnavailable) {
+      throw error;
+    }
+    const refused =
+      error instanceof SignerRefusedFile
+        ? error
+        : new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
+
+    const upright = await uprightImage(source);
+    return {
+      bytes: upright,
+      thumbnail: await makeThumbnail(upright),
+      print: await fingerprint(upright),
+      manifestHash: ZERO_BYTES32,
+      embedded: false,
+      reason: NOT_EMBEDDED_REASON,
+      detail: refused.message.slice(0, 200),
+    };
+  }
 }
 
 /**

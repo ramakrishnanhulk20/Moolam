@@ -98,8 +98,13 @@ struct and sends one sponsored transaction.
 curl -s -X POST http://localhost:4010/generate \
   -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"A lighthouse in a monsoon storm, thick oils","title":"Lighthouse","creator":"0xYourWallet","deadline":1788878000}'
+  -d '{"prompt":"A lighthouse in a monsoon storm, thick oils","title":"Lighthouse","creator":"0xYourEmbeddedWallet","deadline":1788878000}'
 ```
+
+`creator` is your own embedded wallet address, the one Privy shows in the studio.
+The service reads the caller's wallets from their Privy user record and refuses
+any other address with 403 `creator-mismatch`, so nobody can have the agent
+co-sign a passport that credits someone else.
 
 It answers with the passport fields, `generatorSig`, the four content ids, the
 model that drew it, the agent's id and wallet, and what is left of the caller's
@@ -112,10 +117,14 @@ Order of refusals: 401 for a missing, expired or foreign token, 400 for a prompt
 outside 8 to 600 characters, a title outside 1 to 120, a creator that is not an
 address, or a deadline that is not between 10 minutes and 2 hours ahead, 400
 `prompt-refused` with the provider's own words when the model's safety system
-turns the prompt down, 429 `quota` past `GENERATE_PER_DAY` pictures in a rolling
-24 hours, 502 `model-failed`, `pin-failed` or `sign-failed` for the three outside
-services, and 503 `busy` when both drawing slots have been full for 90 seconds.
-The token is checked and the allowance is taken before a cent is spent.
+turns the prompt down, 400 `deadline-passed` when drawing and pinning ate so much
+of the window that under two minutes are left to answer a passkey prompt, 403
+`creator-mismatch` when the creator is not one of the caller's own wallets, 429
+`quota` past `GENERATE_PER_DAY` pictures in a rolling 24 hours, 502
+`model-failed`, `pin-failed` or `sign-failed` for the three outside services, and
+503 `busy` when both drawing slots have been full for 90 seconds. The token is
+checked, the creator is matched and the allowance is taken before a cent is
+spent, and a picture the provider never drew gives its allowance back.
 
 The allowance is counted in this process's memory against the verified Privy user
 id, which a caller cannot choose. It is gone on a restart and two copies of the

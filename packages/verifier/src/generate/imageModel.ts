@@ -27,7 +27,10 @@ const JPEG_QUALITY = 92;
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8]);
 
-/** What the provider says when its safety system will not draw a prompt. */
+/**
+ * What the provider says when its safety system will not draw a prompt. It only picks the wording
+ * of the refusal; whether a failed call cost money is decided by the status, in billedOrUnknown.
+ */
 const REFUSAL = /safety system|moderation|content policy|not allowed|violat/i;
 
 /**
@@ -125,6 +128,20 @@ export async function createImage(
         }
       : undefined,
   };
+}
+
+/**
+ * Whether the provider may have drawn and billed for the picture before this error.
+ *
+ * A status under 500 is a request the provider turned down before it drew anything, so the caller
+ * can hand the quota slot back. No status at all is a timeout or a dead connection, where a
+ * picture may well have been drawn on the other side, and a 5xx can be a failure after the work;
+ * both of those keep the slot. Anything that is not the provider's own error is treated the same
+ * cautious way.
+ */
+export function billedOrUnknown(error: unknown): boolean {
+  if (!(error instanceof APIError)) return true;
+  return typeof error.status !== "number" || error.status >= 500;
 }
 
 /**

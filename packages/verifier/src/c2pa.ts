@@ -31,6 +31,31 @@ export interface ManifestSummary {
  */
 export const SOFT_BINDING_ALG = "com.moolam.phash-blockhash.v1";
 
+/**
+ * This host cannot sign anything at all: the certificate or the key is not where the environment
+ * points, only one of the two paths is set, or openssl is not installed to make the development
+ * identity. No file can get past it, so a caller has to stop rather than quietly pin unsigned
+ * pictures for everyone.
+ */
+export class SignerUnavailable extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "SignerUnavailable";
+  }
+}
+
+/**
+ * The signer is there and working, but it would not take this particular file. The picture still
+ * has a fingerprint and can still be registered, it just loses the provenance that travels inside
+ * the file, so a caller may fall back.
+ */
+export class SignerRefusedFile extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "SignerRefusedFile";
+  }
+}
+
 const SOFT_BINDING_LABEL = "c2pa.soft-binding";
 const PHASH_BYTES = 8;
 const BLOCKHASH_BYTES = 32;
@@ -158,8 +183,9 @@ export interface EmbedOptions {
  * 18.9: one alg name, one block, and the fingerprint as a CBOR byte string.
  *
  * Throws when the buffer is empty, when the options are incomplete, when the
- * fingerprint is the wrong size, when no signing identity can be resolved, or
- * when the C2PA library rejects the container.
+ * fingerprint is the wrong size, SignerUnavailable when no signing identity can
+ * be resolved, and SignerRefusedFile when the C2PA library rejects this
+ * container.
  */
 export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<Buffer> {
   if (bytes.length === 0) {
@@ -183,10 +209,14 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
 
   const signer = loadSigner();
   const destination: { buffer: Buffer | null } = { buffer: null };
-  builder.sign(signer, { buffer: bytes, mimeType }, destination);
+  try {
+    builder.sign(signer, { buffer: bytes, mimeType }, destination);
+  } catch (error) {
+    throw new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
+  }
 
   if (destination.buffer === null) {
-    throw new Error("embedManifest signed the image but got no bytes back");
+    throw new SignerRefusedFile("embedManifest signed the image but got no bytes back");
   }
   return destination.buffer;
 }
@@ -295,8 +325,8 @@ function sniffMimeType(bytes: Buffer): string {
  * ships only dist, scripts and src, so the test certificates that live in its
  * repository are not installed with it.
  *
- * Throws when only one of the two paths is set, or when a path is set and no
- * file is there.
+ * Throws SignerUnavailable when only one of the two paths is set, when a path is
+ * set and no file is there, and when openssl is missing.
  */
 export function loadSigner(
   paths: { certPath?: string; keyPath?: string } = {
@@ -306,14 +336,14 @@ export function loadSigner(
 ): LocalSigner {
   const { certPath, keyPath } = paths;
   if ((certPath === undefined) !== (keyPath === undefined)) {
-    throw new Error(
+    throw new SignerUnavailable(
       "MOOLAM_C2PA_CERT_PATH and MOOLAM_C2PA_KEY_PATH go together: set both to sign with your own identity, or neither to use the development one",
     );
   }
 
   if (certPath !== undefined && keyPath !== undefined) {
     if (!existsSync(certPath) || !existsSync(keyPath)) {
-      throw new Error(`no signing certificate or key found at ${certPath} and ${keyPath}`);
+      throw new SignerUnavailable(`no signing certificate or key found at ${certPath} and ${keyPath}`);
     }
     return LocalSigner.newSigner(readFileSync(certPath), readFileSync(keyPath), "es256");
   }
@@ -324,6 +354,21 @@ export function loadSigner(
     generateDevSigningIdentity();
   }
   return LocalSigner.newSigner(readFileSync(devCert), readFileSync(devKey), "es256");
+}
+
+/**
+ * Checks at boot that this host can sign, so a missing certificate stops the service from mounting
+ * instead of letting every request answer 200 with an unsigned picture in it.
+ *
+ * Throws SignerUnavailable, with the same message loadSigner gives, and nothing else.
+ */
+export async function ensureSigner(): Promise<void> {
+  try {
+    loadSigner();
+  } catch (error) {
+    if (error instanceof SignerUnavailable) throw error;
+    throw new SignerUnavailable(error instanceof Error ? error.message : String(error), { cause: error });
+  }
 }
 
 /**
@@ -388,7 +433,7 @@ function generateDevSigningIdentity(): void {
       execFileSync("openssl", args, { stdio: "pipe" });
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      throw new Error(`openssl is needed to make the development signing certificate: ${detail}`);
+      throw new SignerUnavailable(`openssl is needed to make the development signing certificate: ${detail}`);
     }
   };
 

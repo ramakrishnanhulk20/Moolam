@@ -5,7 +5,7 @@
 
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SOFT_BINDING_ALG, embedManifest, loadSigner, readManifest } from "../src/c2pa.js";
+import { SOFT_BINDING_ALG, SignerUnavailable, embedManifest, ensureSigner, loadSigner, readManifest } from "../src/c2pa.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { makeImage } from "./helpers.js";
@@ -68,5 +68,13 @@ describe("signing identity", () => {
 
   it("falls back to the development identity when neither path is set", () => {
     expect(loadSigner({})).toBeDefined();
+  });
+
+  it("marks a host with nothing to sign with as SignerUnavailable, and passes one that can sign", async () => {
+    expect(() =>
+      loadSigner({ certPath: path.join(DEV_CERT_DIR, "nothing.pem"), keyPath: path.join(DEV_CERT_DIR, "nowhere.pem") }),
+    ).toThrow(SignerUnavailable);
+
+    await expect(ensureSigner()).resolves.toBeUndefined();
   });
 });

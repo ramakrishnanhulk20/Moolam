@@ -1,18 +1,20 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
-import { MAX_UPLOAD_BYTES } from "../env.js";
-import { ImageTooLarge, fingerprint, readImageHeader, type Fingerprint, type Hex } from "../fingerprint.js";
+import { ensureSigner } from "../c2pa.js";
+import { passportExists } from "../edit/registry.js";
+import { MAX_UPLOAD_BYTES, env } from "../env.js";
+import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import {
   CAPTURED_DESCRIPTION,
   CAPTURE_SOURCE_TYPE,
   FINGERPRINT_VERSION,
   fileSlug,
-  manifestDocument,
   passportMetadata,
 } from "../metadata.js";
-import { makeThumbnail, prepareImage, uprightImage } from "../prepare.js";
+import { prepareOrFallback } from "../prepare.js";
+import { readClient } from "../reputation/registry.js";
 import { BadRequest, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
@@ -42,17 +44,6 @@ interface Upload {
   title: string;
 }
 
-interface StudioImage {
-  /** The bytes that get pinned, and whose sha256 becomes the passport id. */
-  bytes: Buffer;
-  thumbnail: Buffer;
-  print: Fingerprint;
-  manifestHash: Hex;
-  manifestDoc?: unknown;
-  embedded: boolean;
-  reason?: string;
-}
-
 /**
  * POST /prepare: everything a signed-in creator needs before they sign a passport.
  *
@@ -69,10 +60,18 @@ interface StudioImage {
  * uploads queues instead of decoding all at once.
  *
  * Answers 401 for a missing or foreign token, 400 for a bad title or kind, 413 over the size or
- * pixel limit, 415 when the file is not an image, 429 past the per-user limit, and 502 when
- * Pinata refuses a pin.
+ * pixel limit, 415 when the file is not an image, 409 `already-registered` when the registry
+ * already holds this exact picture, 429 past the per-user limit, and 502 when Pinata refuses a
+ * pin. The route is not mounted at all on a host that cannot sign a manifest.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
+  // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
+  // upload, so it fails to mount instead and says why in the boot log.
+  await ensureSigner();
+
+  const chain = readClient();
+  const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
+
   app.post(
     "/prepare",
     {
@@ -116,9 +115,22 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
       }
 
-      const studio = await app.verifier.runPrepare(() => studioImage(upload.bytes, upload.title));
+      const studio = await app.verifier.runPrepare(() =>
+        prepareOrFallback(upload.bytes, {
+          title: upload.title,
+          claimGenerator: CLAIM_GENERATOR,
+          action: "c2pa.created",
+          digitalSourceType: CAPTURE_SOURCE_TYPE,
+        }),
+      );
       if (!studio.embedded) {
-        request.log.warn({ url: request.url, reason: studio.reason }, "prepare: manifest not embedded");
+        request.log.warn({ url: request.url, reason: studio.detail }, "prepare: manifest not embedded");
+      }
+
+      const passportId = studio.print.sha256 as Hex;
+      if (await alreadyRegistered(chain, registry, passportId, request)) {
+        request.log.warn({ url: request.url, user: identity.userId, passportId }, "rejected: /prepare duplicate");
+        return reply.code(409).send({ error: "already-registered", passportId });
       }
 
       const slug = fileSlug(upload.title, studio.print.sha256);
@@ -257,38 +269,24 @@ async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
 }
 
 /**
- * Prepares the picture for pinning, with the manifest when C2PA will sign it and without when it
- * will not.
+ * Whether the registry already holds this exact picture.
  *
- * A file the signer refuses, an unusual container or a missing certificate should not cost the
- * creator their upload: the fingerprint and the on-chain record work with no manifest at all,
- * they just lose the provenance that travels inside the file. The answer says which happened.
+ * Asked before anything is pinned, so the same file uploaded twice gets a plain answer instead of
+ * four fresh pins and a transaction the registry would refuse anyway. A chain this host cannot
+ * reach does not stop a prepare: the registry makes the same check when the browser sends the
+ * passport, so a missed check costs pins and never correctness.
  */
-async function studioImage(bytes: Buffer, title: string): Promise<StudioImage> {
+async function alreadyRegistered(
+  chain: ReturnType<typeof readClient>,
+  registry: Hex,
+  passportId: Hex,
+  request: FastifyRequest,
+): Promise<boolean> {
   try {
-    const prepared = await prepareImage(bytes, {
-      title,
-      claimGenerator: CLAIM_GENERATOR,
-      action: "c2pa.created",
-      digitalSourceType: CAPTURE_SOURCE_TYPE,
-    });
-    return {
-      bytes: prepared.original,
-      thumbnail: prepared.thumbnail,
-      print: prepared.fingerprint,
-      manifestHash: prepared.manifestHash,
-      manifestDoc: manifestDocument(prepared),
-      embedded: true,
-    };
+    return await passportExists(chain, registry, passportId);
   } catch (error) {
-    const upright = await uprightImage(bytes);
-    return {
-      bytes: upright,
-      thumbnail: await makeThumbnail(upright),
-      print: await fingerprint(upright),
-      manifestHash: ZERO_BYTES32,
-      embedded: false,
-      reason: (error instanceof Error ? error.message : String(error)).slice(0, 200),
-    };
+    const reason = error instanceof Error ? error.message : String(error);
+    request.log.warn({ url: request.url, reason }, "prepare: the duplicate check could not reach the chain");
+    return false;
   }
 }

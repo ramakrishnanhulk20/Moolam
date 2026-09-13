@@ -1,14 +1,17 @@
-// Covers POST /prepare with Pinata answered by a stub at the fetch layer: a real JPEG comes back
-// as the passport fields the browser signs, the sha256 in the answer is the sha256 of the bytes
-// that were actually pinned, every accepted upload format leaves with a readable manifest, and a
-// missing token, a bad title and a text file are each refused.
-// Does NOT cover a real pin to Pinata (the live check in the work order does that), the remote
-// JWKS fetch, or the per-user rate limit reaching 20 in an hour.
+// Covers POST /prepare with Pinata answered by a stub at the fetch layer and the registry read
+// stubbed: a real JPEG comes back as the passport fields the browser signs, the sha256 in the
+// answer is the sha256 of the bytes that were actually pinned, every accepted upload format
+// leaves with a readable manifest, a picture the registry already holds is refused before
+// anything is pinned, a host that cannot sign does not mount at all, the signer's own words never
+// reach the answer, and a missing token, a bad title and a text file are each refused.
+// Does NOT cover a real pin to Pinata (the live check in the work order does that), a real read
+// of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
+// hour.
 
 import { SignJWT, generateKeyPair } from "jose";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { readManifest } from "../src/c2pa.js";
+import { SignerRefusedFile, SignerUnavailable, readManifest } from "../src/c2pa.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { fileSlug } from "../src/metadata.js";
@@ -26,6 +29,24 @@ const APP_ID = vi.hoisted(() => {
   process.env.PINATA_GATEWAY_URL = "https://moolam-test.mypinata.cloud/ipfs/";
   return id;
 });
+
+const stubs = vi.hoisted(() => ({
+  ensureSigner: vi.fn(),
+  embedManifest: vi.fn(),
+  passportExists: vi.fn(),
+}));
+
+vi.mock("../src/c2pa.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/c2pa.js")>();
+  // The signer is real for every test but the two that need it to fail, which say so themselves.
+  stubs.embedManifest.mockImplementation(real.embedManifest);
+  return { ...real, ensureSigner: stubs.ensureSigner, embedManifest: stubs.embedManifest };
+});
+
+vi.mock("../src/edit/registry.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/edit/registry.js")>()),
+  passportExists: stubs.passportExists,
+}));
 
 let IMAGE: Buffer;
 
@@ -78,6 +99,8 @@ function body(parts: { file?: { name: string; type: string; bytes: Buffer }; fie
 describe("POST /prepare", () => {
   beforeAll(async () => {
     IMAGE = await makeImage(7);
+    stubs.ensureSigner.mockResolvedValue(undefined);
+    stubs.passportExists.mockResolvedValue(false);
     const pair = await generateKeyPair("ES256", { extractable: true });
     signing = pair.privateKey;
     verifying = pair.publicKey;
@@ -221,6 +244,65 @@ describe("POST /prepare", () => {
 
     expect(response.statusCode).toBe(415);
     expect(response.json()).toEqual({ error: "not-an-image" });
+  });
+
+  it("refuses a picture the registry already holds with 409, before anything is pinned", async () => {
+    stubs.passportExists.mockResolvedValueOnce(true);
+    const pinsBefore = pinned.size;
+    const { payload, headers } = body({
+      file: { name: "again.jpg", type: "image/jpeg", bytes: await makeImage(31) },
+      fields: { title: "Registered already", kind: "human" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:duplicate-user")}` },
+      remoteAddress: "203.0.113.24",
+    });
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json().error).toBe("already-registered");
+    expect(response.json().passportId).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
+
+  it("keeps the signer's own words, and any path in them, out of the answer", async () => {
+    const certPath = "/srv/moolam/secrets/chain.cert.pem";
+    stubs.embedManifest.mockRejectedValueOnce(
+      new SignerRefusedFile(`the signer at ${certPath} would not take this container`),
+    );
+
+    const { payload, headers } = body({
+      file: { name: "unsignable.jpg", type: "image/jpeg", bytes: await makeImage(32) },
+      fields: { title: "No manifest", kind: "human" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:unsigned-user")}` },
+      remoteAddress: "203.0.113.25",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const answer = response.json();
+    expect(answer.manifest.embedded).toBe(false);
+    expect(answer.manifest.reason).toBe("the manifest could not be embedded in this file");
+    expect(answer.passport.manifestHash).toBe(`0x${"00".repeat(32)}`);
+    expect(response.body).not.toContain(certPath);
+    expect(response.body).not.toContain(".pem");
+  }, 60_000);
+
+  it("does not mount at all on a host that cannot sign, rather than answering 200 unsigned", async () => {
+    const message = "no signing certificate or key found at /srv/moolam/chain.cert.pem and /srv/moolam/signer.key.pem";
+    stubs.ensureSigner.mockRejectedValueOnce(new SignerUnavailable(message));
+
+    await expect(
+      buildServer({ source: emptySource, logger: false, prepare: { keys: verifying } }),
+    ).rejects.toThrow(SignerUnavailable);
   });
 
   it("refuses an empty title, an over-long title and a kind the studio does not take", async () => {

@@ -1,14 +1,16 @@
+import { APIError } from "@privy-io/node";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { getAddress } from "viem";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
+import { embeddedWallets } from "../auth/wallet.js";
 import { env } from "../env.js";
-import { fingerprint, type Fingerprint, type Hex } from "../fingerprint.js";
+import type { Hex } from "../fingerprint.js";
 import { Busy, waitingGate } from "../generate/gate.js";
 import { generatorDomain, generatorWallet, signPassportAsGenerator } from "../generate/generatorSigner.js";
 import { Kind, type PassportInput } from "../generate/eip712.js";
-import { PromptRefused, createImage, type ImageUsage } from "../generate/imageModel.js";
-import { ownerContext, privyErrorText } from "../generate/privy.js";
+import { PromptRefused, billedOrUnknown, createImage, type ImageUsage } from "../generate/imageModel.js";
+import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import {
@@ -16,10 +18,9 @@ import {
   FINGERPRINT_VERSION,
   GENERATED_DESCRIPTION,
   fileSlug,
-  manifestDocument,
   passportMetadata,
 } from "../metadata.js";
-import { makeThumbnail, prepareImage, uprightImage } from "../prepare.js";
+import { prepareOrFallback, type PreparedResult } from "../prepare.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-agent/0.1.0";
@@ -46,6 +47,15 @@ const MODEL_TIMEOUT_MS = 60_000;
 const MIN_DEADLINE_SECONDS = 10 * 60;
 const MAX_DEADLINE_SECONDS = 2 * 60 * 60;
 
+/**
+ * How much of the deadline has to be left at the moment the agent signs.
+ *
+ * Drawing and pinning take most of a minute, and after that the person still has to answer a
+ * passkey prompt and wait for the transaction. Signing with less than two minutes left would hand
+ * them a passport that expires in their hand and a revert they paid for.
+ */
+const SIGN_WINDOW_SECONDS = 120;
+
 const bodySchema = z.object({
   prompt: z.string().trim().min(8).max(600),
   title: z.string().trim().min(1).max(120),
@@ -59,15 +69,7 @@ const bodySchema = z.object({
   ]),
 });
 
-interface DrawnImage {
-  /** The bytes that get pinned, and whose sha256 becomes the passport id. */
-  bytes: Buffer;
-  thumbnail: Buffer;
-  print: Fingerprint;
-  manifestHash: Hex;
-  manifestDoc?: unknown;
-  embedded: boolean;
-  reason?: string;
+interface DrawnImage extends PreparedResult {
   model: string;
   usage?: ImageUsage;
 }
@@ -84,10 +86,20 @@ interface DrawnImage {
  * bytes, does the agent sign. The browser adds the creator's passkey signature over the same
  * struct and sends the transaction, so nothing here can write to the chain.
  *
+ * The creator address on the passport has to be one of the caller's own Privy wallets, read from
+ * their user record rather than taken from the request, so nobody can have the agent co-sign a
+ * passport that credits someone else. The deadline is checked twice, once as the caller asked for
+ * it and once again just before the agent signs, because everything in between takes real time.
+ *
  * Answers 401 for a missing or foreign token, 400 for a bad prompt, title, creator or deadline,
- * 400 `prompt-refused` when the model's safety system turns the prompt down, 429 `quota` past
+ * 400 `prompt-refused` when the model's safety system turns the prompt down, 400 `deadline-passed`
+ * when too little of the window is left for a person to answer a passkey prompt, 403
+ * `creator-mismatch` when the creator is not one of the caller's wallets, 429 `quota` past
  * GENERATE_PER_DAY in a rolling day, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
  * the three outside services will not play, and 503 `busy` when no drawing slot came free.
+ *
+ * A picture the provider never drew gives the daily slot back. A call that timed out or died in
+ * the middle of drawing may have been billed, so that one keeps its slot.
  */
 export async function generateRoutes(
   app: FastifyInstance,
@@ -118,6 +130,31 @@ export async function generateRoutes(
     }
     const creator = getAddress(parsed.data.creator as Hex);
 
+    let wallets: Hex[];
+    try {
+      wallets = await embeddedWallets(privy(), identity.userId);
+    } catch (error) {
+      // A user id this Privy app does not know owns no wallet here, which for the caller is the
+      // same answer as asking for someone else's address.
+      if (error instanceof APIError && error.status === 404) {
+        request.log.warn({ url: request.url, user: identity.userId, creator }, "rejected: /generate unknown user");
+        return reply.code(403).send({ error: "creator-mismatch" });
+      }
+      request.log.error(
+        { url: request.url, reason: privyErrorText(error) },
+        "rejected: /generate wallet lookup failed",
+      );
+      return reply.code(502).send({ error: "sign-failed" });
+    }
+
+    if (!wallets.includes(creator)) {
+      request.log.warn(
+        { url: request.url, user: identity.userId, creator, wallets: wallets.join(" ") },
+        "rejected: /generate creator is not a wallet of the caller",
+      );
+      return reply.code(403).send({ error: "creator-mismatch" });
+    }
+
     const reservation = quota.take(identity.userId);
     if (!reservation.ok) {
       request.log.warn({ ip: request.ip, url: request.url, user: identity.userId }, "rejected: /generate quota");
@@ -139,9 +176,14 @@ export async function generateRoutes(
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate prompt refused");
         return reply.code(400).send({ error: "prompt-refused", reason: error.message });
       }
-      // The model may have drawn and billed before it failed, so this one keeps its quota slot.
+      // A 4xx is a call the provider turned down before it drew anything, so the slot goes back.
+      // A timeout, a dead connection or a 5xx may have drawn and billed, and that one keeps it.
+      const billed = billedOrUnknown(error);
+      if (!billed) {
+        quota.release(identity.userId, ticket);
+      }
       const reason = error instanceof Error ? error.message : String(error);
-      request.log.error({ url: request.url, reason }, "rejected: /generate model failed");
+      request.log.error({ url: request.url, reason, slotKept: billed }, "rejected: /generate model failed");
       return reply.code(502).send({ error: "model-failed" });
     }
 
@@ -159,7 +201,7 @@ export async function generateRoutes(
     );
 
     if (!drawn.embedded) {
-      request.log.warn({ url: request.url, reason: drawn.reason }, "generate: manifest not embedded");
+      request.log.warn({ url: request.url, reason: drawn.detail }, "generate: manifest not embedded");
     }
 
     const slug = fileSlug(parsed.data.title, drawn.print.sha256);
@@ -210,6 +252,17 @@ export async function generateRoutes(
       metadataURI: pinnedMetadata.uri,
       deadline,
     };
+
+    const secondsLeft = Number(deadline) - Math.floor(Date.now() / 1000);
+    if (secondsLeft < SIGN_WINDOW_SECONDS) {
+      // The picture was drawn and pinned, so the daily slot stays spent. Only the signature is
+      // refused, because one made now would expire before the creator could use it.
+      request.log.warn(
+        { url: request.url, user: identity.userId, secondsLeft },
+        "rejected: /generate too little of the deadline left to sign",
+      );
+      return reply.code(400).send({ error: "deadline-passed" });
+    }
 
     let agent;
     let generatorSig;
@@ -273,37 +326,13 @@ export async function generateRoutes(
  */
 async function draw(prompt: string, title: string): Promise<DrawnImage> {
   const image = await createImage(prompt, { timeoutMs: MODEL_TIMEOUT_MS });
-
-  try {
-    const prepared = await prepareImage(image.bytes, {
-      title,
-      claimGenerator: CLAIM_GENERATOR,
-      action: "c2pa.created",
-      digitalSourceType: AI_SOURCE_TYPE,
-    });
-    return {
-      bytes: prepared.original,
-      thumbnail: prepared.thumbnail,
-      print: prepared.fingerprint,
-      manifestHash: prepared.manifestHash,
-      manifestDoc: manifestDocument(prepared),
-      embedded: true,
-      model: image.model,
-      usage: image.usage,
-    };
-  } catch (error) {
-    const upright = await uprightImage(image.bytes);
-    return {
-      bytes: upright,
-      thumbnail: await makeThumbnail(upright),
-      print: await fingerprint(upright),
-      manifestHash: ZERO_BYTES32,
-      embedded: false,
-      reason: (error instanceof Error ? error.message : String(error)).slice(0, 200),
-      model: image.model,
-      usage: image.usage,
-    };
-  }
+  const prepared = await prepareOrFallback(image.bytes, {
+    title,
+    claimGenerator: CLAIM_GENERATOR,
+    action: "c2pa.created",
+    digitalSourceType: AI_SOURCE_TYPE,
+  });
+  return { ...prepared, model: image.model, usage: image.usage };
 }
 
 /**
