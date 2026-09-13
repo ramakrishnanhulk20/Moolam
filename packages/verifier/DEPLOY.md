@@ -137,11 +137,13 @@ two pages do not state is marked as a dashboard check rather than guessed.
    stay exactly `Dockerfile`.
 4. Add the environment variables from the table above as service variables.
    Two of them matter only on a host like this one. Set `TRUST_PROXY` to
-   `loopback,uniquelocal,100.64.0.0/10`, which covers Railway's own edge, and then
-   validate it: log `request.ip` once on the real host and check it is the
-   caller's address and not the proxy's, because a list that is too short puts
-   every caller in one rate-limit bucket and a list that is too long lets a caller
-   choose their own. Set `EXPECT_ROUTES=prepare,generate,edit` so a deploy that is
+   `loopback,uniquelocal,100.64.0.0/10,152.233.0.0/16`. The last range is where
+   Railway's edge proxy connected from on 2026-09-13 (peers 152.233.15.x and
+   152.233.68.x in the request log); the private ranges are there for a host
+   that fronts the container itself. Validate it after every change: the
+   request log's `remoteAddress` must be the caller's own address and not the
+   proxy's, because a list that is too short puts every caller in one rate-limit
+   bucket and a list that is too long lets a caller choose their own. Set `EXPECT_ROUTES=prepare,generate,edit` so a deploy that is
    missing a key stops at boot instead of serving a service with routes quietly
    switched off.
 5. Port and health check path: neither guide covers how Railway picks the port or
