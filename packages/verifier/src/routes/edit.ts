@@ -2,6 +2,7 @@ import { APIError } from "@privy-io/node";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
+import { SignerUnavailable } from "../c2pa.js";
 import {
   editCalldata,
   estimateEditGas,
@@ -10,17 +11,23 @@ import {
   revertName,
   tokenIdOf,
 } from "../edit/registry.js";
-import { SponsoredSendFailed, SponsoredSendPending, sendFromWallet } from "../edit/send.js";
-import { delegatedWallet, signerIds, walletSigners, type OwnerWallet } from "../edit/signers.js";
+import {
+  RECEIPT_WAIT_MS,
+  SponsoredSendFailed,
+  SponsoredSendPending,
+  awaitReceipt,
+  sendFromWallet,
+} from "../edit/send.js";
+import { delegatedWallets, signerIds, walletSigners, type OwnerWallet, type WalletSigner } from "../edit/signers.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
-import { ImageTooLarge, fingerprint, readImageHeader, type Fingerprint, type Hex } from "../fingerprint.js";
+import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Kind, type PassportInput } from "../generate/eip712.js";
-import { Busy, waitingGate } from "../generate/gate.js";
+import { Busy } from "../generate/gate.js";
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
-import { FINGERPRINT_VERSION, fileSlug, manifestDocument, passportMetadata } from "../metadata.js";
-import { makeThumbnail, prepareImage, uprightImage } from "../prepare.js";
+import { FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
+import { prepareOrFallback, type PreparedResult } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
 import { BadRequest, statusOf } from "./shared.js";
 
@@ -36,19 +43,12 @@ const EDITED_DESCRIPTION =
 /** An edit carries no generator agent: the person who holds the parent is the only author. */
 const NO_AGENT = 0n;
 const NO_GENERATOR_SIGNATURE = "0x" as Hex;
-const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
-
-/**
- * How many edits run at once across the service.
- *
- * The same shape as the drawing gate: two in flight, and a caller who would queue longer than the
- * wait below is told the service is busy rather than holding a connection open on nothing.
- */
-const MAX_CONCURRENT_EDITS = 2;
-const MAX_GATE_WAIT_MS = 90_000;
 
 /** How long the child passport stays valid. The send happens within seconds of the build. */
 const DEADLINE_SECONDS = 30 * 60;
+
+/** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
+const UNDECODABLE = "the file could not be decoded";
 
 const titleSchema = z.string().trim().min(1).max(120);
 const parentSchema = z
@@ -62,17 +62,6 @@ interface Upload {
   title: string;
   parentId: Hex;
   note: string;
-}
-
-interface EditedImage {
-  /** The bytes that get pinned, and whose sha256 becomes the child passport id. */
-  bytes: Buffer;
-  thumbnail: Buffer;
-  print: Fingerprint;
-  manifestHash: Hex;
-  manifestDoc?: unknown;
-  embedded: boolean;
-  reason?: string;
 }
 
 interface EditContext {
@@ -92,18 +81,29 @@ interface EditContext {
  * and this service never holds a key that could move their money.
  *
  * The wallet comes from the Privy user record, never from the request, and the ownership check is
- * read from the chain before anything is spent. Answers 401 for a missing or foreign token, 400 for
- * the fields, 413 and 415 for the image, 409 `no-signer` when the owner has granted nothing this
- * app can use, 404 `no-parent`, 403 `not-owner`, 429 `quota` past EDITS_PER_DAY, 502 `pin-failed`,
- * `sign-failed` or `send-failed`, and 503 `busy`.
+ * read from the chain before anything is spent. A creator with two embedded wallets gets the one
+ * that holds the parent. The daily allowance is taken once the request is known to be worth
+ * serving and given back whenever the edit fails before Privy was asked to send.
+ *
+ * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 409
+ * `no-signer` when the owner has granted nothing this app can use, 404 `no-parent`, 403
+ * `not-owner`, 429 `quota` past EDITS_PER_DAY, 502 `pin-failed`, `sign-failed`, `send-failed`,
+ * `send-pending`, `privy-unavailable` or `chain-unavailable`, and 503 `busy`.
  */
 export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
-  const gate = waitingGate(MAX_CONCURRENT_EDITS, MAX_GATE_WAIT_MS);
   const quota = dailyQuota(env.EDITS_PER_DAY);
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
   app.post("/edit", async (request: FastifyRequest, reply: FastifyReply) => {
+    // The one long wait in this route is the prepare gate, and a creator who closed the tab while
+    // waiting must not be charged a slot or have a transaction sent on their behalf.
+    let closed = request.raw.destroyed === true;
+    request.raw.once("close", () => {
+      closed = true;
+    });
+    const gone = (): boolean => closed || request.raw.destroyed === true;
+
     const identity = await identify(request, options.keys);
     if (identity === undefined) {
       request.log.warn({ ip: request.ip, url: request.url }, "rejected: /edit unauthorized");
@@ -129,21 +129,17 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
       return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
     }
 
-    // Reading the upload is a network wait, so it happens before the gate. Everything past here
-    // costs CPU, pins or a transaction, and that is what the gate holds back.
-    try {
-      return await gate(() => append(app, request, reply, identity, upload, { quota, chain, registry }));
-    } catch (error) {
-      if (error instanceof Busy) {
-        request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit busy");
-        return reply.code(503).send({ error: "busy" });
-      }
-      throw error;
-    }
+    return await append(app, request, reply, identity, upload, { quota, chain, registry }, gone);
   });
 }
 
-/** Everything from the owner's wallet to the transaction hash, once a slot at the gate is free. */
+/**
+ * Everything from the owner's wallet to the transaction the chain settled.
+ *
+ * The checks that cost nothing come first, then the allowance, then the work. Only the decode sits
+ * behind the shared prepare gate: holding a slot across the pins and the send would park two
+ * creators behind one slow network call each.
+ */
 async function append(
   app: FastifyInstance,
   request: FastifyRequest,
@@ -151,19 +147,27 @@ async function append(
   identity: PrivyIdentity,
   upload: Upload,
   context: EditContext,
+  gone: () => boolean,
 ): Promise<FastifyReply> {
   const client = privy();
 
   // The parent is checked first because it is the one claim in the request that costs nothing to
   // settle: a passport id nobody registered is wrong whoever is asking.
-  if (!(await passportExists(context.chain, context.registry, upload.parentId))) {
+  let known: boolean;
+  try {
+    known = await passportExists(context.chain, context.registry, upload.parentId);
+  } catch (error) {
+    request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /edit the chain did not answer");
+    return reply.code(502).send({ error: "chain-unavailable" });
+  }
+  if (!known) {
     request.log.warn({ url: request.url, parent: upload.parentId }, "rejected: /edit unknown parent");
     return reply.code(404).send({ error: "no-parent" });
   }
 
-  let wallet: OwnerWallet | undefined;
+  let wallets: OwnerWallet[];
   try {
-    wallet = await delegatedWallet(client, identity.userId);
+    wallets = await delegatedWallets(client, identity.userId);
   } catch (error) {
     // A user id this Privy app does not know has granted nothing, which is the same answer for the
     // browser as a user who never granted a signer: ask for one.
@@ -174,12 +178,42 @@ async function append(
     request.log.error({ url: request.url, reason: privyErrorText(error) }, "rejected: /edit user lookup failed");
     return reply.code(502).send({ error: "sign-failed" });
   }
-  if (wallet === undefined) {
+  if (wallets.length === 0) {
     request.log.warn({ url: request.url, user: identity.userId }, "rejected: /edit no delegated wallet");
     return reply.code(409).send({ error: "no-signer" });
   }
 
-  const granted = await walletSigners(client, wallet.id);
+  let owner: Hex;
+  try {
+    owner = await parentOwner(context.chain, context.registry, upload.parentId);
+  } catch (error) {
+    request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /edit the chain did not answer");
+    return reply.code(502).send({ error: "chain-unavailable" });
+  }
+
+  // A creator can hold more than one embedded wallet, and the parent belongs to exactly one of
+  // them, so the wallet is chosen by the address on chain rather than by being listed first.
+  const wallet = wallets.find((candidate) => candidate.address === owner);
+  if (wallet === undefined) {
+    request.log.warn(
+      { url: request.url, parent: upload.parentId, user: identity.userId, wallets: wallets.length },
+      "rejected: /edit caller does not hold the parent",
+    );
+    return reply.code(403).send({ error: "not-owner" });
+  }
+
+  let granted: WalletSigner[];
+  try {
+    granted = await walletSigners(client, wallet.id);
+  } catch (error) {
+    if (error instanceof APIError && error.status === 404) {
+      request.log.warn({ url: request.url, user: identity.userId }, "rejected: /edit unknown wallet");
+      return reply.code(409).send({ error: "no-signer" });
+    }
+    request.log.error({ url: request.url, reason: privyErrorText(error) }, "rejected: /edit Privy did not answer");
+    return reply.code(502).send({ error: "privy-unavailable" });
+  }
+
   const signer = granted.find((entry) => entry.signerId === env.PRIVY_EDIT_SIGNER_ID);
   if (signer === undefined) {
     request.log.warn(
@@ -198,177 +232,209 @@ async function append(
     return reply.code(409).send({ error: "no-signer" });
   }
 
-  const owner = await parentOwner(context.chain, context.registry, upload.parentId);
-  if (owner !== wallet.address) {
-    request.log.warn(
-      { url: request.url, parent: upload.parentId, user: identity.userId },
-      "rejected: /edit caller does not hold the parent",
-    );
-    return reply.code(403).send({ error: "not-owner" });
+  if (gone()) {
+    request.log.warn({ url: request.url, user: identity.userId }, "/edit: the caller left before the work began");
+    return reply.code(499).send({ error: "client-gone" });
   }
 
   const reservation = context.quota.take(identity.userId);
-  if (!reservation.ok) {
+  if (!reservation.ok || reservation.ticket === undefined) {
     request.log.warn({ url: request.url, user: identity.userId }, "rejected: /edit quota");
     return reply.code(429).send({ error: "quota", quota: reservation.state });
   }
+  const ticket = reservation.ticket;
 
-  const edited = await app.verifier.runPrepare(() => editedImage(upload.bytes, upload.title));
-  if (!edited.embedded) {
-    request.log.warn({ url: request.url, reason: edited.reason }, "edit: manifest not embedded");
-  }
-
-  const slug = fileSlug(upload.title, edited.print.sha256);
-  let pinnedImage;
-  let thumbnail;
-  let pinnedMetadata;
+  // Past here the allowance is spent unless it is given back, and the flag says when it must not
+  // be: once Privy has been asked to send, the edit may be on chain whatever this answer says.
+  let submitted = false;
   try {
-    pinnedImage = await pinFile(edited.bytes, `${slug}.jpg`, "image/jpeg");
-    thumbnail = await pinFile(edited.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
-    const manifest =
-      edited.manifestDoc === undefined ? undefined : await pinJson(edited.manifestDoc, `${slug}-c2pa.json`);
-
-    pinnedMetadata = await pinJson(
-      {
-        ...passportMetadata({
+    let edited: PreparedResult;
+    try {
+      edited = await app.verifier.runPrepare(() =>
+        prepareOrFallback(upload.bytes, {
           title: upload.title,
-          description: EDITED_DESCRIPTION,
-          image: pinnedImage.uri,
-          thumbnail: thumbnail.uri,
-          manifest: manifest?.uri,
-          agentId: NO_AGENT,
-          fingerprint: edited.print,
+          claimGenerator: CLAIM_GENERATOR,
+          action: "c2pa.edited",
+          digitalSourceType: EDITED_SOURCE_TYPE,
         }),
-        // The chain records the parent id, and these two are the human readable half of the same
-        // link: which passport this came from, and what the creator says they changed.
-        parent: upload.parentId,
-        edit: upload.note,
-      },
-      `${slug}.json`,
-    );
-  } catch (error) {
-    // pinFile's message carries Pinata's status and its answer, and never the token.
-    const reason = error instanceof Error ? error.message : String(error);
-    request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /edit pin failed");
-    return reply.code(502).send({ error: "pin-failed" });
-  }
-
-  const child: PassportInput = {
-    exactHash: edited.print.sha256 as Hex,
-    parentId: upload.parentId,
-    creator: wallet.address,
-    generatorAgentId: NO_AGENT,
-    phash: edited.print.phash,
-    blockhash256: edited.print.blockhash as Hex,
-    manifestHash: edited.manifestHash,
-    kind: Kind.Edited,
-    fingerprintVersion: FINGERPRINT_VERSION,
-    metadataURI: pinnedMetadata.uri,
-    deadline: BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS),
-  };
-
-  let gasLimit: bigint;
-  try {
-    gasLimit = await estimateEditGas(context.chain, context.registry, wallet.address, child, NO_GENERATOR_SIGNATURE);
-  } catch (error) {
-    // The call ran against current state and was refused, so nothing was signed or broadcast.
-    const name = revertName(error);
-    const reason = error instanceof Error ? error.message : String(error);
-    request.log.error({ url: request.url, reason: name ?? reason }, "rejected: /edit the registry refused");
-    return reply.code(502).send({ error: "send-failed", reason: name ?? "the registry refused the edit" });
-  }
-
-  let sent;
-  try {
-    sent = await sendFromWallet(client, wallet.id, {
-      to: context.registry,
-      data: editCalldata(child, NO_GENERATOR_SIGNATURE),
-      gasLimit,
-      chainId: MONAD_CHAIN_ID,
-      sponsor: true,
-      context: ownerContext(),
-    });
-  } catch (error) {
-    if (error instanceof SponsoredSendFailed || error instanceof SponsoredSendPending) {
-      request.log.error({ url: request.url, reason: error.message }, "rejected: /edit send failed");
-      return reply.code(502).send({ error: "send-failed", reason: error.message });
+      );
+    } catch (error) {
+      if (error instanceof Busy) {
+        request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit busy");
+        return reply.code(503).send({ error: "busy" });
+      }
+      if (error instanceof SignerUnavailable) {
+        request.log.error({ url: request.url, reason: error.message }, "rejected: /edit the signer is down");
+        return reply.code(502).send({ error: "sign-failed" });
+      }
+      // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
+      // truncated upload only fails here. That is the caller's file, not this service breaking.
+      request.log.warn({ url: request.url, reason: reasonOf(error) }, "rejected: /edit undecodable image");
+      return reply.code(415).send({ error: "not-an-image", reason: UNDECODABLE });
     }
-    // privyErrorText is Privy's status, code and message. The authorization key is never in it.
-    request.log.error({ url: request.url, reason: privyErrorText(error) }, "rejected: /edit sign failed");
-    return reply.code(502).send({ error: "sign-failed" });
-  }
 
-  request.log.info(
-    { user: identity.userId, parent: upload.parentId, child: child.exactHash, hash: sent.hash },
-    "edit: appended",
-  );
+    if (!edited.embedded) {
+      request.log.warn({ url: request.url, reason: edited.detail }, "edit: manifest not embedded");
+    }
 
-  return reply.send({
-    child: {
-      exactHash: child.exactHash,
-      parentId: child.parentId,
-      creator: child.creator,
-      generatorAgentId: child.generatorAgentId.toString(),
-      phash: child.phash.toString(),
-      blockhash256: child.blockhash256,
-      manifestHash: child.manifestHash,
-      kind: child.kind,
-      fingerprintVersion: child.fingerprintVersion,
-      metadataURI: child.metadataURI,
-      deadline: child.deadline.toString(),
-    },
-    tokenId: tokenIdOf(child.exactHash).toString(),
-    hash: sent.hash,
-    sponsored: sent.sponsored,
-    image: {
-      cid: pinnedImage.cid,
-      uri: pinnedImage.uri,
-      gatewayUrl: gatewayUrl(pinnedImage.uri),
-      bytes: edited.bytes.length,
-      width: edited.print.width,
-      height: edited.print.height,
-    },
-    thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
-    metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-    manifest: edited.embedded ? { embedded: true } : { embedded: false, reason: edited.reason },
-    quota: context.quota.state(identity.userId),
-  });
-}
+    const slug = fileSlug(upload.title, edited.print.sha256);
+    let pinnedImage;
+    let thumbnail;
+    let pinnedMetadata;
+    try {
+      pinnedImage = await pinFile(edited.bytes, `${slug}.jpg`, "image/jpeg");
+      thumbnail = await pinFile(edited.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
+      const manifest =
+        edited.manifestDoc === undefined ? undefined : await pinJson(edited.manifestDoc, `${slug}-c2pa.json`);
 
-/**
- * Prepares the edited picture for pinning, with the manifest when C2PA will sign it and without
- * when it will not.
- *
- * The action is c2pa.edited rather than c2pa.created, which is the one place inside the file that
- * says this picture is a change to another one. The parent id itself lives on chain and in the
- * pinned metadata, because the manifest builder here takes no field to put it in.
- */
-async function editedImage(bytes: Buffer, title: string): Promise<EditedImage> {
-  try {
-    const prepared = await prepareImage(bytes, {
-      title,
-      claimGenerator: CLAIM_GENERATOR,
-      action: "c2pa.edited",
-      digitalSourceType: EDITED_SOURCE_TYPE,
+      pinnedMetadata = await pinJson(
+        {
+          ...passportMetadata({
+            title: upload.title,
+            description: EDITED_DESCRIPTION,
+            image: pinnedImage.uri,
+            thumbnail: thumbnail.uri,
+            manifest: manifest?.uri,
+            agentId: NO_AGENT,
+            fingerprint: edited.print,
+          }),
+          // The chain records the parent id, and these two are the human readable half of the same
+          // link: which passport this came from, and what the creator says they changed.
+          parent: upload.parentId,
+          edit: upload.note,
+        },
+        `${slug}.json`,
+      );
+    } catch (error) {
+      // pinFile's message carries Pinata's status and its answer, and never the token.
+      const reason = error instanceof Error ? error.message : String(error);
+      request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /edit pin failed");
+      return reply.code(502).send({ error: "pin-failed" });
+    }
+
+    const child: PassportInput = {
+      exactHash: edited.print.sha256 as Hex,
+      parentId: upload.parentId,
+      creator: wallet.address,
+      generatorAgentId: NO_AGENT,
+      phash: edited.print.phash,
+      blockhash256: edited.print.blockhash as Hex,
+      manifestHash: edited.manifestHash,
+      kind: Kind.Edited,
+      fingerprintVersion: FINGERPRINT_VERSION,
+      metadataURI: pinnedMetadata.uri,
+      deadline: BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS),
+    };
+
+    let gasLimit: bigint;
+    try {
+      gasLimit = await estimateEditGas(context.chain, context.registry, wallet.address, child, NO_GENERATOR_SIGNATURE);
+    } catch (error) {
+      // The call ran against current state and was refused, so nothing was signed or broadcast.
+      const name = revertName(error);
+      request.log.error(
+        { url: request.url, reason: name ?? reasonOf(error) },
+        "rejected: /edit the registry refused",
+      );
+      return reply.code(502).send({ error: "send-failed", reason: name ?? "the registry refused the edit" });
+    }
+
+    if (gone()) {
+      request.log.warn({ url: request.url, user: identity.userId }, "/edit: the caller left before the send");
+      return reply.code(499).send({ error: "client-gone" });
+    }
+
+    let sent;
+    try {
+      submitted = true;
+      sent = await sendFromWallet(client, wallet.id, {
+        to: context.registry,
+        data: editCalldata(child, NO_GENERATOR_SIGNATURE),
+        gasLimit,
+        chainId: MONAD_CHAIN_ID,
+        sponsor: true,
+        context: ownerContext(),
+        log: request.log,
+      });
+    } catch (error) {
+      if (error instanceof SponsoredSendPending) {
+        // The send may still land, so the browser is told to check rather than to send again.
+        request.log.error(
+          { url: request.url, transactionId: error.transactionId },
+          "rejected: /edit the send had no hash in time",
+        );
+        return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId });
+      }
+      if (error instanceof SponsoredSendFailed) {
+        request.log.error({ url: request.url, reason: error.message }, "rejected: /edit send failed");
+        return reply.code(502).send({ error: "send-failed", reason: error.message });
+      }
+      // privyErrorText is Privy's status, code and message. The authorization key is never in it.
+      request.log.error({ url: request.url, reason: privyErrorText(error) }, "rejected: /edit sign failed");
+      return reply.code(502).send({ error: "sign-failed" });
+    }
+
+    // A hash says Privy broadcast it, not that the chain kept it, and this route is what the
+    // browser believes, so the receipt is read before the edit is called done.
+    let receipt;
+    try {
+      receipt = await awaitReceipt(context.chain, sent.hash, RECEIPT_WAIT_MS);
+    } catch (error) {
+      request.log.error(
+        { url: request.url, hash: sent.hash, reason: reasonOf(error) },
+        "rejected: /edit the receipt could not be read",
+      );
+      return reply.code(502).send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash });
+    }
+    if (receipt === undefined) {
+      request.log.error({ url: request.url, hash: sent.hash }, "rejected: /edit no receipt in time");
+      return reply.code(502).send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash });
+    }
+    if (receipt.status === "reverted") {
+      request.log.error(
+        { url: request.url, hash: sent.hash, reason: receipt.reason },
+        "rejected: /edit the chain reverted the edit",
+      );
+      return reply.code(502).send({ error: "send-failed", reason: receipt.reason ?? "reverted" });
+    }
+
+    request.log.info(
+      { user: identity.userId, parent: upload.parentId, child: child.exactHash, hash: sent.hash },
+      "edit: appended",
+    );
+
+    return reply.send({
+      child: {
+        exactHash: child.exactHash,
+        parentId: child.parentId,
+        creator: child.creator,
+        generatorAgentId: child.generatorAgentId.toString(),
+        phash: child.phash.toString(),
+        blockhash256: child.blockhash256,
+        manifestHash: child.manifestHash,
+        kind: child.kind,
+        fingerprintVersion: child.fingerprintVersion,
+        metadataURI: child.metadataURI,
+        deadline: child.deadline.toString(),
+      },
+      tokenId: tokenIdOf(child.exactHash).toString(),
+      hash: sent.hash,
+      sponsored: sent.sponsored,
+      image: {
+        cid: pinnedImage.cid,
+        uri: pinnedImage.uri,
+        gatewayUrl: gatewayUrl(pinnedImage.uri),
+        bytes: edited.bytes.length,
+        width: edited.print.width,
+        height: edited.print.height,
+      },
+      thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
+      metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
+      manifest: edited.embedded ? { embedded: true } : { embedded: false, reason: edited.reason },
+      quota: context.quota.state(identity.userId),
     });
-    return {
-      bytes: prepared.original,
-      thumbnail: prepared.thumbnail,
-      print: prepared.fingerprint,
-      manifestHash: prepared.manifestHash,
-      manifestDoc: manifestDocument(prepared),
-      embedded: true,
-    };
-  } catch (error) {
-    const upright = await uprightImage(bytes);
-    return {
-      bytes: upright,
-      thumbnail: await makeThumbnail(upright),
-      print: await fingerprint(upright),
-      manifestHash: ZERO_BYTES32,
-      embedded: false,
-      reason: (error instanceof Error ? error.message : String(error)).slice(0, 200),
-    };
+  } finally {
+    if (!submitted) context.quota.release(identity.userId, ticket);
   }
 }
 
@@ -443,4 +509,8 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
     }
     throw error;
   }
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -1,11 +1,15 @@
 // Covers POST /edit with Privy, the chain reads and Pinata all stubbed: a request with no token
 // stopping before anything is read, the two refusals a browser has to act on (no signer, not the
-// owner), an unknown parent, the daily allowance on a fake clock, and the happy path, where what
-// matters is the calldata that would reach the chain and the hash the answer carries back.
+// owner), an unknown parent, the daily allowance on a fake clock, which failures give that
+// allowance back and which keep it, the wallet chosen out of several by who holds the parent, the
+// answers for a send that reverted or never confirmed, and the happy path, where what matters is
+// the calldata that would reach the chain and the hash the answer carries back.
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
 // Those are proven live by packages/agents/scripts/prove-privy.ts step 6 and, from the browser,
-// by a real creator granting a signer.
+// by a real creator granting a signer. The sponsored poll itself is covered in
+// packages/agents/test/sponsored-send.test.ts.
 
+import { APIError } from "@privy-io/node";
 import { SignJWT, generateKeyPair } from "jose";
 import { decodeFunctionData, getAddress, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,17 +35,18 @@ const SETTINGS = vi.hoisted(() => {
 });
 
 const stubs = vi.hoisted(() => ({
-  delegatedWallet: vi.fn(),
+  delegatedWallets: vi.fn(),
   walletSigners: vi.fn(),
   passportExists: vi.fn(),
   parentOwner: vi.fn(),
   estimateEditGas: vi.fn(),
   send: vi.fn(),
+  receipt: vi.fn(),
 }));
 
 vi.mock("../src/edit/signers.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/edit/signers.js")>()),
-  delegatedWallet: stubs.delegatedWallet,
+  delegatedWallets: stubs.delegatedWallets,
   walletSigners: stubs.walletSigners,
 }));
 
@@ -55,6 +60,7 @@ vi.mock("../src/edit/registry.js", async (importOriginal) => ({
 vi.mock("../src/edit/send.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/edit/send.js")>()),
   sendFromWallet: stubs.send,
+  awaitReceipt: stubs.receipt,
 }));
 
 // The Privy client is never called in these tests: every function that would use it is stubbed
@@ -66,6 +72,8 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 }));
 
 const { registryEditAbi } = await import("../src/edit/registry.js");
+const { SponsoredSendFailed, SponsoredSendPending } = await import("../src/edit/send.js");
+const { Busy } = await import("../src/generate/gate.js");
 const { buildServer } = await import("../src/server.js");
 const emptySource = { load: async () => [] };
 
@@ -79,6 +87,10 @@ let signing: CryptoKey;
 let verifying: CryptoKey;
 let app: FastifyInstance;
 let picture: Buffer;
+/** How many of the next uploads to Pinata are answered with a failure instead of a cid. */
+let pinFailures = 0;
+/** Stands in for the shared prepare gate so the route's own handling of Busy can be exercised. */
+const prepareGate = vi.fn(async (task: () => Promise<unknown>) => await task());
 
 async function token(subject: string): Promise<string> {
   return await new SignJWT({})
@@ -152,6 +164,10 @@ describe("POST /edit", () => {
       if (url !== UPLOAD_URL) {
         return await realFetch(input, init);
       }
+      if (pinFailures > 0) {
+        pinFailures -= 1;
+        return new Response("gateway said no", { status: 500 });
+      }
       const form = init?.body as FormData;
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
@@ -162,6 +178,8 @@ describe("POST /edit", () => {
     });
 
     app = await buildServer({ source: emptySource, logger: false, edit: { keys: verifying } });
+    app.verifier.runPrepare = ((task: () => Promise<unknown>) =>
+      prepareGate(task)) as typeof app.verifier.runPrepare;
     await app.ready();
   });
 
@@ -172,8 +190,10 @@ describe("POST /edit", () => {
   });
 
   beforeEach(() => {
+    pinFailures = 0;
+    prepareGate.mockClear();
     stubs.passportExists.mockReset().mockResolvedValue(true);
-    stubs.delegatedWallet.mockReset().mockResolvedValue({ id: "privy-wallet-1", address: OWNER });
+    stubs.delegatedWallets.mockReset().mockResolvedValue([{ id: "privy-wallet-1", address: OWNER }]);
     stubs.walletSigners
       .mockReset()
       .mockResolvedValue([{ signerId: SETTINGS.signerId, policyIds: [SETTINGS.policyId] }]);
@@ -182,7 +202,15 @@ describe("POST /edit", () => {
     stubs.send
       .mockReset()
       .mockResolvedValue({ hash: HASH, sponsored: true, transactionId: "privy-tx-1" });
+    stubs.receipt.mockReset().mockResolvedValue({ status: "success" });
   });
+
+  /** What this creator has spent of the daily allowance, read off an edit that goes through. */
+  async function usedAfter(user: string): Promise<number> {
+    const next = await ask(user, goodFields("the one after"));
+    expect(next.statusCode).toBe(200);
+    return next.json().quota.used as number;
+  }
 
   it("refuses a request with no token before it reads the chain or Privy", async () => {
     const response = await ask("did:privy:no-token", goodFields(), { auth: false });
@@ -190,11 +218,11 @@ describe("POST /edit", () => {
     expect(response.statusCode).toBe(401);
     expect(response.json()).toEqual({ error: "unauthorized" });
     expect(stubs.passportExists).not.toHaveBeenCalled();
-    expect(stubs.delegatedWallet).not.toHaveBeenCalled();
+    expect(stubs.delegatedWallets).not.toHaveBeenCalled();
   });
 
   it("answers 409 no-signer when the creator has granted no wallet this app can sign on", async () => {
-    stubs.delegatedWallet.mockResolvedValueOnce(undefined);
+    stubs.delegatedWallets.mockResolvedValueOnce([]);
 
     const response = await ask("did:privy:no-signer-user", goodFields());
 
@@ -220,7 +248,7 @@ describe("POST /edit", () => {
 
     expect(response.statusCode).toBe(404);
     expect(response.json()).toEqual({ error: "no-parent" });
-    expect(stubs.delegatedWallet).not.toHaveBeenCalled();
+    expect(stubs.delegatedWallets).not.toHaveBeenCalled();
   });
 
   it("refuses a bad parent id, a missing title and an over-long note", async () => {
@@ -290,5 +318,135 @@ describe("POST /edit", () => {
     expect(answer.quota).toEqual({ used: 1, limit: 2, resetsAt: expect.any(Number) });
     expect(answer.image.gatewayUrl).toMatch(/^https:\/\/moolam-test\.mypinata\.cloud\/ipfs\//);
     expect(JSON.stringify(answer)).not.toContain("test-token-not-a-real-pinata-jwt");
+
+    // The decode is the one part of the route that runs behind the service's shared prepare gate.
+    expect(prepareGate).toHaveBeenCalledTimes(1);
   }, 60_000);
+
+  it("gives the daily slot back when the picture could not be pinned", async () => {
+    const user = "did:privy:pin-fail-user";
+    // pinFile retries a 500 once, so both attempts have to be refused for the pin to fail.
+    pinFailures = 2;
+
+    const refused = await ask(user, goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "pin-failed" });
+    expect(stubs.send).not.toHaveBeenCalled();
+    expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("gives the daily slot back when the registry refuses the edit before anything is sent", async () => {
+    const user = "did:privy:estimate-fail-user";
+    stubs.estimateEditGas.mockRejectedValueOnce(new Error("execution reverted"));
+
+    const refused = await ask(user, goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json().error).toBe("send-failed");
+    expect(stubs.send).not.toHaveBeenCalled();
+    expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("answers 415 rather than 500 for a picture whose header reads but whose pixels do not, and gives the slot back", async () => {
+    const user = "did:privy:truncated-user";
+    const truncated = picture.subarray(0, Math.floor(picture.length * 0.55));
+
+    const refused = await ask(user, goodFields(), { image: truncated });
+
+    expect(refused.statusCode).toBe(415);
+    expect(refused.json().error).toBe("not-an-image");
+    expect(stubs.send).not.toHaveBeenCalled();
+    expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("answers 503 busy and gives the daily slot back when no prepare slot comes free", async () => {
+    const user = "did:privy:busy-user";
+    prepareGate.mockRejectedValueOnce(new Busy(60_000));
+
+    const refused = await ask(user, goodFields());
+
+    expect(refused.statusCode).toBe(503);
+    expect(refused.json()).toEqual({ error: "busy" });
+    expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("answers send-failed and keeps the daily slot when Privy reports the send reverted", async () => {
+    const user = "did:privy:reverted-user";
+    stubs.send.mockRejectedValueOnce(new SponsoredSendFailed("privy-tx-9", "execution_reverted", HASH));
+
+    const refused = await ask(user, goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json().error).toBe("send-failed");
+    expect(refused.json().reason).toContain("execution_reverted");
+    expect(await usedAfter(user)).toBe(2);
+  }, 60_000);
+
+  it("answers send-pending, not send-failed, when the send never reported a hash", async () => {
+    stubs.send.mockRejectedValueOnce(new SponsoredSendPending("privy-tx-10", 60_000));
+
+    const refused = await ask("did:privy:pending-user", goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "send-pending", transactionId: "privy-tx-10" });
+  }, 60_000);
+
+  it("answers send-failed when the chain reverted the edit the hash belongs to", async () => {
+    stubs.receipt.mockResolvedValueOnce({ status: "reverted" });
+
+    const refused = await ask("did:privy:receipt-reverted-user", goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "send-failed", reason: "reverted" });
+  }, 60_000);
+
+  it("answers send-pending with the hash when the receipt does not arrive in time", async () => {
+    stubs.receipt.mockResolvedValueOnce(undefined);
+
+    const refused = await ask("did:privy:receipt-pending-user", goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({
+      error: "send-pending",
+      transactionId: "privy-tx-1",
+      hash: HASH,
+    });
+  }, 60_000);
+
+  it("edits from the delegated wallet that holds the parent, not the first one listed", async () => {
+    stubs.delegatedWallets.mockResolvedValueOnce([
+      { id: "privy-wallet-cold", address: STRANGER },
+      { id: "privy-wallet-2", address: OWNER },
+    ]);
+
+    const response = await ask("did:privy:two-wallets-user", goodFields());
+
+    expect(response.statusCode).toBe(200);
+    expect(stubs.walletSigners.mock.lastCall?.[1]).toBe("privy-wallet-2");
+    expect(stubs.send.mock.lastCall?.[1]).toBe("privy-wallet-2");
+    expect(response.json().child.creator).toBe(OWNER);
+  }, 60_000);
+
+  it("answers privy-unavailable when Privy cannot say who signs on the wallet", async () => {
+    stubs.walletSigners.mockRejectedValueOnce(
+      new APIError(503, { code: "service_unavailable" }, "upstream", undefined),
+    );
+
+    const refused = await ask("did:privy:privy-down-user", goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "privy-unavailable" });
+    expect(stubs.send).not.toHaveBeenCalled();
+  });
+
+  it("answers chain-unavailable when the ownership read cannot reach Monad", async () => {
+    stubs.parentOwner.mockRejectedValueOnce(new Error("fetch failed"));
+
+    const refused = await ask("did:privy:rpc-down-user", goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "chain-unavailable" });
+    expect(stubs.send).not.toHaveBeenCalled();
+  });
 });

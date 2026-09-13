@@ -1,10 +1,11 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
-import { ensureSigner } from "../c2pa.js";
+import { SignerUnavailable, ensureSigner } from "../c2pa.js";
 import { passportExists } from "../edit/registry.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
+import { Busy } from "../generate/gate.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import {
   CAPTURED_DESCRIPTION,
@@ -115,14 +116,31 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
       }
 
-      const studio = await app.verifier.runPrepare(() =>
-        prepareOrFallback(upload.bytes, {
-          title: upload.title,
-          claimGenerator: CLAIM_GENERATOR,
-          action: "c2pa.created",
-          digitalSourceType: CAPTURE_SOURCE_TYPE,
-        }),
-      );
+      let studio;
+      try {
+        studio = await app.verifier.runPrepare(() =>
+          prepareOrFallback(upload.bytes, {
+            title: upload.title,
+            claimGenerator: CLAIM_GENERATOR,
+            action: "c2pa.created",
+            digitalSourceType: CAPTURE_SOURCE_TYPE,
+          }),
+        );
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        if (error instanceof Busy) {
+          request.log.warn({ url: request.url, reason }, "rejected: /prepare busy");
+          return reply.code(503).send({ error: "busy" });
+        }
+        if (error instanceof SignerUnavailable) {
+          request.log.error({ url: request.url, reason }, "rejected: /prepare the signer is down");
+          return reply.code(502).send({ error: "sign-failed" });
+        }
+        // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
+        // truncated upload only fails here. That is the caller's file, not this service breaking.
+        request.log.warn({ url: request.url, reason }, "rejected: /prepare undecodable image");
+        return reply.code(415).send({ error: "not-an-image", reason: "the file could not be decoded" });
+      }
       if (!studio.embedded) {
         request.log.warn({ url: request.url, reason: studio.detail }, "prepare: manifest not embedded");
       }

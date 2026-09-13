@@ -46,11 +46,17 @@ const CREATOR = "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6" as Hex;
 
 let replies: FakeTransaction[] = [];
 let sendReply: unknown;
+/** How many of the next polls answer with a network failure instead of a record. */
+let failedPolls = 0;
 
 /** Answers each poll with the next reply, then repeats the last one for as long as it is asked. */
 const fakeClient = {
   transactions: () => ({
     get: async (id: string) => {
+      if (failedPolls > 0) {
+        failedPolls -= 1;
+        throw new Error(`Privy answered 503 for ${id}`);
+      }
       const next = replies.length > 1 ? replies.shift() : replies[0];
       return { ...(next as FakeTransaction), id };
     },
@@ -58,8 +64,14 @@ const fakeClient = {
   wallets: () => ({ ethereum: () => ({ sendTransaction: async () => sendReply }) }),
 } as never;
 
+/** Keeps a retried poll out of the test output while still proving it was reported. */
+const warnings: string[] = [];
+const quiet = { warn: (_details: Record<string, unknown>, message: string) => warnings.push(message) };
+
 beforeEach(() => {
   replies = [];
+  failedPolls = 0;
+  warnings.length = 0;
   sendStub.mockReset();
 });
 
@@ -86,6 +98,26 @@ describe("awaitPrivyHash", () => {
       transactionId: "tx-2",
       status: "execution_reverted",
     });
+  });
+
+  it("reads the dead status before the hash, so a reverted transaction is never handed back", async () => {
+    replies = [{ id: "tx-8", status: "execution_reverted", transaction_hash: HASH }];
+
+    await expect(awaitPrivyHash("tx-8", { timeoutMs: 5_000, pollMs: 5 })).rejects.toMatchObject({
+      name: "SponsoredSendFailed",
+      status: "execution_reverted",
+      hash: HASH,
+    });
+  });
+
+  it("keeps polling after a poll that failed and takes the hash from the next one", async () => {
+    failedPolls = 1;
+    replies = [{ id: "tx-9", status: "confirmed", transaction_hash: HASH }];
+
+    await expect(
+      awaitPrivyHash("tx-9", { timeoutMs: 5_000, pollMs: 5, log: quiet }),
+    ).resolves.toBe(HASH);
+    expect(warnings).toHaveLength(1);
   });
 
   it("throws SponsoredSendPending when the wait runs out with the send still in flight", async () => {

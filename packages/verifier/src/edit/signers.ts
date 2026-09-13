@@ -13,25 +13,27 @@ export interface WalletSigner {
 }
 
 /**
- * The user's own embedded wallet that this app is allowed to sign on, or undefined when there is
- * none.
+ * Every embedded wallet of the user's that this app is allowed to sign on, with checksummed
+ * addresses, in the order Privy lists them.
  *
- * The wallet is read from the Privy user record and never from the request, so a caller cannot
+ * All of them rather than the first one: a creator can hold two embedded wallets, and the passport
+ * being edited belongs to exactly one of those, so the caller picks by address. Returning the first
+ * delegated wallet used to refuse the second wallet's own passports as if a stranger had asked.
+ *
+ * The wallets are read from the Privy user record and never from the request, so a caller cannot
  * name a wallet that is not theirs. Privy marks a wallet the user has granted a signer on with
  * delegated true, and that flag is the only signal in the API that says the grant happened.
  * Ethereum only: this app writes to Monad.
  */
-export async function delegatedWallet(
-  client: PrivyClient,
-  userId: string,
-): Promise<OwnerWallet | undefined> {
+export async function delegatedWallets(client: PrivyClient, userId: string): Promise<OwnerWallet[]> {
   const user = await client.users()._get(userId);
+  const wallets: OwnerWallet[] = [];
   for (const account of user.linked_accounts) {
     if (!isEmbeddedWalletLinkedAccount(account)) continue;
     if (account.chain_type !== "ethereum" || !account.delegated || account.id === null) continue;
-    return { id: account.id, address: getAddress(account.address as Hex) };
+    wallets.push({ id: account.id, address: getAddress(account.address as Hex) });
   }
-  return undefined;
+  return wallets;
 }
 
 /** Who Privy currently accepts as a signer on a wallet, with the policies each one is held to. */
