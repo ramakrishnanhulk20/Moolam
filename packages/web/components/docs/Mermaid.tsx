@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useState } from "react";
+import { DiagramFrame } from "./DiagramFrame";
 
 /** The app's own palette, handed to mermaid so a diagram belongs to the page. */
 const palettes = {
@@ -99,8 +100,12 @@ export function Mermaid({ chart }: { chart: string }) {
             fontFamily: "var(--font-body), Inter, sans-serif",
             fontSize: "14px",
           },
-          flowchart: { curve: "basis", htmlLabels: true, padding: 16 },
-          sequence: { useMaxWidth: true, mirrorActors: false },
+          // useMaxWidth is mermaid's own squeeze: it would set the drawing to
+          // the width of the column, which turns a 2,700 px flowchart into 4 px
+          // labels. The drawings keep their natural size and the frame around
+          // them scrolls instead.
+          flowchart: { curve: "basis", htmlLabels: true, padding: 16, useMaxWidth: false },
+          sequence: { useMaxWidth: false, mirrorActors: false },
         });
         const drawn = await mermaid.render(id, chart);
         if (alive) {
@@ -128,13 +133,13 @@ export function Mermaid({ chart }: { chart: string }) {
     );
   }
 
-  return (
-    <figure className="docs-diagram" aria-busy={svg === null}>
-      {svg === null ? (
+  if (svg === null) {
+    return (
+      <figure className="docs-diagram" aria-busy>
         <span className="docs-diagram-wait">{t("diagram")}</span>
-      ) : (
-        <div className="docs-diagram-ink" dangerouslySetInnerHTML={{ __html: svg }} />
-      )}
-    </figure>
-  );
+      </figure>
+    );
+  }
+
+  return <DiagramFrame svg={svg} />;
 }
