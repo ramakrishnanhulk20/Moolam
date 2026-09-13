@@ -68,12 +68,27 @@ the boot loudly and names the variable.
 | `GENERATOR_AGENT_ID` | no | Defaults to `10249`, the `generator.agentId` in that file: the ERC-8004 identity the wallet owns |
 | `MOOLAM_REGISTRY_ADDRESS` | no | Defaults to the deployed registry in `packages/contracts/deployments/monad-mainnet.json`. The container ships only this package's source, so the address cannot be read from that file at runtime |
 | `GENERATE_PER_DAY` | no | Defaults to 3 pictures per creator per rolling 24 hours |
+| `PRIVY_EDIT_SIGNER_ID` | yes for `/edit` | The key quorum id from the Privy dashboard whose member is the public half of `PRIVY_AUTHORIZATION_KEY`. The browser passes the same id to `addSigners`, so the value here and the value the web app uses must match |
+| `PRIVY_EDIT_POLICY_ID` | yes for `/edit` | The policy id that quorum is held to, built by `sessionSignerPolicy` in `packages/agents/src/privy/policies.ts` and recorded in `packages/agents/.moolam/wallets.json`. A wallet whose grant does not carry it is answered 409 `no-signer` |
+| `EDITS_PER_DAY` | no | Defaults to 5 edits per creator per rolling 24 hours |
 
 Without `PINATA_JWT` and `PRIVY_APP_ID` the container still boots and still
 verifies images. It logs one line saying the prepare route is off and answers 404
 on that path. `/generate` needs all of those plus an image model key, the two
 Privy secrets and the wallet id, and it says the same kind of line and answers 404
-when one is missing.
+when one is missing. `/edit` needs what `/prepare` needs plus the two Privy
+secrets and the two ids above, and no image model key at all, since nothing is
+drawn. It says the same kind of line and answers 404 when one is missing.
+
+`/edit` is the only route that sends a transaction, and it never pays for one:
+Privy sponsors the gas and the creator's own wallet is the sender. The one
+`appendEdit` measured on the live proof run, in `proofs/privy.txt`, was sent with
+a limit of 482,480 and cost 0.0492 MON at 102 gwei, and Monad charges the limit
+rather than the gas used. That edit also carried a generator signature; the one
+this route sends does not, so it skips a signature recovery and one external call
+and lands a little under that figure. Plus four IPFS pins. `EDITS_PER_DAY` is the
+cap on both, counted in memory against the verified Privy user id, with the same
+restart hole as the generate allowance.
 
 ## What the generate route costs
 

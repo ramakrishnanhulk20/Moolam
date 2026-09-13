@@ -42,6 +42,12 @@ const DEFAULT_MOOLAM_REGISTRY = "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0";
 const DEFAULT_GENERATOR_AGENT_ID = "10249";
 
 /**
+ * How many edits one signed-in creator may append a day. Every edit spends four pins and gas
+ * Privy sponsors, so this is what stops one account draining both.
+ */
+const DEFAULT_EDITS_PER_DAY = "5";
+
+/**
  * How many pictures one signed-in creator may have drawn a day. Three is about 9 cents of image
  * model spend per creator, which is what keeps a public route off the OpenAI key and the Pinata
  * plan.
@@ -178,6 +184,29 @@ const schema = z
           return z.NEVER;
         }
         return BigInt(text);
+      }),
+    PRIVY_EDIT_SIGNER_ID: optionalPattern(
+      /^[a-z0-9]{20,32}$/i,
+      "PRIVY_EDIT_SIGNER_ID must be the key quorum id from the Privy dashboard, 20 to 32 characters",
+    ),
+    PRIVY_EDIT_POLICY_ID: optionalPattern(
+      /^[a-z0-9]{20,32}$/i,
+      "PRIVY_EDIT_POLICY_ID must be the policy id from the Privy dashboard, 20 to 32 characters",
+    ),
+    EDITS_PER_DAY: z
+      .string()
+      .trim()
+      .default(DEFAULT_EDITS_PER_DAY)
+      .transform((value, ctx) => {
+        const count = Number(value.length === 0 ? DEFAULT_EDITS_PER_DAY : value);
+        if (!Number.isInteger(count) || count < 1 || count > 1000) {
+          ctx.addIssue({
+            code: "custom",
+            message: "EDITS_PER_DAY must be a whole number between 1 and 1000",
+          });
+          return z.NEVER;
+        }
+        return count;
       }),
     GENERATE_PER_DAY: z
       .string()
@@ -354,6 +383,9 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GENERATOR_WALLET_ID: source.GENERATOR_WALLET_ID,
     GENERATOR_WALLET_ADDRESS: source.GENERATOR_WALLET_ADDRESS,
     GENERATOR_AGENT_ID: source.GENERATOR_AGENT_ID,
+    PRIVY_EDIT_SIGNER_ID: source.PRIVY_EDIT_SIGNER_ID,
+    PRIVY_EDIT_POLICY_ID: source.PRIVY_EDIT_POLICY_ID,
+    EDITS_PER_DAY: source.EDITS_PER_DAY,
     GENERATE_PER_DAY: source.GENERATE_PER_DAY,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,

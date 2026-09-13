@@ -2,6 +2,12 @@ import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateP256KeyPair, type AuthorizationContext } from "@privy-io/node";
+import {
+  grantSigner,
+  removeAllSigners,
+  signerIds,
+  walletSigners,
+} from "@moolam/verifier/src/edit/signers.js";
 import type { Hex } from "viem";
 import { ownerContext, privy } from "./client.js";
 import { readStore, sendFromWallet, updateStore } from "./serverWallet.js";
@@ -71,18 +77,14 @@ export async function grantSessionSigner(
   walletId: string,
   signer: SessionSigner,
 ): Promise<string[]> {
-  const wallet = await privy()
-    .wallets()
-    .update(walletId, {
-      additional_signers: [
-        {
-          signer_id: signer.keyQuorumId,
-          ...(signer.policyId ? { override_policy_ids: [signer.policyId] } : {}),
-        },
-      ],
-      authorization_context: ownerContext(),
-    });
-  return signerIds(wallet.additional_signers);
+  return signerIds(
+    await grantSigner(
+      privy(),
+      walletId,
+      { signerId: signer.keyQuorumId, policyId: signer.policyId },
+      ownerContext(),
+    ),
+  );
 }
 
 /**
@@ -90,17 +92,12 @@ export async function grantSessionSigner(
  * server equivalent: the owner keeps the wallet, the app loses the ability to sign on it.
  */
 export async function revokeSessionSigners(walletId: string): Promise<string[]> {
-  const wallet = await privy().wallets().update(walletId, {
-    additional_signers: [],
-    authorization_context: ownerContext(),
-  });
-  return signerIds(wallet.additional_signers);
+  return signerIds(await removeAllSigners(privy(), walletId, ownerContext()));
 }
 
 /** Who Privy currently accepts as a signer on a wallet, read from the live API. */
 export async function currentSigners(walletId: string): Promise<string[]> {
-  const wallet = await privy().wallets().get(walletId);
-  return signerIds(wallet.additional_signers);
+  return signerIds(await walletSigners(privy(), walletId));
 }
 
 export interface EditCall {
@@ -128,13 +125,6 @@ export async function appendEditAsSessionSigner(
     context: sessionContext(),
   });
   return { hash: sent.hash };
-}
-
-function signerIds(signers: unknown): string[] {
-  if (!Array.isArray(signers)) return [];
-  return signers
-    .map((signer) => (signer as { signer_id?: unknown }).signer_id)
-    .filter((id): id is string => typeof id === "string");
 }
 
 function readKey(): StoredKey | undefined {

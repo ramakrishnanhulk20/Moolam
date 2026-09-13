@@ -123,6 +123,39 @@ service count separately, which is a deliberate trade: the worst case is a few
 extra cents of image spend, and the alternative is a Redis this service does not
 otherwise need.
 
+`POST /edit` appends an edited version of a passport the caller already owns, and
+it is the one route here that writes to the chain. The creator's browser sends
+the edited picture with their Privy access token and three fields, `title`,
+`parentId` (the parent passport id) and `note` (up to 280 characters saying what
+changed). The service prepares and pins the picture exactly as `/prepare` does,
+with `c2pa.edited` as the action, builds the child passport that points at the
+parent, and sends `appendEdit` from the creator's own wallet.
+
+It can do that because the creator granted this app a signer on their wallet in
+the browser, scoped by a Privy policy that allows one function on one contract.
+The wallet is read from the Privy user record and never from the request, the
+ownership check is read from the chain, and Privy sponsors the gas, so the
+creator signs nothing and pays nothing. Revoking the signer in the app ends it.
+
+```sh
+curl -s -X POST http://localhost:4010/edit \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@edited.jpg" -F "title=Monsoon nets, brightened" \
+  -F "parentId=0x59bd...4440" -F "note=brightened the sky"
+```
+
+It answers with the child passport, its token id, the transaction hash, whether
+Privy sponsored it, the four content ids and what is left of the daily
+allowance. Order of refusals: 401 for a missing, expired or foreign token, 400
+for the fields, 413 and 415 for the image, 404 `no-parent` when the registry
+does not hold that parent, 409 `no-signer` when the creator has granted nothing
+this app can use under the edit policy, 403 `not-owner` when the parent belongs
+to another address, 429 `quota` past `EDITS_PER_DAY` in a rolling 24 hours, 502
+`pin-failed`, `sign-failed` or `send-failed`, and 503 `busy` when both slots have
+been full for 90 seconds. A `send-failed` carries the registry's own error name
+in `reason`, because the call is run against current state before Privy is asked
+to sign: a refused edit costs nothing and says which rule refused it.
+
 Browsers are only allowed to call any of this from an origin named in
 `CORS_ORIGINS`. Anything else gets no allow header back, which the browser turns
 into a refusal.
@@ -259,6 +292,9 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `AGENT_IMAGE_MODEL` | which model draws, default `gpt-image-1-mini` |
 | `AGENT_IMAGE_BASE_URL` | a different endpoint for that model, optional |
 | `GENERATE_PER_DAY` | how many pictures one creator may have drawn in 24 hours, default 3 |
+| `PRIVY_EDIT_SIGNER_ID` | the key quorum the creator grants on their wallet for `/edit`. Its member is the public half of `PRIVY_AUTHORIZATION_KEY`, which is how this service signs as that signer |
+| `PRIVY_EDIT_POLICY_ID` | the policy that quorum is held to: `appendEdit` on the Moolam registry, no MON, nothing else. A wallet that granted the signer without this policy is refused |
+| `EDITS_PER_DAY` | how many edits one creator may append in 24 hours, default 5 |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.

@@ -10,6 +10,7 @@ import type { PrivyKeys } from "./auth/privy.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env } from "./env.js";
 import { HammingIndex } from "./index.js";
 import { matchImage, type MatchResult } from "./match.js";
+import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
@@ -113,6 +114,10 @@ export function sourceFromEnv(): PassportSource {
  * generator agent, so it is mounted on the same terms and says once at boot when
  * it is off.
  *
+ * The edit route needs what prepare needs plus the Privy credentials and the two ids of the
+ * signer the creator granted, so it is mounted on the same terms and says once at boot when it is
+ * off. It does not need an image model key: nothing is drawn.
+ *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
  * the same either way, so switching payment on adds a route and changes nothing
@@ -127,6 +132,7 @@ export async function buildServer(
     payments?: x402HTTPResourceServer;
     prepare?: { keys?: PrivyKeys };
     generate?: { keys?: PrivyKeys };
+    edit?: { keys?: PrivyKeys };
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -198,6 +204,20 @@ export async function buildServer(
   } else {
     app.log.info(
       "generate route off: on top of what /prepare needs it wants an image model key, PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY and GENERATOR_WALLET_ID, and this host is missing at least one",
+    );
+  }
+
+  const canEdit =
+    canPrepare &&
+    env.PRIVY_APP_SECRET !== undefined &&
+    env.PRIVY_AUTHORIZATION_KEY !== undefined &&
+    env.PRIVY_EDIT_SIGNER_ID !== undefined &&
+    env.PRIVY_EDIT_POLICY_ID !== undefined;
+  if (options.edit !== undefined || canEdit) {
+    await app.register(editRoutes, options.edit ?? {});
+  } else {
+    app.log.info(
+      "edit route off: on top of what /prepare needs it wants PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY, PRIVY_EDIT_SIGNER_ID and PRIVY_EDIT_POLICY_ID, and this host is missing at least one",
     );
   }
 
