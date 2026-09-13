@@ -105,6 +105,40 @@ export function registerCalldata(input: PassportInput, auth: WebAuthnAuth, gener
 }
 
 /**
+ * The transaction that opens a dispute against a passport.
+ *
+ * The bond does not appear here: it rides on the transaction as its value, and
+ * the registry refuses anything that is not exactly what the policy asks for.
+ * Only the keccak256 of the URI is stored, computed by the contract itself, so
+ * what a challenger pointed at cannot be swapped afterwards.
+ */
+export function flagCalldata(passportId: Hex, evidenceURI: string): Hex {
+  return encodeFunctionData({
+    abi: registryAbi,
+    functionName: "flag",
+    args: [passportId, evidenceURI],
+  });
+}
+
+/**
+ * The transaction that settles an open dispute. Upheld marks the passport
+ * disputed for good and credits the bond back to the challenger; rejected
+ * leaves the record standing and credits the bond to the treasury.
+ */
+export function resolveCalldata(passportId: Hex, upheld: boolean): Hex {
+  return encodeFunctionData({
+    abi: registryAbi,
+    functionName: "resolve",
+    args: [passportId, upheld],
+  });
+}
+
+/** The transaction that pulls whatever the registry owes the sender. */
+export function withdrawCalldata(): Hex {
+  return encodeFunctionData({ abi: registryAbi, functionName: "withdraw", args: [] });
+}
+
+/**
  * Names the custom error behind a failed call.
  *
  * viem buries the revert data a few layers down, so every candidate string on

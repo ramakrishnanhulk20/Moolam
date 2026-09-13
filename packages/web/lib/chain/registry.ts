@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { chain, addresses, registryAbi } from "./client";
+import { chain, addresses, policyAbi, registryAbi } from "./client";
 import type { PassportInput } from "./calldata";
 
 export { getAgent } from "./agents";
@@ -205,4 +205,52 @@ export async function getDispute(id: Hex): Promise<Dispute | null> {
   })) as Dispute;
 
   return dispute.status === DisputeStatus.None ? null : dispute;
+}
+
+/**
+ * What the policy demands behind a flag, in wei.
+ *
+ * Read live rather than written into the app: the owner can change it through
+ * the policy's 24 hour timelock, and a page that promised yesterday's number
+ * would send a transaction the registry refuses.
+ */
+export async function disputeBond(): Promise<bigint> {
+  return (await chain.readContract({
+    address: addresses.policy,
+    abi: policyAbi,
+    functionName: "disputeBond",
+  })) as bigint;
+}
+
+/** The one address the policy lets settle disputes. */
+export async function resolver(): Promise<Hex> {
+  return (await chain.readContract({
+    address: addresses.policy,
+    abi: policyAbi,
+    functionName: "resolver",
+  })) as Hex;
+}
+
+/** Where a rejected challenger's bond is credited. */
+export async function treasury(): Promise<Hex> {
+  return (await chain.readContract({
+    address: addresses.policy,
+    abi: policyAbi,
+    functionName: "treasury",
+  })) as Hex;
+}
+
+/**
+ * What the registry owes this address and has not paid out, in wei.
+ *
+ * Money here is pulled and never pushed, so this is the number behind the
+ * withdraw button. It is zero for almost everybody.
+ */
+export async function withdrawable(who: Hex): Promise<bigint> {
+  return (await chain.readContract({
+    address: addresses.registry,
+    abi: registryAbi,
+    functionName: "withdrawable",
+    args: [who],
+  })) as bigint;
 }

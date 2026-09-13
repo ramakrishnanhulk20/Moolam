@@ -2,6 +2,7 @@ import { createPublicClient, http, type Abi, type Hex } from "viem";
 import { monad } from "viem/chains";
 import deployment from "../../../contracts/deployments/monad-mainnet.json";
 import registryAbiJson from "../../../contracts/abi/MoolamRegistry.json";
+import policyAbiJson from "../../../contracts/abi/VerifierPolicy.json";
 import { publicEnv } from "@/lib/env";
 
 /**
@@ -25,6 +26,13 @@ export const MONAD_EXPLORER = "https://monadvision.com";
 export const REPUTATION_REGISTRY = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" as Hex;
 
 export const registryAbi = registryAbiJson as Abi;
+
+/**
+ * The policy contract's ABI. The registry is immutable, so the bond, the
+ * resolver and the treasury are read from here rather than from the registry
+ * itself: these are the three settings that can still change.
+ */
+export const policyAbi = policyAbiJson as Abi;
 
 /**
  * Reads only, and only from the server. The RPC URL is public, but keeping the

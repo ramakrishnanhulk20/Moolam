@@ -397,6 +397,78 @@
         "open": "仍未了结",
         "upheld": "成立：异议是对的",
         "rejected": "驳回：记录继续有效"
+      },
+      "reason": "指控内容",
+      "evidenceElsewhere": "这次质疑的证据指向别处：",
+      "waiting": "等待政策指定的仲裁者。",
+      "outcome": {
+        "open": "等待政策指定的仲裁者。",
+        "upheld": "仲裁者支持了这次质疑。保证金已退回质疑者，这条记录被永久标记为有争议。",
+        "rejected": "仲裁者不支持这次质疑。保证金归入金库，记录维持原样。"
+      },
+      "flag": {
+        "link": "对这份护照提出质疑",
+        "close": "收起",
+        "heading": "用保证金为你的说法背书",
+        "what": "提出质疑需要 {bond} MON 保证金。由政策指定的仲裁者裁决：若他认同你，保证金会记回你名下；若不认同，保证金归金库。",
+        "whatUnknown": "提出质疑需要保证金，金额由政策合约设定。由政策指定的仲裁者裁决：若他认同你，保证金会记回你名下；若不认同，保证金归金库。",
+        "bondLabel": "保证金",
+        "balanceLabel": "你的账户",
+        "mon": "{amount} MON",
+        "reading": "读取中",
+        "fee": "网络手续费由 Moolam 支付。保证金它无法代付：那是你自己的 MON，交易一落账就会离开你的账户。",
+        "reasonLabel": "这条记录哪里有问题",
+        "reasonPlaceholder": "写下你知道的事，以及别人可以怎样核实。",
+        "reasonLeft": "还剩 {left}",
+        "reasonHint": "{min} 到 {max} 个字符。它随交易一起上链，因此是公开且永久的。",
+        "submit": "支付 {bond} MON 提出质疑",
+        "submitUnknown": "对这份护照提出质疑",
+        "steps": {
+          "account": {
+            "waiting": "由你的账户拿出保证金",
+            "running": "等待你的账户",
+            "done": "你的账户已拿出保证金",
+            "failed": "你的账户没有拿出保证金"
+          },
+          "send": {
+            "waiting": "Monad 记录这次质疑",
+            "running": "正在发送质疑",
+            "watching": "等待 Monad 显示它",
+            "done": "Monad 已记录",
+            "failed": "Monad 尚未显示"
+          }
+        },
+        "done": {
+          "label": "已记录",
+          "heading": "质疑已写进记录",
+          "body": "在仲裁者作出裁决之前，每个打开这份护照的人都会看到它正被质疑。",
+          "block": "区块",
+          "blockPending": "尚未读取",
+          "bondHeld": "你的保证金",
+          "bondHeldBody": "在争议了结之前由注册表本身保管，任何人都动不了。",
+          "openTx": "交易 {hash}"
+        },
+        "failure": {
+          "reasonShort": "再多写一点。仲裁者需要有可核实的内容，至少 {min} 个字符。",
+          "reasonLong": "超过了 {max} 个字符。全部内容都会上链，只保留要紧的部分。",
+          "notEnough": "你的账户比保证金还差 {short} MON。网络手续费由 Moolam 支付，但保证金必须是你自己的 MON。",
+          "badBond": "这个面板打开期间保证金发生了变化，注册表拒绝了这笔金额。已经重新读取，请再试一次。",
+          "alreadyOpen": "已经有人质疑过这份护照，注册表同一时间只允许一个未决争议。",
+          "alreadyDisputed": "这份护照已被标记为有争议，无法再次质疑。",
+          "notFound": "注册表中没有这个 id 的护照。",
+          "paused": "注册表目前暂停了新的记录和新的质疑。",
+          "declined": "交易发出前窗口被关闭了。什么都没有发送，也没有任何花费。",
+          "confirmPending": "质疑已被接受，Monad 还没有显示它。它仍可能落账，因此不能重复发送。",
+          "notResolver": "只有政策指定的仲裁者才能裁决争议。",
+          "noOpenDispute": "这份护照没有未决的争议。",
+          "nothingOwed": "注册表不欠这个账户任何款项。",
+          "unknown": "质疑没有发出去。"
+        },
+        "actions": {
+          "again": "再试一次",
+          "recheck": "再问一次 Monad",
+          "signIn": "登录"
+        }
       }
     },
     "elsewhere": "这条记录还在哪里",
@@ -795,5 +867,54 @@
     "zoomIn": "放大",
     "zoomOut": "缩小",
     "zoomReset": "复位"
+  },
+  "resolve": {
+    "title": "裁决争议",
+    "heading": "处理未决的质疑",
+    "kicker": "仲裁者控制台",
+    "rail": "争议",
+    "lede": "注册表上所有仍未了结的质疑，连同图片、指控内容和背后的保证金。任何人都可以阅读本页，但只有政策指定的地址才能在这里作出裁决。",
+    "resolverLabel": "仲裁者",
+    "policyNote": "政策合约只指定一个地址，更换它需要公开等待 24 小时，任何关注者都能在生效前作出反应。",
+    "youAre": "你就是仲裁者",
+    "stranger": "本页面属于政策指定的仲裁者。",
+    "strangerBody": "你目前以 {wallet} 登录，从这里发出的交易会被注册表拒绝。",
+    "signedOut": "请用仲裁者的账户登录后再裁决质疑。阅读本页不需要账户。",
+    "signIn": "登录",
+    "creditLabel": "注册表欠你的金额",
+    "creditUnread": "尚未读取",
+    "creditBody": "这里的钱是自取的，不会被推送。争议了结只记下一笔应收，在账户主动领取之前，任何款项都不会到账。",
+    "withdraw": "提取 {amount} MON",
+    "withdrawing": "发送中",
+    "withdrawn": "已支付，应收回到零。",
+    "mon": "{amount} MON",
+    "empty": "没有未决的质疑，这里没有等你处理的事。",
+    "error": "无法读取政策合约：{reason}",
+    "unavailable": "未决争议的列表来自索引，而索引没有响应：{reason}",
+    "passport": "护照",
+    "noPicture": "没有图片",
+    "claim": "指控内容",
+    "noReason": "这一条的证据是一个链接而不是文字：{uri}",
+    "unverified": "索引与注册表对这一条的证据不一致，因此这里不显示指控内容。裁决前请自行查看记录。",
+    "challenger": "质疑者",
+    "bond": "保证金",
+    "openedAt": "提出时间",
+    "uphold": "支持",
+    "reject": "驳回",
+    "upholdWhat": "支持会把记录永久标记为有争议，并把保证金记回质疑者名下。",
+    "rejectWhat": "驳回会让记录维持原样，并把保证金记入金库。",
+    "sending": "发送中",
+    "watching": "等待 Monad 显示它",
+    "settledUpheld": "已支持。保证金记回质疑者名下。",
+    "settledRejected": "已驳回。保证金记入金库。",
+    "failure": {
+      "notResolver": "注册表拒绝了：发送交易的账户不是政策指定的仲裁者。",
+      "noOpenDispute": "那份护照上已经没有未决的争议了。",
+      "nothingOwed": "注册表目前不欠这个账户任何款项。",
+      "notEnough": "账户不足以支付这笔交易。",
+      "declined": "交易发出前窗口被关闭了，什么都没有发送。",
+      "confirmPending": "交易已被接受，Monad 还没有显示。它仍可能落账，因此不能重复发送。",
+      "unknown": "没有成功。"
+    }
   }
 }

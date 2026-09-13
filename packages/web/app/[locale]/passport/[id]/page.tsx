@@ -5,6 +5,7 @@ import { readArt, type Art } from "@/components/passport/art";
 import { Attestations } from "@/components/passport/Attestations";
 import { CheckCopy } from "@/components/passport/CheckCopy";
 import { DisputeNote } from "@/components/passport/DisputeNote";
+import { DisputePanel } from "@/components/passport/DisputePanel";
 import { EditPanel } from "@/components/passport/EditPanel";
 import { Facts } from "@/components/passport/Facts";
 import { indexedAttestations } from "@/components/passport/indexed";
@@ -13,6 +14,7 @@ import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
 import { reason } from "@/lib/chain/client";
 import {
+  DisputeStatus,
   getAttestations,
   getChildren,
   getDispute,
@@ -142,9 +144,16 @@ export default async function PassportPage({
       <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
         {dispute === null ? null : (
           <div className="mb-16 rise">
-            <DisputeNote dispute={dispute} locale={locale} />
+            <DisputeNote dispute={dispute} passportId={passport.id} locale={locale} />
           </div>
         )}
+
+        {/* Only a signed in visitor who does not hold this passport sees this. */}
+        <DisputePanel
+          passportId={passport.id}
+          owner={owner}
+          disputeOpen={dispute !== null && dispute.status === DisputeStatus.Open}
+        />
 
         <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
           <div className="rise">

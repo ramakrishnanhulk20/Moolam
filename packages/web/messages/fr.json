@@ -395,6 +395,78 @@
         "open": "Ouverte, pas encore tranchée",
         "upheld": "Retenue : la contestation avait raison",
         "rejected": "Rejetée : l’enregistrement tient"
+      },
+      "reason": "L'accusation",
+      "evidenceElsewhere": "La preuve de cette contestation pointe ailleurs :",
+      "waiting": "En attente de l'arbitre désigné par la politique.",
+      "outcome": {
+        "open": "En attente de l'arbitre désigné par la politique.",
+        "upheld": "L'arbitre a donné raison à la contestation. La caution est revenue à son auteur et cet enregistrement est marqué contesté pour de bon.",
+        "rejected": "L'arbitre n'a pas donné raison. La caution est allée au trésor et l'enregistrement tient."
+      },
+      "flag": {
+        "link": "Contester ce passeport",
+        "close": "Fermer",
+        "heading": "Mettez une caution derrière votre accusation",
+        "what": "Une contestation coûte une caution de {bond} MON. C'est l'arbitre désigné par la politique qui tranche : s'il vous donne raison, la caution vous est recréditée. Sinon, elle part au trésor.",
+        "whatUnknown": "Une contestation demande une caution, dont le montant est fixé par le contrat de politique. C'est l'arbitre désigné par la politique qui tranche : s'il vous donne raison, la caution vous est recréditée. Sinon, elle part au trésor.",
+        "bondLabel": "La caution",
+        "balanceLabel": "Votre compte",
+        "mon": "{amount} MON",
+        "reading": "Lecture",
+        "fee": "Moolam paie les frais de réseau. Il ne peut pas payer la caution : ce sont vos propres MON, et ils quittent votre compte dès que cela est enregistré.",
+        "reasonLabel": "Ce qui cloche dans cet enregistrement",
+        "reasonPlaceholder": "Dites ce que vous savez, et comment quelqu'un d'autre pourrait le vérifier.",
+        "reasonLeft": "{left} restants",
+        "reasonHint": "Entre {min} et {max} caractères. Le texte voyage dans la transaction, il est donc public et définitif.",
+        "submit": "Contester avec {bond} MON",
+        "submitUnknown": "Contester ce passeport",
+        "steps": {
+          "account": {
+            "waiting": "Votre compte avance la caution",
+            "running": "En attente de votre compte",
+            "done": "Votre compte a avancé la caution",
+            "failed": "Votre compte n'a pas avancé la caution"
+          },
+          "send": {
+            "waiting": "Monad enregistre la contestation",
+            "running": "Envoi de la contestation",
+            "watching": "En attente de son affichage par Monad",
+            "done": "Monad l'a enregistrée",
+            "failed": "Monad ne l'a pas encore montrée"
+          }
+        },
+        "done": {
+          "label": "Enregistrée",
+          "heading": "La contestation est inscrite",
+          "body": "Tant que l'arbitre n'a pas tranché, quiconque ouvre ce passeport voit qu'il est contesté.",
+          "block": "Bloc",
+          "blockPending": "Pas encore lu",
+          "bondHeld": "Votre caution",
+          "bondHeldBody": "Le registre la garde lui même jusqu'au règlement du litige. Personne ne peut la déplacer.",
+          "openTx": "Transaction {hash}"
+        },
+        "failure": {
+          "reasonShort": "Écrivez un peu plus. Une contestation demande au moins {min} caractères, pour que l'arbitre ait de quoi vérifier.",
+          "reasonLong": "Cela dépasse {max} caractères. Tout part sur la chaîne, gardez donc l'essentiel.",
+          "notEnough": "Il manque {short} MON à votre compte pour la caution. Moolam paie les frais de réseau, mais la caution doit venir de vos propres MON.",
+          "badBond": "La caution a changé pendant que ce panneau était ouvert, le registre a donc refusé ce montant. Elle vient d'être relue, réessayez.",
+          "alreadyOpen": "Quelqu'un a déjà contesté ce passeport, et le registre n'accepte qu'un litige ouvert à la fois.",
+          "alreadyDisputed": "Ce passeport est déjà marqué contesté, il ne peut donc pas l'être une seconde fois.",
+          "notFound": "Le registre n'a aucun passeport portant cet id.",
+          "paused": "Les nouveaux enregistrements et les nouvelles contestations sont en pause sur le registre.",
+          "declined": "La fenêtre a été fermée avant que la transaction ne parte. Rien n'a été envoyé et rien n'a été dépensé.",
+          "confirmPending": "La contestation a été acceptée et Monad ne l'a pas encore montrée. Elle peut encore aboutir, il ne faut donc pas la renvoyer.",
+          "notResolver": "Seul l'arbitre désigné par la politique peut trancher un litige.",
+          "noOpenDispute": "Aucun litige n'est ouvert sur ce passeport.",
+          "nothingOwed": "Le registre ne doit rien à ce compte.",
+          "unknown": "La contestation n'est pas partie."
+        },
+        "actions": {
+          "again": "Réessayer",
+          "recheck": "Redemander à Monad",
+          "signIn": "Se connecter"
+        }
       }
     },
     "elsewhere": "Où ce dossier existe aussi",
@@ -793,5 +865,54 @@
     "zoomIn": "Agrandir",
     "zoomOut": "Réduire",
     "zoomReset": "Réinitialiser"
+  },
+  "resolve": {
+    "title": "Trancher les litiges",
+    "heading": "Réglez les contestations ouvertes",
+    "kicker": "Console de l'arbitre",
+    "rail": "LITIGES",
+    "lede": "Toutes les contestations encore ouvertes dans le registre, avec l'image, l'accusation et la caution derrière. Cette page se lit librement. Seule l'adresse désignée par la politique peut y trancher quoi que ce soit.",
+    "resolverLabel": "L'arbitre",
+    "policyNote": "Le contrat de politique désigne une seule adresse, et la changer demande 24 heures au vu de tous, de sorte que quiconque surveille peut réagir avant l'effet.",
+    "youAre": "Vous êtes l'arbitre",
+    "stranger": "Cette page est destinée à l'arbitre désigné par la politique.",
+    "strangerBody": "Vous êtes connecté en tant que {wallet}, le registre refuserait donc tout envoi depuis ici.",
+    "signedOut": "Connectez vous avec le compte de l'arbitre pour trancher une contestation. Lire cette page ne demande aucun compte.",
+    "signIn": "Se connecter",
+    "creditLabel": "Ce que le registre vous doit",
+    "creditUnread": "Pas encore lu",
+    "creditBody": "Ici l'argent se retire, il n'est jamais poussé. Un litige tranché n'inscrit qu'un crédit, et rien n'arrive sur un compte tant que ce compte ne le demande pas.",
+    "withdraw": "Retirer {amount} MON",
+    "withdrawing": "Envoi",
+    "withdrawn": "Versé. Le crédit est revenu à zéro.",
+    "mon": "{amount} MON",
+    "empty": "Aucune contestation n'est ouverte. Rien ici ne vous attend.",
+    "error": "La politique n'a pas pu être lue : {reason}",
+    "unavailable": "La liste des litiges ouverts vient de l'index, et l'index n'a pas répondu : {reason}",
+    "passport": "Passeport",
+    "noPicture": "Pas d'image",
+    "claim": "L'accusation",
+    "noReason": "La preuve de celle ci est un lien et non un texte : {uri}",
+    "unverified": "L'index et le registre ne s'accordent pas sur la preuve de celle ci, l'accusation n'est donc pas affichée. Lisez l'enregistrement avant de trancher.",
+    "challenger": "Auteur de la contestation",
+    "bond": "Caution",
+    "openedAt": "Ouverte",
+    "uphold": "Donner raison",
+    "reject": "Rejeter",
+    "upholdWhat": "Donner raison marque l'enregistrement contesté pour de bon et recrédite la caution à son auteur.",
+    "rejectWhat": "Rejeter laisse l'enregistrement tel quel et crédite la caution au trésor.",
+    "sending": "Envoi",
+    "watching": "En attente de son affichage par Monad",
+    "settledUpheld": "Contestation retenue. La caution revient à son auteur.",
+    "settledRejected": "Contestation rejetée. La caution va au trésor.",
+    "failure": {
+      "notResolver": "Le registre a refusé : le compte qui a envoyé n'est pas l'arbitre désigné par la politique.",
+      "noOpenDispute": "Ce passeport n'a plus de litige ouvert.",
+      "nothingOwed": "Le registre ne doit rien à ce compte pour l'instant.",
+      "notEnough": "Le compte ne pouvait pas couvrir cette transaction.",
+      "declined": "La fenêtre a été fermée avant le départ de la transaction. Rien n'a été envoyé.",
+      "confirmPending": "Cela a été accepté et Monad ne l'a pas encore montré. Cela peut encore aboutir, il ne faut donc pas renvoyer.",
+      "unknown": "Cela n'a pas abouti."
+    }
   }
 }

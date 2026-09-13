@@ -395,6 +395,78 @@
         "open": "Offen und noch nicht entschieden",
         "upheld": "Stattgegeben: der Einspruch hatte recht",
         "rejected": "Abgewiesen: der Eintrag bleibt"
+      },
+      "reason": "Der Vorwurf",
+      "evidenceElsewhere": "Der Beleg zu diesem Einspruch zeigt woandershin:",
+      "waiting": "Wartet auf die Schlichterin, die die Policy benennt.",
+      "outcome": {
+        "open": "Wartet auf die Schlichterin, die die Policy benennt.",
+        "upheld": "Der Einspruch wurde bestätigt. Die Kaution ging zurück an die einspruchsführende Person, und dieser Eintrag ist dauerhaft als bestritten markiert.",
+        "rejected": "Der Einspruch wurde abgewiesen. Die Kaution ging an die Treasury, der Eintrag bleibt bestehen."
+      },
+      "flag": {
+        "link": "Diesen Pass bestreiten",
+        "close": "Schließen",
+        "heading": "Hinterlege eine Kaution für deinen Vorwurf",
+        "what": "Ein Einspruch kostet eine Kaution von {bond} MON. Entschieden wird er von der Schlichterin, die die Policy benennt: gibt sie dir recht, wird die Kaution dir wieder gutgeschrieben. Sonst geht sie an die Treasury.",
+        "whatUnknown": "Ein Einspruch kostet eine Kaution, deren Höhe der Policy-Vertrag festlegt. Entschieden wird er von der Schlichterin, die die Policy benennt: gibt sie dir recht, wird die Kaution dir wieder gutgeschrieben. Sonst geht sie an die Treasury.",
+        "bondLabel": "Die Kaution",
+        "balanceLabel": "Dein Konto",
+        "mon": "{amount} MON",
+        "reading": "Wird gelesen",
+        "fee": "Die Netzwerkgebühr zahlt Moolam. Die Kaution kann es nicht zahlen: das sind deine eigenen MON, und sie verlassen dein Konto, sobald das hier eingetragen ist.",
+        "reasonLabel": "Was an diesem Eintrag falsch ist",
+        "reasonPlaceholder": "Schreibe, was du weißt, und wie jemand anderes es prüfen könnte.",
+        "reasonLeft": "{left} übrig",
+        "reasonHint": "Zwischen {min} und {max} Zeichen. Der Text reist in der Transaktion mit, ist also öffentlich und bleibt.",
+        "submit": "Mit {bond} MON bestreiten",
+        "submitUnknown": "Diesen Pass bestreiten",
+        "steps": {
+          "account": {
+            "waiting": "Dein Konto stellt die Kaution",
+            "running": "Wartet auf dein Konto",
+            "done": "Dein Konto hat die Kaution gestellt",
+            "failed": "Dein Konto hat die Kaution nicht gestellt"
+          },
+          "send": {
+            "waiting": "Monad trägt den Einspruch ein",
+            "running": "Einspruch wird gesendet",
+            "watching": "Wartet darauf, dass Monad ihn zeigt",
+            "done": "Monad hat ihn",
+            "failed": "Monad zeigt ihn noch nicht"
+          }
+        },
+        "done": {
+          "label": "Eingetragen",
+          "heading": "Der Einspruch steht im Eintrag",
+          "body": "Bis die Schlichterin entscheidet, sieht jede Person, die diesen Pass öffnet, dass er bestritten ist.",
+          "block": "Block",
+          "blockPending": "Noch nicht gelesen",
+          "bondHeld": "Deine Kaution",
+          "bondHeldBody": "Die Registry verwahrt sie selbst, bis der Streit entschieden ist. Niemand kann sie bewegen.",
+          "openTx": "Transaktion {hash}"
+        },
+        "failure": {
+          "reasonShort": "Schreibe etwas mehr. Ein Einspruch braucht mindestens {min} Zeichen, damit die Schlichterin etwas zum Prüfen hat.",
+          "reasonLong": "Das sind mehr als {max} Zeichen. Alles davon geht auf die Chain, also behalte nur das Wesentliche.",
+          "notEnough": "Deinem Konto fehlen {short} MON für die Kaution. Die Netzwerkgebühr zahlt Moolam, die Kaution müssen deine eigenen MON sein.",
+          "badBond": "Die Kaution hat sich geändert, während dieses Feld offen war, deshalb hat die Registry den Betrag abgelehnt. Sie wurde neu gelesen, versuche es noch einmal.",
+          "alreadyOpen": "Jemand hat diesen Pass bereits bestritten, und die Registry lässt jeweils einen offenen Streit zu.",
+          "alreadyDisputed": "Dieser Pass ist bereits als bestritten markiert und kann kein zweites Mal bestritten werden.",
+          "notFound": "Die Registry kennt keinen Pass mit dieser id.",
+          "paused": "Neue Einträge und neue Einsprüche sind auf der Registry gerade pausiert.",
+          "declined": "Das Fenster wurde geschlossen, bevor die Transaktion hinausging. Es wurde nichts gesendet und nichts ausgegeben.",
+          "confirmPending": "Der Einspruch wurde angenommen und Monad zeigt ihn noch nicht. Er kann noch eintreffen, also darf er nicht erneut gesendet werden.",
+          "notResolver": "Nur die Schlichterin, die die Policy benennt, kann einen Streit entscheiden.",
+          "noOpenDispute": "Zu diesem Pass ist kein Streit offen.",
+          "nothingOwed": "Die Registry schuldet diesem Konto nichts.",
+          "unknown": "Der Einspruch ging nicht hinaus."
+        },
+        "actions": {
+          "again": "Erneut versuchen",
+          "recheck": "Monad noch einmal fragen",
+          "signIn": "Anmelden"
+        }
       }
     },
     "elsewhere": "Wo dieser Eintrag sonst noch liegt",
@@ -793,5 +865,54 @@
     "zoomIn": "Vergrößern",
     "zoomOut": "Verkleinern",
     "zoomReset": "Zurücksetzen"
+  },
+  "resolve": {
+    "title": "Streitfälle entscheiden",
+    "heading": "Offene Einsprüche entscheiden",
+    "kicker": "Schlichtungskonsole",
+    "rail": "STREITFÄLLE",
+    "lede": "Jeder Einspruch, den die Registry noch offen hat, mit Bild, Vorwurf und der Kaution dahinter. Lesen darf diese Seite jede Person. Entscheiden darf hier nur die Adresse, die die Policy benennt.",
+    "resolverLabel": "Die Schlichterin",
+    "policyNote": "Der Policy-Vertrag benennt genau eine Adresse, und eine Änderung wartet 24 Stunden öffentlich, damit alle Zuschauenden vor dem Wirksamwerden reagieren können.",
+    "youAre": "Du bist die Schlichterin",
+    "stranger": "Diese Seite gehört der Schlichterin, die die Policy benennt.",
+    "strangerBody": "Du bist als {wallet} angemeldet, deshalb würde die Registry alles von hier ablehnen.",
+    "signedOut": "Melde dich mit dem Konto der Schlichterin an, um einen Einspruch zu entscheiden. Zum Lesen braucht es kein Konto.",
+    "signIn": "Anmelden",
+    "creditLabel": "Was die Registry dir schuldet",
+    "creditUnread": "Noch nicht gelesen",
+    "creditBody": "Geld wird hier abgeholt, nie zugeschoben. Ein entschiedener Streit trägt nur eine Gutschrift ein, und nichts erreicht ein Konto, bevor dieses Konto danach fragt.",
+    "withdraw": "{amount} MON abheben",
+    "withdrawing": "Wird gesendet",
+    "withdrawn": "Ausgezahlt. Die Gutschrift steht wieder auf null.",
+    "mon": "{amount} MON",
+    "empty": "Kein Einspruch ist offen. Hier wartet nichts auf dich.",
+    "error": "Die Policy konnte nicht gelesen werden: {reason}",
+    "unavailable": "Die Liste der offenen Streitfälle kommt aus dem Index, und der Index hat nicht geantwortet: {reason}",
+    "passport": "Pass",
+    "noPicture": "Kein Bild",
+    "claim": "Der Vorwurf",
+    "noReason": "Der Beleg dazu ist ein Link und kein Text: {uri}",
+    "unverified": "Index und Registry sind sich beim Beleg dazu nicht einig, deshalb steht der Vorwurf hier nicht. Lies den Eintrag selbst, bevor du entscheidest.",
+    "challenger": "Einspruch von",
+    "bond": "Kaution",
+    "openedAt": "Eröffnet",
+    "uphold": "Stattgeben",
+    "reject": "Abweisen",
+    "upholdWhat": "Stattgeben markiert den Eintrag dauerhaft als bestritten und schreibt die Kaution der einspruchsführenden Person wieder gut.",
+    "rejectWhat": "Abweisen lässt den Eintrag bestehen und schreibt die Kaution der Treasury gut.",
+    "sending": "Wird gesendet",
+    "watching": "Wartet darauf, dass Monad es zeigt",
+    "settledUpheld": "Stattgegeben. Die Kaution geht zurück an die einspruchsführende Person.",
+    "settledRejected": "Abgewiesen. Die Kaution geht an die Treasury.",
+    "failure": {
+      "notResolver": "Die Registry hat abgelehnt: das sendende Konto ist nicht die Schlichterin, die die Policy benennt.",
+      "noOpenDispute": "Zu diesem Pass ist kein Streit mehr offen.",
+      "nothingOwed": "Die Registry schuldet diesem Konto gerade nichts.",
+      "notEnough": "Das Konto konnte diese Transaktion nicht decken.",
+      "declined": "Das Fenster wurde geschlossen, bevor die Transaktion hinausging. Es wurde nichts gesendet.",
+      "confirmPending": "Es wurde angenommen und Monad zeigt es noch nicht. Es kann noch eintreffen, also darf es nicht erneut gesendet werden.",
+      "unknown": "Das ist nicht durchgegangen."
+    }
   }
 }

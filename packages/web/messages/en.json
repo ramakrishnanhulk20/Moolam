@@ -395,6 +395,78 @@
         "open": "Open, and not yet settled",
         "upheld": "Upheld: the challenge was right",
         "rejected": "Rejected: the record stands"
+      },
+      "reason": "The claim",
+      "evidenceElsewhere": "The evidence for this challenge points somewhere else:",
+      "waiting": "Waiting for the resolver named by the policy.",
+      "outcome": {
+        "open": "Waiting for the resolver named by the policy.",
+        "upheld": "The resolver agreed with the challenge. The bond went back to the challenger, and this record is marked disputed for good.",
+        "rejected": "The resolver did not agree. The bond went to the treasury, and the record stands."
+      },
+      "flag": {
+        "link": "Dispute this passport",
+        "close": "Close",
+        "heading": "Put a bond behind the claim",
+        "what": "A dispute costs a bond of {bond} MON. The resolver named by the policy settles it: if they agree with you, the bond is credited back to you. If they do not, it goes to the treasury.",
+        "whatUnknown": "A dispute costs a bond, and the policy contract sets how much. The resolver named by the policy settles it: if they agree with you, the bond is credited back to you. If they do not, it goes to the treasury.",
+        "bondLabel": "The bond",
+        "balanceLabel": "Your account",
+        "mon": "{amount} MON",
+        "reading": "Reading",
+        "fee": "Moolam pays the network fee. It cannot pay the bond: that is your own MON, and it leaves your account the moment this lands.",
+        "reasonLabel": "What is wrong with this record",
+        "reasonPlaceholder": "Say what you know, and how somebody else could check it.",
+        "reasonLeft": "{left} left",
+        "reasonHint": "Between {min} and {max} characters. It travels inside the transaction, so it is public and permanent.",
+        "submit": "Flag with {bond} MON",
+        "submitUnknown": "Flag this passport",
+        "steps": {
+          "account": {
+            "waiting": "Your account puts up the bond",
+            "running": "Waiting for your account",
+            "done": "Your account put up the bond",
+            "failed": "Your account did not put up the bond"
+          },
+          "send": {
+            "waiting": "Monad records the challenge",
+            "running": "Sending the challenge",
+            "watching": "Waiting for Monad to show it",
+            "done": "Monad has it",
+            "failed": "Monad has not shown it"
+          }
+        },
+        "done": {
+          "label": "Recorded",
+          "heading": "The challenge is on the record",
+          "body": "This passport now says it is challenged, to everybody who opens it, until the resolver settles it.",
+          "block": "Block",
+          "blockPending": "Not read yet",
+          "bondHeld": "Your bond",
+          "bondHeldBody": "Held by the registry itself until the dispute is settled. Nobody can move it.",
+          "openTx": "Transaction {hash}"
+        },
+        "failure": {
+          "reasonShort": "Say a little more. A challenge needs at least {min} characters, so the resolver has something to check.",
+          "reasonLong": "That is over {max} characters. All of it goes on chain, so keep the part that matters.",
+          "notEnough": "Your account is {short} MON short of the bond. Moolam pays the network fee, but the bond has to be your own MON.",
+          "badBond": "The bond changed while this panel was open, so the registry refused this amount. It has been read again, so try once more.",
+          "alreadyOpen": "Somebody has already challenged this passport, and the registry allows one open dispute at a time.",
+          "alreadyDisputed": "This passport is already marked disputed, so it cannot be challenged again.",
+          "notFound": "The registry has no passport with this id.",
+          "paused": "New records and new challenges are paused on the registry right now.",
+          "declined": "The window was closed before the transaction went out. Nothing was sent and nothing was spent.",
+          "confirmPending": "The challenge was accepted and Monad has not shown it yet. It may still land, so it must not be sent again.",
+          "notResolver": "Only the resolver named by the policy can settle a dispute.",
+          "noOpenDispute": "There is no open dispute on this passport.",
+          "nothingOwed": "The registry owes this account nothing.",
+          "unknown": "The challenge did not go out."
+        },
+        "actions": {
+          "again": "Try again",
+          "recheck": "Ask Monad again",
+          "signIn": "Sign in"
+        }
       }
     },
     "elsewhere": "Where else this record lives",
@@ -793,5 +865,54 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "zoomReset": "Reset"
+  },
+  "resolve": {
+    "title": "Resolve disputes",
+    "heading": "Settle the open challenges",
+    "kicker": "Resolver console",
+    "rail": "DISPUTES",
+    "lede": "Every challenge the registry still has open, with the picture, the claim and the bond behind it. Anyone can read this page. Only the address the policy names can settle anything on it.",
+    "resolverLabel": "The resolver",
+    "policyNote": "The policy contract names one address, and changing it waits 24 hours in the open, so anyone watching can react before it takes effect.",
+    "youAre": "You are the resolver",
+    "stranger": "This page is for the resolver named by the policy.",
+    "strangerBody": "You are signed in as {wallet}, so the registry would refuse anything sent from here.",
+    "signedOut": "Sign in with the resolver's account to settle a challenge. Reading this page needs no account.",
+    "signIn": "Sign in",
+    "creditLabel": "What the registry owes you",
+    "creditUnread": "Not read yet",
+    "creditBody": "Money here is pulled, never pushed. A settled dispute records a credit, and nothing reaches an account until that account asks for it.",
+    "withdraw": "Withdraw {amount} MON",
+    "withdrawing": "Sending",
+    "withdrawn": "Paid out. The credit is back to zero.",
+    "mon": "{amount} MON",
+    "empty": "No challenge is open. Nothing here is waiting on you.",
+    "error": "The policy could not be read: {reason}",
+    "unavailable": "The list of open disputes comes from the index, and the index did not answer: {reason}",
+    "passport": "Passport",
+    "noPicture": "No picture",
+    "claim": "The claim",
+    "noReason": "The evidence for this one is a link rather than text: {uri}",
+    "unverified": "The index and the registry disagree on the evidence for this one, so the claim is not printed here. Read the record itself before settling it.",
+    "challenger": "Challenger",
+    "bond": "Bond",
+    "openedAt": "Opened",
+    "uphold": "Uphold",
+    "reject": "Reject",
+    "upholdWhat": "Uphold marks the record disputed for good and credits the bond back to the challenger.",
+    "rejectWhat": "Reject leaves the record standing and credits the bond to the treasury.",
+    "sending": "Sending",
+    "watching": "Waiting for Monad to show it",
+    "settledUpheld": "Upheld. The bond is credited back to the challenger.",
+    "settledRejected": "Rejected. The bond is credited to the treasury.",
+    "failure": {
+      "notResolver": "The registry refused this: the account that sent it is not the resolver the policy names.",
+      "noOpenDispute": "There is no open dispute on that passport any more.",
+      "nothingOwed": "The registry owes this account nothing right now.",
+      "notEnough": "The account could not cover this transaction.",
+      "declined": "The window was closed before the transaction went out. Nothing was sent.",
+      "confirmPending": "It was accepted and Monad has not shown it yet. It may still land, so it must not be sent again.",
+      "unknown": "That did not go through."
+    }
   }
 }

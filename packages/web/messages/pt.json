@@ -396,6 +396,78 @@
         "open": "Aberta, ainda sem decisão",
         "upheld": "Aceita: a contestação estava certa",
         "rejected": "Rejeitada: o registro continua valendo"
+      },
+      "reason": "A acusação",
+      "evidenceElsewhere": "A prova desta contestação aponta para outro lugar:",
+      "waiting": "À espera do árbitro que a política indica.",
+      "outcome": {
+        "open": "À espera do árbitro que a política indica.",
+        "upheld": "O árbitro deu razão à contestação. A caução voltou a quem a apresentou e este registo fica marcado como contestado para sempre.",
+        "rejected": "O árbitro não deu razão. A caução foi para a tesouraria e o registo mantém-se."
+      },
+      "flag": {
+        "link": "Contestar este passaporte",
+        "close": "Fechar",
+        "heading": "Ponha uma caução por trás da sua acusação",
+        "what": "Uma contestação custa uma caução de {bond} MON. Quem decide é o árbitro que a política indica: se lhe der razão, a caução volta a ser creditada a si. Se não, vai para a tesouraria.",
+        "whatUnknown": "Uma contestação exige uma caução, e o contrato de política define quanto. Quem decide é o árbitro que a política indica: se lhe der razão, a caução volta a ser creditada a si. Se não, vai para a tesouraria.",
+        "bondLabel": "A caução",
+        "balanceLabel": "A sua conta",
+        "mon": "{amount} MON",
+        "reading": "A ler",
+        "fee": "A taxa de rede é paga pela Moolam. A caução não pode ser: são os seus próprios MON e saem da sua conta assim que isto ficar registado.",
+        "reasonLabel": "O que está errado neste registo",
+        "reasonPlaceholder": "Diga o que sabe e como outra pessoa poderia confirmá-lo.",
+        "reasonLeft": "faltam {left}",
+        "reasonHint": "Entre {min} e {max} caracteres. Viaja dentro da transação, por isso é público e permanente.",
+        "submit": "Contestar com {bond} MON",
+        "submitUnknown": "Contestar este passaporte",
+        "steps": {
+          "account": {
+            "waiting": "A sua conta entrega a caução",
+            "running": "À espera da sua conta",
+            "done": "A sua conta entregou a caução",
+            "failed": "A sua conta não entregou a caução"
+          },
+          "send": {
+            "waiting": "A Monad regista a contestação",
+            "running": "A enviar a contestação",
+            "watching": "À espera de que a Monad a mostre",
+            "done": "A Monad já a tem",
+            "failed": "A Monad ainda não a mostrou"
+          }
+        },
+        "done": {
+          "label": "Registada",
+          "heading": "A contestação está no registo",
+          "body": "Até o árbitro decidir, quem abrir este passaporte vê que ele está contestado.",
+          "block": "Bloco",
+          "blockPending": "Ainda por ler",
+          "bondHeld": "A sua caução",
+          "bondHeldBody": "Fica guardada pelo próprio registo até a disputa ser resolvida. Ninguém lhe pode tocar.",
+          "openTx": "Transação {hash}"
+        },
+        "failure": {
+          "reasonShort": "Escreva um pouco mais. Uma contestação precisa de pelo menos {min} caracteres para o árbitro ter o que verificar.",
+          "reasonLong": "Isso passa dos {max} caracteres. Tudo vai para a cadeia, por isso guarde só o que interessa.",
+          "notEnough": "Faltam {short} MON à sua conta para a caução. A taxa de rede é paga pela Moolam, mas a caução tem de ser dos seus próprios MON.",
+          "badBond": "A caução mudou enquanto este painel esteve aberto, por isso o registo recusou este valor. Já foi lida de novo, tente mais uma vez.",
+          "alreadyOpen": "Alguém já contestou este passaporte, e o registo aceita uma disputa aberta de cada vez.",
+          "alreadyDisputed": "Este passaporte já está marcado como contestado, por isso não pode ser contestado outra vez.",
+          "notFound": "O registo não tem nenhum passaporte com este id.",
+          "paused": "Neste momento o registo tem em pausa os novos registos e as novas contestações.",
+          "declined": "A janela foi fechada antes de a transação sair. Nada foi enviado e nada foi gasto.",
+          "confirmPending": "A contestação foi aceite e a Monad ainda não a mostrou. Ainda pode ficar registada, por isso não deve ser enviada outra vez.",
+          "notResolver": "Só o árbitro que a política indica pode resolver uma disputa.",
+          "noOpenDispute": "Este passaporte não tem nenhuma disputa aberta.",
+          "nothingOwed": "O registo não deve nada a esta conta.",
+          "unknown": "A contestação não chegou a sair."
+        },
+        "actions": {
+          "again": "Tentar de novo",
+          "recheck": "Perguntar outra vez à Monad",
+          "signIn": "Entrar"
+        }
       }
     },
     "elsewhere": "Onde mais este registro existe",
@@ -794,5 +866,54 @@
     "zoomIn": "Aproximar",
     "zoomOut": "Afastar",
     "zoomReset": "Restaurar"
+  },
+  "resolve": {
+    "title": "Resolver disputas",
+    "heading": "Resolva as contestações abertas",
+    "kicker": "Consola do árbitro",
+    "rail": "DISPUTAS",
+    "lede": "Todas as contestações que o registo ainda tem abertas, com a imagem, a acusação e a caução por trás. Qualquer pessoa pode ler esta página. Só o endereço que a política indica pode resolver algo aqui.",
+    "resolverLabel": "O árbitro",
+    "policyNote": "O contrato de política indica um único endereço, e mudá-lo espera 24 horas à vista de todos, por isso quem estiver a acompanhar pode reagir antes de produzir efeito.",
+    "youAre": "É você o árbitro",
+    "stranger": "Esta página é para o árbitro que a política indica.",
+    "strangerBody": "Entrou como {wallet}, por isso o registo recusaria qualquer coisa enviada daqui.",
+    "signedOut": "Entre com a conta do árbitro para resolver uma contestação. Ler esta página não exige conta.",
+    "signIn": "Entrar",
+    "creditLabel": "O que o registo lhe deve",
+    "creditUnread": "Ainda por ler",
+    "creditBody": "Aqui o dinheiro é levantado, nunca empurrado. Uma disputa resolvida apenas regista um crédito, e nada chega a uma conta enquanto essa conta não pedir.",
+    "withdraw": "Levantar {amount} MON",
+    "withdrawing": "A enviar",
+    "withdrawn": "Pago. O crédito voltou a zero.",
+    "mon": "{amount} MON",
+    "empty": "Não há nenhuma contestação aberta. Nada aqui está à sua espera.",
+    "error": "Não foi possível ler a política: {reason}",
+    "unavailable": "A lista de disputas abertas vem do índice, e o índice não respondeu: {reason}",
+    "passport": "Passaporte",
+    "noPicture": "Sem imagem",
+    "claim": "A acusação",
+    "noReason": "A prova desta é uma ligação e não texto: {uri}",
+    "unverified": "O índice e o registo não concordam sobre a prova desta, por isso a acusação não aparece aqui. Leia o registo antes de a resolver.",
+    "challenger": "Quem contestou",
+    "bond": "Caução",
+    "openedAt": "Aberta",
+    "uphold": "Dar razão",
+    "reject": "Recusar",
+    "upholdWhat": "Dar razão marca o registo como contestado para sempre e credita a caução de volta a quem contestou.",
+    "rejectWhat": "Recusar deixa o registo de pé e credita a caução à tesouraria.",
+    "sending": "A enviar",
+    "watching": "À espera de que a Monad o mostre",
+    "settledUpheld": "Com razão. A caução volta a quem contestou.",
+    "settledRejected": "Recusada. A caução vai para a tesouraria.",
+    "failure": {
+      "notResolver": "O registo recusou: a conta que enviou não é o árbitro que a política indica.",
+      "noOpenDispute": "Esse passaporte já não tem nenhuma disputa aberta.",
+      "nothingOwed": "O registo não deve nada a esta conta neste momento.",
+      "notEnough": "A conta não conseguiu cobrir esta transação.",
+      "declined": "A janela foi fechada antes de a transação sair. Nada foi enviado.",
+      "confirmPending": "Foi aceite e a Monad ainda não a mostrou. Ainda pode ficar registada, por isso não deve ser enviada outra vez.",
+      "unknown": "Isso não passou."
+    }
   }
 }

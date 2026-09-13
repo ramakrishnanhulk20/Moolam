@@ -395,6 +395,78 @@
         "open": "Abierta y todavía sin resolver",
         "upheld": "Aceptada: la impugnación tenía razón",
         "rejected": "Rechazada: el registro se mantiene"
+      },
+      "reason": "La acusación",
+      "evidenceElsewhere": "La prueba de esta impugnación apunta a otro sitio:",
+      "waiting": "A la espera del árbitro que nombra la política.",
+      "outcome": {
+        "open": "A la espera del árbitro que nombra la política.",
+        "upheld": "El árbitro dio la razón a la impugnación. La fianza volvió a quien la presentó y este registro queda marcado como disputado para siempre.",
+        "rejected": "El árbitro no dio la razón. La fianza pasó a la tesorería y el registro se mantiene."
+      },
+      "flag": {
+        "link": "Impugnar este pasaporte",
+        "close": "Cerrar",
+        "heading": "Pon una fianza detrás de tu acusación",
+        "what": "Una impugnación cuesta una fianza de {bond} MON. La resuelve el árbitro que nombra la política: si te da la razón, la fianza se te abona de vuelta. Si no, pasa a la tesorería.",
+        "whatUnknown": "Una impugnación exige una fianza, y el contrato de política fija cuánto. La resuelve el árbitro que nombra la política: si te da la razón, la fianza se te abona de vuelta. Si no, pasa a la tesorería.",
+        "bondLabel": "La fianza",
+        "balanceLabel": "Tu cuenta",
+        "mon": "{amount} MON",
+        "reading": "Leyendo",
+        "fee": "Moolam paga la comisión de red. La fianza no puede pagarla: son tus propios MON y salen de tu cuenta en cuanto esto se registra.",
+        "reasonLabel": "Qué está mal en este registro",
+        "reasonPlaceholder": "Cuenta lo que sabes y cómo podría comprobarlo otra persona.",
+        "reasonLeft": "quedan {left}",
+        "reasonHint": "Entre {min} y {max} caracteres. Viaja dentro de la transacción, así que es público y permanente.",
+        "submit": "Impugnar con {bond} MON",
+        "submitUnknown": "Impugnar este pasaporte",
+        "steps": {
+          "account": {
+            "waiting": "Tu cuenta aporta la fianza",
+            "running": "Esperando a tu cuenta",
+            "done": "Tu cuenta aportó la fianza",
+            "failed": "Tu cuenta no aportó la fianza"
+          },
+          "send": {
+            "waiting": "Monad registra la impugnación",
+            "running": "Enviando la impugnación",
+            "watching": "Esperando a que Monad la muestre",
+            "done": "Monad ya la tiene",
+            "failed": "Monad no la ha mostrado"
+          }
+        },
+        "done": {
+          "label": "Registrada",
+          "heading": "La impugnación está en el registro",
+          "body": "Hasta que el árbitro la resuelva, cualquiera que abra este pasaporte verá que está impugnado.",
+          "block": "Bloque",
+          "blockPending": "Aún sin leer",
+          "bondHeld": "Tu fianza",
+          "bondHeldBody": "La guarda el propio registro hasta que se resuelva la disputa. Nadie puede moverla.",
+          "openTx": "Transacción {hash}"
+        },
+        "failure": {
+          "reasonShort": "Escribe algo más. Una impugnación necesita al menos {min} caracteres para que el árbitro tenga qué comprobar.",
+          "reasonLong": "Pasa de {max} caracteres. Todo acaba en la cadena, así que deja solo lo que importa.",
+          "notEnough": "A tu cuenta le faltan {short} MON para la fianza. Moolam paga la comisión de red, pero la fianza tiene que ser tuya.",
+          "badBond": "La fianza cambió mientras este panel estaba abierto y el registro rechazó ese importe. Ya se ha vuelto a leer, inténtalo otra vez.",
+          "alreadyOpen": "Alguien ya impugnó este pasaporte y el registro admite una disputa abierta cada vez.",
+          "alreadyDisputed": "Este pasaporte ya está marcado como disputado, así que no se puede volver a impugnar.",
+          "notFound": "El registro no tiene ningún pasaporte con ese id.",
+          "paused": "Ahora mismo el registro tiene en pausa los nuevos registros y las nuevas impugnaciones.",
+          "declined": "La ventana se cerró antes de que saliera la transacción. No se envió nada y no se gastó nada.",
+          "confirmPending": "La impugnación fue aceptada y Monad aún no la muestra. Todavía puede confirmarse, así que no debe enviarse otra vez.",
+          "notResolver": "Solo el árbitro que nombra la política puede resolver una disputa.",
+          "noOpenDispute": "Este pasaporte no tiene ninguna disputa abierta.",
+          "nothingOwed": "El registro no le debe nada a esta cuenta.",
+          "unknown": "La impugnación no llegó a salir."
+        },
+        "actions": {
+          "again": "Reintentar",
+          "recheck": "Preguntar de nuevo a Monad",
+          "signIn": "Iniciar sesión"
+        }
       }
     },
     "elsewhere": "Dónde más existe este registro",
@@ -793,5 +865,54 @@
     "zoomIn": "Acercar",
     "zoomOut": "Alejar",
     "zoomReset": "Restablecer"
+  },
+  "resolve": {
+    "title": "Resolver disputas",
+    "heading": "Resuelve las impugnaciones abiertas",
+    "kicker": "Consola del árbitro",
+    "rail": "DISPUTAS",
+    "lede": "Todas las impugnaciones que el registro sigue teniendo abiertas, con la imagen, la acusación y la fianza detrás. Cualquiera puede leer esta página. Solo la dirección que nombra la política puede resolver algo aquí.",
+    "resolverLabel": "El árbitro",
+    "policyNote": "El contrato de política nombra una sola dirección, y cambiarla espera 24 horas a la vista de todos, así que quien esté mirando puede reaccionar antes de que surta efecto.",
+    "youAre": "Eres el árbitro",
+    "stranger": "Esta página es para el árbitro que nombra la política.",
+    "strangerBody": "Has iniciado sesión como {wallet}, así que el registro rechazaría cualquier cosa enviada desde aquí.",
+    "signedOut": "Inicia sesión con la cuenta del árbitro para resolver una impugnación. Leer esta página no necesita cuenta.",
+    "signIn": "Iniciar sesión",
+    "creditLabel": "Lo que el registro te debe",
+    "creditUnread": "Aún sin leer",
+    "creditBody": "Aquí el dinero se retira, nunca se empuja. Una disputa resuelta solo anota un abono, y nada llega a una cuenta hasta que esa cuenta lo pide.",
+    "withdraw": "Retirar {amount} MON",
+    "withdrawing": "Enviando",
+    "withdrawn": "Pagado. El abono vuelve a cero.",
+    "mon": "{amount} MON",
+    "empty": "No hay ninguna impugnación abierta. Aquí no te espera nada.",
+    "error": "No se pudo leer la política: {reason}",
+    "unavailable": "La lista de disputas abiertas viene del índice, y el índice no respondió: {reason}",
+    "passport": "Pasaporte",
+    "noPicture": "Sin imagen",
+    "claim": "La acusación",
+    "noReason": "La prueba de esta es un enlace y no un texto: {uri}",
+    "unverified": "El índice y el registro no coinciden en la prueba de esta, así que la acusación no se muestra aquí. Lee el registro antes de resolverla.",
+    "challenger": "Quien impugna",
+    "bond": "Fianza",
+    "openedAt": "Abierta",
+    "uphold": "Dar la razón",
+    "reject": "Rechazar",
+    "upholdWhat": "Dar la razón marca el registro como disputado para siempre y abona la fianza de vuelta a quien impugnó.",
+    "rejectWhat": "Rechazar deja el registro en pie y abona la fianza a la tesorería.",
+    "sending": "Enviando",
+    "watching": "Esperando a que Monad lo muestre",
+    "settledUpheld": "Con la razón. La fianza se abona de vuelta a quien impugnó.",
+    "settledRejected": "Rechazada. La fianza se abona a la tesorería.",
+    "failure": {
+      "notResolver": "El registro lo rechazó: la cuenta que lo envió no es el árbitro que nombra la política.",
+      "noOpenDispute": "Ese pasaporte ya no tiene ninguna disputa abierta.",
+      "nothingOwed": "El registro no le debe nada a esta cuenta ahora mismo.",
+      "notEnough": "La cuenta no pudo cubrir esta transacción.",
+      "declined": "La ventana se cerró antes de que saliera la transacción. No se envió nada.",
+      "confirmPending": "Fue aceptada y Monad aún no la muestra. Todavía puede confirmarse, así que no debe enviarse otra vez.",
+      "unknown": "Eso no salió adelante."
+    }
   }
 }
