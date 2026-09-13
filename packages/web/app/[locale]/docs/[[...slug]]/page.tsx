@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   }
   const { heading, text } = await renderPage(page.slug, page.body);
   return {
-    title: (heading ?? page.title) === "Moolam" ? "Documentation | Moolam" : `${heading ?? page.title} | Moolam`,
+    title: (heading ?? page.title) === "Moolam" ? "Documentation" : (heading ?? page.title),
     description: text.slice(0, 155).trim(),
   };
 }

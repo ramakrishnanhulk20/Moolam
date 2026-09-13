@@ -256,6 +256,19 @@ export function verifierUrl(path: string): string {
   return `${publicEnv.verifierUrl.replace(/\/$/, "")}${path}`;
 }
 
+/**
+ * The host a file is actually sent to, for the sentence on the verify page that
+ * promises where it goes. It is read from the same value the upload uses, so
+ * the promise cannot drift from the destination.
+ */
+export function verifierHost(): string {
+  try {
+    return new URL(publicEnv.verifierUrl).host;
+  } catch {
+    return publicEnv.verifierUrl;
+  }
+}
+
 async function post<T>(
   path: string,
   body: BodyInit,

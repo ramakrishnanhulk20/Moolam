@@ -3,9 +3,10 @@
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { shortHex } from "@/lib/chain/client";
+import { Mono } from "@/components/passport/Mono";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
-import { percent, type Answer, type Problem } from "./answer";
+import { agentChipId, percent, type Answer, type Problem } from "./answer";
 import type { MatchedPassport } from "./lookup";
 
 /** What the card is showing right now. The first two are its front, the last two its back. */
@@ -137,6 +138,7 @@ function Checking({ name }: { name: string }) {
 
 function Result({ answer, passport }: { answer: Answer; passport: MatchedPassport | null }) {
   const t = useTranslations("verify");
+  const agentId = agentChipId(passport);
 
   if (answer.kind === "miss") {
     return (
@@ -195,17 +197,19 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           >
             {t("openPassport")}
           </Link>
-          {passport === null ? null : (
+          {agentId === null ? null : (
             <Link
-              href={`/agent/${passport.generatorAgentId}`}
+              href={`/agent/${agentId}`}
               className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
             >
-              {t("openAgent", { id: passport.generatorAgentId })}
+              {t("openAgent", { id: agentId })}
             </Link>
           )}
         </div>
 
-        <p className="mt-6 break-all font-mono text-[11px] text-text-faint">{answer.id}</p>
+        <p className="mt-6 font-mono text-[11px] text-text-faint">
+          <Mono value={answer.id} />
+        </p>
         {passport === null ? <p className="mt-3 max-w-[44ch] text-sm text-text-muted">{t("lookupFailed")}</p> : null}
 
         <Measured answer={answer} />
@@ -297,7 +301,9 @@ function Readout({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
-      <dd className="mt-1.5 break-all font-mono text-sm text-text">{value}</dd>
+      <dd className="mt-1.5 text-sm text-text">
+        <Mono value={value} />
+      </dd>
     </div>
   );
 }

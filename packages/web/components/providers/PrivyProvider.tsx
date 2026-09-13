@@ -41,6 +41,13 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
         embeddedWallets: { ethereum: { createOnLogin: "users-without-wallets" } },
         defaultChain: monad,
         supportedChains: [monad],
+        // Nobody signs in with an external wallet here, but Privy still sets up
+        // its Coinbase connector, and the smart wallet half of it only knows a
+        // handful of chains. Left alone it prints "The configured chains are not
+        // supported by Coinbase Smart Wallet: 143" on every page load, which
+        // tells a Monad reviewer their own chain is unsupported. Asking for the
+        // plain wallet skips that whole path.
+        externalWallets: { coinbaseWallet: { config: { preference: { options: "eoaOnly" } } } },
         appearance: {
           theme: resolvedTheme === "light" ? "light" : "dark",
           accentColor: "#ffb7c5",

@@ -23,14 +23,19 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 // The brand files are read from disk and the faces are fetched, which is a node
-// job, and every figure on the card is read when the card is drawn.
+// job. The drawn card is then held for an hour: an unfurl in a chat has to come
+// back inside a second, and a passport's picture, title and block do not change
+// once it is registered. The header is what the cache in front of this route
+// reads; the segment setting is for the times Next can hold the picture itself.
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;
+
+const CARD_HEADERS = { "cache-control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" };
 
 const ACCENT = "#FFB7C5";
 const GROUND = "#0B0B0C";
 const PAPER = "#F5F3EF";
-const PICTURE_WIDTH = 800;
+const PICTURE_WIDTH = 660;
 const FETCH_TIMEOUT_MS = 6_000;
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
@@ -84,7 +89,8 @@ export function passportShareMetadata(input: {
   const base = `/${input.locale}/passport/${input.id}`;
 
   return {
-    title: heading,
+    // The heading already names Moolam, so the brand is not added twice.
+    title: { absolute: heading },
     description,
     openGraph: {
       title: heading,
@@ -147,19 +153,13 @@ const wordmark: Promise<string | null> = readFile(
   .then((file) => `data:image/svg+xml;base64,${Buffer.from(file, "utf8").toString("base64")}`)
   .catch(() => null);
 
-const GRAIN =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>" +
-      "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter>" +
-      "<rect width='200' height='200' filter='url(#n)' opacity='0.5'/></svg>",
-  );
-
 /**
  * The pinned picture as bytes the renderer can draw.
  *
- * The thumbnail is preferred: it is the same picture, it is a tenth of the size
- * and a crawler waits for nobody. Only the two formats the renderer decodes are
+ * The pinned 512 px thumbnail is what gets drawn: it is the same picture, it is
+ * a tenth of the bytes, and every pixel of the full image would land in the card
+ * as PNG that a crawler has to carry. The full image is a last resort for a
+ * record that pinned no thumbnail. Only the two formats the renderer decodes are
  * accepted, so anything else is treated as a picture that did not arrive and the
  * card falls back to the seal rather than drawing an empty rectangle.
  */
@@ -345,20 +345,6 @@ function CardFace({ card }: { card: Card }) {
         }}
       />
 
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: size.width,
-          height: size.height,
-          display: "flex",
-          backgroundImage: `url("${GRAIN}")`,
-          backgroundSize: "200px 200px",
-          opacity: 0.14,
-        }}
-      />
-
       <div style={{ position: "absolute", top: 48, left: 56, display: "flex", alignItems: "center", gap: 18 }}>
         {mark === null ? null : <img src={mark} width={34} height={34} alt="" />}
         <div style={{ display: "flex", fontSize: 21, letterSpacing: 4, color: "rgba(245,243,239,0.74)" }}>
@@ -412,5 +398,6 @@ export default async function PassportCard({
   return new ImageResponse(<CardFace card={drawn.card} />, {
     ...size,
     fonts: drawn.fonts.length === 0 ? undefined : drawn.fonts,
+    headers: CARD_HEADERS,
   });
 }

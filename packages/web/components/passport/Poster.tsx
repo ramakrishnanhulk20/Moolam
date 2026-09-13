@@ -2,23 +2,24 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
 import type { Art } from "./art";
-import { standingClass, type Standing } from "./labels";
 
 /**
  * The passport as a poster: the registered picture full-bleed, the scrim over
- * it, and the title, the seal and where this record stands sitting on the
- * still. A gateway that will not hand the picture over gets the seal on a dark
- * plate and a sentence, never a broken image icon.
+ * it, and the title and the seal sitting on the still. A gateway that will not
+ * hand the picture over gets the seal on a dark plate and a sentence, never a
+ * broken image icon.
+ *
+ * The date carries its own word. Under the kind alone, "Captured" sat where a
+ * label belongs and read as the label for the date, which said the wrong thing
+ * about a generated image.
  */
 export async function Poster({
   passport,
   art,
-  standing,
   locale,
 }: {
   passport: Passport;
   art: Art;
-  standing: Standing;
   locale: string;
 }) {
   const t = await getTranslations("passport");
@@ -58,11 +59,8 @@ export async function Poster({
 
       <div className="absolute inset-x-0 bottom-0 px-5 pb-8 sm:px-8 sm:pb-12">
         <div className="mx-auto w-full max-w-[1400px]">
-          <p className={`rise font-mono text-[11px] uppercase tracking-[0.24em] ${standingClass(standing)}`}>
-            {t(`standing.${standing}`)}
-          </p>
           <h1
-            className="rise mt-4 max-w-[16ch] font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]"
+            className="rise max-w-[16ch] font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]"
             style={{ animationDelay: "60ms" }}
           >
             {art.title ?? t("untitled")}
@@ -74,6 +72,7 @@ export async function Poster({
             <span>{kinds(String(passport.kind))}</span>
             <span aria-hidden className="h-[10px] w-px bg-line-strong" />
             <span>
+              {t("registered")}{" "}
               {format.dateTime(new Date(Number(passport.registeredAt) * 1000), {
                 dateStyle: "medium",
                 timeStyle: "short",

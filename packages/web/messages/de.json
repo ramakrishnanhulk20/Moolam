@@ -16,12 +16,12 @@
   },
   "meta": {
     "title": "Moolam",
-    "description": "Ein Pass für jedes KI-Bild, im Moment seiner Entstehung auf Monad eingetragen und aus jeder neu kodierten Kopie prüfbar."
+    "description": "Ein Pass für jedes KI-Bild, im Moment seiner Entstehung auf Monad eingetragen und aus jeder neu kodierten Kopie prüfbar.",
+    "titleTemplate": "%s | Moolam"
   },
   "header": {
     "brand": "Moolam",
     "tagline": "Pässe für erzeugte Bilder",
-    "theme": "Darstellung",
     "themeDark": "Dunkel",
     "themeLight": "Hell",
     "language": "Sprache",
@@ -32,7 +32,10 @@
       "verify": "Bild prüfen",
       "studio": "Bild eintragen",
       "docs": "Dokumentation"
-    }
+    },
+    "themeToLight": "Zum hellen Thema wechseln",
+    "themeToDark": "Zum dunklen Thema wechseln",
+    "languageChange": "Sprache wechseln"
   },
   "footer": {
     "network": "Monad Mainnet, Kette {chainId}",
@@ -50,7 +53,8 @@
       "unreachable": "nicht erreichbar",
       "block": "Block {block, number}",
       "records": "{count, number} Einträge"
-    }
+    },
+    "source": "Quellcode"
   },
   "common": {
     "copy": "Kopieren",
@@ -151,9 +155,7 @@
     "title": "Bild prüfen",
     "lede": "Lade irgendeine Kopie hoch. Moolam nimmt drei Fingerabdrücke und durchsucht jeden eingetragenen Pass, damit auch eine verkleinerte oder neu kodierte Datei ihren Eintrag findet.",
     "choose": "Bild wählen",
-    "chosen": "Gewählt: {name}",
-    "hint": "JPEG, PNG oder WebP, bis 20 MB. Die Datei geht an den Moolam Prüfdienst und wird nicht gespeichert.",
-    "submit": "Prüfen",
+    "hint": "JPEG, PNG oder WebP, bis 20 MB. Die Prüfung startet, sobald du eine Datei wählst.",
     "pending": "Fingerabdruck des Bildes wird genommen und das Register durchsucht.",
     "matched": "Treffer gefunden",
     "exact": "Bytes stimmen genau überein",
@@ -168,12 +170,11 @@
     "openPassport": "Pass öffnen",
     "error": "Die Prüfung lief nicht: {reason}",
     "offline": "Der Prüfdienst antwortet nicht. Starte ihn mit npm run dev:verifier aus dem Wurzelverzeichnis und versuch es noch einmal.",
-    "noFile": "Wähle zuerst ein Bild.",
     "kicker": "Jede Kopie prüfen",
     "rail": "Prüfen",
     "dropTitle": "Zieh ein Bild herein.",
     "replace": "Anderes wählen",
-    "privacy": "Dein Browser schickt die Datei selbst an den Prüfdienst. Sie wird abgetastet, verglichen und verworfen.",
+    "privacy": "Dein Browser schickt die Datei direkt an {host}, den Prüfdienst von Moolam. Dort wird sie abgetastet, mit dem Register verglichen und nicht gespeichert.",
     "checkingHeading": "Gelesen wird das Bild, nicht der Dateiname.",
     "checkingDetail": "Drei Fingerabdrücke, alle acht Ausrichtungen, dann eine Suche über jeden eingetragenen Pass. Ein paar Sekunden.",
     "idleHeading": "Noch keine Antwort",
@@ -215,7 +216,9 @@
       "mirror-rot90": "Gespiegelt, Vierteldrehung",
       "mirror-rot180": "Gespiegelt, auf dem Kopf",
       "mirror-rot270": "Gespiegelt, drei Viertel gedreht"
-    }
+    },
+    "busy": "Wird geprüft",
+    "again": "Weiteres Bild prüfen"
   },
   "passport": {
     "title": "Pass",
@@ -304,14 +307,19 @@
         "upheld": "Stattgegeben: der Einspruch hatte recht",
         "rejected": "Abgewiesen: der Eintrag bleibt"
       }
-    }
+    },
+    "elsewhere": "Wo dieser Eintrag sonst noch liegt",
+    "openTransaction": "Registrierungstransaktion",
+    "openToken": "Token auf MonadVision",
+    "openImage": "Bild öffnen",
+    "noManifest": "In dieser Datei war kein C2PA-Manifest eingebettet.",
+    "ipfsCid": "IPFS {cid}"
   },
   "agent": {
     "title": "Agent",
     "notFound": "Kein Agent mit dieser Id im ERC-8004 Identitätsregister.",
     "error": "Das Identitätsregister konnte nicht gelesen werden: {reason}. Lade die Seite neu.",
     "owner": "Inhaber",
-    "uri": "Agent-URI",
     "cardMissing": "Die Karte des Agenten konnte von ihrer URI nicht gelesen werden.",
     "reputation": {
       "heading": "Ruf",
@@ -320,7 +328,8 @@
       "empty": "Für diesen Agenten ist noch keine Rückmeldung erfasst. Der Prüfdienst schreibt nach jeder Prüfung eine.",
       "error": "Das Reputationsregister konnte nicht gelesen werden: {reason}.",
       "body": "Rückmeldungen werden von den Absendern selbst in das kanonische ERC-8004 Reputationsregister geschrieben, unter den Marken moolam und verification. Diese Seite liest die Zusammenfassung dieser beiden Marken und wendet die Nachkommastellen an, die das Register meldet.",
-      "registry": "Register {address}"
+      "registry": "Register {address}",
+      "secondary": "Eine zweite Zahl, nicht die Kennzahl"
     },
     "unnamed": "Die Karte dieses Agenten trägt keinen Namen",
     "identityRegistry": "Identitätsregister",
@@ -366,7 +375,11 @@
       "error": "Der Index konnte nicht gelesen werden: {reason}.",
       "untitled": "Ohne Titel",
       "noThumbnail": "Keine Vorschau angeheftet"
-    }
+    },
+    "cardLabel": "Agentenkarte",
+    "cardInline": "Diese Karte steckt in der Token-URI selbst, es gibt also nichts zu öffnen.",
+    "cardShow": "Das JSON der Karte ansehen",
+    "ipfsCid": "IPFS {cid}"
   },
   "studio": {
     "kicker": "Studio",

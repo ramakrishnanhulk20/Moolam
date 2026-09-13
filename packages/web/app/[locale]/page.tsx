@@ -15,7 +15,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   // The card itself is app/opengraph-image.tsx, which Next attaches to every
   // route under it along with these two lines. Setting openGraph by hand here
   // would replace that whole block and take the picture with it.
-  return { title: t("title"), description: t("line") };
+  // The home page is the one page whose title is the brand on its own, so it
+  // steps around the template rather than reading "Moolam | Moolam".
+  return { title: { absolute: t("title") }, description: t("line") };
 }
 
 /**

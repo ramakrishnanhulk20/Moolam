@@ -44,6 +44,26 @@ export interface AgentCard {
   privy: PrivyFacts | null;
 }
 
+/**
+ * The whole card as a reader could check it, for the disclosure on the agent
+ * page. Null when there is no document to show, so the page offers nothing
+ * rather than an empty panel.
+ *
+ * This exists because a token URI that carries its card inline is a wall of
+ * base64. Printing that on the page told nobody anything; the document inside
+ * it, folded away until asked for, tells them everything.
+ */
+export function cardText(document: unknown): string | null {
+  if (document === null || document === undefined) {
+    return null;
+  }
+  try {
+    return JSON.stringify(document, null, 2);
+  } catch {
+    return null;
+  }
+}
+
 export function readCard(card: unknown): AgentCard | null {
   const parsed = cardSchema.safeParse(card);
   if (!parsed.success) {

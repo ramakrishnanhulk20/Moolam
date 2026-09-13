@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
 import { AgentPoster } from "@/components/agent/AgentPoster";
 import { readCard } from "@/components/agent/card";
 import { Signing } from "@/components/agent/Signing";
 import { Standing } from "@/components/agent/Standing";
+import { indexKnowsAgent } from "@/components/agent/known";
 import { Works } from "@/components/agent/Works";
 import { signedWorks, type SignedWork } from "@/components/agent/signed";
 import { AgentNotFound } from "@/lib/chain/agents";
@@ -12,6 +14,11 @@ import { reason } from "@/lib/chain/client";
 import { getAgent, getReputation, getReputationClients } from "@/lib/chain/registry";
 import { generatorRecord, type GeneratorRecord } from "@/lib/data/passports";
 
+/**
+ * The tab carries the agent's own name when its card has one. The card is read
+ * from the identity registry, the same read the page makes, and any failure
+ * falls back to the number rather than costing the page its head.
+ */
 export async function generateMetadata({
   params,
 }: {
@@ -19,7 +26,18 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, id } = await params;
   const t = await getTranslations({ locale, namespace: "agent" });
-  return { title: `${t("title")} ${id}` };
+  const numbered = `${t("title")} ${id}`;
+
+  if (!/^[0-9]+$/.test(id)) {
+    return { title: numbered };
+  }
+
+  try {
+    const named = readCard((await getAgent(BigInt(id))).card)?.name?.trim();
+    return { title: named === undefined || named === "" ? numbered : named };
+  } catch {
+    return { title: numbered };
+  }
 }
 
 /**
@@ -40,7 +58,7 @@ export default async function AgentPage({
   const t = await getTranslations("agent");
 
   if (!/^[0-9]+$/.test(id)) {
-    return <Notice text={t("notFound")} />;
+    notFound();
   }
 
   const agentId = BigInt(id);
@@ -50,7 +68,7 @@ export default async function AgentPage({
     agent = await getAgent(agentId);
   } catch (error) {
     if (error instanceof AgentNotFound) {
-      return <Notice text={t("notFound")} />;
+      notFound();
     }
     return <Notice text={t("error", { reason: reason(error) })} tone="failed" />;
   }
@@ -69,6 +87,10 @@ export default async function AgentPage({
     record = await generatorRecord(agentId);
   } catch (error) {
     recordError = reason(error);
+  }
+
+  if (!indexKnowsAgent(record, recordError)) {
+    notFound();
   }
 
   let works: SignedWork[] = [];
@@ -93,7 +115,7 @@ export default async function AgentPage({
         locale={locale}
       />
 
-      <Signing agentId={agentId} card={card} uri={agent.uri} />
+      <Signing agentId={agentId} card={card} document={agent.card} uri={agent.uri} />
 
       <Works works={works} error={worksError} locale={locale} />
     </article>

@@ -1,7 +1,7 @@
 {
   "name": "@moolam/verifier",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Image fingerprinting, dihedral matching, C2PA soft bindings and the Moolam verify service.",
   "type": "module",
   "scripts": {

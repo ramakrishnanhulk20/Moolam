@@ -29,6 +29,20 @@ export interface Art {
 const TIMEOUT_MS = 8_000;
 
 /**
+ * The content id inside a stored URI, so a link can be named after what it
+ * points at rather than after whichever gateway is reading it today. Null when
+ * the URI is not an IPFS one at all.
+ */
+export function cidOf(uri: string): string | null {
+  if (uri.startsWith("ipfs://")) {
+    const rest = uri.slice("ipfs://".length);
+    return rest.length === 0 ? null : rest;
+  }
+  const found = /\/ipfs\/([^/?#]+)/.exec(uri);
+  return found === null ? null : found[1];
+}
+
+/**
  * Reads one passport's metadata through the IPFS gateway.
  *
  * A gateway that is slow, rate limited or missing the document costs the

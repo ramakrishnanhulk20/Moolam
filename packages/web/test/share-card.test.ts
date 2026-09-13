@@ -54,8 +54,10 @@ describe("the passport page's head", () => {
     fallbackDescription: APP_LINE,
   });
 
+  // The heading already names the product, so the title is absolute: the
+  // template on the locale layout would otherwise add the brand a second time.
   it("names the record and the product", () => {
-    expect(metadata.title).toBe("Mikasa on Moolam");
+    expect(metadata.title).toEqual({ absolute: "Mikasa on Moolam" });
     expect(metadata.openGraph?.title).toBe("Mikasa on Moolam");
   });
 
@@ -84,7 +86,7 @@ describe("the passport page's head", () => {
 
   it("falls back to the product's own sentence when nothing was pinned", () => {
     const bare = passportShareMetadata({ locale: "en", id: ID, fallbackDescription: APP_LINE });
-    expect(bare.title).toBe(`Passport 0x75bf8b…c1a0 on Moolam`);
+    expect(bare.title).toEqual({ absolute: `Passport 0x75bf8b…c1a0 on Moolam` });
     expect(bare.description).toBe(APP_LINE);
   });
 

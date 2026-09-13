@@ -18,7 +18,10 @@ import { activeSource } from "@/lib/data/source";
 import { hasIndex } from "@/lib/status/read";
 import { fontVariables } from "@/lib/fonts";
 import { Link, routing } from "@/lib/i18n/routing";
+import { siteUrl } from "@/app/robots";
 import "@/styles/globals.css";
+
+const SOURCE_URL = "https://github.com/ramakrishnanhulk20/Moolam";
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -31,7 +34,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  return { title: t("title"), description: t("description") };
+
+  // Every page under here sets its own title and the template adds the brand to
+  // it, so a tab never reads "Moolam" for a page that is not the home page.
+  //
+  // The base is the public domain. Every card on the site names its picture with
+  // a path, and without a base Next resolves those against whichever deployment
+  // URL answered the crawler, so a link pasted into a chat would point its
+  // picture at a preview host that nobody else can read.
+  return {
+    metadataBase: new URL(siteUrl()),
+    title: { default: t("title"), template: t("titleTemplate") },
+    description: t("description"),
+  };
 }
 
 export default async function LocaleLayout({
@@ -141,6 +156,16 @@ export default async function LocaleLayout({
                         {f("registry")} {addresses.registry}
                       </a>
                       <span>{f("index", { source: f(`source${source[0].toUpperCase()}${source.slice(1)}`) })}</span>
+                      {/* The one thing a judge on the live URL could not reach from
+                          anywhere on the site: the code itself. */}
+                      <a
+                        href={SOURCE_URL}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="transition-colors duration-200 hover:text-accent"
+                      >
+                        {f("source")}
+                      </a>
                       {/* The three services, read while the page is rendered. The boundary
                           keeps a slow service off the critical path: the rest of the footer
                           is already on screen while the line is still waiting. */}

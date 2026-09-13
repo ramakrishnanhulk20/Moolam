@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
-import type { AgentCard } from "./card";
+import { cidOf } from "@/components/passport/art";
+import { Mono } from "@/components/passport/Mono";
+import { cardText, type AgentCard } from "./card";
 
 /**
  * How a passport gets this agent's name on it, and only what the code proves.
@@ -11,11 +13,24 @@ import type { AgentCard } from "./card";
  * when the agent's own card records a wallet or a policy: this app does not
  * claim where a key lives.
  */
-export async function Signing({ agentId, card, uri }: { agentId: bigint; card: AgentCard | null; uri: string }) {
+export async function Signing({
+  agentId,
+  card,
+  document,
+  uri,
+}: {
+  agentId: bigint;
+  card: AgentCard | null;
+  /** The card exactly as it was read, for the disclosure. */
+  document: unknown;
+  uri: string;
+}) {
   const t = await getTranslations("agent.signs");
   const a = await getTranslations("agent");
   const steps = ["sign", "recover", "own"] as const;
   const inline = uri.startsWith("data:");
+  const json = cardText(document);
+  const cid = cidOf(uri);
 
   return (
     <section className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
@@ -64,22 +79,36 @@ export async function Signing({ agentId, card, uri }: { agentId: bigint; card: A
           </div>
 
           <div className="mt-6">
-            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{a("uri")}</p>
-            <p className="mt-1.5 break-all font-mono text-xs leading-relaxed text-text-muted">
-              {inline ? (
-                // A card carried inline in the token URI: there is nothing to open, so it is shown as it is stored.
-                uri
-              ) : (
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{a("cardLabel")}</p>
+            {inline ? (
+              <>
+                {/* A card carried inside the token URI is a wall of base64. The
+                    document it decodes to is the useful thing, and it stays
+                    folded away until a reader asks for it. */}
+                <p className="mt-1.5 max-w-[52ch] text-sm leading-relaxed text-text-muted">{a("cardInline")}</p>
+                {json === null ? null : (
+                  <details className="mt-3 border border-line bg-bg-raised">
+                    <summary className="cursor-pointer px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent">
+                      {a("cardShow")}
+                    </summary>
+                    <pre className="max-h-[22rem] overflow-auto border-t border-line px-4 py-4 font-mono text-[11px] leading-relaxed text-text-muted">
+                      {json}
+                    </pre>
+                  </details>
+                )}
+              </>
+            ) : (
+              <p className="mt-1.5">
                 <a
                   href={gatewayUrl(uri)}
                   target="_blank"
                   rel="noreferrer"
-                  className="transition-colors duration-200 hover:text-accent"
+                  className="text-text-muted transition-colors duration-200 hover:text-accent"
                 >
-                  {uri}
+                  <Mono value={cid === null ? uri : a("ipfsCid", { cid })} className="text-xs leading-relaxed" />
                 </a>
-              )}
-            </p>
+              </p>
+            )}
           </div>
 
           {card?.privy == null ? null : (

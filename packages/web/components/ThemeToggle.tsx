@@ -3,24 +3,43 @@
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
 
+const SHELL =
+  "rounded-[8px] border border-line px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
+
 /**
- * Which label shows is decided by CSS from the class next-themes puts on the
- * html tag, not by React state. That way the button is correct in the very
- * first painted frame and the server markup never disagrees with the browser.
+ * The theme, named as it is right now, with the switch it offers in the hover
+ * title. That is the same rule the language control follows: both say where you
+ * are, neither says where you would land.
+ *
+ * There are two buttons rather than one, and CSS from the class next-themes
+ * puts on the html tag decides which is shown. That way the label and its title
+ * are correct in the very first painted frame and the server markup never
+ * disagrees with the browser.
  */
 export function ThemeToggle() {
   const t = useTranslations("header");
-  const { resolvedTheme, setTheme } = useTheme();
+  const { setTheme } = useTheme();
 
   return (
-    <button
-      type="button"
-      aria-label={t("theme")}
-      onClick={() => setTheme(resolvedTheme === "light" ? "dark" : "light")}
-      className="rounded-[8px] border border-line px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-    >
-      <span className="hidden dark:inline">{t("themeLight")}</span>
-      <span className="inline dark:hidden">{t("themeDark")}</span>
-    </button>
+    <>
+      <button
+        type="button"
+        title={t("themeToLight")}
+        aria-label={t("themeToLight")}
+        onClick={() => setTheme("light")}
+        className={`hidden dark:inline-block ${SHELL}`}
+      >
+        {t("themeDark")}
+      </button>
+      <button
+        type="button"
+        title={t("themeToDark")}
+        aria-label={t("themeToDark")}
+        onClick={() => setTheme("dark")}
+        className={`inline-block dark:hidden ${SHELL}`}
+      >
+        {t("themeLight")}
+      </button>
+    </>
   );
 }

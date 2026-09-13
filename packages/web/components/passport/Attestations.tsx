@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import type { Attestation } from "@/lib/chain/registry";
 import { transactionFor, type IndexedAttestation } from "./indexed";
+import { Mono } from "./Mono";
 import { attestationSource } from "./labels";
 
 /**
@@ -118,8 +119,8 @@ async function Row({
         ) : null}
       </div>
 
-      <p className="mt-6 break-all font-mono text-[11px] text-text-faint">
-        {t("recomputed")} {attestation.recomputed}
+      <p className="mt-6 font-mono text-[11px] text-text-faint">
+        {t("recomputed")} <Mono value={attestation.recomputed} />
       </p>
     </li>
   );

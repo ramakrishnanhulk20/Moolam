@@ -16,12 +16,12 @@
   },
   "meta": {
     "title": "Moolam",
-    "description": "A passport for every AI generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy."
+    "description": "A passport for every AI generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy.",
+    "titleTemplate": "%s | Moolam"
   },
   "header": {
     "brand": "Moolam",
     "tagline": "Passports for generated images",
-    "theme": "Theme",
     "themeDark": "Dark",
     "themeLight": "Light",
     "language": "Language",
@@ -32,7 +32,10 @@
       "verify": "Verify an image",
       "studio": "Register an image",
       "docs": "Docs"
-    }
+    },
+    "themeToLight": "Switch to the light theme",
+    "themeToDark": "Switch to the dark theme",
+    "languageChange": "Change the language"
   },
   "footer": {
     "network": "Monad mainnet, chain {chainId}",
@@ -50,7 +53,8 @@
       "unreachable": "unreachable",
       "block": "block {block, number}",
       "records": "{count, number} records"
-    }
+    },
+    "source": "Source"
   },
   "common": {
     "copy": "Copy",
@@ -151,9 +155,7 @@
     "title": "Verify an image",
     "lede": "Upload any copy. Moolam fingerprints it three ways and searches every registered passport, so a resized or re-encoded file still finds its record.",
     "choose": "Choose an image",
-    "chosen": "Selected: {name}",
-    "hint": "JPEG, PNG or WebP, up to 20 MB. The file goes to the Moolam verifier and is not stored.",
-    "submit": "Verify",
+    "hint": "JPEG, PNG or WebP, up to 20 MB. The check starts the moment you choose a file.",
     "pending": "Fingerprinting the image and searching the registry.",
     "matched": "Match found",
     "exact": "Exact bytes match",
@@ -168,12 +170,11 @@
     "openPassport": "Open the passport",
     "error": "The check did not run: {reason}",
     "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then try again.",
-    "noFile": "Pick an image first.",
     "kicker": "Check any copy",
     "rail": "Verify",
     "dropTitle": "Drag an image in.",
     "replace": "Choose another",
-    "privacy": "Your browser sends the file to the verifier itself. It is fingerprinted, matched and dropped.",
+    "privacy": "Your browser sends the file straight to {host}, the Moolam verify service. It is fingerprinted there, matched against the registry, and never stored.",
     "checkingHeading": "Reading the picture, not the file name.",
     "checkingDetail": "Three fingerprints, all eight orientations, then a search of every registered passport. A few seconds.",
     "idleHeading": "No answer yet",
@@ -215,7 +216,9 @@
       "mirror-rot90": "Mirrored, quarter turn",
       "mirror-rot180": "Mirrored, upside down",
       "mirror-rot270": "Mirrored, three quarter turn"
-    }
+    },
+    "busy": "Checking",
+    "again": "Verify another"
   },
   "passport": {
     "title": "Passport",
@@ -304,14 +307,19 @@
         "upheld": "Upheld: the challenge was right",
         "rejected": "Rejected: the record stands"
       }
-    }
+    },
+    "elsewhere": "Where else this record lives",
+    "openTransaction": "Registration transaction",
+    "openToken": "Token on MonadVision",
+    "openImage": "Open the image",
+    "noManifest": "No C2PA manifest was embedded in this file.",
+    "ipfsCid": "IPFS {cid}"
   },
   "agent": {
     "title": "Agent",
     "notFound": "No agent with that id on the ERC-8004 identity registry.",
     "error": "The identity registry could not be read: {reason}. Reload the page.",
     "owner": "Owner",
-    "uri": "Agent URI",
     "cardMissing": "The agent card could not be read from its URI.",
     "reputation": {
       "heading": "Reputation",
@@ -320,7 +328,8 @@
       "empty": "No feedback recorded for this agent yet. The verifier writes one after every check it runs.",
       "error": "The reputation registry could not be read: {reason}.",
       "body": "Feedback is written to the canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification. This page reads the summary of those two tags and applies the decimals the registry reports.",
-      "registry": "Registry {address}"
+      "registry": "Registry {address}",
+      "secondary": "A second number, not the headline"
     },
     "unnamed": "This agent's card carries no name",
     "identityRegistry": "Identity registry",
@@ -366,7 +375,11 @@
       "error": "The index could not be read: {reason}.",
       "untitled": "Untitled",
       "noThumbnail": "No thumbnail pinned"
-    }
+    },
+    "cardLabel": "Agent card",
+    "cardInline": "This card is carried inside the token URI itself, so there is nothing to open.",
+    "cardShow": "View the card JSON",
+    "ipfsCid": "IPFS {cid}"
   },
   "studio": {
     "kicker": "Studio",

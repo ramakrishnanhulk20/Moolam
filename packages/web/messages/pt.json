@@ -17,12 +17,12 @@
   },
   "meta": {
     "title": "Moolam",
-    "description": "Um passaporte para cada imagem gerada por IA, registrado na Monad no instante em que ela nasce e verificável a partir de qualquer cópia recodificada."
+    "description": "Um passaporte para cada imagem gerada por IA, registrado na Monad no instante em que ela nasce e verificável a partir de qualquer cópia recodificada.",
+    "titleTemplate": "%s | Moolam"
   },
   "header": {
     "brand": "Moolam",
     "tagline": "Passaportes para imagens geradas",
-    "theme": "Tema",
     "themeDark": "Escuro",
     "themeLight": "Claro",
     "language": "Idioma",
@@ -33,7 +33,10 @@
       "verify": "Verificar uma imagem",
       "studio": "Registrar uma imagem",
       "docs": "Documentação"
-    }
+    },
+    "themeToLight": "Mudar para o tema claro",
+    "themeToDark": "Mudar para o tema escuro",
+    "languageChange": "Mudar o idioma"
   },
   "footer": {
     "network": "Monad mainnet, rede {chainId}",
@@ -51,7 +54,8 @@
       "unreachable": "sem resposta",
       "block": "bloco {block, number}",
       "records": "{count, number} registros"
-    }
+    },
+    "source": "Código"
   },
   "common": {
     "copy": "Copiar",
@@ -152,9 +156,7 @@
     "title": "Verificar uma imagem",
     "lede": "Envie qualquer cópia. A Moolam tira três impressões e procura em todos os passaportes registrados, então um arquivo redimensionado ou recodificado ainda encontra o registro dele.",
     "choose": "Escolher uma imagem",
-    "chosen": "Selecionado: {name}",
-    "hint": "JPEG, PNG ou WebP, até 20 MB. O arquivo vai para o verificador da Moolam e não é guardado.",
-    "submit": "Verificar",
+    "hint": "JPEG, PNG ou WebP, até 20 MB. A verificação começa assim que você escolhe um arquivo.",
     "pending": "Tirando a impressão da imagem e procurando no registro.",
     "matched": "Correspondência encontrada",
     "exact": "Os bytes batem exatamente",
@@ -169,12 +171,11 @@
     "openPassport": "Abrir o passaporte",
     "error": "A conferência não rodou: {reason}",
     "offline": "O serviço de verificação não responde. Suba ele com npm run dev:verifier a partir da raiz do repositório e tente de novo.",
-    "noFile": "Escolha uma imagem primeiro.",
     "kicker": "Confira qualquer cópia",
     "rail": "Verificar",
     "dropTitle": "Arraste uma imagem para cá.",
     "replace": "Escolher outra",
-    "privacy": "Seu navegador envia o arquivo direto ao verificador. Ele recebe a impressão, é comparado e descartado.",
+    "privacy": "Seu navegador envia o arquivo direto para {host}, o serviço de verificação do Moolam. Lá ele recebe a impressão, é comparado com o registro e não fica guardado.",
     "checkingHeading": "Lemos a imagem, não o nome do arquivo.",
     "checkingDetail": "Três impressões, todas as oito orientações, e então uma busca em todos os passaportes registrados. Alguns segundos.",
     "idleHeading": "Ainda sem resposta",
@@ -216,7 +217,9 @@
       "mirror-rot90": "Espelhada, um quarto de volta",
       "mirror-rot180": "Espelhada, de cabeça para baixo",
       "mirror-rot270": "Espelhada, três quartos de volta"
-    }
+    },
+    "busy": "Verificando",
+    "again": "Verificar outra"
   },
   "passport": {
     "title": "Passaporte",
@@ -305,14 +308,19 @@
         "upheld": "Aceita: a contestação estava certa",
         "rejected": "Rejeitada: o registro continua valendo"
       }
-    }
+    },
+    "elsewhere": "Onde mais este registro existe",
+    "openTransaction": "Transação de registro",
+    "openToken": "Token no MonadVision",
+    "openImage": "Abrir a imagem",
+    "noManifest": "Este arquivo não trazia nenhum manifesto C2PA embutido.",
+    "ipfsCid": "IPFS {cid}"
   },
   "agent": {
     "title": "Agente",
     "notFound": "Nenhum agente com esse id no registro de identidade ERC-8004.",
     "error": "O registro de identidade não pôde ser lido: {reason}. Recarregue a página.",
     "owner": "Dono",
-    "uri": "URI do agente",
     "cardMissing": "O cartão do agente não pôde ser lido a partir da URI dele.",
     "reputation": {
       "heading": "Reputação",
@@ -321,7 +329,8 @@
       "empty": "Nenhum retorno registrado para este agente ainda. O verificador grava um depois de cada conferência que faz.",
       "error": "O registro de reputação não pôde ser lido: {reason}.",
       "body": "Os retornos são gravados no registro de reputação ERC-8004 canônico por quem os deixa, sob as marcas moolam e verification. Esta página lê o resumo dessas duas marcas e aplica as casas decimais que o registro informa.",
-      "registry": "Registro {address}"
+      "registry": "Registro {address}",
+      "secondary": "Um segundo número, não o principal"
     },
     "unnamed": "O cartão deste agente não traz nome",
     "identityRegistry": "Registro de identidade",
@@ -367,7 +376,11 @@
       "error": "O índice não pôde ser lido: {reason}.",
       "untitled": "Sem título",
       "noThumbnail": "Sem miniatura fixada"
-    }
+    },
+    "cardLabel": "Cartão do agente",
+    "cardInline": "Este cartão vai dentro do próprio token URI, então não há nada para abrir.",
+    "cardShow": "Ver o JSON do cartão",
+    "ipfsCid": "IPFS {cid}"
   },
   "studio": {
     "kicker": "Estúdio",

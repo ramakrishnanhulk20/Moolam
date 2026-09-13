@@ -20,6 +20,8 @@ import {
   getPassport,
 } from "@/lib/chain/registry";
 import type { Attestation, Dispute, Passport } from "@/lib/chain/registry";
+import { activeSource } from "@/lib/data/source";
+import { passportRegistration } from "@/lib/data/passports";
 import { passportShareMetadata } from "./opengraph-image";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -114,16 +116,27 @@ export default async function PassportPage({
 
   // The picture and the transaction links are the two things this page can do
   // without, so neither is allowed to fail the render.
-  const [art, indexed] = await Promise.all([readArt(passport.metadataURI), indexedAttestations(passport.id)]);
+  const [art, indexed, registration] = await Promise.all([
+    readArt(passport.metadataURI),
+    indexedAttestations(passport.id),
+    registrationOf(passport.id),
+  ]);
   const standing = standingOf({ disputed: passport.disputed, attestations });
 
   return (
     <article>
-      <Poster passport={passport} art={art} standing={standing} locale={locale} />
+      <Poster passport={passport} art={art} locale={locale} />
 
       <Attestations attestations={attestations} indexed={indexed} locale={locale} />
 
-      <Facts passport={passport} art={art} owner={owner} hasPasskey={hasPasskey} />
+      <Facts
+        passport={passport}
+        art={art}
+        owner={owner}
+        hasPasskey={hasPasskey}
+        standing={standing}
+        txHash={registration}
+      />
 
       <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
         {dispute === null ? null : (
@@ -143,6 +156,22 @@ export default async function PassportPage({
       </div>
     </article>
   );
+}
+
+/**
+ * The transaction that wrote this passport, which exists only in the index. No
+ * index, or an index that will not answer, costs the explorer link and nothing
+ * else on the page.
+ */
+async function registrationOf(id: Hex): Promise<Hex | null> {
+  if (activeSource() !== "envio") {
+    return null;
+  }
+  try {
+    return (await passportRegistration(id))?.txHash ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function Notice({ text, tone }: { text: string; tone?: "failed" }) {

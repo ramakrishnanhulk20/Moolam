@@ -16,9 +16,10 @@ Open the home page and scroll to the panel headed "Drop any copy of any image he
 file". Drop any image you have, or press "Choose a file". The full page for this is "Verify an
 image" in the header.
 
-The file goes from your browser straight to the Moolam verify service. It is fingerprinted three
-ways, tried in all eight rotations and mirrors, and matched against every registered passport. The
-answer card turns over with one of three results:
+The file goes from your browser straight to the Moolam verify service, never through the app's own
+server, and it is not stored. It is fingerprinted three ways, tried in all eight rotations and
+mirrors, and matched against every registered passport. The answer card turns over with one of
+three results:
 
 - "Exact bytes match", when the file is byte for byte a registered one.
 - "Match found", with a confidence percentage, when it is a re-encoded, resized, turned or mirrored

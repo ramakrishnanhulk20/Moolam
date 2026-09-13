@@ -7,4 +7,4 @@ export const alt = "A Moolam passport: the registered picture, its seal and the 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+export const revalidate = 3600;

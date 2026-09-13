@@ -18,14 +18,14 @@
   },
   "meta": {
     "title": "Moolam",
-    "description": "AI가 만든 모든 이미지에 여권을. 만들어지는 순간 Monad에 등록되고, 다시 인코딩된 어떤 사본에서도 검증됩니다."
+    "description": "AI가 만든 모든 이미지에 여권을. 만들어지는 순간 Monad에 등록되고, 다시 인코딩된 어떤 사본에서도 검증됩니다.",
+    "titleTemplate": "%s | Moolam"
   },
   "header": {
     "brand": "Moolam",
     "tagline": "생성 이미지를 위한 여권",
-    "theme": "화면",
-    "themeDark": "어둡게",
-    "themeLight": "밝게",
+    "themeDark": "다크",
+    "themeLight": "라이트",
     "language": "언어",
     "menu": "메뉴",
     "menuClose": "메뉴 닫기",
@@ -34,7 +34,10 @@
       "verify": "이미지 검증",
       "studio": "이미지 등록",
       "docs": "문서"
-    }
+    },
+    "themeToLight": "라이트 테마로 바꾸기",
+    "themeToDark": "다크 테마로 바꾸기",
+    "languageChange": "언어 바꾸기"
   },
   "footer": {
     "network": "Monad 메인넷, 체인 {chainId}",
@@ -52,7 +55,8 @@
       "unreachable": "응답 없음",
       "block": "블록 {block, number}",
       "records": "{count, number}건"
-    }
+    },
+    "source": "소스"
   },
   "common": {
     "copy": "복사",
@@ -153,9 +157,7 @@
     "title": "이미지 검증",
     "lede": "사본이면 무엇이든 올려 보세요. Moolam이 지문을 세 가지로 뜨고 등록된 모든 여권을 뒤지기 때문에, 크기를 바꾸거나 다시 인코딩한 파일도 제 기록을 찾아냅니다.",
     "choose": "이미지 고르기",
-    "chosen": "선택함: {name}",
-    "hint": "JPEG, PNG, WebP, 20MB까지. 파일은 Moolam 검증 서비스로 가고 저장되지 않습니다.",
-    "submit": "검증하기",
+    "hint": "JPEG, PNG 또는 WebP, 20 MB까지. 파일을 고르면 곧바로 확인이 시작됩니다.",
     "pending": "이미지 지문을 뜨고 레지스트리를 찾는 중입니다.",
     "matched": "일치하는 기록을 찾았습니다",
     "exact": "바이트까지 동일합니다",
@@ -170,12 +172,11 @@
     "openPassport": "여권 열기",
     "error": "확인이 실행되지 않았습니다: {reason}",
     "offline": "검증 서비스가 응답하지 않습니다. 저장소 최상위에서 npm run dev:verifier로 띄운 뒤 다시 시도해 주세요.",
-    "noFile": "먼저 이미지를 고르세요.",
     "kicker": "어떤 사본이든 확인",
     "rail": "검증",
     "dropTitle": "이미지를 끌어다 놓으세요.",
     "replace": "다른 것 고르기",
-    "privacy": "파일은 브라우저가 검증 서비스로 바로 보냅니다. 지문을 뜨고, 대조하고, 버립니다.",
+    "privacy": "파일은 브라우저가 Moolam 검증 서비스 {host} 로 바로 보냅니다. 거기서 지문을 뜨고 등록부와 대조하며, 저장하지 않습니다.",
     "checkingHeading": "파일 이름이 아니라 그림을 읽습니다.",
     "checkingDetail": "지문 세 가지, 여덟 방향 전부, 그다음 등록된 모든 여권 검색. 몇 초면 됩니다.",
     "idleHeading": "아직 답이 없습니다",
@@ -217,7 +218,9 @@
       "mirror-rot90": "반전 뒤 4분의 1 회전",
       "mirror-rot180": "반전 뒤 위아래 뒤집힘",
       "mirror-rot270": "반전 뒤 4분의 3 회전"
-    }
+    },
+    "busy": "확인 중",
+    "again": "다른 이미지 확인"
   },
   "passport": {
     "title": "여권",
@@ -306,14 +309,19 @@
         "upheld": "인용: 이의가 옳았습니다",
         "rejected": "기각: 기록이 그대로 유지됩니다"
       }
-    }
+    },
+    "elsewhere": "이 기록이 있는 다른 곳",
+    "openTransaction": "등록 트랜잭션",
+    "openToken": "MonadVision의 토큰",
+    "openImage": "이미지 열기",
+    "noManifest": "이 파일에는 C2PA 매니페스트가 들어 있지 않습니다.",
+    "ipfsCid": "IPFS {cid}"
   },
   "agent": {
     "title": "에이전트",
     "notFound": "ERC-8004 신원 레지스트리에 그 id의 에이전트가 없습니다.",
     "error": "신원 레지스트리를 읽지 못했습니다: {reason}. 페이지를 새로 고쳐 주세요.",
     "owner": "소유자",
-    "uri": "에이전트 URI",
     "cardMissing": "그 URI에서 에이전트 카드를 읽지 못했습니다.",
     "reputation": {
       "heading": "평판",
@@ -322,7 +330,8 @@
       "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 검증 서비스는 확인할 때마다 한 건씩 남깁니다.",
       "error": "평판 레지스트리를 읽지 못했습니다: {reason}.",
       "body": "피드백은 남기는 쪽이 직접 표준 ERC-8004 평판 레지스트리에 moolam과 verification 태그로 기록합니다. 이 페이지는 그 두 태그의 요약을 읽고, 레지스트리가 알려 주는 소수 자리를 적용합니다.",
-      "registry": "레지스트리 {address}"
+      "registry": "레지스트리 {address}",
+      "secondary": "두 번째 숫자, 대표 숫자가 아닙니다"
     },
     "unnamed": "이 에이전트의 카드에는 이름이 없습니다",
     "identityRegistry": "신원 레지스트리",
@@ -368,7 +377,11 @@
       "error": "인덱스를 읽지 못했습니다: {reason}.",
       "untitled": "제목 없음",
       "noThumbnail": "고정된 미리보기 없음"
-    }
+    },
+    "cardLabel": "에이전트 카드",
+    "cardInline": "이 카드는 토큰 URI 안에 담겨 있어서 따로 열 곳이 없습니다.",
+    "cardShow": "카드 JSON 보기",
+    "ipfsCid": "IPFS {cid}"
   },
   "studio": {
     "kicker": "스튜디오",

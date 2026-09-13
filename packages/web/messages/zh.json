@@ -18,12 +18,12 @@
   },
   "meta": {
     "title": "Moolam",
-    "description": "为每一张 AI 生成的图片配一本护照，成图的那一刻就登记到 Monad 上，任何重新编码过的副本都能验证。"
+    "description": "为每一张 AI 生成的图片配一本护照，成图的那一刻就登记到 Monad 上，任何重新编码过的副本都能验证。",
+    "titleTemplate": "%s | Moolam"
   },
   "header": {
     "brand": "Moolam",
     "tagline": "为生成图片而设的护照",
-    "theme": "外观",
     "themeDark": "深色",
     "themeLight": "浅色",
     "language": "语言",
@@ -34,7 +34,10 @@
       "verify": "验证图片",
       "studio": "登记图片",
       "docs": "文档"
-    }
+    },
+    "themeToLight": "切换到浅色主题",
+    "themeToDark": "切换到深色主题",
+    "languageChange": "切换语言"
   },
   "footer": {
     "network": "Monad 主网，链 {chainId}",
@@ -52,7 +55,8 @@
       "unreachable": "无法连接",
       "block": "区块 {block, number}",
       "records": "{count, number} 条记录"
-    }
+    },
+    "source": "源码"
   },
   "common": {
     "copy": "复制",
@@ -153,9 +157,7 @@
     "title": "验证图片",
     "lede": "上传任何一份副本。Moolam 会取三种指纹，并搜遍每一本已登记的护照，所以缩放过或重新编码过的文件依然找得回自己的记录。",
     "choose": "选择图片",
-    "chosen": "已选择：{name}",
-    "hint": "JPEG、PNG 或 WebP，最大 20 MB。文件送到 Moolam 验证服务，并不保存。",
-    "submit": "验证",
+    "hint": "JPEG、PNG 或 WebP，最大 20 MB。选好文件就立刻开始检查。",
     "pending": "正在为图片取指纹并搜索登记处。",
     "matched": "找到匹配",
     "exact": "字节完全一致",
@@ -170,12 +172,11 @@
     "openPassport": "打开护照",
     "error": "这次核对没有跑起来：{reason}",
     "offline": "验证服务没有响应。在仓库根目录运行 npm run dev:verifier，然后再试一次。",
-    "noFile": "请先选一张图片。",
     "kicker": "核对任何副本",
     "rail": "验证",
     "dropTitle": "把图片拖进来。",
     "replace": "换一张",
-    "privacy": "文件由你的浏览器直接发给验证服务。取过指纹、比对完就丢掉。",
+    "privacy": "文件由你的浏览器直接发给 Moolam 的验证服务 {host}。在那里取指纹、与登记簿比对，不作保存。",
     "checkingHeading": "读的是画面，不是文件名。",
     "checkingDetail": "三种指纹，八个方向，然后搜遍每一本已登记的护照。几秒钟。",
     "idleHeading": "还没有答案",
@@ -217,7 +218,9 @@
       "mirror-rot90": "镜像后转四分之一圈",
       "mirror-rot180": "镜像后转半圈",
       "mirror-rot270": "镜像后转四分之三圈"
-    }
+    },
+    "busy": "检查中",
+    "again": "换一张检查"
   },
   "passport": {
     "title": "护照",
@@ -306,14 +309,19 @@
         "upheld": "成立：异议是对的",
         "rejected": "驳回：记录继续有效"
       }
-    }
+    },
+    "elsewhere": "这条记录还在哪里",
+    "openTransaction": "登记交易",
+    "openToken": "在 MonadVision 上看代币",
+    "openImage": "打开图片",
+    "noManifest": "这个文件里没有嵌入 C2PA 清单。",
+    "ipfsCid": "IPFS {cid}"
   },
   "agent": {
     "title": "智能体",
     "notFound": "ERC-8004 身份登记处里没有这个 id 的智能体。",
     "error": "身份登记处无法读取：{reason}。请刷新页面。",
     "owner": "持有者",
-    "uri": "智能体 URI",
     "cardMissing": "无法从该 URI 读到智能体名片。",
     "reputation": {
       "heading": "声誉",
@@ -322,7 +330,8 @@
       "empty": "这个智能体还没有任何反馈记录。验证服务每做一次核对就会写一条。",
       "error": "声誉登记处无法读取：{reason}。",
       "body": "反馈由留下反馈的一方写入标准的 ERC-8004 声誉登记处，挂在 moolam 和 verification 两个标签下。本页读取这两个标签的汇总，并按登记处给出的小数位换算。",
-      "registry": "登记处 {address}"
+      "registry": "登记处 {address}",
+      "secondary": "第二个数字，不是主数字"
     },
     "unnamed": "这个智能体的名片上没有名字",
     "identityRegistry": "身份登记处",
@@ -368,7 +377,11 @@
       "error": "索引无法读取：{reason}。",
       "untitled": "无标题",
       "noThumbnail": "没有固定缩略图"
-    }
+    },
+    "cardLabel": "代理卡片",
+    "cardInline": "这张卡片就装在代币 URI 里面，没有另外的地址可打开。",
+    "cardShow": "查看卡片 JSON",
+    "ipfsCid": "IPFS {cid}"
   },
   "studio": {
     "kicker": "工作室",

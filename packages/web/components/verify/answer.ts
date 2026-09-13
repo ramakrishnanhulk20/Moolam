@@ -54,6 +54,22 @@ export function readAnswer(response: VerifyResponse): Answer {
   };
 }
 
+/**
+ * Which agent the answer card may offer a link to, or null for no chip at all.
+ *
+ * Agent id 0 is not an agent. It is what a passport carries when nobody signed
+ * it, and the ERC-8004 identity registry is shared, so token 0 there belongs to
+ * another team's project. A chip for it would take a reader one click off the
+ * demo path into a stranger's record drawn inside Moolam's own frame.
+ */
+export function agentChipId(passport: { generatorAgentId: string } | null): string | null {
+  if (passport === null) {
+    return null;
+  }
+  const id = passport.generatorAgentId.trim();
+  return id === "" || /^0+$/.test(id) ? null : id;
+}
+
 /** Confidence as a whole percent, which is the only place the number is rounded. */
 export function percent(confidence: number): number {
   return Math.round(confidence * 100);

@@ -1,5 +1,3 @@
-"use server";
-
 import type { Hex } from "viem";
 import { readArt } from "@/components/passport/art";
 import { getPassport } from "@/lib/chain/registry";
@@ -8,7 +6,7 @@ import { getPassport } from "@/lib/chain/registry";
 export interface MatchedPassport {
   id: Hex;
   kind: number;
-  /** Seconds since the epoch, as a string, because a bigint does not survive the trip. */
+  /** Seconds since the epoch, as a string: the card only ever prints it. */
   registeredAt: string;
   creator: Hex;
   generatorAgentId: string;
@@ -22,10 +20,14 @@ const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 /**
  * Looks up the passport the verify service named.
  *
- * The service answers with an id and nothing else, and the registry read lives
- * on the server, so the browser asks for the rest here. Null means the id is
- * malformed or the registry does not have it, which the card says plainly
- * rather than showing an empty row.
+ * The service answers with an id and nothing else, so the rest is read from the
+ * chain and the gateway. This runs in the browser on purpose: the verify page
+ * is meant to reach the verify service and Monad directly, and a server action
+ * here would put the app's own server back in the middle of a check that is not
+ * supposed to pass through it.
+ *
+ * Null means the id is malformed or the registry does not have it, which the
+ * card says plainly rather than showing an empty row.
  */
 export async function matchedPassport(id: string): Promise<MatchedPassport | null> {
   if (!ID_PATTERN.test(id)) {

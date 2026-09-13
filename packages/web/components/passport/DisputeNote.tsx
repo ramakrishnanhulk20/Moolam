@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { formatEther } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { DisputeStatus, type Dispute } from "@/lib/chain/registry";
+import { Mono } from "./Mono";
 
 const STATUS_NAMES: Record<number, string> = {
   [DisputeStatus.Open]: "open",
@@ -55,8 +56,8 @@ export async function DisputeNote({ dispute, locale }: { dispute: Dispute; local
         </div>
       </dl>
 
-      <p className="mt-6 break-all font-mono text-[11px] text-text-faint">
-        {t("evidence")} {dispute.evidenceHash}
+      <p className="mt-6 font-mono text-[11px] text-text-faint">
+        {t("evidence")} <Mono value={dispute.evidenceHash} />
       </p>
     </section>
   );

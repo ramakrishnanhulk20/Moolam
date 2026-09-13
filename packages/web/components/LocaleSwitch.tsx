@@ -59,6 +59,7 @@ export function LocaleSwitch() {
       <button
         type="button"
         aria-label={t("language")}
+        title={t("languageChange")}
         aria-expanded={open}
         aria-haspopup="listbox"
         disabled={pending}

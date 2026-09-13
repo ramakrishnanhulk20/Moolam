@@ -18,12 +18,12 @@
   },
   "meta": {
     "title": "Moolam",
-    "description": "AI が作ったすべての画像にパスポートを。生まれたその瞬間に Monad へ登録され、再エンコードされたどのコピーからでも検証できます。"
+    "description": "AI が作ったすべての画像にパスポートを。生まれたその瞬間に Monad へ登録され、再エンコードされたどのコピーからでも検証できます。",
+    "titleTemplate": "%s | Moolam"
   },
   "header": {
     "brand": "Moolam",
     "tagline": "生成画像のためのパスポート",
-    "theme": "表示",
     "themeDark": "ダーク",
     "themeLight": "ライト",
     "language": "言語",
@@ -34,7 +34,10 @@
       "verify": "画像を検証",
       "studio": "画像を登録",
       "docs": "ドキュメント"
-    }
+    },
+    "themeToLight": "ライトテーマに切り替える",
+    "themeToDark": "ダークテーマに切り替える",
+    "languageChange": "言語を変える"
   },
   "footer": {
     "network": "Monad メインネット、チェーン {chainId}",
@@ -52,7 +55,8 @@
       "unreachable": "応答なし",
       "block": "ブロック {block, number}",
       "records": "{count, number} 件"
-    }
+    },
+    "source": "ソース"
   },
   "common": {
     "copy": "コピー",
@@ -153,9 +157,7 @@
     "title": "画像を検証",
     "lede": "どのコピーでも送ってください。Moolam は三通りの指紋を取り、登録済みのパスポートをすべて探すので、縮小や再エンコードをされたファイルでも自分の記録にたどり着けます。",
     "choose": "画像を選ぶ",
-    "chosen": "選択中: {name}",
-    "hint": "JPEG、PNG、WebP、20 MB まで。ファイルは Moolam 検証サービスに送られ、保存はしません。",
-    "submit": "検証する",
+    "hint": "JPEG、PNG、WebP、20 MB まで。ファイルを選んだ時点で確認が始まります。",
     "pending": "画像の指紋を取ってレジストリを探しています。",
     "matched": "一致が見つかりました",
     "exact": "バイトまで同一です",
@@ -170,12 +172,11 @@
     "openPassport": "パスポートを開く",
     "error": "確認は動きませんでした: {reason}",
     "offline": "検証サービスが応答しません。リポジトリの直下で npm run dev:verifier を実行してから、もう一度お試しください。",
-    "noFile": "先に画像を選んでください。",
     "kicker": "どのコピーでも確認",
     "rail": "検証",
     "dropTitle": "画像をここへドラッグ。",
     "replace": "別のものを選ぶ",
-    "privacy": "ファイルはブラウザから検証サービスへ直接送られます。指紋を取り、照合し、そのまま捨てます。",
+    "privacy": "ファイルはブラウザから Moolam の検証サービス {host} へ直接送られます。そこで指紋を取り、登録簿と照合し、保存はしません。",
     "checkingHeading": "読むのは絵であって、ファイル名ではありません。",
     "checkingDetail": "三通りの指紋、八通りの向き、そして登録済みのパスポート全件の検索。数秒です。",
     "idleHeading": "まだ答えはありません",
@@ -217,7 +218,9 @@
       "mirror-rot90": "反転して四分の一回転",
       "mirror-rot180": "反転して上下逆さま",
       "mirror-rot270": "反転して四分の三回転"
-    }
+    },
+    "busy": "確認中",
+    "again": "別の画像を確認"
   },
   "passport": {
     "title": "パスポート",
@@ -306,14 +309,19 @@
         "upheld": "認容: 申し立てが正しいと判断されました",
         "rejected": "棄却: 記録はそのまま有効です"
       }
-    }
+    },
+    "elsewhere": "この記録が置かれている場所",
+    "openTransaction": "登録トランザクション",
+    "openToken": "MonadVision のトークン",
+    "openImage": "画像を開く",
+    "noManifest": "このファイルには C2PA マニフェストが埋め込まれていません。",
+    "ipfsCid": "IPFS {cid}"
   },
   "agent": {
     "title": "エージェント",
     "notFound": "ERC-8004 アイデンティティレジストリに、その id のエージェントはいません。",
     "error": "アイデンティティレジストリを読めませんでした: {reason}。ページを再読み込みしてください。",
     "owner": "保有者",
-    "uri": "エージェント URI",
     "cardMissing": "その URI からエージェントカードを読めませんでした。",
     "reputation": {
       "heading": "評判",
@@ -322,7 +330,8 @@
       "empty": "このエージェントへのフィードバックはまだ記録されていません。検証サービスは確認するたびに一件書きます。",
       "error": "レピュテーションレジストリを読めませんでした: {reason}。",
       "body": "フィードバックは、残した本人が正規の ERC-8004 レピュテーションレジストリに moolam と verification のタグで書き込みます。このページはその二つのタグの集計を読み、レジストリが示す小数点以下の桁を適用しています。",
-      "registry": "レジストリ {address}"
+      "registry": "レジストリ {address}",
+      "secondary": "二つめの数字、見出しではありません"
     },
     "unnamed": "このエージェントのカードに名前はありません",
     "identityRegistry": "アイデンティティレジストリ",
@@ -368,7 +377,11 @@
       "error": "インデックスを読めませんでした: {reason}。",
       "untitled": "無題",
       "noThumbnail": "サムネイルは未固定"
-    }
+    },
+    "cardLabel": "エージェントカード",
+    "cardInline": "このカードはトークン URI の中に入っているので、開く先はありません。",
+    "cardShow": "カードの JSON を見る",
+    "ipfsCid": "IPFS {cid}"
   },
   "studio": {
     "kicker": "スタジオ",

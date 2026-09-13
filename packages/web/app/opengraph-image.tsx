@@ -8,9 +8,13 @@ export const alt = "Moolam: every image gets a passport";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-// The count on the card is read when the card is drawn, so a crawler that comes
-// back next week sees next week's number rather than the number the build saw.
-export const dynamic = "force-dynamic";
+// The count is read when the card is drawn, and the drawn card is then held for
+// an hour: an unfurl in a chat has to come back inside a second, and a figure
+// that is up to an hour old is still the registry's own. The header is what the
+// cache in front of this route reads; the segment setting is for the times Next
+// can hold the picture itself.
+export const revalidate = 3600;
+const CARD_HEADERS = { "cache-control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" };
 
 const ACCENT = "#FFB7C5";
 const GROUND = "#0B0B0C";
@@ -112,14 +116,6 @@ const lockup: Promise<string | null> = readFile(
 // artwork. The bleed takes that back so the card is laid out on the ink.
 const LOCKUP = { width: 569, height: 380, bleed: -60 };
 
-const GRAIN =
-  "data:image/svg+xml;utf8," +
-  encodeURIComponent(
-    "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>" +
-      "<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/></filter>" +
-      "<rect width='200' height='200' filter='url(#n)' opacity='0.5'/></svg>",
-  );
-
 const KICKER = "LIVE ON MONAD MAINNET";
 const LINE = "Every image gets a passport";
 const FOOT = "REGISTRY passports registered 0123456789abcdefABCDEFx.";
@@ -155,20 +151,6 @@ export default async function Card() {
           fontFamily: text,
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: size.width,
-            height: size.height,
-            display: "flex",
-            backgroundImage: `url("${GRAIN}")`,
-            backgroundSize: "200px 200px",
-            opacity: 0.14,
-          }}
-        />
-
         <div style={{ display: "flex", alignItems: "center" }}>
           <div style={{ display: "flex", color: "rgba(245,243,239,0.62)", fontSize: 22, letterSpacing: 6 }}>
             {KICKER}
@@ -239,6 +221,6 @@ export default async function Card() {
         </div>
       </div>
     ),
-    { ...size, fonts: fonts.length === 0 ? undefined : fonts },
+    { ...size, fonts: fonts.length === 0 ? undefined : fonts, headers: CARD_HEADERS },
   );
 }
