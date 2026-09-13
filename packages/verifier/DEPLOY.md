@@ -68,7 +68,7 @@ the boot loudly and names the variable.
 | `GENERATOR_AGENT_ID` | no | Defaults to `10249`, the `generator.agentId` in that file: the ERC-8004 identity the wallet owns |
 | `MOOLAM_REGISTRY_ADDRESS` | no | Defaults to the deployed registry in `packages/contracts/deployments/monad-mainnet.json`. The container ships only this package's source, so the address cannot be read from that file at runtime |
 | `GENERATE_PER_DAY` | no | Defaults to 3 pictures per creator per rolling 24 hours |
-| `PRIVY_EDIT_SIGNER_ID` | yes for `/edit` | The key quorum id from the Privy dashboard whose member is the public half of `PRIVY_AUTHORIZATION_KEY`. The browser passes the same id to `addSigners`, so the value here and the value the web app uses must match |
+| `PRIVY_EDIT_SIGNER_ID` | yes for `/edit` | The key quorum whose one member is the public half of `PRIVY_AUTHORIZATION_KEY`. `npm run edit:quorum` in `packages/agents` creates it under the name `moolam-edit-signer`, prints the id and writes it into the root `.env`; copy that id here. The browser passes the same id to `addSigners`, so the value here and the value the web app uses must match |
 | `PRIVY_EDIT_POLICY_ID` | yes for `/edit` | The policy id that quorum is held to, built by `sessionSignerPolicy` in `packages/agents/src/privy/policies.ts` and recorded in `packages/agents/.moolam/wallets.json`. A wallet whose grant does not carry it is answered 409 `no-signer` |
 | `EDITS_PER_DAY` | no | Defaults to 5 edits per creator per rolling 24 hours |
 

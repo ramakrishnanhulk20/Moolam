@@ -9,6 +9,7 @@
     "proof": "tsx scripts/anvil-proof.ts",
     "seed": "tsx scripts/seed.ts",
     "prove:privy": "tsx scripts/prove-privy.ts",
+    "edit:quorum": "tsx scripts/edit-quorum.ts",
     "agent": "tsx scripts/agent.ts"
   },
   "dependencies": {

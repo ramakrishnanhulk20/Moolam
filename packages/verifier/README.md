@@ -292,7 +292,7 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `AGENT_IMAGE_MODEL` | which model draws, default `gpt-image-1-mini` |
 | `AGENT_IMAGE_BASE_URL` | a different endpoint for that model, optional |
 | `GENERATE_PER_DAY` | how many pictures one creator may have drawn in 24 hours, default 3 |
-| `PRIVY_EDIT_SIGNER_ID` | the key quorum the creator grants on their wallet for `/edit`. Its member is the public half of `PRIVY_AUTHORIZATION_KEY`, which is how this service signs as that signer |
+| `PRIVY_EDIT_SIGNER_ID` | the key quorum the creator grants on their wallet for `/edit`. Its member is the public half of `PRIVY_AUTHORIZATION_KEY`, which is how this service signs as that signer. The id comes from `npm run edit:quorum` in `packages/agents`, which creates that quorum once and writes the id into the root `.env` |
 | `PRIVY_EDIT_POLICY_ID` | the policy that quorum is held to: `appendEdit` on the Moolam registry, no MON, nothing else. A wallet that granted the signer without this policy is refused |
 | `EDITS_PER_DAY` | how many edits one creator may append in 24 hours, default 5 |
 

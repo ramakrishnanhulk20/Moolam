@@ -252,6 +252,19 @@ from. When sponsorship is on, the app pays for the creator's bind and the creato
 untouched; the generator's `register` and the session signer's `appendEdit` are always paid by the
 wallet that sends them.
 
+The quorum the `/edit` route needs is a different one, and `npm run edit:quorum` from this package
+is what makes it. The route signs with `PRIVY_AUTHORIZATION_KEY`, so what a creator grants on their
+wallet has to be the key quorum whose single member is the public half of that key, not the session
+key the proof above uses. The script finds that quorum or creates it under the name
+`moolam-edit-signer`, prints the id, and writes it into the root `.env` as `PRIVY_EDIT_SIGNER_ID`.
+Run it twice and the second run prints the same id: Privy has no call that lists key quorums, so
+the id in `.env` is how a later run finds it, and the members are read back from Privy before that
+id is trusted. Adding `-- --grant-proof-wallet` grants the quorum on the proof creator wallet with
+the edit policy, asks Privy for one signature, checks it recovers to that wallet, and takes the
+grant away again. It sends no transaction and spends no MON. The proof wallet is a server wallet
+these scripts own while a real creator's is an embedded wallet granted from the browser with
+`addSigners`, and the same quorum id serves both.
+
 ## The generator agent
 
 `npm run agent -- "a cinematic poster of a lighthouse in a storm, film grain"` is the demo a judge
