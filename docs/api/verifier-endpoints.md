@@ -105,22 +105,70 @@ Mounted only when `X402_ENABLED=true`. Otherwise the path does not exist and the
 path carries the checks that stop a fetch reaching a private address; rather than copy those checks
 and risk the two copies drifting, the paid route does not offer it.
 
-**Response.** `200` with the same `{ result, manifest }` body as `/verify`.
+**Response.** `200` with the same `{ result, manifest }` body as `/verify`, and the base64
+`PAYMENT-RESPONSE` header carrying the settlement: `{ success, transaction, network, payer }`.
 
 **Status codes.**
 
 | Code | When |
 | --- | --- |
-| `200` | Paid and matched. Settlement headers ride on the response |
-| `402` | No payment. The terms ride in the base64 `PAYMENT-REQUIRED` header, and the JSON body says in words what to do next |
+| `200` | Paid and matched. The settlement receipt rides in the `PAYMENT-RESPONSE` header |
+| `402` | No payment, or the facilitator refused this one. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next |
 | `400`, `403`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
-| `502` | The facilitator did not answer, the payment could not be checked, or settlement threw |
+| `502` | The facilitator did not answer, or the payment could not be checked |
 
 Payment is settled only after the match succeeds, so a failed verification never charges. When the
 handler fails after a payment was verified, the authorisation is cancelled rather than left
 standing against the payer.
+
+**When settlement is broadcast but not yet confirmed.** The facilitator can answer a settle call
+with `settlement_pending`: the transfer is on chain but its receipt has not been seen in time. The
+route asks once more, five seconds later, and if the answer is the same it returns `200` with the
+verification and a `PAYMENT-RESPONSE` whose `success` is false, whose `errorReason` is
+`settlement_pending`, and which carries the transaction hash. It does not cancel: the authorisation
+is signed for that one amount, the facilitator holds it, and the money lands when the transaction
+confirms.
+Cancelling would throw away a transfer already on its way, and withholding the answer would take
+the payment and give nothing back.
+
+### Paying for one
+
+`packages/agents/scripts/pay-verify.ts` is a complete paying client: it reads the terms, signs an
+EIP-3009 `transferWithAuthorization` for USDC on Monad mainnet, sends the image with the payment,
+and prints the receipt.
+
+```bash
+cd packages/agents
+npm run pay:verify                       # the default test image
+npm run pay:verify -- ./my-picture.jpg   # any other file
+```
+
+It reads `X402_PAYER_PRIVATE_KEY` (the paying wallet, which needs USDC and no MON, because the
+facilitator pays the settlement gas) and `X402_VERIFIER_URL` from the repo root `.env`. What it
+prints:
+
+```
+Terms offered and accepted:
+  scheme    exact on eip155:143
+  price     0.05 USDC (50000 atomic units)
+  asset     0x754704Bc059F8C67012fEd69BC8A327a5aafb603
+  pay to    0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
+  valid for 300 seconds
+
+Signing the transfer authorisation and sending the image ...
+Settled. Transaction 0x... on eip155:143, paid by 0x...
+
+Verification:
+  these exact bytes are registered, passport 0xb95adc...354c
+  confidence 1
+  C2PA manifest not in the file
+```
+
+A wallet with no USDC gets the facilitator's refusal instead, printed as
+`Refused: the verifier answered 402: insufficient_funds`, and the script exits non-zero. Nothing is
+charged and nothing is verified.
 
 ## POST /prepare
 

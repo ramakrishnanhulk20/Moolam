@@ -10,13 +10,17 @@
     "seed": "tsx scripts/seed.ts",
     "prove:privy": "tsx scripts/prove-privy.ts",
     "edit:quorum": "tsx scripts/edit-quorum.ts",
-    "agent": "tsx scripts/agent.ts"
+    "agent": "tsx scripts/agent.ts",
+    "pay:verify": "tsx scripts/pay-verify.ts"
   },
   "dependencies": {
     "@moolam/verifier": "*",
     "@noble/curves": "2.4.0",
     "@noble/hashes": "2.4.0",
     "@privy-io/node": "0.34.0",
+    "@x402/core": "2.25.0",
+    "@x402/evm": "2.25.0",
+    "@x402/fetch": "2.25.0",
     "dotenv": "17.4.2",
     "openai": "7.10.0",
     "sharp": "0.35.4",

@@ -271,7 +271,7 @@ describe("POST /edit", () => {
     const call = decodeFunctionData({ abi: registryEditAbi, data: sent.data });
     expect(call.functionName).toBe("appendEdit");
 
-    const [input, generatorSig] = call.args as [Record<string, unknown>, Hex];
+    const [input, generatorSig] = call.args as unknown as [Record<string, unknown>, Hex];
     expect(input.parentId).toBe(PARENT);
     expect(input.creator).toBe(OWNER);
     expect(input.exactHash).toBe(answer.child.exactHash);

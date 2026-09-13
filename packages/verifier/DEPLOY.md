@@ -49,10 +49,10 @@ the boot loudly and names the variable.
 | `VERIFIER_BASE_URL` | no | The public URL of this service, used when it needs to name itself |
 | `MOOLAM_C2PA_CERT_PATH` | no | Path to your own signing certificate. Set both this and the key, or neither |
 | `MOOLAM_C2PA_KEY_PATH` | no | Path to the matching private key |
-| `X402_ENABLED` | no | `true` turns on the paid verify route. Defaults to `false` |
+| `X402_ENABLED` | no | `true` turns on the paid verify route. Defaults to `false`, and the route answers 404 until it is set |
 | `X402_FACILITATOR_URL` | no | Defaults to the facilitator Monad runs, `https://x402-facilitator.molandak.org` |
-| `X402_PAY_TO_ADDRESS` | only when x402 is on | The address that collects the per-call fee |
-| `X402_PRICE` | no | Defaults to `$0.05` |
+| `X402_PAY_TO_ADDRESS` | only when x402 is on | The wallet the USDC goes to. Set it together with `X402_ENABLED`, or the container refuses to boot |
+| `X402_PRICE` | no | Price per paid verification in dollars of USDC, written as `$0.05`, which is the default. A bare `0.05` fails the boot |
 | `PINATA_JWT` | yes for the studio | An API key made at app.pinata.cloud, the JWT it shows once. This is what `/prepare` pins with, so treat it as a spending secret |
 | `PINATA_GATEWAY_URL` | no | This Pinata account's dedicated gateway, ending in `/ipfs/`. Defaults to the public gateway, which rate-limits a busy address |
 | `PRIVY_APP_ID` | yes for the studio | The app id from dashboard.privy.io, the same one the web app signs users in with. `/prepare` accepts that app's access tokens and no other's |
@@ -79,6 +79,13 @@ Privy secrets and the wallet id, and it says the same kind of line and answers 4
 when one is missing. `/edit` needs what `/prepare` needs plus the two Privy
 secrets and the two ids above, and no image model key at all, since nothing is
 drawn. It says the same kind of line and answers 404 when one is missing.
+
+Turning the paid route on is those two variables and nothing else: `X402_ENABLED=true` and
+`X402_PAY_TO_ADDRESS` set to the wallet that collects. Setting one without the other stops the boot
+and names the missing variable, because a payment route with no recipient must never mount. Nothing
+else about the service changes: the free `/verify` keeps answering, and the paid path simply exists.
+The service holds no key for this, signs nothing and pays no gas. The payer signs a USDC transfer
+authorisation and Monad's facilitator submits it and pays the gas for it.
 
 `/edit` is the only route that sends a transaction, and it never pays for one:
 Privy sponsors the gas and the creator's own wallet is the sender. The one

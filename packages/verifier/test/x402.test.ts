@@ -1,21 +1,31 @@
 // Covers the paid verify route: the 402 answer and its terms when payment is
-// switched on, the 404 when it is off, and what happens when settlement fails
-// after the answer is already computed. The facilitator is a stub, so no
-// request leaves the machine and no USDC moves.
-// Does NOT cover a real payment: verifying a signature, settling it, and the
-// PAYMENT-RESPONSE header are the facilitator's job and need a funded client
-// wallet, which this suite does not have. The settlement test drives the route
-// with a stand-in payment server rather than a signed payment, so it proves our
-// handling and not the x402 library's.
+// switched on, the 404 when it is off, a real signed payment carried end to end
+// over the wire, a settlement the facilitator has not confirmed yet, and what
+// happens when settlement fails after the answer is already computed. The
+// facilitator is a stub in every case, so no request leaves the machine and no
+// USDC moves.
+// Does NOT cover the chain: the stub checks the EIP-3009 signature and the
+// authorisation fields the real facilitator checks, but nothing submits
+// transferWithAuthorization, so a payer with no USDC, a nonce already spent and
+// the facilitator's own gas are out of scope here. Those are what
+// `npm run pay:verify` in packages/agents proves against the live facilitator.
+// The two settlement tests drive the route with a stand-in payment server, so
+// they prove our handling and not the x402 library's.
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import type { FacilitatorClient, x402HTTPResourceServer } from "@x402/core/server";
+import { x402Client, x402HTTPClient } from "@x402/core/client";
+import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
+import { verifyTypedData } from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { fingerprint } from "../src/fingerprint.js";
 import { parseEnv } from "../src/env.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
+import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildPaymentServer, X402_NETWORK } from "../src/x402/plugin.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
 
@@ -96,6 +106,175 @@ describe("paid verify route", () => {
 
     expect(health.statusCode).toBe(200);
     expect((health.json() as { records: number }).records).toBe(1);
+  });
+});
+
+describe("settlement the facilitator has not confirmed yet", () => {
+  it("asks once more, then answers with the verification and a pending receipt", async () => {
+    const transaction = "0x1d5f2b3c4e5a60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9";
+    const pending = {
+      success: false,
+      errorReason: "settlement_pending",
+      errorMessage: "broadcast, not confirmed yet",
+      transaction,
+      network: X402_NETWORK,
+    };
+    const cancel = vi.fn(async () => undefined);
+    const settle = vi.fn(async () => ({
+      ...pending,
+      headers: { "PAYMENT-RESPONSE": Buffer.from(JSON.stringify(pending), "utf8").toString("base64") },
+      response: { status: 502, headers: {}, body: { error: "settlement pending" } },
+    }));
+    const payments = {
+      initialize: async () => undefined,
+      processHTTPRequest: async () => ({
+        type: "payment-verified",
+        paymentPayload: {},
+        paymentRequirements: {},
+        declaredExtensions: [],
+        cancellationDispatcher: { cancel },
+      }),
+      processSettlement: settle,
+    } as unknown as x402HTTPResourceServer;
+
+    const image = await makeImage(29);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    // The wait between the two settle calls is what makes a second ask worth
+    // anything in production and pure delay in a test, so this one is zero.
+    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0 });
+    await app.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const response = await app.inject({ method: "POST", url: "/verify/paid", payload, headers });
+
+      expect(response.statusCode).toBe(200);
+      expect(settle).toHaveBeenCalledTimes(2);
+      expect(cancel).not.toHaveBeenCalled();
+      expect((response.json() as { result: { exact: string } }).result.exact).toBe(record.id);
+
+      const receipt = JSON.parse(
+        Buffer.from(String(response.headers["payment-response"]), "base64").toString("utf8"),
+      ) as { success: boolean; errorReason: string; transaction: string };
+      expect(receipt.success).toBe(false);
+      expect(receipt.errorReason).toBe("settlement_pending");
+      expect(receipt.transaction).toBe(transaction);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+describe("a signed payment", () => {
+  it("carries a real EIP-3009 authorisation the facilitator can check, and comes back settled", async () => {
+    const account = privateKeyToAccount(generatePrivateKey());
+    const seen: { payload?: PaymentPayload; requirements?: PaymentRequirements } = {};
+    const transaction = "0xabc1230000000000000000000000000000000000000000000000000000000def";
+
+    const facilitator: FacilitatorClient = {
+      async getSupported() {
+        return {
+          kinds: [{ x402Version: 2, scheme: "exact", network: X402_NETWORK }],
+          extensions: [],
+          signers: {},
+        };
+      },
+      async verify(payload, requirements) {
+        seen.payload = payload as PaymentPayload;
+        seen.requirements = requirements as PaymentRequirements;
+        return { isValid: true, payer: account.address };
+      },
+      async settle() {
+        return { success: true, transaction, network: X402_NETWORK, payer: account.address };
+      },
+    };
+
+    const image = await makeImage(31);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({
+      source: sourceOf([record]),
+      logger: false,
+      payments: buildPaymentServer({ payTo: PAY_TO, price: "$0.05", facilitator }),
+    });
+    await app.ready();
+
+    try {
+      const unpaid = await app.inject({ method: "POST", url: "/verify/paid" });
+      expect(unpaid.statusCode).toBe(402);
+
+      const client = new x402Client().register(X402_NETWORK, new ExactEvmScheme(account));
+      const http = new x402HTTPClient(client);
+      const terms = http.getPaymentRequiredResponse((name) => unpaid.headers[name.toLowerCase()] as string | undefined);
+      const signed = await http.createPaymentPayload(terms);
+
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const response = await app.inject({
+        method: "POST",
+        url: "/verify/paid",
+        payload,
+        headers: { ...headers, ...http.encodePaymentSignatureHeader(signed) },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect((response.json() as { result: { exact: string } }).result.exact).toBe(record.id);
+
+      const authorization = seen.payload?.payload.authorization as {
+        from: string;
+        to: string;
+        value: string;
+        validAfter: string;
+        validBefore: string;
+        nonce: `0x${string}`;
+      };
+      expect(authorization.from).toBe(account.address);
+      expect(authorization.to).toBe(PAY_TO);
+      expect(authorization.value).toBe("50000");
+      expect(Number(authorization.validBefore)).toBeGreaterThan(Math.floor(Date.now() / 1000));
+      expect(authorization.nonce).toMatch(/^0x[0-9a-f]{64}$/);
+
+      // The point of the test: the bytes on the wire are a transferWithAuthorization
+      // this account really signed, against Monad mainnet USDC, for this amount.
+      const signature = seen.payload?.payload.signature as `0x${string}`;
+      const valid = await verifyTypedData({
+        address: account.address,
+        domain: {
+          name: "USDC",
+          version: "2",
+          chainId: 143,
+          verifyingContract: seen.requirements?.asset as `0x${string}`,
+        },
+        types: {
+          TransferWithAuthorization: [
+            { name: "from", type: "address" },
+            { name: "to", type: "address" },
+            { name: "value", type: "uint256" },
+            { name: "validAfter", type: "uint256" },
+            { name: "validBefore", type: "uint256" },
+            { name: "nonce", type: "bytes32" },
+          ],
+        },
+        primaryType: "TransferWithAuthorization",
+        message: {
+          from: account.address,
+          to: authorization.to as `0x${string}`,
+          value: BigInt(authorization.value),
+          validAfter: BigInt(authorization.validAfter),
+          validBefore: BigInt(authorization.validBefore),
+          nonce: authorization.nonce,
+        },
+        signature,
+      });
+      expect(valid).toBe(true);
+
+      const receipt = http.getPaymentSettleResponse(
+        (name) => response.headers[name.toLowerCase()] as string | undefined,
+      );
+      expect(receipt.success).toBe(true);
+      expect(receipt.transaction).toBe(transaction);
+    } finally {
+      await app.close();
+    }
   });
 });
 

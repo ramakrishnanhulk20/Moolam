@@ -169,6 +169,26 @@ because a paid caller already has the bytes; the free route is the one that also
 accepts a remote URL. Both routes read uploads, match and render their answer
 through the same shared code, so the two cannot drift apart.
 
+Two variables turn it on, and they are set together: `X402_ENABLED=true` and
+`X402_PAY_TO_ADDRESS`, the wallet that collects. One without the other stops the
+boot and names the missing one, because a payment route with no recipient must
+never mount. The price is `X402_PRICE`, written as a dollar amount, default
+`$0.05`. This service never holds a key for any of it: the payer signs a USDC
+transfer authorisation and the facilitator submits it and pays the gas.
+
+Payment is settled only after the match succeeds, so a failed verification never
+charges. If the facilitator answers that a settlement is broadcast but not yet
+confirmed, the route asks once more five seconds later and then answers with the
+verification and a receipt that says pending, because that authorisation cannot
+be replayed for a different amount and the facilitator will finish it.
+
+`npm run pay:verify` in `packages/agents` is the paying side, one command a judge
+can run: it reads the terms, signs the transfer, sends the image and prints the
+settlement transaction next to the verification. It reads
+`X402_PAYER_PRIVATE_KEY` and `X402_VERIFIER_URL` from the repo root `.env`, and
+that wallet needs USDC and no MON, because the facilitator pays the settlement
+gas.
+
 Every caller gets 60 requests a minute, counted on the socket address so nobody
 can pick their own bucket by sending a header. Every rejection is logged with its
 reason. Unknown routes answer with JSON, not HTML.
@@ -275,7 +295,7 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `VERIFIER_BASE_URL` | the public URL of this service, used as the feedback endpoint |
 | `X402_ENABLED` | `true` mounts the paid route, `false` (the default) leaves it off |
 | `X402_PAY_TO_ADDRESS` | who the USDC goes to, required when `X402_ENABLED` is true |
-| `X402_PRICE` | price per paid verification, default `$0.05` |
+| `X402_PRICE` | price per paid verification as a dollar amount, default `$0.05`. A bare `0.05` fails the boot |
 | `X402_FACILITATOR_URL` | default `https://x402-facilitator.molandak.org`, Monad's facilitator |
 | `PINATA_JWT` | the Pinata API token `/prepare` pins with, from app.pinata.cloud |
 | `PINATA_GATEWAY_URL` | this account's dedicated IPFS gateway, default the public one |

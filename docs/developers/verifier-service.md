@@ -132,6 +132,38 @@ reaching an internal service.
 The paid route does not accept a URL at all. The free route carries those checks, and rather than
 copy them and risk two copies drifting apart, the paid route takes bytes only.
 
+## Selling a verification over x402
+
+`POST /verify/paid` is the same answer as `/verify`, sold for 5 cents of USDC on Monad mainnet and
+settled by the facilitator Monad runs at `https://x402-facilitator.molandak.org`. It exists for the
+caller with no account and no invoice: an agent that needs one answer, pays for it in the same round
+trip, and moves on.
+
+Turning it on takes two variables on the host and nothing else:
+
+```bash
+X402_ENABLED=true
+X402_PAY_TO_ADDRESS=0x...   # the wallet the USDC goes to
+```
+
+Both have to be set together. The service refuses to boot with `X402_ENABLED=true` and no address to
+pay, checked once in the environment schema and again when the payment server is built, because a
+payment route with no recipient must never mount. Until then the path answers 404 and the free route
+is unaffected. `X402_PRICE` defaults to `$0.05` and `X402_FACILITATOR_URL` to Monad's facilitator.
+
+The paying side is `npm run pay:verify` in `packages/agents`: it reads the terms out of the 402, signs
+an EIP-3009 `transferWithAuthorization` for USDC, sends the image with the payment, and prints the
+settlement transaction next to the verification. It reads `X402_PAYER_PRIVATE_KEY` and
+`X402_VERIFIER_URL` from the repo root `.env`. That wallet needs USDC and no MON: the facilitator
+pays the settlement gas itself. The exact command and what it prints are in the
+[API reference](../api/verifier-endpoints).
+
+Nobody is charged for an answer they did not get. The payment is settled only after the match
+succeeds, and a failure after the payment was checked cancels the authorisation. The one case that
+is not black and white is a settlement the facilitator has broadcast but not yet seen confirmed: the
+service asks a second time, then answers with the verification and a receipt that says pending,
+because that transfer cannot be replayed for a different amount and the facilitator will finish it.
+
 ## Configuration
 
 Every variable is checked at boot and a bad value names itself, so `VERIFIER_PORT=abc` stops the
@@ -149,7 +181,7 @@ service before it listens rather than after.
 | `VERIFIER_PRIVATE_KEY` | The wallet that signs reputation feedback, never the agent owner's |
 | `VERIFIER_ADDRESS` | That wallet's address, the client a summary is read for |
 | `VERIFIER_BASE_URL` | The public URL of this service, used as the feedback endpoint |
-| `X402_ENABLED` | `true` mounts the paid route, `false` (the default) leaves it off |
+| `X402_ENABLED` | `true` mounts the paid route, `false` (the default) leaves it off. Set this and the address together |
 | `X402_PAY_TO_ADDRESS` | Who the USDC goes to, required when `X402_ENABLED` is true |
 | `X402_PRICE` | Price per paid verification, default `$0.05` |
 | `X402_FACILITATOR_URL` | Default `https://x402-facilitator.molandak.org`, Monad's facilitator |

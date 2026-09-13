@@ -1,7 +1,25 @@
-import type { x402HTTPResourceServer } from "@x402/core/server";
+import type { ProcessSettleResultResponse, x402HTTPResourceServer } from "@x402/core/server";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { contextFor } from "../x402/plugin.js";
 import { readUpload, statusOf, verifyBytes } from "./shared.js";
+
+/** What the facilitator calls a transfer it has broadcast but not yet seen confirmed. */
+const SETTLEMENT_PENDING = "settlement_pending";
+
+/**
+ * How long to wait before asking the facilitator once more about a pending
+ * settlement. The x402 library already retries with no gap, so the only thing a
+ * second ask of our own adds is the time in between: long enough for a Monad
+ * block to confirm, short enough that the caller is not left hanging.
+ */
+export const PENDING_SETTLEMENT_RETRY_MS = 5_000;
+
+function isPending(settled: ProcessSettleResultResponse): boolean {
+  return !settled.success && settled.errorReason === SETTLEMENT_PENDING;
+}
+
+const pause = (ms: number): Promise<void> =>
+  ms <= 0 ? Promise.resolve() : new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * POST /verify/paid: the same answer as /verify, behind an x402 payment.
@@ -13,16 +31,19 @@ import { readUpload, statusOf, verifyBytes } from "./shared.js";
  *
  * A caller with no payment gets 402 and the payment terms. A caller whose
  * payment fails verification gets the facilitator's reason. Payment is settled
- * only after the match succeeds, so a failed verification never charges.
+ * only after the match succeeds, so a failed verification never charges. A
+ * settlement the facilitator has broadcast but not yet confirmed is asked about
+ * once more, then answered with the verification and a pending receipt.
  *
  * The route is mounted only when X402_ENABLED is true. Otherwise the path does
  * not exist and the service answers 404.
  */
 export async function verifyPaidRoutes(
   app: FastifyInstance,
-  options: { payments: x402HTTPResourceServer },
+  options: { payments: x402HTTPResourceServer; settlementRetryDelayMs?: number },
 ): Promise<void> {
   const { payments } = options;
+  const retryDelayMs = options.settlementRetryDelayMs ?? PENDING_SETTLEMENT_RETRY_MS;
   let ready: Promise<void> | undefined;
 
   app.post("/verify/paid", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -67,21 +88,57 @@ export async function verifyPaidRoutes(
     }
 
     if (processed.type === "payment-verified") {
-      let settled: Awaited<ReturnType<typeof payments.processSettlement>>;
-      try {
-        settled = await payments.processSettlement(
-          processed.paymentPayload,
-          processed.paymentRequirements,
-          processed.declaredExtensions,
+      const verified = processed;
+      const settle = async (): Promise<ProcessSettleResultResponse> =>
+        payments.processSettlement(
+          verified.paymentPayload,
+          verified.paymentRequirements,
+          verified.declaredExtensions,
           { request: context, responseBody: Buffer.from(JSON.stringify(payload)) },
         );
+
+      let settled: ProcessSettleResultResponse;
+      try {
+        settled = await settle();
       } catch (error) {
         // The answer is already computed but nobody has been charged, so the
         // authorisation is released rather than left standing against the payer.
         const reason = error instanceof Error ? error.message : String(error);
-        await processed.cancellationDispatcher.cancel({ reason: "handler_failed", responseStatus: 502 });
+        await verified.cancellationDispatcher.cancel({ reason: "handler_failed", responseStatus: 502 });
         request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: settlement threw");
         return reply.code(502).send({ error: `the payment could not be settled: ${reason}` });
+      }
+
+      if (isPending(settled)) {
+        request.log.warn(
+          { ip: request.ip, url: request.url, transaction: settled.transaction },
+          "settlement pending: asking the facilitator once more",
+        );
+        await pause(retryDelayMs);
+        try {
+          settled = await settle();
+        } catch (error) {
+          // The facilitator keeps the pending transfer under the payer's
+          // signature, so a second ask that fails changes nothing about the
+          // money. The first answer stands.
+          const reason = error instanceof Error ? error.message : String(error);
+          request.log.error({ ip: request.ip, url: request.url, reason }, "the second settle call did not answer");
+        }
+      }
+
+      if (isPending(settled)) {
+        // The authorisation is signed for this one amount and the facilitator
+        // holds it, so it cannot be spent twice and the money lands when the
+        // transaction confirms. Cancelling here would throw away a transfer
+        // that is already on its way, and withholding the answer would take the
+        // payment and give nothing back, so the verification goes out with the
+        // pending receipt on it.
+        request.log.warn(
+          { ip: request.ip, url: request.url, transaction: settled.transaction },
+          "settlement still pending: answering with the verification and a pending receipt",
+        );
+        reply.headers(settled.headers);
+        return reply.send(payload);
       }
 
       if (!settled.success) {
