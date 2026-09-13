@@ -11,6 +11,7 @@ import {
   NOTE_LIMIT,
   isEditBusy,
   isEditDone,
+  isEditPending,
   type EditFailure,
   type EditState,
   type EditStep,
@@ -398,10 +399,10 @@ function StepRow({ step, index, state }: { step: EditStep; index: number; state:
   const t = useTranslations("passport.edit");
   const status = state.steps[step];
 
-  // A send that ran out of patience is not a send that failed. It was accepted and may still land,
-  // so the row waits in the muted ink with a hollow marker rather than turning red.
-  const tone: Tone =
-    step === "send" && status === "failed" && state.failure?.key === "confirmPending" ? "pending" : status;
+  // A send that ran out of patience, or one the service handed to Privy and could not confirm, is
+  // not a send that failed. It may still land, so the row waits in the muted ink with a hollow
+  // marker rather than turning red.
+  const tone: Tone = step === "send" && status === "failed" && isEditPending(state.failure) ? "pending" : status;
 
   const label =
     step === "send" && status === "running" && state.confirming
@@ -446,6 +447,9 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
   const handlers: Record<string, (() => void) | undefined> = {
     grant: () => void edit.actions.grant(),
     again: () => void edit.actions.submit(),
+    // Nothing was sent when a dependency did not answer, so this one is a plain retry with copy
+    // that says what it is waiting on.
+    later: () => void edit.actions.submit(),
     recheck: () => void edit.actions.recheck(),
     signIn: edit.actions.signIn,
   };
@@ -453,7 +457,7 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
 
   // A send that is still out is not a send that failed, so it keeps the muted ink and the status
   // role rather than the alarm.
-  const pending = failure.key === "confirmPending";
+  const pending = isEditPending(failure);
 
   return (
     <motion.div

@@ -207,10 +207,25 @@ export type VerifierCode =
   | "not-owner"
   | "no-parent"
   | "send-failed"
+  | "send-pending"
+  | "privy-unavailable"
+  | "chain-unavailable"
+  | "creator-mismatch"
+  | "deadline-passed"
+  | "already-registered"
   | "busy"
   | "pin-failed"
   | "offline"
   | "bad-response";
+
+/** What a refusal names beside its code, when the route names anything at all. */
+export interface VerifierDetail {
+  /** A send Privy took and has not reported a hash for. It may still land, so it is never resent. */
+  transactionId?: string;
+  hash?: Hex;
+  /** The passport that already holds this exact picture, on a 409 from /prepare. */
+  passportId?: Hex;
+}
 
 /** One failure a screen can branch on, with the service's own words kept in the message. */
 export class VerifierError extends Error {
@@ -218,13 +233,25 @@ export class VerifierError extends Error {
   readonly code: VerifierCode;
   /** Only on a refused generation: what the creator has already used today. */
   readonly quota?: QuotaState;
+  readonly transactionId?: string;
+  readonly hash?: Hex;
+  readonly passportId?: Hex;
 
-  constructor(code: VerifierCode, status: number, message: string, quota?: QuotaState) {
+  constructor(
+    code: VerifierCode,
+    status: number,
+    message: string,
+    quota?: QuotaState,
+    detail: VerifierDetail = {},
+  ) {
     super(message);
     this.name = "VerifierError";
     this.code = code;
     this.status = status;
     this.quota = quota;
+    this.transactionId = detail.transactionId;
+    this.hash = detail.hash;
+    this.passportId = detail.passportId;
   }
 }
 
@@ -387,9 +414,10 @@ async function post<T>(
 }
 
 /**
- * The failures /generate names in the body rather than in the status, because
- * one status covers several of them: 400 is a bad field or a refused prompt,
- * and 502 is any one of the three outside services.
+ * The failures the routes name in the body rather than in the status, because
+ * one status covers several of them: 400 is a bad field, a refused prompt or a
+ * window that closed, 403 is a wrong creator or a wallet that does not hold the
+ * parent, and 502 is any of the outside services plus a send that is still out.
  */
 const BODY_CODES: Record<string, VerifierCode> = {
   quota: "quota",
@@ -402,6 +430,12 @@ const BODY_CODES: Record<string, VerifierCode> = {
   "not-owner": "not-owner",
   "no-parent": "no-parent",
   "send-failed": "send-failed",
+  "send-pending": "send-pending",
+  "privy-unavailable": "privy-unavailable",
+  "chain-unavailable": "chain-unavailable",
+  "creator-mismatch": "creator-mismatch",
+  "deadline-passed": "deadline-passed",
+  "already-registered": "already-registered",
 };
 
 function codeFor(status: number): VerifierCode {
@@ -432,7 +466,14 @@ function codeFor(status: number): VerifierCode {
  * status.
  */
 async function failureOf(response: Response): Promise<VerifierError> {
-  let body: { error?: unknown; reason?: unknown; quota?: unknown } = {};
+  let body: {
+    error?: unknown;
+    reason?: unknown;
+    quota?: unknown;
+    transactionId?: unknown;
+    hash?: unknown;
+    passportId?: unknown;
+  } = {};
   try {
     body = (await response.json()) as typeof body;
   } catch {
@@ -450,5 +491,15 @@ async function failureOf(response: Response): Promise<VerifierError> {
         : `the verify service answered ${response.status}`;
 
   const quota = quotaSchema.safeParse(body.quota);
-  return new VerifierError(code, response.status, message, quota.success ? quota.data : undefined);
+  const transactionId = typeof body.transactionId === "string" ? body.transactionId : "";
+  return new VerifierError(code, response.status, message, quota.success ? quota.data : undefined, {
+    transactionId: transactionId.length === 0 ? undefined : transactionId,
+    hash: hexWordOrNothing(body.hash),
+    passportId: hexWordOrNothing(body.passportId),
+  });
+}
+
+/** A 32 byte word from a failure body, or nothing. Anything else is not worth carrying to a screen. */
+function hexWordOrNothing(value: unknown): Hex | undefined {
+  return typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value) ? (value as Hex) : undefined;
 }

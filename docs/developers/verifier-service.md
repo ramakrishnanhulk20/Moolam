@@ -26,9 +26,11 @@ npm run robustness
 curl -s -F "file=@packages/verifier/test-assets/original.jpg" http://localhost:4000/verify
 ```
 
-The passport index is read into memory once at boot rather than queried per request, because a
-Hamming search is a full scan by design and rebuilding it per call would put a file read in front
-of every verification.
+The passport index is read into memory rather than queried per request, because a Hamming search is
+a full scan by design and rebuilding it per call would put a file read in front of every
+verification. It is rebuilt in the background every `INDEX_REFRESH_MS`, a minute by default, so an
+image registered a minute ago verifies without a redeploy, and a refresh that fails keeps the copy
+already in hand.
 
 ## What lives in this package
 
@@ -55,7 +57,7 @@ Full request and response shapes are in the [API reference](../api/verifier-endp
 | `POST /prepare` | The studio's backend. Takes a signed-in creator's image with their Privy access token in an `Authorization: Bearer` header, pins the image, its thumbnail, the manifest and the metadata, and returns the passport fields their browser signs. Mounted only when the host has both `PINATA_JWT` and `PRIVY_APP_ID` |
 | `POST /generate` | The studio's other way in. Draws a picture from a signed-in creator's prompt, pins it, and returns the passport fields with the generator agent's signature already on them. Mounted only with an image model key, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and `GENERATOR_WALLET_ID` on top of what `/prepare` needs |
 | `POST /edit` | Appends an edited version of a passport for the owner, sent from their own wallet through the signer they granted. Mounted only with `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY`, `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID` on top of what `/prepare` needs |
-| `GET /health` | `{ ok, records, version }`, where `records` is how many passports the index holds |
+| `GET /health` | `{ ok, records, version, routes }`, where `records` is how many passports the index holds and `routes` lists what this host actually mounted |
 
 Both verify routes read uploads, match and render their answer through the same shared code, so the
 two cannot drift apart.
@@ -85,8 +87,8 @@ already has them and the answer has to sit in a browser's memory next to the upl
 
 **Twenty prepares an hour per creator.** Every prepare spends four pins on Moolam's Pinata account
 and about a second of CPU, so the cap is what stops one account draining the plan. It is counted on
-the verified Privy user id, which a caller cannot choose, and falls back to the socket address for a
-caller with no valid token. This route's own limit replaces the global 60 a minute on this path.
+the verified Privy user id, which a caller cannot choose, and falls back to the caller's address for
+a caller with no valid token. This route's own limit replaces the global 60 a minute on this path.
 
 **The same gate as matching.** The decode, the manifest and the thumbnail run behind the two-slot
 concurrency gate `/verify` uses, so a burst of uploads queues instead of decoding all at once.
@@ -174,9 +176,13 @@ unpack to 100 megapixels.
 does not bound memory: sixty large uploads inside one minute would all decode at once. A third
 caller parks on a promise and is woken by whichever match finishes next.
 
-**60 requests a minute.** Counted on the socket address. `trustProxy` is off, so nobody can pick
-their own rate-limit bucket by sending a header. Every rejection is logged with its reason.
-`/prepare` is the one path this does not cover, because its own per-creator limit takes its place.
+**60 requests a minute.** Counted per caller. The service sits behind Railway's proxy, so the
+address comes from the forwarded header: read off the socket, every caller would share one bucket
+and the sixty-first request from anyone would refuse everyone. `TRUST_PROXY` names the hops that may
+be believed, as addresses or CIDR ranges. It is never `true` and never a hop count, because Fastify
+reads `true` as the leftmost forwarded entry and that entry is written by the caller, who would then
+pick their own bucket. Every rejection is logged with its reason. `/prepare` is the one path this
+does not cover, because its own per-creator limit takes its place.
 
 **10 second fetch timeout** on the URL form.
 

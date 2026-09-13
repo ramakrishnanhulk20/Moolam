@@ -388,6 +388,8 @@
         "noParent": "O registro não tem nenhum passaporte com esse id, então não há a que adicionar uma edição.",
         "quota": "Já são {used} de {limit} edições de hoje. A cota volta às {at}.",
         "sendFailed": "O registro recusou a edição, então nada foi gravado.",
+        "sendPending": "A edição saiu e o serviço não conseguiu ver que ela entrou a tempo. Ela ainda pode estar a caminho, então não deve ser enviada de novo. Pergunte à Monad de novo daqui a pouco.",
+        "dependencyDown": "Um serviço de que esta edição precisa não respondeu, então nada foi enviado e nada foi gasto. Tente de novo daqui a um minuto.",
         "signFailed": "A Privy não assinou o envio, então nada foi gravado.",
         "pinFailed": "A imagem editada não pôde ser fixada no IPFS, então nada foi enviado.",
         "busy": "O serviço está tocando quantas edições consegue ao mesmo tempo. Tente de novo daqui a pouco.",
@@ -408,6 +410,7 @@
       "actions": {
         "grant": "Permitir edições a partir deste app",
         "again": "Tentar de novo",
+        "later": "Tentar daqui a um minuto",
         "recheck": "Perguntar à Monad de novo",
         "signIn": "Entrar"
       },
@@ -892,6 +895,8 @@
       "titleMissing": "Dê um título à imagem primeiro. Ele entra no manifesto.",
       "quotaReached": "Você já teve todas as imagens que o agente desenha para uma conta em um dia. A contagem embaixo do botão diz quando a próxima abre.",
       "promptRefused": "O modelo não quis desenhar esta instrução. O motivo dele está abaixo. Mude a instrução e peça de novo.",
+      "creatorMismatch": "A conta conectada agora não é aquela para quem esta imagem estava sendo desenhada. Saia, entre de novo e peça outra vez.",
+      "deadlinePassed": "A imagem foi desenhada, mas sobrou pouco da janela de assinatura para o agente assinar. Ela conta no limite de hoje mesmo assim. Gere de novo e a janela recomeça.",
       "modelFailed": "O modelo não terminou esta imagem. Ele pode ter desenhado antes de falhar, então ela ainda conta no total de hoje.",
       "agentSignFailed": "A imagem foi desenhada e fixada, e a carteira do agente não quis assinar o passaporte. Tente de novo. Se continuar, a política na carteira do agente é a causa mais provável.",
       "agentBusy": "O agente já está desenhando o máximo de imagens que consegue ao mesmo tempo. Tente daqui a um minuto.",
@@ -900,6 +905,7 @@
     },
     "actions": {
       "signIn": "Entrar de novo",
+      "signOut": "Sair e entrar de novo",
       "bind": "Ligar este aparelho",
       "openPassport": "Abrir aquele passaporte",
       "unsponsored": "Enviar e pagar a taxa eu mesmo",

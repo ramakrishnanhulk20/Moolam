@@ -66,8 +66,11 @@ export async function readArt(metadataURI: string): Promise<Art> {
       return { missing: true };
     }
 
-    const { name, description, prompt, image, thumbnail } = parsed.data;
-    const small = thumbnail ?? image;
+    const { name, description, prompt } = parsed.data;
+    // A few early records carry a sentence where a picture URI belongs. Only a
+    // real address becomes an img src; anything else gets the seal plate.
+    const image = pictureUri(parsed.data.image);
+    const small = pictureUri(parsed.data.thumbnail) ?? image;
     return {
       title: name,
       description,
@@ -79,4 +82,9 @@ export async function readArt(metadataURI: string): Promise<Art> {
   } catch {
     return { missing: true };
   }
+}
+
+function pictureUri(value: string | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  return /^(ipfs:\/\/|https?:\/\/)/.test(value) ? value : undefined;
 }

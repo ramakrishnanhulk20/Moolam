@@ -26,7 +26,16 @@ export interface EditFailure {
   /** The service's or the browser's own words, printed under the sentence. */
   reason?: string;
   /** The single button offered under the message. */
-  next?: "grant" | "again" | "recheck" | "signIn";
+  next?: "grant" | "again" | "recheck" | "signIn" | "later";
+}
+
+/**
+ * A send that is out and a send that failed look the same to a reducer and must never look the
+ * same to a reader. Both of these were accepted somewhere, so the panel prints them in the muted
+ * ink and offers a second look at the chain rather than a second send.
+ */
+export function isEditPending(failure: EditFailure | null): boolean {
+  return failure !== null && (failure.key === "confirmPending" || failure.key === "sendPending");
 }
 
 export interface EditState {
@@ -143,9 +152,17 @@ export function checkEditImage(file: File): EditFailure | null {
  * `no-signer` is the one that changes the screen rather than the message: the grant this panel
  * asked for is not on the wallet, or it is there without the policy, and either way the way out is
  * to grant it again.
+ *
+ * `send-pending` is the dangerous one. Privy took the transaction and the chain had not shown it
+ * inside the service's wait, so it may still land and the only safe offer is to look again. The
+ * two `unavailable` answers are the opposite: a dependency never answered and nothing was sent,
+ * so waiting a moment and sending again costs nothing.
  */
 const SERVICE_KEYS: Record<string, { key: string; next?: EditFailure["next"] }> = {
   "no-signer": { key: "noSigner", next: "grant" },
+  "send-pending": { key: "sendPending", next: "recheck" },
+  "privy-unavailable": { key: "dependencyDown", next: "later" },
+  "chain-unavailable": { key: "dependencyDown", next: "later" },
   "not-owner": { key: "notOwner" },
   "no-parent": { key: "noParent" },
   quota: { key: "quota" },

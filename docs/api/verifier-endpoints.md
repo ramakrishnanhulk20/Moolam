@@ -88,7 +88,7 @@ either one, nothing is returned and `confidence` is 0.
 | `400` | No multipart `file` field and no `{ "url": "..." }` body, a part named something other than `file`, an empty file, or an upload that is not an image the service can decode |
 | `403` | The URL resolves to a loopback, private, link-local, unique-local, carrier-grade NAT, multicast, reserved or cloud metadata address, before or after any redirect |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once decoded |
-| `429` | Over 60 requests in a minute from that socket address |
+| `429` | Over 60 requests in a minute from that caller. The address is read from the hop named in `TRUST_PROXY`, so a service behind a proxy counts callers rather than the proxy |
 | `502` | The remote host did not answer, or answered with a non-2xx status |
 
 Errors are `{ "error": "<reason>" }`. A 500 answers with a fixed message rather than the internal
@@ -257,10 +257,12 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | `200` | Prepared and pinned |
 | `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, or a `kind` other than `human` |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. A key set that cannot be fetched answers the same way, so a caller never learns the difference between a bad token and a bad network. `{ "error": "unauthorized" }` |
+| `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
-| `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }` |
-| `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the socket address when there is no valid one. This limit replaces the global 60 a minute on this path |
+| `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not |
+| `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither |
+| `503` | `busy`. The two-slot decode gate stayed full for thirty seconds. Nothing was pinned, so the call can be made again |
 
 **CORS.** A browser may call this service only from an origin listed in `CORS_ORIGINS`, and those
 are exact origins: `https://moolam.app`, never a wildcard, a path or a trailing slash. The allowed
@@ -335,7 +337,9 @@ what the passport id is computed from. The browser must send these fields unchan
 | `200` | Drawn, pinned and signed |
 | `400` | A field outside its rule, or a deadline outside the 10 minute to 2 hour window. The reason names the field |
 | `400` | `{ "error": "prompt-refused", "reason": "..." }` when the model's safety system turns the prompt down. The day's allowance is given back |
+| `400` | `{ "error": "deadline-passed" }` when the picture was drawn and too little of the window was left for the agent to sign something a person could still use. The picture exists, so the day's allowance stays spent |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. `{ "error": "unauthorized" }` |
+| `403` | `{ "error": "creator-mismatch" }`. The `creator` address is not one of the caller's own Privy wallets, read from their user record rather than taken from the request. A Privy user id this app does not know answers the same way |
 | `429` | Past `GENERATE_PER_DAY` in a rolling 24 hours, counted on the Privy user id. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `502` | `model-failed`, `pin-failed` or `sign-failed`: the image model, Pinata or Privy's enclave would not play |
 | `503` | `busy`. Two pictures were already being drawn and no slot came free inside 90 seconds. The allowance is given back |
@@ -421,13 +425,15 @@ picture is a change to another one.
 | `200` | Pinned and sent |
 | `400` | Not a multipart body, no `file` part, a file part under another name, a `title` outside 1 to 120 characters, a `parentId` that is not 32 bytes of hex, or a `note` over 280 characters |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
-| `403` | `not-owner`. The registry says this wallet does not hold the parent |
+| `403` | `not-owner`. None of this caller's wallets is the one the registry says holds the parent. A creator with more than one embedded wallet is matched by the address on chain, not by which wallet is listed first |
 | `404` | `no-parent`. The registry has no passport with that id |
 | `409` | `no-signer`. This app is not a signer on that wallet, or its signer does not carry the edit policy. A Privy user id this app does not know answers the same way |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
-| `415` | `not-an-image` |
+| `415` | `not-an-image`, with `reason` when the header parsed and the pixels behind it did not decode |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused |
+| `502` | `{ "error": "send-pending", "transactionId": "...", "hash": "0x..." }`, the hash only when Privy reported one. Privy took the transaction and the chain did not show it inside the wait. It may still land, so a caller must check the chain and must never send it again |
+| `502` | `privy-unavailable` or `chain-unavailable`: Privy or the Monad RPC did not answer while the parent, the owner and the signer were being checked. That all happens before the allowance is taken, so nothing was sent and nothing was spent |
 | `503` | `busy`. Two edits were already in flight |
 
 The parent is checked first, because it is the one claim in the request that costs nothing to settle.
@@ -441,13 +447,17 @@ curl -s http://localhost:4000/health
 ```
 
 ```ts
-{ ok: boolean, records: number, version: string }
+{ ok: boolean, records: number, version: string, routes: string[] }
 ```
 
 `records` is how many passports the index is holding, which is what tells you whether the service
-booted against the source you meant. `version` is the package version.
+booted against the source you meant. It is re-read from the source every `INDEX_REFRESH_MS`, a
+minute by default, so a passport registered a minute ago verifies without a redeploy. `version` is
+the package version. `routes` is what this host actually mounted, which is where a deploy missing a
+key becomes visible from outside: a host without `PINATA_JWT` still boots and still verifies, and
+`prepare` is simply not in the list.
 
 ## Unknown routes
 
 Answered with `404` and `{ "error": "no route for <METHOD> <path>" }`, as JSON rather than HTML.
-Every rejection is logged with its reason and the socket address.
+Every rejection is logged with its reason and the caller's address.

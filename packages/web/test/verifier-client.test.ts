@@ -307,6 +307,51 @@ describe("VerifierError", () => {
     }
   });
 
+  it("reads a creator that is not the caller's and a window that closed out of the body", async () => {
+    const asked = {
+      prompt: "a fishing boat at first light",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "t",
+    };
+
+    const refused: [number, string][] = [
+      [403, "creator-mismatch"],
+      [400, "deadline-passed"],
+    ];
+
+    for (const [status, code] of refused) {
+      stubFetch(status, { error: code });
+      const failure = await generate(asked).catch((error) => error);
+      expect(failure.code).toBe(code);
+      expect(failure.status).toBe(status);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("names the passport that already holds a picture a prepare was refused for", async () => {
+    const passportId = `0x${"7d".repeat(32)}`;
+    stubFetch(409, { error: "already-registered", passportId });
+
+    const failure = await prepare({ file: imageFile(), title: "Kadal at dawn", accessToken: "t" }).catch(
+      (error) => error,
+    );
+    expect(failure.code).toBe("already-registered");
+    expect(failure.status).toBe(409);
+    expect(failure.passportId).toBe(passportId);
+  });
+
+  it("reads the 503 a full decode gate answers a prepare with as busy", async () => {
+    stubFetch(503, { error: "busy" });
+
+    const failure = await prepare({ file: imageFile(), title: "Kadal at dawn", accessToken: "t" }).catch(
+      (error) => error,
+    );
+    expect(failure.code).toBe("busy");
+    expect(failure.status).toBe(503);
+  });
+
   it("keeps the quota block from a refused generation, and 429 without one stays rate limited", async () => {
     const asked = {
       prompt: "a fishing boat at first light",
@@ -429,6 +474,62 @@ describe("the edit the owner appends without a passkey", () => {
       expect(failure).toBeInstanceOf(VerifierError);
       expect(failure.code).toBe(code);
       expect(failure.message).toBe(message);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("carries the transaction a pending send left behind, so the panel can look it up", async () => {
+    const hash = `0x${"1c".repeat(32)}`;
+    stubFetch(502, { error: "send-pending", transactionId: "tx_0198", hash });
+
+    const failure = await edit({
+      file: imageFile(),
+      title: "Kadal at dawn, warmer",
+      parentId: PARENT_ID as `0x${string}`,
+      note: "",
+      accessToken: "t",
+    }).catch((error) => error);
+
+    expect(failure.code).toBe("send-pending");
+    expect(failure.status).toBe(502);
+    expect(failure.transactionId).toBe("tx_0198");
+    expect(failure.hash).toBe(hash);
+  });
+
+  it("takes a pending send that has no hash yet, and refuses a hash that is not one", async () => {
+    const asked = {
+      file: imageFile(),
+      title: "Kadal at dawn, warmer",
+      parentId: PARENT_ID as `0x${string}`,
+      note: "",
+      accessToken: "t",
+    };
+
+    stubFetch(502, { error: "send-pending", transactionId: "tx_0199" });
+    const noHash = await edit(asked).catch((error) => error);
+    expect(noHash.transactionId).toBe("tx_0199");
+    expect(noHash.hash).toBeUndefined();
+
+    vi.unstubAllGlobals();
+    stubFetch(502, { error: "send-pending", transactionId: "tx_0200", hash: "0xabc" });
+    const shortHash = await edit(asked).catch((error) => error);
+    expect(shortHash.hash).toBeUndefined();
+  });
+
+  it("tells the two dependencies that did not answer apart from a send that failed", async () => {
+    const asked = {
+      file: imageFile(),
+      title: "Kadal at dawn, warmer",
+      parentId: PARENT_ID as `0x${string}`,
+      note: "",
+      accessToken: "t",
+    };
+
+    for (const code of ["privy-unavailable", "chain-unavailable"] as const) {
+      stubFetch(502, { error: code });
+      const failure = await edit(asked).catch((error) => error);
+      expect(failure.code).toBe(code);
+      expect(failure.hash).toBeUndefined();
       vi.unstubAllGlobals();
     }
   });

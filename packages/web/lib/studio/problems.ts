@@ -18,9 +18,11 @@ export interface Failure {
   key: string;
   reason?: string;
   /** The one button offered under the message. */
-  next?: "signIn" | "bind" | "openPassport" | "unsponsored" | "again" | "generateAgain" | "recheck";
+  next?: "signIn" | "signOut" | "bind" | "openPassport" | "unsponsored" | "again" | "generateAgain" | "recheck";
   /** An account to open on MonadVision, shown when the message asks the reader to go and look. */
   address?: Hex;
+  /** The passport that already holds this picture, when the service named it before anything was pinned. */
+  passportId?: Hex;
 }
 
 /** Which part of the flow threw, because the same DOMException means different things in each. */
@@ -37,8 +39,21 @@ export class AuthCheckFailed extends Error {
   }
 }
 
+/**
+ * Which sentence each answer from the service gets.
+ *
+ * `creator-mismatch` can only happen in the studio when the signed-in account changed under the
+ * page, because the address on the request is the one this session read from Privy. A fresh sign
+ * in is the only thing that fixes it, so that is what the copy asks for.
+ *
+ * `deadline-passed` means the picture was drawn and the window to sign it closed, so the slot is
+ * spent and the honest offer is a new drawing with a new window.
+ */
 const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
   offline: { key: "serviceOffline", next: "again" },
+  "creator-mismatch": { key: "creatorMismatch", next: "signOut" },
+  "deadline-passed": { key: "deadlinePassed", next: "again" },
+  "already-registered": { key: "alreadyRegistered", next: "openPassport" },
   unauthorized: { key: "signedOut", next: "signIn" },
   "too-large": { key: "tooLarge" },
   "not-an-image": { key: "notAnImage" },
@@ -103,7 +118,10 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
     const mapped = VERIFIER_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
     // Some failures are named in the body and nothing more, so printing the
     // service's word under the sentence would only repeat the code back.
-    return error.message === error.code ? { ...mapped } : { ...mapped, reason: error.message };
+    const named = error.message === error.code ? { ...mapped } : { ...mapped, reason: error.message };
+    // The duplicate answer carries the passport that already holds the picture, so the screen can
+    // send the reader there instead of leaving them with a dead end.
+    return error.passportId === undefined ? named : { ...named, passportId: error.passportId };
   }
 
   if (error instanceof AuthCheckFailed) {

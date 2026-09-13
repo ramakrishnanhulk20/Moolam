@@ -387,6 +387,8 @@
         "noParent": "Das Register hat keinen Pass mit dieser Id, es gibt also nichts, wozu eine Bearbeitung passt.",
         "quota": "Das sind {used} von {limit} Bearbeitungen für heute. Das Kontingent kommt um {at} zurück.",
         "sendFailed": "Das Register hat die Bearbeitung abgelehnt, es wurde nichts eingetragen.",
+        "sendPending": "Die Bearbeitung ging raus und der Dienst konnte ihr Ankommen nicht mehr sehen. Sie kann noch unterwegs sein, sie darf also nicht erneut geschickt werden. Frag Monad gleich noch einmal.",
+        "dependencyDown": "Ein Dienst, den diese Bearbeitung braucht, hat nicht geantwortet. Es wurde nichts geschickt und nichts verbraucht. Versuch es in einer Minute noch einmal.",
         "signFailed": "Privy hat den Versand nicht signiert, es wurde nichts eingetragen.",
         "pinFailed": "Das bearbeitete Bild ließ sich nicht auf IPFS pinnen, also wurde nichts geschickt.",
         "busy": "Der Dienst führt so viele Bearbeitungen gleichzeitig aus, wie er kann. Versuch es gleich noch einmal.",
@@ -407,6 +409,7 @@
       "actions": {
         "grant": "Bearbeitungen aus dieser App erlauben",
         "again": "Noch einmal versuchen",
+        "later": "In einer Minute noch einmal versuchen",
         "recheck": "Monad noch einmal fragen",
         "signIn": "Anmelden"
       },
@@ -891,6 +894,8 @@
       "titleMissing": "Gib dem Bild zuerst einen Titel. Er geht in das Manifest.",
       "quotaReached": "Du hattest heute schon jedes Bild, das der Agent für ein Konto zeichnet. Die Zählung unter dem Knopf sagt, wann das nächste frei wird.",
       "promptRefused": "Das Modell wollte diesen Prompt nicht zeichnen. Seine eigene Begründung steht unten. Ändere den Prompt und frag noch einmal.",
+      "creatorMismatch": "Das jetzt angemeldete Konto ist nicht das, für das dieses Bild gezeichnet wurde. Melde dich ab, wieder an und frag noch einmal danach.",
+      "deadlinePassed": "Das Bild wurde gezeichnet, aber vom Signaturfenster war zu wenig übrig, damit der Agent es signieren konnte. Es zählt trotzdem gegen das heutige Kontingent. Mach es noch einmal, dann beginnt das Fenster neu.",
       "modelFailed": "Das Modell hat dieses Bild nicht fertig gezeichnet. Es kann vorher gezeichnet und abgerechnet haben, also zählt es trotzdem zum heutigen Stand.",
       "agentSignFailed": "Das Bild wurde gezeichnet und angeheftet, und die Wallet des Agenten wollte den Pass nicht signieren. Versuch es noch einmal. Wenn es dabei bleibt, ist die Richtlinie auf der Wallet des Agenten die wahrscheinliche Ursache.",
       "agentBusy": "Der Agent zeichnet schon so viele Bilder, wie er gleichzeitig kann. Versuch es in einer Minute noch einmal.",
@@ -899,6 +904,7 @@
     },
     "actions": {
       "signIn": "Neu anmelden",
+      "signOut": "Abmelden und neu anmelden",
       "bind": "Dieses Gerät anbinden",
       "openPassport": "Diesen Pass öffnen",
       "unsponsored": "Schicken und die Gebühr selbst zahlen",

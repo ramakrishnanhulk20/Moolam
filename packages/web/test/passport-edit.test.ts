@@ -9,6 +9,7 @@ import {
   initialEditState,
   isEditBusy,
   isEditDone,
+  isEditPending,
   type EditState,
 } from "@/lib/passport/edit";
 import { ownsPassport, signerGranted } from "@/lib/passport/owner";
@@ -132,6 +133,28 @@ describe("what the panel says when something goes wrong", () => {
   it("never suggests sending again when the wait ran out, because the edit may still land", () => {
     const failure = describeEditFailure(new ConfirmTimeout());
     expect(failure).toEqual({ key: "confirmPending", next: "recheck" });
+  });
+
+  it("offers a second look, never a second send, when the service could not confirm the transaction", () => {
+    const failure = describeEditFailure(new VerifierError("send-pending", 502, "send-pending"));
+    expect(failure).toEqual({ key: "sendPending", next: "recheck" });
+  });
+
+  it("says the same thing about either dependency that did not answer, and offers a retry", () => {
+    for (const code of ["privy-unavailable", "chain-unavailable"] as const) {
+      expect(describeEditFailure(new VerifierError(code, 502, code))).toEqual({
+        key: "dependencyDown",
+        next: "later",
+      });
+    }
+  });
+
+  it("counts both kinds of send that are still out as pending, and a refused one as failed", () => {
+    expect(isEditPending({ key: "confirmPending", next: "recheck" })).toBe(true);
+    expect(isEditPending({ key: "sendPending", next: "recheck" })).toBe(true);
+    expect(isEditPending({ key: "sendFailed", next: "again" })).toBe(false);
+    expect(isEditPending({ key: "dependencyDown", next: "later" })).toBe(false);
+    expect(isEditPending(null)).toBe(false);
   });
 
   it("tells a declined Privy window apart from a grant that broke", () => {

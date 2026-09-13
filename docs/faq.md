@@ -31,10 +31,11 @@ be able to fetch the picture and hash it again.
 
 ## What does verification cost
 
-The public route is free, capped at 60 requests a minute from one address. There is also a paid
-route behind x402 at 5 cents in USDC on Monad, settled by Monad's own facilitator, for anyone who
-wants a higher allowance. Payment is settled only after the match succeeds, so a failed check never
-charges.
+The public route is free, capped at 60 requests a minute per caller, counted on the address the
+proxy in front of the service reports rather than the socket it arrived on, so one busy caller
+cannot use up everybody else's allowance. There is also a paid route behind x402 at 5 cents in USDC
+on Monad, settled by Monad's own facilitator, for anyone who wants a higher allowance. Payment is
+settled only after the match succeeds, so a failed check never charges.
 
 ## Do I need MON or any crypto to register an image
 

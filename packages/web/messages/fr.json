@@ -387,6 +387,8 @@
         "noParent": "Le registre n'a aucun passeport avec cet id, il n'y a donc rien à retoucher.",
         "quota": "Cela fait {used} retouches sur {limit} pour aujourd'hui. Le quota revient à {at}.",
         "sendFailed": "Le registre a refusé la retouche, rien n'a été enregistré.",
+        "sendPending": "La retouche est partie et le service n'a pas pu voir qu'elle arrivait à temps. Elle peut encore être en route, il ne faut donc pas la renvoyer. Redemandez à Monad dans un instant.",
+        "dependencyDown": "Un service dont cette retouche a besoin n'a pas répondu, donc rien n'a été envoyé et rien n'a été dépensé. Réessayez dans une minute.",
         "signFailed": "Privy n'a pas signé l'envoi, rien n'a été enregistré.",
         "pinFailed": "L'image retouchée n'a pas pu être épinglée sur IPFS, rien n'a été envoyé.",
         "busy": "Le service traite déjà autant de retouches qu'il le peut. Réessayez dans un instant.",
@@ -407,6 +409,7 @@
       "actions": {
         "grant": "Autoriser les retouches depuis cette app",
         "again": "Réessayer",
+        "later": "Réessayer dans une minute",
         "recheck": "Redemander à Monad",
         "signIn": "Se connecter"
       },
@@ -891,6 +894,8 @@
       "titleMissing": "Donnez d’abord un titre à l’image. Il part dans le manifeste.",
       "quotaReached": "Vous avez eu toutes les images que l'agent dessine pour un compte en une journée. Le compteur sous le bouton dit quand la suivante se libère.",
       "promptRefused": "Le modèle n'a pas voulu dessiner cette consigne. Sa propre raison est ci-dessous. Modifiez la consigne et redemandez.",
+      "creatorMismatch": "Le compte connecté n'est pas celui pour lequel cette image était dessinée. Déconnectez-vous, reconnectez-vous et redemandez-la.",
+      "deadlinePassed": "L'image a été dessinée, mais il restait trop peu de la fenêtre de signature pour que l'agent la signe. Elle compte quand même dans le quota du jour. Refaites-en une, la fenêtre repart à zéro.",
       "modelFailed": "Le modèle n'a pas terminé cette image. Il a pu dessiner avant d'échouer, donc celle-ci compte quand même dans le total du jour.",
       "agentSignFailed": "L'image a été dessinée et épinglée, et le portefeuille de l'agent n'a pas voulu signer le passeport. Réessayez. Si cela persiste, la politique posée sur le portefeuille de l'agent en est la cause la plus probable.",
       "agentBusy": "L'agent dessine déjà autant d'images qu'il le peut à la fois. Réessayez dans une minute.",
@@ -899,6 +904,7 @@
     },
     "actions": {
       "signIn": "Se reconnecter",
+      "signOut": "Se déconnecter et se reconnecter",
       "bind": "Lier cet appareil",
       "openPassport": "Ouvrir ce passeport",
       "unsponsored": "L’envoyer et payer les frais moi-même",

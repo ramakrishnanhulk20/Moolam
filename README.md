@@ -408,8 +408,8 @@ curl against the same URL works.
 | Package | Command | Tests |
 | --- | --- | --- |
 | Contracts | `npm test` from `packages/contracts` | 119 |
-| Verify service | `npm run test:verifier` | 115 |
-| Chain client and agents | `npm run test:agents` | 36 |
+| Verify service | `npm run test:verifier` | 150 |
+| Chain client and agents | `npm run test:agents` | 38 |
 | Indexer | `npm run test:indexer` | 9 |
 | Web app | `npm test` from `packages/web` | 384 |
 
@@ -546,12 +546,12 @@ Six routes, all JSON including errors. Full reference in
 
 | Route | Who may call it | What it takes and answers | What it costs the caller | Mounted when |
 | --- | --- | --- | --- | --- |
-| `POST /verify` | anyone, no account | A multipart `file`, or `{ "url": "https://..." }`. 20 MB and 40 megapixels. Answers `{ result, manifest }`. 400, 403 on a private or loopback address, 413, 429, 502 | nothing, at 60 requests a minute per socket address | always |
+| `POST /verify` | anyone, no account | A multipart `file`, or `{ "url": "https://..." }`. 20 MB and 40 megapixels. Answers `{ result, manifest }`. 400, 403 on a private or loopback address, 413, 429, 502 | nothing, at 60 requests a minute per caller | always |
 | `POST /verify/paid` | anyone holding USDC on Monad | A multipart `file` only, and the same answer behind an x402 payment. Without one, 402 with the terms in the header | $0.05 in USDC and no gas: the facilitator submits the transfer and pays for it | `X402_ENABLED=true`, else 404 |
 | `POST /prepare` | a signed-in creator, Privy access token in `Authorization: Bearer` | A multipart `file`, `title` and `kind`. Fingerprints, embeds the manifest, pins four files, answers the passport fields plus the four content ids. 401, 415, 429, 502 `pin-failed` | nothing, at 20 prepares an hour per creator | `PINATA_JWT` and `PRIVY_APP_ID` are set, else 404 |
 | `POST /generate` | the same token | JSON `prompt`, `title`, `creator` and `deadline`. The agent draws and signs, the service pins, and it answers the passport fields, `generatorSig`, the model and the agent. 400 `prompt-refused`, 429 `quota`, 502 `model-failed`, 503 `busy` | nothing, at three pictures a day per creator. Moolam pays the image model | on top of `/prepare`, an image model key, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY` and `GENERATOR_WALLET_ID` |
 | `POST /edit` | the same token, from a creator who granted the edit signer | A multipart `file`, `title`, `parentId` and `note`. Pins the child and sends `appendEdit` from the creator's own wallet. 404 `no-parent`, 409 `no-signer`, 403 `not-owner`, 429 `quota`, 502 `send-failed` with the registry's own error name | nothing, at five edits a day per creator. Privy sponsors the gas | on top of `/prepare`, `PRIVY_APP_SECRET`, `PRIVY_AUTHORIZATION_KEY`, `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID` |
-| `GET /health` | anyone | `{ ok, records, version }`, where `records` is how many passports the index holds | nothing | always |
+| `GET /health` | anyone | `{ ok, records, version, routes }`, where `records` is how many passports the index holds (re-read from the index every minute) and `routes` lists what this host mounted | nothing | always |
 
 The paid route is built and switched off: `X402_ENABLED` is `false` on the live service today, so
 `POST /verify/paid` answers 404 there until the wallet that collects is set alongside it.
@@ -566,8 +566,8 @@ no trailing slash.
 | Suite | Tests | What it covers |
 | --- | --- | --- |
 | Contracts | 119 | 18 on the policy timelock, 75 on the registry covering every rule, custom error and event, 15 on the Chainlink receiver path, 5 fuzz tests, an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real Monad mainnet state |
-| Verify service | 115 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks and quotas, and the x402 path including a settlement that is broadcast but still unconfirmed |
-| Chain client and agents | 36 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
+| Verify service | 150 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
+| Chain client and agents | 38 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
 | Indexer | 9 | The handlers against the generated Envio types with the live mainnet addresses |
 | Web app | 384 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the edit panel, the dispute panel and the resolver console, the verify answer, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
 
@@ -734,7 +734,8 @@ and the file the output is saved in.
 - A 24 hour public delay on every change that widens trust. Removing a receiver is the one immediate
   action.
 - Off chain: an SSRF guard that normalises and pins every address it checks, 60 requests a minute
-  per socket address, a 20 MB and 40 megapixel cap, a concurrency gate of two matches at a time, and
+  per caller (the service trusts only Railway's proxy for the address), a 20 MB and 40 megapixel cap, a
+  concurrency gate of two matches at a time that answers busy after thirty seconds, and
   a Privy access token checked on every route that spends money or writes to the chain.
 - The signer a creator grants for edits is held to a Privy policy that names one function on one
   contract: `appendEdit` on the Moolam registry, carrying no MON. It cannot register, resolve,

@@ -66,8 +66,13 @@ connection is then pinned to the addresses that were checked, so a name that ans
 the second time fails instead of reaching an internal service. The paid route does not accept a URL
 at all, so those checks live in exactly one place.
 
-**Rate limits.** 60 requests a minute, keyed on the socket address. `trustProxy` is off, so nobody
-can pick their own bucket by sending a header. Every rejection is logged with its reason.
+**Rate limits.** 60 requests a minute per caller. The service runs behind Railway's proxy, so the
+caller's address is read from the forwarded header rather than the socket, which would otherwise put
+every caller on earth in one bucket. `TRUST_PROXY` names which hops may be believed, as addresses or
+CIDR ranges, and it is never `true` and never a hop count: Fastify reads `true` as the leftmost
+forwarded entry, and that entry is written by the caller, which would hand each of them a bucket of
+their own choosing. Left empty it believes nothing and reads the socket. Every rejection is logged
+with its reason.
 
 **Byte and pixel limits.** 20 MB per upload, enforced on the multipart part and again chunk by
 chunk as a remote body streams in, because a `Content-Length` header is a claim and not a fact. 40

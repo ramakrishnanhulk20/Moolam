@@ -200,6 +200,28 @@ describe("every failure the panel can print", () => {
     expect(markup).toContain("Try again");
   });
 
+  it("treats a send the service could not confirm as still out, not as a failure", () => {
+    const markup = panel(
+      edit(
+        { granted: true },
+        { failure: { key: "sendPending", next: "recheck" }, steps: { pin: "done", send: "failed" } },
+      ),
+    );
+    expect(markup).toContain("it must not be sent again");
+    expect(markup).toContain("Ask Monad again");
+    expect(markup).toContain('data-tone="pending"');
+    expect(markup).not.toContain("Try again</button>");
+  });
+
+  it("offers a plain retry when a dependency did not answer and nothing was sent", () => {
+    const markup = panel(
+      edit({ granted: true }, { failure: { key: "dependencyDown", next: "later" }, steps: { pin: "failed", send: "waiting" } }),
+    );
+    expect(markup).toContain("nothing was sent and nothing was spent");
+    expect(markup).toContain("Try again in a minute");
+    expect(markup).toContain('data-tone="failed"');
+  });
+
   it("never offers to send again when the wait ran out", () => {
     const markup = panel(
       edit(

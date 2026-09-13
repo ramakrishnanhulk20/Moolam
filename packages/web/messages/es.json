@@ -387,6 +387,8 @@
         "noParent": "El registro no tiene ningún pasaporte con este id, así que no hay a qué añadir una edición.",
         "quota": "Van {used} de {limit} ediciones de hoy. El cupo vuelve a las {at}.",
         "sendFailed": "El registro rechazó la edición, así que no se grabó nada.",
+        "sendPending": "La edición salió y el servicio no llegó a ver que se grabara. Puede que siga en camino, así que no hay que enviarla de nuevo. Pregunta a Monad otra vez en un momento.",
+        "dependencyDown": "Un servicio que esta edición necesita no respondió, así que no se envió nada ni se gastó nada. Inténtalo en un minuto.",
         "signFailed": "Privy no firmó el envío, así que no se grabó nada.",
         "pinFailed": "La imagen editada no se pudo fijar en IPFS, así que no se envió nada.",
         "busy": "El servicio está procesando todas las ediciones que puede a la vez. Inténtalo en un momento.",
@@ -407,6 +409,7 @@
       "actions": {
         "grant": "Permitir ediciones desde esta app",
         "again": "Intentar otra vez",
+        "later": "Intentar en un minuto",
         "recheck": "Preguntar a Monad otra vez",
         "signIn": "Iniciar sesión"
       },
@@ -891,6 +894,8 @@
       "titleMissing": "Ponle antes un título a la imagen. Va dentro del manifiesto.",
       "quotaReached": "Ya has tenido todas las imágenes que el agente dibuja para una cuenta en un día. La cuenta que hay bajo el botón dice cuándo se libera la siguiente.",
       "promptRefused": "El modelo no quiso dibujar esta instrucción. Su propio motivo está abajo. Cámbiala y pídelo otra vez.",
+      "creatorMismatch": "La cuenta con la que estás ahora no es aquella para la que se estaba dibujando esta imagen. Cierra sesión, vuelve a entrar y pídela otra vez.",
+      "deadlinePassed": "La imagen se dibujó, pero quedaba muy poco de la ventana de firma para que el agente la firmara. Cuenta igual dentro del límite de hoy. Genérala otra vez y la ventana empieza de nuevo.",
       "modelFailed": "El modelo no terminó esta imagen. Puede que dibujara antes de fallar, así que esa sigue contando en el total de hoy.",
       "agentSignFailed": "La imagen se dibujó y se fijó, y la cuenta del agente no quiso firmar el pasaporte. Inténtalo otra vez. Si sigue pasando, lo más probable es la política sobre la cuenta del agente.",
       "agentBusy": "El agente ya está dibujando todas las imágenes que puede a la vez. Inténtalo dentro de un minuto.",
@@ -899,6 +904,7 @@
     },
     "actions": {
       "signIn": "Entrar otra vez",
+      "signOut": "Cerrar sesión y volver a entrar",
       "bind": "Vincular este dispositivo",
       "openPassport": "Abrir ese pasaporte",
       "unsponsored": "Enviarla y pagar yo la comisión",

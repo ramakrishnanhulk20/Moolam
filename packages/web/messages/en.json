@@ -387,6 +387,8 @@
         "noParent": "The registry has no passport with this id, so there is nothing to add an edit to.",
         "quota": "That is {used} of {limit} edits for today. The allowance comes back at {at}.",
         "sendFailed": "The registry refused the edit, so nothing was recorded.",
+        "sendPending": "The edit went out and the service could not see it land in time. It may still be on its way, so it must not be sent again. Ask Monad again in a moment.",
+        "dependencyDown": "A service this edit needs did not answer, so nothing was sent and nothing was spent. Try again in a minute.",
         "signFailed": "Privy would not sign the send, so nothing was recorded.",
         "pinFailed": "The edited picture could not be pinned to IPFS, so nothing was sent.",
         "busy": "The service is running as many edits at once as it can. Try again in a moment.",
@@ -407,6 +409,7 @@
       "actions": {
         "grant": "Allow edits from this app",
         "again": "Try again",
+        "later": "Try again in a minute",
         "recheck": "Ask Monad again",
         "signIn": "Sign in"
       },
@@ -891,6 +894,8 @@
       "titleMissing": "Give the picture a title first. It goes into the manifest.",
       "quotaReached": "You have had every picture the agent draws for one account in a day. The count under the button says when the next one opens up.",
       "promptRefused": "The model would not draw this prompt. Its own reason is below. Edit the prompt and ask again.",
+      "creatorMismatch": "The account signed in now is not the one this picture was being drawn for. Sign out, sign in again, and ask for it once more.",
+      "deadlinePassed": "The picture was drawn, but too little of the signing window was left for the agent to sign it. It still counted against today's allowance. Make it again and the window starts fresh.",
       "modelFailed": "The model did not finish this picture. It may have drawn before it failed, so that one still counts against today's total.",
       "agentSignFailed": "The picture was drawn and pinned, and the agent's wallet would not sign the passport. Try again. If it keeps happening, the policy on the agent's wallet is the likely cause.",
       "agentBusy": "The agent is already drawing as many pictures as it can at once. Try again in a minute.",
@@ -899,6 +904,7 @@
     },
     "actions": {
       "signIn": "Sign in again",
+      "signOut": "Sign out and in again",
       "bind": "Bind this device",
       "openPassport": "Open that passport",
       "unsponsored": "Send it and pay the fee myself",

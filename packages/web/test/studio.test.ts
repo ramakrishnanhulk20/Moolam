@@ -286,6 +286,37 @@ describe("what to tell the creator", () => {
     });
   });
 
+  it("sends a creator address this session no longer holds back through a fresh sign in", () => {
+    expect(describeFailure(new VerifierError("creator-mismatch", 403, "creator-mismatch"), "prepare")).toEqual({
+      key: "creatorMismatch",
+      next: "signOut",
+    });
+  });
+
+  it("offers another drawing when the window to sign the last one closed", () => {
+    const failure = describeFailure(new VerifierError("deadline-passed", 400, "deadline-passed"), "prepare");
+    expect(failure).toEqual({ key: "deadlinePassed", next: "again" });
+
+    // On the agent path the retry draws a new picture, and the button has to say so.
+    const shown = registerReducer({ ...initialRegisterState, mode: "generate" }, { type: "failed", failure });
+    expect(shown.failure).toEqual({ key: "deadlinePassed", next: "generateAgain" });
+  });
+
+  it("points a picture the registry already holds at the passport that holds it", () => {
+    const failure = describeFailure(
+      new VerifierError("already-registered", 409, "already-registered", undefined, { passportId: ID }),
+      "prepare",
+    );
+    expect(failure).toEqual({ key: "alreadyRegistered", next: "openPassport", passportId: ID });
+  });
+
+  it("tells an upload that found the decode gate full to wait, the same as a drawing does", () => {
+    expect(describeFailure(new VerifierError("busy", 503, "busy"), "prepare")).toEqual({
+      key: "agentBusy",
+      next: "again",
+    });
+  });
+
   it("does not apologise when the person closed the confirmation themselves", () => {
     expect(describeFailure({ code: 4001, message: "User rejected the request" }, "send").key).toBe("sendCancelled");
   });
