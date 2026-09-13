@@ -27,6 +27,8 @@
     "themeDark": "어둡게",
     "themeLight": "밝게",
     "language": "언어",
+    "menu": "메뉴",
+    "menuClose": "메뉴 닫기",
     "nav": {
       "home": "홈",
       "verify": "이미지 검증",
@@ -77,7 +79,10 @@
       "kicker": "생성",
       "title": "이 한 장은 AI가 만들었습니다.",
       "body": "누군가 그림을 보기도 전에, 에이전트 {agent}가 자기 보안 영역 안에서 그 지문에 서명했습니다.",
-      "readout": "생성 에이전트 {agent}, ERC-8004 신원 레지스트리"
+      "readout": "생성 에이전트 {agent}, ERC-8004 신원 레지스트리",
+      "titleNoAgent": "이 한 장은 사람이 등록했습니다.",
+      "bodyNoAgent": "이 지문에 서명한 에이전트는 없습니다. 사진으로 등록된 것이고, 여권에도 그렇게 적혀 있습니다.",
+      "readoutNoAgent": "이 여권에는 생성 에이전트가 없습니다"
     },
     "sealed": {
       "kicker": "봉인",
@@ -99,9 +104,9 @@
       "matched": "일치함",
       "notMatched": "일치하지 않음",
       "attestation": "Chainlink가 다시 확인해 답을 체인에 기록했습니다. {result}, {distance}비트 차이입니다.",
-      "attestationOther": "Chainlink가 이 레지스트리의 여권 {passport}을 다시 확인해 답을 체인에 기록했습니다. {result}, {distance}비트 차이입니다.",
       "noAttestation": "이 여권에는 아직 독립적인 재확인이 기록되지 않았습니다.",
-      "provenance": "수치는 Moolam 검증 서비스가 여권 {passport}에서 측정했습니다. {date}"
+      "provenance": "사다리의 수치는 Moolam 검증 서비스가 다른 등록 이미지에서 측정했습니다. 여권 {passport}, {date}",
+      "provenanceSelf": "수치는 Moolam 검증 서비스가 이 여권에서 측정했습니다. {date}"
     },
     "trusted": {
       "kicker": "신뢰",
@@ -110,12 +115,14 @@
       "score": "점수 {score}",
       "noScore": "아직 점수 없음",
       "counts": "{verifications, plural, other {검증 #건}}, {passports, plural, other {여권 #건}}",
-      "body": "검증 서비스가 수행한 확인은 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다. 평판은 해 온 일의 합이지, 웹사이트의 주장이 아닙니다."
+      "body": "검증 서비스가 수행한 확인은 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다. 평판은 해 온 일의 합이지, 웹사이트의 주장이 아닙니다.",
+      "noAgent": "이 한 장은 에이전트가 만들지 않았으므로 걸려 있는 에이전트 평판도 없습니다. 에이전트가 서명한 이미지라면 검증 서비스의 모든 확인이 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다."
     },
     "tryIt": {
       "kicker": "직접 해 보기",
-      "title": "어떤 이미지의 어떤 사본이든 여기에 놓거나, 파일을 고르세요",
+      "title": "어떤 이미지의 어떤 사본이든 여기에 놓거나, 파일을 고르세요.",
       "choose": "파일 고르기",
+      "samples": "또는 이 중 하나로 해 보세요",
       "hint": "JPEG, PNG, WebP. Moolam 검증 서비스로 가서 지문을 세 가지로 뜨고, 저장하지는 않습니다.",
       "pending": "지문을 뜨고 레지스트리를 찾는 중",
       "offline": "검증 서비스가 응답하지 않습니다. 저장소 최상위에서 npm run dev:verifier로 띄운 뒤 파일을 다시 놓아 주세요.",
@@ -678,6 +685,13 @@
     "next": "다음",
     "copy": "복사",
     "copied": "복사됨",
-    "diagram": "다이어그램을 그리는 중"
+    "diagram": "다이어그램을 그리는 중",
+    "diagramOpen": "원래 크기로 열기",
+    "diagramScroll": "스크롤",
+    "diagramFull": "다이어그램, 원래 크기",
+    "diagramRegion": "다이어그램, 스크롤할 수 있습니다",
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "zoomReset": "되돌리기"
   }
 }

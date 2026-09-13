@@ -25,22 +25,27 @@ export interface StoryFocal {
   id: Hex;
   picture: string;
   creator: Hex;
-  agentId: string;
+  /** Null when no agent generated this one, and then the made beat says exactly that. */
+  agentId: string | null;
   registeredAt: number;
   block: string;
+  kind: number;
+  /** True when the record carries a C2PA manifest hash rather than a zero word. */
+  manifest: boolean;
+  attestations: number;
+  /** Which rung of the chooser this record came in on, so a caption can stay true. */
+  why: FocalReason;
   /** True when this is the passport the verifier measured the degrade ladder on. */
   measured: boolean;
 }
 
-/** An independent re-check written back on chain. */
+/** An independent re-check written back on chain, always this passport's own. */
 export interface StoryAttestation {
   passportId: Hex;
   matched: boolean;
   distance: number;
   receiver: Hex;
   at: number;
-  /** False when the newest re-check on the registry belongs to another passport. */
-  onFocal: boolean;
 }
 
 export interface StoryAgent {
@@ -63,13 +68,17 @@ export interface StoryData {
   error: string | null;
 }
 
-interface IndexRow {
+export interface IndexRow {
   id: Hex;
   metadataURI: string;
   registeredAt: string;
   registeredBlock: string;
   generatorId: string | null;
   creator: Hex;
+  kind: number;
+  manifestHash: Hex;
+  /** How many independent re-checks this passport already carries. */
+  attestations: number;
 }
 
 const STORY_QUERY = `query Story($limit: Int!) {
@@ -80,13 +89,9 @@ const STORY_QUERY = `query Story($limit: Int!) {
     registeredBlock
     generator_id
     creator_id
-  }
-  Attestation(order_by: { at: desc }, limit: 1) {
-    passport_id
-    matched
-    distance
-    at
-    receiver
+    kind
+    manifestHash
+    attestationCount
   }
   GlobalStats {
     passports
@@ -101,9 +106,9 @@ const STORY_QUERY = `query Story($limit: Int!) {
 /**
  * Everything the landing story shows, read live.
  *
- * One trip to the index for the newest passports, the newest re-check and the
- * two counts, then the metadata documents those passports point at, then the
- * agent's standing from the ERC-8004 reputation registry. Nothing here is
+ * One trip to the index for the newest passports and the two counts, then the
+ * metadata documents those passports point at, then this passport's own
+ * re-checks and its generator's standing on the ERC-8004 reputation registry. Nothing here is
  * cached in the app: the page that calls it is dynamic, and the only cache is
  * the browser-visible one on the content addressed metadata, which cannot
  * change under its own id.
@@ -122,7 +127,6 @@ export async function storyData(): Promise<StoryData> {
     if (source === "envio") {
       const answer = await fromIndex();
       rows = answer.rows;
-      attestation = answer.attestation;
       passportCount = answer.passports;
       attestationCount = answer.attestations;
       agentCounts = answer.agentCounts;
@@ -145,36 +149,31 @@ export async function storyData(): Promise<StoryData> {
       registeredAt: Number(row.registeredAt),
     }));
 
-  const focal = await focalPassport(rows, pictures);
+  const chosen = chooseFocal(
+    rows,
+    pictures.map((picture) => picture !== null),
+  );
+  const focal =
+    chosen === null ? null : focalFrom(rows[chosen.index], (pictures[chosen.index] as Picture).full, chosen.reason);
 
+  // Only this passport's own re-check is ever shown. A newer one on a different
+  // record is a true sentence about a record nobody is looking at, which is how
+  // the story came to quote three passports at once.
   if (focal !== null) {
-    const own = await focalAttestation(focal.id);
-    if (own !== null) {
-      attestation = own;
-    } else if (attestation !== null) {
-      attestation = { ...attestation, onFocal: attestation.passportId.toLowerCase() === focal.id.toLowerCase() };
-    }
+    attestation = await focalAttestation(focal.id);
   }
 
-  const agentId = focal === null ? DEMO_AGENT_ID : BigInt(focal.agentId);
-  let agent = await agentStanding(agentId, agentCounts[agentId.toString()] ?? null);
-
-  // A generator nobody has rated yet has nothing to show for the beat about
-  // trust, so the agent that does have feedback is shown instead. The card
-  // always names the id it is showing, so neither answer can read as the other.
-  if ((agent === null || agent.verifications === 0) && agentId !== DEMO_AGENT_ID) {
-    const demo = await agentStanding(DEMO_AGENT_ID, agentCounts[DEMO_AGENT_ID.toString()] ?? null);
-    if (demo !== null && demo.verifications > 0) {
-      agent = demo;
-    }
-  }
+  // The trusted beat is about the generator that made this picture, so a
+  // generator nobody has rated shows as no score rather than borrowing another
+  // agent's standing.
+  const agentId = focal === null ? DEMO_AGENT_ID : focal.agentId === null ? null : BigInt(focal.agentId);
+  const agent = agentId === null ? null : await agentStanding(agentId, agentCounts[agentId.toString()] ?? null);
 
   return { source, plates, focal, attestation, agent, passportCount, attestationCount, error };
 }
 
 async function fromIndex(): Promise<{
   rows: IndexRow[];
-  attestation: StoryAttestation | null;
   passports: number | null;
   attestations: number | null;
   agentCounts: Record<string, number>;
@@ -204,8 +203,10 @@ async function fromIndex(): Promise<{
         registeredBlock: string;
         generator_id: string | null;
         creator_id: Hex;
+        kind: number;
+        manifestHash: Hex;
+        attestationCount: number;
       }[];
-      Attestation: { passport_id: Hex; matched: boolean; distance: number; at: string; receiver: Hex }[];
       GlobalStats: { passports: number; attestations: number }[];
       Generator: { id: string; passportCount: number }[];
     };
@@ -218,7 +219,6 @@ async function fromIndex(): Promise<{
     throw new Error("the Envio endpoint returned no data block");
   }
 
-  const newest = body.data.Attestation[0];
   const stats = body.data.GlobalStats[0];
 
   return {
@@ -229,29 +229,27 @@ async function fromIndex(): Promise<{
       registeredBlock: row.registeredBlock,
       generatorId: row.generator_id,
       creator: row.creator_id,
+      kind: row.kind,
+      manifestHash: row.manifestHash,
+      attestations: row.attestationCount,
     })),
-    attestation:
-      newest === undefined
-        ? null
-        : {
-            passportId: newest.passport_id,
-            matched: newest.matched,
-            distance: newest.distance,
-            receiver: newest.receiver,
-            at: Number(newest.at),
-            // Set once the story's own passport is known, below.
-            onFocal: false,
-          },
     passports: stats?.passports ?? null,
     attestations: stats?.attestations ?? null,
     agentCounts: Object.fromEntries(body.data.Generator.map((row) => [row.id, row.passportCount])),
   };
 }
 
-/** The same rows straight from the registry's own events, for a day with no index. */
+/**
+ * The same rows straight from the registry's own events, for a day with no index.
+ *
+ * The chooser needs the kind, the manifest hash and the number of re-checks on
+ * every row, so this path reads the record and its attestation list for each of
+ * the eight, which the index would have answered in one trip.
+ */
 async function fromChain(): Promise<IndexRow[]> {
   const rows = (await latestPassports(8)).passports;
   const records = await Promise.all(rows.map((row) => getPassport(row.id).catch(() => null)));
+  const written = await Promise.all(rows.map((row) => getAttestations(row.id).catch(() => [])));
 
   return rows.flatMap((row, index) => {
     const record = records[index];
@@ -266,39 +264,99 @@ async function fromChain(): Promise<IndexRow[]> {
         registeredBlock: row.blockNumber.toString(),
         generatorId: row.agentId === 0n ? null : row.agentId.toString(),
         creator: row.creator,
+        kind: record.kind,
+        manifestHash: record.manifestHash,
+        attestations: written[index].length,
       },
     ];
   });
 }
 
 /**
- * The passport the story follows: the newest one that carries a real picture.
+ * Which rung of the chooser the story's passport came in on.
  *
- * Records without an image exist on purpose, the forgery attempts the prove-it
- * run writes are exactly that, and a story about an image cannot be told on
- * one. The flag says whether this is also the file the verifier measured the
- * degrade figures on, which the caption uses to say where those figures came
- * from.
+ * `full` is the story as written: an agent made it, a C2PA manifest travelled
+ * with it, and somebody re-checked it independently. `manifest` drops the
+ * re-check, and the verified caption then says so instead of quoting figures
+ * that belong to another record. `any` drops the agent too, and the made beat
+ * is rewritten by the record rather than kept and contradicted.
  */
-async function focalPassport(rows: IndexRow[], pictures: (Picture | null)[]): Promise<StoryFocal | null> {
-  for (let index = 0; index < rows.length; index += 1) {
-    const picture = pictures[index];
-    if (picture === null) {
-      continue;
+export type FocalReason = "full" | "manifest" | "any";
+
+const ZERO_WORD = /^0x0*$/;
+
+/** A manifest hash of nothing but zeroes means no C2PA manifest was sealed in. */
+export function carriesManifest(hash: string): boolean {
+  return !ZERO_WORD.test(hash);
+}
+
+function fits(row: IndexRow, reason: FocalReason): boolean {
+  if (reason === "any") {
+    return true;
+  }
+  if (row.kind !== 0 || row.generatorId === null || !carriesManifest(row.manifestHash)) {
+    return false;
+  }
+  return reason === "manifest" || row.attestations > 0;
+}
+
+/**
+ * The one passport the whole story is told on.
+ *
+ * The captions name an agent, a manifest and a re-check, so the record they are
+ * told over has to carry all three or the story contradicts the page a judge
+ * opens next. The newest record that carries everything wins; failing that the
+ * newest an agent made and sealed, with the re-check line told truthfully as
+ * missing; failing that the newest picture of any kind, with the agent line
+ * gone. A record with no picture is never chosen: the forgery attempts the
+ * prove-it run writes are exactly that, and a story about an image cannot be
+ * told on one.
+ *
+ * Pure, and tested in test/story-focal.test.ts against a fixture index.
+ */
+export function chooseFocal(
+  rows: readonly IndexRow[],
+  hasPicture: readonly boolean[],
+): { index: number; reason: FocalReason } | null {
+  for (const reason of ["full", "manifest", "any"] as const) {
+    let best = -1;
+    for (let index = 0; index < rows.length; index += 1) {
+      if (hasPicture[index] !== true || !fits(rows[index], reason)) {
+        continue;
+      }
+      if (best === -1 || Number(rows[index].registeredAt) > Number(rows[best].registeredAt)) {
+        best = index;
+      }
     }
-    const row = rows[index];
-    return {
-      id: row.id,
-      picture: picture.full,
-      creator: row.creator,
-      agentId: row.generatorId ?? DEMO_AGENT_ID.toString(),
-      registeredAt: Number(row.registeredAt),
-      block: row.registeredBlock,
-      measured: row.id.toLowerCase() === degrade.passportId.toLowerCase(),
-    };
+    if (best !== -1) {
+      return { index: best, reason };
+    }
   }
 
   return null;
+}
+
+/**
+ * One index row becomes the record every caption reads from.
+ *
+ * Nothing in the story may reach past this function for a figure: the agent id,
+ * the block, the date and the id itself all leave the same row, which is what
+ * keeps the captions and the passport page a judge opens next in agreement.
+ */
+export function focalFrom(row: IndexRow, picture: string, reason: FocalReason): StoryFocal {
+  return {
+    id: row.id,
+    picture,
+    creator: row.creator,
+    agentId: row.kind === 0 ? row.generatorId : null,
+    registeredAt: Number(row.registeredAt),
+    block: row.registeredBlock,
+    kind: row.kind,
+    manifest: carriesManifest(row.manifestHash),
+    attestations: row.attestations,
+    why: reason,
+    measured: row.id.toLowerCase() === degrade.passportId.toLowerCase(),
+  };
 }
 
 async function focalAttestation(id: Hex): Promise<StoryAttestation | null> {
@@ -313,7 +371,6 @@ async function focalAttestation(id: Hex): Promise<StoryAttestation | null> {
     distance: newest.distance,
     receiver: newest.receiver,
     at: Number(newest.at),
-    onFocal: true,
   };
 }
 

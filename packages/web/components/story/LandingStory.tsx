@@ -10,7 +10,7 @@ import { Copies, FocalPlate, PlateField, useField } from "@/components/story/sce
 import { CloseCard } from "@/components/story/CloseCard";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
-import { TryPanel } from "@/components/story/TryPanel";
+import { TryPanel, type TrySample } from "@/components/story/TryPanel";
 import { probe, progress, scroller } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { degradeSteps, measurement } from "@/components/story/measurements";
@@ -82,7 +82,11 @@ function World({
    * takes almost none of it or the plate leaves the screen.
    */
   framing: number;
-  /** How much further back a phone stands, so a plate this close still fits the narrow frame. */
+  /**
+   * How much further back a phone stands. The phone frame is the top 45 percent
+   * of the window rather than the whole of it, so this is the distance at which
+   * a 1.7 unit plate fills that band without leaving it.
+   */
   reach: number;
   credential: string;
   dropped: string | null;
@@ -222,13 +226,16 @@ export interface StoryBeat {
 
 /**
  * The captions, written once and laid out twice: pinned over the scene, or
- * stacked down a still page for anyone who has asked for less motion.
+ * stacked down a still page for anyone who has asked for less motion. Every
+ * figure in them comes out of the one record data.ts chose.
  */
-function useBeats(data: StoryData, still: boolean): StoryBeat[] {
+function useBeats(data: StoryData): StoryBeat[] {
   const t = useTranslations("story");
   const format = useFormatter();
 
-  const agentId = data.focal?.agentId ?? data.agent?.id ?? "";
+  // Every figure below leaves the one record data.ts chose, so a caption cannot
+  // name an agent, a manifest or a re-check the passport page would then deny.
+  const agentId = data.focal === null ? (data.agent?.id ?? null) : data.focal.agentId;
   const block = data.focal?.block ?? "";
   const registered =
     data.focal === null ? "" : format.dateTime(new Date(data.focal.registeredAt * 1000), { dateStyle: "long" });
@@ -237,14 +244,22 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
   return [
     {
       key: "made",
-      body: (
-        <>
-          <Eyebrow>{t("made.kicker")}</Eyebrow>
-          <Title>{t("made.title")}</Title>
-          <Body>{t("made.body", { agent: agentId })}</Body>
-          <Readout>{t("made.readout", { agent: agentId })}</Readout>
-        </>
-      ),
+      body:
+        agentId === null ? (
+          <>
+            <Eyebrow>{t("made.kicker")}</Eyebrow>
+            <Title>{t("made.titleNoAgent")}</Title>
+            <Body>{t("made.bodyNoAgent")}</Body>
+            <Readout>{t("made.readoutNoAgent")}</Readout>
+          </>
+        ) : (
+          <>
+            <Eyebrow>{t("made.kicker")}</Eyebrow>
+            <Title>{t("made.title")}</Title>
+            <Body>{t("made.body", { agent: agentId })}</Body>
+            <Readout>{t("made.readout", { agent: agentId })}</Readout>
+          </>
+        ),
     },
     {
       key: "sealed",
@@ -277,23 +292,19 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
         <>
           <Eyebrow>{t("verified.kicker")}</Eyebrow>
           <Title>{t("verified.title")}</Title>
-          {!still && <Ladder label={t("verified.match")} />}
+          <Ladder label={t("verified.match")} />
           <Body className="mt-5">
             {data.attestation === null
               ? t("verified.noAttestation")
-              : data.attestation.onFocal
-                ? t("verified.attestation", {
-                    result: data.attestation.matched ? t("verified.matched") : t("verified.notMatched"),
-                    distance: data.attestation.distance,
-                  })
-                : t("verified.attestationOther", {
-                    result: data.attestation.matched ? t("verified.matched") : t("verified.notMatched"),
-                    distance: data.attestation.distance,
-                    passport: shortHex(data.attestation.passportId, 8, 6),
-                  })}
+              : t("verified.attestation", {
+                  result: data.attestation.matched ? t("verified.matched") : t("verified.notMatched"),
+                  distance: data.attestation.distance,
+                })}
           </Body>
           <Readout>
-            {t("verified.provenance", { passport: shortHex(measurement.passportId, 8, 6), date: measuredOn })}
+            {data.focal?.measured === true
+              ? t("verified.provenanceSelf", { date: measuredOn })
+              : t("verified.provenance", { passport: shortHex(measurement.passportId, 8, 6), date: measuredOn })}
           </Readout>
         </>
       ),
@@ -304,23 +315,25 @@ function useBeats(data: StoryData, still: boolean): StoryBeat[] {
         <>
           <Eyebrow className="sm:justify-end">{t("trusted.kicker")}</Eyebrow>
           <Title className="sm:ms-auto sm:text-end">{t("trusted.title")}</Title>
-          <div className="mt-7 w-full max-w-[24rem] border border-line sm:ms-auto bg-white/[0.03] p-5 text-start backdrop-blur-sm">
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
-              {t("trusted.agent", { agent: data.agent?.id ?? agentId })}
-            </p>
-            <p className="mt-3 font-display text-[clamp(2rem,4vw,3.2rem)] leading-[0.95] tracking-[-0.04em] tabular-nums">
-              {data.agent === null || data.agent.score === null
-                ? t("trusted.noScore")
-                : t("trusted.score", { score: data.agent.score })}
-            </p>
-            <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">
-              {t("trusted.counts", {
-                verifications: data.agent?.verifications ?? 0,
-                passports: data.agent?.passports ?? 0,
-              })}
-            </p>
-          </div>
-          <Body className="sm:ms-auto sm:text-end">{t("trusted.body")}</Body>
+          {agentId !== null && (
+            <div className="mt-7 w-full max-w-[24rem] border border-line bg-white/[0.03] p-5 text-start backdrop-blur-sm sm:ms-auto">
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
+                {t("trusted.agent", { agent: agentId })}
+              </p>
+              <p className="mt-3 font-display text-[clamp(2rem,4vw,3.2rem)] leading-[0.95] tracking-[-0.04em] tabular-nums">
+                {data.agent === null || data.agent.score === null
+                  ? t("trusted.noScore")
+                  : t("trusted.score", { score: data.agent.score })}
+              </p>
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">
+                {t("trusted.counts", {
+                  verifications: data.agent?.verifications ?? 0,
+                  passports: data.agent?.passports ?? 0,
+                })}
+              </p>
+            </div>
+          )}
+          <Body className="sm:ms-auto sm:text-end">{agentId === null ? t("trusted.noAgent") : t("trusted.body")}</Body>
         </>
       ),
     },
@@ -355,7 +368,7 @@ export function LandingStory({ data }: { data: StoryData }) {
 
   const level = tierLevel(tier);
   const still = filmStill || level.still;
-  const beats = useBeats(data, still);
+  const beats = useBeats(data);
   const dpr = useMemo(() => [1, level.dpr] as [number, number], [level.dpr]);
 
   const onTier = useCallback((next: number) => {
@@ -384,18 +397,33 @@ export function LandingStory({ data }: { data: StoryData }) {
 
   const pictures = useMemo(() => [...new Set(data.plates.map((plate) => plate.picture))], [data.plates]);
 
+  // The plates a judge can try are real records off the index, newest first, one
+  // picture each so the row is never the same image three times.
+  const samples = useMemo(() => {
+    const seen = new Set<string>();
+    const offered: TrySample[] = [];
+    for (const plate of data.plates) {
+      if (seen.has(plate.picture) || offered.length === 3) {
+        continue;
+      }
+      seen.add(plate.picture);
+      offered.push({ id: plate.id, url: plate.picture });
+    }
+    return offered;
+  }, [data.plates]);
+
   const credential = data.focal === null ? "c2pa manifest" : `c2pa ${shortHex(data.focal.creator, 6, 4)}`;
 
   if (still) {
     return (
       <div data-story-tier={tier}>
-        <StillStory data={data} beats={beats} noWebgl={!webgl && reduced !== true} />
+        <StillStory data={data} beats={beats} samples={samples} noWebgl={!webgl && reduced !== true} />
       </div>
     );
   }
 
   return (
-    <SceneBoundary fallback={<StillStory data={data} beats={beats} noWebgl />}>
+    <SceneBoundary fallback={<StillStory data={data} beats={beats} samples={samples} noWebgl />}>
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
           to the scene, so the wheel is handed straight to it. */}
       <div
@@ -404,31 +432,33 @@ export function LandingStory({ data }: { data: StoryData }) {
         data-story-tier={tier}
         data-lenis-prevent
       >
-        <Canvas
-          // A phone is a tall, narrow window on the same field, so it needs a
-          // wider lens to see more than one plate at a time.
-          camera={{ position: [0.9, 0.35, 7.4], fov: small ? 54 : 40 }}
-          dpr={dpr}
-          gl={{ antialias: true, powerPreference: "high-performance" }}
-        >
-          <ScrollControls pages={PAGES} damping={0.22}>
-            <World
-              data={data}
-              pictures={pictures}
-              plateCount={level.plates}
-              particles={level.particles}
-              spread={small ? 0.55 : 1}
-              framing={small ? 0.3 : 1}
-              reach={small ? 1.4 : 1}
-              credential={credential}
-              dropped={dropped}
-              start={start}
-              onTier={onTier}
-            />
-          </ScrollControls>
-          <AdaptiveDpr pixelated />
-          <Preload all />
-        </Canvas>
+        <div className="story-stage">
+          <Canvas
+            // A phone is a tall, narrow window on the same field, so it needs a
+            // wider lens to see more than one plate at a time.
+            camera={{ position: [0.9, 0.35, 7.4], fov: small ? 54 : 40 }}
+            dpr={dpr}
+            gl={{ antialias: true, powerPreference: "high-performance" }}
+          >
+            <ScrollControls pages={PAGES} damping={0.22}>
+              <World
+                data={data}
+                pictures={pictures}
+                plateCount={level.plates}
+                particles={level.particles}
+                spread={small ? 0.55 : 1}
+                framing={small ? 0.2 : 1}
+                reach={small ? 1.12 : 1}
+                credential={credential}
+                dropped={dropped}
+                start={start}
+                onTier={onTier}
+              />
+            </ScrollControls>
+            <AdaptiveDpr pixelated />
+            <Preload all />
+          </Canvas>
+        </div>
 
         {/* The film scrim: the sides go dark so a caption always has something to
             sit on, and the top clears the app header. */}
@@ -443,14 +473,15 @@ export function LandingStory({ data }: { data: StoryData }) {
           }}
         />
 
-        {/* A phone has no room at the sides, so the type sits at the bottom of
-            the frame and the scrim comes up to meet it. */}
+        {/* A phone has no room at the sides, so the shot ends at 45 percent of the
+            window and the words have the ground below it. The seam is a fade
+            rather than a cut, and the top strip clears the bar. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 z-10 sm:hidden"
           style={{
             background:
-              "linear-gradient(0deg, rgba(11,11,12,0.92) 0%, rgba(11,11,12,0.55) 34%, rgba(11,11,12,0) 62%)," +
+              "linear-gradient(180deg, rgba(11,11,12,0) 28%, rgba(11,11,12,0.72) 41%, #0B0B0C 46%)," +
               "linear-gradient(180deg, rgba(11,11,12,0.86) 0%, rgba(11,11,12,0) 18%)",
           }}
         />
@@ -469,12 +500,49 @@ export function LandingStory({ data }: { data: StoryData }) {
           ))}
         </div>
 
-        <TryPanel onPreview={setDropped} />
+        <TryPanel onPreview={setDropped} samples={samples} />
         <CloseCard data={data} />
         <ScrollCue />
+        <FilmEnd />
       </div>
     </SceneBoundary>
   );
+}
+
+/**
+ * Tells the page when the film is over.
+ *
+ * While the story is pinned the document is exactly one window tall, so the
+ * first wheel turn cannot move the page instead of the story. The footer is
+ * held back by the rule in globals.css that watches this attribute, and comes
+ * back once the last beat has been read, where the scroll chains on to it.
+ */
+function FilmEnd() {
+  useEffect(() => {
+    let frame = 0;
+    let ended: boolean | null = null;
+
+    const loop = () => {
+      const done = progress.scroll >= 0.995;
+      if (done !== ended) {
+        ended = done;
+        if (done) {
+          document.body.setAttribute("data-story-end", "true");
+        } else {
+          document.body.removeAttribute("data-story-end");
+        }
+      }
+      frame = requestAnimationFrame(loop);
+    };
+
+    frame = requestAnimationFrame(loop);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.body.removeAttribute("data-story-end");
+    };
+  }, []);
+
+  return null;
 }
 
 /**
@@ -512,7 +580,7 @@ function Caption({ cue, children }: { cue: Beat; children: ReactNode }) {
     <div
       ref={node}
       data-beat={cue.name}
-      className="pointer-events-none absolute inset-0 flex items-end px-5 pb-24 pt-[73px] sm:items-center sm:px-8 lg:px-14"
+      className="story-lower pointer-events-none px-5 sm:px-8 lg:px-14"
       style={{ opacity: cue.captionStart <= 0 ? 1 : 0, willChange: "transform, opacity" }}
     >
       <div className={`mx-auto w-full max-w-[100rem] ${cue.align === "end" ? "sm:text-end" : ""}`}>{children}</div>
@@ -584,7 +652,7 @@ export function Readout({ children, className = "" }: { children: ReactNode; cla
  * two nodes from an animation frame so the scene never shares a render with
  * them.
  */
-function Ladder({ label }: { label: string }) {
+export function Ladder({ label }: { label: string }) {
   const name = useRef<HTMLSpanElement>(null);
   const value = useRef<HTMLSpanElement>(null);
   const steps = useMemo(() => degradeSteps(), []);

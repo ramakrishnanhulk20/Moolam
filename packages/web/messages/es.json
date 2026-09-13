@@ -25,6 +25,8 @@
     "themeDark": "Oscuro",
     "themeLight": "Claro",
     "language": "Idioma",
+    "menu": "Menú",
+    "menuClose": "Cerrar el menú",
     "nav": {
       "home": "Inicio",
       "verify": "Verificar una imagen",
@@ -75,7 +77,10 @@
       "kicker": "Creada",
       "title": "Esta la hizo una IA.",
       "body": "El agente {agent} firmó la huella dentro de su propio enclave antes de que nadie hubiera visto la imagen.",
-      "readout": "Agente generador {agent}, registro de identidad ERC-8004"
+      "readout": "Agente generador {agent}, registro de identidad ERC-8004",
+      "titleNoAgent": "Esta la registró una persona.",
+      "bodyNoAgent": "Ningún agente firmó esta huella. Se registró como fotografía, y el pasaporte dice justo eso.",
+      "readoutNoAgent": "Sin agente generador en este pasaporte"
     },
     "sealed": {
       "kicker": "Sellada",
@@ -97,9 +102,9 @@
       "matched": "coincidió",
       "notMatched": "no coincidió",
       "attestation": "Chainlink la volvió a comprobar y escribió la respuesta en cadena: {result}, a {distance} bits de distancia.",
-      "attestationOther": "Chainlink volvió a comprobar el pasaporte {passport} de este registro y escribió la respuesta en cadena: {result}, a {distance} bits de distancia.",
       "noAttestation": "Todavía no se ha escrito ninguna comprobación independiente para este pasaporte.",
-      "provenance": "Cifras medidas por el verificador de Moolam sobre el pasaporte {passport}, {date}."
+      "provenance": "Cifras de la escalera medidas por el verificador de Moolam sobre otra imagen registrada, pasaporte {passport}, {date}.",
+      "provenanceSelf": "Cifras medidas por el verificador de Moolam sobre este mismo pasaporte, {date}."
     },
     "trusted": {
       "kicker": "De confianza",
@@ -108,12 +113,14 @@
       "score": "Puntuación {score}",
       "noScore": "Sin puntuación todavía",
       "counts": "{verifications, plural, =1 {# comprobación} other {# comprobaciones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
-      "body": "Cada comprobación que hace el verificador se escribe en el registro de reputación ERC-8004 bajo el id del propio agente. Su prestigio es la suma de su trabajo, no una afirmación en una web."
+      "body": "Cada comprobación que hace el verificador se escribe en el registro de reputación ERC-8004 bajo el id del propio agente. Su prestigio es la suma de su trabajo, no una afirmación en una web.",
+      "noAgent": "A esta no la hizo ningún agente, así que no hay prestigio de agente colgando de ella. Cuando sí firma un agente, cada comprobación del verificador se escribe en el registro de reputación ERC-8004 bajo el id de ese agente."
     },
     "tryIt": {
       "kicker": "Pruébalo",
-      "title": "Suelta aquí cualquier copia de cualquier imagen, o elige un archivo",
+      "title": "Suelta aquí cualquier copia de cualquier imagen, o elige un archivo.",
       "choose": "Elegir un archivo",
+      "samples": "O prueba con una de estas",
       "hint": "JPEG, PNG o WebP. Va al verificador de Moolam, se le toman tres huellas y no se guarda.",
       "pending": "Tomando la huella y buscando en el registro",
       "offline": "El servicio de verificación no responde. Arráncalo con npm run dev:verifier desde la raíz del repositorio y vuelve a soltar el archivo.",
@@ -676,6 +683,13 @@
     "next": "Siguiente",
     "copy": "Copiar",
     "copied": "Copiado",
-    "diagram": "Dibujando el diagrama"
+    "diagram": "Dibujando el diagrama",
+    "diagramOpen": "Abrir a tamaño real",
+    "diagramScroll": "desplazar",
+    "diagramFull": "Diagrama, a tamaño real",
+    "diagramRegion": "Diagrama, se puede desplazar",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "zoomReset": "Restablecer"
   }
 }

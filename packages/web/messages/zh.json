@@ -27,6 +27,8 @@
     "themeDark": "深色",
     "themeLight": "浅色",
     "language": "语言",
+    "menu": "菜单",
+    "menuClose": "关闭菜单",
     "nav": {
       "home": "首页",
       "verify": "验证图片",
@@ -77,7 +79,10 @@
       "kicker": "生成",
       "title": "这一张是 AI 画的。",
       "body": "在任何人看到这张图之前，智能体 {agent} 就已经在自己的安全区里为它的指纹签了名。",
-      "readout": "生成智能体 {agent}，ERC-8004 身份登记处"
+      "readout": "生成智能体 {agent}，ERC-8004 身份登记处",
+      "titleNoAgent": "这一张是人登记的。",
+      "bodyNoAgent": "没有智能体为这份指纹签名。它是作为照片登记的，护照上写的就是这句话。",
+      "readoutNoAgent": "这份护照上没有生成智能体"
     },
     "sealed": {
       "kicker": "封存",
@@ -99,9 +104,9 @@
       "matched": "匹配",
       "notMatched": "不匹配",
       "attestation": "Chainlink 重新核对过，并把答案写在链上：{result}，相差 {distance} 位。",
-      "attestationOther": "Chainlink 重新核对了本登记处的护照 {passport}，并把答案写在链上：{result}，相差 {distance} 位。",
       "noAttestation": "这本护照还没有任何独立复核被写上链。",
-      "provenance": "数字由 Moolam 验证服务在护照 {passport} 上测得，{date}。"
+      "provenance": "阶梯上的数字由 Moolam 验证服务在另一张已登记的图片上测得，护照 {passport}，{date}。",
+      "provenanceSelf": "数字由 Moolam 验证服务在这份护照上测得，{date}。"
     },
     "trusted": {
       "kicker": "可信",
@@ -110,12 +115,14 @@
       "score": "评分 {score}",
       "noScore": "尚无评分",
       "counts": "{verifications, plural, other {# 次验证}}，{passports, plural, other {# 本护照}}",
-      "body": "验证服务做过的每一次核对，都会以该智能体自己的 id 写回 ERC-8004 声誉登记处。它的口碑是自己做过的事的总和，不是网站上的一句话。"
+      "body": "验证服务做过的每一次核对，都会以该智能体自己的 id 写回 ERC-8004 声誉登记处。它的口碑是自己做过的事的总和，不是网站上的一句话。",
+      "noAgent": "这一张不是智能体做的，所以它身上没有智能体的口碑。若由智能体签名，验证服务的每一次核对都会以该智能体自己的 id 写回 ERC-8004 声誉登记处。"
     },
     "tryIt": {
       "kicker": "试一试",
-      "title": "把任何图片的任何副本拖进来，或者选一个文件",
+      "title": "把任何图片的任何副本拖进来，或者选一个文件。",
       "choose": "选择文件",
+      "samples": "或者试试这几张",
       "hint": "JPEG、PNG 或 WebP。文件送到 Moolam 验证服务，取三种指纹，并不保存。",
       "pending": "正在取指纹并搜索登记处",
       "offline": "验证服务没有响应。在仓库根目录运行 npm run dev:verifier，然后再把文件拖进来。",
@@ -678,6 +685,13 @@
     "next": "下一页",
     "copy": "复制",
     "copied": "已复制",
-    "diagram": "正在绘制图表"
+    "diagram": "正在绘制图表",
+    "diagramOpen": "按原尺寸打开",
+    "diagramScroll": "滚动",
+    "diagramFull": "图表，原尺寸",
+    "diagramRegion": "图表，可滚动",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "zoomReset": "复位"
   }
 }

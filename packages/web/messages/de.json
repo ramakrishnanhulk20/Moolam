@@ -25,6 +25,8 @@
     "themeDark": "Dunkel",
     "themeLight": "Hell",
     "language": "Sprache",
+    "menu": "Menü",
+    "menuClose": "Menü schließen",
     "nav": {
       "home": "Start",
       "verify": "Bild prüfen",
@@ -75,7 +77,10 @@
       "kicker": "Gemacht",
       "title": "Dieses hier hat eine KI gemacht.",
       "body": "Agent {agent} hat den Fingerabdruck in seiner eigenen Enklave signiert, bevor irgendwer das Bild gesehen hatte.",
-      "readout": "Generator-Agent {agent}, ERC-8004 Identitätsregister"
+      "readout": "Generator-Agent {agent}, ERC-8004 Identitätsregister",
+      "titleNoAgent": "Dieses hier hat ein Mensch eingetragen.",
+      "bodyNoAgent": "Kein Agent hat diesen Fingerabdruck signiert. Es wurde als Fotografie eingetragen, und genau das sagt der Pass.",
+      "readoutNoAgent": "Kein Generator-Agent auf diesem Pass"
     },
     "sealed": {
       "kicker": "Versiegelt",
@@ -97,9 +102,9 @@
       "matched": "hat gepasst",
       "notMatched": "hat nicht gepasst",
       "attestation": "Chainlink hat es nachgeprüft und die Antwort auf die Kette geschrieben: {result}, {distance} Bit Abstand.",
-      "attestationOther": "Chainlink hat Pass {passport} in diesem Register nachgeprüft und die Antwort auf die Kette geschrieben: {result}, {distance} Bit Abstand.",
       "noAttestation": "Für diesen Pass wurde noch keine unabhängige Nachprüfung geschrieben.",
-      "provenance": "Zahlen gemessen vom Moolam Prüfdienst an Pass {passport}, {date}."
+      "provenance": "Zahlen der Leiter gemessen vom Moolam Prüfdienst an einem anderen eingetragenen Bild, Pass {passport}, {date}.",
+      "provenanceSelf": "Zahlen gemessen vom Moolam Prüfdienst an genau diesem Pass, {date}."
     },
     "trusted": {
       "kicker": "Vertrauenswürdig",
@@ -108,12 +113,14 @@
       "score": "Wert {score}",
       "noScore": "Noch kein Wert",
       "counts": "{verifications, plural, =1 {# Prüfung} other {# Prüfungen}}, {passports, plural, =1 {# Pass} other {# Pässe}}",
-      "body": "Jede Prüfung des Dienstes wird unter der eigenen Id des Agenten in das ERC-8004 Reputationsregister zurückgeschrieben. Sein Ruf ist die Summe seiner Arbeit, keine Behauptung auf einer Website."
+      "body": "Jede Prüfung des Dienstes wird unter der eigenen Id des Agenten in das ERC-8004 Reputationsregister zurückgeschrieben. Sein Ruf ist die Summe seiner Arbeit, keine Behauptung auf einer Website.",
+      "noAgent": "Dieses hier hat kein Agent gemacht, also hängt auch kein Ruf eines Agenten daran. Wenn ein Agent signiert, wird jede Prüfung des Dienstes unter der Id dieses Agenten in das ERC-8004 Reputationsregister zurückgeschrieben."
     },
     "tryIt": {
       "kicker": "Ausprobieren",
-      "title": "Zieh irgendeine Kopie irgendeines Bildes hierher, oder wähle eine Datei",
+      "title": "Zieh irgendeine Kopie irgendeines Bildes hierher, oder wähle eine Datei.",
       "choose": "Datei wählen",
+      "samples": "Oder nimm eines von diesen",
       "hint": "JPEG, PNG oder WebP. Sie geht an den Moolam Prüfdienst, bekommt drei Fingerabdrücke und wird nicht gespeichert.",
       "pending": "Fingerabdruck wird genommen und das Register durchsucht",
       "offline": "Der Prüfdienst antwortet nicht. Starte ihn mit npm run dev:verifier aus dem Wurzelverzeichnis, dann zieh die Datei noch einmal her.",
@@ -676,6 +683,13 @@
     "next": "Weiter",
     "copy": "Kopieren",
     "copied": "Kopiert",
-    "diagram": "Diagramm wird gezeichnet"
+    "diagram": "Diagramm wird gezeichnet",
+    "diagramOpen": "In voller Größe öffnen",
+    "diagramScroll": "scrollen",
+    "diagramFull": "Diagramm, volle Größe",
+    "diagramRegion": "Diagramm, scrollbar",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern",
+    "zoomReset": "Zurücksetzen"
   }
 }

@@ -25,6 +25,8 @@
     "themeDark": "Dark",
     "themeLight": "Light",
     "language": "Language",
+    "menu": "Menu",
+    "menuClose": "Close menu",
     "nav": {
       "home": "Home",
       "verify": "Verify an image",
@@ -75,7 +77,10 @@
       "kicker": "Made",
       "title": "An AI made this one.",
       "body": "Agent {agent} signed the fingerprint inside its own enclave before anybody had seen the picture.",
-      "readout": "Generator agent {agent}, ERC-8004 identity registry"
+      "readout": "Generator agent {agent}, ERC-8004 identity registry",
+      "titleNoAgent": "A person registered this one.",
+      "bodyNoAgent": "No agent signed this fingerprint. It was registered as a photograph, and the passport says exactly that.",
+      "readoutNoAgent": "No generating agent on this passport"
     },
     "sealed": {
       "kicker": "Sealed",
@@ -97,9 +102,9 @@
       "matched": "matched",
       "notMatched": "did not match",
       "attestation": "Chainlink re-checked it and wrote the answer on chain: {result}, {distance} bits apart.",
-      "attestationOther": "Chainlink re-checked passport {passport} in this registry and wrote the answer on chain: {result}, {distance} bits apart.",
       "noAttestation": "No independent re-check has been written for this passport yet.",
-      "provenance": "Figures measured by the Moolam verifier on passport {passport}, {date}."
+      "provenance": "Ladder figures measured by the Moolam verifier on another registered image, passport {passport}, {date}.",
+      "provenanceSelf": "Figures measured by the Moolam verifier on this passport, {date}."
     },
     "trusted": {
       "kicker": "Trusted",
@@ -108,12 +113,14 @@
       "score": "Score {score}",
       "noScore": "No score yet",
       "counts": "{verifications, plural, =1 {# verification} other {# verifications}}, {passports, plural, =1 {# passport} other {# passports}}",
-      "body": "Every check the verifier runs is written back to the ERC-8004 reputation registry under this agent's own id. Its standing is the sum of its work, not a claim on a website."
+      "body": "Every check the verifier runs is written back to the ERC-8004 reputation registry under this agent's own id. Its standing is the sum of its work, not a claim on a website.",
+      "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every check the verifier runs is written back to the ERC-8004 reputation registry under that agent's own id."
     },
     "tryIt": {
       "kicker": "Try it",
-      "title": "Drop any copy of any image here, or choose a file",
+      "title": "Drop any copy of any image here, or choose a file.",
       "choose": "Choose a file",
+      "samples": "Or try one of these",
       "hint": "JPEG, PNG or WebP. It goes to the Moolam verifier, is fingerprinted three ways, and is not stored.",
       "pending": "Fingerprinting and searching the registry",
       "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then drop the file again.",
@@ -676,6 +683,13 @@
     "next": "Next",
     "copy": "Copy",
     "copied": "Copied",
-    "diagram": "Drawing the diagram"
+    "diagram": "Drawing the diagram",
+    "diagramOpen": "Open full size",
+    "diagramScroll": "scroll",
+    "diagramFull": "Diagram, full size",
+    "diagramRegion": "Diagram, scrollable",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Reset"
   }
 }

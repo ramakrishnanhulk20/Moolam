@@ -27,6 +27,8 @@
     "themeDark": "ダーク",
     "themeLight": "ライト",
     "language": "言語",
+    "menu": "メニュー",
+    "menuClose": "メニューを閉じる",
     "nav": {
       "home": "ホーム",
       "verify": "画像を検証",
@@ -77,7 +79,10 @@
       "kicker": "生まれる",
       "title": "この一枚は AI が描きました。",
       "body": "誰かがその絵を見るより先に、エージェント {agent} が自分のエンクレーブの中で指紋に署名しました。",
-      "readout": "生成エージェント {agent}、ERC-8004 アイデンティティレジストリ"
+      "readout": "生成エージェント {agent}、ERC-8004 アイデンティティレジストリ",
+      "titleNoAgent": "この一枚は人が登録しました。",
+      "bodyNoAgent": "この指紋に署名したエージェントはいません。写真として登録されたもので、パスポートにもそう書かれています。",
+      "readoutNoAgent": "このパスポートに生成エージェントはありません"
     },
     "sealed": {
       "kicker": "封をする",
@@ -99,9 +104,9 @@
       "matched": "一致しました",
       "notMatched": "一致しませんでした",
       "attestation": "Chainlink が再確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
-      "attestationOther": "Chainlink がこのレジストリのパスポート {passport} を再確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
       "noAttestation": "このパスポートには、独立した再確認がまだ書かれていません。",
-      "provenance": "数値は Moolam 検証サービスがパスポート {passport} で測ったものです。{date}"
+      "provenance": "はしごの数値は Moolam 検証サービスが別の登録済み画像で測ったものです。パスポート {passport}、{date}",
+      "provenanceSelf": "数値は Moolam 検証サービスがこのパスポートで測ったものです。{date}"
     },
     "trusted": {
       "kicker": "信頼",
@@ -110,12 +115,14 @@
       "score": "スコア {score}",
       "noScore": "スコアはまだありません",
       "counts": "{verifications, plural, other {検証 # 件}}、{passports, plural, other {パスポート # 冊}}",
-      "body": "検証サービスが行った確認は、そのエージェント自身の id のもとで ERC-8004 レピュテーションレジストリに書き戻されます。その評判は仕事の積み重ねであって、ウェブサイトの自己申告ではありません。"
+      "body": "検証サービスが行った確認は、そのエージェント自身の id のもとで ERC-8004 レピュテーションレジストリに書き戻されます。その評判は仕事の積み重ねであって、ウェブサイトの自己申告ではありません。",
+      "noAgent": "この一枚を作ったエージェントはいないので、結び付くエージェントの評判もありません。エージェントが署名した画像なら、検証サービスの確認はすべてそのエージェント自身の id のもとで ERC-8004 レピュテーションレジストリに書き戻されます。"
     },
     "tryIt": {
       "kicker": "試す",
-      "title": "どんな画像のどんなコピーでも、ここに落とすかファイルを選んでください",
+      "title": "どんな画像のどんなコピーでも、ここに落とすかファイルを選んでください。",
       "choose": "ファイルを選ぶ",
+      "samples": "この中から試すこともできます",
       "hint": "JPEG、PNG、WebP。Moolam 検証サービスに送られ、三通りの指紋を取り、保存はしません。",
       "pending": "指紋を取ってレジストリを探しています",
       "offline": "検証サービスが応答しません。リポジトリの直下で npm run dev:verifier を実行してから、もう一度ファイルを落としてください。",
@@ -678,6 +685,13 @@
     "next": "次のページ",
     "copy": "コピー",
     "copied": "コピーしました",
-    "diagram": "図を描画しています"
+    "diagram": "図を描画しています",
+    "diagramOpen": "原寸で開く",
+    "diagramScroll": "スクロール",
+    "diagramFull": "図、原寸",
+    "diagramRegion": "図、横にスクロールできます",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "zoomReset": "リセット"
   }
 }

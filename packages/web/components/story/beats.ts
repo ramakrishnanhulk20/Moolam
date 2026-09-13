@@ -94,7 +94,9 @@ export const BEATS: Beat[] = [
     start: 0.536,
     end: 0.692,
     captionStart: 0.536,
-    captionEnd: 0.64,
+    // The ladder is the longest read in the film and the flight out of it used
+    // to leave a screen and a half of nothing before the next words arrived.
+    captionEnd: 0.668,
     align: "start",
     // The copy that comes home enters from the right and lands back on the plate.
     arrive: { pos: [-0.2, 0.85, 7], look: [-1.1, 0.7, 0.3] },
@@ -105,7 +107,9 @@ export const BEATS: Beat[] = [
     start: 0.692,
     end: 0.824,
     captionStart: 0.692,
-    captionEnd: 0.78,
+    // Same again on the way into the drop panel: the words hold almost to the
+    // moment the panel arrives, so the offer never lands in an empty shot.
+    captionEnd: 0.8,
     align: "end",
     // Held on the sealed plate, on the left of the standing card.
     arrive: { pos: [0.25, 0.18, 4], look: [1, 0.06, 0] },

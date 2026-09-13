@@ -30,6 +30,22 @@ NEXT_DIST_DIR=.next-verify npm run build --workspace packages/web
 The verify page needs the verifier service. Start it from the repo root with
 `npm run dev:verifier`; without it the page says so and names the command.
 
+How long a frame of the home story takes, measured rather than guessed:
+
+```sh
+NEXT_DIST_DIR=.next-verify npm run build --workspace packages/web
+NEXT_DIST_DIR=.next-verify npx next start --dir packages/web -p 3312
+node packages/web/scripts/perf/scroll-frames.mjs --url http://localhost:3312/en
+```
+
+It drives a headless Chrome, scrolls the story with real wheel events for thirty
+seconds, samples every frame from inside the page and prints the mean, the p95
+and every step the adaptive tier took. Always run it against a production build:
+the dev build draws the same scene three to four milliseconds a frame slower.
+`--width`, `--height`, `--seconds`, `--gpu` and `--browser` change the run. On
+2026-09-13, at 1440 by 900 with the GPU off, it read 22.1 ms mean and 33.4 ms
+p95; at 820 by 560, 16.7 ms with the field holding tier 0 for the whole run.
+
 ## Routes
 
 | Route | What it is |

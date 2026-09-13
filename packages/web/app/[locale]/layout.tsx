@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense, type ReactNode } from "react";
+import { HeaderMenu } from "@/components/HeaderMenu";
 import { LocaleSwitch } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -69,12 +70,16 @@ export default async function LocaleLayout({
               <LenisProvider>
                 <div className="flex min-h-dvh flex-col">
                   <header className="app-header sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
-                    <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-x-6 gap-y-3 px-5 py-4 sm:px-8">
+                    {/* The phone bar is one fixed row so its height is a number the film can
+                        pull itself up by, --header-h in globals.css. From md it grows back to
+                        the padded bar the rest of the site was measured with. */}
+                    <div className="mx-auto flex h-[55px] w-full max-w-[1400px] items-center gap-x-6 px-5 sm:px-8 md:h-auto md:flex-wrap md:gap-y-3 md:py-4">
                       {/* The lockup files carry clear space on every side, so the box is 63 px
                           tall for 24 px of cap height and the negative margin keeps the bar the
                           height the ink asks for. The theme class picks the variant, and the
-                          story pages force the dark one because that header is dark whatever the
-                          theme says. */}
+                          story pages force the dark one because that bar floats on a dark film.
+                          Under the light theme the story bar is the page's own cream, so the two
+                          rules in globals.css that watch data-lockup hand the light one back. */}
                       <Link
                         href="/"
                         className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70"
@@ -85,6 +90,7 @@ export default async function LocaleLayout({
                           width={160}
                           height={63}
                           unoptimized
+                          data-lockup="dark"
                           className="hidden dark:block [body:has([data-story])_&]:block"
                         />
                         <Image
@@ -93,13 +99,14 @@ export default async function LocaleLayout({
                           width={160}
                           height={63}
                           unoptimized
+                          data-lockup="light"
                           className="block dark:hidden [body:has([data-story])_&]:hidden"
                         />
                       </Link>
                       <span className="hidden text-xs uppercase tracking-[0.24em] text-text-faint md:inline">
                         {t("tagline")}
                       </span>
-                      <nav className="ml-auto flex items-center gap-5 text-sm">
+                      <nav className="ml-auto hidden items-center gap-5 text-sm md:flex">
                         {nav.map((item) => (
                           <Link
                             key={item.href}
@@ -110,10 +117,13 @@ export default async function LocaleLayout({
                           </Link>
                         ))}
                       </nav>
-                      <div className="flex items-center gap-2">
+                      <div className="hidden items-center gap-2 md:flex">
                         <LocaleSwitch />
                         <ThemeToggle />
                       </div>
+                      {/* Everything above, behind one button, from the width where the row
+                          would otherwise wrap into three. */}
+                      <HeaderMenu links={nav.map((item) => ({ href: item.href, label: item.label }))} />
                     </div>
                   </header>
 

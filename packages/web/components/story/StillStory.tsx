@@ -1,9 +1,11 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { StoryBeat } from "@/components/story/LandingStory";
 import { CloseCard } from "@/components/story/CloseCard";
-import { TryPanel } from "@/components/story/TryPanel";
+import { TryPanel, type TrySample } from "@/components/story/TryPanel";
+import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { ACCENT_RGB } from "@/components/story/palette";
 import { degradeSteps } from "@/components/story/measurements";
@@ -19,10 +21,12 @@ import { BEAT } from "@/components/story/beats";
 export function StillStory({
   data,
   beats,
+  samples = [],
   noWebgl = false,
 }: {
   data: StoryData;
   beats: StoryBeat[];
+  samples?: TrySample[];
   /** True only when a context could not be opened, never for reduced motion. */
   noWebgl?: boolean;
 }) {
@@ -64,7 +68,7 @@ export function StillStory({
 
         {beats.map((entry) => (
           <section key={entry.key} className={BEAT[entry.key].align === "end" ? "text-end" : ""}>
-            {entry.body}
+            {entry.key === "verified" ? <LadderDriver>{entry.body}</LadderDriver> : entry.body}
             {entry.key === "sealed" && picture !== null && <Still src={picture} />}
             {entry.key === "shared" && <Frames />}
             {entry.key === "verified" && (
@@ -81,7 +85,7 @@ export function StillStory({
         ))}
 
         <section>
-          <TryPanel onPreview={() => undefined} pinned={false} />
+          <TryPanel onPreview={() => undefined} samples={samples} pinned={false} />
         </section>
 
         <section className="border-t border-line pt-16">
@@ -90,6 +94,42 @@ export function StillStory({
       </div>
     </div>
   );
+}
+
+/**
+ * Runs the verified beat's readout off this page's own scroll.
+ *
+ * On the film the scene writes how far the verified beat has played from inside
+ * its render loop. There is no scene here, so the readout would sit frozen on
+ * whatever number it was swapped at. This publishes the same signal from the
+ * section's way up the window, so the ladder ticks through the verifier's
+ * figures as the reader passes it, on this page as on the other.
+ */
+function LadderDriver({ children }: { children: ReactNode }) {
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = box.current;
+    if (node === null) {
+      return;
+    }
+
+    const read = () => {
+      const rect = node.getBoundingClientRect();
+      const travel = window.innerHeight + rect.height;
+      progress.verified = travel <= 0 ? 0 : Math.min(1, Math.max(0, (window.innerHeight - rect.top) / travel));
+    };
+
+    read();
+    window.addEventListener("scroll", read, { passive: true });
+    window.addEventListener("resize", read);
+    return () => {
+      window.removeEventListener("scroll", read);
+      window.removeEventListener("resize", read);
+    };
+  }, []);
+
+  return <div ref={box}>{children}</div>;
 }
 
 function Still({ src }: { src: string }) {

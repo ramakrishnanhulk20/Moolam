@@ -2,11 +2,30 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { forwardTouchMove, forwardTouchStart, forwardWheel, probe, progress, resetProbe } from "@/components/story/signals";
+import type { Hex } from "viem";
+import {
+  forwardTouchMove,
+  forwardTouchStart,
+  forwardWheel,
+  probe,
+  progress,
+  resetProbe,
+  type ProbeState,
+} from "@/components/story/signals";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { checkImage } from "@/lib/upload/checkImage";
 import { VerifierError, verify, type VerifierCode, type VerifyResponse } from "@/lib/verifier/client";
+
+/**
+ * The plate in the scene reads the answer from the shared signal, and it is
+ * written here rather than in the component so the whole exchange is one call
+ * with one name on it.
+ */
+function publish(state: ProbeState, confidence = 0) {
+  probe.state = state;
+  probe.confidence = confidence;
+}
 
 type State =
   | { kind: "idle" }
@@ -23,7 +42,22 @@ type State =
  * while the camera is still flying, so the whole subtree is inert until it is
  * actually on screen.
  */
-export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string | null) => void; pinned?: boolean }) {
+/** One registered image the panel offers, for a judge with no file to hand. */
+export interface TrySample {
+  id: Hex;
+  url: string;
+}
+
+export function TryPanel({
+  onPreview,
+  samples = [],
+  pinned = true,
+}: {
+  onPreview: (url: string | null) => void;
+  /** Real records from the index. Empty is a normal answer: the index may be down. */
+  samples?: TrySample[];
+  pinned?: boolean;
+}) {
   const t = useTranslations("story.tryIt");
   const shell = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -92,18 +126,40 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
     preview.current = URL.createObjectURL(file);
     onPreview(preview.current);
 
-    probe.state = "pending";
-    probe.confidence = 0;
+    publish("pending");
     setState({ kind: "pending", name: file.name });
 
     try {
       const answer = await verify({ file });
       const matched = answer.result.exact !== null || answer.result.best !== null;
-      probe.state = matched ? "matched" : "refused";
-      probe.confidence = answer.result.confidence;
+      publish(matched ? "matched" : "refused", answer.result.confidence);
       setState({ kind: "done", name: file.name, answer });
     } catch (error) {
-      probe.state = "refused";
+      publish("refused");
+      setState({ kind: "error", message: refusal(error, t) });
+    }
+  }
+
+  /**
+   * One of the offered pictures, fetched back out of the gateway and put through
+   * the same check a dropped file gets.
+   *
+   * The gateway serves the 512 pixel copy the metadata carries, so this is a
+   * resized copy of a registered image rather than the file itself: the answer
+   * a judge sees is a real near-match, not a byte-for-byte lookup.
+   */
+  async function takeSample(sample: TrySample) {
+    setState({ kind: "pending", name: shortHex(sample.id, 10, 8) });
+    try {
+      const response = await fetch(sample.url);
+      if (!response.ok) {
+        throw new Error(`the gateway answered ${response.status}`);
+      }
+      const blob = await response.blob();
+      const kind = blob.type === "" ? "image/jpeg" : blob.type;
+      await check(new File([blob], `${shortHex(sample.id, 6, 4)}.${kind.split("/")[1] ?? "jpg"}`, { type: kind }));
+    } catch (error) {
+      publish("refused");
       setState({ kind: "error", message: refusal(error, t) });
     }
   }
@@ -123,11 +179,7 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
       inert={pinned ? true : undefined}
       aria-hidden={pinned ? "true" : undefined}
       style={pinned ? { opacity: 0 } : undefined}
-      className={
-        pinned
-          ? "pointer-events-none absolute inset-0 z-30 flex items-center px-5 opacity-0 sm:px-8 lg:px-14"
-          : "px-0"
-      }
+      className={pinned ? "story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : "px-0"}
     >
       <div className="mx-auto w-full max-w-[100rem]">
         <div
@@ -140,17 +192,20 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
           onWheel={pinned ? forwardWheel : undefined}
           onTouchStart={pinned ? forwardTouchStart : undefined}
           onTouchMove={pinned ? forwardTouchMove : undefined}
-          className={`pointer-events-auto w-full max-w-[27rem] border bg-black/55 p-6 backdrop-blur-md transition-colors duration-200 sm:ms-auto ${
-            over ? "border-accent" : "border-line"
+          className={`pointer-events-auto w-full max-w-[27rem] border border-dashed bg-black/55 p-5 backdrop-blur-md transition-colors duration-200 sm:ms-auto sm:p-6 ${
+            over ? "border-accent bg-accent-soft" : "border-line-strong"
           }`}
         >
           <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
             <span className="motif h-[9px] w-[9px]" />
             {t("kicker")}
           </p>
-          <p className="mt-4 font-display text-[clamp(1.5rem,2.6vw,2.1rem)] font-semibold leading-[1] tracking-[-0.035em]">
-            {t("title")}
-          </p>
+          <div className="mt-4 flex items-start gap-3">
+            <DropGlyph over={over} />
+            <p className="font-display text-[clamp(1.35rem,2.6vw,2.1rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
+              {t("title")}
+            </p>
+          </div>
 
           <input
             ref={input}
@@ -173,6 +228,34 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
             {t("choose")}
           </button>
 
+          {samples.length > 0 && (
+            <div className="mt-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("samples")}</p>
+              <ul className="mt-2.5 flex gap-2.5">
+                {samples.map((sample) => (
+                  <li key={sample.id} className="flex-1">
+                    <button
+                      type="button"
+                      onClick={() => void takeSample(sample)}
+                      className="group block w-full overflow-hidden border border-line transition-colors duration-200 hover:border-accent focus-visible:border-accent"
+                    >
+                      <span className="sr-only">{shortHex(sample.id, 10, 8)}</span>
+                      {/* Registered images, served by the gateway their own passports point
+                          at, which is not a host a Next loader can be configured for. */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={sample.url}
+                        alt=""
+                        loading="lazy"
+                        className="aspect-[4/3] w-full object-cover opacity-80 transition duration-300 group-hover:scale-[1.06] group-hover:opacity-100"
+                      />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="mt-5 min-h-[5.5rem] border-t border-line pt-4">
             {state.kind === "idle" && <p className="text-sm leading-relaxed text-text-faint">{t("hint")}</p>}
 
@@ -190,6 +273,30 @@ export function TryPanel({ onPreview, pinned = true }: { onPreview: (url: string
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * The one drawing on the panel: a plate with an arrow coming up out of it.
+ *
+ * Drawn here rather than pulled from an icon set, so it carries the same stroke
+ * weight and the same accent as everything else on the shot and costs no font.
+ */
+function DropGlyph({ over }: { over: boolean }) {
+  return (
+    <svg
+      aria-hidden
+      viewBox="0 0 24 24"
+      className={`mt-0.5 h-6 w-6 shrink-0 transition-colors duration-200 ${over ? "text-accent" : "text-text-faint"}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.25"
+      strokeLinecap="square"
+    >
+      <path d="M4 15v4.5h16V15" />
+      <path d="M12 3.5v11" />
+      <path d="M7.5 8 12 3.5 16.5 8" />
+    </svg>
   );
 }
 

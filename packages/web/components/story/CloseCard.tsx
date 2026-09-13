@@ -12,7 +12,9 @@ import { Link } from "@/lib/i18n/routing";
  *
  * The two figures are the registry's own totals through the live index, so the
  * page never claims a number nobody wrote on chain. It fades in over the
- * settling field and takes itself out of the tab order until it is there.
+ * settling field and takes itself out of the tab order until it is there. Under
+ * the light theme the story-close rule in globals.css gives this card the app's
+ * own palette and ground, so the film ends by handing the page back.
  */
 export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: boolean }) {
   const t = useTranslations("story.close");
@@ -67,9 +69,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
       inert={pinned ? true : undefined}
       aria-hidden={pinned ? "true" : undefined}
       style={pinned ? { opacity: 0 } : undefined}
-      className={
-        pinned ? "pointer-events-none absolute inset-0 z-30 flex items-center px-5 opacity-0 sm:px-8 lg:px-14" : ""
-      }
+      className={pinned ? "story-close story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : ""}
     >
       <div
         onWheel={pinned ? forwardWheel : undefined}
@@ -82,16 +82,20 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
           {t("kicker")}
         </p>
 
-        <h2 className="mt-5 max-w-[14ch] font-display text-[clamp(2.4rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em]">
+        <h2 className="mt-4 max-w-[14ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5">
           {t("title")}
         </h2>
 
-        <p className="mt-5 max-w-[42ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
+        <p className="mt-3 max-w-[38ch] text-sm leading-relaxed text-text-muted sm:mt-5 sm:max-w-[42ch] sm:text-base">
+          {t("body")}
+        </p>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        {/* A phone has the lower half of the window for all of this, so the two
+            calls sit on one line there and grow back at 640 px. */}
+        <div className="mt-5 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
           <Link
             href="/studio"
-            className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-6 py-3.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-ink transition-transform duration-200 hover:scale-[1.03]"
+            className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
           >
             {t("register")}
             <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
@@ -100,17 +104,19 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
           </Link>
           <Link
             href="/verify"
-            className="rounded-[8px] border border-line px-6 py-3.5 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            className="rounded-[8px] border border-line px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
           >
             {t("verify")}
           </Link>
         </div>
 
-        <dl className="mt-10 flex flex-wrap gap-x-12 gap-y-6 border-t border-line pt-6">
+        <dl className="mt-5 grid grid-cols-3 gap-x-4 border-t border-line pt-3 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
           {figures.map((figure) => (
             <div key={figure.key}>
-              <dt className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint">{figure.label}</dt>
-              <dd className="mt-1 font-display text-[clamp(1.8rem,3.4vw,2.8rem)] font-semibold leading-[0.9] tracking-[-0.045em] tabular-nums">
+              <dt className="font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em]">
+                {figure.label}
+              </dt>
+              <dd className="mt-1 font-display text-[clamp(1.4rem,3.4vw,2.8rem)] font-semibold leading-[0.9] tracking-[-0.045em] tabular-nums">
                 {figure.value}
               </dd>
             </div>

@@ -25,6 +25,8 @@
     "themeDark": "Sombre",
     "themeLight": "Clair",
     "language": "Langue",
+    "menu": "Menu",
+    "menuClose": "Fermer le menu",
     "nav": {
       "home": "Accueil",
       "verify": "Vérifier une image",
@@ -75,7 +77,10 @@
       "kicker": "Créée",
       "title": "Celle-ci, c’est une IA qui l’a faite.",
       "body": "L’agent {agent} a signé l’empreinte dans sa propre enclave avant que personne n’ait vu l’image.",
-      "readout": "Agent générateur {agent}, registre d’identité ERC-8004"
+      "readout": "Agent générateur {agent}, registre d’identité ERC-8004",
+      "titleNoAgent": "Celle-ci, c’est une personne qui l’a enregistrée.",
+      "bodyNoAgent": "Aucun agent n’a signé cette empreinte. Elle a été enregistrée comme photographie, et le passeport le dit ainsi.",
+      "readoutNoAgent": "Aucun agent générateur sur ce passeport"
     },
     "sealed": {
       "kicker": "Scellée",
@@ -97,9 +102,9 @@
       "matched": "a correspondu",
       "notMatched": "n’a pas correspondu",
       "attestation": "Chainlink l’a revérifiée et a inscrit la réponse sur la chaîne : {result}, à {distance} bits d’écart.",
-      "attestationOther": "Chainlink a revérifié le passeport {passport} de ce registre et a inscrit la réponse sur la chaîne : {result}, à {distance} bits d’écart.",
       "noAttestation": "Aucune contre-vérification indépendante n’a encore été inscrite pour ce passeport.",
-      "provenance": "Chiffres mesurés par le vérificateur Moolam sur le passeport {passport}, {date}."
+      "provenance": "Chiffres de l’échelle mesurés par le vérificateur Moolam sur une autre image enregistrée, passeport {passport}, {date}.",
+      "provenanceSelf": "Chiffres mesurés par le vérificateur Moolam sur ce passeport même, {date}."
     },
     "trusted": {
       "kicker": "De confiance",
@@ -108,12 +113,14 @@
       "score": "Score {score}",
       "noScore": "Pas encore de score",
       "counts": "{verifications, plural, =1 {# vérification} other {# vérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
-      "body": "Chaque contrôle mené par le vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de l’agent. Sa réputation est la somme de son travail, pas une promesse sur un site."
+      "body": "Chaque contrôle mené par le vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de l’agent. Sa réputation est la somme de son travail, pas une promesse sur un site.",
+      "noAgent": "Aucun agent n’a fait celle-ci, donc aucune réputation d’agent n’y tient. Quand un agent signe, chaque contrôle du vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de cet agent."
     },
     "tryIt": {
       "kicker": "Essayez",
-      "title": "Déposez ici n’importe quelle copie de n’importe quelle image, ou choisissez un fichier",
+      "title": "Déposez ici n’importe quelle copie de n’importe quelle image, ou choisissez un fichier.",
       "choose": "Choisir un fichier",
+      "samples": "Ou essayez l’une de celles-ci",
       "hint": "JPEG, PNG ou WebP. Le fichier part vers le vérificateur Moolam, reçoit trois empreintes et n’est pas conservé.",
       "pending": "Calcul des empreintes et recherche dans le registre",
       "offline": "Le service de vérification ne répond pas. Lancez-le avec npm run dev:verifier depuis la racine du dépôt, puis redéposez le fichier.",
@@ -676,6 +683,13 @@
     "next": "Suivant",
     "copy": "Copier",
     "copied": "Copié",
-    "diagram": "Tracé du schéma"
+    "diagram": "Tracé du schéma",
+    "diagramOpen": "Ouvrir en taille réelle",
+    "diagramScroll": "faire défiler",
+    "diagramFull": "Schéma, en taille réelle",
+    "diagramRegion": "Schéma, défilement possible",
+    "zoomIn": "Agrandir",
+    "zoomOut": "Réduire",
+    "zoomReset": "Réinitialiser"
   }
 }

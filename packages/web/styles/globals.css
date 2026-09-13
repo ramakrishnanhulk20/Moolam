@@ -33,7 +33,12 @@
   --grain-blend: overlay;
 }
 
-.light {
+/* The light palette, and the one place inside the film that is allowed to use
+   it: the card the story ends on. The film stays dark whatever the toggle says,
+   but the last screen hands the page back, so a visitor who chose light sees
+   the toggle do something on the home page too. */
+.light,
+.light .story-close {
   --bg: #f2efe9;
   --bg-raised: #fbf9f5;
   --bg-sunken: #e6e2da;
@@ -96,6 +101,22 @@ body {
   color: var(--text);
   font-family: var(--font-body), var(--font-script, ui-sans-serif), ui-sans-serif, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* How tall the bar over every page is, measured once here.
+   Three things read it: the film, which pulls itself up by exactly this much so
+   its first frame fills the window; the strip painted behind the bar while the
+   film runs; and the phone menu panel, which hangs from the bottom of the bar.
+   The phone bar is a single fixed row, so its number is the row plus its one
+   pixel border. */
+:root {
+  --header-h: 63px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --header-h: 56px;
+  }
 }
 
 /* Chinese, Japanese, Korean and Devanagari letters fill the whole em box, so the
@@ -240,10 +261,12 @@ body {
   color: var(--text);
 }
 
-/* The header over the story only. The story is dark whatever the theme says, so
-   the bar borrows its light text and its pink accent. Every other page keeps the
-   themed header. */
-body:has([data-story]) .app-header {
+/* The header over the story, in the dark theme only. The film is dark whatever
+   the toggle says, so the bar borrows its light text and its pink accent and
+   floats on the shot. Under the light theme the bar keeps the page's own cream
+   ground and dark ink instead, and the film runs on underneath it: a dark film
+   on a light page. */
+html:not(.light) body:has([data-story]) .app-header {
   --text: #f5f3ef;
   --text-muted: rgb(245 243 239 / 0.72);
   --text-faint: rgb(245 243 239 / 0.5);
@@ -257,22 +280,24 @@ body:has([data-story]) .app-header {
 /* The film never scrolls under the bar: the scene owns the window and the story
    scrolls inside it, so the bar can lose its background entirely and float on
    the shot. */
-body:has([data-story="film"]) .app-header {
-  /* How far the story page pulls the scene up under the bar. The number is set
-     on the page, and the strip below is measured against it, so the two agree. */
-  --story-pullup: 73px;
+html:not(.light) body:has([data-story="film"]) .app-header {
+  /* How far the story page pulls the scene up under the bar: the bar's own
+     height, so the strip painted below and the pull-up on the page cannot drift
+     apart. */
+  --story-pullup: var(--header-h);
 
   background: transparent;
   border-color: transparent;
   backdrop-filter: none;
 }
 
-/* On a phone the bar wraps to two or three rows and grows past the pull-up, so
-   its top rows hang over the page ground rather than the scene: light ground,
-   light ink, nothing readable. This paints exactly the overhang in the story's
-   own black and leaves the rest of the bar floating on the shot. Desktop wraps
-   to nothing, the height comes out zero, and nothing is painted at all. */
-body:has([data-story="film"]) .app-header::before {
+/* If the bar ever grows taller than the pull-up, its top hangs over the page
+   ground rather than the scene: light ground, light ink, nothing readable. A
+   long translated label wrapping the row is enough to do it. This paints exactly
+   the overhang in the story's own black and leaves the rest of the bar floating
+   on the shot. At the height the bar normally has, the strip comes out zero and
+   nothing is painted at all. */
+html:not(.light) body:has([data-story="film"]) .app-header::before {
   content: "";
   position: absolute;
   inset-block-start: 0;
@@ -285,10 +310,82 @@ body:has([data-story="film"]) .app-header::before {
   z-index: -1;
 }
 
+/* Under the light theme the story bar is the page's own, so the lockup drawn for
+   a dark ground would be invisible on it. These two hand the light one back. */
+.light body:has([data-story]) .app-header [data-lockup="dark"] {
+  display: none;
+}
+
+.light body:has([data-story]) .app-header [data-lockup="light"] {
+  display: block;
+}
+
 /* The still page does scroll under it, so it keeps a ground to sit on. */
-body:has([data-story="still"]) .app-header {
+html:not(.light) body:has([data-story="still"]) .app-header {
   background: rgb(11 11 12 / 0.88);
   border-color: rgb(255 255 255 / 0.12);
+}
+
+/* The film's two framings.
+   On a phone the shot is the top 45 percent of the window and the words own the
+   bottom, so a caption, the drop panel and the close card can never sit over the
+   picture. That was the one thing a judge could not use at 375 px. From 640 px
+   up the shot goes full bleed again and the words sit in the side columns the
+   scrim darkens, which is the frame Ram approved. */
+.story-stage {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 45svh;
+}
+
+.story-lower {
+  position: absolute;
+  inset-inline: 0;
+  top: 45svh;
+  bottom: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1.25rem;
+  padding-bottom: 3.5rem;
+}
+
+@media (min-width: 640px) {
+  .story-stage {
+    height: auto;
+    bottom: 0;
+  }
+
+  .story-lower {
+    inset: 0;
+    align-items: center;
+    padding-top: var(--header-h);
+    padding-bottom: 0;
+  }
+}
+
+/* The page pulls the film up under the floating bar by exactly the bar's height.
+   The home page asks for the desktop number; on a phone the bar is shorter, and
+   the film would otherwise start above the top of the window and leave a strip
+   of page ground above the footer. */
+body:has([data-story]) main > .-mt-\[73px\] {
+  margin-top: calc(var(--header-h) * -1);
+}
+
+/* While the film is pinned the document is exactly one window tall, so the very
+   first wheel turn moves the story and not the page under it. The footer comes
+   back the moment the last beat has been read, and the scroll chains on to it. */
+body:has([data-story="film"]):not([data-story-end]) footer {
+  display: none;
+}
+
+/* The card the film ends on, in light mode: the page's own ground fading up
+   under the words as the last beat arrives. The card's opacity is written from
+   the story's own frame, so the ground arrives with it. */
+.light .story-close {
+  color-scheme: light;
+  background: var(--bg);
+  color: var(--text);
 }
 
 /* The entrance on the first screen: the kicker, the title and the line rise in
