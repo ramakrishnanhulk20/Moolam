@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
-import { forwardTouchMove, forwardTouchStart, forwardWheel, progress } from "@/components/story/signals";
+import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { CHAIN_ID } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
@@ -95,10 +95,9 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
       }
       className={pinned ? "story-close story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : ""}
     >
+      {/* The film wrapper carries every gesture over the pinned screen back to
+          the story's scroller, this card included. */}
       <div
-        onWheel={pinned ? forwardWheel : undefined}
-        onTouchStart={pinned ? forwardTouchStart : undefined}
-        onTouchMove={pinned ? forwardTouchMove : undefined}
         className={`mx-auto w-full max-w-[100rem] ${pinned ? "pointer-events-auto" : ""}`}
       >
         <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
@@ -106,7 +105,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
           {t("kicker")}
         </p>
 
-        <h2 className="mt-4 max-w-[14ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5">
+        <h2 className="mt-3 max-w-[14ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5">
           {t("title")}
         </h2>
 
@@ -116,7 +115,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
 
         {/* A phone has the lower half of the window for all of this, so the two
             calls sit on one line there and grow back at 640 px. */}
-        <div className="mt-5 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
+        <div className="mt-4 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
           <Link
             href="/studio"
             className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
@@ -137,7 +136,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
         {/* A phone has the lower half of the window for the whole card, so the
             room the third figure used to take is given back to the line under
             the row rather than added to it. */}
-        <dl className="mt-3 grid grid-cols-2 gap-x-4 border-t border-line pt-2 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
+        <dl className="mt-2 grid grid-cols-2 gap-x-4 border-t border-line pt-2 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
           {figures.map((figure) => (
             <div key={figure.key}>
               <dt className="font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em]">

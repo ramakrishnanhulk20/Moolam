@@ -11,7 +11,7 @@ import { CloseCard } from "@/components/story/CloseCard";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
 import { TryPanel, type TrySample } from "@/components/story/TryPanel";
-import { probe, progress, scroller } from "@/components/story/signals";
+import { forwardTouchMove, forwardTouchStart, forwardWheel, probe, progress, scroller } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { degradeSteps, measurement } from "@/components/story/measurements";
 import { createTierState, nextTier, startTier, tierLevel } from "@/components/story/tier";
@@ -425,12 +425,18 @@ export function LandingStory({ data }: { data: StoryData }) {
   return (
     <SceneBoundary fallback={<StillStory data={data} beats={beats} samples={samples} noWebgl />}>
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
-          to the scene, so the wheel is handed straight to it. */}
+          to the scene, so the wheel is handed straight to it. The three handlers
+          are on this wrapper rather than on each pinned panel: the scene's own
+          scroll element is only as big as the shot, so a gesture anywhere else
+          on the screen has to be carried to it from here. */}
       <div
         className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
         data-story="film"
         data-story-tier={tier}
         data-lenis-prevent
+        onWheel={forwardWheel}
+        onTouchStart={forwardTouchStart}
+        onTouchMove={forwardTouchMove}
       >
         <div className="story-stage">
           <Canvas

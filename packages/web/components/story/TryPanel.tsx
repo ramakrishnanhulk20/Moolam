@@ -3,15 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
-import {
-  forwardTouchMove,
-  forwardTouchStart,
-  forwardWheel,
-  probe,
-  progress,
-  resetProbe,
-  type ProbeState,
-} from "@/components/story/signals";
+import { probe, progress, resetProbe, type ProbeState } from "@/components/story/signals";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { checkImage } from "@/lib/upload/checkImage";
@@ -189,9 +181,6 @@ export function TryPanel({
           }}
           onDragLeave={() => setOver(false)}
           onDrop={onDrop}
-          onWheel={pinned ? forwardWheel : undefined}
-          onTouchStart={pinned ? forwardTouchStart : undefined}
-          onTouchMove={pinned ? forwardTouchMove : undefined}
           className={`pointer-events-auto w-full max-w-[27rem] border border-dashed bg-black/55 p-5 backdrop-blur-md transition-colors duration-200 sm:ms-auto sm:p-6 ${
             over ? "border-accent bg-accent-soft" : "border-line-strong"
           }`}
