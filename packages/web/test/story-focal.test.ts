@@ -109,6 +109,63 @@ describe("the passport the story follows", () => {
     expect(focal.why).toBe("full");
   });
 
+  it("takes the real picture over a seed card when both carry everything", () => {
+    const rows = [
+      row({ id: "0xcdb25d37", registeredAt: "1788881666", generatorId: "10249", attestations: 1 }),
+      row({ id: "0x5f66c389", registeredAt: "1788999999", generatorId: "10248", attestations: 1 }),
+    ];
+    const titles = ["Monsoon Fishing Nets Drying", "Moolam seed 4"];
+
+    const chosen = chooseFocal(rows, [true, true], titles);
+
+    expect(chosen?.reason).toBe("full");
+    expect(rows[(chosen as { index: number }).index].id).toBe("0xcdb25d37");
+  });
+
+  it("takes the newest of two real pictures that both carry everything", () => {
+    const rows = [
+      row({ id: "0xcdb25d37", registeredAt: "1788881666", generatorId: "10249", attestations: 1 }),
+      row({ id: "0xdece558a", registeredAt: "1788881590", generatorId: "10249", attestations: 1 }),
+    ];
+    const titles = ["Monsoon Fishing Nets Drying", "Single-Light Jazz Trumpeter"];
+
+    const chosen = chooseFocal(rows, [true, true], titles);
+
+    expect(rows[(chosen as { index: number }).index].id).toBe("0xcdb25d37");
+  });
+
+  it("falls back to the seed card when no real picture carries all three", () => {
+    const rows = [
+      row({ id: "0x5f66c389", registeredAt: "1788876082", attestations: 1 }),
+      row({ id: "0xcdb25d37", registeredAt: "1788881666", attestations: 0 }),
+    ];
+    const titles = ["Moolam seed 4", "Monsoon Fishing Nets Drying"];
+
+    const chosen = chooseFocal(rows, [true, true], titles);
+
+    expect(chosen?.reason).toBe("full");
+    expect(rows[(chosen as { index: number }).index].id).toBe("0x5f66c389");
+  });
+
+  it("chooses exactly as it did before when no titles are handed over", () => {
+    const withTitles = chooseFocal(INDEX, ALL_PICTURED, INDEX.map(() => null));
+    const without = chooseFocal(INDEX, ALL_PICTURED);
+
+    expect(without).toEqual(withTitles);
+    expect(INDEX[(without as { index: number }).index].id).toBe("0x5f66c389");
+  });
+
+  it("treats a picture whose metadata would not load as a test card", () => {
+    const rows = [
+      row({ id: "0xcdb25d37", registeredAt: "1788881666", attestations: 1 }),
+      row({ id: "0xdece558a", registeredAt: "1788881999", attestations: 1 }),
+    ];
+
+    const chosen = chooseFocal(rows, [true, true], ["Monsoon Fishing Nets Drying", null]);
+
+    expect(rows[(chosen as { index: number }).index].id).toBe("0xcdb25d37");
+  });
+
   it("reads a manifest hash of nothing but zeroes as no manifest", () => {
     expect(carriesManifest(ZERO)).toBe(false);
     expect(carriesManifest("0x0")).toBe(false);

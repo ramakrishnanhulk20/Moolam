@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
+import { isTestCard } from "@/components/explore/sort";
 import {
   CACHE_TAGS,
   DEMO_AGENT_ID,
@@ -173,9 +174,18 @@ export async function storyData(): Promise<StoryData> {
   const chosen = chooseFocal(
     rows,
     pictures.map((picture) => picture !== null),
+    pictures.map((picture) => picture?.title ?? null),
   );
   const focal =
     chosen === null ? null : focalFrom(rows[chosen.index], (pictures[chosen.index] as Picture).full, chosen.reason);
+
+  if (process.env.NODE_ENV === "development" && chosen !== null) {
+    // Which record the story opened on, so a wrong one is caught on the dev
+    // server rather than in a judge's screenshot.
+    console.info(
+      `story focal: ${rows[chosen.index].id} "${pictures[chosen.index]?.title ?? "untitled"}" on the ${chosen.reason} rung, ${rows[chosen.index].attestations} re-checks`,
+    );
+  }
 
   // Only this passport's own re-check is ever shown. A newer one on a different
   // record is a true sentence about a record nobody is looking at, which is how
@@ -371,28 +381,46 @@ function fits(row: IndexRow, reason: FocalReason): boolean {
   return reason === "manifest" || row.attestations > 0;
 }
 
+/** The rungs the chooser walks down, best first. */
+const LADDER: { reason: FocalReason; realOnly: boolean }[] = [
+  { reason: "full", realOnly: true },
+  { reason: "full", realOnly: false },
+  { reason: "manifest", realOnly: false },
+  { reason: "any", realOnly: false },
+];
+
 /**
  * The one passport the whole story is told on.
  *
  * The captions name an agent, a manifest and a re-check, so the record they are
  * told over has to carry all three or the story contradicts the page a judge
- * opens next. The newest record that carries everything wins; failing that the
- * newest an agent made and sealed, with the re-check line told truthfully as
- * missing; failing that the newest picture of any kind, with the agent line
- * gone. A record with no picture is never chosen: the forgery attempts the
- * prove-it run writes are exactly that, and a story about an image cannot be
- * told on one.
+ * opens next. On top of that the picture should be one a reader can look at:
+ * the top rung takes the newest real picture with all three, using the same
+ * test-card rule the Explore page sorts and filters on, so the story and the
+ * grid never disagree about what counts as a picture. Below that comes the
+ * newest record with all three whatever its title, then the newest an agent
+ * made and sealed with the re-check line told truthfully as missing, then the
+ * newest picture of any kind with the agent line gone. A record with no picture
+ * is never chosen: the forgery attempts the prove-it run writes are exactly
+ * that, and a story about an image cannot be told on one.
+ *
+ * `titles` are the names pinned with those pictures, in the same order as the
+ * rows. A caller with no titles to hand simply lands on the second rung.
  *
  * Pure, and tested in test/story-focal.test.ts against a fixture index.
  */
 export function chooseFocal(
   rows: readonly IndexRow[],
   hasPicture: readonly boolean[],
+  titles: readonly (string | null)[] = [],
 ): { index: number; reason: FocalReason } | null {
-  for (const reason of ["full", "manifest", "any"] as const) {
+  for (const rung of LADDER) {
     let best = -1;
     for (let index = 0; index < rows.length; index += 1) {
-      if (hasPicture[index] !== true || !fits(rows[index], reason)) {
+      if (hasPicture[index] !== true || !fits(rows[index], rung.reason)) {
+        continue;
+      }
+      if (rung.realOnly && isTestCard(titles[index] ?? null)) {
         continue;
       }
       if (best === -1 || Number(rows[index].registeredAt) > Number(rows[best].registeredAt)) {
@@ -400,7 +428,7 @@ export function chooseFocal(
       }
     }
     if (best !== -1) {
-      return { index: best, reason };
+      return { index: best, reason: rung.reason };
     }
   }
 
@@ -492,6 +520,8 @@ interface Picture {
   full: string;
   /** The 512 pixel copy the metadata carries, for the plates in the field. */
   thumbnail: string;
+  /** The name pinned with the picture, which is the only thing that tells a real one from a seed card. */
+  title: string | null;
 }
 
 /**
@@ -510,7 +540,9 @@ class GatewayQuiet extends Error {
   }
 }
 
-const heldFor = unstable_cache(async (uri: string) => await pictureFor(uri), ["moolam-story-picture"], {
+// The key carries "titled" because the answers held under the old one have no
+// title in them, and a day of those would send the chooser back to a seed card.
+const heldFor = unstable_cache(async (uri: string) => await pictureFor(uri), ["moolam-story-picture-titled"], {
   revalidate: METADATA_HOLD_SECONDS,
   tags: [CACHE_TAGS.metadata],
 });
@@ -553,7 +585,7 @@ async function pictureFor(uri: string): Promise<Picture | null> {
     throw new GatewayQuiet(uri);
   }
 
-  const record = document as { image?: unknown; thumbnail?: unknown };
+  const record = document as { image?: unknown; thumbnail?: unknown; name?: unknown };
   const image = typeof record.image === "string" && record.image.startsWith("ipfs://") ? record.image : null;
   const thumbnail = typeof record.thumbnail === "string" && record.thumbnail.startsWith("ipfs://") ? record.thumbnail : null;
 
@@ -564,5 +596,6 @@ async function pictureFor(uri: string): Promise<Picture | null> {
   return {
     full: gatewayUrl(image ?? (thumbnail as string)),
     thumbnail: gatewayUrl(thumbnail ?? (image as string)),
+    title: typeof record.name === "string" ? record.name : null,
   };
 }
