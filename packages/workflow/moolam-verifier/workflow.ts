@@ -211,8 +211,8 @@ export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): str
 	// The event is only the wake-up call. Everything the attestation is built from is read back out
 	// of the registry, so a forged log cannot talk this workflow into signing a report about it.
 	const triggerBlock = log.blockNumber ? protoBigIntToBigint(log.blockNumber) : undefined;
-	const readAt = triggerBlock === undefined ? LATEST_BLOCK_NUMBER : blockNumber(triggerBlock);
-	const where = triggerBlock === undefined ? "the latest block" : `block ${triggerBlock}`;
+	let readAt = triggerBlock === undefined ? LATEST_BLOCK_NUMBER : blockNumber(triggerBlock);
+	let where = triggerBlock === undefined ? "the latest block" : `block ${triggerBlock}`;
 
 	const callData = encodeFunctionData({
 		abi: registryAbi,
@@ -232,6 +232,14 @@ export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): str
 			lastFailure = "the registry has no record at that block yet";
 		} catch (error) {
 			lastFailure = error instanceof Error ? error.message : String(error);
+			// A node keeps recent state only. When the trigger is an old log, as it is for a re-check
+			// of a passport registered days ago, the pinned read answers that the block is gone. The
+			// fields this run uses (phash, metadataURI) never change after registration, so the
+			// latest block holds the same answer and the remaining tries read there instead.
+			if (readAt !== LATEST_BLOCK_NUMBER && /not found|historical|not available/i.test(lastFailure)) {
+				readAt = LATEST_BLOCK_NUMBER;
+				where = `the latest block, since the node keeps no state at block ${triggerBlock}`;
+			}
 		}
 		runtime.log(
 			`getPassport at ${where} attempt ${attempt} of ${READ_ATTEMPTS} failed: ${lastFailure}`,
