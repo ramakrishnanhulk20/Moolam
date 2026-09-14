@@ -1,22 +1,31 @@
 import { getTranslations } from "next-intl/server";
 import type { RegistryCounts } from "@/lib/data/passports";
+import type { PictureSplit } from "./plates";
+import { isMixedView, type ExploreView } from "./query";
 
 /**
- * The head of the page: what this list is, how big the registry is, and the one
- * line that says how it is ordered.
+ * The head of the page: what this list is, how big the registry is, how it
+ * divides between pictures and test cards, and the one line that says how it is
+ * ordered.
  *
- * The sort rule is printed rather than implied. The seed cards the scripts wrote
- * are still in the grid, at the end of it, and a judge should be told that by
- * the page instead of working it out.
+ * The three counts are the whole index however the grid is filtered. The line
+ * under them is the split, so a reader on the pictures chip can see what the
+ * other chip holds without pressing it. The sort rule is printed rather than
+ * implied, and on a chip that can mix the two it still says the test cards
+ * sort last.
  */
 export async function Masthead({
   locale,
   counts,
   countsError,
+  split,
+  view,
 }: {
   locale: string;
   counts: RegistryCounts | null;
   countsError: string | null;
+  split: PictureSplit | null;
+  view: ExploreView;
 }) {
   const t = await getTranslations("explore");
 
@@ -64,20 +73,34 @@ export async function Masthead({
             {t("countsError", { reason: countsError ?? t("countsMissing") })}
           </p>
         ) : (
-          <dl
-            className="rise grid grid-cols-3 gap-x-6 gap-y-2 border-t border-line pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
+          <div
+            className="rise border-t border-line pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
             style={{ animationDelay: "180ms" }}
           >
-            <Count label={t("counts.total")} value={counts.total} lead />
-            <Count label={t("counts.generated")} value={counts.generated} capped={counts.capped} />
-            <Count label={t("counts.rechecked")} value={counts.rechecked} capped={counts.capped} />
-          </dl>
+            <dl className="grid grid-cols-3 gap-x-6 gap-y-2">
+              <Count label={t("counts.total")} value={counts.total} lead />
+              <Count label={t("counts.generated")} value={counts.generated} capped={counts.capped} />
+              <Count label={t("counts.rechecked")} value={counts.rechecked} capped={counts.capped} />
+            </dl>
+
+            {split === null ? null : (
+              <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
+                <span className="text-accent">{t("split.real", { count: split.real })}</span>
+                <span aria-hidden className="h-[9px] w-px bg-line-strong" />
+                <span>
+                  {split.capped
+                    ? t("split.testCapped", { count: split.test, scanned: split.scanned })
+                    : t("split.test", { count: split.test })}
+                </span>
+              </p>
+            )}
+          </div>
         )}
       </div>
 
       <p className="mt-10 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
         <span aria-hidden className="h-px w-8 bg-line-strong" />
-        {t("sortRule")}
+        {isMixedView(view) ? t("sortRule") : t("sortNewest")}
       </p>
     </header>
   );

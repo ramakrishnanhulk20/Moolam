@@ -2,10 +2,15 @@
 
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/lib/i18n/routing";
-import { EXPLORE_VIEWS, exploreHref, type ExploreSearch, type ExploreView } from "./query";
+import { PICTURE_VIEWS, RECORD_VIEWS, exploreHref, type ExploreSearch, type ExploreView } from "./query";
 
 /**
  * The chips and the search box.
+ *
+ * Two groups with a hairline between them: which half of the registry is on the
+ * sheet, then what the record says. The page opens on the first chip of the
+ * first group, so the test cards the scripts wrote are one press away and never
+ * the first thing a reader sees.
  *
  * Every chip is a real link carrying the whole state of the page, so a filtered
  * view can be copied out of the address bar, and the browser's back button walks
@@ -19,7 +24,11 @@ export function Filters({ search }: { search: ExploreSearch }) {
   return (
     <div className="mt-10 flex flex-col gap-5 border-y border-line py-5 lg:flex-row lg:items-center lg:justify-between">
       <nav aria-label={t("chipsLabel")} className="-mx-1 flex flex-wrap items-center gap-1.5">
-        {EXPLORE_VIEWS.map((view) => (
+        {PICTURE_VIEWS.map((view) => (
+          <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
+        ))}
+        <span aria-hidden className="mx-1.5 hidden h-4 w-px bg-line-strong sm:block" />
+        {RECORD_VIEWS.map((view) => (
           <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
         ))}
         {search.agent === null ? null : (

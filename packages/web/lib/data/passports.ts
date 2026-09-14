@@ -364,6 +364,9 @@ export async function generatorRecord(agentId: bigint | string): Promise<Generat
 /** The word a passport carries in manifestHash when nothing was signed into the file. */
 export const NO_MANIFEST = `0x${"0".repeat(64)}`;
 
+/** Which half of the registry a view shows: the real pictures, or the seed test cards. */
+export type PassportPictures = "real" | "test";
+
 /** What the Explore grid may narrow the registry down to. Nothing set means everything. */
 export interface PassportFilter {
   /** 0 Generated, 1 Captured, 2 Edited. */
@@ -377,6 +380,15 @@ export interface PassportFilter {
   generator?: string;
   /** Matched against the passport id. The index stores no title, so there is nothing else to match. */
   search?: string;
+  /**
+   * The real pictures on their own, or the seed test cards on their own.
+   *
+   * This one is not a where clause. The index stores no title, and the title in
+   * the pinned metadata is the only thing that tells the two apart, so
+   * passportWhere leaves it out and explorePassports sifts the rows it read
+   * through the caller's own test.
+   */
+  pictures?: PassportPictures;
 }
 
 /** Where the last page stopped: the second its last row was registered in, and that row's id. */
@@ -468,19 +480,55 @@ export interface ExplorePage {
 /** How many rows one page of the grid asks for. */
 export const EXPLORE_PAGE = 24;
 
+/** How many pages a sifted view reads before it stops and hands back its cursor. */
+const MAX_SCANS = 8;
+
 /**
  * One page of the registry, newest first.
  *
  * Envio only: a filtered, paged list of every passport cannot be had from the
  * chain without replaying every log, so a missing index is an error the page
  * shows rather than a slower path it takes.
+ *
+ * When the filter names real or test pictures, the index cannot answer on its
+ * own and `keep` decides which of the rows it returned belong on the page. Whole
+ * pages are read and whole pages are kept, so the cursor always points at the
+ * row the scan stopped on and "load more" cannot step over a passport that fell
+ * in the middle of one. A registry that is all test cards stops at the scan cap
+ * with a cursor rather than walking the whole index in one render.
  */
 export async function explorePassports(input: {
   filter?: PassportFilter;
   cursor?: PassportCursor | null;
   limit?: number;
+  keep?: (rows: ExplorePassport[]) => Promise<ExplorePassport[]>;
 }): Promise<ExplorePage> {
+  const filter = input.filter ?? {};
   const limit = input.limit ?? EXPLORE_PAGE;
+  const sift = input.keep;
+
+  let at = input.cursor ?? null;
+  const held: ExplorePassport[] = [];
+
+  for (let scan = 0; scan < MAX_SCANS; scan += 1) {
+    const page = await readPage(filter, at, limit);
+    held.push(...(sift === undefined ? page.passports : await sift(page.passports)));
+    at = page.cursor;
+
+    if (filter.pictures === undefined || at === null || held.length >= limit) {
+      break;
+    }
+  }
+
+  return { passports: held, cursor: at };
+}
+
+/** One straight read of the index, with no sifting and no second page. */
+async function readPage(
+  filter: PassportFilter,
+  cursor: PassportCursor | null,
+  limit: number,
+): Promise<ExplorePage> {
   const query = `query ExplorePassports($where: Passport_bool_exp!, $limit: Int!) {
     Passport(where: $where, order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit) {
       id
@@ -509,7 +557,7 @@ export async function explorePassports(input: {
       attestations: { receiver: string }[];
       generator: { id: string } | null;
     }[];
-  }>(query, { where: passportWhere(input.filter ?? {}, input.cursor), limit });
+  }>(query, { where: passportWhere(filter, cursor), limit });
 
   const passports = data.Passport.map((row) => ({
     id: row.id,
@@ -573,6 +621,35 @@ export async function registryCounts(): Promise<RegistryCounts> {
     rechecked: data.rechecked.length,
     capped: data.generated.length === COUNT_CAP || data.rechecked.length === COUNT_CAP,
   };
+}
+
+/** One passport reduced to where its pinned metadata lives. */
+export interface PassportMetadata {
+  id: Hex;
+  metadataURI: string;
+}
+
+/** How many rows the real-versus-test line reads before it stops counting. */
+export const SPLIT_CAP = 200;
+
+/**
+ * Every passport in the index with the address of its metadata, newest first.
+ *
+ * What separates a real picture from a seed test card is the title in that
+ * pinned document, which the index does not hold, so the page reads the
+ * documents itself. Capped, and a caller that reached the cap says on screen
+ * that its two numbers cover the newest rows rather than the whole registry.
+ */
+export async function passportMetadata(limit = SPLIT_CAP): Promise<PassportMetadata[]> {
+  const query = `query PassportMetadata($limit: Int!) {
+    Passport(order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit) {
+      id
+      metadataURI
+    }
+  }`;
+
+  const data = await askIndex<{ Passport: { id: Hex; metadataURI: string }[] }>(query, { limit });
+  return data.Passport;
 }
 
 /** One generating agent the index has seen, with everything it has counted for it. */

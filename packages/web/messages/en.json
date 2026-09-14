@@ -86,8 +86,16 @@
     "countsError": "The counts could not be read: {reason}.",
     "countsMissing": "no index answered",
     "sortRule": "Newest first, and seed test images sort last",
+    "sortNewest": "Newest first",
+    "split": {
+      "real": "{count, number} pictures",
+      "test": "{count, number} test images",
+      "testCapped": "{count, number} test images in the newest {scanned, number}"
+    },
     "chipsLabel": "Filter the registry",
     "chips": {
+      "pictures": "Pictures",
+      "test": "Test images",
       "all": "All",
       "generated": "Generated",
       "captured": "Captured",

@@ -88,8 +88,16 @@
     "countsError": "집계를 읽지 못했습니다: {reason}.",
     "countsMissing": "응답한 인덱스가 없습니다",
     "sortRule": "최신순, 시드 테스트 이미지는 맨 뒤",
+    "sortNewest": "최신순",
+    "split": {
+      "real": "이미지 {count, number}건",
+      "test": "테스트 이미지 {count, number}건",
+      "testCapped": "최신 {scanned, number}건 중 테스트 이미지 {count, number}건"
+    },
     "chipsLabel": "레지스트리 거르기",
     "chips": {
+      "pictures": "이미지",
+      "test": "테스트 이미지",
       "all": "전체",
       "generated": "생성",
       "captured": "촬영",

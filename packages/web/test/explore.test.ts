@@ -1,7 +1,18 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { NO_MANIFEST, passportWhere, searchPattern } from "@/lib/data/passports";
 import { isTestCard, mergePlates, sortPlates } from "@/components/explore/sort";
-import { exploreHref, filterFor, readExploreSearch } from "@/components/explore/query";
+import {
+  DEFAULT_VIEW,
+  EXPLORE_VIEWS,
+  exploreHref,
+  filterFor,
+  impliedView,
+  isMixedView,
+  picturesFor,
+  readExploreSearch,
+} from "@/components/explore/query";
 
 const ID = `0x${"1a".repeat(32)}`;
 
@@ -110,8 +121,29 @@ describe("which pictures come first", () => {
 });
 
 describe("the filter a link carries", () => {
-  it("falls back to the whole registry for a chip this build does not have", () => {
-    expect(readExploreSearch({ view: "sideways" })).toEqual({ view: "all", search: "", agent: null });
+  it("opens a bare address on the pictures", () => {
+    expect(readExploreSearch({})).toEqual({ view: "pictures", search: "", agent: null });
+    expect(DEFAULT_VIEW).toBe("pictures");
+  });
+
+  it("falls back to the chip the rest of the address implies when it names one this build lacks", () => {
+    expect(readExploreSearch({ view: "sideways" })).toEqual({ view: "pictures", search: "", agent: null });
+    expect(readExploreSearch({ view: "sideways", agent: "10248" })).toEqual({
+      view: "all",
+      search: "",
+      agent: "10248",
+    });
+  });
+
+  it("opens on the whole registry when the address already carries a search or an agent", () => {
+    expect(readExploreSearch({ agent: "10248" }).view).toBe("all");
+    expect(readExploreSearch({ q: "0xab" }).view).toBe("all");
+    expect(impliedView("", null)).toBe("pictures");
+    expect(impliedView("0xab", null)).toBe("all");
+  });
+
+  it("keeps the test chip when a link asks for it", () => {
+    expect(readExploreSearch({ view: "test" })).toEqual({ view: "test", search: "", agent: null });
   });
 
   it("reads the chip, the term and the agent out of the URL", () => {
@@ -139,10 +171,64 @@ describe("the filter a link carries", () => {
     });
   });
 
+  it("asks for one half of the registry on the two picture chips and for both on every other", () => {
+    expect(filterFor({ view: "pictures", search: "", agent: null })).toEqual({ pictures: "real" });
+    expect(filterFor({ view: "test", search: "", agent: null })).toEqual({ pictures: "test" });
+    expect(filterFor({ view: "all", search: "", agent: null })).toEqual({});
+    expect(picturesFor("generated")).toBeUndefined();
+    expect(isMixedView("all")).toBe(true);
+    expect(isMixedView("pictures")).toBe(false);
+    expect(isMixedView("test")).toBe(false);
+  });
+
+  it("keeps the real-versus-test split out of the index query, which has no title to match", () => {
+    expect(passportWhere({ pictures: "real" })).toEqual({});
+    expect(passportWhere({ pictures: "test", kind: 0 })).toEqual({ _and: [{ kind: { _eq: 0 } }] });
+  });
+
   it("writes the whole state back into a link anyone can share", () => {
-    expect(exploreHref({ view: "all", search: "", agent: null })).toBe("/explore");
+    expect(exploreHref({ view: "pictures", search: "", agent: null })).toBe("/explore");
+    expect(exploreHref({ view: "all", search: "", agent: null })).toBe("/explore?view=all");
+    expect(exploreHref({ view: "test", search: "", agent: null })).toBe("/explore?view=test");
     expect(exploreHref({ view: "edits", search: "0x1a", agent: "10248" })).toBe(
       "/explore?view=edits&q=0x1a&agent=10248",
     );
+    expect(exploreHref({ view: "all", search: "", agent: "10248" })).toBe("/explore?agent=10248");
+  });
+
+  it("reads every link it writes back as the view it was copied from", () => {
+    for (const view of EXPLORE_VIEWS) {
+      for (const extra of [{ search: "", agent: null }, { search: "0xab", agent: null }, { search: "", agent: "10248" }]) {
+        const state = { view, ...extra };
+        const href = exploreHref(state);
+        const params = Object.fromEntries(new URLSearchParams(href.split("?")[1] ?? ""));
+        expect(readExploreSearch(params), href).toEqual(state);
+      }
+    }
+  });
+});
+
+describe("the words the chips and the split line need", () => {
+  const MESSAGES = fileURLToPath(new URL("../messages/", import.meta.url));
+
+  it("says the new chip and the new line in every language the site serves", () => {
+    const files = readdirSync(MESSAGES).filter((name) => name.endsWith(".json"));
+    expect(files).toHaveLength(10);
+
+    for (const file of files) {
+      const explore = (
+        JSON.parse(readFileSync(`${MESSAGES}${file}`, "utf8")) as {
+          explore: { chips: Record<string, string>; sortNewest: string; split: Record<string, string> };
+        }
+      ).explore;
+
+      for (const view of EXPLORE_VIEWS) {
+        expect(explore.chips[view]?.length ?? 0, `${file} chips.${view}`).toBeGreaterThan(0);
+      }
+      expect(explore.sortNewest.length, file).toBeGreaterThan(0);
+      expect(explore.split.real, file).toContain("{count, number}");
+      expect(explore.split.test, file).toContain("{count, number}");
+      expect(explore.split.testCapped, file).toContain("{scanned, number}");
+    }
   });
 });

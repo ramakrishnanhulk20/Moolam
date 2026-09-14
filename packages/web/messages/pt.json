@@ -87,8 +87,16 @@
     "countsError": "Não foi possível ler os totais: {reason}.",
     "countsMissing": "nenhum índice respondeu",
     "sortRule": "Mais recentes primeiro, e as imagens de teste ficam no fim",
+    "sortNewest": "Mais recentes primeiro",
+    "split": {
+      "real": "{count, number} imagens",
+      "test": "{count, number} imagens de teste",
+      "testCapped": "{count, number} imagens de teste nas {scanned, number} mais recentes"
+    },
     "chipsLabel": "Filtrar o registro",
     "chips": {
+      "pictures": "Imagens",
+      "test": "Imagens de teste",
       "all": "Todas",
       "generated": "Geradas",
       "captured": "Fotografadas",

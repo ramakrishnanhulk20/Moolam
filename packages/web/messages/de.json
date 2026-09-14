@@ -86,8 +86,16 @@
     "countsError": "Die Zahlen konnten nicht gelesen werden: {reason}.",
     "countsMissing": "kein Index hat geantwortet",
     "sortRule": "Neueste zuerst, Testbilder stehen hinten",
+    "sortNewest": "Neueste zuerst",
+    "split": {
+      "real": "{count, number} Bilder",
+      "test": "{count, number} Testbilder",
+      "testCapped": "{count, number} Testbilder unter den neuesten {scanned, number}"
+    },
     "chipsLabel": "Register filtern",
     "chips": {
+      "pictures": "Bilder",
+      "test": "Testbilder",
       "all": "Alle",
       "generated": "Erzeugt",
       "captured": "Fotografiert",

@@ -87,8 +87,16 @@
     "countsError": "गिनती नहीं पढ़ी जा सकी: {reason}.",
     "countsMissing": "किसी इंडेक्स ने जवाब नहीं दिया",
     "sortRule": "नई पहले, और बीज परीक्षण तस्वीरें सबसे अंत में",
+    "sortNewest": "नई पहले",
+    "split": {
+      "real": "{count, number} तस्वीरें",
+      "test": "{count, number} परीक्षण तस्वीरें",
+      "testCapped": "नई {scanned, number} में {count, number} परीक्षण तस्वीरें"
+    },
     "chipsLabel": "रजिस्ट्री छाँटें",
     "chips": {
+      "pictures": "तस्वीरें",
+      "test": "परीक्षण तस्वीरें",
       "all": "सभी",
       "generated": "बनाई गई",
       "captured": "खींची गई",

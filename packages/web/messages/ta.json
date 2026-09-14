@@ -86,8 +86,16 @@
     "countsError": "எண்ணிக்கைகளைப் படிக்க முடியவில்லை: {reason}.",
     "countsMissing": "எந்தக் குறியீடும் பதிலளிக்கவில்லை",
     "sortRule": "புதியவை முதலில், விதைச் சோதனைப் படங்கள் கடைசியில்",
+    "sortNewest": "புதியவை முதலில்",
+    "split": {
+      "real": "{count, number} படங்கள்",
+      "test": "{count, number} சோதனைப் படங்கள்",
+      "testCapped": "புதிய {scanned, number} இல் {count, number} சோதனைப் படங்கள்"
+    },
     "chipsLabel": "பதிவேட்டை வடிகட்டு",
     "chips": {
+      "pictures": "படங்கள்",
+      "test": "சோதனைப் படங்கள்",
       "all": "அனைத்தும்",
       "generated": "உருவாக்கியது",
       "captured": "படமெடுத்தது",

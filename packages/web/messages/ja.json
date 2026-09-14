@@ -88,8 +88,16 @@
     "countsError": "件数を読み取れませんでした: {reason}。",
     "countsMissing": "応答したインデックスがありません",
     "sortRule": "新しい順、シードのテスト画像は最後",
+    "sortNewest": "新しい順",
+    "split": {
+      "real": "画像 {count, number} 件",
+      "test": "テスト画像 {count, number} 件",
+      "testCapped": "新しい {scanned, number} 件のうちテスト画像 {count, number} 件"
+    },
     "chipsLabel": "レジストリを絞り込む",
     "chips": {
+      "pictures": "画像",
+      "test": "テスト画像",
       "all": "すべて",
       "generated": "生成",
       "captured": "撮影",

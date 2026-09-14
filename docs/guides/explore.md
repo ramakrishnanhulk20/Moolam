@@ -13,19 +13,30 @@ index live while the page is being built. Nothing on either is placed by hand.
 "The registry", newest first. The lede says where it comes from: "Every picture registered on Monad,
 newest first, read from the index while this page loads."
 
-Three counts sit beside the title: "Passports", "Generated" and "Re-checked". The first is the
-index's own running total. The other two are counted by asking for the matching ids, capped at a
-thousand, so a count that hit the cap prints as a number with a plus after it rather than pretending
-to be exact. The endpoint exposes no aggregate to ask instead.
+The page opens on the pictures. "Pictures" is the chip a bare `/explore` is on, so the first rows are
+ones a reader can look at, and the cards the repository's own scripts wrote sit behind the next chip,
+"Test images", rather than at the top of a judge's first screen. Nothing is hidden: "All" is the
+third chip and holds the whole registry.
+
+Three counts sit beside the title: "Passports", "Generated" and "Re-checked". They count the whole
+index however the grid is filtered. The first is the index's own running total. The other two are
+counted by asking for the matching ids, capped at a thousand, so a count that hit the cap prints as a
+number with a plus after it rather than pretending to be exact. The endpoint exposes no aggregate to
+ask instead.
+
+Under them, one line says how the registry divides: "7 pictures / 22 test images". That number is
+read the only way it can be, by fetching each pinned metadata document for its title, capped at the
+newest two hundred, and a read that hit the cap says so in the line.
 
 ### The order, stated on the page
 
-One line in monospace over the grid: "Newest first, and seed test images sort last".
+One line in monospace over the grid. On "Pictures" and on "Test images" it reads "Newest first",
+because those two hold one kind of row each. On "All" and on every chip that can mix them it reads
+"Newest first, and seed test images sort last".
 
-That line is there because the registry holds cards the repository's own scripts wrote, titled
-`Moolam seed 4`, `Moolam prove-it` and `Moolam Privy proof`, and they would otherwise sit at the top
-of a judge's first screen. They are not hidden and not dropped. They sort to the end, the page says
-so, and each one is labelled "Seed test image" on its plate.
+That second line is there because the registry holds cards the repository's own scripts wrote, titled
+`Moolam seed 4`, `Moolam prove-it` and `Moolam Privy proof`. They are not hidden and not dropped.
+They sort to the end, the page says so, and each one is labelled "Seed test image" on its plate.
 
 The title is the only thing that separates them. Having a generator does not: the seed script signs
 every card it writes with the demo agent, so "has an agent" would call every seed card a test. A
@@ -36,17 +47,29 @@ Inside a second, ties fall back to the id, so the same set always lands in the s
 
 ### The filters
 
-Seven chips: "All", "Generated", "Captured", "Edits", "Re-checked", "With manifest", "Disputed".
+Nine chips in two groups, a hairline between them. Which half of the registry is on the sheet:
+"Pictures", "Test images", "All". Then what the record says: "Generated", "Captured", "Edits",
+"Re-checked", "With manifest", "Disputed".
+
 Each one is a real link carrying the whole state of the page, so a filtered view can be copied out of
 the address bar and sent to somebody else, and the browser's back button walks back through the
-filters you tried.
+filters you tried. `/explore` is the pictures, `/explore?view=test` the test images,
+`/explore?view=all` everything.
 
 Beside them, a search box that matches a passport id. It is a form rather than a live filter, so
-typing does not fire a query per keystroke at the index.
+typing does not fire a query per keystroke at the index. A link that carries a search term or an
+agent id and names no chip opens on "All": it is asking about records rather than about which of them
+are test cards, and the pictures chip would answer it with an empty grid.
 
-Arriving from an agent's page adds an eighth chip, "Agent" and the id, with an x that clears it. A
-chip this build no longer has falls back to the whole registry instead of an error page, because a
-link someone shared should still open.
+Arriving from an agent's page adds a tenth chip, "Agent" and the id, with an x that clears it. A
+chip this build no longer has falls back to the same chip the rest of the address implies, instead of
+an error page, because a link someone shared should still open.
+
+The index cannot be asked for the two picture chips. It stores no title, and a title is the only
+thing that separates a real picture from a test card, so the page reads whole pages of rows from the
+index and sifts them with the same test the sort rule uses. That is why "Load more" under "Pictures"
+can read several pages of the index for one screen of plates, and why the cursor it carries points at
+the row the scan stopped on rather than at the last plate drawn.
 
 ### A plate
 
