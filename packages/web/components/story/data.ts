@@ -1,5 +1,13 @@
+import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import { DEMO_AGENT_ID, gatewayUrl, reason } from "@/lib/chain/client";
+import {
+  CACHE_TAGS,
+  DEMO_AGENT_ID,
+  HOLD_SECONDS,
+  METADATA_HOLD_SECONDS,
+  gatewayUrl,
+  reason,
+} from "@/lib/chain/client";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
 import { generatorRecord, latestPassports } from "@/lib/data/passports";
 import { activeSource, envioUrl } from "@/lib/data/source";
@@ -57,8 +65,6 @@ export interface StoryAgent {
    */
   score: number | null;
   passports: number | null;
-  /** The old name for the same count, until the story card reads `rechecks`. */
-  verifications: number;
 }
 
 export interface StoryData {
@@ -123,10 +129,10 @@ const STORY_QUERY = `query Story($limit: Int!) {
  *
  * One trip to the index for the newest passports and the two counts, then the
  * metadata documents those passports point at, then this passport's own
- * re-checks. The generator's standing comes from the same index row. Nothing here is
- * cached in the app: the page that calls it is dynamic, and the only cache is
- * the browser-visible one on the content addressed metadata, which cannot
- * change under its own id.
+ * re-checks. The generator's standing comes from the same index row.
+ *
+ * This is the whole read, every time. `heldStory` is what the page calls: the
+ * same work, held for a minute.
  */
 export async function storyData(): Promise<StoryData> {
   const source = activeSource();
@@ -140,19 +146,19 @@ export async function storyData(): Promise<StoryData> {
 
   try {
     if (source === "envio") {
-      const answer = await fromIndex();
+      const answer = await heldIndex();
       rows = answer.rows;
       passportCount = answer.passports;
       attestationCount = answer.attestations;
       generators = answer.generators;
     } else {
-      rows = await fromChain();
+      rows = await heldChain();
     }
   } catch (caught) {
     error = reason(caught);
   }
 
-  const pictures = await Promise.all(rows.map((row) => pictureFor(row.metadataURI)));
+  const pictures = await Promise.all(rows.map((row) => heldPicture(row.metadataURI)));
 
   const plates: StoryPlate[] = rows
     .map((row, index) => ({ row, picture: pictures[index] }))
@@ -175,7 +181,7 @@ export async function storyData(): Promise<StoryData> {
   // record is a true sentence about a record nobody is looking at, which is how
   // the story came to quote three passports at once.
   if (focal !== null) {
-    attestation = await focalAttestation(focal.id);
+    attestation = await heldAttestation(focal.id);
   }
 
   // The trusted beat is about the generator that made this picture, so a
@@ -186,6 +192,45 @@ export async function storyData(): Promise<StoryData> {
 
   return { source, plates, focal, attestation, agent, passportCount, attestationCount, error };
 }
+
+/** The last read that came back whole, so a bad minute upstream costs nobody the story. */
+let lastGood: StoryData | null = null;
+
+/**
+ * The story the home page draws.
+ *
+ * Every upstream read inside it is held on its own rather than the finished
+ * story being held as one lump: Next runs a held read nested inside another one
+ * for real every time, so a story held whole would pay all twenty six calls on
+ * every miss. Held one by one, the miss on the index query costs the index
+ * query and nothing else.
+ *
+ * A read that came back empty or with the provider's error on it hands back the
+ * last whole one instead. The registry did not lose eight passports because an
+ * endpoint had a bad second, and a visitor should not be shown that it did.
+ */
+export async function heldStory(): Promise<StoryData> {
+  const data = await storyData();
+
+  if (data.error === null && data.plates.length > 0) {
+    lastGood = data;
+    return data;
+  }
+
+  return lastGood ?? data;
+}
+
+/**
+ * The one index query behind the whole story, held for a minute.
+ *
+ * Everything it carries is already a string or a number: the two block figures
+ * arrive as text from GraphQL and stay that way until a caption reads them,
+ * which is what lets the answer be stored at all.
+ */
+const heldIndex = unstable_cache(async () => await fromIndex(), ["moolam-story-index"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.index],
+});
 
 async function fromIndex(): Promise<{
   rows: IndexRow[];
@@ -266,6 +311,12 @@ async function fromIndex(): Promise<{
  * every row, so this path reads the record and its attestation list for each of
  * the eight, which the index would have answered in one trip.
  */
+/** The same rows on a day with no index, held for the same minute. */
+const heldChain = unstable_cache(async () => await fromChain(), ["moolam-story-chain"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.chain],
+});
+
 async function fromChain(): Promise<IndexRow[]> {
   const rows = (await latestPassports(8)).passports;
   const records = await Promise.all(rows.map((row) => getPassport(row.id).catch(() => null)));
@@ -379,6 +430,15 @@ export function focalFrom(row: IndexRow, picture: string, reason: FocalReason): 
   };
 }
 
+/**
+ * This passport's own re-check, held for a minute. Two chain reads, and a new
+ * one lands minutes apart at best, so a minute costs the story nothing.
+ */
+const heldAttestation = unstable_cache(async (id: string) => await focalAttestation(id as Hex), ["moolam-story-recheck"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.chain],
+});
+
 async function focalAttestation(id: Hex): Promise<StoryAttestation | null> {
   const written = await getAttestations(id).catch(() => []);
   const newest = written.at(-1);
@@ -423,7 +483,6 @@ export async function agentStanding(agentId: bigint, row?: IndexGenerator): Prom
     id: agentId.toString(),
     score: standing.trustScore,
     rechecks: standing.matchedCount,
-    verifications: standing.matchedCount,
     passports: standing.passportCount,
   };
 }
@@ -440,8 +499,39 @@ interface Picture {
  *
  * A document with no image is a record of a fingerprint with nothing to show,
  * which is what the forgery attempts written by the prove-it run look like, so
- * it gives null and the field simply has one plate fewer.
+ * it gives null and the field simply has one plate fewer. A gateway that will
+ * not answer throws instead, so the two are told apart by what holds them.
  */
+/** Thrown when the gateway itself would not answer, which is a bad minute rather than a fact. */
+class GatewayQuiet extends Error {
+  constructor(uri: string) {
+    super(`the gateway would not answer for ${uri}`);
+    this.name = "GatewayQuiet";
+  }
+}
+
+const heldFor = unstable_cache(async (uri: string) => await pictureFor(uri), ["moolam-story-picture"], {
+  revalidate: METADATA_HOLD_SECONDS,
+  tags: [CACHE_TAGS.metadata],
+});
+
+/**
+ * The picture behind one metadata address, held for a day.
+ *
+ * Twenty four of these ran on every single visit before this. The document is
+ * content addressed, so neither answer can change under the same id: a picture
+ * stays that picture, and a record with no picture never grows one. Only a
+ * gateway that would not answer is left out of the cache, because that is the
+ * one thing here that is temporary.
+ */
+async function heldPicture(uri: string): Promise<Picture | null> {
+  try {
+    return await heldFor(uri);
+  } catch {
+    return null;
+  }
+}
+
 async function pictureFor(uri: string): Promise<Picture | null> {
   let document: unknown;
 
@@ -456,11 +546,11 @@ async function pictureFor(uri: string): Promise<Picture | null> {
       next: { revalidate: 3600 },
     });
     if (!response.ok) {
-      return null;
+      throw new GatewayQuiet(uri);
     }
     document = await response.json();
   } catch {
-    return null;
+    throw new GatewayQuiet(uri);
   }
 
   const record = document as { image?: unknown; thumbnail?: unknown };

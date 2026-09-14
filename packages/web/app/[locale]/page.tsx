@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { StoryStage } from "@/components/story/StoryStage";
-import { storyData } from "@/components/story/data";
+import { heldStory } from "@/components/story/data";
 
-// Every plate, every figure and both counts are read on the request. A
-// prerendered copy would show whatever was true when the build ran, which is
-// not what live means to anyone looking at it.
-export const dynamic = "force-dynamic";
+// Every plate, every figure and both counts are read from the registry, and the
+// page is rebuilt from that read a minute at a time rather than on every
+// request. The index itself only catches up on that cadence, so nobody is
+// shown a figure older than the index could have given them, and nobody waits
+// behind twenty six upstream calls to see the first frame.
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -33,7 +35,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const data = await storyData();
+  const data = await heldStory();
 
   // The story owns the whole window. The app header floats over its first
   // screen rather than pushing it down, which is what makes the opening frame

@@ -200,7 +200,7 @@
       "agent": "에이전트 {agent}",
       "score": "점수 {score}",
       "noScore": "아직 점수 없음",
-      "counts": "{verifications, plural, other {재확인 #건}}, {passports, plural, other {여권 #건}}",
+      "counts": "{rechecks, plural, other {재확인 #건}}, {passports, plural, other {여권 #건}}",
       "body": "체인에 다시 기록된 재확인은 모두 이 에이전트의 id로 세고, 인덱스가 그것을 모아 이 점수로 만듭니다. 평판은 일의 합이지 웹사이트의 주장이 아닙니다.",
       "noAgent": "이 한 장은 에이전트가 만들지 않았으므로 걸려 있는 에이전트 평판도 없습니다. 에이전트가 서명한 이미지라면 검증 서비스의 모든 확인이 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다."
     },

@@ -198,7 +198,7 @@
       "agent": "Agent {agent}",
       "score": "Score {score}",
       "noScore": "Pas encore de score",
-      "counts": "{verifications, plural, =1 {# contre-vérification} other {# contre-vérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
+      "counts": "{rechecks, plural, =1 {# contre-vérification} other {# contre-vérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
       "body": "Chaque contre-vérification réinscrite dans la chaîne compte sous l’identifiant de l’agent, et l’index les additionne en cet indice. Sa réputation est la somme de son travail, pas une promesse sur un site.",
       "noAgent": "Aucun agent n’a fait celle-ci, donc aucune réputation d’agent n’y tient. Quand un agent signe, chaque contrôle du vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de cet agent."
     },

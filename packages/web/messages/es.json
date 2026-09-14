@@ -198,7 +198,7 @@
       "agent": "Agente {agent}",
       "score": "Puntuación {score}",
       "noScore": "Sin puntuación todavía",
-      "counts": "{verifications, plural, =1 {# revisión} other {# revisiones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
+      "counts": "{rechecks, plural, =1 {# revisión} other {# revisiones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
       "body": "Cada revisión escrita de vuelta en la cadena cuenta bajo el id del propio agente, y el índice las suma en este nivel. Su prestigio es la suma de su trabajo, no una afirmación en una web.",
       "noAgent": "A esta no la hizo ningún agente, así que no hay prestigio de agente colgando de ella. Cuando sí firma un agente, cada comprobación del verificador se escribe en el registro de reputación ERC-8004 bajo el id de ese agente."
     },

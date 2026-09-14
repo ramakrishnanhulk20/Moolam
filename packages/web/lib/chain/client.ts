@@ -25,6 +25,31 @@ export const MONAD_EXPLORER = "https://monadvision.com";
 /** The canonical ERC-8004 reputation registry on Monad mainnet. */
 export const REPUTATION_REGISTRY = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" as Hex;
 
+/**
+ * How long a read of something that moves with the registry is held.
+ *
+ * The index itself only catches up with the chain every minute or so, so paying
+ * for the same query more often than this buys a visitor nothing and costs them
+ * the wait. Every page that shows live figures is held for exactly this long.
+ */
+export const HOLD_SECONDS = 60;
+
+/**
+ * How long a pinned metadata document is held. It is content addressed, so the
+ * same URI can never come back with different words or a different picture.
+ */
+export const METADATA_HOLD_SECONDS = 86_400;
+
+/**
+ * The names on the held reads, so one kind can be dropped on its own later
+ * without throwing away everything else the app has cached.
+ */
+export const CACHE_TAGS = {
+  index: "moolam-index",
+  chain: "moolam-chain",
+  metadata: "moolam-metadata",
+} as const;
+
 export const registryAbi = registryAbiJson as Abi;
 
 /**

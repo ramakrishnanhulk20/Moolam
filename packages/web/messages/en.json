@@ -198,7 +198,7 @@
       "agent": "Agent {agent}",
       "score": "Score {score}",
       "noScore": "No score yet",
-      "counts": "{verifications, plural, =1 {# re-check} other {# re-checks}}, {passports, plural, =1 {# passport} other {# passports}}",
+      "counts": "{rechecks, plural, =1 {# re-check} other {# re-checks}}, {passports, plural, =1 {# passport} other {# passports}}",
       "body": "Every re-check written back on chain is counted against this agent's own id, and the index adds them up into this score. Its standing is the sum of its work, not a claim on a website.",
       "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every check the verifier runs is written back to the ERC-8004 reputation registry under that agent's own id."
     },

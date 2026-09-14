@@ -45,7 +45,6 @@ describe("the standing the home story quotes", () => {
       id: "10248",
       score: 67,
       rechecks: 1,
-      verifications: 1,
       passports: 12,
     });
     expect(generatorRecord).not.toHaveBeenCalled();

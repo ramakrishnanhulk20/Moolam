@@ -200,7 +200,7 @@
       "agent": "智能体 {agent}",
       "score": "评分 {score}",
       "noScore": "尚无评分",
-      "counts": "{verifications, plural, other {# 次复核}}，{passports, plural, other {# 本护照}}",
+      "counts": "{rechecks, plural, other {# 次复核}}，{passports, plural, other {# 本护照}}",
       "body": "每一次写回链上的复核都记在这个代理自己的 id 下，索引把它们算成这个分数。它的声誉是工作的总和，不是网站上的一句话。",
       "noAgent": "这一张不是智能体做的，所以它身上没有智能体的口碑。若由智能体签名，验证服务的每一次核对都会以该智能体自己的 id 写回 ERC-8004 声誉登记处。"
     },

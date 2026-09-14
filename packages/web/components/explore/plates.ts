@@ -1,10 +1,15 @@
-import { readArt } from "@/components/passport/art";
+import { unstable_cache } from "next/cache";
+import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import {
+  explorePassports,
+  heldArt,
   passportMetadata,
   SPLIT_CAP,
   type ExplorePassport,
+  type PassportCursor,
   type PassportPictures,
 } from "@/lib/data/passports";
+import { filterFor, picturesFor, type ExploreSearch } from "./query";
 import { isTestCard, type ExplorePlate } from "./sort";
 
 /**
@@ -21,7 +26,7 @@ import { isTestCard, type ExplorePlate } from "./sort";
 export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate[]> {
   return await Promise.all(
     rows.map(async (row) => {
-      const art = row.metadataURI === "" ? null : await readArt(row.metadataURI);
+      const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI);
       return {
         id: row.id,
         kind: row.kind,
@@ -101,7 +106,7 @@ export async function pictureSplit(): Promise<PictureSplit> {
   for (let at = 0; at < rows.length; at += SPLIT_WAVE) {
     const wave = await Promise.all(
       rows.slice(at, at + SPLIT_WAVE).map(async (row) => {
-        const art = row.metadataURI === "" ? null : await readArt(row.metadataURI);
+        const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI);
         return art?.title ?? null;
       }),
     );
@@ -109,4 +114,44 @@ export async function pictureSplit(): Promise<PictureSplit> {
   }
 
   return { real, test: rows.length - real, scanned: rows.length, capped: rows.length >= SPLIT_CAP };
+}
+
+/**
+ * The same line, held for a minute. It reads the title of every document in the
+ * index, so it is the most expensive thing on the page and the least urgent:
+ * one new passport does not move either number by anything a reader would see.
+ */
+export const heldPictureSplit = unstable_cache(async () => await pictureSplit(), ["moolam-picture-split"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.index],
+});
+
+/** One page of the sheet, exactly as the grid draws it. */
+export interface SheetPage {
+  plates: ExplorePlate[];
+  cursor: PassportCursor | null;
+}
+
+const heldSheet = unstable_cache(
+  async (view: ExploreSearch["view"], search: string, agent: string | null, cursor: PassportCursor | null) => {
+    const sheet = plateSheet(picturesFor(view));
+    const page = await explorePassports({ filter: filterFor({ view, search, agent }), cursor, keep: sheet.keep });
+    return { plates: sheet.platesFor(page.passports), cursor: page.cursor };
+  },
+  ["moolam-explore-sheet"],
+  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index] },
+);
+
+/**
+ * One page of the sheet under one set of chips, held for a minute.
+ *
+ * The sieve is the expensive half of Explore: a scan of the index and a gateway
+ * read for every row it walks past, all of it to answer a question that is the
+ * same for everybody looking at that view. The whole answer is held rather than
+ * its parts, because the reader's chips are what decide which rows were read.
+ * Everything in it is a string, a number or a flag, so it survives the cache;
+ * that is why the grid is drawn from plates and not from index rows.
+ */
+export async function sheetPage(search: ExploreSearch, cursor: PassportCursor | null = null): Promise<SheetPage> {
+  return await heldSheet(search.view, search.search, search.agent, cursor);
 }

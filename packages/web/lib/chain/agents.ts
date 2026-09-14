@@ -1,5 +1,6 @@
+import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import { addresses, chain, gatewayUrl } from "./client";
+import { CACHE_TAGS, HOLD_SECONDS, addresses, chain, gatewayUrl } from "./client";
 
 /** Thrown when the identity registry has no token with that id. */
 export class AgentNotFound extends Error {
@@ -66,6 +67,22 @@ export async function getAgent(agentId: bigint): Promise<{ owner: Hex; uri: stri
 
   return { owner, uri, card: await readCard(uri) };
 }
+
+/**
+ * The same read, held for a minute.
+ *
+ * An agent's owner and card are two chain reads and often a gateway fetch, and
+ * the page asks for them twice: once for the tab's title and once for the page
+ * itself. An id that was never minted still throws every time, because a throw
+ * is never kept, which is what stops a page from remembering a 404 for an agent
+ * that gets minted a second later. The argument is a string because a bigint
+ * cannot be part of a cache key.
+ */
+export const heldAgent = unstable_cache(
+  async (agentId: string) => await getAgent(BigInt(agentId)),
+  ["moolam-agent-identity"],
+  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.chain] },
+);
 
 async function readCard(uri: string): Promise<unknown | null> {
   if (uri.startsWith("data:")) {

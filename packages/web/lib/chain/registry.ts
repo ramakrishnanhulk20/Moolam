@@ -2,8 +2,8 @@ import type { Hex } from "viem";
 import { chain, addresses, policyAbi, registryAbi } from "./client";
 import type { PassportInput } from "./calldata";
 
-export { getAgent } from "./agents";
-export { getReputation, getReputationClients } from "./reputation";
+export { getAgent, heldAgent } from "./agents";
+export { getReputation, getReputationClients, heldReputation } from "./reputation";
 
 /** One registered image, exactly as the contract stores it. */
 export interface Passport {

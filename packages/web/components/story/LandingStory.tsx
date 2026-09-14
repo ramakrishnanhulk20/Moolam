@@ -327,7 +327,7 @@ function useBeats(data: StoryData): StoryBeat[] {
               </p>
               <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">
                 {t("trusted.counts", {
-                  verifications: data.agent?.verifications ?? 0,
+                  rechecks: data.agent?.rechecks ?? 0,
                   passports: data.agent?.passports ?? 0,
                 })}
               </p>

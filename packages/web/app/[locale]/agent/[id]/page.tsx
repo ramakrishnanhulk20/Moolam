@@ -11,8 +11,23 @@ import { Works } from "@/components/agent/Works";
 import { signedWorks, type SignedWork } from "@/components/agent/signed";
 import { AgentNotFound } from "@/lib/chain/agents";
 import { reason } from "@/lib/chain/client";
-import { getAgent, getReputation, getReputationClients } from "@/lib/chain/registry";
-import { generatorRecord, type GeneratorRecord } from "@/lib/data/passports";
+import { heldAgent, heldReputation } from "@/lib/chain/registry";
+import { heldGeneratorRecord, type GeneratorRecord } from "@/lib/data/passports";
+
+// Four chain reads, two index queries and a dozen gateway fetches make this
+// page, and they answer the same for everybody. So it is built once and rebuilt
+// a minute at a time, and a visitor gets the finished page rather than the wait.
+export const revalidate = 60;
+
+/**
+ * No agent is built ahead of time, because which ids exist is a question only
+ * the registry can answer and it answers differently tomorrow. The empty list
+ * is what registers this route as one that may be kept: the first visitor to an
+ * agent renders it, everybody after that inside the minute is handed that page.
+ */
+export function generateStaticParams(): { id: string }[] {
+  return [];
+}
 
 /**
  * The tab carries the agent's own name when its card has one. The card is read
@@ -33,7 +48,7 @@ export async function generateMetadata({
   }
 
   try {
-    const named = readCard((await getAgent(BigInt(id))).card)?.name?.trim();
+    const named = readCard((await heldAgent(id)).card)?.name?.trim();
     return { title: named === undefined || named === "" ? numbered : named };
   } catch {
     return { title: numbered };
@@ -65,7 +80,7 @@ export default async function AgentPage({
 
   let agent: { owner: Hex; uri: string; card: unknown | null };
   try {
-    agent = await getAgent(agentId);
+    agent = await heldAgent(id);
   } catch (error) {
     if (error instanceof AgentNotFound) {
       notFound();
@@ -76,7 +91,7 @@ export default async function AgentPage({
   let reputation: { count: bigint; value: bigint; decimals: number } | null = null;
   let reputationError: string | null = null;
   try {
-    reputation = await getReputation(agentId, await getReputationClients(agentId));
+    reputation = await heldReputation(agentId);
   } catch (error) {
     reputationError = reason(error);
   }
@@ -84,7 +99,7 @@ export default async function AgentPage({
   let record: GeneratorRecord | null = null;
   let recordError: string | null = null;
   try {
-    record = await generatorRecord(agentId);
+    record = await heldGeneratorRecord(agentId);
   } catch (error) {
     recordError = reason(error);
   }

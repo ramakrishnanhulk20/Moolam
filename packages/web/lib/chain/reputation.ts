@@ -1,5 +1,6 @@
+import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import { chain, REPUTATION_REGISTRY } from "./client";
+import { CACHE_TAGS, HOLD_SECONDS, chain, REPUTATION_REGISTRY } from "./client";
 
 /**
  * The two reads Moolam needs from the ERC-8004 reputation registry on Monad
@@ -68,4 +69,26 @@ export async function getReputation(
   });
 
   return { count: BigInt(count), value: BigInt(value), decimals: Number(decimals) };
+}
+
+/**
+ * Both reads behind the feedback line, as one call held for a minute.
+ *
+ * The client list and the summary are two round trips that always travel
+ * together, so they are held together. The two figures cross the cache as
+ * strings: what is kept has to survive JSON, and a bigint does not.
+ */
+const heldSummary = unstable_cache(
+  async (agentId: string) => {
+    const id = BigInt(agentId);
+    const summary = await getReputation(id, await getReputationClients(id));
+    return { count: summary.count.toString(), value: summary.value.toString(), decimals: summary.decimals };
+  },
+  ["moolam-agent-reputation"],
+  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.chain] },
+);
+
+export async function heldReputation(agentId: bigint): Promise<{ count: bigint; value: bigint; decimals: number }> {
+  const summary = await heldSummary(agentId.toString());
+  return { count: BigInt(summary.count), value: BigInt(summary.value), decimals: summary.decimals };
 }

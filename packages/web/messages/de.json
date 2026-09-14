@@ -198,7 +198,7 @@
       "agent": "Agent {agent}",
       "score": "Wert {score}",
       "noScore": "Noch kein Wert",
-      "counts": "{verifications, plural, =1 {# Nachprüfung} other {# Nachprüfungen}}, {passports, plural, =1 {# Pass} other {# Pässe}}",
+      "counts": "{rechecks, plural, =1 {# Nachprüfung} other {# Nachprüfungen}}, {passports, plural, =1 {# Pass} other {# Pässe}}",
       "body": "Jede in der Kette zurückgeschriebene Nachprüfung zählt auf die eigene Id des Agenten, und der Index rechnet sie zu diesem Wert zusammen. Sein Ruf ist die Summe seiner Arbeit, keine Behauptung auf einer Webseite.",
       "noAgent": "Dieses hier hat kein Agent gemacht, also hängt auch kein Ruf eines Agenten daran. Wenn ein Agent signiert, wird jede Prüfung des Dienstes unter der Id dieses Agenten in das ERC-8004 Reputationsregister zurückgeschrieben."
     },

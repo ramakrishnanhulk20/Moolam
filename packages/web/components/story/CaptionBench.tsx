@@ -281,7 +281,7 @@ function Score({ treatment, agentId, data }: { treatment: Treatment; agentId: st
         {data.agent === null || data.agent.score === null ? t("trusted.noScore") : t("trusted.score", { score: data.agent.score })}
       </p>
       <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">
-        {t("trusted.counts", { verifications: data.agent?.verifications ?? 0, passports: data.agent?.passports ?? 0 })}
+        {t("trusted.counts", { rechecks: data.agent?.rechecks ?? 0, passports: data.agent?.passports ?? 0 })}
       </p>
     </div>
   );

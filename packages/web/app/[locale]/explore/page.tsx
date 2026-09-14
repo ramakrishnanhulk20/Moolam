@@ -3,16 +3,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Filters } from "@/components/explore/Filters";
 import { Grid } from "@/components/explore/Grid";
 import { Masthead } from "@/components/explore/Masthead";
-import { pictureSplit, plateSheet, type PictureSplit } from "@/components/explore/plates";
-import { filterFor, picturesFor, readExploreSearch } from "@/components/explore/query";
+import { heldPictureSplit, sheetPage, type PictureSplit } from "@/components/explore/plates";
+import { readExploreSearch } from "@/components/explore/query";
 import type { ExplorePlate } from "@/components/explore/sort";
 import { reason } from "@/lib/chain/client";
-import {
-  explorePassports,
-  registryCounts,
-  type PassportCursor,
-  type RegistryCounts,
-} from "@/lib/data/passports";
+import { heldRegistryCounts, type PassportCursor, type RegistryCounts } from "@/lib/data/passports";
 
 export async function generateMetadata({
   params,
@@ -24,8 +19,9 @@ export async function generateMetadata({
   return { title: t("title"), description: t("lede") };
 }
 
-// Every visit reads the index, so a passport registered a minute ago is on the
-// sheet a minute later.
+// The chips and the search term live in the address, so this page is built on
+// the request. What it costs is held for a minute instead: the sheet, the three
+// counts and the split line, each under the view it belongs to.
 export const dynamic = "force-dynamic";
 
 /**
@@ -55,16 +51,14 @@ export default async function ExplorePage({
   let countsError: string | null = null;
   let split: PictureSplit | null = null;
 
-  const sheet = plateSheet(picturesFor(search.view));
-
   const [page, totals, divide] = await Promise.allSettled([
-    explorePassports({ filter: filterFor(search), keep: sheet.keep }),
-    registryCounts(),
-    pictureSplit(),
+    sheetPage(search),
+    heldRegistryCounts(),
+    heldPictureSplit(),
   ]);
 
   if (page.status === "fulfilled") {
-    plates = sheet.platesFor(page.value.passports);
+    plates = page.value.plates;
     cursor = page.value.cursor;
   } else {
     gridError = reason(page.reason);

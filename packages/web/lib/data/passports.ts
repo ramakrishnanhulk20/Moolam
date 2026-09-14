@@ -1,5 +1,15 @@
+import { unstable_cache } from "next/cache";
 import type { AbiEvent, Hex } from "viem";
-import { DEPLOY_BLOCK, addresses, chain, registryAbi } from "@/lib/chain/client";
+import { readArt, type Art } from "@/components/passport/art";
+import {
+  CACHE_TAGS,
+  DEPLOY_BLOCK,
+  HOLD_SECONDS,
+  METADATA_HOLD_SECONDS,
+  addresses,
+  chain,
+  registryAbi,
+} from "@/lib/chain/client";
 import { activeSource, envioUrl } from "./source";
 
 /** One row of the latest-passports strip. */
@@ -175,6 +185,21 @@ export interface PassportListing {
 
 const LISTING_FIELDS = "id kind registeredAt registeredBlock metadataURI";
 
+/** One listing exactly as the index sends it, before the two counters become bigints. */
+interface ListingRow {
+  id: Hex;
+  kind: number;
+  registeredAt: string;
+  registeredBlock: string;
+  metadataURI: string;
+}
+
+const BY_GENERATOR = `query PassportsByGenerator($generator: String!, $limit: Int!) {
+      Passport(where: { generator_id: { _eq: $generator } }, order_by: { registeredAt: desc }, limit: $limit) {
+        ${LISTING_FIELDS}
+      }
+    }`;
+
 /**
  * Every passport one creator registered, newest first.
  *
@@ -196,17 +221,39 @@ export async function passportsByCreator(address: Hex, limit = 24): Promise<Pass
 
 /** Every passport one generating agent signed for, newest first. */
 export async function passportsByGenerator(agentId: bigint | string, limit = 24): Promise<PassportListing[]> {
-  return await listPassports(
-    `query PassportsByGenerator($generator: String!, $limit: Int!) {
-      Passport(where: { generator_id: { _eq: $generator } }, order_by: { registeredAt: desc }, limit: $limit) {
-        ${LISTING_FIELDS}
-      }
-    }`,
-    { generator: agentId.toString(), limit },
-  );
+  return await listPassports(BY_GENERATOR, { generator: agentId.toString(), limit });
+}
+
+/**
+ * The same list, held for a minute, for the agent page that draws it on every
+ * visit. What is held is the index's own rows, because the two block numbers
+ * are bigints by the time a caller sees them and a bigint cannot be stored.
+ */
+const heldGeneratorRows = unstable_cache(
+  async (agentId: string, limit: number) => await listRows(BY_GENERATOR, { generator: agentId, limit }),
+  ["moolam-passports-by-generator"],
+  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index] },
+);
+
+export async function heldPassportsByGenerator(agentId: bigint | string, limit = 24): Promise<PassportListing[]> {
+  return (await heldGeneratorRows(agentId.toString(), limit)).map(toListing);
+}
+
+function toListing(row: ListingRow): PassportListing {
+  return {
+    id: row.id,
+    kind: row.kind,
+    registeredAt: BigInt(row.registeredAt),
+    registeredBlock: BigInt(row.registeredBlock),
+    metadataURI: row.metadataURI,
+  };
 }
 
 async function listPassports(query: string, variables: Record<string, unknown>): Promise<PassportListing[]> {
+  return (await listRows(query, variables)).map(toListing);
+}
+
+async function listRows(query: string, variables: Record<string, unknown>): Promise<ListingRow[]> {
   const response = await fetch(envioUrl(), {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -221,9 +268,7 @@ async function listPassports(query: string, variables: Record<string, unknown>):
 
   const body = (await response.json()) as {
     errors?: { message: string }[];
-    data?: {
-      Passport: { id: Hex; kind: number; registeredAt: string; registeredBlock: string; metadataURI: string }[];
-    };
+    data?: { Passport: ListingRow[] };
   };
 
   if (body.errors !== undefined && body.errors.length > 0) {
@@ -233,13 +278,7 @@ async function listPassports(query: string, variables: Record<string, unknown>):
     throw new Error("the Envio endpoint returned no data block");
   }
 
-  return body.data.Passport.map((row) => ({
-    id: row.id,
-    kind: row.kind,
-    registeredAt: BigInt(row.registeredAt),
-    registeredBlock: BigInt(row.registeredBlock),
-    metadataURI: row.metadataURI,
-  }));
+  return body.data.Passport;
 }
 
 /** Where the index says one passport was written: the block, and the transaction that carried it. */
@@ -313,6 +352,28 @@ export interface GeneratorRecord {
  * say where they came from, which is what the "index" line under them does.
  */
 export async function generatorRecord(agentId: bigint | string): Promise<GeneratorRecord | null> {
+  const row = await generatorRow(agentId.toString());
+  return row === null ? null : { ...row, firstSeenAt: BigInt(row.firstSeenAt) };
+}
+
+/**
+ * The same row, held for a minute, for the agent page and the home story, which
+ * both draw it on every visit.
+ */
+const heldGeneratorRow = unstable_cache(async (id: string) => await generatorRow(id), ["moolam-generator-row"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.index],
+});
+
+export async function heldGeneratorRecord(agentId: bigint | string): Promise<GeneratorRecord | null> {
+  const row = await heldGeneratorRow(agentId.toString());
+  return row === null ? null : { ...row, firstSeenAt: BigInt(row.firstSeenAt) };
+}
+
+/** The Generator row with its one counter still a string, so it can be held. */
+type GeneratorRow = Omit<GeneratorRecord, "firstSeenAt"> & { firstSeenAt: string };
+
+async function generatorRow(id: string): Promise<GeneratorRow | null> {
   const query = `query GeneratorById($id: String!) {
     Generator(where: { id: { _eq: $id } }) {
       passportCount
@@ -327,7 +388,7 @@ export async function generatorRecord(agentId: bigint | string): Promise<Generat
   const response = await fetch(envioUrl(), {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query, variables: { id: agentId.toString() } }),
+    body: JSON.stringify({ query, variables: { id } }),
     signal: AbortSignal.timeout(10_000),
     cache: "no-store",
   });
@@ -338,16 +399,7 @@ export async function generatorRecord(agentId: bigint | string): Promise<Generat
 
   const body = (await response.json()) as {
     errors?: { message: string }[];
-    data?: {
-      Generator: {
-        passportCount: number;
-        matchedCount: number;
-        mismatchedCount: number;
-        disputesUpheld: number;
-        trustScore: number;
-        firstSeenAt: string;
-      }[];
-    };
+    data?: { Generator: GeneratorRow[] };
   };
 
   if (body.errors !== undefined && body.errors.length > 0) {
@@ -357,8 +409,7 @@ export async function generatorRecord(agentId: bigint | string): Promise<Generat
     throw new Error("the Envio endpoint returned no data block");
   }
 
-  const row = body.data.Generator[0];
-  return row === undefined ? null : { ...row, firstSeenAt: BigInt(row.firstSeenAt) };
+  return body.data.Generator[0] ?? null;
 }
 
 /** The word a passport carries in manifestHash when nothing was signed into the file. */
@@ -623,6 +674,16 @@ export async function registryCounts(): Promise<RegistryCounts> {
   };
 }
 
+/**
+ * The same three numbers, held for a minute. It is the most expensive query the
+ * Explore page makes, it is the same for everybody, and the index it counts
+ * only moves on that cadence anyway.
+ */
+export const heldRegistryCounts = unstable_cache(async () => await registryCounts(), ["moolam-registry-counts"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.index],
+});
+
 /** One passport reduced to where its pinned metadata lives. */
 export interface PassportMetadata {
   id: Hex;
@@ -650,6 +711,56 @@ export async function passportMetadata(limit = SPLIT_CAP): Promise<PassportMetad
 
   const data = await askIndex<{ Passport: { id: Hex; metadataURI: string }[] }>(query, { limit });
   return data.Passport;
+}
+
+/** Thrown inside the held read when the gateway gave nothing back, so the miss is not kept. */
+class GatewaySilent extends Error {
+  constructor(metadataURI: string) {
+    super(`the gateway gave nothing for ${metadataURI}`);
+    this.name = "GatewaySilent";
+  }
+}
+
+const heldDocument = unstable_cache(
+  async (metadataURI: string) => {
+    const art = await readArt(metadataURI);
+    const said =
+      art.title !== undefined ||
+      art.description !== undefined ||
+      art.prompt !== undefined ||
+      art.thumbnailUrl !== undefined;
+    if (!said) {
+      throw new GatewaySilent(metadataURI);
+    }
+    return art;
+  },
+  ["moolam-passport-art"],
+  { revalidate: METADATA_HOLD_SECONDS, tags: [CACHE_TAGS.metadata] },
+);
+
+/**
+ * One passport's pinned metadata, held for a day.
+ *
+ * This is the read that costs the grid its first byte: a page of the registry
+ * is two dozen gateway fetches, each of them a second or more when the gateway
+ * has not seen the document lately. The address is a content id, so the answer
+ * can never change under it and the day is a floor rather than a risk.
+ *
+ * A gateway that says nothing at all is not kept. That failure is a bad minute
+ * on somebody else's service, and remembering it for a day would cost a real
+ * picture its place on the sheet long after the gateway came back. Anywhere
+ * there is no cache to hold it in, a unit test for one, the document is simply
+ * read: a picture is worth more than the saving.
+ */
+export async function heldArt(metadataURI: string): Promise<Art> {
+  try {
+    return await heldDocument(metadataURI);
+  } catch (error) {
+    if (error instanceof GatewaySilent || (error as Error | undefined)?.name === "GatewaySilent") {
+      return { missing: true };
+    }
+    return await readArt(metadataURI);
+  }
 }
 
 /** One generating agent the index has seen, with everything it has counted for it. */

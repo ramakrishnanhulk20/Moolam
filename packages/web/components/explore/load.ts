@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 import { reason } from "@/lib/chain/client";
-import { EXPLORE_PAGE, explorePassports, type PassportCursor } from "@/lib/data/passports";
-import { plateSheet } from "./plates";
-import { filterFor, picturesFor, EXPLORE_VIEWS, type ExploreView } from "./query";
+import type { PassportCursor } from "@/lib/data/passports";
+import { sheetPage } from "./plates";
+import { EXPLORE_VIEWS, type ExploreView } from "./query";
 import type { ExplorePlate } from "./sort";
 
 /**
@@ -40,14 +40,8 @@ export async function morePlates(input: unknown): Promise<MorePlates> {
   const { view, search, agent, cursor } = parsed.data;
 
   try {
-    const sheet = plateSheet(picturesFor(view));
-    const page = await explorePassports({
-      filter: filterFor({ view, search, agent }),
-      cursor,
-      limit: EXPLORE_PAGE,
-      keep: sheet.keep,
-    });
-    return { ok: true, plates: sheet.platesFor(page.passports), cursor: page.cursor };
+    const page = await sheetPage({ view, search, agent }, cursor);
+    return { ok: true, plates: page.plates, cursor: page.cursor };
   } catch (error) {
     return { ok: false, error: reason(error) };
   }
