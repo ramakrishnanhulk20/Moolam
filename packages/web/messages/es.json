@@ -190,8 +190,8 @@
       "agent": "Agente {agent}",
       "score": "Puntuación {score}",
       "noScore": "Sin puntuación todavía",
-      "counts": "{verifications, plural, =1 {# comprobación} other {# comprobaciones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
-      "body": "Cada comprobación que hace el verificador se escribe en el registro de reputación ERC-8004 bajo el id del propio agente. Su prestigio es la suma de su trabajo, no una afirmación en una web.",
+      "counts": "{verifications, plural, =1 {# revisión} other {# revisiones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
+      "body": "Cada revisión escrita de vuelta en la cadena cuenta bajo el id del propio agente, y el índice las suma en este nivel. Su prestigio es la suma de su trabajo, no una afirmación en una web.",
       "noAgent": "A esta no la hizo ningún agente, así que no hay prestigio de agente colgando de ella. Cuando sí firma un agente, cada comprobación del verificador se escribe en el registro de reputación ERC-8004 bajo el id de ese agente."
     },
     "tryIt": {
@@ -562,14 +562,14 @@
     "owner": "Propietario",
     "cardMissing": "No se pudo leer la ficha del agente desde su URI.",
     "reputation": {
-      "heading": "Reputación",
-      "summary": "{count, plural, =1 {# comprobación registrada} other {# comprobaciones registradas}}",
-      "score": "Puntuación media",
+      "heading": "Valoraciones en el registro ERC-8004",
       "empty": "Todavía no hay valoraciones para este agente. El verificador escribe una después de cada comprobación que hace.",
       "error": "No se pudo leer el registro de reputación: {reason}.",
-      "body": "Las valoraciones las escribe quien las deja en el registro de reputación ERC-8004 canónico, bajo las etiquetas moolam y verification. Esta página lee el resumen de esas dos etiquetas y aplica los decimales que indica el registro.",
+      "body": "Las valoraciones las escribe quien las deja en el registro de reputación ERC-8004 canónico, bajo las etiquetas moolam y verification. Esta página lee ese resumen: cuántas entradas cuenta y el último valor que informa, con los decimales que indica el registro. El nivel de confianza de al lado sale de las revisiones del índice, así que nunca se suman.",
       "registry": "Registro {address}",
-      "secondary": "Una segunda cifra, no la principal"
+      "secondary": "Escritas en la cadena por el verificador, no es el nivel de revisiones",
+      "entries": "{count, plural, =1 {# entrada} other {# entradas}}",
+      "latest": "Último valor"
     },
     "unnamed": "La ficha de este agente no lleva nombre",
     "identityRegistry": "Registro de identidad",
@@ -584,7 +584,9 @@
       "disputesUpheld": "Disputas aceptadas",
       "since": "Visto por primera vez {when}",
       "empty": "El índice todavía no ha visto a este agente firmar un pasaporte.",
-      "error": "No se pudo leer el índice: {reason}."
+      "error": "No se pudo leer el índice: {reason}.",
+      "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+      "formulaLink": "Cómo se calcula el nivel"
     },
     "signs": {
       "heading": "Cómo firma este agente",

@@ -109,19 +109,22 @@ then "Passports", "Re-checks matched", "Re-checks missed" and "Disputes upheld".
 it is smoothed: "Out of 100, from re-checks that matched, re-checks that did not, and any upheld
 dispute. Smoothed, so one lucky check cannot make it 100." A brand new agent starts at a neutral 50
 rather than a meaningless 100, and an upheld dispute counts double against it. The same score and the
-same four counts are what the "Agents" page ranks on.
+same four counts are what the "Agents" page ranks on and what the home page's story quotes, so one
+agent carries one score wherever you meet it. The formula itself sits under the counts, with a link
+to the page that works it out.
 
-The ERC-8004 Reputation Registry's own average comes second, and is marked as such on the page: "A
-second number, not the headline". It is read from the canonical registry on Monad mainnet under the
-tags `moolam` and `verification`, and the page says who writes it: "Feedback is written to the
-canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification.
-This page reads the summary of those two tags and applies the decimals the registry reports." The
-registry refuses feedback from the agent's own owner, which is what makes it worth reading, so the
-Moolam verifier signs with its own wallet. With nothing recorded it says "No feedback recorded for
-this agent yet. The verifier writes one after every check it runs."
+What the ERC-8004 Reputation Registry holds sits beside it in its own block, headed "Reputation
+feedback on the ERC-8004 registry" and marked "Feedback the verifier wrote on chain, not the
+re-check score". It is read from the canonical registry on Monad mainnet under the tags `moolam` and
+`verification`, and it is shown as what the registry answers: how many entries there are and the
+latest value, with the decimals the registry reports. The registry refuses feedback from the agent's
+own owner, which is what makes it worth reading, so the Moolam verifier signs with its own wallet.
+With nothing recorded it says "No feedback recorded for this agent yet. The verifier writes one
+after every check it runs."
 
-It is second because anyone may write into it, while the index's counts are added up from the chain's
-own re-checks and disputes. An average a stranger can push on is not the number to lead with.
+The two are never added together and never stand in for each other. Anyone may write feedback into
+the registry, while the index's counts are added up from the chain's own re-checks and disputes, so
+the calculation leads and the feedback is labelled for what it is.
 
 **How this agent signs.** Three steps with the contract's own behaviour under each: "The agent signs
 the fingerprint", "The registry recovers the signer", "It has to be the owner". The third one names

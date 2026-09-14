@@ -1,6 +1,10 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { REPUTATION_REGISTRY, MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { GeneratorRecord } from "@/lib/data/passports";
+import { Link } from "@/lib/i18n/routing";
+
+/** Where the formula behind the trust score is written out in full, as on the Agents page. */
+const TRUST_DOC = "/docs/developers/envio-indexer#the-trust-score";
 
 export interface Reputation {
   count: bigint;
@@ -12,11 +16,11 @@ export interface Reputation {
  * How this agent has held up.
  *
  * Two numbers exist and only one may be the headline, or a reader has to decide
- * which to believe. The trust score is the headline: it is calculated from
- * re-checks that matched, re-checks that did not and any upheld dispute, and
- * the formula is published. The reputation registry's average sits under it as
- * a secondary line, labelled as what it is: a claim somebody signed and wrote
- * on chain, which is a different kind of thing from a calculation.
+ * which to believe. The trust score is the headline, and it is the same index
+ * row the home story and the Agents page show, with the formula linked beside
+ * it. What the reputation registry holds is kept in its own block and named for
+ * what it is: feedback somebody signed and wrote on chain, counted in entries,
+ * never mixed into the re-check score.
  */
 export async function Standing({
   reputation,
@@ -33,7 +37,7 @@ export async function Standing({
 }) {
   const t = await getTranslations("agent");
   const format = await getFormatter({ locale });
-  const score = reputation === null ? 0 : Number(reputation.value) / 10 ** reputation.decimals;
+  const latest = reputation === null ? 0 : Number(reputation.value) / 10 ** reputation.decimals;
 
   return (
     <section className="border-b border-line bg-bg-raised">
@@ -68,7 +72,20 @@ export async function Standing({
                 <Count label={t("index.disputesUpheld")} value={record.disputesUpheld} tone="failed" />
               </dl>
 
-              <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
+              <p className="mt-8 flex flex-wrap items-center gap-3">
+                <span aria-hidden className="h-px w-8 bg-line-strong" />
+                <code className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-faint">
+                  {t("index.formula")}
+                </code>
+                <Link
+                  href={TRUST_DOC}
+                  className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent"
+                >
+                  {t("index.formulaLink")}
+                </Link>
+              </p>
+
+              <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
                 {t("index.since", {
                   when: format.dateTime(new Date(Number(record.firstSeenAt) * 1000), { dateStyle: "medium" }),
                 })}
@@ -78,7 +95,7 @@ export async function Standing({
         </div>
 
         <div className="rise lg:border-s lg:border-line lg:ps-16" style={{ animationDelay: "90ms" }}>
-          <h2 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">
+          <h2 className="max-w-[26ch] font-mono text-[11px] uppercase leading-relaxed tracking-[0.28em] text-text-faint">
             {t("reputation.heading")}
           </h2>
           <p className="mt-4 max-w-[40ch] font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
@@ -93,14 +110,15 @@ export async function Standing({
             <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("reputation.empty")}</p>
           ) : (
             <p className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-text">
+                {t("reputation.entries", { count: Number(reputation.count) })}
+              </span>
+              <span aria-hidden className="h-px w-6 self-center bg-line-strong" />
               <span className="font-display text-3xl font-semibold tabular-nums tracking-[-0.02em] text-text">
-                {score.toFixed(score % 1 === 0 ? 0 : 1)}
+                {latest.toFixed(latest % 1 === 0 ? 0 : 1)}
               </span>
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-                {t("reputation.score")}
-              </span>
-              <span className="text-sm text-text-muted">
-                {t("reputation.summary", { count: Number(reputation.count) })}
+                {t("reputation.latest")}
               </span>
             </p>
           )}

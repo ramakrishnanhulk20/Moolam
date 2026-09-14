@@ -190,8 +190,8 @@
       "agent": "Agent {agent}",
       "score": "Score {score}",
       "noScore": "Pas encore de score",
-      "counts": "{verifications, plural, =1 {# vérification} other {# vérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
-      "body": "Chaque contrôle mené par le vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de l’agent. Sa réputation est la somme de son travail, pas une promesse sur un site.",
+      "counts": "{verifications, plural, =1 {# contre-vérification} other {# contre-vérifications}}, {passports, plural, =1 {# passeport} other {# passeports}}",
+      "body": "Chaque contre-vérification réinscrite dans la chaîne compte sous l’identifiant de l’agent, et l’index les additionne en cet indice. Sa réputation est la somme de son travail, pas une promesse sur un site.",
       "noAgent": "Aucun agent n’a fait celle-ci, donc aucune réputation d’agent n’y tient. Quand un agent signe, chaque contrôle du vérificateur est réinscrit dans le registre de réputation ERC-8004 sous l’identifiant de cet agent."
     },
     "tryIt": {
@@ -562,14 +562,14 @@
     "owner": "Propriétaire",
     "cardMissing": "La fiche de l’agent n’a pas pu être lue depuis son URI.",
     "reputation": {
-      "heading": "Réputation",
-      "summary": "{count, plural, =1 {# vérification enregistrée} other {# vérifications enregistrées}}",
-      "score": "Score moyen",
+      "heading": "Retours dans le registre ERC-8004",
       "empty": "Aucun retour enregistré pour cet agent. Le vérificateur en écrit un après chaque contrôle qu’il mène.",
       "error": "Le registre de réputation n’a pas pu être lu : {reason}.",
-      "body": "Les retours sont inscrits dans le registre de réputation ERC-8004 canonique par ceux qui les laissent, sous les étiquettes moolam et verification. Cette page lit le résumé de ces deux étiquettes et applique les décimales annoncées par le registre.",
+      "body": "Les retours sont inscrits dans le registre de réputation ERC-8004 canonique par ceux qui les laissent, sous les étiquettes moolam et verification. Cette page lit ce résumé : combien d’entrées il compte et la dernière valeur qu’il annonce, avec les décimales indiquées par le registre. L’indice de confiance à côté vient des contre-vérifications de l’index, les deux ne sont jamais additionnés.",
       "registry": "Registre {address}",
-      "secondary": "Un second chiffre, pas le principal"
+      "secondary": "Écrits dans la chaîne par le vérificateur, ce n’est pas l’indice des contre-vérifications",
+      "entries": "{count, plural, =1 {# entrée} other {# entrées}}",
+      "latest": "Dernière valeur"
     },
     "unnamed": "La fiche de cet agent ne porte aucun nom",
     "identityRegistry": "Registre d’identité",
@@ -584,7 +584,9 @@
       "disputesUpheld": "Contestations retenues",
       "since": "Vu pour la première fois {when}",
       "empty": "L’index n’a pas encore vu cet agent signer un passeport.",
-      "error": "L’index n’a pas pu être lu : {reason}."
+      "error": "L’index n’a pas pu être lu : {reason}.",
+      "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+      "formulaLink": "Comment l'indice est calculé"
     },
     "signs": {
       "heading": "Comment cet agent signe",

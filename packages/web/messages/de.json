@@ -190,8 +190,8 @@
       "agent": "Agent {agent}",
       "score": "Wert {score}",
       "noScore": "Noch kein Wert",
-      "counts": "{verifications, plural, =1 {# Prüfung} other {# Prüfungen}}, {passports, plural, =1 {# Pass} other {# Pässe}}",
-      "body": "Jede Prüfung des Dienstes wird unter der eigenen Id des Agenten in das ERC-8004 Reputationsregister zurückgeschrieben. Sein Ruf ist die Summe seiner Arbeit, keine Behauptung auf einer Website.",
+      "counts": "{verifications, plural, =1 {# Nachprüfung} other {# Nachprüfungen}}, {passports, plural, =1 {# Pass} other {# Pässe}}",
+      "body": "Jede in der Kette zurückgeschriebene Nachprüfung zählt auf die eigene Id des Agenten, und der Index rechnet sie zu diesem Wert zusammen. Sein Ruf ist die Summe seiner Arbeit, keine Behauptung auf einer Webseite.",
       "noAgent": "Dieses hier hat kein Agent gemacht, also hängt auch kein Ruf eines Agenten daran. Wenn ein Agent signiert, wird jede Prüfung des Dienstes unter der Id dieses Agenten in das ERC-8004 Reputationsregister zurückgeschrieben."
     },
     "tryIt": {
@@ -562,14 +562,14 @@
     "owner": "Inhaber",
     "cardMissing": "Die Karte des Agenten konnte von ihrer URI nicht gelesen werden.",
     "reputation": {
-      "heading": "Ruf",
-      "summary": "{count, plural, =1 {# Prüfung erfasst} other {# Prüfungen erfasst}}",
-      "score": "Durchschnittswert",
+      "heading": "Rückmeldungen im ERC-8004 Register",
       "empty": "Für diesen Agenten ist noch keine Rückmeldung erfasst. Der Prüfdienst schreibt nach jeder Prüfung eine.",
       "error": "Das Reputationsregister konnte nicht gelesen werden: {reason}.",
-      "body": "Rückmeldungen werden von den Absendern selbst in das kanonische ERC-8004 Reputationsregister geschrieben, unter den Marken moolam und verification. Diese Seite liest die Zusammenfassung dieser beiden Marken und wendet die Nachkommastellen an, die das Register meldet.",
+      "body": "Rückmeldungen werden von den Absendern selbst in das kanonische ERC-8004 Reputationsregister geschrieben, unter den Marken moolam und verification. Diese Seite liest diese Zusammenfassung: wie viele Einträge gezählt werden und welchen letzten Wert das Register meldet, mit den Nachkommastellen, die es angibt. Der Vertrauenswert daneben entsteht aus den Nachprüfungen des Index, beide werden nie zusammengerechnet.",
       "registry": "Register {address}",
-      "secondary": "Eine zweite Zahl, nicht die Kennzahl"
+      "secondary": "Vom Prüfer in der Kette hinterlegt, nicht der Nachprüfungswert",
+      "entries": "{count, plural, =1 {# Eintrag} other {# Einträge}}",
+      "latest": "Letzter Wert"
     },
     "unnamed": "Die Karte dieses Agenten trägt keinen Namen",
     "identityRegistry": "Identitätsregister",
@@ -584,7 +584,9 @@
       "disputesUpheld": "Einsprüchen stattgegeben",
       "since": "Zuerst gesehen {when}",
       "empty": "Der Index hat diesen Agenten noch keinen Pass signieren sehen.",
-      "error": "Der Index konnte nicht gelesen werden: {reason}."
+      "error": "Der Index konnte nicht gelesen werden: {reason}.",
+      "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+      "formulaLink": "Wie der Wert entsteht"
     },
     "signs": {
       "heading": "Wie dieser Agent signiert",

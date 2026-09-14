@@ -190,8 +190,8 @@
       "agent": "Agent {agent}",
       "score": "Score {score}",
       "noScore": "No score yet",
-      "counts": "{verifications, plural, =1 {# verification} other {# verifications}}, {passports, plural, =1 {# passport} other {# passports}}",
-      "body": "Every check the verifier runs is written back to the ERC-8004 reputation registry under this agent's own id. Its standing is the sum of its work, not a claim on a website.",
+      "counts": "{verifications, plural, =1 {# re-check} other {# re-checks}}, {passports, plural, =1 {# passport} other {# passports}}",
+      "body": "Every re-check written back on chain is counted against this agent's own id, and the index adds them up into this score. Its standing is the sum of its work, not a claim on a website.",
       "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every check the verifier runs is written back to the ERC-8004 reputation registry under that agent's own id."
     },
     "tryIt": {
@@ -562,14 +562,14 @@
     "owner": "Owner",
     "cardMissing": "The agent card could not be read from its URI.",
     "reputation": {
-      "heading": "Reputation",
-      "summary": "{count, plural, =1 {# verification} other {# verifications}} recorded",
-      "score": "Average score",
+      "heading": "Reputation feedback on the ERC-8004 registry",
       "empty": "No feedback recorded for this agent yet. The verifier writes one after every check it runs.",
       "error": "The reputation registry could not be read: {reason}.",
-      "body": "Feedback is written to the canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification. This page reads the summary of those two tags and applies the decimals the registry reports.",
+      "body": "Feedback is written to the canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification. This page reads that summary: how many entries it counts and the latest value it reports, with the decimals the registry gives. The trust score beside it is worked out from the index's own re-checks, so the two are never added together.",
       "registry": "Registry {address}",
-      "secondary": "A second number, not the headline"
+      "secondary": "Feedback the verifier wrote on chain, not the re-check score",
+      "entries": "{count, plural, =1 {# entry} other {# entries}}",
+      "latest": "Latest value"
     },
     "unnamed": "This agent's card carries no name",
     "identityRegistry": "Identity registry",
@@ -584,7 +584,9 @@
       "disputesUpheld": "Disputes upheld",
       "since": "First seen {when}",
       "empty": "The index has not seen this agent sign a passport yet.",
-      "error": "The index could not be read: {reason}."
+      "error": "The index could not be read: {reason}.",
+      "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+      "formulaLink": "How the score is worked out"
     },
     "signs": {
       "heading": "How this agent signs",

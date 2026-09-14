@@ -192,8 +192,8 @@
       "agent": "에이전트 {agent}",
       "score": "점수 {score}",
       "noScore": "아직 점수 없음",
-      "counts": "{verifications, plural, other {검증 #건}}, {passports, plural, other {여권 #건}}",
-      "body": "검증 서비스가 수행한 확인은 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다. 평판은 해 온 일의 합이지, 웹사이트의 주장이 아닙니다.",
+      "counts": "{verifications, plural, other {재확인 #건}}, {passports, plural, other {여권 #건}}",
+      "body": "체인에 다시 기록된 재확인은 모두 이 에이전트의 id로 세고, 인덱스가 그것을 모아 이 점수로 만듭니다. 평판은 일의 합이지 웹사이트의 주장이 아닙니다.",
       "noAgent": "이 한 장은 에이전트가 만들지 않았으므로 걸려 있는 에이전트 평판도 없습니다. 에이전트가 서명한 이미지라면 검증 서비스의 모든 확인이 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다."
     },
     "tryIt": {
@@ -564,14 +564,14 @@
     "owner": "소유자",
     "cardMissing": "그 URI에서 에이전트 카드를 읽지 못했습니다.",
     "reputation": {
-      "heading": "평판",
-      "summary": "{count, plural, other {검증 #건}} 기록됨",
-      "score": "평균 점수",
+      "heading": "ERC-8004 레지스트리의 피드백",
       "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 검증 서비스는 확인할 때마다 한 건씩 남깁니다.",
       "error": "평판 레지스트리를 읽지 못했습니다: {reason}.",
-      "body": "피드백은 남기는 쪽이 직접 표준 ERC-8004 평판 레지스트리에 moolam과 verification 태그로 기록합니다. 이 페이지는 그 두 태그의 요약을 읽고, 레지스트리가 알려 주는 소수 자리를 적용합니다.",
+      "body": "피드백은 남기는 쪽이 직접 표준 ERC-8004 평판 레지스트리에 moolam과 verification 태그로 기록합니다. 이 페이지는 그 요약을 읽어 몇 건이 쌓녕는지와 레지스트리가 알려 주는 최신 값을, 알려 주는 소수 자리로 보여 줍니다. 옆의 신뢰 점수는 인덱스의 재확인에서 나오므로 둘을 합치지 않습니다.",
       "registry": "레지스트리 {address}",
-      "secondary": "두 번째 숫자, 대표 숫자가 아닙니다"
+      "secondary": "검증자가 체인에 쓴 기록이며 재확인 점수가 아닙니다",
+      "entries": "{count, plural, other {#건}}",
+      "latest": "최신 값"
     },
     "unnamed": "이 에이전트의 카드에는 이름이 없습니다",
     "identityRegistry": "신원 레지스트리",
@@ -586,7 +586,9 @@
       "disputesUpheld": "인용된 이의",
       "since": "처음 보인 때 {when}",
       "empty": "인덱스는 이 에이전트가 여권에 서명하는 것을 아직 보지 못했습니다.",
-      "error": "인덱스를 읽지 못했습니다: {reason}."
+      "error": "인덱스를 읽지 못했습니다: {reason}.",
+      "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+      "formulaLink": "점수를 구하는 방법"
     },
     "signs": {
       "heading": "이 에이전트가 서명하는 방식",

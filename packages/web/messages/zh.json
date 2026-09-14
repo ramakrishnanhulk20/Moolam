@@ -192,8 +192,8 @@
       "agent": "智能体 {agent}",
       "score": "评分 {score}",
       "noScore": "尚无评分",
-      "counts": "{verifications, plural, other {# 次验证}}，{passports, plural, other {# 本护照}}",
-      "body": "验证服务做过的每一次核对，都会以该智能体自己的 id 写回 ERC-8004 声誉登记处。它的口碑是自己做过的事的总和，不是网站上的一句话。",
+      "counts": "{verifications, plural, other {# 次复核}}，{passports, plural, other {# 本护照}}",
+      "body": "每一次写回链上的复核都记在这个代理自己的 id 下，索引把它们算成这个分数。它的声誉是工作的总和，不是网站上的一句话。",
       "noAgent": "这一张不是智能体做的，所以它身上没有智能体的口碑。若由智能体签名，验证服务的每一次核对都会以该智能体自己的 id 写回 ERC-8004 声誉登记处。"
     },
     "tryIt": {
@@ -564,14 +564,14 @@
     "owner": "持有者",
     "cardMissing": "无法从该 URI 读到智能体名片。",
     "reputation": {
-      "heading": "声誉",
-      "summary": "已记录 {count, plural, other {# 次验证}}",
-      "score": "平均分",
+      "heading": "ERC-8004 登记处的反馈",
       "empty": "这个智能体还没有任何反馈记录。验证服务每做一次核对就会写一条。",
       "error": "声誉登记处无法读取：{reason}。",
-      "body": "反馈由留下反馈的一方写入标准的 ERC-8004 声誉登记处，挂在 moolam 和 verification 两个标签下。本页读取这两个标签的汇总，并按登记处给出的小数位换算。",
+      "body": "反馈由留下反馈的一方写入标准的 ERC-8004 声誉登记处，挂在 moolam 和 verification 两个标签下。本页读取这份汇总：共有多少条，以及登记处给出的最新数值，并按它给出的小数位换算。旁边的信任分来自索引自己的复核，两者从不相加。",
       "registry": "登记处 {address}",
-      "secondary": "第二个数字，不是主数字"
+      "secondary": "由验证方写在链上，不是复核分数",
+      "entries": "{count, plural, other {# 条}}",
+      "latest": "最新数值"
     },
     "unnamed": "这个智能体的名片上没有名字",
     "identityRegistry": "身份登记处",
@@ -586,7 +586,9 @@
       "disputesUpheld": "争议成立",
       "since": "首次出现于 {when}",
       "empty": "索引还没见过这个智能体为哪本护照签过名。",
-      "error": "索引无法读取：{reason}。"
+      "error": "索引无法读取：{reason}。",
+      "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
+      "formulaLink": "这个分数怎么算出来"
     },
     "signs": {
       "heading": "这个智能体怎么签名",

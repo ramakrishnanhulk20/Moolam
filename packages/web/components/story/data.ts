@@ -1,8 +1,7 @@
 import type { Hex } from "viem";
 import { DEMO_AGENT_ID, gatewayUrl, reason } from "@/lib/chain/client";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
-import { getReputation, getReputationClients } from "@/lib/chain/reputation";
-import { latestPassports } from "@/lib/data/passports";
+import { generatorRecord, latestPassports } from "@/lib/data/passports";
 import { activeSource, envioUrl } from "@/lib/data/source";
 import degrade from "@/public/hero/degrade.json";
 
@@ -50,10 +49,16 @@ export interface StoryAttestation {
 
 export interface StoryAgent {
   id: string;
-  /** Feedback entries on the ERC-8004 reputation registry, tags moolam/verification. */
-  verifications: number;
+  /** Re-checks that matched, counted by the index. */
+  rechecks: number;
+  /**
+   * The index's trust score out of 100, the same number the Agents page and the
+   * agent's own page rank on. Null only when the index has no row for the agent.
+   */
   score: number | null;
   passports: number | null;
+  /** The old name for the same count, until the story card reads `rechecks`. */
+  verifications: number;
 }
 
 export interface StoryData {
@@ -66,6 +71,14 @@ export interface StoryData {
   attestationCount: number | null;
   /** The provider's own words when nothing could be read, shown rather than swallowed. */
   error: string | null;
+}
+
+/** The counts the index keeps for one generating agent, as the story query asks for them. */
+export interface IndexGenerator {
+  passportCount: number;
+  matchedCount: number;
+  /** 0 to 100, the index's own trust score, the number every page shows. */
+  trustScore: number;
 }
 
 export interface IndexRow {
@@ -100,6 +113,8 @@ const STORY_QUERY = `query Story($limit: Int!) {
   Generator {
     id
     passportCount
+    matchedCount
+    trustScore
   }
 }`;
 
@@ -108,7 +123,7 @@ const STORY_QUERY = `query Story($limit: Int!) {
  *
  * One trip to the index for the newest passports and the two counts, then the
  * metadata documents those passports point at, then this passport's own
- * re-checks and its generator's standing on the ERC-8004 reputation registry. Nothing here is
+ * re-checks. The generator's standing comes from the same index row. Nothing here is
  * cached in the app: the page that calls it is dynamic, and the only cache is
  * the browser-visible one on the content addressed metadata, which cannot
  * change under its own id.
@@ -120,7 +135,7 @@ export async function storyData(): Promise<StoryData> {
   let attestation: StoryAttestation | null = null;
   let passportCount: number | null = null;
   let attestationCount: number | null = null;
-  let agentCounts: Record<string, number> = {};
+  let generators: Record<string, IndexGenerator> = {};
   let error: string | null = null;
 
   try {
@@ -129,7 +144,7 @@ export async function storyData(): Promise<StoryData> {
       rows = answer.rows;
       passportCount = answer.passports;
       attestationCount = answer.attestations;
-      agentCounts = answer.agentCounts;
+      generators = answer.generators;
     } else {
       rows = await fromChain();
     }
@@ -164,10 +179,10 @@ export async function storyData(): Promise<StoryData> {
   }
 
   // The trusted beat is about the generator that made this picture, so a
-  // generator nobody has rated shows as no score rather than borrowing another
-  // agent's standing.
+  // generator the index has no row for shows as no score rather than borrowing
+  // another agent's standing.
   const agentId = focal === null ? DEMO_AGENT_ID : focal.agentId === null ? null : BigInt(focal.agentId);
-  const agent = agentId === null ? null : await agentStanding(agentId, agentCounts[agentId.toString()] ?? null);
+  const agent = agentId === null ? null : await agentStanding(agentId, generators[agentId.toString()]);
 
   return { source, plates, focal, attestation, agent, passportCount, attestationCount, error };
 }
@@ -176,7 +191,7 @@ async function fromIndex(): Promise<{
   rows: IndexRow[];
   passports: number | null;
   attestations: number | null;
-  agentCounts: Record<string, number>;
+  generators: Record<string, IndexGenerator>;
 }> {
   const response = await fetch(envioUrl(), {
     method: "POST",
@@ -208,7 +223,7 @@ async function fromIndex(): Promise<{
         attestationCount: number;
       }[];
       GlobalStats: { passports: number; attestations: number }[];
-      Generator: { id: string; passportCount: number }[];
+      Generator: ({ id: string } & IndexGenerator)[];
     };
   };
 
@@ -235,7 +250,12 @@ async function fromIndex(): Promise<{
     })),
     passports: stats?.passports ?? null,
     attestations: stats?.attestations ?? null,
-    agentCounts: Object.fromEntries(body.data.Generator.map((row) => [row.id, row.passportCount])),
+    generators: Object.fromEntries(
+      body.data.Generator.map(({ id, passportCount, matchedCount, trustScore }) => [
+        id,
+        { passportCount, matchedCount, trustScore },
+      ]),
+    ),
   };
 }
 
@@ -375,24 +395,37 @@ async function focalAttestation(id: Hex): Promise<StoryAttestation | null> {
 }
 
 /**
- * The agent's standing, from the canonical ERC-8004 reputation registry.
+ * The agent's standing, from the index, which is the one place these counts are
+ * added up. The Agents page and the agent's own page read the same row, so the
+ * score on the story is the score a judge sees when they click through.
  *
- * An agent nobody has rated returns a zero summary, and that is shown as no
- * score rather than as a score of zero.
+ * The ERC-8004 reputation registry is deliberately not read here: its feedback
+ * is a claim somebody signed, it is shown on the agent's page under its own
+ * label, and quoting it beside a calculated score gave two numbers for one
+ * agent. An agent the index has no row for shows as no score.
  */
-async function agentStanding(agentId: bigint, passports: number | null): Promise<StoryAgent | null> {
-  try {
-    const clients = await getReputationClients(agentId);
-    const summary = await getReputation(agentId, clients);
-    return {
-      id: agentId.toString(),
-      verifications: Number(summary.count),
-      score: summary.count === 0n ? null : Number(summary.value) / 10 ** summary.decimals,
-      passports,
-    };
-  } catch {
+export async function agentStanding(agentId: bigint, row?: IndexGenerator): Promise<StoryAgent | null> {
+  let standing = row;
+
+  if (standing === undefined) {
+    try {
+      standing = (await generatorRecord(agentId)) ?? undefined;
+    } catch {
+      return null;
+    }
+  }
+
+  if (standing === undefined) {
     return null;
   }
+
+  return {
+    id: agentId.toString(),
+    score: standing.trustScore,
+    rechecks: standing.matchedCount,
+    verifications: standing.matchedCount,
+    passports: standing.passportCount,
+  };
 }
 
 interface Picture {
