@@ -39,7 +39,6 @@ export function BindCard({
   onCancel?: () => void;
 }) {
   const t = useTranslations("studio");
-  const shared = useTranslations();
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   // A bind that is out and unconfirmed keeps the button shut: a second passkey
   // would replace the key the first transaction is about to write.
@@ -109,7 +108,7 @@ export function BindCard({
                 disabled={busy}
                 className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-60"
               >
-                {shared("passport.dispute.flag.close")}
+                {t("bind.notNow")}
               </button>
             )}
           </div>

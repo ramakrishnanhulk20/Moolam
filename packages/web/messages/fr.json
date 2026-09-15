@@ -394,6 +394,7 @@
         "blockPending": "Pas encore lu",
         "fee": "Frais",
         "feeSponsored": "Pris en charge par Privy. Vous n'avez rien payé.",
+        "feeOwn": "Payée sur votre propre solde.",
         "edits": "Retouches de ce passeport",
         "resets": "Le quota revient à {at}.",
         "open": "Ouvrir la retouche",
@@ -423,6 +424,7 @@
         "titleMissing": "Donnez d'abord un titre à la retouche.",
         "grantDeclined": "La permission n'a pas été donnée, cette app ne peut toujours pas ajouter de retouche.",
         "grantFailed": "Privy n'a pas pu ajouter le signataire à votre portefeuille.",
+        "alreadyRegistered": "Cette image exacte est déjà enregistrée. Le premier enregistrement l’emporte, ouvrez donc le passeport qui la détient.",
         "unknown": "La retouche n'est pas passée."
       },
       "actions": {
@@ -430,6 +432,7 @@
         "again": "Réessayer",
         "later": "Réessayer dans une minute",
         "recheck": "Redemander à Monad",
+        "openPassport": "Ouvrir ce passeport",
         "signIn": "Se connecter"
       },
       "lineageNote": "Les retouches sont ajoutées par le détenteur, via un signataire Privy dont la politique n'autorise que appendEdit."
@@ -521,7 +524,8 @@
             "running": "Envoi de la contestation",
             "watching": "En attente de son affichage par Monad",
             "done": "Monad l'a enregistrée",
-            "failed": "Monad ne l'a pas encore montrée"
+            "failed": "Monad ne l'a pas encore montrée",
+            "unconfirmed": "Envoyée, et Monad ne l’a pas encore montrée"
           }
         },
         "done": {
@@ -548,11 +552,13 @@
           "notResolver": "Seul l'arbitre désigné par la politique peut trancher un litige.",
           "noOpenDispute": "Aucun litige n'est ouvert sur ce passeport.",
           "nothingOwed": "Le registre ne doit rien à ce compte.",
+          "reverted": "Monad l’a incluse dans un bloc et elle a échoué, donc rien n’a été écrit",
           "unknown": "La contestation n'est pas partie."
         },
         "actions": {
           "again": "Réessayer",
           "recheck": "Redemander à Monad",
+          "openAddress": "Ouvrir {wallet} sur MonadVision",
           "signIn": "Se connecter"
         }
       }
@@ -689,6 +695,7 @@
       "plain": "Une clé d’accès, c’est l’empreinte, le visage ou le code que cet appareil utilise déjà. Elle reste sur l’appareil : Moolam ne voit jamais que la moitié publique.",
       "button": "Utiliser le déverrouillage de cet appareil",
       "buttonAgain": "Lier le déverrouillage de cet appareil",
+      "notNow": "Pas maintenant",
       "creating": "Création d’une clé d’accès sur cet appareil",
       "waiting": "En attente de votre empreinte ou de votre visage",
       "sending": "Envoi vers Monad, frais de réseau pris en charge",
@@ -911,6 +918,8 @@
       "confirmPending": "Votre envoi a été accepté et Monad ne l’a pas encore affiché. Il peut encore arriver, rien n’a donc été envoyé une deuxième fois. Ouvrez votre compte ci-dessous pour regarder, ou redemandez à Monad.",
       "sendCancelled": "Vous avez fermé la confirmation, rien n’a été envoyé.",
       "sendFailed": "Cette étape n’est pas allée au bout. Les mots du réseau se trouvent ci-dessous. Réessayez dans un instant.",
+      "digestMismatch": "Le réseau a répondu avec un enregistrement différent de celui de cette page, donc rien n’a été signé. Essayez un autre réglage de réseau.",
+      "passkeyNotReady": "Cette page n’a pas fini de lire votre clé d’accès depuis Monad. Patientez un instant et réessayez.",
       "unknown": "Quelque chose a échoué avant tout envoi. Le message se trouve ci-dessous.",
       "fileMissing": "Choisissez d’abord une image.",
       "titleMissing": "Donnez d’abord un titre à l’image. Il part dans le manifeste.",
@@ -1005,7 +1014,12 @@
       "notEnough": "Le compte ne pouvait pas couvrir cette transaction.",
       "declined": "La fenêtre a été fermée avant le départ de la transaction. Rien n'a été envoyé.",
       "confirmPending": "Cela a été accepté et Monad ne l'a pas encore montré. Cela peut encore aboutir, il ne faut donc pas renvoyer.",
+      "reverted": "Monad l’a incluse dans un bloc et elle a échoué, donc rien n’a été écrit",
       "unknown": "Cela n'a pas abouti."
+    },
+    "actions": {
+      "recheck": "Redemander à Monad",
+      "openAddress": "Ouvrir {wallet} sur MonadVision"
     }
   },
   "notFound": {

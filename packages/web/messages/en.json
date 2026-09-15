@@ -394,6 +394,7 @@
         "blockPending": "Not read yet",
         "fee": "Fee",
         "feeSponsored": "Sponsored by Privy. You paid nothing.",
+        "feeOwn": "Paid from your own balance.",
         "edits": "Edits on this passport",
         "resets": "The allowance comes back at {at}.",
         "open": "Open the edit",
@@ -423,6 +424,7 @@
         "titleMissing": "Give the edit a title first.",
         "grantDeclined": "The permission was not given, so this app still cannot add edits.",
         "grantFailed": "Privy could not add the signer to your wallet.",
+        "alreadyRegistered": "This exact image is already registered. The first registration wins, so open the passport that holds it.",
         "unknown": "The edit did not go through."
       },
       "actions": {
@@ -430,6 +432,7 @@
         "again": "Try again",
         "later": "Try again in a minute",
         "recheck": "Ask Monad again",
+        "openPassport": "Open that passport",
         "signIn": "Sign in"
       },
       "lineageNote": "Edits are added by the owner through a Privy signer with a policy that allows only appendEdit."
@@ -521,7 +524,8 @@
             "running": "Sending the challenge",
             "watching": "Waiting for Monad to show it",
             "done": "Monad has it",
-            "failed": "Monad has not shown it"
+            "failed": "Monad has not shown it",
+            "unconfirmed": "Sent, and Monad has not shown it yet"
           }
         },
         "done": {
@@ -548,11 +552,13 @@
           "notResolver": "Only the resolver named by the policy can settle a dispute.",
           "noOpenDispute": "There is no open dispute on this passport.",
           "nothingOwed": "The registry owes this account nothing.",
+          "reverted": "Monad mined this and it reverted, so nothing was written",
           "unknown": "The challenge did not go out."
         },
         "actions": {
           "again": "Try again",
           "recheck": "Ask Monad again",
+          "openAddress": "Open {wallet} on MonadVision",
           "signIn": "Sign in"
         }
       }
@@ -689,6 +695,7 @@
       "plain": "A passkey is the fingerprint, face unlock or PIN this device already uses. It stays on the device: Moolam only ever sees the public half.",
       "button": "Use this device's unlock",
       "buttonAgain": "Bind this device's unlock",
+      "notNow": "Not now",
       "creating": "Making a passkey on this device",
       "waiting": "Waiting for your fingerprint or face unlock",
       "sending": "Sending it to Monad, network fee sponsored",
@@ -911,6 +918,8 @@
       "confirmPending": "Your send was accepted and Monad has not shown it yet. It may still land, so nothing has been sent a second time. Open your account below to look, or ask Monad again.",
       "sendCancelled": "You closed the confirmation, so nothing was sent.",
       "sendFailed": "This step did not finish. The network's own words are below. Try again in a moment.",
+      "digestMismatch": "The network answered with a different record than the one on this page, so nothing was signed. Try a different network setting.",
+      "passkeyNotReady": "This page has not finished reading your passkey from Monad. Give it a moment and try again.",
       "unknown": "Something went wrong before anything was sent. The message is below.",
       "fileMissing": "Choose an image first.",
       "titleMissing": "Give the picture a title first. It goes into the manifest.",
@@ -1005,7 +1014,12 @@
       "notEnough": "The account could not cover this transaction.",
       "declined": "The window was closed before the transaction went out. Nothing was sent.",
       "confirmPending": "It was accepted and Monad has not shown it yet. It may still land, so it must not be sent again.",
+      "reverted": "Monad mined this and it reverted, so nothing was written",
       "unknown": "That did not go through."
+    },
+    "actions": {
+      "recheck": "Ask Monad again",
+      "openAddress": "Open {wallet} on MonadVision"
     }
   },
   "notFound": {

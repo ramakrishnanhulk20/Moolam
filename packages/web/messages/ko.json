@@ -396,6 +396,7 @@
         "blockPending": "아직 읽지 못함",
         "fee": "수수료",
         "feeSponsored": "Privy가 대납했습니다. 당신은 내지 않았습니다.",
+        "feeOwn": "내 잔액에서 지불했습니다.",
         "edits": "이 여권의 편집본",
         "resets": "한도는 {at}에 돌아옵니다.",
         "open": "편집본 열기",
@@ -425,6 +426,7 @@
         "titleMissing": "먼저 편집본에 제목을 붙이세요.",
         "grantDeclined": "권한이 주어지지 않아 이 앱은 아직 편집본을 추가할 수 없습니다.",
         "grantFailed": "Privy가 당신의 지갑에 서명자를 추가하지 못했습니다.",
+        "alreadyRegistered": "똑같은 이미지가 이미 등록되어 있습니다. 먼저 등록한 쪽이 유효하니, 그 이미지를 가진 여권을 열어 보세요.",
         "unknown": "편집본이 처리되지 않았습니다."
       },
       "actions": {
@@ -432,6 +434,7 @@
         "again": "다시 시도",
         "later": "1분 뒤에 다시 시도",
         "recheck": "Monad에 다시 묻기",
+        "openPassport": "그 여권 열기",
         "signIn": "로그인"
       },
       "lineageNote": "편집본은 appendEdit만 허용하는 정책이 붙은 Privy 서명자를 통해 소유자가 추가합니다."
@@ -523,7 +526,8 @@
             "running": "이의를 보내는 중",
             "watching": "Monad에 나타나기를 기다리는 중",
             "done": "Monad에 기록됐습니다",
-            "failed": "Monad가 아직 보여 주지 않았습니다"
+            "failed": "Monad가 아직 보여 주지 않았습니다",
+            "unconfirmed": "보냈고, Monad는 아직 보여 주지 않았습니다"
           }
         },
         "done": {
@@ -550,11 +554,13 @@
           "notResolver": "분쟁은 정책이 지정한 중재자만 처리할 수 있습니다.",
           "noOpenDispute": "이 여권에는 진행 중인 분쟁이 없습니다.",
           "nothingOwed": "레지스트리가 이 계정에 갚을 것이 없습니다.",
+          "reverted": "Monad가 이것을 블록에 넣었지만 실패해서 아무것도 기록되지 않았습니다",
           "unknown": "이의가 나가지 않았습니다."
         },
         "actions": {
           "again": "다시 시도",
           "recheck": "Monad에 다시 묻기",
+          "openAddress": "MonadVision에서 {wallet} 열기",
           "signIn": "로그인"
         }
       }
@@ -691,6 +697,7 @@
       "plain": "패스키는 이 기기가 이미 쓰고 있는 지문, 얼굴, PIN입니다. 기기 안에 남고, Moolam은 공개된 쪽 절반만 봅니다.",
       "button": "이 기기의 잠금 해제 사용",
       "buttonAgain": "이 기기의 잠금 해제 연결",
+      "notNow": "지금은 안 함",
       "creating": "이 기기에 패스키를 만드는 중",
       "waiting": "지문이나 얼굴 인식을 기다리는 중",
       "sending": "Monad로 보내는 중, 네트워크 수수료 대납",
@@ -913,6 +920,8 @@
       "confirmPending": "보내기는 받아들여졌고 Monad에는 아직 보이지 않습니다. 아직 도착할 수 있어 두 번 보내지 않았습니다. 아래에서 계정을 열어 확인하거나, Monad에 다시 물어보세요.",
       "sendCancelled": "확인 창을 닫아서 아무것도 보내지 않았습니다.",
       "sendFailed": "이 단계가 끝나지 않았습니다. 네트워크가 한 말은 아래에 있습니다. 잠시 뒤 다시 시도해 주세요.",
+      "digestMismatch": "네트워크가 이 페이지에 있는 것과 다른 기록을 돌려주어 아무것도 서명되지 않았습니다. 다른 네트워크 설정으로 시도해 보세요.",
+      "passkeyNotReady": "이 페이지가 Monad에서 패스키를 아직 다 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
       "unknown": "무엇을 보내기도 전에 문제가 생겼습니다. 메시지는 아래에 있습니다.",
       "fileMissing": "먼저 이미지를 고르세요.",
       "titleMissing": "먼저 이미지에 제목을 붙여 주세요. 매니페스트에 들어갑니다.",
@@ -1007,7 +1016,12 @@
       "notEnough": "이 거래를 감당하기에 계정이 모자랐습니다.",
       "declined": "트랜잭션이 나가기 전에 창이 닫혔습니다. 아무것도 보내지 않았습니다.",
       "confirmPending": "접수됐고 Monad가 아직 보여 주지 않았습니다. 아직 기록될 수 있으므로 다시 보내면 안 됩니다.",
+      "reverted": "Monad가 이것을 블록에 넣었지만 실패해서 아무것도 기록되지 않았습니다",
       "unknown": "처리되지 않았습니다."
+    },
+    "actions": {
+      "recheck": "Monad에 다시 묻기",
+      "openAddress": "MonadVision에서 {wallet} 열기"
     }
   },
   "notFound": {

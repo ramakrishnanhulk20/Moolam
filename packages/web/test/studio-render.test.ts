@@ -153,10 +153,46 @@ describe("the cards before the first transaction", () => {
     const state = { stage: "idle", qx: null, qy: null, txHash: null, failure: null } as const;
 
     const detour = render("en", createElement(BindCard, { state, rebind: true, onBind: NOOP, onCancel: NOOP }));
-    expect(detour).toContain("Close");
+    expect(detour).toContain("Not now");
 
     const onlyWayIn = render("en", createElement(BindCard, { state, onBind: NOOP }));
-    expect(onlyWayIn).not.toContain(">Close<");
+    expect(onlyWayIn).not.toContain(">Not now<");
+  });
+
+  it("says what a digest the registry disagrees with means, in its own words", () => {
+    const markup = render(
+      "en",
+      createElement(BindCard, {
+        state: {
+          stage: "idle",
+          qx: null,
+          qy: null,
+          txHash: null,
+          failure: { key: "digestMismatch", reason: "hash 0xab != 0xcd" },
+        },
+        onBind: NOOP,
+      }),
+    );
+    expect(markup).toContain("a different record than the one on this page, so nothing was signed");
+    expect(markup).not.toContain("Something went wrong before anything was sent");
+  });
+
+  it("says a register pressed before the passkey was read is only early", () => {
+    const markup = render(
+      "en",
+      createElement(BindCard, {
+        state: {
+          stage: "idle",
+          qx: null,
+          qy: null,
+          txHash: null,
+          failure: { key: "passkeyNotReady", next: "again" },
+        },
+        onBind: NOOP,
+      }),
+    );
+    expect(markup).toContain("has not finished reading your passkey from Monad");
+    expect(markup).toContain("Try again");
   });
 
   it("renders the recovery card for a passkey on another device", () => {

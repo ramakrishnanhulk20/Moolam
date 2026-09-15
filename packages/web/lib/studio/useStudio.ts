@@ -659,7 +659,7 @@ export function useStudio(): Studio {
  * asking for another moment.
  */
 function passkeyNotReady(binding: Binding): Failure {
-  return { key: "unknown", reason: binding.error ?? undefined, next: "again" };
+  return { key: "passkeyNotReady", reason: binding.error ?? undefined, next: "again" };
 }
 
 function randomDigest(): Hex {

@@ -134,7 +134,7 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
     // Nothing was signed and nothing was sent: the registry described a
     // different record than the one this page built, and the two have to agree
     // before a passkey is touched.
-    return { key: "unknown", reason: error.message };
+    return { key: "digestMismatch", reason: error.message };
   }
 
   if (stage === "sign") {

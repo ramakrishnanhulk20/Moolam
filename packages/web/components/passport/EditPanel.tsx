@@ -284,9 +284,6 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
 /** The receipt: the child passport, the block it landed in, and where to read it. */
 function Recorded({ edit }: { edit: PassportEdit }) {
   const t = useTranslations("passport.edit");
-  // Two sentences this panel needs word for word are written under the studio, which is the screen
-  // that first had to say them. They are read from there rather than said twice, differently.
-  const studio = useTranslations("studio");
   const format = useFormatter();
   const { state } = edit;
   const child = state.result?.child.exactHash ?? null;
@@ -326,7 +323,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.fee")}</dt>
           <dd className="mt-1.5 text-sm text-text-muted">
-            {state.result?.sponsored === true ? t("done.feeSponsored") : studio("register.feeOwn")}
+            {state.result?.sponsored === true ? t("done.feeSponsored") : t("done.feeOwn")}
           </dd>
         </div>
         <div className="min-w-0">
@@ -450,12 +447,8 @@ function StepRow({ step, index, state }: { step: EditStep; index: number; state:
  */
 function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEdit }) {
   const t = useTranslations("passport.edit");
-  // The duplicate is the studio's sentence word for word, so it is read from there rather than
-  // said a second time in slightly different words.
-  const studio = useTranslations("studio");
   const format = useFormatter();
   const quota = edit.state.quota;
-  const duplicate = failure.key === "alreadyRegistered";
   const openPassport = failure.next === "openPassport" && failure.passportId !== undefined;
 
   const handlers: Record<string, (() => void) | undefined> = {
@@ -483,13 +476,11 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
       className={`border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
       <p className={`max-w-[50ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
-        {duplicate
-          ? studio("failure.alreadyRegistered")
-          : t(`failure.${failure.key}`, {
-              used: quota?.used ?? 0,
-              limit: quota?.limit ?? 0,
-              at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), { timeStyle: "short" }),
-            })}
+        {t(`failure.${failure.key}`, {
+          used: quota?.used ?? 0,
+          limit: quota?.limit ?? 0,
+          at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), { timeStyle: "short" }),
+        })}
       </p>
       {failure.reason === undefined ? null : (
         <p className="mt-2 max-w-[50ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
@@ -501,7 +492,7 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
           href={`/passport/${failure.passportId}`}
           className="mt-4 inline-block rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
         >
-          {studio("actions.openPassport")}
+          {t("actions.openPassport")}
         </Link>
       ) : null}
       {action === undefined ? null : (

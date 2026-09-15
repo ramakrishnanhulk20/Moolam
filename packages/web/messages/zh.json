@@ -396,6 +396,7 @@
         "blockPending": "尚未读到",
         "fee": "费用",
         "feeSponsored": "由 Privy 代付，你没有花钱。",
+        "feeOwn": "由你自己的余额支付。",
         "edits": "这本护照的编辑版本",
         "resets": "额度在 {at} 恢复。",
         "open": "打开这个编辑版本",
@@ -425,6 +426,7 @@
         "titleMissing": "请先给这个编辑版本写个标题。",
         "grantDeclined": "权限没有给出，所以这个应用仍然不能添加编辑版本。",
         "grantFailed": "Privy 没能把签名者加到你的钱包上。",
+        "alreadyRegistered": "这张图片已经登记过了。先登记的一方为准，去打开收着它的那本护照。",
         "unknown": "这次编辑没有完成。"
       },
       "actions": {
@@ -432,6 +434,7 @@
         "again": "再试一次",
         "later": "过一分钟再试",
         "recheck": "再问一次 Monad",
+        "openPassport": "打开那本护照",
         "signIn": "登录"
       },
       "lineageNote": "编辑版本由持有人通过一个 Privy 签名者添加，其策略只允许 appendEdit。"
@@ -523,7 +526,8 @@
             "running": "正在发送质疑",
             "watching": "等待 Monad 显示它",
             "done": "Monad 已记录",
-            "failed": "Monad 尚未显示"
+            "failed": "Monad 尚未显示",
+            "unconfirmed": "已发送，Monad 尚未显示"
           }
         },
         "done": {
@@ -550,11 +554,13 @@
           "notResolver": "只有政策指定的仲裁者才能裁决争议。",
           "noOpenDispute": "这份护照没有未决的争议。",
           "nothingOwed": "注册表不欠这个账户任何款项。",
+          "reverted": "Monad 把它打包进了区块，但执行失败，所以什么都没有写下",
           "unknown": "质疑没有发出去。"
         },
         "actions": {
           "again": "再试一次",
           "recheck": "再问一次 Monad",
+          "openAddress": "在 MonadVision 上打开 {wallet}",
           "signIn": "登录"
         }
       }
@@ -691,6 +697,7 @@
       "plain": "通行密钥就是这台设备本来就在用的指纹、面容或 PIN。它留在设备上：Moolam 只看得到公开的那一半。",
       "button": "使用这台设备的解锁",
       "buttonAgain": "绑定这台设备的解锁",
+      "notNow": "现在不用",
       "creating": "正在这台设备上创建通行密钥",
       "waiting": "等待你的指纹或面容",
       "sending": "正在发往 Monad，网络费已代付",
@@ -913,6 +920,8 @@
       "confirmPending": "你的发送已被接受，Monad 还没有显示。它仍可能落地，所以没有重复发第二次。到下面打开你的账户看看，或者再问一次 Monad。",
       "sendCancelled": "你关掉了确认窗口，所以什么都没有发出。",
       "sendFailed": "这一步没有走完。网络自己的说法在下面。稍后再试一次。",
+      "digestMismatch": "网络返回的记录和这个页面上的不一样，所以什么都没有签名。换一个网络设置再试。",
+      "passkeyNotReady": "这个页面还没有从 Monad 读完你的通行密钥。稍等片刻再试一次。",
       "unknown": "在发出任何东西之前就出了问题。消息在下面。",
       "fileMissing": "请先选一张图片。",
       "titleMissing": "请先给这张图片取个标题。它会写进清单。",
@@ -1007,7 +1016,12 @@
       "notEnough": "账户不足以支付这笔交易。",
       "declined": "交易发出前窗口被关闭了，什么都没有发送。",
       "confirmPending": "交易已被接受，Monad 还没有显示。它仍可能落账，因此不能重复发送。",
+      "reverted": "Monad 把它打包进了区块，但执行失败，所以什么都没有写下",
       "unknown": "没有成功。"
+    },
+    "actions": {
+      "recheck": "再问一次 Monad",
+      "openAddress": "在 MonadVision 上打开 {wallet}"
     }
   },
   "notFound": {

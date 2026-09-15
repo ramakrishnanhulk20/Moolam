@@ -394,6 +394,7 @@
         "blockPending": "Aún sin leer",
         "fee": "Comisión",
         "feeSponsored": "Patrocinada por Privy. Tú no pagaste nada.",
+        "feeOwn": "Pagada con tu propio saldo.",
         "edits": "Ediciones de este pasaporte",
         "resets": "El cupo vuelve a las {at}.",
         "open": "Abrir la edición",
@@ -423,6 +424,7 @@
         "titleMissing": "Ponle primero un título a la edición.",
         "grantDeclined": "No se dio el permiso, así que esta app sigue sin poder añadir ediciones.",
         "grantFailed": "Privy no pudo añadir el firmante a tu cartera.",
+        "alreadyRegistered": "Esta imagen exacta ya está registrada. Gana el primer registro, así que abre el pasaporte que la tiene.",
         "unknown": "La edición no salió adelante."
       },
       "actions": {
@@ -430,6 +432,7 @@
         "again": "Intentar otra vez",
         "later": "Intentar en un minuto",
         "recheck": "Preguntar a Monad otra vez",
+        "openPassport": "Abrir ese pasaporte",
         "signIn": "Iniciar sesión"
       },
       "lineageNote": "Las ediciones las añade quien posee el pasaporte, mediante un firmante de Privy con una política que solo permite appendEdit."
@@ -521,7 +524,8 @@
             "running": "Enviando la impugnación",
             "watching": "Esperando a que Monad la muestre",
             "done": "Monad ya la tiene",
-            "failed": "Monad no la ha mostrado"
+            "failed": "Monad no la ha mostrado",
+            "unconfirmed": "Enviada, y Monad todavía no la ha mostrado"
           }
         },
         "done": {
@@ -548,11 +552,13 @@
           "notResolver": "Solo el árbitro que nombra la política puede resolver una disputa.",
           "noOpenDispute": "Este pasaporte no tiene ninguna disputa abierta.",
           "nothingOwed": "El registro no le debe nada a esta cuenta.",
+          "reverted": "Monad lo incluyó en un bloque y falló, así que no se escribió nada",
           "unknown": "La impugnación no llegó a salir."
         },
         "actions": {
           "again": "Reintentar",
           "recheck": "Preguntar de nuevo a Monad",
+          "openAddress": "Abrir {wallet} en MonadVision",
           "signIn": "Iniciar sesión"
         }
       }
@@ -689,6 +695,7 @@
       "plain": "Una clave de acceso es la huella, la cara o el PIN que este dispositivo ya usa. Se queda en el dispositivo: Moolam solo ve la mitad pública.",
       "button": "Usar el desbloqueo de este dispositivo",
       "buttonAgain": "Vincular el desbloqueo de este dispositivo",
+      "notNow": "Ahora no",
       "creating": "Creando una clave de acceso en este dispositivo",
       "waiting": "Esperando tu huella o tu cara",
       "sending": "Enviándola a Monad, comisión de red patrocinada",
@@ -911,6 +918,8 @@
       "confirmPending": "Tu envío se aceptó y Monad todavía no lo muestra. Puede que aún llegue, así que no se ha enviado nada por segunda vez. Abre tu cuenta abajo para mirar, o vuelve a preguntar a Monad.",
       "sendCancelled": "Cerraste la confirmación, así que no se envió nada.",
       "sendFailed": "Este paso no terminó. Abajo están las palabras de la red. Inténtalo de nuevo en un momento.",
+      "digestMismatch": "La red respondió con un registro distinto del que hay en esta página, así que no se firmó nada. Prueba con otra configuración de red.",
+      "passkeyNotReady": "Esta página todavía no ha terminado de leer tu clave de acceso desde Monad. Espera un momento y vuelve a intentarlo.",
       "unknown": "Algo salió mal antes de enviar nada. El mensaje está abajo.",
       "fileMissing": "Elige primero una imagen.",
       "titleMissing": "Ponle antes un título a la imagen. Va dentro del manifiesto.",
@@ -1005,7 +1014,12 @@
       "notEnough": "La cuenta no pudo cubrir esta transacción.",
       "declined": "La ventana se cerró antes de que saliera la transacción. No se envió nada.",
       "confirmPending": "Fue aceptada y Monad aún no la muestra. Todavía puede confirmarse, así que no debe enviarse otra vez.",
+      "reverted": "Monad lo incluyó en un bloque y falló, así que no se escribió nada",
       "unknown": "Eso no salió adelante."
+    },
+    "actions": {
+      "recheck": "Preguntar de nuevo a Monad",
+      "openAddress": "Abrir {wallet} en MonadVision"
     }
   },
   "notFound": {

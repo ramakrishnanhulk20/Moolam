@@ -264,9 +264,9 @@ function StepRow({
   const label =
     step === "send" && status === "running" && confirming
       ? t("steps.send.watching")
-      : // An unconfirmed send says the same thing the failed one does, which is
-        // that Monad has not shown it. The tone above is what tells them apart.
-        t(`steps.${step}.${status === "unconfirmed" ? "failed" : status}`);
+      : // Only the send is ever left unconfirmed, and it has a line of its own:
+        // it went out, which a failed send did not.
+        t(`steps.${step}.${status}`);
 
   return (
     <li data-step={step} data-tone={status} className="flex items-start gap-4 py-3.5">
@@ -295,9 +295,6 @@ function StepRow({
 /** One failure: the sentence, the chain's own words under it, and the single thing worth doing next. */
 function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPassport }) {
   const t = useTranslations("passport.dispute.flag");
-  // The studio says this sentence already, and one wording for "open your account
-  // and look" beats two.
-  const studio = useTranslations("studio");
   const handlers: Record<string, (() => void) | undefined> = {
     again: () => void flag.actions.submit(),
     recheck: () => void flag.actions.recheck(),
@@ -338,7 +335,7 @@ function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPasspo
           rel="noreferrer"
           className="mt-4 block font-mono text-[11px] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-failed"
         >
-          {studio("actions.openAddress", { wallet: shortHex(failure.address) })}
+          {t("actions.openAddress", { wallet: shortHex(failure.address) })}
         </a>
       )}
       {action === undefined ? null : (

@@ -394,6 +394,7 @@
         "blockPending": "Noch nicht gelesen",
         "fee": "Gebühr",
         "feeSponsored": "Von Privy übernommen. Du hast nichts bezahlt.",
+        "feeOwn": "Aus deinem eigenen Guthaben bezahlt.",
         "edits": "Bearbeitungen dieses Passes",
         "resets": "Das Kontingent kommt um {at} zurück.",
         "open": "Die Bearbeitung öffnen",
@@ -423,6 +424,7 @@
         "titleMissing": "Gib der Bearbeitung zuerst einen Titel.",
         "grantDeclined": "Die Erlaubnis wurde nicht gegeben, diese App kann also weiterhin keine Bearbeitungen hinzufügen.",
         "grantFailed": "Privy konnte den Unterzeichner nicht zu deiner Wallet hinzufügen.",
+        "alreadyRegistered": "Genau dieses Bild ist schon eingetragen. Die erste Eintragung gewinnt, öffne also den Pass, der es hält.",
         "unknown": "Die Bearbeitung ist nicht durchgegangen."
       },
       "actions": {
@@ -430,6 +432,7 @@
         "again": "Noch einmal versuchen",
         "later": "In einer Minute noch einmal versuchen",
         "recheck": "Monad noch einmal fragen",
+        "openPassport": "Diesen Pass öffnen",
         "signIn": "Anmelden"
       },
       "lineageNote": "Bearbeitungen trägt die Besitzerin oder der Besitzer über einen Privy-Unterzeichner ein, dessen Richtlinie nur appendEdit erlaubt."
@@ -521,7 +524,8 @@
             "running": "Einspruch wird gesendet",
             "watching": "Wartet darauf, dass Monad ihn zeigt",
             "done": "Monad hat ihn",
-            "failed": "Monad zeigt ihn noch nicht"
+            "failed": "Monad zeigt ihn noch nicht",
+            "unconfirmed": "Gesendet, und Monad zeigt ihn noch nicht"
           }
         },
         "done": {
@@ -548,11 +552,13 @@
           "notResolver": "Nur die Schlichterin, die die Policy benennt, kann einen Streit entscheiden.",
           "noOpenDispute": "Zu diesem Pass ist kein Streit offen.",
           "nothingOwed": "Die Registry schuldet diesem Konto nichts.",
+          "reverted": "Monad hat das in einen Block aufgenommen und es ist fehlgeschlagen, also wurde nichts geschrieben",
           "unknown": "Der Einspruch ging nicht hinaus."
         },
         "actions": {
           "again": "Erneut versuchen",
           "recheck": "Monad noch einmal fragen",
+          "openAddress": "{wallet} auf MonadVision öffnen",
           "signIn": "Anmelden"
         }
       }
@@ -689,6 +695,7 @@
       "plain": "Ein Passkey ist der Finger, das Gesicht oder die PIN, die dieses Gerät ohnehin nutzt. Er bleibt auf dem Gerät: Moolam sieht immer nur die öffentliche Hälfte.",
       "button": "Entsperrung dieses Geräts nutzen",
       "buttonAgain": "Entsperrung dieses Geräts anbinden",
+      "notNow": "Jetzt nicht",
       "creating": "Auf diesem Gerät wird ein Passkey angelegt",
       "waiting": "Warten auf deinen Finger oder dein Gesicht",
       "sending": "Wird an Monad geschickt, Netzgebühr übernommen",
@@ -911,6 +918,8 @@
       "confirmPending": "Dein Versand wurde angenommen und Monad zeigt ihn noch nicht. Er kann noch landen, deshalb wurde nichts ein zweites Mal geschickt. Öffne unten dein Konto und schau nach, oder frag Monad noch einmal.",
       "sendCancelled": "Du hast die Bestätigung geschlossen, es wurde nichts geschickt.",
       "sendFailed": "Dieser Schritt kam nicht durch. Die eigenen Worte des Netzes stehen unten. Versuch es gleich noch einmal.",
+      "digestMismatch": "Das Netz hat einen anderen Datensatz zurückgegeben als den auf dieser Seite, deshalb wurde nichts signiert. Versuch eine andere Netzwerk-Einstellung.",
+      "passkeyNotReady": "Diese Seite hat deinen Passkey noch nicht fertig von Monad gelesen. Warte einen Moment und versuch es noch einmal.",
       "unknown": "Etwas ging schief, bevor irgendetwas geschickt wurde. Die Meldung steht unten.",
       "fileMissing": "Wähl zuerst ein Bild.",
       "titleMissing": "Gib dem Bild zuerst einen Titel. Er geht in das Manifest.",
@@ -1005,7 +1014,12 @@
       "notEnough": "Das Konto konnte diese Transaktion nicht decken.",
       "declined": "Das Fenster wurde geschlossen, bevor die Transaktion hinausging. Es wurde nichts gesendet.",
       "confirmPending": "Es wurde angenommen und Monad zeigt es noch nicht. Es kann noch eintreffen, also darf es nicht erneut gesendet werden.",
+      "reverted": "Monad hat das in einen Block aufgenommen und es ist fehlgeschlagen, also wurde nichts geschrieben",
       "unknown": "Das ist nicht durchgegangen."
+    },
+    "actions": {
+      "recheck": "Monad noch einmal fragen",
+      "openAddress": "{wallet} auf MonadVision öffnen"
     }
   },
   "notFound": {

@@ -203,6 +203,13 @@ describe("every failure the panel can print", () => {
     expect(markup).toContain("Ask Monad again");
     expect(markup).toContain('data-tone="pending"');
   });
+
+  it("says a mined revert wrote nothing, in its own sentence", () => {
+    const markup = panel(flag({}, { failure: { key: "reverted", reason: "AlreadyDisputed()", next: "again" } }));
+    expect(markup).toContain("Monad mined this and it reverted, so nothing was written");
+    expect(markup).toContain("AlreadyDisputed()");
+    expect(markup).not.toContain("The challenge did not go out");
+  });
 });
 
 describe("the receipt once the challenge is on chain", () => {
@@ -305,15 +312,16 @@ describe("a flag that is out and has not been shown", () => {
     expect(buttonFor(ready, "Flag with 1 MON")).not.toContain('disabled=""');
   });
 
-  it("marks the send step as neither done nor failed", () => {
+  it("marks the send step as neither done nor failed, and says it went out", () => {
     const markup = panel(flag({}, out));
     expect(markup).toContain('data-step="send" data-tone="unconfirmed"');
-    expect(markup).toContain("Monad has not shown it");
+    expect(markup).toContain("Sent, and Monad has not shown it yet");
   });
 
   it("offers the account to look in, and no receipt for a hash nobody has confirmed", () => {
     const markup = panel(flag({}, out));
     expect(markup).toContain(`/address/${STRANGER}`);
+    expect(markup).toContain("on MonadVision");
     expect(markup).not.toContain(`/tx/${SENT}`);
   });
 });
@@ -329,6 +337,14 @@ describe("a settle that is out and has not been shown", () => {
     expect(markup).toContain("Ask Monad again");
     expect(markup).toContain('data-tone="pending"');
     expect(markup).toContain(`/address/${RESOLVER}`);
+    expect(markup).toContain("on MonadVision");
+  });
+
+  it("says a settle that reverted wrote nothing", () => {
+    const markup = console_(desk({ failure: { key: "reverted", reason: "NoOpenDispute()", next: "again" } }), [row()]);
+
+    expect(markup).toContain("Monad mined this and it reverted, so nothing was written");
+    expect(markup).not.toContain("That did not go through");
   });
 
   it("locks the other rows too, because one unconfirmed write locks the desk", () => {

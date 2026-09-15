@@ -49,10 +49,6 @@ export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes
 /** The one thing that went wrong, wherever on this page it happened. */
 function FailureLine({ desk }: { desk: ResolveDisputes }) {
   const t = useTranslations("resolve");
-  // The passport panel and the studio both say these two already, and one
-  // wording for "ask Monad again" beats three.
-  const shared = useTranslations("passport.dispute.flag");
-  const studio = useTranslations("studio");
   const failure = desk.failure;
   if (failure === null) {
     return null;
@@ -86,7 +82,7 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
           rel="noreferrer"
           className="mt-4 block font-mono text-[11px] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
         >
-          {studio("actions.openAddress", { wallet: shortHex(failure.address) })}
+          {t("actions.openAddress", { wallet: shortHex(failure.address) })}
         </a>
       )}
 
@@ -98,7 +94,7 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
           onClick={() => void desk.actions.recheck()}
           className="mt-4 block rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
         >
-          {shared("actions.recheck")}
+          {t("actions.recheck")}
         </button>
       )}
     </motion.div>
