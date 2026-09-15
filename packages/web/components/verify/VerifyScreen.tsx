@@ -26,10 +26,27 @@ const ACCEPT = "image/jpeg,image/png,image/webp";
 export function VerifyScreen() {
   const t = useTranslations("verify");
   const input = useRef<HTMLInputElement>(null);
+  const card = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [over, setOver] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
   const busy = stage.kind === "checking";
+  const landed = stage.kind === "answer" || stage.kind === "problem";
+
+  // On a phone the answer lands a screen and a half below the picture, where
+  // nobody scrolled to look for it. It is brought up to meet the reader. On a
+  // wide screen the card is already beside the picture, so nothing moves.
+  useEffect(() => {
+    const node = card.current;
+    if (!landed || node === null) {
+      return;
+    }
+    const box = node.getBoundingClientRect();
+    if (box.top >= 0 && box.bottom <= window.innerHeight) {
+      return;
+    }
+    node.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [landed]);
 
   // The chosen picture is drawn from the file itself, so nothing is uploaded to
   // preview it. The URL is handed back to the browser when the file changes.
@@ -142,6 +159,28 @@ export function VerifyScreen() {
             )}
           </div>
 
+          {/* The verdict, under the picture it is about. The card below carries
+              the working: the confidence, the two distances and what was
+              measured. This line is the answer a reader came for, in the same
+              words the passport page's drop panel uses. */}
+          {stage.kind === "answer" ? (
+            <motion.p
+              data-verdict-line
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              className={`mt-6 max-w-[34ch] font-display text-[clamp(1.4rem,3vw,2.1rem)] font-semibold leading-[1.05] tracking-[-0.035em] ${
+                stage.answer.kind === "miss" ? "text-failed" : "text-verified"
+              }`}
+            >
+              {stage.answer.kind === "miss"
+                ? t("none")
+                : stage.answer.kind === "exact"
+                  ? t("verdictExact", { title: stage.passport?.title ?? t("untitled") })
+                  : t("verdict", { title: stage.passport?.title ?? t("untitled") })}
+            </motion.p>
+          ) : null}
+
           <div className="mt-8 flex flex-wrap items-center gap-4">
             {file === null ? null : (
               <button
@@ -160,10 +199,12 @@ export function VerifyScreen() {
         </motion.section>
 
         <motion.div
+          ref={card}
+          data-answer-card
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="lg:sticky lg:top-28 lg:self-start"
+          className="scroll-mt-24 lg:sticky lg:top-28 lg:self-start"
         >
           <AnswerCard stage={stage} />
         </motion.div>

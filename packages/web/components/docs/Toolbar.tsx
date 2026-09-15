@@ -103,14 +103,14 @@ function ContentsDrawer({ nav, open, onClose }: { nav: NavEntry[]; open: boolean
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-            className="relative h-full w-[19rem] max-w-[86vw] overflow-y-auto border-r border-line-strong bg-bg-raised px-5 py-6"
+            className="docs-drawer relative h-full w-[19rem] max-w-[86vw] overflow-y-auto border-r border-line-strong bg-bg-raised px-5 py-6"
           >
             <div className="mb-5 flex items-center justify-between">
               <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint">{t("home")}</span>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-[8px] border border-line px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+                className="tap rounded-[8px] border border-line px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
               >
                 {t("close")}
               </button>

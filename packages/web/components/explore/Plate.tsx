@@ -65,10 +65,16 @@ export function Plate({ plate }: { plate: ExplorePlate }) {
       </span>
 
       <span className="pointer-events-none absolute inset-x-0 bottom-0 p-3 pt-8 sm:p-4">
-        <span className="block truncate font-display text-[0.95rem] font-semibold leading-tight tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent sm:text-[1.05rem]">
+        {/* Two lines, not one with a tail of dots. At 375 px a plate is 166 px
+            wide and almost every real title was cut: "Monsoon Fishing Nets
+            Drying" arrived as "Monsoon Fishing N...". */}
+        <span className="line-clamp-2 block font-display text-[0.95rem] font-semibold leading-tight tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent sm:text-[1.05rem]">
           {plate.title ?? t("untitled")}
         </span>
-        <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[9px] uppercase tracking-[0.16em] text-text-faint">
+        {/* The id and the date are the two things a reader checks a plate by, so
+            they are read at 11 px in muted ink rather than 9 px in the faintest,
+            which measured 3.4:1 on the light theme. */}
+        <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
           <span>{shortHex(plate.id, 6, 4)}</span>
           <span aria-hidden className="h-[8px] w-px bg-line-strong" />
           <span>{format.dateTime(new Date(plate.registeredAt * 1000), { dateStyle: "medium" })}</span>

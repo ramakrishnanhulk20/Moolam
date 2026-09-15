@@ -100,9 +100,12 @@ function World({
   const field = useField(plateCount, pictures, spread);
 
   // The panels pinned over the scene sit outside this element, so they need a
-  // handle on it to pass a wheel or a drag back to the story.
+  // handle on it to pass a wheel or a drag back to the story. The attribute is
+  // what the overscroll rule in globals.css hangs on, and what a measurement
+  // from outside the page can find the scroller by.
   useEffect(() => {
     scroller.el = scroll.el;
+    scroll.el.setAttribute("data-story-scroller", "true");
     return () => {
       scroller.el = null;
     };
@@ -189,6 +192,44 @@ function World({
       />
     </>
   );
+}
+
+/**
+ * How much of the pinned screen the shot takes on a phone. The words own the
+ * rest, and .story-lower in globals.css starts at exactly this fraction.
+ */
+const PHONE_BAND = 0.45;
+
+/**
+ * Keeps the shot in the top band of the window on a phone.
+ *
+ * The canvas fills the whole screen so the scroller built on it does too, which
+ * is what gives a drag over the words the browser's own momentum. The renderer
+ * is then told to draw into the band alone, with the band's own aspect, so the
+ * picture is the same pixels it was when the canvas itself was the band. Below
+ * the band nothing is drawn and the page's black shows through.
+ *
+ * It is set every frame rather than on a resize because a step in the adaptive
+ * tier resizes the drawing buffer, and that hands the viewport back to the whole
+ * canvas.
+ */
+function Band({ fraction }: { fraction: number }) {
+  useFrame(({ gl, camera, size }) => {
+    if (fraction >= 1) {
+      return;
+    }
+    const height = Math.round(size.height * fraction);
+    gl.setViewport(0, size.height - height, size.width, height);
+
+    const lens = camera as THREE.PerspectiveCamera;
+    const aspect = size.width / height;
+    if (lens.aspect !== aspect) {
+      lens.aspect = aspect;
+      lens.updateProjectionMatrix();
+    }
+  });
+
+  return null;
 }
 
 /** Whether this browser can open a WebGL context at all, asked before the canvas exists. */
@@ -446,7 +487,11 @@ export function LandingStory({ data }: { data: StoryData }) {
             dpr={dpr}
             gl={{ antialias: true, powerPreference: "high-performance" }}
           >
-            <ScrollControls pages={PAGES} damping={0.22}>
+            {/* The scroller is as tall as the canvas, which on a phone is now
+                the whole screen rather than the shot. Handing the pages that
+                same fraction back keeps a phone's thumb travel per beat exactly
+                what it was when the scroller was the band. */}
+            <ScrollControls pages={PAGES} distance={small ? PHONE_BAND : 1} damping={0.22}>
               <World
                 data={data}
                 pictures={pictures}
@@ -461,6 +506,7 @@ export function LandingStory({ data }: { data: StoryData }) {
                 onTier={onTier}
               />
             </ScrollControls>
+            <Band fraction={small ? PHONE_BAND : 1} />
             <AdaptiveDpr pixelated />
             <Preload all />
           </Canvas>

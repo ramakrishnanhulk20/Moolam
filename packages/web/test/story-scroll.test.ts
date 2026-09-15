@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { forwardTouchMove, forwardTouchStart, forwardWheel, scroller } from "@/components/story/signals";
 
 /**
- * The film is pinned: the scene's own scroll element is only as big as the shot,
- * which on a phone is the top 45 percent of the window. Every gesture below that
- * band has to be carried to it, and a gesture the browser is already scrolling
- * with must not be carried twice.
+ * The film is pinned, and its scroller now covers the whole pinned screen, so
+ * the browser scrolls the story itself wherever a thumb or a wheel lands on it.
+ * Two panels still sit above that scroller and take their own taps, the drop
+ * panel and the closing card, and a gesture on one of those has to be carried
+ * to the story. A gesture the browser is already scrolling with must not be
+ * carried twice.
  */
 
-const inside = { name: "a node inside the shot" } as unknown as Node;
-const outside = { name: "a caption below the shot" } as unknown as Node;
+const inside = { name: "a node inside the story's own scroller" } as unknown as Node;
+const outside = { name: "a node on a panel above it" } as unknown as Node;
 
 let el: { scrollTop: number; contains: (node: Node) => boolean };
 
@@ -23,17 +25,17 @@ beforeEach(() => {
 });
 
 describe("the pinned film hands its gestures to the story", () => {
-  it("moves the story when the wheel turns over the captions", () => {
+  it("moves the story when the wheel turns over a panel above it", () => {
     forwardWheel({ deltaY: 120, target: outside });
     expect(el.scrollTop).toBe(120);
   });
 
-  it("leaves a wheel over the shot alone, which the browser is already scrolling", () => {
+  it("leaves a wheel over the story's own scroller alone, which the browser is already scrolling", () => {
     forwardWheel({ deltaY: 120, target: inside });
     expect(el.scrollTop).toBe(0);
   });
 
-  it("moves the story by the distance a thumb drags over the captions", () => {
+  it("moves the story by the distance a thumb drags over a panel above it", () => {
     forwardTouchStart(touch(600, outside));
     forwardTouchMove(touch(350, outside));
     forwardTouchMove(touch(100, outside));
@@ -47,7 +49,7 @@ describe("the pinned film hands its gestures to the story", () => {
     expect(el.scrollTop).toBe(600);
   });
 
-  it("leaves a drag that began on the shot alone", () => {
+  it("leaves a drag that began on the story's own scroller alone", () => {
     forwardTouchStart(touch(200, inside));
     forwardTouchMove(touch(100, inside));
     expect(el.scrollTop).toBe(0);

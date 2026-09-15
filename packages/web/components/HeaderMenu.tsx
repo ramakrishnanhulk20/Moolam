@@ -101,7 +101,7 @@ export function HeaderMenu({ links }: { links: MenuLink[] }) {
         aria-controls="header-menu"
         aria-label={open ? t("menuClose") : t("menu")}
         onClick={() => setOpen(!open)}
-        className={`flex items-center gap-2.5 rounded-[8px] border px-3 py-2 text-[11px] uppercase tracking-[0.2em] transition-colors duration-200 ${
+        className={`tap flex items-center gap-2.5 rounded-[8px] border px-3 py-2 text-[11px] uppercase tracking-[0.2em] transition-colors duration-200 ${
           open ? "border-accent text-accent" : "border-line text-text-muted"
         }`}
       >
@@ -146,7 +146,9 @@ export function HeaderMenu({ links }: { links: MenuLink[] }) {
               ))}
             </nav>
 
-            <div className="mt-6 flex items-center gap-2">
+            {/* Both chips are drawn small on purpose and both are grown to a
+                44 px target by the tap-row rule in globals.css. */}
+            <div className="tap-row mt-6 flex items-center gap-2">
               <LocaleSwitch />
               <ThemeToggle />
             </div>

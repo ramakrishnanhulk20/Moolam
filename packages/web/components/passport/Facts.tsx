@@ -60,7 +60,7 @@ export async function Facts({
           <div>
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("creator")}</dt>
             <dd className="mt-2">
-              <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span className="tap-row flex flex-wrap items-center gap-x-3 gap-y-2">
                 <a
                   href={`${MONAD_EXPLORER}/address/${passport.creator}`}
                   target="_blank"
@@ -83,7 +83,7 @@ export async function Facts({
               {owner === null ? (
                 <span className="font-mono text-base">{common("unknown")}</span>
               ) : (
-                <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <span className="tap-row flex flex-wrap items-center gap-x-3 gap-y-2">
                   <a
                     href={`${MONAD_EXPLORER}/address/${owner}`}
                     target="_blank"
@@ -106,7 +106,7 @@ export async function Facts({
               ) : (
                 <Link
                   href={`/agent/${passport.generatorAgentId.toString()}`}
-                  className="font-mono text-base text-accent underline decoration-accent/40 underline-offset-4 transition-colors duration-200 hover:decoration-accent"
+                  className="tap font-mono text-base text-accent underline decoration-accent/40 underline-offset-4 transition-colors duration-200 hover:decoration-accent"
                 >
                   {t("agentNumber", { id: passport.generatorAgentId.toString() })}
                 </Link>
@@ -171,7 +171,7 @@ export async function Facts({
           />
           <div>
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("metadata")}</dt>
-            <dd className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <dd className="tap-row mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
               <a
                 href={gatewayUrl(passport.metadataURI)}
                 target="_blank"
@@ -202,7 +202,7 @@ function Elsewhere({ href, label, detail }: { href: string; label: string; detai
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="group flex items-center gap-3 rounded-[8px] border border-line bg-bg-raised px-4 py-3 transition-colors duration-200 hover:border-accent"
+        className="tap group flex items-center gap-3 rounded-[8px] border border-line bg-bg-raised px-4 py-3 transition-colors duration-200 hover:border-accent"
       >
         <span className="motif h-[8px] w-[8px] opacity-60 transition-opacity duration-200 group-hover:opacity-100" />
         <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text transition-colors duration-200 group-hover:text-accent">
@@ -218,7 +218,7 @@ function Hash({ label, value, note }: { label: string; value: string; note?: str
   return (
     <div>
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
-      <dd className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+      <dd className="tap-row mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
         <Mono value={value} className="min-w-0 text-xs leading-relaxed text-text" />
         <CopyButton value={value} />
       </dd>

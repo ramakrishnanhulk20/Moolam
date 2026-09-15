@@ -112,6 +112,13 @@ export default async function LocaleLayout({
                           data-lockup="dark"
                           className="hidden dark:block [body:has([data-story])_&]:block"
                         />
+                        {/* Only one of the two lockups is ever painted, and the
+                            server cannot know which: the theme is a class the
+                            browser puts on. So the high priority goes to the
+                            dark one, which is the default theme and the one
+                            every story page uses. This one still loads with the
+                            document, it just no longer competes with the
+                            picture the first screen is actually waiting on. */}
                         <Image
                           src="/brand/seal-o/lockup-horizontal-light.svg"
                           alt={t("brand")}
@@ -119,7 +126,6 @@ export default async function LocaleLayout({
                           height={63}
                           unoptimized
                           loading="eager"
-                          fetchPriority="high"
                           data-lockup="light"
                           className="block dark:hidden [body:has([data-story])_&]:hidden"
                         />

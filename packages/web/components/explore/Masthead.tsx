@@ -43,7 +43,7 @@ export async function Masthead({
         {t("rail")}
       </span>
 
-      <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-end">
+      <div className="grid gap-x-16 gap-y-7 sm:gap-y-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-end">
         <div className="max-w-[54ch]">
           <p className="rise flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
             <span className="motif h-[10px] w-[10px]" />
@@ -51,14 +51,14 @@ export async function Masthead({
           </p>
 
           <h1
-            className={`rise mt-6 max-w-[11ch] font-display text-[clamp(2.6rem,8.5vw,6.5rem)] font-semibold uppercase tracking-[-0.035em] ${leading}`}
+            className={`rise mt-4 max-w-[11ch] font-display text-[clamp(2.4rem,8.5vw,6.5rem)] font-semibold uppercase tracking-[-0.035em] sm:mt-6 ${leading}`}
             style={{ animationDelay: "60ms" }}
           >
             {t("title")}
           </h1>
 
           <p
-            className="rise mt-7 max-w-[52ch] text-base leading-relaxed text-text-muted sm:text-lg"
+            className="rise mt-5 max-w-[52ch] text-base leading-relaxed text-text-muted sm:mt-7 sm:text-lg"
             style={{ animationDelay: "120ms" }}
           >
             {t("lede")}
@@ -67,14 +67,14 @@ export async function Masthead({
 
         {countsError !== null || counts === null ? (
           <p
-            className="rise max-w-[40ch] border-t border-line pt-6 text-sm leading-relaxed text-failed lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
+            className="rise max-w-[40ch] border-t border-line pt-5 text-sm leading-relaxed text-failed sm:pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
             style={{ animationDelay: "180ms" }}
           >
             {t("countsError", { reason: countsError ?? t("countsMissing") })}
           </p>
         ) : (
           <div
-            className="rise border-t border-line pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
+            className="rise border-t border-line pt-5 sm:pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
             style={{ animationDelay: "180ms" }}
           >
             <dl className="grid grid-cols-3 gap-x-6 gap-y-2">
@@ -84,7 +84,7 @@ export async function Masthead({
             </dl>
 
             {split === null ? null : (
-              <p className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
+              <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5">
                 <span className="text-accent">{t("split.real", { count: split.real })}</span>
                 <span aria-hidden className="h-[9px] w-px bg-line-strong" />
                 <span>
@@ -98,7 +98,7 @@ export async function Masthead({
         )}
       </div>
 
-      <p className="mt-10 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+      <p className="mt-6 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint sm:mt-10">
         <span aria-hidden className="h-px w-8 bg-line-strong" />
         {isMixedView(view) ? t("sortRule") : t("sortNewest")}
       </p>
@@ -116,7 +116,7 @@ function Count({ label, value, lead, capped }: { label: string; value: number; l
       >
         {capped === true ? `${value}+` : value}
       </dd>
-      <dt className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">{label}</dt>
+      <dt className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-3">{label}</dt>
     </div>
   );
 }

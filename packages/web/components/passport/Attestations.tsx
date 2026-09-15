@@ -94,7 +94,10 @@ async function Row({
         <Field label={t("receiver")} value={shortHex(attestation.receiver)} href={`${MONAD_EXPLORER}/address/${attestation.receiver}`} />
       </dl>
 
-      <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2">
+      {/* When this row wraps, which it does on a phone, the two links need
+          enough air between them that their 44 px targets do not overlap and
+          take each other's taps. */}
+      <div className="tap-row mt-6 flex flex-wrap items-center gap-x-6 gap-y-5">
         {txHash === undefined ? (
           <p className="font-mono text-[11px] text-text-faint">{t("noTransaction")}</p>
         ) : (
@@ -120,17 +123,32 @@ async function Row({
       </div>
 
       <p className="mt-6 font-mono text-[11px] text-text-faint">
-        {t("recomputed")} <Mono value={attestation.recomputed} />
+        {t("recomputed")} <Mono value={phashOf(attestation.recomputed)} />
       </p>
     </li>
   );
+}
+
+/**
+ * The pHash a re-check wrote, in the sixteen characters it actually has.
+ *
+ * The registry keeps it in a bytes32 field, so what comes back carries forty
+ * eight leading zeros that are the slot's padding and not part of the
+ * fingerprint. Anything in those upper bytes is not a padded pHash at all, so
+ * that value is shown whole rather than cut.
+ *
+ * Exported for the test.
+ */
+export function phashOf(recomputed: string): string {
+  const body = recomputed.replace(/^0x/, "");
+  return body.length === 64 && /^0{48}/.test(body) ? `0x${body.slice(48)}` : recomputed;
 }
 
 function Field({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
-      <dd className="mt-1.5 break-all font-mono text-sm">
+      <dd className="tap-row mt-1.5 break-all font-mono text-sm">
         {href === undefined ? (
           value
         ) : (

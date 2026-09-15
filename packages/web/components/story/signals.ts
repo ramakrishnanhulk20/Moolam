@@ -49,12 +49,12 @@ function alreadyScrolling(target: EventTarget | null): boolean {
 /**
  * Hands a gesture over the pinned film back to the story's own scroller.
  *
- * The scene's scroll element is only as big as the shot, which on a phone is
- * the top 45 percent of the window. Everything below it, the captions, the drop
- * panel and the closing card, reaches no scrollable element at all, so the
- * story stops moving under the reader's thumb. These pass the movement on, and
- * they sit on the film wrapper so every part of the pinned screen carries the
- * story, not just the picture band.
+ * The scroller covers the whole pinned screen, and the captions over it let a
+ * touch through, so most of the film is scrolled by the browser itself. Two
+ * panels take their own taps though, the drop panel and the closing card, and a
+ * gesture that starts on one of those reaches no scrollable element at all.
+ * These pass the movement on, from the film wrapper, so every part of the
+ * pinned screen carries the story.
  */
 export function forwardWheel(event: { deltaY: number; target: EventTarget | null }) {
   if (scroller.el !== null && !alreadyScrolling(event.target)) {

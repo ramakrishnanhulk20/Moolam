@@ -183,7 +183,10 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
         {same ? (answer.kind === "exact" ? t("sameExact") : t("same")) : t("different")}
       </p>
 
-      <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4">
+      {/* Two columns of readings need about 150 px each before a value starts
+          breaking up. Under 420 px they get the whole width, one under the
+          other. */}
+      <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 min-[420px]:grid-cols-2">
         <Small label={v("confidence")} value={`${percent(answer.confidence)}%`} />
         <Small label={v("variant")} value={v(`orientation.${answer.variant}`)} />
         <Small label={v("phashDistance")} value={v("bits", { count: answer.phashDistance, of: 64 })} />
@@ -205,10 +208,15 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
 }
 
 function Small({ label, value }: { label: string; value: string }) {
+  // break-all is for a hex value with no break points in it. A reading that is
+  // a sentence, "0 of 64 bits apart", has spaces to break at, and break-all cut
+  // it mid word: "bits ap / art".
+  const wrap = /\s/.test(value) ? "break-words" : "break-all";
+
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
-      <dd className="mt-1 break-all font-mono text-sm">{value}</dd>
+      <dd className={`mt-1 font-mono text-sm ${wrap}`}>{value}</dd>
     </div>
   );
 }

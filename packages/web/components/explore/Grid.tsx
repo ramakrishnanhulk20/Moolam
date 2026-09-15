@@ -60,7 +60,7 @@ export function Grid({
 
   return (
     <>
-      <ul className="mt-10 grid grid-cols-2 gap-px border border-line bg-line sm:grid-cols-3 xl:grid-cols-4">
+      <ul className="mt-6 grid grid-cols-2 gap-px border border-line bg-line sm:mt-10 sm:grid-cols-3 xl:grid-cols-4">
         {plates.map((plate, index) => (
           <motion.li
             key={plate.id}

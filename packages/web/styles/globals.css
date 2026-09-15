@@ -89,6 +89,14 @@
 
 html {
   background: var(--bg);
+  /* The browser's own furniture, its scrollbars and form controls, follows the
+     theme class rather than a dark scheme pinned on the document. Before that
+     class lands, and for a visitor who has chosen nothing, the phone's own
+     light or dark setting decides. */
+  color-scheme: light dark;
+}
+
+.dark {
   color-scheme: dark;
 }
 
@@ -214,6 +222,35 @@ body {
   animation: rise 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* A thumb needs 44 px of anything to land on, and a good deal of this site is
+   drawn in 10 px mono on purpose: a copy button, a chip, a hash link. These keep
+   the ink exactly the size the design wants and hang an invisible 44 px pad off
+   the control instead. The pad is a pseudo element, so it takes no room in the
+   layout and moves nothing on the page.
+
+   .tap is for a control this app renders itself. .tap-row is for a row that
+   holds one: every link and button inside it is grown, which is how the copy
+   button, a shared component, gets its pad without every caller passing a prop.
+   The footer's links are grown here for the same reason. */
+.tap,
+.tap-row a,
+.tap-row button,
+footer a {
+  position: relative;
+}
+
+.tap::after,
+.tap-row a::after,
+.tap-row button::after,
+footer a::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
 /* The repeated mark: a filled square with a hollow square inset in it, the seal.
    A real element rather than a square glyph, because a glyph square changes size
    and baseline with every face. The same shape is the favicon and the social card. */
@@ -242,7 +279,10 @@ body {
   --line-strong: rgb(255 255 255 / 0.26);
   --text: #f5f3ef;
   --text-muted: rgb(245 243 239 / 0.6);
-  --text-faint: rgb(245 243 239 / 0.46);
+  /* The faintest ink in the film carries real sentences: the provenance line
+     under the ladder, the counts on the closing card. At 0.46 it measured
+     4.28:1 on the film's black, under the 4.5:1 bar. */
+  --text-faint: rgb(245 243 239 / 0.52);
 
   --accent: #ffb7c5;
   --accent-ink: #0b0b0c;
@@ -331,12 +371,17 @@ html:not(.light) body:has([data-story="still"]) .app-header {
    bottom, so a caption, the drop panel and the close card can never sit over the
    picture. That was the one thing a judge could not use at 375 px. From 640 px
    up the shot goes full bleed again and the words sit in the side columns the
-   scrim darkens, which is the frame Ram approved. */
+   scrim darkens, which is the frame Ram approved.
+
+   The canvas fills the whole pinned screen in both framings. The scroller the
+   scene builds is the size of the canvas, and it has to reach under the words
+   for a drag there to carry the story with the browser's own momentum. On a
+   phone the renderer draws into the top 45 percent of it and leaves the rest to
+   the page's own black: the Band component in LandingStory.tsx holds the same
+   45 percent that .story-lower starts at below. */
 .story-stage {
   position: absolute;
-  inset-inline: 0;
-  top: 0;
-  height: 45svh;
+  inset: 0;
 }
 
 .story-lower {
@@ -351,17 +396,22 @@ html:not(.light) body:has([data-story="still"]) .app-header {
 }
 
 @media (min-width: 640px) {
-  .story-stage {
-    height: auto;
-    bottom: 0;
-  }
-
   .story-lower {
     inset: 0;
     align-items: center;
     padding-top: var(--header-h);
     padding-bottom: 0;
   }
+}
+
+/* A downward drag at the top of the story is a drag at the top of its own
+   scroller, and without this the overscroll chains on to the document, where
+   Android answers it by reloading the page mid film. Both elements carry it:
+   the scroller is the one the thumb moves, and the film around it is a scroll
+   container too, so it is the next link in that chain. */
+[data-story="film"],
+[data-story-scroller] {
+  overscroll-behavior-y: contain;
 }
 
 /* The closing card is the last thing the film shows, and nothing follows it: the
@@ -483,6 +533,17 @@ body:has([data-story="film"]):not([data-story-end]) footer {
 
 .docs-tree {
   font-size: 13px;
+}
+
+/* The same tree, read with a thumb. In the phone drawer every row is a real
+   44 px target: the list has the whole window there, so the rows can have the
+   height rather than an invisible pad, and the pinned sidebar on a wide screen
+   keeps its tighter rhythm. */
+.docs-drawer .docs-tree a,
+.docs-drawer .docs-tree button {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .docs-prose {

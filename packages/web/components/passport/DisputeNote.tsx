@@ -61,7 +61,7 @@ export async function DisputeNote({
       ) : null}
 
       {evidence !== null && evidence.reason === null && evidence.uri !== null ? (
-        <p className="mt-7 max-w-[58ch] text-sm leading-relaxed text-text-muted">
+        <p className="tap-row mt-7 max-w-[58ch] text-sm leading-relaxed text-text-muted">
           {t("evidenceElsewhere")}{" "}
           <a
             href={evidence.uri}
@@ -77,7 +77,7 @@ export async function DisputeNote({
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("challenger")}</dt>
-          <dd className="mt-1.5 break-all font-mono text-sm">
+          <dd className="tap-row mt-1.5 break-all font-mono text-sm">
             <a
               href={`${MONAD_EXPLORER}/address/${dispute.challenger}`}
               target="_blank"
@@ -100,7 +100,7 @@ export async function DisputeNote({
         </div>
       </dl>
 
-      <p className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-relaxed">
+      <p className="tap-row mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-relaxed">
         <span aria-hidden className={dispute.status === DisputeStatus.Open ? "h-2 w-2 animate-pulse bg-failed" : "h-2 w-2 bg-failed"} />
         <span className={dispute.status === DisputeStatus.Open ? "text-text-muted" : "text-text"}>
           {dispute.status === DisputeStatus.Open ? t("waiting") : t(`outcome.${status}`)}
