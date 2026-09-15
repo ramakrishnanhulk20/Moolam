@@ -1,5 +1,10 @@
+// The card is drawn by satori, which knows img and nothing else. next/image
+// cannot be used inside an ImageResponse, so the rule that asks for it is off
+// for this file only.
+/* eslint-disable @next/next/no-img-element */
 import { readFile } from "node:fs/promises";
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { ImageResponse } from "next/og";
 import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
@@ -163,12 +168,30 @@ const wordmark: Promise<string | null> = readFile(
  * accepted, so anything else is treated as a picture that did not arrive and the
  * card falls back to the seal rather than drawing an empty rectangle.
  */
-async function picture(art: Art): Promise<string | null> {
+async function picture(id: Hex, art: Art): Promise<string | null> {
   const url = art.thumbnailUrl ?? art.imageUrl;
   if (url === undefined || !url.startsWith("http")) {
     return null;
   }
 
+  return await heldPicture(id, url);
+}
+
+/**
+ * The drawn bytes, held for a day under the passport's own id.
+ *
+ * A link that spreads is unfurled by every chat app that sees it, and each
+ * unfurl used to be one more read of the IPFS gateway for the same picture of
+ * the same record. The picture is content addressed and the record cannot grow
+ * a different one, so a day is safe.
+ */
+// The id is in the signature because unstable_cache keys on the arguments: it
+// is what makes one held answer per passport rather than one for the route.
+const heldPicture = unstable_cache(async (id: Hex, url: string) => await fetchPicture(url), ["moolam-card-picture"], {
+  revalidate: 86_400,
+});
+
+async function fetchPicture(url: string): Promise<string | null> {
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), cache: "no-store" });
     if (!response.ok) {
@@ -233,7 +256,7 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
     const short = shortHex(passport.id, 10, 8);
 
     const [still, mark, word, heavy, plain] = await Promise.all([
-      picture(art),
+      picture(passport.id, art),
       seal,
       wordmark,
       face("Archivo", 700, title),

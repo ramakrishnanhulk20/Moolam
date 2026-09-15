@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { probe, progress, resetProbe, type ProbeState } from "@/components/story/signals";
+import { Picture } from "@/components/passport/Picture";
+import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { checkImage } from "@/lib/upload/checkImage";
@@ -229,15 +231,17 @@ export function TryPanel({
                       className="group block w-full overflow-hidden border border-line transition-colors duration-200 hover:border-accent focus-visible:border-accent"
                     >
                       <span className="sr-only">{shortHex(sample.id, 10, 8)}</span>
-                      {/* Registered images, served by the gateway their own passports point
-                          at, which is not a host a Next loader can be configured for. */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={sample.url}
-                        alt=""
-                        loading="lazy"
-                        className="aspect-[4/3] w-full object-cover opacity-80 transition duration-300 group-hover:scale-[1.06] group-hover:opacity-100"
-                      />
+                      {/* Registered images, read through the optimizer. The
+                          file itself is still fetched from the gateway when a
+                          reader picks one, because the verifier has to be
+                          handed the exact bytes that were registered. */}
+                      <span className="relative block aspect-[4/3] w-full overflow-hidden">
+                        <Picture
+                          sources={pictureSources(sample.url)}
+                          sizes="(min-width: 1024px) 8rem, 30vw"
+                          className="object-cover opacity-80 transition duration-300 group-hover:scale-[1.06] group-hover:opacity-100"
+                        />
+                      </span>
                     </button>
                   </li>
                 ))}

@@ -139,7 +139,10 @@ export function VerifyScreen() {
               </div>
             ) : (
               <div className="relative">
-                {/* The visitor's own file, drawn before it is sent anywhere. */}
+                {/* The visitor's own file, drawn before it is sent anywhere. It
+                    is a blob address in this browser, so there is nothing for
+                    the optimizer to fetch and no gateway read behind it. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={preview} alt="" className="max-h-[30rem] w-full object-cover" />
                 <div className="scrim pointer-events-none absolute inset-0" />
                 <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-5">

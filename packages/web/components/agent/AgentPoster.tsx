@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import type { Hex } from "viem";
+import { Picture } from "@/components/passport/Picture";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
+import { pictureSources } from "@/lib/images";
 import type { AgentCard } from "./card";
 import type { SignedWork } from "./signed";
 
@@ -21,7 +23,7 @@ export async function AgentPoster({
   works: SignedWork[];
 }) {
   const t = await getTranslations("agent");
-  const pictures = works.filter((work) => work.thumbnailUrl !== undefined);
+  const pictures = works.filter((work): work is SignedWork & { thumbnailUrl: string } => work.thumbnailUrl !== undefined);
   // The sheet is a fixed twelve cells so it fills the frame at any width. With
   // fewer pictures than cells the agent's own pictures come round again rather
   // than leaving holes in the wall.
@@ -39,8 +41,16 @@ export async function AgentPoster({
           className="absolute inset-0 grid auto-rows-fr grid-cols-3 grid-rows-4 opacity-45 sm:grid-cols-4 sm:grid-rows-3 lg:grid-cols-6 lg:grid-rows-2"
         >
           {tiles.map((work, cell) => (
-            // Pinned thumbnails of this agent's own passports, read through the gateway.
-            <img key={`${work.id}-${cell}`} src={work.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+            // Pinned thumbnails of this agent's own passports. The same few
+            // files fill twelve cells, and the optimizer serves all twelve from
+            // one read of the gateway.
+            <div key={`${work.id}-${cell}`} className="relative">
+              <Picture
+                sources={pictureSources(work.thumbnailUrl)}
+                sizes="(min-width: 1024px) 17vw, (min-width: 640px) 25vw, 34vw"
+                className="object-cover"
+              />
+            </div>
           ))}
         </div>
       )}

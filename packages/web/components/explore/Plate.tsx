@@ -1,7 +1,9 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { Picture } from "@/components/passport/Picture";
 import { shortHex } from "@/lib/chain/client";
+import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import { isTestCard, type ExplorePlate } from "./sort";
 
@@ -20,23 +22,29 @@ export function Plate({ plate }: { plate: ExplorePlate }) {
   const format = useFormatter();
   const test = isTestCard(plate.title);
 
+  const seal = (
+    <span className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center">
+      <span className="motif h-7 w-7 opacity-70 transition-opacity duration-500 group-hover:opacity-100" />
+      <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint">{t("noPicture")}</span>
+    </span>
+  );
+
   return (
     <Link
       href={`/passport/${plate.id}`}
       className="group relative block aspect-[4/5] min-w-0 overflow-hidden bg-bg-sunken outline-offset-[-2px]"
     >
       {plate.thumbnailUrl === null ? (
-        <span className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center">
-          <span className="motif h-7 w-7 opacity-70 transition-opacity duration-500 group-hover:opacity-100" />
-          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint">{t("noPicture")}</span>
-        </span>
+        seal
       ) : (
-        // The pinned thumbnail, the same file a verifier fetches when it re-checks this picture.
-        <img
-          src={plate.thumbnailUrl}
-          alt=""
-          loading="lazy"
-          className="absolute inset-0 h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07]"
+        // The pinned thumbnail, the same file a verifier fetches when it
+        // re-checks this picture, served through the optimizer so a grid of
+        // forty plates costs the gateway nothing after the first view.
+        <Picture
+          sources={pictureSources(plate.thumbnailUrl)}
+          sizes="(min-width: 1280px) 22vw, (min-width: 640px) 33vw, 50vw"
+          className="object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07]"
+          fallback={seal}
         />
       )}
 

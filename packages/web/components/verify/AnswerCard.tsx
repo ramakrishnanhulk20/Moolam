@@ -3,7 +3,9 @@
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { shortHex } from "@/lib/chain/client";
+import { pictureSources } from "@/lib/images";
 import { Mono } from "@/components/passport/Mono";
+import { Picture } from "@/components/passport/Picture";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { agentChipId, percent, type Answer, type Problem } from "./answer";
@@ -233,18 +235,28 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
   const format = useFormatter();
   const kinds = useTranslations("kind");
 
+  const seal = (
+    <span className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+      <span className="motif h-5 w-5" />
+      <span className="max-w-[28ch] px-6 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+        {t("noPicture")}
+      </span>
+    </span>
+  );
+
   return (
     <div className="grain relative aspect-[16/9] overflow-hidden border-b border-line bg-bg-sunken">
       {passport?.thumbnailUrl === undefined ? (
-        <span className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <span className="motif h-5 w-5" />
-          <span className="max-w-[28ch] px-6 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-            {t("noPicture")}
-          </span>
-        </span>
+        seal
       ) : (
-        // The pinned copy of the registered image, read back through the gateway.
-        <img src={passport.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+        // The pinned copy of the registered image, read back through the
+        // optimizer so a second look at the same record costs no gateway read.
+        <Picture
+          sources={pictureSources(passport.thumbnailUrl)}
+          sizes="(min-width: 1024px) 46vw, 100vw"
+          className="object-cover"
+          fallback={seal}
+        />
       )}
       <div className="scrim pointer-events-none absolute inset-0" />
 

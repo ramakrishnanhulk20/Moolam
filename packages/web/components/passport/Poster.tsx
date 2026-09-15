@@ -1,7 +1,9 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
+import { pictureSources } from "@/lib/images";
 import type { Art } from "./art";
+import { Picture } from "./Picture";
 
 /**
  * The passport as a poster: the registered picture full-bleed, the scrim over
@@ -26,19 +28,30 @@ export async function Poster({
   const kinds = await getTranslations("kind");
   const format = await getFormatter({ locale });
 
+  const seal = (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
+      <span className="motif h-8 w-8" />
+      <p className="max-w-[34ch] px-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
+        {t("noPicture")}
+      </p>
+    </div>
+  );
+
   return (
     <header className="grain relative h-[62vh] min-h-[26rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
       {art.imageUrl === undefined ? (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
-          <span className="motif h-8 w-8" />
-          <p className="max-w-[34ch] px-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-            {t("noPicture")}
-          </p>
-        </div>
+        seal
       ) : (
-        // The pinned image, read back through the gateway: the same file a
-        // verifier fetches when it re-checks this record.
-        <img src={art.imageUrl} alt="" className="h-full w-full object-cover" />
+        // The full pinned image, the same file a verifier fetches when it
+        // re-checks this record. This is the one screen that draws it at full
+        // size; every grid and every plate elsewhere uses the thumbnail.
+        <Picture
+          sources={pictureSources(art.imageUrl)}
+          sizes="100vw"
+          priority
+          className="object-cover"
+          fallback={seal}
+        />
       )}
       <div className="scrim pointer-events-none absolute inset-0" />
       <div

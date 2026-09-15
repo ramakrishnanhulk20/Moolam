@@ -1,5 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { Picture } from "@/components/passport/Picture";
 import { shortHex } from "@/lib/chain/client";
+import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import type { SignedWork } from "./signed";
 
@@ -48,12 +50,18 @@ export async function Works({
                       {t("noThumbnail")}
                     </span>
                   ) : (
-                    // The pinned thumbnail, the same file a verifier fetches when it re-checks this image.
-                    <img
-                      src={work.thumbnailUrl}
-                      alt=""
-                      loading="lazy"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    // The pinned thumbnail, the same file a verifier fetches
+                    // when it re-checks this image, served through the
+                    // optimizer so the gateway is read once per file.
+                    <Picture
+                      sources={pictureSources(work.thumbnailUrl)}
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                      fallback={
+                        <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                          {t("noThumbnail")}
+                        </span>
+                      }
                     />
                   )}
                   <div className="scrim pointer-events-none absolute inset-0" />

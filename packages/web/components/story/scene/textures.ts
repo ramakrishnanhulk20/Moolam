@@ -1,7 +1,13 @@
 import * as THREE from "three";
 import { ACCENT, ACCENT_LIFT, ACCENT_RGB } from "@/components/story/palette";
+import { optimizedUrl } from "@/lib/images";
 
 const cache = new Map<string, Promise<THREE.Texture>>();
+
+// A plate in the field is never more than a few hundred pixels on screen, and
+// three.js cannot use next/image, so the address is handed to the optimizer
+// itself. That is what keeps the film off the IPFS gateway on every view.
+const PLATE_WIDTH = 640;
 
 /**
  * Loads one picture as a texture, once per address.
@@ -21,7 +27,7 @@ export function loadTexture(url: string): Promise<THREE.Texture> {
     const loader = new THREE.TextureLoader();
     loader.setCrossOrigin("anonymous");
     loader.load(
-      url,
+      optimizedUrl(url, PLATE_WIDTH),
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.anisotropy = 4;
@@ -192,12 +198,14 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   }
   const work = new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
-    // The gateway answers with Access-Control-Allow-Origin *, which is what
-    // lets the canvas be read back after the picture is drawn into it.
+    // Read back out of a canvas after it is drawn, so the origin matters. The
+    // optimizer serves from this site's own origin, and the gateway behind it
+    // answers with Access-Control-Allow-Origin * for the pictures it serves
+    // straight.
     image.crossOrigin = "anonymous";
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error(`the gateway did not serve ${url}`));
-    image.src = url;
+    image.src = optimizedUrl(url, PLATE_WIDTH);
   });
   images.set(url, work);
   return work;

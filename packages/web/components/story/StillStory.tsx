@@ -3,6 +3,8 @@
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, type ReactNode } from "react";
 import type { StoryBeat } from "@/components/story/LandingStory";
+import { Picture } from "@/components/passport/Picture";
+import { pictureSources } from "@/lib/images";
 import { CloseCard } from "@/components/story/CloseCard";
 import { TryPanel, type TrySample } from "@/components/story/TryPanel";
 import { progress } from "@/components/story/signals";
@@ -135,10 +137,9 @@ function LadderDriver({ children }: { children: ReactNode }) {
 function Still({ src }: { src: string }) {
   return (
     <div className="scrim grain relative mt-8 aspect-[4/3] w-full max-w-[34rem] overflow-hidden border border-line">
-      {/* The registered image, served by the gateway its own passport points at,
-          which is not a host a loader can be configured for. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" className="h-full w-full object-cover" />
+      {/* The registered image, read through the optimizer: the gateway serves
+          this file once and every later view of the story is free. */}
+      <Picture sources={pictureSources(src)} sizes="(min-width: 768px) 34rem, 100vw" className="object-cover" />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { Body, Eyebrow, Title } from "@/components/story/LandingStory";
+import { Picture } from "@/components/passport/Picture";
+import { pictureSources } from "@/lib/images";
 import type { StoryData } from "@/components/story/data";
 
 type Treatment = "current" | "scrim" | "plate";
@@ -203,9 +205,9 @@ function Plates({
                 boxShadow: surface === "dark" ? "0 24px 60px rgb(0 0 0 / 0.45)" : "0 24px 60px rgb(11 11 12 / 0.18)",
               }}
             >
-              {/* Registered images, served by the gateway their own passports point at. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={picture} alt="" className="h-full w-full object-cover" />
+              {/* Registered images, read through the optimizer rather than
+                  from the gateway on every view. */}
+              <Picture sources={pictureSources(picture)} sizes="256px" className="object-cover" />
             </div>
           </motion.div>
         );
