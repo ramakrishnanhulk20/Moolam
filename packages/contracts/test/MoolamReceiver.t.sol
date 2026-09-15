@@ -172,6 +172,42 @@ contract MoolamReceiverTest is Test {
         assertEq(registry.attestationCount(passportId), 1);
     }
 
+    /// @dev The replay guard is per receiver: the executedAt floor lives in this contract's own
+    ///      storage and starts at zero, so a report this receiver has already used is refused here
+    ///      while the very same bytes still land on a receiver deployed later and listed after it.
+    ///      That is the replay window, and it is open from the moment a second receiver is listed
+    ///      until reports newer than the old ones are the only ones in flight. The operator control
+    ///      today is that listing a receiver takes the policy's 24 hour queue, so nobody adds a
+    ///      fresh door quietly. The remedy in receiver v2 is an executedAt floor set at deploy
+    ///      time, which makes every report older than the deployment stale on arrival.
+    function test_aUsedReportIsRefusedHereAndStillLandsOnAFreshReceiver() public {
+        bytes memory report = _report(passportId, true, 4, keccak256("recomputed"));
+
+        vm.prank(forwarder);
+        moolamReceiver.onReport(_metadata(), report);
+
+        vm.prank(forwarder);
+        vm.expectRevert(
+            abi.encodeWithSelector(MoolamReceiver.StaleReport.selector, passportId, EXECUTED_AT, EXECUTED_AT)
+        );
+        moolamReceiver.onReport(_metadata(), report);
+
+        MoolamReceiver secondReceiver = new MoolamReceiver(forwarder, address(registry));
+
+        vm.prank(owner);
+        bytes32 changeId = policy.queueAddReceiver(address(secondReceiver));
+        vm.warp(block.timestamp + policy.CHANGE_DELAY());
+        vm.prank(owner);
+        policy.execute(changeId);
+
+        vm.prank(forwarder);
+        secondReceiver.onReport(_metadata(), report);
+
+        assertEq(registry.attestationCount(passportId), 2);
+        assertEq(secondReceiver.lastExecutedAt(passportId), EXECUTED_AT);
+        assertEq(registry.getAttestations(passportId, 1, 1)[0].receiver, address(secondReceiver));
+    }
+
     function test_aReportBuiltForAnotherChainIsRefused() public {
         uint256 otherChain = block.chainid + 1;
 

@@ -9,7 +9,7 @@ import {
   passportId,
   passportIdFromTokenId,
 } from "./ids.js";
-import { treePosition } from "./tree.js";
+import { descendantsOf, treePosition } from "./tree.js";
 import { trustScore } from "./trust.js";
 
 const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
@@ -100,6 +100,10 @@ indexer.onEvent(
       registeredBlock: BigInt(event.block.number),
       txHash: event.transaction.hash,
       disputed: false,
+      // An original starts clean. An edit carries whatever its parent already
+      // carries, so one lookup is enough however long the chain is.
+      inheritedDisputed:
+        parent !== undefined && (parent.disputed || parent.inheritedDisputed),
       attestationCount: 0,
       matchedCount: 0,
       mismatchedCount: 0,
@@ -284,7 +288,21 @@ indexer.onEvent(
       return;
     }
 
-    context.Passport.set({ ...passport, disputed: true });
+    context.Passport.set({ ...passport, disputed: true, inheritedDisputed: true });
+
+    // The registry marks only the passport the challenge named. Every edit made
+    // from it is still a copy of a picture proven fake, so the mark travels down
+    // the tree here: one indexed query for the whole tree, then a walk down the
+    // parent links inside it.
+    const family = await context.Passport.getWhere({
+      root_id: { _eq: passport.root_id },
+    });
+    for (const descendant of descendantsOf(passport, family)) {
+      if (descendant.inheritedDisputed) {
+        continue;
+      }
+      context.Passport.set({ ...descendant, inheritedDisputed: true });
+    }
 
     if (passport.generator_id === undefined) {
       return;

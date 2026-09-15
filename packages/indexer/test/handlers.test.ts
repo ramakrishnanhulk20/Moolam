@@ -269,6 +269,123 @@ describe("Moolam indexer handlers", () => {
     expect(day.disputes).toBe(1);
   });
 
+  it("registers an original and a clean edit with no inherited dispute", async () => {
+    const indexer = createTestIndexer();
+    const root = hash(1);
+    const edit = hash(2);
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id: root, blockNumber: DEPLOY_BLOCK + 100 }),
+            registration({ id: edit, parentId: root, blockNumber: DEPLOY_BLOCK + 101 }),
+          ],
+        },
+      },
+    });
+
+    expect((await indexer.Passport.getOrThrow(root)).inheritedDisputed).toBe(false);
+    expect((await indexer.Passport.getOrThrow(edit)).inheritedDisputed).toBe(false);
+  });
+
+  it("gives an edit made after its parent lost a challenge the inherited mark", async () => {
+    const indexer = createTestIndexer();
+    const root = hash(1);
+    const edit = hash(2);
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id: root, blockNumber: DEPLOY_BLOCK + 100 }),
+            {
+              contract: "MoolamRegistry",
+              event: "PassportFlagged",
+              block: { number: DEPLOY_BLOCK + 101, timestamp: DAY_ONE },
+              transaction: { hash: hash(0xf1) },
+              params: {
+                passportId: root,
+                challenger: CHALLENGER,
+                bond: 1_000_000_000_000_000_000n,
+                evidenceHash: hash(0xf2),
+                evidenceURI: "ipfs://evidence",
+              },
+            },
+            {
+              contract: "MoolamRegistry",
+              event: "DisputeResolved",
+              block: { number: DEPLOY_BLOCK + 102, timestamp: DAY_ONE },
+              transaction: { hash: hash(0xf3) },
+              params: { passportId: root, upheld: true, resolver: RESOLVER },
+            },
+            registration({ id: edit, parentId: root, blockNumber: DEPLOY_BLOCK + 103 }),
+          ],
+        },
+      },
+    });
+
+    // The registry accepts this edit and stores it clean, because it only ever
+    // marks the passport a challenge named. The index is what carries the fact
+    // that the picture it was made from was proven fake.
+    const child = await indexer.Passport.getOrThrow(edit);
+    expect(child.disputed).toBe(false);
+    expect(child.inheritedDisputed).toBe(true);
+  });
+
+  it("marks every edit already made from a passport when its challenge is upheld", async () => {
+    const indexer = createTestIndexer();
+    const root = hash(1);
+    const branch = hash(2);
+    const grandchild = hash(3);
+    const sibling = hash(4);
+
+    await indexer.process({
+      chains: {
+        [CHAIN]: {
+          simulate: [
+            registration({ id: root, blockNumber: DEPLOY_BLOCK + 100 }),
+            registration({ id: branch, parentId: root, blockNumber: DEPLOY_BLOCK + 101 }),
+            registration({ id: grandchild, parentId: branch, blockNumber: DEPLOY_BLOCK + 102 }),
+            registration({ id: sibling, parentId: root, blockNumber: DEPLOY_BLOCK + 103 }),
+            {
+              contract: "MoolamRegistry",
+              event: "PassportFlagged",
+              block: { number: DEPLOY_BLOCK + 104, timestamp: DAY_ONE },
+              transaction: { hash: hash(0xf1) },
+              params: {
+                passportId: branch,
+                challenger: CHALLENGER,
+                bond: 1_000_000_000_000_000_000n,
+                evidenceHash: hash(0xf2),
+                evidenceURI: "ipfs://evidence",
+              },
+            },
+            {
+              contract: "MoolamRegistry",
+              event: "DisputeResolved",
+              block: { number: DEPLOY_BLOCK + 105, timestamp: DAY_ONE },
+              transaction: { hash: hash(0xf3) },
+              params: { passportId: branch, upheld: true, resolver: RESOLVER },
+            },
+          ],
+        },
+      },
+    });
+
+    const disputed = await indexer.Passport.getOrThrow(branch);
+    expect(disputed.disputed).toBe(true);
+    expect(disputed.inheritedDisputed).toBe(true);
+
+    expect((await indexer.Passport.getOrThrow(grandchild)).inheritedDisputed).toBe(true);
+    expect((await indexer.Passport.getOrThrow(grandchild)).disputed).toBe(false);
+
+    // The mark travels down the edit chain, never up it and never sideways: the
+    // original and the other edit made from it are untouched.
+    expect((await indexer.Passport.getOrThrow(root)).inheritedDisputed).toBe(false);
+    expect((await indexer.Passport.getOrThrow(sibling)).inheritedDisputed).toBe(false);
+  });
+
   it("changes the owner on a sale and never the creator", async () => {
     const indexer = createTestIndexer();
     const id = hash(1);

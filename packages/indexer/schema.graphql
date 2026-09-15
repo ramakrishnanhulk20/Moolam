@@ -17,6 +17,11 @@ type Passport {
   registeredBlock: BigInt!
   txHash: String!
   disputed: Boolean! @index
+  # True when this passport is disputed or any passport above it in the edit chain
+  # is. The registry marks only the passport a challenge named, so an edit of a
+  # picture proven fake reads clean on chain. This field is how the app shows that
+  # edit as disputed too.
+  inheritedDisputed: Boolean! @index
   attestationCount: Int!
   matchedCount: Int!
   mismatchedCount: Int!

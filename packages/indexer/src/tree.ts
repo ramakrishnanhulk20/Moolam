@@ -21,3 +21,39 @@ export function treePosition(ownId: string, parent: Passport | undefined): TreeP
   }
   return { rootId: parent.root_id, depth: parent.depth + 1 };
 }
+
+/// Every passport below `ancestor` in the same edit tree, given every row that
+/// shares the tree's root.
+///
+/// The caller fetches the tree with one indexed query on root, so this walk costs
+/// no further lookups. Only rows deeper than the ancestor are considered, which
+/// keeps the walk finite whatever the input, and the parent links inside that set
+/// pick out the real descendants rather than every cousin at the same depth.
+export function descendantsOf(
+  ancestor: Passport,
+  family: readonly Passport[],
+): Passport[] {
+  const childrenByParent = new Map<string, Passport[]>();
+  for (const passport of family) {
+    if (passport.depth <= ancestor.depth || passport.parent_id === undefined) {
+      continue;
+    }
+    const siblings = childrenByParent.get(passport.parent_id);
+    if (siblings === undefined) {
+      childrenByParent.set(passport.parent_id, [passport]);
+    } else {
+      siblings.push(passport);
+    }
+  }
+
+  const found: Passport[] = [];
+  const queue: string[] = [ancestor.id];
+  while (queue.length > 0) {
+    const parentId = queue.shift() as string;
+    for (const child of childrenByParent.get(parentId) ?? []) {
+      found.push(child);
+      queue.push(child.id);
+    }
+  }
+  return found;
+}

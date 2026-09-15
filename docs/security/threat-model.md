@@ -89,5 +89,23 @@ not fix are listed last, on purpose.
 - **IPFS liveness.** If the pinned files disappear, the on-chain record still
   proves the hashes but the image is gone from our storage. Anyone holding a
   copy can re-verify it.
+- **The digest the passkey signs comes from the RPC.** Today the browser asks the
+  registry for the EIP-712 digest of the passport it is about to register and
+  hands that answer straight to the passkey. A hostile RPC endpoint, or anyone
+  sitting between the browser and it, could return a digest for different bytes,
+  and the creator's device would sign something they never saw. The damage is
+  bounded, because the signed struct still names the creator as the signer and
+  the registry mints to that address, so an attacker gets a passport written in
+  the creator's name rather than one written in their own. The fix in flight
+  derives the digest locally in the browser from the same struct, which turns the
+  RPC answer into a cross-check instead of the source of truth.
+- **The passkey's rpId is a deployment constraint, not a contract rule.** A
+  passkey is scoped to a registrable domain, and any page served under that
+  domain can ask the authenticator for an assertion from the same key. So the app
+  must never share a registrable domain with a page we do not control, including
+  anything user-generated. On vercel.app the public suffix list gives us that for
+  free: each subdomain is its own registrable domain, so no other deployment can
+  reach our keys. On a custom domain the rule has to be kept by hand, which means
+  every subdomain under it stays ours.
 - **Self-audited.** No third party has audited these contracts. The attack
   scripts and their outputs are the evidence, and they are in this repo.

@@ -3,8 +3,8 @@ pragma solidity 0.8.30;
 
 // What this file does NOT cover: the exact revert reason of any single call, which the unit tests
 // own, and the Chainlink forwarder. The handler drives random actors through register, appendEdit,
-// attest, flag, resolve, withdraw, pause and unpause, and the six invariants below must hold after
-// every one of them.
+// attest, flag, resolve, withdraw, pause and unpause, and the seven invariants below must hold
+// after every one of them.
 
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
@@ -82,6 +82,12 @@ contract RegistryHandler is Test {
 
     function passportCount() external view returns (uint256) {
         return passports.length;
+    }
+
+    /// The invariant suite walks the same actor list the handler drives, so it can add up every
+    /// address that could ever hold a credit.
+    function actorCount() external pure returns (uint256) {
+        return ACTOR_COUNT;
     }
 
     function openDisputeCount() external view returns (uint256) {
@@ -289,6 +295,18 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
                 assertTrue(policy.isReceiver(registry.getAttestations(id, j, 1)[0].receiver));
             }
         }
+    }
+
+    /// What the contract says it owes in total is exactly what the credited addresses can pull.
+    /// Only two kinds of address are ever credited: a challenger whose challenge was upheld, which
+    /// is always one of the handler's actors, and the treasury when a challenge was rejected.
+    function invariant_totalOwedMatchesEveryCredit() public view {
+        uint256 sum = registry.withdrawable(handler.TREASURY());
+        uint256 count = handler.actorCount();
+        for (uint256 i = 0; i < count; ++i) {
+            sum += registry.withdrawable(handler.actors(i));
+        }
+        assertEq(registry.totalOwed(), sum);
     }
 
     /// A pause really stops new passports appearing.

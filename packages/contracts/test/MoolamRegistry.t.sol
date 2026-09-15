@@ -542,6 +542,30 @@ contract MoolamRegistryTest is Test {
         assertEq(registry.getPassport(edit.exactHash).generatorAgentId, 0);
     }
 
+    /// @dev The registry marks only the passport the challenge named, so an edit of a picture that
+    ///      was proven fake is accepted and reads clean. This is the documented gap: the deployed
+    ///      registry cannot walk the edit chain on a write, so the index carries inheritedDisputed
+    ///      and the web shows the child as disputed. The contract stores the parent link, which is
+    ///      what makes that reconstruction possible off chain.
+    function test_anEditOfADisputedParentIsAcceptedAndReadsClean() public {
+        bytes32 parent = _registerDefault();
+        _flag(stranger, parent);
+
+        vm.prank(resolver);
+        registry.resolve(parent, true);
+        assertTrue(registry.getPassport(parent).disputed);
+
+        PassportInput memory edit = _editOf(parent, keccak256("edit-of-a-fake"));
+        bytes memory agentSig = _agentSig(edit);
+
+        vm.prank(creator);
+        registry.appendEdit(edit, agentSig);
+
+        assertFalse(registry.getPassport(edit.exactHash).disputed);
+        assertEq(registry.getPassport(edit.exactHash).parentId, parent);
+        assertEq(uint8(registry.getDispute(edit.exactHash).status), uint8(DisputeStatus.None));
+    }
+
     function test_appendEditRefusesAnAddressApprovedForTheParentToken() public {
         bytes32 parent = _registerDefault();
         address session = makeAddr("session");
