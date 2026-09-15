@@ -223,8 +223,17 @@ export interface VerifierDetail {
   /** A send Privy took and has not reported a hash for. It may still land, so it is never resent. */
   transactionId?: string;
   hash?: Hex;
-  /** The passport that already holds this exact picture, on a 409 from /prepare. */
+  /**
+   * The passport this failure is about: the one that already holds the picture on a 409, and the
+   * child an /edit send-pending left out on the network.
+   */
   passportId?: Hex;
+  /**
+   * Whether the service named this failure in its own body. A fetch that never got an answer, an
+   * edge that returned 502 with an HTML page and a body this app could not read all name nothing,
+   * and a caller cannot read "nothing was sent" into silence.
+   */
+  named?: boolean;
 }
 
 /** One failure a screen can branch on, with the service's own words kept in the message. */
@@ -236,6 +245,7 @@ export class VerifierError extends Error {
   readonly transactionId?: string;
   readonly hash?: Hex;
   readonly passportId?: Hex;
+  readonly named: boolean;
 
   constructor(
     code: VerifierCode,
@@ -252,6 +262,7 @@ export class VerifierError extends Error {
     this.transactionId = detail.transactionId;
     this.hash = detail.hash;
     this.passportId = detail.passportId;
+    this.named = detail.named === true;
   }
 }
 
@@ -496,6 +507,7 @@ async function failureOf(response: Response): Promise<VerifierError> {
     transactionId: transactionId.length === 0 ? undefined : transactionId,
     hash: hexWordOrNothing(body.hash),
     passportId: hexWordOrNothing(body.passportId),
+    named: typeof body.error === "string" && body.error.length > 0,
   });
 }
 

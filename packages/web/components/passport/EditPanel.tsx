@@ -11,6 +11,7 @@ import {
   NOTE_LIMIT,
   isEditBusy,
   isEditDone,
+  isEditOutstanding,
   isEditPending,
   type EditFailure,
   type EditState,
@@ -119,6 +120,9 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const busy = isEditBusy(state);
+  // An edit that may be on the network keeps the send closed, even between one look at the chain
+  // and the next, because a second send of the same picture is the one thing that cannot be undone.
+  const outstanding = isEditOutstanding(state);
 
   // The chosen picture is drawn from the file itself, so nothing is uploaded to preview it.
   const preview = useMemo(() => (state.file === null ? null : URL.createObjectURL(state.file)), [state.file]);
@@ -250,7 +254,7 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
       <button
         type="button"
         onClick={() => void edit.actions.submit()}
-        disabled={busy || state.file === null || state.title.trim().length === 0}
+        disabled={busy || outstanding || state.file === null || state.title.trim().length === 0}
         className="mt-7 w-full rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
       >
         {t("form.submit")}
@@ -280,6 +284,9 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
 /** The receipt: the child passport, the block it landed in, and where to read it. */
 function Recorded({ edit }: { edit: PassportEdit }) {
   const t = useTranslations("passport.edit");
+  // Two sentences this panel needs word for word are written under the studio, which is the screen
+  // that first had to say them. They are read from there rather than said twice, differently.
+  const studio = useTranslations("studio");
   const format = useFormatter();
   const { state } = edit;
   const child = state.result?.child.exactHash ?? null;
@@ -318,12 +325,14 @@ function Recorded({ edit }: { edit: PassportEdit }) {
         </div>
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.fee")}</dt>
-          <dd className="mt-1.5 text-sm text-text-muted">{t("done.feeSponsored")}</dd>
+          <dd className="mt-1.5 text-sm text-text-muted">
+            {state.result?.sponsored === true ? t("done.feeSponsored") : studio("register.feeOwn")}
+          </dd>
         </div>
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.edits")}</dt>
           <dd className="mt-1.5 font-mono text-sm tabular-nums">
-            {state.children === null ? t("done.blockPending") : state.children.length}
+            {state.total === null ? t("done.blockPending") : state.total}
           </dd>
         </div>
       </dl>
@@ -441,8 +450,13 @@ function StepRow({ step, index, state }: { step: EditStep; index: number; state:
  */
 function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEdit }) {
   const t = useTranslations("passport.edit");
+  // The duplicate is the studio's sentence word for word, so it is read from there rather than
+  // said a second time in slightly different words.
+  const studio = useTranslations("studio");
   const format = useFormatter();
   const quota = edit.state.quota;
+  const duplicate = failure.key === "alreadyRegistered";
+  const openPassport = failure.next === "openPassport" && failure.passportId !== undefined;
 
   const handlers: Record<string, (() => void) | undefined> = {
     grant: () => void edit.actions.grant(),
@@ -453,7 +467,7 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
     recheck: () => void edit.actions.recheck(),
     signIn: edit.actions.signIn,
   };
-  const action = failure.next === undefined ? undefined : handlers[failure.next];
+  const action = failure.next === undefined || openPassport ? undefined : handlers[failure.next];
 
   // A send that is still out is not a send that failed, so it keeps the muted ink and the status
   // role rather than the alarm.
@@ -469,17 +483,27 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
       className={`border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
       <p className={`max-w-[50ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
-        {t(`failure.${failure.key}`, {
-          used: quota?.used ?? 0,
-          limit: quota?.limit ?? 0,
-          at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), { timeStyle: "short" }),
-        })}
+        {duplicate
+          ? studio("failure.alreadyRegistered")
+          : t(`failure.${failure.key}`, {
+              used: quota?.used ?? 0,
+              limit: quota?.limit ?? 0,
+              at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), { timeStyle: "short" }),
+            })}
       </p>
       {failure.reason === undefined ? null : (
         <p className="mt-2 max-w-[50ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
           {failure.reason}
         </p>
       )}
+      {openPassport ? (
+        <Link
+          href={`/passport/${failure.passportId}`}
+          className="mt-4 inline-block rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+        >
+          {studio("actions.openPassport")}
+        </Link>
+      ) : null}
       {action === undefined ? null : (
         <button
           type="button"

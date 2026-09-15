@@ -75,6 +75,12 @@ function panel(value: PassportEdit, locale: "en" | "ta" = "en"): string {
   return render(locale, createElement(EditPanel, { parentId: PARENT, owner: OWNER }));
 }
 
+/** The opening tag of the button that sends the edit, where the class list also says "disabled:". */
+function submitTag(markup: string): string {
+  const end = markup.indexOf("Add this edit");
+  return markup.slice(markup.lastIndexOf("<button", end), end);
+}
+
 describe("who the panel draws itself for", () => {
   it("says nothing at all to a visitor who is signed out or signed in as someone else", () => {
     expect(panel(edit({ isOwner: false }))).toBe("");
@@ -142,6 +148,28 @@ describe("state two, with the signer granted", () => {
     );
     expect(markup).toContain("signed by the app&#x27;s key under the edit policy");
     expect(markup).toContain("Waiting for Monad to show it");
+  });
+
+  it("closes the send while an edit may already be on the network, file and title and all", () => {
+    const file = new File(["x"], "edited.jpg", { type: "image/jpeg" });
+    const markup = panel(
+      edit(
+        { granted: true },
+        {
+          file,
+          title: "Kadal at dawn, warmer",
+          failure: { key: "sendPending", next: "recheck" },
+          steps: { pin: "done", send: "failed" },
+        },
+      ),
+    );
+    expect(submitTag(markup)).toContain('disabled=""');
+  });
+
+  it("opens the send again once nothing is out", () => {
+    const file = new File(["x"], "edited.jpg", { type: "image/jpeg" });
+    const markup = panel(edit({ granted: true }, { file, title: "Kadal at dawn, warmer" }));
+    expect(submitTag(markup)).not.toContain('disabled=""');
   });
 
   it("shows the allowance the service sent back", () => {
@@ -213,6 +241,24 @@ describe("every failure the panel can print", () => {
     expect(markup).not.toContain("Try again</button>");
   });
 
+  it("sends a picture the registry already holds to the passport that holds it, with no retry", () => {
+    const id = `0x${"cd".repeat(32)}`;
+    const markup = panel(
+      edit(
+        { granted: true },
+        {
+          failure: { key: "alreadyRegistered", next: "openPassport", passportId: id as `0x${string}` },
+          steps: { pin: "failed", send: "waiting" },
+        },
+      ),
+    );
+
+    expect(markup).toContain("This exact image is already registered");
+    expect(markup).toContain(`/passport/${id}`);
+    expect(markup).toContain("Open that passport");
+    expect(markup).not.toContain("Try again");
+  });
+
   it("offers a plain retry when a dependency did not answer and nothing was sent", () => {
     const markup = panel(
       edit({ granted: true }, { failure: { key: "dependencyDown", next: "later" }, steps: { pin: "failed", send: "waiting" } }),
@@ -240,11 +286,12 @@ describe("the receipt once the edit is on chain", () => {
   const result = {
     child: { exactHash: CHILD },
     hash: `0x${"1c".repeat(32)}`,
+    sponsored: true,
     image: { gatewayUrl: "https://gateway.pinata.cloud/ipfs/bafkreiedited" },
   } as never;
 
-  it("links the child passport, names the block and says who paid", () => {
-    const markup = panel(
+  function recorded(over: Record<string, unknown> = {}) {
+    return panel(
       edit(
         { granted: true },
         {
@@ -252,15 +299,33 @@ describe("the receipt once the edit is on chain", () => {
           result,
           block: 41273109n,
           children: [CHILD],
+          total: 51,
           quota: { used: 1, limit: 5, resetsAt: 1788961533 },
+          ...over,
         },
       ),
     );
+  }
+
+  it("links the child passport, names the block and says who paid", () => {
+    const markup = recorded();
 
     expect(markup).toContain(`/passport/${CHILD}`);
     expect(markup).toContain("41273109");
     expect(markup).toContain("Sponsored by Privy");
     expect(markup).toContain("Recorded");
     expect(markup).toContain("Add another edit");
+  });
+
+  it("counts every edit on the parent, not the page of them it happens to hold", () => {
+    expect(recorded()).toContain("51");
+  });
+
+  it("says the fee came out of the owner's own balance when Privy did not pay it", () => {
+    const own = { ...(result as unknown as Record<string, unknown>), sponsored: false };
+    const markup = recorded({ result: own });
+
+    expect(markup).toContain("Paid from your own balance");
+    expect(markup).not.toContain("Sponsored by Privy");
   });
 });

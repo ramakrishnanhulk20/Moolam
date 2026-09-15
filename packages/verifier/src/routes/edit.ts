@@ -85,10 +85,15 @@ interface EditContext {
  * that holds the parent. The daily allowance is taken once the request is known to be worth
  * serving and given back whenever the edit fails before Privy was asked to send.
  *
+ * Every answer that leaves a transaction out on the network carries `passportId`, the child's own
+ * id, so the browser can watch the registry for that one passport instead of guessing which edit
+ * under the parent is theirs.
+ *
  * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 409
- * `no-signer` when the owner has granted nothing this app can use, 404 `no-parent`, 403
- * `not-owner`, 429 `quota` past EDITS_PER_DAY, 502 `pin-failed`, `sign-failed`, `send-failed`,
- * `send-pending`, `privy-unavailable` or `chain-unavailable`, and 503 `busy`.
+ * `no-signer` when the owner has granted nothing this app can use, 409 `already-registered` when
+ * the child is on chain already, 404 `no-parent`, 403 `not-owner`, 429 `quota` past EDITS_PER_DAY,
+ * 502 `pin-failed`, `sign-failed`, `send-failed`, `send-pending`, `privy-unavailable` or
+ * `chain-unavailable`, and 503 `busy`.
  */
 export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   const quota = dailyQuota(env.EDITS_PER_DAY);
@@ -277,6 +282,17 @@ async function append(
       request.log.warn({ url: request.url, reason: edited.detail }, "edit: manifest not embedded");
     }
 
+    // The child's id is the hash of the bytes about to be pinned, so it is known before the pins
+    // and before the send, and every answer from here down can name it.
+    const passportId = edited.print.sha256 as Hex;
+    if (await alreadyRegistered(context, passportId, request)) {
+      // The signed path cannot produce a duplicate, because the registry refuses one and the gas
+      // estimate would catch it. The unsigned fallback can, and a pin of a picture that can never
+      // be registered is money spent for nothing, so the read comes first.
+      request.log.warn({ url: request.url, user: identity.userId, passportId }, "rejected: /edit duplicate");
+      return reply.code(409).send({ error: "already-registered", passportId });
+    }
+
     const slug = fileSlug(upload.title, edited.print.sha256);
     let pinnedImage;
     let thumbnail;
@@ -313,7 +329,7 @@ async function append(
     }
 
     const child: PassportInput = {
-      exactHash: edited.print.sha256 as Hex,
+      exactHash: passportId,
       parentId: upload.parentId,
       creator: wallet.address,
       generatorAgentId: NO_AGENT,
@@ -363,7 +379,7 @@ async function append(
           { url: request.url, transactionId: error.transactionId },
           "rejected: /edit the send had no hash in time",
         );
-        return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId });
+        return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId, passportId });
       }
       if (error instanceof SponsoredSendFailed) {
         request.log.error({ url: request.url, reason: error.message }, "rejected: /edit send failed");
@@ -384,11 +400,15 @@ async function append(
         { url: request.url, hash: sent.hash, reason: reasonOf(error) },
         "rejected: /edit the receipt could not be read",
       );
-      return reply.code(502).send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash });
+      return reply
+        .code(502)
+        .send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash, passportId });
     }
     if (receipt === undefined) {
       request.log.error({ url: request.url, hash: sent.hash }, "rejected: /edit no receipt in time");
-      return reply.code(502).send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash });
+      return reply
+        .code(502)
+        .send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash, passportId });
     }
     if (receipt.status === "reverted") {
       request.log.error(
@@ -508,6 +528,25 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
       return undefined;
     }
     throw error;
+  }
+}
+
+/**
+ * Whether the registry already holds this exact picture.
+ *
+ * A chain that will not answer is not a duplicate: the send that follows runs a gas estimate
+ * against current state and the registry refuses a second registration itself, so a missed read
+ * here costs a pin at worst and never a wrong refusal.
+ */
+async function alreadyRegistered(context: EditContext, passportId: Hex, request: FastifyRequest): Promise<boolean> {
+  try {
+    return await passportExists(context.chain, context.registry, passportId);
+  } catch (error) {
+    request.log.warn(
+      { url: request.url, reason: reasonOf(error) },
+      "edit: the duplicate check could not reach the chain",
+    );
+    return false;
   }
 }
 

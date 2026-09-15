@@ -1,4 +1,5 @@
 import type { Hex } from "viem";
+import { isUserCancellation } from "@/lib/errors/cancelled";
 import { checkImage as checkUpload, type RefusalCode } from "@/lib/upload/checkImage";
 import { ConfirmTimeout } from "@/lib/studio/confirm";
 import { VerifierError, type EditResponse, type QuotaState } from "@/lib/verifier/client";
@@ -26,7 +27,9 @@ export interface EditFailure {
   /** The service's or the browser's own words, printed under the sentence. */
   reason?: string;
   /** The single button offered under the message. */
-  next?: "grant" | "again" | "recheck" | "signIn" | "later";
+  next?: "grant" | "again" | "recheck" | "signIn" | "later" | "openPassport";
+  /** The passport the "openPassport" button opens: the one that already holds this picture. */
+  passportId?: Hex;
 }
 
 /**
@@ -46,8 +49,10 @@ export interface EditState {
   /** The service's answer: the child passport, its pins and its transaction hash. */
   result: EditResponse | null;
   block: bigint | null;
-  /** The parent's edits as the chain lists them once the child landed, so the tree can be redrawn. */
+  /** The parent's newest edits as the chain lists them once the child landed, newest first. */
   children: Hex[] | null;
+  /** How many edits the parent has in all, which is more than the page above can hold. */
+  total: number | null;
   /** What this account has spent on edits today, kept across a refusal so the panel can show it. */
   quota: QuotaState | null;
   /** True while the send is out and Monad is being watched for the child. */
@@ -61,7 +66,8 @@ export type EditAction =
   | { type: "note"; note: string }
   | { type: "start" }
   | { type: "pinned"; result: EditResponse }
-  | { type: "confirmed"; block: bigint | null; children: Hex[] }
+  | { type: "watching" }
+  | { type: "confirmed"; block: bigint | null; children: Hex[] | null; total: number | null }
   | { type: "failed"; failure: EditFailure; stage: EditStep; quota?: QuotaState }
   | { type: "reset" };
 
@@ -73,6 +79,7 @@ export const initialEditState: EditState = {
   result: null,
   block: null,
   children: null,
+  total: null,
   quota: null,
   confirming: false,
   failure: null,
@@ -82,7 +89,11 @@ export const initialEditState: EditState = {
 export function editReducer(state: EditState, action: EditAction): EditState {
   switch (action.type) {
     case "choose":
-      return { ...initialEditState, file: action.file, title: state.title, note: state.note, quota: state.quota };
+      // An edit that may be on the network keeps its warning and its re-check while a new picture
+      // is chosen. Clearing them here is what used to offer a second send for an edit that landed.
+      return isEditOutstanding(state)
+        ? { ...state, file: action.file }
+        : { ...initialEditState, file: action.file, title: state.title, note: state.note, quota: state.quota };
     case "title":
       return { ...state, title: action.title };
     case "note":
@@ -98,12 +109,18 @@ export function editReducer(state: EditState, action: EditAction): EditState {
         confirming: true,
         steps: { pin: "done", send: "running" },
       };
+    case "watching":
+      // The wait is running again, so the panel is busy for the whole of it and the warning that
+      // started this comes back only if the chain still has not shown the edit at the end.
+      return { ...state, failure: null, confirming: true, steps: { pin: "done", send: "running" } };
     case "confirmed":
       return {
         ...state,
         block: action.block,
         children: action.children,
+        total: action.total,
         confirming: false,
+        failure: null,
         steps: { pin: "done", send: "done" },
       };
     case "failed":
@@ -124,6 +141,17 @@ export function editReducer(state: EditState, action: EditAction): EditState {
 
 export function isEditBusy(state: EditState): boolean {
   return state.steps.pin === "running" || state.steps.send === "running";
+}
+
+/**
+ * Whether an edit from this panel may be out on the network.
+ *
+ * True while the chain is being watched, and true afterwards for as long as the answer is "it may
+ * still land". The panel refuses a second send the whole time, because the one thing worse than an
+ * edit nobody can see is two of them.
+ */
+export function isEditOutstanding(state: EditState): boolean {
+  return state.confirming || isEditPending(state.failure);
 }
 
 export function isEditDone(state: EditState): boolean {
@@ -177,34 +205,70 @@ const SERVICE_KEYS: Record<string, { key: string; next?: EditFailure["next"] }> 
   "rate-limited": { key: "rateLimited" },
   "bad-request": { key: "badRequest" },
   "bad-response": { key: "badResponse", next: "again" },
+  "already-registered": { key: "alreadyRegistered", next: "openPassport" },
 };
 
-/** Whether the person closed Privy's own window rather than something going wrong. */
-function wasDeclined(error: unknown): boolean {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === 4001) {
-    return true;
-  }
-  return /user (rejected|denied|declined)|rejected the request|cancell?ed|closed/i.test(messageOf(error));
+/**
+ * The line for an edit that may be on the network: never a retry, always a second look.
+ *
+ * ConfirmTimeout says exactly this in its own words, so it is not repeated under the sentence.
+ * Anything else that goes wrong after the send is worth printing: an RPC that dropped, a receipt
+ * that came back reverted, an answer this app could not read.
+ */
+function stillOut(error: unknown): EditFailure {
+  return error instanceof ConfirmTimeout
+    ? { key: "confirmPending", next: "recheck" }
+    : { key: "confirmPending", reason: messageOf(error), next: "recheck" };
 }
 
-/** One failure from the edit request, turned into the line the panel prints. */
-export function describeEditFailure(error: unknown): EditFailure {
-  if (error instanceof ConfirmTimeout) {
-    return { key: "confirmPending", next: "recheck" };
+/**
+ * Whether this failure leaves the edit possibly on chain.
+ *
+ * The service names every refusal it raises itself, and those names are the truth: `pin-failed`
+ * happened before the send, `no-signer` before anything at all. Silence is the other case. A fetch
+ * that never got an answer, an edge that returned 502 with an HTML page, a body this app could not
+ * read: the request may have reached the service, the service may have sent the transaction, and
+ * the words "nothing was sent" would be a guess.
+ */
+function mayBeOut(error: VerifierError): boolean {
+  if (error.named) {
+    return false;
+  }
+  // Status 0 is a fetch that rejected. 5xx with no word of its own is an edge, not the service. A
+  // 2xx here is an answer that arrived and did not parse, which is a send that happened.
+  return error.status === 0 || error.status >= 500 || (error.status >= 200 && error.status < 300);
+}
+
+/**
+ * One failure from the edit request, turned into the line the panel prints.
+ *
+ * `sent` is what the caller knows that the error does not: the service already answered with a
+ * transaction, so this failure came out of the wait that followed and can never be a retry.
+ */
+export function describeEditFailure(error: unknown, { sent = false }: { sent?: boolean } = {}): EditFailure {
+  if (sent || error instanceof ConfirmTimeout) {
+    return stillOut(error);
   }
   if (error instanceof VerifierError) {
+    if (mayBeOut(error)) {
+      return stillOut(error);
+    }
     const mapped = SERVICE_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
+    const passportId = error.passportId === undefined ? {} : { passportId: error.passportId };
     // Several failures are named in the body and nothing else, so printing the service's word
     // under the sentence would only repeat the code back at the reader.
-    return error.message === error.code ? { ...mapped } : { ...mapped, reason: error.message };
+    return error.message === error.code
+      ? { ...mapped, ...passportId }
+      : { ...mapped, ...passportId, reason: error.message };
   }
+  // Only what went wrong before the request did: a session with no token, a file that cannot be
+  // read. Everything after the send is one of the two branches above.
   return { key: "unknown", reason: messageOf(error), next: "again" };
 }
 
 /** One failure from the grant or the revoke, which is Privy's own window and not the service. */
 export function describeGrantFailure(error: unknown): EditFailure {
-  if (wasDeclined(error)) {
+  if (isUserCancellation(error)) {
     return { key: "grantDeclined", next: "grant" };
   }
   return { key: "grantFailed", reason: messageOf(error), next: "grant" };

@@ -89,6 +89,8 @@ let app: FastifyInstance;
 let picture: Buffer;
 /** How many of the next uploads to Pinata are answered with a failure instead of a cid. */
 let pinFailures = 0;
+/** How many files this request pinned, so a refusal before any pin can be proven. */
+let pins = 0;
 /** Stands in for the shared prepare gate so the route's own handling of Busy can be exercised. */
 const prepareGate = vi.fn(async (task: () => Promise<unknown>) => await task());
 
@@ -168,6 +170,7 @@ describe("POST /edit", () => {
         pinFailures -= 1;
         return new Response("gateway said no", { status: 500 });
       }
+      pins += 1;
       const form = init?.body as FormData;
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
@@ -191,8 +194,10 @@ describe("POST /edit", () => {
 
   beforeEach(() => {
     pinFailures = 0;
+    pins = 0;
     prepareGate.mockClear();
-    stubs.passportExists.mockReset().mockResolvedValue(true);
+    // The route reads the registry twice: the parent must be there, and the child must not.
+    stubs.passportExists.mockReset().mockImplementation(async (_chain, _registry, id: Hex) => id === PARENT);
     stubs.delegatedWallets.mockReset().mockResolvedValue([{ id: "privy-wallet-1", address: OWNER }]);
     stubs.walletSigners
       .mockReset()
@@ -389,7 +394,57 @@ describe("POST /edit", () => {
     const refused = await ask("did:privy:pending-user", goodFields());
 
     expect(refused.statusCode).toBe(502);
-    expect(refused.json()).toEqual({ error: "send-pending", transactionId: "privy-tx-10" });
+    expect(refused.json()).toEqual({
+      error: "send-pending",
+      transactionId: "privy-tx-10",
+      passportId: expect.stringMatching(/^0x[0-9a-f]{64}$/),
+    });
+  }, 60_000);
+
+  it("names the child on a send-pending, so the browser watches one passport and not the parent's list", async () => {
+    stubs.send.mockRejectedValueOnce(new SponsoredSendPending("privy-tx-11", 60_000));
+
+    const refused = await ask("did:privy:pending-id-user", goodFields("the one that never confirmed"));
+
+    expect(refused.statusCode).toBe(502);
+    // The id in the answer is the id of the passport that transaction would write, read back out
+    // of the calldata Privy was handed.
+    const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
+    const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [
+      Record<string, unknown>,
+    ];
+    expect(refused.json().passportId).toBe(input.exactHash);
+  }, 60_000);
+
+  it("answers 409 already-registered before a single byte is pinned when the child is on chain", async () => {
+    const user = "did:privy:duplicate-user";
+    stubs.passportExists.mockResolvedValue(true);
+
+    const refused = await ask(user, goodFields("the same edit twice"));
+
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json()).toEqual({
+      error: "already-registered",
+      passportId: expect.stringMatching(/^0x[0-9a-f]{64}$/),
+    });
+    expect(pins).toBe(0);
+    expect(stubs.send).not.toHaveBeenCalled();
+    // Nothing was pinned and nothing was sent, so the day's allowance is given back.
+    stubs.passportExists.mockImplementation(async (_chain, _registry, id: Hex) => id === PARENT);
+    expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("pins and sends when the duplicate check cannot reach the chain, because the registry refuses a duplicate itself", async () => {
+    stubs.passportExists
+      .mockImplementationOnce(async () => true)
+      .mockImplementationOnce(async () => {
+        throw new Error("fetch failed");
+      });
+
+    const response = await ask("did:privy:duplicate-check-down-user", goodFields());
+
+    expect(response.statusCode).toBe(200);
+    expect(stubs.send).toHaveBeenCalled();
   }, 60_000);
 
   it("answers send-failed when the chain reverted the edit the hash belongs to", async () => {
@@ -411,6 +466,7 @@ describe("POST /edit", () => {
       error: "send-pending",
       transactionId: "privy-tx-1",
       hash: HASH,
+      passportId: expect.stringMatching(/^0x[0-9a-f]{64}$/),
     });
   }, 60_000);
 

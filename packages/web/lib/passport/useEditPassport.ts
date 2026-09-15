@@ -3,18 +3,16 @@
 import { usePrivy, useSigners, useWallets } from "@privy-io/react-auth";
 import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import type { Hex } from "viem";
-import { chain } from "@/lib/chain/client";
-import { getChildren } from "@/lib/chain/registry";
 import { editSigner } from "@/lib/env";
-import { ConfirmTimeout } from "@/lib/studio/confirm";
 import { VerifierError, edit } from "@/lib/verifier/client";
-import { confirmEdit, type EditConfirmed } from "./confirm";
+import { confirmEdit } from "./confirm";
 import {
   checkEditImage,
   describeEditFailure,
   describeGrantFailure,
   editReducer,
   initialEditState,
+  isEditOutstanding,
   type EditFailure,
   type EditState,
 } from "./edit";
@@ -50,20 +48,35 @@ export interface PassportEdit {
 }
 
 /**
- * An edit that is out on the network, in the two shapes it can be out in.
+ * The edit that is out, and what proves it landed.
  *
- * A `child` watch is the ordinary one: the service answered, so the child's id is known and the
- * registry holding it is the fact to wait for. A `pending` watch is what a 502 `send-pending`
- * leaves behind: Privy took the transaction, the service could not confirm it, and the browser has
- * a transaction id, sometimes a hash, and the parent's edits as they stood before the send.
+ * A child id is the ordinary case: the service names the child it built on every answer that
+ * leaves a transaction on the network, so the registry holding that one passport is the fact to
+ * wait for. Without one, which is what a lost answer leaves behind, the parent's own edit count is
+ * watched instead. Either way this is a read and never a send.
  */
-type Watch =
-  | { kind: "child"; childId: Hex; hash?: Hex }
-  | { kind: "pending"; hash?: Hex; transactionId?: string; before: Hex[] | null };
+interface Watch {
+  childId?: Hex;
+  hash?: Hex;
+}
 
-/** How long a send with no confirmation gets to show up before the panel says so out loud. */
-const PENDING_WINDOW_MS = 90_000;
-const PENDING_POLL_MS = 2_000;
+/**
+ * What the last grant or revoke made true, against the wallet it was made on and what Privy was
+ * saying at the time. The override stands until Privy's own answer moves, which is how a stale
+ * "granted" from a revoked signer used to survive a wallet switch.
+ */
+interface JustChanged {
+  wallet: string;
+  value: boolean;
+  /** What signerGranted said at the moment the grant or the revoke went through. */
+  live: boolean;
+}
+
+/**
+ * The failures that happen with the pins already done, so the first step stays green and the send
+ * is the one wearing the result.
+ */
+const AFTER_THE_PINS = new Set(["sendFailed", "sendPending", "confirmPending"]);
 
 /**
  * The owner's side of one passport: grant this app a signer, then add an edited version of the
@@ -97,14 +110,28 @@ export function useEditPassport({
   const [granting, setGranting] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [grantFailure, setGrantFailure] = useState<EditFailure | null>(null);
-  /** What the last grant or revoke made true, which Privy's user object may not carry yet. */
-  const [justChanged, setJustChanged] = useState<boolean | null>(null);
+  const [justChanged, setJustChanged] = useState<JustChanged | null>(null);
 
   /** The edit that is out, so a recheck can look again without sending a second one. */
   const watching = useRef<Watch | null>(null);
+  /** True while a wait is running, so a second press of the button joins it rather than doubling it. */
+  const polling = useRef(false);
 
   const accounts = user?.linkedAccounts as readonly LinkedAccount[] | undefined;
-  const granted = justChanged ?? signerGranted(accounts, wallet);
+  const live = signerGranted(accounts, wallet);
+  const held = wallet?.toLowerCase();
+  const granted =
+    justChanged !== null && justChanged.wallet === held && justChanged.live === live ? justChanged.value : live;
+
+  /** Remembers what a grant or a revoke just made true, against what Privy is saying right now. */
+  const remember = useCallback(
+    (value: boolean) => {
+      if (held !== undefined) {
+        setJustChanged({ wallet: held, value, live });
+      }
+    },
+    [held, live],
+  );
 
   const grant = useCallback(async () => {
     if (wallet === undefined || editSigner === null) {
@@ -117,13 +144,13 @@ export function useEditPassport({
         address: wallet,
         signers: [{ signerId: editSigner.signerId, policyIds: [editSigner.policyId] }],
       });
-      setJustChanged(true);
+      remember(true);
     } catch (error) {
       setGrantFailure(describeGrantFailure(error));
     } finally {
       setGranting(false);
     }
-  }, [addSigners, wallet]);
+  }, [addSigners, remember, wallet]);
 
   const revoke = useCallback(async () => {
     if (wallet === undefined) {
@@ -135,36 +162,48 @@ export function useEditPassport({
       // Privy's browser SDK removes every signer on the wallet: there is no call that takes one
       // signer id, so the panel says what is being given up before this runs.
       await removeSigners({ address: wallet });
-      setJustChanged(false);
+      remember(false);
       dispatch({ type: "reset" });
     } catch (error) {
       setGrantFailure(describeGrantFailure(error));
     } finally {
       setRevoking(false);
     }
-  }, [removeSigners, wallet]);
+  }, [remember, removeSigners, wallet]);
 
-  /** Watches Monad for the child that is out. Safe to run again: it reads, it never sends. */
+  /** Watches Monad for the edit that is out. Safe to run again: it reads, it never sends. */
   const finish = useCallback(async () => {
     const out = watching.current;
-    if (out === null) {
+    if (out === null || polling.current) {
       return;
     }
+    polling.current = true;
+    // Said before the wait, not after it, so the panel counts as busy for the whole of it and the
+    // submit button cannot offer a second send while Monad is being asked about the first.
+    dispatch({ type: "watching" });
     try {
-      const landed =
-        out.kind === "child"
-          ? await confirmEdit({ parentId, childId: out.childId, hash: out.hash })
-          : await confirmPendingEdit(parentId, out.before, out.hash);
-      dispatch({ type: "confirmed", block: landed.blockNumber ?? null, children: landed.children });
+      const landed = await confirmEdit({ parentId, childId: out.childId, hash: out.hash });
       watching.current = null;
+      dispatch({
+        type: "confirmed",
+        block: landed.blockNumber ?? null,
+        children: landed.children,
+        total: landed.total,
+      });
       onLanded?.();
     } catch (error) {
-      dispatch({ type: "failed", failure: describeEditFailure(error), stage: "send" });
+      dispatch({ type: "failed", failure: describeEditFailure(error, { sent: true }), stage: "send" });
+    } finally {
+      polling.current = false;
     }
   }, [onLanded, parentId]);
 
   const submit = useCallback(async () => {
     if (wallet === undefined || editSigner === null) {
+      return;
+    }
+    // An edit that may already be on chain is never sent again, whatever the button says.
+    if (isEditOutstanding(state)) {
       return;
     }
     if (state.file === null) {
@@ -182,9 +221,6 @@ export function useEditPassport({
     }
 
     dispatch({ type: "start" });
-    // Read before the send, because it is the answer to "which of these edits is mine" if the
-    // service comes back saying the transaction is out and it cannot tell us what it built.
-    const before = await getChildren(parentId).catch((): Hex[] | null => null);
     try {
       const token = await getAccessToken();
       if (token === null) {
@@ -198,36 +234,35 @@ export function useEditPassport({
         accessToken: token,
       });
       dispatch({ type: "pinned", result });
-      watching.current = { kind: "child", childId: result.child.exactHash, hash: result.hash };
+      watching.current = { childId: result.child.exactHash, hash: result.hash };
     } catch (error) {
       const failure = describeEditFailure(error);
       if (failure.key === "noSigner") {
         // The grant is not on the wallet, or it is there without the policy. Either way the panel
         // goes back to asking for it rather than leaving a button that cannot work.
-        setJustChanged(false);
+        remember(false);
       }
       if (failure.key === "sendPending" && error instanceof VerifierError) {
         // Privy took this transaction and the service could not see it land. It may still land, so
         // the panel gets the same watch a success gets and the button offers a second look, never
         // a second send.
-        watching.current = {
-          kind: "pending",
-          hash: error.hash,
-          transactionId: error.transactionId,
-          before,
-        };
+        watching.current = { childId: error.passportId, hash: error.hash };
+      } else if (failure.key === "confirmPending") {
+        // The answer never made it back, so there is no child id. The parent's own count is the
+        // fact left to watch.
+        watching.current = { hash: error instanceof VerifierError ? error.hash : undefined };
       }
       dispatch({
         type: "failed",
         failure,
-        stage: failure.key === "sendFailed" || failure.key === "sendPending" ? "send" : "pin",
+        stage: AFTER_THE_PINS.has(failure.key) ? "send" : "pin",
         quota: error instanceof VerifierError ? error.quota : undefined,
       });
       return;
     }
 
     await finish();
-  }, [finish, getAccessToken, parentId, state.file, state.note, state.title, wallet]);
+  }, [finish, getAccessToken, parentId, remember, state, wallet]);
 
   return {
     ready,
@@ -248,58 +283,10 @@ export function useEditPassport({
       submit,
       recheck: finish,
       signIn: login,
-      reset: () => dispatch({ type: "reset" }),
+      reset: () => {
+        watching.current = null;
+        dispatch({ type: "reset" });
+      },
     },
   };
-}
-
-/**
- * A send Privy accepted and the service could not confirm, watched from the browser.
- *
- * There is no child id to look up: the service builds the child and this answer came back before
- * it could say what it built. So two facts are watched instead. A transaction hash, when Privy
- * reported one, is the sharper of the two. The other is the parent's own list of edits: an entry
- * that was not in it before the send is this edit landing.
- *
- * Throws ConfirmTimeout when neither has shown inside the window, which is not a failed send. It
- * reads and it never sends.
- */
-async function confirmPendingEdit(parentId: Hex, before: Hex[] | null, hash?: Hex): Promise<EditConfirmed> {
-  // Neither fact is in hand, which only happens when the chain would not answer before the send
-  // either. Sitting on a poll that can decide nothing would be a fake wait, so it says so at once.
-  if (hash === undefined && before === null) {
-    throw new ConfirmTimeout();
-  }
-
-  const known = new Set((before ?? []).map((id) => id.toLowerCase()));
-  const deadline = Date.now() + PENDING_WINDOW_MS;
-
-  for (;;) {
-    if (hash !== undefined) {
-      const receipt = await chain.getTransactionReceipt({ hash }).catch(() => null);
-      if (receipt !== null && receipt.status === "reverted") {
-        throw new Error(`Monad mined this edit and it reverted: ${hash}`);
-      }
-      if (receipt !== null) {
-        const children = await getChildren(parentId).catch((): Hex[] => []);
-        return { hash, blockNumber: receipt.blockNumber, children };
-      }
-    }
-
-    if (before !== null) {
-      const children = await getChildren(parentId).catch((): Hex[] => []);
-      if (children.some((child) => !known.has(child.toLowerCase()))) {
-        return { hash, children };
-      }
-    }
-
-    if (Date.now() >= deadline) {
-      throw new ConfirmTimeout(undefined, hash);
-    }
-    await sleep(PENDING_POLL_MS);
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
