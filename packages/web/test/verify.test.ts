@@ -84,3 +84,40 @@ describe("checkAuth", () => {
     });
   });
 });
+
+describe("checkAuth against the site it was signed for", () => {
+  it("accepts an assertion made under the relying party and origin it was given", async () => {
+    const { auth, point } = await passing();
+
+    expect(
+      await checkAuth(auth, DIGEST, point.qx, point.qy, { rpId: "localhost", origin: "http://localhost:3210" }),
+    ).toEqual({ ok: true });
+  });
+
+  it("refuses an assertion made for another site, whatever the signature says", async () => {
+    const { auth, point } = await passing();
+
+    expect(await checkAuth(auth, DIGEST, point.qx, point.qy, { rpId: "moolam.app" })).toMatchObject({
+      ok: false,
+      problem: "wrong-relying-party",
+    });
+  });
+
+  it("refuses an assertion replayed from another origin", async () => {
+    const key = await makeP256Key();
+    const assertion = await buildAssertion(key, challengeFromDigest(DIGEST), { origin: "https://evil.example" });
+    const point = await exportPoint(key.publicKey);
+
+    expect(
+      await checkAuth(assertionToAuth(assertion), DIGEST, point.qx, point.qy, { origin: "http://localhost:3210" }),
+    ).toMatchObject({ ok: false, problem: "wrong-origin" });
+  });
+
+  it("checks neither when neither was asked for, which is what the studio does today", async () => {
+    const key = await makeP256Key();
+    const assertion = await buildAssertion(key, challengeFromDigest(DIGEST), { origin: "https://elsewhere.example" });
+    const point = await exportPoint(key.publicKey);
+
+    expect(await checkAuth(assertionToAuth(assertion), DIGEST, point.qx, point.qy)).toEqual({ ok: true });
+  });
+});

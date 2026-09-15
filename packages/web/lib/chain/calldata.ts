@@ -24,23 +24,27 @@ export interface PassportInput {
 }
 
 /**
- * How long a signed passport stays valid. Long enough for a creator to read
- * what they are signing and for the transaction to be mined, short enough that
- * a signature picked up later is already dead.
+ * How long a signed passport stays valid, on both paths.
+ *
+ * On the agent path the agent signs first and the creator's passkey comes
+ * minutes later, so the window has to cover a person reading the picture and
+ * deciding. Long enough for that, short enough that a signature picked up
+ * later is already dead. Past it the registry reverts with SignatureExpired.
  */
-export const SIGNATURE_WINDOW_SECONDS = 3600n;
+export const SIGNATURE_WINDOW_SECONDS = 1800n;
 
 /**
  * Turns what the verify service prepared into the struct the creator signs.
  *
  * The service knows nothing about the wallet, so the creator address is added
- * here, and the deadline is set from the browser's clock. pHash arrives as a
- * decimal string because 64 bits do not survive a JSON number.
+ * here, and the deadline is passed in: it is measured from the chain's own
+ * clock by lib/chain/time, not from the browser's. pHash arrives as a decimal
+ * string because 64 bits do not survive a JSON number.
  */
 export function passportInputFrom(
   prepared: PrepareResponse["passport"],
   creator: Hex,
-  now: number = Date.now(),
+  deadline: bigint = browserDeadline(),
 ): PassportInput {
   return {
     exactHash: prepared.exactHash,
@@ -53,19 +57,32 @@ export function passportInputFrom(
     kind: prepared.kind,
     fingerprintVersion: prepared.fingerprintVersion,
     metadataURI: prepared.metadataURI,
-    deadline: BigInt(Math.floor(now / 1000)) + SIGNATURE_WINDOW_SECONDS,
+    deadline,
   };
 }
 
 /**
  * Turns what the agent drew and signed into the struct the creator signs.
  *
- * Nothing is added here, unlike the upload path: the agent's signature is
+ * Nothing is invented here, unlike the upload path: the agent's signature is
  * already over this exact struct, creator and deadline included, so a browser
  * that replaced either field would send two signatures over two different
- * digests and the registry would refuse the second one.
+ * digests and the registry would refuse the second one. The deadline may be
+ * passed in, and then it is only checked: it is the one the flow asked the
+ * agent to sign against, and a mismatch means the answer is not the one this
+ * request was made for.
  */
-export function passportInputFromGenerated(generated: GenerateResponse["passport"]): PassportInput {
+export function passportInputFromGenerated(
+  generated: GenerateResponse["passport"],
+  deadline?: bigint,
+): PassportInput {
+  const signed = BigInt(generated.deadline);
+  if (deadline !== undefined && deadline !== signed) {
+    throw new Error(
+      `the agent signed a deadline of ${signed} and this request asked for ${deadline}, so the two signatures would not match`,
+    );
+  }
+
   return {
     exactHash: generated.exactHash,
     parentId: generated.parentId,
@@ -77,8 +94,19 @@ export function passportInputFromGenerated(generated: GenerateResponse["passport
     kind: generated.kind,
     fingerprintVersion: generated.fingerprintVersion,
     metadataURI: generated.metadataURI,
-    deadline: BigInt(generated.deadline),
+    deadline: signed,
   };
+}
+
+/**
+ * The browser clock fallback, kept only so the studio compiles while it still
+ * calls passportInputFrom without a deadline. Delete it, and this default,
+ * once that call passes deadlineFromChain's answer in.
+ *
+ * @deprecated Pass a deadline from lib/chain/time instead.
+ */
+function browserDeadline(): bigint {
+  return BigInt(Math.floor(Date.now() / 1000)) + SIGNATURE_WINDOW_SECONDS;
 }
 
 /** The transaction that binds a passkey to the wallet sending it, or rotates the bound one. */

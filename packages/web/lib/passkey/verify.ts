@@ -4,6 +4,8 @@ import { base64url, challengeFromDigest, type WebAuthnAuth } from "./webauthn";
 /** Which of the contract's checks an assertion failed, in the order the contract runs them. */
 export type AuthProblem =
   | "short-authenticator-data"
+  | "wrong-relying-party"
+  | "wrong-origin"
   | "wrong-type"
   | "wrong-challenge"
   | "user-not-present"
@@ -12,6 +14,21 @@ export type AuthProblem =
   | "bad-signature";
 
 export type AuthCheck = { ok: true } | { ok: false; problem: AuthProblem; message: string };
+
+/**
+ * The site this assertion has to belong to.
+ *
+ * The registry cannot see either field: it verifies the signature and nothing
+ * about where the signature was made. The browser can, and an assertion made
+ * for another relying party or replayed from another origin is a thing worth
+ * refusing here rather than paying gas to have accepted.
+ */
+export interface Expected {
+  /** The relying party id the credential was made under, "moolam.app" or "localhost". */
+  rpId?: string;
+  /** The exact origin clientDataJSON must carry, scheme, host and port. */
+  origin?: string;
+}
 
 const TYPE_FIELD = '"type":"webauthn.get"';
 const FLAG_USER_PRESENT = 0x01;
@@ -28,13 +45,30 @@ const FLAG_BACKUP_STATE = 0x10;
  * failure on chain, so the studio can say which passkey or which device is
  * wrong instead of spending gas to find out.
  */
-export async function checkAuth(auth: WebAuthnAuth, digest: Hex, qx: Hex, qy: Hex): Promise<AuthCheck> {
+export async function checkAuth(
+  auth: WebAuthnAuth,
+  digest: Hex,
+  qx: Hex,
+  qy: Hex,
+  expected: Expected = {},
+): Promise<AuthCheck> {
   const authenticatorData = hexToBytes(auth.authenticatorData);
   if (authenticatorData.length < 37) {
     return fail("short-authenticator-data", "the authenticator returned fewer than 37 bytes of authenticator data");
   }
 
+  if (expected.rpId !== undefined) {
+    const wanted = new Uint8Array(await crypto.subtle.digest("SHA-256", toBuffer(new TextEncoder().encode(expected.rpId))));
+    if (!sameBytes(authenticatorData.subarray(0, 32), wanted)) {
+      return fail("wrong-relying-party", `this passkey was not made for ${expected.rpId}, so it belongs to another site`);
+    }
+  }
+
   const clientData = new TextEncoder().encode(auth.clientDataJSON);
+
+  if (expected.origin !== undefined && originOf(auth.clientDataJSON) !== expected.origin) {
+    return fail("wrong-origin", `this signature was made at ${String(originOf(auth.clientDataJSON))} and not at ${expected.origin}`);
+  }
 
   const typeIndex = Number(auth.typeIndex);
   if (!matchesAt(clientData, typeIndex, TYPE_FIELD)) {
@@ -84,6 +118,29 @@ export async function importPoint(qx: Hex, qy: Hex): Promise<CryptoKey> {
   return await crypto.subtle.importKey("raw", toBuffer(point), { name: "ECDSA", namedCurve: "P-256" }, false, [
     "verify",
   ]);
+}
+
+/** The origin field of clientDataJSON, or undefined when it is not readable JSON with one. */
+function originOf(clientDataJSON: string): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(clientDataJSON);
+    const origin = (parsed as { origin?: unknown } | null)?.origin;
+    return typeof origin === "string" ? origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function sameBytes(left: Uint8Array, right: Uint8Array): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function rawSignature(auth: WebAuthnAuth): Uint8Array {

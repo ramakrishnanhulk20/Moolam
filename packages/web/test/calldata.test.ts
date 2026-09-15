@@ -1,7 +1,14 @@
 import { decodeFunctionData, encodeErrorResult, getAddress, type Hex } from "viem";
 import { describe, expect, it } from "vitest";
 import { registryAbi } from "@/lib/chain/client";
-import { bindPasskeyCalldata, decodeRegistryError, passportInputFrom, registerCalldata } from "@/lib/chain/calldata";
+import {
+  SIGNATURE_WINDOW_SECONDS,
+  bindPasskeyCalldata,
+  decodeRegistryError,
+  passportInputFrom,
+  passportInputFromGenerated,
+  registerCalldata,
+} from "@/lib/chain/calldata";
 import type { WebAuthnAuth } from "@/lib/passkey/webauthn";
 
 const CREATOR = "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6" as Hex;
@@ -29,12 +36,14 @@ const auth: WebAuthnAuth = {
   clientDataJSON: '{"type":"webauthn.get","challenge":"abc","origin":"http://localhost:3210"}',
 };
 
+const DEADLINE = 1_700_003_600n;
+
 describe("passportInputFrom", () => {
-  it("adds the creator and an hour long deadline, and turns the decimal strings into bigints", () => {
-    const input = passportInputFrom(prepared, CREATOR, 1_700_000_000_000);
+  it("adds the creator and the deadline it was handed, and turns the decimal strings into bigints", () => {
+    const input = passportInputFrom(prepared, CREATOR, DEADLINE);
 
     expect(input.creator).toBe(CREATOR);
-    expect(input.deadline).toBe(1_700_003_600n);
+    expect(input.deadline).toBe(DEADLINE);
     expect(input.phash).toBe(17297841240124424192n);
     expect(input.generatorAgentId).toBe(10249n);
     expect(input.exactHash).toBe(WORD);
@@ -42,13 +51,30 @@ describe("passportInputFrom", () => {
   });
 
   it("keeps a pHash that would lose digits as a JSON number", () => {
-    const input = passportInputFrom(prepared, CREATOR, 1_700_000_000_000);
+    const input = passportInputFrom(prepared, CREATOR, DEADLINE);
     expect(input.phash.toString()).toBe(prepared.phash);
     expect(Number(input.phash).toString()).not.toBe(prepared.phash);
   });
 
-  it("rounds the clock down to whole seconds", () => {
-    expect(passportInputFrom(prepared, CREATOR, 1_700_000_000_999).deadline).toBe(1_700_003_600n);
+  it("falls back to the browser clock only while the studio still calls it without a deadline", () => {
+    const before = BigInt(Math.floor(Date.now() / 1000)) + SIGNATURE_WINDOW_SECONDS;
+    const deadline = passportInputFrom(prepared, CREATOR).deadline;
+
+    expect(deadline).toBeGreaterThanOrEqual(before);
+    expect(deadline).toBeLessThanOrEqual(before + 2n);
+  });
+});
+
+describe("passportInputFromGenerated", () => {
+  const drawn = { ...prepared, creator: CREATOR, deadline: "1700003600" };
+
+  it("keeps the deadline the agent signed", () => {
+    expect(passportInputFromGenerated(drawn).deadline).toBe(DEADLINE);
+  });
+
+  it("refuses a deadline that is not the one the agent signed", () => {
+    expect(() => passportInputFromGenerated(drawn, DEADLINE)).not.toThrow();
+    expect(() => passportInputFromGenerated(drawn, DEADLINE + 1n)).toThrow(/would not match/);
   });
 });
 
@@ -63,7 +89,7 @@ describe("the calldata builders", () => {
   });
 
   it("encodes register with the passport fields in the order the contract hashes them", () => {
-    const input = passportInputFrom(prepared, CREATOR, 1_700_000_000_000);
+    const input = passportInputFrom(prepared, CREATOR, DEADLINE);
     const decoded = decodeFunctionData({ abi: registryAbi, data: registerCalldata(input, auth) });
 
     expect(decoded.functionName).toBe("register");

@@ -54,22 +54,13 @@ export const ZERO_ID = "0x000000000000000000000000000000000000000000000000000000
 /**
  * Reads one passport.
  *
- * Returns null for an id that was never registered rather than an empty record,
- * because a page showing zeroes and a page showing "no such passport" are two
- * different answers.
+ * One call, not two. The contract answers a id it never saw with a zeroed
+ * struct, and registeredAt is the field that cannot be zero on a real record,
+ * so the same read that fetches the passport also says whether it exists.
+ * Null rather than a record of zeroes, because a page showing zeroes and a
+ * page showing "no such passport" are two different answers.
  */
 export async function getPassport(id: Hex): Promise<Passport | null> {
-  const exists = (await chain.readContract({
-    address: addresses.registry,
-    abi: registryAbi,
-    functionName: "passportExists",
-    args: [id],
-  })) as boolean;
-
-  if (!exists) {
-    return null;
-  }
-
   const record = (await chain.readContract({
     address: addresses.registry,
     abi: registryAbi,
@@ -77,32 +68,58 @@ export async function getPassport(id: Hex): Promise<Passport | null> {
     args: [id],
   })) as Omit<Passport, "id">;
 
-  return { ...record, id };
+  return record.registeredAt === 0n ? null : { ...record, id };
 }
 
-/** Every attestation on a passport. The contract caps the list at 64. */
+/**
+ * Every attestation on a passport, oldest first.
+ *
+ * The contract caps the list at 64 and clips a page to what exists, so asking
+ * for 64 from the start is the whole list in one call and the count read that
+ * used to come first buys nothing.
+ */
+export const ATTESTATION_CAP = 64n;
+
 export async function getAttestations(id: Hex): Promise<Attestation[]> {
-  const count = (await chain.readContract({
-    address: addresses.registry,
-    abi: registryAbi,
-    functionName: "attestationCount",
-    args: [id],
-  })) as bigint;
-
-  if (count === 0n) {
-    return [];
-  }
-
   return (await chain.readContract({
     address: addresses.registry,
     abi: registryAbi,
     functionName: "getAttestations",
-    args: [id, 0n, count],
+    args: [id, 0n, ATTESTATION_CAP],
   })) as Attestation[];
 }
 
-/** The passports registered as edits of this one, oldest first. */
-export async function getChildren(id: Hex): Promise<Hex[]> {
+/** How much of a child list one page holds. Long enough for any passport on the chain today. */
+export const CHILD_PAGE_SIZE = 48;
+
+export interface ChildPage {
+  /** Newest first when the page was asked for that way, otherwise in the order the contract stores them. */
+  items: Hex[];
+  /** How many edits the passport has in total, however many this page holds. */
+  total: number;
+}
+
+export interface ChildPageRequest {
+  newestFirst: boolean;
+  size: number;
+}
+
+/**
+ * The passports registered as edits of this one.
+ *
+ * The child list has no cap on chain, because every edit is its own
+ * transaction paid for by its own creator, so reading the whole list is a call
+ * whose size a stranger decides. This reads one clipped page instead: the
+ * count, then the last `size` entries of the list, which is the newest page.
+ *
+ * The no-page form is the old whole-list read and exists only while the edit
+ * panel and the passport page still call it that way.
+ *
+ * @deprecated Pass a page. The whole-list form goes when those callers move.
+ */
+export async function getChildren(id: Hex): Promise<Hex[]>;
+export async function getChildren(id: Hex, page: ChildPageRequest): Promise<ChildPage>;
+export async function getChildren(id: Hex, page?: ChildPageRequest): Promise<Hex[] | ChildPage> {
   const count = (await chain.readContract({
     address: addresses.registry,
     abi: registryAbi,
@@ -110,15 +127,27 @@ export async function getChildren(id: Hex): Promise<Hex[]> {
     args: [id],
   })) as bigint;
 
-  if (count === 0n) {
-    return [];
+  if (page === undefined) {
+    return count === 0n ? [] : await childPage(id, 0n, count);
   }
 
+  const total = Number(count);
+  const size = BigInt(Math.max(1, page.size));
+  const offset = page.newestFirst && count > size ? count - size : 0n;
+  if (count === 0n) {
+    return { items: [], total };
+  }
+
+  const items = await childPage(id, offset, size);
+  return { items: page.newestFirst ? [...items].reverse() : items, total };
+}
+
+async function childPage(id: Hex, offset: bigint, limit: bigint): Promise<Hex[]> {
   return (await chain.readContract({
     address: addresses.registry,
     abi: registryAbi,
     functionName: "getChildren",
-    args: [id, 0n, count],
+    args: [id, offset, limit],
   })) as Hex[];
 }
 
