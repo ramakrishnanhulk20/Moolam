@@ -1,5 +1,6 @@
+import { SIGNATURE_WINDOW_SECONDS } from "@/lib/chain/calldata";
 import type { QuotaState } from "@/lib/verifier/client";
-import type { Failure } from "./problems";
+import type { Failure, Stage } from "./problems";
 
 /**
  * The agent path's own rules: what a prompt may be, how long both signatures
@@ -12,22 +13,17 @@ export const PROMPT_MIN = 8;
 export const PROMPT_MAX = 600;
 
 /**
- * How long the agent's signature and the creator's are good for.
+ * How long the agent's signature and the creator's are good for, in seconds.
  *
  * The agent signs first and the creator's passkey comes minutes later, so the
- * window has to cover a person reading the picture and deciding. Past it the
- * registry reverts with SignatureExpired and the screen offers to make it
- * again, which is honest: the old picture was never registered.
+ * window has to cover a person reading the picture and deciding. It is the
+ * registry window both paths use, and the deadline itself is measured from the
+ * chain's clock by lib/chain/time rather than from this laptop's.
  */
-export const DEADLINE_SECONDS = 30 * 60;
+export const DEADLINE_SECONDS = Number(SIGNATURE_WINDOW_SECONDS);
 
 /** The three prompts offered as buttons. Their words live in the message files. */
 export const EXAMPLE_PROMPTS = ["one", "two", "three"] as const;
-
-/** Unix seconds the service is asked to sign against. */
-export function generateDeadline(now: number = Date.now()): bigint {
-  return BigInt(Math.floor(now / 1000) + DEADLINE_SECONDS);
-}
 
 /** What is wrong with the typed prompt, before a picture is paid for. */
 export function checkPrompt(prompt: string): Failure | null {
@@ -50,8 +46,14 @@ export function atLimit(quota: QuotaState | null): boolean {
  * The same failure, with the retry named for what it would actually do.
  *
  * Trying again on the agent path is not resending the same picture: it draws a
- * new one and spends a slot from the day's quota, so the button says so.
+ * new one and spends a slot from the day's quota, so the button says so. That
+ * is only true before the transaction goes out. A send that was refused can be
+ * sent again as it stands, and a send that is still out must not be repeated at
+ * all, so neither is renamed.
  */
-export function asGenerateFailure(failure: Failure): Failure {
+export function asGenerateFailure(failure: Failure, stage?: Stage): Failure {
+  if (stage === "send" || stage === "confirm") {
+    return failure;
+  }
   return failure.next === "again" ? { ...failure, next: "generateAgain" } : failure;
 }

@@ -1,6 +1,6 @@
 import type { Hex } from "viem";
-import { chain } from "@/lib/chain/client";
-import { bindNonce, getPassport } from "@/lib/chain/registry";
+import { bindNonce, getPasskey, getPassport } from "@/lib/chain/registry";
+import { watchState, type Watched } from "@/lib/chain/watch";
 import { passportRegistration } from "@/lib/data/passports";
 import { activeSource } from "@/lib/data/source";
 
@@ -12,9 +12,15 @@ import { activeSource } from "@/lib/data/source";
  * can carry an empty hash while the transaction lands on Monad seconds later.
  * A screen that waits on that hash shows a failure for a write that worked and
  * invites a second send, which is the worst thing it could do. So the wait
- * here watches the two facts the registry itself holds: the bind nonce moving,
- * and the passport existing. A hash, when there is a real one, is the faster
- * answer and is raced against the poll rather than depended on.
+ * here watches the two facts the registry itself holds: the passkey it stores
+ * for a wallet, and the passport existing. The wait itself is the shared one in
+ * lib/chain/watch, which survives a read that throws and ends only at the
+ * window.
+ *
+ * A hash is only ever handed back once a receipt says that transaction
+ * succeeded. A sponsored send can land while the caller's own attempt reverted
+ * or was replaced, and a receipt link to that transaction would tell the reader
+ * a story the chain does not agree with.
  */
 
 const POLL_MS = 1_000;
@@ -26,9 +32,6 @@ const CHAIN_WINDOW_MS = 90_000;
 const INDEX_WINDOW_MS = 30_000;
 
 const HASH_SHAPE = /^0x[0-9a-fA-F]{64}$/;
-
-/** The sleep tick that loses the race when the receipt turns up first. */
-const PENDING = Symbol("pending");
 
 export interface Confirmed {
   landed: true;
@@ -70,46 +73,75 @@ export function transactionHash(value: string | null | undefined): Hex | undefin
 
 export interface BindConfirmation {
   wallet: Hex;
+  /** The key this device made. The bind is only this bind once the registry holds these bytes. */
+  qx: Hex;
+  qy: Hex;
   nonceBefore: bigint;
   hash?: string | null;
 }
 
-/** Waits until the registry's bind nonce for this wallet has moved past the one the signature used. */
-export async function confirmBind({ wallet, nonceBefore, hash }: BindConfirmation): Promise<Confirmed> {
-  const known = transactionHash(hash);
-  const watched = await watchChain(
-    async () => {
-      const nonce = await bindNonce(wallet);
-      return nonce > nonceBefore ? nonce : null;
+/**
+ * Waits until the registry holds the key this device made for this wallet.
+ *
+ * The nonce moving is not enough on its own: another device binding a
+ * different key moves it too, and a browser that remembered a credential on
+ * that answer would sign with a key the registry has already replaced. So both
+ * are read, and the wait ends only when the stored point is the one this
+ * ceremony created.
+ */
+export async function confirmBind({ wallet, qx, qy, nonceBefore, hash }: BindConfirmation): Promise<Confirmed> {
+  const watched = await watchState({
+    read: async () => {
+      const [passkey, nonce] = await Promise.all([getPasskey(wallet), bindNonce(wallet)]);
+      return { passkey, nonce };
     },
-    known,
-    wallet,
-  );
+    done: (state) =>
+      state.nonce > nonceBefore &&
+      state.passkey !== null &&
+      state.passkey.qx.toLowerCase() === qx.toLowerCase() &&
+      state.passkey.qy.toLowerCase() === qy.toLowerCase(),
+    hash: transactionHash(hash),
+    windowMs: CHAIN_WINDOW_MS,
+    pollMs: POLL_MS,
+  });
 
-  return { landed: true, hash: watched.hash, blockNumber: watched.blockNumber };
+  return { landed: true, hash: linkable(watched) };
 }
 
 export interface RegisterConfirmation {
   exactHash: Hex;
   hash?: string | null;
+  /**
+   * When the registry already held this passport before the send, the time on
+   * that record. Without it a record written by somebody else would read as
+   * this send landing.
+   */
+  registeredBefore?: bigint;
 }
 
 /**
  * Waits until the registry holds a passport under this exact hash, then reads
- * the record for the block and the time the receipt shows. When the send came
- * back without a hash, the index is asked for the transaction that carried it,
- * so the receipt still has a link a judge can open.
+ * the block and the time the receipt shows. When the send came back without a
+ * usable hash, the index is asked for the transaction that carried it, so the
+ * receipt still has a link a judge can open.
  */
-export async function confirmRegister({ exactHash, hash }: RegisterConfirmation): Promise<RegistrationConfirmed> {
-  const known = transactionHash(hash);
-  const watched = await watchChain(() => getPassport(exactHash), known, undefined);
-  const record = watched.state ?? (await getPassport(exactHash));
+export async function confirmRegister({
+  exactHash,
+  hash,
+  registeredBefore,
+}: RegisterConfirmation): Promise<RegistrationConfirmed> {
+  const watched = await watchState({
+    read: () => getPassport(exactHash),
+    done: (record) => record !== null && (registeredBefore === undefined || record.registeredAt !== registeredBefore),
+    hash: transactionHash(hash),
+    windowMs: CHAIN_WINDOW_MS,
+    pollMs: POLL_MS,
+  });
 
   const confirmed: RegistrationConfirmed = {
     landed: true,
-    hash: watched.hash,
-    blockNumber: watched.blockNumber,
-    registeredAt: record === null ? undefined : Number(record.registeredAt) * 1_000,
+    hash: linkable(watched),
+    registeredAt: watched.state === null ? undefined : Number(watched.state.registeredAt) * 1_000,
   };
 
   if (confirmed.hash !== undefined) {
@@ -117,64 +149,12 @@ export async function confirmRegister({ exactHash, hash }: RegisterConfirmation)
   }
 
   const indexed = await indexedRegistration(exactHash);
-  return indexed === null
-    ? confirmed
-    : { ...confirmed, hash: indexed.txHash, blockNumber: confirmed.blockNumber ?? indexed.registeredBlock };
+  return indexed === null ? confirmed : { ...confirmed, hash: indexed.txHash, blockNumber: indexed.registeredBlock };
 }
 
-interface Watched<T> {
-  /** Null only when the receipt won the race and the read has not caught up yet. */
-  state: T | null;
-  hash?: Hex;
-  blockNumber?: bigint;
-}
-
-async function watchChain<T>(
-  read: () => Promise<T | null>,
-  hash: Hex | undefined,
-  wallet: Hex | undefined,
-): Promise<Watched<T>> {
-  let receipt =
-    hash === undefined
-      ? null
-      : chain
-          .waitForTransactionReceipt({ hash, timeout: CHAIN_WINDOW_MS })
-          .then((mined) => ({ block: mined.blockNumber, reverted: mined.status !== "success" }))
-          // A receipt that never turns up decides nothing. The state poll does.
-          .catch(() => null);
-
-  const deadline = Date.now() + CHAIN_WINDOW_MS;
-
-  for (;;) {
-    const state = await read();
-    if (state !== null) {
-      return { state, hash };
-    }
-
-    if (Date.now() >= deadline) {
-      throw new ConfirmTimeout(wallet, hash);
-    }
-
-    if (receipt === null) {
-      await sleep(POLL_MS);
-      continue;
-    }
-
-    const settled = await Promise.race([receipt, sleep(POLL_MS).then((): typeof PENDING => PENDING)]);
-    if (settled === PENDING) {
-      continue;
-    }
-
-    receipt = null;
-    if (settled === null) {
-      continue;
-    }
-    if (settled.reverted) {
-      throw new Error(`Monad mined this transaction and it reverted: ${hash}`);
-    }
-
-    return { state: await read(), hash, blockNumber: settled.block };
-  }
+/** The hash worth printing: one whose receipt came back successful, and nothing else. */
+function linkable(watched: Watched<unknown>): Hex | undefined {
+  return watched.receiptStatus === "success" ? watched.hash : undefined;
 }
 
 /**
@@ -187,25 +167,16 @@ async function indexedRegistration(exactHash: Hex) {
     return null;
   }
 
-  const deadline = Date.now() + INDEX_WINDOW_MS;
-
-  for (;;) {
-    try {
-      const row = await passportRegistration(exactHash);
-      if (row !== null) {
-        return row;
-      }
-    } catch {
-      return null;
-    }
-
-    if (Date.now() >= deadline) {
-      return null;
-    }
-    await sleep(POLL_MS);
+  try {
+    const watched = await watchState({
+      read: () => passportRegistration(exactHash),
+      done: (row) => row !== null,
+      windowMs: INDEX_WINDOW_MS,
+      pollMs: POLL_MS,
+    });
+    return watched.state;
+  } catch {
+    // The index is a nicety here. The passport is already on chain either way.
+    return null;
   }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

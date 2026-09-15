@@ -209,7 +209,7 @@ export function RegisterPanel({
 }
 
 /** What a row is painted as, which is not always what the reducer stored. */
-type Tone = StepState | "pending";
+type Tone = Exclude<StepState, "unconfirmed"> | "pending";
 
 const NUMBER_TONE: Record<Tone, string> = {
   waiting: "text-text-faint",
@@ -242,8 +242,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
   // A send that ran out of patience is not a send that failed. The transaction
   // was accepted and may still land, so the row waits in the muted ink with a
   // hollow marker. The red is kept for the sends that really did not make it.
-  const tone: Tone =
-    step === "send" && status === "failed" && state.failure?.key === "confirmPending" ? "pending" : status;
+  const tone: Tone = status === "unconfirmed" ? "pending" : status;
 
   // Once the send is out, the wait is no longer about sending: it is about
   // Monad showing the passport, which is the thing actually being watched.

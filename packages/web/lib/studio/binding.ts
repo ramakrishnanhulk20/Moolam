@@ -5,8 +5,12 @@ import type { Failure } from "./problems";
  * Binding a passkey is three waits in a row, and each one is a different thing
  * to say: the device is making the key, the person has to touch the sensor, the
  * transaction is on its way to Monad.
+ *
+ * "unconfirmed" is the fourth answer, and it is not a failure: the bind was
+ * accepted and Monad has not shown it. The card stays locked there, because a
+ * second bind over one that lands would replace the key this browser just made.
  */
-export type BindStage = "idle" | "creating" | "waiting" | "sending" | "bound";
+export type BindStage = "idle" | "creating" | "waiting" | "sending" | "bound" | "unconfirmed";
 
 export interface BindState {
   stage: BindStage;
@@ -17,7 +21,7 @@ export interface BindState {
 }
 
 export type BindAction =
-  | { type: "stage"; stage: Exclude<BindStage, "bound"> }
+  | { type: "stage"; stage: Exclude<BindStage, "bound" | "unconfirmed"> }
   | { type: "created"; qx: Hex; qy: Hex }
   | { type: "sent"; txHash: Hex }
   | { type: "bound" }
@@ -37,7 +41,13 @@ export function bindReducer(state: BindState, action: BindAction): BindState {
     case "bound":
       return { ...state, stage: "bound", failure: null };
     case "failed":
-      return { ...state, stage: "idle", failure: action.failure };
+      // A bind that is still out keeps the card locked and shows the recheck.
+      // Everything else goes back to the start so the button can be pressed.
+      return {
+        ...state,
+        stage: action.failure.key === "confirmPending" ? "unconfirmed" : "idle",
+        failure: action.failure,
+      };
     case "reset":
       return initialBindState;
   }

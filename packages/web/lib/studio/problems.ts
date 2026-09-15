@@ -1,5 +1,9 @@
-import type { Hex } from "viem";
+import { BaseError, type Hex } from "viem";
 import { decodeRegistryError } from "@/lib/chain/calldata";
+import { DigestMismatch } from "@/lib/chain/digest";
+import { revertCopy } from "@/lib/chain/reverts";
+import { Reverted } from "@/lib/chain/watch";
+import { isUserCancellation } from "@/lib/errors/cancelled";
 import { explainPasskeyError } from "@/lib/passkey/browser";
 import type { AuthProblem } from "@/lib/passkey/verify";
 import { VerifierError } from "@/lib/verifier/client";
@@ -9,10 +13,15 @@ import { ConfirmTimeout } from "./confirm";
  * One failure, turned into the line the screen prints and the one thing the
  * creator can do about it.
  *
- * The key names a string under "studio.failure" in both message files, so every
+ * The key names a string under "studio.failure" in every message file, so every
  * failure is translated rather than leaking an English exception onto a Tamil
  * screen. The reason field carries the service's or the browser's own words,
  * which the copy prints after the sentence.
+ *
+ * What a failure is allowed to offer depends on where it happened, and the
+ * caller says where rather than the error's name being guessed at. Before the
+ * send, a second attempt costs nothing. After it, the transaction may already
+ * be on chain and the only honest offer is to ask Monad again.
  */
 export interface Failure {
   key: string;
@@ -25,8 +34,14 @@ export interface Failure {
   passportId?: Hex;
 }
 
-/** Which part of the flow threw, because the same DOMException means different things in each. */
-export type Stage = "prepare" | "passkey" | "send";
+/**
+ * Which phase of a flow threw.
+ *
+ * "sign" covers the chain read that builds the digest and the passkey ceremony
+ * over it. "send" ends the moment the wallet answers; everything after that is
+ * "confirm", where nothing may be sent a second time.
+ */
+export type Stage = "prepare" | "sign" | "send" | "confirm";
 
 /** A signature this browser already knows the registry would refuse, with the check that failed. */
 export class AuthCheckFailed extends Error {
@@ -68,19 +83,15 @@ const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
   "bad-response": { key: "badResponse", next: "again" },
 };
 
-const REVERT_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
-  PassportAlreadyExists: { key: "alreadyRegistered", next: "openPassport" },
-  SignatureExpired: { key: "expired", next: "again" },
-  PasskeyNotBound: { key: "notBound", next: "bind" },
-  InvalidPasskeySignature: { key: "badSignature", next: "again" },
-  InvalidPublicKey: { key: "badKey", next: "bind" },
-  EnforcedPause: { key: "paused" },
-  InvalidCreator: { key: "wrongWallet" },
-  EmptyMetadataURI: { key: "rejected" },
-  InvalidExactHash: { key: "rejected" },
-  InvalidKind: { key: "rejected" },
-  InvalidFingerprintVersion: { key: "rejected" },
-};
+/**
+ * The refusals that happened before a byte left the wallet, so the same signed
+ * bytes can go out again with no second passkey prompt.
+ */
+const RESENDABLE = new Set(["sendCancelled", "sponsorship"]);
+
+export function isResendable(failure: Failure | null): boolean {
+  return failure !== null && RESENDABLE.has(failure.key);
+}
 
 /**
  * Whether Privy refused to pay the network fee before the transaction was
@@ -98,15 +109,6 @@ export function isSponsorshipRefusal(error: unknown): boolean {
   }
   const text = messageOf(error).toLowerCase();
   return /sponsor|policy|paymaster|credit|not configured/.test(text);
-}
-
-/** Whether the person closed the wallet prompt themselves, which is not a failure to apologise for. */
-function isUserRejection(error: unknown): boolean {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === 4001) {
-    return true;
-  }
-  return /user (rejected|denied|declined)|rejected the request|cancell?ed/i.test(messageOf(error));
 }
 
 export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Failure {
@@ -128,29 +130,75 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
     return { key: "authCheck", reason: error.message, next: "again" };
   }
 
-  if (stage === "passkey") {
-    const problem = explainPasskeyError(error);
-    const keys = { cancelled: "passkeyCancelled", origin: "passkeyOrigin", unsupported: "passkeyUnsupported" } as const;
-    const key = problem.code === "other" ? "passkeyOther" : keys[problem.code];
-    return { key, reason: problem.message, next: problem.code === "cancelled" ? "again" : undefined };
+  if (error instanceof DigestMismatch) {
+    // Nothing was signed and nothing was sent: the registry described a
+    // different record than the one this page built, and the two have to agree
+    // before a passkey is touched.
+    return { key: "unknown", reason: error.message };
+  }
+
+  if (stage === "sign") {
+    return signingFailure(error);
   }
 
   if (stage === "send") {
-    const revert = decodeRegistryError(error);
-    if (revert !== undefined) {
-      const mapped = REVERT_KEYS[revert] ?? { key: "reverted", next: "again" as const };
-      return { ...mapped, reason: revert };
-    }
-    if (isSponsorshipRefusal(error)) {
-      return { key: "sponsorship", reason: messageOf(error), next: "unsponsored" };
-    }
-    if (isUserRejection(error)) {
-      return { key: "sendCancelled", next: "again" };
-    }
-    return { key: "sendFailed", reason: messageOf(error), next: "again" };
+    return sendingFailure(error);
+  }
+
+  if (stage === "confirm") {
+    return watchingFailure(error, wallet);
   }
 
   return { key: "unknown", reason: messageOf(error), next: "again" };
+}
+
+/**
+ * The digest read and the passkey ceremony share a phase, and they fail in
+ * completely different ways. Anything viem raised came from the chain read, so
+ * it is a network problem with nothing signed behind it. Everything else in
+ * this phase came out of the ceremony.
+ */
+function signingFailure(error: unknown): Failure {
+  if (error instanceof BaseError) {
+    return { key: "sendFailed", reason: messageOf(error), next: "again" };
+  }
+
+  const problem = explainPasskeyError(error);
+  const keys = { cancelled: "passkeyCancelled", origin: "passkeyOrigin", unsupported: "passkeyUnsupported" } as const;
+  const key = problem.code === "other" ? "passkeyOther" : keys[problem.code];
+  return { key, reason: problem.message, next: problem.code === "cancelled" ? "again" : undefined };
+}
+
+/** Up to and including the wallet's answer. Nothing is on chain yet, so a second attempt is safe. */
+function sendingFailure(error: unknown): Failure {
+  const revert = decodeRegistryError(error);
+  if (revert !== undefined) {
+    const copy = revertCopy(revert);
+    // A revert wrote nothing, and a new drawing would still spend a slot from
+    // the day's quota. The panel's own button is there for anyone who wants
+    // that; this note does not push them into it.
+    return { key: copy.key, reason: revert, next: copy.next === "generateAgain" ? undefined : copy.next };
+  }
+  if (isSponsorshipRefusal(error)) {
+    return { key: "sponsorship", reason: messageOf(error), next: "unsponsored" };
+  }
+  if (isUserCancellation(error)) {
+    return { key: "sendCancelled", next: "again" };
+  }
+  return { key: "sendFailed", reason: messageOf(error), next: "again" };
+}
+
+/**
+ * After the wallet answered. The transaction is out of this screen's hands, so
+ * every failure here is a question for Monad and never an offer to send again.
+ * The one exception is a receipt that came back mined and reverted: that is the
+ * chain saying plainly that nothing was written.
+ */
+function watchingFailure(error: unknown, wallet?: Hex): Failure {
+  if (error instanceof Reverted) {
+    return { key: "reverted", reason: messageOf(error), next: "again" };
+  }
+  return { key: "confirmPending", reason: messageOf(error), next: "recheck", address: wallet };
 }
 
 function messageOf(error: unknown): string {

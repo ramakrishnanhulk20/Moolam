@@ -104,26 +104,74 @@ export async function signDigest(options: {
   };
 }
 
+/** What this browser keeps about the passkey it bound, so the next signature needs no list to pick from. */
+export interface RememberedKey {
+  credentialId: Uint8Array;
+  qx: Hex;
+  qy: Hex;
+}
+
 /**
- * Remembers which credential belongs to a wallet, so the next signature does
- * not make the creator pick from a list. Losing this only costs a prompt: the
- * key itself lives on the device and the binding lives on chain.
+ * Remembers which credential belongs to a wallet, and which public key it
+ * carries. Losing this only costs a prompt: the key itself lives on the device
+ * and the binding lives on chain.
+ *
+ * The public key is stored beside the credential id because the id alone
+ * cannot be checked against anything. A second device that rebinds replaces
+ * the key in the registry, and a browser holding only an id would go on
+ * signing with a credential the registry has already replaced, and only find
+ * out when the transaction reverted.
  */
-export function rememberCredential(wallet: Hex, id: Uint8Array): void {
+export function rememberCredential(wallet: Hex, key: RememberedKey): void {
   try {
-    localStorage.setItem(storageKey(wallet), bytesToHex(id));
+    localStorage.setItem(
+      storageKey(wallet),
+      JSON.stringify({ id: bytesToHex(key.credentialId), qx: key.qx, qy: key.qy }),
+    );
   } catch {
     // Private browsing and a full quota both throw here, and neither is worth stopping a signature for.
   }
 }
 
-export function recallCredential(wallet: Hex): Uint8Array | undefined {
+/**
+ * The key this browser remembers for a wallet, checked against the one the
+ * registry holds. Anything that does not match, an entry written by an older
+ * version included, is dropped rather than handed back: it would only lead to
+ * a signature the registry refuses.
+ */
+export function recallCredential(wallet: Hex, onChain: { qx: Hex; qy: Hex } | null): RememberedKey | undefined {
   try {
     const stored = localStorage.getItem(storageKey(wallet));
-    return stored === null ? undefined : hexToBytes(stored as Hex);
+    if (stored === null) {
+      return undefined;
+    }
+
+    const held = parseKey(stored);
+    if (held !== undefined && onChain !== null && sameKey(held, onChain)) {
+      return held;
+    }
+
+    localStorage.removeItem(storageKey(wallet));
+    return undefined;
   } catch {
     return undefined;
   }
+}
+
+function parseKey(stored: string): RememberedKey | undefined {
+  try {
+    const held = JSON.parse(stored) as { id?: unknown; qx?: unknown; qy?: unknown };
+    if (typeof held.id !== "string" || typeof held.qx !== "string" || typeof held.qy !== "string") {
+      return undefined;
+    }
+    return { credentialId: hexToBytes(held.id as Hex), qx: held.qx as Hex, qy: held.qy as Hex };
+  } catch {
+    return undefined;
+  }
+}
+
+function sameKey(held: { qx: Hex; qy: Hex }, onChain: { qx: Hex; qy: Hex }): boolean {
+  return held.qx.toLowerCase() === onChain.qx.toLowerCase() && held.qy.toLowerCase() === onChain.qy.toLowerCase();
 }
 
 export interface PasskeyProblem {

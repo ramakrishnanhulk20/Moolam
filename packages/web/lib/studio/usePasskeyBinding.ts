@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Hex } from "viem";
-import { recallCredential } from "@/lib/passkey/browser";
+import { recallCredential, type RememberedKey } from "@/lib/passkey/browser";
 import { reason } from "@/lib/chain/client";
 import { getPasskey, type Passkey } from "@/lib/chain/registry";
 
@@ -10,9 +10,11 @@ import { getPasskey, type Passkey } from "@/lib/chain/registry";
  * Where this wallet stands with its passkey, read from the registry rather than
  * from anything the browser remembers.
  *
- * "bound-elsewhere" is the interesting one: the chain says a key is bound and
- * this browser has never seen it, which is a creator on a second device rather
- * than a creator with a problem.
+ * "bound-elsewhere" is the interesting one: the chain holds a key this browser
+ * cannot sign with, which is a creator on a second device rather than a
+ * creator with a problem. It covers the browser that has never seen a key and
+ * the browser whose remembered key was replaced by a later bind, because both
+ * end the same way: unlock once here, or bind this device.
  */
 export type BindingStatus = "reading" | "unbound" | "bound" | "bound-elsewhere" | "unreadable";
 
@@ -23,7 +25,7 @@ export interface Binding {
   error: string | null;
   refresh: () => void;
   /** Called after a recovery assertion proves this device holds the bound key. */
-  remember: (id: Uint8Array) => void;
+  remember: (key: RememberedKey) => void;
 }
 
 interface Answer {
@@ -31,7 +33,8 @@ interface Answer {
   wallet: Hex;
   tick: number;
   passkey: Passkey | null;
-  credentialId: Uint8Array | undefined;
+  /** Only ever a key this browser holds that matches the one on chain. */
+  remembered: RememberedKey | undefined;
   error: string | null;
 }
 
@@ -50,17 +53,13 @@ export function usePasskeyBinding(wallet: Hex | undefined): Binding {
       try {
         const passkey = await getPasskey(wallet);
         if (live) {
-          setAnswer({
-            wallet,
-            tick,
-            passkey,
-            credentialId: passkey === null ? undefined : recallCredential(wallet),
-            error: null,
-          });
+          // The recall drops a remembered key the chain no longer holds, so a
+          // rotated passkey never leaves a stale credential behind to sign with.
+          setAnswer({ wallet, tick, passkey, remembered: recallCredential(wallet, passkey), error: null });
         }
       } catch (thrown) {
         if (live) {
-          setAnswer({ wallet, tick, passkey: null, credentialId: undefined, error: reason(thrown) });
+          setAnswer({ wallet, tick, passkey: null, remembered: undefined, error: reason(thrown) });
         }
       }
     })();
@@ -74,21 +73,29 @@ export function usePasskeyBinding(wallet: Hex | undefined): Binding {
 
   const refresh = useCallback(() => setTick((value) => value + 1), []);
   const remember = useCallback(
-    (id: Uint8Array) => setAnswer((previous) => (previous === null ? previous : { ...previous, credentialId: id })),
-    [],
+    (key: RememberedKey) =>
+      setAnswer((previous) =>
+        // An assertion that came back after the account changed says nothing
+        // about the account on screen now.
+        previous === null || previous.wallet !== wallet ? previous : { ...previous, remembered: key },
+      ),
+    [wallet],
   );
 
-  return {
-    status: statusOf(current),
-    passkey: current?.passkey ?? null,
-    credentialId: current?.credentialId,
-    error: current?.error ?? null,
-    refresh,
-    remember,
-  };
+  return useMemo(
+    () => ({
+      status: bindingStatus(current),
+      passkey: current?.passkey ?? null,
+      credentialId: current?.remembered?.credentialId,
+      error: current?.error ?? null,
+      refresh,
+      remember,
+    }),
+    [current, refresh, remember],
+  );
 }
 
-function statusOf(answer: Answer | null): BindingStatus {
+export function bindingStatus(answer: { passkey: Passkey | null; remembered: RememberedKey | undefined; error: string | null } | null): BindingStatus {
   if (answer === null) {
     return "reading";
   }
@@ -98,5 +105,5 @@ function statusOf(answer: Answer | null): BindingStatus {
   if (answer.passkey === null) {
     return "unbound";
   }
-  return answer.credentialId === undefined ? "bound-elsewhere" : "bound";
+  return answer.remembered === undefined ? "bound-elsewhere" : "bound";
 }

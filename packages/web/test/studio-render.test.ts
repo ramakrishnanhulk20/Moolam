@@ -46,6 +46,13 @@ function render(locale: "en" | "ta", node: ReactElement): string {
 
 const NOOP = () => undefined;
 
+/** The opening tag of the element a label sits in, so a disabled button is read off the button itself. */
+function tagBefore(markup: string, label: string): string {
+  const at = markup.indexOf(label);
+  expect(at).toBeGreaterThan(-1);
+  return markup.slice(markup.lastIndexOf("<", at), at);
+}
+
 describe("the cards before the first transaction", () => {
   it("renders the signed out card in both languages", () => {
     const english = render("en", createElement(SignedOut, { onSignIn: NOOP }));
@@ -120,6 +127,36 @@ describe("the cards before the first transaction", () => {
     );
     expect(markup).toContain("The unlock prompt was closed or it timed out");
     expect(markup).toContain("Try again");
+  });
+
+  it("keeps the bind button shut while a bind is out, and offers the recheck", () => {
+    const markup = render(
+      "en",
+      createElement(BindCard, {
+        state: {
+          stage: "unconfirmed",
+          qx: null,
+          qy: null,
+          txHash: null,
+          failure: { key: "confirmPending", next: "recheck" },
+        },
+        onBind: NOOP,
+        onRecheck: NOOP,
+      }),
+    );
+    expect(tagBefore(markup, "Use this device&#x27;s unlock")).toContain('disabled=""');
+    expect(markup).toContain("Ask Monad again");
+    expect(markup).toContain("nothing has been sent a second time");
+  });
+
+  it("offers a way out of the bind card when binding was a choice", () => {
+    const state = { stage: "idle", qx: null, qy: null, txHash: null, failure: null } as const;
+
+    const detour = render("en", createElement(BindCard, { state, rebind: true, onBind: NOOP, onCancel: NOOP }));
+    expect(detour).toContain("Close");
+
+    const onlyWayIn = render("en", createElement(BindCard, { state, onBind: NOOP }));
+    expect(onlyWayIn).not.toContain(">Close<");
   });
 
   it("renders the recovery card for a passkey on another device", () => {
@@ -225,7 +262,7 @@ describe("the register panel", () => {
     const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
     const state = {
       ...initialRegisterState,
-      steps: { prepare: "done", sign: "done", send: "failed" },
+      steps: { prepare: "done", sign: "done", send: "unconfirmed" },
       prepared: PREPARED,
       failure: { key: "confirmPending", next: "recheck", address: wallet },
     } as RegisterState;
@@ -242,7 +279,7 @@ describe("the register panel", () => {
     const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
     const timedOut = {
       ...initialRegisterState,
-      steps: { prepare: "done", sign: "done", send: "failed" },
+      steps: { prepare: "done", sign: "done", send: "unconfirmed" },
       prepared: PREPARED,
       failure: { key: "confirmPending", next: "recheck", address: wallet },
     } as RegisterState;
@@ -280,6 +317,23 @@ describe("the register panel", () => {
     expect(markup).toContain("103059393");
     expect(markup).toContain(`/passport/0x${"ab".repeat(32)}`);
     expect(markup).toContain("Paid by Moolam through Privy");
+  });
+
+  it("keeps the register button shut while a send is out, and offers the recheck instead", () => {
+    const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+    const state = {
+      ...initialRegisterState,
+      file: new File(["x"], "a-morning.jpg", { type: "image/jpeg" }),
+      title: "A morning",
+      steps: { prepare: "done", sign: "done", send: "unconfirmed" },
+      prepared: PREPARED,
+      failure: { key: "confirmPending", next: "recheck", address: wallet },
+    } as RegisterState;
+
+    const markup = render("en", createElement(RegisterPanel, { state, wallet, ...handlers, onRecheck: NOOP }));
+    expect(tagBefore(markup, "Register this image")).toContain('disabled=""');
+    expect(markup).toContain("Ask Monad again");
+    expect(markup).not.toContain("pay the fee myself");
   });
 
   it("offers the passport that already holds the image when the registry refuses a repeat", () => {

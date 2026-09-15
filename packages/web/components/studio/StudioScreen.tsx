@@ -32,7 +32,14 @@ function Studio() {
   const studio = useStudio();
   const [rebinding, setRebinding] = useState(false);
 
-  const toBind = () => setRebinding(true);
+  // The bind card is a detour, not a destination. It opens on a clean card, it
+  // closes the moment the key is on chain or the creator backs out, and neither
+  // leaves the register and generate panels behind a reload.
+  const toBind = () => {
+    studio.actions.clearBind();
+    setRebinding(true);
+  };
+  const bindRoute = rebinding && studio.bind.stage !== "bound";
 
   return (
     <MotionConfig reducedMotion="user">
@@ -57,8 +64,17 @@ function Studio() {
             ) : studio.binding.status === "reading" ? (
               <WaitLabel text={t("passkey.reading")} />
             ) : studio.binding.status === "unreadable" ? (
-              <Notice text={t("passkey.unreadable", { reason: studio.binding.error ?? "" })} tone="failed" />
-            ) : studio.binding.status === "unbound" || rebinding ? (
+              <div>
+                <Notice text={t("passkey.unreadable", { reason: studio.binding.error ?? "" })} tone="failed" />
+                <button
+                  type="button"
+                  onClick={studio.binding.refresh}
+                  className="mt-5 rounded-[8px] border border-line px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+                >
+                  {t("actions.again")}
+                </button>
+              </div>
+            ) : studio.binding.status === "unbound" || bindRoute ? (
               <BindCard
                 state={studio.bind}
                 rebind={rebinding}
@@ -66,6 +82,8 @@ function Studio() {
                 confirming={studio.confirming}
                 onBind={studio.actions.bindThisDevice}
                 onRecheck={studio.actions.recheck}
+                onUnsponsored={() => void studio.actions.resend(true)}
+                onCancel={bindRoute ? () => setRebinding(false) : undefined}
               />
             ) : studio.binding.status === "bound-elsewhere" ? (
               <RecoverCard
@@ -91,7 +109,7 @@ function Studio() {
                       onTitle={studio.actions.setTitle}
                       onGenerate={studio.actions.generateImage}
                       onReset={studio.actions.reset}
-                      onUnsponsored={studio.actions.retryUnsponsored}
+                      onUnsponsored={() => void studio.actions.resend(true)}
                       onBind={toBind}
                       onRecheck={studio.actions.recheck}
                     />
@@ -103,7 +121,7 @@ function Studio() {
                       onTitle={studio.actions.setTitle}
                       onRegister={studio.actions.registerImage}
                       onReset={studio.actions.reset}
-                      onUnsponsored={studio.actions.retryUnsponsored}
+                      onUnsponsored={() => void studio.actions.resend(true)}
                       onBind={toBind}
                       onRecheck={studio.actions.recheck}
                     />
@@ -112,7 +130,8 @@ function Studio() {
               </>
             )}
 
-            {studio.register.failure?.next === "unsponsored" && studio.balance !== null ? (
+            {(studio.register.failure?.next === "unsponsored" || studio.bind.failure?.next === "unsponsored") &&
+            studio.balance !== null ? (
               <p className="mt-5 max-w-[54ch] font-mono text-xs leading-relaxed text-text-faint">
                 {t("register.balance", { mon: (Number(studio.balance) / 1e18).toFixed(4) })}
               </p>

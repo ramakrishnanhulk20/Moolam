@@ -23,6 +23,8 @@ export function BindCard({
   confirming = false,
   onBind,
   onRecheck,
+  onUnsponsored,
+  onCancel,
 }: {
   state: BindState;
   rebind?: boolean;
@@ -31,10 +33,21 @@ export function BindCard({
   confirming?: boolean;
   onBind: () => void;
   onRecheck?: () => void;
+  /** Sends the same signed bind again, with the fee paid from the creator's own balance. */
+  onUnsponsored?: () => void;
+  /** Leaves the bind card without binding. Only offered when this was a choice, not the only way in. */
+  onCancel?: () => void;
 }) {
   const t = useTranslations("studio");
+  const shared = useTranslations();
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
-  const busy = state.stage === "creating" || state.stage === "waiting" || state.stage === "sending";
+  // A bind that is out and unconfirmed keeps the button shut: a second passkey
+  // would replace the key the first transaction is about to write.
+  const busy =
+    state.stage === "creating" ||
+    state.stage === "waiting" ||
+    state.stage === "sending" ||
+    state.stage === "unconfirmed";
 
   return (
     <motion.section
@@ -80,14 +93,26 @@ export function BindCard({
         </div>
       ) : (
         <div className="mt-8 space-y-5">
-          <button
-            type="button"
-            onClick={onBind}
-            disabled={busy}
-            className="rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
-          >
-            {rebind ? t("bind.buttonAgain") : t("bind.button")}
-          </button>
+          <div className="flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              onClick={onBind}
+              disabled={busy}
+              className="rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
+            >
+              {rebind ? t("bind.buttonAgain") : t("bind.button")}
+            </button>
+            {onCancel === undefined ? null : (
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={busy}
+                className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-60"
+              >
+                {shared("passport.dispute.flag.close")}
+              </button>
+            )}
+          </div>
 
           {state.stage === "creating" ? <WaitLabel text={t("bind.creating")} /> : null}
           {state.stage === "waiting" ? <WaitLabel text={t("bind.waiting")} /> : null}
@@ -97,7 +122,13 @@ export function BindCard({
 
       {state.failure === null ? null : (
         <div className="mt-7">
-          <FailureNote failure={state.failure} onAgain={onBind} onBind={onBind} onRecheck={onRecheck} />
+          <FailureNote
+            failure={state.failure}
+            onAgain={onBind}
+            onBind={onBind}
+            onRecheck={onRecheck}
+            onUnsponsored={onUnsponsored}
+          />
         </div>
       )}
     </motion.section>

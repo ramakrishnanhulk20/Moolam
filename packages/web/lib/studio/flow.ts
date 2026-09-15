@@ -2,7 +2,7 @@ import type { Hex } from "viem";
 import type { GenerateResponse, PrepareResponse, QuotaState } from "@/lib/verifier/client";
 import { checkImage as checkUpload, type RefusalCode } from "@/lib/upload/checkImage";
 import { asGenerateFailure } from "./generate";
-import type { Failure } from "./problems";
+import type { Failure, Stage } from "./problems";
 
 /**
  * The honest steps between a picture and a passport, and where the creator is
@@ -14,7 +14,13 @@ import type { Failure } from "./problems";
  * land together because the service draws, pins and signs inside one answer.
  */
 export type Step = "prepare" | "draw" | "pin" | "agentSign" | "sign" | "send";
-export type StepState = "waiting" | "running" | "done" | "failed";
+
+/**
+ * "unconfirmed" is its own state on purpose: the send was accepted and Monad
+ * has not shown it yet. It is not a failure, and the screens that treat it as
+ * one invite a second send for a write that may already be on chain.
+ */
+export type StepState = "waiting" | "running" | "done" | "failed" | "unconfirmed";
 
 /** Which way this picture is being made: the creator's file, or the agent's. */
 export type Mode = "upload" | "generate";
@@ -58,7 +64,7 @@ export type RegisterAction =
   | { type: "sent"; txHash: Hex }
   | { type: "watching" }
   | { type: "confirmed"; block: bigint | null; at: number }
-  | { type: "failed"; failure: Failure; quota?: QuotaState }
+  | { type: "failed"; failure: Failure; quota?: QuotaState; stage?: Stage }
   | { type: "reset" };
 
 const WAITING: Record<Step, StepState> = {
@@ -156,11 +162,12 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
       return {
         ...state,
         confirming: false,
-        // Every retry on the agent path draws a new picture, so the button that
-        // offers it is named for that wherever the failure came from.
-        failure: state.mode === "generate" ? asGenerateFailure(action.failure) : action.failure,
+        // A retry before the send draws a new picture on the agent path, so the
+        // button that offers it is named for that. After the send there is
+        // nothing to draw again, only a chain to ask.
+        failure: state.mode === "generate" ? asGenerateFailure(action.failure, action.stage) : action.failure,
         quota: action.quota ?? state.quota,
-        steps: markRunningFailed(state.steps),
+        steps: markRunning(state.steps, action.failure.key === "confirmPending" ? "unconfirmed" : "failed"),
       };
     case "reset":
       return { ...initialRegisterState, mode: state.mode, quota: state.quota };
@@ -189,8 +196,18 @@ export function isRegistered(state: RegisterState): boolean {
   return state.steps.send === "done";
 }
 
+/**
+ * Whether the screen is holding a run. A step still waiting on Monad counts:
+ * the watch is alive, a recheck can end it, and starting a second run would
+ * send the same passport twice.
+ */
 export function isBusy(state: RegisterState): boolean {
-  return ALL_STEPS.some((step) => state.steps[step] === "running");
+  return ALL_STEPS.some((step) => state.steps[step] === "running" || state.steps[step] === "unconfirmed");
+}
+
+/** The send is out and Monad has not shown it. Nothing may be sent again from here. */
+export function isUnconfirmed(state: RegisterState): boolean {
+  return ALL_STEPS.some((step) => state.steps[step] === "unconfirmed");
 }
 
 /**
@@ -205,11 +222,11 @@ export function passportId(state: RegisterState): Hex | null {
   return state.prepared?.passport.exactHash ?? state.failure?.passportId ?? null;
 }
 
-function markRunningFailed(steps: Record<Step, StepState>): Record<Step, StepState> {
+function markRunning(steps: Record<Step, StepState>, to: StepState): Record<Step, StepState> {
   const next = { ...steps };
   for (const step of ALL_STEPS) {
     if (next[step] === "running") {
-      next[step] = "failed";
+      next[step] = to;
     }
   }
   return next;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Hex } from "viem";
 import { gatewayUrl, reason } from "@/lib/chain/client";
 import { passportsByCreator, type PassportListing } from "@/lib/data/passports";
@@ -74,12 +74,17 @@ export function useCreatorPassports(wallet: Hex | undefined): CreatorPassports {
   const current = answer !== null && answer.wallet === wallet && answer.tick === tick ? answer : null;
   const refresh = useCallback(() => setTick((value) => value + 1), []);
 
-  return {
-    status: current === null ? "reading" : current.error === null ? "ready" : "unreadable",
-    passports: current?.passports ?? [],
-    error: current?.error ?? null,
-    refresh,
-  };
+  // One object per answer, so the panels below do not re-render on every
+  // keystroke in the studio above them.
+  return useMemo(
+    () => ({
+      status: current === null ? ("reading" as const) : current.error === null ? ("ready" as const) : ("unreadable" as const),
+      passports: current?.passports ?? [],
+      error: current?.error ?? null,
+      refresh,
+    }),
+    [current, refresh],
+  );
 }
 
 async function withArt(row: PassportListing): Promise<CreatorPassport> {

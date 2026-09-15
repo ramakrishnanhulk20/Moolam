@@ -4,8 +4,16 @@ import { usePrivy, useSendTransaction, useWallets, type ConnectedWallet } from "
 import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { CHAIN_ID, addresses, chain } from "@/lib/chain/client";
-import { bindPasskeyCalldata, passportInputFrom, passportInputFromGenerated, registerCalldata } from "@/lib/chain/calldata";
-import { bindNonce, hashBind, hashPassport } from "@/lib/chain/registry";
+import {
+  SIGNATURE_WINDOW_SECONDS,
+  bindPasskeyCalldata,
+  passportInputFrom,
+  passportInputFromGenerated,
+  registerCalldata,
+} from "@/lib/chain/calldata";
+import { assertDigestMatches, localBindDigest, localPassportDigest } from "@/lib/chain/digest";
+import { bindNonce, getPassport, hashBind, hashPassport } from "@/lib/chain/registry";
+import { deadlineFromChain } from "@/lib/chain/time";
 import { createPasskey, rememberCredential, signDigest } from "@/lib/passkey/browser";
 import { checkAuth } from "@/lib/passkey/verify";
 import { VerifierError, generate, prepare } from "@/lib/verifier/client";
@@ -13,8 +21,8 @@ import { accountName, type AccountName, type SignedInUser } from "./account";
 import { bindReducer, initialBindState, type BindState } from "./binding";
 import { confirmBind, confirmRegister, transactionHash } from "./confirm";
 import { initialRegisterState, registerReducer, type Mode, type RegisterState } from "./flow";
-import { checkPrompt, generateDeadline } from "./generate";
-import { AuthCheckFailed, describeFailure, type Failure } from "./problems";
+import { checkPrompt } from "./generate";
+import { AuthCheckFailed, describeFailure, isResendable, type Failure } from "./problems";
 import { useCreatorPassports, type CreatorPassports } from "./useCreatorPassports";
 import { usePasskeyBinding, type Binding } from "./usePasskeyBinding";
 import { ensureMonad } from "./wallet";
@@ -56,9 +64,12 @@ export interface Studio {
     registerImage: () => Promise<void>;
     /** The agent draws and signs, then this device signs, then one transaction goes out. */
     generateImage: () => Promise<void>;
-    retryUnsponsored: () => Promise<void>;
+    /** Sends the bytes that were already signed, once more. No passkey prompt, no new picture. */
+    resend: (unsponsored: boolean) => Promise<void>;
     /** Asks Monad again about a write that was accepted but has not shown up. Sends nothing. */
     recheck: () => Promise<void>;
+    /** Puts the bind card back to its opening state, for a creator who walks into it a second time. */
+    clearBind: () => void;
     reset: () => void;
   };
   passports: CreatorPassports;
@@ -69,6 +80,8 @@ type Watch =
   | {
       kind: "bind";
       wallet: Hex;
+      qx: Hex;
+      qy: Hex;
       nonceBefore: bigint;
       hash?: Hex;
       balanceBefore: bigint | null;
@@ -78,9 +91,15 @@ type Watch =
       kind: "register";
       wallet: Hex;
       exactHash: Hex;
+      registeredBefore?: bigint;
       hash?: Hex;
       balanceBefore: bigint | null;
     };
+
+/** Bytes a passkey has already signed, kept so a refused send can go out again untouched. */
+type Pending =
+  | { kind: "bind"; data: Hex; qx: Hex; qy: Hex; nonceBefore: bigint; credentialId: Uint8Array }
+  | { kind: "register"; data: Hex; exactHash: Hex };
 
 /** What a wallet answered a send with, before anything on chain is known. */
 interface Submitted {
@@ -109,8 +128,8 @@ export function useStudio(): Studio {
   const [recovering, setRecovering] = useState(false);
   const [recovery, setRecovery] = useState<Failure | null>(null);
 
-  /** The last register transaction, kept so the unsponsored retry sends the same bytes. */
-  const pending = useRef<{ data: Hex; exactHash: Hex } | null>(null);
+  /** The last signed transaction, kept so a resend sends the same bytes. */
+  const pending = useRef<Pending | null>(null);
   /** The send that is out. A recheck reads it, and nothing here ever sends again. */
   const watching = useRef<Watch | null>(null);
 
@@ -119,20 +138,27 @@ export function useStudio(): Studio {
    *
    * The call is simulated first: a revert costs nothing there and comes back
    * with a name the ABI can decode, where a reverted transaction on chain only
-   * ever says "reverted". The hash the wallet returns is taken only when it is
-   * one: Privy's sponsored path answers with an empty string while the
-   * transaction is already on its way, and treating that as a failure is how a
-   * landed bind gets sent a second time.
+   * ever says "reverted". The simulation and the balance reading are one round
+   * trip, because neither depends on the other. The hash the wallet returns is
+   * taken only when it is one: Privy's sponsored path answers with an empty
+   * string while the transaction is already on its way, and treating that as a
+   * failure is how a landed bind gets sent a second time.
    */
   const submit = useCallback(
     async (entry: ConnectedWallet, from: Hex, data: Hex, unsponsored: boolean): Promise<Submitted> => {
       await ensureMonad(entry);
-      await chain.call({ account: from, to: addresses.registry, data });
 
-      const balanceBefore = unsponsored ? null : await chain.getBalance({ address: from });
+      const [, balanceBefore] = await Promise.all([
+        chain.call({ account: from, to: addresses.registry, data }),
+        unsponsored ? Promise.resolve(null) : chain.getBalance({ address: from }),
+      ]);
+
+      // The digest was built for this wallet, so this is the wallet that sends
+      // it. Privy picks the first embedded wallet otherwise, which is not the
+      // same thing on an account that holds more than one.
       const answer = await sendTransaction(
         { to: addresses.registry, data, chainId: CHAIN_ID },
-        { sponsor: !unsponsored },
+        { sponsor: !unsponsored, address: from },
       );
 
       return { hash: transactionHash(answer.hash), balanceBefore };
@@ -155,8 +181,8 @@ export function useStudio(): Studio {
 
   /**
    * Watches Monad for the bind that is out, and finishes the card when the
-   * registry's own nonce says it landed. Safe to run again: it reads, it never
-   * sends.
+   * registry holds the key this device made. Safe to run again: it reads, it
+   * never sends.
    */
   const finishBind = useCallback(async () => {
     const watch = watching.current;
@@ -167,50 +193,51 @@ export function useStudio(): Studio {
     dispatchBind({ type: "stage", stage: "sending" });
     setConfirming(true);
     try {
-      const landed = await confirmBind({ wallet: watch.wallet, nonceBefore: watch.nonceBefore, hash: watch.hash });
+      const landed = await confirmBind({
+        wallet: watch.wallet,
+        qx: watch.qx,
+        qy: watch.qy,
+        nonceBefore: watch.nonceBefore,
+        hash: watch.hash,
+      });
       if (landed.hash !== undefined) {
         dispatchBind({ type: "sent", txHash: landed.hash });
       }
 
       await settleSponsorship(watch.wallet, watch.balanceBefore);
-      rememberCredential(watch.wallet, watch.credentialId);
+      // Only now: the registry has answered with these exact bytes, so this
+      // credential is the one it will check every signature against.
+      rememberCredential(watch.wallet, { credentialId: watch.credentialId, qx: watch.qx, qy: watch.qy });
       watching.current = null;
+      pending.current = null;
       dispatchBind({ type: "bound" });
       binding.refresh();
     } catch (error) {
-      dispatchBind({ type: "failed", failure: describeFailure(error, "send", watch.wallet) });
+      dispatchBind({ type: "failed", failure: describeFailure(error, "confirm", watch.wallet) });
     } finally {
       setConfirming(false);
     }
   }, [binding, settleSponsorship]);
 
-  const bindThisDevice = useCallback(async () => {
-    if (embedded === undefined || wallet === undefined) {
-      return;
-    }
-
-    const rpId = window.location.hostname;
-    dispatchBind({ type: "stage", stage: "creating" });
-
-    try {
-      const created = await createPasskey({
-        rpId,
-        wallet,
-        displayName: accountName(user as SignedInUser | null).value ?? wallet,
-      });
-      dispatchBind({ type: "created", qx: created.qx, qy: created.qy });
-
-      const nonce = await bindNonce(wallet);
-      const digest = await hashBind(wallet, created.qx, created.qy, nonce);
-
-      const signed = await signDigest({ rpId, digest, credentialId: created.credentialId });
-      const check = await checkAuth(signed.auth, digest, created.qx, created.qy);
-      if (!check.ok) {
-        throw new AuthCheckFailed(check.problem, check.message);
+  const sendBind = useCallback(
+    async (ready: Extract<Pending, { kind: "bind" }>, unsponsored: boolean) => {
+      if (embedded === undefined || wallet === undefined) {
+        return;
       }
 
       dispatchBind({ type: "stage", stage: "sending" });
-      const sent = await submit(embedded, wallet, bindPasskeyCalldata(created.qx, created.qy, signed.auth), false);
+      let sent: Submitted;
+      try {
+        sent = await submit(embedded, wallet, ready.data, unsponsored);
+      } catch (error) {
+        const failure = describeFailure(error, "send", wallet);
+        if (failure.next === "unsponsored") {
+          setBalance(await chain.getBalance({ address: wallet }).catch(() => null));
+        }
+        dispatchBind({ type: "failed", failure });
+        return;
+      }
+
       if (sent.hash !== undefined) {
         dispatchBind({ type: "sent", txHash: sent.hash });
       }
@@ -218,18 +245,84 @@ export function useStudio(): Studio {
       watching.current = {
         kind: "bind",
         wallet,
-        nonceBefore: nonce,
+        qx: ready.qx,
+        qy: ready.qy,
+        nonceBefore: ready.nonceBefore,
         hash: sent.hash,
         balanceBefore: sent.balanceBefore,
-        credentialId: signed.credentialId,
+        credentialId: ready.credentialId,
       };
-    } catch (error) {
-      dispatchBind({ type: "failed", failure: describeFailure(error, stageOf(error), wallet) });
+
+      await finishBind();
+    },
+    [embedded, finishBind, submit, wallet],
+  );
+
+  const bindThisDevice = useCallback(async () => {
+    if (embedded === undefined || wallet === undefined) {
       return;
     }
 
-    await finishBind();
-  }, [embedded, finishBind, submit, user, wallet]);
+    // A bind is already out. Making a second passkey over it would replace the
+    // key the first one is about to write, so the card asks Monad instead.
+    if (watching.current?.kind === "bind") {
+      dispatchBind({ type: "failed", failure: { key: "confirmPending", next: "recheck", address: wallet } });
+      return;
+    }
+
+    // The last one was refused before it left the wallet. The key is made and
+    // the signature is good, so the same bytes go out again rather than a
+    // second passkey being made over the first.
+    if (isResendable(bind.failure) && pending.current?.kind === "bind") {
+      await sendBind(pending.current, false);
+      return;
+    }
+
+    const rpId = window.location.hostname;
+    const origin = window.location.origin;
+
+    dispatchBind({ type: "stage", stage: "creating" });
+    let created;
+    try {
+      created = await createPasskey({
+        rpId,
+        wallet,
+        displayName: accountName(user as SignedInUser | null).value ?? wallet,
+      });
+      dispatchBind({ type: "created", qx: created.qx, qy: created.qy });
+    } catch (error) {
+      dispatchBind({ type: "failed", failure: describeFailure(error, "sign", wallet) });
+      return;
+    }
+
+    let ready: Extract<Pending, { kind: "bind" }>;
+    try {
+      const nonce = await bindNonce(wallet);
+      const digest = localBindDigest(wallet, created.qx, created.qy, nonce);
+      assertDigestMatches(digest, await hashBind(wallet, created.qx, created.qy, nonce));
+
+      const signed = await signDigest({ rpId, digest, credentialId: created.credentialId });
+      const check = await checkAuth(signed.auth, digest, created.qx, created.qy, { rpId, origin });
+      if (!check.ok) {
+        throw new AuthCheckFailed(check.problem, check.message);
+      }
+
+      ready = {
+        kind: "bind",
+        data: bindPasskeyCalldata(created.qx, created.qy, signed.auth),
+        qx: created.qx,
+        qy: created.qy,
+        nonceBefore: nonce,
+        credentialId: signed.credentialId,
+      };
+      pending.current = ready;
+    } catch (error) {
+      dispatchBind({ type: "failed", failure: describeFailure(error, "sign", wallet) });
+      return;
+    }
+
+    await sendBind(ready, false);
+  }, [bind.failure, embedded, sendBind, user, wallet]);
 
   /**
    * The second device. The passkey signs a throwaway challenge with no
@@ -242,21 +335,26 @@ export function useStudio(): Studio {
       return;
     }
 
+    const rpId = window.location.hostname;
+    const origin = window.location.origin;
+    const onChain = binding.passkey;
+
     setRecovering(true);
     setRecovery(null);
 
     try {
       const digest = randomDigest();
-      const signed = await signDigest({ rpId: window.location.hostname, digest });
-      const check = await checkAuth(signed.auth, digest, binding.passkey.qx, binding.passkey.qy);
+      const signed = await signDigest({ rpId, digest });
+      const check = await checkAuth(signed.auth, digest, onChain.qx, onChain.qy, { rpId, origin });
       if (!check.ok) {
         throw new AuthCheckFailed(check.problem, check.message);
       }
 
-      rememberCredential(wallet, signed.credentialId);
-      binding.remember(signed.credentialId);
+      const remembered = { credentialId: signed.credentialId, qx: onChain.qx, qy: onChain.qy };
+      rememberCredential(wallet, remembered);
+      binding.remember(remembered);
     } catch (error) {
-      setRecovery(describeFailure(error, "passkey"));
+      setRecovery(describeFailure(error, "sign"));
     } finally {
       setRecovering(false);
     }
@@ -275,7 +373,11 @@ export function useStudio(): Studio {
 
     dispatchRegister({ type: "watching" });
     try {
-      const landed = await confirmRegister({ exactHash: watch.exactHash, hash: watch.hash });
+      const landed = await confirmRegister({
+        exactHash: watch.exactHash,
+        hash: watch.hash,
+        registeredBefore: watch.registeredBefore,
+      });
       if (landed.hash !== undefined) {
         dispatchRegister({ type: "sent", txHash: landed.hash });
       }
@@ -283,9 +385,10 @@ export function useStudio(): Studio {
 
       await settleSponsorship(watch.wallet, watch.balanceBefore);
       watching.current = null;
+      pending.current = null;
       passports.refresh();
     } catch (error) {
-      dispatchRegister({ type: "failed", failure: describeFailure(error, "send", watch.wallet) });
+      dispatchRegister({ type: "failed", failure: describeFailure(error, "confirm", watch.wallet), stage: "confirm" });
     }
   }, [passports, settleSponsorship]);
 
@@ -296,25 +399,30 @@ export function useStudio(): Studio {
       }
 
       dispatchRegister({ type: "start", step: "send", unsponsored });
+
+      // What the registry held a moment before the send, so a passport written
+      // by somebody else is never read as this transaction landing.
+      const before = await getPassport(exactHash).catch(() => null);
+
       try {
         const sent = await submit(embedded, wallet, data, unsponsored);
-        if (sent.hash !== undefined) {
-          dispatchRegister({ type: "sent", txHash: sent.hash });
-        }
-
         watching.current = {
           kind: "register",
           wallet,
           exactHash,
+          registeredBefore: before?.registeredAt,
           hash: sent.hash,
           balanceBefore: sent.balanceBefore,
         };
+        if (sent.hash !== undefined) {
+          dispatchRegister({ type: "sent", txHash: sent.hash });
+        }
       } catch (error) {
         const failure = describeFailure(error, "send", wallet);
         if (failure.next === "unsponsored") {
           setBalance(await chain.getBalance({ address: wallet }).catch(() => null));
         }
-        dispatchRegister({ type: "failed", failure });
+        dispatchRegister({ type: "failed", failure, stage: "send" });
         return;
       }
 
@@ -324,7 +432,17 @@ export function useStudio(): Studio {
   );
 
   const registerImage = useCallback(async () => {
-    if (embedded === undefined || wallet === undefined || binding.passkey === null) {
+    if (embedded === undefined || wallet === undefined) {
+      return;
+    }
+    if (binding.passkey === null) {
+      dispatchRegister({ type: "failed", failure: passkeyNotReady(binding), stage: "prepare" });
+      return;
+    }
+    // The last attempt was refused before anything left the wallet, and the
+    // bytes are still signed. They go out as they are, with no second prompt.
+    if (isResendable(register.failure) && pending.current?.kind === "register") {
+      await sendRegister(pending.current.data, pending.current.exactHash, register.unsponsored);
       return;
     }
     if (register.file === null) {
@@ -337,6 +455,8 @@ export function useStudio(): Studio {
     }
 
     const rpId = window.location.hostname;
+    const origin = window.location.origin;
+    const onChain = binding.passkey;
 
     dispatchRegister({ type: "start", step: "prepare" });
     let prepared;
@@ -348,30 +468,39 @@ export function useStudio(): Studio {
       prepared = await prepare({ file: register.file, title: register.title.trim(), accessToken: token });
       dispatchRegister({ type: "prepared", prepared });
     } catch (error) {
-      dispatchRegister({ type: "failed", failure: describeFailure(error, "prepare") });
+      dispatchRegister({ type: "failed", failure: describeFailure(error, "prepare"), stage: "prepare" });
       return;
     }
 
     dispatchRegister({ type: "start", step: "sign" });
     let data: Hex;
     try {
-      const input = passportInputFrom(prepared.passport, wallet);
-      const digest = await hashPassport(input);
+      const input = passportInputFrom(
+        prepared.passport,
+        wallet,
+        await deadlineFromChain(SIGNATURE_WINDOW_SECONDS),
+      );
+      // Built here, then checked against the registry's own answer. A
+      // disagreement means the two are not describing the same transaction,
+      // and it is caught before the passkey is touched rather than after.
+      const digest = localPassportDigest(input);
+      assertDigestMatches(digest, await hashPassport(input));
+
       const signed = await signDigest({ rpId, digest, credentialId: binding.credentialId });
-      const check = await checkAuth(signed.auth, digest, binding.passkey.qx, binding.passkey.qy);
+      const check = await checkAuth(signed.auth, digest, onChain.qx, onChain.qy, { rpId, origin });
       if (!check.ok) {
         throw new AuthCheckFailed(check.problem, check.message);
       }
       data = registerCalldata(input, signed.auth, "0x");
-      pending.current = { data, exactHash: prepared.passport.exactHash };
+      pending.current = { kind: "register", data, exactHash: prepared.passport.exactHash };
       dispatchRegister({ type: "signed", digest });
     } catch (error) {
-      dispatchRegister({ type: "failed", failure: describeFailure(error, stageOf(error), wallet) });
+      dispatchRegister({ type: "failed", failure: describeFailure(error, "sign", wallet), stage: "sign" });
       return;
     }
 
     await sendRegister(data, prepared.passport.exactHash, false);
-  }, [binding, embedded, getAccessToken, register.file, register.title, sendRegister, wallet]);
+  }, [binding, embedded, getAccessToken, register.failure, register.file, register.title, register.unsponsored, sendRegister, wallet]);
 
   /**
    * The agent path, end to end.
@@ -383,7 +512,15 @@ export function useStudio(): Studio {
    * sponsorship and the wait on Monad, is the upload path's own code.
    */
   const generateImage = useCallback(async () => {
-    if (embedded === undefined || wallet === undefined || binding.passkey === null) {
+    if (embedded === undefined || wallet === undefined) {
+      return;
+    }
+    if (binding.passkey === null) {
+      dispatchRegister({ type: "failed", failure: passkeyNotReady(binding), stage: "prepare" });
+      return;
+    }
+    if (isResendable(register.failure) && pending.current?.kind === "register") {
+      await sendRegister(pending.current.data, pending.current.exactHash, register.unsponsored);
       return;
     }
     if (register.title.trim().length === 0) {
@@ -397,19 +534,23 @@ export function useStudio(): Studio {
     }
 
     const rpId = window.location.hostname;
+    const origin = window.location.origin;
+    const onChain = binding.passkey;
 
     dispatchRegister({ type: "start", step: "draw" });
     let drawn;
+    let deadline: bigint;
     try {
       const token = await getAccessToken();
       if (token === null) {
         throw new Error("this session has no access token, so the verify service cannot be called");
       }
+      deadline = await deadlineFromChain(SIGNATURE_WINDOW_SECONDS);
       drawn = await generate({
         prompt: register.prompt.trim(),
         title: register.title.trim(),
         creator: wallet,
-        deadline: generateDeadline(),
+        deadline,
         accessToken: token,
       });
       dispatchRegister({ type: "drawn", response: drawn });
@@ -418,36 +559,57 @@ export function useStudio(): Studio {
         type: "failed",
         failure: describeFailure(error, "prepare"),
         quota: error instanceof VerifierError ? error.quota : undefined,
+        stage: "prepare",
       });
+      return;
+    }
+
+    // The agent signed a creator into the struct. If it is not the account on
+    // this screen, the registry would refuse the pair, so nobody is asked for
+    // their unlock over it.
+    if (drawn.passport.creator.toLowerCase() !== wallet.toLowerCase()) {
+      dispatchRegister({ type: "failed", failure: { key: "creatorMismatch", next: "signOut" }, stage: "prepare" });
       return;
     }
 
     dispatchRegister({ type: "start", step: "sign" });
     let data: Hex;
     try {
-      const input = passportInputFromGenerated(drawn.passport);
-      const digest = await hashPassport(input);
+      const input = passportInputFromGenerated(drawn.passport, deadline);
+      const digest = localPassportDigest(input);
+      assertDigestMatches(digest, await hashPassport(input));
+
       const signed = await signDigest({ rpId, digest, credentialId: binding.credentialId });
-      const check = await checkAuth(signed.auth, digest, binding.passkey.qx, binding.passkey.qy);
+      const check = await checkAuth(signed.auth, digest, onChain.qx, onChain.qy, { rpId, origin });
       if (!check.ok) {
         throw new AuthCheckFailed(check.problem, check.message);
       }
       data = registerCalldata(input, signed.auth, drawn.generatorSig);
-      pending.current = { data, exactHash: drawn.passport.exactHash };
+      pending.current = { kind: "register", data, exactHash: drawn.passport.exactHash };
       dispatchRegister({ type: "signed", digest });
     } catch (error) {
-      dispatchRegister({ type: "failed", failure: describeFailure(error, stageOf(error), wallet) });
+      dispatchRegister({ type: "failed", failure: describeFailure(error, "sign", wallet), stage: "sign" });
       return;
     }
 
     await sendRegister(data, drawn.passport.exactHash, false);
-  }, [binding, embedded, getAccessToken, register.prompt, register.title, sendRegister, wallet]);
+  }, [binding, embedded, getAccessToken, register.failure, register.prompt, register.title, register.unsponsored, sendRegister, wallet]);
 
-  const retryUnsponsored = useCallback(async () => {
-    if (pending.current !== null) {
-      await sendRegister(pending.current.data, pending.current.exactHash, true);
-    }
-  }, [sendRegister]);
+  /** The same signed bytes, sent once more. Nothing is rebuilt and no passkey is asked for. */
+  const resend = useCallback(
+    async (unsponsored: boolean) => {
+      const ready = pending.current;
+      if (ready === null) {
+        return;
+      }
+      if (ready.kind === "register") {
+        await sendRegister(ready.data, ready.exactHash, unsponsored);
+        return;
+      }
+      await sendBind(ready, unsponsored);
+    },
+    [sendBind, sendRegister],
+  );
 
   const recheck = useCallback(async () => {
     const watch = watching.current;
@@ -482,8 +644,9 @@ export function useStudio(): Studio {
       setMode: (mode: Mode) => dispatchRegister({ type: "mode", mode }),
       registerImage,
       generateImage,
-      retryUnsponsored,
+      resend,
       recheck,
+      clearBind: () => dispatchBind({ type: "reset" }),
       reset: () => dispatchRegister({ type: "reset" }),
     },
     passports,
@@ -491,19 +654,12 @@ export function useStudio(): Studio {
 }
 
 /**
- * Which half of a bind the error came from. Anything the passkey ceremony
- * throws carries a DOMException name; everything else at that point is a chain
- * read or the transaction itself.
+ * What to say when a register is asked for before the chain has answered about
+ * the passkey. Silence here read as a dead button, which is worse than a line
+ * asking for another moment.
  */
-function stageOf(error: unknown): "passkey" | "send" {
-  if (error instanceof AuthCheckFailed) {
-    return "passkey";
-  }
-  const name = error instanceof Error ? error.name : "";
-  if (name === "PasskeyUnsupported") {
-    return "passkey";
-  }
-  return name.endsWith("Error") && name !== "Error" ? "passkey" : "send";
+function passkeyNotReady(binding: Binding): Failure {
+  return { key: "unknown", reason: binding.error ?? undefined, next: "again" };
 }
 
 function randomDigest(): Hex {
