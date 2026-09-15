@@ -407,11 +407,11 @@ curl against the same URL works.
 
 | Package | Command | Tests |
 | --- | --- | --- |
-| Contracts | `npm test` from `packages/contracts` | 119 |
-| Verify service | `npm run test:verifier` | 150 |
+| Contracts | `npm test` from `packages/contracts` | 122 |
+| Verify service | `npm run test:verifier` | 153 |
 | Chain client and agents | `npm run test:agents` | 38 |
-| Indexer | `npm run test:indexer` | 9 |
-| Web app | `npm test` from `packages/web` | 384 |
+| Indexer | `npm run test:indexer` | 12 |
+| Web app | `npm test` from `packages/web` | 577 |
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -565,11 +565,11 @@ no trailing slash.
 
 | Suite | Tests | What it covers |
 | --- | --- | --- |
-| Contracts | 119 | 18 on the policy timelock, 75 on the registry covering every rule, custom error and event, 15 on the Chainlink receiver path, 5 fuzz tests, an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real Monad mainnet state |
-| Verify service | 150 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
+| Contracts | 122 | 18 on the policy timelock, 75 on the registry covering every rule, custom error and event, 15 on the Chainlink receiver path, 5 fuzz tests, an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real Monad mainnet state |
+| Verify service | 153 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
 | Chain client and agents | 38 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
-| Indexer | 9 | The handlers against the generated Envio types with the live mainnet addresses |
-| Web app | 384 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the edit panel, the dispute panel and the resolver console, the verify answer, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
+| Indexer | 12 | The handlers against the generated Envio types with the live mainnet addresses |
+| Web app | 577 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the edit panel, the dispute panel and the resolver console, the verify answer, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
 
 The six invariants all held: the contract balance always covers every liability, the bond total
 always equals the sum of open disputes, every edit points at a parent that exists, no image id is
