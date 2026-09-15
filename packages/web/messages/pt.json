@@ -320,6 +320,7 @@
     "manifestHash": "Hash do manifesto",
     "metadata": "Metadados",
     "parent": "Editada a partir de",
+    "lineageDisputed": "Contestada, aqui ou acima",
     "disputed": "Contestado",
     "attestations": {
       "heading": "Conferida de novo, por outra pessoa",

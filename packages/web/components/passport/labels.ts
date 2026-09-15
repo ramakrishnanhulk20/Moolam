@@ -27,12 +27,19 @@ export type Standing = "verified" | "mismatched" | "disputed" | "unverified";
  * and a passport that failed a check must never read the same. Everything else
  * is simply unverified, which is the honest word for "registered, not yet
  * re-checked".
+ *
+ * `inherited` is the same verdict reached one picture higher up. The registry
+ * marks only the passport a challenge named, so an edit of a picture proven
+ * fake carries no mark of its own and has to be told apart from a clean record
+ * by its lineage. A caller that cannot read the lineage leaves it out, and the
+ * word then says only what the chain said.
  */
 export function standingOf(passport: {
   disputed: boolean;
+  inherited?: boolean;
   attestations: readonly { matched: boolean }[];
 }): Standing {
-  if (passport.disputed) {
+  if (passport.disputed || passport.inherited === true) {
     return "disputed";
   }
   if (passport.attestations.some((attestation) => !attestation.matched)) {

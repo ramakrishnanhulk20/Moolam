@@ -15,6 +15,7 @@ import { Poster } from "@/components/passport/Poster";
 import { reason } from "@/lib/chain/client";
 import {
   DisputeStatus,
+  ZERO_ID,
   getAttestations,
   getChildren,
   getDispute,
@@ -24,6 +25,7 @@ import {
 } from "@/lib/chain/registry";
 import type { Attestation, Dispute, Passport } from "@/lib/chain/registry";
 import { activeSource } from "@/lib/data/source";
+import { inheritedDisputed } from "@/lib/data/lineage";
 import { passportRegistration } from "@/lib/data/passports";
 import { passportShareMetadata } from "./opengraph-image";
 
@@ -117,14 +119,16 @@ export default async function PassportPage({
     return <Notice text={t("notFound")} />;
   }
 
-  // The picture and the transaction links are the two things this page can do
-  // without, so neither is allowed to fail the render.
-  const [art, indexed, registration] = await Promise.all([
+  // The picture, the transaction links and the lineage's standing are the three
+  // things this page can do without, so none of them is allowed to fail the
+  // render.
+  const [art, indexed, registration, ancestorDisputed] = await Promise.all([
     readArt(passport.metadataURI),
     indexedAttestations(passport.id),
     registrationOf(passport.id),
+    ancestorsDisputed(passport.parentId),
   ]);
-  const standing = standingOf({ disputed: passport.disputed, attestations });
+  const standing = standingOf({ disputed: passport.disputed, inherited: ancestorDisputed, attestations });
 
   return (
     <article>
@@ -157,7 +161,7 @@ export default async function PassportPage({
 
         <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
           <div className="rise">
-            <Lineage parentId={passport.parentId} edits={edits} />
+            <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
             {/* Only the wallet that holds this passport ever sees this panel. */}
             <EditPanel parentId={passport.id} owner={owner} />
           </div>
@@ -168,6 +172,27 @@ export default async function PassportPage({
       </div>
     </article>
   );
+}
+
+/**
+ * Whether the picture this one was edited from, or anything above that, had a
+ * dispute upheld on it.
+ *
+ * The registry marks only the passport a challenge named, so this answer exists
+ * nowhere on chain and only the index can give it. An index that will not
+ * answer costs the page the word and the mark: it then says what the chain said
+ * about this record and nothing about its ancestors, which is better than
+ * guessing in either direction.
+ */
+async function ancestorsDisputed(parentId: Hex): Promise<boolean> {
+  if (parentId === ZERO_ID || activeSource() !== "envio") {
+    return false;
+  }
+  try {
+    return await inheritedDisputed(parentId);
+  } catch {
+    return false;
+  }
 }
 
 /**

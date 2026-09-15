@@ -10,6 +10,11 @@ export interface ExplorePlate {
   rechecked: boolean;
   /** True when the re-check on this passport came through the Chainlink receiver. */
   chainlink: boolean;
+  /**
+   * True when a dispute was upheld on this passport or on any picture it was
+   * edited from. An edit of a picture proven fake reads clean on chain, and a
+   * sheet that showed it clean would be the easiest way to launder one.
+   */
   disputed: boolean;
   agentId: string | null;
 }

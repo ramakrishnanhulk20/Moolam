@@ -319,6 +319,7 @@
     "manifestHash": "Manifest hash",
     "metadata": "Metadata",
     "parent": "Edited from",
+    "lineageDisputed": "Disputed, here or above",
     "disputed": "Disputed",
     "attestations": {
       "heading": "Checked again, by someone else",

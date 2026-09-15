@@ -169,3 +169,29 @@ describe("the line that says how the registry divides", () => {
     expect(split).toEqual({ real: data.SPLIT_CAP, test: 0, scanned: data.SPLIT_CAP, capped: true });
   });
 });
+
+describe("the disputed mark on a plate", () => {
+  it("lights on an edit whose picture was disputed, which the index row itself does not say", async () => {
+    const rows = [row(0, true), row(1, true)];
+    indexHolding(rows);
+
+    const sift = sheet.plateSheet(undefined);
+    const page = await data.explorePassports({
+      filter: { disputedReach: { ids: [rows[1].id] } },
+      limit: 4,
+      keep: sift.keep,
+    });
+
+    expect(sift.platesFor(page.passports).map((plate) => plate.disputed)).toEqual([false, true]);
+  });
+
+  it("takes the index's own field when the schema has it", async () => {
+    const rows = [{ ...row(0, true), inheritedDisputed: true }];
+    indexHolding(rows);
+
+    const sift = sheet.plateSheet(undefined);
+    const page = await data.explorePassports({ filter: { disputedReach: "field" }, limit: 4, keep: sift.keep });
+
+    expect(sift.platesFor(page.passports).map((plate) => plate.disputed)).toEqual([true]);
+  });
+});

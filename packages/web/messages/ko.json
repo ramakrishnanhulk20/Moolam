@@ -321,6 +321,7 @@
     "manifestHash": "매니페스트 해시",
     "metadata": "메타데이터",
     "parent": "편집 원본",
+    "lineageDisputed": "여기 또는 그 위에서 이의 제기됨",
     "disputed": "이의 제기됨",
     "attestations": {
       "heading": "다른 사람이 다시 확인했습니다",

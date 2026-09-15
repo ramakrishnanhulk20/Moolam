@@ -320,6 +320,7 @@
     "manifestHash": "मेनिफ़ेस्ट हैश",
     "metadata": "मेटाडेटा",
     "parent": "इससे संपादित",
+    "lineageDisputed": "यहाँ या इससे ऊपर विवादित",
     "disputed": "विवादित",
     "attestations": {
       "heading": "किसी और ने दोबारा जाँचा",

@@ -34,6 +34,27 @@ describe("what the index is asked for", () => {
     expect(passportWhere({ rechecked: true })).toEqual({ _and: [{ attestationCount: { _gt: 0 } }] });
   });
 
+  it("asks for the registry's own mark when nothing worked out the lineage", () => {
+    expect(passportWhere({ disputed: true })).toEqual({ _and: [{ disputed: { _eq: true } }] });
+  });
+
+  it("names the ids the walk found, so an edit of a disputed picture is on the sheet too", () => {
+    const edit = `0x${"2b".repeat(32)}`;
+    expect(passportWhere({ disputed: true, disputedReach: { ids: [ID, edit] } })).toEqual({
+      _and: [{ id: { _in: [ID, edit] } }],
+    });
+  });
+
+  it("asks for nothing while no dispute has been upheld, rather than for everything", () => {
+    expect(passportWhere({ disputed: true, disputedReach: { ids: [] } })).toEqual({ _and: [{ id: { _in: [] } }] });
+  });
+
+  it("hands the question to the index once its schema carries the answer", () => {
+    expect(passportWhere({ disputed: true, disputedReach: "field" })).toEqual({
+      _and: [{ inheritedDisputed: { _eq: true } }],
+    });
+  });
+
   it("stacks the chips, the agent and the search into one and", () => {
     expect(passportWhere({ kind: 0, disputed: true, generator: "10248", search: "0xAB" })).toEqual({
       _and: [

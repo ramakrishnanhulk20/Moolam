@@ -321,6 +321,7 @@
     "manifestHash": "マニフェストのハッシュ",
     "metadata": "メタデータ",
     "parent": "編集元",
+    "lineageDisputed": "ここまたはその上で異議あり",
     "disputed": "異議あり",
     "attestations": {
       "heading": "別の誰かが、もう一度確かめました",

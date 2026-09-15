@@ -319,6 +319,7 @@
     "manifestHash": "Hash del manifiesto",
     "metadata": "Metadatos",
     "parent": "Editada a partir de",
+    "lineageDisputed": "En disputa, aquí o más arriba",
     "disputed": "En disputa",
     "attestations": {
       "heading": "Comprobada otra vez, por otra persona",

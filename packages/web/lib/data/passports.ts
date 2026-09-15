@@ -10,6 +10,7 @@ import {
   chain,
   registryAbi,
 } from "@/lib/chain/client";
+import { reaches, type DisputedReach } from "./lineage";
 import { activeSource, envioUrl } from "./source";
 
 /** One row of the latest-passports strip. */
@@ -427,6 +428,14 @@ export interface PassportFilter {
   /** Only passports an independent re-check has already been written for. */
   rechecked?: boolean;
   disputed?: boolean;
+  /**
+   * How the Disputed chip reaches the edits made from a disputed picture,
+   * worked out in lib/data/lineage.ts before the query is built.
+   *
+   * Left out, the chip asks for the mark the registry itself wrote, which
+   * misses every copy of a picture proven fake.
+   */
+  disputedReach?: DisputedReach;
   /** An ERC-8004 agent id, as the index stores it. */
   generator?: string;
   /** Matched against the passport id. The index stores no title, so there is nothing else to match. */
@@ -484,7 +493,7 @@ export function passportWhere(filter: PassportFilter, cursor?: PassportCursor | 
     clauses.push({ attestationCount: { _gt: 0 } });
   }
   if (filter.disputed === true) {
-    clauses.push({ disputed: { _eq: true } });
+    clauses.push(disputedClause(filter.disputedReach));
   }
   if (filter.generator !== undefined && filter.generator !== "") {
     clauses.push({ generator_id: { _eq: filter.generator } });
@@ -507,6 +516,22 @@ export function passportWhere(filter: PassportFilter, cursor?: PassportCursor | 
   return clauses.length === 0 ? {} : { _and: clauses };
 }
 
+/**
+ * What the Disputed chip asks the index for.
+ *
+ * A challenge that is upheld marks one passport, and every edit made from that
+ * picture is a copy of something proven fake, so the chip has to cover both.
+ * The index answers that itself where it has the field. Where it does not, the
+ * ids were walked out of the parent links first and are named here, and an
+ * empty list is the right answer for a registry with no upheld dispute on it.
+ */
+function disputedClause(reach: DisputedReach | undefined): Record<string, unknown> {
+  if (reach === undefined) {
+    return { disputed: { _eq: true } };
+  }
+  return reach === "field" ? { inheritedDisputed: { _eq: true } } : { id: { _in: [...reach.ids] } };
+}
+
 /** One row of the Explore grid, as the index has it. The picture is read separately. */
 export interface ExplorePassport {
   id: Hex;
@@ -518,7 +543,10 @@ export interface ExplorePassport {
   rechecked: boolean;
   /** True when one of those re-checks was written through the Chainlink receiver. */
   chainlink: boolean;
+  /** The mark the registry itself wrote, which names one passport and nothing under it. */
   disputed: boolean;
+  /** That mark, or the same one on any picture this was edited from. */
+  inheritedDisputed: boolean;
   generatorId: string | null;
 }
 
@@ -580,6 +608,11 @@ async function readPage(
   cursor: PassportCursor | null,
   limit: number,
 ): Promise<ExplorePage> {
+  // The inherited mark is only asked for where the index has it. On a schema
+  // without that column the same field would fail the whole query, so the flag
+  // is read off the ids the walk worked out instead.
+  const inheritedField = filter.disputedReach === "field" ? "inheritedDisputed" : "";
+
   const query = `query ExplorePassports($where: Passport_bool_exp!, $limit: Int!) {
     Passport(where: $where, order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit) {
       id
@@ -589,6 +622,7 @@ async function readPage(
       metadataURI
       manifestHash
       disputed
+      ${inheritedField}
       attestationCount
       attestations(limit: 5) { receiver }
       generator { id }
@@ -604,6 +638,7 @@ async function readPage(
       metadataURI: string;
       manifestHash: string;
       disputed: boolean;
+      inheritedDisputed?: boolean;
       attestationCount: number;
       attestations: { receiver: string }[];
       generator: { id: string } | null;
@@ -620,6 +655,7 @@ async function readPage(
     rechecked: row.attestationCount > 0,
     chainlink: row.attestations.some((one) => one.receiver.toLowerCase() === addresses.receiver.toLowerCase()),
     disputed: row.disputed,
+    inheritedDisputed: row.disputed || reaches(filter.disputedReach, row),
     generatorId: row.generator?.id ?? null,
   }));
 

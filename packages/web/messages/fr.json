@@ -319,6 +319,7 @@
     "manifestHash": "Hachage du manifeste",
     "metadata": "Métadonnées",
     "parent": "Retouchée à partir de",
+    "lineageDisputed": "Contestée, ici ou plus haut",
     "disputed": "Contestée",
     "attestations": {
       "heading": "Revérifiée, par quelqu’un d’autre",

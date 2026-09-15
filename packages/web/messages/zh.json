@@ -321,6 +321,7 @@
     "manifestHash": "清单哈希",
     "metadata": "元数据",
     "parent": "编辑自",
+    "lineageDisputed": "此处或其上游有争议",
     "disputed": "有争议",
     "attestations": {
       "heading": "由别人重新核对过",

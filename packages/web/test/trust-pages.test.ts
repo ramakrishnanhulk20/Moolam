@@ -44,6 +44,15 @@ describe("where a passport stands", () => {
     expect(standingOf({ disputed: true, attestations: [{ matched: true }] })).toBe("disputed");
     expect(standingClass("disputed")).toBe("text-failed");
   });
+
+  it("reads an edit of a disputed picture as disputed, though the registry never marked it", () => {
+    expect(standingOf({ disputed: false, inherited: true, attestations: [{ matched: true }] })).toBe("disputed");
+  });
+
+  it("says only what the chain said when no index could answer for the lineage", () => {
+    expect(standingOf({ disputed: false, inherited: false, attestations: [{ matched: true }] })).toBe("verified");
+    expect(standingOf({ disputed: false, attestations: [] })).toBe("unverified");
+  });
 });
 
 describe("pairing a chain attestation with the index row that carries its transaction", () => {

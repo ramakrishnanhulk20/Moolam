@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { disputedReach } from "@/lib/data/lineage";
 import {
   explorePassports,
   heldArt,
@@ -36,7 +37,7 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         manifest: row.manifest,
         rechecked: row.rechecked,
         chainlink: row.chainlink,
-        disputed: row.disputed,
+        disputed: row.inheritedDisputed,
         agentId: row.generatorId,
       };
     }),
@@ -135,7 +136,11 @@ export interface SheetPage {
 const heldSheet = unstable_cache(
   async (view: ExploreSearch["view"], search: string, agent: string | null, cursor: PassportCursor | null) => {
     const sheet = plateSheet(picturesFor(view));
-    const page = await explorePassports({ filter: filterFor({ view, search, agent }), cursor, keep: sheet.keep });
+    // Worked out once for the whole page rather than per row: the chip needs it
+    // for its query, and every other chip needs it to light the D on an edit
+    // whose picture was disputed.
+    const filter = { ...filterFor({ view, search, agent }), disputedReach: await disputedReach() };
+    const page = await explorePassports({ filter, cursor, keep: sheet.keep });
     return { plates: sheet.platesFor(page.passports), cursor: page.cursor };
   },
   ["moolam-explore-sheet"],

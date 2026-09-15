@@ -63,6 +63,9 @@ Two outcomes:
 
 - **Upheld.** The passport is marked disputed, permanently, and the bond is credited back to the
   challenger. The record itself is not edited or removed, because nothing in this registry ever is.
+  An edit registered from that picture is shown as disputed too, everywhere the app lists it, because
+  the registry marks only the passport the challenge named and a copy of a picture proven fake is
+  still a copy of a picture proven fake.
 - **Rejected.** The record stands, and the bond is credited to `VerifierPolicy.treasury()`.
 
 ## Pull payments
