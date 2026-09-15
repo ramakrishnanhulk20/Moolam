@@ -1,18 +1,30 @@
 "use client";
 
 import { usePrivy, useSendTransaction, useWallets } from "@privy-io/react-auth";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { CHAIN_ID, addresses, chain } from "@/lib/chain/client";
 import { resolveCalldata, withdrawCalldata } from "@/lib/chain/calldata";
 import { withdrawable } from "@/lib/chain/registry";
 import { transactionHash } from "@/lib/studio/confirm";
 import { ensureMonad } from "@/lib/studio/wallet";
-import { confirmResolve, confirmWithdraw } from "./confirm";
+import { confirmResolve, confirmWithdraw, type Outcome } from "./confirm";
 import { describeFlagFailure, type FlagFailure } from "./flag";
 
-/** What one settled dispute became, kept so the row can say so without a reload. */
-export type Outcome = "upheld" | "rejected";
+export type { Outcome } from "./confirm";
+
+/** A settle that is out, kept so a recheck can look again without sending a second one. */
+interface SettleWatch {
+  passportId: Hex;
+  wallet: Hex;
+  hash?: Hex;
+}
+
+interface WithdrawWatch {
+  wallet: Hex;
+  owedBefore: bigint;
+  hash?: Hex;
+}
 
 export interface ResolveDisputes {
   ready: boolean;
@@ -26,7 +38,7 @@ export interface ResolveDisputes {
   busy: Hex | null;
   /** True while the send is out and Monad is being watched. */
   confirming: boolean;
-  /** Which passports this session has settled, and which way. */
+  /** Which passports this session has settled, and which way the registry says each one went. */
   settled: Record<string, Outcome>;
   failure: FlagFailure | null;
   withdrawing: boolean;
@@ -34,6 +46,8 @@ export interface ResolveDisputes {
   actions: {
     settle: (passportId: Hex, upheld: boolean) => Promise<void>;
     withdraw: () => Promise<void>;
+    /** Asks Monad again about a write that is out. Sends nothing. */
+    recheck: () => Promise<void>;
     signIn: () => void;
   };
 }
@@ -48,6 +62,12 @@ export interface ResolveDisputes {
  *
  * Nothing is pushed. resolve only records a credit, which is why the withdraw
  * button exists at all and why it is read from the chain rather than assumed.
+ *
+ * A wait that runs out keeps its watch, and the buttons stay locked behind it:
+ * the settle may be on chain already, so the only honest offer is another look.
+ * What the dispute became is read back off the registry rather than taken from
+ * the button that was pressed, because the two disagree the moment the write
+ * did something other than what the screen asked for.
  */
 export function useResolveDisputes({
   resolver,
@@ -74,6 +94,9 @@ export function useResolveDisputes({
   const [failure, setFailure] = useState<FlagFailure | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawn, setWithdrawn] = useState(false);
+
+  const settleWatch = useRef<SettleWatch | null>(null);
+  const withdrawWatch = useRef<WithdrawWatch | null>(null);
 
   useEffect(() => {
     if (wallet === undefined) {
@@ -109,15 +132,86 @@ export function useResolveDisputes({
       await ensureMonad(embedded);
       await chain.call({ account: wallet, to: addresses.registry, data });
 
-      const answer = await sendTransaction({ to: addresses.registry, data, chainId: CHAIN_ID }, { sponsor: true });
+      const answer = await sendTransaction(
+        { to: addresses.registry, data, chainId: CHAIN_ID },
+        // The account the call was simulated for, named out loud: a session
+        // holding more than one wallet must not send this from another one.
+        { sponsor: true, address: wallet },
+      );
       return transactionHash(answer.hash);
     },
     [embedded, sendTransaction, wallet],
   );
 
+  /** Watches Monad for the settle that is out. Safe to run again: it reads, it never sends. */
+  const finishSettle = useCallback(async () => {
+    const out = settleWatch.current;
+    if (out === null) {
+      return;
+    }
+
+    setConfirming(true);
+    setBusy(out.passportId);
+    try {
+      const landed = await confirmResolve({ passportId: out.passportId, wallet: out.wallet, hash: out.hash });
+      settleWatch.current = null;
+      setFailure(null);
+      if (landed.outcome !== null) {
+        const outcome = landed.outcome;
+        setSettled((done) => ({ ...done, [out.passportId.toLowerCase()]: outcome }));
+      }
+      readCredit();
+      onSettled?.();
+    } catch (error) {
+      const said = describeFlagFailure(error);
+      // A wait that ran out keeps the watch, and every settle button stays
+      // locked behind it until Monad has answered one way or the other.
+      if (said.key !== "confirmPending") {
+        settleWatch.current = null;
+      }
+      setFailure(said);
+    } finally {
+      if (settleWatch.current === null) {
+        setConfirming(false);
+        setBusy(null);
+      }
+    }
+  }, [onSettled, readCredit]);
+
+  /** Watches Monad for the withdraw that is out. Reads only. */
+  const finishWithdraw = useCallback(async () => {
+    const out = withdrawWatch.current;
+    if (out === null) {
+      return;
+    }
+
+    setWithdrawing(true);
+    try {
+      await confirmWithdraw({ wallet: out.wallet, owedBefore: out.owedBefore, hash: out.hash });
+      withdrawWatch.current = null;
+      setFailure(null);
+      setWithdrawn(true);
+      readCredit();
+    } catch (error) {
+      const said = describeFlagFailure(error);
+      if (said.key !== "confirmPending") {
+        withdrawWatch.current = null;
+      }
+      setFailure(said);
+    } finally {
+      if (withdrawWatch.current === null) {
+        setWithdrawing(false);
+      }
+    }
+  }, [readCredit]);
+
   const settle = useCallback(
     async (passportId: Hex, upheld: boolean) => {
       if (embedded === undefined || wallet === undefined) {
+        return;
+      }
+      // Something is already out and unconfirmed. It must not be sent again.
+      if (settleWatch.current !== null) {
         return;
       }
 
@@ -125,23 +219,23 @@ export function useResolveDisputes({
       setBusy(passportId);
       try {
         const hash = await send(resolveCalldata(passportId, upheld));
-        setConfirming(true);
-        await confirmResolve({ passportId, hash });
-        setSettled((done) => ({ ...done, [passportId.toLowerCase()]: upheld ? "upheld" : "rejected" }));
-        readCredit();
-        onSettled?.();
+        settleWatch.current = { passportId, wallet, hash };
       } catch (error) {
         setFailure(describeFlagFailure(error));
-      } finally {
-        setConfirming(false);
         setBusy(null);
+        return;
       }
+
+      await finishSettle();
     },
-    [embedded, onSettled, readCredit, send, wallet],
+    [embedded, finishSettle, send, wallet],
   );
 
   const withdraw = useCallback(async () => {
     if (embedded === undefined || wallet === undefined) {
+      return;
+    }
+    if (withdrawWatch.current !== null) {
       return;
     }
 
@@ -152,19 +246,26 @@ export function useResolveDisputes({
       setOwedAnswer({ wallet, owed });
       if (owed === 0n) {
         setFailure({ key: "nothingOwed" });
+        setWithdrawing(false);
         return;
       }
 
       const hash = await send(withdrawCalldata());
-      await confirmWithdraw({ wallet, owedBefore: owed, hash });
-      setWithdrawn(true);
-      readCredit();
+      withdrawWatch.current = { wallet, owedBefore: owed, hash };
     } catch (error) {
       setFailure(describeFlagFailure(error));
-    } finally {
       setWithdrawing(false);
+      return;
     }
-  }, [embedded, readCredit, send, wallet]);
+
+    await finishWithdraw();
+  }, [embedded, finishWithdraw, send, wallet]);
+
+  /** Whichever write is out, looked at again. */
+  const recheck = useCallback(async () => {
+    await finishSettle();
+    await finishWithdraw();
+  }, [finishSettle, finishWithdraw]);
 
   return {
     ready,
@@ -178,6 +279,6 @@ export function useResolveDisputes({
     failure,
     withdrawing,
     withdrawn,
-    actions: { settle, withdraw, signIn: login },
+    actions: { settle, withdraw, recheck, signIn: login },
   };
 }

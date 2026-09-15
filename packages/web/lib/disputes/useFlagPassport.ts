@@ -141,17 +141,30 @@ export function useFlagPassport({
     }
     try {
       const landed = await confirmFlag({ passportId, challenger: out.challenger, hash: out.hash });
-      dispatch({ type: "recorded", block: landed.blockNumber ?? null });
       watching.current = null;
+      dispatch({ type: "recorded", block: landed.blockNumber ?? null });
       await readNumbers().catch(() => null);
       onLanded?.();
     } catch (error) {
-      dispatch({ type: "failed", failure: describeFlagFailure(error), stage: "send" });
+      const failure = describeFlagFailure(error);
+      // A wait that ran out keeps the watch: the flag may already be on chain,
+      // so the only thing left to offer is another look. Anything else was a
+      // send that did not happen, and the button is free again.
+      if (failure.key !== "confirmPending") {
+        watching.current = null;
+      }
+      dispatch({ type: "failed", failure, stage: "send" });
     }
   }, [onLanded, passportId, readNumbers]);
 
   const submit = useCallback(async () => {
     if (embedded === undefined || wallet === undefined) {
+      return;
+    }
+
+    // A flag that is out and unconfirmed is never sent a second time. The
+    // recheck is the only thing that moves this on.
+    if (watching.current !== null) {
       return;
     }
 
@@ -195,7 +208,9 @@ export function useFlagPassport({
     try {
       const answer = await sendTransaction(
         { to: request.to, data: request.data, value: request.value, chainId: request.chainId },
-        { sponsor: true },
+        // The wallet the call was simulated for, named out loud: a session with
+        // more than one wallet must not send this from a different account.
+        { sponsor: true, address: wallet },
       );
       const hash = transactionHash(answer.hash);
       dispatch({ type: "sent", hash });

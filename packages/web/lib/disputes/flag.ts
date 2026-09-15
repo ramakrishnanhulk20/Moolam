@@ -1,12 +1,16 @@
 import type { Hex } from "viem";
 import { CHAIN_ID, addresses } from "@/lib/chain/client";
 import { decodeRegistryError, flagCalldata } from "@/lib/chain/calldata";
+import { revertCopy } from "@/lib/chain/reverts";
+import { Reverted } from "@/lib/chain/watch";
+import { isUserCancellation } from "@/lib/errors/cancelled";
 import { ConfirmTimeout } from "@/lib/studio/confirm";
 import { checkReason, evidenceUri, type ReasonProblem } from "./evidence";
 
 /** The two honest steps between pressing the button and a dispute on the record. */
 export type FlagStep = "account" | "send";
-export type StepState = "waiting" | "running" | "done" | "failed";
+/** "unconfirmed" is a send that is out and has not been shown: never a failure, and never sent again. */
+export type StepState = "waiting" | "running" | "done" | "failed" | "unconfirmed";
 
 export const FLAG_STEPS: readonly FlagStep[] = ["account", "send"];
 
@@ -18,6 +22,8 @@ export interface FlagFailure {
   reason?: string;
   /** The single button offered under the message. */
   next?: "again" | "recheck" | "signIn";
+  /** The account the write went from, for the "open it and look" link under a wait that ran out. */
+  address?: Hex;
   /** How much more MON the account needs, in wei, for the message that names it. */
   shortfall?: bigint;
 }
@@ -53,6 +59,19 @@ export const initialFlagState: FlagState = {
   failure: null,
 };
 
+/**
+ * A flag that is out and unconfirmed. The transaction may be on chain, so
+ * nothing here may start a second one and nothing may quietly drop the notice
+ * that says so: only a recheck moves this state on.
+ */
+export function isFlagUnconfirmed(state: FlagState): boolean {
+  return state.steps.send === "unconfirmed";
+}
+
+function keepPending(failure: FlagFailure | null): FlagFailure | null {
+  return failure !== null && failure.key === "confirmPending" ? failure : null;
+}
+
 export function flagReducer(state: FlagState, action: FlagAction): FlagState {
   switch (action.type) {
     case "open":
@@ -60,13 +79,16 @@ export function flagReducer(state: FlagState, action: FlagAction): FlagState {
     case "close":
       return { ...state, open: false };
     case "reason":
-      return { ...state, reason: action.reason, failure: null };
+      return { ...state, reason: action.reason, failure: keepPending(state.failure) };
     case "start":
+      if (isFlagUnconfirmed(state)) {
+        return state;
+      }
       return { ...state, failure: null, confirming: false, steps: { account: "running", send: "waiting" } };
     case "sent":
       return { ...state, hash: action.hash, confirming: true, steps: { account: "done", send: "running" } };
     case "recorded":
-      return { ...state, block: action.block, confirming: false, steps: { account: "done", send: "done" } };
+      return { ...state, block: action.block, failure: null, confirming: false, steps: { account: "done", send: "done" } };
     case "failed":
       return {
         ...state,
@@ -74,16 +96,16 @@ export function flagReducer(state: FlagState, action: FlagAction): FlagState {
         failure: action.failure,
         steps:
           action.stage === "send"
-            ? { account: "done", send: "failed" }
+            ? { account: "done", send: action.failure.key === "confirmPending" ? "unconfirmed" : "failed" }
             : { account: "failed", send: "waiting" },
       };
     case "reset":
-      return { ...initialFlagState, open: true, reason: state.reason };
+      return isFlagUnconfirmed(state) ? state : { ...initialFlagState, open: true, reason: state.reason };
   }
 }
 
 export function isFlagBusy(state: FlagState): boolean {
-  return state.steps.account === "running" || state.steps.send === "running";
+  return state.steps.account === "running" || state.steps.send === "running" || isFlagUnconfirmed(state);
 }
 
 export function isFlagDone(state: FlagState): boolean {
@@ -144,31 +166,10 @@ export function flagRequest({
   };
 }
 
-/** Which sentence each revert the registry can throw at a flag gets. */
-const REVERT_KEYS: Record<string, { key: string; next?: FlagFailure["next"] }> = {
-  InvalidBond: { key: "badBond", next: "again" },
-  DisputeAlreadyOpen: { key: "alreadyOpen" },
-  PassportAlreadyDisputed: { key: "alreadyDisputed" },
-  PassportNotFound: { key: "notFound" },
-  EnforcedPause: { key: "paused" },
-  NotResolver: { key: "notResolver" },
-  NoOpenDispute: { key: "noOpenDispute" },
-  NothingToWithdraw: { key: "nothingOwed" },
-};
-
 /** The problem with the typed reason, as a failure the panel can print. */
 export function reasonFailure(reason: string): FlagFailure | null {
   const problem: ReasonProblem | null = checkReason(reason);
   return problem === null ? null : { key: problem };
-}
-
-/** Whether the person closed the wallet window themselves, which is not a failure to apologise for. */
-function wasDeclined(error: unknown): boolean {
-  const code = (error as { code?: unknown } | null)?.code;
-  if (code === 4001) {
-    return true;
-  }
-  return /user (rejected|denied|declined)|rejected the request|cancell?ed|closed/i.test(messageOf(error));
 }
 
 /**
@@ -182,15 +183,21 @@ function wasDeclined(error: unknown): boolean {
  */
 export function describeFlagFailure(error: unknown): FlagFailure {
   if (error instanceof ConfirmTimeout) {
-    return { key: "confirmPending", next: "recheck" };
+    return { key: "confirmPending", next: "recheck", address: error.wallet };
   }
-  if (wasDeclined(error)) {
+  if (isUserCancellation(error)) {
     return { key: "declined", next: "again" };
+  }
+  if (error instanceof Reverted) {
+    return { key: "reverted", reason: error.message, next: "again" };
   }
 
   const revert = decodeRegistryError(error);
-  if (revert !== undefined && REVERT_KEYS[revert] !== undefined) {
-    return { ...REVERT_KEYS[revert], reason: revert };
+  if (revert !== undefined) {
+    // The table is the one every screen reads. A name it does not hold still
+    // names itself here, which beats printing the request back at the reader.
+    const copy = revertCopy(revert);
+    return { key: copy.key, reason: revert, next: copy.next === "again" ? "again" : undefined };
   }
 
   const text = messageOf(error);

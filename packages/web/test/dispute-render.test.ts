@@ -76,7 +76,7 @@ function desk(over: Partial<ResolveDisputes> = {}): ResolveDisputes {
     withdrawing: false,
     withdrawn: false,
     ...over,
-    actions: { settle: ASYNC_NOOP, withdraw: ASYNC_NOOP, signIn: NOOP },
+    actions: { settle: ASYNC_NOOP, withdraw: ASYNC_NOOP, recheck: ASYNC_NOOP, signIn: NOOP },
   };
 }
 
@@ -104,6 +104,14 @@ function render(locale: "en" | "ta", node: ReactElement): string {
   return renderToStaticMarkup(
     createElement(Provider, { locale, messages: locale === "en" ? en : ta, timeZone: "Asia/Kolkata" }, node),
   );
+}
+
+/** The opening tag of the button whose label is this, so its disabled flag can be read. */
+function buttonFor(markup: string, label: string): string {
+  const at = markup.indexOf(`>${label}<`);
+  expect(at).toBeGreaterThan(-1);
+  const opens = markup.lastIndexOf("<button", at);
+  return markup.slice(opens, at + 1);
 }
 
 function panel(value: FlagPassport, locale: "en" | "ta" = "en", disputeOpen = false): string {
@@ -270,5 +278,74 @@ describe("who the resolver console lets act", () => {
     const markup = console_(desk(), [row()], "ta");
     expect(markup).toContain("நீங்கள்தான் தீர்ப்பாளர்");
     expect(markup).toContain("ஏற்றுக்கொள்");
+  });
+});
+
+describe("a flag that is out and has not been shown", () => {
+  const REASON = "The same file is on a stock library from 2019, under a different name.";
+  const SENT = `0x${"3f".repeat(32)}` as Hex;
+  const out: Partial<FlagState> = {
+    reason: REASON,
+    hash: SENT,
+    steps: { account: "done", send: "unconfirmed" },
+    failure: { key: "confirmPending", next: "recheck", address: STRANGER },
+  };
+
+  it("leaves the flag button locked, with a recheck as the only thing to press", () => {
+    const markup = panel(flag({}, out));
+
+    expect(buttonFor(markup, "Flag with 1 MON")).toContain('disabled=""');
+    expect(markup).toContain("it must not be sent again");
+    expect(markup).toContain("Ask Monad again");
+    expect(markup).toContain('data-tone="pending"');
+  });
+
+  it("is the unconfirmed state doing it, and not the typed reason", () => {
+    const ready = panel(flag({}, { reason: REASON }));
+    expect(buttonFor(ready, "Flag with 1 MON")).not.toContain('disabled=""');
+  });
+
+  it("marks the send step as neither done nor failed", () => {
+    const markup = panel(flag({}, out));
+    expect(markup).toContain('data-step="send" data-tone="unconfirmed"');
+    expect(markup).toContain("Monad has not shown it");
+  });
+
+  it("offers the account to look in, and no receipt for a hash nobody has confirmed", () => {
+    const markup = panel(flag({}, out));
+    expect(markup).toContain(`/address/${STRANGER}`);
+    expect(markup).not.toContain(`/tx/${SENT}`);
+  });
+});
+
+describe("a settle that is out and has not been shown", () => {
+  const pending = { key: "confirmPending", next: "recheck" as const, address: RESOLVER };
+
+  it("leaves both settle buttons locked and offers another look", () => {
+    const markup = console_(desk({ failure: pending }), [row()]);
+
+    expect(buttonFor(markup, "Uphold")).toContain('disabled=""');
+    expect(buttonFor(markup, "Reject")).toContain('disabled=""');
+    expect(markup).toContain("Ask Monad again");
+    expect(markup).toContain('data-tone="pending"');
+    expect(markup).toContain(`/address/${RESOLVER}`);
+  });
+
+  it("locks the other rows too, because one unconfirmed write locks the desk", () => {
+    const other = row({ passportId: `0x${"6d".repeat(32)}` as Hex });
+    const markup = console_(desk({ failure: pending }), [row(), other]);
+
+    expect(markup.match(/disabled=""/g)?.length).toBe(4);
+  });
+
+  it("locks the withdraw button behind the same unconfirmed write", () => {
+    const markup = console_(desk({ failure: pending, credit: BOND }), [row()]);
+    expect(buttonFor(markup, "Withdraw 1 MON")).toContain('disabled=""');
+  });
+
+  it("leaves both buttons live when nothing is out", () => {
+    const markup = console_(desk(), [row()]);
+    expect(buttonFor(markup, "Uphold")).not.toContain('disabled=""');
+    expect(markup).not.toContain("Ask Monad again");
   });
 });

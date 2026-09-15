@@ -49,6 +49,10 @@ export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes
 /** The one thing that went wrong, wherever on this page it happened. */
 function FailureLine({ desk }: { desk: ResolveDisputes }) {
   const t = useTranslations("resolve");
+  // The passport panel and the studio both say these two already, and one
+  // wording for "ask Monad again" beats three.
+  const shared = useTranslations("passport.dispute.flag");
+  const studio = useTranslations("studio");
   const failure = desk.failure;
   if (failure === null) {
     return null;
@@ -60,7 +64,7 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
   const key = t.has(`failure.${failure.key}`) ? failure.key : "unknown";
 
   return (
-    <motion.p
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
@@ -74,8 +78,36 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
       {failure.reason === undefined ? null : (
         <span className="mt-2 block break-words font-mono text-[11px] text-text-faint">{failure.reason}</span>
       )}
-    </motion.p>
+
+      {failure.address === undefined ? null : (
+        <a
+          href={`${MONAD_EXPLORER}/address/${failure.address}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 block font-mono text-[11px] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
+        >
+          {studio("actions.openAddress", { wallet: shortHex(failure.address) })}
+        </a>
+      )}
+
+      {/* A write that is out is never sent again from here. The only offer is
+          another look at what Monad holds. */}
+      {failure.next !== "recheck" ? null : (
+        <button
+          type="button"
+          onClick={() => void desk.actions.recheck()}
+          className="mt-4 block rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+        >
+          {shared("actions.recheck")}
+        </button>
+      )}
+    </motion.div>
   );
+}
+
+/** Whether a write from this desk is out and unconfirmed, which locks every button that could repeat it. */
+function pendingWrite(desk: ResolveDisputes): boolean {
+  return desk.failure !== null && desk.failure.key === "confirmPending";
 }
 
 /** Who the policy trusts, who is signed in, and what the registry owes them. */
@@ -134,7 +166,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
           <button
             type="button"
             onClick={() => void desk.actions.withdraw()}
-            disabled={desk.withdrawing}
+            disabled={desk.withdrawing || pendingWrite(desk)}
             className="mt-6 rounded-[8px] bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60"
           >
             {desk.withdrawing ? t("withdrawing") : t("withdraw", { amount: formatEther(owed) })}
@@ -156,7 +188,9 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
 
   const outcome = desk.settled[dispute.passportId.toLowerCase()];
   const busy = desk.busy !== null && desk.busy.toLowerCase() === dispute.passportId.toLowerCase();
-  const locked = desk.busy !== null || outcome !== undefined;
+  // One unconfirmed write locks every settle button on the page, its own row and
+  // the others: nothing is sent again while Monad may already hold it.
+  const locked = desk.busy !== null || pendingWrite(desk) || outcome !== undefined;
 
   return (
     <motion.li

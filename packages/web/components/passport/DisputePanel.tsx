@@ -10,6 +10,7 @@ import {
   FLAG_STEPS,
   isFlagBusy,
   isFlagDone,
+  isFlagUnconfirmed,
   type FlagFailure,
   type FlagStep,
   type StepState,
@@ -96,6 +97,7 @@ function Form({ flag }: { flag: FlagPassport }) {
   const t = useTranslations("passport.dispute.flag");
   const { state } = flag;
   const busy = isFlagBusy(state);
+  const unconfirmed = isFlagUnconfirmed(state);
   const bond = flag.bond === null ? null : formatEther(flag.bond);
   const left = REASON_MAX - state.reason.trim().length;
 
@@ -153,7 +155,9 @@ function Form({ flag }: { flag: FlagPassport }) {
       <button
         type="button"
         onClick={() => void flag.actions.submit()}
-        disabled={busy || flag.bond === null || state.reason.trim().length < REASON_MIN}
+        // A flag that is out and unconfirmed keeps this locked. The recheck under
+        // the message is the only way on, because the bond can only be lost once.
+        disabled={busy || unconfirmed || flag.bond === null || state.reason.trim().length < REASON_MIN}
         className="mt-7 w-full rounded-[8px] bg-failed px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-bg transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
       >
         {bond === null ? t("submitUnknown") : t("submit", { bond })}
@@ -178,6 +182,9 @@ function Form({ flag }: { flag: FlagPassport }) {
 function Recorded({ flag }: { flag: FlagPassport }) {
   const t = useTranslations("passport.dispute.flag");
   const { state } = flag;
+  // A receipt link is only ever offered for a hash the chain has shown. A hash
+  // from a send that has not been confirmed is not a receipt.
+  const hash = isFlagDone(state) ? state.hash : undefined;
 
   return (
     <div>
@@ -203,14 +210,14 @@ function Recorded({ flag }: { flag: FlagPassport }) {
         </div>
       </dl>
 
-      {state.hash === undefined ? null : (
+      {hash === undefined ? null : (
         <a
-          href={`${MONAD_EXPLORER}/tx/${state.hash}`}
+          href={`${MONAD_EXPLORER}/tx/${hash}`}
           target="_blank"
           rel="noreferrer"
           className="mt-7 inline-block rounded-[8px] border border-line px-5 py-3 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-failed hover:text-failed"
         >
-          {t("done.openTx", { hash: shortHex(state.hash) })}
+          {t("done.openTx", { hash: shortHex(hash) })}
         </a>
       )}
     </div>
@@ -222,6 +229,8 @@ const NUMBER_TONE: Record<StepState, string> = {
   running: "text-failed",
   done: "text-failed",
   failed: "text-failed",
+  // A send that is out and unshown is not a failure, so it never takes the alarm ink.
+  unconfirmed: "text-text-muted",
 };
 
 const MARKER_TONE: Record<StepState, string> = {
@@ -229,6 +238,7 @@ const MARKER_TONE: Record<StepState, string> = {
   running: "animate-pulse bg-failed",
   done: "bg-failed",
   failed: "border border-failed bg-transparent",
+  unconfirmed: "animate-pulse border border-text-muted bg-transparent",
 };
 
 const LABEL_TONE: Record<StepState, string> = {
@@ -236,6 +246,7 @@ const LABEL_TONE: Record<StepState, string> = {
   running: "text-text",
   done: "text-text-muted",
   failed: "text-text",
+  unconfirmed: "text-text-muted",
 };
 
 function StepRow({
@@ -251,7 +262,11 @@ function StepRow({
 }) {
   const t = useTranslations("passport.dispute.flag");
   const label =
-    step === "send" && status === "running" && confirming ? t("steps.send.watching") : t(`steps.${step}.${status}`);
+    step === "send" && status === "running" && confirming
+      ? t("steps.send.watching")
+      : // An unconfirmed send says the same thing the failed one does, which is
+        // that Monad has not shown it. The tone above is what tells them apart.
+        t(`steps.${step}.${status === "unconfirmed" ? "failed" : status}`);
 
   return (
     <li data-step={step} data-tone={status} className="flex items-start gap-4 py-3.5">
@@ -280,6 +295,9 @@ function StepRow({
 /** One failure: the sentence, the chain's own words under it, and the single thing worth doing next. */
 function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPassport }) {
   const t = useTranslations("passport.dispute.flag");
+  // The studio says this sentence already, and one wording for "open your account
+  // and look" beats two.
+  const studio = useTranslations("studio");
   const handlers: Record<string, (() => void) | undefined> = {
     again: () => void flag.actions.submit(),
     recheck: () => void flag.actions.recheck(),
@@ -312,6 +330,16 @@ function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPasspo
         <p className="mt-2 max-w-[54ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
           {failure.reason}
         </p>
+      )}
+      {failure.address === undefined ? null : (
+        <a
+          href={`${MONAD_EXPLORER}/address/${failure.address}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-4 block font-mono text-[11px] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-failed"
+        >
+          {studio("actions.openAddress", { wallet: shortHex(failure.address) })}
+        </a>
       )}
       {action === undefined ? null : (
         <button
