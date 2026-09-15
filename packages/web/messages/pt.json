@@ -487,6 +487,7 @@
       "reason": "A acusação",
       "evidenceElsewhere": "A prova desta contestação aponta para outro lugar:",
       "waiting": "À espera do árbitro que a política indica.",
+      "console": "Consola do árbitro",
       "outcome": {
         "open": "À espera do árbitro que a política indica.",
         "upheld": "O árbitro deu razão à contestação. A caução voltou a quem a apresentou e este registo fica marcado como contestado para sempre.",

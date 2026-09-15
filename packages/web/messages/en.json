@@ -486,6 +486,7 @@
       "reason": "The claim",
       "evidenceElsewhere": "The evidence for this challenge points somewhere else:",
       "waiting": "Waiting for the resolver named by the policy.",
+      "console": "Resolver console",
       "outcome": {
         "open": "Waiting for the resolver named by the policy.",
         "upheld": "The resolver agreed with the challenge. The bond went back to the challenger, and this record is marked disputed for good.",

@@ -172,3 +172,65 @@ describe("the passport the story follows", () => {
     expect(carriesManifest(MANIFEST)).toBe(true);
   });
 });
+
+/**
+ * A week of seed writes at the top of the index, with the last real picture
+ * pushed down under all of them. The judge audit found the lower rungs handing
+ * the home page a card that says "Moolam seed 4" across it in exactly this
+ * shape, so every rung is fixed here, not only the top one.
+ */
+function buried(seedOver: Partial<IndexRow> = {}, realOver: Partial<IndexRow> = {}) {
+  const seeds = Array.from({ length: 24 }, (_, at) =>
+    row({ id: `0x5eed${at.toString(16).padStart(4, "0")}`, registeredAt: String(1789400000 - at * 60), ...seedOver }),
+  );
+  const real = row({ id: "0xcdb25d37", registeredAt: "1788881666", ...realOver });
+  const rows = [...seeds, real];
+
+  return {
+    rows,
+    seeds,
+    pictured: rows.map(() => true),
+    titles: [...seeds.map((_, at) => `Moolam seed ${at}`), "Monsoon Fishing Nets Drying"],
+  };
+}
+
+describe("a real picture buried under a run of seed cards", () => {
+  it("is still the one the story follows on the full rung", () => {
+    const { rows, pictured, titles } = buried({ attestations: 1 }, { attestations: 1 });
+    const chosen = chooseFocal(rows, pictured, titles);
+
+    expect(chosen?.reason).toBe("full");
+    expect(rows[(chosen as { index: number }).index].id).toBe("0xcdb25d37");
+  });
+
+  it("is still the one the story follows on the manifest rung", () => {
+    const { rows, pictured, titles } = buried();
+    const chosen = chooseFocal(rows, pictured, titles);
+
+    expect(chosen?.reason).toBe("manifest");
+    expect(rows[(chosen as { index: number }).index].id).toBe("0xcdb25d37");
+  });
+
+  it("is still the one the story follows on the any rung", () => {
+    const plain = { kind: 1, generatorId: null, manifestHash: ZERO };
+    const { rows, pictured, titles } = buried(plain, plain);
+    const chosen = chooseFocal(rows, pictured, titles);
+
+    expect(chosen?.reason).toBe("any");
+    expect(rows[(chosen as { index: number }).index].id).toBe("0xcdb25d37");
+  });
+
+  it("still takes the newest seed card when the index holds nothing else", () => {
+    const { seeds, titles } = buried();
+    const onlySeeds = chooseFocal(seeds, seeds.map(() => true), titles.slice(0, seeds.length));
+
+    expect(onlySeeds?.reason).toBe("manifest");
+    expect(seeds[(onlySeeds as { index: number }).index].id).toBe(seeds[0].id);
+
+    const plain = seeds.map((entry) => ({ ...entry, kind: 1, generatorId: null, manifestHash: ZERO }));
+    const nothingSealed = chooseFocal(plain, plain.map(() => true), titles.slice(0, plain.length));
+
+    expect(nothingSealed?.reason).toBe("any");
+    expect(plain[(nothingSealed as { index: number }).index].id).toBe(plain[0].id);
+  });
+});

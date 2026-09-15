@@ -486,6 +486,7 @@
       "reason": "L'accusation",
       "evidenceElsewhere": "La preuve de cette contestation pointe ailleurs :",
       "waiting": "En attente de l'arbitre désigné par la politique.",
+      "console": "Console de l'arbitre",
       "outcome": {
         "open": "En attente de l'arbitre désigné par la politique.",
         "upheld": "L'arbitre a donné raison à la contestation. La caution est revenue à son auteur et cet enregistrement est marqué contesté pour de bon.",

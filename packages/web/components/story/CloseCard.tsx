@@ -105,20 +105,23 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
           {t("kicker")}
         </p>
 
-        <h2 className="mt-3 max-w-[14ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5">
+        <h2 className="mt-2 max-w-[20ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5 sm:max-w-[14ch]">
           {t("title")}
         </h2>
 
-        <p className="mt-3 max-w-[38ch] text-sm leading-relaxed text-text-muted sm:mt-5 sm:max-w-[42ch] sm:text-base">
+        <p className="mt-2 text-sm leading-snug text-text-muted sm:mt-5 sm:max-w-[42ch] sm:text-base sm:leading-relaxed">
           {t("body")}
         </p>
 
         {/* A phone has the lower half of the window for all of this, so the two
-            calls sit on one line there and grow back at 640 px. */}
-        <div className="mt-4 flex flex-wrap gap-2 sm:mt-8 sm:gap-3">
+            calls sit on one line there and grow back at 640 px. The padding and
+            the letter-spacing are cut to the bone below 640 px because the
+            longest labels on the site (Portuguese and Tamil) wrapped this row
+            onto two lines, which pushed the card's last line off the fold. */}
+        <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-8 sm:gap-3">
           <Link
             href="/studio"
-            className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
+            className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
           >
             {t("register")}
             <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
@@ -127,7 +130,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
           </Link>
           <Link
             href="/verify"
-            className="rounded-[8px] border border-line px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
+            className="rounded-[8px] border border-line px-2 py-2.5 text-[10px] uppercase tracking-[0.06em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
           >
             {t("verify")}
           </Link>
@@ -136,7 +139,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
         {/* A phone has the lower half of the window for the whole card, so the
             room the third figure used to take is given back to the line under
             the row rather than added to it. */}
-        <dl className="mt-2 grid grid-cols-2 gap-x-4 border-t border-line pt-2 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
+        <dl className="mt-1.5 grid grid-cols-2 gap-x-4 border-t border-line pt-1.5 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6">
           {figures.map((figure) => (
             <div key={figure.key}>
               <dt className="font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em]">

@@ -381,11 +381,20 @@ function fits(row: IndexRow, reason: FocalReason): boolean {
   return reason === "manifest" || row.attestations > 0;
 }
 
-/** The rungs the chooser walks down, best first. */
+/**
+ * The rungs the chooser walks down, best first.
+ *
+ * Every rung is walked twice: once for pictures a reader can look at, then once
+ * with the seed test cards let back in. Only the second pass of a rung can hand
+ * the story a card that says "Moolam seed 4" across it, and by then no real
+ * picture on that rung exists to show instead.
+ */
 const LADDER: { reason: FocalReason; realOnly: boolean }[] = [
   { reason: "full", realOnly: true },
   { reason: "full", realOnly: false },
+  { reason: "manifest", realOnly: true },
   { reason: "manifest", realOnly: false },
+  { reason: "any", realOnly: true },
   { reason: "any", realOnly: false },
 ];
 
@@ -400,12 +409,16 @@ const LADDER: { reason: FocalReason; realOnly: boolean }[] = [
  * grid never disagree about what counts as a picture. Below that comes the
  * newest record with all three whatever its title, then the newest an agent
  * made and sealed with the re-check line told truthfully as missing, then the
- * newest picture of any kind with the agent line gone. A record with no picture
- * is never chosen: the forgery attempts the prove-it run writes are exactly
- * that, and a story about an image cannot be told on one.
+ * newest picture of any kind with the agent line gone. Those two lower rungs
+ * ask for a real picture first as well, so a week of seed writes at the top of
+ * the index cannot put a test card on the home page while a real one is still
+ * in reach. A record with no picture is never chosen: the forgery attempts the
+ * prove-it run writes are exactly that, and a story about an image cannot be
+ * told on one.
  *
  * `titles` are the names pinned with those pictures, in the same order as the
- * rows. A caller with no titles to hand simply lands on the second rung.
+ * rows. A caller with no titles to hand simply lands on the rung below each
+ * real-picture pass, which is the order this chose before titles existed.
  *
  * Pure, and tested in test/story-focal.test.ts against a fixture index.
  */

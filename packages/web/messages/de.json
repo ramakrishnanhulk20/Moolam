@@ -486,6 +486,7 @@
       "reason": "Der Vorwurf",
       "evidenceElsewhere": "Der Beleg zu diesem Einspruch zeigt woandershin:",
       "waiting": "Wartet auf die Schlichterin, die die Policy benennt.",
+      "console": "Schlichtungskonsole",
       "outcome": {
         "open": "Wartet auf die Schlichterin, die die Policy benennt.",
         "upheld": "Der Einspruch wurde bestätigt. Die Kaution ging zurück an die einspruchsführende Person, und dieser Eintrag ist dauerhaft als bestritten markiert.",

@@ -486,6 +486,7 @@
       "reason": "La acusación",
       "evidenceElsewhere": "La prueba de esta impugnación apunta a otro sitio:",
       "waiting": "A la espera del árbitro que nombra la política.",
+      "console": "Consola del árbitro",
       "outcome": {
         "open": "A la espera del árbitro que nombra la política.",
         "upheld": "El árbitro dio la razón a la impugnación. La fianza volvió a quien la presentó y este registro queda marcado como disputado para siempre.",

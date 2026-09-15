@@ -4,6 +4,7 @@ import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { DisputeStatus, type Dispute } from "@/lib/chain/registry";
 import { evidenceMatches, reasonFrom } from "@/lib/disputes/evidence";
 import { indexAvailable, indexedDispute } from "@/lib/disputes/indexed";
+import { Link } from "@/lib/i18n/routing";
 import { Mono } from "./Mono";
 
 const STATUS_NAMES: Record<number, string> = {
@@ -104,6 +105,15 @@ export async function DisputeNote({
         <span className={dispute.status === DisputeStatus.Open ? "text-text-muted" : "text-text"}>
           {dispute.status === DisputeStatus.Open ? t("waiting") : t(`outcome.${status}`)}
         </span>
+        {/* The way from a challenged record to the desk that settles it. The
+            console turns everybody but the resolver away by itself, so nobody
+            is kept from seeing where the decision is made. */}
+        <Link
+          href="/resolve"
+          className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent hover:decoration-accent"
+        >
+          {t("console")}
+        </Link>
       </p>
 
       <p className="mt-6 font-mono text-[11px] text-text-faint">

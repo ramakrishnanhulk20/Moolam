@@ -366,9 +366,11 @@ html:not(.light) body:has([data-story="still"]) .app-header {
 
 /* The closing card is the last thing the film shows, and nothing follows it: the
    scroll hint the lower band keeps its bottom room for is long gone by the time
-   the card arrives. On a phone the card takes that room back, which is what
-   makes all 343 px of it fit a 667 px window instead of hanging 9 px below the
-   fold. From 640 px the band already has no bottom room to give. */
+   the card arrives. On a phone the card takes that room back. With the card's
+   own phone spacing tightened to match, the longest language on the page
+   (Tamil, 348 px) clears a 667 px window with room to spare, where German,
+   French, Portuguese and Tamil all used to hang below the fold. From 640 px the
+   band already has no bottom room to give. */
 @media (max-width: 639px) {
   .story-close {
     padding-top: 0.5rem;
