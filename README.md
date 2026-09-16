@@ -165,8 +165,11 @@ the registry, and an immutable contract cannot be patched in place. All three co
 redeployed, verified again through Sourcify, and every proof in this repo was re-run against the new
 addresses.
 
-The demo generator is agent **10248** on the ERC-8004 Identity Registry, owned by the deployer
-`0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c`. A live Chainlink CRE broadcast on 2026-09-08
+Two generator agents live on the ERC-8004 Identity Registry. Agent **10248**, owned by the deployer
+`0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c`, signed the first seed passports; agent **10249**, owned by the
+app's Privy server wallet, is the one that draws in the studio, signs the generator half of every agent-made
+passport and now leads the Agents page. Every real passport carries a CRE re-check as of 2026-09-14
+([proofs/rechecks.txt](proofs/rechecks.txt)); the first one, a live Chainlink CRE broadcast on 2026-09-08,
 recomputed `0x233ccc7872442123` at distance 0 and wrote its report in transaction
 [`0x3a814ab2...88796a0`](https://monadvision.com/tx/0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0),
 which left that passport with an `attestationCount` of 1, `matched` true and distance 0.
