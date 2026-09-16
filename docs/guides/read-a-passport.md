@@ -42,13 +42,17 @@ The loudest block on the page, and the one that separates a passport from a capt
 says why: "Anyone can say a picture is theirs. This part is different: an independent verifier
 fetched the image, hashed it again and wrote the answer back on Monad."
 
-Each entry is one attestation stored on the registry.
+Each entry is one attestation stored on the registry. Above its fields the page draws both
+fingerprints as the 64 bits they are, the registered one and the recomputed one side by side with
+every disagreeing cell marked, and states the verdict in a sentence: an independent network
+re-fetched this picture and recomputed its fingerprint, so many of 64 bits apart, counted on the
+page from those two values rather than copied from the figure the receiver wrote.
 
 | Field | What it is |
 | --- | --- |
 | matched or did not match | Whether the recomputed hash was inside the threshold |
 | Who wrote it | "Verified independently by Chainlink" when the writer is the `MoolamReceiver` deployed with the registry, otherwise "Written by an allowed receiver" and the address |
-| "Distance" | How many of 64 bits the recomputed hash was from the registered one |
+| "As the receiver wrote it" | How many of 64 bits the receiver itself said the two hashes were apart |
 | "At" | The block timestamp on the attestation |
 | "Written by" | The receiver address, linked to MonadVision |
 | "Recomputed pHash" | The hash the verifier computed, printed in full |

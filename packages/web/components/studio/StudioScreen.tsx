@@ -49,6 +49,7 @@ function Studio() {
             account={studio.account}
             wallet={studio.wallet}
             sponsorship={studio.sponsorship}
+            passkey={studio.binding.status === "bound"}
             onSignOut={studio.logout}
           />
         ) : null}

@@ -7,7 +7,15 @@ import { VerifierError } from "@/lib/verifier/client";
 import { accountName } from "@/lib/studio/account";
 import { ConfirmTimeout } from "@/lib/studio/confirm";
 import { bindReducer, initialBindState } from "@/lib/studio/binding";
-import { checkImage, initialRegisterState, isBusy, isRegistered, passportId, registerReducer } from "@/lib/studio/flow";
+import {
+  checkImage,
+  initialRegisterState,
+  isBusy,
+  isRegistered,
+  measure,
+  passportId,
+  registerReducer,
+} from "@/lib/studio/flow";
 import { DEADLINE_SECONDS, PROMPT_MAX, asGenerateFailure, atLimit, checkPrompt } from "@/lib/studio/generate";
 import { passportArt } from "@/lib/studio/metadata";
 import { recallCredential, rememberCredential } from "@/lib/passkey/browser";
@@ -144,6 +152,55 @@ const DRAWN = {
   quota: { used: 1, limit: 3, resetsAt: 1788961533 },
   preparedBy: "did:privy:someone",
 } as unknown as GenerateResponse;
+
+describe("what this send actually took", () => {
+  // A stubbed clock on both ends: the monotonic one the wait is measured with,
+  // and the wall clock the block's own second is compared against.
+  const HANDED = 12_400.6;
+  const ANSWERED = 14_242.9;
+  const TAPPED = 1_788_876_540_000;
+
+  it("measures the wait from the hand-off to the answer", () => {
+    expect(measure({ handedAt: HANDED, answeredAt: ANSWERED, tappedAt: TAPPED, sealedAt: undefined })).toEqual({
+      waitedMs: 1_842,
+      sealedAfterMs: null,
+    });
+  });
+
+  it("says how long after the tap the block was sealed", () => {
+    expect(measure({ handedAt: HANDED, answeredAt: ANSWERED, tappedAt: TAPPED, sealedAt: TAPPED + 2_000 })).toEqual({
+      waitedMs: 1_842,
+      sealedAfterMs: 2_000,
+    });
+  });
+
+  it("leaves the sealed line off when the block carries the second of the tap or an earlier one", () => {
+    // Monad stamps a block in whole seconds, so the block a send landed in can
+    // carry a second that started before the tap. That is not a negative wait,
+    // it is nothing worth saying.
+    expect(measure({ handedAt: HANDED, answeredAt: ANSWERED, tappedAt: TAPPED, sealedAt: TAPPED - 400 }).sealedAfterMs).toBeNull();
+    expect(measure({ handedAt: HANDED, answeredAt: ANSWERED, tappedAt: TAPPED, sealedAt: TAPPED }).sealedAfterMs).toBeNull();
+  });
+
+  it("never reports a negative wait when the two clocks disagree", () => {
+    expect(measure({ handedAt: 900, answeredAt: 100, tappedAt: TAPPED, sealedAt: undefined }).waitedMs).toBe(0);
+  });
+
+  it("holds the measurement and the charge on the confirmed state, and nothing when the receipt was not read", () => {
+    const timing = { waitedMs: 1_842, sealedAfterMs: 2_000 };
+    const charge = { gasUsed: 657_778n, gasPrice: 102_000_000_000n };
+
+    let state = registerReducer(initialRegisterState, { type: "start", step: "send" });
+    state = registerReducer(state, { type: "confirmed", block: 123n, at: TAPPED, timing, charge });
+    expect(state.timing).toEqual(timing);
+    expect(state.charge).toEqual(charge);
+
+    let bare = registerReducer(initialRegisterState, { type: "start", step: "send" });
+    bare = registerReducer(bare, { type: "confirmed", block: 123n, at: TAPPED });
+    expect(bare.timing).toBeNull();
+    expect(bare.charge).toBeNull();
+  });
+});
 
 describe("the agent path", () => {
   it("stamps drawing, pinning and the agent signature together, then the passkey and the send", () => {

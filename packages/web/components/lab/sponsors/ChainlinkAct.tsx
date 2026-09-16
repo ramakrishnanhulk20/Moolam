@@ -2,7 +2,7 @@ import { Picture } from "@/components/passport/Picture";
 import { shortHex } from "@/lib/chain/client";
 import { pictureSources } from "@/lib/images";
 import { bitsOf, isRead, type ChainlinkRecheck, type Reading } from "@/lib/lab/sponsors";
-import { BitGrid } from "./BitGrid";
+import { BitGrid } from "@/components/BitGrid";
 import { Act, Field, Footnote, Missing, addressLink, count, txLink, when } from "./parts";
 
 /**

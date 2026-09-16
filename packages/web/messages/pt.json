@@ -55,7 +55,9 @@
       "behind": "{blocks, number} blocos atrás",
       "unreachable": "sem resposta",
       "block": "bloco {block, number}",
-      "records": "{count, number} registros"
+      "records": "{count, number} registros",
+      "gap": "indexado até o bloco {block, number}, {blocks, number} blocos atrás da rede",
+      "inStep": "indexado até o bloco {block, number}, no passo da rede"
     },
     "source": "Código"
   },
@@ -332,12 +334,17 @@
       "at": "Em",
       "kicker": "A segunda opinião",
       "body": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um verificador independente baixou a imagem, calculou o hash de novo e gravou a resposta na Monad.",
-      "distanceLabel": "Distância",
+      "distanceLabel": "Como o receptor gravou",
       "byChainlink": "Verificada de forma independente pela Chainlink",
       "byReceiver": "Gravada por um receptor autorizado",
       "recomputed": "pHash recalculado",
       "openTx": "Transação {hash}",
-      "noTransaction": "O índice não traz a transação desta."
+      "noTransaction": "O índice não traz a transação desta.",
+      "registeredGrid": "Impressão registrada",
+      "recomputedGrid": "Recalculada pela rede",
+      "verdict": "Uma rede independente baixou esta imagem de novo e recalculou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
+      "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que a rede calculou do arquivo que ela mesma baixou. Cada célula diferente fica marcada.",
+      "whatIsRecheck": "Uma reconferência é uma rede independente baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad. Ninguém pode gravar uma sobre a própria imagem."
     },
     "children": {
       "heading": "Edições",
@@ -662,7 +669,8 @@
       "kindGoogle": "sua conta do Google",
       "kindPhone": "seu número de telefone",
       "kindPasskey": "uma chave de acesso, sem e-mail no cadastro",
-      "kindAccount": "esta conta"
+      "kindAccount": "esta conta",
+      "passkeySigned": "Assinado com a chave do próprio aparelho, sem frase semente."
     },
     "signedOut": {
       "kicker": "Você não entrou",
@@ -882,7 +890,16 @@
       "sentOwn": "Taxa de rede paga do seu próprio saldo.",
       "written": "Gravada na Monad",
       "blockValue": "Anotada no bloco {block}",
-      "blockPending": "Anotada. O número do bloco vem do índice."
+      "blockPending": "Anotada. O número do bloco vem do índice.",
+      "confirmedIn": "Confirmada na Monad em",
+      "msUnit": "ms",
+      "confirmedDetail": "Medido neste navegador, do envio entregue à Privy até a Monad responder.",
+      "sealedAfter": "O bloco foi selado {seconds, plural, =1 {um segundo} other {# segundos}} depois do seu toque.",
+      "sealedUnderSecond": "O bloco foi selado menos de um segundo depois do seu toque.",
+      "billedSponsored": "Cobrado: {gas, number} de gas, {fee} MON, pagos pela Moolam através da Privy.",
+      "billedOwn": "Cobrado: {gas, number} de gas, {fee} MON, do seu próprio saldo.",
+      "billedExact": "{fee} MON exatos.",
+      "wouldHaveCost": "Teria custado {fee} MON a você."
     },
     "passports": {
       "heading": "Seus passaportes",

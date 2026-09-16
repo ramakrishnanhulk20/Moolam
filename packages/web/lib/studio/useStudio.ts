@@ -20,7 +20,7 @@ import { VerifierError, generate, prepare } from "@/lib/verifier/client";
 import { accountName, type AccountName, type SignedInUser } from "./account";
 import { bindReducer, initialBindState, type BindState } from "./binding";
 import { confirmBind, confirmRegister, transactionHash } from "./confirm";
-import { initialRegisterState, registerReducer, type Mode, type RegisterState } from "./flow";
+import { initialRegisterState, measure, registerReducer, type Charge, type Mode, type RegisterState } from "./flow";
 import { checkPrompt } from "./generate";
 import { AuthCheckFailed, describeFailure, isResendable, type Failure } from "./problems";
 import { useCreatorPassports, type CreatorPassports } from "./useCreatorPassports";
@@ -94,6 +94,8 @@ type Watch =
       registeredBefore?: bigint;
       hash?: Hex;
       balanceBefore: bigint | null;
+      handedAt: number;
+      tappedAt: number;
     };
 
 /** Bytes a passkey has already signed, kept so a refused send can go out again untouched. */
@@ -107,6 +109,10 @@ interface Submitted {
   hash?: Hex;
   /** The wallet's own MON before the send, kept to prove who paid the fee. */
   balanceBefore: bigint | null;
+  /** performance.now() where the send was handed to Privy. The monotonic clock, so a system time change cannot bend it. */
+  handedAt: number;
+  /** The wall clock at the same moment, which is the only thing a block timestamp can be compared against. */
+  tappedAt: number;
 }
 
 export function useStudio(): Studio {
@@ -156,12 +162,14 @@ export function useStudio(): Studio {
       // The digest was built for this wallet, so this is the wallet that sends
       // it. Privy picks the first embedded wallet otherwise, which is not the
       // same thing on an account that holds more than one.
+      const handedAt = performance.now();
+      const tappedAt = Date.now();
       const answer = await sendTransaction(
         { to: addresses.registry, data, chainId: CHAIN_ID },
         { sponsor: !unsponsored, address: from },
       );
 
-      return { hash: transactionHash(answer.hash), balanceBefore };
+      return { hash: transactionHash(answer.hash), balanceBefore, handedAt, tappedAt };
     },
     [sendTransaction],
   );
@@ -378,10 +386,22 @@ export function useStudio(): Studio {
         hash: watch.hash,
         registeredBefore: watch.registeredBefore,
       });
+      const timing = measure({
+        handedAt: watch.handedAt,
+        answeredAt: performance.now(),
+        tappedAt: watch.tappedAt,
+        sealedAt: landed.registeredAt,
+      });
       if (landed.hash !== undefined) {
         dispatchRegister({ type: "sent", txHash: landed.hash });
       }
-      dispatchRegister({ type: "confirmed", block: landed.blockNumber ?? null, at: landed.registeredAt ?? Date.now() });
+      dispatchRegister({
+        type: "confirmed",
+        block: landed.blockNumber ?? null,
+        at: landed.registeredAt ?? Date.now(),
+        timing,
+        charge: await billed(landed.hash),
+      });
 
       await settleSponsorship(watch.wallet, watch.balanceBefore);
       watching.current = null;
@@ -413,6 +433,8 @@ export function useStudio(): Studio {
           registeredBefore: before?.registeredAt,
           hash: sent.hash,
           balanceBefore: sent.balanceBefore,
+          handedAt: sent.handedAt,
+          tappedAt: sent.tappedAt,
         };
         if (sent.hash !== undefined) {
           dispatchRegister({ type: "sent", txHash: sent.hash });
@@ -651,6 +673,23 @@ export function useStudio(): Studio {
     },
     passports,
   };
+}
+
+/**
+ * What the transaction's own receipt was billed, when there is a hash to ask
+ * about. A receipt that will not come back costs the receipt column its gas
+ * line and nothing else: the passport is on chain either way.
+ */
+async function billed(hash: Hex | undefined): Promise<Charge | undefined> {
+  if (hash === undefined) {
+    return undefined;
+  }
+  try {
+    const receipt = await chain.getTransactionReceipt({ hash });
+    return { gasUsed: receipt.gasUsed, gasPrice: receipt.effectiveGasPrice };
+  } catch {
+    return undefined;
+  }
 }
 
 /**

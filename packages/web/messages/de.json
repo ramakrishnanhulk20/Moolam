@@ -54,7 +54,9 @@
       "behind": "{blocks, number} Blöcke zurück",
       "unreachable": "nicht erreichbar",
       "block": "Block {block, number}",
-      "records": "{count, number} Einträge"
+      "records": "{count, number} Einträge",
+      "gap": "bis Block {block, number} indexiert, {blocks, number} Blöcke hinter der Kette",
+      "inStep": "bis Block {block, number} indexiert, im Gleichschritt mit der Kette"
     },
     "source": "Quellcode"
   },
@@ -331,12 +333,17 @@
       "at": "Am",
       "kicker": "Die zweite Meinung",
       "body": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: ein unabhängiger Prüfdienst hat das Bild geholt, neu gehasht und die Antwort auf Monad zurückgeschrieben.",
-      "distanceLabel": "Abstand",
+      "distanceLabel": "Wie der Empfänger es geschrieben hat",
       "byChainlink": "Unabhängig von Chainlink geprüft",
       "byReceiver": "Von einem zugelassenen Empfänger geschrieben",
       "recomputed": "Neu berechneter pHash",
       "openTx": "Transaktion {hash}",
-      "noTransaction": "Der Index führt die Transaktion dazu nicht."
+      "noTransaction": "Der Index führt die Transaktion dazu nicht.",
+      "registeredGrid": "Registrierter Fingerabdruck",
+      "recomputedGrid": "Vom Netz neu berechnet",
+      "verdict": "Ein unabhängiges Netz hat dieses Bild noch einmal geholt und seinen Fingerabdruck neu berechnet: <apart>{bits} von 64 Bit auseinander</apart>.",
+      "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den das Netz aus der selbst geholten Datei berechnet hat. Jede Zelle, die abweicht, ist markiert.",
+      "whatIsRecheck": "Eine Nachprüfung heißt: ein unabhängiges Netz holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort auf Monad. Über das eigene Bild kann niemand eine schreiben."
     },
     "children": {
       "heading": "Bearbeitungen",
@@ -661,7 +668,8 @@
       "kindGoogle": "dein Google-Konto",
       "kindPhone": "deine Telefonnummer",
       "kindPasskey": "ein Passkey, ohne E-Mail im Konto",
-      "kindAccount": "dieses Konto"
+      "kindAccount": "dieses Konto",
+      "passkeySigned": "Mit dem eigenen Schlüssel dieses Geräts signiert, ohne Seed-Phrase."
     },
     "signedOut": {
       "kicker": "Du bist nicht angemeldet",
@@ -881,7 +889,16 @@
       "sentOwn": "Netzgebühr aus deinem eigenen Guthaben bezahlt.",
       "written": "Auf Monad geschrieben",
       "blockValue": "In Block {block} notiert",
-      "blockPending": "Notiert. Die Blocknummer kommt aus dem Index."
+      "blockPending": "Notiert. Die Blocknummer kommt aus dem Index.",
+      "confirmedIn": "Auf Monad bestätigt in",
+      "msUnit": "ms",
+      "confirmedDetail": "In diesem Browser gemessen, vom Übergeben an Privy bis zur Antwort von Monad.",
+      "sealedAfter": "Der Block wurde {seconds, plural, =1 {eine Sekunde} other {# Sekunden}} nach deinem Tippen versiegelt.",
+      "sealedUnderSecond": "Der Block wurde in weniger als einer Sekunde nach deinem Tippen versiegelt.",
+      "billedSponsored": "Berechnet: {gas, number} Gas, {fee} MON, bezahlt von Moolam über Privy.",
+      "billedOwn": "Berechnet: {gas, number} Gas, {fee} MON, aus deinem eigenen Guthaben.",
+      "billedExact": "Genau {fee} MON.",
+      "wouldHaveCost": "Dich hätte es {fee} MON gekostet."
     },
     "passports": {
       "heading": "Deine Pässe",

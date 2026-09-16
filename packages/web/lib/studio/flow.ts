@@ -30,6 +30,56 @@ export const GENERATE_STEPS: readonly Step[] = ["draw", "pin", "agentSign", "sig
 
 const ALL_STEPS: readonly Step[] = ["prepare", "draw", "pin", "agentSign", "sign", "send"];
 
+/**
+ * What the browser measured about one send, stamped only once Monad has
+ * actually answered. Both ends are taken in useStudio: nothing here is a
+ * constant and nothing is an estimate.
+ */
+export interface Timing {
+  /** From handing the send to Privy to the confirm resolving, in milliseconds. */
+  waitedMs: number;
+  /**
+   * From the tap to the second the confirmed block carries, in milliseconds.
+   * Null when the block is not later than the tap, which is what a block sealed
+   * inside the same second reads as.
+   */
+  sealedAfterMs: number | null;
+}
+
+/** What the transaction's own receipt was billed. Monad bills the limit, so this is the charge. */
+export interface Charge {
+  gasUsed: bigint;
+  gasPrice: bigint;
+}
+
+/**
+ * The two ends of the wait, turned into the figures the receipt prints.
+ *
+ * Kept here, away from the clock, so a test can hand it four numbers and read
+ * the answer rather than trying to pin down performance.now in a browser.
+ */
+export function measure({
+  handedAt,
+  answeredAt,
+  tappedAt,
+  sealedAt,
+}: {
+  /** performance.now() where the send went to Privy. */
+  handedAt: number;
+  /** performance.now() where the confirm resolved. */
+  answeredAt: number;
+  /** Date.now() at the same moment the send went out, which is the reader's own clock. */
+  tappedAt: number;
+  /** The confirmed block's second, in milliseconds, or undefined when the chain gave none. */
+  sealedAt: number | undefined;
+}): Timing {
+  const sealed = sealedAt === undefined ? null : sealedAt - tappedAt;
+  return {
+    waitedMs: Math.max(0, Math.round(answeredAt - handedAt)),
+    sealedAfterMs: sealed !== null && sealed > 0 ? sealed : null,
+  };
+}
+
 export interface RegisterState {
   mode: Mode;
   file: File | null;
@@ -45,6 +95,10 @@ export interface RegisterState {
   txHash: Hex | null;
   block: bigint | null;
   registeredAt: number | null;
+  /** How long this send took, measured in this browser. Null until Monad has answered. */
+  timing: Timing | null;
+  /** What the send's receipt was billed. Null when the receipt could not be read. */
+  charge: Charge | null;
   /** True while the send is out and the screen is watching Monad for the passport. */
   confirming: boolean;
   /** True once the creator has chosen to pay the fee from their own balance. */
@@ -63,7 +117,7 @@ export type RegisterAction =
   | { type: "signed"; digest: Hex }
   | { type: "sent"; txHash: Hex }
   | { type: "watching" }
-  | { type: "confirmed"; block: bigint | null; at: number }
+  | { type: "confirmed"; block: bigint | null; at: number; timing?: Timing; charge?: Charge }
   | { type: "failed"; failure: Failure; quota?: QuotaState; stage?: Stage }
   | { type: "reset" };
 
@@ -89,6 +143,8 @@ export const initialRegisterState: RegisterState = {
   txHash: null,
   block: null,
   registeredAt: null,
+  timing: null,
+  charge: null,
   confirming: false,
   unsponsored: false,
   failure: null,
@@ -155,6 +211,8 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         ...state,
         block: action.block,
         registeredAt: action.at,
+        timing: action.timing ?? state.timing,
+        charge: action.charge ?? state.charge,
         confirming: false,
         steps: { ...state.steps, send: "done" },
       };

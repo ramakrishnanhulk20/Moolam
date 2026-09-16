@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { currentStatus } from "@/lib/status/current";
+import type { IndexStatus } from "@/lib/status/read";
 
 interface Item {
   key: string;
@@ -39,7 +40,9 @@ export async function SystemStatus() {
       key: "index",
       label: t("index"),
       state: index.state === "live" ? t("live") : index.state === "behind" ? t("behind", { blocks: index.blocks }) : t("unreachable"),
-      detail: index.state === "live" ? t("block", { block: index.block }) : null,
+      // The gap is what an index is for, so the line says it rather than
+      // leaving a reader to subtract the footer's two block numbers.
+      detail: index.state === "unreachable" ? null : gapLine(index, t),
       live: index.state === "live",
     });
   }
@@ -75,6 +78,25 @@ export async function SystemStatus() {
       ))}
     </ul>
   );
+}
+
+type Translate = (key: string, values?: Record<string, number>) => string;
+
+/**
+ * How far the index is trailing the chain, in words.
+ *
+ * Blocks are the only honest unit here: the index reports the block it has
+ * finished and nothing about when it got there, so a time would have to be
+ * invented. A head that could not be read costs the gap and not the block.
+ */
+function gapLine(index: Exclude<IndexStatus, { state: "unreachable" }>, t: Translate): string {
+  if (index.state === "behind") {
+    return t("gap", { block: index.block, blocks: index.blocks });
+  }
+  if (index.behind === null) {
+    return t("block", { block: index.block });
+  }
+  return index.behind === 0 ? t("inStep", { block: index.block }) : t("gap", { block: index.block, blocks: index.behind });
 }
 
 /**

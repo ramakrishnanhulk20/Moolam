@@ -9,6 +9,9 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
  * The bits are handed in already read off the chain. The second grid marks
  * every cell that disagrees with the first, so "0 of 64 bits apart" is
  * something a reader can see rather than a claim they have to take.
+ *
+ * Shared: the passport page draws it under the second opinion and the sponsor
+ * bench draws the same pair, so both are reading one component.
  */
 export function BitGrid({
   bits,

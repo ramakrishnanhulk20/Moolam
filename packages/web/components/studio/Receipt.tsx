@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
+import { feeInMon } from "@/lib/chain/fee";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { Studio } from "@/lib/studio/useStudio";
 
@@ -13,6 +14,10 @@ interface Mark {
   detail?: string;
   href?: string;
   tone?: "accent" | "verified";
+  /** The one figure on this mark worth reading from across the room. */
+  big?: { caption: string; value: string; unit: string };
+  /** Extra lines under the detail, each one something this run measured. */
+  lines?: string[];
 }
 
 /**
@@ -64,6 +69,19 @@ export function Receipt({ studio }: { studio: Studio }) {
                 >
                   {mark.label}
                 </p>
+                {mark.big === undefined ? null : (
+                  <>
+                    <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                      {mark.big.caption}
+                    </p>
+                    <p className="mt-1 font-display text-[clamp(2.4rem,7vw,3.6rem)] font-semibold uppercase leading-[0.86] tracking-[-0.05em] tabular-nums">
+                      {mark.big.value}
+                      <span className="ms-2 align-top font-mono text-[clamp(0.75rem,1.6vw,1rem)] tracking-[0.06em] text-accent">
+                        {mark.big.unit}
+                      </span>
+                    </p>
+                  </>
+                )}
                 {mark.href === undefined ? (
                   <p className="mt-2 break-all font-mono text-xs text-text">{mark.value}</p>
                 ) : (
@@ -79,6 +97,13 @@ export function Receipt({ studio }: { studio: Studio }) {
                 {mark.detail === undefined ? null : (
                   <p className="mt-1.5 text-xs leading-relaxed text-text-faint">{mark.detail}</p>
                 )}
+                {mark.lines === undefined
+                  ? null
+                  : mark.lines.map((line) => (
+                      <p key={line} className="mt-1.5 text-xs leading-relaxed text-text-faint">
+                        {line}
+                      </p>
+                    ))}
               </motion.li>
             ))}
           </AnimatePresence>
@@ -155,6 +180,9 @@ function collect(studio: Studio, t: Translate, format: Format): Mark[] {
     });
   }
 
+  const charge = studio.register.charge;
+  const fee = charge === null ? null : feeInMon(charge.gasUsed, charge.gasPrice);
+
   if (studio.register.txHash !== null) {
     marks.push({
       key: "sent",
@@ -162,6 +190,10 @@ function collect(studio: Studio, t: Translate, format: Format): Mark[] {
       value: shortHex(studio.register.txHash, 10, 8),
       href: `${MONAD_EXPLORER}/tx/${studio.register.txHash}`,
       detail: studio.register.unsponsored ? t("receipt.sentOwn") : t("receipt.sentSponsored"),
+      // What the creator did not pay, from the transaction's own receipt. It is
+      // the sponsored send's whole point and it was said nowhere on the screen.
+      lines:
+        fee === null || studio.register.unsponsored ? undefined : [t("receipt.wouldHaveCost", { fee: monAmount(fee) })],
     });
   }
 
@@ -175,10 +207,64 @@ function collect(studio: Studio, t: Translate, format: Format): Mark[] {
         studio.register.block === null
           ? t("receipt.blockPending")
           : t("receipt.blockValue", { block: studio.register.block.toString() }),
+      big:
+        studio.register.timing === null
+          ? undefined
+          : {
+              caption: t("receipt.confirmedIn"),
+              value: format.number(studio.register.timing.waitedMs),
+              unit: t("receipt.msUnit"),
+            },
       detail: format.dateTime(new Date(studio.register.registeredAt), { dateStyle: "medium", timeStyle: "short" }),
+      lines: chainLines(studio, t, fee),
       tone: "verified",
     });
   }
 
   return marks;
+}
+
+/**
+ * What Monad did with this send, in the order a reader cares about it: how long
+ * they waited, when the block carrying it was sealed, and what the chain billed
+ * for it. Every one of them is measured or read, so a line is missing rather
+ * than guessed.
+ */
+function chainLines(studio: Studio, t: Translate, fee: string | null): string[] | undefined {
+  const lines: string[] = [];
+  const timing = studio.register.timing;
+  const charge = studio.register.charge;
+
+  if (timing !== null) {
+    lines.push(t("receipt.confirmedDetail"));
+    if (timing.sealedAfterMs !== null) {
+      lines.push(
+        timing.sealedAfterMs < 1_000
+          ? t("receipt.sealedUnderSecond")
+          : t("receipt.sealedAfter", { seconds: Math.round(timing.sealedAfterMs / 1_000) }),
+      );
+    }
+  }
+
+  if (charge !== null && fee !== null) {
+    const gas = Number(charge.gasUsed);
+    lines.push(
+      studio.register.unsponsored
+        ? t("receipt.billedOwn", { gas, fee: monAmount(fee) })
+        : t("receipt.billedSponsored", { gas, fee: monAmount(fee) }),
+    );
+    lines.push(t("receipt.billedExact", { fee }));
+  }
+
+  return lines.length === 0 ? undefined : lines;
+}
+
+/**
+ * MON at four decimals, which is where the eye stops on a gas figure. A charge
+ * too small to show at four decimals is printed whole instead, because a fee
+ * that reads as zero is worse than a long one.
+ */
+function monAmount(exact: string): string {
+  const rounded = Number(exact).toFixed(4);
+  return Number(rounded) === 0 && Number(exact) > 0 ? exact : rounded;
 }

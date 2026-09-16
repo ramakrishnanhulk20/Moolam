@@ -56,7 +56,9 @@
       "behind": "落后 {blocks, number} 个区块",
       "unreachable": "无法连接",
       "block": "区块 {block, number}",
-      "records": "{count, number} 条记录"
+      "records": "{count, number} 条记录",
+      "gap": "已索引到区块 {block, number}，落后链 {blocks, number} 个区块",
+      "inStep": "已索引到区块 {block, number}，与链同步"
     },
     "source": "源码"
   },
@@ -333,12 +335,17 @@
       "at": "时间",
       "kicker": "第二种意见",
       "body": "谁都能说一张图是自己的。这一部分不一样：一个独立的验证服务把图片取回、重新算了哈希，并把答案写回 Monad。",
-      "distanceLabel": "距离",
+      "distanceLabel": "接收方写下的值",
       "byChainlink": "由 Chainlink 独立验证",
       "byReceiver": "由获准的接收方写入",
       "recomputed": "重新算出的 pHash",
       "openTx": "交易 {hash}",
-      "noTransaction": "索引里没有这一条的交易。"
+      "noTransaction": "索引里没有这一条的交易。",
+      "registeredGrid": "登记时的指纹",
+      "recomputedGrid": "网络重新算出的指纹",
+      "verdict": "一个独立网络重新取回这张图，又算了一遍指纹：<apart>64 位中差 {bits} 位</apart>。",
+      "gridNote": "第一格是登记时注册表存下的指纹。第二格是网络用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
+      "whatIsRecheck": "复核，就是一个独立网络自己把这份文件取回去，重新算一遍指纹，再把答案写到 Monad 上。谁也没法给自己的图写一条。"
     },
     "children": {
       "heading": "编辑版本",
@@ -663,7 +670,8 @@
       "kindGoogle": "你的 Google 账户",
       "kindPhone": "你的手机号",
       "kindPasskey": "一把通行密钥，没有留邮箱",
-      "kindAccount": "这个账户"
+      "kindAccount": "这个账户",
+      "passkeySigned": "用这台设备自己的密钥签名，没有助记词。"
     },
     "signedOut": {
       "kicker": "你还没有登录",
@@ -883,7 +891,16 @@
       "sentOwn": "网络费由你自己的余额支付。",
       "written": "已写入 Monad",
       "blockValue": "记在区块 {block}",
-      "blockPending": "已记下。区块号来自索引。"
+      "blockPending": "已记下。区块号来自索引。",
+      "confirmedIn": "在 Monad 上确认用时",
+      "msUnit": "ms",
+      "confirmedDetail": "在这个浏览器里测的，从把发送交给 Privy 到 Monad 回答为止。",
+      "sealedAfter": "你点下之后 {seconds, number} 秒，区块封存完成。",
+      "sealedUnderSecond": "你点下之后不到一秒，区块就封存完成。",
+      "billedSponsored": "计费 {gas, number} gas，{fee} MON，由 Moolam 通过 Privy 支付。",
+      "billedOwn": "计费 {gas, number} gas，{fee} MON，由你自己的余额支付。",
+      "billedExact": "准确是 {fee} MON。",
+      "wouldHaveCost": "你自己付要花 {fee} MON。"
     },
     "passports": {
       "heading": "你的护照",

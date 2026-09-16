@@ -232,6 +232,24 @@ describe("the cards before the first transaction", () => {
     expect(proven).toContain("Your balance did not move");
     expect(proven).toContain("a passkey, with no email on file");
   });
+
+  it("says the device signed it once a passkey is bound, and not before", () => {
+    const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
+    const strip = (passkey: boolean) =>
+      render(
+        "en",
+        createElement(IdentityStrip, {
+          account: { kind: "email", value: "ram@example.com" },
+          wallet,
+          sponsorship: "proven" as const,
+          passkey,
+          onSignOut: NOOP,
+        }),
+      );
+
+    expect(strip(true)).toContain("Signed with this device&#x27;s own key, no seed phrase.");
+    expect(strip(false)).not.toContain("no seed phrase");
+  });
 });
 
 const PREPARED = {
@@ -549,6 +567,33 @@ describe("the agent panel", () => {
   });
 });
 
+/**
+ * A run that has landed, with the two things only a real send can produce: the
+ * milliseconds this browser measured and the receipt the chain billed. A
+ * passkey prompt cannot be driven from a test, so the stamps that follow one
+ * are rendered from this.
+ */
+function registered(over: Partial<RegisterState> = {}): Studio {
+  return {
+    authenticated: true,
+    account: { kind: "email", value: "ram@example.com" },
+    wallet: "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
+    binding: { status: "bound", passkey: { qx: `0x${"aa".repeat(32)}`, qy: `0x${"bb".repeat(32)}` } },
+    bind: { txHash: `0x${"11".repeat(32)}` },
+    register: {
+      ...initialRegisterState,
+      prepared: PREPARED,
+      digest: `0x${"cd".repeat(32)}`,
+      txHash: `0x${"ef".repeat(32)}`,
+      block: 103_059_393n,
+      registeredAt: 1_788_876_542_000,
+      timing: { waitedMs: 1_842, sealedAfterMs: 2_000 },
+      charge: { gasUsed: 657_778n, gasPrice: 102_000_000_000n },
+      ...over,
+    },
+  } as unknown as Studio;
+}
+
 describe("the stub that fills as the creator moves", () => {
   it("stamps only what has actually happened", () => {
     const studio = {
@@ -595,6 +640,47 @@ describe("the stub that fills as the creator moves", () => {
     expect(markup).toContain("Written to Monad");
     expect(markup).toContain("The block number comes from the index");
     expect(markup).not.toContain("Recorded in block");
+  });
+
+  it("puts the measured wait, the sealed block and the charge on the last stamp", () => {
+    const markup = render("en", createElement(Receipt, { studio: registered() }));
+
+    expect(markup).toContain("Confirmed on Monad in");
+    expect(markup).toContain("1,842");
+    expect(markup).toContain("ms");
+    expect(markup).toContain("Measured in this browser");
+    expect(markup).toContain("The block was sealed 2 seconds after you tapped.");
+    expect(markup).toContain("Billed 657,778 gas, 0.0671 MON, paid by Moolam through Privy.");
+    expect(markup).toContain("0.067093356 MON exactly.");
+    // The sponsored send says what it saved the creator, on the stamp that
+    // carries the transaction.
+    expect(markup).toContain("It would have cost you 0.0671 MON.");
+  });
+
+  it("says under a second rather than rounding a fast block down to zero", () => {
+    const studio = registered({ timing: { waitedMs: 1_180, sealedAfterMs: 420 } });
+    const markup = render("en", createElement(Receipt, { studio }));
+    expect(markup).toContain("The block was sealed under a second after you tapped.");
+    expect(markup).not.toContain("0 seconds");
+  });
+
+  it("names the payer as the creator when they paid the fee themselves", () => {
+    const markup = render("en", createElement(Receipt, { studio: registered({ unsponsored: true }) }));
+    expect(markup).toContain("Billed 657,778 gas, 0.0671 MON, from your own balance.");
+    expect(markup).not.toContain("It would have cost you");
+  });
+
+  it("stamps no speed and no charge when neither was measured", () => {
+    const markup = render("en", createElement(Receipt, { studio: registered({ timing: null, charge: null }) }));
+    expect(markup).toContain("Recorded in block 103059393");
+    expect(markup).not.toContain("Confirmed on Monad in");
+    expect(markup).not.toContain("Billed");
+  });
+
+  it("stamps the whole run in Tamil", () => {
+    const markup = render("ta", createElement(Receipt, { studio: registered() }));
+    expect(markup).toContain(ta.studio.receipt.confirmedIn);
+    expect(markup).toContain("1,842");
   });
 
   it("says plainly that nothing has happened yet", () => {

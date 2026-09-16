@@ -24,8 +24,9 @@ export const BEHIND_BLOCKS = 600;
 export type VerifierStatus = { state: "live"; records: number } | { state: "unreachable" };
 
 export type IndexStatus =
-  | { state: "live"; block: number }
-  | { state: "behind"; blocks: number }
+  /** Keeping up. "behind" is the gap in blocks, or null when the chain head could not be read. */
+  | { state: "live"; block: number; behind: number | null }
+  | { state: "behind"; block: number; blocks: number }
   | { state: "unreachable" };
 
 export type ChainStatus = { state: "live"; block: number } | { state: "unreachable" };
@@ -127,15 +128,25 @@ export async function readChainHead(timeoutMs = STATUS_TIMEOUT_MS): Promise<numb
   return await withDeadline(ask, timeoutMs, null);
 }
 
-/** Where the index stands against the chain head it is meant to be following. */
+/**
+ * Where the index stands against the chain head it is meant to be following.
+ *
+ * The gap is the whole point of an index, so it is carried out of here rather
+ * than left for the reader to subtract two nine digit numbers. An index that
+ * has run ahead of the head read a moment later is not behind by a negative
+ * amount: it is in step, so the gap floors at zero.
+ */
 export function indexStanding(block: number | null, head: number | null): IndexStatus {
   if (block === null) {
     return { state: "unreachable" };
   }
-  if (head !== null && head - block > BEHIND_BLOCKS) {
-    return { state: "behind", blocks: head - block };
+  if (head === null) {
+    return { state: "live", block, behind: null };
   }
-  return { state: "live", block };
+  if (head - block > BEHIND_BLOCKS) {
+    return { state: "behind", block, blocks: head - block };
+  }
+  return { state: "live", block, behind: Math.max(0, head - block) };
 }
 
 /** All three reads at once, so the slowest one sets the wait and not the sum. */

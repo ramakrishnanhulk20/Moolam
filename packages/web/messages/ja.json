@@ -56,7 +56,9 @@
       "behind": "{blocks, number} ブロック遅延",
       "unreachable": "応答なし",
       "block": "ブロック {block, number}",
-      "records": "{count, number} 件"
+      "records": "{count, number} 件",
+      "gap": "ブロック {block, number} まで索引済み、チェーンから {blocks, number} ブロック遅れ",
+      "inStep": "ブロック {block, number} まで索引済み、チェーンと同じ位置"
     },
     "source": "ソース"
   },
@@ -333,12 +335,17 @@
       "at": "日時",
       "kicker": "第二の意見",
       "body": "その絵は自分のものだと、誰でも言えます。ここは違います。独立した検証サービスが画像を取得し、ハッシュを取り直し、答えを Monad に書き戻しました。",
-      "distanceLabel": "距離",
+      "distanceLabel": "受信者が書いた値",
       "byChainlink": "Chainlink が独立に検証",
       "byReceiver": "許可された受信者が書き込み",
       "recomputed": "取り直した pHash",
       "openTx": "トランザクション {hash}",
-      "noTransaction": "この件のトランザクションはインデックスにありません。"
+      "noTransaction": "この件のトランザクションはインデックスにありません。",
+      "registeredGrid": "登録時の指紋",
+      "recomputedGrid": "ネットワークが取り直した指紋",
+      "verdict": "独立したネットワークがこの画像を取り直し、指紋を計算し直しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
+      "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ネットワークが自分で取得したファイルから計算した指紋です。食い違う升目には印が付きます。",
+      "whatIsRecheck": "再確認とは、独立したネットワークがこのファイルを自分で取得し、指紋を計算し直して、その答えを Monad に書き込むことです。自分の絵について自分で書くことはできません。"
     },
     "children": {
       "heading": "編集",
@@ -663,7 +670,8 @@
       "kindGoogle": "あなたの Google アカウント",
       "kindPhone": "あなたの電話番号",
       "kindPasskey": "パスキー、メールの登録なし",
-      "kindAccount": "このアカウント"
+      "kindAccount": "このアカウント",
+      "passkeySigned": "この端末自身の鍵で署名。シードフレーズはありません。"
     },
     "signedOut": {
       "kicker": "サインインしていません",
@@ -883,7 +891,16 @@
       "sentOwn": "ネットワーク手数料はあなた自身の残高から支払われました。",
       "written": "Monad に書き込み",
       "blockValue": "ブロック {block} に記録",
-      "blockPending": "記録されました。ブロック番号はインデックスから届きます。"
+      "blockPending": "記録されました。ブロック番号はインデックスから届きます。",
+      "confirmedIn": "Monad での確定まで",
+      "msUnit": "ms",
+      "confirmedDetail": "このブラウザで計測。送信を Privy に渡してから Monad が答えるまで。",
+      "sealedAfter": "タップの {seconds, number} 秒後にブロックが確定しました。",
+      "sealedUnderSecond": "タップから 1 秒とかからずにブロックが確定しました。",
+      "billedSponsored": "請求は {gas, number} ガス、{fee} MON。Moolam が Privy を通して負担しました。",
+      "billedOwn": "請求は {gas, number} ガス、{fee} MON。あなた自身の残高から支払われました。",
+      "billedExact": "正確には {fee} MON。",
+      "wouldHaveCost": "自分で払えば {fee} MON かかっていました。"
     },
     "passports": {
       "heading": "あなたのパスポート",

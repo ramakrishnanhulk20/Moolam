@@ -12,16 +12,23 @@ import { CopyButton } from "./CopyButton";
  * Who is signed in, which account they are signing with, and who is paying the
  * network fee. The fee line is deliberately two different sentences: one before
  * a transaction has landed, one after, because only the second one is proved.
+ *
+ * The passkey sentence sits under it because the two answer the same question:
+ * a creator here signs with their own device and pays nothing, and neither of
+ * those was said anywhere on the screen before.
  */
 export function IdentityStrip({
   account,
   wallet,
   sponsorship,
+  passkey = false,
   onSignOut,
 }: {
   account: AccountName;
   wallet: Hex;
   sponsorship: Sponsorship;
+  /** True only when the key bound on chain is one this device can sign with. */
+  passkey?: boolean;
   onSignOut: () => void;
 }) {
   const t = useTranslations("studio");
@@ -61,7 +68,15 @@ export function IdentityStrip({
       </Field>
 
       <Field label={t("identity.gas")}>
-        <span className={`text-sm ${sponsorship === "proven" ? "text-verified" : "text-text"}`}>{fee}</span>
+        <span className="flex flex-col gap-1.5">
+          <span className={`text-sm ${sponsorship === "proven" ? "text-verified" : "text-text"}`}>{fee}</span>
+          {passkey ? (
+            <span className="flex items-center gap-2 text-xs leading-relaxed text-verified">
+              <span aria-hidden className="h-[6px] w-[6px] shrink-0 bg-verified" />
+              {t("identity.passkeySigned")}
+            </span>
+          ) : null}
+        </span>
       </Field>
 
       <button

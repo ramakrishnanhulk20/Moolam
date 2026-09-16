@@ -56,7 +56,9 @@
       "behind": "{blocks, number} 블록 지연",
       "unreachable": "응답 없음",
       "block": "블록 {block, number}",
-      "records": "{count, number}건"
+      "records": "{count, number}건",
+      "gap": "블록 {block, number}까지 색인, 체인보다 {blocks, number} 블록 뒤",
+      "inStep": "블록 {block, number}까지 색인, 체인과 나란히"
     },
     "source": "소스"
   },
@@ -333,12 +335,17 @@
       "at": "시각",
       "kicker": "두 번째 의견",
       "body": "그림이 자기 것이라고는 누구나 말할 수 있습니다. 이 부분은 다릅니다. 독립된 검증 서비스가 이미지를 가져와 해시를 다시 구하고, 답을 Monad에 기록했습니다.",
-      "distanceLabel": "거리",
+      "distanceLabel": "수신자가 기록한 값",
       "byChainlink": "Chainlink가 독립적으로 검증",
       "byReceiver": "허용된 수신자가 기록",
       "recomputed": "다시 구한 pHash",
       "openTx": "트랜잭션 {hash}",
-      "noTransaction": "인덱스에 이 건의 트랜잭션이 없습니다."
+      "noTransaction": "인덱스에 이 건의 트랜잭션이 없습니다.",
+      "registeredGrid": "등록된 지문",
+      "recomputedGrid": "네트워크가 다시 구한 지문",
+      "verdict": "독립된 네트워크가 이 그림을 다시 가져와 지문을 다시 계산했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
+      "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 네트워크가 직접 가져온 파일에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다.",
+      "whatIsRecheck": "다시 확인한다는 것은, 독립된 네트워크가 이 파일을 직접 가져와 지문을 다시 구하고 그 답을 Monad에 기록하는 일입니다. 자기 그림에 대해서는 누구도 기록할 수 없습니다."
     },
     "children": {
       "heading": "편집본",
@@ -663,7 +670,8 @@
       "kindGoogle": "내 Google 계정",
       "kindPhone": "내 전화번호",
       "kindPasskey": "패스키, 등록된 이메일 없음",
-      "kindAccount": "이 계정"
+      "kindAccount": "이 계정",
+      "passkeySigned": "이 기기의 자체 키로 서명, 시드 문구 없음."
     },
     "signedOut": {
       "kicker": "로그인하지 않았습니다",
@@ -883,7 +891,16 @@
       "sentOwn": "네트워크 수수료는 내 잔액에서 지불했습니다.",
       "written": "Monad에 기록됨",
       "blockValue": "블록 {block}에 기록",
-      "blockPending": "기록되었습니다. 블록 번호는 인덱스에서 옵니다."
+      "blockPending": "기록되었습니다. 블록 번호는 인덱스에서 옵니다.",
+      "confirmedIn": "Monad 확정까지",
+      "msUnit": "ms",
+      "confirmedDetail": "이 브라우저에서 측정. 전송을 Privy에 넘긴 순간부터 Monad가 답한 순간까지.",
+      "sealedAfter": "탭한 뒤 {seconds, number}초 만에 블록이 봉인되었습니다.",
+      "sealedUnderSecond": "탭한 뒤 1초도 안 되어 블록이 봉인되었습니다.",
+      "billedSponsored": "청구: 가스 {gas, number}, {fee} MON. Moolam이 Privy를 통해 부담했습니다.",
+      "billedOwn": "청구: 가스 {gas, number}, {fee} MON. 내 잔액에서 지불했습니다.",
+      "billedExact": "정확히 {fee} MON.",
+      "wouldHaveCost": "직접 냈다면 {fee} MON이 들었습니다."
     },
     "passports": {
       "heading": "내 여권",

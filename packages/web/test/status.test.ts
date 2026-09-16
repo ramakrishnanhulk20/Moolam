@@ -100,23 +100,36 @@ describe("the index", () => {
 });
 
 describe("where the index stands", () => {
-  it("is live when it is at the head", () => {
-    expect(read.indexStanding(104_398_009, 104_398_009)).toEqual({ state: "live", block: 104_398_009 });
+  it("is live and in step when it is at the head", () => {
+    expect(read.indexStanding(104_398_009, 104_398_009)).toEqual({
+      state: "live",
+      block: 104_398_009,
+      behind: 0,
+    });
   });
 
-  it("is live while it trails by less than the allowance", () => {
-    expect(read.indexStanding(1_000, 1_000 + read.BEHIND_BLOCKS)).toEqual({ state: "live", block: 1_000 });
+  it("carries the gap in blocks while it trails by less than the allowance", () => {
+    expect(read.indexStanding(1_000, 1_000 + read.BEHIND_BLOCKS)).toEqual({
+      state: "live",
+      block: 1_000,
+      behind: read.BEHIND_BLOCKS,
+    });
   });
 
   it("is behind, by how many blocks, once it trails further", () => {
     expect(read.indexStanding(1_000, 1_000 + read.BEHIND_BLOCKS + 1)).toEqual({
       state: "behind",
+      block: 1_000,
       blocks: read.BEHIND_BLOCKS + 1,
     });
   });
 
-  it("still reports its own block when the chain head is unknown", () => {
-    expect(read.indexStanding(500, null)).toEqual({ state: "live", block: 500 });
+  it("reads as in step when it has run past the head read a moment later", () => {
+    expect(read.indexStanding(1_001, 1_000)).toEqual({ state: "live", block: 1_001, behind: 0 });
+  });
+
+  it("still reports its own block, and no gap, when the chain head is unknown", () => {
+    expect(read.indexStanding(500, null)).toEqual({ state: "live", block: 500, behind: null });
   });
 
   it("is unreachable when it gave no block", () => {

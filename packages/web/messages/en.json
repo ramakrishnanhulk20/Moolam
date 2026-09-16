@@ -54,7 +54,9 @@
       "behind": "behind by {blocks, number} blocks",
       "unreachable": "unreachable",
       "block": "block {block, number}",
-      "records": "{count, number} records"
+      "records": "{count, number} records",
+      "gap": "indexed to block {block, number}, {blocks, number} blocks behind the chain",
+      "inStep": "indexed to block {block, number}, in step with the chain"
     },
     "source": "Source"
   },
@@ -331,12 +333,17 @@
       "at": "At",
       "kicker": "The second opinion",
       "body": "Anyone can say a picture is theirs. This part is different: an independent verifier fetched the image, hashed it again and wrote the answer back on Monad.",
-      "distanceLabel": "Distance",
+      "distanceLabel": "As the receiver wrote it",
       "byChainlink": "Verified independently by Chainlink",
       "byReceiver": "Written by an allowed receiver",
       "recomputed": "Recomputed pHash",
       "openTx": "Transaction {hash}",
-      "noTransaction": "The index does not carry the transaction for this one."
+      "noTransaction": "The index does not carry the transaction for this one.",
+      "registeredGrid": "Registered fingerprint",
+      "recomputedGrid": "Recomputed by the network",
+      "verdict": "An independent network re-fetched this picture and recomputed its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
+      "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the network computed from the file it fetched itself. Every cell that disagrees is marked.",
+      "whatIsRecheck": "A re-check is an independent network fetching this file for itself, computing the fingerprint again and writing that answer on Monad. Nobody can write one about their own picture."
     },
     "children": {
       "heading": "Edits",
@@ -661,7 +668,8 @@
       "kindGoogle": "your Google account",
       "kindPhone": "your phone number",
       "kindPasskey": "a passkey, with no email on file",
-      "kindAccount": "this account"
+      "kindAccount": "this account",
+      "passkeySigned": "Signed with this device's own key, no seed phrase."
     },
     "signedOut": {
       "kicker": "You are not signed in",
@@ -881,7 +889,16 @@
       "sentOwn": "Network fee paid from your own balance.",
       "written": "Written to Monad",
       "blockValue": "Recorded in block {block}",
-      "blockPending": "Recorded. The block number comes from the index."
+      "blockPending": "Recorded. The block number comes from the index.",
+      "confirmedIn": "Confirmed on Monad in",
+      "msUnit": "ms",
+      "confirmedDetail": "Measured in this browser, from handing the send to Privy to Monad answering.",
+      "sealedAfter": "The block was sealed {seconds, plural, =1 {one second} other {# seconds}} after you tapped.",
+      "sealedUnderSecond": "The block was sealed under a second after you tapped.",
+      "billedSponsored": "Billed {gas, number} gas, {fee} MON, paid by Moolam through Privy.",
+      "billedOwn": "Billed {gas, number} gas, {fee} MON, from your own balance.",
+      "billedExact": "{fee} MON exactly.",
+      "wouldHaveCost": "It would have cost you {fee} MON."
     },
     "passports": {
       "heading": "Your passports",

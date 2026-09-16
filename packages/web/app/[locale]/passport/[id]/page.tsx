@@ -134,7 +134,9 @@ export default async function PassportPage({
     <article>
       <Poster passport={passport} art={art} locale={locale} />
 
-      <Attestations attestations={attestations} indexed={indexed} locale={locale} />
+      {/* The second opinion leads, straight under the poster: it is the one
+          fact on this page nobody could have written about themselves. */}
+      <Attestations attestations={attestations} indexed={indexed} phash={passport.phash} locale={locale} />
 
       <Facts
         passport={passport}

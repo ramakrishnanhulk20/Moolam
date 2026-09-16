@@ -1,28 +1,39 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { BitGrid } from "@/components/BitGrid";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
+import { bitsApart, bitsOf, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
 import { transactionFor, type IndexedAttestation } from "./indexed";
 import { Mono } from "./Mono";
 import { attestationSource } from "./labels";
+
+/** What getTranslations hands back, so a row can be given one rather than await its own. */
+type Translate = Awaited<ReturnType<typeof getTranslations>>;
 
 /**
  * The trust story, and the loudest block on the page.
  *
  * Anyone can claim their own image is theirs. What makes this a passport is
  * that a second party fetched the picture, hashed it again and wrote the answer
- * back on chain. This block says who that was, how far apart the two hashes
- * were, and lets a reader open the transaction that carried it.
+ * back on chain. The two fingerprints are drawn as the 64 bits they are, so
+ * "0 of 64 bits apart" is something a reader can see rather than a number they
+ * have to trust, and the bits are counted here off the chain's own two values
+ * rather than copied from the receiver's word.
  */
 export async function Attestations({
   attestations,
   indexed,
+  phash,
   locale,
 }: {
   attestations: Attestation[];
   indexed: IndexedAttestation[];
+  /** The fingerprint the registry stored when this picture was registered. */
+  phash: bigint;
   locale: string;
 }) {
   const t = await getTranslations("passport.attestations");
+  const common = await getTranslations("common");
   const format = await getFormatter({ locale });
 
   return (
@@ -39,15 +50,19 @@ export async function Attestations({
 
           <div className="rise" style={{ animationDelay: "90ms" }}>
             {attestations.length === 0 ? (
-              <p className="max-w-[52ch] border-s-2 border-line ps-5 text-sm leading-relaxed text-text-muted">
-                {t("empty")}
-              </p>
+              <div className="max-w-[52ch] border-s-2 border-line ps-5">
+                <p className="text-sm leading-relaxed text-text-muted">{t("empty")}</p>
+                <p className="mt-4 text-sm leading-relaxed text-text-faint">{t("whatIsRecheck")}</p>
+              </div>
             ) : (
               <ul className="space-y-px bg-line">
                 {attestations.map((attestation, index) => (
                   <Row
                     key={`${attestation.receiver}-${attestation.at}-${index}`}
                     attestation={attestation}
+                    phash={phash}
+                    t={t}
+                    common={common}
                     txHash={transactionFor(indexed, attestation)}
                     when={format.dateTime(new Date(Number(attestation.at) * 1000), {
                       dateStyle: "medium",
@@ -64,18 +79,35 @@ export async function Attestations({
   );
 }
 
-async function Row({
+/**
+ * One re-check. The two translators are handed down rather than asked for
+ * again: a row that awaits its own would make every row a suspending component
+ * inside a list its parent has already resolved.
+ */
+function Row({
   attestation,
+  phash,
   txHash,
   when,
+  t,
+  common,
 }: {
   attestation: Attestation;
+  phash: bigint;
   txHash?: `0x${string}`;
   when: string;
+  t: Translate;
+  common: Translate;
 }) {
-  const t = await getTranslations("passport.attestations");
-  const common = await getTranslations("common");
   const source = attestationSource(attestation.receiver);
+
+  const recomputed = phashWord(attestation.recomputed);
+  const registeredBits = bitsOf(phash);
+  const recomputedBits = bitsOf(recomputed);
+  // Counted here off the two fingerprints the chain holds. The receiver's own
+  // figure is shown beside it, so a disagreement would be visible rather than
+  // hidden behind whichever one the page chose to print.
+  const counted = bitsApart(phash, recomputed);
 
   return (
     <li className="bg-bg p-6 sm:p-8">
@@ -86,6 +118,21 @@ async function Row({
 
       <p className="mt-5 max-w-[24ch] font-display text-[clamp(1.3rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
         {source === "chainlink" ? t("byChainlink") : t("byReceiver")}
+      </p>
+
+      {/* Two equal columns rather than a flex row: the captions are different
+          lengths, and a pair of fingerprints drawn at different sizes reads as
+          two unrelated things. They stack on a phone. */}
+      <div className="mt-8 grid max-w-[30rem] items-start gap-x-10 gap-y-8 sm:grid-cols-2">
+        <BitGrid bits={registeredBits} label={t("registeredGrid")} tone="original" />
+        <BitGrid bits={recomputedBits} against={registeredBits} label={t("recomputedGrid")} tone="recomputed" />
+      </div>
+
+      <p className="mt-8 max-w-[44ch] font-display text-[clamp(1.1rem,2.4vw,1.7rem)] font-semibold leading-[1.15] tracking-[-0.03em]">
+        {t.rich("verdict", {
+          bits: counted,
+          apart: (chunks) => <span className={counted === 0 ? "text-verified" : "text-failed"}>{chunks}</span>,
+        })}
       </p>
 
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
@@ -124,6 +171,10 @@ async function Row({
 
       <p className="mt-6 font-mono text-[11px] text-text-faint">
         {t("recomputed")} <Mono value={phashOf(attestation.recomputed)} />
+      </p>
+
+      <p className="mt-5 max-w-[56ch] border-t border-line pt-5 text-xs leading-relaxed text-text-faint">
+        {t("gridNote")}
       </p>
     </li>
   );

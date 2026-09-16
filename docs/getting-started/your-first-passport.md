@@ -137,6 +137,12 @@ Monad", "Written to Monad". Nothing is stamped before its answer is in hand, whi
 number can arrive after the rest: it reads "Recorded. The block number comes from the index." until
 the indexer catches up.
 
+The last stamp carries the run's own measurements: how many milliseconds passed between the send
+being handed to Privy and Monad answering, timed in your browser, whether the block was sealed under
+a second or a given number of seconds after you tapped, and what the transaction's receipt was
+billed in gas and MON along with who paid it, with the amount the sponsored send saved you shown on
+the "Sent to Monad" stamp above it.
+
 A run through the agent stamps the same list, because both paths hand the receipt the same prepared
 block. It does not name the agent. The agent id and the wallet that signed are on the seal beside
 the picture and on the finished card.

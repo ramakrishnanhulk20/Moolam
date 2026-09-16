@@ -54,7 +54,9 @@
       "behind": "{blocks, number} blocs de retard",
       "unreachable": "injoignable",
       "block": "bloc {block, number}",
-      "records": "{count, number} enregistrements"
+      "records": "{count, number} enregistrements",
+      "gap": "indexé jusqu’au bloc {block, number}, {blocks, number} blocs de retard sur la chaîne",
+      "inStep": "indexé jusqu’au bloc {block, number}, au pas avec la chaîne"
     },
     "source": "Code source"
   },
@@ -331,12 +333,17 @@
       "at": "Le",
       "kicker": "Le deuxième avis",
       "body": "N’importe qui peut dire qu’une image est la sienne. Ici c’est différent : un vérificateur indépendant a récupéré l’image, l’a hachée de nouveau et a inscrit la réponse sur Monad.",
-      "distanceLabel": "Distance",
+      "distanceLabel": "Tel que le récepteur l’a inscrit",
       "byChainlink": "Vérifiée de façon indépendante par Chainlink",
       "byReceiver": "Inscrite par un récepteur autorisé",
       "recomputed": "pHash recalculé",
       "openTx": "Transaction {hash}",
-      "noTransaction": "L’index ne porte pas la transaction de celle-ci."
+      "noTransaction": "L’index ne porte pas la transaction de celle-ci.",
+      "registeredGrid": "Empreinte enregistrée",
+      "recomputedGrid": "Recalculée par le réseau",
+      "verdict": "Un réseau indépendant a récupéré cette image et recalculé son empreinte : <apart>{bits} bits d’écart sur 64</apart>.",
+      "gridNote": "La première grille est l’empreinte inscrite au registre lors de l’enregistrement. La seconde est celle que le réseau a calculée à partir du fichier qu’il a récupéré lui-même. Chaque case qui diffère est marquée.",
+      "whatIsRecheck": "Une revérification, c’est un réseau indépendant qui récupère ce fichier lui-même, recalcule l’empreinte et inscrit cette réponse sur Monad. Personne ne peut en écrire une sur sa propre image."
     },
     "children": {
       "heading": "Retouches",
@@ -661,7 +668,8 @@
       "kindGoogle": "votre compte Google",
       "kindPhone": "votre numéro de téléphone",
       "kindPasskey": "une clé d’accès, sans e-mail au dossier",
-      "kindAccount": "ce compte"
+      "kindAccount": "ce compte",
+      "passkeySigned": "Signé avec la clé propre à cet appareil, sans phrase de récupération."
     },
     "signedOut": {
       "kicker": "Vous n’êtes pas connecté",
@@ -881,7 +889,16 @@
       "sentOwn": "Frais de réseau payés sur votre propre solde.",
       "written": "Inscrite sur Monad",
       "blockValue": "Inscrite dans le bloc {block}",
-      "blockPending": "Inscrite. Le numéro de bloc vient de l’index."
+      "blockPending": "Inscrite. Le numéro de bloc vient de l’index.",
+      "confirmedIn": "Confirmée sur Monad en",
+      "msUnit": "ms",
+      "confirmedDetail": "Mesuré dans ce navigateur, de la remise de l’envoi à Privy jusqu’à la réponse de Monad.",
+      "sealedAfter": "Le bloc a été scellé {seconds, plural, =1 {une seconde} other {# secondes}} après votre appui.",
+      "sealedUnderSecond": "Le bloc a été scellé moins d’une seconde après votre appui.",
+      "billedSponsored": "Facturé : {gas, number} de gas, {fee} MON, payés par Moolam via Privy.",
+      "billedOwn": "Facturé : {gas, number} de gas, {fee} MON, sur votre propre solde.",
+      "billedExact": "{fee} MON exactement.",
+      "wouldHaveCost": "Cela vous aurait coûté {fee} MON."
     },
     "passports": {
       "heading": "Vos passeports",
