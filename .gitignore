@@ -14,7 +14,7 @@ kitchen/
 # dependencies and build output
 node_modules/
 .next/
-.next-verify/
+.next-*/
 dist/
 out/
 cache/
