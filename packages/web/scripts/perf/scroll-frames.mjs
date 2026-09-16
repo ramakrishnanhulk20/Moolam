@@ -80,6 +80,54 @@ try {
   await send("Runtime.enable");
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: false });
 
+  // Every draw the scene makes is counted from before the page exists, split by
+  // whether the tab was in front at the time. That is the only way to answer
+  // "does the film keep drawing in a background tab" with a number.
+  await send("Page.addScriptToEvaluateOnNewDocument", {
+    source: `
+      window.__draws = { shown: 0, hidden: 0, firstFrame: null };
+      // Frames from the moment the document exists, which is the only way to
+      // catch a stall while the scene is being built. The sampler further down
+      // starts later, once the textures are in, and measures the scroll.
+      window.__startup = [];
+      (() => {
+        let last = performance.now();
+        const step = (now) => {
+          if (now - last > 0) {
+            window.__startup.push({ at: Math.round(now), ms: now - last });
+          }
+          last = now;
+          if (now < 8000) {
+            requestAnimationFrame(step);
+          }
+        };
+        requestAnimationFrame(step);
+      })();
+      (() => {
+        const count = (proto) => {
+          if (proto === undefined) {
+            return;
+          }
+          for (const name of ["drawElements", "drawArrays", "drawElementsInstanced", "drawArraysInstanced"]) {
+            const original = proto[name];
+            if (typeof original !== "function") {
+              continue;
+            }
+            proto[name] = function (...rest) {
+              window.__draws[document.hidden ? "hidden" : "shown"] += 1;
+              if (window.__draws.firstFrame === null) {
+                window.__draws.firstFrame = Math.round(performance.now());
+              }
+              return original.apply(this, rest);
+            };
+          }
+        };
+        count(window.WebGLRenderingContext?.prototype);
+        count(window.WebGL2RenderingContext?.prototype);
+      })();
+    `,
+  });
+
   await send("Page.navigate", { url });
   await settled();
 
@@ -122,6 +170,13 @@ try {
   const frames = await evaluate("JSON.stringify({ frames: window.__frames, tiers: window.__tiers })");
   const answer = JSON.parse(frames);
 
+  // The frames are taken first. A hidden tab gets no animation frame at all, so
+  // asking this question earlier would leave one five second gap in the sample
+  // and call it the worst frame of the run.
+  const background = await inBackground();
+  const draws = JSON.parse(await evaluate("JSON.stringify(window.__draws ?? null)"));
+  const startup = JSON.parse(await evaluate("JSON.stringify(window.__startup ?? [])"));
+
   // A frame longer than a quarter of a second is a pause, not a frame rate: a
   // navigation, a texture decode, the protocol itself. The tier controller
   // throws those away too.
@@ -141,10 +196,90 @@ try {
   console.log(
     `tier       ${answer.tiers.length === 0 ? "no canvas on the page" : answer.tiers.map((step) => `${step.tier} at ${(step.at / 1000).toFixed(1)}s`).join(", ")}`,
   );
+  for (const level of perTier(answer.frames, answer.tiers)) {
+    console.log(
+      `  tier ${level.tier}    ${level.frames} frames over ${(level.heldMs / 1000).toFixed(1)}s, mean ${level.mean.toFixed(1)} ms, worst ${Math.round(level.worst)} ms`,
+    );
+  }
+  console.log(`first draw ${draws === null || draws.firstFrame === null ? "no webgl draws" : `${draws.firstFrame} ms after the page opened`}`);
+  const stall = startup.reduce((worst, one) => (one.ms > worst.ms ? one : worst), { ms: 0, at: 0 });
+  console.log(`startup    worst frame in the first 8s of the page: ${Math.round(stall.ms)} ms at ${Math.round(stall.at)} ms`);
+  console.log(
+    `background ${background.state} for ${background.seconds}s, ${background.drew} draws while the tab was behind another one`,
+  );
+  console.log(`worst      ${worstAfterOneSecond(answer.frames)} ms, the longest single frame after the first second of sampling, pauses included`);
 } finally {
   socket?.close();
   child.kill();
   await rm(profile, { recursive: true, force: true }).catch(() => undefined);
+}
+
+/**
+ * What each tier actually cost on this machine.
+ *
+ * The overall mean of a run that stepped tiers is a blend of four different
+ * scenes and says nothing about any of them. Splitting the frames at the moments
+ * the tier changed gives the number the thresholds are chosen against. The three
+ * frames around a step belong to the swap itself and are left out.
+ */
+function perTier(frames, tiers) {
+  if (tiers.length === 0) {
+    return [];
+  }
+  const held = new Map();
+  let elapsed = 0;
+  let at = 0;
+  let sinceStep = 0;
+  for (const ms of frames) {
+    elapsed += ms;
+    while (at + 1 < tiers.length && elapsed >= tiers[at + 1].at) {
+      at += 1;
+      sinceStep = 0;
+    }
+    sinceStep += 1;
+    if (sinceStep <= 3 || ms > 250) {
+      continue;
+    }
+    const level = held.get(tiers[at].tier) ?? { tier: tiers[at].tier, frames: 0, total: 0, worst: 0, heldMs: 0 };
+    level.frames += 1;
+    level.total += ms;
+    level.heldMs += ms;
+    level.worst = Math.max(level.worst, ms);
+    held.set(tiers[at].tier, level);
+  }
+  return [...held.values()].map((level) => ({ ...level, mean: level.frames === 0 ? 0 : level.total / level.frames }));
+}
+
+/**
+ * The longest single frame once the scene has had a second to settle. Nothing is
+ * thrown away here: a stall is exactly what this line is looking for.
+ */
+function worstAfterOneSecond(frames) {
+  let elapsed = 0;
+  let worst = 0;
+  for (const ms of frames) {
+    elapsed += ms;
+    if (elapsed > 1000 && ms > worst) {
+      worst = ms;
+    }
+  }
+  return Math.round(worst);
+}
+
+/**
+ * Puts a second tab in front and reports what the film did while it was behind
+ * it. A page that keeps drawing in a background tab is spending a reader's
+ * battery on a picture nobody is looking at.
+ */
+async function inBackground(secondsHidden = 5) {
+  const before = Number(await evaluate("window.__draws?.hidden ?? 0"));
+  const made = await send("Target.createTarget", { url: "about:blank" });
+  await wait(secondsHidden * 1000);
+  const state = await evaluate("document.visibilityState");
+  const after = Number(await evaluate("window.__draws?.hidden ?? 0"));
+  await send("Target.closeTarget", { targetId: made.targetId });
+  await wait(500);
+  return { state, drew: after - before, seconds: secondsHidden };
 }
 
 /** Whether a bare command name can actually be run, so a missing shell fails here and not silently. */

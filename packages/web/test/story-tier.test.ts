@@ -61,7 +61,7 @@ describe("the tier table", () => {
 });
 
 describe("stepping down", () => {
-  it("drops a tier after two seconds of thirty millisecond frames, then holds three", () => {
+  it("drops a tier after two seconds of thirty millisecond frames, and holds it while it settles", () => {
     const first = play(createTierState(0), GRACE_MS + SLOW_FOR_MS, steady(30));
     expect(first.state.tier).toBe(0);
 
@@ -76,9 +76,36 @@ describe("stepping down", () => {
 
     const holding = play(dropped.state, SETTLE_MS - 100, steady(30), stepAt);
     expect(holding.state.tier).toBe(1);
+  });
 
-    const after = play(holding.state, SLOW_FOR_MS + 500, steady(30), holding.now);
-    expect(after.state.tier).toBe(2);
+  it("keeps stepping down while each step is buying frame time back", () => {
+    // A machine the field really is slowing: every plate taken away shows up in
+    // the frame time, so the frame cost here follows the tier the run is on.
+    const cost = [30, 24, 19, 19];
+    let state = createTierState(0);
+    let now = 0;
+    while (now < 40000) {
+      const ms = cost[state.tier];
+      now += ms;
+      state = nextTier(state, ms, now);
+    }
+    expect(state.tier).toBe(2);
+    expect(state.stopShrinking).toBe(false);
+  });
+
+  it("gives the plates back when a step buys nothing and the frames were fine anyway", () => {
+    // A laptop with no GPU: the software renderer paces every frame the same
+    // whatever is on screen, so the step changed nothing a reader can see.
+    const dropped = play(createTierState(0), GRACE_MS + SLOW_FOR_MS + 1000, steady(24));
+    expect(dropped.state.tier).toBe(1);
+
+    const judged = play(dropped.state, SETTLE_MS + 1000, steady(24), dropped.now);
+    expect(judged.state.tier).toBe(0);
+    expect(judged.state.stopShrinking).toBe(true);
+
+    // And it stays there: the film is not taken apart a second time.
+    const later = play(judged.state, 60000, steady(24), judged.now);
+    expect(later.state.tier).toBe(0);
   });
 
   it("ignores the first two seconds while the textures are loading", () => {
@@ -91,6 +118,14 @@ describe("stepping down", () => {
     const ended = play(createTierState(0), 60000, steady(40));
     expect(ended.state.tier).toBe(STILL_TIER);
     expect(tierLevel(ended.state.tier).still).toBe(true);
+  });
+
+  it("goes straight to the still story when a smaller field is still under thirty frames a second", () => {
+    const dropped = play(createTierState(0), GRACE_MS + SLOW_FOR_MS + 1000, steady(40));
+    expect(dropped.state.tier).toBe(1);
+
+    const judged = play(dropped.state, SETTLE_MS + 1000, steady(40), dropped.now);
+    expect(judged.state.tier).toBe(STILL_TIER);
   });
 });
 

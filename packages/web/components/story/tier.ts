@@ -39,6 +39,21 @@ export const SLOW_MS = 22;
 export const FAST_MS = 11;
 export const SLOW_FOR_MS = 2000;
 export const FAST_FOR_MS = 10000;
+/**
+ * How much of the frame time a step down has to buy back to have been worth
+ * making. Measured on a laptop with no GPU: the software renderer paces every
+ * frame at about 33 ms whatever is on screen, so the field shrank three times
+ * for a mean that never moved (20.7, then 20.4, then 20.9) and the reader lost
+ * the film for nothing. A step that does not clear this bar is undone.
+ */
+export const GAIN = 0.9;
+/**
+ * The mean above which a machine is not being slowed by the field at all, it
+ * simply cannot draw this film: under thirty frames a second with the smaller
+ * field already in front of it. That one gets the still story rather than
+ * another plate shaved off a picture it was never going to hold.
+ */
+export const STILL_MS = 32;
 /** After a step the new field gets this long to settle before it is judged. */
 export const SETTLE_MS = 3000;
 /** A step back the other way is only allowed this long after the last step. */
@@ -72,6 +87,10 @@ export interface TierState {
   readonly steppedAt: number;
   /** Which way the last step went, so the opposite one can be held back. */
   readonly steppedDown: boolean | null;
+  /** The mean that caused the last step down, kept until that step can be judged. */
+  readonly meanAtStep: number | null;
+  /** Set once a step down has been shown not to help. The field stops shrinking. */
+  readonly stopShrinking: boolean;
 }
 
 /** Phones start one tier down: a narrow window on the same field costs the same frame on a smaller GPU. */
@@ -89,6 +108,8 @@ export function createTierState(start: number): TierState {
     settledAt: 0,
     steppedAt: 0,
     steppedDown: null,
+    meanAtStep: null,
+    stopShrinking: false,
   };
 }
 
@@ -132,8 +153,24 @@ export function nextTier(state: TierState, deltaMs: number, nowMs: number): Tier
   const fastSince = mean < FAST_MS ? (state.fastSince ?? nowMs) : null;
   const measuring: TierState = { ...state, samples, slowSince, fastSince };
 
-  if (slowSince !== null && nowMs - slowSince >= SLOW_FOR_MS && turnAllowed(state, true, nowMs)) {
-    return step(measuring, state.tier + 1, nowMs, true);
+  // The first honest look at the field that the last step down produced. If the
+  // frames are no better than they were before it, the field was never what was
+  // costing the time, so the plates come back and nothing is taken away again.
+  if (state.meanAtStep !== null) {
+    if (mean > state.meanAtStep * GAIN) {
+      // Still under thirty frames a second with less on screen: the field was
+      // never the weight. Hand over the still story rather than shave the
+      // picture again for nothing.
+      if (mean > STILL_MS) {
+        return { ...step(measuring, STILL_TIER, nowMs, true), meanAtStep: null, stopShrinking: true };
+      }
+      return { ...step(measuring, state.tier - 1, nowMs, false), meanAtStep: null, stopShrinking: true };
+    }
+    return { ...measuring, meanAtStep: null };
+  }
+
+  if (!state.stopShrinking && slowSince !== null && nowMs - slowSince >= SLOW_FOR_MS && turnAllowed(state, true, nowMs)) {
+    return { ...step(measuring, state.tier + 1, nowMs, true), meanAtStep: mean };
   }
   if (
     fastSince !== null &&

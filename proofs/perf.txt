@@ -1,0 +1,215 @@
+Moolam front end performance
+
+Measured 2026-09-16 on this machine (Windows 11, Chrome 152.0.7977.83 headless),
+against a production build of packages/web served by `next start` on port 3311,
+and against the live site at https://moolam.vercel.app. Lighthouse 12.8.2,
+performance category only, mobile profile (four times CPU slowdown, throttled
+4G) and desktop profile.
+
+  node packages/web/scripts/perf/lighthouse.mjs --base http://localhost:3311 --profile both --runs 3
+  node packages/web/scripts/perf/bundle.mjs --base http://localhost:3311 --dist .next-wo66
+  node packages/web/scripts/perf/scroll-frames.mjs --url http://localhost:3311/en --gpu
+
+The columns: score is the Lighthouse performance score out of 100, LCP the
+largest contentful paint, TBT the total blocking time, CLS the layout shift, JS
+the JavaScript actually transferred over the wire for that page.
+
+One run of Lighthouse on this machine swings by up to a factor of two on the same
+build, so the third table is the middle of three runs per page. The first table
+is one run per page, which is how it was taken before the runner learned to take
+a median, and the tree also moved between the two because other work landed in
+parallel. Read them as two readings of the same product, not as the before and
+after of one change. The change this pass did make is to the adaptive tier of the
+film, which does not alter what a page loads, so it shows up in the frame table
+near the bottom rather than here.
+
+
+AS FOUND, local production build, one run per page
+--------------------------------------------------------------------------
+page                       mobile                        desktop
+                     score   LCP     TBT    CLS     score   LCP     TBT   CLS
+/en                     55  4559ms  1763ms  0.000      94  1629ms   52ms 0.011
+/en/verify              57  9042ms   732ms  0.000      88  2314ms   44ms 0.000
+/en/studio              50 12949ms   416ms  0.296      84  2299ms  124ms 0.097
+/en/explore             63 10233ms   474ms  0.000      89  2235ms   46ms 0.000
+/en/passport/0xcdb2...  54 11235ms   813ms  0.000      87  2187ms   56ms 0.000
+/en/agent/10249         51 11364ms  1029ms  0.000      93  1701ms   41ms 0.000
+/en/docs                48  9608ms  1614ms  0.000      93  1669ms   94ms 0.000
+
+JavaScript transferred, as found: 2465 kB on /en, 2171 to 2203 kB on the rest.
+
+
+AS FOUND, the live site, one run per page
+--------------------------------------------------------------------------
+page                       mobile                        desktop
+                     score   LCP     TBT    CLS     score   LCP     TBT   CLS
+/en                     43  7562ms  1220ms  0.021      96   673ms   43ms 0.011
+/en/verify              57 12738ms   357ms  0.000      89  2131ms   42ms 0.000
+/en/studio              39 16427ms   410ms  0.296      83  2139ms   31ms 0.097
+/en/explore             62  9941ms   445ms  0.000      87  2306ms   40ms 0.000
+/en/passport/0xcdb2...  59 10850ms   410ms  0.000      76  3176ms   43ms 0.000
+/en/agent/10249         57 16821ms   332ms  0.000      95  1466ms   39ms 0.000
+/en/docs                64  7847ms   356ms  0.000      99   744ms   24ms 0.000
+
+The passport page is the slowest desktop page on the live site because it is
+rendered on demand against the chain and the index. Its first byte took 8.8
+seconds cold and 1.2 seconds warm on the local build, while every other page
+answered in 2 to 20 milliseconds from the prerendered copy.
+
+
+AT THE END OF THE PASS, local production build, middle of three runs per page
+--------------------------------------------------------------------------
+page                       mobile                        desktop
+                     score   LCP     TBT    CLS     score   LCP     TBT   CLS
+/en                     60  8863ms   455ms  0.021      94  1618ms   37ms 0.011
+/en/verify              67 11324ms   351ms  0.000      87  2482ms   41ms 0.000
+/en/studio              49 13671ms   356ms  0.296      82  2784ms   77ms 0.097
+/en/explore             67  9013ms   348ms  0.000      87  2246ms  109ms 0.000
+/en/passport/0xcdb2...  66  7518ms   398ms  0.000      91  1692ms  138ms 0.000
+/en/agent/10249         67  9088ms   351ms  0.000      94  1661ms   60ms 0.000
+/en/docs                59  9018ms   649ms  0.000      94  1655ms   42ms 0.000
+
+JavaScript transferred: 2456 kB on /en, 2162 to 2194 kB on the rest. It did not
+drop, and the reason is the next section.
+
+
+WHAT THE JAVASCRIPT ON A PAGE IS MADE OF
+--------------------------------------------------------------------------
+Built once with source maps (ANALYZE=1), then every script the browser fetched
+was attributed back to the package it came from by walking those maps. The
+figures are wire bytes, so compressed.
+
+/en, 45 scripts, 1561 kB
+     189 kB  three                    173 kB  @privy-io/react-auth
+     170 kB  viem                     157 kB  next
+     115 kB  zod                       76 kB  @base-org/account
+      56 kB  ox                        39 kB  gsap
+      39 kB  @react-three/fiber        37 kB  libphonenumber-js
+
+/en/docs, 43 scripts, 1314 kB, a page with no wallet, no film and no diagram
+     173 kB  @privy-io/react-auth     170 kB  viem
+     157 kB  next                     115 kB  zod
+      76 kB  @base-org/account         56 kB  ox
+      39 kB  gsap                      37 kB  libphonenumber-js
+      35 kB  jose                      33 kB  motion-dom
+      32 kB  @noble/curves             28 kB  @walletconnect/sign-client
+      28 kB  @coinbase/wallet-sdk      26 kB  @privy-io/js-sdk-core
+      24 kB  @noble/hashes             16 kB  @headlessui/react
+      13 kB  ws                         8 kB  styled-components
+       8 kB  @walletconnect/core        7 kB  ua-parser-js
+       7 kB  @msgpack/msgpack           7 kB  @wagmi/core
+       6 kB  react-device-detect        5 kB  preact
+
+Added up, the wallet packages alone are 480 kB of the 1314 kB on a documentation
+page, and viem, ox and the noble libraries (258 kB more) are on it because
+components/providers/PrivyProvider.tsx builds a wagmi config at module scope. The
+provider wraps every route from app/[locale]/layout.tsx, so a reader who opens
+the docs, the explore list or an agent page downloads and runs a wallet they will
+never use. gsap (39 kB) is on every page for the same reason: LenisProvider
+imports it whether or not the page has a scroll animation.
+
+That split is the one change that would move the mobile scores, and both files
+that carry it, components/providers/PrivyProvider.tsx and
+components/providers/LenisProvider.tsx, are outside the file list of this work
+order. The numbers are written down here so the next order can be aimed at them.
+
+What was already right, and was checked rather than assumed:
+- mermaid is fetched only where a diagram is drawn. A docs page without one
+  loads 43 scripts and 1312 kB, and /en/docs/developers/architecture loads 60
+  scripts and 1554 kB.
+- shiki never reaches the browser: code is highlighted while the page is
+  rendered.
+- three, drei and fiber are on the home page only, behind a dynamic import.
+- The five non-Latin faces are one chunk each and only the locale in use asks
+  for its own. An English page preloads four font files, all Latin.
+- Every face has a metric compatible fallback from next/font (Archivo Fallback,
+  ascent-override 88.96 percent, size-adjust 98.7 percent, and the same for
+  Inter and IBM Plex Mono), which is why CLS is 0.000 to 0.021 on six of the
+  seven pages.
+- The plates in the film come through the image optimizer at 640 px wide and
+  quality 70. The home page loads 25 pictures for 216 kB in total.
+
+The one page that shifts is the studio, at 0.296 on mobile and 0.097 on desktop.
+Lighthouse names the element: the receipt column, `aside.relative` in
+components/studio/Receipt.tsx, which has no reserved height and grows as the run
+fills it in. That file is outside this order.
+
+
+WHY MOBILE IS WHERE IT IS
+--------------------------------------------------------------------------
+On /en the largest contentful paint element is the 160 by 63 lockup in the
+header, because the film below it is a dark canvas until WebGL paints. Its four
+phases on the mobile profile: 453 ms to first byte, 1354 ms of load delay,
+421 ms of load time, and 6635 ms of render delay. The render delay is the main
+thread: 4.3 s of script evaluation, 6.2 s of main thread work in total, and
+743 kB of JavaScript that the page never uses. None of it is the film. It is the
+shared bundle above, running before the browser is free to paint.
+
+
+THE FILM, MEASURED
+--------------------------------------------------------------------------
+scroll-frames opens the home page in a headless Chrome, scrolls it with real
+wheel events for thirty seconds and samples every frame from inside the page. It
+now also counts WebGL draw calls from before the document exists, so the startup
+stall and the behaviour of a background tab are numbers rather than opinions.
+
+With the GPU, at the end of this pass, three runs:
+  tier held at 0 for the whole run
+  mean 4.2, 4.3, 4.3 ms, p95 4.3 ms
+  worst frame after the first second: 21, 21, 29 ms
+  worst frame in the first 8 seconds of the page: 211, 202, 204 ms, all of them
+    at about 220 ms, which is hydration and not the scene: the first WebGL draw
+    lands at about 510 ms
+  draws while the tab was behind another tab: 0
+
+Without the GPU, as found, three runs:
+  run 1: held tier 0, mean 19.7 ms
+  run 2: stepped 0 to 1 at 9.4 s, then to 2 at 22.3 s, mean per tier 20.7, 20.4,
+    20.9 ms
+  run 3: stepped 0 to 1 to 2 to 3 at 26.2 s, ending on the still story
+  worst frame after the first second: 34, 34, 50 ms
+
+Without the GPU, at the end of this pass, three runs:
+  all three held tier 0 for the whole thirty seconds
+  mean 18.3, 17.5, 17.9 ms
+  worst frame after the first second: 34, 34, 34 ms
+  worst frame in the first 8 seconds of the page: 100 ms in all three
+  draws while the tab was behind another tab: 0
+
+The other half of the rule, watched in a browser rather than in a test. The same
+page without a GPU in a 2400 by 1400 window, where a frame really does cost more
+than the machine has:
+  tier 0 for 1.7 s at a mean of 42.3 ms
+  stepped to tier 1, which measured 42.2 ms, no better and still under thirty
+    frames a second
+  handed over the still story at 4.8 s, which then ran at a mean of 19.0 ms
+As found, that machine would have been walked down through tiers 2 and 3 over
+about twenty seconds before reaching the same place.
+
+The middle line of the before runs is the finding. A software renderer paces
+every frame at about 33 ms whatever is on screen, so each step down bought
+nothing: 20.7 ms, then 20.4 ms, then 20.9 ms. The controller read that as still
+slow and kept shaving the picture until the film was gone and the reader was on
+the still page, on a machine that had been drawing the film at a steady thirty
+frames a second the whole time.
+
+components/story/tier.ts now judges its own step. The mean that caused a step
+down is kept, and once the new field has settled the two are compared. If the
+step did not buy back at least a tenth of the frame time, the field was never the
+weight: the plates go back and nothing is taken away again. The exception is a
+machine that is still under thirty frames a second with less on screen, and that
+one gets the still story at once rather than being shaved twice more on the way
+there. Both paths are pinned by tests in packages/web/test/story-tier.test.ts.
+
+
+IN PLAIN WORDS
+--------------------------------------------------------------------------
+On a desktop the product is quick: 82 to 94 out of 100, and the film runs at
+4 ms a frame with the whole field on screen. On a mid-range phone it is not: 49
+to 67, because every page, including the ones with no wallet on them, downloads
+and runs about half a megabyte of wallet SDK and the chain client behind it
+before the browser is free to paint. A judge on a phone waits several seconds for
+the first real paint. A judge on a laptop without a GPU used to watch the film
+quietly take itself apart over twenty seconds and end on a still page. Now it
+keeps the film, because the controller checks whether shrinking actually helped
+before it shrinks again.
