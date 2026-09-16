@@ -1,7 +1,7 @@
 import rehypeShiki from "@shikijs/rehype";
 import type { Element, Nodes, Root } from "hast";
 import { toJsxRuntime, type Components } from "hast-util-to-jsx-runtime";
-import type { Code } from "mdast";
+import type { Code, Root as MarkdownRoot } from "mdast";
 import type { State } from "mdast-util-to-hast";
 import type { ReactElement } from "react";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
@@ -31,6 +31,56 @@ export type RenderedPage = {
 
 const mermaidClass = "mermaid-source";
 
+export type DiagramVariant = "both" | "wide" | "phone";
+
+/**
+ * The info string on a drawing's fence.
+ *
+ * A plain ```mermaid fence is one drawing for every screen. A ```mermaid phone
+ * fence is a redraw of the fence above it for a narrow screen, and it may carry
+ * a line of its own in quotes, which is printed above the drawing. That line is
+ * how two stacked phone drawings say which half of the story each one tells.
+ */
+export function readDiagramMeta(meta: string | null | undefined): {
+  variant: DiagramVariant;
+  caption: string | null;
+} {
+  const text = (meta ?? "").trim();
+  const quoted = /"([^"]*)"/.exec(text);
+  const word = text.split(/\s+/)[0] ?? "";
+  const variant: DiagramVariant = word === "phone" ? "phone" : word === "wide" ? "wide" : "both";
+  return { variant, caption: quoted === null ? null : quoted[1].trim() };
+}
+
+/**
+ * A wide drawing that is followed by a phone redraw is marked as the wide half
+ * of a pair, so the page can show one or the other by screen width. A drawing
+ * with no redraw after it keeps every screen, since it already fits.
+ */
+function pairDiagrams() {
+  return (tree: MarkdownRoot): void => {
+    visit(tree, "code", (node: Code, index, parent) => {
+      if (node.lang !== "mermaid" || parent === undefined || index === undefined) {
+        return;
+      }
+      if (readDiagramMeta(node.meta).variant === "phone") {
+        return;
+      }
+      let at = index + 1;
+      let paired = false;
+      while (at < parent.children.length) {
+        const next = parent.children[at];
+        if (next.type !== "code" || next.lang !== "mermaid" || readDiagramMeta(next.meta).variant !== "phone") {
+          break;
+        }
+        paired = true;
+        at += 1;
+      }
+      node.meta = paired ? "wide" : "both";
+    });
+  };
+}
+
 /**
  * A mermaid fence is a drawing, not code, so it leaves the pipeline here and
  * never reaches the highlighter. Everything else becomes the pre and code pair
@@ -38,10 +88,11 @@ const mermaidClass = "mermaid-source";
  */
 function codeToHast(state: State, node: Code): Element {
   if (node.lang === "mermaid") {
+    const { variant, caption } = readDiagramMeta(node.meta);
     const drawing: Element = {
       type: "element",
       tagName: "div",
-      properties: { className: [mermaidClass] },
+      properties: { className: [mermaidClass], dataVariant: variant, dataCaption: caption ?? undefined },
       children: [{ type: "text", value: node.value }],
     };
     state.patch(node, drawing);
@@ -146,7 +197,10 @@ const components: Partial<Components> = {
   },
   div({ node, children, className, ...rest }) {
     if (className === mermaidClass) {
-      return <Mermaid chart={node === undefined ? "" : textOf(node)} />;
+      const held = node?.properties ?? {};
+      const variant = typeof held.dataVariant === "string" ? (held.dataVariant as DiagramVariant) : "both";
+      const caption = typeof held.dataCaption === "string" ? held.dataCaption : null;
+      return <Mermaid chart={node === undefined ? "" : textOf(node)} variant={variant} caption={caption} />;
     }
     return (
       <div className={className} {...rest}>
@@ -168,6 +222,7 @@ const components: Partial<Components> = {
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
+  .use(pairDiagrams)
   // No allowDangerousHtml: raw HTML written in a page is dropped rather than
   // rendered, so no page can run a script.
   .use(remarkRehype, { handlers: { code: codeToHast } })

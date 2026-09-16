@@ -786,6 +786,42 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   background: var(--bg-raised);
 }
 
+/* A wide drawing and its phone redraw both sit in the page, and the width of the
+   screen picks one. The component draws only the one that shows, so nothing is
+   laid out twice. */
+.docs-diagram[data-variant="phone"] {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .docs-diagram[data-variant="wide"] {
+    display: none;
+  }
+
+  .docs-diagram[data-variant="phone"] {
+    display: block;
+  }
+}
+
+/* A phone redraw is drawn to the width of the column, so its frame has nothing
+   to scroll to. */
+.docs-diagram[data-variant="phone"] .docs-diagram-ink {
+  width: auto;
+}
+
+.docs-diagram[data-variant="phone"] .docs-diagram-scroll {
+  overflow-x: hidden;
+  padding-inline: 0.75rem;
+}
+
+/* The line above a phone redraw, which says which half of the story it tells. */
+.docs-diagram-caption {
+  padding: 0.85rem 1rem 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
 .docs-diagram-head {
   display: flex;
   justify-content: flex-end;
@@ -805,6 +841,15 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   transition:
     color 0.2s ease,
     border-color 0.2s ease;
+}
+
+/* A thumb needs 44 px. The control is smaller than that on a desktop, where a
+   cursor is doing the pointing. */
+@media (max-width: 767px) {
+  .docs-diagram-open {
+    min-height: 44px;
+    padding-inline: 0.9rem;
+  }
 }
 
 .docs-diagram-open:hover,
@@ -901,6 +946,15 @@ body:has([data-story="film"]):not([data-story-end]) footer {
 .docs-lightbox-ink {
   transform-origin: center center;
   will-change: transform;
+}
+
+/* Every control in the full size view is a 44 px target. */
+.docs-lightbox-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
 }
 
 .docs-diagram-wait {

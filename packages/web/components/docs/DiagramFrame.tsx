@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
+import type { DiagramVariant } from "@/lib/docs/render";
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 3;
@@ -18,10 +19,10 @@ type Say = (key: string, plain: string) => string;
 /**
  * The whole viewport, one drawing, and a way to move around it.
  *
- * The drawing is never shrunk to fit: it is panned and zoomed instead, so a
- * label drawn at 14 px is still 14 px at the smallest zoom the controls allow.
- * Panning and zooming write straight to the transform rather than through
- * state, so a wheel turn never costs a React render.
+ * The drawing opens whole, at whatever zoom it takes to fit the screen, and from
+ * there it is pinched, wheeled and dragged. Panning and zooming write straight
+ * to the transform rather than through state, so a wheel turn never costs a
+ * React render.
  */
 function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => void }) {
   const dialog = useRef<HTMLDivElement>(null);
@@ -30,6 +31,11 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
   const readout = useRef<HTMLSpanElement>(null);
   const shut = useRef<HTMLButtonElement>(null);
   const view = useRef({ k: 1, x: 0, y: 0 });
+  // A 2,752 px drawing on a 375 px phone has to start under half a per cent of
+  // its size to be seen whole, so the bottom of the zoom range is whatever it
+  // takes to fit, and never more than the ordinary half.
+  const floor = useRef(MIN_ZOOM);
+  const fitted = useRef(1);
   const points = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ gap: number; k: number } | null>(null);
   const calm = useReducedMotion() === true;
@@ -48,7 +54,7 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
   const zoomAt = useCallback(
     (wanted: number, px: number, py: number) => {
       const now = view.current;
-      const k = clamp(wanted, MIN_ZOOM, MAX_ZOOM);
+      const k = clamp(wanted, floor.current, MAX_ZOOM);
       view.current = {
         k,
         x: px - ((px - now.x) * k) / now.k,
@@ -68,15 +74,48 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
     return { x: clientX - box.left - box.width / 2, y: clientY - box.top - box.height / 2 };
   }, []);
 
+  /** The zoom at which the whole drawing sits inside the stage with room to spare. */
+  const fit = useCallback(() => {
+    const board = stage.current;
+    const drawn = ink.current?.querySelector("svg");
+    if (board === null || drawn === undefined || drawn === null) {
+      return 1;
+    }
+    const box = drawn.getBoundingClientRect();
+    const wide = box.width / Math.max(view.current.k, 0.0001);
+    const tall = box.height / Math.max(view.current.k, 0.0001);
+    if (wide <= 0 || tall <= 0) {
+      return 1;
+    }
+    return Math.min(1, (board.clientWidth - 32) / wide, (board.clientHeight - 32) / tall);
+  }, []);
+
   useEffect(() => {
     const was = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     shut.current?.focus();
+    // A phone redraw is drawn at the width of the column it sits in, which here
+    // would be the width of the whole stage. Full size means its own size, and
+    // mermaid leaves that on the drawing as a cap.
+    const drawn = ink.current?.querySelector("svg");
+    if (drawn !== null && drawn !== undefined) {
+      const own = Number.parseFloat(drawn.style.maxWidth);
+      if (Number.isFinite(own) && own > 0) {
+        drawn.style.width = `${own}px`;
+        drawn.style.maxWidth = "none";
+      }
+    }
+    // The drawing opens whole. Anything smaller than the stage opens at its own
+    // size rather than being blown up to fill it.
+    const start = fit();
+    fitted.current = start;
+    floor.current = Math.min(MIN_ZOOM, start);
+    view.current = { k: start, x: 0, y: 0 };
     paint();
     return () => {
       document.body.style.overflow = was;
     };
-  }, [paint]);
+  }, [fit, paint]);
 
   // React listens to a wheel passively, and a passive listener cannot stop the
   // page moving behind the overlay, so this one is attached by hand.
@@ -169,12 +208,15 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
 
   const step = (factor: number) => zoomAt(view.current.k * factor, 0, 0);
   const reset = () => {
-    view.current = { k: 1, x: 0, y: 0 };
+    view.current = { k: fitted.current, x: 0, y: 0 };
     paint();
   };
 
+  // docs-lightbox-control holds the 44 px hit area a thumb needs.
   const control =
-    "rounded-[8px] border border-line px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
+    "docs-lightbox-control rounded-[8px] border border-line px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
+  const round =
+    "docs-lightbox-control rounded-[8px] border border-line font-mono text-base text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
 
   return (
     <motion.div
@@ -198,7 +240,7 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
             type="button"
             onClick={() => step(1 / 1.25)}
             aria-label={say("zoomOut", "Zoom out")}
-            className="h-8 w-8 rounded-[8px] border border-line font-mono text-sm text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            className={round}
           >
             <span aria-hidden>-</span>
           </button>
@@ -212,14 +254,14 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
             type="button"
             onClick={() => step(1.25)}
             aria-label={say("zoomIn", "Zoom in")}
-            className="h-8 w-8 rounded-[8px] border border-line font-mono text-sm text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            className={round}
           >
             <span aria-hidden>+</span>
           </button>
           <button type="button" onClick={reset} className={control}>
             {say("zoomReset", "Reset")}
           </button>
-          <button ref={shut} type="button" onClick={close} className={control}>
+          <button ref={shut} type="button" data-close onClick={close} className={control}>
             {say("close", "Close")}
           </button>
         </div>
@@ -242,13 +284,22 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
 /**
  * The frame around one architecture drawing.
  *
- * The drawings are two to three times wider than the column of the docs, and a
- * squeezed drawing is an unreadable one, so the frame keeps every drawing at the
- * size mermaid gave it and scrolls sideways instead. The fade at the right edge
- * and the mono hint say that there is more to the right, and both go once the
- * reader has moved.
+ * A wide drawing is two to three times wider than the column of the docs, and a
+ * squeezed drawing is an unreadable one, so the frame keeps it at the size
+ * mermaid gave it and scrolls sideways instead. The fade at the right edge and
+ * the mono hint say that there is more to the right, and both go once the reader
+ * has moved. A phone redraw is already the width of the column, so neither the
+ * fade nor the hint ever shows on one.
  */
-export function DiagramFrame({ svg }: { svg: string }) {
+export function DiagramFrame({
+  svg,
+  variant = "both",
+  caption = null,
+}: {
+  svg: string;
+  variant?: DiagramVariant;
+  caption?: string | null;
+}) {
   const t = useTranslations("docs");
   // The docs messages are edited elsewhere in this build. Until these lines land
   // in them, the frame says its piece in English rather than printing a key.
@@ -282,7 +333,8 @@ export function DiagramFrame({ svg }: { svg: string }) {
   }, [svg]);
 
   return (
-    <figure className="docs-diagram" data-more={more} data-moved={moved}>
+    <figure className="docs-diagram" data-variant={variant} data-more={more} data-moved={moved}>
+      {caption === null ? null : <figcaption className="docs-diagram-caption">{caption}</figcaption>}
       <div className="docs-diagram-head">
         <button ref={opener} type="button" onClick={() => setOpen(true)} className="docs-diagram-open">
           {say("diagramOpen", "Open full size")}

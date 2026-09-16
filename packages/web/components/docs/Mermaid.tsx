@@ -2,8 +2,9 @@
 
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { DiagramFrame } from "./DiagramFrame";
+import type { DiagramVariant } from "@/lib/docs/render";
 
 /** The app's own palette, handed to mermaid so a diagram belongs to the page. */
 const palettes = {
@@ -69,6 +70,28 @@ const palettes = {
   },
 } as const;
 
+/** The width below which a wide drawing gives way to its phone redraw. */
+const narrowQuery = "(max-width: 767px)";
+
+function watchWidth(fire: () => void): () => void {
+  const query = window.matchMedia(narrowQuery);
+  query.addEventListener("change", fire);
+  return () => query.removeEventListener("change", fire);
+}
+
+/**
+ * True on a phone. Read through the store hook rather than an effect, so the
+ * first client render already knows the width and mermaid is never asked to
+ * draw a picture that is about to be hidden.
+ */
+function useNarrow(): boolean {
+  return useSyncExternalStore(
+    watchWidth,
+    () => window.matchMedia(narrowQuery).matches,
+    () => false,
+  );
+}
+
 /**
  * The three architecture drawings, drawn in the browser.
  *
@@ -76,15 +99,28 @@ const palettes = {
  * has a diagram on it, and never on the server. The drawing is made again when
  * the theme changes, because its colours are baked into the SVG.
  */
-export function Mermaid({ chart }: { chart: string }) {
+export function Mermaid({
+  chart,
+  variant = "both",
+  caption = null,
+}: {
+  chart: string;
+  variant?: DiagramVariant;
+  caption?: string | null;
+}) {
   const t = useTranslations("docs");
   const { resolvedTheme } = useTheme();
+  const narrow = useNarrow();
+  const showing = variant === "both" || variant === (narrow ? "phone" : "wide");
   const raw = useId();
   const id = `mermaid-${raw.replace(/[^a-zA-Z0-9]/g, "")}`;
   const [svg, setSvg] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    if (!showing) {
+      return;
+    }
     let alive = true;
     void (async () => {
       try {
@@ -100,11 +136,19 @@ export function Mermaid({ chart }: { chart: string }) {
             fontFamily: "var(--font-body), Inter, sans-serif",
             fontSize: "14px",
           },
-          // useMaxWidth is mermaid's own squeeze: it would set the drawing to
-          // the width of the column, which turns a 2,700 px flowchart into 4 px
-          // labels. The drawings keep their natural size and the frame around
-          // them scrolls instead.
-          flowchart: { curve: "basis", htmlLabels: true, padding: 16, useMaxWidth: false },
+          // useMaxWidth is mermaid's own squeeze: it sets the drawing to the
+          // width of the column, which would turn a 2,700 px flowchart into 4 px
+          // labels. So a wide drawing keeps its natural size and the frame
+          // around it scrolls. A phone redraw is small enough that fitting it to
+          // the column costs almost nothing, and in return the frame under it
+          // never scrolls sideways at all.
+          // A phone redraw is also drawn tighter: the space between two boxes is
+          // what pushes a drawing past the width of a phone, and every pixel of
+          // it saved is a pixel the labels keep.
+          flowchart:
+            variant === "phone"
+              ? { curve: "basis", htmlLabels: true, padding: 8, nodeSpacing: 18, rankSpacing: 34, useMaxWidth: true }
+              : { curve: "basis", htmlLabels: true, padding: 16, useMaxWidth: false },
           sequence: { useMaxWidth: false, mirrorActors: false },
         });
         const drawn = await mermaid.render(id, chart);
@@ -120,7 +164,11 @@ export function Mermaid({ chart }: { chart: string }) {
     return () => {
       alive = false;
     };
-  }, [chart, id, resolvedTheme]);
+  }, [chart, id, resolvedTheme, showing, variant]);
+
+  if (!showing) {
+    return null;
+  }
 
   if (failed) {
     // Better an honest listing of the drawing's source than an empty frame.
@@ -135,11 +183,11 @@ export function Mermaid({ chart }: { chart: string }) {
 
   if (svg === null) {
     return (
-      <figure className="docs-diagram" aria-busy>
+      <figure className="docs-diagram" data-variant={variant} aria-busy>
         <span className="docs-diagram-wait">{t("diagram")}</span>
       </figure>
     );
   }
 
-  return <DiagramFrame svg={svg} />;
+  return <DiagramFrame svg={svg} variant={variant} caption={caption} />;
 }

@@ -55,6 +55,27 @@ flowchart LR
     V -- upload any copy --> S
 ```
 
+```mermaid phone "Half one: who writes to the registry, and what the registry reads."
+flowchart TD
+    C[Creator<br/>passkey] -- register --> R[Moolam<br/>Registry]
+    G[Generator<br/>agent] -- register --> R
+    E[Editing<br/>app] -- appendEdit --> R
+    R -- verify --> PC[P-256<br/>precompile]
+    R -- ownerOf --> I8[ERC-8004<br/>registry]
+    R -- isReceiver --> P[Verifier<br/>Policy]
+```
+
+```mermaid phone "Half two: the independent re-check and the readers, off chain."
+flowchart TD
+    R[Moolam<br/>Registry] -- events --> X[Envio<br/>index]
+    X -- trigger --> W[CRE<br/>workflow]
+    W -- fetches --> F[IPFS via<br/>Pinata]
+    W -- writeReport --> RC[Moolam<br/>Receiver]
+    RC -- attest --> R
+    X -- GraphQL --> S[Verifier<br/>service]
+    V[Anyone<br/>verifying] -- uploads --> S
+```
+
 ## Main sequence: a generated image gets a passport and is verified
 
 Everything before the `register` call is preparation that costs no gas: the fingerprint, the C2PA
@@ -98,6 +119,28 @@ sequenceDiagram
     R-->>X: VerificationAttested indexed
 ```
 
+```mermaid phone "Half one: everything before the transaction, off chain and free."
+flowchart TD
+    A1[Agent generates image] --> A2[Service fingerprints image]
+    A2 --> A3[Service embeds manifest]
+    A3 --> A4[IPFS pins files]
+    A4 --> A5[Registry returns digest]
+    A5 --> A6[Creator signs<br/>passkey]
+    A5 --> A7[Agent owner signs]
+```
+
+```mermaid phone "Half two: one transaction, then the re-check that follows it."
+flowchart TD
+    B1[register, both signatures] --> B2[P-256 precompile checks]
+    B2 --> B3[ERC-8004 owner checked]
+    B3 --> B4[Passport minted]
+    B4 --> B5[Envio indexes event]
+    B5 --> B6[CRE workflow wakes]
+    B6 --> B7[Re-fetch and re-fingerprint]
+    B7 --> B8[Receiver writes report]
+    B8 --> B9[Registry records attestation]
+```
+
 Verification of a copy later runs entirely off chain: anyone uploads a file to the service, the
 service computes the eight rotated and mirrored fingerprints, searches the index, and returns the
 best passport with its attestations, its edit chain and a confidence score.
@@ -127,6 +170,21 @@ flowchart TD
     RC[MoolamReceiver] --> RT[Chainlink ReceiverTemplate]
     RC -. calls attest .-> MR
     FW[Keystone Forwarder, Chainlink] -. onReport .-> RC
+```
+
+```mermaid phone "Half one: what MoolamRegistry is built out of."
+flowchart TD
+    MR[MoolamRegistry] --> OZ[OpenZeppelin v5.6.1<br/>ERC721<br/>EIP712<br/>WebAuthn and P256<br/>ECDSA<br/>Ownable2Step<br/>Pausable<br/>ReentrancyGuard<br/>SafeERC20]
+```
+
+```mermaid phone "Half two: what it reads, and who may write a re-check."
+flowchart TD
+    FW[Keystone<br/>Forwarder] -. onReport .-> RC[Moolam<br/>Receiver]
+    RC --> RT[Chainlink<br/>Receiver<br/>Template]
+    RC -. attest .-> MR[Moolam<br/>Registry]
+    MR -. reads .-> IVP[IVerifier<br/>Policy]
+    MR -. ownerOf .-> I8[ERC-8004<br/>registry]
+    VP[Verifier<br/>Policy] -. implements .-> IVP
 ```
 
 ## What is immutable and what can change
