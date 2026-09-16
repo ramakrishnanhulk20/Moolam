@@ -7,7 +7,7 @@ title: GraphQL
 The Envio indexer serves every passport, edit tree, attestation, dispute and counter over GraphQL.
 
 ```
-https://indexer.dev.hyperindex.xyz/2bfc8fe/v1/graphql
+https://indexer.dev.hyperindex.xyz/ae097f1/v1/graphql
 ```
 
 Each entity is a query field named exactly as it is in `schema.graphql`, taking `where`,
@@ -165,7 +165,7 @@ prior.
 ## Curl
 
 ```bash
-curl -s -X POST https://indexer.dev.hyperindex.xyz/2bfc8fe/v1/graphql \
+curl -s -X POST https://indexer.dev.hyperindex.xyz/ae097f1/v1/graphql \
   -H 'content-type: application/json' \
   -d '{"query":"{ GlobalStats { id passports creators generators attestations disputes } }"}'
 ```

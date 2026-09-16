@@ -490,7 +490,7 @@ console.log(passport.creator, passport.generatorAgentId, passport.registeredAt);
 ```
 
 The indexer serves the same data over GraphQL at
-`https://indexer.dev.hyperindex.xyz/2bfc8fe/v1/graphql`. Addresses are stored lowercase there,
+`https://indexer.dev.hyperindex.xyz/ae097f1/v1/graphql`. Addresses are stored lowercase there,
 including entity ids, so query with lowercase addresses.
 
 ---
