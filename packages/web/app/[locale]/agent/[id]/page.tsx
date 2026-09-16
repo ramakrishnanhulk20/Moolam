@@ -17,7 +17,7 @@ import { heldGeneratorRecord, type GeneratorRecord } from "@/lib/data/passports"
 // Four chain reads, two index queries and a dozen gateway fetches make this
 // page, and they answer the same for everybody. So it is built once and rebuilt
 // a minute at a time, and a visitor gets the finished page rather than the wait.
-export const revalidate = 60;
+export const revalidate = 300;
 
 /**
  * No agent is built ahead of time, because which ids exist is a question only
