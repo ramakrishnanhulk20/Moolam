@@ -379,6 +379,13 @@ export function verifierHost(): string {
   }
 }
 
+let requestTimeoutMs = 120_000;
+
+/** Tests shorten the wait; the product never calls this. */
+export function configureRequestTimeout(ms: number): void {
+  requestTimeoutMs = ms;
+}
+
 async function post<T>(
   path: string,
   body: BodyInit,
@@ -386,12 +393,18 @@ async function post<T>(
   options: { signal?: AbortSignal; headers?: Record<string, string> },
 ): Promise<T> {
   let response: Response;
+  // A service that accepts the request and never answers would otherwise hold a screen in its
+  // busy state for good. The cap is generous because /generate draws for up to a minute and /edit
+  // waits for Privy and the receipt; a timed-out call reads as offline, the caller's own abort
+  // travels on unchanged.
+  const timeout = AbortSignal.timeout(requestTimeoutMs);
+  const signal = options.signal === undefined ? timeout : AbortSignal.any([options.signal, timeout]);
   try {
     response = await fetch(verifierUrl(path), {
       method: "POST",
       body,
       headers: options.headers,
-      signal: options.signal,
+      signal,
     });
   } catch (error) {
     // An abort is the caller's own doing, so it travels on rather than being renamed.

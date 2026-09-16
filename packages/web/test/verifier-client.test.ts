@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  configureRequestTimeout,
   VerifierError,
   edit,
   editResponseSchema,
@@ -371,6 +372,15 @@ describe("VerifierError", () => {
     const limited = await generate(asked).catch((error) => error);
     expect(limited.code).toBe("rate-limited");
     expect(limited.quota).toBeUndefined();
+  });
+
+  it("says offline when the service accepts the request and never answers", async () => {
+    configureRequestTimeout(50);
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+    const failure = await verify({ file: new File([new Uint8Array([1, 2, 3])], "a.jpg", { type: "image/jpeg" }) }).catch((error: unknown) => error);
+    configureRequestTimeout(120_000);
+    expect(failure).toBeInstanceOf(VerifierError);
+    expect((failure as VerifierError).code).toBe("offline");
   });
 
   it("says offline when the service cannot be reached", async () => {
