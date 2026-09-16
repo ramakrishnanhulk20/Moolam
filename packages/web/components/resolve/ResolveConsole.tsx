@@ -7,7 +7,27 @@ import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import type { OpenDispute } from "@/lib/disputes/queue";
 import { useResolveDisputes, type ResolveDisputes } from "@/lib/disputes/useResolveDisputes";
+import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
+
+const NOTHING = () => undefined;
+const NOTHING_YET = async () => undefined;
+
+/** The desk before the wallet SDK is in the tree: what the hook itself answers until Privy is up. */
+const WAITING: ResolveDisputes = {
+  ready: false,
+  authenticated: false,
+  wallet: undefined,
+  isResolver: false,
+  credit: null,
+  busy: null,
+  confirming: false,
+  settled: {},
+  failure: null,
+  withdrawing: false,
+  withdrawn: false,
+  actions: { settle: NOTHING_YET, withdraw: NOTHING_YET, recheck: NOTHING_YET, signIn: NOTHING },
+};
 
 /**
  * The resolver's desk: every challenge still waiting, and the two buttons that
@@ -17,13 +37,32 @@ import { Mono } from "@/components/passport/Mono";
  * on them is not a secret. Only the address the policy names sees the buttons,
  * since the registry refuses everybody else and a button that always reverts
  * would be a lie.
+ *
+ * The hook waits for the wallet's own provider. Privy's hooks warn into the
+ * console on every render that happens without it, so until it is up the queue
+ * is drawn from the same standing the hook would report: nothing read yet.
  */
 export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
-  const t = useTranslations("resolve");
+  const mounted = useWalletMounted();
+
+  return mounted ? (
+    <Console resolver={resolver} disputes={disputes} />
+  ) : (
+    <Desk desk={WAITING} resolver={resolver} disputes={disputes} />
+  );
+}
+
+function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
   const router = useRouter();
   // The queue above is rendered on the server from the index and the chain, so a
   // settled dispute asks the page to read itself again rather than being patched here.
   const desk = useResolveDisputes({ resolver, onSettled: () => router.refresh() });
+
+  return <Desk desk={desk} resolver={resolver} disputes={disputes} />;
+}
+
+function Desk({ desk, resolver, disputes }: { desk: ResolveDisputes; resolver: Hex; disputes: OpenDispute[] }) {
+  const t = useTranslations("resolve");
 
   return (
     <div className="mt-14">

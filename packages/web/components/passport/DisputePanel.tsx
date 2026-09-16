@@ -16,6 +16,7 @@ import {
   type StepState,
 } from "@/lib/disputes/flag";
 import { useFlagPassport, type FlagPassport } from "@/lib/disputes/useFlagPassport";
+import { useWalletMounted } from "@/components/providers/WalletProvider";
 
 /**
  * The way a stranger argues with a record: put a bond behind a claim that it is
@@ -29,8 +30,16 @@ import { useFlagPassport, type FlagPassport } from "@/lib/disputes/useFlagPasspo
  * Two readers never see it: the wallet that holds the passport, which cannot
  * usefully dispute itself, and every reader of a passport that already has an
  * open challenge, because the registry refuses a second one.
+ *
+ * Nobody sees it before the wallet's own provider is mounted either. Privy's
+ * hooks warn into the console on every render without it, and this panel is
+ * blank until they answer anyway, so the hook waits for the provider.
  */
-export function DisputePanel({
+export function DisputePanel(props: { passportId: Hex; owner: Hex | null; disputeOpen: boolean }) {
+  return useWalletMounted() ? <Challenge {...props} /> : null;
+}
+
+function Challenge({
   passportId,
   owner,
   disputeOpen,

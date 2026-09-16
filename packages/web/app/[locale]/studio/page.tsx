@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { WalletProvider } from "@/components/providers/WalletProvider";
 import { StudioScreen } from "@/components/studio/StudioScreen";
 
 export async function generateMetadata({
@@ -18,10 +19,15 @@ export async function generateMetadata({
  * live read or a real transaction.
  *
  * The page itself runs on the server so the tab carries the page's own name.
- * The screen under it is the browser's, because every step of it needs a wallet.
+ * The screen under it is the browser's, because every step of it needs a wallet,
+ * and this is one of the three routes that asks for the wallet at all.
  */
 export default async function StudioPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <StudioScreen />;
+  return (
+    <WalletProvider>
+      <StudioScreen />
+    </WalletProvider>
+  );
 }

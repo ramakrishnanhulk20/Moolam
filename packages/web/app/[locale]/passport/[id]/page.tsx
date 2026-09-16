@@ -12,6 +12,7 @@ import { indexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
+import { WalletProvider } from "@/components/providers/WalletProvider";
 import { reason } from "@/lib/chain/client";
 import {
   DisputeStatus,
@@ -147,31 +148,38 @@ export default async function PassportPage({
         txHash={registration}
       />
 
-      <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
-        {dispute === null ? null : (
-          <div className="mb-16 rise">
-            <DisputeNote dispute={dispute} passportId={passport.id} locale={locale} />
-          </div>
-        )}
+      {/* Everything above is the record itself and needs no wallet. The two
+          panels that write live down here, and they share one provider: a
+          visitor who signs in to challenge a picture is the same visitor the
+          edit panel asks about. The rest of this block is server rendered and
+          passes straight through. */}
+      <WalletProvider>
+        <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
+          {dispute === null ? null : (
+            <div className="mb-16 rise">
+              <DisputeNote dispute={dispute} passportId={passport.id} locale={locale} />
+            </div>
+          )}
 
-        {/* Only a signed in visitor who does not hold this passport sees this. */}
-        <DisputePanel
-          passportId={passport.id}
-          owner={owner}
-          disputeOpen={dispute !== null && dispute.status === DisputeStatus.Open}
-        />
+          {/* Only a signed in visitor who does not hold this passport sees this. */}
+          <DisputePanel
+            passportId={passport.id}
+            owner={owner}
+            disputeOpen={dispute !== null && dispute.status === DisputeStatus.Open}
+          />
 
-        <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
-          <div className="rise">
-            <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
-            {/* Only the wallet that holds this passport ever sees this panel. */}
-            <EditPanel parentId={passport.id} owner={owner} />
-          </div>
-          <div className="rise" style={{ animationDelay: "90ms" }}>
-            <CheckCopy passportId={passport.id} />
+          <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+            <div className="rise">
+              <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
+              {/* Only the wallet that holds this passport ever sees this panel. */}
+              <EditPanel parentId={passport.id} owner={owner} />
+            </div>
+            <div className="rise" style={{ animationDelay: "90ms" }}>
+              <CheckCopy passportId={passport.id} />
+            </div>
           </div>
         </div>
-      </div>
+      </WalletProvider>
     </article>
   );
 }

@@ -4,9 +4,11 @@ import { MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { isPrivyConfigured } from "@/lib/env";
-import { useStudio } from "@/lib/studio/useStudio";
+import { useWalletMounted } from "@/components/providers/WalletProvider";
+import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { useHeadingLeading } from "./leading";
-import { isBusy } from "@/lib/studio/flow";
+import { initialBindState } from "@/lib/studio/binding";
+import { initialRegisterState, isBusy } from "@/lib/studio/flow";
 import { BindCard } from "./BindCard";
 import { GeneratePanel } from "./GeneratePanel";
 import { IdentityStrip } from "./IdentityStrip";
@@ -18,13 +20,106 @@ import { SignedOut } from "./SignedOut";
 import { WaitLabel } from "./WaitLabel";
 import { YourPassports } from "./YourPassports";
 
+/** A control that cannot do anything yet, on the page that is waiting for the wallet. */
+const NOTHING = () => undefined;
+const NOTHING_YET = async () => undefined;
+
+/**
+ * The studio as it stands before the wallet SDK is in the tree. Every field the
+ * receipt reads is empty, which is what the hook itself answers until Privy is
+ * up, so both paints come out the same.
+ */
+const WAITING: StudioState = {
+  ready: false,
+  authenticated: false,
+  account: { kind: "account" },
+  wallet: undefined,
+  walletMissing: false,
+  binding: { status: "reading", passkey: null, credentialId: undefined, error: null, refresh: NOTHING, remember: NOTHING },
+  bind: initialBindState,
+  confirming: false,
+  register: initialRegisterState,
+  sponsorship: "claimed",
+  balance: null,
+  recovering: false,
+  recovery: null,
+  login: NOTHING,
+  logout: NOTHING,
+  actions: {
+    bindThisDevice: NOTHING_YET,
+    recoverThisDevice: NOTHING_YET,
+    choose: NOTHING,
+    setTitle: NOTHING,
+    setPrompt: NOTHING,
+    setMode: NOTHING,
+    registerImage: NOTHING_YET,
+    generateImage: NOTHING_YET,
+    resend: NOTHING_YET,
+    recheck: NOTHING_YET,
+    clearBind: NOTHING,
+    reset: NOTHING,
+  },
+  passports: { status: "reading", passports: [], error: null, refresh: NOTHING },
+};
+
 /**
  * The studio, whole. Privy is optional at build time, so the hook that needs
  * its context only ever mounts under a configured app id and the page says
  * plainly what is missing otherwise.
+ *
+ * The hook is also held back until the SDK's provider is actually above this
+ * screen. Called without it, Privy's own hooks warn into the console on every
+ * render and answer ready false, so the page paints its waiting state from
+ * here instead and mounts the hook once the wallet is really there.
  */
 export function StudioScreen() {
-  return isPrivyConfigured ? <Studio /> : <Shell><NotConfigured /></Shell>;
+  const mounted = useWalletMounted();
+
+  if (!isPrivyConfigured) {
+    return <Shell><NotConfigured /></Shell>;
+  }
+
+  return mounted ? <Studio /> : <Waiting />;
+}
+
+/** The page before the wallet arrives: the same frame and the same card the hook paints while it is not ready. */
+function Waiting() {
+  return (
+    <MotionConfig reducedMotion="user">
+      <Shell>
+        <div className="mt-14 grid gap-14 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-0">
+          <div className="lg:pe-14">
+            <StudioWaiting />
+          </div>
+
+          <Receipt studio={WAITING} />
+        </div>
+      </Shell>
+    </MotionConfig>
+  );
+}
+
+/**
+ * The same card a cold visitor is about to read, dimmed and inert until the
+ * wallet lands.
+ *
+ * A one line wait label here instead measured 0.296 of layout shift on a
+ * phone: the card dropped in at 889 px tall and shoved the receipt and the
+ * footer off the screen. Same card, same height, nothing under it moves.
+ */
+function StudioWaiting() {
+  const t = useTranslations("studio");
+
+  return (
+    <div className="relative" aria-busy="true">
+      <div className="pointer-events-none select-none opacity-40">
+        <SignedOut onSignIn={NOTHING} />
+      </div>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <WaitLabel text={t("opening")} />
+      </div>
+    </div>
+  );
 }
 
 function Studio() {
@@ -57,7 +152,7 @@ function Studio() {
         <div className="mt-14 grid gap-14 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-0">
           <div className="lg:pe-14">
             {!studio.ready ? (
-              <WaitLabel text={t("opening")} />
+              <StudioWaiting />
             ) : !studio.authenticated ? (
               <SignedOut onSignIn={studio.login} />
             ) : studio.walletMissing ? (

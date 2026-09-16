@@ -3,12 +3,14 @@
 import Lenis from "lenis";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type ReactNode } from "react";
-import { registerGsap } from "@/lib/gsap";
 
 /**
- * Smooth scroll on every page, driven by one requestAnimationFrame loop that
- * also ticks GSAP's ScrollTrigger, so pinned sections and the scroll position
- * can never fall out of step.
+ * Smooth scroll on every page, driven by one requestAnimationFrame loop.
+ *
+ * It used to tick GSAP's ScrollTrigger as well, which put 39 kB of gsap on
+ * every route in the app for a plugin no section here has ever registered. A
+ * pinned section that wants it registers it in its own file and ticks it from
+ * there.
  *
  * Anyone who has asked their system for less motion gets the browser's own
  * scrolling instead: Lenis is never started for them.
@@ -22,7 +24,6 @@ export function LenisProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { ScrollTrigger } = registerGsap();
     const instance = new Lenis({ duration: 1.05, smoothWheel: true });
     lenis.current = instance;
 
@@ -32,8 +33,6 @@ export function LenisProvider({ children }: { children: ReactNode }) {
       frame = requestAnimationFrame(raf);
     };
     frame = requestAnimationFrame(raf);
-
-    instance.on("scroll", ScrollTrigger.update);
 
     return () => {
       cancelAnimationFrame(frame);

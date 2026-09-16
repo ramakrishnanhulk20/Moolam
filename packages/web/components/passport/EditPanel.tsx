@@ -19,6 +19,7 @@ import {
   type StepState,
 } from "@/lib/passport/edit";
 import { useEditPassport, type PassportEdit } from "@/lib/passport/useEditPassport";
+import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "./Mono";
 
 /**
@@ -28,8 +29,15 @@ import { Mono } from "./Mono";
  * It is drawn for one reader only, the wallet the registry says holds this passport. A signed out
  * visitor and a signed in stranger get no markup at all, not a disabled button, because an edit
  * they could never make is not worth the space on a page about someone else's picture.
+ *
+ * The hook waits for the wallet's own provider. Privy's hooks warn into the console on every
+ * render that happens without it, and this panel is blank until they answer anyway.
  */
-export function EditPanel({ parentId, owner }: { parentId: Hex; owner: Hex | null }) {
+export function EditPanel(props: { parentId: Hex; owner: Hex | null }) {
+  return useWalletMounted() ? <Editor {...props} /> : null;
+}
+
+function Editor({ parentId, owner }: { parentId: Hex; owner: Hex | null }) {
   const router = useRouter();
   // The tree above this panel is rendered on the server from the chain, so once the child is on
   // chain the page is asked to read itself again rather than being patched in the browser.

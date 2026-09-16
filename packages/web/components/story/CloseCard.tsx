@@ -119,8 +119,11 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             longest labels on the site (Portuguese and Tamil) wrapped this row
             onto two lines, which pushed the card's last line off the fold. */}
         <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-8 sm:gap-3">
+          {/* The studio carries the wallet SDK. Left to prefetch, this card pulled about
+              130 kB of it behind every reading of the film, so it loads on the tap. */}
           <Link
             href="/studio"
+            prefetch={false}
             className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
           >
             {t("register")}

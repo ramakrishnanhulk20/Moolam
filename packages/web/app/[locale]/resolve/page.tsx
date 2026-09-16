@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
+import { WalletProvider } from "@/components/providers/WalletProvider";
 import { ResolveConsole } from "@/components/resolve/ResolveConsole";
 import { reason } from "@/lib/chain/client";
 import { resolver as readResolver } from "@/lib/chain/registry";
@@ -48,14 +49,20 @@ export default async function ResolvePage({ params }: { params: Promise<{ locale
     problem = reason(error);
   }
 
+  // The console is the only thing on this route that signs, so the wallet is
+  // asked for here rather than in the layout every page shares.
   return (
     <Shell locale={locale}>
       {problem === null ? (
-        <ResolveConsole resolver={policyResolver} disputes={queue} />
+        <WalletProvider>
+          <ResolveConsole resolver={policyResolver} disputes={queue} />
+        </WalletProvider>
       ) : (
         <>
           <Notice text={t("unavailable", { reason: problem })} />
-          <ResolveConsole resolver={policyResolver} disputes={[]} />
+          <WalletProvider>
+            <ResolveConsole resolver={policyResolver} disputes={[]} />
+          </WalletProvider>
         </>
       )}
     </Shell>

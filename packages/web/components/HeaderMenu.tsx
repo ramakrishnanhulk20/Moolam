@@ -12,6 +12,8 @@ import { Link, usePathname } from "@/lib/i18n/routing";
 export interface MenuLink {
   href: string;
   label: string;
+  /** false for the one link whose page carries the wallet, so opening the menu does not fetch it. */
+  prefetch?: boolean;
 }
 
 /**
@@ -134,6 +136,7 @@ export function HeaderMenu({ links }: { links: MenuLink[] }) {
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={item.prefetch}
                   onClick={() => setOpenAt(null)}
                   style={reduced ? undefined : { animationDelay: `${40 + index * 45}ms` }}
                   className="rise group flex items-baseline gap-4 border-b border-line py-3.5 font-display text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text transition-colors duration-200 hover:text-accent"

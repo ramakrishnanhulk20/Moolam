@@ -213,3 +213,129 @@ the first real paint. A judge on a laptop without a GPU used to watch the film
 quietly take itself apart over twenty seconds and end on a still page. Now it
 keeps the film, because the controller checks whether shrinking actually helped
 before it shrinks again.
+
+
+AFTER THE WALLET WAS TAKEN OFF THE PAGES THAT DO NOT SIGN
+--------------------------------------------------------------------------
+Measured 2026-09-16 on the same machine and the same way, against a production
+build of packages/web served by `next start` on port 3319. Same runner, same
+seven pages, middle of three runs per page.
+
+  ANALYZE=1 NEXT_DIST_DIR=.next-wo69 npx next build
+  NEXT_DIST_DIR=.next-wo69 npx next start -p 3319
+  node packages/web/scripts/perf/lighthouse.mjs --base http://localhost:3319 --profile both --runs 3
+  node packages/web/scripts/perf/bundle.mjs --base http://localhost:3319 --dist .next-wo69
+
+What changed in the app: components/providers/PrivyProvider.tsx is no longer in
+app/[locale]/layout.tsx. A small client boundary,
+components/providers/WalletProvider.tsx, loads it on the three routes that write
+and nowhere else: the studio, the resolve console, and the lower half of a
+passport page where the edit and dispute panels live. The header's link to the
+studio no longer prefetches, because the router was pulling those chunks down
+behind every other page. LenisProvider stopped importing gsap, which no section
+in this app ever registered a ScrollTrigger with.
+
+                       mobile                        desktop
+page                 score   LCP     TBT    CLS     score   LCP     TBT   CLS
+/en                     87  3345ms   219ms  0.021     100   682ms   23ms 0.011
+/en/verify              82  4884ms    89ms  0.000      99  1011ms    0ms 0.000
+/en/studio              62  8130ms   531ms  0.000      89  2252ms   10ms 0.000
+/en/explore             78  4892ms   222ms  0.000      98  1126ms    0ms 0.000
+/en/passport/0xcdb2...  64  8424ms   470ms  0.000      94  1620ms    1ms 0.000
+/en/agent/10249         88  3988ms    31ms  0.000     100   811ms    0ms 0.000
+/en/docs                92  3437ms    40ms  0.000     100   708ms    0ms 0.000
+
+The same seven mobile scores before this change were 60, 67, 49, 67, 66, 67, 59.
+Four pages are at or above the 85 the work order asked for, three are not, and
+the misses are named below rather than rounded up.
+
+JavaScript from this app's own build, by page, before and after:
+  /en           45 scripts 1561 kB  ->  35 scripts  920 kB
+  /en/verify                        ->  21 scripts  432 kB
+  /en/explore                       ->  23 scripts  449 kB
+  /en/agents                        ->  22 scripts  434 kB
+  /en/agent/10249                   ->  22 scripts  434 kB
+  /en/docs      43 scripts 1314 kB  ->  21 scripts  432 kB
+  /en/studio                        ->  46 scripts 1288 kB
+  /en/resolve                       ->  45 scripts 1271 kB
+  /en/passport/0xcdb2...            ->  44 scripts 1272 kB
+
+The documentation page was 1314 kB with 480 kB of wallet packages in it. It is
+now 432 kB with none: no @privy-io, no @base-org/account, no walletconnect, no
+jose, no libphonenumber-js, and viem down from 170 kB to 61 kB, which is what
+the client components that format an address and a hash actually use. Explore,
+agents, an agent page and verify read the same. Watched in a browser, /en,
+/en/explore, /en/agents, /en/verify and /en/docs open no Privy iframe and define
+no Privy global at all; /en/studio, /en/resolve and a passport page each open
+exactly one.
+
+The three pages that still miss 85 on a phone, honestly:
+- /en/studio 62 and /en/passport 64. Both need the wallet, and on those routes
+  Lighthouse counts 2146 to 2164 kB of script because the SDK then fetches its
+  own hosted code, the Coinbase and WalletConnect connectors among it, from
+  other origins. The app's own share of those pages is 1272 to 1288 kB. A
+  passport page pays it for two panels that a signed out reader never sees,
+  which is the next thing worth attacking: load the panels themselves on demand
+  rather than with the route.
+- /en/explore 78 and /en/verify 82 are not carrying wallet code at all. Their
+  largest paint waits on the server: explore reads the whole index live while it
+  renders, and cold that read took 42 seconds on this machine before it warmed.
+- /en still downloads about 130 kB of studio chunks in the background, because
+  the closing card of the film links to the studio and the router prefetches it.
+  Nothing on that page runs the code. One prefetch={false} in
+  components/story/CloseCard.tsx would end it. That file belongs to another
+  piece of work, so it was left alone.
+
+THE STUDIO NO LONGER SHIFTS
+--------------------------------------------------------------------------
+CLS on the studio was 0.296 on mobile and 0.097 on desktop. It is 0.000 on both.
+
+The cause was not the receipt filling in. Measured in a headless Chrome at 412
+by 823 with the CPU slowed four times, the studio recorded one shift, 0.2957 at
+2930 ms, and its two sources were the receipt column and the footer, both pushed
+off the bottom of the screen at once. What pushed them was the column beside the
+receipt: the page paints a one line "opening" label while it works out whether
+anyone is signed in, then drops the 889 px sign in card into that space. The
+receipt was the thing that moved, not the thing that grew.
+
+So the studio now paints the sign in card itself while it waits, dimmed and
+inert, with the same wait label over it. Same element, same height, nothing
+under it moves. The card becomes live when the wallet answers.
+
+THE PASSPORT PAGE'S FIRST BYTE, AND WHY IT IS STILL RENDERED ON DEMAND
+--------------------------------------------------------------------------
+Before: 8.8 seconds cold, 1.2 seconds warm. After, on this build: 1.40 seconds
+cold on a freshly started server, then 0.46 to 0.50 seconds. That is not a fix.
+Nothing in this pass touched what the page reads, so the difference is the
+index, the gateway and the RPC being warm today, and it will go back to seconds
+on a cold service.
+
+The hold that would have fixed it was written, built and reverted. With
+`export const revalidate` and an empty generateStaticParams the route is a
+static one, and the first request to it fails at runtime:
+
+  Error: Page changed from static to dynamic at runtime
+  /en/passport/0xcdb2..., reason: no-store fetch
+  https://indexer.dev.hyperindex.xyz/ae097f1/v1/graphql /[locale]/passport/[id]
+
+Every visit returned HTTP 500. The index reads this page makes are no-store, so
+Next refuses to keep the page. The agent page can be held because its reads go
+through the cached "held" helpers in lib/chain and lib/data. Giving the passport
+page the same helpers means editing those files, which this pass was told not to
+touch, so the page was put back the way it was and the finding written down
+here.
+
+THE TWO STUDIO LINKS THAT STILL PREFETCHED THE WALLET
+--------------------------------------------------------------------------
+Measured 2026-09-16 evening, same machine, same scripts, production build served
+by `next start` on port 3329. The film's closing card and the phone menu each
+linked to the studio with the router's default prefetch, so a reader of the
+home page, or anyone who opened the phone menu on any page, downloaded the
+studio's chunks in the background. Both links now carry prefetch={false} and
+load on the tap. Scripts over the wire, this app's own build:
+
+  /en         35 scripts  920 kB  ->  23 scripts  688 kB
+  /en/docs    21 scripts  432 kB  ->  21 scripts  432 kB   (no studio link on it)
+  /en/studio  46 scripts 1288 kB  ->  46 scripts 1288 kB   (it needs the wallet)
+
+Before any of today's work the home page carried 45 scripts and 1561 kB.

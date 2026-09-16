@@ -22,6 +22,7 @@ vi.mock("@/lib/i18n/routing", () => ({
   useRouter: () => ({ refresh: () => undefined }),
 }));
 
+const { WalletMounted } = await import("@/components/providers/WalletProvider");
 const { EditPanel } = await import("@/components/passport/EditPanel");
 
 const PARENT = `0x${"3f".repeat(32)}` as const;
@@ -65,8 +66,11 @@ function render(locale: "en" | "ta", node: ReactElement): string {
     timeZone: string;
   }>;
 
+  // Every screen here waits for the wallet SDK's provider before it calls a hook,
+  // and the hook is stubbed above, so the tree is put under a mounted wallet.
+  const mounted = createElement(WalletMounted.Provider, { value: true }, node);
   return renderToStaticMarkup(
-    createElement(Provider, { locale, messages: locale === "en" ? en : ta, timeZone: "Asia/Kolkata" }, node),
+    createElement(Provider, { locale, messages: locale === "en" ? en : ta, timeZone: "Asia/Kolkata" }, mounted),
   );
 }
 
