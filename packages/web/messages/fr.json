@@ -216,6 +216,7 @@
       "tooLarge": "Ce fichier dépasse 20 Mo. Essayez une copie plus légère.",
       "notAnImage": "Ce n’est pas un fichier image. Déposez un JPEG, un PNG ou un WebP.",
       "rateLimited": "Trop de contrôles en une minute. Attendez un instant et réessayez.",
+      "sampleFailed": "Cet exemple n’est revenu d’aucune passerelle. Réessayez, ou déposez votre propre fichier.",
       "noMatch": "Pas enregistrée",
       "noMatchBody": "Aucun passeport du registre ne correspond à cette image. Un fichier sorti d’un générateur et jamais enregistré ressemble exactement à ça.",
       "exact": "octets exacts",

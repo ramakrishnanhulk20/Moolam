@@ -217,6 +217,7 @@
       "tooLarge": "Esse arquivo passa de 20 MB. Tente uma cópia menor.",
       "notAnImage": "Isso não é um arquivo de imagem. Solte um JPEG, PNG ou WebP.",
       "rateLimited": "Conferências demais em um minuto. Espere um instante e tente de novo.",
+      "sampleFailed": "Essa amostra não voltou de nenhum gateway. Tente de novo ou solte o seu próprio arquivo.",
       "noMatch": "Não registrada",
       "noMatchBody": "Nenhum passaporte do registro bate com esta imagem. Um arquivo recém-saído de um gerador que nunca foi registrado é exatamente assim.",
       "exact": "bytes exatos",

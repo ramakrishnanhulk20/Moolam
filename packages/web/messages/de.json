@@ -216,6 +216,7 @@
       "tooLarge": "Diese Datei ist über 20 MB. Probier eine kleinere Kopie.",
       "notAnImage": "Das ist keine Bilddatei. Zieh ein JPEG, PNG oder WebP her.",
       "rateLimited": "Zu viele Prüfungen in einer Minute. Warte kurz und versuch es noch einmal.",
+      "sampleFailed": "Dieses Beispiel kam von keinem Gateway zurück. Versuch es noch einmal oder zieh deine eigene Datei her.",
       "noMatch": "Nicht eingetragen",
       "noMatchBody": "Kein Pass im Register passt zu diesem Bild. Eine Datei frisch aus einem Generator, die nie eingetragen wurde, sieht genau so aus.",
       "exact": "exakte Bytes",

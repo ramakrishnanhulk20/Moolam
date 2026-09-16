@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { probe, progress, resetProbe, type ProbeState } from "@/components/story/signals";
 import { Picture } from "@/components/passport/Picture";
-import { pictureSources } from "@/lib/images";
+import { pictureSources, pinnedBytes } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { checkImage } from "@/lib/upload/checkImage";
@@ -135,27 +135,32 @@ export function TryPanel({
   }
 
   /**
-   * One of the offered pictures, fetched back out of the gateway and put through
-   * the same check a dropped file gets.
+   * One of the offered pictures, fetched back out of the gateway as the pinned
+   * bytes and put through the same check a dropped file gets.
    *
    * The gateway serves the 512 pixel copy the metadata carries, so this is a
    * resized copy of a registered image rather than the file itself: the answer
    * a judge sees is a real near-match, not a byte-for-byte lookup.
+   *
+   * The fetch goes through the gateway walk rather than straight at one address.
+   * A Pinata gateway that takes the connection and then never answers left this
+   * panel reading "fingerprinting" for as long as a reader was willing to watch,
+   * with nothing on its way to the verify service.
    */
   async function takeSample(sample: TrySample) {
     setState({ kind: "pending", name: shortHex(sample.id, 10, 8) });
+
+    let blob: Blob;
     try {
-      const response = await fetch(sample.url);
-      if (!response.ok) {
-        throw new Error(`the gateway answered ${response.status}`);
-      }
-      const blob = await response.blob();
-      const kind = blob.type === "" ? "image/jpeg" : blob.type;
-      await check(new File([blob], `${shortHex(sample.id, 6, 4)}.${kind.split("/")[1] ?? "jpg"}`, { type: kind }));
-    } catch (error) {
+      blob = await pinnedBytes(sample.url);
+    } catch {
       publish("refused");
-      setState({ kind: "error", message: refusal(error, t) });
+      setState({ kind: "error", message: t("sampleFailed") });
+      return;
     }
+
+    const kind = blob.type.startsWith("image/") ? blob.type : "image/jpeg";
+    await check(new File([blob], `${shortHex(sample.id, 6, 4)}.${kind.split("/")[1] ?? "jpg"}`, { type: kind }));
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {

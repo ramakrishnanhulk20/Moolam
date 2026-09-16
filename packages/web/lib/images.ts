@@ -111,3 +111,108 @@ export function optimizedUrl(url: string, width: number, quality = 70): string {
   }
   return `/_next/image?url=${encodeURIComponent(url)}&w=${width}&q=${quality}`;
 }
+
+/** Every gateway was asked for the file and none of them handed it over whole. */
+export class NoGatewayAnswered extends Error {
+  /** One line per attempt, host and what it did, for a caller that wants to say why. */
+  readonly tried: string[];
+
+  constructor(uri: string, tried: string[]) {
+    super(`no gateway served ${uri}: ${tried.join("; ")}`);
+    this.name = "NoGatewayAnswered";
+    this.tried = tried;
+  }
+}
+
+/**
+ * The pinned file itself, as bytes, for the one caller that needs the registered
+ * copy rather than a picture on a screen: a sample handed to the verify service.
+ *
+ * The optimizer is deliberately not in this path. It re-encodes what it serves,
+ * and a re-encoded copy carries a different fingerprint from the one the
+ * registry holds, so the gateways are asked directly.
+ *
+ * Two things here are not in the picture path. A gateway that accepts the
+ * connection and then never answers is the failure this exists for, so the walk
+ * does not wait on any single one: after `patienceMs` the next gateway is asked
+ * beside it and whichever answers first wins. And the whole walk is capped, so
+ * a caller always gets either bytes or a refusal it can print.
+ *
+ * The account's own gateway is asked once more at the end of the list. The stall
+ * is one held connection rather than a host that is down, and a fresh request to
+ * the same host answers while the first one is still hanging.
+ */
+export function pinnedBytes(uri: string, options: { patienceMs?: number; timeoutMs?: number } = {}): Promise<Blob> {
+  const patience = options.patienceMs ?? 2000;
+  const whole = options.timeoutMs ?? 9000;
+  const sources = pictureSources(uri);
+  const walk = sources.length > 1 ? [...sources, sources[0]] : sources;
+
+  return new Promise<Blob>((resolve, reject) => {
+    const abort = new AbortController();
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const tried: string[] = [];
+    let settled = false;
+    let next = 0;
+    let running = 0;
+
+    const finish = (blob: Blob | null) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      for (const timer of timers) {
+        clearTimeout(timer);
+      }
+      timers.clear();
+      abort.abort();
+      if (blob === null) {
+        reject(new NoGatewayAnswered(uri, tried));
+      } else {
+        resolve(blob);
+      }
+    };
+
+    const cap = setTimeout(() => finish(null), whole);
+    timers.add(cap);
+
+    const ask = () => {
+      if (settled || next >= walk.length) {
+        return;
+      }
+      const source = walk[next];
+      next += 1;
+      running += 1;
+      const nudge = setTimeout(ask, patience);
+      timers.add(nudge);
+
+      void (async () => {
+        try {
+          const response = await fetch(source, { signal: abort.signal });
+          if (!response.ok) {
+            throw new Error(`answered ${response.status}`);
+          }
+          const blob = await response.blob();
+          if (blob.size === 0) {
+            throw new Error("answered with an empty file");
+          }
+          finish(blob);
+        } catch (error) {
+          if (settled) {
+            return;
+          }
+          tried.push(`${hostOf(source) ?? source} ${error instanceof Error ? error.message : String(error)}`);
+          running -= 1;
+          clearTimeout(nudge);
+          timers.delete(nudge);
+          ask();
+          if (running === 0 && next >= walk.length) {
+            finish(null);
+          }
+        }
+      })();
+    };
+
+    ask();
+  });
+}

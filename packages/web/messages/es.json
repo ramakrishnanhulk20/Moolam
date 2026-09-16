@@ -216,6 +216,7 @@
       "tooLarge": "Ese archivo pasa de 20 MB. Prueba con una copia más pequeña.",
       "notAnImage": "Eso no es un archivo de imagen. Suelta un JPEG, un PNG o un WebP.",
       "rateLimited": "Demasiadas comprobaciones en un minuto. Espera un momento y vuelve a intentarlo.",
+      "sampleFailed": "Esa muestra no llegó desde ninguna pasarela. Inténtalo otra vez o suelta tu propio archivo.",
       "noMatch": "Sin registrar",
       "noMatchBody": "Ningún pasaporte del registro coincide con esta imagen. Un archivo recién salido de un generador que nunca se registró se ve exactamente así.",
       "exact": "bytes exactos",

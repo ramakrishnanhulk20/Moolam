@@ -216,6 +216,7 @@
       "tooLarge": "That file is over 20 MB. Try a smaller copy.",
       "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
       "rateLimited": "Too many checks in a minute. Wait a moment and try again.",
+      "sampleFailed": "That sample would not come back from any gateway. Try again, or drop your own file.",
       "noMatch": "Not registered",
       "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
       "exact": "exact bytes",
