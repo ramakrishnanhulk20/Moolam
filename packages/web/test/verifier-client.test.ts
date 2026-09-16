@@ -376,7 +376,14 @@ describe("VerifierError", () => {
 
   it("says offline when the service accepts the request and never answers", async () => {
     configureRequestTimeout(50);
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => reject(new DOMException("timed out", "TimeoutError")));
+        }),
+      ),
+    );
     const failure = await verify({ file: new File([new Uint8Array([1, 2, 3])], "a.jpg", { type: "image/jpeg" }) }).catch((error: unknown) => error);
     configureRequestTimeout(120_000);
     expect(failure).toBeInstanceOf(VerifierError);
