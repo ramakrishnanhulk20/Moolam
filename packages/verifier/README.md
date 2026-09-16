@@ -199,8 +199,10 @@ that wallet needs USDC and no MON, because the facilitator pays the settlement
 gas.
 
 Every caller gets 60 requests a minute, counted on the socket address so nobody
-can pick their own bucket by sending a header. Every rejection is logged with its
-reason. Unknown routes answer with JSON, not HTML.
+can pick their own bucket by sending a header. `GET /health` is the one route
+outside the count: a probe that could be refused would read as an outage to the
+status footer and to uptime monitors, and it costs microseconds to answer. Every
+rejection is logged with its reason. Unknown routes answer with JSON, not HTML.
 
 ## Which way up
 

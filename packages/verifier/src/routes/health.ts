@@ -7,7 +7,10 @@ import type { FastifyInstance } from "fastify";
  * still boots and still verifies, and `routes` is where that shows up.
  */
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
-  app.get("/health", async () => ({
+  // A probe that can be refused lies about the service: a status footer, an uptime monitor or a
+  // build pre-rendering hundreds of pages would read the 61st answer in a minute as "down". The
+  // answer costs microseconds, so the limiter skips this route and nothing else.
+  app.get("/health", { config: { rateLimit: false } }, async () => ({
     ok: true,
     records: app.verifier.index.size,
     version: app.verifier.version,

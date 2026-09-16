@@ -737,7 +737,8 @@ and the file the output is saved in.
 - A 24 hour public delay on every change that widens trust. Removing a receiver is the one immediate
   action.
 - Off chain: an SSRF guard that normalises and pins every address it checks, 60 requests a minute
-  per caller (the service trusts only Railway's proxy for the address), a 20 MB and 40 megapixel cap, a
+  per caller on every route but the health probe (the service trusts only Railway's proxy for the
+  address), a 20 MB and 40 megapixel cap, a
   concurrency gate of two matches at a time that answers busy after thirty seconds, and
   a Privy access token checked on every route that spends money or writes to the chain.
 - The signer a creator grants for edits is held to a Privy policy that names one function on one

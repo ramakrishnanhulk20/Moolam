@@ -132,21 +132,25 @@ describe("body limits", () => {
 });
 
 describe("rate limit", () => {
-  it("allows 60 requests a minute from one address and rejects the 61st", async () => {
+  it("allows 60 requests a minute from one address to a limited route and rejects the 61st", async () => {
     const app = await buildServer({ source: sourceOf([]), logger: false });
     await app.ready();
 
+    // A bodiless POST fails fast with 400 but still counts, so 61 of them exhaust the address.
     try {
       for (let i = 0; i < 60; i += 1) {
-        const response = await app.inject({ method: "GET", url: "/health", remoteAddress: "203.0.113.7" });
-        expect(response.statusCode).toBe(200);
+        const response = await app.inject({ method: "POST", url: "/verify", remoteAddress: "203.0.113.7" });
+        expect(response.statusCode).toBe(400);
       }
 
-      const blocked = await app.inject({ method: "GET", url: "/health", remoteAddress: "203.0.113.7" });
+      const blocked = await app.inject({ method: "POST", url: "/verify", remoteAddress: "203.0.113.7" });
       expect(blocked.statusCode).toBe(429);
 
-      const other = await app.inject({ method: "GET", url: "/health", remoteAddress: "203.0.113.8" });
-      expect(other.statusCode).toBe(200);
+      const other = await app.inject({ method: "POST", url: "/verify", remoteAddress: "203.0.113.8" });
+      expect(other.statusCode).toBe(400);
+
+      const probe = await app.inject({ method: "GET", url: "/health", remoteAddress: "203.0.113.7" });
+      expect(probe.statusCode).toBe(200);
     } finally {
       await app.close();
     }
