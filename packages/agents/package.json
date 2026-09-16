@@ -7,6 +7,7 @@
   "scripts": {
     "test": "vitest run --reporter=verbose",
     "proof": "tsx scripts/anvil-proof.ts",
+    "attack:pass2": "tsx scripts/attack-pass-2.ts",
     "seed": "tsx scripts/seed.ts",
     "prove:privy": "tsx scripts/prove-privy.ts",
     "edit:quorum": "tsx scripts/edit-quorum.ts",

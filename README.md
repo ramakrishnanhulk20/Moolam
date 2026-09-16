@@ -757,6 +757,9 @@ and the file the output is saved in.
 `dispute-money-rules`, `verifier-api-limits`. Every one was refused, each for the reason the design
 gives, and the outputs are saved in the repo.
 
+A second pass of eight attacks, on a fork of Monad mainnet and on the browser code, is saved in
+[proofs/attacks/pass-2.txt](proofs/attacks/pass-2.txt): `npm run attack:pass2` and `npx vitest run test/attacks`.
+
 ### What Moolam does not defend against
 
 - **First registered wins.** A passport proves who registered first, not who created. For AI output

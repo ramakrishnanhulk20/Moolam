@@ -1,0 +1,154 @@
+
+> @moolam/agents@0.1.0 attack:pass2
+> tsx scripts/attack-pass-2.ts
+
+Moolam attack pass 2, executed against a local fork of Monad mainnet.
+Every write below goes to the fork. Nothing here can reach mainnet.
+
+date        2026-09-16T07:21:21.755Z
+fork block  105,258,267 of Monad mainnet, chain 143
+commit      13c54f123fc96e9417913b08d8ea950274959793
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0 (deployed, forked)
+policy      0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 (deployed, forked)
+receiver    0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 (deployed, forked)
+creator     0xED25f631fd3b9536BDde4E74a0726F67b5912645 (a fresh key, funded on the fork)
+challenger  0xBD08683AA94Fa4313203350C617578d4799c76D8
+stranger    0x18172EbAcC70C97E430824F7268618d34C328d22
+bond payer  0xb432F66459390A55013Bd0141Ca46bDD4408154f
+            These four are fresh keys on purpose. Anvil's published ten all carry an
+            EIP-7702 delegation on Monad mainnet, and the delegate sweeps anything paid
+            to them, which would quietly swallow the bond in attack 8.
+
+The creator's passkey is bound on the forked registry: qx 0x4d1e1ee81abd281644bf96734d4106d05aa13aed3e9aafb03238267d62379e15
+
+1b. Digest substitution: an assertion over passport P, relayed as a registration of P'
+    ------------------------------------------------------------------------------------
+    signed digest      0xbaf1d8bcbf97a7d7ec455c8fed3c5bb57b619d2c15b4b605055955e6cfe1a372 (passport P)
+    relayed digest     0x1c0cebf645e66d44906b81ca358cc15257f4d67f3ec23f24030b3fe4aad09690 (passport P', same creator)
+    P' refused with    InvalidPasskeySignature, reverted on chain in 0xccc21da14655298c325d76da81f350eee579cf17faeea05099cb08740c056aef
+    the same assertion registered P in 0x9cd45446212cde849de71e9fde73d6a011c01d8d1ad230a30622fbb942752aac, so the signature was genuine
+    The contract binds the digest to the struct it was handed. It cannot see that an RPC
+    lied about which struct that was: the browser check in lib/chain/digest.ts is the
+    defence against the RPC, and it is proved in packages/web/test/attacks.
+
+2b. Stale deadline: a signature stamped from a clock that runs 61 minutes slow
+    ------------------------------------------------------------------------------------
+    chain time         1789543293
+    deadline signed    1789541433, which is 1860 seconds in the past
+    refused with       SignatureExpired, reverted on chain in 0x14532d1f26330194fff87b8d41c023b310a9c056c43ee98f6f13b2a5f0ec6f76
+
+5. Replayed re-check: one signed report delivered twice, then to a second receiver
+    ------------------------------------------------------------------------------------
+    forwarder          0x76c9cf548b4179F8901cda1f8623568b58215E62 (the real Chainlink one, impersonated on the fork)
+    report executedAt  1789543296 for passport 0xed93da4742ffb2e2a7b7e325608e8db3dcd741c034acda13023ffd6a0860d6ff
+    first delivery     landed in 0x97404be4324daf3cfde2589fb5f6baa2859497221ee7ec5ec20bfd2d43870299, attestation count 1
+    second delivery    StaleReport, reverted on chain in 0xc756f7a6a662111c203f5624569a13adbe8967ffebd94e9db7f570152c7f42bc
+    a fresh receiver   0x3b0e32f8e6129b5a6f868f85b2bf5ffc9111b718, deployed on the fork and listed through the policy
+    the 24 hour queue  queued in 0x9432af55777ecd6d23c514cc9461dfce8039432f602a740357022f9fa5abb4ec, executed in 0x159134cf960c7239b1dece3f0ce7b0c02d6156077ea21c10a8ae3b1f8159f7d1 after the warp
+    same report again  landed in 0x4162635962b43ef617abcca49a69e83bcdd908bc8f6e83e9a9eafe258b533ea3, attestation count 1 to 2
+    This is the known gap: the replay floor lives in each receiver's own storage and starts
+    at zero, so a report one receiver has used still lands on a receiver deployed later.
+    Listing one takes the policy's 24 hour queue in the open, which is the control today.
+    The remedy is receiver v2: an executedAt floor set at deploy time, which makes every
+    report older than the deployment stale on arrival.
+
+6. Edit of a disputed parent: the child reads clean on chain
+    ------------------------------------------------------------------------------------
+    parent             0x1f49563bbe143b149dfd33f517308ffa3935d7c814e7946135689648cfdee81c
+    flagged            0xc696a8fbc46cd88997a22c9d5af5c95f2584ebc521d4a5ddf41ca94cfdf4835e, bond 1 MON
+    upheld             0x68f4a481fb626de5462885663abfb04dffc9ebed06021cfeb846a831416b08dc, parent disputed true
+    child              0xffd24f36cd2a621d8398f54122316ee4f3c039f1ce40a4a440fc70b08f658383, appended in 0x394284f410d964e0b624d708a0853c8b77d335d896fa93b9f4b3200a7288d4d4
+    child disputed     false, parent of the child 0x1f49563bbe143b149dfd33f517308ffa3935d7c814e7946135689648cfdee81c
+    The registry marks only the passport a challenge named, so the edit reads clean here.
+    The web walks the parent links the index already stores and shows the child as
+    disputed, which is executed in packages/web/test/attacks/disputed-parent.test.ts on
+    exactly these two ids. The index-side field inheritedDisputed will answer it in one
+    column with no walk at all, once the hosted index redeploys with it.
+
+8. Bond safety: a stranger settling, an owner sweeping, and the challenger's money
+    ------------------------------------------------------------------------------------
+    bond the policy asks for  1 MON, posted in 0xa03acb1cb709ccd4745ce5f2416272be94ba8999dde5c91f2b9262b4a1a8010c
+    stranger calls resolve    NotResolver, reverted on chain in 0xada6f103c2f6b9db345aed65d7450d449f5c4a2139b3b978b82f0002e6329334
+    registry balance          2 MON, of which bonds 1 and owed 1
+    owner calls rescueNative  NothingToRescue, reverted on chain in 0x8cab0f36e0b8ce944c7efbfef28819651083dfaa63d2453808db383c0ed9b56f, so nothing of the bond moved
+    resolver upholds          0xbda7f27c4c1672eaddbccfcf5a8219a59acd0b82c823ee37e729784b61fa6a82
+    challenger credit         1 MON, equal to the bond: true
+    challenger withdraws      0x37d0eecfc2437f79789602e3d27c45e016713957999c42f88d39e2624a701c03
+    challenger balance        9998.9938739911368 to 9999.9900323793778 MON
+    the bond, less the fee    gained 0.996158388241 MON, the network took 0.003841611759
+                              gas used 63332 of the 600000 limit this fork charges for, at 6402686265 wei
+
+Summary of what this script executed on the fork
+================================================
+  1b  digest substitution, relayed to the registry   REFUSED, InvalidPasskeySignature, reverted on chain in 0xccc21da14655298c325d76da81f350eee579cf17faeea05099cb08740c056aef
+                                                     not covered: whether the RPC lied about the digest, which only the browser can see
+  2b  stale deadline, sent to the registry           REFUSED, SignatureExpired, reverted on chain in 0x14532d1f26330194fff87b8d41c023b310a9c056c43ee98f6f13b2a5f0ec6f76
+                                                     not covered: a clock that is fast rather than slow, which signs a window the chain has not opened
+  5a  report replayed to the same receiver           REFUSED, StaleReport, reverted on chain in 0xc756f7a6a662111c203f5624569a13adbe8967ffebd94e9db7f570152c7f42bc
+                                                     not covered: the Chainlink forwarder's own signature checks, which happen before this contract is called
+  5b  same report to a newly listed receiver         LANDED AS EXPECTED, remedy: receiver v2 with a deploy-time executedAt floor
+                                                     not covered: how a second receiver gets listed at all, which is the policy's 24 hour queue in the open
+  6   edit of a disputed parent, read on chain       LANDED AS EXPECTED, remedy: the index's inheritedDisputed field, walked in the web today
+                                                     not covered: the walk itself, which is executed in packages/web/test/attacks/disputed-parent.test.ts
+  8a  a stranger settling a dispute                  REFUSED, NotResolver, reverted on chain in 0xada6f103c2f6b9db345aed65d7450d449f5c4a2139b3b978b82f0002e6329334
+                                                     not covered: the resolver's own judgement, which is a person and not a contract
+  8b  the owner sweeping a held bond                 REFUSED, NothingToRescue, reverted on chain in 0x8cab0f36e0b8ce944c7efbfef28819651083dfaa63d2453808db383c0ed9b56f
+                                                     not covered: a surplus sent to the registry by mistake, which rescueNative is there to move
+  8c  the challenger's bond after an upheld resolve  PAID BACK, the bond less the network fee
+                                                     not covered: a challenger contract that refuses native token, which withdrawTo is the way out of
+
+The browser half of this pass, executed separately by npx vitest run test/attacks in
+packages/web, and printed under this output:
+  1a digest substitution refused before the passkey prompt
+     not covered: the registry's half, which is attack 1b above
+  2a a deadline measured from the chain's head block, not from a slow laptop
+     not covered: the registry's half, which is attack 2b above
+  3  a second send while the first is unconfirmed
+     not covered: the rendered React screens, only the reducers they read
+  4  an assertion made for evil.example, by relying party and by origin
+     not covered: the registry, which cannot see either field
+  6  the web's lineage walk over the two ids above
+     not covered: the hosted index's own inheritedDisputed column, which is not deployed yet
+  7  the same fallback bytes posted twice to the verify service
+     not covered: the signed path, where a fresh manifest gives one picture two ids
+
+finished 2026-09-16T07:22:11.298Z, fork block 105,258,267
+
+The browser half, executed: npx vitest run test/attacks in packages/web
+=======================================================================
+
+ RUN  v5.0.0 D:/Projects/Monad/packages/web
+
+ ✓ test/attacks/stale-deadline.test.ts > a deadline stamped from a clock 61 minutes slow > still lands in the future when it is measured from the chain's own head block 3ms
+ ✓ test/attacks/stale-deadline.test.ts > a deadline stamped from a clock 61 minutes slow > would already be spent if it came from this machine's clock 0ms
+ ✓ test/attacks/stale-deadline.test.ts > a deadline stamped from a clock 61 minutes slow > puts the two answers a full slow hour apart, which is the whole attack 0ms
+ ✓ test/attacks/wrong-relying-party.test.ts > an assertion made for another site > is refused when the relying party hash belongs to evil.example 5ms
+ ✓ test/attacks/wrong-relying-party.test.ts > an assertion made for another site > is refused when the signature was made at https://evil.example 1ms
+ ✓ test/attacks/wrong-relying-party.test.ts > an assertion made for another site > is accepted when both fields are this site, so the refusals are the site and not the key 2ms
+ ✓ test/attacks/wrong-relying-party.test.ts > an assertion made for another site > is a valid signature either way, which is what makes the two fields the only defence 1ms
+ ✓ test/attacks/digest-substitution.test.ts > a hostile RPC answering with another passport's digest > is refused before the passkey is prompted 3ms
+ ✓ test/attacks/digest-substitution.test.ts > a hostile RPC answering with another passport's digest > names both digests, so the refusal says what disagreed 1ms
+ ✓ test/attacks/digest-substitution.test.ts > a hostile RPC answering with another passport's digest > lets an honest answer through, so the refusal is the lie and not the check 1ms
+ ✓ test/attacks/digest-substitution.test.ts > a hostile RPC answering with another passport's digest > is checked before the prompt in the studio itself, not only in this test 0ms
+ ✓ test/attacks/disputed-parent.test.ts > an edit of a picture that was proven fake > reads clean on its own row, which is what the chain says 1ms
+ ✓ test/attacks/disputed-parent.test.ts > an edit of a picture that was proven fake > reads disputed once the parent link is walked 0ms
+ ✓ test/attacks/disputed-parent.test.ts > an edit of a picture that was proven fake > is in the set the Disputed chip covers, together with its parent 1ms
+ ✓ test/attacks/disputed-parent.test.ts > an edit of a picture that was proven fake > is covered whether the index answers with the field or with the walked list 0ms
+ ✓ test/attacks/disputed-parent.test.ts > an edit of a picture that was proven fake > leaves an edit of a clean picture alone, so the walk is not marking everything 0ms
+ ✓ test/attacks/disputed-parent.test.ts > an edit of a picture that was proven fake > walks as far above an edit as the depth allows, and says so by stopping 0ms
+ ✓ test/attacks/double-send.test.ts > a second send while the first is unconfirmed > leaves the whole register screen busy, which is what shuts the button 1ms
+ ✓ test/attacks/double-send.test.ts > a second send while the first is unconfirmed > offers a recheck and never a resend, because the bytes may already be on chain 0ms
+ ✓ test/attacks/double-send.test.ts > a second send while the first is unconfirmed > locks the bind card in the same way, so no second passkey is made over the first 0ms
+ ✓ test/attacks/double-send.test.ts > a second send while the first is unconfirmed > is shut on both panels by the same helper, not by a flag each screen keeps 0ms
+ ✓ test/attacks/double-send.test.ts > a second send while the first is unconfirmed > answers a bind pressed twice with the recheck, before a passkey is created 0ms
+ ✓ test/attacks/double-send.test.ts > the resend path, for a refusal from before the send > sends the bytes that were already signed and never prompts again 3ms
+ ✓ test/attacks/double-send.test.ts > the resend path, for a refusal from before the send > would be a different transaction if it signed again, which is why the bytes are kept 4ms
+ ✓ test/attacks/double-send.test.ts > the resend path, for a refusal from before the send > is the branch the studio takes, ahead of anything that would prompt 0ms
+ ✓ test/attacks/duplicate-child.test.ts > the same fallback bytes posted twice > answers 409 already-registered on the second, before a single byte is pinned 64ms
+ ✓ test/attacks/duplicate-child.test.ts > the same fallback bytes posted twice > is a duplicate at all because the unsigned bytes are the same bytes every time 34ms
+
+ Test Files  6 passed (6)
+      Tests  27 passed (27)
+   Start at  12:52:16
+   Duration  1.34s (import 78%, transform 16%, tests 5%)
+
