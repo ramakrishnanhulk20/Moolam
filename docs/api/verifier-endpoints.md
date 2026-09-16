@@ -458,6 +458,10 @@ the package version. `routes` is what this host actually mounted, which is where
 key becomes visible from outside: a host without `PINATA_JWT` still boots and still verifies, and
 `prepare` is simply not in the list.
 
+This is the one route outside the 60-a-minute limit. A status page, an uptime monitor or a build
+pre-rendering hundreds of pages may probe it as often as it likes and never reads a refusal as an
+outage; the answer costs microseconds. Every other route keeps the limit.
+
 ## Unknown routes
 
 Answered with `404` and `{ "error": "no route for <METHOD> <path>" }`, as JSON rather than HTML.
