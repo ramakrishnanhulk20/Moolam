@@ -457,6 +457,17 @@ export function useStudio(): Studio {
     if (embedded === undefined || wallet === undefined) {
       return;
     }
+
+    // A registration is already out. Sending a second one would pay twice for a
+    // write that may already be on chain, so the card asks Monad instead.
+    if (watching.current?.kind === "register") {
+      dispatchRegister({
+        type: "failed",
+        failure: { key: "confirmPending", next: "recheck", address: wallet },
+        stage: "confirm",
+      });
+      return;
+    }
     if (binding.passkey === null) {
       dispatchRegister({ type: "failed", failure: passkeyNotReady(binding), stage: "prepare" });
       return;
@@ -535,6 +546,17 @@ export function useStudio(): Studio {
    */
   const generateImage = useCallback(async () => {
     if (embedded === undefined || wallet === undefined) {
+      return;
+    }
+
+    // A registration is already out. Sending a second one would pay twice for a
+    // write that may already be on chain, so the card asks Monad instead.
+    if (watching.current?.kind === "register") {
+      dispatchRegister({
+        type: "failed",
+        failure: { key: "confirmPending", next: "recheck", address: wallet },
+        stage: "confirm",
+      });
       return;
     }
     if (binding.passkey === null) {

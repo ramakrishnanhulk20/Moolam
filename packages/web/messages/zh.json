@@ -338,7 +338,6 @@
       "distanceLabel": "接收方写下的值",
       "byChainlink": "由 Chainlink 独立验证",
       "byReceiver": "由获准的接收方写入",
-      "recomputed": "重新算出的 pHash",
       "openTx": "交易 {hash}",
       "noTransaction": "索引里没有这一条的交易。",
       "registeredGrid": "登记时的指纹",

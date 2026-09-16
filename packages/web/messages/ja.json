@@ -338,7 +338,6 @@
       "distanceLabel": "受信者が書いた値",
       "byChainlink": "Chainlink が独立に検証",
       "byReceiver": "許可された受信者が書き込み",
-      "recomputed": "取り直した pHash",
       "openTx": "トランザクション {hash}",
       "noTransaction": "この件のトランザクションはインデックスにありません。",
       "registeredGrid": "登録時の指紋",

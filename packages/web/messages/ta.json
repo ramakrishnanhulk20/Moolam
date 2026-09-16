@@ -336,7 +336,6 @@
       "distanceLabel": "ரிசீவர் எழுதியபடி",
       "byChainlink": "Chainlink மூலம் தனியாகச் சரிபார்க்கப்பட்டது",
       "byReceiver": "அனுமதிக்கப்பட்ட ரிசீவரால் எழுதப்பட்டது",
-      "recomputed": "மீண்டும் கணக்கிட்ட pHash",
       "openTx": "பரிவர்த்தனை {hash}",
       "noTransaction": "இதற்கான பரிவர்த்தனை குறியீட்டில் இல்லை.",
       "registeredGrid": "பதிவான கைரேகை",

@@ -336,7 +336,6 @@
       "distanceLabel": "Tel que le récepteur l’a inscrit",
       "byChainlink": "Vérifiée de façon indépendante par Chainlink",
       "byReceiver": "Inscrite par un récepteur autorisé",
-      "recomputed": "pHash recalculé",
       "openTx": "Transaction {hash}",
       "noTransaction": "L’index ne porte pas la transaction de celle-ci.",
       "registeredGrid": "Empreinte enregistrée",

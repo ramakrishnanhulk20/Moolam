@@ -338,7 +338,6 @@
       "distanceLabel": "수신자가 기록한 값",
       "byChainlink": "Chainlink가 독립적으로 검증",
       "byReceiver": "허용된 수신자가 기록",
-      "recomputed": "다시 구한 pHash",
       "openTx": "트랜잭션 {hash}",
       "noTransaction": "인덱스에 이 건의 트랜잭션이 없습니다.",
       "registeredGrid": "등록된 지문",

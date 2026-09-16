@@ -336,7 +336,6 @@
       "distanceLabel": "As the receiver wrote it",
       "byChainlink": "Verified independently by Chainlink",
       "byReceiver": "Written by an allowed receiver",
-      "recomputed": "Recomputed pHash",
       "openTx": "Transaction {hash}",
       "noTransaction": "The index does not carry the transaction for this one.",
       "registeredGrid": "Registered fingerprint",

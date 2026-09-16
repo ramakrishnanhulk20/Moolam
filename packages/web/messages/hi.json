@@ -337,7 +337,6 @@
       "distanceLabel": "जैसा रिसीवर ने लिखा",
       "byChainlink": "Chainlink ने स्वतंत्र रूप से सत्यापित किया",
       "byReceiver": "एक अनुमत रिसीवर ने लिखा",
-      "recomputed": "दोबारा निकाला गया pHash",
       "openTx": "लेनदेन {hash}",
       "noTransaction": "इंडेक्स में इसका लेनदेन नहीं है।",
       "registeredGrid": "दर्ज फ़िंगरप्रिंट",

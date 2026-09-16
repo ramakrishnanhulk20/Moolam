@@ -336,7 +336,6 @@
       "distanceLabel": "Como lo escribió el receptor",
       "byChainlink": "Verificada de forma independiente por Chainlink",
       "byReceiver": "Escrita por un receptor autorizado",
-      "recomputed": "pHash recalculado",
       "openTx": "Transacción {hash}",
       "noTransaction": "El índice no trae la transacción de esta.",
       "registeredGrid": "Huella registrada",

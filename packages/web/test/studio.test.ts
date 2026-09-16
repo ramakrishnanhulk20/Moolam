@@ -532,6 +532,30 @@ describe("what the studio does before it asks for an unlock", () => {
     return calls.map((call) => body.indexOf(call));
   }
 
+  it("answers a registration pressed twice with the recheck, and prepares nothing", () => {
+    const body = source.slice(source.indexOf("const registerImage = useCallback"));
+    const guard = body.indexOf('watching.current?.kind === "register"');
+    const started = body.indexOf('dispatchRegister({ type: "start", step: "prepare" })');
+
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(started);
+    expect(guard).toBeLessThan(body.indexOf("await prepare("));
+    expect(body.slice(guard, started)).toContain('key: "confirmPending"');
+    expect(body.slice(guard, started)).toContain('next: "recheck"');
+  });
+
+  it("answers a generation pressed twice the same way, and draws nothing", () => {
+    const body = source.slice(source.indexOf("const generateImage = useCallback"));
+    const guard = body.indexOf('watching.current?.kind === "register"');
+    const started = body.indexOf('dispatchRegister({ type: "start", step: "draw" })');
+
+    expect(guard).toBeGreaterThan(-1);
+    expect(guard).toBeLessThan(started);
+    expect(guard).toBeLessThan(body.indexOf("await generate({"));
+    expect(body.slice(guard, started)).toContain('key: "confirmPending"');
+    expect(body.slice(guard, started)).toContain('next: "recheck"');
+  });
+
   it("checks the creator the agent signed for before any passkey prompt", () => {
     const [check, prompt] = order("generateImage", "drawn.passport.creator.toLowerCase()", "await signDigest");
     expect(check).toBeGreaterThan(-1);

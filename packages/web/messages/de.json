@@ -336,7 +336,6 @@
       "distanceLabel": "Wie der Empfänger es geschrieben hat",
       "byChainlink": "Unabhängig von Chainlink geprüft",
       "byReceiver": "Von einem zugelassenen Empfänger geschrieben",
-      "recomputed": "Neu berechneter pHash",
       "openTx": "Transaktion {hash}",
       "noTransaction": "Der Index führt die Transaktion dazu nicht.",
       "registeredGrid": "Registrierter Fingerabdruck",

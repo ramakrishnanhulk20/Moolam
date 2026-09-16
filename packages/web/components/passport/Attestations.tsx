@@ -4,7 +4,6 @@ import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import { bitsApart, bitsOf, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
 import { transactionFor, type IndexedAttestation } from "./indexed";
-import { Mono } from "./Mono";
 import { attestationSource } from "./labels";
 
 /** What getTranslations hands back, so a row can be given one rather than await its own. */
@@ -168,10 +167,6 @@ function Row({
           </a>
         ) : null}
       </div>
-
-      <p className="mt-6 font-mono text-[11px] text-text-faint">
-        {t("recomputed")} <Mono value={phashOf(attestation.recomputed)} />
-      </p>
 
       <p className="mt-5 max-w-[56ch] border-t border-line pt-5 text-xs leading-relaxed text-text-faint">
         {t("gridNote")}
