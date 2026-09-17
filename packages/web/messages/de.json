@@ -148,6 +148,7 @@
   },
   "home": {
     "hero": {
+      "credit": "Eine erzeugen, oder eine prüfen",
       "generate": "Bild erzeugen",
       "verify": "Kopie prüfen"
     }

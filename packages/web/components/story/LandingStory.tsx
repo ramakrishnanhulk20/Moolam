@@ -8,6 +8,7 @@ import { Component, useCallback, useEffect, useMemo, useRef, useState, type Reac
 import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
 import { CloseCard } from "@/components/story/CloseCard";
+import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
 import { TryPanel, type TrySample } from "@/components/story/TryPanel";
@@ -544,6 +545,16 @@ export function LandingStory({ data }: { data: StoryData }) {
         <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
           <Caption cue={BEAT.opening}>
             <Opening kicker={t("kicker")} title={t("title")} line={t("line")} />
+            {/* A phone has no foot to hang credits from: the shot ends at 45
+                percent of the window and the words own everything below it. So
+                on a phone the block follows the tagline with a poster's gap
+                instead of sitting on the floor of the frame. */}
+            <div className="mt-8 sm:hidden">
+              <Credits />
+            </div>
+          </Caption>
+          <Caption cue={BEAT.opening} place="foot">
+            <Credits />
           </Caption>
           {beats.map((entry) => (
             <Caption key={entry.key} cue={BEAT[entry.key]}>
@@ -603,8 +614,12 @@ function FilmEnd() {
  * The opacity and the small rise are written straight to the node from an
  * animation frame. The story is already spending its frame budget on the camera,
  * and none of this needs React to render again.
+ *
+ * "foot" hangs the block off the floor of the shot instead of the reading band,
+ * which is where the poster credits go on anything wider than a phone. It leaves
+ * the scroll hint its own strip at the very bottom.
  */
-function Caption({ cue, children }: { cue: Beat; children: ReactNode }) {
+function Caption({ cue, children, place = "band" }: { cue: Beat; children: ReactNode; place?: "band" | "foot" }) {
   const node = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -631,13 +646,41 @@ function Caption({ cue, children }: { cue: Beat; children: ReactNode }) {
   return (
     <div
       ref={node}
-      data-beat={cue.name}
-      className="story-lower pointer-events-none px-5 sm:px-8 lg:px-14"
+      data-beat={place === "band" ? cue.name : undefined}
+      data-hero-credit={place === "foot" ? "true" : undefined}
+      className={
+        place === "band"
+          ? "story-lower pointer-events-none px-5 sm:px-8 lg:px-14"
+          : "pointer-events-none absolute inset-x-0 bottom-0 hidden px-5 pb-20 sm:block sm:px-8 lg:px-14"
+      }
       style={{ opacity: cue.captionStart <= 0 ? 1 : 0, willChange: "transform, opacity" }}
     >
-      <div className={`mx-auto w-full max-w-[100rem] ${cue.align === "end" ? "sm:text-end" : ""}`}>{children}</div>
+      <div className={`mx-auto w-full max-w-[100rem] ${place === "band" && cue.align === "end" ? "sm:text-end" : ""}`}>
+        {children}
+      </div>
     </div>
   );
+}
+
+/**
+ * The credits wait for the title.
+ *
+ * The title carries 90 ms of delay and 900 ms of rise, so this is the frame it
+ * has settled on: the name is read first and the two calls arrive under it.
+ * The wait is held in here rather than in the film so the scene never shares a
+ * render with it.
+ */
+const TITLE_SETTLED = 980;
+
+function Credits() {
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEntered(true), TITLE_SETTLED);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return <HeroCredits entered={entered} />;
 }
 
 function Opening({ kicker, title, line }: { kicker: string; title: string; line: string }) {

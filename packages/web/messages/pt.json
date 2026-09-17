@@ -149,6 +149,7 @@
   },
   "home": {
     "hero": {
+      "credit": "Crie uma, ou verifique uma",
       "generate": "Gerar uma imagem",
       "verify": "Verificar uma cópia"
     }

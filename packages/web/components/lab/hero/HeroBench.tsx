@@ -10,24 +10,7 @@ import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
 import { BEAT } from "@/components/story/beats";
 import type { StoryData } from "@/components/story/data";
-import { HeroButtons } from "./HeroButtons";
-
-type Variant = "row" | "credit";
-
-const VARIANTS: { id: Variant; index: string; name: string; idea: string }[] = [
-  {
-    id: "row",
-    index: "A",
-    name: "Row under the tagline",
-    idea: "The two buttons sit in a row 24 px under the tagline and enter on the tagline's own rise, a beat after it. The whole call is one block: kicker, title, line, buttons.",
-  },
-  {
-    id: "credit",
-    index: "B",
-    name: "Poster credit block",
-    idea: "The buttons drop to the foot of the shot on the title's left edge, under a mono line, the way a poster carries its credits. They enter once the title has settled, so the first thing read is the name.",
-  },
-];
+import { HeroCredits } from "@/components/story/HeroCredits";
 
 /** How many plates the field hangs. It is the top tier's own number. */
 const PLATES = 40;
@@ -36,12 +19,12 @@ const PLATES = 40;
 const PHONE_BAND = 0.45;
 
 /**
- * The first screen, twice, with the button row in a different place each time.
+ * The first screen with the credit block Ram picked, on the live field.
  *
  * Every plate behind the words is a real registered picture off the live index,
- * and the shot is the film's own opening pose, so what is being judged here is
- * the placement and nothing else. Nothing links to this page and it never
- * ships, so the bench's own labels are English.
+ * and the shot is the film's own opening pose, so the block is seen on the
+ * ground it ships on. Nothing links to this page and it never ships, so the
+ * bench's own labels are English.
  */
 export function HeroBench({ data, asked }: { data: StoryData; asked: number | null }) {
   const pictures = useMemo(() => [...new Set(data.plates.map((plate) => plate.picture))], [data.plates]);
@@ -54,11 +37,12 @@ export function HeroBench({ data, asked }: { data: StoryData; asked: number | nu
           Hero bench
         </p>
         <h1 className="mt-6 max-w-[20ch] font-display text-[clamp(2.4rem,7vw,5rem)] font-semibold uppercase leading-[0.92] tracking-[-0.045em]">
-          Where the two buttons go on the first screen
+          The poster credit block on the first screen
         </h1>
         <p className="mt-6 max-w-[62ch] text-base leading-relaxed text-text-muted">
-          The same opening shot twice, on the live field. Generate an image is the filled button, Verify a copy the
-          outlined one, both the closing card&apos;s own. Pick A or B and it goes into the film.
+          The opening shot with the block that now ships on the film: one mono line at the foot of the frame on the
+          title&apos;s left edge, the filled call and the outlined one under it. This is the same component the home
+          page renders, so what changes here changes there.
         </p>
         <p className="mt-5 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint">
           Field: {pictures.length} real {pictures.length === 1 ? "picture" : "pictures"}
@@ -67,29 +51,29 @@ export function HeroBench({ data, asked }: { data: StoryData; asked: number | nu
         </p>
       </header>
 
-      <div className="mx-auto mt-16 flex w-full max-w-[100rem] flex-col gap-20">
-        {VARIANTS.map((variant) => (
-          <section key={variant.id}>
-            <div className="flex flex-col gap-3 border-t border-line pt-5 sm:flex-row sm:items-baseline sm:gap-6">
-              <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-accent">{variant.index}</p>
-              <h2 className="font-display text-[clamp(1.8rem,3.4vw,2.8rem)] font-semibold leading-[1] tracking-[-0.04em]">
-                {variant.name}
-              </h2>
-              <p className="max-w-[58ch] text-sm leading-relaxed text-text-muted sm:ms-auto">{variant.idea}</p>
-            </div>
-
-            <div className="mt-6">
-              <Pane variant={variant.id} pictures={pictures} />
-            </div>
-          </section>
-        ))}
+      <div className="mx-auto mt-16 w-full max-w-[100rem]">
+        <Pane pictures={pictures} />
       </div>
     </div>
   );
 }
 
-/** One opening shot with one of the two placements over it. */
-function Pane({ variant, pictures }: { variant: Variant; pictures: string[] }) {
+/**
+ * The credits wait for the title, the same 980 ms the film waits.
+ */
+function Credits() {
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEntered(true), 980);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  return <HeroCredits entered={entered} />;
+}
+
+/** The opening shot with the credit block over it. */
+function Pane({ pictures }: { pictures: string[] }) {
   const t = useTranslations("story");
   const reduced = useReducedMotion();
   const [small, setSmall] = useState(false);
@@ -102,21 +86,9 @@ function Pane({ variant, pictures }: { variant: Variant; pictures: string[] }) {
     return () => query.removeEventListener("change", read);
   }, []);
 
-  const credit = (
-    <>
-      <p
-        className="story-enter font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint"
-        style={{ animationDelay: "980ms" }}
-      >
-        Make one, or check one
-      </p>
-      <HeroButtons delay={1080} className="mt-4" />
-    </>
-  );
-
   return (
     <div
-      data-hero-pane={variant}
+      data-hero-pane="credit"
       data-motif="seal"
       // The film's own palette, which is dark whether the site's toggle says
       // light or dark. The words are judged on the ground they will have.
@@ -167,20 +139,21 @@ function Pane({ variant, pictures }: { variant: Variant; pictures: string[] }) {
       <div className="story-lower pointer-events-none z-20 px-5 sm:px-8 lg:px-14">
         <div className="mx-auto w-full max-w-[100rem]">
           <Words kicker={t("kicker")} title={t("title")} line={t("line")} />
-          {variant === "row" && <HeroButtons delay={270} className="mt-6" />}
           {/* A phone has no foot to hang a credit block from: the shot ends at
               45 percent of the pane and the words own everything below it. So
               on a phone the same block follows the tagline with a poster's gap
               instead of sitting on the floor of the frame. */}
-          {variant === "credit" && <div className="mt-8 sm:hidden">{credit}</div>}
+          <div className="mt-8 sm:hidden">
+            <Credits />
+          </div>
         </div>
       </div>
 
-      {variant === "credit" && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 hidden px-5 pb-10 sm:block sm:px-8 lg:px-14">
-          <div className="mx-auto w-full max-w-[100rem]">{credit}</div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 hidden px-5 pb-10 sm:block sm:px-8 lg:px-14">
+        <div className="mx-auto w-full max-w-[100rem]">
+          <Credits />
         </div>
-      )}
+      </div>
     </div>
   );
 }

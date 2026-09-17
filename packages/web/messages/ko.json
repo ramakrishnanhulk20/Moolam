@@ -150,6 +150,7 @@
   },
   "home": {
     "hero": {
+      "credit": "만들거나, 확인하거나",
       "generate": "이미지 생성",
       "verify": "사본 검증"
     }

@@ -150,6 +150,7 @@
   },
   "home": {
     "hero": {
+      "credit": "生成一张，或验证一张",
       "generate": "生成图片",
       "verify": "验证副本"
     }

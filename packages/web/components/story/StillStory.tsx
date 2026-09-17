@@ -1,11 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { StoryBeat } from "@/components/story/LandingStory";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
 import { CloseCard } from "@/components/story/CloseCard";
+import { HeroCredits } from "@/components/story/HeroCredits";
 import { TryPanel, type TrySample } from "@/components/story/TryPanel";
 import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
@@ -66,6 +67,9 @@ export function StillStory({
           <p className="mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted">
             {t("line")}
           </p>
+          <div className="mt-10">
+            <Credits />
+          </div>
         </section>
 
         {beats.map((entry) => (
@@ -96,6 +100,24 @@ export function StillStory({
       </div>
     </div>
   );
+}
+
+/**
+ * The same credits the film carries, entered on the first frame this page has.
+ *
+ * There is no title entrance to wait for here, so the block only has to start
+ * from its own first frame: rendering it entered would mean the server markup
+ * and the first client render disagree.
+ */
+function Credits() {
+  const [entered, setEntered] = useState(false);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  return <HeroCredits entered={entered} />;
 }
 
 /**

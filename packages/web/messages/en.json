@@ -148,6 +148,7 @@
   },
   "home": {
     "hero": {
+      "credit": "Make one, or check one",
       "generate": "Generate an image",
       "verify": "Verify a copy"
     }
