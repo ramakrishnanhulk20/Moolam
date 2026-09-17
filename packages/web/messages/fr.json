@@ -146,6 +146,12 @@
     "empty": "L'index n'a encore vu aucun agent signer un passeport.",
     "error": "L'index n'a pas pu être lu : {reason}."
   },
+  "home": {
+    "hero": {
+      "generate": "Générer une image",
+      "verify": "Vérifier une copie"
+    }
+  },
   "story": {
     "kicker": "En direct sur Monad mainnet",
     "title": "Moolam",

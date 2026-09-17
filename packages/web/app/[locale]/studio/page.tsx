@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { StudioScreen } from "@/components/studio/StudioScreen";
+import { initialRegisterState, type Mode } from "@/lib/studio/flow";
 
 export async function generateMetadata({
   params,
@@ -22,12 +23,39 @@ export async function generateMetadata({
  * The screen under it is the browser's, because every step of it needs a wallet,
  * and this is one of the three routes that asks for the wallet at all.
  */
-export default async function StudioPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function StudioPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const asked = searchParams === undefined ? undefined : (await searchParams).mode;
+
   return (
     <WalletProvider>
-      <StudioScreen />
+      <StudioScreen initialMode={modeFrom(asked)} />
     </WalletProvider>
   );
+}
+
+/**
+ * Which panel the studio opens on, taken from the link that brought the
+ * visitor here.
+ *
+ * The URL says "register" where the state calls the same panel "upload": the
+ * word in a link is the one a reader would write, and the state's word is
+ * older than the generate path. Anything else at all, including a second copy
+ * of the parameter, opens the studio where it has always opened.
+ */
+function modeFrom(asked: string | string[] | undefined): Mode {
+  if (asked === "generate") {
+    return "generate";
+  }
+  if (asked === "register") {
+    return "upload";
+  }
+  return initialRegisterState.mode;
 }

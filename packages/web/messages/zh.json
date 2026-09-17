@@ -148,6 +148,12 @@
     "empty": "索引还没有见过任何智能体在护照上签名。",
     "error": "无法读取索引：{reason}。"
   },
+  "home": {
+    "hero": {
+      "generate": "生成图片",
+      "verify": "验证副本"
+    }
+  },
   "story": {
     "kicker": "在 Monad 主网上实时运行",
     "title": "Moolam",

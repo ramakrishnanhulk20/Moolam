@@ -146,6 +146,12 @@
     "empty": "Der Index hat noch keinen Agenten einen Pass unterschreiben sehen.",
     "error": "Der Index konnte nicht gelesen werden: {reason}."
   },
+  "home": {
+    "hero": {
+      "generate": "Bild erzeugen",
+      "verify": "Kopie prüfen"
+    }
+  },
   "story": {
     "kicker": "Live auf Monad Mainnet",
     "title": "Moolam",

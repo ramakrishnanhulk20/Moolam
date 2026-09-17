@@ -148,6 +148,12 @@
     "empty": "여권에 서명한 에이전트를 인덱스가 아직 보지 못했습니다.",
     "error": "인덱스를 읽지 못했습니다: {reason}."
   },
+  "home": {
+    "hero": {
+      "generate": "이미지 생성",
+      "verify": "사본 검증"
+    }
+  },
   "story": {
     "kicker": "Monad 메인넷에서 실시간 가동",
     "title": "Moolam",

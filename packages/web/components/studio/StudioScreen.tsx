@@ -8,7 +8,7 @@ import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { useHeadingLeading } from "./leading";
 import { initialBindState } from "@/lib/studio/binding";
-import { initialRegisterState, isBusy } from "@/lib/studio/flow";
+import { initialRegisterState, isBusy, type Mode } from "@/lib/studio/flow";
 import { BindCard } from "./BindCard";
 import { GeneratePanel } from "./GeneratePanel";
 import { IdentityStrip } from "./IdentityStrip";
@@ -72,14 +72,14 @@ const WAITING: StudioState = {
  * render and answer ready false, so the page paints its waiting state from
  * here instead and mounts the hook once the wallet is really there.
  */
-export function StudioScreen() {
+export function StudioScreen({ initialMode = initialRegisterState.mode }: { initialMode?: Mode }) {
   const mounted = useWalletMounted();
 
   if (!isPrivyConfigured) {
     return <Shell><NotConfigured /></Shell>;
   }
 
-  return mounted ? <Studio /> : <Waiting />;
+  return mounted ? <Studio initialMode={initialMode} /> : <Waiting />;
 }
 
 /** The page before the wallet arrives: the same frame and the same card the hook paints while it is not ready. */
@@ -122,9 +122,9 @@ function StudioWaiting() {
   );
 }
 
-function Studio() {
+function Studio({ initialMode }: { initialMode: Mode }) {
   const t = useTranslations("studio");
-  const studio = useStudio();
+  const studio = useStudio(initialMode);
   const [rebinding, setRebinding] = useState(false);
 
   // The bind card is a detour, not a destination. It opens on a clean card, it

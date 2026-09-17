@@ -115,7 +115,11 @@ interface Submitted {
   tappedAt: number;
 }
 
-export function useStudio(): Studio {
+/**
+ * `initialMode` is the panel the page was linked to, and it only decides the
+ * first render: everything after it belongs to the creator's own clicks.
+ */
+export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
   const { wallets } = useWallets();
   const { sendTransaction } = useSendTransaction();
@@ -127,7 +131,7 @@ export function useStudio(): Studio {
   const passports = useCreatorPassports(authenticated ? wallet : undefined);
 
   const [bind, dispatchBind] = useReducer(bindReducer, initialBindState);
-  const [register, dispatchRegister] = useReducer(registerReducer, initialRegisterState);
+  const [register, dispatchRegister] = useReducer(registerReducer, { ...initialRegisterState, mode: initialMode });
   const [sponsorship, setSponsorship] = useState<Sponsorship>("claimed");
   const [balance, setBalance] = useState<bigint | null>(null);
   const [confirming, setConfirming] = useState(false);

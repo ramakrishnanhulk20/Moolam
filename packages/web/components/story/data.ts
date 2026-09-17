@@ -17,7 +17,13 @@ import degrade from "@/public/hero/degrade.json";
 const METADATA_TIMEOUT_MS = 8_000;
 const INDEX_TIMEOUT_MS = 10_000;
 
-/** How many recent passports the field is textured from. */
+/**
+ * How many recent passports the field is read from.
+ *
+ * The field draws the real pictures among them and nothing else, so a run of
+ * seed writes at the top of the index costs the first screen plates rather than
+ * filling it with test cards.
+ */
 const FIELD_DEPTH = 24;
 
 /** One drifting plate: a real registered image and the record it belongs to. */
@@ -161,9 +167,18 @@ export async function storyData(): Promise<StoryData> {
 
   const pictures = await Promise.all(rows.map((row) => heldPicture(row.metadataURI)));
 
+  // The first screen is the one shot nobody scrolls past, and a card reading
+  // "Moolam seed 4" on it says the registry is a test rig. The sieve is the
+  // title in the pinned metadata, the same one Explore and the build's page
+  // list read, so the field and the grid can never disagree about what a
+  // picture is. Nothing takes a dropped plate's place: a short field is a
+  // shorter field.
   const plates: StoryPlate[] = rows
     .map((row, index) => ({ row, picture: pictures[index] }))
-    .filter((entry): entry is { row: IndexRow; picture: Picture } => entry.picture !== null)
+    .filter(
+      (entry): entry is { row: IndexRow; picture: Picture } =>
+        entry.picture !== null && !isTestCard(entry.picture.title),
+    )
     .map(({ row, picture }) => ({
       id: row.id,
       picture: picture.thumbnail,

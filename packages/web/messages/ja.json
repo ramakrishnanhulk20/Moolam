@@ -148,6 +148,12 @@
     "empty": "パスポートに署名したエージェントを、インデックスはまだ見ていません。",
     "error": "インデックスを読み取れませんでした: {reason}。"
   },
+  "home": {
+    "hero": {
+      "generate": "画像を生成",
+      "verify": "コピーを検証"
+    }
+  },
   "story": {
     "kicker": "Monad メインネットで稼働中",
     "title": "Moolam",

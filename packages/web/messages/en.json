@@ -146,6 +146,12 @@
     "empty": "The index has not seen an agent sign a passport yet.",
     "error": "The index could not be read: {reason}."
   },
+  "home": {
+    "hero": {
+      "generate": "Generate an image",
+      "verify": "Verify a copy"
+    }
+  },
   "story": {
     "kicker": "Live on Monad mainnet",
     "title": "Moolam",

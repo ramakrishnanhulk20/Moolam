@@ -147,6 +147,12 @@
     "empty": "O índice ainda não viu nenhum agente assinar um passaporte.",
     "error": "Não foi possível ler o índice: {reason}."
   },
+  "home": {
+    "hero": {
+      "generate": "Gerar uma imagem",
+      "verify": "Verificar uma cópia"
+    }
+  },
   "story": {
     "kicker": "No ar na Monad mainnet",
     "title": "Moolam",
