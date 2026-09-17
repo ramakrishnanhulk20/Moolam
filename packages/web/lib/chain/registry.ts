@@ -1,5 +1,7 @@
+import { unstable_cache } from "next/cache";
+import { cache } from "react";
 import type { Hex } from "viem";
-import { chain, addresses, policyAbi, registryAbi } from "./client";
+import { CACHE_TAGS, HOLD_SECONDS, chain, addresses, policyAbi, registryAbi } from "./client";
 import type { PassportInput } from "./calldata";
 
 export { getAgent, heldAgent } from "./agents";
@@ -282,4 +284,131 @@ export async function withdrawable(who: Hex): Promise<bigint> {
     functionName: "withdrawable",
     args: [who],
   })) as bigint;
+}
+
+/**
+ * The name under which everything held about one passport is filed.
+ *
+ * A write to a passport drops this one name, so an edit, a challenge or a
+ * settlement costs that record's page and nothing else the app has cached.
+ */
+export function passportTag(id: Hex): string {
+  return `passport:${id.toLowerCase()}`;
+}
+
+/** Everything the registry says about one passport, read together. */
+export interface PassportRecordBundle {
+  passport: Passport | null;
+  attestations: Attestation[];
+  edits: Hex[];
+  owner: Hex | null;
+  dispute: Dispute | null;
+  hasPasskey: boolean;
+}
+
+/** The same bundle with every counter a string, because a bigint does not survive JSON. */
+interface RecordWire {
+  passport: Omit<Passport, "generatorAgentId" | "phash" | "registeredAt"> & {
+    generatorAgentId: string;
+    phash: string;
+    registeredAt: string;
+  };
+  attestations: (Omit<Attestation, "at"> & { at: string })[];
+  edits: Hex[];
+  owner: Hex | null;
+  dispute: (Omit<Dispute, "bond" | "openedAt"> & { bond: string; openedAt: string }) | null;
+  hasPasskey: boolean;
+}
+
+/** Thrown inside the held read for an id the registry has no record of, so the miss is not kept. */
+class PassportMissing extends Error {
+  constructor(id: Hex) {
+    super(`no passport ${id} on the registry`);
+    this.name = "PassportMissing";
+  }
+}
+
+const MISSING: PassportRecordBundle = {
+  passport: null,
+  attestations: [],
+  edits: [],
+  owner: null,
+  dispute: null,
+  hasPasskey: false,
+};
+
+/**
+ * Every chain read behind one passport page, as one answer held for a minute.
+ *
+ * Six round trips make that page and they always travel together, so they are
+ * read in one place and kept under one name. React's cache is the outer layer:
+ * the tab's title and the page itself both ask for this, and one render should
+ * cost one read of the hold rather than two.
+ *
+ * A passport the registry has never seen is not kept. A miss remembered for a
+ * minute would show "no such record" to a creator who registered it seconds
+ * ago, and reading one struct for an id that does not exist is cheap.
+ */
+export const heldPassportRecord = cache(async (id: Hex): Promise<PassportRecordBundle> => {
+  const held = unstable_cache(async () => await readRecordWire(id), ["moolam-passport-record", id.toLowerCase()], {
+    revalidate: HOLD_SECONDS,
+    tags: [CACHE_TAGS.chain, passportTag(id)],
+  });
+
+  try {
+    return fromWire(await held());
+  } catch (error) {
+    if (error instanceof PassportMissing || (error as Error | undefined)?.name === "PassportMissing") {
+      return MISSING;
+    }
+    throw error;
+  }
+});
+
+async function readRecordWire(id: Hex): Promise<RecordWire> {
+  const passport = await getPassport(id);
+  if (passport === null) {
+    throw new PassportMissing(id);
+  }
+
+  const [attestations, edits, owner, dispute, passkey] = await Promise.all([
+    getAttestations(id),
+    getChildren(id),
+    getOwner(id),
+    getDispute(id),
+    getPasskey(passport.creator),
+  ]);
+
+  return {
+    passport: {
+      ...passport,
+      generatorAgentId: passport.generatorAgentId.toString(),
+      phash: passport.phash.toString(),
+      registeredAt: passport.registeredAt.toString(),
+    },
+    attestations: attestations.map((one) => ({ ...one, at: one.at.toString() })),
+    edits,
+    owner,
+    dispute: dispute === null ? null : { ...dispute, bond: dispute.bond.toString(), openedAt: dispute.openedAt.toString() },
+    hasPasskey: passkey !== null,
+  };
+}
+
+function fromWire(wire: RecordWire): PassportRecordBundle {
+  return {
+    passport: {
+      ...wire.passport,
+      generatorAgentId: BigInt(wire.passport.generatorAgentId),
+      phash: BigInt(wire.passport.phash),
+      registeredAt: BigInt(wire.passport.registeredAt),
+    },
+    attestations: wire.attestations.map((one) => ({ ...one, at: BigInt(one.at) })),
+    edits: wire.edits,
+    owner: wire.owner,
+    dispute:
+      wire.dispute === null
+        ? null
+        : { ...wire.dispute, bond: BigInt(wire.dispute.bond), openedAt: BigInt(wire.dispute.openedAt) },
+    hasPasskey: wire.hasPasskey,
+  };
 }

@@ -10,6 +10,7 @@ import {
   chain,
   registryAbi,
 } from "@/lib/chain/client";
+import { passportTag } from "@/lib/chain/registry";
 import { reaches, type DisputedReach } from "./lineage";
 import { activeSource, envioUrl } from "./source";
 
@@ -298,6 +299,33 @@ export interface PassportRegistration {
  * Ids are lowercased because the index stores a bytes32 that way.
  */
 export async function passportRegistration(id: Hex): Promise<PassportRegistration | null> {
+  return toRegistration(await registrationRow(id));
+}
+
+/**
+ * The same read, held for a minute under this passport's own name.
+ *
+ * The passport page is built once and handed to everybody who asks inside that
+ * minute, so this read cannot be the one thing on it that still waits for the
+ * index. A write to the record drops the name and the page is built again.
+ */
+export async function heldRegistration(id: Hex): Promise<PassportRegistration | null> {
+  const held = unstable_cache(
+    async () => await registrationRow(id),
+    ["moolam-passport-registration", id.toLowerCase()],
+    { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index, passportTag(id)] },
+  );
+  return toRegistration(await held());
+}
+
+/** The row with its block still a string, because a bigint cannot be held. */
+type RegistrationRow = { registeredBlock: string; txHash: string };
+
+function toRegistration(row: RegistrationRow | null): PassportRegistration | null {
+  return row === null ? null : { registeredBlock: BigInt(row.registeredBlock), txHash: row.txHash as Hex };
+}
+
+async function registrationRow(id: Hex): Promise<RegistrationRow | null> {
   const query = `query PassportRegistration($id: String!) {
     Passport(where: { id: { _eq: $id } }, limit: 1) {
       registeredBlock
@@ -319,7 +347,7 @@ export async function passportRegistration(id: Hex): Promise<PassportRegistratio
 
   const body = (await response.json()) as {
     errors?: { message: string }[];
-    data?: { Passport: { registeredBlock: string; txHash: string }[] };
+    data?: { Passport: RegistrationRow[] };
   };
 
   if (body.errors !== undefined && body.errors.length > 0) {
@@ -329,8 +357,7 @@ export async function passportRegistration(id: Hex): Promise<PassportRegistratio
     throw new Error("the Envio endpoint returned no data block");
   }
 
-  const row = body.data.Passport[0];
-  return row === undefined ? null : { registeredBlock: BigInt(row.registeredBlock), txHash: row.txHash as Hex };
+  return body.data.Passport[0] ?? null;
 }
 
 /** What the index has counted for one generating agent, in the index's own field names. */

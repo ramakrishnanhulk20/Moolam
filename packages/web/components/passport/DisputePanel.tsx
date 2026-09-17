@@ -16,6 +16,7 @@ import {
   type StepState,
 } from "@/lib/disputes/flag";
 import { useFlagPassport, type FlagPassport } from "@/lib/disputes/useFlagPassport";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 
 /**
@@ -49,7 +50,17 @@ function Challenge({
   disputeOpen: boolean;
 }) {
   const router = useRouter();
-  const flag = useFlagPassport({ passportId, owner, onLanded: () => router.refresh() });
+  // The page around this panel is held for a minute, so what is held about this
+  // passport is dropped before it is asked to read itself again. Otherwise the
+  // challenger would be shown the record exactly as it was before their flag.
+  const flag = useFlagPassport({
+    passportId,
+    owner,
+    onLanded: async () => {
+      await refreshPassport(passportId);
+      router.refresh();
+    },
+  });
 
   if (disputeOpen || !flag.ready || !flag.authenticated || flag.isOwner) {
     return null;

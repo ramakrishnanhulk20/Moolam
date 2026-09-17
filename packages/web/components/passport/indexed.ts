@@ -1,4 +1,7 @@
+import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
+import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { passportTag } from "@/lib/chain/registry";
 import { activeSource, envioUrl } from "@/lib/data/source";
 
 /** One attestation as the index holds it, which is the only place its transaction exists. */
@@ -32,6 +35,40 @@ const QUERY = `query AttestationsOn($passport: String!) {
  * the page still has every fact the chain gave it, minus the link.
  */
 export async function indexedAttestations(passportId: Hex): Promise<IndexedAttestation[]> {
+  return (await attestationRows(passportId)).map(toAttestation);
+}
+
+/**
+ * The same rows, held for a minute under this passport's own name.
+ *
+ * The passport page is built once and handed to everybody who asks inside that
+ * minute, and this query is what stands between the re-check row and its
+ * transaction link. A write to the record drops the name, so a re-check that
+ * lands is one refresh away rather than a minute.
+ */
+export async function heldIndexedAttestations(passportId: Hex): Promise<IndexedAttestation[]> {
+  const held = unstable_cache(
+    async () => await attestationRows(passportId),
+    ["moolam-passport-attestations", passportId.toLowerCase()],
+    { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index, passportTag(passportId)] },
+  );
+  return (await held()).map(toAttestation);
+}
+
+/** One row with its timestamp still a string, because a bigint cannot be held. */
+interface AttestationRow {
+  txHash: Hex;
+  receiver: string;
+  matched: boolean;
+  distance: number;
+  at: string;
+}
+
+function toAttestation(row: AttestationRow): IndexedAttestation {
+  return { ...row, at: BigInt(row.at) };
+}
+
+async function attestationRows(passportId: Hex): Promise<AttestationRow[]> {
   if (activeSource() !== "envio") {
     return [];
   }
@@ -56,7 +93,7 @@ export async function indexedAttestations(passportId: Hex): Promise<IndexedAttes
     return (body.data?.Attestation ?? []).flatMap((row) => {
       const hash = row.id.split("-")[0];
       return hash.startsWith("0x")
-        ? [{ txHash: hash as Hex, receiver: row.receiver, matched: row.matched, distance: row.distance, at: BigInt(row.at) }]
+        ? [{ txHash: hash as Hex, receiver: row.receiver, matched: row.matched, distance: row.distance, at: row.at }]
         : [];
     });
   } catch {

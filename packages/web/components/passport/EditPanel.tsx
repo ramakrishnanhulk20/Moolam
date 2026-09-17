@@ -18,6 +18,7 @@ import {
   type EditStep,
   type StepState,
 } from "@/lib/passport/edit";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { useEditPassport, type PassportEdit } from "@/lib/passport/useEditPassport";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "./Mono";
@@ -40,8 +41,17 @@ export function EditPanel(props: { parentId: Hex; owner: Hex | null }) {
 function Editor({ parentId, owner }: { parentId: Hex; owner: Hex | null }) {
   const router = useRouter();
   // The tree above this panel is rendered on the server from the chain, so once the child is on
-  // chain the page is asked to read itself again rather than being patched in the browser.
-  const edit = useEditPassport({ parentId, owner, onLanded: () => router.refresh() });
+  // chain the page is asked to read itself again rather than being patched in the browser. The
+  // page is held for a minute, so what is held about this passport goes first: without that the
+  // re-read would hand the creator back the same tree, with no sign of the edit they just made.
+  const edit = useEditPassport({
+    parentId,
+    owner,
+    onLanded: async () => {
+      await refreshPassport(parentId);
+      router.refresh();
+    },
+  });
 
   if (!edit.ready || !edit.isOwner) {
     return null;

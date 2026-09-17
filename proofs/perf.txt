@@ -325,6 +325,44 @@ page the same helpers means editing those files, which this pass was told not to
 touch, so the page was put back the way it was and the finding written down
 here.
 
+THE PASSPORT PAGE IS HELD NOW
+--------------------------------------------------------------------------
+Measured 2026-09-17, same machine, production build served by `next start` on
+port 3349. Before: 8.8 seconds cold on the live site on 2026-09-16 morning, and
+1.40 seconds cold on a freshly started local server that evening, 0.46 warm.
+
+What the failed attempt above was missing is the cache wrapper. The six chain
+reads behind the page are now one held read, heldPassportRecord in
+lib/chain/registry.ts, and the two index reads it makes are held per passport
+as well, so no read escapes a wrapper and Next keeps the page. The no-store
+option on the inner fetches stays: inside unstable_cache it does not opt the
+route out. The build now renders the real pictures in every locale, so the
+first visitor after a deploy is handed a finished page:
+
+  /en/passport/0xcdb25d37...  200 in 0.0218 s   x-nextjs-cache: STALE
+  /en/passport/0xcdb25d37...  200 in 0.0031 s   x-nextjs-cache: HIT
+  /ta/passport/0xcdb25d37...  200 in 0.0078 s   STALE, then 0.0030 s HIT
+
+The STALE on the first request is the build's own page, handed over while the
+minute-old reads are refreshed behind it. The server log carries no "Page
+changed from static to dynamic" line for either locale.
+
+A passport outside the build's list still renders on demand and is then held
+the same way, which is the honest cold number for this page today:
+
+  /en/passport/0x0e940dfa...  200 in 1.2087 s   x-nextjs-cache: MISS
+  /en/passport/0x0e940dfa...  200 in 0.0030 s   x-nextjs-cache: HIT
+
+Eighty passport pages were built, eight real pictures across ten locales, and
+twenty agent pages. The lists are read from the index at build time with a ten
+second cap: an index that will not answer costs one cold first visit, never the
+build.
+
+An edit, a challenge or a settlement calls refreshPassport in
+lib/passport/refresh.ts before it asks the page to read itself again, which
+drops that one passport's name with no stale window, so the person who made the
+change never gets the minute-old page.
+
 THE TWO STUDIO LINKS THAT STILL PREFETCHED THE WALLET
 --------------------------------------------------------------------------
 Measured 2026-09-16 evening, same machine, same scripts, production build served

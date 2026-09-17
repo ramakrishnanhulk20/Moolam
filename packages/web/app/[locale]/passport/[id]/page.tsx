@@ -8,29 +8,36 @@ import { DisputeNote } from "@/components/passport/DisputeNote";
 import { DisputePanel } from "@/components/passport/DisputePanel";
 import { EditPanel } from "@/components/passport/EditPanel";
 import { Facts } from "@/components/passport/Facts";
-import { indexedAttestations } from "@/components/passport/indexed";
+import { heldIndexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { reason } from "@/lib/chain/client";
-import {
-  DisputeStatus,
-  ZERO_ID,
-  getAttestations,
-  getChildren,
-  getDispute,
-  getOwner,
-  getPasskey,
-  getPassport,
-} from "@/lib/chain/registry";
-import type { Attestation, Dispute, Passport } from "@/lib/chain/registry";
+import { DisputeStatus, ZERO_ID, heldPassportRecord } from "@/lib/chain/registry";
+import type { PassportRecordBundle } from "@/lib/chain/registry";
 import { activeSource } from "@/lib/data/source";
 import { inheritedDisputed } from "@/lib/data/lineage";
-import { passportRegistration } from "@/lib/data/passports";
+import { heldRegistration } from "@/lib/data/passports";
+import { realPictureIds } from "@/lib/data/prerender";
 import { passportShareMetadata } from "./opengraph-image";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
+
+// A minute is the window every read on this page is already held for, and a
+// write to the record drops the page on the spot, so nobody waits out the
+// minute for their own edit, challenge or settlement.
+export const revalidate = 60;
+
+/**
+ * The real pictures are built when the site is, so the first person to open one
+ * after a deploy is handed a page rather than a cold chain, a cold index and a
+ * cold gateway. Best effort on purpose: a list that cannot be read costs that
+ * one first visit and never the build. Any other id still renders on demand.
+ */
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  return (await realPictureIds()).map((id) => ({ id }));
+}
 
 /**
  * The head for one record, so a passport link pasted into a chat shows the
@@ -51,7 +58,9 @@ export async function generateMetadata({
   let art: Art | null = null;
   if (ID_PATTERN.test(id)) {
     try {
-      const passport = await getPassport(id as Hex);
+      // The same held read the page itself makes, so a render costs one trip to
+      // the registry however many times it is asked for the record.
+      const { passport } = await heldPassportRecord(id as Hex);
       art = passport === null ? null : await readArt(passport.metadataURI);
     } catch {
       // The head is worth no failed page. The short id stands in.
@@ -70,10 +79,11 @@ export async function generateMetadata({
 /**
  * One registered image, and everything the chain and the index know about it.
  *
- * Every read here is live: the record, its re-checks, its edits, the dispute if
- * there is one, and whether the creator's wallet has a passkey bound. The
- * picture and the words come from the metadata that was pinned when it was
- * registered.
+ * The record, its re-checks, its edits, the dispute if there is one and whether
+ * the creator's wallet has a passkey bound are one held read of the registry.
+ * The picture and the words come from the metadata that was pinned when it was
+ * registered. The two panels at the foot of the page read live in the browser,
+ * because what they show depends on who is looking.
  */
 export default async function PassportPage({
   params,
@@ -88,34 +98,14 @@ export default async function PassportPage({
     return <Notice text={t("notFound")} />;
   }
 
-  let passport: Passport | null;
-  let attestations: Attestation[] = [];
-  let edits: Hex[] = [];
-  let owner: Hex | null = null;
-  let dispute: Dispute | null = null;
-  let hasPasskey = false;
-
+  let record: PassportRecordBundle;
   try {
-    passport = await getPassport(id as Hex);
-    if (passport !== null) {
-      const creator = passport.creator;
-      const [foundAttestations, foundEdits, foundOwner, foundDispute, passkey] = await Promise.all([
-        getAttestations(id as Hex),
-        getChildren(id as Hex),
-        getOwner(id as Hex),
-        getDispute(id as Hex),
-        getPasskey(creator),
-      ]);
-      attestations = foundAttestations;
-      edits = foundEdits;
-      owner = foundOwner;
-      dispute = foundDispute;
-      hasPasskey = passkey !== null;
-    }
+    record = await heldPassportRecord(id as Hex);
   } catch (error) {
     return <Notice text={t("error", { reason: reason(error) })} tone="failed" />;
   }
 
+  const { passport, attestations, edits, owner, dispute, hasPasskey } = record;
   if (passport === null) {
     return <Notice text={t("notFound")} />;
   }
@@ -125,7 +115,7 @@ export default async function PassportPage({
   // render.
   const [art, indexed, registration, ancestorDisputed] = await Promise.all([
     readArt(passport.metadataURI),
-    indexedAttestations(passport.id),
+    heldIndexedAttestations(passport.id),
     registrationOf(passport.id),
     ancestorsDisputed(passport.parentId),
   ]);
@@ -215,7 +205,7 @@ async function registrationOf(id: Hex): Promise<Hex | null> {
     return null;
   }
   try {
-    return (await passportRegistration(id))?.txHash ?? null;
+    return (await heldRegistration(id))?.txHash ?? null;
   } catch {
     return null;
   }

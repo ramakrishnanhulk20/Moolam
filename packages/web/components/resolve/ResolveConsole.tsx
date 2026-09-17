@@ -2,11 +2,13 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
 import { formatEther, type Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import type { OpenDispute } from "@/lib/disputes/queue";
 import { useResolveDisputes, type ResolveDisputes } from "@/lib/disputes/useResolveDisputes";
+import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
 
@@ -54,9 +56,29 @@ export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes
 
 function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
   const router = useRouter();
+  // Which passport the settle that is out belongs to. The hook reports the busy
+  // one and sets it before the wallet is even asked, so by the time a settle
+  // lands this is the record whose page has to be dropped.
+  const settling = useRef<Hex | null>(null);
   // The queue above is rendered on the server from the index and the chain, so a
-  // settled dispute asks the page to read itself again rather than being patched here.
-  const desk = useResolveDisputes({ resolver, onSettled: () => router.refresh() });
+  // settled dispute asks the page to read itself again rather than being patched
+  // here. That passport's own page is held for a minute, and it is what the
+  // resolver looks at next, so it is dropped before the re-read.
+  const desk = useResolveDisputes({
+    resolver,
+    onSettled: async () => {
+      await refreshPassport(settling.current ?? "");
+      router.refresh();
+    },
+  });
+
+  // The hook reports the busy passport for as long as the write is out, which
+  // is from before the wallet is asked until after it lands.
+  useEffect(() => {
+    if (desk.busy !== null) {
+      settling.current = desk.busy;
+    }
+  }, [desk.busy]);
 
   return <Desk desk={desk} resolver={resolver} disputes={disputes} />;
 }

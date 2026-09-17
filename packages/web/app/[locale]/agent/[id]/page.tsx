@@ -13,6 +13,7 @@ import { AgentNotFound } from "@/lib/chain/agents";
 import { reason } from "@/lib/chain/client";
 import { heldAgent, heldReputation } from "@/lib/chain/registry";
 import { heldGeneratorRecord, type GeneratorRecord } from "@/lib/data/passports";
+import { knownAgentIds } from "@/lib/data/prerender";
 
 // Four chain reads, two index queries and a dozen gateway fetches make this
 // page, and they answer the same for everybody. So it is built once and rebuilt
@@ -20,13 +21,14 @@ import { heldGeneratorRecord, type GeneratorRecord } from "@/lib/data/passports"
 export const revalidate = 300;
 
 /**
- * No agent is built ahead of time, because which ids exist is a question only
- * the registry can answer and it answers differently tomorrow. The empty list
- * is what registers this route as one that may be kept: the first visitor to an
- * agent renders it, everybody after that inside the minute is handed that page.
+ * Every agent the index has seen sign a picture is built when the site is, so
+ * the first person to open one after a deploy is handed a page rather than four
+ * chain reads, two index queries and a dozen gateway fetches. Best effort on
+ * purpose: a list that cannot be read costs that one first visit and never the
+ * build. An agent minted after the deploy still renders on demand.
  */
-export function generateStaticParams(): { id: string }[] {
-  return [];
+export async function generateStaticParams(): Promise<{ id: string }[]> {
+  return (await knownAgentIds()).map((id) => ({ id }));
 }
 
 /**
