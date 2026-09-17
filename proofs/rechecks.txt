@@ -14,3 +14,17 @@ passport id | report tx | status | gas used | attestations (matched, distance, a
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 1 1 1 1 1 1 1 
 owner transactions (clear pin, set forwarder, restore forwarder, re-pin) are recorded in packages/contracts/broadcast/ConfigureReceiver.s.sol/143/run-latest.json and the cast sends of the same minutes.
+
+Chainlink CRE re-checks on the five real pictures registered on 2026-09-17, Monad mainnet (chain 143), written 2026-09-17
+Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-2.sh, one machine, no network consensus (the passport card says so under each verdict).
+recomputed fingerprints and distances from the run: 0x63779c989c7f3121 (0), 0x2c256435d4d993c9 (2), 0x6c6d1494a7685a32 (1), 0x6d7a5e9681a17e78 (0), 0xc9761e8d26852736 (0), all matched
+
+passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
+0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e | 0x085d8500ab86dc1f9028d8375b92e5b4b569d83d5f3c96c32e38679e5b6a3602 | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 0, 0x00000000000000000000000000000000000000000000000063779c989c7f3121, 1789629232 [1.789e9])]
+0x07a0bfbac45278c6d9a2d488470833b3ed8e0791f5f071e190e5224c3b34951d | 0x2d84f565b0c022acf8ceaeeedb5c6960eaad74e00bd8da264babe245d1d4100a | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 2, 0x0000000000000000000000000000000000000000000000002c256435d4d993c9, 1789629250 [1.789e9])]
+0x35fcd08ac2b19168dac0dac781a778d72aa9b3ea91b2c3e55c16582ad14a3771 | 0xd26502879709bfb755d4df40f3d79c8aa95b7624b0a67a8b4f0391b14533bc82 | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 1, 0x0000000000000000000000000000000000000000000000006c6d1494a7685a32, 1789629264 [1.789e9])]
+0x0a3c8368198f7c52597338543141797b0ab395ff53a3590499099238f85f15ae | 0xa672fd26b6257420b58dcba9bba498655a351c1aae1774990ceaaea87bb0c3e8 | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 0, 0x0000000000000000000000000000000000000000000000006d7a5e9681a17e78, 1789629278 [1.789e9])]
+0xf08bea9e1429bee09065a3cd443f353096acf748c73113ac8696313da9a059d7 | 0x6470a09726207e32e15282366238b1b4f241ff1312c319d18079702b0ca2683c | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 0, 0x000000000000000000000000000000000000000000000000c9761e8d26852736, 1789629293 [1.789e9])]
+
+receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
+attestation counts: 0 0 0 0 0
