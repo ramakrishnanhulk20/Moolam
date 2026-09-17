@@ -202,21 +202,6 @@ function Row({
   );
 }
 
-/**
- * The pHash a re-check wrote, in the sixteen characters it actually has.
- *
- * The registry keeps it in a bytes32 field, so what comes back carries forty
- * eight leading zeros that are the slot's padding and not part of the
- * fingerprint. Anything in those upper bytes is not a padded pHash at all, so
- * that value is shown whole rather than cut.
- *
- * Exported for the test.
- */
-export function phashOf(recomputed: string): string {
-  const body = recomputed.replace(/^0x/, "");
-  return body.length === 64 && /^0{48}/.test(body) ? `0x${body.slice(48)}` : recomputed;
-}
-
 function Field({ label, value, href }: { label: string; value: string; href?: string }) {
   return (
     <div className="min-w-0">
