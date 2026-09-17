@@ -22,8 +22,28 @@ vi.mock("@/lib/i18n/routing", () => ({
   useRouter: () => ({ refresh: () => undefined }),
 }));
 
+// Each panel reaches its own file through next/dynamic, which hands the component back
+// only once that chunk has been fetched, and a server render never waits for it. Every
+// boundary is collected here and awaited once, so the cases below render the panel and
+// not its empty loading state.
+const chunks = vi.hoisted(() => ({ pending: [] as Promise<unknown>[] }));
+
+vi.mock("next/dynamic", () => ({
+  default: (load: () => Promise<FunctionComponent<never>>) => {
+    let Panel: FunctionComponent<never> | null = null;
+    chunks.pending.push(
+      load().then((component) => {
+        Panel = component;
+      }),
+    );
+    return (props: never) => (Panel === null ? null : createElement(Panel, props));
+  },
+}));
+
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
 const { EditPanel } = await import("@/components/passport/EditPanel");
+
+await Promise.all(chunks.pending);
 
 const PARENT = `0x${"3f".repeat(32)}` as const;
 const CHILD = `0x${"ab".repeat(32)}` as const;

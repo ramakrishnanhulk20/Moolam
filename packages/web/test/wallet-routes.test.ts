@@ -24,6 +24,12 @@ const READING = [
 const IMPORT = /(?:from\s*|import\s*\(\s*)["']([^"']+)["']/g;
 
 /**
+ * The same, minus every `import(` expression: what a route pulls in before it
+ * renders anything, as against what it may fetch later on its own.
+ */
+const STATIC_ONLY = /from\s*["']([^"']+)["']/g;
+
+/**
  * The file a specifier points at, or null when it leaves this app: a package,
  * a stylesheet, a data file.
  */
@@ -46,7 +52,7 @@ function fileFor(specifier: string, from: string): string | null {
  * page. Server only modules above that line cost the reader nothing, which is
  * why viem is not a finding on a page that reads the chain while it renders.
  */
-function browserPackages(entry: string): Set<string> {
+function browserPackages(entry: string, imports: RegExp = IMPORT): Set<string> {
   const packages = new Set<string>();
   const seen = new Set<string>();
 
@@ -60,7 +66,7 @@ function browserPackages(entry: string): Set<string> {
     const source = readFileSync(file, "utf8");
     const shipped = client || /^\s*(?:\/\/[^\n]*\n|\/\*[\s\S]*?\*\/\s*)*["']use client["']/.test(source);
 
-    for (const match of source.matchAll(IMPORT)) {
+    for (const match of source.matchAll(imports)) {
       const specifier = match[1];
       const next = fileFor(specifier, file);
       if (next === null) {
@@ -96,5 +102,22 @@ describe("which routes carry the wallet", () => {
 
   it("finds the wallet when it is there, so the walk itself is not the pass", () => {
     expect(browserPackages("@/components/providers/PrivyProvider.tsx")).toContain("@privy-io/react-auth");
+  });
+});
+
+describe("what a passport page carries before its reader signs in", () => {
+  const PASSPORT = "@/app/[locale]/passport/[id]/page.tsx";
+
+  it("reaches no wallet package without following a dynamic import", () => {
+    const packages = browserPackages(PASSPORT, STATIC_ONLY);
+    expect([...packages].filter((name) => WALLET.includes(name))).toEqual([]);
+  });
+
+  it("keeps the wallet behind the two panels, one dynamic import away", () => {
+    expect(browserPackages(PASSPORT)).toContain("@privy-io/react-auth");
+  });
+
+  it.each(SIGNING)("%s reaches the wallet statically, so the static walk is not the pass", (entry) => {
+    expect(browserPackages(entry, STATIC_ONLY)).toContain("@privy-io/react-auth");
   });
 });

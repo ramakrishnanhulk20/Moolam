@@ -9,6 +9,11 @@ import type { FlagPassport } from "@/lib/disputes/useFlagPassport";
 import type { ResolveDisputes } from "@/lib/disputes/useResolveDisputes";
 import type { PassportEdit } from "@/lib/passport/useEditPassport";
 
+// The two panels fetch their live halves through next/dynamic, and in jsdom that
+// chunk resolves after act has returned, which would leave the hook's callback
+// never handed over. Loading both once here puts them in the module cache first.
+await Promise.all([import("@/components/passport/Editor"), import("@/components/passport/Challenge")]);
+
 /** What each write did, in the order it happened. */
 const order = vi.hoisted(() => ({ steps: [] as string[], dropped: [] as string[] }));
 

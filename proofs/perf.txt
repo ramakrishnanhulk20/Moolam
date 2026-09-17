@@ -377,3 +377,20 @@ load on the tap. Scripts over the wire, this app's own build:
   /en/studio  46 scripts 1288 kB  ->  46 scripts 1288 kB   (it needs the wallet)
 
 Before any of today's work the home page carried 45 scripts and 1561 kB.
+
+THE HELD PAGES ON THE LIVE SITE
+--------------------------------------------------------------------------
+Measured 2026-09-17 from Chennai with curl, 92 seconds after Vercel finished
+building commit de0e25f, two requests per page, the first one being the first
+anyone made to that page on the new build.
+
+  /en/passport/0xcdb2...   first  PRERENDER  1.00 s     second  HIT  0.47 s
+  /en/agent/10248          first  PRERENDER  0.98 s     second  HIT  0.47 s
+  /ta/passport/0xcdb2...   first  PRERENDER  1.10 s     second  HIT  0.25 s
+
+The same first visit after a deploy cost 4.1 s on /en/agent/10248 in this
+morning's check and 8.8 s cold on a passport page on 2026-09-16, because each
+page was rendered on demand from a cold chain, index and gateway. Now the real
+pictures and the known agents are built with the site, and the first visitor
+is handed the built page. The half second that remains is the trip from
+Chennai to the region that holds the page, not rendering.
