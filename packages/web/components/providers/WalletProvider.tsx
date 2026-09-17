@@ -20,6 +20,21 @@ export function useWalletMounted(): boolean {
 }
 
 /**
+ * The mark SessionMark writes on a device that has signed in to Moolam, and
+ * the only thing a "returning" page looks at before it fetches the SDK.
+ */
+export const RETURNING_KEY = "moolam:wallet:returning";
+
+/** Whether this browser has signed in here before. A browser that refuses storage counts as new. */
+function signedInBefore(): boolean {
+  try {
+    return window.localStorage.getItem(RETURNING_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The wallet, mounted on the three routes that sign and nowhere else.
  *
  * Privy brings wagmi, viem and the noble libraries with it, about half a
@@ -33,34 +48,47 @@ export function useWalletMounted(): boolean {
  * warning on every render and answer ready false. So the screens under this
  * provider read useWalletMounted and paint their waiting state until it is
  * true, and only then call a hook. Without an app id nothing is fetched at all.
+ *
+ * load says who gets the SDK. "always" is the studio and the resolve console,
+ * where signing in is the point of the page. "returning" is a passport, where
+ * the two writing panels show nothing to a signed out visitor: a reader who has
+ * never signed in on this device pays nothing for panels they cannot see, and a
+ * creator who has gets them as before. The check runs inside the effect, never
+ * during render, so the server and the first client paint stay identical on
+ * every device.
  */
-export function WalletProvider({ children }: { children: ReactNode }) {
-  const [privy, setPrivy] = useState<{ Provider: Wrapper } | null>(null);
+export function WalletProvider({ children, load = "always" }: { children: ReactNode; load?: "always" | "returning" }) {
+  const [privy, setPrivy] = useState<{ Provider: Wrapper; Mark: ComponentType } | null>(null);
 
   useEffect(() => {
-    if (!isPrivyConfigured) {
+    if (!isPrivyConfigured || (load === "returning" && !signedInBefore())) {
       return;
     }
 
     let live = true;
-    void import("./PrivyProvider").then((loaded) => {
+    // Both halves come down the same dynamic path. SessionMark imports the SDK
+    // directly, so naming it anywhere a bundler reads statically would put the
+    // wallet back into the page's own scripts.
+    void Promise.all([import("./PrivyProvider"), import("./SessionMark")]).then(([provider, mark]) => {
       if (live) {
-        setPrivy({ Provider: loaded.PrivyProvider });
+        setPrivy({ Provider: provider.PrivyProvider, Mark: mark.SessionMark });
       }
     });
 
     return () => {
       live = false;
     };
-  }, []);
+  }, [load]);
 
   if (privy === null) {
     return children;
   }
 
   const Provider = privy.Provider;
+  const Mark = privy.Mark;
   return (
     <Provider>
+      <Mark />
       <WalletMounted.Provider value={true}>{children}</WalletMounted.Provider>
     </Provider>
   );

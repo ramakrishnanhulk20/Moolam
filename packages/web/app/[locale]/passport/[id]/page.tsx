@@ -153,7 +153,7 @@ export default async function PassportPage({
           visitor who signs in to challenge a picture is the same visitor the
           edit panel asks about. The rest of this block is server rendered and
           passes straight through. */}
-      <WalletProvider>
+      <WalletProvider load="returning">
         <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
           {dispute === null ? null : (
             <div className="mb-16 rise">
