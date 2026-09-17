@@ -169,7 +169,7 @@ addresses.
 Two generator agents live on the ERC-8004 Identity Registry. Agent **10248**, owned by the deployer
 `0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c`, signed the first seed passports; agent **10249**, owned by the
 app's Privy server wallet, is the one that draws in the studio, signs the generator half of every agent-made
-passport and now leads the Agents page. Every real passport carries a CRE re-check as of 2026-09-14
+passport and now leads the Agents page. Every real picture on the registry, fourteen as of 2026-09-17, carries a CRE re-check
 ([proofs/rechecks.txt](proofs/rechecks.txt)). Every one of those re-checks was written through the CRE
 simulation forwarder with `cre workflow simulate --broadcast`: a real transaction paying real gas, with the
 workflow running on one machine, so there is no network consensus behind it. Deploying the workflow to the

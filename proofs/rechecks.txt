@@ -28,3 +28,15 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 0 0 0 0
+
+Chainlink CRE re-checks on the two pictures Ram registered through the studio (2026-09-14 and 2026-09-17), written 2026-09-17
+Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-3.sh; a studio registration carries its PassportRegistered log at position 1 of the transaction, so the trigger was pointed at event index 1.
+recomputed fingerprints and distances from the run: 0x3f8480cfc0307fc2 (1), 0x7f7969fdcf0f0030 (0), both matched
+
+passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
+0x3dae5ee9d854d6af49857150873cefbe2df2a585e35ea86d34f0f47cb3b6403d | 0x8d7c804c539bdd212b89acbd06aeb3452b28ecfc790b0c925becff3a0117d002 | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 1, 0x0000000000000000000000000000000000000000000000003f8480cfc0307fc2, 1789629556 [1.789e9])]
+0x08bb4466e1efeabf366d28c5f20652e8749f7ea511442fa206074e8be8ec596b | 0x51ead7c9cb4c5972c861c458d1f1a9eaa94f53984fdbe30a8c00fb613bb64469 | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 0, 0x0000000000000000000000000000000000000000000000007f7969fdcf0f0030, 1789629571 [1.789e9])]
+
+receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
+attestation counts: 0 0
+With these, every one of the fourteen real pictures on the registry carries a re-check; the seed test cards carry none by design.

@@ -130,7 +130,7 @@ diff the result. The twelve attack transcripts are the exception: they stay unde
 | File | What it holds | Command |
 | --- | --- | --- |
 | [prove-it.txt](../../proofs/prove-it.txt) | This run, all six sections, rewritten each time | `npm run prove` |
-| [rechecks.txt](../../proofs/rechecks.txt) | The Chainlink re-check on each of the seven real passports, read back from the registry, with the receiver restored and read back | read only, written on 2026-09-14 |
+| [rechecks.txt](../../proofs/rechecks.txt) | The Chainlink re-check on each of the fourteen real pictures, read back from the registry, with the receiver restored and read back | read only, written on 2026-09-14 |
 | [attacks/pass-2.txt](../../proofs/attacks/pass-2.txt) | Eight attacks on the paths hardened after the review, run against a fork of Monad mainnet and the browser libraries | `npm run attack:pass2` in packages/agents |
 | [perf.txt](../../proofs/perf.txt) | Lighthouse on every judge-facing page, what the JavaScript is made of, and the film measured frame by frame | `node packages/web/scripts/perf/lighthouse.mjs` |
 | [privy.txt](../../proofs/privy.txt) | The Privy wallet features, live on Monad mainnet | `npm run prove:privy` |

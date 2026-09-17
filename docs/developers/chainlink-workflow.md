@@ -140,7 +140,7 @@ true and distance 0.
 
 ## What is on chain today
 
-The seven re-checks on the seven real passports were all written this way: `cre workflow simulate
+The fourteen re-checks on the fourteen real pictures (seven on 2026-09-14, seven more on 2026-09-17) were all written this way: `cre workflow simulate
 --broadcast`, the receiver pointed at the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`
 for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
 by the four steps above. They are real transactions with real gas, and they prove the workflow code and
