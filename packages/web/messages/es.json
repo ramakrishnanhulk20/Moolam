@@ -4,7 +4,7 @@
     "creator": "creador",
     "generatorAgent": "agente generador",
     "verify": "verificar",
-    "attestation": "comprobación independiente",
+    "attestation": "recomprobación escrita en cadena por alguien que no es el creador",
     "editChain": "cadena de ediciones",
     "dispute": "disputa",
     "passkey": "clave de acceso",
@@ -114,7 +114,7 @@
     "marks": {
       "manifest": "Manifest C2PA fijado con la imagen",
       "rechecked": "Comprobada en la cadena",
-      "chainlink": "Comprobada por Chainlink",
+      "chainlink": "Recomprobada por un flujo de Chainlink",
       "disputed": "En disputa"
     },
     "untitled": "Sin título",
@@ -189,8 +189,8 @@
       "similarity": "similitud {value}: {result}",
       "matched": "coincidió",
       "notMatched": "no coincidió",
-      "attestation": "Chainlink la volvió a comprobar y escribió la respuesta en cadena: {result}, a {distance} bits de distancia.",
-      "noAttestation": "Todavía no se ha escrito ninguna comprobación independiente para este pasaporte.",
+      "attestation": "Un flujo CRE de Chainlink la volvió a comprobar y escribió la respuesta en cadena: {result}, a {distance} bits de distancia.",
+      "noAttestation": "Todavía no se ha escrito ninguna comprobación para este pasaporte.",
       "provenance": "Cifras de la escalera medidas por el verificador de Moolam sobre otra imagen registrada, pasaporte {passport}, {date}.",
       "provenanceSelf": "Cifras medidas por el verificador de Moolam sobre este mismo pasaporte, {date}."
     },
@@ -226,7 +226,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "Regístrala una vez. Reconocida en todas partes.",
-      "body": "Un pasaporte para cada imagen generada, escrito en Monad en el momento en que se crea, revisado por Chainlink y localizable desde cualquier copia que sobreviva a internet.",
+      "body": "Un pasaporte para cada imagen generada, escrito en Monad en el momento en que se crea, revisado por un flujo de Chainlink y localizable desde cualquier copia que sobreviva a internet.",
       "register": "Registrar una imagen",
       "verify": "Verificar una imagen",
       "passports": "Pasaportes",
@@ -333,17 +333,21 @@
       "receiver": "Escrita por",
       "at": "El",
       "kicker": "La segunda opinión",
-      "body": "Cualquiera puede decir que una imagen es suya. Esta parte es distinta: un verificador independiente descargó la imagen, la volvió a hashear y escribió la respuesta en Monad.",
+      "body": "Cualquiera puede decir que una imagen es suya. Esta parte es distinta: un flujo CRE de Chainlink descargó la imagen, la volvió a hashear y escribió la respuesta en Monad.",
       "distanceLabel": "Como lo escribió el receptor",
-      "byChainlink": "Verificada de forma independiente por Chainlink",
+      "byChainlink": "Recomprobada por un flujo CRE de Chainlink",
+      "delivery": {
+        "simulation": "Entregada por el forwarder de simulación de CRE: un solo nodo ejecutó el flujo, sin consenso de red. La ejecución en la red real espera el acceso de despliegue de Chainlink.",
+        "network": "Entregada por el forwarder de la red de Chainlink: un quórum de nodos llegó a un consenso sobre esta respuesta."
+      },
       "byReceiver": "Escrita por un receptor autorizado",
       "openTx": "Transacción {hash}",
       "noTransaction": "El índice no trae la transacción de esta.",
       "registeredGrid": "Huella registrada",
-      "recomputedGrid": "Recalculada por la red",
-      "verdict": "Una red independiente volvió a descargar esta imagen y recalculó su huella: <apart>{bits} de 64 bits de diferencia</apart>.",
-      "gridNote": "La primera cuadrícula es la huella que el registro guardó cuando se registró la imagen. La segunda es la que la red calculó a partir del archivo que descargó ella misma. Cada celda que no coincide queda marcada.",
-      "whatIsRecheck": "Una recomprobación es una red independiente que descarga este archivo por su cuenta, vuelve a calcular la huella y escribe esa respuesta en Monad. Nadie puede escribir una sobre su propia imagen."
+      "recomputedGrid": "Recalculada por el flujo",
+      "verdict": "Un flujo CRE de Chainlink volvió a descargar esta imagen y recalculó su huella: <apart>{bits} de 64 bits de diferencia</apart>.",
+      "gridNote": "La primera cuadrícula es la huella que el registro guardó cuando se registró la imagen. La segunda es la que el flujo calculó a partir del archivo que descargó él mismo. Cada celda que no coincide queda marcada.",
+      "whatIsRecheck": "Una recomprobación es un flujo CRE de Chainlink que descarga este archivo por su cuenta, vuelve a calcular la huella y escribe esa respuesta en Monad a través del contrato receptor. Nadie puede escribir una sobre su propia imagen."
     },
     "children": {
       "heading": "Ediciones",
@@ -461,7 +465,7 @@
     "passportId": "Id del pasaporte",
     "tokenId": "El id del pasaporte es también su id de token ERC-721",
     "standing": {
-      "verified": "Comprobada por un verificador independiente",
+      "verified": "Comprobada por un verificador en cadena",
       "mismatched": "Una revisión no coincidió",
       "disputed": "En disputa",
       "unverified": "Todavía sin revisar"

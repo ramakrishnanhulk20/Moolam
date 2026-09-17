@@ -5,7 +5,7 @@
     "creator": "criador",
     "generatorAgent": "agente gerador",
     "verify": "verificar",
-    "attestation": "verificação independente gravada na rede",
+    "attestation": "reconferência gravada na rede por alguém que não é o criador",
     "editChain": "cadeia de edições",
     "dispute": "contestação",
     "passkey": "chave de acesso",
@@ -115,7 +115,7 @@
     "marks": {
       "manifest": "Manifest C2PA fixado junto com a imagem",
       "rechecked": "Verificada na rede",
-      "chainlink": "Verificada pela Chainlink",
+      "chainlink": "Reconferida por um fluxo da Chainlink",
       "disputed": "Contestada"
     },
     "untitled": "Sem título",
@@ -190,8 +190,8 @@
       "similarity": "semelhança {value}: {result}",
       "matched": "bateu",
       "notMatched": "não bateu",
-      "attestation": "A Chainlink conferiu de novo e gravou a resposta na rede: {result}, a {distance} bits de distância.",
-      "noAttestation": "Nenhuma conferência independente foi gravada para este passaporte ainda.",
+      "attestation": "Um fluxo CRE da Chainlink conferiu de novo e gravou a resposta na rede: {result}, a {distance} bits de distância.",
+      "noAttestation": "Nenhuma conferência foi gravada para este passaporte ainda.",
       "provenance": "Números da escada medidos pelo verificador da Moolam em outra imagem registrada, passaporte {passport}, {date}.",
       "provenanceSelf": "Números medidos pelo verificador da Moolam neste mesmo passaporte, {date}."
     },
@@ -227,7 +227,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "Registre uma vez. Reconhecida em qualquer lugar.",
-      "body": "Um passaporte para cada imagem gerada, gravado na Monad no instante em que ela nasce, conferido de novo pela Chainlink e localizável a partir de qualquer cópia que sobreviva à internet.",
+      "body": "Um passaporte para cada imagem gerada, gravado na Monad no instante em que ela nasce, conferido de novo por um fluxo da Chainlink e localizável a partir de qualquer cópia que sobreviva à internet.",
       "register": "Registrar uma imagem",
       "verify": "Verificar uma imagem",
       "passports": "Passaportes",
@@ -334,17 +334,21 @@
       "receiver": "Gravada por",
       "at": "Em",
       "kicker": "A segunda opinião",
-      "body": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um verificador independente baixou a imagem, calculou o hash de novo e gravou a resposta na Monad.",
+      "body": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um fluxo CRE da Chainlink baixou a imagem, calculou o hash de novo e gravou a resposta na Monad.",
       "distanceLabel": "Como o receptor gravou",
-      "byChainlink": "Verificada de forma independente pela Chainlink",
+      "byChainlink": "Reconferida por um fluxo CRE da Chainlink",
+      "delivery": {
+        "simulation": "Entregue pelo forwarder de simulação do CRE: um único nó rodou o fluxo, sem consenso de rede. A execução na rede real espera o acesso de deploy da Chainlink.",
+        "network": "Entregue pelo forwarder da rede Chainlink: um quórum de nós chegou a consenso sobre esta resposta."
+      },
       "byReceiver": "Gravada por um receptor autorizado",
       "openTx": "Transação {hash}",
       "noTransaction": "O índice não traz a transação desta.",
       "registeredGrid": "Impressão registrada",
-      "recomputedGrid": "Recalculada pela rede",
-      "verdict": "Uma rede independente baixou esta imagem de novo e recalculou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
-      "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que a rede calculou do arquivo que ela mesma baixou. Cada célula diferente fica marcada.",
-      "whatIsRecheck": "Uma reconferência é uma rede independente baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad. Ninguém pode gravar uma sobre a própria imagem."
+      "recomputedGrid": "Recalculada pelo fluxo",
+      "verdict": "Um fluxo CRE da Chainlink baixou esta imagem de novo e recalculou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
+      "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou do arquivo que ele mesmo baixou. Cada célula diferente fica marcada.",
+      "whatIsRecheck": "Uma reconferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad pelo contrato receptor. Ninguém pode gravar uma sobre a própria imagem."
     },
     "children": {
       "heading": "Edições",
@@ -462,7 +466,7 @@
     "passportId": "Id do passaporte",
     "tokenId": "O id do passaporte também é o id de token ERC-721 dele",
     "standing": {
-      "verified": "Conferida por um verificador independente",
+      "verified": "Conferida por um verificador na rede",
       "mismatched": "Uma reconferência não bateu",
       "disputed": "Contestado",
       "unverified": "Ainda não reconferida"

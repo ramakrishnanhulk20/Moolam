@@ -87,7 +87,7 @@ describe("the second opinion, drawn", () => {
   it("draws both fingerprints as 64 cells each and says how far apart they are", async () => {
     const markup = await attestations([attestation()]);
     expect(markup).toContain("Registered fingerprint");
-    expect(markup).toContain("Recomputed by the network");
+    expect(markup).toContain(en.passport.attestations.recomputedGrid);
     expect(markup).toContain("0 of 64 bits apart");
     // Two grids, sixty four cells each, and nothing marked as disagreeing.
     expect(markup.match(/grid-cols-8/g)).toHaveLength(2);

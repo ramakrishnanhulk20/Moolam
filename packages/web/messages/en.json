@@ -4,7 +4,7 @@
     "creator": "creator",
     "generatorAgent": "generator agent",
     "verify": "verify",
-    "attestation": "independent re-check written on chain",
+    "attestation": "re-check written on chain by someone other than the creator",
     "editChain": "edit chain",
     "dispute": "dispute",
     "passkey": "passkey",
@@ -114,7 +114,7 @@
     "marks": {
       "manifest": "C2PA manifest pinned with the picture",
       "rechecked": "Re-checked on chain",
-      "chainlink": "Re-checked by Chainlink",
+      "chainlink": "Re-checked by a Chainlink workflow",
       "disputed": "Disputed"
     },
     "untitled": "Untitled",
@@ -189,8 +189,8 @@
       "similarity": "similarity {value}: {result}",
       "matched": "matched",
       "notMatched": "did not match",
-      "attestation": "Chainlink re-checked it and wrote the answer on chain: {result}, {distance} bits apart.",
-      "noAttestation": "No independent re-check has been written for this passport yet.",
+      "attestation": "A Chainlink CRE workflow re-checked it and wrote the answer on chain: {result}, {distance} bits apart.",
+      "noAttestation": "No re-check has been written for this passport yet.",
       "provenance": "Ladder figures measured by the Moolam verifier on another registered image, passport {passport}, {date}.",
       "provenanceSelf": "Figures measured by the Moolam verifier on this passport, {date}."
     },
@@ -226,7 +226,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "Register once. Recognised anywhere.",
-      "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by Chainlink, and findable from any copy that survives the internet.",
+      "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by a Chainlink workflow, and findable from any copy that survives the internet.",
       "register": "Register an image",
       "verify": "Verify an image",
       "passports": "Passports",
@@ -333,17 +333,21 @@
       "receiver": "Written by",
       "at": "At",
       "kicker": "The second opinion",
-      "body": "Anyone can say a picture is theirs. This part is different: an independent verifier fetched the image, hashed it again and wrote the answer back on Monad.",
+      "body": "Anyone can say a picture is theirs. This part is different: a Chainlink CRE workflow fetched the image, hashed it again and wrote the answer back on Monad.",
       "distanceLabel": "As the receiver wrote it",
-      "byChainlink": "Verified independently by Chainlink",
+      "byChainlink": "Re-checked by a Chainlink CRE workflow",
+      "delivery": {
+        "simulation": "Delivered through the CRE simulation forwarder: one node ran the workflow, no network consensus. The live network run waits on Chainlink's deploy access.",
+        "network": "Delivered through the Chainlink network forwarder: a quorum of nodes reached consensus on this answer."
+      },
       "byReceiver": "Written by an allowed receiver",
       "openTx": "Transaction {hash}",
       "noTransaction": "The index does not carry the transaction for this one.",
       "registeredGrid": "Registered fingerprint",
-      "recomputedGrid": "Recomputed by the network",
-      "verdict": "An independent network re-fetched this picture and recomputed its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
-      "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the network computed from the file it fetched itself. Every cell that disagrees is marked.",
-      "whatIsRecheck": "A re-check is an independent network fetching this file for itself, computing the fingerprint again and writing that answer on Monad. Nobody can write one about their own picture."
+      "recomputedGrid": "Recomputed by the workflow",
+      "verdict": "A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
+      "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from the file it fetched itself. Every cell that disagrees is marked.",
+      "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad through the receiver contract. Nobody can write one about their own picture."
     },
     "children": {
       "heading": "Edits",
@@ -461,7 +465,7 @@
     "passportId": "Passport id",
     "tokenId": "The passport id is also its ERC-721 token id",
     "standing": {
-      "verified": "Checked by an independent verifier",
+      "verified": "Checked by a verifier on chain",
       "mismatched": "A re-check did not match",
       "disputed": "Disputed",
       "unverified": "Not re-checked yet"

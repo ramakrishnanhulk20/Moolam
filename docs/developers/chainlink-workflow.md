@@ -133,10 +133,24 @@ that mock forwarder push an attestation. `VerifierPolicy` is the second lock: th
 accepts `attest` from receivers on its list, so even a forwarder mistake cannot forge a passport
 record.
 
-A live broadcast on 2026-09-08 recomputed `0x233ccc7872442123` at distance 0 and wrote the report in
+A broadcast run on 2026-09-08 recomputed `0x233ccc7872442123` at distance 0 and wrote the report in
 transaction `0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0`. Reading the
 registry afterwards showed `attestationCount` of 1 for that passport, with the receiver, `matched`
 true and distance 0.
+
+## What is on chain today
+
+The seven re-checks on the seven real passports were all written this way: `cre workflow simulate
+--broadcast`, the receiver pointed at the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`
+for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
+by the four steps above. They are real transactions with real gas, and they prove the workflow code and
+every check the receiver makes. They are not a run on the live Chainlink network: the workflow ran on one
+machine and no quorum of nodes agreed on the answer. Deploying to the network needs Early Access, requested
+on 2026-09-15.
+
+The passport page does not take this on trust either. It reads the `to` address of each report transaction
+and prints which forwarder delivered it, so a simulation run says so under the verdict and a network run
+will say so the day the first one lands. The transactions are listed in `proofs/rechecks.txt`.
 
 ## What this does not prove
 

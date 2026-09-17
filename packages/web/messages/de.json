@@ -4,7 +4,7 @@
     "creator": "Urheber",
     "generatorAgent": "Generator-Agent",
     "verify": "prüfen",
-    "attestation": "unabhängige Nachprüfung, auf der Kette notiert",
+    "attestation": "Nachprüfung auf der Kette, geschrieben von jemand anderem als dem Urheber",
     "editChain": "Bearbeitungskette",
     "dispute": "Einspruch",
     "passkey": "Passkey",
@@ -114,7 +114,7 @@
     "marks": {
       "manifest": "C2PA-manifest mit dem Bild angeheftet",
       "rechecked": "Auf der Kette nachgeprüft",
-      "chainlink": "Von Chainlink nachgeprüft",
+      "chainlink": "Von einem Chainlink-Workflow nachgeprüft",
       "disputed": "Bestritten"
     },
     "untitled": "Ohne Titel",
@@ -189,8 +189,8 @@
       "similarity": "Ähnlichkeit {value}: {result}",
       "matched": "hat gepasst",
       "notMatched": "hat nicht gepasst",
-      "attestation": "Chainlink hat es nachgeprüft und die Antwort auf die Kette geschrieben: {result}, {distance} Bit Abstand.",
-      "noAttestation": "Für diesen Pass wurde noch keine unabhängige Nachprüfung geschrieben.",
+      "attestation": "Ein Chainlink-CRE-Workflow hat es nachgeprüft und die Antwort auf die Kette geschrieben: {result}, {distance} Bit Abstand.",
+      "noAttestation": "Für diesen Pass wurde noch keine Nachprüfung geschrieben.",
       "provenance": "Zahlen der Leiter gemessen vom Moolam Prüfdienst an einem anderen eingetragenen Bild, Pass {passport}, {date}.",
       "provenanceSelf": "Zahlen gemessen vom Moolam Prüfdienst an genau diesem Pass, {date}."
     },
@@ -226,7 +226,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "Einmal eintragen. Überall erkannt.",
-      "body": "Ein Pass für jedes erzeugte Bild, im Moment seiner Entstehung auf Monad geschrieben, von Chainlink nachgeprüft und aus jeder Kopie auffindbar, die das Internet übersteht.",
+      "body": "Ein Pass für jedes erzeugte Bild, im Moment seiner Entstehung auf Monad geschrieben, von einem Chainlink-Workflow nachgeprüft und aus jeder Kopie auffindbar, die das Internet übersteht.",
       "register": "Bild eintragen",
       "verify": "Bild prüfen",
       "passports": "Pässe",
@@ -333,17 +333,21 @@
       "receiver": "Geschrieben von",
       "at": "Am",
       "kicker": "Die zweite Meinung",
-      "body": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: ein unabhängiger Prüfdienst hat das Bild geholt, neu gehasht und die Antwort auf Monad zurückgeschrieben.",
+      "body": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: ein Chainlink-CRE-Workflow hat das Bild geholt, neu gehasht und die Antwort auf Monad zurückgeschrieben.",
       "distanceLabel": "Wie der Empfänger es geschrieben hat",
-      "byChainlink": "Unabhängig von Chainlink geprüft",
+      "byChainlink": "Von einem Chainlink-CRE-Workflow nachgeprüft",
+      "delivery": {
+        "simulation": "Über den CRE-Simulations-Forwarder geliefert: ein einzelner Knoten hat den Workflow ausgeführt, kein Netzkonsens. Der Lauf im echten Netz wartet auf den Deploy-Zugang von Chainlink.",
+        "network": "Über den Chainlink-Netz-Forwarder geliefert: ein Quorum von Knoten hat sich auf diese Antwort geeinigt."
+      },
       "byReceiver": "Von einem zugelassenen Empfänger geschrieben",
       "openTx": "Transaktion {hash}",
       "noTransaction": "Der Index führt die Transaktion dazu nicht.",
       "registeredGrid": "Registrierter Fingerabdruck",
-      "recomputedGrid": "Vom Netz neu berechnet",
-      "verdict": "Ein unabhängiges Netz hat dieses Bild noch einmal geholt und seinen Fingerabdruck neu berechnet: <apart>{bits} von 64 Bit auseinander</apart>.",
-      "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den das Netz aus der selbst geholten Datei berechnet hat. Jede Zelle, die abweicht, ist markiert.",
-      "whatIsRecheck": "Eine Nachprüfung heißt: ein unabhängiges Netz holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort auf Monad. Über das eigene Bild kann niemand eine schreiben."
+      "recomputedGrid": "Vom Workflow neu berechnet",
+      "verdict": "Ein Chainlink-CRE-Workflow hat dieses Bild noch einmal geholt und seinen Fingerabdruck neu berechnet: <apart>{bits} von 64 Bit auseinander</apart>.",
+      "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den der Workflow aus der selbst geholten Datei berechnet hat. Jede Zelle, die abweicht, ist markiert.",
+      "whatIsRecheck": "Eine Nachprüfung heißt: ein Chainlink-CRE-Workflow holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort über den Receiver-Vertrag auf Monad. Über das eigene Bild kann niemand eine schreiben."
     },
     "children": {
       "heading": "Bearbeitungen",
@@ -461,7 +465,7 @@
     "passportId": "Pass-Id",
     "tokenId": "Die Pass-Id ist zugleich seine ERC-721 Token-Id",
     "standing": {
-      "verified": "Von einem unabhängigen Prüfdienst geprüft",
+      "verified": "Von einem Prüfdienst auf der Kette geprüft",
       "mismatched": "Eine Nachprüfung hat nicht gepasst",
       "disputed": "Bestritten",
       "unverified": "Noch nicht nachgeprüft"

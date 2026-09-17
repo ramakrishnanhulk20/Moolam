@@ -8,7 +8,7 @@ export type AttestationSource = "chainlink" | "other";
  *
  * The receiver contract deployed alongside the registry is the only address the
  * Chainlink CRE workflow writes through, so an attestation from it is the
- * independent Chainlink re-check and is labelled as one. Any other allowed
+ * Chainlink re-check and is labelled as one. Any other allowed
  * receiver is shown by its address instead of being given a name this app
  * cannot prove.
  */

@@ -81,9 +81,12 @@ lets one editing session write ten edits.
 practice is `MoolamReceiver`. A passport holds at most 64 attestations. Attestations stay open
 while the registry is paused, so a verification already in flight can still land.
 
-An attestation is a signal, not a verdict. It says a quorum of Chainlink nodes downloaded the file
-the passport points at and got a fingerprint this far from the recorded one. It sits next to the
-signatures rather than above them.
+An attestation is a signal, not a verdict. It says a Chainlink CRE workflow downloaded the file the
+passport points at and got a fingerprint this far from the recorded one. It sits next to the
+signatures rather than above them. Every attestation on chain today was written by a simulation run
+of that workflow, one machine and no node consensus, and the passport card says so under each
+verdict. A run on the live network, where a quorum of nodes has to agree, waits on Chainlink's
+Early Access.
 
 ## Disputes and bonds
 

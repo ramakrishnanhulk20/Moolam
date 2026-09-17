@@ -4,7 +4,7 @@
     "creator": "创作者",
     "generatorAgent": "生成智能体",
     "verify": "验证",
-    "attestation": "写在链上的独立复核",
+    "attestation": "由创作者以外的一方写在链上的复核",
     "editChain": "编辑链条",
     "dispute": "争议",
     "passkey": "通行密钥",
@@ -116,7 +116,7 @@
     "marks": {
       "manifest": "随图片固定了 C2PA manifest",
       "rechecked": "已在链上复核",
-      "chainlink": "由 Chainlink 复核",
+      "chainlink": "由 Chainlink 工作流复核",
       "disputed": "有争议"
     },
     "untitled": "无标题",
@@ -191,8 +191,8 @@
       "similarity": "相似度 {value}：{result}",
       "matched": "匹配",
       "notMatched": "不匹配",
-      "attestation": "Chainlink 重新核对过，并把答案写在链上：{result}，相差 {distance} 位。",
-      "noAttestation": "这本护照还没有任何独立复核被写上链。",
+      "attestation": "一个 Chainlink CRE 工作流重新核对过，并把答案写在链上：{result}，相差 {distance} 位。",
+      "noAttestation": "这本护照还没有任何复核被写上链。",
       "provenance": "阶梯上的数字由 Moolam 验证服务在另一张已登记的图片上测得，护照 {passport}，{date}。",
       "provenanceSelf": "数字由 Moolam 验证服务在这份护照上测得，{date}。"
     },
@@ -228,7 +228,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "登记一次，处处认得。",
-      "body": "为每一张生成图片配一本护照，成图的那一刻就写进 Monad，由 Chainlink 复核，并且能从任何在互联网上活下来的副本追回。",
+      "body": "为每一张生成图片配一本护照，成图的那一刻就写进 Monad，由 Chainlink 工作流复核，并且能从任何在互联网上活下来的副本追回。",
       "register": "登记图片",
       "verify": "验证图片",
       "passports": "护照",
@@ -335,17 +335,21 @@
       "receiver": "写入者",
       "at": "时间",
       "kicker": "第二种意见",
-      "body": "谁都能说一张图是自己的。这一部分不一样：一个独立的验证服务把图片取回、重新算了哈希，并把答案写回 Monad。",
+      "body": "谁都能说一张图是自己的。这一部分不一样：一个 Chainlink CRE 工作流把图片取回、重新算了哈希，并把答案写回 Monad。",
       "distanceLabel": "接收方写下的值",
-      "byChainlink": "由 Chainlink 独立验证",
+      "byChainlink": "由 Chainlink CRE 工作流复核",
+      "delivery": {
+        "simulation": "这份报告由 CRE 模拟转发器送达：工作流只在一个节点上跑过，没有网络共识。在真实网络上运行还在等 Chainlink 的部署权限。",
+        "network": "这份报告由 Chainlink 网络转发器送达：达到法定人数的节点就这个答案达成了共识。"
+      },
       "byReceiver": "由获准的接收方写入",
       "openTx": "交易 {hash}",
       "noTransaction": "索引里没有这一条的交易。",
       "registeredGrid": "登记时的指纹",
-      "recomputedGrid": "网络重新算出的指纹",
-      "verdict": "一个独立网络重新取回这张图，又算了一遍指纹：<apart>64 位中差 {bits} 位</apart>。",
-      "gridNote": "第一格是登记时注册表存下的指纹。第二格是网络用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
-      "whatIsRecheck": "复核，就是一个独立网络自己把这份文件取回去，重新算一遍指纹，再把答案写到 Monad 上。谁也没法给自己的图写一条。"
+      "recomputedGrid": "工作流重新算出的指纹",
+      "verdict": "一个 Chainlink CRE 工作流重新取回这张图，又算了一遍指纹：<apart>64 位中差 {bits} 位</apart>。",
+      "gridNote": "第一格是登记时注册表存下的指纹。第二格是工作流用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
+      "whatIsRecheck": "复核，就是一个 Chainlink CRE 工作流自己把这份文件取回去，重新算一遍指纹，再通过接收合约把答案写到 Monad 上。谁也没法给自己的图写一条。"
     },
     "children": {
       "heading": "编辑版本",
@@ -463,7 +467,7 @@
     "passportId": "护照 id",
     "tokenId": "护照 id 同时也是它的 ERC-721 代币 id",
     "standing": {
-      "verified": "已由独立验证服务核对",
+      "verified": "已由链上验证者核对",
       "mismatched": "有一次复核没对上",
       "disputed": "有争议",
       "unverified": "尚未复核"

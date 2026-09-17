@@ -4,7 +4,7 @@
     "creator": "créateur",
     "generatorAgent": "agent générateur",
     "verify": "vérifier",
-    "attestation": "vérification indépendante inscrite sur la chaîne",
+    "attestation": "vérification inscrite sur la chaîne par quelqu’un d’autre que l’auteur",
     "editChain": "chaîne de retouches",
     "dispute": "contestation",
     "passkey": "clé d’accès",
@@ -114,7 +114,7 @@
     "marks": {
       "manifest": "Manifest C2PA épinglé avec l'image",
       "rechecked": "Vérifiée sur la chaîne",
-      "chainlink": "Vérifiée par Chainlink",
+      "chainlink": "Revérifiée par un workflow Chainlink",
       "disputed": "Contestée"
     },
     "untitled": "Sans titre",
@@ -189,8 +189,8 @@
       "similarity": "similarité {value} : {result}",
       "matched": "a correspondu",
       "notMatched": "n’a pas correspondu",
-      "attestation": "Chainlink l’a revérifiée et a inscrit la réponse sur la chaîne : {result}, à {distance} bits d’écart.",
-      "noAttestation": "Aucune contre-vérification indépendante n’a encore été inscrite pour ce passeport.",
+      "attestation": "Un workflow CRE de Chainlink l’a revérifiée et a inscrit la réponse sur la chaîne : {result}, à {distance} bits d’écart.",
+      "noAttestation": "Aucune contre-vérification n’a encore été inscrite pour ce passeport.",
       "provenance": "Chiffres de l’échelle mesurés par le vérificateur Moolam sur une autre image enregistrée, passeport {passport}, {date}.",
       "provenanceSelf": "Chiffres mesurés par le vérificateur Moolam sur ce passeport même, {date}."
     },
@@ -226,7 +226,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "Enregistrée une fois. Reconnue partout.",
-      "body": "Un passeport pour chaque image générée, inscrit sur Monad à l’instant où elle est créée, revérifié par Chainlink, et retrouvable depuis n’importe quelle copie qui survit à internet.",
+      "body": "Un passeport pour chaque image générée, inscrit sur Monad à l’instant où elle est créée, revérifié par un workflow Chainlink, et retrouvable depuis n’importe quelle copie qui survit à internet.",
       "register": "Enregistrer une image",
       "verify": "Vérifier une image",
       "passports": "Passeports",
@@ -333,17 +333,21 @@
       "receiver": "Inscrite par",
       "at": "Le",
       "kicker": "Le deuxième avis",
-      "body": "N’importe qui peut dire qu’une image est la sienne. Ici c’est différent : un vérificateur indépendant a récupéré l’image, l’a hachée de nouveau et a inscrit la réponse sur Monad.",
+      "body": "N’importe qui peut dire qu’une image est la sienne. Ici c’est différent : un workflow CRE de Chainlink a récupéré l’image, l’a hachée de nouveau et a inscrit la réponse sur Monad.",
       "distanceLabel": "Tel que le récepteur l’a inscrit",
-      "byChainlink": "Vérifiée de façon indépendante par Chainlink",
+      "byChainlink": "Revérifiée par un workflow CRE de Chainlink",
+      "delivery": {
+        "simulation": "Livrée par le forwarder de simulation CRE : un seul nœud a exécuté le workflow, sans consensus du réseau. L’exécution sur le réseau réel attend l’accès de déploiement de Chainlink.",
+        "network": "Livrée par le forwarder du réseau Chainlink : un quorum de nœuds s’est mis d’accord sur cette réponse."
+      },
       "byReceiver": "Inscrite par un récepteur autorisé",
       "openTx": "Transaction {hash}",
       "noTransaction": "L’index ne porte pas la transaction de celle-ci.",
       "registeredGrid": "Empreinte enregistrée",
-      "recomputedGrid": "Recalculée par le réseau",
-      "verdict": "Un réseau indépendant a récupéré cette image et recalculé son empreinte : <apart>{bits} bits d’écart sur 64</apart>.",
-      "gridNote": "La première grille est l’empreinte inscrite au registre lors de l’enregistrement. La seconde est celle que le réseau a calculée à partir du fichier qu’il a récupéré lui-même. Chaque case qui diffère est marquée.",
-      "whatIsRecheck": "Une revérification, c’est un réseau indépendant qui récupère ce fichier lui-même, recalcule l’empreinte et inscrit cette réponse sur Monad. Personne ne peut en écrire une sur sa propre image."
+      "recomputedGrid": "Recalculée par le workflow",
+      "verdict": "Un workflow CRE de Chainlink a récupéré cette image et recalculé son empreinte : <apart>{bits} bits d’écart sur 64</apart>.",
+      "gridNote": "La première grille est l’empreinte inscrite au registre lors de l’enregistrement. La seconde est celle que le workflow a calculée à partir du fichier qu’il a récupéré lui-même. Chaque case qui diffère est marquée.",
+      "whatIsRecheck": "Une revérification, c’est un workflow CRE de Chainlink qui récupère ce fichier lui-même, recalcule l’empreinte et inscrit cette réponse sur Monad via le contrat récepteur. Personne ne peut en écrire une sur sa propre image."
     },
     "children": {
       "heading": "Retouches",
@@ -461,7 +465,7 @@
     "passportId": "Identifiant du passeport",
     "tokenId": "L’identifiant du passeport est aussi son identifiant de jeton ERC-721",
     "standing": {
-      "verified": "Contrôlée par un vérificateur indépendant",
+      "verified": "Contrôlée par un vérificateur sur la chaîne",
       "mismatched": "Une contre-vérification n’a pas correspondu",
       "disputed": "Contestée",
       "unverified": "Pas encore revérifiée"

@@ -4,7 +4,7 @@
     "creator": "제작자",
     "generatorAgent": "생성 에이전트",
     "verify": "검증",
-    "attestation": "체인에 기록된 독립 재확인",
+    "attestation": "만든 사람이 아닌 쪽이 체인에 기록한 재확인",
     "editChain": "편집 계보",
     "dispute": "이의 제기",
     "passkey": "패스키",
@@ -116,7 +116,7 @@
     "marks": {
       "manifest": "이미지와 함께 C2PA manifest 고정",
       "rechecked": "체인에서 재확인됨",
-      "chainlink": "Chainlink가 재확인",
+      "chainlink": "Chainlink 워크플로가 재확인",
       "disputed": "이의 있음"
     },
     "untitled": "제목 없음",
@@ -191,8 +191,8 @@
       "similarity": "유사도 {value}: {result}",
       "matched": "일치함",
       "notMatched": "일치하지 않음",
-      "attestation": "Chainlink가 다시 확인해 답을 체인에 기록했습니다. {result}, {distance}비트 차이입니다.",
-      "noAttestation": "이 여권에는 아직 독립적인 재확인이 기록되지 않았습니다.",
+      "attestation": "Chainlink CRE 워크플로가 다시 확인해 답을 체인에 기록했습니다. {result}, {distance}비트 차이입니다.",
+      "noAttestation": "이 여권에는 아직 재확인이 기록되지 않았습니다.",
       "provenance": "사다리의 수치는 Moolam 검증 서비스가 다른 등록 이미지에서 측정했습니다. 여권 {passport}, {date}",
       "provenanceSelf": "수치는 Moolam 검증 서비스가 이 여권에서 측정했습니다. {date}"
     },
@@ -228,7 +228,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "한 번 등록하면, 어디서든 알아봅니다.",
-      "body": "생성된 모든 이미지에 여권을. 만들어지는 순간 Monad에 기록되고, Chainlink가 다시 확인하며, 인터넷에서 살아남은 어떤 사본에서도 되찾을 수 있습니다.",
+      "body": "생성된 모든 이미지에 여권을. 만들어지는 순간 Monad에 기록되고, Chainlink 워크플로가 다시 확인하며, 인터넷에서 살아남은 어떤 사본에서도 되찾을 수 있습니다.",
       "register": "이미지 등록",
       "verify": "이미지 검증",
       "passports": "여권",
@@ -335,17 +335,21 @@
       "receiver": "기록한 곳",
       "at": "시각",
       "kicker": "두 번째 의견",
-      "body": "그림이 자기 것이라고는 누구나 말할 수 있습니다. 이 부분은 다릅니다. 독립된 검증 서비스가 이미지를 가져와 해시를 다시 구하고, 답을 Monad에 기록했습니다.",
+      "body": "그림이 자기 것이라고는 누구나 말할 수 있습니다. 이 부분은 다릅니다. Chainlink CRE 워크플로가 이미지를 가져와 해시를 다시 구하고, 답을 Monad에 기록했습니다.",
       "distanceLabel": "수신자가 기록한 값",
-      "byChainlink": "Chainlink가 독립적으로 검증",
+      "byChainlink": "Chainlink CRE 워크플로가 재확인",
+      "delivery": {
+        "simulation": "CRE 시뮬레이션 포워더를 거쳐 들어왔습니다. 노드 하나가 워크플로를 실행했고 네트워크 합의는 없습니다. 실제 네트워크 실행은 Chainlink의 배포 승인을 기다리고 있습니다.",
+        "network": "Chainlink 네트워크 포워더를 거쳐 들어왔습니다. 정족수의 노드가 이 답에 합의했습니다."
+      },
       "byReceiver": "허용된 수신자가 기록",
       "openTx": "트랜잭션 {hash}",
       "noTransaction": "인덱스에 이 건의 트랜잭션이 없습니다.",
       "registeredGrid": "등록된 지문",
-      "recomputedGrid": "네트워크가 다시 구한 지문",
-      "verdict": "독립된 네트워크가 이 그림을 다시 가져와 지문을 다시 계산했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
-      "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 네트워크가 직접 가져온 파일에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다.",
-      "whatIsRecheck": "다시 확인한다는 것은, 독립된 네트워크가 이 파일을 직접 가져와 지문을 다시 구하고 그 답을 Monad에 기록하는 일입니다. 자기 그림에 대해서는 누구도 기록할 수 없습니다."
+      "recomputedGrid": "워크플로가 다시 구한 지문",
+      "verdict": "Chainlink CRE 워크플로가 이 그림을 다시 가져와 지문을 다시 계산했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
+      "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 워크플로가 직접 가져온 파일에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다.",
+      "whatIsRecheck": "다시 확인한다는 것은, Chainlink CRE 워크플로가 이 파일을 직접 가져와 지문을 다시 구하고 그 답을 리시버 컨트랙트를 통해 Monad에 기록하는 일입니다. 자기 그림에 대해서는 누구도 기록할 수 없습니다."
     },
     "children": {
       "heading": "편집본",
@@ -463,7 +467,7 @@
     "passportId": "여권 id",
     "tokenId": "여권 id는 그대로 ERC-721 토큰 id이기도 합니다",
     "standing": {
-      "verified": "독립된 검증 서비스가 확인함",
+      "verified": "체인 위의 검증자가 확인함",
       "mismatched": "재확인이 일치하지 않았음",
       "disputed": "이의 제기됨",
       "unverified": "아직 재확인되지 않음"

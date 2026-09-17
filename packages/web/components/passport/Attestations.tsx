@@ -3,6 +3,7 @@ import { BitGrid } from "@/components/BitGrid";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import { bitsApart, bitsOf, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
+import { heldReportDelivery, type ReportDelivery } from "@/lib/chain/reports";
 import { transactionFor, type IndexedAttestation } from "./indexed";
 import { attestationSource } from "./labels";
 
@@ -35,6 +36,19 @@ export async function Attestations({
   const common = await getTranslations("common");
   const format = await getFormatter({ locale });
 
+  // Which forwarder carried each report is a chain read, so it is done here,
+  // once per row, rather than inside a row that the list has already resolved.
+  const rows = await Promise.all(
+    attestations.map(async (attestation) => {
+      const txHash = transactionFor(indexed, attestation);
+      return {
+        attestation,
+        txHash,
+        delivery: txHash === undefined ? ("unknown" as ReportDelivery) : await heldReportDelivery(txHash),
+      };
+    }),
+  );
+
   return (
     <section className="border-y border-line bg-bg-raised">
       <div className="mx-auto w-full max-w-[1400px] px-5 py-14 sm:px-8 sm:py-20">
@@ -55,14 +69,15 @@ export async function Attestations({
               </div>
             ) : (
               <ul className="space-y-px bg-line">
-                {attestations.map((attestation, index) => (
+                {rows.map(({ attestation, txHash, delivery }, index) => (
                   <Row
                     key={`${attestation.receiver}-${attestation.at}-${index}`}
                     attestation={attestation}
                     phash={phash}
                     t={t}
                     common={common}
-                    txHash={transactionFor(indexed, attestation)}
+                    txHash={txHash}
+                    delivery={delivery}
                     when={format.dateTime(new Date(Number(attestation.at) * 1000), {
                       dateStyle: "medium",
                       timeStyle: "short",
@@ -87,6 +102,7 @@ function Row({
   attestation,
   phash,
   txHash,
+  delivery,
   when,
   t,
   common,
@@ -94,6 +110,8 @@ function Row({
   attestation: Attestation;
   phash: bigint;
   txHash?: `0x${string}`;
+  /** Which forwarder the report came through, read off its transaction. */
+  delivery: ReportDelivery;
   when: string;
   t: Translate;
   common: Translate;
@@ -133,6 +151,15 @@ function Row({
           apart: (chunks) => <span className={counted === 0 ? "text-verified" : "text-failed"}>{chunks}</span>,
         })}
       </p>
+
+      {/* The chain's own answer on how this report arrived. An address the app
+          does not recognise says nothing at all, because a wrong label here
+          would be worse than no label. */}
+      {delivery === "unknown" ? null : (
+        <p className="mt-5 max-w-[52ch] border-s-2 border-line ps-4 text-xs leading-relaxed text-text-faint">
+          {delivery === "simulation" ? t("delivery.simulation") : t("delivery.network")}
+        </p>
+      )}
 
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
         <Field label={t("distanceLabel")} value={t("distance", { distance: attestation.distance })} />

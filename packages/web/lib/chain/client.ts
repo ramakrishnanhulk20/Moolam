@@ -14,6 +14,15 @@ export const addresses = {
   policy: deployment.policy as Hex,
   receiver: deployment.receiver as Hex,
   agentIdentity: deployment.agentIdentity as Hex,
+  /**
+   * The two addresses a CRE report can arrive through. The receiver is pointed
+   * at the live network forwarder and was pointed at the simulation one for the
+   * broadcast runs that wrote the re-checks on chain today, so the `to` of a
+   * report transaction is what says which kind of run produced it. The steps
+   * are in docs/developers/chainlink-workflow.md.
+   */
+  forwarder: "0x76c9cf548b4179F8901cda1f8623568b58215E62" as Hex,
+  simulationForwarder: "0x9eF6468C5f37b976E57d52054c693269479A784d" as Hex,
 } as const;
 
 /** The block the registry was deployed in: nothing it emitted exists before it. */

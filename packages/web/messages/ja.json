@@ -4,7 +4,7 @@
     "creator": "制作者",
     "generatorAgent": "生成エージェント",
     "verify": "検証",
-    "attestation": "チェーンに書かれた独立した再検証",
+    "attestation": "作者以外が書いた、チェーン上の再検証",
     "editChain": "編集のつながり",
     "dispute": "異議",
     "passkey": "パスキー",
@@ -116,7 +116,7 @@
     "marks": {
       "manifest": "画像と一緒に C2PA manifest をピン留め",
       "rechecked": "チェーン上で再検証済み",
-      "chainlink": "Chainlink が再検証",
+      "chainlink": "Chainlink ワークフローが再検証",
       "disputed": "異議あり"
     },
     "untitled": "無題",
@@ -191,8 +191,8 @@
       "similarity": "類似度 {value}: {result}",
       "matched": "一致しました",
       "notMatched": "一致しませんでした",
-      "attestation": "Chainlink が再確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
-      "noAttestation": "このパスポートには、独立した再確認がまだ書かれていません。",
+      "attestation": "Chainlink CRE ワークフローが再確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
+      "noAttestation": "このパスポートには、再確認がまだ書かれていません。",
       "provenance": "はしごの数値は Moolam 検証サービスが別の登録済み画像で測ったものです。パスポート {passport}、{date}",
       "provenanceSelf": "数値は Moolam 検証サービスがこのパスポートで測ったものです。{date}"
     },
@@ -228,7 +228,7 @@
     "close": {
       "kicker": "Moolam",
       "title": "一度登録すれば、どこでも見分けがつく。",
-      "body": "生成されたすべての画像に一冊のパスポートを。生まれた瞬間に Monad へ書き込み、Chainlink が再確認し、インターネットを生き延びたどのコピーからでもたどれます。",
+      "body": "生成されたすべての画像に一冊のパスポートを。生まれた瞬間に Monad へ書き込み、Chainlink ワークフローが再確認し、インターネットを生き延びたどのコピーからでもたどれます。",
       "register": "画像を登録",
       "verify": "画像を検証",
       "passports": "パスポート",
@@ -335,17 +335,21 @@
       "receiver": "書き込んだ相手",
       "at": "日時",
       "kicker": "第二の意見",
-      "body": "その絵は自分のものだと、誰でも言えます。ここは違います。独立した検証サービスが画像を取得し、ハッシュを取り直し、答えを Monad に書き戻しました。",
+      "body": "その絵は自分のものだと、誰でも言えます。ここは違います。Chainlink CRE ワークフローが画像を取得し、ハッシュを取り直し、答えを Monad に書き戻しました。",
       "distanceLabel": "受信者が書いた値",
-      "byChainlink": "Chainlink が独立に検証",
+      "byChainlink": "Chainlink CRE ワークフローが再検証",
+      "delivery": {
+        "simulation": "CRE シミュレーション用フォワーダー経由で届きました。ワークフローを実行したのは 1 ノードだけで、ネットワークの合意はありません。実ネットワークでの実行は Chainlink のデプロイ許可待ちです。",
+        "network": "Chainlink ネットワークのフォワーダー経由で届きました。定足数のノードがこの答えに合意しています。"
+      },
       "byReceiver": "許可された受信者が書き込み",
       "openTx": "トランザクション {hash}",
       "noTransaction": "この件のトランザクションはインデックスにありません。",
       "registeredGrid": "登録時の指紋",
-      "recomputedGrid": "ネットワークが取り直した指紋",
-      "verdict": "独立したネットワークがこの画像を取り直し、指紋を計算し直しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
-      "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ネットワークが自分で取得したファイルから計算した指紋です。食い違う升目には印が付きます。",
-      "whatIsRecheck": "再確認とは、独立したネットワークがこのファイルを自分で取得し、指紋を計算し直して、その答えを Monad に書き込むことです。自分の絵について自分で書くことはできません。"
+      "recomputedGrid": "ワークフローが取り直した指紋",
+      "verdict": "Chainlink CRE ワークフローがこの画像を取り直し、指紋を計算し直しました。<apart>64 ビット中 {bits} ビットの差</apart>。",
+      "gridNote": "一つ目の格子は、登録時にレジストリが保存した指紋です。二つ目は、ワークフローが自分で取得したファイルから計算した指紋です。食い違う升目には印が付きます。",
+      "whatIsRecheck": "再確認とは、Chainlink CRE ワークフローがこのファイルを自分で取得し、指紋を計算し直して、その答えをレシーバー契約を通じて Monad に書き込むことです。自分の絵について自分で書くことはできません。"
     },
     "children": {
       "heading": "編集",
@@ -463,7 +467,7 @@
     "passportId": "パスポート id",
     "tokenId": "パスポート id は、そのまま ERC-721 のトークン id でもあります",
     "standing": {
-      "verified": "独立した検証サービスが確認済み",
+      "verified": "チェーン上の検証者が確認済み",
       "mismatched": "再確認で一致しませんでした",
       "disputed": "異議あり",
       "unverified": "まだ再確認されていません"

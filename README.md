@@ -61,7 +61,7 @@ one copy with every scrap of metadata removed all resolved back to the same pass
 | Survives re-encoding | No. The hard binding is a hash of the exact bytes and breaks on the first recompression | Not measured here | No | Yes. 6 of 6 mangled copies matched on mainnet, including quality 60, a quarter resize and two rounds of social resizing |
 | Survives metadata stripping | No. Strip the manifest and nothing is left | Not measured here | No | Yes. The stripped copy came back at 0.99 confidence with the manifest confirmed gone |
 | Who can verify | Anyone with a C2PA reader, while the manifest is still attached | The platform that embedded it | Nobody | Anyone. Post the file to the open verify service, or read the registry yourself |
-| Who vouches | Whoever holds the signing certificate | The platform | Nobody | The creator's passkey and the generator agent's ERC-8004 owner, then a Chainlink CRE quorum on top |
+| Who vouches | Whoever holds the signing certificate | The platform | Nobody | The creator's passkey and the generator agent's ERC-8004 owner, then a Chainlink CRE re-check on top |
 | Cost per image | Free | Free | Free | 376,104 gas on the live mainnet run, about 0.0376 MON at Monad's 100 gwei minimum base fee |
 
 ---
@@ -126,7 +126,8 @@ one copy with every scrap of metadata removed all resolved back to the same pass
 - Chainlink CRE is the second opinion. A log trigger on `PassportRegistered` wakes a workflow, each
   node downloads the thumbnail and recomputes the 64-bit hash inside the sandbox, and a quorum has
   to produce the identical verdict before it is signed into a report and written back through
-  `MoolamReceiver` as an attestation.
+  `MoolamReceiver` as an attestation. That is the network path; the re-checks on chain today came
+  from simulation runs of the same workflow, one machine each.
 - Envio HyperIndex turns the events into rows: passports, edit trees, verification tallies,
   disputes, and a per-generator trust score of
   `round(100 * (matched + 1) / (matched + mismatched + 2 * disputesUpheld + 2))`, so a new agent
@@ -169,10 +170,14 @@ Two generator agents live on the ERC-8004 Identity Registry. Agent **10248**, ow
 `0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c`, signed the first seed passports; agent **10249**, owned by the
 app's Privy server wallet, is the one that draws in the studio, signs the generator half of every agent-made
 passport and now leads the Agents page. Every real passport carries a CRE re-check as of 2026-09-14
-([proofs/rechecks.txt](proofs/rechecks.txt)); the first one, a live Chainlink CRE broadcast on 2026-09-08,
-recomputed `0x233ccc7872442123` at distance 0 and wrote its report in transaction
+([proofs/rechecks.txt](proofs/rechecks.txt)). Every one of those re-checks was written through the CRE
+simulation forwarder with `cre workflow simulate --broadcast`: a real transaction paying real gas, with the
+workflow running on one machine, so there is no network consensus behind it. Deploying the workflow to the
+live network needs Chainlink's Early Access, requested on 2026-09-15 and not granted yet. The first re-check,
+on 2026-09-08, recomputed `0x233ccc7872442123` at distance 0 and wrote its report in transaction
 [`0x3a814ab2...88796a0`](https://monadvision.com/tx/0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0),
-which left that passport with an `attestationCount` of 1, `matched` true and distance 0.
+which left that passport with an `attestationCount` of 1, `matched` true and distance 0. Each passport page
+reads the report transaction and says which forwarder delivered it, so a simulated run says so on the card.
 
 ---
 
@@ -208,7 +213,7 @@ flowchart LR
     subgraph Off-chain
         S[Verifier service<br/>fingerprints, C2PA, Hamming search,<br/>x402-paid API]
         X[Envio HyperIndex<br/>passports, trees, trust scores]
-        W[Chainlink CRE workflow<br/>independent re-fetch and re-fingerprint]
+        W[Chainlink CRE workflow<br/>re-fetch and re-fingerprint]
         F[IPFS via Pinata<br/>image, manifest, thumbnail]
     end
 
@@ -266,6 +271,9 @@ sequenceDiagram
     RC->>R: attest(...)
     R-->>X: VerificationAttested indexed
 ```
+
+The diagram is the designed path on the live Chainlink network. The reports on chain today came from
+simulation runs of the same workflow, one machine each, which is why the passport card names the forwarder.
 
 ### Contract dependencies
 
@@ -677,7 +685,7 @@ Moolam/
 │   │
 │   ├── indexer/            Envio HyperIndex V3: passports, edit trees, tallies, disputes, trust scores
 │   │
-│   ├── workflow/           The Chainlink CRE workflow that recomputes the fingerprint independently
+│   ├── workflow/           The Chainlink CRE workflow that re-fetches the picture and recomputes the fingerprint
 │   │
 │   └── web/                The Next.js app: passports, explore, agents, the studio, disputes, docs
 │       ├── app/[locale]/   home, verify, studio, explore, agents, passport, agent, resolve, docs
@@ -797,8 +805,9 @@ MIT. See [LICENSE](LICENSE).
 - [Privy](https://privy.io) for the embedded wallets creators get without a seed phrase, the enclave
   the generator agent's key lives in, the policies that pin it to one function on one contract, and
   the session signers that let an editing session write without ten prompts.
-- [Chainlink CRE](https://chain.link) for the independent recheck: nodes that download the image
-  themselves, recompute the fingerprint in the sandbox, and have to agree before anything is signed.
+- [Chainlink CRE](https://chain.link) for the recheck: nodes that download the image themselves,
+  recompute the fingerprint in the sandbox, and have to agree before anything is signed (the re-checks on
+  chain today came from simulation runs).
 - [Envio](https://envio.dev) for HyperIndex, which turns the events into the passports, edit trees,
   tallies and trust scores every screen and the verify service read.
 - [OpenZeppelin](https://openzeppelin.com) for the ERC-721, EIP-712, WebAuthn, P256, ECDSA,
