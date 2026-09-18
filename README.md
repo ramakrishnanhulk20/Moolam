@@ -20,13 +20,14 @@
 
 ## Live on Monad mainnet
 
-Chain 143, all three deployed in block 103054771 and verified on MonadVision through Sourcify.
+Chain 143. The first three were deployed in block 103054771 and MoolamConsent in block 105828247, all verified on MonadVision through Sourcify.
 
 | Contract | Address | Deploy block | Verified |
 | --- | --- | --- | --- |
 | MoolamRegistry | [`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0) | 103054771 | Sourcify match |
 | VerifierPolicy | [`0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821`](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 | Sourcify match |
 | MoolamReceiver | [`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 | Sourcify match |
+| MoolamConsent | [`0x1151E69a82947920546e779c4C8c785b2a3C1277`](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 | Sourcify match |
 | Verify service | [https://verifier-production-d76f.up.railway.app/health](https://verifier-production-d76f.up.railway.app/health) | Railway, from packages/verifier/Dockerfile | live |
 
 Two contracts Moolam reads and did not deploy: Monad's canonical
@@ -386,6 +387,7 @@ is for and which piece stops without it.
 | Variable | Where the value comes from |
 | --- | --- |
 | `MONAD_MAINNET_RPC_URL` | Monad's public endpoint `https://rpc.monad.xyz`, or your own provider |
+| `MONAD_RPC_URL` | Optional and secret: a dedicated endpoint whose address carries its access token. The app's server reads through it first and the public endpoint only when it fails. Server side only, never `NEXT_PUBLIC` |
 | `DEPLOYER_PRIVATE_KEY`, `DEPLOYER_ADDRESS` | The wallet that deploys and runs the seed and proof scripts. Monad reserves 10 MON per account on top of gas |
 | `PROOF_P256_PRIVATE_KEY` | The proof script's stand-in passkey. It generates one on first run |
 | `CRE_ETH_PRIVATE_KEY`, `CRE_WALLET_ADDRESS`, `CRE_API_KEY` | The Chainlink CRE wallet that signs attestation transactions, and the CRE dashboard key or `cre login` |

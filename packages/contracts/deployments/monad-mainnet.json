@@ -2,6 +2,9 @@
   "agentIdentity": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "block": 103054771,
   "chainId": 143,
+  "consent": "0x1151E69a82947920546e779c4C8c785b2a3C1277",
+  "consentBlock": 105828247,
+  "demoAgentId": 10248,
   "deployer": "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
   "forwarder": "0x76c9cf548b4179F8901cda1f8623568b58215E62",
   "policy": "0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821",
@@ -9,6 +12,7 @@
   "registry": "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
   "timestamp": 1788875133,
   "txHashes": {
+    "consent": "0x49794a54f498bd843d5044a9d49f2a730f4d8c439553fc5e128f72e3499e1833",
     "policy": "0xf26a824b68a0cacd0e3230d63bad930cdf8e7f085bad89c4988baec56a14756d",
     "policyCalls": [
       "0xec66ec7566f7502558d6cfc77b36ead0488d7a2253a13e2138e8717d64e5057d",
@@ -18,6 +22,5 @@
     ],
     "receiver": "0xf224ff6e7b2c49f0dfbe1928fd3526ec32e450b98e7f58b815d11727a33727dc",
     "registry": "0x9724fc20e123545728144c32d848992c0ecffe382a91c528d20372a10baf1df6"
-  },
-  "demoAgentId": 10248
+  }
 }

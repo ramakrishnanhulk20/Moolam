@@ -181,3 +181,22 @@ contract, never by the caller. The event carries exactly what was stored and not
 passport, so an indexer that reads the logs and a caller that reads the storage cannot disagree.
 STANDARD is the one output that is not attacker written at all: a constant naming the vocabulary,
 so a reader never has to guess what Constrained or Unspecified mean.
+
+LIVE ON MONAD MAINNET, 2026-09-18
+--------------------------------------------------------------------------
+MoolamConsent  0x1151E69a82947920546e779c4C8c785b2a3C1277
+deploy tx      0x49794a54f498bd843d5044a9d49f2a730f4d8c439553fc5e128f72e3499e1833
+block          105828247, gas used 1,231,793, the deployer paid 0.1256 MON (34.6022 before, 34.4765 after)
+source         commit f154b1b, checked against the working tree by the launch script before it sent anything
+Sourcify       match on creation and runtime code, verified 2026-09-18T07:10:59Z, job 0a8b1ed1-ddc2-4174-bcee-5b510ef2ac9d
+
+Read back from the chain with cast, not from the deploy script's log:
+  code 4,828 bytes; REGISTRY() 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0; STANDARD() "cawg.training-mining/1.1";
+  MIN_INTERVAL() 600; MAX_BATCH() 32
+  consentOf(0xcdb25d37...771638) answers false with an empty entry and historyLength 0: nothing stated yet, and no read fails.
+
+Two refusals on the live contract, as simulated calls from 0x...dEaD (nothing was sent):
+  setConsent for a passport the caller does not hold reverts with 0x0c9ccf20, which is
+  NotPassportHolder(bytes32,address), carrying that passport id and the caller's address.
+  A plain transfer of 1 wei to the contract reverts with empty data: there is no receive and no fallback.
+  The passport's real holder is 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, the demo agent's creator wallet.
