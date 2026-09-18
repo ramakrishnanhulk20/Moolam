@@ -7,6 +7,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
+import { fieldPictures } from "@/components/story/scene/order";
 import { CloseCard } from "@/components/story/CloseCard";
 import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
@@ -437,7 +438,10 @@ export function LandingStory({ data }: { data: StoryData }) {
     return () => cancelAnimationFrame(frame);
   }, [still]);
 
-  const pictures = useMemo(() => [...new Set(data.plates.map((plate) => plate.picture))], [data.plates]);
+  // The same list, in the same order, that StoryStage asked the document to
+  // start fetching. The field hands its first pictures to the plates that stand
+  // largest in the opening frame, so those are the ones already on their way.
+  const pictures = useMemo(() => fieldPictures(data.plates), [data.plates]);
 
   // The plates a judge can try are real records off the index, newest first, one
   // picture each so the row is never the same image three times.

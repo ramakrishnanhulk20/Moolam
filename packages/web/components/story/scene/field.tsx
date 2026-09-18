@@ -3,6 +3,8 @@
 import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
+import { expectPlates, plateDrawn } from "./drawn";
+import { fieldPlates, sequence, type FieldPlate } from "./order";
 import {
   credentialTexture,
   degradedTexture,
@@ -10,7 +12,6 @@ import {
   loadTexture,
   noiseTexture,
   sealTexture,
-  sequence,
   type Degrade,
 } from "./textures";
 import { ACCENT, REFUSED, VERIFIED } from "@/components/story/palette";
@@ -19,52 +20,16 @@ export const ACCENT_COLOR = new THREE.Color(ACCENT);
 export const MATCHED_COLOR = new THREE.Color(VERIFIED);
 export const REFUSED_COLOR = new THREE.Color(REFUSED);
 
-/** One drifting plate in the field. */
-export interface FieldPlate {
-  url: string;
-  position: [number, number, number];
-  height: number;
-  phase: number;
-}
-
 /**
- * Where the plates hang.
+ * The field, with a picture on every plate.
  *
- * The square root spreads them evenly through the depth instead of bunching
- * them near the camera, and anything that lands in the corridor the camera
- * flies down is pushed sideways so it never covers the plate the story is
- * about.
+ * The spots and their order come from scene/order.ts, which the page that holds
+ * the film's box open reads as well: the plate that stands largest in the
+ * opening frame takes the first picture, and that is the picture the document
+ * has already asked for.
  */
 export function useField(count: number, pictures: string[], spread = 1): FieldPlate[] {
-  return useMemo(() => {
-    if (pictures.length === 0) {
-      return [];
-    }
-
-    const noise = sequence(41, count * 6);
-    const plates: FieldPlate[] = [];
-
-    for (let index = 0; index < count; index += 1) {
-      const at = index * 6;
-      const depth = Math.sqrt(noise[at]);
-      let x = (noise[at + 1] - 0.5) * (9 + depth * 26) * spread;
-      const y = (noise[at + 2] - 0.5) * (4.5 + depth * 9);
-      const z = 1.5 - depth * 34;
-
-      if (z > -7 && Math.abs(x) < 2.6 && Math.abs(y) < 2) {
-        x += x >= 0 ? 2.8 : -2.8;
-      }
-
-      plates.push({
-        url: pictures[index % pictures.length],
-        position: [x, y, z],
-        height: 0.5 + noise[at + 3] * 0.75,
-        phase: noise[at + 4] * Math.PI * 2,
-      });
-    }
-
-    return plates;
-  }, [count, pictures, spread]);
+  return useMemo(() => fieldPlates(count, pictures, spread), [count, pictures, spread]);
 }
 
 function useAsyncTexture(url: string | null): THREE.Texture | null {
@@ -129,9 +94,10 @@ function aspectOf(texture: THREE.Texture | null): number {
   return image.width / image.height;
 }
 
-function Plate({ plate, fade }: { plate: FieldPlate; fade: RefObject<number> }) {
+function Plate({ plate, fade, at }: { plate: FieldPlate; fade: RefObject<number>; at: number }) {
   const texture = useAsyncTexture(plate.url);
   const group = useRef<THREE.Group>(null);
+  const face = useRef<THREE.Mesh>(null);
   const picture = useRef<THREE.MeshBasicMaterial>(null);
   const edge = useRef<THREE.MeshBasicMaterial>(null);
   const aspect = aspectOf(texture);
@@ -144,6 +110,28 @@ function Plate({ plate, fade }: { plate: FieldPlate; fade: RefObject<number> }) 
       picture.current.needsUpdate = true;
     }
   }, [texture]);
+
+  // The renderer says when this plate was really on screen. Frustum culling
+  // means a plate behind the camera never gets here, and the opacity test keeps
+  // out the frame where the material has its picture but the field has not
+  // faded it up yet.
+  useEffect(() => {
+    const node = face.current;
+    if (node === null || texture === null) {
+      return;
+    }
+    const nothing = () => undefined;
+    node.onAfterRender = () => {
+      if (picture.current === null || picture.current.opacity <= 0.01) {
+        return;
+      }
+      node.onAfterRender = nothing;
+      plateDrawn(String(at));
+    };
+    return () => {
+      node.onAfterRender = nothing;
+    };
+  }, [at, texture]);
 
   useFrame(({ clock }) => {
     const node = group.current;
@@ -179,7 +167,7 @@ function Plate({ plate, fade }: { plate: FieldPlate; fade: RefObject<number> }) 
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-      <mesh position={[0, 0, 0.004]} scale={[plate.height * aspect, plate.height, 1]}>
+      <mesh ref={face} position={[0, 0, 0.004]} scale={[plate.height * aspect, plate.height, 1]}>
         <planeGeometry args={[1, 1]} />
         <meshBasicMaterial ref={picture} map={texture} transparent opacity={0} toneMapped={false} />
       </mesh>
@@ -188,10 +176,12 @@ function Plate({ plate, fade }: { plate: FieldPlate; fade: RefObject<number> }) 
 }
 
 export function PlateField({ field, fade }: { field: FieldPlate[]; fade: RefObject<number> }) {
+  expectPlates(field.length);
+
   return (
     <group>
       {field.map((plate, index) => (
-        <Plate key={`${plate.url}-${index}`} plate={plate} fade={fade} />
+        <Plate key={`${plate.url}-${index}`} plate={plate} fade={fade} at={index} />
       ))}
     </group>
   );

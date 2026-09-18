@@ -49,6 +49,12 @@ const nextConfig: NextConfig = {
   // its rules for agents in one place, so those files are not wanted here.
   agentRules: false,
 
+  // The dev server refuses its hot reload socket to an origin it was not told
+  // about, and a page opened on 127.0.0.1 rather than localhost is a different
+  // origin to it: the film never hydrates there. This is read by next dev only
+  // and has no effect on a build or on the deployed site.
+  allowedDevOrigins: ["127.0.0.1", "localhost"],
+
   // A verification build must never write into the directory the dev server is
   // serving from, so the build directory is chosen by the environment.
   distDir: process.env.NEXT_DIST_DIR ?? ".next",

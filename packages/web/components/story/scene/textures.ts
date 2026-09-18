@@ -1,13 +1,9 @@
 import * as THREE from "three";
 import { ACCENT, ACCENT_LIFT, ACCENT_RGB } from "@/components/story/palette";
+import { PLATE_WIDTH } from "@/components/story/scene/order";
 import { optimizedUrl } from "@/lib/images";
 
 const cache = new Map<string, Promise<THREE.Texture>>();
-
-// A plate in the field is never more than a few hundred pixels on screen, and
-// three.js cannot use next/image, so the address is handed to the optimizer
-// itself. That is what keeps the film off the IPFS gateway on every view.
-const PLATE_WIDTH = 640;
 
 /**
  * Loads one picture as a texture, once per address.
@@ -127,20 +123,6 @@ export function glowTexture(): THREE.CanvasTexture {
   }
 
   return new THREE.CanvasTexture(canvas);
-}
-
-/** A deterministic number sequence, so the field is the same field on every load. */
-export function sequence(seed: number, count: number): number[] {
-  let state = seed >>> 0;
-  const out: number[] = [];
-  for (let index = 0; index < count; index += 1) {
-    state += 0x6d2b79f5;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    out.push(((value ^ (value >>> 14)) >>> 0) / 4294967296);
-  }
-  return out;
 }
 
 /** The four transforms the copies are put through on their way out. */

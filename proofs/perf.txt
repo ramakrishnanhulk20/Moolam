@@ -432,3 +432,238 @@ Scripts named by the live HTML, chunks downloaded and searched for the wallet:
   /en                     13 chunks, none
   /en/docs                14 chunks, none
   /en/studio              28 chunks, five carrying it, as it must
+
+
+EXPLORE'S FIRST PAINT
+--------------------------------------------------------------------------
+Measured 2026-09-18 on this machine against a production build of packages/web
+(NEXT_DIST_DIR=.next-wo79) served by `next start` on port 3409, Lighthouse
+12.8.2 through the runner below, mobile profile, middle of three runs per page.
+The index held 36 passports that day, 14 of them real pictures.
+
+  node packages/web/scripts/perf/lighthouse.mjs --base http://localhost:3409 --profile mobile --paths /en/explore --runs 3
+
+BEFORE
+
+How it was served. /en/explore is built on every request. The page awaits
+searchParams, because the chips and the search term live in the address, and the
+route says dynamic = "force-dynamic" for the same reason. The build prints it in
+the dynamic list, "server-rendered on demand". It carries no x-nextjs-cache
+header and answers
+Cache-Control: private, no-cache, no-store. The pages it sits beside carry
+x-nextjs-cache: STALE and s-maxage=30.
+
+First byte. Cold, with the data cache emptied and the server just started, 3.94
+s. Warm, 16, 16 and 20 ms over three runs. Every read the page makes is held for
+a minute, and a hold that has gone stale is handed over as it stands while it
+refreshes behind the reader: 70 seconds after a read, past the minute, the next
+request still answered in 18 ms and all 39 cache entries were rewritten over the
+three seconds after it was answered. So the wait was never the minute expiring.
+It was having nothing held at all, which is what the first visitor after a
+deploy gets.
+
+The largest paint on a phone. The element is the first plate's picture,
+ul.mt-6 > li > a.group > img.object-cover. Its phases: TTFB 453 ms, load delay
+339 ms, load time 31 ms, render delay 4757 ms. The picture was on the wire by
+about 820 ms and was not painted until 5579 ms, because every plate is drawn by
+a motion component: the served HTML carries opacity 0 on it and it only rises in
+once the browser has downloaded and run the page. The img also carried
+loading="lazy", which the lcp-lazy-loaded audit failed. In the unthrottled trace
+behind the same run the picture painted at 797 ms.
+
+Above the fold at 412 px: two plate pictures, 384 px wide files at 7 to 12 kB,
+and the two brand lockups at 2 kB. The sheet fetched 12 of the 14 pictures,
+141 kB in all.
+
+Mobile Lighthouse, middle of three: score 78, LCP 5579 ms, TBT 155 ms,
+CLS 0.000, JS 417 kB.
+
+WHAT CHANGED
+
+The opening view is held while the site is built. Explore stays a page built on
+the request: the chips and the search term live in the address, and a route that
+is cached cannot carry a query, so the filters keep paying for themselves. What
+the build now does is fill the hold behind the view nobody has pressed a chip on.
+lib/data/prerender.ts holds the three reads that view makes, and the route's
+generateStaticParams calls it and returns no address, so nothing about how the
+route is served changes. Everything stays held for the same minute, and a newly
+registered picture still lands on the next request after the minute is up.
+
+The first row is drawn without a motion component. The four plates that make up
+the first row on the widest screen enter with the CSS rise the rest of the
+server-drawn site uses, so they are in the first paint instead of waiting for
+the page to be run. Everything under them still enters on scroll as before. The
+two pictures a phone shows before a scroll are named in the head of the page, so
+the browser fetches them before it has read the grid; the other two in that row
+are not, because anything named there is pulled down ahead of the picture the
+paint is waiting for.
+
+AFTER
+
+First byte. First request to the page on a freshly built, freshly started
+server, nobody having opened it: 0.38 s, of which the route's own modules are
+most of it. The same build with the hold thrown away answers 3.68 s, which is
+the control: what the build holds is worth 3.3 seconds to the first visitor.
+Warm: 31, 42 and 39 ms. A prerendered page on the same cold process answers in
+23 to 46 ms, so the page is now within about a tenth of a second of one that was
+built with the site.
+
+The largest paint. Still the first plate's picture, now inside li.rise. The
+lcp-lazy-loaded audit passes, the img no longer carries loading="lazy", and the
+head names two pictures. In the unthrottled trace it paints at 382 ms against
+797 ms before.
+
+Mobile Lighthouse, middle of three: score 81, LCP 5111 ms, TBT 88 ms, CLS 0.000,
+JS 419 kB. Layout shift is zero at 412 px and at 375 px, where the plate is
+166 by 208 and the file fetched for it is 384 px wide.
+
+What the page showed, all of it from the index: the opening view drew 14 real
+pictures and no test cards, the Test images chip drew 22 test cards, All drew
+the first 24 of 36, and a search for 0xf0 drew 2. Nothing on the page is a
+sample.
+
+WHAT STANDS IN THE WAY OF 92 AND 2.5 SECONDS, AND BY HOW MUCH
+
+The order asked for a mobile score of 92 or better with the largest paint under
+2.5 s on this local build. It is not reached, and two thirds of the gap is the
+measurement rather than the page. The two pages Explore is meant to keep up with
+were run in the same session on the same build:
+
+  page                     score   LCP      TBT     CLS     live on 2026-09-17
+  /en/explore                 81   5111ms    88ms   0.000   84, 4387 ms
+  /en/passport/0xcdb2...      84   3886ms   222ms   0.000   99, 2104 ms
+  /en/agent/10249             88   3844ms    90ms   0.000   97, 2545 ms
+
+Every page scores about 15 points lower here than the same page on the live
+host. Lighthouse's mobile number is a simulation laid over a trace, and on
+localhost every script arrives before the first paint, so all 419 kB of it is
+counted against the paint. Nothing on this machine reaches 92 on any of these
+three pages.
+
+Against its neighbours on the same build, Explore is now 3 points and 1.2 s of
+simulated paint behind the passport page, where on the live host before this
+work it was 15 points and 2.3 s behind. Two things are left in it: a contact
+sheet fetches 12 to 14 pictures, 141 kB, where a passport page fetches one, and
+the grid ships every plate to the browser to be hydrated (main thread on this
+page: 1007 ms other, 613 ms script evaluation, 574 ms style and layout). Drawing
+the plates on the server and keeping only the load-more button in the browser is
+the next thing worth doing, and it is a bigger change than this order.
+
+Two runs of the same build with no code change between them scored 76 and 81,
+each the middle of three loads. Read a difference of a few points here as the
+machine, not the page.
+
+THE FIRST SECONDS OF THE HOME PAGE
+--------------------------------------------------------------------------
+Measured 2026-09-18, same machine, production build (NEXT_DIST_DIR=.next-wo78)
+served by `next start` on port 3389, headless Chrome with the GPU off. Two new
+scripts, beside the two that were already here:
+
+  node packages/web/scripts/perf/layout-shift.mjs --url http://localhost:3389/en
+  node packages/web/scripts/perf/first-plate.mjs  --url http://localhost:3389/en
+
+THE SHIFT AT A THIRD OF A SECOND IS GONE
+--------------------------------------------------------------------------
+Every layout shift in the first six seconds, three runs at each size, before and
+after. The number is what Chrome scores; the phone's shift was always there and
+Chrome excuses it because the page's own viewport meta resizes the layout
+viewport within half a second of it.
+
+  before   1440x900   0.00694   0.00694   0.00694
+           375x667    0.02549   0.02549   0.02549  (excused, counted here anyway)
+  after    1440x900   0.00000   0.00000   0.00000
+           375x667    0.00000   0.00000   0.00000  no shift entry at all
+
+One element moved, and the script names it: div.-mt-[73px], the wrapper the home
+page pulls the film up under the floating bar with.
+
+  1440x900   1425x890 at 0,0  ->  1440x900 at 0,0   at 325 to 331 ms
+  375x667     375x650 at 0,0  ->   375x667 at 0,0   at 322 to 331 ms
+
+The markup asks for -73px and the rule in globals.css hands it the bar's real
+height, 63 px on a desktop and 56 px on a phone, but only when the body holds a
+[data-story] element. Nothing carried that attribute until the film itself
+mounted, so for the first third of a second the whole first screen stood 10 px
+too high (17 px on a phone) and then dropped. The box the film loads into now
+carries data-story="loading" (StoryStage.tsx), so the pull-up is right on the
+first paint and the film replaces a box of exactly its own size.
+
+Fixing that alone left one smaller shift behind, 0.00036 at 1440x900: the bar's
+own row re-centring by 7 px when the scrollbar went, because the page is one
+window of story plus a footer until the film arrives and hides the footer. The
+same rule now hides it while the film is still loading, for anyone who has not
+asked for less motion. A reader who has asked for less motion is left alone:
+they are getting the still page, which is long and keeps its footer.
+
+The film's look and motion are untouched. Twenty seconds of scrolled film on the
+same build: mean 19.1 ms, p95 33.4 ms, first WebGL draw 449 ms, the same two
+tiers this software renderer has always stepped through.
+
+HOW LONG THE FIRST PICTURE TAKES
+--------------------------------------------------------------------------
+Nobody knew, because nothing on the page could say. Each plate now reports from
+its own onAfterRender the first frame it was drawn with a picture on it and
+enough opacity to see it (components/story/scene/drawn.ts), and leaves two
+performance marks: moolam:first-plate and moolam:half-plates. They are marks and
+nothing else: no code in the app reads them. first-plate.mjs waits for them,
+five loads per profile, browser cache off on every load, and reports the median.
+
+                            first picture        half the field
+  desktop   before             0.54 s               0.57 s
+            after              0.53 s               0.57 s
+  mobile    before             8.93 s               9.81 s
+            after              8.06 s               9.17 s
+
+Desktop is 1440x900 unthrottled. Mobile is 375x667 with the CPU slowed four
+times and the network held to Lighthouse's slow 4G. The desktop target was 2.0 s
+and it is met. The mobile target was 4.0 s and it is missed by 4.06 s, and this
+is exactly what stands in the way:
+
+  scripts   654 kB of this app's own JavaScript, the last one in at 7.06 s
+  canvas    the scene's canvas exists at 7.50 s
+  picture   the first plate is drawn at 8.06 s
+
+Every millisecond before 7.5 s is the film's own code arriving and running:
+React, three.js, drei and the scene. No change to the picture path can move it.
+What the picture path did cost is the 1.37 s that used to sit between the canvas
+existing and the first plate being drawn, and that is now 0.56 s.
+
+What gates the pictures themselves, measured rather than assumed:
+  order         the field hands its pictures out nearest and largest first, so
+                the first requests belong to the plates that fill the most of
+                the opening frame (components/story/scene/order.ts).
+  concurrency   the requests are not serialised behind each other: ten to
+                fifteen are in flight at once, and the whole field is asked for
+                inside 20 ms of the scene mounting.
+  waiting       nothing waits for the full set. Each plate draws the frame its
+                own texture arrives: on the desktop profile the first picture is
+                up 40 ms before half of them are.
+  size          fourteen pictures, 640 px wide through the optimizer, 2 to 39 kB
+                each, 209 kB for the whole field.
+  the tier      costs nothing measurable: the tier is decided in the same frame
+                the canvas appears (7498 ms, then tier 1 at 7597 ms).
+
+The one thing that was ours to fix on a phone: the four pictures nearest the
+opening camera are now asked for by the document itself, at the same address,
+the same width and the same CORS mode the texture loader will use, so they are
+already in the browser when the scene arrives. On the phone profile they are
+asked for at 0.60 s and answered by 4.2 s, where they used to be asked for at
+7.66 s. The crossOrigin on those four links is load bearing: without it the
+loader's own request does not match the preload and the picture is fetched
+twice, which measured 14 requests and 237 kB against 13 and 201 kB, and 0.8 s
+later to the first plate.
+
+A first visit after a deploy, before the optimizer has read any of these
+pictures from the gateway, costs more than the medians above: 0.96 s to the
+first picture and 1.79 s to half the field on the desktop profile, against
+0.53 s and 0.57 s once the optimizer holds them.
+
+THE DEV SERVER AND 127.0.0.1
+--------------------------------------------------------------------------
+next.config.ts now names 127.0.0.1 and localhost in allowedDevOrigins. The dev
+server reads it and nothing else does: it is not in a build and not on the
+deployed site. A page opened on either origin hydrates and the film runs, proved
+on a dev server of this pass's own on port 3399:
+
+  http://127.0.0.1:3399/en   canvas true, HMR connected, first plate at 635 ms
+  http://localhost:3399/en   canvas true, HMR connected, first plate at 749 ms

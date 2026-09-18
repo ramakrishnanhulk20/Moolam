@@ -431,7 +431,12 @@ html:not(.light) body:has([data-story="still"]) .app-header {
 /* The page pulls the film up under the floating bar by exactly the bar's height.
    The home page asks for the desktop number; on a phone the bar is shorter, and
    the film would otherwise start above the top of the window and leave a strip
-   of page ground above the footer. */
+   of page ground above the footer.
+
+   The box the film loads into carries data-story too (StoryStage.tsx), so this
+   holds from the first paint. While it did not, the first screen stood 10 px too
+   high until the film mounted and then dropped: the only layout shift the home
+   page had. */
 body:has([data-story]) main > .-mt-\[73px\] {
   margin-top: calc(var(--header-h) * -1);
 }
@@ -441,6 +446,18 @@ body:has([data-story]) main > .-mt-\[73px\] {
    back the moment the last beat has been read, and the scroll chains on to it. */
 body:has([data-story="film"]):not([data-story-end]) footer {
   display: none;
+}
+
+/* The same, while the film's code is still on its way.
+   Without this the page is one window of story plus a footer for the first
+   third of a second, which is a scrollbar, and the scrollbar going again when
+   the film arrives re-centres the bar's row by 7 px. Anyone who has asked for
+   less motion is left alone: they are getting the still page, which is long
+   and keeps its footer, so hiding it here would only move their bar instead. */
+@media (prefers-reduced-motion: no-preference) {
+  body:has([data-story="loading"]) footer {
+    display: none;
+  }
 }
 
 /* The card the film ends on, in light mode: the page's own ground fading up
