@@ -3,6 +3,7 @@ import { monad } from "viem/chains";
 import deployment from "../../../contracts/deployments/monad-mainnet.json";
 import registryAbiJson from "../../../contracts/abi/MoolamRegistry.json";
 import policyAbiJson from "../../../contracts/abi/VerifierPolicy.json";
+import consentAbiJson from "../../../contracts/abi/MoolamConsent.json";
 import { publicEnv, serverRpcUrl } from "@/lib/env";
 
 /**
@@ -14,6 +15,8 @@ export const addresses = {
   policy: deployment.policy as Hex,
   receiver: deployment.receiver as Hex,
   agentIdentity: deployment.agentIdentity as Hex,
+  /** Where a passport holder's statement on AI use is written and read back. */
+  consent: deployment.consent as Hex,
   /**
    * The two addresses a CRE report can arrive through. The receiver is pointed
    * at the live network forwarder and was pointed at the simulation one for the
@@ -67,6 +70,13 @@ export const registryAbi = registryAbiJson as Abi;
  * itself: these are the three settings that can still change.
  */
 export const policyAbi = policyAbiJson as Abi;
+
+/**
+ * The consent register's ABI. It is a separate contract from the registry
+ * because the registry is immutable and statements arrived after it, so a
+ * holder's word about AI use is read from here and nowhere else.
+ */
+export const consentAbi = consentAbiJson as Abi;
 
 const RPC_OPTIONS = { batch: true, timeout: 15_000 } as const;
 
