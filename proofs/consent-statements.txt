@@ -1,0 +1,26 @@
+Moolam's own statements on AI use for the eleven real pictures its demo agent's creator wallet holds,
+written to MoolamConsent 0x1151E69a82947920546e779c4C8c785b2a3C1277 on Monad mainnet on 2026-09-18 through Privy from
+0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6 (three sponsored transactions; run by Ram with kitchen/launch/state-consent.sh).
+Each line below was written only after the contract read the statement back. Plan: packages/agents/consent-plan.json.
+passport | statement | transaction | block | written | writer
+
+0x5b3856dc4765c629e82f65ff920f13543f7c1ef818b52252d55b488387fe65b1  open  0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d  block 105833721  written 2026-09-18T07:38:42.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x01f9243e5dafb9364ff4819c4f55379d5366acd37af2466ff69500ceb8438ed5  open  0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d  block 105833721  written 2026-09-18T07:38:42.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e  open  0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d  block 105833721  written 2026-09-18T07:38:42.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x35fcd08ac2b19168dac0dac781a778d72aa9b3ea91b2c3e55c16582ad14a3771  open  0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d  block 105833721  written 2026-09-18T07:38:42.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x367c1afed9276fe599d5c527882f65ee516d274141e3974b1290f52b19e98766  closed  0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61  block 105833742  written 2026-09-18T07:38:48.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638  closed  0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61  block 105833742  written 2026-09-18T07:38:48.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x07a0bfbac45278c6d9a2d488470833b3ed8e0791f5f071e190e5224c3b34951d  closed  0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61  block 105833742  written 2026-09-18T07:38:48.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0xf08bea9e1429bee09065a3cd443f353096acf748c73113ac8696313da9a059d7  closed  0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61  block 105833742  written 2026-09-18T07:38:48.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x7cb4aead3b37f16b78a203a43aba83db10fa5f2fc7629f353826183d8c9d693f  ask  0xf4d6a3bb546801d2922c1ec88b8d8d9a5decdc075664db3ab3d61feef2df239e  block 105833756  written 2026-09-18T07:38:52.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0xdece558a3ca0a892a2e0ee1b5295a7140bed9388e78416b86c058f23fbb29436  ask  0xf4d6a3bb546801d2922c1ec88b8d8d9a5decdc075664db3ab3d61feef2df239e  block 105833756  written 2026-09-18T07:38:52.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+0x0a3c8368198f7c52597338543141797b0ab395ff53a3590499099238f85f15ae  ask  0xf4d6a3bb546801d2922c1ec88b8d8d9a5decdc075664db3ab3d61feef2df239e  block 105833756  written 2026-09-18T07:38:52.000Z  by 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+
+Checked end to end on the live services the same hour, from the pixels alone:
+  POST /verify with monsoon-fishing-nets-drying  -> consent source chain, stated, all four uses notAllowed, at 1789717128, writer 0x85a88Ca8...
+  POST /verify with marina-beach-kite-sellers    -> consent source chain, stated, all four uses allowed, at 1789717122
+  POST /verify with madurai-tiffin-at-five       -> consent source chain, stated, all four constrained,
+       constraintInfo "Ask first: open an issue at https://github.com/ramakrishnanhulk20/Moolam/issues", at 1789717132
+The question a label in a file cannot answer, asked of the contract with cast (consentAt for the Monsoon passport):
+  one hour before the statement  -> false, nothing was stated
+  after it                       -> true, (1789717128, 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, (2, 2, 2, 2), ""), history length 1
