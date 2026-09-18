@@ -145,8 +145,8 @@ The fourteen re-checks on the fourteen real pictures (seven on 2026-09-14, seven
 for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
 by the four steps above. They are real transactions with real gas, and they prove the workflow code and
 every check the receiver makes. They are not a run on the live Chainlink network: the workflow ran on one
-machine and no quorum of nodes agreed on the answer. Deploying to the network needs Early Access, requested
-on 2026-09-15.
+machine and no quorum of nodes agreed on the answer. Deploying to the network needs a deployment access this
+project does not have.
 
 The passport page does not take this on trust either. It reads the `to` address of each report transaction
 and prints which forwarder delivered it, so a simulation run says so under the verdict and a network run

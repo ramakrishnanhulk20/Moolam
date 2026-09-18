@@ -346,7 +346,7 @@
       "distanceLabel": "接收方写下的值",
       "byChainlink": "由 Chainlink CRE 工作流复核",
       "delivery": {
-        "simulation": "这份报告由 CRE 模拟转发器送达：工作流只在一个节点上跑过，没有网络共识。在真实网络上运行还在等 Chainlink 的部署权限。",
+        "simulation": "这份报告由 CRE 模拟转发器送达：工作流只在一个节点上跑过，没有网络共识。",
         "network": "这份报告由 Chainlink 网络转发器送达：达到法定人数的节点就这个答案达成了共识。"
       },
       "byReceiver": "由获准的接收方写入",

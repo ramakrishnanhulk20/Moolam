@@ -85,8 +85,8 @@ An attestation is a signal, not a verdict. It says a Chainlink CRE workflow down
 passport points at and got a fingerprint this far from the recorded one. It sits next to the
 signatures rather than above them. Every attestation on chain today was written by a simulation run
 of that workflow, one machine and no node consensus, and the passport card says so under each
-verdict. A run on the live network, where a quorum of nodes has to agree, waits on Chainlink's
-Early Access.
+verdict. A run on the live network, where a quorum of nodes has to agree, needs deployment
+access this project does not have.
 
 ## Disputes and bonds
 

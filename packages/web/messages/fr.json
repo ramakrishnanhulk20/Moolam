@@ -344,7 +344,7 @@
       "distanceLabel": "Tel que le récepteur l’a inscrit",
       "byChainlink": "Revérifiée par un workflow CRE de Chainlink",
       "delivery": {
-        "simulation": "Livrée par le forwarder de simulation CRE : un seul nœud a exécuté le workflow, sans consensus du réseau. L’exécution sur le réseau réel attend l’accès de déploiement de Chainlink.",
+        "simulation": "Livrée par le forwarder de simulation CRE : un seul nœud a exécuté le workflow, sans consensus du réseau.",
         "network": "Livrée par le forwarder du réseau Chainlink : un quorum de nœuds s’est mis d’accord sur cette réponse."
       },
       "byReceiver": "Inscrite par un récepteur autorisé",

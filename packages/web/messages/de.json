@@ -344,7 +344,7 @@
       "distanceLabel": "Wie der Empfänger es geschrieben hat",
       "byChainlink": "Von einem Chainlink-CRE-Workflow nachgeprüft",
       "delivery": {
-        "simulation": "Über den CRE-Simulations-Forwarder geliefert: ein einzelner Knoten hat den Workflow ausgeführt, kein Netzkonsens. Der Lauf im echten Netz wartet auf den Deploy-Zugang von Chainlink.",
+        "simulation": "Über den CRE-Simulations-Forwarder geliefert: ein einzelner Knoten hat den Workflow ausgeführt, kein Netzkonsens.",
         "network": "Über den Chainlink-Netz-Forwarder geliefert: ein Quorum von Knoten hat sich auf diese Antwort geeinigt."
       },
       "byReceiver": "Von einem zugelassenen Empfänger geschrieben",

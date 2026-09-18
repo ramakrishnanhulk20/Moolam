@@ -346,7 +346,7 @@
       "distanceLabel": "수신자가 기록한 값",
       "byChainlink": "Chainlink CRE 워크플로가 재확인",
       "delivery": {
-        "simulation": "CRE 시뮬레이션 포워더를 거쳐 들어왔습니다. 노드 하나가 워크플로를 실행했고 네트워크 합의는 없습니다. 실제 네트워크 실행은 Chainlink의 배포 승인을 기다리고 있습니다.",
+        "simulation": "CRE 시뮬레이션 포워더를 거쳐 들어왔습니다. 노드 하나가 워크플로를 실행했고 네트워크 합의는 없습니다.",
         "network": "Chainlink 네트워크 포워더를 거쳐 들어왔습니다. 정족수의 노드가 이 답에 합의했습니다."
       },
       "byReceiver": "허용된 수신자가 기록",

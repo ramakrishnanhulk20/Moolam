@@ -172,8 +172,8 @@ app's Privy server wallet, is the one that draws in the studio, signs the genera
 passport and now leads the Agents page. Every real picture on the registry, fourteen as of 2026-09-17, carries a CRE re-check
 ([proofs/rechecks.txt](proofs/rechecks.txt)). Every one of those re-checks was written through the CRE
 simulation forwarder with `cre workflow simulate --broadcast`: a real transaction paying real gas, with the
-workflow running on one machine, so there is no network consensus behind it. Deploying the workflow to the
-live network needs Chainlink's Early Access, requested on 2026-09-15 and not granted yet. The first re-check,
+workflow running on one machine, so there is no network consensus behind it. A run on Chainlink's node
+network, where a quorum has to agree, needs deployment access this project does not have. The first re-check,
 on 2026-09-08, recomputed `0x233ccc7872442123` at distance 0 and wrote its report in transaction
 [`0x3a814ab2...88796a0`](https://monadvision.com/tx/0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0),
 which left that passport with an `attestationCount` of 1, `matched` true and distance 0. Each passport page

@@ -344,7 +344,7 @@
       "distanceLabel": "Como lo escribió el receptor",
       "byChainlink": "Recomprobada por un flujo CRE de Chainlink",
       "delivery": {
-        "simulation": "Entregada por el forwarder de simulación de CRE: un solo nodo ejecutó el flujo, sin consenso de red. La ejecución en la red real espera el acceso de despliegue de Chainlink.",
+        "simulation": "Entregada por el forwarder de simulación de CRE: un solo nodo ejecutó el flujo, sin consenso de red.",
         "network": "Entregada por el forwarder de la red de Chainlink: un quórum de nodos llegó a un consenso sobre esta respuesta."
       },
       "byReceiver": "Escrita por un receptor autorizado",

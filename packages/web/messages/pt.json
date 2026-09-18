@@ -345,7 +345,7 @@
       "distanceLabel": "Como o receptor gravou",
       "byChainlink": "Reconferida por um fluxo CRE da Chainlink",
       "delivery": {
-        "simulation": "Entregue pelo forwarder de simulação do CRE: um único nó rodou o fluxo, sem consenso de rede. A execução na rede real espera o acesso de deploy da Chainlink.",
+        "simulation": "Entregue pelo forwarder de simulação do CRE: um único nó rodou o fluxo, sem consenso de rede.",
         "network": "Entregue pelo forwarder da rede Chainlink: um quórum de nós chegou a consenso sobre esta resposta."
       },
       "byReceiver": "Gravada por um receptor autorizado",

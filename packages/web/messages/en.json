@@ -344,7 +344,7 @@
       "distanceLabel": "As the receiver wrote it",
       "byChainlink": "Re-checked by a Chainlink CRE workflow",
       "delivery": {
-        "simulation": "Delivered through the CRE simulation forwarder: one node ran the workflow, no network consensus. The live network run waits on Chainlink's deploy access.",
+        "simulation": "Delivered through the CRE simulation forwarder: one node ran the workflow, no network consensus.",
         "network": "Delivered through the Chainlink network forwarder: a quorum of nodes reached consensus on this answer."
       },
       "byReceiver": "Written by an allowed receiver",
