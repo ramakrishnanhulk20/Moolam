@@ -38,17 +38,25 @@ export function ConsentChoice({
   draft,
   onChange,
   disabled = false,
+  size = "regular",
   className = "",
 }: {
   draft: ConsentDraft;
   onChange: (draft: ConsentDraft) => void;
   /** True while a statement is out, when nothing may be changed under it. */
   disabled?: boolean;
+  /**
+   * "compact" is the same three plates a size down, for the studio, where this
+   * sits inside a form with a picture and a title above it rather than being the
+   * whole card. Same words, same marks, same behaviour: only the air changes.
+   */
+  size?: "regular" | "compact";
   className?: string;
 }) {
   const t = useTranslations("passport.consent");
   const reduced = useIsReducedMotion();
   const [open, setOpen] = useState(false);
+  const small = size === "compact";
 
   const chosen = choiceOf(draft.consent);
   const wantsConditions = needsConditions(draft.consent);
@@ -61,7 +69,7 @@ export function ConsentChoice({
 
   return (
     <div className={className}>
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className={`grid sm:grid-cols-3 ${small ? "gap-2" : "gap-3"}`}>
         {CHOICES.map((choice) => {
           const picked = chosen === choice;
           return (
@@ -72,7 +80,9 @@ export function ConsentChoice({
               onClick={() => onChange({ consent: consentForChoice(choice), constraintInfo: draft.constraintInfo })}
               aria-pressed={picked}
               data-choice={choice}
-              className={`group relative overflow-hidden rounded-[8px] border p-5 text-start transition-all duration-200 disabled:opacity-60 ${
+              className={`group relative overflow-hidden rounded-[8px] border text-start transition-all duration-200 disabled:opacity-60 ${
+                small ? "p-4" : "p-5"
+              } ${
                 picked
                   ? "border-accent bg-accent-soft"
                   : "border-line bg-bg-raised hover:-translate-y-0.5 hover:border-line-strong"
@@ -89,13 +99,21 @@ export function ConsentChoice({
 
               <UseBlock
                 consent={consentForChoice(choice)}
-                size="h-3 w-3"
+                size={small ? "h-2.5 w-2.5" : "h-3 w-3"}
                 className={picked ? "text-text" : "text-text-faint"}
               />
-              <span className="mt-4 block font-display text-[1.05rem] font-semibold leading-[1.1] tracking-[-0.02em]">
+              <span
+                className={`block font-display font-semibold leading-[1.1] tracking-[-0.02em] ${
+                  small ? "mt-3 text-[0.95rem]" : "mt-4 text-[1.05rem]"
+                }`}
+              >
                 {t(`control.choices.${choice}.title`)}
               </span>
-              <span className="mt-2 block max-w-[34ch] text-xs leading-relaxed text-text-muted">
+              <span
+                className={`block max-w-[34ch] leading-relaxed text-text-muted ${
+                  small ? "mt-1.5 text-[11px]" : "mt-2 text-xs"
+                }`}
+              >
                 {t(`control.choices.${choice}.line`)}
               </span>
             </button>
@@ -107,7 +125,9 @@ export function ConsentChoice({
         type="button"
         onClick={() => setOpen((was) => !was)}
         aria-expanded={open}
-        className="tap group mt-8 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent"
+        className={`tap group flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent ${
+          small ? "mt-5" : "mt-8"
+        }`}
       >
         <span aria-hidden className="h-px w-8 bg-line-strong transition-colors duration-200 group-hover:bg-accent" />
         {open ? t("control.oneAnswer") : t("control.byUse")}
@@ -170,7 +190,7 @@ export function ConsentChoice({
             transition={reduced ? { duration: 0.15 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-8 border-s-2 border-accent/50 ps-5">
+            <div className={`border-s-2 border-accent/50 ps-5 ${small ? "mt-6" : "mt-8"}`}>
               <label htmlFor="consent-conditions" className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
                 {t("control.conditionsLabel")}
               </label>

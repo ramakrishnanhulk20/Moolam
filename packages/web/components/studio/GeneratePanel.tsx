@@ -10,12 +10,15 @@ import {
   GENERATE_STEPS,
   isBusy,
   isRegistered,
+  isStating,
   passportId,
   type RegisterState,
   type Step,
   type StepState,
 } from "@/lib/studio/flow";
 import { EXAMPLE_PROMPTS, PROMPT_MAX, PROMPT_MIN, atLimit } from "@/lib/studio/generate";
+import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
+import { ConsentField } from "./ConsentField";
 import { FailureNote } from "./FailureNote";
 import { useHeadingLeading } from "./leading";
 
@@ -32,6 +35,7 @@ export function GeneratePanel({
   wallet,
   onPrompt,
   onTitle,
+  onConsent,
   onGenerate,
   onReset,
   onUnsponsored,
@@ -43,6 +47,7 @@ export function GeneratePanel({
   wallet?: Hex;
   onPrompt: (prompt: string) => void;
   onTitle: (title: string) => void;
+  onConsent: (draft: ConsentDraft) => void;
   onGenerate: () => void;
   onReset: () => void;
   onUnsponsored: () => void;
@@ -135,11 +140,13 @@ export function GeneratePanel({
       </label>
       <p className="mt-2 text-xs text-text-faint">{t("titleHint")}</p>
 
+      <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
+
       <div className="mt-8 flex flex-wrap items-center gap-5">
         <button
           type="button"
           onClick={onGenerate}
-          disabled={busy || spent || characters < PROMPT_MIN}
+          disabled={busy || spent || characters < PROMPT_MIN || draftProblem(state.consent) !== null}
           className="w-full rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
         >
           {t("submit")}
@@ -449,6 +456,8 @@ function Generated({ state, wallet, onReset }: { state: RegisterState; wallet?: 
   const format = useFormatter();
   const id = passportId(state);
   const generated = state.generated;
+  // A statement is out from the same wallet, so nothing here starts a new run.
+  const stating = isStating(state);
 
   return (
     <motion.section
@@ -534,7 +543,8 @@ function Generated({ state, wallet, onReset }: { state: RegisterState; wallet?: 
           <button
             type="button"
             onClick={onReset}
-            className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            disabled={stating}
+            className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
           >
             {t("another")}
           </button>

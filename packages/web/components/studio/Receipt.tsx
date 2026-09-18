@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
+import { plainStatement } from "@/lib/chain/consent";
 import { feeInMon } from "@/lib/chain/fee";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { Studio } from "@/lib/studio/useStudio";
@@ -18,6 +19,8 @@ interface Mark {
   big?: { caption: string; value: string; unit: string };
   /** Extra lines under the detail, each one something this run measured. */
   lines?: string[];
+  /** The one thing a reader can do about this stamp, on the few that have anything. */
+  action?: { label: string; onClick: () => void };
 }
 
 /**
@@ -27,9 +30,10 @@ interface Mark {
  */
 export function Receipt({ studio }: { studio: Studio }) {
   const t = useTranslations("studio");
+  const words = useTranslations("passport.consent");
   const format = useFormatter();
   const reduced = useIsReducedMotion();
-  const marks = collect(studio, t, format);
+  const marks = collect(studio, t, words, format);
 
   return (
     <aside className="relative lg:ps-12">
@@ -104,6 +108,15 @@ export function Receipt({ studio }: { studio: Studio }) {
                         {line}
                       </p>
                     ))}
+                {mark.action === undefined ? null : (
+                  <button
+                    type="button"
+                    onClick={mark.action.onClick}
+                    className="mt-3.5 rounded-[8px] border border-line px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+                  >
+                    {mark.action.label}
+                  </button>
+                )}
               </motion.li>
             ))}
           </AnimatePresence>
@@ -114,9 +127,10 @@ export function Receipt({ studio }: { studio: Studio }) {
 }
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
+type Words = Translate & { has: (key: string) => boolean };
 type Format = ReturnType<typeof useFormatter>;
 
-function collect(studio: Studio, t: Translate, format: Format): Mark[] {
+function collect(studio: Studio, t: Translate, words: Words, format: Format): Mark[] {
   const marks: Mark[] = [];
 
   if (studio.authenticated) {
@@ -221,7 +235,102 @@ function collect(studio: Studio, t: Translate, format: Format): Mark[] {
     });
   }
 
+  const said = statementMark(studio, t, words, format);
+  if (said !== null) {
+    marks.push(said);
+  }
+
   return marks;
+}
+
+/**
+ * What the creator said about AI use, and what Monad did with it.
+ *
+ * The statement is its own write and its own stamp, after the registration's,
+ * because that is the order the two things happened in. A statement that never
+ * landed says so plainly and offers the one thing worth doing: the passport is
+ * registered either way, and the words can still be written from its own page.
+ * Silence gets a line too, because a creator should never have to wonder
+ * whether saying nothing quietly allowed something.
+ */
+function statementMark(studio: Studio, t: Translate, words: Words, format: Format): Mark | null {
+  const statement = studio.register.statement;
+  const registered = studio.register.registeredAt !== null;
+  const label = t("consent.receipt.label");
+  const again = { label: t("consent.receipt.again"), onClick: () => void studio.actions.stateAgain() };
+
+  if (statement.state === "sending") {
+    return {
+      key: "statement",
+      label,
+      value: t("consent.receipt.sending"),
+      detail: t("consent.receipt.sendingDetail"),
+    };
+  }
+
+  if (statement.state === "unconfirmed") {
+    return {
+      key: "statement",
+      label,
+      value: t("consent.receipt.pending"),
+      detail: t("consent.receipt.pendingDetail"),
+      action: { ...again, label: t("consent.receipt.recheck") },
+    };
+  }
+
+  if (statement.state === "failed") {
+    return {
+      key: "statement",
+      label,
+      value: t("consent.receipt.failed"),
+      detail: failureLine(statement.failure, words, format),
+      lines: [t("consent.receipt.later")],
+      action: again,
+    };
+  }
+
+  if (statement.state === "stated" && statement.sent !== null) {
+    const conditions = statement.sent.constraintInfo;
+    return {
+      key: "statement",
+      label,
+      value: words(`summary.${plainStatement(statement.sent.consent)}`),
+      href: statement.hash === null ? undefined : `${MONAD_EXPLORER}/tx/${statement.hash}`,
+      detail:
+        statement.waitedMs === null
+          ? undefined
+          : t("consent.receipt.statedIn", { ms: format.number(statement.waitedMs) }),
+      lines: [
+        statement.sponsored ? t("consent.receipt.sponsored") : t("consent.receipt.own"),
+        ...(conditions.length === 0 ? [] : [t("consent.receipt.conditions", { text: conditions })]),
+      ],
+      tone: "verified",
+    };
+  }
+
+  return registered
+    ? {
+        key: "statement",
+        label,
+        value: t("consent.receipt.none"),
+        detail: t("consent.receipt.noneDetail"),
+      }
+    : null;
+}
+
+/** The register's own reason a statement did not go through, in the reader's language. */
+function failureLine(
+  failure: Studio["register"]["statement"]["failure"],
+  words: Words,
+  format: Format,
+): string | undefined {
+  if (failure === null) {
+    return undefined;
+  }
+  const key = words.has(`failure.${failure.key}`) ? failure.key : "unknown";
+  return words(`failure.${key}`, {
+    at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1_000), { timeStyle: "short" }),
+  });
 }
 
 /**

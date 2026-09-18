@@ -1,6 +1,9 @@
 import type { Hex } from "viem";
+import type { ConsentDraft } from "@/lib/consent/call";
+import type { ConsentFailure } from "@/lib/consent/failure";
 import type { GenerateResponse, PrepareResponse, QuotaState } from "@/lib/verifier/client";
 import { checkImage as checkUpload, type RefusalCode } from "@/lib/upload/checkImage";
+import { NOTHING_TO_STATE } from "./consent";
 import { asGenerateFailure } from "./generate";
 import type { Failure, Stage } from "./problems";
 
@@ -80,11 +83,41 @@ export function measure({
   };
 }
 
+/**
+ * Where the statement about AI use has got to, which is its own small story
+ * beside the registration and never part of it.
+ *
+ * "unconfirmed" carries the same meaning it has everywhere else in this app:
+ * the send was taken and Monad has not shown it, so nothing may be sent again.
+ * "failed" includes a creator who closed the prompt, which is a choice and not
+ * a fault, and neither state takes anything away from a passport that is
+ * already on chain.
+ */
+export type StatementState = "idle" | "sending" | "unconfirmed" | "stated" | "failed";
+
+export interface Statement {
+  state: StatementState;
+  /** The words that went out, taken from the verify service's own answer. Null until a send is made. */
+  sent: ConsentDraft | null;
+  hash: Hex | null;
+  /** When the register says the statement was written, in whole seconds. */
+  at: number | null;
+  /** How long Monad took with it, measured in this browser. */
+  waitedMs: number | null;
+  /** True when Privy was asked to pay this send's fee and took it. */
+  sponsored: boolean;
+  failure: ConsentFailure | null;
+}
+
 export interface RegisterState {
   mode: Mode;
   file: File | null;
   title: string;
   prompt: string;
+  /** What the creator has said about AI use on the panel, before anything is sent. */
+  consent: ConsentDraft;
+  /** The second send: the same statement, written to the consent register once the passport is on chain. */
+  statement: Statement;
   steps: Record<Step, StepState>;
   prepared: PrepareResponse | null;
   /** The agent's answer, whole: its signature, the model that drew, and the quota. Only on the agent path. */
@@ -111,6 +144,11 @@ export type RegisterAction =
   | { type: "choose"; file: File }
   | { type: "title"; title: string }
   | { type: "prompt"; prompt: string }
+  | { type: "consent"; draft: ConsentDraft }
+  | { type: "stating" }
+  | { type: "statementSent"; hash?: Hex }
+  | { type: "stated"; sent: ConsentDraft; at: number; waitedMs: number; hash?: Hex; sponsored: boolean }
+  | { type: "statementFailed"; failure: ConsentFailure }
   | { type: "start"; step: Step; unsponsored?: boolean }
   | { type: "prepared"; prepared: PrepareResponse }
   | { type: "drawn"; response: GenerateResponse }
@@ -130,11 +168,23 @@ const WAITING: Record<Step, StepState> = {
   send: "waiting",
 };
 
+const NOTHING_SAID: Statement = {
+  state: "idle",
+  sent: null,
+  hash: null,
+  at: null,
+  waitedMs: null,
+  sponsored: false,
+  failure: null,
+};
+
 export const initialRegisterState: RegisterState = {
   mode: "upload",
   file: null,
   title: "",
   prompt: "",
+  consent: NOTHING_TO_STATE,
+  statement: NOTHING_SAID,
   steps: WAITING,
   prepared: null,
   generated: null,
@@ -164,6 +214,7 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         mode: action.mode,
         title: state.title,
         prompt: state.prompt,
+        consent: state.consent,
         quota: state.quota,
       };
     case "choose":
@@ -173,12 +224,15 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         file: action.file,
         title: state.title,
         prompt: state.prompt,
+        consent: state.consent,
         quota: state.quota,
       };
     case "title":
       return { ...state, title: action.title };
     case "prompt":
       return { ...state, prompt: action.prompt };
+    case "consent":
+      return { ...state, consent: action.draft };
     case "start":
       return {
         ...state,
@@ -227,6 +281,35 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         quota: action.quota ?? state.quota,
         steps: markRunning(state.steps, action.failure.key === "confirmPending" ? "unconfirmed" : "failed"),
       };
+    // The four below move the statement and nothing else. A passport that is on
+    // chain stays on chain whatever happens to the words about it, so not one of
+    // them touches a step, a hash or the time the registration landed.
+    case "stating":
+      return { ...state, statement: { ...NOTHING_SAID, state: "sending" } };
+    case "statementSent":
+      return { ...state, statement: { ...state.statement, hash: action.hash ?? null } };
+    case "stated":
+      return {
+        ...state,
+        statement: {
+          state: "stated",
+          sent: action.sent,
+          hash: action.hash ?? state.statement.hash,
+          at: action.at,
+          waitedMs: action.waitedMs,
+          sponsored: action.sponsored,
+          failure: null,
+        },
+      };
+    case "statementFailed":
+      return {
+        ...state,
+        statement: {
+          ...state.statement,
+          state: action.failure.key === "confirmPending" ? "unconfirmed" : "failed",
+          failure: action.failure,
+        },
+      };
     case "reset":
       return { ...initialRegisterState, mode: state.mode, quota: state.quota };
   }
@@ -254,18 +337,28 @@ export function isRegistered(state: RegisterState): boolean {
   return state.steps.send === "done";
 }
 
+/** The statement is out: being sent, or sent and not yet shown by Monad. */
+export function isStating(state: RegisterState): boolean {
+  return state.statement.state === "sending" || state.statement.state === "unconfirmed";
+}
+
 /**
  * Whether the screen is holding a run. A step still waiting on Monad counts:
  * the watch is alive, a recheck can end it, and starting a second run would
- * send the same passport twice.
+ * send the same passport twice. The statement counts for the same reason: it is
+ * a second transaction from the same wallet, and a new run under it would take
+ * the screen away from a write that is still out.
  */
 export function isBusy(state: RegisterState): boolean {
-  return ALL_STEPS.some((step) => state.steps[step] === "running" || state.steps[step] === "unconfirmed");
+  return (
+    isStating(state) ||
+    ALL_STEPS.some((step) => state.steps[step] === "running" || state.steps[step] === "unconfirmed")
+  );
 }
 
-/** The send is out and Monad has not shown it. Nothing may be sent again from here. */
+/** A send is out and Monad has not shown it. Nothing may be sent again from here. */
 export function isUnconfirmed(state: RegisterState): boolean {
-  return ALL_STEPS.some((step) => state.steps[step] === "unconfirmed");
+  return state.statement.state === "unconfirmed" || ALL_STEPS.some((step) => state.steps[step] === "unconfirmed");
 }
 
 /**

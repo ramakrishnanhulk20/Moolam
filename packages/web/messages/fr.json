@@ -1012,6 +1012,30 @@
       "modelRow": "Modèle",
       "another": "En faire une autre"
     },
+    "consent": {
+      "kicker": "Avant la signature",
+      "heading": "Dites ce que l'IA peut en faire",
+      "body": "C'est inscrit dans le fichier avant toute signature, et sur Monad dès que le passeport est écrit. Une seule déclaration, à deux endroits qui tiennent.",
+      "hint": "Ne rien dire est aussi un choix, et cela n'accorde aucune permission. Vous pourrez le déclarer plus tard depuis la page du passeport.",
+      "needsConditions": "Écrivez vos conditions ci-dessus. Elles voyagent dans l'image et partent avec elle sur la chaîne.",
+      "receipt": {
+        "label": "Ce que l'IA peut en faire",
+        "sending": "Votre déclaration part",
+        "sendingDetail": "Les mots entrés dans le fichier vont maintenant au registre de consentement sur Monad.",
+        "pending": "Envoyée, et Monad ne l'a pas encore montrée",
+        "pendingDetail": "Rien n'a été envoyé une deuxième fois. Redemandez à Monad dans un instant.",
+        "statedIn": "Déclaré sur Monad en {ms} ms.",
+        "sponsored": "Frais de réseau payés par Moolam via Privy.",
+        "own": "Frais de réseau payés depuis votre propre solde.",
+        "conditions": "Vos conditions : {text}",
+        "failed": "Enregistrée, déclaration non écrite",
+        "later": "Le passeport est sur la chaîne. Vous pouvez écrire la déclaration depuis sa page quand vous voulez.",
+        "none": "Rien de dit sur l'usage par l'IA",
+        "noneDetail": "Le silence n'est pas une permission. Vous pouvez le déclarer à tout moment depuis la page du passeport.",
+        "again": "Écrire la déclaration à nouveau",
+        "recheck": "Redemander à Monad"
+      }
+    },
     "receipt": {
       "heading": "Ce qui vient de se passer",
       "body": "Chaque étape est tamponnée ici dès qu’elle arrive. Rien dans cette liste n’est une supposition.",

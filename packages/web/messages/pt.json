@@ -1013,6 +1013,30 @@
       "modelRow": "Modelo",
       "another": "Fazer outra"
     },
+    "consent": {
+      "kicker": "Antes de assinar",
+      "heading": "Diga como a IA pode usar",
+      "body": "Fica dentro do próprio arquivo antes de qualquer assinatura, e na Monad assim que o passaporte é escrito. Uma declaração em dois lugares que se sustentam.",
+      "hint": "Não dizer nada também é uma escolha, e não dá permissão a ninguém. Você pode declarar depois na página do passaporte.",
+      "needsConditions": "Escreva suas condições acima. Elas viajam dentro da imagem e vão com ela para a rede.",
+      "receipt": {
+        "label": "Como a IA pode usar",
+        "sending": "Escrevendo sua declaração",
+        "sendingDetail": "As mesmas palavras que entraram no arquivo vão agora ao registro de consentimento na Monad.",
+        "pending": "Enviada, e a Monad ainda não mostrou",
+        "pendingDetail": "Nada foi enviado uma segunda vez. Pergunte à Monad de novo em instantes.",
+        "statedIn": "Declarado na Monad em {ms} ms.",
+        "sponsored": "Taxa de rede paga pela Moolam através da Privy.",
+        "own": "Taxa de rede paga do seu próprio saldo.",
+        "conditions": "Suas condições: {text}",
+        "failed": "Registrada, declaração não escrita",
+        "later": "O passaporte está na rede. Você pode escrever a declaração na página dele quando quiser.",
+        "none": "Nada dito sobre uso por IA",
+        "noneDetail": "Silêncio não é permissão. Você pode declarar a qualquer momento na página do passaporte.",
+        "again": "Escrever a declaração de novo",
+        "recheck": "Perguntar à Monad de novo"
+      }
+    },
     "receipt": {
       "heading": "O que acabou de acontecer",
       "body": "Cada passo é carimbado aqui assim que acontece. Nada nesta lista é chute.",

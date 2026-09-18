@@ -1012,6 +1012,30 @@
       "modelRow": "Model",
       "another": "Make another"
     },
+    "consent": {
+      "kicker": "Before it is signed",
+      "heading": "Say how AI may use it",
+      "body": "It goes inside the file before anything is signed, and onto Monad the moment the passport is written. One statement, in two places that both hold.",
+      "hint": "Saying nothing is a choice too, and it gives nobody permission. You can state it later from the passport page.",
+      "needsConditions": "Write your conditions above. They travel inside the picture and go on chain with it.",
+      "receipt": {
+        "label": "How AI may use it",
+        "sending": "Writing your statement",
+        "sendingDetail": "The same words that went into the file, now going to the consent register on Monad.",
+        "pending": "Sent, and Monad has not shown it yet",
+        "pendingDetail": "Nothing has been sent a second time. Ask Monad again in a moment.",
+        "statedIn": "Stated on Monad in {ms} ms.",
+        "sponsored": "Network fee paid by Moolam through Privy.",
+        "own": "Network fee paid from your own balance.",
+        "conditions": "Your conditions: {text}",
+        "failed": "Registered, statement not written",
+        "later": "The passport is on chain. You can write the statement from its own page whenever you like.",
+        "none": "Nothing stated about AI use",
+        "noneDetail": "Silence is not permission. You can state it from the passport page at any time.",
+        "again": "Write the statement again",
+        "recheck": "Ask Monad again"
+      }
+    },
     "receipt": {
       "heading": "What just happened",
       "body": "Every step gets stamped here as it lands. Nothing on this list is a guess.",

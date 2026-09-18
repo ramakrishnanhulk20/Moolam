@@ -14,13 +14,25 @@ import {
 import { assertDigestMatches, localBindDigest, localPassportDigest } from "@/lib/chain/digest";
 import { bindNonce, getPassport, hashBind, hashPassport } from "@/lib/chain/registry";
 import { deadlineFromChain } from "@/lib/chain/time";
+import { setConsentRequest, type ConsentDraft } from "@/lib/consent/call";
+import { confirmSetConsent } from "@/lib/consent/confirm";
+import { describeConsentFailure } from "@/lib/consent/failure";
 import { createPasskey, rememberCredential, signDigest } from "@/lib/passkey/browser";
 import { checkAuth } from "@/lib/passkey/verify";
 import { VerifierError, generate, prepare } from "@/lib/verifier/client";
 import { accountName, type AccountName, type SignedInUser } from "./account";
 import { bindReducer, initialBindState, type BindState } from "./binding";
+import { statedFrom, trainingFrom } from "./consent";
 import { confirmBind, confirmRegister, transactionHash } from "./confirm";
-import { initialRegisterState, measure, registerReducer, type Charge, type Mode, type RegisterState } from "./flow";
+import {
+  initialRegisterState,
+  measure,
+  passportId,
+  registerReducer,
+  type Charge,
+  type Mode,
+  type RegisterState,
+} from "./flow";
 import { checkPrompt } from "./generate";
 import { AuthCheckFailed, describeFailure, isResendable, type Failure } from "./problems";
 import { useCreatorPassports, type CreatorPassports } from "./useCreatorPassports";
@@ -61,6 +73,14 @@ export interface Studio {
     setTitle: (title: string) => void;
     setPrompt: (prompt: string) => void;
     setMode: (mode: Mode) => void;
+    /** What the creator says about AI use. It travels with the file and then goes to the register. */
+    setConsent: (draft: ConsentDraft) => void;
+    /**
+     * The statement again, for a creator whose passport landed and whose
+     * statement did not. While one is out it only asks Monad again: a statement
+     * that was taken is never sent twice.
+     */
+    stateAgain: () => Promise<void>;
     registerImage: () => Promise<void>;
     /** The agent draws and signs, then this device signs, then one transaction goes out. */
     generateImage: () => Promise<void>;
@@ -142,6 +162,16 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
   const pending = useRef<Pending | null>(null);
   /** The send that is out. A recheck reads it, and nothing here ever sends again. */
   const watching = useRef<Watch | null>(null);
+  /**
+   * The statement the verify service wrote into the picture, kept so the chain
+   * is given the service's own words rather than the plates the creator pressed.
+   * Null when this run stated nothing, which sends nothing.
+   */
+  const stated = useRef<ConsentDraft | null>(null);
+  /** The statement that is out. Read again by stateAgain, never sent again by it. */
+  const statement = useRef<{ wallet: Hex; passportId: Hex; sent: ConsentDraft; hash?: Hex; handedAt: number; tappedAt: number } | null>(
+    null,
+  );
 
   /**
    * One write, up to the moment the wallet answers.
@@ -373,6 +403,106 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
   }, [binding, wallet]);
 
   /**
+   * Watches Monad for the statement that is out, and confirms it the way every
+   * write in this app is confirmed: by reading the register until it holds these
+   * words from this wallet. Safe to run again, because it reads and never sends.
+   */
+  const finishStatement = useCallback(async () => {
+    const out = statement.current;
+    if (out === null) {
+      return;
+    }
+
+    try {
+      const landed = await confirmSetConsent({
+        passportId: out.passportId,
+        wallet: out.wallet,
+        sent: out.sent,
+        // A passport registered a moment ago has no statement behind it, so
+        // anything the register holds for it is this send.
+        since: 0,
+        hash: out.hash,
+      });
+      const timing = measure({
+        handedAt: out.handedAt,
+        answeredAt: performance.now(),
+        tappedAt: out.tappedAt,
+        sealedAt: landed.at * 1_000,
+      });
+      statement.current = null;
+      dispatchRegister({
+        type: "stated",
+        sent: out.sent,
+        at: landed.at,
+        waitedMs: timing.waitedMs,
+        hash: out.hash,
+        sponsored: true,
+      });
+    } catch (error) {
+      const failure = describeConsentFailure(error);
+      // A wait that ran out keeps the watch: the statement may already be on
+      // chain, so the only thing left to offer is another look.
+      if (failure.key !== "confirmPending") {
+        statement.current = null;
+      }
+      dispatchRegister({ type: "statementFailed", failure });
+    }
+  }, []);
+
+  /**
+   * The second send: the same words that went into the picture, written to the
+   * consent register once the passport itself is on chain.
+   *
+   * It runs after the registration and never inside it. The register asks the
+   * passport registry who holds the passport during the same call, so a
+   * statement sent before the passport lands would be refused, and a statement
+   * that fails afterwards costs a sentence on the receipt rather than the
+   * picture's registration.
+   */
+  const sendStatement = useCallback(
+    async (id: Hex, draft: ConsentDraft) => {
+      if (embedded === undefined || wallet === undefined || statement.current !== null) {
+        return;
+      }
+
+      dispatchRegister({ type: "stating" });
+
+      let request;
+      try {
+        request = setConsentRequest(id, draft);
+        await ensureMonad(embedded);
+        // A revert costs nothing here and comes back with a name the ABI can
+        // decode, where a reverted transaction on chain only ever says
+        // "reverted".
+        await chain.call({ account: wallet, to: request.to, data: request.data });
+      } catch (error) {
+        dispatchRegister({ type: "statementFailed", failure: describeConsentFailure(error) });
+        return;
+      }
+
+      const handedAt = performance.now();
+      const tappedAt = Date.now();
+      try {
+        const answer = await sendTransaction(
+          { to: request.to, data: request.data, chainId: request.chainId },
+          // The wallet this statement was simulated for, named out loud: a
+          // session holding more than one must not send it from another.
+          { sponsor: true, address: wallet },
+        );
+        const hash = transactionHash(answer.hash);
+        statement.current = { wallet, passportId: id, sent: draft, hash, handedAt, tappedAt };
+        dispatchRegister({ type: "statementSent", hash });
+      } catch (error) {
+        dispatchRegister({ type: "statementFailed", failure: describeConsentFailure(error) });
+        return;
+      }
+
+      await finishStatement();
+    },
+    [embedded, finishStatement, sendTransaction, wallet],
+  );
+
+  /**
    * Watches Monad for the passport that is out. The registry holding the
    * passport is the answer, and the transaction hash, when the wallet never
    * gave one, comes from the index afterwards so the receipt still links to it.
@@ -413,8 +543,15 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       passports.refresh();
     } catch (error) {
       dispatchRegister({ type: "failed", failure: describeFailure(error, "confirm", watch.wallet), stage: "confirm" });
+      return;
     }
-  }, [passports, settleSponsorship]);
+
+    // Only now, with the passport confirmed by the registry's own answer, and
+    // only when this creator actually said something about AI use.
+    if (stated.current !== null) {
+      await sendStatement(watch.exactHash, stated.current);
+    }
+  }, [passports, sendStatement, settleSponsorship]);
 
   const sendRegister = useCallback(
     async (data: Hex, exactHash: Hex, unsponsored: boolean) => {
@@ -502,8 +639,16 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       if (token === null) {
         throw new Error("this session has no access token, so the verify service cannot be called");
       }
-      prepared = await prepare({ file: register.file, title: register.title.trim(), accessToken: token });
+      prepared = await prepare({
+        file: register.file,
+        title: register.title.trim(),
+        accessToken: token,
+        training: trainingFrom(register.consent),
+      });
       dispatchRegister({ type: "prepared", prepared });
+      // The service's echo, not the plates: it trimmed the words and wrote them
+      // into the signed manifest, so those are the words the chain is given.
+      stated.current = statedFrom(prepared.training);
     } catch (error) {
       dispatchRegister({ type: "failed", failure: describeFailure(error, "prepare"), stage: "prepare" });
       return;
@@ -537,7 +682,18 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     }
 
     await sendRegister(data, prepared.passport.exactHash, false);
-  }, [binding, embedded, getAccessToken, register.failure, register.file, register.title, register.unsponsored, sendRegister, wallet]);
+  }, [
+    binding,
+    embedded,
+    getAccessToken,
+    register.consent,
+    register.failure,
+    register.file,
+    register.title,
+    register.unsponsored,
+    sendRegister,
+    wallet,
+  ]);
 
   /**
    * The agent path, end to end.
@@ -600,8 +756,12 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         creator: wallet,
         deadline,
         accessToken: token,
+        training: trainingFrom(register.consent),
       });
       dispatchRegister({ type: "drawn", response: drawn });
+      // The agent signed the metadata address, and this statement is inside
+      // what it signed. The echo is what was written there.
+      stated.current = statedFrom(drawn.training);
     } catch (error) {
       dispatchRegister({
         type: "failed",
@@ -641,7 +801,18 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     }
 
     await sendRegister(data, drawn.passport.exactHash, false);
-  }, [binding, embedded, getAccessToken, register.failure, register.prompt, register.title, register.unsponsored, sendRegister, wallet]);
+  }, [
+    binding,
+    embedded,
+    getAccessToken,
+    register.consent,
+    register.failure,
+    register.prompt,
+    register.title,
+    register.unsponsored,
+    sendRegister,
+    wallet,
+  ]);
 
   /** The same signed bytes, sent once more. Nothing is rebuilt and no passkey is asked for. */
   const resend = useCallback(
@@ -667,6 +838,21 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     await (watch.kind === "bind" ? finishBind() : finishRegister());
   }, [finishBind, finishRegister]);
 
+  const stateAgain = useCallback(async () => {
+    // A statement Privy has already taken must never go out twice, so while one
+    // is out this asks Monad about it instead of sending anything.
+    if (statement.current !== null) {
+      await finishStatement();
+      return;
+    }
+    const draft = stated.current;
+    const id = passportId(register);
+    if (draft === null || id === null) {
+      return;
+    }
+    await sendStatement(id, draft);
+  }, [finishStatement, register, sendStatement]);
+
   return {
     ready,
     authenticated,
@@ -690,12 +876,22 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       setTitle: (title: string) => dispatchRegister({ type: "title", title }),
       setPrompt: (prompt: string) => dispatchRegister({ type: "prompt", prompt }),
       setMode: (mode: Mode) => dispatchRegister({ type: "mode", mode }),
+      setConsent: (draft: ConsentDraft) => dispatchRegister({ type: "consent", draft }),
       registerImage,
       generateImage,
       resend,
       recheck,
+      stateAgain,
       clearBind: () => dispatchBind({ type: "reset" }),
-      reset: () => dispatchRegister({ type: "reset" }),
+      reset: () => {
+        // A statement that is out belongs to the passport that is already
+        // registered, so a new run never walks away from it.
+        if (statement.current !== null) {
+          return;
+        }
+        stated.current = null;
+        dispatchRegister({ type: "reset" });
+      },
     },
     passports,
   };

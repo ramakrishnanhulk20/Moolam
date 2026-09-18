@@ -34,6 +34,31 @@ const signatureWord = z
 /** The consent register's four words, in the contract's own vocabulary. */
 const useWord = z.enum(["unspecified", "allowed", "notAllowed", "constrained"]);
 
+/**
+ * The three words a creator may say about one use on the way in. There is no
+ * fourth: a use left out of the statement is one they have said nothing about,
+ * which the service writes as absent rather than as a word of its own.
+ */
+const statedUse = z.enum(["allowed", "notAllowed", "constrained"]);
+
+/**
+ * How AI may use the picture, as /prepare and /generate take it and hand it
+ * back, exactly as docs/api/verifier-endpoints.md describes it.
+ *
+ * The answer is the one that counts. The service trims the conditions text and
+ * drops any choice it would not write, so the echo is what really went into the
+ * signed manifest and the pinned metadata, and it is what the studio then writes
+ * to the consent register so the file and the chain say the same words.
+ */
+const trainingSchema = z.object({
+  aiTraining: statedUse.optional(),
+  aiGenerativeTraining: statedUse.optional(),
+  aiInference: statedUse.optional(),
+  dataMining: statedUse.optional(),
+  constraintInfo: z.string().optional(),
+  standard: z.string().min(1),
+});
+
 const cidSchema = z.object({ cid: z.string().min(1), uri: z.string().min(1) });
 
 const manifestSchema = z.union([
@@ -69,6 +94,7 @@ export const prepareResponseSchema = z.object({
   thumbnail: cidSchema.extend({ gatewayUrl: z.string().min(1) }),
   metadata: cidSchema,
   manifest: manifestSchema,
+  training: trainingSchema.optional(),
   preparedBy: z.string().min(1),
 });
 
@@ -107,6 +133,7 @@ export const generateResponseSchema = z.object({
   model: z.string().min(1),
   agent: z.object({ id: decimal, wallet: addressWord }),
   quota: quotaSchema,
+  training: trainingSchema.optional(),
   preparedBy: z.string().min(1),
 });
 
@@ -226,6 +253,10 @@ export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
 export type MatchConsent = z.infer<typeof consentSchema>;
+export type StatedUse = z.infer<typeof statedUse>;
+export type TrainingStatement = z.infer<typeof trainingSchema>;
+/** The same statement on the way out. The standard is the service's to name, not a caller's. */
+export type TrainingRequest = Omit<TrainingStatement, "standard">;
 
 export type VerifierCode =
   | "unauthorized"
@@ -307,17 +338,25 @@ export class VerifierError extends Error {
  *
  * The access token is the caller's Privy token. Without a valid one the
  * service answers 401 and nothing is pinned.
+ *
+ * The training statement is optional and travels as one JSON part, which is the
+ * shape the route reads. Left out, the creator has said nothing about AI use,
+ * and nothing about it goes into the manifest or the metadata.
  */
 export async function prepare(options: {
   file: File;
   title: string;
   accessToken: string;
+  training?: TrainingRequest;
   signal?: AbortSignal;
 }): Promise<PrepareResponse> {
   const body = new FormData();
   body.append("file", options.file);
   body.append("title", options.title);
   body.append("kind", "human");
+  if (options.training !== undefined) {
+    body.append("training", JSON.stringify(options.training));
+  }
 
   return await post("/prepare", body, prepareResponseSchema, {
     signal: options.signal,
@@ -342,13 +381,18 @@ export async function generate(options: {
   creator: Hex;
   deadline: bigint | number;
   accessToken: string;
+  training?: TrainingRequest;
   signal?: AbortSignal;
 }): Promise<GenerateResponse> {
+  // A statement that was not made is left out of the body rather than sent as
+  // null: the route refuses a key it has no room for, and an empty statement
+  // and no statement mean the same thing to it.
   const body = JSON.stringify({
     prompt: options.prompt,
     title: options.title,
     creator: options.creator,
     deadline: options.deadline.toString(),
+    training: options.training,
   });
 
   return await post("/generate", body, generateResponseSchema, {

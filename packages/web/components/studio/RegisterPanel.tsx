@@ -11,12 +11,15 @@ import {
   checkImage,
   isBusy,
   isRegistered,
+  isStating,
   passportId,
   type RegisterState,
   type Step,
   type StepState,
 } from "@/lib/studio/flow";
 import type { Failure } from "@/lib/studio/problems";
+import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
+import { ConsentField } from "./ConsentField";
 import { FailureNote } from "./FailureNote";
 import { useHeadingLeading } from "./leading";
 
@@ -30,6 +33,7 @@ export function RegisterPanel({
   wallet,
   onChoose,
   onTitle,
+  onConsent,
   onRegister,
   onReset,
   onUnsponsored,
@@ -41,6 +45,7 @@ export function RegisterPanel({
   wallet?: Hex;
   onChoose: (file: File) => void;
   onTitle: (title: string) => void;
+  onConsent: (draft: ConsentDraft) => void;
   onRegister: () => void;
   onReset: () => void;
   onUnsponsored: () => void;
@@ -177,10 +182,12 @@ export function RegisterPanel({
       </label>
       <p className="mt-2 text-xs text-text-faint">{t("register.titleHint")}</p>
 
+      <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
+
       <button
         type="button"
         onClick={onRegister}
-        disabled={busy || state.file === null}
+        disabled={busy || state.file === null || draftProblem(state.consent) !== null}
         className="mt-8 w-full rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
       >
         {t("register.submit")}
@@ -282,6 +289,9 @@ function Registered({ state, wallet, onReset }: { state: RegisterState; wallet?:
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const format = useFormatter();
   const id = passportId(state);
+  // A statement is out from the same wallet. Starting a new picture under it
+  // would take the screen away from a write Monad has not shown yet.
+  const stating = isStating(state);
 
   return (
     <motion.section
@@ -370,7 +380,8 @@ function Registered({ state, wallet, onReset }: { state: RegisterState; wallet?:
           <button
             type="button"
             onClick={onReset}
-            className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            disabled={stating}
+            className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
           >
             {t("register.another")}
           </button>

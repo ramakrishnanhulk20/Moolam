@@ -1012,6 +1012,30 @@
       "modelRow": "Modell",
       "another": "Noch eins machen"
     },
+    "consent": {
+      "kicker": "Bevor es signiert wird",
+      "heading": "Sag, wie KI es nutzen darf",
+      "body": "Es steht in der Datei selbst, bevor irgendetwas signiert wird, und auf Monad, sobald der Passport geschrieben ist. Eine Aussage an zwei Stellen, die beide bestehen bleiben.",
+      "hint": "Nichts zu sagen ist auch eine Wahl, und sie erteilt niemandem eine Erlaubnis. Du kannst es später auf der Passport-Seite angeben.",
+      "needsConditions": "Schreib deine Bedingungen oben hinein. Sie reisen im Bild mit und gehen mit ihm auf die Kette.",
+      "receipt": {
+        "label": "Wie KI es nutzen darf",
+        "sending": "Deine Aussage wird geschrieben",
+        "sendingDetail": "Dieselben Worte, die in die Datei kamen, gehen jetzt an das Einwilligungsregister auf Monad.",
+        "pending": "Gesendet, und Monad hat es noch nicht gezeigt",
+        "pendingDetail": "Nichts wurde ein zweites Mal gesendet. Frag Monad gleich noch einmal.",
+        "statedIn": "Auf Monad festgehalten in {ms} ms.",
+        "sponsored": "Netzwerkgebühr von Moolam über Privy bezahlt.",
+        "own": "Netzwerkgebühr aus deinem eigenen Guthaben bezahlt.",
+        "conditions": "Deine Bedingungen: {text}",
+        "failed": "Registriert, Aussage nicht geschrieben",
+        "later": "Der Passport steht auf der Kette. Du kannst die Aussage jederzeit auf seiner eigenen Seite schreiben.",
+        "none": "Nichts zur KI-Nutzung gesagt",
+        "noneDetail": "Schweigen ist keine Erlaubnis. Du kannst es jederzeit auf der Passport-Seite angeben.",
+        "again": "Aussage noch einmal schreiben",
+        "recheck": "Monad noch einmal fragen"
+      }
+    },
     "receipt": {
       "heading": "Was gerade passiert ist",
       "body": "Jeder Schritt wird hier gestempelt, sobald er landet. Nichts auf dieser Liste ist geraten.",

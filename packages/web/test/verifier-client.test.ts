@@ -247,6 +247,84 @@ describe("prepare and verify over a stubbed fetch", () => {
     });
   });
 
+  it("carries a statement about AI use to prepare as one JSON part, and reads back what was written", async () => {
+    const written = {
+      aiGenerativeTraining: "notAllowed",
+      dataMining: "constrained",
+      constraintInfo: "ask hello@moolam.app",
+      standard: "cawg.training-mining/1.1",
+    };
+    const fetchStub = stubFetch(200, { ...preparePayload, training: written });
+
+    const answer = await prepare({
+      file: imageFile(),
+      title: "Kadal at dawn",
+      accessToken: "token-123",
+      training: {
+        aiGenerativeTraining: "notAllowed",
+        dataMining: "constrained",
+        constraintInfo: "ask hello@moolam.app",
+      },
+    });
+
+    const [, init] = fetchStub.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse((init.body as FormData).get("training") as string)).toEqual({
+      aiGenerativeTraining: "notAllowed",
+      dataMining: "constrained",
+      constraintInfo: "ask hello@moolam.app",
+    });
+    // The echo is the statement that really went into the signed file, which is
+    // what the studio then writes to the register.
+    expect(answer.training).toEqual(written);
+  });
+
+  it("sends no training part at all when the creator stated nothing", async () => {
+    const fetchStub = stubFetch(200, preparePayload);
+
+    const answer = await prepare({ file: imageFile(), title: "Kadal at dawn", accessToken: "token-123" });
+
+    const [, init] = fetchStub.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.body as FormData).get("training")).toBeNull();
+    expect(answer.training).toBeUndefined();
+  });
+
+  it("nests the same statement in the generate body, and leaves the key out when there is none", async () => {
+    const written = { aiTraining: "notAllowed", standard: "cawg.training-mining/1.1" };
+    const stated = stubFetch(200, { ...generatePayload, training: written });
+
+    const answer = await generate({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "token-123",
+      training: { aiTraining: "notAllowed" },
+    });
+
+    const [, init] = stated.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).training).toEqual({ aiTraining: "notAllowed" });
+    expect(answer.training).toEqual(written);
+
+    const silent = stubFetch(200, generatePayload);
+    await generate({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "token-123",
+    });
+    const [, plain] = silent.mock.calls[0] as unknown as [string, RequestInit];
+    expect(Object.keys(JSON.parse(plain.body as string))).not.toContain("training");
+  });
+
+  it("refuses a statement written in a word the standard has no room for", () => {
+    const badWord = { ...preparePayload, training: { aiTraining: "unspecified", standard: "cawg.training-mining/1.1" } };
+    expect(prepareResponseSchema.safeParse(badWord).success).toBe(false);
+
+    const unnamed = { ...preparePayload, training: { aiTraining: "notAllowed" } };
+    expect(prepareResponseSchema.safeParse(unnamed).success).toBe(false);
+  });
+
   it("posts verify with no token and reads the match back", async () => {
     const fetchStub = stubFetch(200, verifyPayload);
 

@@ -52,10 +52,12 @@ const WAITING: StudioState = {
     setTitle: NOTHING,
     setPrompt: NOTHING,
     setMode: NOTHING,
+    setConsent: NOTHING,
     registerImage: NOTHING_YET,
     generateImage: NOTHING_YET,
     resend: NOTHING_YET,
     recheck: NOTHING_YET,
+    stateAgain: NOTHING_YET,
     clearBind: NOTHING,
     reset: NOTHING,
   },
@@ -203,6 +205,7 @@ function Studio({ initialMode }: { initialMode: Mode }) {
                       wallet={studio.wallet}
                       onPrompt={studio.actions.setPrompt}
                       onTitle={studio.actions.setTitle}
+                      onConsent={studio.actions.setConsent}
                       onGenerate={studio.actions.generateImage}
                       onReset={studio.actions.reset}
                       onUnsponsored={() => void studio.actions.resend(true)}
@@ -215,6 +218,7 @@ function Studio({ initialMode }: { initialMode: Mode }) {
                       wallet={studio.wallet}
                       onChoose={studio.actions.choose}
                       onTitle={studio.actions.setTitle}
+                      onConsent={studio.actions.setConsent}
                       onRegister={studio.actions.registerImage}
                       onReset={studio.actions.reset}
                       onUnsponsored={() => void studio.actions.resend(true)}

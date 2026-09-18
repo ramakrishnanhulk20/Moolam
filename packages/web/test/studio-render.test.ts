@@ -275,6 +275,7 @@ describe("the register panel", () => {
   const handlers = {
     onChoose: NOOP,
     onTitle: NOOP,
+    onConsent: NOOP,
     onRegister: NOOP,
     onReset: NOOP,
     onUnsponsored: NOOP,
@@ -390,6 +391,51 @@ describe("the register panel", () => {
     expect(markup).not.toContain("pay the fee myself");
   });
 
+  it("offers the three plates under the title, with silence spelled out", () => {
+    const markup = render("en", createElement(RegisterPanel, { state: initialRegisterState, ...handlers }));
+    expect(markup).toContain(en.studio.consent.heading);
+    expect(markup).toContain(en.passport.consent.control.choices.open.title);
+    expect(markup).toContain(en.passport.consent.control.choices.closed.title);
+    expect(markup).toContain(en.passport.consent.control.choices.ask.title);
+    expect(markup).toContain(en.passport.consent.control.byUse);
+    expect(markup).toContain(en.studio.consent.hint);
+    // Nothing is picked when the panel opens, so nothing is sent.
+    expect(markup).not.toContain('aria-pressed="true"');
+  });
+
+  it("asks for the conditions before it will register a statement that needs them", () => {
+    const asking = {
+      ...initialRegisterState,
+      file: new File(["x"], "a-morning.jpg", { type: "image/jpeg" }),
+      title: "A morning",
+      consent: {
+        consent: {
+          aiTraining: "constrained",
+          aiGenerativeTraining: "constrained",
+          aiInference: "constrained",
+          dataMining: "constrained",
+        },
+        constraintInfo: "",
+      },
+    } as RegisterState;
+
+    const markup = render("en", createElement(RegisterPanel, { state: asking, ...handlers }));
+    expect(markup).toContain(en.studio.consent.needsConditions);
+    expect(markup).toContain(en.passport.consent.control.conditionsLabel);
+    expect(markup).toContain("0 of 256 bytes");
+    expect(tagBefore(markup, "Register this image")).toContain('disabled=""');
+
+    const said = render(
+      "en",
+      createElement(RegisterPanel, {
+        state: { ...asking, consent: { ...asking.consent, constraintInfo: "ask hello@moolam.app" } },
+        ...handlers,
+      }),
+    );
+    expect(said).not.toContain(en.studio.consent.needsConditions);
+    expect(tagBefore(said, "Register this image")).not.toContain('disabled=""');
+  });
+
   it("offers the passport that already holds the image when the registry refuses a repeat", () => {
     const state = {
       ...initialRegisterState,
@@ -426,6 +472,7 @@ describe("the agent panel", () => {
   const handlers = {
     onPrompt: NOOP,
     onTitle: NOOP,
+    onConsent: NOOP,
     onGenerate: NOOP,
     onReset: NOOP,
     onUnsponsored: NOOP,
@@ -550,6 +597,17 @@ describe("the agent panel", () => {
     } as RegisterState;
     const stale = render("en", createElement(GeneratePanel, { state: expired, ...handlers }));
     expect(stale).toContain("Make it again");
+  });
+
+  it("carries the same plates as the upload panel, in Tamil too", () => {
+    const english = render("en", createElement(GeneratePanel, { state: generating, ...handlers }));
+    expect(english).toContain(en.studio.consent.heading);
+    expect(english).toContain(en.passport.consent.control.choices.closed.title);
+    expect(english).toContain(en.studio.consent.hint);
+
+    const tamil = render("ta", createElement(GeneratePanel, { state: generating, ...handlers }));
+    expect(tamil).toContain(ta.studio.consent.heading);
+    expect(tamil).toContain(ta.passport.consent.control.choices.closed.title);
   });
 
   it("renders the whole agent panel in Tamil", () => {
@@ -681,6 +739,134 @@ describe("the stub that fills as the creator moves", () => {
     const markup = render("ta", createElement(Receipt, { studio: registered() }));
     expect(markup).toContain(ta.studio.receipt.confirmedIn);
     expect(markup).toContain("1,842");
+  });
+
+  it("says the statement was written, how long Monad took and who paid for it", () => {
+    const markup = render(
+      "en",
+      createElement(Receipt, {
+        studio: registered({
+          statement: {
+            state: "stated",
+            sent: {
+              consent: {
+                aiTraining: "notAllowed",
+                aiGenerativeTraining: "notAllowed",
+                aiInference: "notAllowed",
+                dataMining: "notAllowed",
+              },
+              constraintInfo: "",
+            },
+            hash: `0x${"3f".repeat(32)}`,
+            at: 1_789_719_047,
+            waitedMs: 1_204,
+            sponsored: true,
+            failure: null,
+          },
+        }),
+      }),
+    );
+
+    expect(markup).toContain(en.studio.consent.receipt.label);
+    expect(markup).toContain(en.passport.consent.summary.closed);
+    expect(markup).toContain("Stated on Monad in 1,204 ms.");
+    expect(markup).toContain(en.studio.consent.receipt.sponsored);
+    expect(markup).toContain(`https://monadvision.com/tx/0x${"3f".repeat(32)}`);
+  });
+
+  it("prints the conditions on the stamp when the statement carries them", () => {
+    const markup = render(
+      "en",
+      createElement(Receipt, {
+        studio: registered({
+          statement: {
+            state: "stated",
+            sent: {
+              consent: {
+                aiTraining: "constrained",
+                aiGenerativeTraining: "constrained",
+                aiInference: "constrained",
+                dataMining: "constrained",
+              },
+              constraintInfo: "ask hello@moolam.app",
+            },
+            hash: null,
+            at: 1_789_719_047,
+            waitedMs: 980,
+            sponsored: true,
+            failure: null,
+          },
+        }),
+      }),
+    );
+
+    expect(markup).toContain(en.passport.consent.summary.ask);
+    expect(markup).toContain("Your conditions: ask hello@moolam.app");
+  });
+
+  it("names what it is doing while the statement is out, and offers only a second look", () => {
+    const sending = render(
+      "en",
+      createElement(Receipt, {
+        studio: registered({
+          statement: { state: "sending", sent: null, hash: null, at: null, waitedMs: null, sponsored: false, failure: null },
+        }),
+      }),
+    );
+    expect(sending).toContain(en.studio.consent.receipt.sending);
+    expect(sending).not.toContain(en.studio.consent.receipt.again);
+
+    const unconfirmed = render(
+      "en",
+      createElement(Receipt, {
+        studio: registered({
+          statement: {
+            state: "unconfirmed",
+            sent: null,
+            hash: `0x${"3f".repeat(32)}`,
+            at: null,
+            waitedMs: null,
+            sponsored: false,
+            failure: { key: "confirmPending", next: "recheck" },
+          },
+        }),
+      }),
+    );
+    expect(unconfirmed).toContain(en.studio.consent.receipt.pending);
+    expect(unconfirmed).toContain(en.studio.consent.receipt.recheck);
+    expect(unconfirmed).not.toContain(en.studio.consent.receipt.again);
+  });
+
+  it("keeps the passport's own stamps when the statement failed, and offers it again", () => {
+    const markup = render(
+      "en",
+      createElement(Receipt, {
+        studio: registered({
+          statement: {
+            state: "failed",
+            sent: null,
+            hash: null,
+            at: null,
+            waitedMs: null,
+            sponsored: false,
+            failure: { key: "declined", next: "again" },
+          },
+        }),
+      }),
+    );
+
+    expect(markup).toContain("Recorded in block 103059393");
+    expect(markup).toContain(en.studio.consent.receipt.failed);
+    expect(markup).toContain(en.passport.consent.failure.declined);
+    expect(markup).toContain(en.studio.consent.receipt.later);
+    expect(markup).toContain(en.studio.consent.receipt.again);
+  });
+
+  it("says in one quiet line when nothing was stated, and says silence is not permission", () => {
+    const markup = render("en", createElement(Receipt, { studio: registered() }));
+    expect(markup).toContain(en.studio.consent.receipt.none);
+    expect(markup).toContain(en.studio.consent.receipt.noneDetail);
+    expect(markup).not.toContain(en.studio.consent.receipt.again);
   });
 
   it("says plainly that nothing has happened yet", () => {

@@ -1014,6 +1014,30 @@
       "modelRow": "模型",
       "another": "再做一张"
     },
+    "consent": {
+      "kicker": "签名之前",
+      "heading": "说明 AI 可以怎样使用",
+      "body": "在任何签名之前，这句话就写进文件本身；护照一上链，它也写到 Monad 上。同一句话，两个都站得住的地方。",
+      "hint": "什么都不说也是一种选择，而且不给任何人许可。你之后也可以在护照页面上说明。",
+      "needsConditions": "把你的条件写在上面。它们随图片一起走，也随它上链。",
+      "receipt": {
+        "label": "AI 可以怎样使用",
+        "sending": "正在写下你的声明",
+        "sendingDetail": "写进文件的那几句话，现在发往 Monad 上的同意登记簿。",
+        "pending": "已发送，Monad 还没有显示",
+        "pendingDetail": "没有第二次发送。过一会儿再问一次 Monad。",
+        "statedIn": "在 Monad 上 {ms} 毫秒内写下。",
+        "sponsored": "网络费由 Moolam 通过 Privy 支付。",
+        "own": "网络费从你自己的余额支付。",
+        "conditions": "你的条件：{text}",
+        "failed": "护照已登记，声明未写入",
+        "later": "护照已在链上。你随时可以在它自己的页面写下声明。",
+        "none": "没有说明 AI 使用",
+        "noneDetail": "沉默不是许可。你随时可以在护照页面说明。",
+        "again": "再写一次声明",
+        "recheck": "再问一次 Monad"
+      }
+    },
     "receipt": {
       "heading": "刚刚发生了什么",
       "body": "每一步落地就在这里盖一个戳。这张单子上没有一条是猜的。",
