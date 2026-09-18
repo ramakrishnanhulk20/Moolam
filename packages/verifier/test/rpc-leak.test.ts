@@ -105,9 +105,13 @@ afterAll(async () => {
 
 describe("an endpoint this service cannot reach", () => {
   it("raises an error that carries the endpoint's whole address", async () => {
-    const thrown = await passportExists(readClient(), REGISTRY, PARENT).catch((error: unknown) => error as Error);
+    const thrown = await passportExists(readClient(), REGISTRY, PARENT).then(
+      () => null,
+      (error: unknown) => error as Error,
+    );
 
-    expect(thrown.message).toContain(TOKEN);
+    expect(thrown).not.toBeNull();
+    expect(thrown?.message).toContain(TOKEN);
   });
 
   it("tells an editing caller the chain is unavailable and nothing else", async () => {
