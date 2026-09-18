@@ -1,0 +1,45 @@
+{
+  "statements": [
+    {
+      "name": "open",
+      "consent": {
+        "aiTraining": "allowed",
+        "aiGenerativeTraining": "allowed",
+        "aiInference": "allowed",
+        "dataMining": "allowed"
+      }
+    },
+    {
+      "name": "closed",
+      "consent": {
+        "aiTraining": "notAllowed",
+        "aiGenerativeTraining": "notAllowed",
+        "aiInference": "notAllowed",
+        "dataMining": "notAllowed"
+      }
+    },
+    {
+      "name": "ask",
+      "consent": {
+        "aiTraining": "constrained",
+        "aiGenerativeTraining": "constrained",
+        "aiInference": "constrained",
+        "dataMining": "constrained"
+      },
+      "constraintInfo": "Ask first: open an issue at https://github.com/ramakrishnanhulk20/Moolam/issues"
+    }
+  ],
+  "passports": {
+    "0x5b3856dc4765c629e82f65ff920f13543f7c1ef818b52252d55b488387fe65b1": "open",
+    "0x367c1afed9276fe599d5c527882f65ee516d274141e3974b1290f52b19e98766": "closed",
+    "0x01f9243e5dafb9364ff4819c4f55379d5366acd37af2466ff69500ceb8438ed5": "open",
+    "0x7cb4aead3b37f16b78a203a43aba83db10fa5f2fc7629f353826183d8c9d693f": "ask",
+    "0xdece558a3ca0a892a2e0ee1b5295a7140bed9388e78416b86c058f23fbb29436": "ask",
+    "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638": "closed",
+    "0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e": "open",
+    "0x07a0bfbac45278c6d9a2d488470833b3ed8e0791f5f071e190e5224c3b34951d": "closed",
+    "0x35fcd08ac2b19168dac0dac781a778d72aa9b3ea91b2c3e55c16582ad14a3771": "open",
+    "0x0a3c8368198f7c52597338543141797b0ab395ff53a3590499099238f85f15ae": "ask",
+    "0xf08bea9e1429bee09065a3cd443f353096acf748c73113ac8696313da9a059d7": "closed"
+  }
+}

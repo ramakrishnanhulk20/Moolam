@@ -327,6 +327,55 @@ On the recorded run, a copy of the agent's own picture re-encoded down to JPEG q
 261 KB, came back matched at 0.97 confidence with the creator wallet, agent 10249 and the exact
 registration time.
 
+## Stating consent for the agent's pictures
+
+`npm run consent:state` in this package reads the plan in `consent-plan.json` and writes it to
+`MoolamConsent` at `0x1151E69a82947920546e779c4C8c785b2a3C1277` on Monad mainnet. These are
+Moolam's own statements about its own demo pictures, made by the wallet that holds them, and they
+speak for nobody else's work.
+
+The plan has two parts. `statements` names the policies: `open` allows all four uses, `closed`
+refuses all four, and `ask` marks all four constrained and carries the line a user reads when they
+want to ask. `passports` maps each picture to one of those names. The eleven pictures in it are
+every picture the demo agent's Privy creator wallet
+(`0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6`) holds on the live registry: four open, four closed,
+three ask. The wallet holds twenty tokens in all, and the other nine are proof and forgery cards
+from `npm run prove` and `npm run prove:privy` rather than pictures, told apart by the title in the
+metadata each one points at. Monsoon Fishing Nets Drying is `closed` on purpose: it opens the film
+on the home page, and a picture that says "do not train on me" is the clearer story to tell there.
+
+The run with no flag is a dry run and sends nothing:
+
+1. The plan is checked before anything touches the network. An unknown statement name, an id that
+   is not 32 bytes of hex, the same picture written twice in different case, or a constraint text
+   the contract would refuse all stop the run with every problem listed at once.
+2. The registry is asked who holds each picture. A picture this wallet does not hold stops the
+   whole run, because `setConsentBatch` is all or nothing and one refused picture would revert the
+   batch it travels in.
+3. `consentOf` is read for each one. A picture whose newest entry already says what the plan says
+   is skipped, so a second run after a successful send has nothing left to do.
+4. What is left is grouped by identical statement and cut into calls of at most 32 pictures, which
+   is the contract's own cap.
+5. Each call is run through `eth_call` from the creator wallet's address against the live
+   contract. That proves the holder check, the ten minute rule and the text rules all pass for
+   these exact bytes from this exact wallet, without spending anything.
+6. The same call is then run from `0x000000000000000000000000000000000000dEaD`, which comes back
+   `NotPassportHolder`. Holding the passport is the only authority the contract takes.
+
+`npm run consent:state -- --send` does all of that and then sends each batch from the creator's
+wallet through Privy, sponsored when the app allows it and paid by the wallet when it does not. It
+waits for each receipt, reads `consentOf` back for every picture in the batch, and only then
+appends the proof lines to `proofs/consent-statements.txt`: the picture, the statement, the
+transaction, the block, and the timestamp and writer exactly as the contract reports them. If any
+picture does not read back as the plan says, the run stops rather than write a line it cannot
+stand behind.
+
+The three calls in the current plan estimate at 361,582, 361,595 and 612,623 gas including the ten
+percent margin, so about 1.34 million gas in all, roughly 0.13 MON at 100 gwei. The `ask` batch
+costs more per picture than the other two because its 75 byte constraint text is stored once per
+picture. Needs `MONAD_MAINNET_RPC_URL` in the root `.env` for the dry run, and the three Privy
+variables as well for `--send`.
+
 ## What each action costs
 
 Measured by `npm run proof:anvil`, saved in `proofs/anvil-proof.txt`. Anvil answers

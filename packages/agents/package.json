@@ -12,6 +12,7 @@
     "prove:privy": "tsx scripts/prove-privy.ts",
     "edit:quorum": "tsx scripts/edit-quorum.ts",
     "agent": "tsx scripts/agent.ts",
+    "consent:state": "tsx scripts/state-consent.ts",
     "pay:verify": "tsx scripts/pay-verify.ts"
   },
   "dependencies": {
