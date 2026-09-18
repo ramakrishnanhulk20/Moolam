@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { VerifierError, type Match, type VerifyResponse } from "@/lib/verifier/client";
+import { VerifierError, type Match, type MatchConsent, type VerifyResponse } from "@/lib/verifier/client";
 import { checkImage, MAX_UPLOAD_BYTES } from "@/lib/upload/checkImage";
 
 /** The limit lives in lib/upload with the check; the passport page reads it from here. */
@@ -23,6 +23,8 @@ export type Answer =
       variant: Match["variant"];
       others: number;
       manifest: boolean;
+      /** What the holder said about AI use. Absent from an older service, which draws no stamp. */
+      consent?: MatchConsent;
       queried: VerifyResponse["result"]["queried"];
     }
   | { kind: "miss"; manifest: boolean; queried: VerifyResponse["result"]["queried"] };
@@ -50,6 +52,10 @@ export function readAnswer(response: VerifyResponse): Answer {
     variant: measured.variant,
     others: Math.max(matches.length - 1, 0),
     manifest,
+    // The service hangs the statement on the best match and on the same
+    // passport inside the list, so an exact hit that came back without a best
+    // block still finds its own holder's word rather than dropping it.
+    consent: best?.consent ?? matches.find((match) => match.id === id)?.consent,
     queried,
   };
 }

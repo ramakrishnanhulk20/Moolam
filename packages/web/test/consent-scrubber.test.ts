@@ -32,27 +32,40 @@ vi.mock("@/lib/chain/consent", async (importOriginal) => ({
   consentAt: chain.consentAt,
 }));
 
-const { GET } = await import("@/app/api/lab/consent-at/route");
+const { GET } = await import("@/app/api/consent-at/route");
 
 const ID = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638";
 const WRITER = "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6";
+const CLOSED = {
+  aiTraining: "notAllowed",
+  aiGenerativeTraining: "notAllowed",
+  aiInference: "notAllowed",
+  dataMining: "notAllowed",
+};
+
+/** A moment inside the window the route accepts, kept apart per test so the hold is not in the way. */
+let moment = 1_789_717_000;
+
+function nextMoment(): number {
+  moment += 7;
+  return moment;
+}
 
 function ask(query: string): Request {
-  return new Request(`http://localhost:3210/api/lab/consent-at?${query}`);
+  return new Request(`http://localhost:3210/api/consent-at?${query}`);
 }
 
 beforeEach(() => {
-  process.env.NEXT_PUBLIC_LAB_PAGES = "1";
   chain.consentAt.mockReset();
 });
 
 afterEach(() => {
-  delete process.env.NEXT_PUBLIC_LAB_PAGES;
+  vi.useRealTimers();
 });
 
 describe("what the scrubber's reader refuses", () => {
   it("turns away an id that is not a passport id, without calling the chain", async () => {
-    const answer = await GET(ask(`id=0xnope&at=1789717128`));
+    const answer = await GET(ask(`id=0xnope&at=${nextMoment()}`));
 
     expect(answer.status).toBe(400);
     expect(await answer.json()).toEqual({ error: "id must be a passport id: 32 bytes of hex" });
@@ -63,69 +76,89 @@ describe("what the scrubber's reader refuses", () => {
     const answer = await GET(ask(`id=${ID}&at=yesterday`));
 
     expect(answer.status).toBe(400);
-    expect(await answer.json()).toEqual({ error: "at must be a moment in whole seconds" });
+    expect(await answer.json()).toEqual({ error: "at must be a moment since the registry was deployed" });
     expect(chain.consentAt).not.toHaveBeenCalled();
   });
 
-  it("exists only where the lab pages do", async () => {
-    delete process.env.NEXT_PUBLIC_LAB_PAGES;
-    const answer = await GET(ask(`id=${ID}&at=1789717128`));
+  it("turns away a moment from before the registry existed", async () => {
+    const answer = await GET(ask(`id=${ID}&at=1700000000`));
 
-    expect(answer.status).toBe(404);
+    expect(answer.status).toBe(400);
+    expect(chain.consentAt).not.toHaveBeenCalled();
+  });
+
+  it("turns away a moment more than a day ahead of now", async () => {
+    const twoDaysOn = Math.floor(Date.now() / 1000) + 172_800;
+    const answer = await GET(ask(`id=${ID}&at=${twoDaysOn}`));
+
+    expect(answer.status).toBe(400);
     expect(chain.consentAt).not.toHaveBeenCalled();
   });
 });
 
 describe("what the scrubber's reader answers", () => {
   it("hands back the statement the chain says was in force, with the moment asked", async () => {
+    const at = nextMoment();
     chain.consentAt.mockResolvedValue({
       stated: true,
-      entry: {
-        at: 1_789_717_128n,
-        writer: WRITER,
-        consent: {
-          aiTraining: "notAllowed",
-          aiGenerativeTraining: "notAllowed",
-          aiInference: "notAllowed",
-          dataMining: "notAllowed",
-        },
-        constraintInfo: "",
-      },
+      entry: { at: 1_789_717_128n, writer: WRITER, consent: CLOSED, constraintInfo: "" },
     });
 
-    const answer = await GET(ask(`id=${ID.toUpperCase().replace("0X", "0x")}&at=1789717200`));
+    const answer = await GET(ask(`id=${ID.toUpperCase().replace("0X", "0x")}&at=${at}`));
 
     expect(answer.status).toBe(200);
     expect(await answer.json()).toEqual({
-      asked: 1_789_717_200,
+      asked: at,
       stated: true,
-      entry: {
-        at: 1_789_717_128,
-        writer: WRITER,
-        consent: {
-          aiTraining: "notAllowed",
-          aiGenerativeTraining: "notAllowed",
-          aiInference: "notAllowed",
-          dataMining: "notAllowed",
-        },
-        constraintInfo: "",
-      },
+      entry: { at: 1_789_717_128, writer: WRITER, consent: CLOSED, constraintInfo: "" },
     });
-    expect(chain.consentAt).toHaveBeenCalledWith(ID, 1_789_717_200);
+    expect(chain.consentAt).toHaveBeenCalledWith(ID, at);
+  });
+
+  it("lets a shared cache hold the answer for a minute", async () => {
+    chain.consentAt.mockResolvedValue({ stated: false, entry: null });
+
+    const answer = await GET(ask(`id=${ID}&at=${nextMoment()}`));
+    expect(answer.headers.get("cache-control")).toBe("public, s-maxage=60, stale-while-revalidate=60");
+  });
+
+  it("answers the same moment twice without asking the chain twice", async () => {
+    const at = nextMoment();
+    chain.consentAt.mockResolvedValue({ stated: false, entry: null });
+
+    const first = await GET(ask(`id=${ID}&at=${at}`));
+    const second = await GET(ask(`id=${ID}&at=${at}`));
+
+    expect(await first.json()).toEqual(await second.json());
+    expect(chain.consentAt).toHaveBeenCalledTimes(1);
   });
 
   it("says nothing was stated rather than answering with an empty statement", async () => {
+    const at = nextMoment();
     chain.consentAt.mockResolvedValue({ stated: false, entry: null });
 
-    const answer = await GET(ask(`id=${ID}&at=1789713528`));
-    expect(await answer.json()).toEqual({ asked: 1_789_713_528, stated: false, entry: null });
+    const answer = await GET(ask(`id=${ID}&at=${at}`));
+    expect(await answer.json()).toEqual({ asked: at, stated: false, entry: null });
   });
 
-  it("passes a failed read on as one line, with no endpoint in it", async () => {
+  it("answers 503 for a failed read, with no endpoint or address in the body", async () => {
     chain.consentAt.mockRejectedValue(new Error("the endpoint refused"));
 
-    const answer = await GET(ask(`id=${ID}&at=1789717128`));
-    expect(answer.status).toBe(502);
-    expect(await answer.json()).toEqual({ error: "the endpoint refused" });
+    const answer = await GET(ask(`id=${ID}&at=${nextMoment()}`));
+
+    expect(answer.status).toBe(503);
+    const body = (await answer.json()) as { error: string };
+    expect(body.error).toBe("the endpoint refused");
+    expect(body.error).not.toMatch(/https?:\/\/|0x[0-9a-fA-F]{20}/);
+  });
+
+  it("never holds a failed read, so the next reader gets a real attempt", async () => {
+    const at = nextMoment();
+    chain.consentAt.mockRejectedValueOnce(new Error("the endpoint refused"));
+    chain.consentAt.mockResolvedValueOnce({ stated: false, entry: null });
+
+    expect((await GET(ask(`id=${ID}&at=${at}`))).status).toBe(503);
+    expect((await GET(ask(`id=${ID}&at=${at}`))).status).toBe(200);
+    expect(chain.consentAt).toHaveBeenCalledTimes(2);
   });
 });

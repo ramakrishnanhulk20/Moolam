@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { shortHex } from "@/lib/chain/client";
+import { ConsentStamp } from "@/components/consent/ConsentStamp";
 import { pictureSources } from "@/lib/images";
 import { Mono } from "@/components/passport/Mono";
 import { Picture } from "@/components/passport/Picture";
@@ -200,6 +201,11 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
         <p className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
           {answer.manifest ? t("manifestPresent") : t("manifestMissing")}
         </p>
+
+        {/* Proving the picture is registered is half the answer. This is the
+            other half: whether its holder lets a machine use it, read from the
+            register on Monad and not from the file that was uploaded. */}
+        <ConsentStamp consent={answer.consent} className="mt-8" />
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link

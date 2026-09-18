@@ -314,7 +314,24 @@
       "mirror-rot270": "镜像后转四分之三圈"
     },
     "busy": "检查中",
-    "again": "换一张检查"
+    "again": "换一张检查",
+    "consent": {
+      "label": "持有者的声明",
+      "never": "从未写过",
+      "nothing": "没有作出声明",
+      "silence": "持有者没有就 AI 使用说过任何话。沉默不是允许。",
+      "unreadable": "未能读取",
+      "unavailable": "此刻读不到这份声明。",
+      "unavailableNote": "这同样不是允许。登记簿在 Monad 上，过一会儿可以再问一次。",
+      "source": "读自 Monad 上的登记簿，而不是这个文件。",
+      "tail": {
+        "open": "对 AI 使用开放，训练也在内",
+        "closed": "不供 AI 训练",
+        "ask": "先询问，附有条件",
+        "mixed": "部分用途允许，部分不允许",
+        "none": "关于 AI 使用只字未提"
+      }
+    }
   },
   "passport": {
     "title": "护照",
@@ -589,7 +606,125 @@
     "openToken": "在 MonadVision 上看代币",
     "openImage": "打开图片",
     "noManifest": "这个文件里没有嵌入 C2PA 清单。",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "IPFS {cid}",
+    "consent": {
+      "kicker": "写在链上",
+      "heading": "AI 可以如何使用这张图片",
+      "lede": "文件里可以带一行字，说明作者拒绝 AI 训练，但任何人在传递途中都能把它删掉。同样的声明写进 Monad 上的登记簿后，只有这本护照的持有者能写，谁也拿不走。",
+      "onThisDay": "在这一天，AI 可以",
+      "summary": {
+        "open": "对 AI 使用开放",
+        "closed": "不供 AI 训练",
+        "ask": "请先询问持有者",
+        "mixed": "逐项分别声明",
+        "none": "尚未作出声明"
+      },
+      "line": {
+        "open": "持有者允许标准里的全部四种用途，训练也在内。",
+        "closed": "持有者拒绝标准里的全部四种用途。这是一个选择，不是过错。",
+        "ask": "持有者只在自己的条件下允许使用。联系不上他的人，只能当作拒绝。",
+        "mixed": "这份声明对每一种用途分别作答。",
+        "none": "还没有人为这张图片写下声明。没有声明并不等于允许。"
+      },
+      "chip": {
+        "open": "对 AI 开放",
+        "closed": "不供 AI 使用",
+        "ask": "附条件",
+        "mixed": "逐项",
+        "none": "未声明"
+      },
+      "uses": {
+        "aiTraining": "AI 训练",
+        "aiGenerativeTraining": "生成式 AI 训练",
+        "aiInference": "AI 推理",
+        "dataMining": "数据挖掘"
+      },
+      "state": {
+        "unspecified": "未声明",
+        "allowed": "允许",
+        "notAllowed": "不允许",
+        "constrained": "附条件"
+      },
+      "writtenOn": "写于 {when}",
+      "nothingBy": "那时还没有任何声明",
+      "asking": "正在向链询问那一天",
+      "askFailed": "链没有回答那一天",
+      "scrub": "拖动这条标尺，或使用方向键",
+      "scrubStep": "，一步一天",
+      "registeredOn": "{when} 登记",
+      "today": "今天",
+      "dayLabel": "要向链询问的日期",
+      "fourUses": "四种用途",
+      "fourUsesNote": "今天生效的内容，逐项列出。任何概括都会丢掉一些东西，而训练与推理正是在这里可以不同。",
+      "conditionsLabel": "条件，用持有者自己的话",
+      "conditionsApplyTo": "适用于 {uses}。",
+      "statedBy": "声明人",
+      "writtenLabel": "写入时间",
+      "empty": {
+        "body": "没有人为这张图片写下声明。这里如实地把这份沉默记下来，因为事实就是如此：它没有允许任何用途。",
+        "holder": "只有持有这本护照的钱包能写，而它写下的每一份声明都会带着日期留在记录里。"
+      },
+      "historyCount": "{count, plural, =0 {尚无声明} =1 {一份声明} other {# 份声明}}",
+      "historyEmpty": "这本护照没有任何声明。第一份写下的声明会带着日期留在这里，此后写的任何内容都取代不了它。",
+      "historyBy": "由 {who} 写入",
+      "standsToday": "今天生效",
+      "unavailable": "此刻读不到登记簿，所以本页无法说明持有者声明了什么。这并不等于允许：请稍后再问一次。",
+      "failure": {
+        "notHolder": "这个钱包已经不再持有这本护照，只有持有者能为它写入。",
+        "tooSoon": "同一张图片，登记簿每十分钟只接受同一个钱包的一份声明。下一次要到 {at}。",
+        "conditionsRequired": "附条件的声明必须写明条件是什么。写好后再发送一次。",
+        "conditionsNotAllowed": "条件只属于需要条件的声明。请清空这段文字，或改选请先询问我。",
+        "conditionsTooLong": "条件超过了登记簿保存的 256 字节。请缩短后再发送。",
+        "conditionsNotPrintable": "登记簿只接受纯 ASCII。请删掉换行或带重音的字符后再发送。",
+        "reverted": "Monad 打包了这笔交易，但什么也没有发生。没有写入任何内容，所以可以放心再试一次。",
+        "declined": "你关闭了提示，因此什么都没有发送。",
+        "confirmPending": "声明已经发出，Monad 还没有显示它。它仍可能上链，所以不要再发一次：过一会儿再看。",
+        "unknown": "声明没有完成。"
+      },
+      "control": {
+        "kicker": "你的图片",
+        "heading": "说明 AI 可以如何使用",
+        "body": "这本护照在你手上，所以登记簿只接受你这个地址的声明。网络费由 Moolam 支付。文字是你的，连同你写下的日期一起留在记录里。",
+        "choices": {
+          "open": {
+            "title": "对 AI 使用开放",
+            "line": "任何人都可以用这张图片训练、生成，也可以挖掘其中的数据。"
+          },
+          "closed": {
+            "title": "不供 AI 训练",
+            "line": "完全不供 AI 使用。多数创作者选的是这一项，而今天的网络没有办法把它说出来。"
+          },
+          "ask": {
+            "title": "请先询问我",
+            "line": "在下面写明的条件下允许。联系不上你的人，只能当作拒绝。"
+          }
+        },
+        "byUse": "逐项作答",
+        "oneAnswer": "四项同一个答案",
+        "byUseOn": "使用中",
+        "conditionsLabel": "条件，用你自己的话",
+        "conditionsPlaceholder": "一份许可、一个可供阅读的页面，或者一个可以询问的地址。",
+        "bytes": "{max} 字节中的 {bytes}",
+        "notPrintable": "登记簿只接受纯 ASCII。第 {at} 个字符链不会接受，所以要先去掉换行或带重音的字符才能写入。",
+        "submit": "写入 Monad",
+        "steps": {
+          "checking": "正在询问登记簿",
+          "sending": "正在发送",
+          "confirming": "等待 Monad 显示"
+        },
+        "locked": "你刚刚为这张图片写过。登记簿会在 {at} 接受你的下一份声明。",
+        "needsConditions": "写明你的条件，它们会随声明一起上链。",
+        "unchanged": "登记簿里为这张图片保存的就是这些。",
+        "fee": "网络费由 Moolam 支付。声明从你自己的钱包发出。",
+        "done": "已写入。登记簿自 {when} 起保存这份声明，从现在起每一个验证这张图片的人看到的都是它。",
+        "openTx": "交易 {hash}",
+        "openAddress": "在浏览器中打开 {wallet}",
+        "actions": {
+          "recheck": "再看一次",
+          "signIn": "登录"
+        }
+      }
+    }
   },
   "agent": {
     "title": "智能体",

@@ -31,6 +31,9 @@ const signatureWord = z
   .regex(/^0x(?:[0-9a-fA-F]{128}|[0-9a-fA-F]{130})$/, "expected a 64 or 65 byte signature")
   .transform((value) => value as Hex);
 
+/** The consent register's four words, in the contract's own vocabulary. */
+const useWord = z.enum(["unspecified", "allowed", "notAllowed", "constrained"]);
+
 const cidSchema = z.object({ cid: z.string().min(1), uri: z.string().min(1) });
 
 const manifestSchema = z.union([
@@ -143,8 +146,38 @@ export const editResponseSchema = z.object({
   quota: quotaSchema,
 });
 
+/**
+ * What the holder of a matched passport has stated about AI use, read by the
+ * service from the consent register while it answered.
+ *
+ * Three sources and never a fourth, exactly as docs/api/verifier-endpoints.md
+ * describes them. "chain" with stated false is the contract saying that holder
+ * has never spoken; "unavailable" is the service saying it could not find out,
+ * which is not the same thing and is never permission. The whole field is
+ * optional, so a service that predates it leaves the stamp undrawn instead of
+ * failing the answer a reader came for.
+ */
+const consentSchema = z.union([
+  z.object({
+    source: z.literal("chain"),
+    stated: z.literal(true),
+    standard: z.string(),
+    aiTraining: useWord,
+    aiGenerativeTraining: useWord,
+    aiInference: useWord,
+    dataMining: useWord,
+    constraintInfo: z.string().optional(),
+    /** Unix seconds: the block timestamp the statement was written at. */
+    at: z.number().int().positive(),
+    writer: addressWord,
+  }),
+  z.object({ source: z.literal("chain"), stated: z.literal(false) }),
+  z.object({ source: z.literal("unavailable") }),
+]);
+
 const matchSchema = z.object({
   id: hexWord,
+  consent: consentSchema.optional(),
   phashDistance: z.number().int().nonnegative(),
   blockhashDistance: z.number().int().nonnegative(),
   variant: z.enum([
@@ -192,6 +225,7 @@ export type GenerateResponse = z.infer<typeof generateResponseSchema>;
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
+export type MatchConsent = z.infer<typeof consentSchema>;
 
 export type VerifierCode =
   | "unauthorized"

@@ -312,7 +312,24 @@
       "mirror-rot270": "Inversée, trois quarts de tour"
     },
     "busy": "Vérification",
-    "again": "Vérifier une autre"
+    "again": "Vérifier une autre",
+    "consent": {
+      "label": "La déclaration du détenteur",
+      "never": "jamais écrite",
+      "nothing": "Rien de déclaré",
+      "silence": "Son détenteur n'a rien dit sur l'usage par l'IA. Le silence n'est pas une autorisation.",
+      "unreadable": "non lue",
+      "unavailable": "La déclaration n'a pas pu être lue à l'instant.",
+      "unavailableNote": "Ce n'est pas non plus une autorisation. Le registre est sur Monad et peut être interrogé à nouveau dans un instant.",
+      "source": "Lue dans le registre sur Monad, pas dans le fichier.",
+      "tail": {
+        "open": "ouverte à l'usage par l'IA, entraînement compris",
+        "closed": "pas pour entraîner une IA",
+        "ask": "demander d'abord, sous conditions",
+        "mixed": "autorisée pour certains usages et pas pour d'autres",
+        "none": "rien sur l'usage par l'IA"
+      }
+    }
   },
   "passport": {
     "title": "Passeport",
@@ -587,7 +604,125 @@
     "openToken": "Jeton sur MonadVision",
     "openImage": "Ouvrir l'image",
     "noManifest": "Aucun manifeste C2PA n'était intégré dans ce fichier.",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "IPFS {cid}",
+    "consent": {
+      "kicker": "Inscrit sur la chaîne",
+      "heading": "Ce que l'IA peut faire de cette image",
+      "lede": "Un fichier peut porter une ligne disant que son auteur refuse l'entraînement d'IA, et n'importe qui peut la retirer en chemin. C'est la même déclaration, écrite dans un registre sur Monad, où seul le détenteur de ce passeport peut l'écrire et où personne ne peut l'enlever.",
+      "onThisDay": "Ce jour-là, l'IA pouvait",
+      "summary": {
+        "open": "Ouverte à l'usage par l'IA",
+        "closed": "Pas pour entraîner une IA",
+        "ask": "Demandez d'abord au détenteur",
+        "mixed": "Déclarée usage par usage",
+        "none": "Rien n'a encore été déclaré"
+      },
+      "line": {
+        "open": "Le détenteur autorise les quatre usages du standard, entraînement compris.",
+        "closed": "Le détenteur refuse les quatre usages du standard. C'est un choix, pas une faute.",
+        "ask": "Le détenteur n'autorise ces usages que sous ses propres conditions. Qui ne peut pas demander doit le lire comme un non.",
+        "mixed": "Cette déclaration répond à chaque usage séparément.",
+        "none": "Personne n'a encore écrit de déclaration pour cette image. Ne rien dire n'est pas une autorisation."
+      },
+      "chip": {
+        "open": "Ouverte à l'IA",
+        "closed": "Aucun usage IA",
+        "ask": "Sous conditions",
+        "mixed": "Usage par usage",
+        "none": "Non déclarée"
+      },
+      "uses": {
+        "aiTraining": "Entraînement d'IA",
+        "aiGenerativeTraining": "Entraînement d'IA générative",
+        "aiInference": "Inférence d'IA",
+        "dataMining": "Fouille de données"
+      },
+      "state": {
+        "unspecified": "Non déclaré",
+        "allowed": "Autorisé",
+        "notAllowed": "Refusé",
+        "constrained": "Sous conditions"
+      },
+      "writtenOn": "écrite le {when}",
+      "nothingBy": "rien n'avait été déclaré à cette date",
+      "asking": "la chaîne est interrogée pour ce jour",
+      "askFailed": "la chaîne n'a pas répondu pour ce jour",
+      "scrub": "Faites glisser la règle, ou utilisez les flèches",
+      "scrubStep": ", un jour par cran",
+      "registeredOn": "enregistrée le {when}",
+      "today": "aujourd'hui",
+      "dayLabel": "Le jour sur lequel interroger la chaîne",
+      "fourUses": "Les quatre usages",
+      "fourUsesNote": "Ce qui vaut aujourd'hui, usage par usage. Tout résumé perd quelque chose, et c'est ici que l'entraînement et l'inférence peuvent diverger.",
+      "conditionsLabel": "Conditions, dans les mots du détenteur",
+      "conditionsApplyTo": "S'applique à {uses}.",
+      "statedBy": "Déclarée par",
+      "writtenLabel": "Écrite le",
+      "empty": {
+        "body": "Personne n'a écrit de déclaration pour cette image. Ce silence est rapporté tel quel, parce que c'est ce qu'il est : il n'autorise aucun usage.",
+        "holder": "Seul le portefeuille qui détient ce passeport peut en écrire une, et chaque déclaration reste au registre avec sa date."
+      },
+      "historyCount": "{count, plural, =0 {Aucune déclaration} =1 {Une déclaration} other {# déclarations}}",
+      "historyEmpty": "Ce passeport ne porte aucune déclaration. La première écrite se posera ici avec sa date, et rien de ce qui suivra ne pourra prendre sa place.",
+      "historyBy": "écrite par {who}",
+      "standsToday": "vaut aujourd'hui",
+      "unavailable": "Le registre n'a pas pu être lu à l'instant, donc cette page ne peut pas dire ce que le détenteur a déclaré. Ce n'est pas une autorisation : réessayez dans un moment.",
+      "failure": {
+        "notHolder": "Ce portefeuille ne détient plus ce passeport, et seul son détenteur peut écrire pour lui.",
+        "tooSoon": "Pour la même image, le registre accepte une déclaration par portefeuille toutes les dix minutes. Celle-ci rouvre à {at}.",
+        "conditionsRequired": "Une déclaration sous conditions doit dire lesquelles. Écrivez-les, puis renvoyez-la.",
+        "conditionsNotAllowed": "Les conditions appartiennent à une déclaration qui en demande. Effacez le texte, ou choisissez demandez-moi d'abord.",
+        "conditionsTooLong": "Les conditions dépassent les 256 octets que garde le registre. Raccourcissez-les et renvoyez-la.",
+        "conditionsNotPrintable": "Le registre n'accepte que de l'ASCII simple. Retirez le saut de ligne ou la lettre accentuée, puis renvoyez-la.",
+        "reverted": "Monad a miné cette déclaration et rien ne s'est passé. Rien n'a été écrit, on peut donc réessayer sans risque.",
+        "declined": "Vous avez fermé la fenêtre, rien n'a donc été envoyé.",
+        "confirmPending": "La déclaration est partie et Monad ne la montre pas encore. Elle peut toujours arriver, il ne faut donc pas la renvoyer : regardez à nouveau dans un instant.",
+        "unknown": "La déclaration n'est pas passée."
+      },
+      "control": {
+        "kicker": "Votre image",
+        "heading": "Dites ce que l'IA peut en faire",
+        "body": "Vous détenez ce passeport, vous êtes donc la seule adresse dont le registre accepte une déclaration. Moolam paie les frais de réseau. Les mots sont les vôtres et restent au registre avec la date à laquelle vous les avez écrits.",
+        "choices": {
+          "open": {
+            "title": "Ouverte à l'usage par l'IA",
+            "line": "N'importe qui peut entraîner sur cette image, générer à partir d'elle et en fouiller les données."
+          },
+          "closed": {
+            "title": "Pas pour entraîner une IA",
+            "line": "Aucun usage par l'IA. C'est ce que choisissent la plupart des auteurs, et le web n'a aujourd'hui aucun moyen de le dire."
+          },
+          "ask": {
+            "title": "Demandez-moi d'abord",
+            "line": "Autorisé sous vos conditions, écrites ci-dessous. Qui ne peut pas vous joindre doit le lire comme un non."
+          }
+        },
+        "byUse": "répondre usage par usage",
+        "oneAnswer": "une réponse pour les quatre",
+        "byUseOn": "en cours",
+        "conditionsLabel": "Conditions, dans vos mots",
+        "conditionsPlaceholder": "Une licence, une page à lire, ou une adresse où demander.",
+        "bytes": "{bytes} sur {max} octets",
+        "notPrintable": "Le registre n'accepte que de l'ASCII simple. Le caractère {at} n'en fait pas partie : il faut retirer le saut de ligne ou la lettre accentuée avant de pouvoir écrire ceci.",
+        "submit": "Écrire ceci sur Monad",
+        "steps": {
+          "checking": "Le registre est interrogé",
+          "sending": "Envoi en cours",
+          "confirming": "En attente que Monad le montre"
+        },
+        "locked": "Vous venez d'écrire pour cette image. Le registre prendra votre prochaine déclaration à {at}.",
+        "needsConditions": "Dites quelles sont vos conditions : elles partent sur la chaîne avec la déclaration.",
+        "unchanged": "C'est déjà ce que le registre garde pour cette image.",
+        "fee": "Moolam paie les frais de réseau. La déclaration part de votre propre portefeuille.",
+        "done": "Écrite. Le registre la garde depuis le {when}, et c'est ce qui sera dit désormais à quiconque vérifie cette image.",
+        "openTx": "Transaction {hash}",
+        "openAddress": "Ouvrir {wallet} dans l'explorateur",
+        "actions": {
+          "recheck": "Regarder à nouveau",
+          "signIn": "Se connecter"
+        }
+      }
+    }
   },
   "agent": {
     "title": "Agent",

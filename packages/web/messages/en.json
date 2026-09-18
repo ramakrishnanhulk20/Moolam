@@ -312,7 +312,24 @@
       "mirror-rot270": "Mirrored, three quarter turn"
     },
     "busy": "Checking",
-    "again": "Verify another"
+    "again": "Verify another",
+    "consent": {
+      "label": "The holder's statement",
+      "never": "never written",
+      "nothing": "Nothing stated",
+      "silence": "Its holder has said nothing about AI use. Silence is not permission.",
+      "unreadable": "not read",
+      "unavailable": "The statement could not be read just now.",
+      "unavailableNote": "That is not permission either. The register is on Monad and can be asked again in a moment.",
+      "source": "Read from the register on Monad, not from the file.",
+      "tail": {
+        "open": "open to AI use, training included",
+        "closed": "not for AI training",
+        "ask": "ask first, conditions apply",
+        "mixed": "allowed for some uses and not for others",
+        "none": "nothing about AI use"
+      }
+    }
   },
   "passport": {
     "title": "Passport",
@@ -587,7 +604,125 @@
     "openToken": "Token on MonadVision",
     "openImage": "Open the image",
     "noManifest": "No C2PA manifest was embedded in this file.",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "IPFS {cid}",
+    "consent": {
+      "kicker": "Stated on chain",
+      "heading": "How AI may use this picture",
+      "lede": "A file can carry a line saying its creator refuses AI training, and anyone can strip that line out on the way past. This is the same statement written to a register on Monad, where only the holder of this passport can write it and nobody can take it back out.",
+      "onThisDay": "On this day, AI could",
+      "summary": {
+        "open": "Open to AI use",
+        "closed": "Not for AI training",
+        "ask": "Ask the holder first",
+        "mixed": "Stated use by use",
+        "none": "Nothing stated yet"
+      },
+      "line": {
+        "open": "The holder allows all four uses in the standard, training included.",
+        "closed": "The holder refuses all four uses in the standard. This is a choice, not a fault.",
+        "ask": "The holder allows these uses only on their own conditions. Anyone who cannot ask has to read it as no.",
+        "mixed": "This statement answers each use on its own terms.",
+        "none": "Nobody has written a statement for this picture yet. Nothing stated is not permission."
+      },
+      "chip": {
+        "open": "Open to AI",
+        "closed": "No AI use",
+        "ask": "Conditions",
+        "mixed": "Use by use",
+        "none": "Not stated"
+      },
+      "uses": {
+        "aiTraining": "AI training",
+        "aiGenerativeTraining": "Generative AI training",
+        "aiInference": "AI inference",
+        "dataMining": "Data mining"
+      },
+      "state": {
+        "unspecified": "Not stated",
+        "allowed": "Allowed",
+        "notAllowed": "Not allowed",
+        "constrained": "Conditions apply"
+      },
+      "writtenOn": "written {when}",
+      "nothingBy": "nothing stated by then",
+      "asking": "asking the chain for that day",
+      "askFailed": "the chain did not answer for that day",
+      "scrub": "Drag the rule, or use the arrow keys",
+      "scrubStep": ", one day a step",
+      "registeredOn": "registered {when}",
+      "today": "today",
+      "dayLabel": "The day to ask the chain about",
+      "fourUses": "The four uses",
+      "fourUsesNote": "What stands today, use by use. Every summary loses something, and this is where training and inference are allowed to differ.",
+      "conditionsLabel": "Conditions, in the holder's words",
+      "conditionsApplyTo": "Applies to {uses}.",
+      "statedBy": "Stated by",
+      "writtenLabel": "Written on",
+      "empty": {
+        "body": "Nobody has written a statement for this picture. It is reported here as silence, because that is what it is: no use has been allowed by it.",
+        "holder": "Only the wallet that holds this passport can write one, and every statement it writes stays on the record with its date."
+      },
+      "historyCount": "{count, plural, =0 {No statement yet} =1 {One statement} other {# statements}}",
+      "historyEmpty": "This passport has no statements at all. The first one written will sit here with its date, and nothing written after it can take its place.",
+      "historyBy": "written by {who}",
+      "standsToday": "stands today",
+      "unavailable": "The register could not be read just now, so this page cannot say what the holder stated. That is not permission: ask again in a moment.",
+      "failure": {
+        "notHolder": "This wallet does not hold this passport any more, and only its holder can write for it.",
+        "tooSoon": "The register takes one statement per wallet every ten minutes for the same picture. This one opens again at {at}.",
+        "conditionsRequired": "A statement with conditions has to say what they are. Write them, and send it again.",
+        "conditionsNotAllowed": "Conditions belong to a statement that asks for them. Clear the text, or choose ask me first.",
+        "conditionsTooLong": "The conditions are longer than the 256 bytes the register keeps. Shorten them and send it again.",
+        "conditionsNotPrintable": "The register takes plain ASCII only. Take out the line break or the accented letter and send it again.",
+        "reverted": "Monad mined this statement and it did nothing. Nothing was written, so it is safe to try once more.",
+        "declined": "You closed the prompt, so nothing was sent.",
+        "confirmPending": "The statement went out and Monad has not shown it yet. It may still land, so it must not be sent again: look again in a moment.",
+        "unknown": "The statement did not go through."
+      },
+      "control": {
+        "kicker": "Your picture",
+        "heading": "Say how AI may use it",
+        "body": "You hold this passport, so you are the only address the register takes a statement from. Moolam pays the network fee. The words are yours, and they stay on the record with the date you wrote them.",
+        "choices": {
+          "open": {
+            "title": "Open to AI use",
+            "line": "Anyone may train on this picture, generate from it and mine it."
+          },
+          "closed": {
+            "title": "Not for AI training",
+            "line": "No AI use at all. The one most creators pick, and the one the web has no way to say today."
+          },
+          "ask": {
+            "title": "Ask me first",
+            "line": "Allowed on your conditions, written below. Anyone who cannot reach you has to read it as no."
+          }
+        },
+        "byUse": "answer use by use",
+        "oneAnswer": "one answer for all four",
+        "byUseOn": "in use",
+        "conditionsLabel": "Conditions, in your words",
+        "conditionsPlaceholder": "A licence, a page to read, or an address to ask at.",
+        "bytes": "{bytes} of {max} bytes",
+        "notPrintable": "The register takes plain ASCII only. Character {at} is not one the chain will accept, so a line break or an accented letter has to go before this can be written.",
+        "submit": "Write this to Monad",
+        "steps": {
+          "checking": "Asking the register",
+          "sending": "Sending it",
+          "confirming": "Waiting for Monad to show it"
+        },
+        "locked": "You wrote for this picture a moment ago. The register takes your next statement for it at {at}.",
+        "needsConditions": "Say what your conditions are, and they go on chain with the statement.",
+        "unchanged": "This is what the register already holds for this picture.",
+        "fee": "Moolam pays the network fee. The statement goes out from your own wallet.",
+        "done": "Written. The register has held this since {when}, and it is what anyone verifying this picture is told from now on.",
+        "openTx": "Transaction {hash}",
+        "openAddress": "Open {wallet} on the explorer",
+        "actions": {
+          "recheck": "Look again",
+          "signIn": "Sign in"
+        }
+      }
+    }
   },
   "agent": {
     "title": "Agent",

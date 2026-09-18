@@ -62,6 +62,7 @@ const { StudioScreen } = await import("@/components/studio/StudioScreen");
 const { ResolveConsole } = await import("@/components/resolve/ResolveConsole");
 const { DisputePanel } = await import("@/components/passport/DisputePanel");
 const { EditPanel } = await import("@/components/passport/EditPanel");
+const { ConsentPanel } = await import("@/components/passport/ConsentPanel");
 
 await Promise.all(chunks.pending);
 
@@ -88,6 +89,13 @@ const SCREENS = {
   resolve: () => createElement(ResolveConsole, { resolver: RESOLVER, disputes: [] }),
   dispute: () => createElement(DisputePanel, { passportId: PASSPORT, owner: OWNER, disputeOpen: false }),
   edit: () => createElement(EditPanel, { parentId: PASSPORT, owner: OWNER }),
+  consent: () =>
+    createElement(ConsentPanel, {
+      passportId: PASSPORT,
+      owner: OWNER,
+      standing: { stated: false, entry: null },
+      minInterval: 600,
+    }),
 } as const;
 
 beforeEach(() => {
@@ -120,9 +128,10 @@ describe("what a screen does before the wallet provider is mounted", () => {
     expect(markup).not.toContain(en.resolve.signIn);
   });
 
-  it("paints nothing at all for the two passport panels", () => {
+  it("paints nothing at all for the three passport panels", () => {
     expect(render(SCREENS.dispute(), false)).toBe("");
     expect(render(SCREENS.edit(), false)).toBe("");
+    expect(render(SCREENS.consent(), false)).toBe("");
   });
 });
 

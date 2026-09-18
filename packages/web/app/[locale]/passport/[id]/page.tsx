@@ -4,6 +4,7 @@ import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
 import { Attestations } from "@/components/passport/Attestations";
 import { CheckCopy } from "@/components/passport/CheckCopy";
+import { ConsentSection, type ConsentRecord } from "@/components/consent/ConsentSection";
 import { DisputeNote } from "@/components/passport/DisputeNote";
 import { DisputePanel } from "@/components/passport/DisputePanel";
 import { EditPanel } from "@/components/passport/EditPanel";
@@ -14,8 +15,10 @@ import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { reason } from "@/lib/chain/client";
+import { heldConsent, heldConsentHistory, heldMinInterval, heldStandard } from "@/lib/chain/consent";
 import { DisputeStatus, ZERO_ID, heldPassportRecord } from "@/lib/chain/registry";
 import type { PassportRecordBundle } from "@/lib/chain/registry";
+import { headTimestamp } from "@/lib/chain/time";
 import { activeSource } from "@/lib/data/source";
 import { inheritedDisputed } from "@/lib/data/lineage";
 import { heldRegistration } from "@/lib/data/passports";
@@ -113,11 +116,12 @@ export default async function PassportPage({
   // The picture, the transaction links and the lineage's standing are the three
   // things this page can do without, so none of them is allowed to fail the
   // render.
-  const [art, indexed, registration, ancestorDisputed] = await Promise.all([
+  const [art, indexed, registration, ancestorDisputed, consent] = await Promise.all([
     readArt(passport.metadataURI),
     heldIndexedAttestations(passport.id),
     registrationOf(passport.id),
     ancestorsDisputed(passport.parentId),
+    consentOf(passport.id),
   ]);
   const standing = standingOf({ disputed: passport.disputed, inherited: ancestorDisputed, attestations });
 
@@ -129,21 +133,30 @@ export default async function PassportPage({
           fact on this page nobody could have written about themselves. */}
       <Attestations attestations={attestations} indexed={indexed} phash={passport.phash} locale={locale} />
 
-      <Facts
-        passport={passport}
-        art={art}
-        owner={owner}
-        hasPasskey={hasPasskey}
-        standing={standing}
-        txHash={registration}
-      />
-
-      {/* Everything above is the record itself and needs no wallet. The two
-          panels that write live down here, and they share one provider: a
-          visitor who signs in to challenge a picture is the same visitor the
-          edit panel asks about. The rest of this block is server rendered and
-          passes straight through. */}
+      {/* The three panels that write share one provider, so the wallet SDK is
+          fetched and mounted once for a page that may ask about the reader
+          three times. Everything inside here that is not a panel is server
+          rendered and passes straight through. */}
       <WalletProvider load="returning">
+        {/* Everything above this line is what the picture is. This is what its
+            holder says may be done with it, which is the question anyone
+            training a model has to answer before they use it. */}
+        <ConsentSection
+          id={passport.id}
+          owner={owner}
+          registeredAt={Number(passport.registeredAt)}
+          record={consent}
+        />
+
+        <Facts
+          passport={passport}
+          art={art}
+          owner={owner}
+          hasPasskey={hasPasskey}
+          standing={standing}
+          txHash={registration}
+        />
+
         <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
           {dispute === null ? null : (
             <div className="mb-16 rise">
@@ -192,6 +205,31 @@ async function ancestorsDisputed(parentId: Hex): Promise<boolean> {
     return await inheritedDisputed(parentId);
   } catch {
     return false;
+  }
+}
+
+/**
+ * What the holder has said about AI use, with the register's own vocabulary and
+ * its waiting rule, read together.
+ *
+ * Every read here is held under this passport's own name, so a statement
+ * written from this page drops with the rest of it. A register that will not
+ * answer costs the section its card and nothing else: the page says so in
+ * words, because a silent section would read as a holder who said nothing, and
+ * those are two different answers.
+ */
+async function consentOf(id: Hex): Promise<ConsentRecord | null> {
+  try {
+    const [reading, history, standard, minInterval, now] = await Promise.all([
+      heldConsent(id),
+      heldConsentHistory(id),
+      heldStandard(),
+      heldMinInterval(),
+      headTimestamp(),
+    ]);
+    return { reading, history, standard, minInterval, now: Number(now) };
+  } catch {
+    return null;
   }
 }
 

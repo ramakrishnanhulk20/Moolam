@@ -3,7 +3,7 @@ import { setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
 import { ConsentBench, type Subject } from "@/components/lab/consent/ConsentBench";
 import { readArt } from "@/components/passport/art";
-import { heldConsent, heldConsentHistory, heldStandard } from "@/lib/chain/consent";
+import { heldConsent, heldConsentHistory, heldMinInterval, heldStandard } from "@/lib/chain/consent";
 import { heldPassportRecord } from "@/lib/chain/registry";
 import { headTimestamp } from "@/lib/chain/time";
 
@@ -55,13 +55,14 @@ export default async function ConsentLabPage({ params }: { params: Promise<{ loc
   // The end of every rule on this page is the chain's own clock, not this
   // machine's: the statements are dated in block time and a rule that ended at
   // a laptop's idea of now could put today's statement in the future.
-  const [standard, head, subjects] = await Promise.all([
+  const [standard, minInterval, head, subjects] = await Promise.all([
     heldStandard(),
+    heldMinInterval(),
     headTimestamp(),
     Promise.all(SHOWN.map(async (shown) => await subjectFor(shown.id, shown.caption))),
   ]);
 
-  return <ConsentBench subjects={subjects} standard={standard} now={Number(head)} />;
+  return <ConsentBench subjects={subjects} standard={standard} minInterval={minInterval} now={Number(head)} />;
 }
 
 async function subjectFor(id: Hex, caption: string): Promise<Subject> {
@@ -75,6 +76,7 @@ async function subjectFor(id: Hex, caption: string): Promise<Subject> {
     caption,
     title: art.title ?? null,
     registeredAt: record.passport === null ? 0 : Number(record.passport.registeredAt),
+    owner: record.owner,
     reading,
     history,
   };

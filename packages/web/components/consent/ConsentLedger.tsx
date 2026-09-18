@@ -1,55 +1,57 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { NOTHING_STATED, plainStatement } from "@/lib/chain/consent";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { UseBlock } from "./Marks";
 import { ConsentChip } from "./Summary";
 import {
+  askConsentAt,
   daysAcross,
   fractionOf,
   secondsForDay,
   segmentAt,
   segmentsOf,
-  type AskConsentAt,
   type LedgerAnswer,
   type LedgerEntry,
 } from "./ledger";
-import { SUMMARY_HEADLINES, SUMMARY_LINES, SUMMARY_TONES, dayText, momentText } from "./words";
+import { SUMMARY_TONES } from "./tones";
 
 /**
- * The card as a ledger: the passport's whole life as one rule, and a thumb that
- * asks the chain what was in force on the day it sits on.
+ * The passport's whole life as one rule, and a thumb that asks the chain what
+ * was in force on the day it sits on.
  *
  * This is the question a label in a file cannot answer. A crawler that took a
  * picture in August and a holder who closed their work in September disagree
  * about what was allowed, and only a register that keeps every statement can
- * settle it. So the answer under the thumb is not computed from what the page
- * already knows: it is a fresh call to consentAt, and the date it comes back
- * with is the date the chain stands behind.
+ * settle it. So the answer under the thumb is a fresh call to consentAt, and
+ * the date it comes back with is the date the chain stands behind.
+ *
+ * The one part of this card that runs in the browser. Everything under it is
+ * the statement that stands today, rendered on the server.
  */
 export function ConsentLedger({
+  id,
   registeredAt,
   now,
   entries,
   standing,
-  ask,
-  standard,
   className = "",
 }: {
+  id: string;
   /** When the picture was registered, in whole seconds. The rule starts here. */
   registeredAt: number;
-  /** When this card was rendered, in whole seconds. The rule ends here. */
+  /** The chain's own clock when this page was rendered, in whole seconds. The rule ends here. */
   now: number;
   entries: LedgerEntry[];
   /** What stands today, read on the server, so the card opens on an answer rather than a wait. */
   standing: LedgerAnswer;
-  ask: AskConsentAt;
-  standard: string;
   className?: string;
 }) {
+  const t = useTranslations("passport.consent");
+  const format = useFormatter();
   const reduced = useIsReducedMotion();
   const lastDay = daysAcross(registeredAt, now);
 
@@ -71,7 +73,7 @@ export function ConsentLedger({
     // rather than one per day the thumb passed over.
     const timer = setTimeout(() => {
       setAsking(true);
-      ask(asked, controller.signal)
+      askConsentAt(id, asked, controller.signal)
         .then((reading) => {
           if (!controller.signal.aborted) {
             setAnswer({ at: asked, reading });
@@ -94,24 +96,20 @@ export function ConsentLedger({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [asked, answer.at, ask]);
+  }, [asked, answer.at, id]);
 
   const shown = answer.reading;
   const consent = shown.entry?.consent ?? NOTHING_STATED;
   const summary = shown.stated ? plainStatement(consent) : "none";
   const tone = SUMMARY_TONES[summary];
   const live = segmentAt(segments, asked);
+  const askedDay = format.dateTime(new Date(answer.at * 1000), { dateStyle: "medium" });
 
   return (
-    <section className={`border-y border-line bg-bg px-5 py-10 sm:px-8 sm:py-12 ${className}`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
-        <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">The ledger</p>
-        <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">{standard}</p>
-      </div>
-
-      <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14">
-        <div className="min-w-0 min-h-[13rem]">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">On this day, AI could</p>
+    <div className={className}>
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-14">
+        <div className="min-h-[13rem] min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("onThisDay")}</p>
 
           {/* Keyed on the moment asked, so a new answer settles in rather than
               swapping in place. The height above and below is reserved, so
@@ -123,61 +121,49 @@ export function ConsentLedger({
             transition={reduced ? { duration: 0.15 } : { duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="mt-3"
           >
-            <p className="font-display text-[clamp(1.6rem,3.6vw,2.8rem)] font-semibold leading-[0.98] tracking-[-0.03em]">
-              {SUMMARY_HEADLINES[summary]}
+            <p
+              data-consent-headline
+              className="font-display text-[clamp(1.7rem,4vw,3rem)] font-semibold leading-[0.98] tracking-[-0.03em]"
+            >
+              {t(`summary.${summary}`)}
             </p>
             <p className="mt-4 flex flex-wrap items-center gap-3">
-              <span className="font-mono text-[11px] tracking-[0.14em] text-accent">{dayText(answer.at)}</span>
+              <span className="font-mono text-[11px] tracking-[0.14em] text-accent">{askedDay}</span>
               <span aria-hidden className="h-px w-8 bg-line-strong" />
               <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
-                {shown.stated ? `written ${momentText(shown.entry?.at ?? answer.at)}` : "nothing stated by then"}
+                {shown.stated && shown.entry !== null
+                  ? t("writtenOn", {
+                      when: format.dateTime(new Date(shown.entry.at * 1000), {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      }),
+                    })
+                  : t("nothingBy")}
               </span>
             </p>
-            <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{SUMMARY_LINES[summary]}</p>
+            <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t(`line.${summary}`)}</p>
           </motion.div>
 
           <p className="mt-5 h-4 font-mono text-[10px] uppercase tracking-[0.2em]">
             {failed !== null ? (
-              <span className="text-failed">the chain did not answer: {failed}</span>
+              <span className="text-failed">{t("askFailed")}</span>
             ) : asking ? (
-              <span className="text-text-faint">asking the chain for that day</span>
+              <span className="text-text-faint">{t("asking")}</span>
             ) : null}
           </p>
         </div>
 
-        <div className="min-w-0 min-h-[13rem] lg:border-s lg:border-line lg:ps-10">
+        <div className="min-h-[13rem] min-w-0 lg:border-s lg:border-line lg:ps-10">
           <UseBlock consent={consent} size="h-7 w-7" className={`gap-[5px] ${tone.ink}`} />
-
-          <div className="mt-6 flex flex-wrap items-center gap-4">
-            <ConsentChip summary={summary} />
-          </div>
-
-          {shown.entry !== null && shown.entry.constraintInfo.length > 0 ? (
-            <p className="mt-6 max-w-[46ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed break-words text-text">
-              {shown.entry.constraintInfo}
-            </p>
-          ) : null}
-
-          {shown.entry === null ? null : (
-            <p className="tap-row mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
-              by{" "}
-              <a
-                href={`${MONAD_EXPLORER}/address/${shown.entry.writer}`}
-                target="_blank"
-                rel="noreferrer"
-                className="transition-colors duration-200 hover:text-accent"
-              >
-                {shortHex(shown.entry.writer)}
-              </a>
-            </p>
-          )}
+          <ConsentChip summary={summary} className="mt-6" />
         </div>
       </div>
 
       {/* One line above the rule rather than inside it: anywhere inside, it
           falls on the marks over a statement or on the thumb's own target. */}
       <p className="mt-12 truncate text-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-        drag the rule, or use arrow keys<span className="hidden sm:inline">, one day a step</span>
+        {t("scrub")}
+        <span className="hidden sm:inline">{t("scrubStep")}</span>
       </p>
 
       {/* The rule itself. The whole life of the passport, left to right. */}
@@ -231,8 +217,8 @@ export function ConsentLedger({
           step={1}
           value={day}
           onChange={(event) => setDay(Number(event.target.value))}
-          aria-label="The day to ask the chain about"
-          aria-valuetext={dayText(asked)}
+          aria-label={t("dayLabel")}
+          aria-valuetext={askedDay}
           className="peer absolute inset-x-0 top-1/2 h-11 w-full -translate-y-1/2 cursor-ew-resize appearance-none bg-transparent opacity-0"
         />
 
@@ -242,12 +228,13 @@ export function ConsentLedger({
           style={{ left: `${fractionOf(asked, registeredAt, now) * 100}%` }}
         />
 
-        <p className="absolute inset-x-0 bottom-0 flex justify-between font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
-          <span>registered {dayText(registeredAt)}</span>
-          <span>today</span>
+        <p className="absolute inset-x-0 bottom-0 flex justify-between gap-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
+          <span className="truncate">
+            {t("registeredOn", { when: format.dateTime(new Date(registeredAt * 1000), { dateStyle: "medium" }) })}
+          </span>
+          <span className="shrink-0">{t("today")}</span>
         </p>
-
       </div>
-    </section>
+    </div>
   );
 }

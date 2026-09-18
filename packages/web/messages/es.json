@@ -312,7 +312,24 @@
       "mirror-rot270": "Reflejada y tres cuartos de vuelta"
     },
     "busy": "Comprobando",
-    "again": "Verificar otra"
+    "again": "Verificar otra",
+    "consent": {
+      "label": "La declaración de quien la tiene",
+      "never": "nunca escrita",
+      "nothing": "Sin declaración",
+      "silence": "Quien la tiene no ha dicho nada sobre el uso por IA. El silencio no es un permiso.",
+      "unreadable": "no leída",
+      "unavailable": "La declaración no se ha podido leer ahora mismo.",
+      "unavailableNote": "Eso tampoco es un permiso. El registro está en Monad y se le puede preguntar de nuevo en un momento.",
+      "source": "Leída del registro en Monad, no del archivo.",
+      "tail": {
+        "open": "abierta al uso por IA, entrenamiento incluido",
+        "closed": "no para entrenar IA",
+        "ask": "pregunta antes, hay condiciones",
+        "mixed": "permitida para unos usos y no para otros",
+        "none": "nada sobre el uso por IA"
+      }
+    }
   },
   "passport": {
     "title": "Pasaporte",
@@ -587,7 +604,125 @@
     "openToken": "Token en MonadVision",
     "openImage": "Abrir la imagen",
     "noManifest": "Este archivo no llevaba ningún manifiesto C2PA incrustado.",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "IPFS {cid}",
+    "consent": {
+      "kicker": "Escrito en la cadena",
+      "heading": "Cómo puede la IA usar esta imagen",
+      "lede": "Un archivo puede llevar una línea que diga que su autor rechaza el entrenamiento de IA, y cualquiera puede borrarla por el camino. Esta es la misma declaración escrita en un registro de Monad, donde solo quien tiene este pasaporte puede escribirla y nadie puede quitarla.",
+      "onThisDay": "Ese día la IA podía",
+      "summary": {
+        "open": "Abierta al uso por IA",
+        "closed": "No para entrenar IA",
+        "ask": "Pregunta antes a quien la tiene",
+        "mixed": "Declarada uso por uso",
+        "none": "Todavía no se ha dicho nada"
+      },
+      "line": {
+        "open": "Quien la tiene permite los cuatro usos del estándar, entrenamiento incluido.",
+        "closed": "Quien la tiene rechaza los cuatro usos del estándar. Es una decisión, no un fallo.",
+        "ask": "Solo permite estos usos bajo sus propias condiciones. Quien no pueda preguntar tiene que leerlo como un no.",
+        "mixed": "Esta declaración responde a cada uso por separado.",
+        "none": "Nadie ha escrito todavía una declaración para esta imagen. Que no se diga nada no es un permiso."
+      },
+      "chip": {
+        "open": "Abierta a la IA",
+        "closed": "Sin uso por IA",
+        "ask": "Con condiciones",
+        "mixed": "Uso por uso",
+        "none": "Sin declarar"
+      },
+      "uses": {
+        "aiTraining": "Entrenamiento de IA",
+        "aiGenerativeTraining": "Entrenamiento de IA generativa",
+        "aiInference": "Inferencia de IA",
+        "dataMining": "Minería de datos"
+      },
+      "state": {
+        "unspecified": "Sin declarar",
+        "allowed": "Permitido",
+        "notAllowed": "No permitido",
+        "constrained": "Con condiciones"
+      },
+      "writtenOn": "escrita el {when}",
+      "nothingBy": "para entonces no se había dicho nada",
+      "asking": "preguntando a la cadena por ese día",
+      "askFailed": "la cadena no respondió por ese día",
+      "scrub": "Arrastra la regla, o usa las flechas",
+      "scrubStep": ", un día por paso",
+      "registeredOn": "registrada el {when}",
+      "today": "hoy",
+      "dayLabel": "El día por el que preguntar a la cadena",
+      "fourUses": "Los cuatro usos",
+      "fourUsesNote": "Lo que rige hoy, uso por uso. Todo resumen pierde algo, y aquí es donde el entrenamiento y la inferencia pueden no coincidir.",
+      "conditionsLabel": "Condiciones, en palabras de quien la tiene",
+      "conditionsApplyTo": "Se aplica a {uses}.",
+      "statedBy": "Declarada por",
+      "writtenLabel": "Escrita el",
+      "empty": {
+        "body": "Nadie ha escrito una declaración para esta imagen. Ese silencio queda aquí tal cual, porque eso es lo que hay: no autoriza ningún uso.",
+        "holder": "Solo la cartera que tiene este pasaporte puede escribir una, y cada declaración que escriba queda en el registro con su fecha."
+      },
+      "historyCount": "{count, plural, =0 {Ninguna declaración todavía} =1 {Una declaración} other {# declaraciones}}",
+      "historyEmpty": "Este pasaporte no tiene ninguna declaración. La primera que se escriba quedará aquí con su fecha, y nada de lo que venga después podrá ocupar su lugar.",
+      "historyBy": "escrita por {who}",
+      "standsToday": "rige hoy",
+      "unavailable": "El registro no se ha podido leer ahora mismo, así que esta página no puede decir qué declaró quien la tiene. Eso no es un permiso: vuelve a preguntar en un momento.",
+      "failure": {
+        "notHolder": "Esta cartera ya no tiene este pasaporte, y solo quien lo tiene puede escribir por él.",
+        "tooSoon": "Para la misma imagen, el registro acepta una declaración por cartera cada diez minutos. Esta se abre otra vez a las {at}.",
+        "conditionsRequired": "Una declaración con condiciones tiene que decir cuáles son. Escríbelas y envíala otra vez.",
+        "conditionsNotAllowed": "Las condiciones pertenecen a una declaración que las pide. Borra el texto, o elige pregúntame antes.",
+        "conditionsTooLong": "Las condiciones superan los 256 bytes que guarda el registro. Acórtalas y envíala otra vez.",
+        "conditionsNotPrintable": "El registro solo acepta ASCII simple. Quita el salto de línea o la letra acentuada y envíala otra vez.",
+        "reverted": "Monad minó esta declaración y no hizo nada. No se escribió nada, así que se puede intentar de nuevo sin riesgo.",
+        "declined": "Cerraste la ventana, así que no se envió nada.",
+        "confirmPending": "La declaración salió y Monad todavía no la muestra. Puede llegar igualmente, así que no debe enviarse otra vez: vuelve a mirar en un momento.",
+        "unknown": "La declaración no llegó a completarse."
+      },
+      "control": {
+        "kicker": "Tu imagen",
+        "heading": "Di cómo puede usarla la IA",
+        "body": "Tienes este pasaporte, así que eres la única dirección a la que el registro acepta una declaración. Moolam paga la comisión de red. Las palabras son tuyas y quedan en el registro con la fecha en que las escribiste.",
+        "choices": {
+          "open": {
+            "title": "Abierta al uso por IA",
+            "line": "Cualquiera puede entrenar con esta imagen, generar a partir de ella y minar sus datos."
+          },
+          "closed": {
+            "title": "No para entrenar IA",
+            "line": "Ningún uso por IA. Es lo que eligen la mayoría de los autores, y hoy la web no tiene forma de decirlo."
+          },
+          "ask": {
+            "title": "Pregúntame antes",
+            "line": "Permitido bajo tus condiciones, escritas abajo. Quien no pueda localizarte tiene que leerlo como un no."
+          }
+        },
+        "byUse": "responder uso por uso",
+        "oneAnswer": "una respuesta para los cuatro",
+        "byUseOn": "en uso",
+        "conditionsLabel": "Condiciones, con tus palabras",
+        "conditionsPlaceholder": "Una licencia, una página que leer, o una dirección donde preguntar.",
+        "bytes": "{bytes} de {max} bytes",
+        "notPrintable": "El registro solo acepta ASCII simple. El carácter {at} no es de los que la cadena admite, así que hay que quitar el salto de línea o la letra acentuada antes de escribir esto.",
+        "submit": "Escribir esto en Monad",
+        "steps": {
+          "checking": "Preguntando al registro",
+          "sending": "Enviando",
+          "confirming": "Esperando a que Monad lo muestre"
+        },
+        "locked": "Acabas de escribir para esta imagen. El registro acepta tu siguiente declaración a las {at}.",
+        "needsConditions": "Di cuáles son tus condiciones: van a la cadena junto con la declaración.",
+        "unchanged": "Esto es lo que el registro ya guarda para esta imagen.",
+        "fee": "Moolam paga la comisión de red. La declaración sale de tu propia cartera.",
+        "done": "Escrita. El registro la guarda desde el {when}, y es lo que se le dirá a partir de ahora a quien verifique esta imagen.",
+        "openTx": "Transacción {hash}",
+        "openAddress": "Abrir {wallet} en el explorador",
+        "actions": {
+          "recheck": "Mirar otra vez",
+          "signIn": "Entrar"
+        }
+      }
+    }
   },
   "agent": {
     "title": "Agente",

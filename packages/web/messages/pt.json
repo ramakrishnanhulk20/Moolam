@@ -313,7 +313,24 @@
       "mirror-rot270": "Espelhada, três quartos de volta"
     },
     "busy": "Verificando",
-    "again": "Verificar outra"
+    "again": "Verificar outra",
+    "consent": {
+      "label": "A declaração de quem a detém",
+      "never": "nunca escrita",
+      "nothing": "Sem declaração",
+      "silence": "Quem a detém não disse nada sobre uso por IA. O silêncio não é permissão.",
+      "unreadable": "não lida",
+      "unavailable": "Não foi possível ler a declaração agora.",
+      "unavailableNote": "Isso também não é permissão. O registo está na Monad e pode ser consultado outra vez daqui a pouco.",
+      "source": "Lida do registo na Monad, não do ficheiro.",
+      "tail": {
+        "open": "aberta ao uso por IA, treino incluído",
+        "closed": "não serve para treinar IA",
+        "ask": "pergunte primeiro, há condições",
+        "mixed": "permitida para uns usos e não para outros",
+        "none": "nada sobre uso por IA"
+      }
+    }
   },
   "passport": {
     "title": "Passaporte",
@@ -588,7 +605,125 @@
     "openToken": "Token no MonadVision",
     "openImage": "Abrir a imagem",
     "noManifest": "Este arquivo não trazia nenhum manifesto C2PA embutido.",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "IPFS {cid}",
+    "consent": {
+      "kicker": "Registado na cadeia",
+      "heading": "Como a IA pode usar esta imagem",
+      "lede": "Um ficheiro pode levar uma linha a dizer que o seu autor recusa treino de IA, e qualquer pessoa pode retirá-la pelo caminho. Esta é a mesma declaração escrita num registo na Monad, onde só quem detém este passaporte a pode escrever e ninguém a pode tirar.",
+      "onThisDay": "Nesse dia a IA podia",
+      "summary": {
+        "open": "Aberta ao uso por IA",
+        "closed": "Não serve para treinar IA",
+        "ask": "Pergunte primeiro a quem a detém",
+        "mixed": "Declarada uso a uso",
+        "none": "Ainda não foi dito nada"
+      },
+      "line": {
+        "open": "Quem a detém permite os quatro usos do padrão, treino incluído.",
+        "closed": "Quem a detém recusa os quatro usos do padrão. É uma escolha, não uma falha.",
+        "ask": "Só permite estes usos nas suas próprias condições. Quem não puder perguntar tem de ler isto como um não.",
+        "mixed": "Esta declaração responde a cada uso em separado.",
+        "none": "Ninguém escreveu ainda uma declaração para esta imagem. Não dizer nada não é permissão."
+      },
+      "chip": {
+        "open": "Aberta à IA",
+        "closed": "Sem uso por IA",
+        "ask": "Com condições",
+        "mixed": "Uso a uso",
+        "none": "Sem declaração"
+      },
+      "uses": {
+        "aiTraining": "Treino de IA",
+        "aiGenerativeTraining": "Treino de IA generativa",
+        "aiInference": "Inferência de IA",
+        "dataMining": "Mineração de dados"
+      },
+      "state": {
+        "unspecified": "Sem declaração",
+        "allowed": "Permitido",
+        "notAllowed": "Não permitido",
+        "constrained": "Com condições"
+      },
+      "writtenOn": "escrita a {when}",
+      "nothingBy": "até aí nada tinha sido dito",
+      "asking": "a perguntar à cadeia por esse dia",
+      "askFailed": "a cadeia não respondeu por esse dia",
+      "scrub": "Arraste a régua, ou use as setas",
+      "scrubStep": ", um dia por passo",
+      "registeredOn": "registada a {when}",
+      "today": "hoje",
+      "dayLabel": "O dia sobre o qual perguntar à cadeia",
+      "fourUses": "Os quatro usos",
+      "fourUsesNote": "O que vale hoje, uso a uso. Qualquer resumo perde alguma coisa, e é aqui que o treino e a inferência podem divergir.",
+      "conditionsLabel": "Condições, nas palavras de quem a detém",
+      "conditionsApplyTo": "Aplica-se a {uses}.",
+      "statedBy": "Declarada por",
+      "writtenLabel": "Escrita a",
+      "empty": {
+        "body": "Ninguém escreveu uma declaração para esta imagem. Esse silêncio fica aqui tal como é, porque é isso mesmo: não autoriza uso nenhum.",
+        "holder": "Só a carteira que detém este passaporte pode escrever uma, e cada declaração que escrever fica no registo com a sua data."
+      },
+      "historyCount": "{count, plural, =0 {Ainda sem declarações} =1 {Uma declaração} other {# declarações}}",
+      "historyEmpty": "Este passaporte não tem declaração nenhuma. A primeira a ser escrita fica aqui com a sua data, e nada do que vier depois lhe toma o lugar.",
+      "historyBy": "escrita por {who}",
+      "standsToday": "vale hoje",
+      "unavailable": "Não foi possível ler o registo agora, por isso esta página não pode dizer o que foi declarado. Isso não é permissão: volte a perguntar daqui a pouco.",
+      "failure": {
+        "notHolder": "Esta carteira já não detém este passaporte, e só quem o detém pode escrever por ele.",
+        "tooSoon": "Para a mesma imagem, o registo aceita uma declaração por carteira a cada dez minutos. Esta abre outra vez às {at}.",
+        "conditionsRequired": "Uma declaração com condições tem de dizer quais são. Escreva-as e envie outra vez.",
+        "conditionsNotAllowed": "As condições pertencem a uma declaração que as pede. Apague o texto, ou escolha pergunte-me primeiro.",
+        "conditionsTooLong": "As condições passam dos 256 bytes que o registo guarda. Encurte-as e envie outra vez.",
+        "conditionsNotPrintable": "O registo só aceita ASCII simples. Tire a quebra de linha ou a letra acentuada e envie outra vez.",
+        "reverted": "A Monad processou esta declaração e nada aconteceu. Nada foi escrito, por isso é seguro tentar de novo.",
+        "declined": "Fechou a janela, por isso não foi enviado nada.",
+        "confirmPending": "A declaração saiu e a Monad ainda não a mostrou. Pode entrar à mesma, por isso não deve ser enviada outra vez: volte a ver daqui a pouco.",
+        "unknown": "A declaração não passou."
+      },
+      "control": {
+        "kicker": "A sua imagem",
+        "heading": "Diga como a IA a pode usar",
+        "body": "Este passaporte é seu, por isso o registo só aceita uma declaração do seu endereço. A taxa de rede é paga pela Moolam. As palavras são suas e ficam no registo com a data em que as escreveu.",
+        "choices": {
+          "open": {
+            "title": "Aberta ao uso por IA",
+            "line": "Qualquer pessoa pode treinar com esta imagem, gerar a partir dela e explorar os seus dados."
+          },
+          "closed": {
+            "title": "Não serve para treinar IA",
+            "line": "Nenhum uso por IA. É o que a maioria dos autores escolhe, e hoje a web não tem forma de o dizer."
+          },
+          "ask": {
+            "title": "Pergunte-me primeiro",
+            "line": "Permitido nas suas condições, escritas abaixo. Quem não conseguir falar consigo tem de ler isto como um não."
+          }
+        },
+        "byUse": "responder uso a uso",
+        "oneAnswer": "uma resposta para os quatro",
+        "byUseOn": "em uso",
+        "conditionsLabel": "Condições, nas suas palavras",
+        "conditionsPlaceholder": "Uma licença, uma página para ler, ou um endereço onde perguntar.",
+        "bytes": "{bytes} de {max} bytes",
+        "notPrintable": "O registo só aceita ASCII simples. O carácter {at} não é aceite pela cadeia, por isso a quebra de linha ou a letra acentuada tem de sair antes de isto poder ser escrito.",
+        "submit": "Escrever isto na Monad",
+        "steps": {
+          "checking": "A perguntar ao registo",
+          "sending": "A enviar",
+          "confirming": "À espera que a Monad o mostre"
+        },
+        "locked": "Escreveu para esta imagem há pouco. O registo aceita a sua próxima declaração às {at}.",
+        "needsConditions": "Diga quais são as suas condições: vão para a cadeia com a declaração.",
+        "unchanged": "É isto que o registo já guarda para esta imagem.",
+        "fee": "A taxa de rede é paga pela Moolam. A declaração sai da sua própria carteira.",
+        "done": "Escrita. O registo guarda-a desde {when}, e é isto que passa a ser dito a quem verificar esta imagem.",
+        "openTx": "Transação {hash}",
+        "openAddress": "Abrir {wallet} no explorador",
+        "actions": {
+          "recheck": "Ver outra vez",
+          "signIn": "Entrar"
+        }
+      }
+    }
   },
   "agent": {
     "title": "Agente",

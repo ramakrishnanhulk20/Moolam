@@ -1,6 +1,7 @@
 /**
- * Every custom error the registry and the policy can throw, with the sentence
- * a screen prints for it and the one thing worth offering afterwards.
+ * Every custom error the registry, the policy and the consent register can
+ * throw, with the sentence a screen prints for it and the one thing worth
+ * offering afterwards.
  *
  * One table, because the studio, the edit panel and the dispute panel all send
  * to the same two contracts and were each keeping their own partial copy. The
@@ -103,10 +104,52 @@ export const REGISTRY_REVERTS: Record<string, RevertCopy> = {
   TreasuryCannotReceive: { key: "reverted" },
 };
 
+/**
+ * The consent register's own errors, in a table of their own.
+ *
+ * It is a separate contract and a separate flow, so its refusals get separate
+ * lines under "passport.consent.failure". Two names appear in both tables,
+ * ZeroAddress and NotAContract, and they mean the same thing in both: a
+ * deployment that cannot happen twice, which a reader can do nothing about.
+ *
+ * Nothing here offers "again" for a refusal the chain would repeat. A holder
+ * who must wait out the ten minute interval, and a visitor who does not hold
+ * the passport at all, are told what is true rather than handed a button that
+ * fails the same way.
+ */
+export const CONSENT_REVERTS: Record<string, RevertCopy> = {
+  NotPassportHolder: { key: "notHolder" },
+  TooSoon: { key: "tooSoon" },
+
+  // The text, checked by the control before anything is sent, so reaching one
+  // of these means the text changed under the send and a second try can work.
+  ConstraintInfoRequired: { key: "conditionsRequired", next: "again" },
+  ConstraintInfoNotAllowed: { key: "conditionsNotAllowed", next: "again" },
+  ConstraintInfoTooLong: { key: "conditionsTooLong", next: "again" },
+  ConstraintInfoNotPrintable: { key: "conditionsNotPrintable", next: "again" },
+
+  // The batch path belongs to the agent, which states for many pictures at
+  // once. No screen sends it, so a generic line is more honest than an
+  // invented one.
+  EmptyBatch: { key: "reverted" },
+  BatchTooLarge: { key: "reverted" },
+
+  ZeroAddress: { key: "reverted" },
+  NotAContract: { key: "reverted" },
+};
+
 /** The line for a named revert, or the generic one for anything the ABIs do not know. */
 export function revertCopy(name: string | undefined): RevertCopy {
   if (name === undefined) {
     return { key: "reverted", next: "again" };
   }
   return REGISTRY_REVERTS[name] ?? { key: "reverted", next: "again" };
+}
+
+/** The same, for a call to the consent register. */
+export function consentRevertCopy(name: string | undefined): RevertCopy {
+  if (name === undefined) {
+    return { key: "reverted", next: "again" };
+  }
+  return CONSENT_REVERTS[name] ?? { key: "reverted", next: "again" };
 }

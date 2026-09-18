@@ -1,7 +1,8 @@
+import { useTranslations } from "next-intl";
 import type { Consent } from "@/lib/chain/consent";
 import { USE_FIELDS } from "@/lib/chain/consent";
 import { UseMark } from "./Marks";
-import { USE_LABELS, USE_STATES, USE_TONES } from "./words";
+import { USE_TONES } from "./tones";
 
 /**
  * The four uses, one row each, with the mark and the word side by side.
@@ -12,16 +13,20 @@ import { USE_LABELS, USE_STATES, USE_TONES } from "./words";
  * stated, so the card is the same height whatever the chain answers.
  */
 export function UseRows({ consent, className = "" }: { consent: Consent; className?: string }) {
+  const t = useTranslations("passport.consent");
+
   return (
     <ul className={`bg-line space-y-px ${className}`}>
       {USE_FIELDS.map((field) => {
         const state = consent[field];
         return (
           <li key={field} className="bg-bg flex items-center justify-between gap-6 py-3.5">
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{USE_LABELS[field]}</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+              {t(`uses.${field}`)}
+            </span>
             <span className={`flex shrink-0 items-center gap-2.5 ${USE_TONES[state]}`}>
               <UseMark state={state} />
-              <span className="text-sm leading-none">{USE_STATES[state]}</span>
+              <span className="text-sm leading-none">{t(`state.${state}`)}</span>
             </span>
           </li>
         );

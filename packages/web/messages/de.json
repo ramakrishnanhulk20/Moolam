@@ -312,7 +312,24 @@
       "mirror-rot270": "Gespiegelt, drei Viertel gedreht"
     },
     "busy": "Wird geprüft",
-    "again": "Weiteres Bild prüfen"
+    "again": "Weiteres Bild prüfen",
+    "consent": {
+      "label": "Die Erklärung des Halters",
+      "never": "nie geschrieben",
+      "nothing": "Nichts erklärt",
+      "silence": "Der Halter hat zur KI-Nutzung nichts gesagt. Schweigen ist keine Erlaubnis.",
+      "unreadable": "nicht gelesen",
+      "unavailable": "Die Erklärung war gerade nicht zu lesen.",
+      "unavailableNote": "Auch das ist keine Erlaubnis. Das Register liegt auf Monad und kann gleich noch einmal gefragt werden.",
+      "source": "Aus dem Register auf Monad gelesen, nicht aus der Datei.",
+      "tail": {
+        "open": "offen für KI-Nutzung, Training eingeschlossen",
+        "closed": "nicht für KI-Training",
+        "ask": "erst fragen, es gelten Bedingungen",
+        "mixed": "für manche Nutzungen erlaubt und für andere nicht",
+        "none": "nichts zur KI-Nutzung"
+      }
+    }
   },
   "passport": {
     "title": "Pass",
@@ -587,7 +604,125 @@
     "openToken": "Token auf MonadVision",
     "openImage": "Bild öffnen",
     "noManifest": "In dieser Datei war kein C2PA-Manifest eingebettet.",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "IPFS {cid}",
+    "consent": {
+      "kicker": "Auf der Kette festgehalten",
+      "heading": "Wie KI dieses Bild nutzen darf",
+      "lede": "Eine Datei kann eine Zeile mitführen, die sagt, dass ihr Urheber KI-Training ablehnt, und unterwegs kann jeder sie herausnehmen. Dieselbe Erklärung steht hier in einem Register auf Monad, wo nur der Halter dieses Passes sie schreiben kann und niemand sie entfernen kann.",
+      "onThisDay": "An diesem Tag durfte KI",
+      "summary": {
+        "open": "Offen für KI-Nutzung",
+        "closed": "Nicht für KI-Training",
+        "ask": "Erst den Halter fragen",
+        "mixed": "Nutzung für Nutzung erklärt",
+        "none": "Bisher nichts erklärt"
+      },
+      "line": {
+        "open": "Der Halter erlaubt alle vier Nutzungen des Standards, Training eingeschlossen.",
+        "closed": "Der Halter lehnt alle vier Nutzungen ab. Das ist eine Entscheidung, kein Fehler.",
+        "ask": "Der Halter erlaubt diese Nutzungen nur zu eigenen Bedingungen. Wer nicht fragen kann, muss es als Nein lesen.",
+        "mixed": "Diese Erklärung antwortet auf jede Nutzung einzeln.",
+        "none": "Für dieses Bild hat noch niemand eine Erklärung geschrieben. Schweigen ist keine Erlaubnis."
+      },
+      "chip": {
+        "open": "Offen für KI",
+        "closed": "Keine KI-Nutzung",
+        "ask": "Mit Bedingungen",
+        "mixed": "Einzeln",
+        "none": "Nicht erklärt"
+      },
+      "uses": {
+        "aiTraining": "KI-Training",
+        "aiGenerativeTraining": "Training generativer KI",
+        "aiInference": "KI-Inferenz",
+        "dataMining": "Data-Mining"
+      },
+      "state": {
+        "unspecified": "Nicht erklärt",
+        "allowed": "Erlaubt",
+        "notAllowed": "Nicht erlaubt",
+        "constrained": "Mit Bedingungen"
+      },
+      "writtenOn": "geschrieben am {when}",
+      "nothingBy": "bis dahin war nichts erklärt",
+      "asking": "die Kette wird nach diesem Tag gefragt",
+      "askFailed": "die Kette hat für diesen Tag nicht geantwortet",
+      "scrub": "Ziehen Sie das Lineal, oder nehmen Sie die Pfeiltasten",
+      "scrubStep": ", ein Tag pro Schritt",
+      "registeredOn": "registriert am {when}",
+      "today": "heute",
+      "dayLabel": "Der Tag, nach dem die Kette gefragt wird",
+      "fourUses": "Die vier Nutzungen",
+      "fourUsesNote": "Was heute gilt, Nutzung für Nutzung. Jede Zusammenfassung verliert etwas, und genau hier dürfen Training und Inferenz auseinandergehen.",
+      "conditionsLabel": "Bedingungen, in den Worten des Halters",
+      "conditionsApplyTo": "Gilt für {uses}.",
+      "statedBy": "Erklärt von",
+      "writtenLabel": "Geschrieben am",
+      "empty": {
+        "body": "Niemand hat für dieses Bild eine Erklärung geschrieben. Dieses Schweigen steht hier so, wie es ist: Es erlaubt keine einzige Nutzung.",
+        "holder": "Schreiben kann nur die Wallet, die diesen Pass hält, und jede Erklärung bleibt mit ihrem Datum im Register."
+      },
+      "historyCount": "{count, plural, =0 {Noch keine Erklärung} =1 {Eine Erklärung} other {# Erklärungen}}",
+      "historyEmpty": "Dieser Pass trägt keine einzige Erklärung. Die erste geschriebene steht hier mit ihrem Datum, und nichts, was danach kommt, kann ihren Platz einnehmen.",
+      "historyBy": "geschrieben von {who}",
+      "standsToday": "gilt heute",
+      "unavailable": "Das Register war gerade nicht zu lesen, daher kann diese Seite nicht sagen, was der Halter erklärt hat. Das ist keine Erlaubnis: Fragen Sie gleich noch einmal.",
+      "failure": {
+        "notHolder": "Diese Wallet hält diesen Pass nicht mehr, und schreiben kann nur der Halter.",
+        "tooSoon": "Für dasselbe Bild nimmt das Register alle zehn Minuten eine Erklärung je Wallet. Die nächste ist ab {at} möglich.",
+        "conditionsRequired": "Eine Erklärung mit Bedingungen muss sagen, welche das sind. Schreiben Sie sie und senden Sie erneut.",
+        "conditionsNotAllowed": "Bedingungen gehören zu einer Erklärung, die danach verlangt. Löschen Sie den Text, oder wählen Sie Erst mich fragen.",
+        "conditionsTooLong": "Die Bedingungen sind länger als die 256 Byte, die das Register behält. Kürzen Sie sie und senden Sie erneut.",
+        "conditionsNotPrintable": "Das Register nimmt nur einfaches ASCII. Nehmen Sie den Zeilenumbruch oder den Buchstaben mit Akzent heraus und senden Sie erneut.",
+        "reverted": "Monad hat diese Erklärung verarbeitet, und es ist nichts passiert. Es wurde nichts geschrieben, ein zweiter Versuch ist also unbedenklich.",
+        "declined": "Sie haben das Fenster geschlossen, es wurde nichts gesendet.",
+        "confirmPending": "Die Erklärung ist unterwegs und Monad zeigt sie noch nicht. Sie kann trotzdem ankommen, also darf sie nicht noch einmal gesendet werden: Sehen Sie gleich noch einmal nach.",
+        "unknown": "Die Erklärung ist nicht durchgegangen."
+      },
+      "control": {
+        "kicker": "Ihr Bild",
+        "heading": "Sagen Sie, wie KI es nutzen darf",
+        "body": "Sie halten diesen Pass, also ist Ihre Adresse die einzige, von der das Register eine Erklärung annimmt. Die Netzgebühr zahlt Moolam. Die Worte sind Ihre und bleiben mit dem Datum im Register, an dem Sie sie geschrieben haben.",
+        "choices": {
+          "open": {
+            "title": "Offen für KI-Nutzung",
+            "line": "Jeder darf mit diesem Bild trainieren, daraus erzeugen und seine Daten auswerten."
+          },
+          "closed": {
+            "title": "Nicht für KI-Training",
+            "line": "Gar keine KI-Nutzung. Das wählen die meisten Urheber, und das Web hat heute keine Möglichkeit, es zu sagen."
+          },
+          "ask": {
+            "title": "Erst mich fragen",
+            "line": "Erlaubt zu Ihren unten geschriebenen Bedingungen. Wer Sie nicht erreichen kann, muss es als Nein lesen."
+          }
+        },
+        "byUse": "einzeln beantworten",
+        "oneAnswer": "eine Antwort für alle vier",
+        "byUseOn": "in Gebrauch",
+        "conditionsLabel": "Bedingungen, in Ihren Worten",
+        "conditionsPlaceholder": "Eine Lizenz, eine Seite zum Nachlesen, oder eine Adresse zum Fragen.",
+        "bytes": "{bytes} von {max} Byte",
+        "notPrintable": "Das Register nimmt nur einfaches ASCII. Zeichen {at} nimmt die Kette nicht an, also muss der Zeilenumbruch oder der Buchstabe mit Akzent weg, bevor das geschrieben werden kann.",
+        "submit": "Das auf Monad schreiben",
+        "steps": {
+          "checking": "Das Register wird gefragt",
+          "sending": "Wird gesendet",
+          "confirming": "Warten, bis Monad es zeigt"
+        },
+        "locked": "Sie haben eben erst für dieses Bild geschrieben. Ihre nächste Erklärung nimmt das Register um {at}.",
+        "needsConditions": "Sagen Sie, wie Ihre Bedingungen lauten: Sie gehen mit der Erklärung auf die Kette.",
+        "unchanged": "Genau das hält das Register für dieses Bild bereits.",
+        "fee": "Die Netzgebühr zahlt Moolam. Die Erklärung geht von Ihrer eigenen Wallet aus.",
+        "done": "Geschrieben. Seit {when} hält das Register diese Erklärung, und sie ist es, was jedem gesagt wird, der dieses Bild von nun an prüft.",
+        "openTx": "Transaktion {hash}",
+        "openAddress": "{wallet} im Explorer öffnen",
+        "actions": {
+          "recheck": "Noch einmal nachsehen",
+          "signIn": "Anmelden"
+        }
+      }
+    }
   },
   "agent": {
     "title": "Agent",

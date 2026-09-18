@@ -3,14 +3,13 @@ import type { Hex } from "viem";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import type { ConsentEntry, ConsentReading } from "@/lib/chain/consent";
 import { NOTHING_STATED, plainStatement } from "@/lib/chain/consent";
-import { ConsentRecord } from "@/components/consent/ConsentRecord";
-import { ledgerEntry } from "@/components/consent/ledger";
+import { ConsentSection } from "@/components/consent/ConsentSection";
+import { ConsentStamp } from "@/components/consent/ConsentStamp";
 import { ConsentChip } from "@/components/consent/Summary";
-import { VerifyLine } from "@/components/consent/VerifyLine";
 import { Reveal } from "@/components/lab/sponsors/Reveal";
 import { Surface } from "@/components/lab/sponsors/Surface";
+import type { MatchConsent } from "@/lib/verifier/client";
 import { ChoicePanel } from "./ChoicePanel";
-import { LedgerPanel } from "./LedgerPanel";
 
 /** One real passport, with everything the chain said about it while this page rendered. */
 export interface Subject {
@@ -20,20 +19,31 @@ export interface Subject {
   /** The name in the pinned document, or null when no gateway answered. */
   title: string | null;
   registeredAt: number;
+  owner: Hex | null;
   reading: ConsentReading;
   history: ConsentEntry[];
 }
 
 /**
- * The consent bench: one feature, drawn every way it could be drawn, on real
- * statements.
+ * The consent bench, now showing only what Ram picked: the ledger with its four
+ * rows and its history, the plates control, and the stamp a verify answer
+ * prints.
  *
- * The labels are English on purpose while Ram picks a variant; the ten
- * languages come with the roll-in. Every word a card shows about a statement
- * was read from MoolamConsent on the request, and a picture with one statement
- * has one segment on its rule, because there is nothing else to draw.
+ * Every word a card shows about a statement was read from MoolamConsent on the
+ * request, and a picture with one statement has one segment on its rule,
+ * because there is nothing else to draw.
  */
-export function ConsentBench({ subjects, standard, now }: { subjects: Subject[]; standard: string; now: number }) {
+export function ConsentBench({
+  subjects,
+  standard,
+  minInterval,
+  now,
+}: {
+  subjects: Subject[];
+  standard: string;
+  minInterval: number;
+  now: number;
+}) {
   return (
     <Surface>
       <div className="px-5 pb-32 pt-10 sm:px-8 lg:px-14">
@@ -61,8 +71,8 @@ export function ConsentBench({ subjects, standard, now }: { subjects: Subject[];
                 when they said nothing at all.
               </p>
               <p className="mt-5 max-w-[58ch] text-sm leading-relaxed text-text-faint">
-                The card is drawn two ways. Pick one and it rolls into the passport page, the studio and the verify
-                answer.
+                These are the pieces as they ship on a passport page and under a verify answer, in the language this
+                page is being read in.
               </p>
             </Reveal>
 
@@ -104,19 +114,25 @@ export function ConsentBench({ subjects, standard, now }: { subjects: Subject[];
         <div className="mx-auto mt-24 flex w-full max-w-[100rem] flex-col gap-28 lg:mt-36 lg:gap-40">
           <Act
             number="01"
-            title="The card, as a record"
-            caption="Variant A. The passport page's own voice: a headline anyone can act on, the four uses under it, and every statement this picture has ever carried."
+            title="The card, as a ledger"
+            caption="The passport's whole life as one rule, with the four uses and the dated history under it. Drag the thumb and the chain is asked what was in force on that day."
           >
             <div className="mt-12 flex flex-col gap-16">
-              {subjects.map((subject, at) => (
+              {subjects.map((subject) => (
                 <div key={subject.id}>
                   <PassportHead subject={subject} />
                   <Reveal delay={0.06}>
-                    <ConsentRecord
-                      reading={subject.reading}
-                      history={subject.history}
-                      standard={standard}
-                      className={at % 2 === 1 ? "lg:ms-16" : ""}
+                    <ConsentSection
+                      id={subject.id}
+                      owner={subject.owner}
+                      registeredAt={subject.registeredAt}
+                      record={{
+                        reading: subject.reading,
+                        history: subject.history,
+                        standard,
+                        minInterval,
+                        now,
+                      }}
                     />
                   </Reveal>
                 </div>
@@ -126,75 +142,66 @@ export function ConsentBench({ subjects, standard, now }: { subjects: Subject[];
 
           <Act
             number="02"
-            title="The card, as a ledger"
-            caption="Variant B. The same facts as one rule from the day the picture was registered to now. Drag the thumb and the chain is asked what was in force on that day."
+            title="The holder's control"
+            caption="Three plain choices, a way in for anyone who wants to answer the four uses one at a time, and the conditions field that only exists while a choice needs one. Nothing here signs anything: on a real passport page this sits under the card, for its holder alone."
           >
-            <div className="mt-12 flex flex-col gap-16">
-              {subjects.map((subject) => (
-                <div key={subject.id}>
-                  <PassportHead subject={subject} />
-                  <Reveal delay={0.06}>
-                    <LedgerPanel
-                      id={subject.id}
-                      registeredAt={subject.registeredAt}
-                      now={now}
-                      entries={subject.history.map(ledgerEntry)}
-                      standing={{
-                        stated: subject.reading.stated,
-                        entry: subject.reading.entry === null ? null : ledgerEntry(subject.reading.entry),
-                      }}
-                      standard={standard}
-                    />
-                  </Reveal>
-                </div>
-              ))}
+            <div className="mt-12 max-w-[46rem]">
+              <ChoicePanel />
             </div>
           </Act>
 
           <Act
             number="03"
-            title="The creator's control"
-            caption="Three plain choices, a way in for anyone who wants to answer the four uses one at a time, and the conditions field that only exists while a choice needs one. Nothing here signs anything: it prints the call it would make."
-          >
-            <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:gap-16">
-              <ChoicePanel variant="plates" label="Variant A, plates" passportId={subjects[0].id} />
-              <ChoicePanel variant="rule" label="Variant B, stops on a rule" passportId={subjects[0].id} />
-            </div>
-          </Act>
-
-          <Act
-            number="04"
-            title="The line under a match"
-            caption="What a verify answer prints once a picture is proved. The same reads as the cards above, in one sentence."
+            title="The stamp under a match"
+            caption="What a verify answer prints once a picture is proved: the holder's statement, the day it was written, and the two answers that are not a statement at all."
           >
             <div className="mt-12 flex flex-col gap-14">
               {subjects.map((subject) => (
                 <div key={subject.id}>
                   <PassportHead subject={subject} />
                   <Reveal delay={0.06}>
-                    <div className="mt-6 grid gap-10 border-t border-line pt-8 lg:grid-cols-2 lg:gap-16">
-                      <div className="min-w-0">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-                          Variant A, one sentence
-                        </p>
-                        <VerifyLine variant="sentence" reading={subject.reading} className="mt-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-                          Variant B, a stamp
-                        </p>
-                        <VerifyLine variant="stamp" reading={subject.reading} className="mt-5" />
-                      </div>
+                    <div className="mt-6 border-t border-line pt-8">
+                      <ConsentStamp consent={stampConsent(subject.reading, standard)} />
                     </div>
                   </Reveal>
                 </div>
               ))}
+
+              <Reveal>
+                <div className="border-t border-line pt-8">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                    And when the service could not read the register
+                  </p>
+                  <ConsentStamp consent={{ source: "unavailable" }} className="mt-5" />
+                </div>
+              </Reveal>
             </div>
           </Act>
         </div>
       </div>
     </Surface>
   );
+}
+
+/**
+ * One chain reading in the shape the verify service answers with, so the stamp
+ * on this bench is fed exactly what it is fed in production.
+ */
+function stampConsent(reading: ConsentReading, standard: string): MatchConsent {
+  const entry = reading.entry;
+  if (!reading.stated || entry === null) {
+    return { source: "chain", stated: false };
+  }
+
+  return {
+    source: "chain",
+    stated: true,
+    standard,
+    ...entry.consent,
+    constraintInfo: entry.constraintInfo.length === 0 ? undefined : entry.constraintInfo,
+    at: Number(entry.at),
+    writer: entry.writer,
+  };
 }
 
 function Act({

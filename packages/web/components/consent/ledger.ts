@@ -43,11 +43,22 @@ export interface LedgerAnswer {
 }
 
 /**
- * How the card asks what stood on a day. The card never knows the endpoint:
- * whoever mounts it hands in the asking, so the same card works behind the lab
- * route today and behind whatever the app settles on later.
+ * How the card asks what stood on a day.
+ *
+ * The answer is not computed from what the page already knows: it is a fresh
+ * read of consentAt through the app's own server, so the day under the thumb
+ * carries the chain's answer and not the browser's arithmetic. A refusal from
+ * the route travels as its own sentence, which the card prints under the rule.
  */
-export type AskConsentAt = (unixSeconds: number, signal: AbortSignal) => Promise<LedgerAnswer>;
+export async function askConsentAt(id: string, unixSeconds: number, signal: AbortSignal): Promise<LedgerAnswer> {
+  const answer = await fetch(`/api/consent-at?id=${id}&at=${unixSeconds}`, { signal });
+  const body = (await answer.json()) as { error?: string; stated?: boolean; entry?: LedgerEntry | null };
+
+  if (!answer.ok) {
+    throw new Error(typeof body.error === "string" ? body.error : `the reader answered ${answer.status}`);
+  }
+  return { stated: body.stated === true, entry: body.entry ?? null };
+}
 
 /** One stretch of the passport's life, with the statement that stood through it. */
 export interface Segment {

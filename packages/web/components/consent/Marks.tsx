@@ -1,6 +1,6 @@
+import { useTranslations } from "next-intl";
 import type { Consent, Use } from "@/lib/chain/consent";
 import { USE_FIELDS } from "@/lib/chain/consent";
-import { USE_LABELS, USE_STATES } from "./words";
 
 /**
  * One use, drawn as a mark rather than written as a word.
@@ -41,7 +41,8 @@ export function UseMark({ state, className = "h-3.5 w-3.5" }: { state: Use; clas
  * The four uses as a two by two block, in the order the contract stores them.
  *
  * Small enough to sit inside a timeline segment and still say, without a word,
- * how many of the four were allowed.
+ * how many of the four were allowed. A reader who hears the page instead of
+ * seeing it gets the four names and the four answers read out.
  */
 export function UseBlock({
   consent,
@@ -52,7 +53,8 @@ export function UseBlock({
   size?: string;
   className?: string;
 }) {
-  const said = USE_FIELDS.map((field) => `${USE_LABELS[field]}: ${USE_STATES[consent[field]].toLowerCase()}`).join(", ");
+  const t = useTranslations("passport.consent");
+  const said = USE_FIELDS.map((field) => `${t(`uses.${field}`)}: ${t(`state.${consent[field]}`)}`).join(", ");
 
   return (
     <span role="img" aria-label={said} className={`inline-grid grid-cols-2 gap-[3px] ${className}`}>

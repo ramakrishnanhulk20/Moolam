@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { cache } from "react";
 import type { Hex } from "viem";
+import deployment from "../../../contracts/deployments/monad-mainnet.json";
 import { CACHE_TAGS, HOLD_SECONDS, addresses, chain, consentAbi } from "./client";
 import { passportTag } from "./registry";
 
@@ -65,6 +66,15 @@ export const NOTHING_STATED: Consent = {
 /** The most history entries the contract will return in one read. */
 export const HISTORY_PAGE = 64n;
 
+/**
+ * When the registry was deployed, in whole seconds.
+ *
+ * Nothing this app can ask about happened before it: no passport exists, so no
+ * statement about one can either. It is the floor on the moment the scrubber is
+ * allowed to ask about, which keeps a made up query string out of an eth_call.
+ */
+export const REGISTRY_DEPLOYED_AT = deployment.timestamp;
+
 /** Thirty two bytes of hex, in either case: the same rule the verify service uses. */
 const PASSPORT_ID = /^0x[0-9a-fA-F]{64}$/;
 
@@ -116,6 +126,11 @@ export function plainStatement(consent: Consent): Statement {
 /** True when anything in this statement has to be read as a refusal, conditions included. */
 export function refusesSomething(consent: Consent): boolean {
   return USE_FIELDS.some((field) => consent[field] === "notAllowed" || consent[field] === "constrained");
+}
+
+/** Which uses carry conditions, for the line that says what the conditions are about. */
+export function constrainedUses(consent: Consent): UseField[] {
+  return USE_FIELDS.filter((field) => consent[field] === "constrained");
 }
 
 /** The id as the contract wants it, or null when the value is not a passport id at all. */
@@ -225,6 +240,24 @@ export async function getStandard(): Promise<string> {
   })) as string;
 }
 
+/**
+ * How long the register makes the same writer wait before they change the same
+ * passport again, in whole seconds.
+ *
+ * Read from the contract rather than typed into the app: it is the number the
+ * control locks itself with, and a copy that drifted would either lock a holder
+ * out of a write the chain would take or offer one it would refuse.
+ */
+export async function getMinInterval(): Promise<number> {
+  const seconds = (await chain.readContract({
+    address: addresses.consent,
+    abi: consentAbi,
+    functionName: "MIN_INTERVAL",
+  })) as bigint;
+
+  return Number(seconds);
+}
+
 /** The same readings with every counter a string, because a bigint does not survive JSON. */
 interface EntryWire extends Omit<ConsentEntry, "at"> {
   at: string;
@@ -284,6 +317,16 @@ export const heldConsentHistory = cache(async (id: Hex): Promise<ConsentEntry[]>
  */
 export const heldStandard = cache(async (): Promise<string> => {
   const held = unstable_cache(async () => await getStandard(), ["moolam-consent-standard"], {
+    revalidate: HOLD_SECONDS,
+    tags: [CACHE_TAGS.chain],
+  });
+
+  return await held();
+});
+
+/** The waiting rule, held the same way and for the same reason: it belongs to the register, not a passport. */
+export const heldMinInterval = cache(async (): Promise<number> => {
+  const held = unstable_cache(async () => await getMinInterval(), ["moolam-consent-interval"], {
     revalidate: HOLD_SECONDS,
     tags: [CACHE_TAGS.chain],
   });
