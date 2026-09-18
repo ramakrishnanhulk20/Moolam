@@ -667,3 +667,23 @@ on a dev server of this pass's own on port 3399:
 
   http://127.0.0.1:3399/en   canvas true, HMR connected, first plate at 635 ms
   http://localhost:3399/en   canvas true, HMR connected, first plate at 749 ms
+
+EXPLORE ON THE LIVE SITE, AND WHAT DID NOT CARRY OVER
+--------------------------------------------------------------------------
+Measured 2026-09-18 from Chennai with curl, 103 seconds after Vercel finished
+building commit fe0ed11, the first requests anyone made to these pages on it.
+
+  /en/explore                 first   MISS  4.08 s     second  MISS  0.76 s
+  /en/explore?pictures=test   first   MISS  0.51 s
+  /en                         HIT     0.47 s
+  /en/docs/concepts/rules-and-standards   PRERENDER  0.93 s
+
+The opening view held while the site is built made the first request 0.38 s on a
+freshly started local server. On Vercel it did not: the first visitor after the
+deploy still waited 4.08 s, so what a build writes into its data cache is not what
+Vercel's running functions read. The second request shows the one-minute hold does
+work once the running site has filled it. What did carry over is the rest of the
+change: the first row drawn without the page's script and its pictures fetched
+first. The cure for the first visitor is to make the opening view a built page like
+the passport and agent pages, with the chips and the search left to the request,
+which is the next order for this route.
