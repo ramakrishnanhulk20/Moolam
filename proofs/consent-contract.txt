@@ -1,0 +1,158 @@
+WO-80 MoolamConsent, proof pack, 2026-09-18, packages/contracts.
+Everything below was re-run after Fable's rename of the text field from constraintURI to
+constraintInfo, so these are the numbers for the contract as it now stands.
+Nothing was broadcast. No transaction was sent, no private key was read or printed by hand, and no
+deployed contract was changed. The consent register is not on mainnet yet: deploying it is Ram's
+call to make later with the script proven below.
+
+================================================================================
+1. TEST COUNTS
+================================================================================
+Command: forge test -n monad
+
+Ran 1 test for test/RenounceOwnership.t.sol:RenounceOwnershipTest
+Suite result: ok. 1 passed; 0 failed; 0 skipped
+Ran 16 tests for test/MoolamReceiver.t.sol:MoolamReceiverTest
+Suite result: ok. 16 passed; 0 failed; 0 skipped
+Ran 76 tests for test/MoolamRegistry.t.sol:MoolamRegistryTest
+Suite result: ok. 76 passed; 0 failed; 0 skipped
+Ran 33 tests for test/MoolamConsent.t.sol:MoolamConsentTest
+Suite result: ok. 33 passed; 0 failed; 0 skipped
+Ran 18 tests for test/VerifierPolicy.t.sol:VerifierPolicyTest
+Suite result: ok. 18 passed; 0 failed; 0 skipped
+Ran 5 tests for test/MoolamRegistry.fuzz.t.sol:MoolamRegistryFuzzTest
+Suite result: ok. 5 passed; 0 failed; 0 skipped
+Ran 6 tests for test/MoolamConsent.fuzz.t.sol:MoolamConsentFuzzTest
+Suite result: ok. 6 passed; 0 failed; 0 skipped
+Ran 5 tests for test/fork/MoolamConsent.fork.t.sol:MoolamConsentForkTest
+Suite result: ok. 5 passed; 0 failed; 0 skipped
+Ran 1 test for test/MoolamRegistry.invariants.t.sol:MoolamRegistryInvariantsTest
+Suite result: ok. 1 passed; 0 failed; 0 skipped
+Ran 1 test for test/MoolamConsent.invariants.t.sol:MoolamConsentInvariantsTest
+Suite result: ok. 1 passed; 0 failed; 0 skipped
+Ran 5 tests for test/fork/ERC8004Fork.t.sol:ERC8004ForkTest
+Suite result: ok. 5 passed; 0 failed; 0 skipped
+
+Ran 11 test suites in 4.15s (17.46s CPU time): 167 tests passed, 0 failed, 0 skipped (167 total tests)
+
+122 before this work order, 45 new: 33 unit, 6 fuzz at 512 runs each, 1 invariant suite of 6
+invariants over 256 runs and 8,192 calls, 5 fork tests against Monad mainnet state.
+
+The invariant run in full:
+
+MoolamConsentInvariantsTest invariants:
+[PASS] invariant_anEntryOnceWrittenNeverChanges
+[PASS] invariant_historyOnlyGrows
+[PASS] invariant_theContractHoldsNothing
+[PASS] invariant_theLatestEntryIsTheOneInForce
+[PASS] invariant_theWriterHeldThePassport
+[PASS] invariant_timestampsStrictlyIncrease
+ MoolamConsentInvariantsTest invariants (runs: 256, calls: 8192, reverts: 0)
+
+| Contract       | Selector       | Calls | Reverts | Discards |
+| ConsentHandler | passTime       | 2035  | 0       | 0        |
+| ConsentHandler | payTheContract | 2036  | 0       | 0        |
+| ConsentHandler | transfer       | 2115  | 0       | 0        |
+| ConsentHandler | write          | 2006  | 0       | 0        |
+
+The run is not vacuous: invariant_historyOnlyGrows checks that the total number of entries across
+the three passports equals the number of writes the handler saw land, so a run where nothing landed
+would show a zero there. It was also proven the hard way, by temporarily asserting that no write
+had landed and watching the suite fail with "1 != 0" on the first call.
+
+================================================================================
+2. COVERAGE
+================================================================================
+Command: forge coverage --ir-minimum --match-path "test/MoolamConsent*" --no-match-coverage "(script|test)" -n monad
+
+| File                  | % Lines         | % Statements    | % Branches      | % Funcs       |
+| src/MoolamConsent.sol | 100.00% (66/66) | 100.00% (93/93) | 100.00% (20/20) | 100.00% (9/9) |
+
+Nothing is uncovered, so there is nothing to explain away.
+
+================================================================================
+3. DEPLOY SCRIPT, DRY RUN ON MONAD MAINNET, NO BROADCAST
+================================================================================
+Command: forge script script/DeployConsent.s.sol --rpc-url monad_mainnet -n monad
+The RPC URL is redacted. No --broadcast, so nothing was sent and no file was written.
+
+Script ran successfully.
+
+== Return ==
+consent: contract MoolamConsent 0x1151E69a82947920546e779c4C8c785b2a3C1277
+
+== Logs ==
+  chain id        143
+  deployer        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+  block           105822529
+  MoolamConsent   0x1151E69a82947920546e779c4C8c785b2a3C1277
+  registry read   0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+  min interval    600
+  max info bytes  256
+  max page        64
+  registry symbol MOOLAM
+
+## Setting up 1 EVM.
+Chain 143
+Estimated max fee per gas: 202 gwei
+Estimated base fee per gas: 100 gwei
+Estimated max priority fee per gas: 2 gwei
+Estimated total gas used for script: 1313361
+Estimated amount required: 0.265298922 MON
+
+SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s)
+to the previous command.
+
+The address in the log is what the deployer's next nonce would produce, not a live contract. The
+registry address is read out of deployments/monad-mainnet.json, the file Deploy.s.sol writes, so
+nobody types it by hand; the script then asks that address for its token symbol and gets MOOLAM
+back, which is the passport registry answering.
+
+================================================================================
+4. FORK TEST AGAINST THE LIVE REGISTRY
+================================================================================
+Command: forge test --match-path "test/fork/MoolamConsent.fork.t.sol" -vv -n monad
+
+Ran 5 tests for test/fork/MoolamConsent.fork.t.sol:MoolamConsentForkTest
+[PASS] test_aPassportTheRealRegistryHasNeverMintedIsRefused() (gas: 72592)
+[PASS] test_aStrangerCannotSpeakForARealPassport() (gas: 73162)
+[PASS] test_anAddressApprovedOnTheRealRegistryIsStillRefused() (gas: 172451)
+[PASS] test_theRealHolderStatesConsentAndItReadsBack() (gas: 269945)
+[PASS] test_theRealRegistryIsLiveAndIsWhatTheContractReads() (gas: 40172)
+Logs:
+  passport holder on Monad mainnet: 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+Suite result: ok. 5 passed; 0 failed; 0 skipped
+
+The passport is 0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638 on registry
+0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0. The holder above was read from the chain, not chosen.
+The approved address in test three was approved on the real registry inside the fork and was still
+refused, which is the whole point of reading ownerOf and never the approval.
+
+================================================================================
+5. THE THREE REVIEW QUESTIONS
+================================================================================
+Is there a list where a rule would do?
+No. The one place that judges attacker written text, the constraint text, is a single predicate over
+every byte: printable ASCII, 0x20 to 0x7E, checked in _checkConstraintInfo. There is no allow list of
+schemes and no deny list of strings, so there is no entry nobody thought of. What it covers: control
+characters, newlines that would split a log line, and the raw bytes that start a UTF-8 escape. What
+it does not cover: it does not judge what the text says or where a link inside it points, so a
+reader that follows one still owes its own check. That is written into the contract's own comment so
+the next reader does not assume more.
+
+Are two values compared after different parsers?
+No. There is one comparison that decides everything, `msg.sender != holder` in setConsent, and both
+sides come from the same place at the same moment: msg.sender as the EVM gives it, and holder from
+IERC721(REGISTRY).ownerOf in that same call. No copy of the holder is cached, no address is parsed
+from a string, and nothing is normalised on the way. The time comparison has the same shape: the
+order written on a push and the order searched on a read are both the raw uint64 `at`, never a
+derived or rounded value.
+
+Are outputs validated like inputs?
+Yes. The only attacker written value that leaves this contract is the constraint text, and it is
+bounded and checked before it is stored, so every consumer downstream gets the same guarantee
+without having to ask: at most 256 bytes, every byte printable. The four field values are an enum,
+so the ABI decoder refuses anything outside the four named values before the function body runs.
+The timestamp and the writer are set by the contract, never by the caller. The event carries exactly
+what was stored and nothing else, so an indexer that reads the log and a caller that reads the
+storage cannot disagree.

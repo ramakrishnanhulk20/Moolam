@@ -15,3 +15,11 @@ Config notes (.solhint.json):
 
 --- output ---
 
+
+================================================================================
+WO-80, 2026-09-18. Re-run after MoolamConsent.sol and IMoolamConsent.sol were added.
+Command: npx solhint@6.2.4 "src/**/*.sol"
+Result: no errors, no warnings. The empty section below is the whole output.
+
+--- output ---
+

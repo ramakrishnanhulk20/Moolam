@@ -466,3 +466,49 @@ EIP712._nameFallback (lib/openzeppelin-contracts/contracts/utils/cryptography/EI
 EIP712._versionFallback (lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol#53) should be constant 
 Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
 INFO:Slither:. analyzed (41 contracts with 102 detectors), 123 result(s) found
+
+
+================================================================================
+WO-80 MoolamConsent, 2026-09-18 (re-run after the constraintURI to constraintInfo rename)
+Command: slither . --filter-paths "lib/|test/|script/"
+Result for the new file: 0 high, 0 medium that stand. Three findings name MoolamConsent or
+IMoolamConsent and all three are checked by hand below. The rest of the run is the same set already
+triaged at the top of this file.
+
+1. uninitialized-state on MoolamConsent._history. Same false positive as MoolamRegistry._attestations
+   above: a mapping of dynamic arrays has no initial value to give it, every passport starts empty
+   by definition, and every read handles the empty case explicitly (consentOf and consentAt answer
+   "not stated", historyLength answers zero, historyPage answers an empty page).
+
+   MoolamConsent._history (src/MoolamConsent.sol#51) is never initialized. It is used in:
+   	- MoolamConsent.setConsent(bytes32,IMoolamConsent.Consent,string) (src/MoolamConsent.sol#79-112)
+   	- MoolamConsent.consentOf(bytes32) (src/MoolamConsent.sol#115-122)
+   	- MoolamConsent.consentAt(bytes32,uint64) (src/MoolamConsent.sol#128-143)
+   	- MoolamConsent.historyLength(bytes32) (src/MoolamConsent.sol#146-148)
+   	- MoolamConsent.historyPage(bytes32,uint256,uint256) (src/MoolamConsent.sol#153-166)
+
+2. timestamp: setConsent uses block.timestamp for comparisons. On purpose, and named as a non-goal
+   in the design: the clock is the block timestamp, so a time query is only as fine as the chain's
+   clock. What the comparison guards is a rate limit and the strictly increasing order of one
+   passport's entries. A validator who could shift the clock by a few seconds gains nothing: they
+   still cannot write for a passport they do not hold, and they cannot change an entry already
+   written.
+
+   MoolamConsent.setConsent(...) uses timestamp for comparisons
+   	Dangerous comparisons:
+   	- block.timestamp < nextAllowedAt (src/MoolamConsent.sol#94)
+
+3. naming-convention: REGISTRY, MIN_INTERVAL, MAX_INFO_BYTES and MAX_PAGE are not mixedCase. They
+   are an immutable and three constants, which are upper case by Solidity convention, and the
+   interface has to declare them as functions with the same names so the generated getters match.
+   MoolamReceiver.REGISTRY carries the identical finding and the identical reason.
+
+   Variable MoolamConsent.REGISTRY (src/MoolamConsent.sol#32) is not in mixedCase
+   Function IMoolamConsent.REGISTRY() (src/interfaces/IMoolamConsent.sol#63) is not in mixedCase
+   Function IMoolamConsent.MIN_INTERVAL() (src/interfaces/IMoolamConsent.sol#67) is not in mixedCase
+   Function IMoolamConsent.MAX_INFO_BYTES() (src/interfaces/IMoolamConsent.sol#71) is not in mixedCase
+   Function IMoolamConsent.MAX_PAGE() (src/interfaces/IMoolamConsent.sol#75) is not in mixedCase
+
+Nothing else in the run mentions MoolamConsent. Reentrancy, arbitrary-send, unchecked-transfer and
+the access control detectors have nothing to say about it, which is what a contract with one view
+call, no money and no owner should look like.
