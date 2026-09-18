@@ -26,6 +26,13 @@ export interface ExploreSearch {
   agent: string | null;
 }
 
+/**
+ * What a bare /explore asks the index for, and the one view the build holds
+ * before anybody opens the page. readExploreSearch answers with exactly this
+ * for an address that names no chip, no term and no agent.
+ */
+export const DEFAULT_SEARCH: ExploreSearch = { view: DEFAULT_VIEW, search: "", agent: null };
+
 function one(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? (value[0] ?? "") : (value ?? "")).trim();
 }

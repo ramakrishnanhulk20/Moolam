@@ -8,6 +8,19 @@ import { readExploreSearch } from "@/components/explore/query";
 import type { ExplorePlate } from "@/components/explore/sort";
 import { reason } from "@/lib/chain/client";
 import { heldRegistryCounts, type PassportCursor, type RegistryCounts } from "@/lib/data/passports";
+import { holdExploreDefault } from "@/lib/data/prerender";
+
+/**
+ * The build has no page to make for this route, so its one hook into a build is
+ * used to hold the view the page opens on instead of to list addresses. The
+ * first visitor after a deploy is then handed that view rather than waiting on a
+ * scan of the index and a gateway read for every row it walks past. No address
+ * is returned, so nothing about how this route is served changes.
+ */
+export async function generateStaticParams(): Promise<{ locale: string }[]> {
+  await holdExploreDefault();
+  return [];
+}
 
 export async function generateMetadata({
   params,

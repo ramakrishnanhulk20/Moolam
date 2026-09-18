@@ -11,6 +11,22 @@ import type { ExploreSearch } from "./query";
 import { mergePlates, sortPlates, type ExplorePlate } from "./sort";
 
 /**
+ * How many plates are drawn without waiting for the browser to run the page.
+ * The grid is two columns on a phone and four at its widest, so this covers the
+ * first row on any screen, which is the only row a reader sees before scrolling.
+ */
+const FIRST_ROW = 4;
+
+/**
+ * How many of those pictures are named in the head of the page as well, so the
+ * browser fetches them before it has read the grid. Two, not four: two is the
+ * first row on a phone and the only pictures certain to be on screen before a
+ * scroll, and anything named here is pulled down ahead of the one the paint is
+ * actually waiting for.
+ */
+const NAMED_EARLY = 2;
+
+/**
  * The contact sheet: every passport the filter matched, as plates on a grid of
  * hairlines.
  *
@@ -61,18 +77,34 @@ export function Grid({
   return (
     <>
       <ul className="mt-6 grid grid-cols-2 gap-px border border-line bg-line sm:mt-10 sm:grid-cols-3 xl:grid-cols-4">
-        {plates.map((plate, index) => (
-          <motion.li
-            key={plate.id}
-            initial={reduced ? false : { opacity: 0, y: 26 }}
-            whileInView={reduced ? undefined : { opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-40px" }}
-            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: (index % 8) * 0.045 }}
-            className="min-w-0 bg-bg-raised"
-          >
-            <Plate plate={plate} />
-          </motion.li>
-        ))}
+        {plates.map((plate, index) =>
+          index < FIRST_ROW ? (
+            // A motion component holds its plate at opacity 0 in the served HTML
+            // until the browser has downloaded and run the page, which on a phone
+            // left the first picture painted 4.8 seconds after it had arrived.
+            // The row that is already on screen enters with the CSS rise the rest
+            // of the server-drawn site uses, staggered the same way, so it is
+            // visible in the first paint and still arrives rather than appears.
+            <li
+              key={plate.id}
+              className="rise min-w-0 bg-bg-raised"
+              style={{ animationDelay: `${index * 70}ms` }}
+            >
+              <Plate plate={plate} first={index < NAMED_EARLY} />
+            </li>
+          ) : (
+            <motion.li
+              key={plate.id}
+              initial={reduced ? false : { opacity: 0, y: 26 }}
+              whileInView={reduced ? undefined : { opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-40px" }}
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: (index % 8) * 0.045 }}
+              className="min-w-0 bg-bg-raised"
+            >
+              <Plate plate={plate} />
+            </motion.li>
+          ),
+        )}
       </ul>
 
       <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">

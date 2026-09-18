@@ -15,8 +15,13 @@ import { isTestCard, type ExplorePlate } from "./sort";
  * rather than WebGL because a grid of forty of them has to work on a phone.
  * A gateway that will not serve the picture leaves the plate dark with the seal
  * on it, never a broken image icon.
+ *
+ * `first` marks a plate in the row a reader can see before scrolling. Its
+ * picture is named in the head of the page and fetched ahead of the rest, which
+ * is what the browser needs to paint the sheet early; every other plate is left
+ * to load as it comes into view.
  */
-export function Plate({ plate }: { plate: ExplorePlate }) {
+export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: boolean }) {
   const t = useTranslations("explore");
   const kinds = useTranslations("kind");
   const format = useFormatter();
@@ -43,6 +48,7 @@ export function Plate({ plate }: { plate: ExplorePlate }) {
         <Picture
           sources={pictureSources(plate.thumbnailUrl)}
           sizes="(min-width: 1280px) 22vw, (min-width: 640px) 33vw, 50vw"
+          priority={first}
           className="object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07]"
           fallback={seal}
         />
