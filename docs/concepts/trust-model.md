@@ -40,7 +40,8 @@ nothing about the identity of whoever is holding that key.
 
 **It does not prove the C2PA manifest is trustworthy.** The development manifests are signed with a
 throwaway certificate, so every reader marks them untrusted. The chain record carries the
-signatures that matter.
+signatures that matter. [Rules and standards](rules-and-standards) sets this beside what the C2PA
+specification and the EU texts actually ask for.
 
 ## The creator passkey
 

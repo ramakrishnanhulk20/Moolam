@@ -13,6 +13,24 @@ on Monad, and it holds two perceptual fingerprints of the picture rather than of
 robustness run, stripping every scrap of metadata matched 100 percent of the time, and the
 prove-it run does the same thing against mainnet and prints the bit distance.
 
+## Does a Moolam manifest show as trusted in Adobe's verifier
+
+No, and it is not meant to yet. The signer is a development certificate, a throwaway one, so Adobe's
+verify site and every other C2PA reader mark the manifest untrusted. The signatures that decide
+anything are the ones on Monad: a passkey assertion checked by the contract through the P-256
+precompile, and for a generated image a second signature from the wallet that owns the agent's
+ERC-8004 identity. A trusted certificate would change what Adobe's site prints and change nothing
+about what the chain record proves.
+
+## What would a trusted C2PA certificate cost
+
+TrueScreen's article on the standard's history and limitations, updated 19 July 2026, puts a signing
+certificate at "$289 per year" and says there is "no equivalent" of Let's Encrypt for C2PA, with
+"the list of recognized Certificate Authorities is controlled by a relatively small group of
+companies within the C2PA coalition". That is that article's figure, not a price Moolam has been
+quoted or paid. [Rules and standards](concepts/rules-and-standards) sets out the rest of where
+Moolam sits against the standard and the law.
+
 ## What if someone registers my image before I do
 
 They own that record. First registration wins, and Moolam does not pretend otherwise: a passport

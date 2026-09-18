@@ -43,6 +43,10 @@
           "title": "Trust model"
         },
         {
+          "slug": "concepts/rules-and-standards",
+          "title": "Rules and standards"
+        },
+        {
           "slug": "concepts/fingerprints",
           "title": "Fingerprints"
         }
