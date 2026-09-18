@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { SignerRefusedFile, SignerUnavailable, embedManifest, readManifest, type ManifestSummary } from "./c2pa.js";
+import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
   MAX_IMAGE_PIXELS,
   fingerprint,
@@ -74,6 +75,8 @@ export interface PrepareOptions {
   claimGenerator: string;
   action: "c2pa.created" | "c2pa.edited";
   digitalSourceType?: string;
+  /** What the creator said about AI use, written into the manifest. Left out means they said nothing. */
+  training?: TrainingConsent;
 }
 
 /**
@@ -107,6 +110,7 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
     action: opts.action,
     softBinding: { phash: sourcePrint.phash, blockhash: sourcePrint.blockhash },
     digitalSourceType: opts.digitalSourceType,
+    training: opts.training,
   });
 
   const signedPrint = await fingerprint(signed);
@@ -146,8 +150,14 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
  * A host that cannot sign anything is the opposite case and is not softened here: SignerUnavailable
  * comes straight back out, so the service refuses instead of handing every caller an unsigned
  * picture and a 200.
+ *
+ * A training statement this service may not write is the same kind of case and is checked before
+ * anything is prepared: the fallback would pin the picture with the statement quietly dropped, and
+ * a creator's "not allowed" going missing is worse than their upload failing.
  */
 export async function prepareOrFallback(source: Buffer, options: PrepareOptions): Promise<PreparedResult> {
+  trainingAssertion(options.training);
+
   try {
     const prepared = await prepareImage(source, options);
     return {

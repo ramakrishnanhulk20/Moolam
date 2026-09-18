@@ -61,7 +61,8 @@ passports the index is holding.
 
 `POST /prepare` is the studio's backend. A signed-in creator's browser sends the
 image straight here, with their Privy access token in an `Authorization: Bearer`
-header and two text fields, `title` and `kind` (`human` for now). The service
+header, two text fields, `title` and `kind` (`human` for now), and an optional
+`training` field. The service
 turns the picture the right way up, embeds the Moolam C2PA manifest, fingerprints
 the signed bytes, builds the thumbnail, pins the image, the thumbnail, the
 manifest and the metadata to IPFS, and answers with the passport fields plus the
@@ -73,19 +74,30 @@ chain, and it never sends the image bytes back.
 ```sh
 curl -s -X POST http://localhost:4000/prepare \
   -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
-  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human"
+  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human" \
+  -F 'training={"aiGenerativeTraining":"notAllowed"}'
 ```
 
-It answers 401 for a missing, expired or foreign token, 400 for a bad title or
-kind, 413 over the 20 MB or 40 megapixel limits, 415 for a file that is not an
-image, 429 past 20 prepares an hour for one creator, and 502 with `pin-failed`
-when Pinata refuses. The route is mounted only when the host has both
+`training` is how the creator says whether AI may use the picture: a JSON object
+with any of `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`,
+each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` (at most 256
+bytes of printable ASCII) saying how to ask when a choice is constrained. What
+the creator says is written into the signed manifest as one `cawg.training-mining`
+assertion and into the pinned metadata, so it travels inside the file and sits
+under the passkey signature that covers the metadata address. A choice left out
+says nothing at all, which is not the same as allowing it.
+
+It answers 401 for a missing, expired or foreign token, 400 for a bad title, kind
+or training statement, 413 over the 20 MB or 40 megapixel limits, 415 for a file
+that is not an image, 429 past 20 prepares an hour for one creator, and 502 with
+`pin-failed` when Pinata refuses. The route is mounted only when the host has both
 `PINATA_JWT` and `PRIVY_APP_ID`; without them the service still verifies images
 and says once at boot that the studio side is off.
 
 `POST /generate` is the same thing for a picture the creator did not take. A
-signed-in creator sends a prompt, a title, their wallet address and a deadline as
-JSON, with their Privy access token in the same `Authorization: Bearer` header.
+signed-in creator sends a prompt, a title, their wallet address, a deadline and
+the same optional `training` statement as JSON, with their Privy access token in
+the same `Authorization: Bearer` header.
 The generator agent draws the picture with the image model, the service prepares
 and pins it exactly as `/prepare` does, and then the agent signs the generator
 half of the passport with its own wallet. That key lives in a Privy enclave under
@@ -98,8 +110,12 @@ struct and sends one sponsored transaction.
 curl -s -X POST http://localhost:4010/generate \
   -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"prompt":"A lighthouse in a monsoon storm, thick oils","title":"Lighthouse","creator":"0xYourEmbeddedWallet","deadline":1788878000}'
+  -d '{"prompt":"A lighthouse in a monsoon storm, thick oils","title":"Lighthouse","creator":"0xYourEmbeddedWallet","deadline":1788878000,"training":{"aiGenerativeTraining":"notAllowed"}}'
 ```
+
+`training` follows the same rules as on `/prepare`, and it is written into the
+manifest and the pinned metadata before the agent signs, so the statement is
+inside both signatures rather than beside them.
 
 `creator` is your own embedded wallet address, the one Privy shows in the studio.
 The service reads the caller's wallets from their Privy user record and refuses
@@ -115,7 +131,8 @@ of binding a signature to a different picture.
 
 Order of refusals: 401 for a missing, expired or foreign token, 400 for a prompt
 outside 8 to 600 characters, a title outside 1 to 120, a creator that is not an
-address, or a deadline that is not between 10 minutes and 2 hours ahead, 400
+address, a deadline that is not between 10 minutes and 2 hours ahead, or a
+training statement the standard has no room for, 400
 `prompt-refused` with the provider's own words when the model's safety system
 turns the prompt down, 400 `deadline-passed` when drawing and pinning ate so much
 of the window that under two minutes are left to answer a passkey prompt, 403

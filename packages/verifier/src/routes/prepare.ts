@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { SignerUnavailable, ensureSigner } from "../c2pa.js";
+import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { passportExists } from "../edit/registry.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
@@ -37,12 +38,21 @@ const ZERO_BYTES32 = `0x${"00".repeat(32)}` as Hex;
 
 const titleSchema = z.string().trim().min(1).max(120);
 
+/**
+ * How much text the optional training field may carry before it is refused unread.
+ *
+ * The whole statement is four short words and at most 256 bytes of note, so anything near this is
+ * not a creator's answer. It is checked before the JSON is parsed, so a huge field costs nothing.
+ */
+const MAX_TRAINING_FIELD_BYTES = 1024;
+
 /** One verification per request, shared by the rate-limit key and the handler. */
 const identities = new WeakMap<FastifyRequest, Promise<PrivyIdentity | undefined>>();
 
 interface Upload {
   bytes: Buffer;
   title: string;
+  training?: TrainingConsent;
 }
 
 /**
@@ -60,10 +70,14 @@ interface Upload {
  * manifest and the thumbnail run behind the same concurrency gate as matching, so a burst of
  * uploads queues instead of decoding all at once.
  *
- * Answers 401 for a missing or foreign token, 400 for a bad title or kind, 413 over the size or
- * pixel limit, 415 when the file is not an image, 409 `already-registered` when the registry
- * already holds this exact picture, 429 past the per-user limit, and 502 when Pinata refuses a
- * pin. The route is not mounted at all on a host that cannot sign a manifest.
+ * A creator may also say how AI may use the picture, in an optional `training` field. That
+ * statement goes into the signed manifest and into the pinned metadata, so it travels with the
+ * file and sits under the passkey signature rather than in a database of ours.
+ *
+ * Answers 401 for a missing or foreign token, 400 for a bad title, kind or training statement, 413
+ * over the size or pixel limit, 415 when the file is not an image, 409 `already-registered` when
+ * the registry already holds this exact picture, 429 past the per-user limit, and 502 when Pinata
+ * refuses a pin. The route is not mounted at all on a host that cannot sign a manifest.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
@@ -124,6 +138,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             claimGenerator: CLAIM_GENERATOR,
             action: "c2pa.created",
             digitalSourceType: CAPTURE_SOURCE_TYPE,
+            training: upload.training,
           }),
         );
       } catch (error) {
@@ -166,6 +181,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           manifest: manifest?.uri,
           agentId: NO_AGENT,
           fingerprint: studio.print,
+          training: upload.training,
         });
         const pinnedMetadata = await pinJson(metadata, `${slug}.json`);
 
@@ -192,6 +208,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
           metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
           manifest: studio.embedded ? { embedded: true } : { embedded: false, reason: studio.reason },
+          training: trainingStatement(upload.training),
           preparedBy: identity.userId,
         });
       } catch (error) {
@@ -283,7 +300,42 @@ async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
     throw new BadRequest('the only kind the studio takes today is "human"');
   }
 
-  return { bytes, title: title.data };
+  return { bytes, title: title.data, training: readTraining(fields.get("training")) };
+}
+
+/**
+ * Reads the optional training statement out of its multipart field.
+ *
+ * It travels as one JSON object rather than four flat fields so it is the same shape here, in the
+ * /generate body, in the manifest and in the pinned document, and nobody has to reassemble it.
+ *
+ * Throws BadRequest when the field is too long, is not JSON, is not an object, or says something
+ * the standard has no room for. Anything unreadable is refused rather than half understood: a
+ * picture that quietly says nothing about AI use is the one outcome a creator cannot see.
+ */
+function readTraining(raw: string | undefined): TrainingConsent | undefined {
+  if (raw === undefined || raw.trim().length === 0) {
+    return undefined;
+  }
+  if (Buffer.byteLength(raw, "utf8") > MAX_TRAINING_FIELD_BYTES) {
+    throw new BadRequest(`training must be a JSON object under ${MAX_TRAINING_FIELD_BYTES} bytes`);
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new BadRequest('training must be a JSON object, such as {"aiTraining":"notAllowed"}');
+  }
+
+  const statement = trainingSchema.safeParse(parsed);
+  if (!statement.success) {
+    const detail = statement.error.issues
+      .map((issue) => `${["training", ...issue.path].join(".")}: ${issue.message}`)
+      .join("; ");
+    throw new BadRequest(detail);
+  }
+  return statement.data;
 }
 
 /**

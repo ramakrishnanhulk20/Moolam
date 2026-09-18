@@ -4,6 +4,7 @@ import { getAddress } from "viem";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { embeddedWallets } from "../auth/wallet.js";
+import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { env } from "../env.js";
 import type { Hex } from "../fingerprint.js";
 import { Busy, waitingGate } from "../generate/gate.js";
@@ -67,6 +68,7 @@ const bodySchema = z.object({
     z.number().int().positive(),
     z.string().trim().regex(/^[0-9]+$/, "deadline must be a whole number of unix seconds"),
   ]),
+  training: trainingSchema.optional(),
 });
 
 interface DrawnImage extends PreparedResult {
@@ -91,8 +93,13 @@ interface DrawnImage extends PreparedResult {
  * passport that credits someone else. The deadline is checked twice, once as the caller asked for
  * it and once again just before the agent signs, because everything in between takes real time.
  *
- * Answers 401 for a missing or foreign token, 400 for a bad prompt, title, creator or deadline,
- * 400 `prompt-refused` when the model's safety system turns the prompt down, 400 `deadline-passed`
+ * The creator may say how AI may use the picture in the same request, in an optional `training`
+ * field. It is written into the manifest before the agent signs anything and into the pinned
+ * metadata whose address both signatures cover.
+ *
+ * Answers 401 for a missing or foreign token, 400 for a bad prompt, title, creator, deadline or
+ * training statement, 400 `prompt-refused` when the model's safety system turns the prompt down,
+ * 400 `deadline-passed`
  * when too little of the window is left for a person to answer a passkey prompt, 403
  * `creator-mismatch` when the creator is not one of the caller's wallets, 429 `quota` past
  * GENERATE_PER_DAY in a rolling day, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
@@ -164,7 +171,7 @@ export async function generateRoutes(
 
     let drawn: DrawnImage;
     try {
-      drawn = await gate(() => draw(parsed.data.prompt, parsed.data.title));
+      drawn = await gate(() => draw(parsed.data.prompt, parsed.data.title, parsed.data.training));
     } catch (error) {
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);
@@ -225,6 +232,7 @@ export async function generateRoutes(
             prompt: parsed.data.prompt,
             agentId: env.GENERATOR_AGENT_ID,
             fingerprint: drawn.print,
+            training: parsed.data.training,
           }),
           // Which model drew it is not part of the shared document, and a generated passport is
           // worth less without it: it is the one field that says what made these pixels.
@@ -307,6 +315,7 @@ export async function generateRoutes(
       thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
       metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
       manifest: drawn.embedded ? { embedded: true } : { embedded: false, reason: drawn.reason },
+      training: trainingStatement(parsed.data.training),
       model: drawn.model,
       agent: { id: input.generatorAgentId.toString(), wallet: agent.address },
       quota: quota.state(identity.userId),
@@ -320,17 +329,18 @@ export async function generateRoutes(
  *
  * The prompt is the only thing that reaches the model: there is no wrapper text, so nothing this
  * service says about itself can end up inside the manifest of a picture a creator then registers
- * in their own name. The manifest carries the same soft binding /prepare writes, and a file the
- * C2PA signer will not take still produces a usable passport, it just loses the provenance that
- * travels inside the file.
+ * in their own name. The manifest carries the same soft binding /prepare writes and the same
+ * training statement when the creator made one, and a file the C2PA signer will not take still
+ * produces a usable passport, it just loses the provenance that travels inside the file.
  */
-async function draw(prompt: string, title: string): Promise<DrawnImage> {
+async function draw(prompt: string, title: string, training?: TrainingConsent): Promise<DrawnImage> {
   const image = await createImage(prompt, { timeoutMs: MODEL_TIMEOUT_MS });
   const prepared = await prepareOrFallback(image.bytes, {
     title,
     claimGenerator: CLAIM_GENERATOR,
     action: "c2pa.created",
     digitalSourceType: AI_SOURCE_TYPE,
+    training,
   });
   return { ...prepared, model: image.model, usage: image.usage };
 }

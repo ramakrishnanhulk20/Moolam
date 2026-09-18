@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Builder, LocalSigner, Reader } from "@contentauth/c2pa-node";
+import { TRAINING_ASSERTION_LABEL, trainingAssertion, type TrainingConsent } from "./consent.js";
 import { env } from "./env.js";
 import type { Hex } from "./types.js";
 
@@ -169,6 +170,8 @@ export interface EmbedOptions {
   action: string;
   softBinding: { phash: bigint; blockhash: Hex };
   digitalSourceType?: string;
+  /** What the creator said about AI use. Left out means they said nothing, and nothing is written. */
+  training?: TrainingConsent;
 }
 
 /**
@@ -182,10 +185,16 @@ export interface EmbedOptions {
  * c2pa.soft-binding assertion in the shape the C2PA 2.1 spec gives in section
  * 18.9: one alg name, one block, and the fingerprint as a CBOR byte string.
  *
+ * What the creator said about AI use is written the same way, as one
+ * cawg.training-mining assertion, so the statement is inside the signature from
+ * the first second rather than sitting in a database the file never travels
+ * with. A creator who said nothing gets no assertion, because silence is not
+ * permission.
+ *
  * Throws when the buffer is empty, when the options are incomplete, when the
- * fingerprint is the wrong size, SignerUnavailable when no signing identity can
- * be resolved, and SignerRefusedFile when the C2PA library rejects this
- * container.
+ * fingerprint is the wrong size, when the training statement is not one this
+ * service may write, SignerUnavailable when no signing identity can be
+ * resolved, and SignerRefusedFile when the C2PA library rejects this container.
  */
 export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<Buffer> {
   if (bytes.length === 0) {
@@ -206,6 +215,10 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
   builder.setIntent({ create: sourceType });
   builder.addAssertion("c2pa.actions", { actions: [{ action: opts.action, digitalSourceType: sourceType }] }, "Cbor");
   builder.addAssertion(SOFT_BINDING_LABEL, softBindingAssertion(opts.softBinding), "Cbor");
+  const training = trainingAssertion(opts.training);
+  if (training !== undefined) {
+    builder.addAssertion(TRAINING_ASSERTION_LABEL, training, "Cbor");
+  }
 
   const signer = loadSigner();
   const destination: { buffer: Buffer | null } = { buffer: null };

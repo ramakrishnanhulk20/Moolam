@@ -3,15 +3,19 @@
 // answer is the sha256 of the bytes that were actually pinned, every accepted upload format
 // leaves with a readable manifest, a picture the registry already holds is refused before
 // anything is pinned, a host that cannot sign does not mount at all, the signer's own words never
-// reach the answer, and a missing token, a bad title and a text file are each refused.
+// reach the answer, a training statement reaches the manifest, the pinned metadata and the answer
+// while a malformed one is refused, and a missing token, a bad title and a text file are each
+// refused.
 // Does NOT cover a real pin to Pinata (the live check in the work order does that), a real read
 // of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
 // hour.
 
+import { Reader } from "@contentauth/c2pa-node";
 import { SignJWT, generateKeyPair } from "jose";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { SignerRefusedFile, SignerUnavailable, readManifest } from "../src/c2pa.js";
+import { TRAINING_ASSERTION_LABEL } from "../src/consent.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { fileSlug } from "../src/metadata.js";
@@ -213,6 +217,81 @@ describe("POST /prepare", () => {
       expect(manifest.softBinding?.blockhash, upload.format).toBe(print.blockhash);
     }
   }, 180_000);
+
+  it("writes the creator's training statement into the manifest, the metadata and the answer", async () => {
+    const title = "Nets at first light";
+    const training = {
+      aiTraining: "allowed",
+      aiGenerativeTraining: "notAllowed",
+      dataMining: "constrained",
+      constraintInfo: "ask hello@moolam.app",
+    };
+    const { payload, headers } = body({
+      file: { name: "nets.jpg", type: "image/jpeg", bytes: await makeImage(33) },
+      fields: { title, kind: "human", training: JSON.stringify(training) },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:consent-user")}` },
+      remoteAddress: "203.0.113.26",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const answer = response.json();
+    expect(answer.training).toEqual({ ...training, standard: "cawg.training-mining/1.1" });
+
+    const slug = fileSlug(title, answer.passport.exactHash);
+    const metadata = JSON.parse((pinned.get(`${slug}.json`) as Buffer).toString("utf8"));
+    expect(metadata.training).toEqual({ ...training, standard: "cawg.training-mining/1.1" });
+
+    const reader = await Reader.fromAsset({ buffer: pinned.get(`${slug}.jpg`) as Buffer, mimeType: "image/jpeg" });
+    const assertion = (reader?.getActive()?.assertions ?? []).find((one) =>
+      one.label?.startsWith(TRAINING_ASSERTION_LABEL),
+    );
+    expect(assertion?.data).toEqual({
+      entries: {
+        "cawg.ai_training": { use: "allowed" },
+        "cawg.ai_generative_training": { use: "notAllowed" },
+        "cawg.data_mining": { use: "constrained", constraint_info: "ask hello@moolam.app" },
+      },
+    });
+  }, 60_000);
+
+  it("pins nothing and names the field when the training statement is not one the standard allows", async () => {
+    const pinsBefore = pinned.size;
+    const bearer = `Bearer ${await token("did:privy:consent-user")}`;
+    const refusals: { training: string; names: string }[] = [
+      { training: JSON.stringify({ aiTraining: "allowed", constraintInfo: "ask me" }), names: "constraintInfo" },
+      { training: JSON.stringify({ aiTraining: "constrained" }), names: "constraintInfo" },
+      { training: JSON.stringify({ aiTraining: "constrained", constraintInfo: "x".repeat(257) }), names: "constraintInfo" },
+      { training: JSON.stringify({ aiTraining: "constrained", constraintInfo: "ask\nme" }), names: "constraintInfo" },
+      { training: JSON.stringify({ aiTraining: "constrained", constraintInfo: "ask me ©" }), names: "constraintInfo" },
+      { training: JSON.stringify({ aiTraining: "sometimes" }), names: "aiTraining" },
+      { training: "not json at all", names: "training" },
+    ];
+
+    for (const refusal of refusals) {
+      const { payload, headers } = body({
+        file: { name: "nets.jpg", type: "image/jpeg", bytes: IMAGE },
+        fields: { title: "Refused statement", kind: "human", training: refusal.training },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: bearer },
+        remoteAddress: "203.0.113.26",
+      });
+
+      expect(response.statusCode, refusal.training).toBe(400);
+      expect(response.json().error, refusal.training).toContain(refusal.names);
+    }
+    expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
 
   it("refuses a request with no token before it reads the upload", async () => {
     const pinsBefore = pinned.size;

@@ -3,7 +3,8 @@
 // can co-sign, the generator signature recovering to the wallet that made it, a creator address
 // that is not the caller's, a deadline that runs out while the picture is drawn, the daily quota
 // on a fake clock and which failures give a quota slot back, a prompt the model refuses, a body
-// that does not parse, and the waiting gate giving up.
+// that does not parse, a training statement travelling into the pinned metadata that the agent's
+// signature covers, and the waiting gate giving up.
 // Does NOT cover the real image model, a real pin, or Privy actually signing or listing wallets:
 // the live check in the work order does all of those against the hosted services. It also does
 // not cover the browser side, which adds the passkey signature and sends the transaction.
@@ -221,6 +222,83 @@ describe("POST /generate", () => {
     });
     expect(answer.generatorSig).toMatch(/^0x[0-9a-f]{130}$/i);
     expect(getAddress(recovered)).toBe(agent.address);
+  }, 60_000);
+
+  it("pins the training statement inside the metadata the agent's signature covers", async () => {
+    const creator = "0x3333333333333333333333333333333333333333";
+    const title = "Harbour at dusk";
+    const training = { aiGenerativeTraining: "notAllowed", aiInference: "allowed" };
+
+    const response = await ask("did:privy:consent-draw", {
+      prompt: PROMPT,
+      title,
+      creator,
+      deadline: deadline(),
+      training,
+    });
+
+    expect(response.statusCode).toBe(200);
+    const answer = response.json();
+    expect(answer.training).toEqual({ ...training, standard: "cawg.training-mining/1.1" });
+
+    const metadata = JSON.parse(
+      (pinned.get(`${fileSlug(title, answer.passport.exactHash)}.json`) as Buffer).toString("utf8"),
+    );
+    expect(metadata.training).toEqual({ ...training, standard: "cawg.training-mining/1.1" });
+
+    // The statement is in the document the metadataURI names, and the signed struct carries that
+    // URI, so the agent's signature covers the statement rather than sitting beside it.
+    const input = inputFrom(answer.passport);
+    expect(input.metadataURI).toBe(answer.metadata.uri);
+    const recovered = await recoverAddress({
+      hash: passportDigest(input, generatorDomain()),
+      signature: answer.generatorSig as Hex,
+    });
+    expect(getAddress(recovered)).toBe(agent.address);
+  }, 60_000);
+
+  it("refuses a training statement the standard has no room for, and names the field", async () => {
+    const good = {
+      prompt: PROMPT,
+      title: "Refused statement",
+      creator: "0x2222222222222222222222222222222222222222",
+      deadline: deadline(),
+    };
+    const refusals: { training: unknown; names: string }[] = [
+      { training: { aiTraining: "allowed", constraintInfo: "ask me" }, names: "constraintInfo" },
+      { training: { aiTraining: "constrained" }, names: "constraintInfo" },
+      { training: { aiTraining: "constrained", constraintInfo: "x".repeat(257) }, names: "constraintInfo" },
+      { training: { aiTraining: "constrained", constraintInfo: "ask\nme" }, names: "constraintInfo" },
+      { training: { aiTraining: "constrained", constraintInfo: "ask me ©" }, names: "constraintInfo" },
+      { training: { aiTraining: "sometimes" }, names: "aiTraining" },
+      { training: "notAllowed", names: "training" },
+    ];
+
+    const callsBefore = stubs.createImage.mock.calls.length;
+    for (const refusal of refusals) {
+      const response = await ask("did:privy:consent-refused", { ...good, training: refusal.training });
+      expect(response.statusCode, JSON.stringify(refusal.training)).toBe(400);
+      expect(response.json().error, JSON.stringify(refusal.training)).toContain(refusal.names);
+    }
+    expect(stubs.createImage.mock.calls.length).toBe(callsBefore);
+  });
+
+  it("draws with no assertion at all when the creator said nothing about AI use", async () => {
+    const title = "Nothing said";
+    const response = await ask("did:privy:consent-silent", {
+      prompt: PROMPT,
+      title,
+      creator: "0x4444444444444444444444444444444444444444",
+      deadline: deadline(),
+      training: {},
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().training).toBeUndefined();
+    const metadata = JSON.parse(
+      (pinned.get(`${fileSlug(title, response.json().passport.exactHash)}.json`) as Buffer).toString("utf8"),
+    );
+    expect(metadata.training).toBeUndefined();
   }, 60_000);
 
   it("refuses a request with no token before the model is called", async () => {

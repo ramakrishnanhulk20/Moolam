@@ -1,3 +1,4 @@
+import { trainingStatement, type TrainingConsent, type TrainingStatement } from "./consent.js";
 import type { Hex } from "./fingerprint.js";
 import type { Fingerprint } from "./fingerprint.js";
 import type { PreparedImage } from "./prepare.js";
@@ -30,6 +31,8 @@ export interface PassportMetadata {
   prompt?: string;
   generator: { agentId: string; registry: Hex };
   fingerprint: { phash: string; blockhash: Hex; version: 1 };
+  /** Only when the creator said something about AI use. No key at all means they did not. */
+  training?: TrainingStatement;
   createdAt: string;
 }
 
@@ -45,6 +48,8 @@ export interface PassportMetadataInput {
   /** Defaults to the canonical ERC-8004 registry; the seed passes the address it deployed against. */
   identityRegistry?: Hex;
   fingerprint: Fingerprint;
+  /** What the creator said about AI use, exactly as the request stated it. */
+  training?: TrainingConsent;
   createdAt?: Date;
 }
 
@@ -54,6 +59,10 @@ export interface PassportMetadataInput {
  * The seed, the generator agent and the studio all build it here so the three routes into the
  * registry pin the same shape. Anything reading a passport can then expect the same keys whoever
  * created it.
+ *
+ * What the creator said about AI use rides in this document as well as inside the signed manifest,
+ * because the creator's passkey signs the address of this document: a statement written here is
+ * covered by that signature, while one added later would not be.
  */
 export function passportMetadata(input: PassportMetadataInput): PassportMetadata {
   return {
@@ -72,6 +81,7 @@ export function passportMetadata(input: PassportMetadataInput): PassportMetadata
       blockhash: input.fingerprint.blockhash,
       version: FINGERPRINT_VERSION,
     },
+    training: trainingStatement(input.training),
     createdAt: (input.createdAt ?? new Date()).toISOString(),
   };
 }

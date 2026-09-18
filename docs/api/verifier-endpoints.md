@@ -200,6 +200,14 @@ exist and the service answers `404`.
 | `file` | file | The image. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
 | `title` | text | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
 | `kind` | text | `human` is the only value the studio takes today |
+| `training` | text | Optional. A JSON object saying how AI may use the picture: `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`, each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` when a choice is constrained |
+
+The `training` statement is written into the signed C2PA manifest as one `cawg.training-mining`
+assertion and into the pinned metadata, so it travels inside the file and sits under the creator's
+passkey signature, which signs the metadata address. A choice left out states nothing at all, which
+is not the same as allowing it. `constraintInfo` is required when a choice is `constrained`, refused
+otherwise, and is at most 256 bytes of printable ASCII, the same rule the consent contract enforces,
+so a statement made here can be written on chain unchanged.
 
 **Headers.** `Authorization: Bearer <Privy access token>`, plus the multipart `Content-Type` the
 browser or curl sets. The token has to be signed by the app's own key set, carry the issuer
@@ -208,7 +216,8 @@ browser or curl sets. The token has to be signed by the app's own key set, carry
 ```bash
 curl -s -X POST http://localhost:4000/prepare \
   -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
-  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human"
+  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human" \
+  -F 'training={"aiGenerativeTraining":"notAllowed","dataMining":"constrained","constraintInfo":"ask hello@moolam.app"}'
 ```
 
 **Response.** `200` with the passport fields and the pinned files. The image bytes never come back:
@@ -238,6 +247,14 @@ the caller already has them, and the answer has to sit in a browser's memory nex
   thumbnail: { cid: string, uri: string, gatewayUrl: string },
   metadata: { cid: string, uri: string },
   manifest: { embedded: true } | { embedded: false, reason: string },
+  training?: {                     // absent when the creator said nothing
+    aiTraining?: "allowed" | "notAllowed" | "constrained",
+    aiGenerativeTraining?: "allowed" | "notAllowed" | "constrained",
+    aiInference?: "allowed" | "notAllowed" | "constrained",
+    dataMining?: "allowed" | "notAllowed" | "constrained",
+    constraintInfo?: string,
+    standard: "cawg.training-mining/1.1"
+  },
   preparedBy: string               // the Privy user id the token carried
 }
 ```
@@ -255,7 +272,7 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | Code | When |
 | --- | --- |
 | `200` | Prepared and pinned |
-| `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, or a `kind` other than `human` |
+| `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, a `kind` other than `human`, or a `training` statement that is not JSON, is over 1024 bytes, carries a key or a value the standard has no room for, or breaks the `constraintInfo` rule. The message names the field |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. A key set that cannot be fetched answers the same way, so a caller never learns the difference between a bad token and a bad network. `{ "error": "unauthorized" }` |
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
@@ -289,6 +306,12 @@ Mounted only when the host has everything `/prepare` needs plus an image model k
 | `title` | string | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
 | `creator` | string | `0x` and 40 hex characters. The wallet that will sign and send, and it goes inside what the agent signs |
 | `deadline` | number or numeric string | Unix seconds, between 10 minutes and 2 hours from now. The studio asks for 30 minutes |
+| `training` | object | Optional. The same statement `/prepare` takes: `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`, each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` when a choice is constrained |
+
+The `training` statement is written into the signed C2PA manifest as one `cawg.training-mining`
+assertion and into the pinned metadata, before the agent signs, so it is inside both signatures:
+the agent's over the passport and the creator's passkey over the same struct, which carries the
+metadata address. The rules are the ones under `/prepare`, and a choice left out states nothing.
 
 ```bash
 curl -s -X POST http://localhost:4000/generate \
@@ -319,6 +342,7 @@ curl -s -X POST http://localhost:4000/generate \
   thumbnail: { cid, uri, gatewayUrl },
   metadata: { cid, uri },
   manifest: { embedded: true } | { embedded: false, reason: string },
+  training?: { ...the statement that was written, plus standard: "cawg.training-mining/1.1" },
   model: string,                   // what drew it, also pinned in the metadata
   agent: { id: string, wallet: `0x${string}` },
   quota: { used: number, limit: number, resetsAt: number },
@@ -335,7 +359,7 @@ what the passport id is computed from. The browser must send these fields unchan
 | Code | When |
 | --- | --- |
 | `200` | Drawn, pinned and signed |
-| `400` | A field outside its rule, or a deadline outside the 10 minute to 2 hour window. The reason names the field |
+| `400` | A field outside its rule, a deadline outside the 10 minute to 2 hour window, or a `training` statement the standard has no room for. The reason names the field |
 | `400` | `{ "error": "prompt-refused", "reason": "..." }` when the model's safety system turns the prompt down. The day's allowance is given back |
 | `400` | `{ "error": "deadline-passed" }` when the picture was drawn and too little of the window was left for the agent to sign something a person could still use. The picture exists, so the day's allowance stays spent |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. `{ "error": "unauthorized" }` |
