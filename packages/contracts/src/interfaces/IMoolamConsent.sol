@@ -57,6 +57,18 @@ interface IMoolamConsent {
     error ConstraintInfoNotAllowed();
     error ConstraintInfoTooLong(uint256 length);
     error ConstraintInfoNotPrintable(uint256 position);
+    error EmptyBatch();
+    error BatchTooLarge(uint256 length);
+
+    /// @notice The vocabulary this register speaks, named on chain so a reader never has to guess
+    ///         what a value means. The four fields and the three stated values are those of the
+    ///         CAWG Training and Data Mining assertion, version 1.1: aiTraining, aiGenerativeTraining,
+    ///         aiInference and dataMining, each Allowed, NotAllowed or Constrained. Unspecified is
+    ///         this contract's fourth value and means the creator has not stated that use at all.
+    ///         Per that standard, a reader with no way to reach the creator treats Constrained the
+    ///         same as NotAllowed.
+    /// @return The assertion label and version.
+    function STANDARD() external view returns (string memory);
 
     /// @notice The passport registry this contract asks who holds a passport.
     /// @return The registry address, fixed at deployment.
@@ -74,6 +86,10 @@ interface IMoolamConsent {
     /// @return 64 entries.
     function MAX_PAGE() external view returns (uint256);
 
+    /// @notice The most passports one batch call can state for.
+    /// @return 32 passports.
+    function MAX_BATCH() external view returns (uint256);
+
     /// @notice Records what the passport's holder allows AI to do with their picture.
     /// @param passportId The passport the statement is about.
     /// @param consent The four field values. All four Unspecified is a valid statement and takes
@@ -82,6 +98,19 @@ interface IMoolamConsent {
     ///        or a line of plain words. Required when any field is Constrained, refused otherwise,
     ///        at most 256 printable ASCII bytes.
     function setConsent(bytes32 passportId, Consent calldata consent, string calldata constraintInfo) external;
+
+    /// @notice Records the same statement for a whole set of passports in one transaction, for a
+    ///         creator who wants one policy across their work.
+    /// @dev All or nothing. If any one passport in the set is refused, for any reason, nothing is
+    ///      written for any of them and the caller gets that passport's own error. Naming the same
+    ///      passport twice in one call is refused as TooSoon, because the first write already
+    ///      happened this second.
+    /// @param passportIds The passports to state for, at least one and at most 32.
+    /// @param consent The four field values, the same for every passport in the set.
+    /// @param constraintInfo The conditions in free text, the same for every passport in the set.
+    ///        It is checked once for the call, and stored against each passport.
+    function setConsentBatch(bytes32[] calldata passportIds, Consent calldata consent, string calldata constraintInfo)
+        external;
 
     /// @notice The statement that stands for a passport right now.
     /// @param passportId The passport to read.

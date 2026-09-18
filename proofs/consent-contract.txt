@@ -1,6 +1,6 @@
-WO-80 MoolamConsent, proof pack, 2026-09-18, packages/contracts.
-Everything below was re-run after Fable's rename of the text field from constraintURI to
-constraintInfo, so these are the numbers for the contract as it now stands.
+WO-80 and WO-80b MoolamConsent, proof pack, 2026-09-18.
+Updated in place after WO-80b added the batch call, the STANDARD name and the MAX_BATCH cap, so
+every number here is for the contract as it now stands.
 Nothing was broadcast. No transaction was sent, no private key was read or printed by hand, and no
 deployed contract was changed. The consent register is not on mainnet yet: deploying it is Ram's
 call to make later with the script proven below.
@@ -14,18 +14,18 @@ Ran 1 test for test/RenounceOwnership.t.sol:RenounceOwnershipTest
 Suite result: ok. 1 passed; 0 failed; 0 skipped
 Ran 16 tests for test/MoolamReceiver.t.sol:MoolamReceiverTest
 Suite result: ok. 16 passed; 0 failed; 0 skipped
-Ran 76 tests for test/MoolamRegistry.t.sol:MoolamRegistryTest
-Suite result: ok. 76 passed; 0 failed; 0 skipped
-Ran 33 tests for test/MoolamConsent.t.sol:MoolamConsentTest
-Suite result: ok. 33 passed; 0 failed; 0 skipped
 Ran 18 tests for test/VerifierPolicy.t.sol:VerifierPolicyTest
 Suite result: ok. 18 passed; 0 failed; 0 skipped
+Ran 76 tests for test/MoolamRegistry.t.sol:MoolamRegistryTest
+Suite result: ok. 76 passed; 0 failed; 0 skipped
 Ran 5 tests for test/MoolamRegistry.fuzz.t.sol:MoolamRegistryFuzzTest
 Suite result: ok. 5 passed; 0 failed; 0 skipped
-Ran 6 tests for test/MoolamConsent.fuzz.t.sol:MoolamConsentFuzzTest
+Ran 8 tests for test/MoolamConsent.fuzz.t.sol:MoolamConsentFuzzTest
+Suite result: ok. 8 passed; 0 failed; 0 skipped
+Ran 45 tests for test/MoolamConsent.t.sol:MoolamConsentTest
+Suite result: ok. 45 passed; 0 failed; 0 skipped
+Ran 6 tests for test/fork/MoolamConsent.fork.t.sol:MoolamConsentForkTest
 Suite result: ok. 6 passed; 0 failed; 0 skipped
-Ran 5 tests for test/fork/MoolamConsent.fork.t.sol:MoolamConsentForkTest
-Suite result: ok. 5 passed; 0 failed; 0 skipped
 Ran 1 test for test/MoolamRegistry.invariants.t.sol:MoolamRegistryInvariantsTest
 Suite result: ok. 1 passed; 0 failed; 0 skipped
 Ran 1 test for test/MoolamConsent.invariants.t.sol:MoolamConsentInvariantsTest
@@ -33,12 +33,12 @@ Suite result: ok. 1 passed; 0 failed; 0 skipped
 Ran 5 tests for test/fork/ERC8004Fork.t.sol:ERC8004ForkTest
 Suite result: ok. 5 passed; 0 failed; 0 skipped
 
-Ran 11 test suites in 4.15s (17.46s CPU time): 167 tests passed, 0 failed, 0 skipped (167 total tests)
+Ran 11 test suites in 4.84s (20.39s CPU time): 182 tests passed, 0 failed, 0 skipped (182 total tests)
 
-122 before this work order, 45 new: 33 unit, 6 fuzz at 512 runs each, 1 invariant suite of 6
-invariants over 256 runs and 8,192 calls, 5 fork tests against Monad mainnet state.
+122 before this work order, 60 new: 45 unit, 8 fuzz at 512 runs each, 1 invariant suite of 6
+invariants over 256 runs and 8,192 calls, 6 fork tests against Monad mainnet state.
 
-The invariant run in full:
+The invariant run in full, with the batch now driven beside the single write:
 
 MoolamConsentInvariantsTest invariants:
 [PASS] invariant_anEntryOnceWrittenNeverChanges
@@ -50,23 +50,29 @@ MoolamConsentInvariantsTest invariants:
  MoolamConsentInvariantsTest invariants (runs: 256, calls: 8192, reverts: 0)
 
 | Contract       | Selector       | Calls | Reverts | Discards |
-| ConsentHandler | passTime       | 2035  | 0       | 0        |
-| ConsentHandler | payTheContract | 2036  | 0       | 0        |
-| ConsentHandler | transfer       | 2115  | 0       | 0        |
-| ConsentHandler | write          | 2006  | 0       | 0        |
+| ConsentHandler | passTime       | 1604  | 0       | 0        |
+| ConsentHandler | payTheContract | 1652  | 0       | 0        |
+| ConsentHandler | transfer       | 1647  | 0       | 0        |
+| ConsentHandler | write          | 1621  | 0       | 0        |
+| ConsentHandler | writeBatch     | 1668  | 0       | 0        |
+
+The two write paths compete for the same three passports while those passports change hands, so
+append only, strictly increasing time, the writer being the holder and the zero balance are proven
+against the batch as well as the single write.
 
 The run is not vacuous: invariant_historyOnlyGrows checks that the total number of entries across
-the three passports equals the number of writes the handler saw land, so a run where nothing landed
-would show a zero there. It was also proven the hard way, by temporarily asserting that no write
-had landed and watching the suite fail with "1 != 0" on the first call.
+the three passports equals the number of writes the handler saw land, counting each passport inside
+a batch as one, so a run where nothing landed would show a zero there. It was also proven the hard
+way, by temporarily asserting that no write had landed and watching the suite fail with "1 != 0" on
+the first call.
 
 ================================================================================
 2. COVERAGE
 ================================================================================
 Command: forge coverage --ir-minimum --match-path "test/MoolamConsent*" --no-match-coverage "(script|test)" -n monad
 
-| File                  | % Lines         | % Statements    | % Branches      | % Funcs       |
-| src/MoolamConsent.sol | 100.00% (66/66) | 100.00% (93/93) | 100.00% (20/20) | 100.00% (9/9) |
+| File                  | % Lines         | % Statements      | % Branches      | % Funcs         |
+| src/MoolamConsent.sol | 100.00% (75/75) | 100.00% (104/104) | 100.00% (22/22) | 100.00% (11/11) |
 
 Nothing is uncovered, so there is nothing to explain away.
 
@@ -84,12 +90,14 @@ consent: contract MoolamConsent 0x1151E69a82947920546e779c4C8c785b2a3C1277
 == Logs ==
   chain id        143
   deployer        0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
-  block           105822529
+  block           105825545
   MoolamConsent   0x1151E69a82947920546e779c4C8c785b2a3C1277
   registry read   0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+  standard        cawg.training-mining/1.1
   min interval    600
   max info bytes  256
   max page        64
+  max batch       32
   registry symbol MOOLAM
 
 ## Setting up 1 EVM.
@@ -97,8 +105,8 @@ Chain 143
 Estimated max fee per gas: 202 gwei
 Estimated base fee per gas: 100 gwei
 Estimated max priority fee per gas: 2 gwei
-Estimated total gas used for script: 1313361
-Estimated amount required: 0.265298922 MON
+Estimated total gas used for script: 1455755
+Estimated amount required: 0.29406251 MON
 
 SIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s)
 to the previous command.
@@ -106,27 +114,38 @@ to the previous command.
 The address in the log is what the deployer's next nonce would produce, not a live contract. The
 registry address is read out of deployments/monad-mainnet.json, the file Deploy.s.sol writes, so
 nobody types it by hand; the script then asks that address for its token symbol and gets MOOLAM
-back, which is the passport registry answering.
+back, which is the passport registry answering. The run also prints the vocabulary and the caps the
+deployed contract will carry for ever, so they are on the record before anyone signs anything.
 
 ================================================================================
-4. FORK TEST AGAINST THE LIVE REGISTRY
+4. FORK TESTS AGAINST THE LIVE REGISTRY
 ================================================================================
 Command: forge test --match-path "test/fork/MoolamConsent.fork.t.sol" -vv -n monad
 
-Ran 5 tests for test/fork/MoolamConsent.fork.t.sol:MoolamConsentForkTest
-[PASS] test_aPassportTheRealRegistryHasNeverMintedIsRefused() (gas: 72592)
-[PASS] test_aStrangerCannotSpeakForARealPassport() (gas: 73162)
-[PASS] test_anAddressApprovedOnTheRealRegistryIsStillRefused() (gas: 172451)
-[PASS] test_theRealHolderStatesConsentAndItReadsBack() (gas: 269945)
-[PASS] test_theRealRegistryIsLiveAndIsWhatTheContractReads() (gas: 40172)
+Ran 6 tests for test/fork/MoolamConsent.fork.t.sol:MoolamConsentForkTest
+[PASS] test_aPassportTheRealRegistryHasNeverMintedIsRefused() (gas: 73691)
+[PASS] test_aStrangerCannotSpeakForARealPassport() (gas: 74261)
+[PASS] test_anAddressApprovedOnTheRealRegistryIsStillRefused() (gas: 173608)
+[PASS] test_oneRealHolderStatesOnePolicyForTwoRealPassportsInOneCall() (gas: 534655)
+[PASS] test_theRealHolderStatesConsentAndItReadsBack() (gas: 270680)
+[PASS] test_theRealRegistryIsLiveAndIsWhatTheContractReads() (gas: 73203)
 Logs:
+  one mainnet wallet holds both passports: 0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
   passport holder on Monad mainnet: 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
-Suite result: ok. 5 passed; 0 failed; 0 skipped
+Suite result: ok. 6 passed; 0 failed; 0 skipped
 
-The passport is 0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638 on registry
-0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0. The holder above was read from the chain, not chosen.
-The approved address in test three was approved on the real registry inside the fork and was still
-refused, which is the whole point of reading ownerOf and never the approval.
+The single write test uses passport 0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638
+on registry 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0, whose holder was read from the chain, not
+chosen. The approved address in the third test was approved on the real registry inside the fork and
+was still refused, which is the whole point of reading ownerOf and never the approval.
+
+The batch test needed one real wallet holding two real passports. It reads both owners back on the
+fork before it trusts that, and skips with a printed line if they have parted. Today
+0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c holds both 0xb95adc0c... (original.jpg) and 0x7b4732f3...
+(the same photo carrying a C2PA manifest), both minted by the live proof run. One call states one
+policy for both. The second half of that test puts a passport the wallet does not hold second in the
+list and shows the whole call revert with that passport's own error, leaving the first passport's
+history untouched at one entry.
 
 ================================================================================
 5. THE THREE REVIEW QUESTIONS
@@ -138,21 +157,27 @@ schemes and no deny list of strings, so there is no entry nobody thought of. Wha
 characters, newlines that would split a log line, and the raw bytes that start a UTF-8 escape. What
 it does not cover: it does not judge what the text says or where a link inside it points, so a
 reader that follows one still owes its own check. That is written into the contract's own comment so
-the next reader does not assume more.
+the next reader does not assume more. The batch adds no list either: a repeated passport in one call
+is caught by the same timestamp rule that orders every history, not by a set of ids kept on the side.
 
 Are two values compared after different parsers?
-No. There is one comparison that decides everything, `msg.sender != holder` in setConsent, and both
+No. There is one comparison that decides everything, `msg.sender != holder` in _record, and both
 sides come from the same place at the same moment: msg.sender as the EVM gives it, and holder from
-IERC721(REGISTRY).ownerOf in that same call. No copy of the holder is cached, no address is parsed
-from a string, and nothing is normalised on the way. The time comparison has the same shape: the
-order written on a push and the order searched on a read are both the raw uint64 `at`, never a
-derived or rounded value.
+IERC721(REGISTRY).ownerOf in that same call. In a batch that read happens again for every passport,
+so no answer is carried over from the passport before it. No copy of the holder is cached, no address
+is parsed from a string, and nothing is normalised on the way. The time comparison has the same
+shape: the order written on a push and the order searched on a read are both the raw uint64 `at`,
+never a derived or rounded value. A batch and a single statement run the exact same private write,
+so there is no second copy of any rule that could drift from the first.
 
 Are outputs validated like inputs?
 Yes. The only attacker written value that leaves this contract is the constraint text, and it is
 bounded and checked before it is stored, so every consumer downstream gets the same guarantee
-without having to ask: at most 256 bytes, every byte printable. The four field values are an enum,
-so the ABI decoder refuses anything outside the four named values before the function body runs.
-The timestamp and the writer are set by the contract, never by the caller. The event carries exactly
-what was stored and nothing else, so an indexer that reads the log and a caller that reads the
-storage cannot disagree.
+without having to ask: at most 256 bytes, every byte printable. In a batch it is checked once for
+the call, because one call carries one text, and the same checked bytes are what get stored against
+each passport. The four field values are an enum, so the ABI decoder refuses anything outside the
+four named values before the function body runs. The timestamp and the writer are set by the
+contract, never by the caller. The event carries exactly what was stored and nothing else, one per
+passport, so an indexer that reads the logs and a caller that reads the storage cannot disagree.
+STANDARD is the one output that is not attacker written at all: a constant naming the vocabulary,
+so a reader never has to guess what Constrained or Unspecified mean.

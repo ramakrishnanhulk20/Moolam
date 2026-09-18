@@ -84,6 +84,14 @@ contract MoolamConsentTest is Test {
         );
     }
 
+    function _mintTo(address owner, uint256 count) internal returns (bytes32[] memory ids) {
+        ids = new bytes32[](count);
+        for (uint256 i = 0; i < count; ++i) {
+            ids[i] = keccak256(abi.encode("batch picture", owner, i));
+            registry.mint(owner, uint256(ids[i]));
+        }
+    }
+
     function _text(uint256 length) internal pure returns (string memory) {
         bytes memory out = new bytes(length);
         for (uint256 i = 0; i < length; ++i) {
@@ -428,6 +436,170 @@ contract MoolamConsentTest is Test {
         assertEq(address(consent).balance, 0);
     }
 
+    function test_theContractNamesTheStandardItSpeaks() public view {
+        assertEq(consent.STANDARD(), "cawg.training-mining/1.1");
+        assertEq(consent.MAX_BATCH(), 32);
+    }
+
+    function test_oneCallStatesThePolicyForEveryPicture() public {
+        bytes32[] memory ids = _mintTo(holder, 5);
+
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _notAllowed(), "");
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            (bool stated, IMoolamConsent.Entry memory latest) = consent.consentOf(ids[i]);
+            assertTrue(stated);
+            assertEq(latest.writer, holder);
+            assertEq(latest.at, START);
+            assertEq(uint8(latest.consent.aiTraining), uint8(IMoolamConsent.Use.NotAllowed));
+            assertEq(consent.historyLength(ids[i]), 1);
+        }
+    }
+
+    function test_aBatchEmitsOneEventPerPictureInOrder() public {
+        bytes32[] memory ids = _mintTo(holder, 3);
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            vm.expectEmit(true, true, true, true, address(consent));
+            emit IMoolamConsent.ConsentSet(ids[i], holder, 0, _constrained(), "https://moolam.xyz/terms", START);
+        }
+
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _constrained(), "https://moolam.xyz/terms");
+    }
+
+    function test_aSecondBatchCarriesTheNextIndexForEachPicture() public {
+        bytes32[] memory ids = _mintTo(holder, 2);
+
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _notAllowed(), "");
+        vm.warp(START + 600);
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            vm.expectEmit(true, true, true, true, address(consent));
+            emit IMoolamConsent.ConsentSet(ids[i], holder, 1, _allowed(), "", START + 600);
+        }
+
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "");
+
+        assertEq(consent.historyLength(ids[0]), 2);
+        assertEq(consent.historyLength(ids[1]), 2);
+    }
+
+    function test_anEmptyBatchIsRefused() public {
+        bytes32[] memory ids = new bytes32[](0);
+
+        vm.expectRevert(IMoolamConsent.EmptyBatch.selector);
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "");
+    }
+
+    function test_aBatchOfThirtyThreeIsRefused() public {
+        bytes32[] memory ids = _mintTo(holder, 33);
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.BatchTooLarge.selector, 33));
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "");
+
+        assertEq(consent.historyLength(ids[0]), 0);
+    }
+
+    function test_aBatchOfThirtyTwoIsAccepted() public {
+        bytes32[] memory ids = _mintTo(holder, 32);
+
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "");
+
+        assertEq(consent.historyLength(ids[0]), 1);
+        assertEq(consent.historyLength(ids[31]), 1);
+    }
+
+    function test_onePictureTheCallerDoesNotHoldStopsTheWholeBatch() public {
+        bytes32[] memory mine = _mintTo(holder, 3);
+        bytes32 theirs = keccak256("a picture the buyer holds");
+        registry.mint(buyer, uint256(theirs));
+
+        bytes32[] memory ids = new bytes32[](4);
+        ids[0] = mine[0];
+        ids[1] = mine[1];
+        ids[2] = theirs;
+        ids[3] = mine[2];
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.NotPassportHolder.selector, theirs, holder));
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "");
+
+        for (uint256 i = 0; i < mine.length; ++i) {
+            assertEq(consent.historyLength(mine[i]), 0);
+        }
+        assertEq(consent.historyLength(theirs), 0);
+    }
+
+    function test_theSamePictureTwiceInOneBatchIsRefused() public {
+        bytes32[] memory mine = _mintTo(holder, 2);
+        bytes32[] memory ids = new bytes32[](3);
+        ids[0] = mine[0];
+        ids[1] = mine[1];
+        ids[2] = mine[0];
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.TooSoon.selector, mine[0], START + 600));
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "");
+
+        assertEq(consent.historyLength(mine[0]), 0);
+        assertEq(consent.historyLength(mine[1]), 0);
+    }
+
+    function test_aBatchFollowsThePassportWhenItChangesHands() public {
+        bytes32[] memory mine = _mintTo(holder, 2);
+
+        vm.prank(holder);
+        registry.transferFrom(holder, buyer, uint256(mine[1]));
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.NotPassportHolder.selector, mine[1], holder));
+        vm.prank(holder);
+        consent.setConsentBatch(mine, _allowed(), "");
+
+        bytes32[] memory theirs = new bytes32[](1);
+        theirs[0] = mine[1];
+        vm.prank(buyer);
+        consent.setConsentBatch(theirs, _allowed(), "");
+
+        (, IMoolamConsent.Entry memory latest) = consent.consentOf(mine[1]);
+        assertEq(latest.writer, buyer);
+        assertEq(consent.historyLength(mine[0]), 0);
+    }
+
+    function test_aBatchChecksTheTextOnceBeforeWritingAnything() public {
+        bytes32[] memory ids = _mintTo(holder, 3);
+        string memory bad = string(abi.encodePacked("https://moolam.xyz/", bytes1(0x00), "terms"));
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.ConstraintInfoNotPrintable.selector, 19));
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _constrained(), bad);
+
+        vm.expectRevert(IMoolamConsent.ConstraintInfoNotAllowed.selector);
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _allowed(), "https://moolam.xyz/terms");
+
+        assertEq(consent.historyLength(ids[0]), 0);
+    }
+
+    function test_aBatchStoresTheSameTextAgainstEveryPicture() public {
+        bytes32[] memory ids = _mintTo(holder, 3);
+        string memory text = _text(256);
+
+        vm.prank(holder);
+        consent.setConsentBatch(ids, _constrained(), text);
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            (, IMoolamConsent.Entry memory latest) = consent.consentOf(ids[i]);
+            assertEq(latest.constraintInfo, text);
+        }
+    }
+
     /// The numbers behind the gas table in proofs/gas.txt. Measured with gasleft around the call,
     /// so each figure carries the call overhead a real transaction pays too. The bounds are loose
     /// on purpose: they are here to catch a change that makes a creator's write cost more, not to
@@ -473,6 +645,21 @@ contract MoolamConsentTest is Test {
         consent.consentAt(PASSPORT, START + 128 * 600);
         uint256 readAtTwoFiftySix = gas - gasleft();
 
+        bytes32[] memory plain = _mintTo(buyer, 32);
+        vm.prank(buyer);
+        gas = gasleft();
+        consent.setConsentBatch(plain, _allowed(), "");
+        uint256 batchOfThirtyTwo = gas - gasleft();
+
+        bytes32[] memory withText = _mintTo(stranger, 32);
+        vm.prank(stranger);
+        gas = gasleft();
+        consent.setConsentBatch(withText, _constrained(), text);
+        uint256 batchOfThirtyTwoWithText = gas - gasleft();
+
+        emit log_named_uint("batch of 32 first statements", batchOfThirtyTwo);
+        emit log_named_uint("batch of 32 with 256 bytes of text", batchOfThirtyTwoWithText);
+        emit log_named_uint("per picture in that batch", batchOfThirtyTwoWithText / 32);
         emit log_named_uint("first write", firstWrite);
         emit log_named_uint("later write", laterWrite);
         emit log_named_uint("write with 256 bytes of text", writeWithText);
@@ -484,6 +671,9 @@ contract MoolamConsentTest is Test {
         assertLt(laterWrite, 120_000);
         assertLt(writeWithText, 400_000);
         assertLt(readAtTwoFiftySix, 60_000);
+        // The cap on MAX_BATCH only means something if the worst batch fits in one Monad
+        // transaction, which is 30,000,000 gas.
+        assertLt(batchOfThirtyTwoWithText, 30_000_000);
     }
 
     function test_twoPassportsKeepSeparateHistories() public {

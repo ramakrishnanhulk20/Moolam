@@ -469,10 +469,10 @@ INFO:Slither:. analyzed (41 contracts with 102 detectors), 123 result(s) found
 
 
 ================================================================================
-WO-80 MoolamConsent, 2026-09-18 (re-run after the constraintURI to constraintInfo rename)
+WO-80 and WO-80b MoolamConsent, 2026-09-18 (updated in place after the batch landed)
 Command: slither . --filter-paths "lib/|test/|script/"
-Result for the new file: 0 high, 0 medium that stand. Three findings name MoolamConsent or
-IMoolamConsent and all three are checked by hand below. The rest of the run is the same set already
+Result for the new file: 0 high, 0 medium that stand. Four findings name MoolamConsent or
+IMoolamConsent and all four are checked by hand below. The rest of the run is the same set already
 triaged at the top of this file.
 
 1. uninitialized-state on MoolamConsent._history. Same false positive as MoolamRegistry._attestations
@@ -480,34 +480,51 @@ triaged at the top of this file.
    by definition, and every read handles the empty case explicitly (consentOf and consentAt answer
    "not stated", historyLength answers zero, historyPage answers an empty page).
 
-   MoolamConsent._history (src/MoolamConsent.sol#51) is never initialized. It is used in:
-   	- MoolamConsent.setConsent(bytes32,IMoolamConsent.Consent,string) (src/MoolamConsent.sol#79-112)
-   	- MoolamConsent.consentOf(bytes32) (src/MoolamConsent.sol#115-122)
-   	- MoolamConsent.consentAt(bytes32,uint64) (src/MoolamConsent.sol#128-143)
-   	- MoolamConsent.historyLength(bytes32) (src/MoolamConsent.sol#146-148)
-   	- MoolamConsent.historyPage(bytes32,uint256,uint256) (src/MoolamConsent.sol#153-166)
+   MoolamConsent._history (src/MoolamConsent.sol#68) is never initialized. It is used in:
+   	- MoolamConsent.consentOf(bytes32) (src/MoolamConsent.sol#125-132)
+   	- MoolamConsent.consentAt(bytes32,uint64) (src/MoolamConsent.sol#138-153)
+   	- MoolamConsent.historyLength(bytes32) (src/MoolamConsent.sol#156-158)
+   	- MoolamConsent.historyPage(bytes32,uint256,uint256) (src/MoolamConsent.sol#163-176)
+   	- MoolamConsent._record(bytes32,IMoolamConsent.Consent,string) (src/MoolamConsent.sol#181-218)
 
-2. timestamp: setConsent uses block.timestamp for comparisons. On purpose, and named as a non-goal
-   in the design: the clock is the block timestamp, so a time query is only as fine as the chain's
+2. calls-loop on _holderOf, reached from setConsentBatch. New with the batch and deliberate. The
+   call is ownerOf, a view on the registry address fixed at deployment, and it runs once per
+   passport because that is the rule: authority for each passport is read fresh from the registry
+   in the same call, never assumed from the passport before it. The usual danger of this pattern,
+   one failing call stranding the rest, is the wanted behaviour here: a batch is all or nothing.
+   The loop is bounded by MAX_BATCH, and the worst case measures 8,144,656 gas against Monad's
+   30,000,000 per transaction limit (proofs/gas.txt).
+
+   MoolamConsent._holderOf(bytes32) (src/MoolamConsent.sol#222-232) has external calls inside a
+   loop: owner_ = IERC721(REGISTRY).ownerOf(uint256(passportId)) (src/MoolamConsent.sol#227-231)
+   	Calls stack containing the loop:
+   		MoolamConsent.setConsentBatch(bytes32[],IMoolamConsent.Consent,string)
+   		MoolamConsent._record(bytes32,IMoolamConsent.Consent,string)
+
+3. timestamp: _record uses block.timestamp for comparisons. On purpose, and named as a non-goal in
+   the design: the clock is the block timestamp, so a time query is only as fine as the chain's
    clock. What the comparison guards is a rate limit and the strictly increasing order of one
    passport's entries. A validator who could shift the clock by a few seconds gains nothing: they
    still cannot write for a passport they do not hold, and they cannot change an entry already
    written.
 
-   MoolamConsent.setConsent(...) uses timestamp for comparisons
+   MoolamConsent._record(...) uses timestamp for comparisons
    	Dangerous comparisons:
-   	- block.timestamp < nextAllowedAt (src/MoolamConsent.sol#94)
+   	- block.timestamp < nextAllowedAt (src/MoolamConsent.sol#200)
 
-3. naming-convention: REGISTRY, MIN_INTERVAL, MAX_INFO_BYTES and MAX_PAGE are not mixedCase. They
-   are an immutable and three constants, which are upper case by Solidity convention, and the
-   interface has to declare them as functions with the same names so the generated getters match.
-   MoolamReceiver.REGISTRY carries the identical finding and the identical reason.
+4. naming-convention: STANDARD, REGISTRY, MIN_INTERVAL, MAX_INFO_BYTES, MAX_PAGE and MAX_BATCH are
+   not mixedCase. They are an immutable and five constants, which are upper case by Solidity
+   convention, and the interface has to declare them as functions with the same names so the
+   generated getters match. MoolamReceiver.REGISTRY carries the identical finding and the identical
+   reason.
 
-   Variable MoolamConsent.REGISTRY (src/MoolamConsent.sol#32) is not in mixedCase
-   Function IMoolamConsent.REGISTRY() (src/interfaces/IMoolamConsent.sol#63) is not in mixedCase
-   Function IMoolamConsent.MIN_INTERVAL() (src/interfaces/IMoolamConsent.sol#67) is not in mixedCase
-   Function IMoolamConsent.MAX_INFO_BYTES() (src/interfaces/IMoolamConsent.sol#71) is not in mixedCase
-   Function IMoolamConsent.MAX_PAGE() (src/interfaces/IMoolamConsent.sol#75) is not in mixedCase
+   Variable MoolamConsent.REGISTRY (src/MoolamConsent.sol#40) is not in mixedCase
+   Function IMoolamConsent.STANDARD() (src/interfaces/IMoolamConsent.sol#71) is not in mixedCase
+   Function IMoolamConsent.REGISTRY() (src/interfaces/IMoolamConsent.sol#75) is not in mixedCase
+   Function IMoolamConsent.MIN_INTERVAL() (src/interfaces/IMoolamConsent.sol#79) is not in mixedCase
+   Function IMoolamConsent.MAX_INFO_BYTES() (src/interfaces/IMoolamConsent.sol#83) is not in mixedCase
+   Function IMoolamConsent.MAX_PAGE() (src/interfaces/IMoolamConsent.sol#87) is not in mixedCase
+   Function IMoolamConsent.MAX_BATCH() (src/interfaces/IMoolamConsent.sol#91) is not in mixedCase
 
 Nothing else in the run mentions MoolamConsent. Reentrancy, arbitrary-send, unchecked-transfer and
 the access control detectors have nothing to say about it, which is what a contract with one view

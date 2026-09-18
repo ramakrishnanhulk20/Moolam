@@ -17,7 +17,8 @@ Config notes (.solhint.json):
 
 
 ================================================================================
-WO-80, 2026-09-18. Re-run after MoolamConsent.sol and IMoolamConsent.sol were added.
+WO-80 and WO-80b, 2026-09-18. Re-run after MoolamConsent.sol and IMoolamConsent.sol were added
+and again after the batch call, the STANDARD name and the MAX_BATCH cap were added to them.
 Command: npx solhint@6.2.4 "src/**/*.sol"
 Result: no errors, no warnings. The empty section below is the whole output.
 

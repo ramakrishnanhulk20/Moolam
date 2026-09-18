@@ -413,65 +413,85 @@ Ran 5 test suites in 4.56s (5.24s CPU time): 114 tests passed, 0 failed, 0 skipp
 
 
 ================================================================================
-WO-80 MoolamConsent, gas, 2026-09-18
+WO-80 and WO-80b MoolamConsent, gas, 2026-09-18 (updated in place after the batch landed)
 Command: forge test --gas-report --match-path "test/MoolamConsent.t.sol" -n monad
 and forge test --match-test test_gasOfTheMainActions -vv -n monad
 
-The four scenarios the work order names, measured with gasleft around the call in
-test_gasOfTheMainActions, so each figure is the gas the call itself burns and does not include
-the 21,000 gas every transaction pays before it starts or the cost of its calldata.
+Measured with gasleft around the call in test_gasOfTheMainActions, so each figure is the gas the
+call itself burns and does not include the 21,000 gas every transaction pays before it starts or
+the cost of its calldata.
 
-| action                                   | gas     |
-|------------------------------------------+---------|
-| first statement for a passport           | 117,114 |
-| a later statement, no constraint text    |  90,813 |
-| a statement with 256 bytes of text       | 326,266 |
-| consentAt with 2 entries in the history  |  30,654 |
-| consentAt with 16 entries                |  16,785 |
-| consentAt with 256 entries               |  35,517 |
+| action                                          | gas       | per picture |
+|-------------------------------------------------+-----------+-------------|
+| first statement for a passport                  |   117,337 |     117,337 |
+| a later statement, no constraint text           |    91,036 |      91,036 |
+| a statement with 256 bytes of text              |   326,489 |     326,489 |
+| a batch of 32 first statements                  | 2,371,445 |      74,107 |
+| a batch of 32 with 256 bytes of text            | 8,144,656 |     254,520 |
+| consentAt with 2 entries in the history         |    30,676 |             |
+| consentAt with 16 entries                       |    16,807 |             |
+| consentAt with 256 entries                      |    35,539 |             |
 
-The first statement costs more because it starts the passport's history: the list length and the
-first entry are both fresh storage. Every later statement writes one fresh slot and updates the
-length, which is why it settles around 90,000 whatever the values are. A statement with 256 bytes of
-constraint text costs what it costs because the text itself is nine more storage slots.
+The first statement costs more than a later one because it starts the passport's history: the list
+length and the first entry are both fresh storage. A statement with 256 bytes of constraint text
+costs what it costs because the text itself is nine more storage slots, and a batch stores its own
+copy of that text against every passport, which is why the batch with text is the heavy row.
+
+The batch is the reason MAX_BATCH is 32. The worst batch measures 8,144,656 gas, a bit over a
+quarter of Monad's 30,000,000 gas per transaction limit, so the cap is provably inside one
+transaction with room left over.
 
 consentAt is a binary search, so the history length barely moves it: 16 entries reads cheaper than
 2 only because the entry it lands on sits in a slot already touched. Reads cost a user nothing
 anyway, they are eth_call.
 
 What this means for a creator, in plain English. Monad mainnet was quoting 102 gwei when this was
-measured (base fee 100, priority 2). A creator's first statement is about 140,000 gas all in,
-which is about 0.014 MON. Every statement after that is about 114,000 gas, about 0.012 MON. Adding
-a full length 256 byte note about their conditions takes it to about 0.036 MON. Reading what a
-passport allows, on any date, is free.
+measured (base fee 100, priority 2). One statement about one picture is about 140,000 gas all in,
+which is about 0.014 MON. Every statement after that on the same picture is about 0.012 MON, and
+attaching a full 256 byte note about the conditions takes it to about 0.036 MON.
+
+Stating one policy across 32 pictures in a single call costs about 0.245 MON, which is about
+0.0077 MON a picture: roughly half the price of saying the same thing 32 times. With a full 256
+byte note on each, the same batch is about 0.835 MON, about 0.026 MON a picture against 0.036
+alone. Reading what a passport allowed, on any date, is free.
+
+One Monad specific warning for whoever sends the batch: this chain charges the gas limit declared,
+not the gas used. A wallet that pads the limit on a 32 picture batch pays for the padding. Estimate
+the batch and send close to the estimate.
 
 The whole gas report table for the contract:
 
-| src/MoolamConsent.sol:MoolamConsent Contract |                 |        |        |        |         |
-+=====================================================================================================+
-| Deployment Cost                              | Deployment Size |        |        |        |         |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-|                                            0 |            4575 |        |        |        |         |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-|                                              |                 |        |        |        |         |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| Function Name                                | Min             | Avg    | Median | Max    | # Calls |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| MAX_PAGE                                     |             226 |    226 |    226 |    226 |       1 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| MAX_INFO_BYTES                               |             248 |    248 |    248 |    248 |       1 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| MIN_INTERVAL                                 |             246 |    246 |    246 |    246 |       2 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| REGISTRY                                     |             192 |    192 |    192 |    192 |       1 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| consentAt                                    |            1549 |  14551 |  12708 |  33427 |       9 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| consentOf                                    |            9423 |  24779 |  27535 |  36847 |       9 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| historyLength                                |             448 |   5448 |   8448 |   8448 |       8 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| historyPage                                  |             765 | 100421 |  15513 | 732104 |      11 |
-|----------------------------------------------+-----------------+--------+--------+--------+---------|
-| setConsent                                   |           33291 |  90363 |  89421 | 331010 |     363 |
-╰----------------------------------------------+-----------------+--------+--------+--------+---------╯
+| src/MoolamConsent.sol:MoolamConsent Contract |                 |        |        |         |         |
++======================================================================================================+
+| Deployment Cost                              | Deployment Size |        |        |         |         |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+|                                            0 |            5079 |        |        |         |         |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+|                                              |                 |        |        |         |         |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| Function Name                                | Min             | Avg    | Median | Max     | # Calls |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| MAX_BATCH                                    |             181 |    181 |    181 |     181 |       1 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| MAX_INFO_BYTES                               |             226 |    226 |    226 |     226 |       1 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| MAX_PAGE                                     |             248 |    248 |    248 |     248 |       1 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| MIN_INTERVAL                                 |             268 |    268 |    268 |     268 |       2 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| REGISTRY                                     |             192 |    192 |    192 |     192 |       1 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| STANDARD                                     |             448 |    448 |    448 |     448 |       1 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| consentAt                                    |            1571 |  14573 |  12730 |   33449 |       9 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| consentOf                                    |            9445 |  27731 |  27557 |   36869 |      18 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| historyLength                                |             448 |   5986 |   8448 |    8448 |      26 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| historyPage                                  |             765 | 100421 |  15513 |  732104 |      11 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| setConsent                                   |           24480 |  90418 |  89644 |  331233 |     363 |
+|----------------------------------------------+-----------------+--------+--------+---------+---------|
+| setConsentBatch                              |           23900 | 968571 | 180579 | 8140364 |      16 |
+╰----------------------------------------------+-----------------+--------+--------+---------+---------╯

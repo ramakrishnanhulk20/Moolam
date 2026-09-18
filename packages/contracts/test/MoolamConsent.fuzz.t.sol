@@ -176,6 +176,57 @@ contract MoolamConsentFuzzTest is Test {
         assertEq(keccak256(bytes(latest.constraintInfo)), keccak256(text));
     }
 
+    /// A batch of any allowed size writes exactly one entry for each picture, all with the same
+    /// statement, the same second and the same writer.
+    function testFuzz_aBatchWritesOneEntryPerPicture(uint8 count, uint8 raw) public {
+        uint256 size = bound(count, 1, 32);
+        bytes32[] memory ids = new bytes32[](size);
+        for (uint256 i = 0; i < size; ++i) {
+            ids[i] = keccak256(abi.encode("batch", i));
+            registry.mint(holderA, uint256(ids[i]));
+        }
+
+        vm.prank(holderA);
+        consent.setConsentBatch(ids, _state(raw), "");
+
+        for (uint256 i = 0; i < size; ++i) {
+            (bool stated, IMoolamConsent.Entry memory latest) = consent.consentOf(ids[i]);
+            assertTrue(stated);
+            assertEq(consent.historyLength(ids[i]), 1);
+            assertEq(latest.writer, holderA);
+            assertEq(latest.at, uint64(block.timestamp));
+            assertEq(uint8(latest.consent.aiTraining), raw % 3);
+        }
+    }
+
+    /// A batch with one picture the caller does not hold writes nothing at all, wherever that
+    /// picture sits in the list.
+    function testFuzz_oneRefusalLeavesTheWholeBatchUnwritten(uint8 count, uint8 position) public {
+        uint256 size = bound(count, 1, 31);
+        uint256 at = bound(position, 0, size);
+
+        bytes32 theirs = keccak256("held by somebody else");
+        registry.mint(holderB, uint256(theirs));
+
+        bytes32[] memory ids = new bytes32[](size + 1);
+        for (uint256 i = 0; i < size + 1; ++i) {
+            if (i == at) {
+                ids[i] = theirs;
+                continue;
+            }
+            ids[i] = keccak256(abi.encode("batch", i));
+            registry.mint(holderA, uint256(ids[i]));
+        }
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.NotPassportHolder.selector, theirs, holderA));
+        vm.prank(holderA);
+        consent.setConsentBatch(ids, _state(1), "");
+
+        for (uint256 i = 0; i < size + 1; ++i) {
+            assertEq(consent.historyLength(ids[i]), 0);
+        }
+    }
+
     /// Nobody but the address the registry names may write, whoever they are.
     function testFuzz_onlyTheHolderEverWrites(address caller) public {
         vm.assume(caller != holderA);

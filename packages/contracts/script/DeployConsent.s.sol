@@ -44,9 +44,11 @@ contract DeployConsent is Script {
         console2.log("block          ", block.number);
         console2.log("MoolamConsent  ", address(consent));
         console2.log("registry read  ", consent.REGISTRY());
+        console2.log("standard       ", consent.STANDARD());
         console2.log("min interval   ", consent.MIN_INTERVAL());
         console2.log("max info bytes ", consent.MAX_INFO_BYTES());
         console2.log("max page       ", consent.MAX_PAGE());
+        console2.log("max batch      ", consent.MAX_BATCH());
         // Printing the token symbol the registry answers with shows the address in the deployment
         // file really is the passport registry and not some other contract.
         console2.log("registry symbol", IERC721Metadata(registry).symbol());

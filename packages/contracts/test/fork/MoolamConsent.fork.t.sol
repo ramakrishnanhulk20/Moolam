@@ -17,6 +17,11 @@ contract MoolamConsentForkTest is Test {
     address internal constant REGISTRY = 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0;
     /// @dev A passport registered on mainnet by the live proof run, held by a real wallet.
     bytes32 internal constant PASSPORT = 0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638;
+    /// @dev Two more real passports from the live proof run, original.jpg and the same photo with a
+    ///      C2PA manifest. They were minted by the same wallet, which is what the batch test needs.
+    ///      The test reads both owners back before it trusts that, and skips if they have parted.
+    bytes32 internal constant PASSPORT_A = 0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c;
+    bytes32 internal constant PASSPORT_B = 0x7b4732f365aa235556b4b11b8916fd544f10acc034ae7e0b9e39068becae1a50;
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
 
     MoolamConsent internal consent;
@@ -44,6 +49,8 @@ contract MoolamConsentForkTest is Test {
     function test_theRealRegistryIsLiveAndIsWhatTheContractReads() public view {
         assertGt(REGISTRY.code.length, 0);
         assertEq(consent.REGISTRY(), REGISTRY);
+        assertEq(consent.STANDARD(), "cawg.training-mining/1.1");
+        assertEq(consent.MAX_BATCH(), 32);
         assertTrue(holder != address(0));
         console2.log("passport holder on Monad mainnet:", holder);
     }
@@ -95,12 +102,63 @@ contract MoolamConsentForkTest is Test {
         consent.setConsent(PASSPORT, _allowed(), "");
     }
 
+    function test_oneRealHolderStatesOnePolicyForTwoRealPassportsInOneCall() public {
+        address ownerA = IERC721(REGISTRY).ownerOf(uint256(PASSPORT_A));
+        address ownerB = IERC721(REGISTRY).ownerOf(uint256(PASSPORT_B));
+        if (ownerA != ownerB) {
+            console2.log("Skipped: no wallet on mainnet holds both of these passports today.");
+            vm.skip(true);
+            return;
+        }
+        console2.log("one mainnet wallet holds both passports:", ownerA);
+
+        bytes32[] memory ids = new bytes32[](2);
+        ids[0] = PASSPORT_A;
+        ids[1] = PASSPORT_B;
+
+        vm.prank(ownerA);
+        consent.setConsentBatch(ids, _notAllowed(), "");
+
+        for (uint256 i = 0; i < ids.length; ++i) {
+            // forge-lint: disable-next-line(calls-loop)
+            (bool stated, IMoolamConsent.Entry memory latest) = consent.consentOf(ids[i]);
+            assertTrue(stated);
+            assertEq(latest.writer, ownerA);
+            assertEq(uint8(latest.consent.aiTraining), uint8(IMoolamConsent.Use.NotAllowed));
+            // forge-lint: disable-next-line(calls-loop)
+            assertEq(consent.historyLength(ids[i]), 1);
+        }
+
+        // A passport the same wallet does not hold takes the whole batch down with it, including
+        // the write for the passport ahead of it in the list.
+        vm.warp(block.timestamp + consent.MIN_INTERVAL());
+        bytes32[] memory mixed = new bytes32[](2);
+        mixed[0] = PASSPORT_A;
+        mixed[1] = PASSPORT;
+        assertTrue(IERC721(REGISTRY).ownerOf(uint256(PASSPORT)) != ownerA);
+
+        vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.NotPassportHolder.selector, PASSPORT, ownerA));
+        vm.prank(ownerA);
+        consent.setConsentBatch(mixed, _allowed(), "");
+        assertEq(consent.historyLength(PASSPORT_A), 1);
+        assertEq(consent.historyLength(PASSPORT), 0);
+    }
+
     function test_aPassportTheRealRegistryHasNeverMintedIsRefused() public {
         bytes32 ghost = keccak256("a picture that was never registered on Monad");
 
         vm.expectRevert(abi.encodeWithSelector(IMoolamConsent.NotPassportHolder.selector, ghost, holder));
         vm.prank(holder);
         consent.setConsent(ghost, _allowed(), "");
+    }
+
+    function _notAllowed() internal pure returns (IMoolamConsent.Consent memory) {
+        return IMoolamConsent.Consent({
+            aiTraining: IMoolamConsent.Use.NotAllowed,
+            aiGenerativeTraining: IMoolamConsent.Use.NotAllowed,
+            aiInference: IMoolamConsent.Use.NotAllowed,
+            dataMining: IMoolamConsent.Use.NotAllowed
+        });
     }
 
     function _allowed() internal pure returns (IMoolamConsent.Consent memory) {

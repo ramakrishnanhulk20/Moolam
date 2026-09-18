@@ -12,6 +12,19 @@
   },
   {
     "type": "function",
+    "name": "MAX_BATCH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "MAX_INFO_BYTES",
     "inputs": [],
     "outputs": [
@@ -58,6 +71,19 @@
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "STANDARD",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
       }
     ],
     "stateMutability": "view"
@@ -341,6 +367,51 @@
     "stateMutability": "nonpayable"
   },
   {
+    "type": "function",
+    "name": "setConsentBatch",
+    "inputs": [
+      {
+        "name": "passportIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "consent",
+        "type": "tuple",
+        "internalType": "struct IMoolamConsent.Consent",
+        "components": [
+          {
+            "name": "aiTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiGenerativeTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiInference",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "dataMining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          }
+        ]
+      },
+      {
+        "name": "constraintInfo",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
     "type": "event",
     "name": "ConsentSet",
     "inputs": [
@@ -407,6 +478,17 @@
   },
   {
     "type": "error",
+    "name": "BatchTooLarge",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
     "name": "ConstraintInfoNotAllowed",
     "inputs": []
   },
@@ -436,6 +518,11 @@
         "internalType": "uint256"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "EmptyBatch",
+    "inputs": []
   },
   {
     "type": "error",

@@ -82,6 +82,32 @@ contract ConsentHandler is Test {
         } catch {}
     }
 
+    /// The same statement for a run of passports in one call. The set is a slice of the same three
+    /// passports the single write uses, so the two paths compete for the same histories.
+    function writeBatch(uint256 actorSeed, uint256 startSeed, uint256 sizeSeed, uint8 raw, bool constrained) external {
+        uint256 size = (sizeSeed % PASSPORT_COUNT) + 1;
+        uint256 start = startSeed % PASSPORT_COUNT;
+        address caller = actors[actorSeed % ACTOR_COUNT];
+        string memory text = constrained ? "https://moolam.xyz/terms" : "";
+
+        bytes32[] memory ids = new bytes32[](size);
+        address[] memory holders = new address[](size);
+        for (uint256 i = 0; i < size; ++i) {
+            ids[i] = passports[(start + i) % PASSPORT_COUNT];
+            holders[i] = registry.ownerOf(uint256(ids[i]));
+        }
+
+        vm.prank(caller);
+        try consent.setConsentBatch(ids, _state(raw, constrained), text) {
+            for (uint256 i = 0; i < size; ++i) {
+                if (caller != holders[i]) writesByANonHolder++;
+                writesLanded++;
+                lastWriter[ids[i]] = caller;
+                _remember(ids[i]);
+            }
+        } catch {}
+    }
+
     function transfer(uint256 passportSeed, uint256 actorSeed) external {
         bytes32 id = passports[passportSeed % PASSPORT_COUNT];
         address holder = registry.ownerOf(uint256(id));
