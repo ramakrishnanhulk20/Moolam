@@ -37,6 +37,37 @@ fetched server-side with a 10 second timeout and the same cap enforced while the
 body streams in. It answers with `{ result, manifest }`. The 64-bit pHash goes
 out as a decimal string, never a JSON number, because a double cannot hold it.
 
+Every match in that answer carries `consent`: what the picture's holder has
+stated about AI use, read live from the MoolamConsent contract on Monad mainnet
+at `CONSENT_ADDRESS`. That is the whole lookup an AI company needs, from a copy
+of the pixels with the metadata stripped to the creator's own words and the day
+they wrote them.
+
+```ts
+{ source: "chain", stated: true, standard: "cawg.training-mining/1.1",
+  aiTraining, aiGenerativeTraining, aiInference, dataMining,   // each one of
+  //   "unspecified" | "allowed" | "notAllowed" | "constrained"
+  constraintInfo?, at, writer }                // unix seconds, and who wrote it
+{ source: "chain", stated: false }             // the holder has never spoken
+{ source: "unavailable" }                      // we could not find out
+```
+
+The three sources say three different things. `chain` with `stated: true` is the
+holder's own word from the register; `chain` with `stated: false` is the contract
+saying they have never spoken for that passport; `unavailable` is this service
+saying the read failed or ran past its five second limit, and it is never
+permission. Per the CAWG 1.1 standard these words come from, a reader with no way
+to reach the creator treats `constrained` the same as `notAllowed`, and a field
+left `unspecified` is not permission either.
+
+A failed read never fails a verification: the match is what the caller came for.
+At most two passports are read per verification, the exact match and the best
+match when they differ, and each answer is held for 60 seconds against a cap of
+2,000 passports, so a flood of unknown pictures cannot grow this process without
+limit. `constraintInfo` comes back exactly as the chain holds it and is dropped
+if it is not within the 256 printable ASCII bytes the contract promises, because
+this answer is input to other people's parsers.
+
 Three limits protect the service from a file that is small on disk and huge once
 decoded. Anything over 40 megapixels is refused with 413 before a single pixel
 is decoded, because a 572 KB JPEG can unpack to 100 megapixels. Only two matches
@@ -187,7 +218,8 @@ Browsers are only allowed to call any of this from an origin named in
 into a refusal.
 
 `POST /verify/paid` is the same answer behind an x402 payment: 5 cents in USDC
-on Monad mainnet, settled by Monad's facilitator. It only exists when
+on Monad mainnet, settled by Monad's facilitator, and the same `consent` field
+beside every match. It only exists when
 `X402_ENABLED=true`, and otherwise the path returns 404. Without a payment it
 answers 402, the terms ride in the base64 `PAYMENT-REQUIRED` header, and the JSON
 body says in words what to do next. It takes a multipart `file` upload only,
@@ -335,6 +367,7 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `GENERATOR_WALLET_ADDRESS` | that wallet's address, optional. Left unset it is read from Privy once; set, it is checked against Privy and a mismatch stops the signing |
 | `GENERATOR_AGENT_ID` | the agent's ERC-8004 identity, default `10249`, the id `wallets.json` records next to the wallet |
 | `MOOLAM_REGISTRY_ADDRESS` | the registry the generator signs against, default the deployed `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`. Change it only after a redeploy |
+| `CONSENT_ADDRESS` | the consent register `/verify` reads statements from, default the deployed `0x1151E69a82947920546e779c4C8c785b2a3C1277`. Change it only after a redeploy |
 | `OPENAI_API_KEY` | the image model key from platform.openai.com. This is spending money, so treat it like the Pinata token |
 | `OPENROUTER_API_KEY` | used instead when there is no OpenAI key. Set `AGENT_IMAGE_MODEL` to the vendor-prefixed name as well |
 | `AGENT_IMAGE_MODEL` | which model draws, default `gpt-image-1-mini` |

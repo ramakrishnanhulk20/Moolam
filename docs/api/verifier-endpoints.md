@@ -42,7 +42,8 @@ curl -s -X POST http://localhost:4000/verify \
       blockhashDistance: number,    // 0 to 256
       variant: "identity" | "rot90" | "rot180" | "rot270"
              | "mirror" | "mirror-rot90" | "mirror-rot180" | "mirror-rot270",
-      score: number
+      score: number,
+      consent: Consent              // what the holder has stated, see below
     } | null,
     matches: Match[],               // best first, at most 20
     confidence: number,             // 1 for an exact hit, 0 when nothing matched
@@ -80,6 +81,42 @@ even when the best match came from a rotated variant. `variant` names which of t
 A match must clear both thresholds: pHash at most 10 of 64, blockhash at most 40 of 256. Past
 either one, nothing is returned and `confidence` is 0.
 
+**What the holder said about AI use.** Every match the answer names carries `consent`, read live from
+the MoolamConsent contract on Monad mainnet at `CONSENT_ADDRESS`
+(`0x1151E69a82947920546e779c4C8c785b2a3C1277`). This is the lookup an AI company makes before using
+a picture: from the pixels alone, even with the metadata stripped, to the creator's own statement
+and the date they wrote it.
+
+```ts
+type Use = "unspecified" | "allowed" | "notAllowed" | "constrained"
+
+type Consent =
+  | { source: "chain", stated: true,
+      standard: "cawg.training-mining/1.1",
+      aiTraining: Use, aiGenerativeTraining: Use, aiInference: Use, dataMining: Use,
+      constraintInfo?: string,      // at most 256 printable ASCII bytes, absent when there are none
+      at: number,                   // unix seconds, the block timestamp of the statement
+      writer: `0x${string}` }       // the address that held the passport when it was written
+  | { source: "chain", stated: false }
+  | { source: "unavailable" }
+```
+
+The three sources mean three different things and must not be mixed up. `source: "chain"` with
+`stated: true` is the holder's own word, read from the register. `source: "chain"` with
+`stated: false` is the contract saying that holder has never spoken for this passport. `source:
+"unavailable"` is this service saying it could not find out, because the read failed or ran past its
+five second limit, and it is never permission to use the picture. A failed read never fails the
+verification: the match is what the caller came for, so the answer still comes back `200`.
+
+Per the CAWG Training and Data Mining 1.1 standard this vocabulary comes from, a reader with no way
+to reach the creator treats `constrained` the same as `notAllowed`. A field left `unspecified` is
+not permission either: the creator has said nothing about that use.
+
+At most two passports are read per verification, the exact match and the best match when they are
+different, and each answer is held in the service's memory for 60 seconds. `constraintInfo` is
+returned exactly as the chain holds it, and is dropped if it is not within the 256 printable ASCII
+bytes the contract promises, because this answer is input to other people's parsers.
+
 **Status codes.**
 
 | Code | When |
@@ -108,6 +145,12 @@ and risk the two copies drifting, the paid route does not offer it.
 
 **Response.** `200` with the same `{ result, manifest }` body as `/verify`, and the base64
 `PAYMENT-RESPONSE` header carrying the settlement: `{ success, transaction, network, payer }`.
+
+Each match carries the same `consent` field, with the same three sources and the same rule that
+`constrained` reads as `notAllowed` to anyone who cannot reach the creator. It is attached before
+the payment is settled, so the body the facilitator signs over and the answer the payer is served
+are the same. Nothing about payment changes it: a read that fails answers `{ source: "unavailable" }`
+and the paid verification still comes back `200`.
 
 **Status codes.**
 

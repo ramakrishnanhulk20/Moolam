@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { withConsent } from "../consentRead.js";
 import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
 
 /**
@@ -9,13 +10,16 @@ import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
  * and the URL form is fetched server-side with a 10 second timeout, refusing any address inside
  * our own network before and after every redirect.
  *
+ * The matched passport carries what its holder stated about AI use, read from the consent
+ * contract. A read that fails leaves `consent` as { source: "unavailable" } and the match stands.
+ *
  * Answers 503 `busy` when no matching slot came free in time.
  */
 export async function verifyRoutes(app: FastifyInstance): Promise<void> {
   app.post("/verify", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const bytes = request.isMultipart() ? await readUpload(request) : await readFromUrl(request);
-      return reply.send(await verifyBytes(app, bytes));
+      return reply.send(await withConsent(await verifyBytes(app, bytes), app.verifier.consent));
     } catch (error) {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);

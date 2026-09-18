@@ -38,6 +38,14 @@ const DEFAULT_PINATA_GATEWAY = "https://gateway.pinata.cloud/ipfs/";
  */
 const DEFAULT_MOOLAM_REGISTRY = "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0";
 
+/**
+ * MoolamConsent on Monad mainnet, from the same deployments file: deployed in block 105828247 and
+ * verified through Sourcify. It is where /verify reads what a picture's holder said about AI use.
+ * Like the registry above, the container ships only this package's source, so the address is held
+ * here rather than read from the contracts package at runtime.
+ */
+const DEFAULT_MOOLAM_CONSENT = "0x1151E69a82947920546e779c4C8c785b2a3C1277";
+
 /** The ERC-8004 identity the generator agent owns, minted by the Privy proof. */
 const DEFAULT_GENERATOR_AGENT_ID = "10249";
 
@@ -249,6 +257,14 @@ const schema = z
       .refine((value) => /^0x[0-9a-fA-F]{40}$/.test(value), {
         message: "MOOLAM_REGISTRY_ADDRESS must be 0x followed by 40 hex characters",
       }),
+    CONSENT_ADDRESS: z
+      .string()
+      .trim()
+      .default(DEFAULT_MOOLAM_CONSENT)
+      .transform((value) => (value.length === 0 ? DEFAULT_MOOLAM_CONSENT : value))
+      .refine((value) => /^0x[0-9a-fA-F]{40}$/.test(value), {
+        message: "CONSENT_ADDRESS must be 0x followed by 40 hex characters",
+      }),
     CORS_ORIGINS: z
       .string()
       .trim()
@@ -453,6 +469,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     EDITS_PER_DAY: source.EDITS_PER_DAY,
     GENERATE_PER_DAY: source.GENERATE_PER_DAY,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
+    CONSENT_ADDRESS: source.CONSENT_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,
     TRUST_PROXY: source.TRUST_PROXY,
     INDEX_REFRESH_MS: source.INDEX_REFRESH_MS,

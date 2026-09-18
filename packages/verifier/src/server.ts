@@ -8,6 +8,7 @@ import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
 import type { PrivyKeys } from "./auth/privy.js";
 import { checkRegistry } from "./boot/registryChecks.js";
+import { consentReader, offlineConsentReader, type ConsentReader } from "./consentRead.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute } from "./env.js";
 import { waitingGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
@@ -55,6 +56,8 @@ export interface Verifier {
   runPrepare: <T>(task: () => Promise<T>) => Promise<T>;
   /** Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand. */
   reload: () => Promise<void>;
+  /** Reads what a passport's holder has stated about AI use, for the verify answers. */
+  consent: ConsentReader;
   /** The routes this host mounted, so /health can say what it is able to serve. */
   routes: string[];
 }
@@ -170,6 +173,11 @@ export function sourceFromEnv(): PassportSource {
  * the same either way, so switching payment on adds a route and changes nothing
  * that already works.
  *
+ * Both verify routes also read the matched passport's consent statement from the
+ * MoolamConsent contract at CONSENT_ADDRESS. That read can never fail a
+ * verification: it is bounded by its own timeout and answers "unavailable" when
+ * the chain does not.
+ *
  * Throws when the source cannot be read or holds malformed records, when x402 is on without a
  * base URL to quote, when EXPECT_ROUTES names a route this host cannot mount, and when the
  * registry check finds the chain disagreeing with what this host would sign.
@@ -182,6 +190,7 @@ export async function buildServer(
     prepare?: { keys?: PrivyKeys };
     generate?: { keys?: PrivyKeys };
     edit?: { keys?: PrivyKeys };
+    consent?: ConsentReader;
     checks?: { registry?: () => Promise<void> };
   } = {},
 ): Promise<FastifyInstance> {
@@ -200,6 +209,9 @@ export async function buildServer(
   let current = await loadIndex(source);
   const lookupExact = (sha256: Hex): PassportRecord | undefined => current.byId.get(sha256.toLowerCase() as Hex);
   const gate = waitingGate(MAX_CONCURRENT_MATCHES, env.MATCH_WAIT_MS);
+  // Under a test runner the default reader makes no network call: a unit suite must not depend on
+  // a public RPC being up. A test that wants a statement passes its own reader.
+  const consent = options.consent ?? (env.NODE_ENV === "test" ? offlineConsentReader() : consentReader());
 
   const reload = async (): Promise<void> => {
     try {
@@ -271,6 +283,7 @@ export async function buildServer(
     runMatch: (bytes: Buffer) => gate(() => matchImage(bytes, current.index, lookupExact)),
     runPrepare: <T>(task: () => Promise<T>) => gate(task),
     reload,
+    consent,
     routes: [
       "verify",
       ...(mounts["verify/paid"] ? ["verify/paid"] : []),
