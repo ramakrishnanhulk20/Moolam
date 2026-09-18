@@ -33,6 +33,38 @@ if (!parsed.success) {
 
 export const publicEnv = parsed.data;
 
+/**
+ * The dedicated Monad endpoint the server reads through, when one is set.
+ *
+ * The address itself carries the access token, so this is a secret: it never
+ * takes a NEXT_PUBLIC name, it is only read where there is no window, and any
+ * address viem writes into an error is taken back out by reason() in
+ * lib/chain/client.ts. Leaving it unset is a supported setup and means every
+ * read goes to the public endpoint, exactly as before.
+ *
+ * A value that is not an https URL stops the boot instead of falling back to
+ * the public endpoint, because a silent fallback would hide a typo behind the
+ * rate limiting this variable exists to escape. The check is one URL parse plus
+ * the scheme, so it covers anything that is not an absolute https address and
+ * it cannot tell a working endpoint from an expired one.
+ */
+function serverRpcEndpoint(): string | undefined {
+  if (typeof window !== "undefined") {
+    return undefined;
+  }
+  const raw = process.env.MONAD_RPC_URL?.trim();
+  if (raw === undefined || raw.length === 0) {
+    return undefined;
+  }
+  if (!z.url({ protocol: /^https$/ }).safeParse(raw).success) {
+    // The value is deliberately left out of the message: it is the credential.
+    throw new Error("MONAD_RPC_URL is set but is not an https URL. See packages/web/.env.example.");
+  }
+  return raw;
+}
+
+export const serverRpcUrl = serverRpcEndpoint();
+
 /** Privy is optional at build time: without an app id the studio says so instead of crashing. */
 export const isPrivyConfigured = publicEnv.privyAppId !== undefined;
 

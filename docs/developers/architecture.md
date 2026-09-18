@@ -187,6 +187,17 @@ flowchart TD
     VP[Verifier<br/>Policy] -. implements .-> IVP
 ```
 
+## How the app reads the chain
+
+Every chain read a page makes happens on the app's server, not in the browser, so one endpoint
+answers for every visitor. Two endpoints can be named. `NEXT_PUBLIC_MONAD_RPC_URL` is the public
+one and is the only address the browser is ever given. `MONAD_RPC_URL` is optional and secret: a
+dedicated endpoint, such as a QuickNode one, whose address carries its own access token. When it is
+set, the server tries it first and falls back to the public endpoint, so a rate-limited minute on
+either side is a slower page rather than an error. It is read on the server only, it must be an
+https URL or the app refuses to start, and the one line a page prints when a read fails has every
+address taken out of it first.
+
 ## What is immutable and what can change
 
 - `MoolamRegistry` has no upgrade path. Records, edits and attestations are only ever added. The

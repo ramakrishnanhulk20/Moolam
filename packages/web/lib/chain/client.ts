@@ -1,9 +1,9 @@
-import { createPublicClient, http, type Abi, type Hex } from "viem";
+import { createPublicClient, fallback, http, type Abi, type Hex } from "viem";
 import { monad } from "viem/chains";
 import deployment from "../../../contracts/deployments/monad-mainnet.json";
 import registryAbiJson from "../../../contracts/abi/MoolamRegistry.json";
 import policyAbiJson from "../../../contracts/abi/VerifierPolicy.json";
-import { publicEnv } from "@/lib/env";
+import { publicEnv, serverRpcUrl } from "@/lib/env";
 
 /**
  * The deployed addresses come from the file the deploy script writes, so the
@@ -68,22 +68,50 @@ export const registryAbi = registryAbiJson as Abi;
  */
 export const policyAbi = policyAbiJson as Abi;
 
+const RPC_OPTIONS = { batch: true, timeout: 15_000 } as const;
+
 /**
- * Reads only, and only from the server. The RPC URL is public, but keeping the
- * reads on this side means one endpoint answers for every visitor rather than
- * every browser opening its own connection to the chain.
+ * Reads only, and only from the server. Keeping the reads on this side means
+ * one endpoint answers for every visitor rather than every browser opening its
+ * own connection to the chain.
+ *
+ * With MONAD_RPC_URL set, the dedicated endpoint answers first and the free
+ * public one only picks up what it drops, so a rate-limited minute on either
+ * side is a slower read rather than an error line on a passport page. Ranking
+ * is off on purpose: the order is the one written here, not whichever endpoint
+ * happened to be quickest a moment ago. Without the variable this is the plain
+ * public transport the app has always used.
  */
 export const chain = createPublicClient({
   chain: monad,
-  transport: http(publicEnv.monadRpcUrl, { batch: true, timeout: 15_000 }),
+  transport:
+    serverRpcUrl === undefined
+      ? http(publicEnv.monadRpcUrl, RPC_OPTIONS)
+      : fallback([http(serverRpcUrl, RPC_OPTIONS), http(publicEnv.monadRpcUrl, RPC_OPTIONS)], { rank: false }),
 });
 
-/** Turns any thrown value into one line a person can act on. */
+/**
+ * Any absolute http or https address, wherever it sits in a line of text.
+ *
+ * One rule rather than a list of hosts: the endpoint we most need to keep out
+ * of a page is the one nobody thought to add to a list. It covers anything with
+ * an http or https scheme and it does not cover a bare hostname written without
+ * one, which carries no access token in this app.
+ */
+const ANY_ADDRESS = /https?:\/\/\S+/gi;
+
+/**
+ * Turns any thrown value into one line a person can act on, with every address
+ * taken out of it.
+ *
+ * viem writes the endpoint it called into its errors, several pages print this
+ * line to a visitor, and the server may be reading through an endpoint whose
+ * address is its access token. So the address never survives this function,
+ * whichever endpoint it names.
+ */
 export function reason(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message.split("\n")[0];
-  }
-  return String(error);
+  const text = error instanceof Error ? error.message : String(error);
+  return text.split("\n")[0].replace(ANY_ADDRESS, "the RPC endpoint");
 }
 
 export function shortHex(value: string, lead = 6, tail = 4): string {
