@@ -40,6 +40,24 @@ describe("parseEnv", () => {
     );
   });
 
+  it("names MONAD_RPC_FALLBACK_URL when it is not an http URL, without printing what was set", () => {
+    const wrong = "busy.example/TOKEN-THAT-MUST-NOT-BE-PRINTED";
+
+    const thrown = (() => {
+      try {
+        parseEnv({ MONAD_RPC_FALLBACK_URL: wrong });
+        return undefined;
+      } catch (error) {
+        return error as Error;
+      }
+    })();
+
+    expect(thrown?.message).toMatch(/MONAD_RPC_FALLBACK_URL/);
+    expect(thrown?.message).not.toContain("TOKEN-THAT-MUST-NOT-BE-PRINTED");
+    expect(parseEnv({}).MONAD_RPC_FALLBACK_URL).toBe("https://rpc.monad.xyz");
+    expect(parseEnv({ MONAD_RPC_FALLBACK_URL: "  " }).MONAD_RPC_FALLBACK_URL).toBe("https://rpc.monad.xyz");
+  });
+
   it("takes the C2PA certificate and key as a pair or not at all", () => {
     expect(() => parseEnv({ MOOLAM_C2PA_CERT_PATH: "certs/chain.pem" })).toThrow(/go together/);
     expect(() => parseEnv({ MOOLAM_C2PA_KEY_PATH: "certs/signer.key.pem" })).toThrow(/go together/);

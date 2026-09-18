@@ -68,6 +68,24 @@ limit. `constraintInfo` comes back exactly as the chain holds it and is dropped
 if it is not within the 256 printable ASCII bytes the contract promises, because
 this answer is input to other people's parsers.
 
+The same matches carry `dispute`, read from the registry's own dispute view at
+`MOOLAM_REGISTRY_ADDRESS`, under the same limits and the same memory.
+
+```ts
+{ source: "chain", status: "none" }        // nobody has challenged this passport
+{ source: "chain", status: "open" }        // a challenge is open and unsettled
+{ source: "chain", status: "upheld" }      // the challenge stood: the record is marked disputed
+{ source: "chain", status: "rejected" }    // the challenge was settled against the challenger
+{ source: "unavailable" }                  // we could not find out
+```
+
+The two fields are read together. A statement on a passport whose dispute is
+`open` or `upheld` should not be relied on: the registry's own design says the
+record behind it is in question, so the holder's word about AI use is in question
+with it. `unavailable` is never a clean record, and the chain is read rather than
+the passport index because a dispute opened a minute ago is exactly the one a
+reader must not miss.
+
 Three limits protect the service from a file that is small on disk and huge once
 decoded. Anything over 40 megapixels is refused with 413 before a single pixel
 is decoded, because a 572 KB JPEG can unpack to 100 megapixels. Only two matches
@@ -218,8 +236,8 @@ Browsers are only allowed to call any of this from an origin named in
 into a refusal.
 
 `POST /verify/paid` is the same answer behind an x402 payment: 5 cents in USDC
-on Monad mainnet, settled by Monad's facilitator, and the same `consent` field
-beside every match. It only exists when
+on Monad mainnet, settled by Monad's facilitator, and the same `consent` and
+`dispute` fields beside every match. It only exists when
 `X402_ENABLED=true`, and otherwise the path returns 404. Without a payment it
 answers 402, the terms ride in the base64 `PAYMENT-REQUIRED` header, and the JSON
 body says in words what to do next. It takes a multipart `file` upload only,
@@ -349,7 +367,8 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `ENVIO_GRAPHQL_URL` | the Envio GraphQL endpoint, required when `PASSPORT_SOURCE=envio` |
 | `MOOLAM_C2PA_CERT_PATH` | signing certificate chain, optional, set with the key |
 | `MOOLAM_C2PA_KEY_PATH` | signing key, optional, set with the certificate |
-| `MONAD_MAINNET_RPC_URL` | where the reputation writer reads and sends, default `https://rpc.monad.xyz` |
+| `MONAD_MAINNET_RPC_URL` | the endpoint every read and send is tried on first, default `https://rpc.monad.xyz`. A dedicated endpoint belongs here |
+| `MONAD_RPC_FALLBACK_URL` | the endpoint that picks up whatever the first one drops, default `https://rpc.monad.xyz`. Set to the same address as the first and there is no fallback, which is the default |
 | `VERIFIER_PRIVATE_KEY` | the wallet that signs reputation feedback, never the agent owner's |
 | `VERIFIER_ADDRESS` | that wallet's address, the client a summary is read for |
 | `VERIFIER_BASE_URL` | the public URL of this service, used as the feedback endpoint |

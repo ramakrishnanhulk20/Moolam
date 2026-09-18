@@ -1,6 +1,7 @@
 import {
   createPublicClient,
   createWalletClient,
+  fallback,
   http,
   type PublicClient,
   type Transport,
@@ -103,13 +104,39 @@ export const reputationAbi = [
   },
 ] as const;
 
+/**
+ * The way every read and every send in this service reaches Monad.
+ *
+ * MONAD_MAINNET_RPC_URL answers first and MONAD_RPC_FALLBACK_URL only picks up what it drops, so a
+ * rate-limited minute on a dedicated endpoint becomes a slower answer rather than a failed one.
+ * Ranking is off on purpose: the order is the one written here, not whichever endpoint happened to
+ * be quickest a moment ago. When the two names hold the same address there is nothing to fall back
+ * to, so it stays a plain transport instead of asking one endpoint twice for every failure.
+ *
+ * Both sides of that comparison come out of the same environment schema, which trims and checks
+ * them, so they are compared as the strings that schema produced rather than parsed again here.
+ *
+ * Neither address is ever logged or returned. viem writes the endpoint it called into its own
+ * errors, and a dedicated endpoint's path is its access token, so the routes answer with their own
+ * words instead of viem's.
+ */
+export function monadTransport(options: { rpcUrl?: string; timeout?: number } = {}): Transport {
+  const first = options.rpcUrl ?? env.MONAD_MAINNET_RPC_URL;
+  const second = env.MONAD_RPC_FALLBACK_URL;
+  const settings = options.timeout === undefined ? {} : { timeout: options.timeout };
+  if (first === second) {
+    return http(first, settings);
+  }
+  return fallback([http(first, settings), http(second, settings)], { rank: false });
+}
+
 /** A read-only client on Monad mainnet. Tests pass their own transport instead of a URL. */
 export function readClient(
   options: { rpcUrl?: string; transport?: Transport } = {},
 ): PublicClient<Transport, typeof monad> {
   return createPublicClient({
     chain: monad,
-    transport: options.transport ?? http(options.rpcUrl ?? env.MONAD_MAINNET_RPC_URL),
+    transport: options.transport ?? monadTransport({ rpcUrl: options.rpcUrl }),
   });
 }
 
@@ -128,7 +155,7 @@ export function writeClient(
   const wallet = createWalletClient({
     account,
     chain: monad,
-    transport: options.transport ?? http(options.rpcUrl ?? env.MONAD_MAINNET_RPC_URL),
+    transport: options.transport ?? monadTransport({ rpcUrl: options.rpcUrl }),
   });
   return { wallet, address: account.address as Hex };
 }

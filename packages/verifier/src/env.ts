@@ -19,7 +19,11 @@ const REPO_ROOT = path.resolve(PACKAGE_ROOT, "..", "..");
  */
 const DEFAULT_PASSPORT_PATH = path.join(PACKAGE_ROOT, "test-assets", "passports.json");
 
-/** Monad's own public endpoint, so a read works before anyone signs up for a provider. */
+/**
+ * Monad's own public endpoint, so a read works before anyone signs up for a provider. It is also
+ * what sits behind a dedicated endpoint when one is configured, which is why the same address is
+ * the default for both RPC variables.
+ */
 const DEFAULT_MONAD_RPC_URL = "https://rpc.monad.xyz";
 
 /** The facilitator Monad runs for x402 on mainnet. */
@@ -123,6 +127,12 @@ const schema = z
       .trim()
       .default(DEFAULT_MONAD_RPC_URL)
       .refine(isHttpUrl, { message: "MONAD_MAINNET_RPC_URL must be an absolute http or https URL" }),
+    MONAD_RPC_FALLBACK_URL: z
+      .string()
+      .trim()
+      .default(DEFAULT_MONAD_RPC_URL)
+      .transform((value) => (value.length === 0 ? DEFAULT_MONAD_RPC_URL : value))
+      .refine(isHttpUrl, { message: "MONAD_RPC_FALLBACK_URL must be an absolute http or https URL" }),
     VERIFIER_PRIVATE_KEY: optionalPattern(
       /^0x[0-9a-fA-F]{64}$/,
       "VERIFIER_PRIVATE_KEY must be 0x followed by 64 hex characters",
@@ -445,6 +455,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     MOOLAM_C2PA_CERT_PATH: source.MOOLAM_C2PA_CERT_PATH,
     MOOLAM_C2PA_KEY_PATH: source.MOOLAM_C2PA_KEY_PATH,
     MONAD_MAINNET_RPC_URL: source.MONAD_MAINNET_RPC_URL,
+    MONAD_RPC_FALLBACK_URL: source.MONAD_RPC_FALLBACK_URL,
     VERIFIER_PRIVATE_KEY: source.VERIFIER_PRIVATE_KEY,
     VERIFIER_ADDRESS: source.VERIFIER_ADDRESS,
     VERIFIER_BASE_URL: source.VERIFIER_BASE_URL,

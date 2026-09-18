@@ -1,7 +1,8 @@
-// Covers what a caller is told when this service cannot reach the chain. The RPC address may be a
-// dedicated endpoint whose path is its access token, and viem writes that address into its own
-// errors, so the test proves the error viem raises does carry the address and that no route hands
-// it on: /edit answers its fixed `chain-unavailable`, and the other routes answer as they always do.
+// Covers what a caller is told when this service cannot reach the chain, with both endpoints set,
+// so the read is tried on each of them. The RPC address may be a dedicated endpoint whose path is
+// its access token, and viem writes that address into its own errors, so the test proves the error
+// viem raises does carry an address and that no route hands either of them on: /edit answers its
+// fixed `chain-unavailable`, and the other routes answer as they always do.
 // Does NOT cover the server's own log, which is private to the host and does carry the reason, and
 // does NOT cover a URL the caller itself sent: /verify quotes that back in a 400 on purpose, and it
 // is the caller's address, not this service's endpoint.
@@ -15,11 +16,14 @@ import { makeImage } from "./helpers.js";
 /** Shaped like a QuickNode address, where the path is the credential. Nothing here is real. */
 const ENDPOINT = "https://leak-canary.example/TOKEN-CANARY-7f3a";
 const TOKEN = "TOKEN-CANARY-7f3a";
+/** The endpoint behind it, which is where a failed read ends up and whose address is just as private. */
+const SPARE_TOKEN = "TOKEN-CANARY-b2c4";
 const ANY_ADDRESS = /https?:\/\//;
 
 const SETTINGS = vi.hoisted(() => {
   const settings = { appId: "moolamtestapp0000004" };
   process.env.MONAD_MAINNET_RPC_URL = "https://leak-canary.example/TOKEN-CANARY-7f3a";
+  process.env.MONAD_RPC_FALLBACK_URL = "https://leak-canary-spare.example/TOKEN-CANARY-b2c4";
   process.env.PRIVY_APP_ID = settings.appId;
   process.env.PINATA_JWT = "test-token-not-a-real-pinata-jwt";
   process.env.PINATA_GATEWAY_URL = "https://moolam-test.mypinata.cloud/ipfs/";
@@ -47,6 +51,8 @@ let signing: CryptoKey;
 let verifying: CryptoKey;
 let app: FastifyInstance;
 let picture: Buffer;
+/** Every address the service tried to reach, so the test can show both endpoints were asked. */
+const tried: string[] = [];
 
 async function token(subject: string): Promise<string> {
   return await new SignJWT({})
@@ -88,7 +94,8 @@ beforeAll(async () => {
   const realFetch = globalThis.fetch;
   vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     const url = input instanceof Request ? input.url : String(input);
-    if (url.startsWith("https://leak-canary.example")) {
+    if (url.startsWith("https://leak-canary")) {
+      tried.push(url);
       throw new TypeError("fetch failed");
     }
     return await realFetch(input, init);
@@ -104,14 +111,20 @@ afterAll(async () => {
 });
 
 describe("an endpoint this service cannot reach", () => {
-  it("raises an error that carries the endpoint's whole address", async () => {
+  it("tries both endpoints and raises an error that carries one of them whole", async () => {
+    tried.length = 0;
+
     const thrown = await passportExists(readClient(), REGISTRY, PARENT).then(
       () => null,
       (error: unknown) => error as Error,
     );
 
     expect(thrown).not.toBeNull();
-    expect(thrown?.message).toContain(TOKEN);
+    // The configured endpoint is asked first and the spare picks up its failure, so the error that
+    // survives is the last one, and it carries that endpoint's address the same way.
+    expect(tried.some((url) => url.includes(TOKEN))).toBe(true);
+    expect(tried.some((url) => url.includes(SPARE_TOKEN))).toBe(true);
+    expect(thrown?.message).toContain(SPARE_TOKEN);
   });
 
   it("tells an editing caller the chain is unavailable and nothing else", async () => {
@@ -131,6 +144,7 @@ describe("an endpoint this service cannot reach", () => {
     expect(response.statusCode).toBe(502);
     expect(response.json()).toEqual({ error: "chain-unavailable" });
     expect(response.body).not.toContain(TOKEN);
+    expect(response.body).not.toContain(SPARE_TOKEN);
     expect(response.body).not.toMatch(ANY_ADDRESS);
   });
 
@@ -144,6 +158,7 @@ describe("an endpoint this service cannot reach", () => {
 
     for (const response of asked) {
       expect(response.body).not.toContain(TOKEN);
+      expect(response.body).not.toContain(SPARE_TOKEN);
       expect(response.body).not.toMatch(ANY_ADDRESS);
     }
   });

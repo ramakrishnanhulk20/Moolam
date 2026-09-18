@@ -43,7 +43,8 @@ curl -s -X POST http://localhost:4000/verify \
       variant: "identity" | "rot90" | "rot180" | "rot270"
              | "mirror" | "mirror-rot90" | "mirror-rot180" | "mirror-rot270",
       score: number,
-      consent: Consent              // what the holder has stated, see below
+      consent: Consent,             // what the holder has stated, see below
+      dispute: Dispute              // whether the passport is challenged, see below
     } | null,
     matches: Match[],               // best first, at most 20
     confidence: number,             // 1 for an exact hit, 0 when nothing matched
@@ -117,6 +118,30 @@ different, and each answer is held in the service's memory for 60 seconds. `cons
 returned exactly as the chain holds it, and is dropped if it is not within the 256 printable ASCII
 bytes the contract promises, because this answer is input to other people's parsers.
 
+**Whether the passport is under dispute.** The same matches carry `dispute`, read live from the
+registry's own dispute view at `MOOLAM_REGISTRY_ADDRESS`
+(`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`), under the same limits: at most two passports, a five
+second cap, 60 seconds in memory, and a failed read that never fails the verification.
+
+```ts
+type Dispute =
+  | { source: "chain", status: "none" }      // nobody has challenged this passport
+  | { source: "chain", status: "open" }      // a challenge is open, with a bond behind it
+  | { source: "chain", status: "upheld" }    // the challenge stood: the record is marked disputed
+  | { source: "chain", status: "rejected" }  // the challenge was settled against the challenger
+  | { source: "unavailable" }                // this service could not find out
+```
+
+The four words are the registry's own `DisputeStatus` enum, mapped one for one. A status the enum
+has no room for comes back `unavailable` rather than as a guess at the nearest word.
+
+**Read `consent` and `dispute` together.** A statement on a passport whose dispute is `open` or
+`upheld` should not be relied on: the registry's design says that record is in question, and the
+holder's word about AI use rests on that record. `unavailable` on either field is not permission and
+not a clean record, it is this service saying it could not find out. The chain is read rather than
+the passport index because a dispute opened since the index was last rebuilt is exactly the one a
+reader must not miss.
+
 **Status codes.**
 
 | Code | When |
@@ -146,10 +171,11 @@ and risk the two copies drifting, the paid route does not offer it.
 **Response.** `200` with the same `{ result, manifest }` body as `/verify`, and the base64
 `PAYMENT-RESPONSE` header carrying the settlement: `{ success, transaction, network, payer }`.
 
-Each match carries the same `consent` field, with the same three sources and the same rule that
-`constrained` reads as `notAllowed` to anyone who cannot reach the creator. It is attached before
-the payment is settled, so the body the facilitator signs over and the answer the payer is served
-are the same. Nothing about payment changes it: a read that fails answers `{ source: "unavailable" }`
+Each match carries the same `consent` and `dispute` fields, with the same sources, the same rule that
+`constrained` reads as `notAllowed` to anyone who cannot reach the creator, and the same rule that a
+statement on an `open` or `upheld` passport should not be relied on. Both are attached before the
+payment is settled, so the body the facilitator signs over and the answer the payer is served are the
+same. Nothing about payment changes either one: a read that fails answers `{ source: "unavailable" }`
 and the paid verification still comes back `200`.
 
 **Status codes.**

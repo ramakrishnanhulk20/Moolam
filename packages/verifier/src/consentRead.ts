@@ -1,7 +1,7 @@
-import { http, type Transport } from "viem";
+import { type Transport } from "viem";
 import { CONSTRAINT_INFO_MAX_BYTES, TRAINING_STANDARD } from "./consent.js";
 import { env } from "./env.js";
-import { readClient } from "./reputation/registry.js";
+import { monadTransport, readClient } from "./reputation/registry.js";
 import type { Hex } from "./types.js";
 
 /**
@@ -258,18 +258,28 @@ export function offlineConsentReader(): ConsentReader {
   return { answerFor: async () => UNAVAILABLE };
 }
 
+/** Attaches the statement to the answer the verify routes already built. */
+export async function withConsent<T extends { result: unknown }>(payload: T, reader: ConsentReader): Promise<T> {
+  return await withMatchFact(payload, "consent", async (id) => await reader.answerFor(id));
+}
+
 /**
- * Attaches the statement to the answer the verify routes already built.
+ * Attaches one fact under `field` to the passports a verify answer names, and to no others.
  *
- * At most two passports are read: the exact match, and the best match when it is a different
- * passport. The other candidates are near misses on a fingerprint, not pictures the caller asked
- * about, and reading twenty statements to answer one verification would put twenty chain calls
- * behind every upload.
+ * At most two are read: the exact match, and the best match when it is a different passport. The
+ * other candidates are near misses on a fingerprint, not pictures the caller asked about, and
+ * reading twenty statements to answer one verification would put twenty chain calls behind every
+ * upload. The consent statement and the dispute status are both attached this way, so the two can
+ * never disagree about which passports a verification speaks for.
  *
  * Never throws. A verification that came back is what the caller came for, so anything unexpected
  * here leaves the answer exactly as it was.
  */
-export async function withConsent<T extends { result: unknown }>(payload: T, reader: ConsentReader): Promise<T> {
+export async function withMatchFact<T extends { result: unknown }, A>(
+  payload: T,
+  field: string,
+  answerFor: (passportId: Hex) => Promise<A>,
+): Promise<T> {
   try {
     const result = payload.result;
     if (!isRecord(result)) {
@@ -290,13 +300,13 @@ export async function withConsent<T extends { result: unknown }>(payload: T, rea
       return payload;
     }
 
-    const answers = new Map<Hex, ConsentAnswer>(
-      await Promise.all(wanted.map(async (id): Promise<[Hex, ConsentAnswer]> => [id, await reader.answerFor(id)])),
+    const answers = new Map<Hex, A>(
+      await Promise.all(wanted.map(async (id): Promise<[Hex, A]> => [id, await answerFor(id)])),
     );
 
     const withId = (match: Record<string, unknown>): Record<string, unknown> => {
       const answer = isPassportId(match.id) ? answers.get(match.id.toLowerCase() as Hex) : undefined;
-      return answer === undefined ? match : { ...match, consent: answer };
+      return answer === undefined ? match : { ...match, [field]: answer };
     };
 
     const matches = Array.isArray(result.matches)
@@ -330,7 +340,8 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 function chainCall(options: { address?: Hex; rpcUrl?: string; transport?: Transport }): ConsentCall {
   const address = options.address ?? (env.CONSENT_ADDRESS as Hex);
   const client = readClient({
-    transport: options.transport ?? http(options.rpcUrl ?? env.MONAD_MAINNET_RPC_URL, { timeout: CONSENT_READ_TIMEOUT_MS }),
+    transport:
+      options.transport ?? monadTransport({ rpcUrl: options.rpcUrl, timeout: CONSENT_READ_TIMEOUT_MS }),
   });
   return async (passportId: Hex) =>
     await client.readContract({ address, abi: consentAbi, functionName: "consentOf", args: [passportId] });
