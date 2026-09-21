@@ -184,6 +184,14 @@
       "readout": "Passeport {passport}, enregistré le {date}",
       "unread": "Ce passeport n’a pas pu être lu dans le registre."
     },
+    "stated": {
+      "kicker": "Déclarée",
+      "title": "{summary}.",
+      "body": "La parole de son auteur sur l’usage par l’IA est inscrite sur Monad à côté du passeport, avec sa date. Demandez à la chaîne n’importe quel jour depuis, elle répond pour ce jour-là.",
+      "readout": "Déclaration écrite sur Monad le {written}, et en vigueur depuis",
+      "registered": "Enregistrée le {when}",
+      "today": "Aujourd’hui"
+    },
     "shared": {
       "kicker": "Partagée",
       "title": "Les plateformes effacent le certificat à l’envoi.",

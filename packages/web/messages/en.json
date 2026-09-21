@@ -184,6 +184,14 @@
       "readout": "Passport {passport}, registered {date}",
       "unread": "This passport could not be read from the registry."
     },
+    "stated": {
+      "kicker": "Stated",
+      "title": "{summary}.",
+      "body": "Its maker's word on AI use went on Monad beside the passport, with the date. Ask the chain about any day since, and it answers for that day.",
+      "readout": "Statement written on Monad {written}, and in force ever since",
+      "registered": "Registered {when}",
+      "today": "Today"
+    },
     "shared": {
       "kicker": "Shared",
       "title": "Platforms strip the credential on upload.",

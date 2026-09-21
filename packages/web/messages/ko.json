@@ -186,6 +186,14 @@
       "readout": "여권 {passport}, {date} 등록",
       "unread": "이 여권은 레지스트리에서 읽지 못했습니다."
     },
+    "stated": {
+      "kicker": "선언",
+      "title": "{summary}.",
+      "body": "AI 사용에 대한 만든 이의 말이 날짜와 함께 여권 옆 Monad에 올라갔습니다. 그 뒤의 어느 날을 묻든 체인은 그날을 기준으로 답합니다.",
+      "readout": "{written}에 Monad에 기록되어 그때부터 지금까지 유효",
+      "registered": "{when} 등록",
+      "today": "오늘"
+    },
     "shared": {
       "kicker": "확산",
       "title": "플랫폼은 업로드할 때 증명을 지웁니다.",

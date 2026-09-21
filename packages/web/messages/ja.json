@@ -186,6 +186,14 @@
       "readout": "パスポート {passport}、{date} 登録",
       "unread": "このパスポートはレジストリから読み取れませんでした。"
     },
+    "stated": {
+      "kicker": "表明",
+      "title": "{summary}。",
+      "body": "AI 利用についての作り手の言葉は、日付とともにパスポートの隣の Monad に記されました。それ以降のどの日を尋ねても、チェーンはその日の答えを返します。",
+      "readout": "{written} に Monad に記され、以後ずっと有効",
+      "registered": "{when} 登録",
+      "today": "今日"
+    },
     "shared": {
       "kicker": "広まる",
       "title": "プラットフォームは投稿時に証明書を消します。",

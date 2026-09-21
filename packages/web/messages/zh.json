@@ -186,6 +186,14 @@
       "readout": "护照 {passport}，登记于 {date}",
       "unread": "这本护照无法从登记处读出。"
     },
+    "stated": {
+      "kicker": "声明",
+      "title": "{summary}。",
+      "body": "创作者对 AI 使用的这句话，连同日期，写在了护照旁边的 Monad 上。此后的任何一天都可以问链，它按那一天回答。",
+      "readout": "{written} 写在 Monad 上，此后一直有效",
+      "registered": "{when} 登记",
+      "today": "今天"
+    },
     "shared": {
       "kicker": "流传",
       "title": "平台会在上传时抹掉凭证。",

@@ -317,7 +317,7 @@ flowchart TD
 
 Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). The first seven steps are the two minutes, with no wallet and no seed phrase. Steps 8 to 10 are the agent, the edit and the registry, for anyone who wants the rest of it:
 
-1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
+1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Between "Sealed" and "Shared" the camera drops to the picture's lower edge for a chapter called "Stated": the consent register's rule draws itself from the day the picture was registered to today, a notch lands on the day the holder wrote their statement, and the four AI uses stamp in beside it, all read from MoolamConsent for that one passport. A passport nobody has written a statement for plays the film without that chapter rather than inventing one. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
 2. Open "Verify an image" in the header and press "Choose an image", or drop a file on the card. Picking it starts the check, so there is no upload button to find. Any copy of a registered image works: re-encoded, resized or mirrored. The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached, and "Verify another" clears it. An unregistered picture answers plainly that it is not registered and offers the studio.
 3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network, and "Network fee" reading "Paid by Moolam through Privy".
 4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
@@ -432,7 +432,7 @@ curl against the same URL works.
 | Verify service | `npm run test:verifier` | 234 |
 | Chain client and agents | `npm run test:agents` | 56 |
 | Indexer | `npm run test:indexer` | 26 |
-| Web app | `npm test` from `packages/web` | 1052 |
+| Web app | `npm test` from `packages/web` | 1059 |
 
 The contract count needs `MONAD_MAINNET_RPC_URL` in the root `.env`, because eleven of the tests
 fork Monad mainnet. Without it `forge test` runs 173 and skips the rest rather than failing.
@@ -612,7 +612,7 @@ no trailing slash.
 | Verify service | 234 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
 | Chain client and agents | 56 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
 | Indexer | 26 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, and the five consent summaries checked against the web app's own rule for all 256 combinations |
-| Web app | 1052 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
+| Web app | 1059 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
 
 The registry's six invariants all held: the contract balance always covers every liability, the bond
 total always equals the sum of open disputes, every edit points at a parent that exists, no image id

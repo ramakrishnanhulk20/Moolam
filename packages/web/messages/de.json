@@ -184,6 +184,14 @@
       "readout": "Pass {passport}, eingetragen am {date}",
       "unread": "Dieser Pass konnte aus dem Register nicht gelesen werden."
     },
+    "stated": {
+      "kicker": "Erklärt",
+      "title": "{summary}.",
+      "body": "Das Wort des Urhebers zur KI-Nutzung steht mit Datum neben dem Pass auf Monad. Fragen Sie die Kette nach jedem Tag seitdem, und sie antwortet für diesen Tag.",
+      "readout": "Erklärung am {written} auf Monad geschrieben und seitdem in Kraft",
+      "registered": "Registriert am {when}",
+      "today": "Heute"
+    },
     "shared": {
       "kicker": "Geteilt",
       "title": "Plattformen löschen den Nachweis beim Hochladen.",

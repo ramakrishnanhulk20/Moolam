@@ -42,7 +42,7 @@ import {
   type StoryVariant,
 } from "@/components/story/beats";
 import { InlineLedger, PlateLedger, type LedgerView } from "@/components/story/StatedLedger";
-import { STATED_COPY, statedWhyNot } from "@/components/story/statedCopy";
+import { storyCut } from "@/components/story/stated";
 import { fractionOf } from "@/components/consent/ledger";
 import { shortHex } from "@/lib/chain/client";
 
@@ -353,6 +353,10 @@ export interface StoryBeat {
  */
 function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView | null, still: boolean): StoryBeat[] {
   const t = useTranslations("story");
+  // The five plain summaries belong to the passport card. The film borrows them
+  // rather than keeping a second set, so the beat and the card a judge opens
+  // next say the same words in the same language.
+  const says = useTranslations("passport.consent.summary");
   const format = useFormatter();
 
   // Every figure below leaves the one record data.ts chose, so a caption cannot
@@ -373,19 +377,28 @@ function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView | null, 
             key: "stated",
             body: (
               // The rule lies across the lower quarter of the frame, so the
-              // words stand above it rather than through it.
-              <div className="sm:-translate-y-[9vh]">
-                <Eyebrow className="sm:justify-end">{STATED_COPY.kicker}</Eyebrow>
-                <Title className="sm:ms-auto sm:text-end">{STATED_COPY.title(data.statement.summary)}</Title>
-                <Body className="sm:ms-auto sm:text-end">{STATED_COPY.body}</Body>
+              // words stand above it rather than through it. The still page has
+              // no rule on the ground and no shot to clear, so nothing is
+              // pulled up there and the chapter keeps the gap its neighbours have.
+              <div className={still ? "" : "sm:-translate-y-[9vh]"}>
+                <Eyebrow className="sm:justify-end">{t("stated.kicker")}</Eyebrow>
+                {/* Balanced because this line is one short sentence the
+                    chain wrote, and in Japanese or Tamil the browser's own
+                    break left a single character alone on the second line. */}
+                <Title className="text-balance sm:ms-auto sm:text-end">
+                  {t("stated.title", { summary: says(data.statement.summary) })}
+                </Title>
+                <Body className="sm:ms-auto sm:text-end">{t("stated.body")}</Body>
                 {/* The picture of it. On a phone it stacks here with the words,
                     under the shot; from 640 px up the pinned one lies along the
                     plate's own lower edge instead and this one is not drawn. On
                     the still page there is no scroll to draw it with and no
                     plate to lie on, so it is simply here, finished. */}
-                <InlineLedger view={ledger} driven={!still} className={still ? "mt-8 ms-auto" : "mt-8 sm:hidden"} />
+                <InlineLedger view={ledger} driven={!still} className={still ? "mt-8 ms-auto" : "mt-6 sm:hidden"} />
                 <Readout className="sm:ms-auto sm:text-end">
-                  {STATED_COPY.readout(format.dateTime(new Date(data.statement.at * 1000), { dateStyle: "long" }))}
+                  {t("stated.readout", {
+                    written: format.dateTime(new Date(data.statement.at * 1000), { dateStyle: "long" }),
+                  })}
                 </Readout>
               </div>
             ),
@@ -577,7 +590,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   const still = filmStill || level.still;
   // A cut with a beat about a statement nobody wrote is not a cut of this film:
   // the same rule the bench prints its line from decides it, in one place.
-  const table = beatTable(variant === "stated" && statedWhyNot(data) === null ? "stated" : "classic");
+  const table = beatTable(storyCut(variant, data));
   const ledger = useLedgerView(data);
   const beats = useBeats(data, table, ledger, still);
   const dpr = useMemo(() => [1, level.dpr] as [number, number], [level.dpr]);

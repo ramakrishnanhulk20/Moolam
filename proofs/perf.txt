@@ -852,3 +852,94 @@ What this does not cover: the ten queries a single dev render makes of the same
 read. That multiplier is the dev server rendering the route once per locale and
 it is the same on Explore, which has been a built page since dd19dc2. The built
 server answers /en/agents from the page it made, with no query at all.
+
+================================================================================
+THE STATED CHAPTER ON THE HOME PAGE, 2026-09-21
+================================================================================
+
+The beat Ram approved on the bench joined the real film. Measured on the dev
+server on port 3210 in headless Chrome with a GPU (tier 0 held in every run).
+No production build was made in this order.
+
+WHAT THE CHAIN SAYS, AND WHAT THE FILM DRAWS
+
+  The film's focal passport today is
+  0xf08bea9e1429bee09065a3cd443f353096acf748c73113ac8696313da9a059d7,
+  registered 2026-09-17T07:08:21Z.
+  Read through the app's own /api/consent-at at second 1789996872:
+    stated true, entry written 1789717128 (2026-09-18T07:38:48Z),
+    writer 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6,
+    aiTraining notAllowed, aiGenerativeTraining notAllowed,
+    aiInference notAllowed, dataMining notAllowed, no conditions.
+  Drawn on /en, read back out of the running page at offset 0.375:
+    title "Not for AI training."
+    four marks aiTraining=notAllowed aiGenerativeTraining=notAllowed
+      aiInference=notAllowed dataMining=notAllowed
+    rule from REGISTERED SEP 17, 2026 to TODAY, notch labelled SEP 18, 2026
+    readout "STATEMENT WRITTEN ON MONAD SEPTEMBER 18, 2026, AND IN FORCE EVER
+      SINCE"
+  The home page is ten pages of scroll now, one more than the film it replaced:
+  the scroller reports 11.00 screens against the classic cut's 10.00.
+
+THE BOXES, DESKTOP AND PHONE, IN THREE SCRIPTS
+
+  /en 1440x900, offset 0.375: words x 859 to 1384 y 275 to 525,
+    rule x 86 to 776 y 490 to 639, shot the whole frame. Overlap none.
+  /ta 1440x900, offset 0.375: words x 894 to 1384 y 267 to 612,
+    rule x 86 to 776 y 527 to 679. Overlap none, no sideways scroll.
+  /ja 1440x900, offset 0.375: words x 978 to 1384 y 215 to 585,
+    rule x 86 to 776 y 487 to 637. Overlap none, no sideways scroll.
+  /ta 375x812, offset 0.375: picture band y 0 to 365, words y 386 to 780
+    (x 20 to 349), rule y 651 to 729. Overlap none, line by line.
+  /ja 375x812, offset 0.375: picture band y 0 to 365, words y 386 to 782
+    (x 20 to 354), rule y 663 to 730. Overlap none, line by line.
+  /hi, /ko and /zh at 375x812 end at y 718, 718 and 702. /en ends at 739.
+
+  Two things were changed to get there. The Tamil caption first ran 45 px past
+  the bottom of an 812 px phone, so the stacked drawing lost 12 px of its gaps
+  and the Tamil chapter was written shorter. The chapter's title is balanced
+  (text-wrap: balance) because the browser's own break left one Japanese
+  character alone on a second line.
+
+FRAME TIME, THE NEW BEAT AGAINST THE SEAL, SAME FILM, SAME RUN
+
+  stated 0.3342 to 0.4453   mean 4.8, 4.8, 5.6 ms   p95 8.4 ms   worst 20.8 ms
+  sealed 0.2133 to 0.3342   mean 4.5, 5.7, 5.5 ms   p95 8.4 ms   worst 25.0 ms
+  Median of three runs each: 4.8 ms against 5.5 ms. The new beat is not dearer
+  than the beat before it.
+
+LAYOUT SHIFT AND THE FIRST PICTURE
+
+  scripts/perf/layout-shift.mjs, /en, 3 runs each, before and after the change:
+    1440x900  CLS 0.00000, 0.00000, 0.00000
+    375x667   CLS 0.00000, 0.00000, 0.00000
+  scripts/perf/first-plate.mjs, desktop, 3 runs on /en:
+    before  4.23 s (cold optimizer), 2.60 s, 1.97 s;  median 1.97 s of the two
+            warm runs, 2.60 s of all three
+    after   2.29 s (cold optimizer), 1.81 s, 1.67 s;  median 1.81 s
+  The optimizer's own cache warmed during the session, so the honest reading is
+  that the chapter costs the first picture nothing: the page's server work is
+  unchanged, the one consent read behind it was already there for the bench.
+
+REDUCED MOTION AND NO WEBGL
+
+  Both fall to the still page and both carry the chapter: the rule, the notch
+  and the four marks all drawn finished at opacity 1.00, in English, Tamil and
+  Japanese, at 1440x900 and 375x812. No overlap, no sideways scroll.
+
+THE WAY OUT IS UNCHANGED
+
+  scripts/perf/story-reach.mjs on /en: one wheel tick moves the story and not
+  the page; data-story-end after 19 ticks; two more bring the footer to
+  bottom 900 of 900. Tab reaches the skip control at tab 10 and the film at 11;
+  pressing skip lands on the footer with focus inside it. PageDown and Space
+  move 1000 px, an arrow 167, End winds 2000 to 9000 and reaches the footer,
+  Home comes back. Nine screens of travel, one more than before, as the cut
+  asks for.
+
+WHAT THIS DOES NOT COVER
+
+  A 375x667 phone. In Tamil the chapter runs 82 px past the bottom there, and so
+  do the film's own older chapters: shared by 36 px, verified by 97 px and
+  trusted by 163 px at the same size. That is the film's phone band, not this
+  chapter, and nothing in this order changed it.

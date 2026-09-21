@@ -10,8 +10,9 @@
  * being read during it.
  *
  * The classic cut is the film Ram approved, to the last offset. The stated cut
- * is the same film with one more beat in it, the holder's word on AI use, and
- * it is only played on the bench. Nothing reads a table out of this module any
+ * is the same film with one more beat in it, the holder's word on AI use. The
+ * home page plays the stated cut and falls back to the classic one on a day
+ * with no statement to draw. Nothing reads a table out of this module any
  * more: a screen is handed the cut it is playing, so the two can run side by
  * side on one machine without either one reaching for the other's numbers.
  */

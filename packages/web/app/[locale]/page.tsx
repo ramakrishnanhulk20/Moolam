@@ -23,12 +23,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 /**
- * The first thing anybody sees: eight beats of one image getting a passport,
+ * The first thing anybody sees: nine beats of one image getting a passport,
  * flown as a camera move through the live registry.
  *
+ * One of the nine is the holder's own word on AI use, read from the consent
+ * register on Monad for the passport the film is told on. Nobody invents it: a
+ * passport with no statement, or a register that would not answer this minute,
+ * plays the eight beat film instead, which is what the stated cut means here.
+ *
  * A reader who has asked for less motion, or a browser that cannot open a 3D
- * context, gets the same eight beats stacked down a still page with the same
- * live figures. The story decides which of the two in the browser, so this page
+ * context, gets the same beats stacked down a still page with the same live
+ * figures. The story decides which of the two in the browser, so this page
  * renders neither on the server.
  */
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -42,7 +47,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   // read as a shot rather than as a section under a navigation bar.
   return (
     <div className="-mt-[73px]">
-      <StoryStage data={data} />
+      <StoryStage data={data} variant="stated" />
     </div>
   );
 }

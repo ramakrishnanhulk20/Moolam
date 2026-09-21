@@ -1,12 +1,12 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
 import { UseMark } from "@/components/consent/Marks";
 import { USE_TONES } from "@/components/consent/tones";
-import { USE_FIELDS, type Consent } from "@/lib/chain/consent";
+import { USE_FIELDS, type Consent, type UseField } from "@/lib/chain/consent";
 import { captionCue, clamp01, span, type Beat } from "@/components/story/beats";
 import { plateEdge, progress } from "@/components/story/signals";
-import { STATED_COPY } from "@/components/story/statedCopy";
 
 /**
  * The register arriving on the picture, drawn rather than described.
@@ -55,13 +55,19 @@ export function ledgerShape(played: number, notch: number): { drawn: number; lan
   };
 }
 
-/** The four marks and their names, in the order the contract stores them. */
-function marksOf(consent: Consent) {
-  return USE_FIELDS.map((field, at) => ({
+/**
+ * The four marks and their names, in the order the contract stores them.
+ *
+ * The names are the passport card's own short ones, read out of
+ * passport.consent.usesShort, so the film and the card a judge opens next
+ * cannot call the same use two different things in the same language.
+ */
+function marksOf(consent: Consent, name: (field: UseField) => string) {
+  return USE_FIELDS.map((field) => ({
     field,
     state: consent[field],
     tone: USE_TONES[consent[field]],
-    name: STATED_COPY.uses[at],
+    name: name(field),
   }));
 }
 
@@ -96,7 +102,9 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
   const notch = useRef<HTMLDivElement>(null);
   const written = useRef<HTMLSpanElement>(null);
   const stamps = useRef<(HTMLDivElement | null)[]>([]);
-  const uses = marksOf(view.consent);
+  const t = useTranslations("story.stated");
+  const names = useTranslations("passport.consent.usesShort");
+  const uses = marksOf(view.consent, names);
 
   useEffect(() => {
     const box = root.current;
@@ -223,14 +231,13 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
         <div ref={head} className="absolute left-0 top-[-2px] h-[5px] w-[4px] bg-pending will-change-transform" />
 
         <span className={`absolute left-0 top-[11px] whitespace-nowrap text-white/65 ${LABEL}`}>
-          {`${STATED_COPY.registered} ${view.registered}`}
+          {t("registered", { when: view.registered })}
         </span>
-        <span
-          ref={today}
-          className={`absolute left-0 top-[11px] origin-left whitespace-nowrap text-white/65 will-change-transform ${LABEL}`}
-          style={{ marginLeft: "-3.2rem" }}
-        >
-          {STATED_COPY.today}
+        {/* The far end of the rule is today, so the word ends where the rule
+            does whatever its length: a fixed pull to the left fitted the
+            English word and hung a longer one off the end of the shot. */}
+        <span ref={today} className="absolute left-0 top-[11px] origin-left will-change-transform">
+          <span className={`block -translate-x-full whitespace-nowrap text-white/65 ${LABEL}`}>{t("today")}</span>
         </span>
 
         <div ref={notch} data-rule="notch" className="absolute left-0 top-0 h-0 w-0 origin-center will-change-transform">
@@ -319,7 +326,9 @@ export function InlineLedger({
   const drawn = useRef<HTMLDivElement>(null);
   const notch = useRef<HTMLDivElement>(null);
   const stamps = useRef<(HTMLDivElement | null)[]>([]);
-  const uses = marksOf(view.consent);
+  const t = useTranslations("story.stated");
+  const names = useTranslations("passport.consent.usesShort");
+  const uses = marksOf(view.consent, names);
   const at = `${(view.notch * 100).toFixed(2)}%`;
 
   useEffect(() => {
@@ -345,9 +354,12 @@ export function InlineLedger({
 
   return (
     <div aria-hidden data-stated-ledger="inline" className={`w-full max-w-[22rem] ${className}`}>
-      <div className="flex items-baseline justify-between font-mono text-[9px] uppercase leading-none tracking-[0.16em] text-text-faint">
-        <span>{`${STATED_COPY.registered} ${view.registered}`}</span>
-        <span>{STATED_COPY.today}</span>
+      {/* The two ends of the rule, each pinned to its own side and allowed to
+          wrap: the registration line is a date in the reader's language and in
+          Tamil or German it is half again as long as the English one. */}
+      <div className="flex items-baseline justify-between gap-3 font-mono text-[9px] uppercase leading-[1.4] tracking-[0.16em] text-text-faint">
+        <span className="text-start">{t("registered", { when: view.registered })}</span>
+        <span className="shrink-0 text-end">{t("today")}</span>
       </div>
 
       <div className="relative mt-2.5 h-px w-full bg-white/25">
@@ -372,7 +384,10 @@ export function InlineLedger({
         </div>
       </div>
 
-      <div className="mt-9 grid grid-cols-4 gap-2">
+      {/* The gap clears the written day hanging under the rule and no more:
+          on a phone this block, the caption above it and the readout below it
+          all have to stand inside the half screen the words are given. */}
+      <div className="mt-7 grid grid-cols-4 gap-2">
         {uses.map((use, index) => (
           <div
             key={use.field}

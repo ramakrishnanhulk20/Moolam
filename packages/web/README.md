@@ -6,7 +6,7 @@ creator a wallet without a seed phrase.
 
 This package is the shell: routing, the two themes, the ten languages, the
 providers, the live readers and every screen's pending, empty and error state.
-The home page is the story: eight beats of one real image getting a passport,
+The home page is the story: nine beats of one real image getting a passport,
 flown as a camera move through a field of the passports registered most
 recently, with every figure in the captions read on the request.
 
@@ -124,7 +124,7 @@ before a page renders rather than inside a fetch later.
   anything rendered on the server. The home page's camera move is React Three
   Fiber, browser only, driven by the one beat table in
   `components/story/beats.ts`. A reader who has asked for less motion, or a
-  browser that cannot open a WebGL context, gets the same eight beats and the
+  browser that cannot open a WebGL context, gets the same nine beats and the
   same live figures stacked down a still page instead.
 - **Fonts.** `lib/fonts.ts`, self-hosted at build by `next/font`. Swapping any
   face is one line there. The Latin faces carry no Tamil, Devanagari, Chinese,

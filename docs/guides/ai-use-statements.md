@@ -130,6 +130,14 @@ This is the honest part, and it is short.
 
 ## How anyone checks it
 
+### The home page
+
+The film's fourth chapter, "Stated", is the statement itself. The camera drops to the lower edge of
+the picture it is telling the story on, the register's rule draws itself from the registration day to
+today, a notch lands on the day the holder wrote their word, and the four uses stamp in beside it.
+Every mark on it is read from `MoolamConsent` for that passport, so a passport nobody has written a
+statement for plays the film without the chapter rather than showing an empty one.
+
 ### The passport page
 
 The section "How AI may use this picture" draws the passport's life as one

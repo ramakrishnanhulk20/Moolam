@@ -184,6 +184,14 @@
       "readout": "Pasaporte {passport}, registrado el {date}",
       "unread": "Este pasaporte no se pudo leer del registro."
     },
+    "stated": {
+      "kicker": "Declarada",
+      "title": "{summary}.",
+      "body": "La palabra de quien la creó sobre el uso por IA quedó en Monad junto al pasaporte, con su fecha. Pregunta a la cadena por cualquier día posterior y responde por ese día.",
+      "readout": "Declaración escrita en Monad el {written}, y en vigor desde entonces",
+      "registered": "Registrada el {when}",
+      "today": "Hoy"
+    },
     "shared": {
       "kicker": "Compartida",
       "title": "Las plataformas borran la credencial al subirla.",
