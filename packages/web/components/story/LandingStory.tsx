@@ -13,7 +13,19 @@ import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
 import { TryPanel, type TrySample } from "@/components/story/TryPanel";
-import { forwardTouchMove, forwardTouchStart, forwardWheel, probe, progress, scroller } from "@/components/story/signals";
+import {
+  film,
+  forwardTouchMove,
+  forwardTouchStart,
+  forwardWheel,
+  keyReach,
+  movePage,
+  moveStory,
+  probe,
+  progress,
+  scroller,
+  whenRoom,
+} from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { degradeSteps, measurement } from "@/components/story/measurements";
 import { createTierState, nextTier, startTier, tierLevel } from "@/components/story/tier";
@@ -71,6 +83,7 @@ function World({
   credential,
   dropped,
   start,
+  label,
   onTier,
 }: {
   data: StoryData;
@@ -94,6 +107,8 @@ function World({
   dropped: string | null;
   /** The tier this screen begins on, before any frame has been timed. */
   start: number;
+  /** What a screen reader calls the film. It is a scrolling region of its own. */
+  label: string;
   /** Called once per change, never per frame. */
   onTier: (tier: number) => void;
 }) {
@@ -105,13 +120,48 @@ function World({
   // handle on it to pass a wheel or a drag back to the story. The attribute is
   // what the overscroll rule in globals.css hangs on, and what a measurement
   // from outside the page can find the scroller by.
+  //
+  // The element drei builds is a bare div: it carries no name, nothing says it
+  // scrolls, and the keys that drive a document went nowhere on it. The rest of
+  // this is the story answering a keyboard the way the page around it does,
+  // through the same scrollTop the wheel moves so the film keeps one source of
+  // truth for where it is.
   useEffect(() => {
-    scroller.el = scroll.el;
-    scroll.el.setAttribute("data-story-scroller", "true");
+    const el = scroll.el;
+    scroller.el = el;
+    el.setAttribute("data-story-scroller", "true");
+    el.setAttribute("tabindex", "0");
+    el.setAttribute("role", "region");
+    el.setAttribute("aria-label", label);
+
+    const onKey = (event: KeyboardEvent) => {
+      const reach = keyReach(event.key, event.shiftKey, {
+        top: el.scrollTop,
+        max: el.scrollHeight - el.clientHeight,
+        height: window.innerHeight,
+        pageTop: window.scrollY,
+      });
+      if (reach === null) {
+        return;
+      }
+      // Tab and everything else is the browser's. These keys are the story's,
+      // and the browser's own answer to them would move the same scroller a
+      // second time.
+      event.preventDefault();
+      if (reach.story !== null) {
+        moveStory(el, reach.story);
+      }
+      if (reach.page !== null) {
+        movePage(reach.page);
+      }
+    };
+
+    el.addEventListener("keydown", onKey);
     return () => {
+      el.removeEventListener("keydown", onKey);
       scroller.el = null;
     };
-  }, [scroll]);
+  }, [label, scroll]);
 
   const pos = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
@@ -460,6 +510,20 @@ export function LandingStory({ data }: { data: StoryData }) {
 
   const credential = data.focal === null ? "c2pa manifest" : `c2pa ${shortHex(data.focal.creator, 6, 4)}`;
 
+  // Runs the story to its last beat, waits for the footer that arrives with it,
+  // and leaves the reader standing on it. The wait is the point: the footer is
+  // held back until the last beat has been read, which is decided a frame or
+  // two after the scroller reaches its end.
+  const skip = useCallback(() => {
+    if (scroller.el !== null) {
+      moveStory(scroller.el, { to: "end" });
+    }
+    whenRoom((room) => {
+      window.scrollTo({ top: room, behavior: "smooth" });
+      document.querySelector<HTMLElement>("footer a")?.focus({ preventScroll: true });
+    });
+  }, []);
+
   if (still) {
     return (
       <div data-story-tier={tier}>
@@ -484,6 +548,20 @@ export function LandingStory({ data }: { data: StoryData }) {
         onTouchStart={forwardTouchStart}
         onTouchMove={forwardTouchMove}
       >
+        {/* The way out, for anyone on a keyboard who does not want eight
+            screens of film: it is the first thing Tab lands on inside the
+            story, it is invisible until then, and it leaves the reader on the
+            footer with the addresses in it. */}
+        <button
+          type="button"
+          data-story-skip="true"
+          onClick={skip}
+          className="sr-only focus:not-sr-only focus:absolute focus:left-5 focus:z-50 focus:rounded-[8px] focus:border focus:border-line focus:bg-bg focus:px-4 focus:py-2 focus:font-mono focus:text-[11px] focus:uppercase focus:tracking-[0.2em] focus:text-text"
+          style={{ top: "calc(var(--header-h) + 0.75rem)" }}
+        >
+          {t.has("skip") ? t("skip") : "Skip the film"}
+        </button>
+
         <div className="story-stage">
           <Canvas
             // A phone is a tall, narrow window on the same field, so it needs a
@@ -508,6 +586,7 @@ export function LandingStory({ data }: { data: StoryData }) {
                 credential={credential}
                 dropped={dropped}
                 start={start}
+                label={`${t("title")}: ${t("line")}`}
                 onTier={onTier}
               />
             </ScrollControls>
@@ -577,27 +656,44 @@ export function LandingStory({ data }: { data: StoryData }) {
 }
 
 /**
- * Tells the page when the film is over.
+ * Tells the page when the film is over, and when the reader has gone past it.
  *
  * While the story is pinned the document is exactly one window tall, so the
  * first wheel turn cannot move the page instead of the story. The footer is
- * held back by the rule in globals.css that watches this attribute, and comes
- * back once the last beat has been read, where the scroll chains on to it.
+ * held back by the rule in globals.css that watches the first attribute, and
+ * comes back once the last beat has been read, where the same rule hands the
+ * scroll chain back so a gesture reaches it.
+ *
+ * The second attribute is the page scrolled below the film. From there a
+ * gesture over what is left of the film belongs to the page: without it a thumb
+ * coming back up rewinds the story, which takes the footer away under it.
  */
 function FilmEnd() {
   useEffect(() => {
     let frame = 0;
     let ended: boolean | null = null;
+    let past: boolean | null = null;
+
+    const flag = (name: string, on: boolean) => {
+      if (on) {
+        document.body.setAttribute(name, "true");
+      } else {
+        document.body.removeAttribute(name);
+      }
+    };
 
     const loop = () => {
       const done = progress.scroll >= 0.995;
       if (done !== ended) {
         ended = done;
-        if (done) {
-          document.body.setAttribute("data-story-end", "true");
-        } else {
-          document.body.removeAttribute("data-story-end");
-        }
+        film.ended = done;
+        flag("data-story-end", done);
+      }
+      const away = window.scrollY > 0;
+      if (away !== past) {
+        past = away;
+        film.past = away;
+        flag("data-story-past", away);
       }
       frame = requestAnimationFrame(loop);
     };
@@ -605,7 +701,10 @@ function FilmEnd() {
     frame = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(frame);
+      film.ended = false;
+      film.past = false;
       document.body.removeAttribute("data-story-end");
+      document.body.removeAttribute("data-story-past");
     };
   }, []);
 

@@ -6,6 +6,9 @@
  * mean re-rendering the page sixty times a second against the same frame
  * budget the camera is using.
  */
+
+import { PAGES } from "@/components/story/beats";
+
 export const progress = {
   /** 0 to 1 across the whole story. */
   scroll: 0,
@@ -34,6 +37,134 @@ export function resetProbe() {
 /** The element drei's ScrollControls actually scrolls, published once it exists. */
 export const scroller: { el: HTMLElement | null } = { el: null };
 
+/**
+ * Where the page stands against the film, written once per change by the film's
+ * own frame in LandingStory.tsx.
+ *
+ * `ended` is the last beat read, which is when the footer exists at all.
+ * `past` is the page scrolled down below the film, which is when a gesture over
+ * what is left of it belongs to the page rather than to the story.
+ */
+export const film = { ended: false, past: false };
+
+/** How far into its own scroller the film has been wound, and what is under it. */
+export interface StoryView {
+  top: number;
+  /** The furthest that scroller goes. */
+  max: number;
+  /** One screen of the page under the film. */
+  height: number;
+  /** How far the page has been scrolled below the film, 0 while the film fills the window. */
+  pageTop: number;
+}
+
+/** Where a key wants something to go: a distance, or one of the two ends. */
+export type Move = { by: number } | { to: "start" | "end" };
+
+export interface Reach {
+  /** The film's own scroller, or null to leave it where it is. */
+  story: Move | null;
+  /** The page under the film, or null. */
+  page: Move | null;
+}
+
+/** Eight screens of travel across the nine pages of the story: one step is one beat. */
+const TRAVEL = PAGES - 1;
+
+/** A beat divided into nudges, which is what an arrow key is worth. */
+const NUDGES = 6;
+
+/**
+ * What one key press asks for, as a document would answer it.
+ *
+ * Page and Space move a beat, the arrows a nudge, Home and End the two ends.
+ * Once the film has been read to its end the same keys move the page under it,
+ * which is the only way a reader on a keyboard reaches the footer. Anything
+ * else returns null and is left to the browser, Tab above all.
+ */
+export function keyReach(key: string, shift: boolean, view: StoryView): Reach | null {
+  if (key === "Home") {
+    return { story: { to: "start" }, page: { to: "start" } };
+  }
+  if (key === "End") {
+    return { story: { to: "end" }, page: { to: "end" } };
+  }
+
+  const space = key === " " || key === "Spacebar";
+  const beat = view.max > 0 ? view.max / TRAVEL : 0;
+  if (key === "PageDown" || (space && !shift)) {
+    return along(true, beat, view.height, view);
+  }
+  if (key === "PageUp" || (space && shift)) {
+    return along(false, beat, view.height, view);
+  }
+  if (key === "ArrowDown" || key === "ArrowUp") {
+    return along(key === "ArrowDown", beat / NUDGES, view.height / NUDGES, view);
+  }
+  return null;
+}
+
+/**
+ * One step of the story, or one of the page under it.
+ *
+ * The page only moves once the film has run out of story to give, and on the
+ * way back it moves first: a reader who has gone past the film and turns round
+ * gets the last beat back before the story rewinds a frame of it.
+ */
+function along(forward: boolean, story: number, page: number, view: StoryView): Reach {
+  if (forward) {
+    return view.top < view.max - 1 ? { story: { by: story }, page: null } : { story: null, page: { by: page } };
+  }
+  return view.pageTop > 0 ? { story: null, page: { by: -page } } : { story: { by: -story }, page: null };
+}
+
+/** Winds the film's own scroller, which is the one place the story's progress comes from. */
+export function moveStory(el: HTMLElement, move: Move) {
+  el.scrollTop = "by" in move ? el.scrollTop + move.by : move.to === "end" ? el.scrollHeight - el.clientHeight : 0;
+}
+
+let pageFrame = 0;
+
+/**
+ * Runs an action once the page has somewhere to scroll to, and drops it if it
+ * never does.
+ *
+ * The footer is held back until the last beat has been read, and the story's
+ * own damping takes about eight tenths of a second to arrive there after the
+ * scroller reaches its end. So a key pressed at the end asks for room the page
+ * does not have yet, and waiting for it is the difference between End reaching
+ * the footer and End doing nothing. The wait is counted in milliseconds and not
+ * in frames: a browser with the frame rate off its leash runs hundreds of
+ * frames in that second, which spent a frame budget before the footer existed.
+ */
+export function whenRoom(action: (room: number) => void, within = 3000) {
+  cancelAnimationFrame(pageFrame);
+  const deadline = performance.now() + within;
+  const step = () => {
+    const room = document.documentElement.scrollHeight - window.innerHeight;
+    if (room > 0) {
+      action(room);
+      return;
+    }
+    if (performance.now() < deadline) {
+      pageFrame = requestAnimationFrame(step);
+    }
+  };
+  step();
+}
+
+/** Moves the page under the film, smoothly, once there is a page to move. */
+export function movePage(move: Move) {
+  const back = "by" in move ? move.by < 0 : move.to === "start";
+  if (back && window.scrollY <= 0) {
+    return;
+  }
+  whenRoom((room) => {
+    const to = "by" in move ? window.scrollY + move.by : move.to === "end" ? room : 0;
+    window.scrollTo({ top: Math.max(0, Math.min(room, to)), behavior: "smooth" });
+  });
+}
+
 let lastTouchY: number | null = null;
 
 /**
@@ -55,9 +186,13 @@ function alreadyScrolling(target: EventTarget | null): boolean {
  * gesture that starts on one of those reaches no scrollable element at all.
  * These pass the movement on, from the film wrapper, so every part of the
  * pinned screen carries the story.
+ *
+ * Once the page has gone past the film they hand nothing on: at that point a
+ * gesture is a reader coming back up, and the page is the thing that has to
+ * move.
  */
 export function forwardWheel(event: { deltaY: number; target: EventTarget | null }) {
-  if (scroller.el !== null && !alreadyScrolling(event.target)) {
+  if (scroller.el !== null && !film.past && !alreadyScrolling(event.target)) {
     scroller.el.scrollTop += event.deltaY;
   }
 }
@@ -67,8 +202,16 @@ interface TouchLike {
   touches: { length: number; [index: number]: { clientY: number } };
 }
 
+/**
+ * A drag that begins while the page is past the film carries the page back, and
+ * it carries it for the whole of the drag. The decision is taken here, once,
+ * the way the browser latches a gesture to one scroller: the page reaches its
+ * top part way through such a drag, and without the latch the rest of the same
+ * drag would rewind the story under the reader's thumb.
+ */
 export function forwardTouchStart(event: TouchLike) {
-  lastTouchY = event.touches.length === 0 || alreadyScrolling(event.target) ? null : event.touches[0].clientY;
+  lastTouchY =
+    event.touches.length === 0 || film.past || alreadyScrolling(event.target) ? null : event.touches[0].clientY;
 }
 
 export function forwardTouchMove(event: TouchLike) {

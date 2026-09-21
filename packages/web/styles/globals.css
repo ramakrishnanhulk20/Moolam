@@ -414,6 +414,32 @@ html:not(.light) body:has([data-story="still"]) .app-header {
   overscroll-behavior-y: contain;
 }
 
+/* Once the last beat has been read there is a footer under the film, and the
+   next turn of the wheel has to reach it. Chaining is what carries a gesture
+   from the story to the page, so it goes back to the browser's own answer at
+   exactly the moment there is something below to chain to. Without this the
+   story swallowed every gesture for ever and the registry address, the live
+   block and the source link were on a page nobody could scroll to. */
+body[data-story-end] [data-story="film"],
+body[data-story-end] [data-story-scroller] {
+  overscroll-behavior-y: auto;
+}
+
+/* And once the page has gone past the film, a gesture over what is left of it
+   belongs to the page. Without this a thumb trying to bring the footer back
+   rewinds the story instead, which takes the last beat away and the footer with
+   it. The attribute is written from the film's own frame, in LandingStory.tsx. */
+body[data-story-past] [data-story-scroller] {
+  pointer-events: none;
+}
+
+/* The film is a scrolling region a keyboard can land on, and the site's focus
+   ring is drawn two pixels outside whatever it lands on. This one is the size
+   of the window, so the ring is drawn just inside it instead of off the screen. */
+[data-story-scroller]:focus-visible {
+  outline-offset: -3px;
+}
+
 /* The closing card is the last thing the film shows, and nothing follows it: the
    scroll hint the lower band keeps its bottom room for is long gone by the time
    the card arrives. On a phone the card takes that room back. With the card's
@@ -443,7 +469,8 @@ body:has([data-story]) main > .-mt-\[73px\] {
 
 /* While the film is pinned the document is exactly one window tall, so the very
    first wheel turn moves the story and not the page under it. The footer comes
-   back the moment the last beat has been read, and the scroll chains on to it. */
+   back the moment the last beat has been read, and the rule further up hands
+   the scroll chain back at the same moment so a gesture can reach it. */
 body:has([data-story="film"]):not([data-story-end]) footer {
   display: none;
 }
