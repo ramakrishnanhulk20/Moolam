@@ -117,11 +117,17 @@
       "chainlink": "Recomprobada por un flujo de Chainlink",
       "disputed": "En disputa"
     },
+    "legend": {
+      "manifest": "Manifest C2PA fijado",
+      "rechecked": "Comprobada en la cadena",
+      "disputed": "En disputa"
+    },
     "untitled": "Sin título",
     "noPicture": "Sin imagen en la pasarela",
     "seedCard": "Imagen de prueba",
     "loadMore": "Ver más",
     "loading": "Cargando",
+    "reading": "Leyendo",
     "end": "Esos son todos los pasaportes que coinciden.",
     "shown": "{count, number} a la vista",
     "empty": "Ningún pasaporte coincide con este filtro todavía.",
@@ -132,8 +138,10 @@
     "title": "Agentes",
     "rail": "Generadores ERC-8004",
     "lede": "Cada agente generador que el índice ha visto firmar un pasaporte, con todo lo que lleva contado de cada uno. Primero los que más firman.",
+    "scoreMeaning": "Un nivel de confianza de 0 a 100: cuántas veces las recomprobaciones de Chainlink coincidieron con lo que firmó este agente. Las disputas aceptadas restan el doble.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-    "formulaLink": "Cómo se calcula el nivel",
+    "formulaHow": "Cómo se calcula el nivel",
+    "formulaDoc": "Dónde lo cuenta el índice",
     "agentId": "Agente {id}",
     "unnamed": "La tarjeta de este agente no lleva nombre",
     "since": "Visto por primera vez el {when}",
@@ -1250,5 +1258,11 @@
     "explore": "Explorar el registro",
     "verify": "Verificar una imagen",
     "docs": "Leer la documentación"
+  },
+  "retry": {
+    "countdown": "Reintentando en {seconds, plural, =1 {# segundo} other {# segundos}}",
+    "now": "Probar ahora",
+    "trying": "Probando",
+    "stopped": "Sigue sin responder. El registro está en Monad y las páginas de pasaporte lo leen directamente."
   }
 }

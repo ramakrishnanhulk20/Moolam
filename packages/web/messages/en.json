@@ -117,11 +117,17 @@
       "chainlink": "Re-checked by a Chainlink workflow",
       "disputed": "Disputed"
     },
+    "legend": {
+      "manifest": "C2PA manifest pinned",
+      "rechecked": "Re-checked on chain",
+      "disputed": "Under dispute"
+    },
     "untitled": "Untitled",
     "noPicture": "No picture on the gateway",
     "seedCard": "Seed test image",
     "loadMore": "Load more",
     "loading": "Loading",
+    "reading": "Reading",
     "end": "That is every passport that matches.",
     "shown": "{count, number} shown",
     "empty": "No passport matches this filter yet.",
@@ -132,8 +138,10 @@
     "title": "Agents",
     "rail": "ERC-8004 generators",
     "lede": "Every generating agent the index has seen sign a passport, with everything it has counted for each one. The busiest first.",
+    "scoreMeaning": "A trust score from 0 to 100: how often Chainlink's re-checks agreed with what this agent signed, with upheld disputes counted against it twice.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-    "formulaLink": "How the score is worked out",
+    "formulaHow": "How the score is worked out",
+    "formulaDoc": "Where the index counts it",
     "agentId": "Agent {id}",
     "unnamed": "This agent's card carries no name",
     "since": "First seen {when}",
@@ -1250,5 +1258,11 @@
     "explore": "Explore the registry",
     "verify": "Verify an image",
     "docs": "Read the docs"
+  },
+  "retry": {
+    "countdown": "Trying again in {seconds, plural, =1 {# second} other {# seconds}}",
+    "now": "Try now",
+    "trying": "Trying",
+    "stopped": "Still unreachable. The registry itself is on Monad and the passport pages read it directly."
   }
 }

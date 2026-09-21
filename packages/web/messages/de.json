@@ -117,11 +117,17 @@
       "chainlink": "Von einem Chainlink-Workflow nachgeprüft",
       "disputed": "Bestritten"
     },
+    "legend": {
+      "manifest": "C2PA-manifest angeheftet",
+      "rechecked": "Auf der Kette nachgeprüft",
+      "disputed": "Bestritten"
+    },
     "untitled": "Ohne Titel",
     "noPicture": "Kein Bild am Gateway",
     "seedCard": "Testbild",
     "loadMore": "Mehr laden",
     "loading": "Lädt",
+    "reading": "Wird gelesen",
     "end": "Das sind alle Pässe, die passen.",
     "shown": "{count, number} zu sehen",
     "empty": "Noch passt kein Pass zu diesem Filter.",
@@ -132,8 +138,10 @@
     "title": "Agenten",
     "rail": "ERC-8004-Generatoren",
     "lede": "Jeder erzeugende Agent, den der Index einen Pass hat unterschreiben sehen, mit allem, was er für ihn zählt. Die fleißigsten zuerst.",
+    "scoreMeaning": "Ein Vertrauenswert von 0 bis 100: wie oft die Nachprüfungen von Chainlink mit dem übereinstimmten, was dieser Agent unterschrieben hat. Bestätigte Einsprüche zählen doppelt gegen ihn.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-    "formulaLink": "Wie der Wert entsteht",
+    "formulaHow": "Wie der Wert entsteht",
+    "formulaDoc": "Wo der Index ihn zählt",
     "agentId": "Agent {id}",
     "unnamed": "Die Karte dieses Agenten trägt keinen Namen",
     "since": "Zuerst gesehen am {when}",
@@ -1250,5 +1258,11 @@
     "explore": "Register entdecken",
     "verify": "Bild prüfen",
     "docs": "Dokumentation lesen"
+  },
+  "retry": {
+    "countdown": "Neuer Versuch in {seconds, plural, =1 {# Sekunde} other {# Sekunden}}",
+    "now": "Jetzt versuchen",
+    "trying": "Versuch läuft",
+    "stopped": "Weiterhin nicht erreichbar. Das Register liegt auf Monad, und die Passseiten lesen es direkt."
   }
 }

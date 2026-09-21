@@ -108,7 +108,16 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   );
 }
 
-/** One of the three marks. Lit when the registry says so, a dim outline when it does not. */
+/**
+ * One of the three marks. Lit when the registry says so, a dim outline when it
+ * does not.
+ *
+ * A lit mark carries its meaning as a label rather than as hidden text beside
+ * it: a title never fires under a thumb, and the letter on its own said nothing
+ * to anybody on a phone. An unlit mark is a place holder in a row of three, so
+ * it is left out of the reading altogether rather than announcing an absence
+ * three times on every plate of a sheet of forty.
+ */
 function Mark({
   on,
   letter,
@@ -129,13 +138,15 @@ function Mark({
 
   return (
     <span
+      role={on ? "img" : undefined}
+      aria-label={on ? label : undefined}
+      aria-hidden={on ? undefined : true}
       title={on ? label : undefined}
       className={`flex h-[15px] w-[15px] items-center justify-center rounded-[3px] border font-mono text-[8px] leading-none ${
         on ? lit : "border-line-strong/60 text-transparent"
       }`}
     >
       {letter}
-      {on ? <span className="sr-only">{label}</span> : null}
     </span>
   );
 }

@@ -1,7 +1,12 @@
 import { heldPictureSplit, plateSheet, sheetPage } from "@/components/explore/plates";
 import { DEFAULT_SEARCH } from "@/components/explore/query";
 import { reason } from "@/lib/chain/client";
-import { explorePassports, generatorStandings, heldRegistryCounts } from "@/lib/data/passports";
+import {
+  explorePassports,
+  generatorStandings,
+  heldGeneratorStandings,
+  heldRegistryCounts,
+} from "@/lib/data/passports";
 import { activeSource } from "@/lib/data/source";
 
 /** How many of the newest rows the build looks through for real pictures. */
@@ -74,6 +79,27 @@ export async function holdExploreDefault(): Promise<boolean> {
     },
     EXPLORE_TIMEOUT_MS,
   );
+}
+
+/**
+ * The roster the agents board opens on, read before the build draws the page.
+ *
+ * The board is a page the build makes, one copy per language, and all ten of
+ * them ask the index for the same roster. Reading it once here, under a bound
+ * the page renders do not have, means the query happens before the ten pages
+ * rather than inside the first of them, and an index that is slow or down costs
+ * those pages their built copy and never the build itself.
+ *
+ * True when the roster was read and held, false when the build went without it.
+ */
+export async function holdAgentsRoster(): Promise<boolean> {
+  return await bounded("without the agents roster held", false, async () => {
+    if (activeSource() !== "envio") {
+      return false;
+    }
+    await heldGeneratorStandings(AGENT_CAP);
+    return true;
+  });
 }
 
 /**

@@ -119,11 +119,17 @@
       "chainlink": "Chainlink 워크플로가 재확인",
       "disputed": "이의 있음"
     },
+    "legend": {
+      "manifest": "C2PA manifest 고정됨",
+      "rechecked": "체인에서 재확인됨",
+      "disputed": "이의 있음"
+    },
     "untitled": "제목 없음",
     "noPicture": "게이트웨이에 이미지가 없습니다",
     "seedCard": "시드 테스트 이미지",
     "loadMore": "더 보기",
     "loading": "불러오는 중",
+    "reading": "읽는 중",
     "end": "조건에 맞는 여권은 여기까지입니다.",
     "shown": "{count, number}건 표시",
     "empty": "이 조건에 맞는 여권이 아직 없습니다.",
@@ -134,8 +140,10 @@
     "title": "에이전트",
     "rail": "ERC-8004 생성자",
     "lede": "여권에 서명한 것을 인덱스가 본 모든 생성 에이전트와, 각각에 대해 센 모든 숫자입니다. 많이 서명한 순서입니다.",
+    "scoreMeaning": "0에서 100까지의 신뢰 점수. Chainlink의 재확인이 이 에이전트가 서명한 내용과 얼마나 자주 일치했는지입니다. 받아들여진 이의는 두 배로 깎입니다.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-    "formulaLink": "점수를 구하는 방법",
+    "formulaHow": "점수를 구하는 방법",
+    "formulaDoc": "인덱스가 이것을 세는 곳",
     "agentId": "에이전트 {id}",
     "unnamed": "이 에이전트의 카드에는 이름이 없습니다",
     "since": "처음 확인 {when}",
@@ -1252,5 +1260,11 @@
     "explore": "레지스트리 둘러보기",
     "verify": "이미지 검증",
     "docs": "문서 읽기"
+  },
+  "retry": {
+    "countdown": "{seconds}초 후에 다시 시도합니다",
+    "now": "지금 다시 시도",
+    "trying": "다시 시도하는 중",
+    "stopped": "여전히 닿지 않습니다. 레지스트리는 Monad에 있고 여권 페이지는 그것을 직접 읽습니다."
   }
 }

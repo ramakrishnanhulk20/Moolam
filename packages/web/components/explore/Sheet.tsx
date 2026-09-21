@@ -8,6 +8,7 @@ import { Grid } from "./Grid";
 import { Masthead } from "./Masthead";
 import { heldPictureSplit, sheetPage, type PictureSplit } from "./plates";
 import type { ExploreSearch } from "./query";
+import { ReadingProvider } from "./Reading";
 import type { ExplorePlate } from "./sort";
 
 /** The head for both Explore routes, so the tab reads the same whichever drew the page. */
@@ -86,8 +87,12 @@ export async function ExploreSheet({
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
       <Masthead locale={locale} counts={counts} countsError={countsError} split={split} view={search.view} />
-      <Filters search={search} />
-      <Grid first={plates} cursor={cursor} search={search} indexError={gridError} />
+      {/* The chips and the grid share one piece of state: whether the sheet on
+          screen is still the one the chips say it is. */}
+      <ReadingProvider>
+        <Filters search={search} />
+        <Grid first={plates} cursor={cursor} search={search} indexError={gridError} />
+      </ReadingProvider>
     </div>
   );
 }

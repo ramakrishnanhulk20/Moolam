@@ -3,11 +3,13 @@
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { IndexRetry } from "@/components/IndexRetry";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { PassportCursor } from "@/lib/data/passports";
 import { morePlates } from "./load";
 import { Plate } from "./Plate";
 import type { ExploreSearch } from "./query";
+import { useReading } from "./Reading";
 import { mergePlates, sortPlates, type ExplorePlate } from "./sort";
 
 /**
@@ -48,6 +50,7 @@ export function Grid({
 }) {
   const t = useTranslations("explore");
   const reduced = useIsReducedMotion();
+  const { reading } = useReading();
   const [plates, setPlates] = useState(() => sortPlates(first));
   const [next, setNext] = useState(cursor);
   const [problem, setProblem] = useState<string | null>(null);
@@ -67,7 +70,12 @@ export function Grid({
   };
 
   if (indexError !== null) {
-    return <p className="mt-12 max-w-[54ch] text-sm leading-relaxed text-failed">{t("error", { reason: indexError })}</p>;
+    return (
+      <div className="mt-12 max-w-[54ch]">
+        <p className="text-sm leading-relaxed text-failed">{t("error", { reason: indexError })}</p>
+        <IndexRetry said={indexError} />
+      </div>
+    );
   }
 
   if (plates.length === 0) {
@@ -76,7 +84,15 @@ export function Grid({
 
   return (
     <>
-      <ul className="mt-6 grid grid-cols-2 gap-px border border-line bg-line sm:mt-10 sm:grid-cols-3 xl:grid-cols-4">
+      {/* While a chip is being read the sheet under it is the old one, so it
+          steps back rather than pretending to be the answer. Opacity only:
+          nothing moves, and the reduced-motion rule in globals.css cuts the
+          fade to nothing. */}
+      <ul
+        className={`mt-6 grid grid-cols-2 gap-px border border-line bg-line transition-opacity duration-300 sm:mt-10 sm:grid-cols-3 xl:grid-cols-4 ${
+          reading ? "opacity-60" : "opacity-100"
+        }`}
+      >
         {plates.map((plate, index) =>
           index < FIRST_ROW ? (
             // A motion component holds its plate at opacity 0 in the served HTML
@@ -126,7 +142,13 @@ export function Grid({
       </div>
 
       {problem === null ? null : (
-        <p className="mt-6 max-w-[54ch] text-sm leading-relaxed text-failed">{t("error", { reason: problem })}</p>
+        <div className="mt-6 max-w-[54ch]">
+          <p className="text-sm leading-relaxed text-failed">{t("error", { reason: problem })}</p>
+          {/* The next page knows how to fetch itself, so the retry asks the
+              action again rather than redrawing the whole sheet and losing the
+              pages already under the reader. */}
+          <IndexRetry said={problem} again={loadMore} />
+        </div>
       )}
     </>
   );

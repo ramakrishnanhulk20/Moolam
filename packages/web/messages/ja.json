@@ -119,11 +119,17 @@
       "chainlink": "Chainlink ワークフローが再検証",
       "disputed": "異議あり"
     },
+    "legend": {
+      "manifest": "C2PA manifest をピン留め",
+      "rechecked": "チェーン上で再検証済み",
+      "disputed": "異議あり"
+    },
     "untitled": "無題",
     "noPicture": "ゲートウェイに画像がありません",
     "seedCard": "シードのテスト画像",
     "loadMore": "さらに読み込む",
     "loading": "読み込み中",
+    "reading": "読み取り中",
     "end": "条件に合うパスポートは以上です。",
     "shown": "{count, number} 件表示",
     "empty": "この条件に合うパスポートはまだありません。",
@@ -134,8 +140,10 @@
     "title": "エージェント",
     "rail": "ERC-8004 ジェネレーター",
     "lede": "パスポートに署名したとインデックスが見たすべての生成エージェントと、そこで数えられたすべての数字。署名の多い順です。",
+    "scoreMeaning": "0 から 100 までの信頼スコア。Chainlink の再検証が、このエージェントの署名とどれだけ一致したかです。認められた異議は二倍に数えて差し引きます。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-    "formulaLink": "スコアの求め方",
+    "formulaHow": "スコアの求め方",
+    "formulaDoc": "インデックスがこれを数えている場所",
     "agentId": "エージェント {id}",
     "unnamed": "このエージェントのカードに名前はありません",
     "since": "初回 {when}",
@@ -1252,5 +1260,11 @@
     "explore": "レジストリを見る",
     "verify": "画像を検証",
     "docs": "ドキュメントを読む"
+  },
+  "retry": {
+    "countdown": "{seconds} 秒後に再試行します",
+    "now": "今すぐ再試行",
+    "trying": "再試行中",
+    "stopped": "まだつながりません。レジストリ自体は Monad 上にあり、パスポートのページはそれを直接読みます。"
   }
 }

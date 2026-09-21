@@ -796,3 +796,59 @@ The first HTML carries the real picture titles ("Ant and Elephants", "Monsoon Fi
 What this does not cover: a visitor far from the host's region, a phone on a slow network, or the time the
 pictures themselves take to arrive. The 1.3 s first hit includes the cold start of the one rewrite rule in
 front of this route; every later request is served from the host's cache.
+
+THE AGENTS BOARD BECAME A BUILT PAGE, AND EVERY FAILED READ GOT A WAY BACK (2026-09-21, WO-98)
+
+Measured on this machine against one production build, NEXT_DIST_DIR=.next-verify,
+served with next start on port 3399. The dev server on 3210 was never touched.
+
+What the build listed:
+
+  /[locale]/agents   prerendered as static HTML for all ten locales (SSG)
+  /[locale]/explore  unchanged, ten locales
+  /[locale]/explore/view  unchanged, drawn on the request
+
+First requests to the fresh server, nothing warmed:
+
+  /en/agents   first  0.007 s   the two agents, their trust scores and their names in the HTML
+  /en/agents   again  0.004 s
+  /ta/agents   first  0.020 s
+  /ta/agents   again  0.003 s
+  /en/explore  first  0.010 s
+
+Layout shift, scripts/perf/layout-shift.mjs, two runs at each size, against the
+same server:
+
+  /en/agents    1440x900  CLS 0.00000   375x667  CLS 0.00000   no shift at all
+  /en/explore   1440x900  CLS 0.00000   375x667  CLS 0.00000   no shift at all
+
+At 375x812 neither page scrolls sideways: document scrollWidth 375 against a
+window of 375 on /en/explore, /en/agents, /ta/explore and /ja/agents. The chip
+row still scrolls sideways inside itself, which is what it is for.
+
+THE WAY BACK FROM A 429
+
+A local endpoint standing in for the index, answering 429 to every query, with a
+dev server on 3398 pointed at it (the index address is written into the bundle at
+build time, so a second production build would have been needed to point the
+built server at it, and this order is allowed one).
+
+The agents board, watched in headless Chrome for 84 seconds:
+
+  page load      "The index could not be read: the Envio endpoint answered 429."
+                 "Trying again in 10 seconds", counting down
+  +10.4 s        first try
+  +20.0 s        second try
+  +40.1 s        third try
+  after that     "Still unreachable. The registry itself is on Monad and the
+                 passport pages read it directly."
+
+The endpoint's own log, one line per query, is what those seconds are read from:
+the roster query arrives at 61.0 s (the page load), 71.4 s, 91.4 s and 131.5 s,
+and never again. Three tries, each wait twice the last, and the first wait is ten
+seconds rather than five because a 429 is the index asking for room.
+
+What this does not cover: the ten queries a single dev render makes of the same
+read. That multiplier is the dev server rendering the route once per locale and
+it is the same on Explore, which has been a built page since dd19dc2. The built
+server answers /en/agents from the page it made, with no query at all.

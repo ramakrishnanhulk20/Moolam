@@ -838,6 +838,28 @@ export interface GeneratorStanding extends GeneratorRecord {
  * have signed the most, and nothing on this list is placed by hand.
  */
 export async function generatorStandings(limit = 50): Promise<GeneratorStanding[]> {
+  return (await standingRows(limit)).map((row) => ({ ...row, firstSeenAt: BigInt(row.firstSeenAt) }));
+}
+
+/**
+ * The same roster, held for a minute, for the agents board that is built ahead
+ * of time and refreshed on that cadence. What is held is the index's own rows,
+ * because the first-seen stamp is a bigint by the time a caller sees it and a
+ * bigint cannot be stored.
+ */
+const heldStandingRows = unstable_cache(async (limit: number) => await standingRows(limit), ["moolam-generator-standings"], {
+  revalidate: HOLD_SECONDS,
+  tags: [CACHE_TAGS.index],
+});
+
+export async function heldGeneratorStandings(limit = 50): Promise<GeneratorStanding[]> {
+  return (await heldStandingRows(limit)).map((row) => ({ ...row, firstSeenAt: BigInt(row.firstSeenAt) }));
+}
+
+/** The roster rows with the one counter still a string, so they can be held. */
+type StandingRow = Omit<GeneratorStanding, "firstSeenAt"> & { firstSeenAt: string };
+
+async function standingRows(limit: number): Promise<StandingRow[]> {
   const query = `query GeneratorStandings($limit: Int!) {
     Generator(order_by: [{ passportCount: desc }, { trustScore: desc }], limit: $limit) {
       id
@@ -850,19 +872,8 @@ export async function generatorStandings(limit = 50): Promise<GeneratorStanding[
     }
   }`;
 
-  const data = await askIndex<{
-    Generator: {
-      id: string;
-      passportCount: number;
-      matchedCount: number;
-      mismatchedCount: number;
-      disputesUpheld: number;
-      trustScore: number;
-      firstSeenAt: string;
-    }[];
-  }>(query, { limit });
-
-  return data.Generator.map((row) => ({ ...row, firstSeenAt: BigInt(row.firstSeenAt) }));
+  const data = await askIndex<{ Generator: StandingRow[] }>(query, { limit });
+  return data.Generator;
 }
 
 /**

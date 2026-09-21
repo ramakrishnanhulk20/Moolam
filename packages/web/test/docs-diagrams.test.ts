@@ -73,7 +73,10 @@ describe("the architecture diagrams", () => {
     }
   });
 
-  it("are all valid mermaid, so the browser can draw every one of them", async () => {
+  // Mermaid is a heavy import and there are twelve drawings to parse. Beside the
+  // rest of the suite that took five to seven seconds on this machine, which is
+  // the default limit, so the test failed on the clock and not on a drawing.
+  it("are all valid mermaid, so the browser can draw every one of them", { timeout: 60_000 }, async () => {
     const mermaid = (await import("mermaid")).default;
     mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base" });
     for (const drawing of drawings) {

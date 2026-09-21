@@ -119,11 +119,17 @@
       "chainlink": "由 Chainlink 工作流复核",
       "disputed": "有争议"
     },
+    "legend": {
+      "manifest": "已固定 C2PA manifest",
+      "rechecked": "已在链上复核",
+      "disputed": "有争议"
+    },
     "untitled": "无标题",
     "noPicture": "网关上没有图片",
     "seedCard": "种子测试图片",
     "loadMore": "加载更多",
     "loading": "加载中",
+    "reading": "正在读取",
     "end": "符合条件的护照都在这里了。",
     "shown": "已显示 {count, number} 条",
     "empty": "还没有护照符合这个筛选。",
@@ -134,8 +140,10 @@
     "title": "智能体",
     "rail": "ERC-8004 生成方",
     "lede": "索引见过在护照上签名的每一个生成智能体，以及为它记下的全部数字。签得最多的排在前面。",
+    "scoreMeaning": "0 到 100 的信任分：Chainlink 的复核有多少次与这个智能体签下的内容一致。成立的争议按两倍扣。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-    "formulaLink": "这个分数怎么算出来",
+    "formulaHow": "这个分数怎么算出来",
+    "formulaDoc": "索引在哪里算它",
     "agentId": "智能体 {id}",
     "unnamed": "这个智能体的卡片没有名字",
     "since": "首次出现 {when}",
@@ -1252,5 +1260,11 @@
     "explore": "浏览登记处",
     "verify": "验证图片",
     "docs": "阅读文档"
+  },
+  "retry": {
+    "countdown": "{seconds} 秒后重试",
+    "now": "立即重试",
+    "trying": "正在重试",
+    "stopped": "仍然联系不上。注册表本身在 Monad 上，护照页面直接读取它。"
   }
 }
