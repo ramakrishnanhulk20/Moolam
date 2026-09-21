@@ -228,7 +228,8 @@
       "noMatchBody": "Ningún pasaporte del registro coincide con esta imagen. Un archivo recién salido de un generador que nunca se registró se ve exactamente así.",
       "exact": "bytes exactos",
       "match": "confianza",
-      "noManifest": "En este archivo no queda ningún manifiesto C2PA. El registro lo encontró igual."
+      "noManifest": "En este archivo no queda ningún manifiesto C2PA. El registro lo encontró igual.",
+      "openPassport": "Abrir su pasaporte"
     },
     "close": {
       "kicker": "Moolam",
@@ -241,7 +242,8 @@
       "chain": "en Monad, cadena {chainId}",
       "unread": "sin leer",
       "error": "No se pudo leer el índice: {reason}"
-    }
+    },
+    "skip": "Saltar la película"
   },
   "verify": {
     "title": "Verificar una imagen",
@@ -329,6 +331,24 @@
         "mixed": "permitida para unos usos y no para otros",
         "none": "nada sobre el uso por IA"
       }
+    },
+    "samples": "O prueba con una de estas",
+    "sampleFailed": "Esa imagen no llegó desde ninguna pasarela. Inténtalo otra vez o elige un archivo tuyo.",
+    "recheck": {
+      "label": "La segunda opinión",
+      "never": "todavía no",
+      "count": "{count, plural, =1 {# revisión} other {# revisiones}}",
+      "none": "Todavía sin revisar.",
+      "noneNote": "Ningún flujo de trabajo independiente ha traído esta imagen ni ha vuelto a calcular su huella.",
+      "matched": "Revisada por un flujo de trabajo Chainlink CRE el {at}: volvió a traer la imagen, recalculó la huella y coincidió, {count} de 64 bits de diferencia.",
+      "mismatched": "Un flujo de trabajo Chainlink CRE volvió a traer esta imagen el {at}, recalculó la huella y no coincidió: {count} de 64 bits de diferencia.",
+      "link": "Ver la segunda opinión"
+    },
+    "dispute": {
+      "none": "No hay ninguna impugnación abierta contra este pasaporte.",
+      "open": "Este pasaporte está impugnado. No te fíes de su declaración sobre el uso por IA hasta que se resuelva la impugnación.",
+      "upheld": "Una impugnación contra este pasaporte prosperó. Trata su registro, y su declaración sobre el uso por IA, como poco fiables.",
+      "rejected": "Se presentó una impugnación contra este pasaporte y fue rechazada."
     }
   },
   "passport": {

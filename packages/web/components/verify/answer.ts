@@ -1,5 +1,12 @@
 import type { Hex } from "viem";
-import { VerifierError, type Match, type MatchConsent, type VerifyResponse } from "@/lib/verifier/client";
+import {
+  VerifierError,
+  type Match,
+  type MatchConsent,
+  type MatchDispute,
+  type MatchRecheck,
+  type VerifyResponse,
+} from "@/lib/verifier/client";
 import { checkImage, MAX_UPLOAD_BYTES } from "@/lib/upload/checkImage";
 
 /** The limit lives in lib/upload with the check; the passport page reads it from here. */
@@ -25,6 +32,10 @@ export type Answer =
       manifest: boolean;
       /** What the holder said about AI use. Absent from an older service, which draws no stamp. */
       consent?: MatchConsent;
+      /** Whether a challenge stands against the record. Absent from an older service, which draws no line. */
+      dispute?: MatchDispute;
+      /** What re-checked the picture since. Absent from an older service, which draws no line. */
+      recheck?: MatchRecheck;
       queried: VerifyResponse["result"]["queried"];
     }
   | { kind: "miss"; manifest: boolean; queried: VerifyResponse["result"]["queried"] };
@@ -56,6 +67,12 @@ export function readAnswer(response: VerifyResponse): Answer {
     // passport inside the list, so an exact hit that came back without a best
     // block still finds its own holder's word rather than dropping it.
     consent: best?.consent ?? matches.find((match) => match.id === id)?.consent,
+    // The challenge and the second opinion travel on the same match rows, so
+    // they are found the same way and never borrowed from another passport in
+    // the list. The statement is only worth as much as the record under it, so
+    // the two are read together and shown together.
+    dispute: best?.dispute ?? matches.find((match) => match.id === id)?.dispute,
+    recheck: best?.recheck ?? matches.find((match) => match.id === id)?.recheck,
     queried,
   };
 }

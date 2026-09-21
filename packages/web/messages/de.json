@@ -228,7 +228,8 @@
       "noMatchBody": "Kein Pass im Register passt zu diesem Bild. Eine Datei frisch aus einem Generator, die nie eingetragen wurde, sieht genau so aus.",
       "exact": "exakte Bytes",
       "match": "Sicherheit",
-      "noManifest": "In dieser Datei ist kein C2PA-Manifest mehr. Der Eintrag wurde trotzdem gefunden."
+      "noManifest": "In dieser Datei ist kein C2PA-Manifest mehr. Der Eintrag wurde trotzdem gefunden.",
+      "openPassport": "Seinen Pass öffnen"
     },
     "close": {
       "kicker": "Moolam",
@@ -241,7 +242,8 @@
       "chain": "auf Monad, Kette {chainId}",
       "unread": "ungelesen",
       "error": "Der Index konnte nicht gelesen werden: {reason}"
-    }
+    },
+    "skip": "Film überspringen"
   },
   "verify": {
     "title": "Bild prüfen",
@@ -329,6 +331,24 @@
         "mixed": "für manche Nutzungen erlaubt und für andere nicht",
         "none": "nichts zur KI-Nutzung"
       }
+    },
+    "samples": "Oder nimm eines von diesen",
+    "sampleFailed": "Dieses Bild kam von keinem Gateway zurück. Versuch es noch einmal oder wähle eine eigene Datei.",
+    "recheck": {
+      "label": "Die zweite Meinung",
+      "never": "noch nicht",
+      "count": "{count, plural, =1 {# Nachprüfung} other {# Nachprüfungen}}",
+      "none": "Noch nicht nachgeprüft.",
+      "noneNote": "Kein unabhängiger Workflow hat dieses Bild geholt und seinen Fingerabdruck neu berechnet.",
+      "matched": "Am {at} von einem Chainlink-CRE-Workflow nachgeprüft: er hat das Bild erneut geholt, den Fingerabdruck neu berechnet und eine Übereinstimmung gefunden, {count} von 64 Bit Unterschied.",
+      "mismatched": "Ein Chainlink-CRE-Workflow hat dieses Bild am {at} erneut geholt, den Fingerabdruck neu berechnet und keine Übereinstimmung gefunden: {count} von 64 Bit Unterschied.",
+      "link": "Die zweite Meinung ansehen"
+    },
+    "dispute": {
+      "none": "Gegen diesen Pass läuft keine Anfechtung.",
+      "open": "Dieser Pass wird angefochten. Verlass dich auf seine Erklärung zur KI-Nutzung erst, wenn die Anfechtung entschieden ist.",
+      "upheld": "Eine Anfechtung gegen diesen Pass war erfolgreich. Behandle seinen Eintrag und seine Erklärung zur KI-Nutzung als nicht verlässlich.",
+      "rejected": "Gegen diesen Pass wurde eine Anfechtung erhoben und abgewiesen."
     }
   },
   "passport": {

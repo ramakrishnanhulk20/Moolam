@@ -230,7 +230,8 @@
       "noMatchBody": "登记处里没有护照与这张图片相符。一份刚从生成器出来、从未登记过的文件，看起来正是这样。",
       "exact": "字节完全一致",
       "match": "把握",
-      "noManifest": "这个文件里已经没有 C2PA 清单了。记录照样被找了出来。"
+      "noManifest": "这个文件里已经没有 C2PA 清单了。记录照样被找了出来。",
+      "openPassport": "打开它的护照"
     },
     "close": {
       "kicker": "Moolam",
@@ -243,7 +244,8 @@
       "chain": "在 Monad 上，链 {chainId}",
       "unread": "未读到",
       "error": "索引无法读取：{reason}"
-    }
+    },
+    "skip": "跳过影片"
   },
   "verify": {
     "title": "验证图片",
@@ -331,6 +333,24 @@
         "mixed": "部分用途允许，部分不允许",
         "none": "关于 AI 使用只字未提"
       }
+    },
+    "samples": "或者试试这几张",
+    "sampleFailed": "这张图片没有从任何网关取回。请再试一次，或选择你自己的文件。",
+    "recheck": {
+      "label": "第二意见",
+      "never": "尚未",
+      "count": "{count, plural, other {# 次复核}}",
+      "none": "尚未复核。",
+      "noneNote": "还没有独立的工作流取回这张图片并重新计算指纹。",
+      "matched": "{at}，一个 Chainlink CRE 工作流复核过：它重新取回图片，重新计算指纹，结果一致，64 位中有 {count} 位不同。",
+      "mismatched": "{at}，一个 Chainlink CRE 工作流重新取回这张图片并重新计算指纹，结果不一致：64 位中有 {count} 位不同。",
+      "link": "查看这次复核"
+    },
+    "dispute": {
+      "none": "没有针对这本护照的异议。",
+      "open": "这本护照正被提出异议。在异议了结之前，不要依赖它关于 AI 使用的声明。",
+      "upheld": "针对这本护照的异议成立。请把它的记录，以及它关于 AI 使用的声明，都当作不可靠。",
+      "rejected": "曾有人对这本护照提出异议，并被驳回。"
     }
   },
   "passport": {

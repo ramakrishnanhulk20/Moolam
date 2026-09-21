@@ -228,7 +228,8 @@
       "noMatchBody": "Aucun passeport du registre ne correspond à cette image. Un fichier sorti d’un générateur et jamais enregistré ressemble exactement à ça.",
       "exact": "octets exacts",
       "match": "confiance",
-      "noManifest": "Plus aucun manifeste C2PA dans ce fichier. L’enregistrement a été retrouvé quand même."
+      "noManifest": "Plus aucun manifeste C2PA dans ce fichier. L’enregistrement a été retrouvé quand même.",
+      "openPassport": "Ouvrir son passeport"
     },
     "close": {
       "kicker": "Moolam",
@@ -241,7 +242,8 @@
       "chain": "sur Monad, chaîne {chainId}",
       "unread": "non lu",
       "error": "L’index n’a pas pu être lu : {reason}"
-    }
+    },
+    "skip": "Passer le film"
   },
   "verify": {
     "title": "Vérifier une image",
@@ -329,6 +331,24 @@
         "mixed": "autorisée pour certains usages et pas pour d'autres",
         "none": "rien sur l'usage par l'IA"
       }
+    },
+    "samples": "Ou essayez l’une de celles-ci",
+    "sampleFailed": "Cette image n’est revenue d’aucune passerelle. Réessayez, ou choisissez votre propre fichier.",
+    "recheck": {
+      "label": "Le second avis",
+      "never": "pas encore",
+      "count": "{count, plural, =1 {# vérification} other {# vérifications}}",
+      "none": "Pas encore revérifiée.",
+      "noneNote": "Aucun processus indépendant n’a récupéré cette image ni recalculé son empreinte.",
+      "matched": "Revérifiée par un processus Chainlink CRE le {at} : il a récupéré l’image, recalculé l’empreinte et trouvé une correspondance, {count} bits d’écart sur 64.",
+      "mismatched": "Un processus Chainlink CRE a récupéré cette image le {at}, recalculé l’empreinte et n’a pas trouvé de correspondance : {count} bits d’écart sur 64.",
+      "link": "Voir le second avis"
+    },
+    "dispute": {
+      "none": "Aucune contestation n’est ouverte contre ce passeport.",
+      "open": "Ce passeport est contesté. Ne vous fiez pas à sa déclaration sur l’usage par l’IA tant que la contestation n’est pas tranchée.",
+      "upheld": "Une contestation contre ce passeport a été retenue. Tenez son enregistrement, et sa déclaration sur l’usage par l’IA, pour peu fiables.",
+      "rejected": "Une contestation a été portée contre ce passeport et rejetée."
     }
   },
   "passport": {

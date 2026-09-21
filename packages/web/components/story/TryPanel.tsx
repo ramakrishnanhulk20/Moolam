@@ -2,13 +2,16 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import type { Hex } from "viem";
 import { probe, progress, resetProbe, type ProbeState } from "@/components/story/signals";
 import { Picture } from "@/components/passport/Picture";
-import { pictureSources, pinnedBytes } from "@/lib/images";
+import { DisputeLine } from "@/components/verify/DisputeLine";
+import { readAnswer } from "@/components/verify/answer";
+import { fileFromSample } from "@/components/verify/sample";
+import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { checkImage } from "@/lib/upload/checkImage";
+import type { TrySample } from "@/lib/data/samples";
 import { VerifierError, verify, type VerifierCode, type VerifyResponse } from "@/lib/verifier/client";
 
 /**
@@ -25,7 +28,14 @@ type State =
   | { kind: "idle" }
   | { kind: "pending"; name: string }
   | { kind: "error"; message: string }
-  | { kind: "done"; name: string; answer: VerifyResponse };
+  | { kind: "done"; name: string; answer: VerifyResponse; title: string | null };
+
+/**
+ * One registered image the panel offers, for a judge with no file to hand. The
+ * shape and the rule that picks the three live in lib/data/samples, because the
+ * verify page offers the same pictures and the two must never disagree.
+ */
+export type { TrySample };
 
 /**
  * The beat a judge can touch: drop any copy of any image and the running
@@ -36,12 +46,6 @@ type State =
  * while the camera is still flying, so the whole subtree is inert until it is
  * actually on screen.
  */
-/** One registered image the panel offers, for a judge with no file to hand. */
-export interface TrySample {
-  id: Hex;
-  url: string;
-}
-
 export function TryPanel({
   onPreview,
   samples = [],
@@ -113,7 +117,7 @@ export function TryPanel({
     void check(file);
   }
 
-  async function check(file: File) {
+  async function check(file: File, known: string | null = null) {
     if (preview.current !== null) {
       URL.revokeObjectURL(preview.current);
     }
@@ -127,11 +131,36 @@ export function TryPanel({
       const answer = await verify({ file });
       const matched = answer.result.exact !== null || answer.result.best !== null;
       publish(matched ? "matched" : "refused", answer.result.confidence);
-      setState({ kind: "done", name: file.name, answer });
+      setState({ kind: "done", name: file.name, answer, title: known });
+      void readTitle(answer);
     } catch (error) {
       publish("refused");
       setState({ kind: "error", message: refusal(error, t) });
     }
+  }
+
+  /**
+   * The matched picture's own name, so the result is not a hex string a reader
+   * has to take on faith.
+   *
+   * It is the same read the verify page's card makes, imported only once there
+   * is something to name: the landing page is the one screen that must not
+   * carry a byte it does not need before the first frame.
+   */
+  async function readTitle(answer: VerifyResponse) {
+    const id = answer.result.exact ?? answer.result.best?.id ?? null;
+    if (id === null) {
+      return;
+    }
+    const { matchedPassport } = await import("@/components/verify/lookup");
+    const passport = await matchedPassport(id).catch(() => null);
+    const title = passport?.title;
+    if (title === undefined) {
+      return;
+    }
+    // The reader may have dropped another file while the registry answered, so
+    // the name is only applied to the answer it belongs to.
+    setState((current) => (current.kind === "done" && current.answer === answer ? { ...current, title } : current));
   }
 
   /**
@@ -148,19 +177,18 @@ export function TryPanel({
    * with nothing on its way to the verify service.
    */
   async function takeSample(sample: TrySample) {
-    setState({ kind: "pending", name: shortHex(sample.id, 10, 8) });
+    setState({ kind: "pending", name: sample.title ?? shortHex(sample.id, 10, 8) });
 
-    let blob: Blob;
+    let file: File;
     try {
-      blob = await pinnedBytes(sample.url);
+      file = await fileFromSample(sample);
     } catch {
       publish("refused");
       setState({ kind: "error", message: t("sampleFailed") });
       return;
     }
 
-    const kind = blob.type.startsWith("image/") ? blob.type : "image/jpeg";
-    await check(new File([blob], `${shortHex(sample.id, 6, 4)}.${kind.split("/")[1] ?? "jpg"}`, { type: kind }));
+    await check(file, sample.title ?? null);
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -266,7 +294,7 @@ export function TryPanel({
 
             {state.kind === "error" && <p className="text-sm leading-relaxed text-failed">{state.message}</p>}
 
-            {state.kind === "done" && <Answer answer={state.answer} name={state.name} />}
+            {state.kind === "done" && <Answer answer={state.answer} name={state.name} title={state.title} />}
           </div>
         </div>
       </div>
@@ -333,9 +361,12 @@ function refusal(error: unknown, t: (key: string, values?: Record<string, string
   return t("error", { reason: error instanceof Error ? error.message : String(error) });
 }
 
-function Answer({ answer, name }: { answer: VerifyResponse; name: string }) {
+function Answer({ answer, name, title }: { answer: VerifyResponse; name: string; title: string | null }) {
   const t = useTranslations("story.tryIt");
   const id = answer.result.exact ?? answer.result.best?.id ?? null;
+  // The verify page's own reader, so the challenge is found on the matched row
+  // by the one rule rather than by a second copy of it here.
+  const read = readAnswer(answer);
 
   if (id === null) {
     return (
@@ -359,13 +390,35 @@ function Answer({ answer, name }: { answer: VerifyResponse; name: string }) {
           {answer.result.exact !== null ? t("exact") : t("match")}
         </span>
       </div>
+      {/* What was matched, by its own name. The registry answers with a hex
+          word, which tells a reader nothing, so the picture's pinned title is
+          read after the answer lands and takes its place the moment it does. */}
+      {title !== null && (
+        <p className="mt-3 max-w-[26ch] font-display text-[1.05rem] font-semibold leading-[1.15] tracking-[-0.02em] text-text">
+          {title}
+        </p>
+      )}
+
+      {/* The link says where it goes. A truncated hex word on its own was the
+          only next step this panel offered, and nothing about it read as one. */}
       <Link
         href={`/passport/${id}`}
-        className="mt-3 inline-block break-all font-mono text-[12px] text-text-muted underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
+        className="group mt-3 inline-flex flex-wrap items-baseline gap-x-2 gap-y-1 text-[12px] text-text-muted transition-colors duration-200 hover:text-accent"
       >
-        {shortHex(id, 10, 8)}
+        <span className="underline decoration-line underline-offset-4 transition-colors duration-200 group-hover:decoration-accent">
+          {t("openPassport")}
+        </span>
+        <span className="break-all font-mono text-[11px] text-text-faint transition-colors duration-200 group-hover:text-accent">
+          {shortHex(id, 10, 8)}
+        </span>
       </Link>
       <p className="mt-2 break-all font-mono text-[11px] text-text-faint">{name}</p>
+
+      {/* The same sentence the verify card prints, from the same field and the
+          same words: a record under challenge is worth knowing about here too,
+          not only on the page a reader might never open. */}
+      <DisputeLine dispute={read.kind === "miss" ? undefined : read.dispute} className="mt-3" />
+
       {!answer.manifest.present && <p className="mt-3 text-sm leading-relaxed text-text-faint">{t("noManifest")}</p>}
     </div>
   );

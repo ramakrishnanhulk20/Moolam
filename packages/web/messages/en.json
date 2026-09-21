@@ -228,7 +228,8 @@
       "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
       "exact": "exact bytes",
       "match": "confidence",
-      "noManifest": "No C2PA manifest left in this file. The record found it anyway."
+      "noManifest": "No C2PA manifest left in this file. The record found it anyway.",
+      "openPassport": "Open its passport"
     },
     "close": {
       "kicker": "Moolam",
@@ -241,7 +242,8 @@
       "chain": "on Monad, chain {chainId}",
       "unread": "unread",
       "error": "The index could not be read: {reason}"
-    }
+    },
+    "skip": "Skip the film"
   },
   "verify": {
     "title": "Verify an image",
@@ -329,6 +331,24 @@
         "mixed": "allowed for some uses and not for others",
         "none": "nothing about AI use"
       }
+    },
+    "samples": "Or try one of these",
+    "sampleFailed": "That picture would not come back from any gateway. Try again, or choose a file of your own.",
+    "recheck": {
+      "label": "The second opinion",
+      "never": "not yet",
+      "count": "{count, plural, =1 {# re-check} other {# re-checks}}",
+      "none": "Not re-checked yet.",
+      "noneNote": "No independent workflow has fetched this picture and recomputed its fingerprint.",
+      "matched": "Re-checked by a Chainlink CRE workflow on {at}: it re-fetched the picture, recomputed the fingerprint and matched, {count} of 64 bits apart.",
+      "mismatched": "A Chainlink CRE workflow re-fetched this picture on {at}, recomputed the fingerprint and did not match: {count} of 64 bits apart.",
+      "link": "See the second opinion"
+    },
+    "dispute": {
+      "none": "No challenge is open against this passport.",
+      "open": "This passport is under challenge. Do not rely on its statement on AI use until the challenge is settled.",
+      "upheld": "A challenge against this passport was upheld. Treat its record, and its statement on AI use, as unreliable.",
+      "rejected": "A challenge was raised against this passport and rejected."
     }
   },
   "passport": {

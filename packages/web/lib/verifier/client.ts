@@ -202,9 +202,59 @@ const consentSchema = z.union([
   z.object({ source: z.literal("unavailable") }),
 ]);
 
+/**
+ * Whether the matched passport is under challenge, read live from the
+ * registry's own dispute view while the service answered.
+ *
+ * The four words are the registry's DisputeStatus enum, one for one, exactly as
+ * docs/api/verifier-endpoints.md describes them. It is read together with the
+ * statement above: a holder's word about AI use rests on a record that a
+ * challenge has put in question. "unavailable" is the service saying it could
+ * not find out, which is not a clean record, and the whole field is optional so
+ * a service that predates it leaves the line undrawn.
+ */
+const disputeSchema = z.union([
+  z.object({ source: z.literal("chain"), status: z.enum(["none", "open", "upheld", "rejected"]) }),
+  z.object({ source: z.literal("unavailable") }),
+]);
+
+/**
+ * What has independently re-checked the matched picture since it was
+ * registered: a Chainlink CRE workflow fetched it from the address in its
+ * passport, recomputed the fingerprint and wrote the verdict to Monad.
+ *
+ * Three shapes and never a fourth, exactly as docs/api/verifier-endpoints.md
+ * describes them. "index" with a count of zero is the service saying nothing
+ * has re-checked this picture yet; "unavailable" is the service saying it
+ * cannot tell, which is not the same thing. A count and a newest verdict that
+ * disagree never travel together: the service sends the whole fact as
+ * unavailable rather than half of it. The field is optional, so a service that
+ * predates it leaves the line undrawn instead of failing the answer.
+ */
+const recheckSchema = z.union([
+  z.object({
+    source: z.literal("index"),
+    attestations: z.number().int().positive(),
+    matched: z.number().int().nonnegative(),
+    mismatched: z.number().int().nonnegative(),
+    latest: z.object({
+      matched: z.boolean(),
+      /** How many of the 64 fingerprint bits the recomputed value differed by. */
+      distance: z.number().int().nonnegative(),
+      /** Unix seconds: when the verdict was written. */
+      at: z.number().int().positive(),
+      receiver: addressWord,
+    }),
+  }),
+  z.object({ source: z.literal("index"), attestations: z.literal(0) }),
+  z.object({ source: z.literal("unavailable") }),
+]);
+
 const matchSchema = z.object({
   id: hexWord,
   consent: consentSchema.optional(),
+  dispute: disputeSchema.optional(),
+  recheck: recheckSchema.optional(),
   phashDistance: z.number().int().nonnegative(),
   blockhashDistance: z.number().int().nonnegative(),
   variant: z.enum([
@@ -253,6 +303,8 @@ export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
 export type MatchConsent = z.infer<typeof consentSchema>;
+export type MatchRecheck = z.infer<typeof recheckSchema>;
+export type MatchDispute = z.infer<typeof disputeSchema>;
 export type StatedUse = z.infer<typeof statedUse>;
 export type TrainingStatement = z.infer<typeof trainingSchema>;
 /** The same statement on the way out. The standard is the service's to name, not a caller's. */

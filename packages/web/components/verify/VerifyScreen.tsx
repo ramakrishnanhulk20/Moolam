@@ -4,15 +4,20 @@ import { MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { verify, verifierHost } from "@/lib/verifier/client";
+import type { TrySample } from "@/lib/data/samples";
 import { AnswerCard, type Stage } from "./AnswerCard";
 import { chosenProblem, readAnswer, verifyProblem } from "./answer";
 import { matchedPassport } from "./lookup";
+import { fileFromSample } from "./sample";
+import { Samples } from "./Samples";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
 /**
  * Drop any copy of any image and the running verifier says which passport it
- * belongs to.
+ * belongs to. A reader with no Moolam picture of their own presses one of the
+ * offered plates instead, which fetches that picture's pinned bytes and puts
+ * them through the same check.
  *
  * One step on purpose: choosing or dropping a file starts the check. A second
  * button between the file and the answer taught nobody anything, and the panel
@@ -23,7 +28,7 @@ const ACCEPT = "image/jpeg,image/png,image/webp";
  * passport behind the answer is read from Monad by this browser too, so the
  * app's own server is not in the middle of a check at any point.
  */
-export function VerifyScreen() {
+export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
   const t = useTranslations("verify");
   const input = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -74,6 +79,24 @@ export function VerifyScreen() {
     }
     setFile(chosen);
     void check(chosen);
+  }
+
+  /**
+   * An offered picture, fetched from the gateway and handed to `take`, which is
+   * the same function the file input and the drop target call. Nothing about
+   * the check that follows knows where the bytes came from.
+   */
+  async function pick(sample: TrySample) {
+    setStage({ kind: "checking", name: sample.title ?? sample.id });
+    let file: File;
+    try {
+      file = await fileFromSample(sample);
+    } catch {
+      setFile(null);
+      setStage({ kind: "problem", problem: { key: "sampleFailed" } });
+      return;
+    }
+    take(file);
   }
 
   async function check(chosen: File) {
@@ -161,6 +184,8 @@ export function VerifyScreen() {
               </div>
             )}
           </div>
+
+          <Samples samples={samples} onPick={(sample) => void pick(sample)} busy={busy} />
 
           {/* The verdict, under the picture it is about. The card below carries
               the working: the confidence, the two distances and what was

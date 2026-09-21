@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { VerifyScreen } from "@/components/verify/VerifyScreen";
+import { offeredSamples } from "@/lib/data/offeredSamples";
+
+// The offered pictures are read from the registry, and the page is rebuilt from
+// that read a minute at a time rather than on every visit. It is the same
+// cadence the index itself catches up on, and the same one the home page uses,
+// so the two screens offer the same three pictures.
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,
@@ -25,6 +32,11 @@ export default async function VerifyPage({ params }: { params: Promise<{ locale:
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("verify");
+
+  // Real records, read here on the server. A judge with no Moolam picture on
+  // their laptop has something to press, and it runs the same check a dropped
+  // file gets.
+  const samples = await offeredSamples();
 
   // Tamil letters carry marks above and below the line, so the tight leading the
   // display face wants in Latin makes two lines touch.
@@ -61,7 +73,7 @@ export default async function VerifyPage({ params }: { params: Promise<{ locale:
         </p>
       </header>
 
-      <VerifyScreen />
+      <VerifyScreen samples={samples} />
     </div>
   );
 }

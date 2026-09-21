@@ -50,7 +50,14 @@ export async function Attestations({
   );
 
   return (
-    <section className="border-y border-line bg-bg-raised">
+    // The verify card's "See the second opinion" link lands here. The margin is
+    // the fixed header's own height, so the heading clears the bar instead of
+    // sitting behind it.
+    <section
+      id="second-opinion"
+      style={{ scrollMarginTop: "calc(var(--header-h) + 1rem)" }}
+      className="border-y border-line bg-bg-raised"
+    >
       <div className="mx-auto w-full max-w-[1400px] px-5 py-14 sm:px-8 sm:py-20">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
           <div className="rise">

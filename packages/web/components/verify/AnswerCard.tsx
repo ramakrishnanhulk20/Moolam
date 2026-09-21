@@ -9,6 +9,8 @@ import { Mono } from "@/components/passport/Mono";
 import { Picture } from "@/components/passport/Picture";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
+import { DisputeLine } from "./DisputeLine";
+import { SecondOpinion } from "./SecondOpinion";
 import { agentChipId, percent, type Answer, type Problem } from "./answer";
 import type { MatchedPassport } from "./lookup";
 
@@ -203,9 +205,13 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
         </p>
 
         {/* Proving the picture is registered is half the answer. This is the
-            other half: whether its holder lets a machine use it, read from the
-            register on Monad and not from the file that was uploaded. */}
+            other half, three facts that are read together: what the holder said
+            about AI use, whether anybody has challenged the record that word
+            rests on, and what an independent workflow found when it fetched the
+            picture and hashed it again. */}
         <ConsentStamp consent={answer.consent} className="mt-8" />
+        <DisputeLine dispute={answer.dispute} className="mt-4" />
+        <SecondOpinion recheck={answer.recheck} id={answer.id} className="mt-6" />
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link

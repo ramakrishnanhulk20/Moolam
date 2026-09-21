@@ -229,7 +229,8 @@
       "noMatchBody": "Nenhum passaporte do registro bate com esta imagem. Um arquivo recém-saído de um gerador que nunca foi registrado é exatamente assim.",
       "exact": "bytes exatos",
       "match": "confiança",
-      "noManifest": "Não sobrou nenhum manifesto C2PA neste arquivo. O registro foi encontrado do mesmo jeito."
+      "noManifest": "Não sobrou nenhum manifesto C2PA neste arquivo. O registro foi encontrado do mesmo jeito.",
+      "openPassport": "Abrir o passaporte dela"
     },
     "close": {
       "kicker": "Moolam",
@@ -242,7 +243,8 @@
       "chain": "na Monad, rede {chainId}",
       "unread": "não lido",
       "error": "O índice não pôde ser lido: {reason}"
-    }
+    },
+    "skip": "Pular o filme"
   },
   "verify": {
     "title": "Verificar uma imagem",
@@ -330,6 +332,24 @@
         "mixed": "permitida para uns usos e não para outros",
         "none": "nada sobre uso por IA"
       }
+    },
+    "samples": "Ou experimente uma destas",
+    "sampleFailed": "Essa imagem não voltou de nenhum gateway. Tente de novo ou escolha um arquivo seu.",
+    "recheck": {
+      "label": "A segunda opinião",
+      "never": "ainda não",
+      "count": "{count, plural, =1 {# reconferência} other {# reconferências}}",
+      "none": "Ainda não foi reconferida.",
+      "noneNote": "Nenhum fluxo independente buscou esta imagem nem recalculou a impressão dela.",
+      "matched": "Reconferida por um fluxo Chainlink CRE em {at}: ele buscou a imagem de novo, recalculou a impressão e bateu, {count} de 64 bits de diferença.",
+      "mismatched": "Um fluxo Chainlink CRE buscou esta imagem em {at}, recalculou a impressão e não bateu: {count} de 64 bits de diferença.",
+      "link": "Ver a segunda opinião"
+    },
+    "dispute": {
+      "none": "Não há nenhuma contestação aberta contra este passaporte.",
+      "open": "Este passaporte está contestado. Não confie na declaração dele sobre uso por IA enquanto a contestação não for resolvida.",
+      "upheld": "Uma contestação contra este passaporte foi aceita. Trate o registo dele, e a declaração dele sobre uso por IA, como pouco confiáveis.",
+      "rejected": "Uma contestação foi levantada contra este passaporte e recusada."
     }
   },
   "passport": {
