@@ -27,6 +27,41 @@ type Passport {
   mismatchedCount: Int!
   attestations: [Attestation!]! @derivedFrom(field: "passport")
   dispute: Dispute
+  # What the holder says AI may do with this picture, flattened onto the passport
+  # so "every picture open to training, newest first" is one indexed query rather
+  # than a screen looping over the chain. consentStated separates "said nothing"
+  # from "said no": both read as a refusal to a crawler, but only one of them is
+  # a choice the holder made.
+  consentStated: Boolean! @index
+  consentSummary: String! @index
+  consentAiTraining: Int!
+  consentAiGenerativeTraining: Int!
+  consentAiInference: Int!
+  consentDataMining: Int!
+  consentInfo: String!
+  consentAt: BigInt @index
+  consentWriter: String
+  consentCount: Int!
+  consentEntries: [ConsentEntry!]! @derivedFrom(field: "passport")
+}
+
+# One statement, kept exactly as it was written, keyed "<passportId>-<index>" from
+# the event's own index. The register never edits an entry, so this table is the
+# history a reader quotes when they need what was allowed on the day they used a
+# picture, and the row for a superseded statement stays exactly as it was.
+type ConsentEntry {
+  id: ID!
+  passport: Passport! @index
+  index: Int!
+  writer: String! @index
+  aiTraining: Int!
+  aiGenerativeTraining: Int!
+  aiInference: Int!
+  dataMining: Int!
+  summary: String! @index
+  constraintInfo: String!
+  at: BigInt! @index
+  txHash: String!
 }
 
 type Creator {
@@ -100,6 +135,7 @@ type DailyStats {
   attestations: Int!
   disputes: Int!
   uniqueCreators: Int!
+  consentStatements: Int!
 }
 
 type GlobalStats {
@@ -109,4 +145,9 @@ type GlobalStats {
   generators: Int!
   attestations: Int!
   disputes: Int!
+  # Statements written, against passports that carry one. They differ because a
+  # holder can restate, and a chart that showed only the total would make a
+  # handful of creators changing their minds look like new pictures arriving.
+  consentStatements: Int!
+  passportsWithConsent: Int!
 }

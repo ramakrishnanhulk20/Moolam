@@ -1,0 +1,223 @@
+[
+  {
+    "blockNumber": 105833721,
+    "blockTimestamp": 1789717122,
+    "txHash": "0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d",
+    "logIndex": 74,
+    "passportId": "0x5b3856dc4765c629e82f65ff920f13543f7c1ef818b52252d55b488387fe65b1",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 1,
+      "aiGenerativeTraining": 1,
+      "aiInference": 1,
+      "dataMining": 1
+    },
+    "constraintInfo": "",
+    "at": 1789717122
+  },
+  {
+    "blockNumber": 105833721,
+    "blockTimestamp": 1789717122,
+    "txHash": "0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d",
+    "logIndex": 75,
+    "passportId": "0x01f9243e5dafb9364ff4819c4f55379d5366acd37af2466ff69500ceb8438ed5",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 1,
+      "aiGenerativeTraining": 1,
+      "aiInference": 1,
+      "dataMining": 1
+    },
+    "constraintInfo": "",
+    "at": 1789717122
+  },
+  {
+    "blockNumber": 105833721,
+    "blockTimestamp": 1789717122,
+    "txHash": "0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d",
+    "logIndex": 76,
+    "passportId": "0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 1,
+      "aiGenerativeTraining": 1,
+      "aiInference": 1,
+      "dataMining": 1
+    },
+    "constraintInfo": "",
+    "at": 1789717122
+  },
+  {
+    "blockNumber": 105833721,
+    "blockTimestamp": 1789717122,
+    "txHash": "0x5a14f424ec5c5c091a6ffe6e02cd1d40ef1b113a87d092a86577ba036df1959d",
+    "logIndex": 77,
+    "passportId": "0x35fcd08ac2b19168dac0dac781a778d72aa9b3ea91b2c3e55c16582ad14a3771",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 1,
+      "aiGenerativeTraining": 1,
+      "aiInference": 1,
+      "dataMining": 1
+    },
+    "constraintInfo": "",
+    "at": 1789717122
+  },
+  {
+    "blockNumber": 105833742,
+    "blockTimestamp": 1789717128,
+    "txHash": "0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61",
+    "logIndex": 118,
+    "passportId": "0x367c1afed9276fe599d5c527882f65ee516d274141e3974b1290f52b19e98766",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 2,
+      "aiGenerativeTraining": 2,
+      "aiInference": 2,
+      "dataMining": 2
+    },
+    "constraintInfo": "",
+    "at": 1789717128
+  },
+  {
+    "blockNumber": 105833742,
+    "blockTimestamp": 1789717128,
+    "txHash": "0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61",
+    "logIndex": 119,
+    "passportId": "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 2,
+      "aiGenerativeTraining": 2,
+      "aiInference": 2,
+      "dataMining": 2
+    },
+    "constraintInfo": "",
+    "at": 1789717128
+  },
+  {
+    "blockNumber": 105833742,
+    "blockTimestamp": 1789717128,
+    "txHash": "0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61",
+    "logIndex": 120,
+    "passportId": "0x07a0bfbac45278c6d9a2d488470833b3ed8e0791f5f071e190e5224c3b34951d",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 2,
+      "aiGenerativeTraining": 2,
+      "aiInference": 2,
+      "dataMining": 2
+    },
+    "constraintInfo": "",
+    "at": 1789717128
+  },
+  {
+    "blockNumber": 105833742,
+    "blockTimestamp": 1789717128,
+    "txHash": "0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61",
+    "logIndex": 121,
+    "passportId": "0xf08bea9e1429bee09065a3cd443f353096acf748c73113ac8696313da9a059d7",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 2,
+      "aiGenerativeTraining": 2,
+      "aiInference": 2,
+      "dataMining": 2
+    },
+    "constraintInfo": "",
+    "at": 1789717128
+  },
+  {
+    "blockNumber": 105833756,
+    "blockTimestamp": 1789717132,
+    "txHash": "0xf4d6a3bb546801d2922c1ec88b8d8d9a5decdc075664db3ab3d61feef2df239e",
+    "logIndex": 55,
+    "passportId": "0x7cb4aead3b37f16b78a203a43aba83db10fa5f2fc7629f353826183d8c9d693f",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 3,
+      "aiGenerativeTraining": 3,
+      "aiInference": 3,
+      "dataMining": 3
+    },
+    "constraintInfo": "Ask first: open an issue at https://github.com/ramakrishnanhulk20/Moolam/issues",
+    "at": 1789717132
+  },
+  {
+    "blockNumber": 105833756,
+    "blockTimestamp": 1789717132,
+    "txHash": "0xf4d6a3bb546801d2922c1ec88b8d8d9a5decdc075664db3ab3d61feef2df239e",
+    "logIndex": 56,
+    "passportId": "0xdece558a3ca0a892a2e0ee1b5295a7140bed9388e78416b86c058f23fbb29436",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 3,
+      "aiGenerativeTraining": 3,
+      "aiInference": 3,
+      "dataMining": 3
+    },
+    "constraintInfo": "Ask first: open an issue at https://github.com/ramakrishnanhulk20/Moolam/issues",
+    "at": 1789717132
+  },
+  {
+    "blockNumber": 105833756,
+    "blockTimestamp": 1789717132,
+    "txHash": "0xf4d6a3bb546801d2922c1ec88b8d8d9a5decdc075664db3ab3d61feef2df239e",
+    "logIndex": 57,
+    "passportId": "0x0a3c8368198f7c52597338543141797b0ab395ff53a3590499099238f85f15ae",
+    "writer": "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6",
+    "index": 0,
+    "consent": {
+      "aiTraining": 3,
+      "aiGenerativeTraining": 3,
+      "aiInference": 3,
+      "dataMining": 3
+    },
+    "constraintInfo": "Ask first: open an issue at https://github.com/ramakrishnanhulk20/Moolam/issues",
+    "at": 1789717132
+  },
+  {
+    "blockNumber": 106391876,
+    "blockTimestamp": 1789885758,
+    "txHash": "0x46010c7946ff6d4b772e52b64bcb9db062fdba0cd6eedfc05f2cf15326c85361",
+    "logIndex": 134,
+    "passportId": "0x3dae5ee9d854d6af49857150873cefbe2df2a585e35ea86d34f0f47cb3b6403d",
+    "writer": "0xBB4Eb7bF3e4E4960EE0c2f535bd31c84dF35b6b2",
+    "index": 0,
+    "consent": {
+      "aiTraining": 1,
+      "aiGenerativeTraining": 1,
+      "aiInference": 1,
+      "dataMining": 1
+    },
+    "constraintInfo": "",
+    "at": 1789885758
+  },
+  {
+    "blockNumber": 106392759,
+    "blockTimestamp": 1789886024,
+    "txHash": "0xfd6d9bf5872d3cee781636a1cebff520926ee0e761003a098abc9ef040b56d74",
+    "logIndex": 63,
+    "passportId": "0xbcdb2f0f06997c3877869a867e98edc1c0abaaea43e1b24834741ed59ed874df",
+    "writer": "0xBB4Eb7bF3e4E4960EE0c2f535bd31c84dF35b6b2",
+    "index": 0,
+    "consent": {
+      "aiTraining": 2,
+      "aiGenerativeTraining": 2,
+      "aiInference": 2,
+      "dataMining": 2
+    },
+    "constraintInfo": "",
+    "at": 1789886024
+  }
+]

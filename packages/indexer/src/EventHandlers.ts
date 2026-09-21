@@ -1,9 +1,11 @@
 import { indexer } from "envio";
 
+import { summaryOf } from "./consent.js";
 import { bumpDaily, bumpGlobal, markCreatorActive } from "./day.js";
 import {
   addressId,
   attestationId,
+  consentEntryId,
   generatorId,
   parentPassportId,
   passportId,
@@ -108,6 +110,20 @@ indexer.onEvent(
       matchedCount: 0,
       mismatchedCount: 0,
       dispute_id: undefined,
+      // A new passport has said nothing about AI use. consentSummary reads "none"
+      // from the start so a caller can filter on one field without special casing
+      // a null, and consentStated is what tells them the silence is silence and
+      // not a holder who chose it.
+      consentStated: false,
+      consentSummary: "none",
+      consentAiTraining: 0,
+      consentAiGenerativeTraining: 0,
+      consentAiInference: 0,
+      consentDataMining: 0,
+      consentInfo: "",
+      consentAt: undefined,
+      consentWriter: undefined,
+      consentCount: 0,
     });
 
     if (existingCreator === undefined) {
@@ -371,6 +387,94 @@ indexer.onEvent(
       id: addressId(event.params.receiver),
       active: false,
       since: BigInt(event.block.timestamp),
+    });
+  },
+);
+
+indexer.onEvent(
+  { contract: "MoolamConsent", event: "ConsentSet" },
+  async ({ event, context }) => {
+    const targetId = passportId(event.params.passportId);
+    const passport = await context.Passport.get(targetId);
+
+    if (passport === undefined) {
+      // The register asks the registry who holds a passport before it writes, so
+      // this means the index is behind its own chain, not that the statement is
+      // wrong. Dropping the event is better than inventing a passport row that
+      // PassportRegistered would then overwrite with its defaults.
+      context.log.warn("Consent for a passport this index has not seen", {
+        passportId: targetId,
+      });
+      return;
+    }
+
+    const aiTraining = Number(event.params.consent.aiTraining);
+    const aiGenerativeTraining = Number(event.params.consent.aiGenerativeTraining);
+    const aiInference = Number(event.params.consent.aiInference);
+    const dataMining = Number(event.params.consent.dataMining);
+    const summary = summaryOf(aiTraining, aiGenerativeTraining, aiInference, dataMining);
+
+    if (summary === null) {
+      context.log.warn("Consent naming a use outside the contract's enum", {
+        passportId: targetId,
+        consent: [aiTraining, aiGenerativeTraining, aiInference, dataMining].join(","),
+      });
+      return;
+    }
+
+    const index = Number(event.params.index);
+    const at = event.params.at;
+    // The statement's author is in the event, never in the transaction. A holder
+    // with a passkey wallet writes through the ERC-4337 EntryPoint, so the
+    // transaction's sender is a bundler that has nothing to do with the picture.
+    const writer = addressId(event.params.writer);
+    const constraintInfo = event.params.constraintInfo;
+
+    context.ConsentEntry.set({
+      id: consentEntryId(targetId, index),
+      passport_id: targetId,
+      index,
+      writer,
+      aiTraining,
+      aiGenerativeTraining,
+      aiInference,
+      dataMining,
+      summary,
+      constraintInfo,
+      at,
+      txHash: event.transaction.hash,
+    });
+
+    // Events reach a handler in chain order, so an index below the count is a
+    // block being replayed. Its entry row was just rewritten as itself; the
+    // headline, the count and the counters have already taken it in once and
+    // must not take it in again.
+    if (index < passport.consentCount) {
+      return;
+    }
+
+    const firstStatement = passport.consentCount === 0;
+
+    context.Passport.set({
+      ...passport,
+      consentStated: true,
+      consentSummary: summary,
+      consentAiTraining: aiTraining,
+      consentAiGenerativeTraining: aiGenerativeTraining,
+      consentAiInference: aiInference,
+      consentDataMining: dataMining,
+      consentInfo: constraintInfo,
+      consentAt: at,
+      consentWriter: writer,
+      consentCount: passport.consentCount + 1,
+    });
+
+    await bumpDaily(context, event.block.timestamp, { consentStatements: 1 });
+    // A holder who restates adds to the statements but not to the pictures that
+    // carry one, so the two global counters answer different questions.
+    await bumpGlobal(context, {
+      consentStatements: 1,
+      passportsWithConsent: firstStatement ? 1 : 0,
     });
   },
 );

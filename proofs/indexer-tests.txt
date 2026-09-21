@@ -1,27 +1,21 @@
-WO-3c proof: envio codegen, tsc and the handler tests, all run inside WSL2 Ubuntu.
-Run on 2026-09-08T08:17:05Z with v22.23.2 (nvm), npm 10.9.8.
+Indexer proof: envio codegen, tsc and the tests, all run inside WSL2 Ubuntu.
+Run on 2026-09-21T10:55:41Z with v22.23.2 (nvm), npm 10.9.8. This run replaces the one from 2026-09-08 (9 tests);
+the suite now covers the consent statements as well.
 
-Every command below was run from Windows through this wrapper, which loads
-the WSL-side Node 22 that nvm installed for this work order:
+Every command below was run from Windows through this wrapper, which loads the WSL-side Node 22:
 
   wsl -e bash -lc 'export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"; cd /mnt/d/Projects/Monad && <command>'
-
-The Linux dependency install, done once, was:
-  cd /mnt/d/Projects/Monad/packages/indexer && npm install --no-workspaces
-It writes packages/indexer/node_modules only. The repo root node_modules,
-which holds the Windows builds the other packages use, was left untouched.
 
 === npx envio --version
 envio 3.9.0
 
-=== npx envio codegen   (writes .envio/types.d.ts and envio-env.d.ts)
+=== npm run codegen:indexer   (writes .envio/types.d.ts and envio-env.d.ts)
 exit code: 0
 
 === npx tsc --noEmit -p tsconfig.json   (against the generated types, no stand-in)
-Version 7.0.2
 exit code: 0
 
-=== npm run test:indexer   (the work order's DONE MEANS command, run from the repo root)
+=== npm run test:indexer
 
 > moolam@0.1.0 test:indexer
 > npm run test --workspace packages/indexer
@@ -33,32 +27,13 @@ exit code: 0
 
  RUN  v5.0.0 /mnt/d/Projects/Monad/packages/indexer
 
- ✓ test/handlers.test.ts (9 tests) 245ms
+ ✓ test/consent.test.ts (6 tests) 41ms
+ ✓ test/handlers.test.ts (20 tests) 1547ms
+   ✓ Moolam indexer handlers (12)
+     ✓ records an original passport as its own root at depth zero 1412ms
 
- Test Files  1 passed (1)
-      Tests  9 passed (9)
-   Start at  08:17:48
-   Duration  17.43s (import 98%, tests 1%)
+ Test Files  2 passed (2)
+      Tests  26 passed (26)
+   Start at  11:03:38
+   Duration  175.75s (import 98%, tests 1%, transform 1%)
 
-exit code: 0
-
-=== the same suite with every test named: npx vitest run --reporter=verbose
-
- RUN  v5.0.0 /mnt/d/Projects/Monad/packages/indexer
-
- ✓ test/handlers.test.ts > Moolam indexer handlers > records an original passport as its own root at depth zero 122ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > keeps the original as the root all the way down a two level edit chain 3ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > moves the passport and the generator on a matched then a mismatched attestation 3ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > marks the passport and drops the generator score when a challenge is upheld 3ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > changes the owner on a sale and never the creator 3ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > creates the creator and records the key when a passkey is bound 2ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > splits the daily counters by UTC day while the global totals keep adding up 2ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > records a verifier the policy allows as an active receiver 4ms
- ✓ test/handlers.test.ts > Moolam indexer handlers > keeps the receiver row and marks it inactive when the policy removes it 3ms
-
- Test Files  1 passed (1)
-      Tests  9 passed (9)
-   Start at  08:18:07
-   Duration  17.05s (import 99%, tests 1%)
-
-exit code: 0

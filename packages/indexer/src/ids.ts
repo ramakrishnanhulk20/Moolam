@@ -42,6 +42,13 @@ export function attestationId(txHash: string, logIndex: number): string {
   return `${txHash.toLowerCase()}-${logIndex}`;
 }
 
+/// One consent statement per passport per position in its history. The index
+/// comes from the event, so a statement keeps the same row whether it is read
+/// during the first sync or after a reorg replays the block it sits in.
+export function consentEntryId(passport: string, index: number): string {
+  return `${passport.toLowerCase()}-${index}`;
+}
+
 /// Buckets a block into a UTC calendar day, "YYYY-MM-DD". UTC and not local time
 /// so the daily chart reads the same wherever it is served from.
 export function dayId(blockTimestampSeconds: number): string {

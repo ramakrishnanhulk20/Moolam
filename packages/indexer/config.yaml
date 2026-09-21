@@ -18,6 +18,11 @@ contracts:
     events:
       - event: ReceiverAdded
       - event: ReceiverRemoved
+  - name: MoolamConsent
+    abi_file_path: ./abis/MoolamConsent.json
+    handler: src/EventHandlers.ts
+    events:
+      - event: ConsentSet
 # Every passport row records the transaction that created it, so the app can link
 # straight to the explorer without a second lookup.
 field_selection:
@@ -25,12 +30,17 @@ field_selection:
     - hash
 chains:
   - id: 143
-    # The block the three contracts were deployed in on Monad mainnet, from
-    # packages/contracts/deployments/monad-mainnet.json. Nothing this index cares
-    # about exists before it, so starting earlier only costs sync time.
+    # The block the registry and the policy were deployed in on Monad mainnet,
+    # from packages/contracts/deployments/monad-mainnet.json. Nothing this index
+    # cares about exists before it, so starting earlier only costs sync time.
     start_block: 103054771
     contracts:
       - name: MoolamRegistry
         address: "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0"
       - name: VerifierPolicy
         address: "0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821"
+      - name: MoolamConsent
+        address: "0x1151E69a82947920546e779c4C8c785b2a3C1277"
+        # The consent register was deployed ten days after the other two, so its own
+        # start block saves the sync 2.7 million blocks of nothing.
+        start_block: 105828247

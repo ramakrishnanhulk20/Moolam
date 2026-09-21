@@ -1,0 +1,569 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "registry",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "MAX_BATCH",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_INFO_BYTES",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MAX_PAGE",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "MIN_INTERVAL",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "REGISTRY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "STANDARD",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "consentAt",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "timestamp",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "stated",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "inForce",
+        "type": "tuple",
+        "internalType": "struct IMoolamConsent.Entry",
+        "components": [
+          {
+            "name": "at",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "writer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "consent",
+            "type": "tuple",
+            "internalType": "struct IMoolamConsent.Consent",
+            "components": [
+              {
+                "name": "aiTraining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "aiGenerativeTraining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "aiInference",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "dataMining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              }
+            ]
+          },
+          {
+            "name": "constraintInfo",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "consentOf",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "stated",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "latest",
+        "type": "tuple",
+        "internalType": "struct IMoolamConsent.Entry",
+        "components": [
+          {
+            "name": "at",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "writer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "consent",
+            "type": "tuple",
+            "internalType": "struct IMoolamConsent.Consent",
+            "components": [
+              {
+                "name": "aiTraining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "aiGenerativeTraining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "aiInference",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "dataMining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              }
+            ]
+          },
+          {
+            "name": "constraintInfo",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "historyLength",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "historyPage",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "start",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "count",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "page",
+        "type": "tuple[]",
+        "internalType": "struct IMoolamConsent.Entry[]",
+        "components": [
+          {
+            "name": "at",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "writer",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "consent",
+            "type": "tuple",
+            "internalType": "struct IMoolamConsent.Consent",
+            "components": [
+              {
+                "name": "aiTraining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "aiGenerativeTraining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "aiInference",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              },
+              {
+                "name": "dataMining",
+                "type": "uint8",
+                "internalType": "enum IMoolamConsent.Use"
+              }
+            ]
+          },
+          {
+            "name": "constraintInfo",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "setConsent",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "consent",
+        "type": "tuple",
+        "internalType": "struct IMoolamConsent.Consent",
+        "components": [
+          {
+            "name": "aiTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiGenerativeTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiInference",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "dataMining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          }
+        ]
+      },
+      {
+        "name": "constraintInfo",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setConsentBatch",
+    "inputs": [
+      {
+        "name": "passportIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "consent",
+        "type": "tuple",
+        "internalType": "struct IMoolamConsent.Consent",
+        "components": [
+          {
+            "name": "aiTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiGenerativeTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiInference",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "dataMining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          }
+        ]
+      },
+      {
+        "name": "constraintInfo",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "ConsentSet",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "writer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "index",
+        "type": "uint256",
+        "indexed": true,
+        "internalType": "uint256"
+      },
+      {
+        "name": "consent",
+        "type": "tuple",
+        "indexed": false,
+        "internalType": "struct IMoolamConsent.Consent",
+        "components": [
+          {
+            "name": "aiTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiGenerativeTraining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "aiInference",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          },
+          {
+            "name": "dataMining",
+            "type": "uint8",
+            "internalType": "enum IMoolamConsent.Use"
+          }
+        ]
+      },
+      {
+        "name": "constraintInfo",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "at",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "BatchTooLarge",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ConstraintInfoNotAllowed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ConstraintInfoNotPrintable",
+    "inputs": [
+      {
+        "name": "position",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ConstraintInfoRequired",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ConstraintInfoTooLong",
+    "inputs": [
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "EmptyBatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotAContract",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotPassportHolder",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "caller",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "TooSoon",
+    "inputs": [
+      {
+        "name": "passportId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "nextAllowedAt",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  }
+]

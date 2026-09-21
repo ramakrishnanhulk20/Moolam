@@ -1,9 +1,10 @@
 # @moolam/indexer
 
 Turns Moolam's on-chain events into the data every screen and the verifier read:
-passports, the edit tree, verification results, disputes, passkey bindings, and
-the per-creator, per-generator and per-day counters. Built on Envio HyperIndex V3
-(`envio` 3.9.0), which syncs from HyperSync rather than an RPC node.
+passports, the edit tree, verification results, disputes, passkey bindings, what
+each holder says AI may do with their picture, and the per-creator,
+per-generator and per-day counters. Built on Envio HyperIndex V3 (`envio`
+3.9.0), which syncs from HyperSync rather than an RPC node.
 
 ## Running it (Linux only)
 
@@ -23,9 +24,12 @@ Codegen writes `.envio/types.d.ts`, which is git-ignored, and `envio-env.d.ts`,
 which is committed and points TypeScript at it. Run codegen after any change to
 `config.yaml` or `schema.graphql`, or the handler types go stale.
 
-Nine handler tests pass against the generated types with the live mainnet
-addresses in `config.yaml`. The full output, with the codegen version and every
-test name, is in `proofs/indexer-tests.txt`.
+Twenty six tests pass against the generated types with the live mainnet
+addresses in `config.yaml`: twenty drive the handlers through Envio's own test
+indexer, and six are table tests over the consent mapping. One of the twenty
+replays every `ConsentSet` log Monad holds, read from the chain into
+`test/fixtures/consent-events.json`. `proofs/indexer-tests.txt` holds an earlier
+full run with the codegen version and the WSL command wrapper.
 
 `envio dev`, which runs the whole indexer against Monad locally, needs Docker and
 has not been run here. The Envio Cloud deployment below is the way this index
@@ -40,6 +44,25 @@ which is also the ERC-721 token id. It carries the fingerprint (`phash`,
 `root`, `depth`, plus a derived `children` list), who holds it now (`owner`), and
 the running verification tally (`attestationCount`, `matchedCount`,
 `mismatchedCount`, `disputed`).
+
+It also carries the statement that stands about AI use, flattened from the
+newest `ConsentEntry` so a filter is one indexed query: `consentStated`,
+`consentSummary` (`open`, `closed`, `ask`, `mixed` or `none`), the four numbers
+`consentAiTraining`, `consentAiGenerativeTraining`, `consentAiInference` and
+`consentDataMining`, the conditions in `consentInfo`, and who wrote it when in
+`consentWriter` and `consentAt`. `consentCount` is how many statements the
+passport has collected and `consentEntries` is the derived list of them.
+`consentSummary` reads `none` for a passport nobody has spoken for as well as
+for one whose holder wrote all four uses unspecified, so `consentStated` is what
+separates silence from a holder who chose it.
+
+**ConsentEntry.** One statement, keyed `<passportId>-<index>` from the event's
+own index, never edited after it is written. It holds the four numbers, the
+`summary`, the `constraintInfo`, the `writer`, the `at` the contract recorded and
+the `txHash`. This is the table a reader quotes when they need what was allowed
+on the day they used a picture, rather than what is allowed now. The writer comes
+from the event and never from the transaction: a holder with a passkey wallet
+writes through the ERC-4337 EntryPoint, so the transaction's sender is a bundler.
 
 **Creator.** One row per wallet that has registered something, with
 `passportCount` for everything it registered and `editCount` for the subset that
@@ -70,11 +93,64 @@ every passport registered that day and `edits` is the subset of those that had a
 parent, so edits are counted inside registrations, not beside them. `disputes`
 counts challenges raised. `uniqueCreators` counts the distinct creators who
 registered something that day, so a creator who posts five times counts once.
+`consentStatements` counts statements written, on both rows.
+`passportsWithConsent`, on the global row only, counts pictures that carry one:
+the two differ because a holder can restate, and a chart that showed only the
+total would make a few creators changing their minds look like new pictures
+arriving.
 
 Addresses are stored lowercase everywhere, including entity ids. Envio hands them
 back EIP-55 checksummed, so the handlers lowercase them first: one casing rule
 across the whole API means a caller can never miss a row by asking with the wrong
 case. Query with lowercase addresses.
+
+## Asking it about consent
+
+The register was deployed months after the registry and the policy, so it
+carries its own `start_block` in `config.yaml` and the sync skips 2.7 million
+blocks it could find nothing in.
+
+Every picture whose holder has opened it to AI, newest statement first. No screen
+loops over the chain to build this: it is one indexed read.
+
+```graphql
+{
+  Passport(
+    where: { consentStated: { _eq: true }, consentSummary: { _eq: "open" } }
+    order_by: { consentAt: desc }
+    limit: 24
+  ) {
+    id
+    owner
+    consentAt
+    consentWriter
+    metadataURI
+  }
+}
+```
+
+One passport's whole history of statements, oldest first, with the conditions
+each one carried.
+
+```graphql
+{
+  ConsentEntry(
+    where: { passport_id: { _eq: "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" } }
+    order_by: { index: asc }
+  ) {
+    index
+    summary
+    aiTraining
+    aiGenerativeTraining
+    aiInference
+    dataMining
+    constraintInfo
+    writer
+    at
+    txHash
+  }
+}
+```
 
 ## The trust score
 

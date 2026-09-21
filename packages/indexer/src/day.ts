@@ -7,6 +7,7 @@ export type DailyDelta = {
   attestations?: number;
   disputes?: number;
   uniqueCreators?: number;
+  consentStatements?: number;
 };
 
 export type GlobalDelta = {
@@ -15,6 +16,8 @@ export type GlobalDelta = {
   generators?: number;
   attestations?: number;
   disputes?: number;
+  consentStatements?: number;
+  passportsWithConsent?: number;
 };
 
 /// Adds to the counters for the UTC day the block landed in, creating the row on
@@ -36,6 +39,7 @@ export async function bumpDaily(
     attestations: 0,
     disputes: 0,
     uniqueCreators: 0,
+    consentStatements: 0,
   });
 
   context.DailyStats.set({
@@ -45,6 +49,7 @@ export async function bumpDaily(
     attestations: row.attestations + (delta.attestations ?? 0),
     disputes: row.disputes + (delta.disputes ?? 0),
     uniqueCreators: row.uniqueCreators + (delta.uniqueCreators ?? 0),
+    consentStatements: row.consentStatements + (delta.consentStatements ?? 0),
   });
 }
 
@@ -81,6 +86,8 @@ export async function bumpGlobal(
     generators: 0,
     attestations: 0,
     disputes: 0,
+    consentStatements: 0,
+    passportsWithConsent: 0,
   });
 
   context.GlobalStats.set({
@@ -90,5 +97,7 @@ export async function bumpGlobal(
     generators: row.generators + (delta.generators ?? 0),
     attestations: row.attestations + (delta.attestations ?? 0),
     disputes: row.disputes + (delta.disputes ?? 0),
+    consentStatements: row.consentStatements + (delta.consentStatements ?? 0),
+    passportsWithConsent: row.passportsWithConsent + (delta.passportsWithConsent ?? 0),
   });
 }
