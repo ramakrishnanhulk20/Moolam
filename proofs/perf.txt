@@ -784,3 +784,15 @@ it being stored. The second MISS seen on the live site on 2026-09-18 is the host
 not the page. Worth reading the x-vercel-id of the two requests there before
 anything in the page is touched: two requests answered by different regions each
 fill their own store.
+
+EXPLORE ON THE LIVE SITE AFTER IT BECAME A BUILT PAGE (2026-09-21, commit dd19dc2, measured from India with curl)
+The first request to each address after the new build went live, then a repeat:
+  /en/explore              first  x-vercel-cache PRERENDER  ttfb 1.28 s   (the same first request measured 4.08 s on 2026-09-18)
+  /ta/explore              first  x-vercel-cache PRERENDER  ttfb 1.29 s
+  /ja/explore              first  x-vercel-cache PRERENDER  ttfb 0.92 s
+  /en/explore?view=cards   first  x-vercel-cache MISS       ttfb 0.73 s   (narrowed views are drawn on the request, as designed)
+  /en/explore              second x-vercel-cache HIT        ttfb 0.44 s
+The first HTML carries the real picture titles ("Ant and Elephants", "Monsoon Fishing Nets Drying").
+What this does not cover: a visitor far from the host's region, a phone on a slow network, or the time the
+pictures themselves take to arrive. The 1.3 s first hit includes the cold start of the one rewrite rule in
+front of this route; every later request is served from the host's cache.
