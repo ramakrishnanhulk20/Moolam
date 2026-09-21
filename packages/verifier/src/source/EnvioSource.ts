@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FETCH_TIMEOUT_MS } from "../env.js";
+import { rechecksFrom } from "../recheck.js";
 import type { PassportRecord } from "../types.js";
 import { hex } from "./hex.js";
 import type { PassportSource } from "./PassportSource.js";
@@ -19,6 +20,15 @@ const PASSPORT_QUERY = `query MoolamPassports($limit: Int!, $after: String!) {
     parent { id }
     registeredAt
     metadataURI
+    attestationCount
+    matchedCount
+    mismatchedCount
+    attestations(order_by: { at: desc }, limit: 1) {
+      receiver
+      matched
+      distance
+      at
+    }
   }
 }`;
 
@@ -57,6 +67,13 @@ const rowSchema = z.object({
   parent: z.object({ id: hex(32) }).nullish(),
   registeredAt: bigintish.refine((value) => value <= BigInt(Number.MAX_SAFE_INTEGER), "registeredAt is out of range"),
   metadataURI: z.string(),
+  // Taken as they arrive and checked in src/recheck.ts. A re-check field the index stops serving,
+  // or serves badly, must not stop this page loading: a picture nobody can match is a far worse
+  // answer than a picture with no second opinion attached.
+  attestationCount: z.unknown().optional(),
+  matchedCount: z.unknown().optional(),
+  mismatchedCount: z.unknown().optional(),
+  attestations: z.unknown().optional(),
 });
 
 const responseSchema = z.object({
@@ -70,6 +87,11 @@ const responseSchema = z.object({
  * The verifier never talks to a chain itself: Envio has already turned the
  * registry's events into rows, so one paged query gives the matcher the whole
  * corpus without an RPC provider, a reorg watcher or a log scan of its own.
+ *
+ * Each row also carries what the index knows about the picture's re-checks: the
+ * three counts and the newest verdict, one nested row per passport and no more,
+ * so a verify answer can say what the Chainlink workflow found without a lookup
+ * of its own per verification.
  */
 export class EnvioSource implements PassportSource {
   private readonly url: string;
@@ -108,6 +130,7 @@ export class EnvioSource implements PassportSource {
           parentId: row.parent?.id ?? null,
           registeredAt: Number(row.registeredAt),
           metadataURI: row.metadataURI,
+          rechecks: rechecksFrom(row),
         });
       }
 

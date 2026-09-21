@@ -86,6 +86,34 @@ with it. `unavailable` is never a clean record, and the chain is read rather tha
 the passport index because a dispute opened a minute ago is exactly the one a
 reader must not miss.
 
+The same matches carry `recheck`: what has independently re-checked this picture
+since it was registered. A Chainlink CRE workflow fetches the picture from the
+address pinned in its passport, recomputes the fingerprint in the sandbox and
+writes the verdict to the receiver contract on Monad. The verdicts on chain today
+come from that workflow run through the CRE simulator, which proves the workflow
+and the receiver's checks but not a run on Chainlink's live network with node
+consensus; `proofs/rechecks.txt` records every one of them with its transaction.
+
+```ts
+{ source: "index", attestations: 2, matched: 2, mismatched: 0,
+  latest: { matched: true, distance: 1, at: 1789700000, receiver: "0x0d69..." } }
+{ source: "index", attestations: 0 }   // nothing has re-checked this picture yet
+{ source: "unavailable" }              // we cannot tell you
+```
+
+`attestations` is how many verdicts the index holds for the passport, `matched`
+and `mismatched` how they fell, and `latest` is the newest one: whether the
+recomputed fingerprint matched, how many bits apart it was, the unix second it
+was written and the receiver contract it was written to. `unavailable` means the
+re-check data did not reach this service or did not survive its checks, and it is
+never the same answer as `attestations: 0`.
+
+This fact comes from the passport records the match itself ran against, so it
+costs no chain read and no extra request per verification, and it is exactly as
+fresh as the last index rebuild (`INDEX_REFRESH_MS`, 60 seconds by default).
+A count and a verdict that disagree are never reconciled into a half answer: the
+whole fact goes out `unavailable` instead.
+
 Three limits protect the service from a file that is small on disk and huge once
 decoded. Anything over 40 megapixels is refused with 413 before a single pixel
 is decoded, because a 572 KB JPEG can unpack to 100 megapixels. Only two matches

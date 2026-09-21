@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { withConsentAndDispute } from "../disputeRead.js";
+import { withPassportFacts } from "../disputeRead.js";
 import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
 
 /**
@@ -11,9 +11,10 @@ import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
  * our own network before and after every redirect.
  *
  * The matched passport carries what its holder stated about AI use, read from the consent
- * contract, and whether it is under dispute, read from the registry. The two reads for one
- * passport start at the same moment, so a caller never waits through one timeout and then the
- * other. A read that fails leaves that field as { source: "unavailable" } and the match stands.
+ * contract, whether it is under dispute, read from the registry, and what has re-checked the
+ * picture, read from the records this service already holds. The two chain reads for one passport
+ * start at the same moment, so a caller never waits through one timeout and then the other. A read
+ * that fails leaves that field as { source: "unavailable" } and the match stands.
  *
  * Answers 503 `busy` when no matching slot came free in time.
  */
@@ -22,7 +23,9 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
     try {
       const bytes = request.isMultipart() ? await readUpload(request) : await readFromUrl(request);
       const answer = await verifyBytes(app, bytes);
-      return reply.send(await withConsentAndDispute(answer, app.verifier.consent, app.verifier.dispute));
+      return reply.send(
+        await withPassportFacts(answer, app.verifier.consent, app.verifier.dispute, app.verifier.lookupExact),
+      );
     } catch (error) {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);

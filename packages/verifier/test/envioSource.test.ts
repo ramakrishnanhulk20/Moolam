@@ -1,10 +1,12 @@
-// Covers the Envio-backed passport source: paging, typed records, and every way
-// a bad answer is rejected. The rows come from src/source/fixtures, which is a
-// recorded response holding the two passports Moolam registered on Monad
-// mainnet, read back from the registry with cast.
-// Does NOT cover the live Envio Cloud endpoint, which is not deployed yet, and
-// does not cover Hasura's own query planning: the mock applies the cursor and
-// the limit itself, so it proves our paging, not theirs.
+// Covers the Envio-backed passport source: paging, typed records, the re-check fields the query
+// asks for, and every way a bad answer is rejected. The rows come from src/source/fixtures, which
+// is a recorded response holding the two passports Moolam registered on Monad mainnet, read back
+// from the registry with cast. That recording predates the re-check fields, so it is also this
+// file's case for a row that does not carry them; the row that does is recorded from the hosted
+// index, quoted in the test that uses it.
+// Does NOT cover the live Envio Cloud endpoint, and does not cover Hasura's own query planning:
+// the mock applies the cursor and the limit itself, so it proves our paging, not theirs. What the
+// re-check fields turn into on a verify answer is test/recheck.test.ts.
 
 import { createServer, type Server } from "node:http";
 import { readFileSync } from "node:fs";
@@ -30,12 +32,15 @@ const fixture = JSON.parse(
 let running: Server | undefined;
 
 /** Serves one JSON answer per request, replayed in order, and hands back its URL. */
-async function serve(handler: (body: { variables: { limit: number; after: string } }) => unknown): Promise<string> {
+async function serve(
+  handler: (body: { query: string; variables: { limit: number; after: string } }) => unknown,
+): Promise<string> {
   const server = createServer((request, reply) => {
     const chunks: Buffer[] = [];
     request.on("data", (chunk: Buffer) => chunks.push(chunk));
     request.on("end", () => {
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8")) as {
+        query: string;
         variables: { limit: number; after: string };
       };
       const answer = handler(body);
@@ -128,5 +133,74 @@ describe("EnvioSource", () => {
 
   it("refuses a page size below one", () => {
     expect(() => new EnvioSource({ url: "http://127.0.0.1:1/v1/graphql", pageSize: 0 })).toThrow(/pageSize/);
+  });
+
+  it("asks each passport for its re-check counts and its newest verdict, one nested row", async () => {
+    let asked = "";
+    const url = await serve((body) => {
+      asked = body.query;
+      return pageOf(body.variables);
+    });
+
+    await new EnvioSource({ url }).load();
+
+    const compact = asked.replace(/\s+/g, " ");
+    expect(compact).toContain("attestationCount matchedCount mismatchedCount");
+    expect(compact).toContain("attestations(order_by: { at: desc }, limit: 1) { receiver matched distance at }");
+  });
+
+  it("carries the re-check fields onto the record", async () => {
+    // The hosted index's own answer for passport 0xcdb25d37...d771638, read with curl on
+    // 21 September 2026: an Int arrives as a JSON number and a BigInt as a decimal string.
+    const row = {
+      ...fixture.data.Passport[0],
+      attestationCount: 1,
+      matchedCount: 1,
+      mismatchedCount: 0,
+      attestations: [
+        { receiver: "0x0d69055c43eacb3b1ca687ca2263a049bc7eff04", matched: true, distance: 0, at: "1789368639" },
+      ],
+    };
+    const url = await serve(() => ({ data: { Passport: [row] } }));
+
+    const records = await new EnvioSource({ url }).load();
+
+    expect(records[0]?.rechecks).toEqual({
+      attestations: 1,
+      matched: 1,
+      mismatched: 0,
+      latest: {
+        receiver: "0x0d69055c43eacb3b1ca687ca2263a049bc7eff04",
+        matched: true,
+        distance: 0,
+        at: 1_789_368_639,
+      },
+    });
+  });
+
+  it("leaves the re-check data off a row that does not carry the fields", async () => {
+    const url = await serve(({ variables }) => pageOf(variables));
+
+    const records = await new EnvioSource({ url }).load();
+
+    expect(records).toHaveLength(2);
+    expect(records[0]?.rechecks).toBeUndefined();
+  });
+
+  it("still loads the passport when a re-check field is malformed", async () => {
+    // A picture nobody can match is a far worse answer than a picture with no second opinion, so
+    // this is the one kind of bad field in the answer that does not throw.
+    const url = await serve(() => ({
+      data: {
+        Passport: [
+          { ...fixture.data.Passport[0], attestationCount: "one", matchedCount: 1, mismatchedCount: 0, attestations: [] },
+        ],
+      },
+    }));
+
+    const records = await new EnvioSource({ url }).load();
+
+    expect(records).toHaveLength(1);
+    expect(records[0]?.rechecks).toBeUndefined();
   });
 });

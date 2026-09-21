@@ -267,7 +267,7 @@ export async function withConsent<T extends { result: unknown }>(payload: T, rea
  * Attaches one fact under `field` to the passports a verify answer names, and to no others.
  *
  * A thin wrapper over `withMatchFacts` for a caller that only ever reads one fact on its own;
- * `withConsentAndDispute` in disputeRead.ts is what the routes call, so the statement and the
+ * `withPassportFacts` in disputeRead.ts is what the routes call, so the statement and the
  * dispute status start their chain reads at the same moment instead of one after the other.
  *
  * Never throws. A verification that came back is what the caller came for, so anything unexpected

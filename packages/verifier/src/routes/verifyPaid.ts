@@ -2,7 +2,7 @@ import { decodePaymentSignatureHeader } from "@x402/core/http";
 import type { HTTPRequestContext, ProcessSettleResultResponse, x402HTTPResourceServer } from "@x402/core/server";
 import type { PaymentPayload } from "@x402/core/types";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { withConsentAndDispute } from "../disputeRead.js";
+import { withPassportFacts } from "../disputeRead.js";
 import { paymentLedger, type PaymentLedger } from "../x402/ledger.js";
 import { assertPaidRoute, contextFor, PAID_VERIFY_PATH, PAYMENT_SIGNATURE_HEADER } from "../x402/plugin.js";
 import { readUpload, statusOf, verifyBytes } from "./shared.js";
@@ -155,10 +155,10 @@ async function settleSequence(
  * fetch from reaching a private address; rather than copy those checks and
  * risk the two copies drifting, the paid route does not offer it.
  *
- * The consent statement and the dispute fact are attached before the payment is settled, so the
- * body the facilitator sees and the copy kept against a replayed payment are the same answer the
- * payer is served. The two chain reads for one passport start at the same moment, so a caller
- * never waits through one timeout and then the other.
+ * The consent statement, the dispute fact and the re-check fact are attached before the payment is
+ * settled, so the body the facilitator sees and the copy kept against a replayed payment are the
+ * same answer the payer is served. The two chain reads for one passport start at the same moment,
+ * so a caller never waits through one timeout and then the other.
  *
  * A caller with no payment gets 402 and the payment terms. A caller whose
  * payment fails verification gets the facilitator's reason. Payment is settled
@@ -237,7 +237,12 @@ export async function verifyPaidRoutes(
     let payload: { result: unknown; manifest: unknown };
     try {
       const answer = await verifyBytes(app, await readUpload(request));
-      payload = await withConsentAndDispute(answer, app.verifier.consent, app.verifier.dispute);
+      payload = await withPassportFacts(
+        answer,
+        app.verifier.consent,
+        app.verifier.dispute,
+        app.verifier.lookupExact,
+      );
     } catch (error) {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);

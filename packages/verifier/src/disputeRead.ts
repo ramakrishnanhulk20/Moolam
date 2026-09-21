@@ -1,8 +1,9 @@
 import { type Transport } from "viem";
 import { env } from "./env.js";
 import { isPassportId, withMatchFact, withMatchFacts, type ConsentReader } from "./consentRead.js";
+import { recheckFor } from "./recheck.js";
 import { monadTransport, readClient } from "./reputation/registry.js";
-import type { Hex } from "./types.js";
+import type { Hex, PassportRecord } from "./types.js";
 
 /**
  * The one function this service calls on MoolamRegistry. `getDispute` answers for any id, so a
@@ -188,22 +189,28 @@ export async function withDispute<T extends { result: unknown }>(payload: T, rea
 }
 
 /**
- * Attaches both facts a verify answer carries, for the exact match and the best match: the
- * holder's statement on AI use, and the dispute status that says how much weight that statement
- * should carry. Both verify routes call this one function rather than the consent walk followed by
- * the dispute walk, so for each passport the two chain reads start at the same moment and are
- * awaited together. Each reader keeps its own sixty second cache and its own five second timeout
- * exactly as it does on its own, so the worst case for the whole attachment is one timeout, not two
- * waited through in turn.
+ * Attaches the three facts a verify answer carries, for the exact match and the best match: the
+ * holder's statement on AI use, the dispute status that says how much weight that statement should
+ * carry, and what has re-checked the picture since it was registered. Both verify routes call this
+ * one function rather than one walk per fact, so for each passport the two chain reads start at the
+ * same moment and are awaited together. Each reader keeps its own sixty second cache and its own
+ * five second timeout exactly as it does on its own, so the worst case for the whole attachment is
+ * one timeout, not two waited through in turn.
+ *
+ * The re-check fact costs nothing to add: `recordFor` is this service's own passport index, keyed
+ * by the passport id, which is the sha256 of the registered bytes. It is a map hit on records the
+ * match itself just ran against, so the fact is as fresh as the last index refresh and no slower
+ * than answering without it.
  */
-export async function withConsentAndDispute<T extends { result: unknown }>(
+export async function withPassportFacts<T extends { result: unknown }>(
   payload: T,
   consent: ConsentReader,
   dispute: DisputeReader,
+  recordFor: (passportId: Hex) => PassportRecord | undefined,
 ): Promise<T> {
   return await withMatchFacts(payload, async (id) => {
     const [consentAnswer, disputeAnswer] = await Promise.all([consent.answerFor(id), dispute.answerFor(id)]);
-    return { consent: consentAnswer, dispute: disputeAnswer };
+    return { consent: consentAnswer, dispute: disputeAnswer, recheck: recheckFor(recordFor(id)) };
   });
 }
 

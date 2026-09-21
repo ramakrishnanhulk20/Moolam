@@ -1,16 +1,19 @@
-// Covers withConsentAndDispute, the one function both verify routes call to attach the consent
+// Covers withPassportFacts, the one function both verify routes call to attach the consent
 // statement and the dispute status together: the same passport in both the exact and best slot
-// costs one read of each rather than two, two different matches read both facts in about one
-// timeout rather than two waited through in turn, and the key order a caller sees is unchanged.
+// costs one read of each rather than two, every read for two different matches has started before
+// the first one gives up (so a dead chain costs one timeout, not several in turn), and the key
+// order a caller sees is unchanged. The "started together" tests look at the order of events and
+// never at a clock: an earlier version timed the call against 1.5 timeouts and failed whenever the
+// machine was busy, which measured the machine and not the code.
 // The chain here is a plain stub function, not a fake transport, because the eth_call encoding is
 // already covered by consentRead.test.ts and disputeRead.test.ts; this file is about the ordering
-// and timing of the reads, not the reads themselves.
+// of the reads, not the reads themselves.
 // Does NOT cover the enum mapping, the caches, or each reader's own timeout in isolation, which are
 // consentRead.test.ts and disputeRead.test.ts, and does not cover a live RPC.
 
 import { describe, expect, it, vi } from "vitest";
 import { consentReader, type ConsentCall } from "../src/consentRead.js";
-import { disputeReader, withConsentAndDispute, type DisputeCall } from "../src/disputeRead.js";
+import { disputeReader, withPassportFacts, type DisputeCall } from "../src/disputeRead.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
@@ -26,7 +29,41 @@ function sourceOf(records: PassportRecord[]): PassportSource {
   return { load: async () => records };
 }
 
-describe("withConsentAndDispute", () => {
+/**
+ * Two readers whose chain calls never answer, and a log of what happened in what order. A read
+ * that was started says so at once; a consent read that gave up says so when its timeout fires.
+ * Reads started together put every "start" ahead of the first "gave up"; reads waited through in
+ * turn cannot, because the dispute reads would only start after the consent reads had given up.
+ */
+function hangingReaders(timeoutMs: number) {
+  const order: string[] = [];
+  const consentCall: ConsentCall = () => {
+    order.push("consent start");
+    return new Promise(() => undefined);
+  };
+  const disputeCall: DisputeCall = () => {
+    order.push("dispute start");
+    return new Promise(() => undefined);
+  };
+  const inner = consentReader({ call: consentCall, timeoutMs });
+  const consent = {
+    answerFor: async (id: string) => {
+      const answer = await inner.answerFor(id);
+      order.push("consent gave up");
+      return answer;
+    },
+  };
+  return { order, consent, dispute: disputeReader({ call: disputeCall, timeoutMs }) };
+}
+
+function startedTogether(order: string[], reads: number): void {
+  const firstGaveUp = order.indexOf("consent gave up");
+  expect(firstGaveUp).toBeGreaterThan(-1);
+  const startsBefore = order.slice(0, firstGaveUp).filter((entry) => entry.endsWith("start"));
+  expect(startsBefore).toHaveLength(reads);
+}
+
+describe("withPassportFacts", () => {
   it("reads the same passport once for consent and once for dispute when the exact and best match are the same, consent first", async () => {
     const consentAsked: Hex[] = [];
     const disputeAsked: Hex[] = [];
@@ -49,13 +86,14 @@ describe("withConsentAndDispute", () => {
       return { challenger: ZERO_ADDRESS, bond: 0n, evidenceHash: ZERO_HASH, status: 0, openedAt: 0n };
     };
 
-    const payload = await withConsentAndDispute(
+    const payload = await withPassportFacts(
       {
         result: { exact: passport, best: { id: passport, score: 1 }, matches: [{ id: passport, score: 1 }] },
         manifest: { present: false },
       },
       consentReader({ call: consentCall }),
       disputeReader({ call: disputeCall }),
+      () => undefined,
     );
 
     expect(consentAsked).toEqual([passport]);
@@ -69,15 +107,12 @@ describe("withConsentAndDispute", () => {
     expect(Object.keys(best).indexOf("consent")).toBeLessThan(Object.keys(best).indexOf("dispute"));
   });
 
-  it("attaches both facts for two different matches in about one timeout, not two", async () => {
-    const timeoutMs = 200;
-    const hangingConsent: ConsentCall = () => new Promise(() => undefined);
-    const hangingDispute: DisputeCall = () => new Promise(() => undefined);
+  it("has started every read for two different matches before the first one gives up", async () => {
+    const { order, consent, dispute } = hangingReaders(50);
     const exact = `0x${"11".repeat(32)}` as Hex;
     const other = `0x${"22".repeat(32)}` as Hex;
 
-    const started = Date.now();
-    const payload = await withConsentAndDispute(
+    const payload = await withPassportFacts(
       {
         result: {
           exact,
@@ -86,14 +121,13 @@ describe("withConsentAndDispute", () => {
         },
         manifest: { present: false },
       },
-      consentReader({ call: hangingConsent, timeoutMs }),
-      disputeReader({ call: hangingDispute, timeoutMs }),
+      consent,
+      dispute,
+      () => undefined,
     );
-    const elapsed = Date.now() - started;
 
-    // Both matches hang on both facts: read one after the other this would cost two timeouts
-    // (consent for both matches, then dispute for both matches); started together, one covers it.
-    expect(elapsed).toBeLessThan(timeoutMs * 1.5);
+    // Two passports, two facts each: four reads, all under way before any timeout fired.
+    startedTogether(order, 4);
 
     const result = payload.result as unknown as { matches: Record<string, unknown>[] };
     for (const match of result.matches) {
@@ -104,23 +138,20 @@ describe("withConsentAndDispute", () => {
 });
 
 describe("both facts on the verify routes, read together", () => {
-  it("answers /verify in about one timeout when both chain reads hang", async () => {
+  it("starts both chain reads for a /verify answer before either gives up", async () => {
     const registered = await makeImage(91);
     const record = recordFor(await fingerprint(registered));
-    const timeoutMs = 200;
-    const consent = consentReader({ call: () => new Promise(() => undefined), timeoutMs });
-    const dispute = disputeReader({ call: () => new Promise(() => undefined), timeoutMs });
+    const { order, consent, dispute } = hangingReaders(50);
     const app = await buildServer({ source: sourceOf([record]), logger: false, consent, dispute });
     await app.ready();
 
     try {
       const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", registered);
-      const started = Date.now();
       const response = await app.inject({ method: "POST", url: "/verify", payload, headers });
-      const elapsed = Date.now() - started;
 
       expect(response.statusCode).toBe(200);
-      expect(elapsed).toBeLessThan(timeoutMs * 1.5);
+      // One passport in both slots: one consent read and one dispute read, started together.
+      startedTogether(order, 2);
       const body = response.json();
       expect(body.result.best.consent).toEqual({ source: "unavailable" });
       expect(body.result.best.dispute).toEqual({ source: "unavailable" });
