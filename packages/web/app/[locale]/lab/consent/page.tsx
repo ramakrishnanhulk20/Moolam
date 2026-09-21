@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 const SHOWN: { id: Hex; caption: string }[] = [
   {
     id: "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638",
-    caption: "A holder who says no. The case the web has no way to say today.",
+    caption: "A holder who says no, on the record, with the date.",
   },
   {
     id: "0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e",

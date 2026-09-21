@@ -64,3 +64,35 @@ export function UseBlock({
     </span>
   );
 }
+
+/**
+ * The same four marks with the name of each use under it.
+ *
+ * Beside the headline the block above is a fingerprint and nothing else: a
+ * reader has to scroll past the rule and most of the card before anything tells
+ * them which mark is training and which is mining. Here each one carries its
+ * own short name, so the summary can be checked against the four answers it was
+ * made from without leaving the top of the card. The names never change, so the
+ * box is the same height whatever the chain answers under the thumb.
+ */
+export function UseLegend({ consent, className = "" }: { consent: Consent; className?: string }) {
+  const t = useTranslations("passport.consent");
+  const said = USE_FIELDS.map((field) => `${t(`uses.${field}`)}: ${t(`state.${consent[field]}`)}`).join(", ");
+
+  return (
+    <span
+      role="img"
+      aria-label={said}
+      className={`grid max-w-[20rem] grid-cols-2 gap-x-6 gap-y-5 ${className}`}
+    >
+      {USE_FIELDS.map((field) => (
+        <span key={field} className="min-w-0">
+          <UseMark state={consent[field]} className="h-7 w-7" />
+          <span className="mt-2.5 block min-h-[2.4em] font-mono text-[9px] uppercase leading-[1.3] tracking-[0.16em] text-text-faint">
+            {t(`usesShort.${field}`)}
+          </span>
+        </span>
+      ))}
+    </span>
+  );
+}

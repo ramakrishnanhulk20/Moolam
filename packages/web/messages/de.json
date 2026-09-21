@@ -609,7 +609,8 @@
       "kicker": "Auf der Kette festgehalten",
       "heading": "Wie KI dieses Bild nutzen darf",
       "lede": "Eine Datei kann eine Zeile mitführen, die sagt, dass ihr Urheber KI-Training ablehnt, und unterwegs kann jeder sie herausnehmen. Dieselbe Erklärung steht hier in einem Register auf Monad, wo nur der Halter dieses Passes sie schreiben kann und niemand sie entfernen kann.",
-      "onThisDay": "An diesem Tag durfte KI",
+      "onThisDay": "An diesem Tag in Kraft",
+      "inForceToday": "Heute in Kraft",
       "summary": {
         "open": "Offen für KI-Nutzung",
         "closed": "Nicht für KI-Training",
@@ -637,6 +638,12 @@
         "aiInference": "KI-Inferenz",
         "dataMining": "Data-Mining"
       },
+      "usesShort": {
+        "aiTraining": "KI-Training",
+        "aiGenerativeTraining": "Generative KI",
+        "aiInference": "Inferenz",
+        "dataMining": "Data-Mining"
+      },
       "state": {
         "unspecified": "Nicht erklärt",
         "allowed": "Erlaubt",
@@ -649,8 +656,10 @@
       "askFailed": "die Kette hat für diesen Tag nicht geantwortet",
       "scrub": "Ziehen Sie das Lineal, oder nehmen Sie die Pfeiltasten",
       "scrubStep": ", ein Tag pro Schritt",
+      "scrubTouch": "Ziehen Sie das Lineal",
       "registeredOn": "registriert am {when}",
       "today": "heute",
+      "shared": "{statement}, am {when} auf Monad festgehalten.",
       "dayLabel": "Der Tag, nach dem die Kette gefragt wird",
       "fourUses": "Die vier Nutzungen",
       "fourUsesNote": "Was heute gilt, Nutzung für Nutzung. Jede Zusammenfassung verliert etwas, und genau hier dürfen Training und Inferenz auseinandergehen.",
@@ -690,7 +699,7 @@
           },
           "closed": {
             "title": "Nicht für KI-Training",
-            "line": "Gar keine KI-Nutzung. Das wählen die meisten Urheber, und das Web hat heute keine Möglichkeit, es zu sagen."
+            "line": "Gar keine KI-Nutzung. Kein Training damit, nichts daraus erzeugen, keine Daten auswerten."
           },
           "ask": {
             "title": "Erst mich fragen",
@@ -835,6 +844,10 @@
         "gas": {
           "label": "Die Netzgebühr",
           "body": "Moolam zahlt sie über Privy, ein Bild einzutragen kostet dich also nichts."
+        },
+        "consent": {
+          "label": "Dein Wort zur KI-Nutzung",
+          "body": "Du sagst, wie KI es nutzen darf: offen für KI, nicht für KI-Training, oder vorher fragen. Deine Antwort wird in die Datei signiert und mit dem Datum auf Monad geschrieben, und du kannst sie später ändern."
         }
       }
     },

@@ -610,7 +610,8 @@
       "kicker": "Registado na cadeia",
       "heading": "Como a IA pode usar esta imagem",
       "lede": "Um ficheiro pode levar uma linha a dizer que o seu autor recusa treino de IA, e qualquer pessoa pode retirá-la pelo caminho. Esta é a mesma declaração escrita num registo na Monad, onde só quem detém este passaporte a pode escrever e ninguém a pode tirar.",
-      "onThisDay": "Nesse dia a IA podia",
+      "onThisDay": "Em vigor nesse dia",
+      "inForceToday": "Em vigor hoje",
       "summary": {
         "open": "Aberta ao uso por IA",
         "closed": "Não serve para treinar IA",
@@ -638,6 +639,12 @@
         "aiInference": "Inferência de IA",
         "dataMining": "Mineração de dados"
       },
+      "usesShort": {
+        "aiTraining": "Treino de IA",
+        "aiGenerativeTraining": "IA generativa",
+        "aiInference": "Inferência",
+        "dataMining": "Mineração de dados"
+      },
       "state": {
         "unspecified": "Sem declaração",
         "allowed": "Permitido",
@@ -650,8 +657,10 @@
       "askFailed": "a cadeia não respondeu por esse dia",
       "scrub": "Arraste a régua, ou use as setas",
       "scrubStep": ", um dia por passo",
+      "scrubTouch": "Arraste a régua",
       "registeredOn": "registada a {when}",
       "today": "hoje",
+      "shared": "{statement}, declarado na Monad em {when}.",
       "dayLabel": "O dia sobre o qual perguntar à cadeia",
       "fourUses": "Os quatro usos",
       "fourUsesNote": "O que vale hoje, uso a uso. Qualquer resumo perde alguma coisa, e é aqui que o treino e a inferência podem divergir.",
@@ -691,7 +700,7 @@
           },
           "closed": {
             "title": "Não serve para treinar IA",
-            "line": "Nenhum uso por IA. É o que a maioria dos autores escolhe, e hoje a web não tem forma de o dizer."
+            "line": "Nenhum uso por IA. Nem treinar com ela, nem gerar a partir dela, nem explorar os seus dados."
           },
           "ask": {
             "title": "Pergunte-me primeiro",
@@ -836,6 +845,10 @@
         "gas": {
           "label": "A taxa de rede",
           "body": "A Moolam paga através da Privy, então registrar uma imagem não custa nada para você."
+        },
+        "consent": {
+          "label": "A sua palavra sobre o uso por IA",
+          "body": "É você que diz como a IA pode usá-la: aberta à IA, não serve para treinar IA, ou pergunte-me primeiro. A sua resposta é assinada dentro do ficheiro e escrita na Monad com a data, e pode mudá-la depois."
         }
       }
     },

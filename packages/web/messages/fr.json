@@ -609,7 +609,8 @@
       "kicker": "Inscrit sur la chaîne",
       "heading": "Ce que l'IA peut faire de cette image",
       "lede": "Un fichier peut porter une ligne disant que son auteur refuse l'entraînement d'IA, et n'importe qui peut la retirer en chemin. C'est la même déclaration, écrite dans un registre sur Monad, où seul le détenteur de ce passeport peut l'écrire et où personne ne peut l'enlever.",
-      "onThisDay": "Ce jour-là, l'IA pouvait",
+      "onThisDay": "En vigueur ce jour-là",
+      "inForceToday": "En vigueur aujourd'hui",
       "summary": {
         "open": "Ouverte à l'usage par l'IA",
         "closed": "Pas pour entraîner une IA",
@@ -637,6 +638,12 @@
         "aiInference": "Inférence d'IA",
         "dataMining": "Fouille de données"
       },
+      "usesShort": {
+        "aiTraining": "Entraînement",
+        "aiGenerativeTraining": "IA générative",
+        "aiInference": "Inférence",
+        "dataMining": "Fouille de données"
+      },
       "state": {
         "unspecified": "Non déclaré",
         "allowed": "Autorisé",
@@ -649,8 +656,10 @@
       "askFailed": "la chaîne n'a pas répondu pour ce jour",
       "scrub": "Faites glisser la règle, ou utilisez les flèches",
       "scrubStep": ", un jour par cran",
+      "scrubTouch": "Faites glisser la règle",
       "registeredOn": "enregistrée le {when}",
       "today": "aujourd'hui",
+      "shared": "{statement}, déclaré sur Monad le {when}.",
       "dayLabel": "Le jour sur lequel interroger la chaîne",
       "fourUses": "Les quatre usages",
       "fourUsesNote": "Ce qui vaut aujourd'hui, usage par usage. Tout résumé perd quelque chose, et c'est ici que l'entraînement et l'inférence peuvent diverger.",
@@ -690,7 +699,7 @@
           },
           "closed": {
             "title": "Pas pour entraîner une IA",
-            "line": "Aucun usage par l'IA. C'est ce que choisissent la plupart des auteurs, et le web n'a aujourd'hui aucun moyen de le dire."
+            "line": "Aucun usage par l'IA. Ni entraînement dessus, ni génération à partir d'elle, ni fouille de ses données."
           },
           "ask": {
             "title": "Demandez-moi d'abord",
@@ -835,6 +844,10 @@
         "gas": {
           "label": "Les frais de réseau",
           "body": "Moolam les paie via Privy, donc enregistrer une image ne vous coûte rien."
+        },
+        "consent": {
+          "label": "Votre mot sur l'usage par l'IA",
+          "body": "Vous dites comment l'IA peut s'en servir : ouverte à l'IA, pas pour l'entraînement, ou demandez-moi d'abord. Votre réponse est signée dans le fichier et écrite sur Monad avec la date, et vous pouvez la changer plus tard."
         }
       }
     },

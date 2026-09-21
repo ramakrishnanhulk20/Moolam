@@ -59,8 +59,14 @@ describe("the cards before the first transaction", () => {
     expect(english).toContain("Sign in and create my account");
     expect(english).toContain("no seed phrase to write down");
 
+    // The choice a creator gets over AI use is named before they sign in, not
+    // found for the first time in the middle of a form.
+    expect(english).toContain(en.studio.signedOut.points.consent.label);
+    expect(english).toContain("open to AI, not for AI training, or ask me first");
+
     const tamil = render("ta", createElement(SignedOut, { onSignIn: NOOP }));
     expect(tamil).toContain("உள்நுழைந்து கணக்கை உருவாக்கு");
+    expect(tamil).toContain(ta.studio.signedOut.points.consent.label);
   });
 
   it("renders the bind card at every stage it can be in", () => {

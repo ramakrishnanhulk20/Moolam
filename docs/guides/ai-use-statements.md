@@ -21,7 +21,7 @@ The studio and the passport page both offer the same three, as plates you pick o
 | Plate | What it says | What it writes |
 | --- | --- | --- |
 | Open to AI use | "Anyone may train on this picture, generate from it and mine it." | All four uses `allowed` |
-| Not for AI training | "No AI use at all. The one most creators pick, and the one the web has no way to say today." | All four uses `notAllowed` |
+| Not for AI training | "No AI use at all. No training on it, no generating from it, no mining it." | All four uses `notAllowed` |
 | Ask me first | "Allowed on your conditions, written below. Anyone who cannot reach you has to read it as no." | All four uses `constrained`, plus your conditions text |
 
 Under the plates is "answer use by use", which opens the four uses and lets you set each one

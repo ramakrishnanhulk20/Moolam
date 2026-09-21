@@ -611,7 +611,8 @@
       "kicker": "写在链上",
       "heading": "AI 可以如何使用这张图片",
       "lede": "文件里可以带一行字，说明作者拒绝 AI 训练，但任何人在传递途中都能把它删掉。同样的声明写进 Monad 上的登记簿后，只有这本护照的持有者能写，谁也拿不走。",
-      "onThisDay": "在这一天，AI 可以",
+      "onThisDay": "这一天生效",
+      "inForceToday": "今天生效",
       "summary": {
         "open": "对 AI 使用开放",
         "closed": "不供 AI 训练",
@@ -639,6 +640,12 @@
         "aiInference": "AI 推理",
         "dataMining": "数据挖掘"
       },
+      "usesShort": {
+        "aiTraining": "AI 训练",
+        "aiGenerativeTraining": "生成式 AI",
+        "aiInference": "推理",
+        "dataMining": "数据挖掘"
+      },
       "state": {
         "unspecified": "未声明",
         "allowed": "允许",
@@ -651,8 +658,10 @@
       "askFailed": "链没有回答那一天",
       "scrub": "拖动这条标尺，或使用方向键",
       "scrubStep": "，一步一天",
+      "scrubTouch": "拖动这条标尺",
       "registeredOn": "{when} 登记",
       "today": "今天",
+      "shared": "{statement}，于 {when} 写在 Monad 上。",
       "dayLabel": "要向链询问的日期",
       "fourUses": "四种用途",
       "fourUsesNote": "今天生效的内容，逐项列出。任何概括都会丢掉一些东西，而训练与推理正是在这里可以不同。",
@@ -692,7 +701,7 @@
           },
           "closed": {
             "title": "不供 AI 训练",
-            "line": "完全不供 AI 使用。多数创作者选的是这一项，而今天的网络没有办法把它说出来。"
+            "line": "完全不供 AI 使用。不训练、不生成，也不挖掘其中的数据。"
           },
           "ask": {
             "title": "请先询问我",
@@ -837,6 +846,10 @@
         "gas": {
           "label": "网络费",
           "body": "Moolam 通过 Privy 代付，所以登记一张图对你来说不花钱。"
+        },
+        "consent": {
+          "label": "你对 AI 使用的表态",
+          "body": "怎么被 AI 使用由你决定：对 AI 开放、不供 AI 训练，或者先问我。你的答复会签进文件，并带着日期写到 Monad 上，之后还可以更改。"
         }
       }
     },

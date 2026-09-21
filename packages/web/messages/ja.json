@@ -611,7 +611,8 @@
       "kicker": "チェーンに記録",
       "heading": "この画像を AI がどう使ってよいか",
       "lede": "ファイルには「作者は AI 学習を拒否する」という一行を入れられますが、途中で誰でも消せます。同じ表明を Monad の登録簿に書けば、書けるのはこのパスポートの保有者だけで、誰も取り除けません。",
-      "onThisDay": "この日、AI にできたこと",
+      "onThisDay": "この日に有効",
+      "inForceToday": "今日有効",
       "summary": {
         "open": "AI 利用に開いている",
         "closed": "AI 学習には使わせない",
@@ -639,6 +640,12 @@
         "aiInference": "AI 推論",
         "dataMining": "データマイニング"
       },
+      "usesShort": {
+        "aiTraining": "AI 学習",
+        "aiGenerativeTraining": "生成 AI",
+        "aiInference": "推論",
+        "dataMining": "データマイニング"
+      },
       "state": {
         "unspecified": "未表明",
         "allowed": "許可",
@@ -651,8 +658,10 @@
       "askFailed": "その日についてチェーンから返事がありませんでした",
       "scrub": "定規をドラッグするか、矢印キーを使ってください",
       "scrubStep": "、一目盛りで一日",
+      "scrubTouch": "定規をドラッグ",
       "registeredOn": "{when} 登録",
       "today": "今日",
+      "shared": "{statement}、{when} に Monad で表明。",
       "dayLabel": "チェーンに尋ねる日",
       "fourUses": "四つの用途",
       "fourUsesNote": "今日有効な内容を用途ごとに。要約は必ず何かを落とします。学習と推論が食い違えるのはここです。",
@@ -692,7 +701,7 @@
           },
           "closed": {
             "title": "AI 学習には使わせない",
-            "line": "AI 利用はいっさい不可。多くの作者が選ぶのはこれで、いまのウェブにはこれを言う手段がありません。"
+            "line": "AI 利用はいっさい不可。学習にも、生成にも、データの取り出しにも使わせません。"
           },
           "ask": {
             "title": "まず私に尋ねて",
@@ -837,6 +846,10 @@
         "gas": {
           "label": "ネットワーク手数料",
           "body": "Moolam が Privy を通して負担するので、画像の登録に費用はかかりません。"
+        },
+        "consent": {
+          "label": "AI 利用についてのあなたの意思",
+          "body": "AI がどう使えるかはあなたが決めます。AI に開放、AI 学習には不可、まず相談のいずれかです。答えはファイルに署名して埋め込まれ、日付とともに Monad に書かれ、あとから変えられます。"
         }
       }
     },

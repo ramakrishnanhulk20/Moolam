@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
 import { Attestations } from "@/components/passport/Attestations";
 import { CheckCopy } from "@/components/passport/CheckCopy";
 import { ConsentSection, type ConsentRecord } from "@/components/consent/ConsentSection";
+import { shareDescription } from "@/components/consent/share";
 import { DisputeNote } from "@/components/passport/DisputeNote";
 import { DisputePanel } from "@/components/passport/DisputePanel";
 import { EditPanel } from "@/components/passport/EditPanel";
@@ -16,6 +17,7 @@ import { Poster } from "@/components/passport/Poster";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { reason } from "@/lib/chain/client";
 import { heldConsent, heldConsentHistory, heldMinInterval, heldStandard } from "@/lib/chain/consent";
+import type { ConsentReading } from "@/lib/chain/consent";
 import { DisputeStatus, ZERO_ID, heldPassportRecord } from "@/lib/chain/registry";
 import type { PassportRecordBundle } from "@/lib/chain/registry";
 import { headTimestamp } from "@/lib/chain/time";
@@ -49,6 +51,10 @@ export async function generateStaticParams(): Promise<{ id: string }[]> {
  * The title and the words come from the pinned metadata, read the same way the
  * page reads them. A gateway that will not answer costs the title, never the
  * page: the card and the head both fall back to the short id.
+ *
+ * The description leads with what the holder has said about AI use, because
+ * that is the one line about this picture that is not true of every other one
+ * in the app, and a link is often all anyone sees.
  */
 export async function generateMetadata({
   params,
@@ -57,8 +63,11 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale, id } = await params;
   const meta = await getTranslations({ locale, namespace: "meta" });
+  const words = await getTranslations({ locale, namespace: "passport.consent" });
+  const format = await getFormatter({ locale });
 
   let art: Art | null = null;
+  let consent: ConsentReading | null = null;
   if (ID_PATTERN.test(id)) {
     try {
       // The same held read the page itself makes, so a render costs one trip to
@@ -68,13 +77,26 @@ export async function generateMetadata({
     } catch {
       // The head is worth no failed page. The short id stands in.
     }
+
+    try {
+      // Held under this passport's own name and read again below, so the head
+      // costs the register no call of its own.
+      consent = await heldConsent(id as Hex);
+    } catch {
+      // A register that will not answer leaves the description as it was.
+    }
   }
 
   return passportShareMetadata({
     locale,
     id,
     title: art?.title,
-    description: art?.description,
+    description: shareDescription(consent, art?.description, meta("description"), (statement, at) =>
+      words("shared", {
+        statement: words(`summary.${statement}`),
+        when: format.dateTime(new Date(at * 1000), { dateStyle: "medium" }),
+      }),
+    ),
     fallbackDescription: meta("description"),
   });
 }

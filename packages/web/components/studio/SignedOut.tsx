@@ -32,14 +32,16 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
       </h2>
       <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("signedOut.body")}</p>
 
-      <ul className="mt-10 grid gap-y-7 border-t border-line pt-7 sm:grid-cols-3 sm:divide-x sm:divide-line">
+      <ul className="mt-10 grid gap-y-7 border-t border-line pt-7 sm:grid-cols-3">
         {POINTS.map((point, index) => (
           <motion.li
             key={point}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.15 + index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className="sm:px-6 sm:first:ps-0 sm:last:pe-0"
+            className={`sm:px-6 sm:first:ps-0 ${index === POINTS.length - 1 ? "sm:pe-0" : ""} ${
+              index === 0 ? "" : "sm:border-s sm:border-line"
+            }`}
           >
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
               {t(`signedOut.points.${point}.label`)}
@@ -47,6 +49,21 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
             <p className="mt-2 text-sm leading-relaxed text-text">{t(`signedOut.points.${point}.body`)}</p>
           </motion.li>
         ))}
+
+        {/* The fourth thing a creator gets is the one nothing else on the web
+            offers them, and it is a sentence rather than a phrase, so it takes
+            the full width under the other three instead of squeezing them. */}
+        <motion.li
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.39, ease: [0.16, 1, 0.3, 1] }}
+          className="sm:col-span-3 sm:border-t sm:border-line sm:pt-7"
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+            {t("signedOut.points.consent.label")}
+          </p>
+          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-text">{t("signedOut.points.consent.body")}</p>
+        </motion.li>
       </ul>
 
       <button

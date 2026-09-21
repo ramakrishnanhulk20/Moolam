@@ -609,7 +609,8 @@
       "kicker": "Stated on chain",
       "heading": "How AI may use this picture",
       "lede": "A file can carry a line saying its creator refuses AI training, and anyone can strip that line out on the way past. This is the same statement written to a register on Monad, where only the holder of this passport can write it and nobody can take it back out.",
-      "onThisDay": "On this day, AI could",
+      "onThisDay": "In force on this day",
+      "inForceToday": "In force today",
       "summary": {
         "open": "Open to AI use",
         "closed": "Not for AI training",
@@ -637,6 +638,12 @@
         "aiInference": "AI inference",
         "dataMining": "Data mining"
       },
+      "usesShort": {
+        "aiTraining": "AI training",
+        "aiGenerativeTraining": "Generative AI",
+        "aiInference": "Inference",
+        "dataMining": "Data mining"
+      },
       "state": {
         "unspecified": "Not stated",
         "allowed": "Allowed",
@@ -649,8 +656,10 @@
       "askFailed": "the chain did not answer for that day",
       "scrub": "Drag the rule, or use the arrow keys",
       "scrubStep": ", one day a step",
+      "scrubTouch": "Drag the rule",
       "registeredOn": "registered {when}",
       "today": "today",
+      "shared": "{statement}, stated on Monad on {when}.",
       "dayLabel": "The day to ask the chain about",
       "fourUses": "The four uses",
       "fourUsesNote": "What stands today, use by use. Every summary loses something, and this is where training and inference are allowed to differ.",
@@ -690,7 +699,7 @@
           },
           "closed": {
             "title": "Not for AI training",
-            "line": "No AI use at all. The one most creators pick, and the one the web has no way to say today."
+            "line": "No AI use at all. No training on it, no generating from it, no mining it."
           },
           "ask": {
             "title": "Ask me first",
@@ -835,6 +844,10 @@
         "gas": {
           "label": "The network fee",
           "body": "Moolam pays it through Privy, so registering an image costs you nothing."
+        },
+        "consent": {
+          "label": "Your word on AI use",
+          "body": "You say how AI may use it: open to AI, not for AI training, or ask me first. Your answer is signed into the file and written to Monad with the date, and you can change it later."
         }
       }
     },
