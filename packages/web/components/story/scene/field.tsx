@@ -15,6 +15,7 @@ import {
   type Degrade,
 } from "./textures";
 import { ACCENT, REFUSED, VERIFIED } from "@/components/story/palette";
+import { plateEdge } from "@/components/story/signals";
 
 export const ACCENT_COLOR = new THREE.Color(ACCENT);
 export const MATCHED_COLOR = new THREE.Color(VERIFIED);
@@ -28,8 +29,13 @@ export const REFUSED_COLOR = new THREE.Color(REFUSED);
  * opening frame takes the first picture, and that is the picture the document
  * has already asked for.
  */
-export function useField(count: number, pictures: string[], spread = 1): FieldPlate[] {
-  return useMemo(() => fieldPlates(count, pictures, spread), [count, pictures, spread]);
+export function useField(
+  count: number,
+  pictures: string[],
+  spread: number,
+  eye: readonly [number, number, number],
+): FieldPlate[] {
+  return useMemo(() => fieldPlates(count, pictures, spread, eye), [count, pictures, spread, eye]);
 }
 
 function useAsyncTexture(url: string | null): THREE.Texture | null {
@@ -278,6 +284,7 @@ export function FocalPlate({
   dropped,
   refs,
   particles,
+  edge: tracksEdge = false,
   height = 1.7,
 }: {
   url: string | null;
@@ -286,6 +293,8 @@ export function FocalPlate({
   refs: FocalRefs;
   /** Halved on a phone, where the same cloud costs the same frame on a smaller GPU. */
   particles: number;
+  /** True only on the cut with the stated beat, which needs the lower edge on screen. */
+  edge?: boolean;
   height?: number;
 }) {
   const texture = useAsyncTexture(url);
@@ -307,6 +316,7 @@ export function FocalPlate({
   const bloom = useRef<THREE.Mesh>(null);
   const bloomMaterial = useRef<THREE.MeshBasicMaterial>(null);
   const edgeColor = useMemo(() => new THREE.Color(), []);
+  const corner = useMemo(() => new THREE.Vector3(), []);
 
   // Same reason as the field plates: a map that arrives after the material was
   // built needs the material recompiled.
@@ -319,7 +329,7 @@ export function FocalPlate({
     }
   }, [texture, droppedTexture]);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     const node = group.current;
     if (node === null) {
       return;
@@ -366,6 +376,20 @@ export function FocalPlate({
       stamp.current.scale.setScalar(scale * 0.22);
       stamp.current.position.z = 0.5 - eased * 0.44;
       stampMaterial.current.opacity = sealed <= 0.001 ? 0 : Math.min(1, drop * 1.6) * (0.55 + verified * 0.45);
+    }
+
+    if (tracksEdge) {
+      // Both corners, not one and a width: the plate turns a little as it
+      // breathes, and the rule is drawn along the edge it really has.
+      node.updateMatrixWorld();
+      corner.set(-width / 2, -height / 2, 0).applyMatrix4(node.matrixWorld).project(camera);
+      plateEdge.leftX = corner.x;
+      plateEdge.leftY = corner.y;
+      corner.set(width / 2, -height / 2, 0).applyMatrix4(node.matrixWorld).project(camera);
+      plateEdge.rightX = corner.x;
+      plateEdge.rightY = corner.y;
+      // The picture has to be on the plate before anything is written along it.
+      plateEdge.shown = picture.current !== null && picture.current.opacity > 0.05;
     }
 
     if (bloom.current !== null && bloomMaterial.current !== null) {

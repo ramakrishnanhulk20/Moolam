@@ -7,8 +7,6 @@
  * renderer anywhere in the file, which is also what lets a test read them.
  */
 
-import { BEAT } from "@/components/story/beats";
-
 /**
  * A plate in the field is never more than a few hundred pixels on screen, and
  * three.js cannot use next/image, so the address is handed to the optimizer
@@ -46,11 +44,16 @@ export interface FieldPlate extends PlateSpot {
  * pictures the document preloaded are the ones the first plates ask for, and
  * the requests that go out after them belong to smaller and further plates.
  */
-export function fieldPlates(count: number, pictures: string[], spread = 1): FieldPlate[] {
+export function fieldPlates(
+  count: number,
+  pictures: string[],
+  spread: number,
+  eye: readonly [number, number, number],
+): FieldPlate[] {
   if (pictures.length === 0) {
     return [];
   }
-  return plateSpots(count, spread).map((spot, rank) => ({ ...spot, url: pictures[rank % pictures.length] }));
+  return plateSpots(count, spread, eye).map((spot, rank) => ({ ...spot, url: pictures[rank % pictures.length] }));
 }
 
 /**
@@ -75,10 +78,13 @@ export function fieldPictures(plates: readonly { picture: string }[]): string[] 
  * plates that fill the most of the opening frame. It moves nothing: the same
  * spots hold the same shapes, they are handed their pictures in a different
  * order.
+ *
+ * `eye` is where the camera stands on the opening frame, handed in from the cut
+ * being played rather than read out of a table here: which plate is largest is
+ * a question about that one pose.
  */
-export function plateSpots(count: number, spread = 1): PlateSpot[] {
+export function plateSpots(count: number, spread: number, eye: readonly [number, number, number]): PlateSpot[] {
   const noise = sequence(41, count * 6);
-  const eye = BEAT.opening.arrive.pos;
   const spots: PlateSpot[] = [];
 
   for (let index = 0; index < count; index += 1) {

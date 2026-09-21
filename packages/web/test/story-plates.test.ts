@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { OPENING_PICTURES, fieldPictures, fieldPlates, plateSpots } from "@/components/story/scene/order";
+import { beatTable } from "@/components/story/beats";
 
 /**
  * The order the field asks for its pictures in.
@@ -13,9 +14,12 @@ import { OPENING_PICTURES, fieldPictures, fieldPlates, plateSpots } from "@/comp
 
 const PICTURES = Array.from({ length: 14 }, (_, at) => `ipfs://picture-${at}`);
 
+/** Where the camera stands on the opening frame of the film that ships. */
+const EYE = beatTable("classic").beat.opening.arrive.pos;
+
 describe("the order the plates ask for their pictures", () => {
   it("hands them out nearest and largest first", () => {
-    const spots = plateSpots(40);
+    const spots = plateSpots(40, 1, EYE);
 
     expect(spots).toHaveLength(40);
     for (let at = 1; at < spots.length; at += 1) {
@@ -27,7 +31,7 @@ describe("the order the plates ask for their pictures", () => {
   });
 
   it("gives the pictures the document preloaded to the first plates of all", () => {
-    const plates = fieldPlates(40, PICTURES);
+    const plates = fieldPlates(40, PICTURES, 1, EYE);
 
     expect(plates.slice(0, OPENING_PICTURES).map((plate) => plate.url)).toEqual(
       PICTURES.slice(0, OPENING_PICTURES),
@@ -35,7 +39,7 @@ describe("the order the plates ask for their pictures", () => {
   });
 
   it("leaves the field itself where it was: every spot still hangs a picture", () => {
-    const plates = fieldPlates(40, PICTURES);
+    const plates = fieldPlates(40, PICTURES, 1, EYE);
 
     expect(new Set(plates.map((plate) => plate.url)).size).toBe(PICTURES.length);
     expect(plates.every((plate) => plate.height >= 0.5 && plate.height <= 1.25)).toBe(true);
@@ -48,7 +52,7 @@ describe("the order the plates ask for their pictures", () => {
   });
 
   it("is the same field on every load", () => {
-    expect(fieldPlates(28, PICTURES)).toEqual(fieldPlates(28, PICTURES));
+    expect(fieldPlates(28, PICTURES, 1, EYE)).toEqual(fieldPlates(28, PICTURES, 1, EYE));
   });
 
   it("asks for one address once, in the order the plates take them", () => {
@@ -63,9 +67,9 @@ describe("the order the plates ask for their pictures", () => {
   });
 
   it("hangs a shorter list around the whole field rather than leaving plates dark", () => {
-    const plates = fieldPlates(40, ["ipfs://only-one"]);
+    const plates = fieldPlates(40, ["ipfs://only-one"], 1, EYE);
 
     expect(plates.every((plate) => plate.url === "ipfs://only-one")).toBe(true);
-    expect(fieldPlates(40, [])).toEqual([]);
+    expect(fieldPlates(40, [], 1, EYE)).toEqual([]);
   });
 });

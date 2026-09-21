@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { film, forwardTouchMove, forwardTouchStart, forwardWheel, keyReach, moveStory, scroller, type StoryView } from "@/components/story/signals";
+import { beatTable } from "@/components/story/beats";
 
 /**
  * The two ends of the home page, the ones a reader could not reach on
@@ -24,31 +25,34 @@ const opening = (over: Partial<StoryView> = {}): StoryView => ({
 
 const BEAT = 1000;
 
+/** The pages of the film that ships. A key press is one of its screens of travel. */
+const PAGES = beatTable("classic").pages;
+
 describe("the keys that drive the film", () => {
   it("moves one beat on Page Down, a beat being one of the eight screens of travel", () => {
-    expect(keyReach("PageDown", false, opening())).toEqual({ story: { by: BEAT }, page: null });
+    expect(keyReach("PageDown", false, opening(), PAGES)).toEqual({ story: { by: BEAT }, page: null });
   });
 
   it("puts that beat on the scroller the wheel moves, so the story keeps one place to read its progress from", () => {
     const el = { scrollTop: 0, scrollHeight: 9000, clientHeight: 1000 } as HTMLElement;
-    const reach = keyReach("PageDown", false, opening());
+    const reach = keyReach("PageDown", false, opening(), PAGES);
     moveStory(el, reach!.story!);
     expect(el.scrollTop).toBe(BEAT);
   });
 
   it("reads Space as Page Down and Shift and Space as Page Up", () => {
-    expect(keyReach(" ", false, opening({ top: BEAT }))).toEqual({ story: { by: BEAT }, page: null });
-    expect(keyReach(" ", true, opening({ top: BEAT }))).toEqual({ story: { by: -BEAT }, page: null });
+    expect(keyReach(" ", false, opening({ top: BEAT }), PAGES)).toEqual({ story: { by: BEAT }, page: null });
+    expect(keyReach(" ", true, opening({ top: BEAT }), PAGES)).toEqual({ story: { by: -BEAT }, page: null });
   });
 
   it("moves a sixth of a beat on an arrow", () => {
-    expect(keyReach("ArrowDown", false, opening())).toEqual({ story: { by: BEAT / 6 }, page: null });
-    expect(keyReach("ArrowUp", false, opening({ top: 4000 }))).toEqual({ story: { by: -BEAT / 6 }, page: null });
+    expect(keyReach("ArrowDown", false, opening(), PAGES)).toEqual({ story: { by: BEAT / 6 }, page: null });
+    expect(keyReach("ArrowUp", false, opening({ top: 4000 }), PAGES)).toEqual({ story: { by: -BEAT / 6 }, page: null });
   });
 
   it("takes both ends on End and Home, the page and the story together", () => {
-    expect(keyReach("End", false, opening())).toEqual({ story: { to: "end" }, page: { to: "end" } });
-    expect(keyReach("Home", false, opening({ top: 8000, pageTop: 300 }))).toEqual({
+    expect(keyReach("End", false, opening(), PAGES)).toEqual({ story: { to: "end" }, page: { to: "end" } });
+    expect(keyReach("Home", false, opening({ top: 8000, pageTop: 300 }), PAGES)).toEqual({
       story: { to: "start" },
       page: { to: "start" },
     });
@@ -62,26 +66,41 @@ describe("the keys that drive the film", () => {
     expect(el.scrollTop).toBe(0);
   });
 
+  it("takes its step from the cut being played, not from a number of its own", () => {
+    const stated = beatTable("stated");
+    expect(stated.pages).toBe(PAGES + 1);
+    // Nine screens of travel over the same scroller, so one press is a ninth of
+    // it. A step that stayed an eighth would stop part way into every beat.
+    expect(keyReach("PageDown", false, opening(), stated.pages)).toEqual({
+      story: { by: 8000 / (stated.pages - 1) },
+      page: null,
+    });
+    expect(keyReach("ArrowDown", false, opening(), stated.pages)).toEqual({
+      story: { by: 8000 / (stated.pages - 1) / 6 },
+      page: null,
+    });
+  });
+
   it("hands Tab and every other key back to the browser", () => {
     for (const key of ["Tab", "Enter", "Escape", "a", "F5"]) {
-      expect(keyReach(key, false, opening())).toBeNull();
+      expect(keyReach(key, false, opening(), PAGES)).toBeNull();
     }
   });
 
   it("moves the page under the film once the story has no more to give, which is how a keyboard reaches the footer", () => {
-    expect(keyReach("PageDown", false, opening({ top: 8000 }))).toEqual({ story: null, page: { by: 900 } });
-    expect(keyReach("ArrowDown", false, opening({ top: 8000 }))).toEqual({ story: null, page: { by: 150 } });
+    expect(keyReach("PageDown", false, opening({ top: 8000 }), PAGES)).toEqual({ story: null, page: { by: 900 } });
+    expect(keyReach("ArrowDown", false, opening({ top: 8000 }), PAGES)).toEqual({ story: null, page: { by: 150 } });
   });
 
   it("brings the page back before it rewinds a single frame of the story", () => {
-    expect(keyReach("PageUp", false, opening({ top: 8000, pageTop: 300 }))).toEqual({
+    expect(keyReach("PageUp", false, opening({ top: 8000, pageTop: 300 }), PAGES)).toEqual({
       story: null,
       page: { by: -900 },
     });
   });
 
   it("rewinds the story once the page is back on the last beat", () => {
-    expect(keyReach("PageUp", false, opening({ top: 8000 }))).toEqual({ story: { by: -BEAT }, page: null });
+    expect(keyReach("PageUp", false, opening({ top: 8000 }), PAGES)).toEqual({ story: { by: -BEAT }, page: null });
   });
 });
 

@@ -8,12 +8,15 @@ import * as THREE from "three";
 import { PlateField, useField } from "@/components/story/scene/field";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
-import { BEAT } from "@/components/story/beats";
+import { beatTable } from "@/components/story/beats";
 import type { StoryData } from "@/components/story/data";
 import { HeroCredits } from "@/components/story/HeroCredits";
 
 /** How many plates the field hangs. It is the top tier's own number. */
 const PLATES = 40;
+
+/** The credit block is judged on the film as it ships, so this bench plays the classic cut. */
+const OPENING = beatTable("classic").beat.opening;
 
 /** How much of the pinned screen the shot takes on a phone, the film's number. */
 const PHONE_BAND = 0.45;
@@ -99,7 +102,7 @@ function Pane({ pictures }: { pictures: string[] }) {
       ) : (
         <div className="story-stage">
           <Canvas
-            camera={{ position: BEAT.opening.arrive.pos, fov: small ? 54 : 40 }}
+            camera={{ position: OPENING.arrive.pos, fov: small ? 54 : 40 }}
             dpr={[1, 1.75]}
             gl={{ antialias: true, powerPreference: "high-performance" }}
           >
@@ -200,14 +203,14 @@ function OpeningShot({
   framing: number;
   reach: number;
 }) {
-  const field = useField(PLATES, pictures, spread);
+  const field = useField(PLATES, pictures, spread, OPENING.arrive.pos);
   const { camera } = useThree();
   const fade = useRef(1);
   const look = useMemo(() => new THREE.Vector3(), []);
 
   useFrame(({ clock }) => {
-    const from = BEAT.opening.arrive;
-    const to = BEAT.opening.settle;
+    const from = OPENING.arrive;
+    const to = OPENING.settle;
     const k = (1 - Math.cos(clock.elapsedTime * 0.11)) / 2;
     camera.position.set(
       from.pos[0] + (to.pos[0] - from.pos[0]) * k,

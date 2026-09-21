@@ -1,5 +1,5 @@
 /**
- * The one table the whole story runs on.
+ * The one table the whole story runs on, in the two cuts it has.
  *
  * Every offset below is a fraction of the total scroll. The camera path, the
  * scene's own state switches and the caption layer are all read from this
@@ -8,18 +8,30 @@
  * starts, and it has left again before the next beat starts. The gap between
  * one caption ending and the next beat starting is the travel, and nothing is
  * being read during it.
+ *
+ * The classic cut is the film Ram approved, to the last offset. The stated cut
+ * is the same film with one more beat in it, the holder's word on AI use, and
+ * it is only played on the bench. Nothing reads a table out of this module any
+ * more: a screen is handed the cut it is playing, so the two can run side by
+ * side on one machine without either one reaching for the other's numbers.
  */
 
-/** Screens of scroll drei's ScrollControls hands the scene. Nine pages, eight screens of travel. */
-export const PAGES = 9;
+export type StoryVariant = "classic" | "stated";
 
-/** How much scroll a caption takes to fade in, and to fade out again. */
-export const CAPTION_FADE = 0.016;
+/** Every beat the film can carry. "stated" belongs to the stated cut alone. */
+export type BeatName =
+  | "opening"
+  | "made"
+  | "sealed"
+  | "stated"
+  | "shared"
+  | "verified"
+  | "trusted"
+  | "offer"
+  | "close";
 
-/** How far a caption sits below its resting place before it has arrived, in pixels. */
-const CAPTION_RISE = 26;
-
-export type BeatName = "opening" | "made" | "sealed" | "shared" | "verified" | "trusted" | "offer" | "close";
+/** The eight beats both cuts carry, whatever else is in the table. */
+export type ClassicBeatName = Exclude<BeatName, "stated">;
 
 /** Where the camera is and what it is pointed at. */
 export interface Pose {
@@ -44,7 +56,26 @@ export interface Beat {
   settle: Pose;
 }
 
-export const BEATS: Beat[] = [
+/** Screens of scroll drei's ScrollControls hands the scene. Nine pages, eight screens of travel. */
+const CLASSIC_PAGES = 9;
+
+/** The stated cut adds exactly one screen, for the one new beat. */
+const STATED_SCREENS = 1;
+
+/** How much scroll a caption takes to fade in, and to fade out again, in the classic cut. */
+export const CAPTION_FADE = 0.016;
+
+/**
+ * How much of the new beat its caption is on screen for. It is the sealed
+ * beat's own share, so what is left for the camera to travel out on is the
+ * travel the film already has between two close shots.
+ */
+const STATED_CAPTION_SHARE = 0.66;
+
+/** How far a caption sits below its resting place before it has arrived, in pixels. */
+const CAPTION_RISE = 26;
+
+const CLASSIC_BEATS: Beat[] = [
   {
     name: "opening",
     start: 0,
@@ -139,18 +170,108 @@ export const BEATS: Beat[] = [
   },
 ];
 
-export const BEAT = Object.fromEntries(BEATS.map((entry) => [entry.name, entry])) as Record<BeatName, Beat>;
+/**
+ * The new beat, between the seal and the copies leaving.
+ *
+ * The camera swings round to the other side of the plate and drops to its lower
+ * edge, which is where the register draws itself along the picture. The plate
+ * takes the left of the frame, so the words take the right.
+ */
+function statedBeat(start: number, room: number): Beat {
+  return {
+    name: "stated",
+    start,
+    end: start + room,
+    captionStart: start,
+    captionEnd: start + room * STATED_CAPTION_SHARE,
+    align: "end",
+    // Close enough to cut the top of the picture off, with its lower edge about
+    // two thirds down the frame and the dark right of the shot left to the
+    // words. The drift pushes in a little further and lifts the edge with it.
+    arrive: { pos: [-0.44, -0.26, 2.86], look: [0.64, -0.52, 0] },
+    settle: { pos: [-0.3, -0.32, 2.66], look: [0.56, -0.46, 0] },
+  };
+}
 
 /**
- * The camera path, straight out of the table: every beat contributes the pose it
- * has arrived at when its caption starts and the pose it has drifted to when the
- * caption is gone. All the travelling therefore happens between one caption
- * leaving and the next arriving.
+ * The classic beats with one screen made for the new one.
+ *
+ * Every existing beat keeps the number of screens it has today: the film is a
+ * screen longer, so each old offset is squeezed by exactly that screen, and
+ * everything after the seal is pushed along by it. The two ends stay the two
+ * ends, which is what keeps the last caption held to the end of the scroll.
  */
-export const CAMERA_KEYS: { at: number; pose: Pose }[] = BEATS.flatMap((entry) => [
-  { at: entry.start, pose: entry.arrive },
-  { at: entry.captionEnd, pose: entry.settle },
-]);
+function statedBeats(): Beat[] {
+  const travel = CLASSIC_PAGES - 1;
+  const wider = travel + STATED_SCREENS;
+  const squeeze = travel / wider;
+  const room = STATED_SCREENS / wider;
+  const seal = CLASSIC_BEATS.findIndex((beat) => beat.name === "sealed");
+
+  const moved = (value: number, after: boolean) =>
+    value === 0 || value === 1 ? value : value * squeeze + (after ? room : 0);
+
+  const out: Beat[] = [];
+  CLASSIC_BEATS.forEach((beat, at) => {
+    const after = at > seal;
+    out.push({
+      ...beat,
+      start: moved(beat.start, after),
+      end: moved(beat.end, after),
+      captionStart: moved(beat.captionStart, after),
+      captionEnd: moved(beat.captionEnd, after),
+    });
+    if (at === seal) {
+      out.push(statedBeat(moved(beat.end, false), room));
+    }
+  });
+  return out;
+}
+
+/** One cut of the film: its pages, its beats, and the camera path they make. */
+export interface BeatTable {
+  variant: StoryVariant;
+  pages: number;
+  /** A caption's fade, in this cut's own fractions, so it is the same scroll distance in both. */
+  fade: number;
+  beats: Beat[];
+  /** Every beat this cut carries, by name. A cut without the stated beat simply has no key for it. */
+  beat: Partial<Record<BeatName, Beat>> & Record<ClassicBeatName, Beat>;
+  /**
+   * The camera path, straight out of the table: every beat contributes the pose
+   * it has arrived at when its caption starts and the pose it has drifted to
+   * when the caption is gone. All the travelling therefore happens between one
+   * caption leaving and the next arriving.
+   */
+  cameraKeys: { at: number; pose: Pose }[];
+}
+
+function tableOf(variant: StoryVariant): BeatTable {
+  const beats = variant === "stated" ? statedBeats() : CLASSIC_BEATS;
+  const pages = variant === "stated" ? CLASSIC_PAGES + STATED_SCREENS : CLASSIC_PAGES;
+
+  return {
+    variant,
+    pages,
+    fade: (CAPTION_FADE * (CLASSIC_PAGES - 1)) / (pages - 1),
+    beats,
+    beat: Object.fromEntries(beats.map((entry) => [entry.name, entry])) as BeatTable["beat"],
+    cameraKeys: beats.flatMap((entry) => [
+      { at: entry.start, pose: entry.arrive },
+      { at: entry.captionEnd, pose: entry.settle },
+    ]),
+  };
+}
+
+/** Both cuts, built once: a screen holding one of these holds the same object all the way through. */
+const TABLES: Record<StoryVariant, BeatTable> = {
+  classic: tableOf("classic"),
+  stated: tableOf("stated"),
+};
+
+export function beatTable(variant: StoryVariant): BeatTable {
+  return TABLES[variant];
+}
 
 export function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
@@ -173,12 +294,12 @@ export function played(t: number, beat: Beat, share = 0.62): number {
 }
 
 /** A caption's opacity and how far it still has to rise, both from the table. */
-export function captionCue(t: number, beat: Beat): { shown: number; y: number } {
+export function captionCue(t: number, beat: Beat, fade: number): { shown: number; y: number } {
   // The first beat is already on screen when the page loads, and its entrance is
   // the one that runs on load rather than on scroll.
-  const entered = beat.captionStart <= 0 ? 1 : span(t, beat.captionStart, beat.captionStart + CAPTION_FADE);
+  const entered = beat.captionStart <= 0 ? 1 : span(t, beat.captionStart, beat.captionStart + fade);
   // The last beat holds to the end of the scroll: nothing follows it to make room for.
-  const left = beat.captionEnd >= 1 ? 0 : span(t, beat.captionEnd - CAPTION_FADE, beat.captionEnd);
+  const left = beat.captionEnd >= 1 ? 0 : span(t, beat.captionEnd - fade, beat.captionEnd);
 
   return { shown: entered * (1 - left), y: (1 - entered) * CAPTION_RISE - left * CAPTION_RISE };
 }

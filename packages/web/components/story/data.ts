@@ -9,6 +9,8 @@ import {
   gatewayUrl,
   reason,
 } from "@/lib/chain/client";
+import type { Consent, Statement } from "@/lib/chain/consent";
+import { heldConsent, plainStatement } from "@/lib/chain/consent";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
 import { generatorRecord, latestPassports } from "@/lib/data/passports";
 import { activeSource, envioUrl } from "@/lib/data/source";
@@ -62,6 +64,26 @@ export interface StoryAttestation {
   at: number;
 }
 
+/**
+ * What the holder of the story's own passport has said about AI use of the
+ * picture, as the register answered it.
+ *
+ * Nothing here is worked out by the story: the four uses and the moment come
+ * off MoolamConsent, and the summary is the same function the passport page and
+ * the verify answer reduce a statement with, so a beat cannot say one thing
+ * while the card a judge opens next says another.
+ */
+export interface StoryStatement {
+  /** One of the five plain summaries: open, closed, ask, mixed, none. */
+  summary: Statement;
+  consent: Consent;
+  /** When it was written, in whole seconds. */
+  at: number;
+  writer: Hex;
+  /** The holder's own conditions, empty unless a use is constrained. */
+  constraintInfo: string;
+}
+
 export interface StoryAgent {
   id: string;
   /** Re-checks that matched, counted by the index. */
@@ -80,6 +102,10 @@ export interface StoryData {
   focal: StoryFocal | null;
   attestation: StoryAttestation | null;
   agent: StoryAgent | null;
+  /** The statement in force on the focal passport, or null when nobody has written one. */
+  statement: StoryStatement | null;
+  /** The register's own words when it could not be read at all, which is not the same as silence. */
+  statementError: string | null;
   passportCount: number | null;
   attestationCount: number | null;
   /** The provider's own words when nothing could be read, shown rather than swallowed. */
@@ -215,7 +241,53 @@ export async function storyData(): Promise<StoryData> {
   const agentId = focal === null ? DEMO_AGENT_ID : focal.agentId === null ? null : BigInt(focal.agentId);
   const agent = agentId === null ? null : await agentStanding(agentId, generators[agentId.toString()]);
 
-  return { source, plates, focal, attestation, agent, passportCount, attestationCount, error };
+  const { statement, statementError } = focal === null ? NO_STATEMENT : await focalStatement(focal.id);
+
+  return {
+    source,
+    plates,
+    focal,
+    attestation,
+    agent,
+    statement,
+    statementError,
+    passportCount,
+    attestationCount,
+    error,
+  };
+}
+
+const NO_STATEMENT = { statement: null, statementError: null };
+
+/**
+ * The statement in force on the story's own passport, through the same hold the
+ * passport page reads it with.
+ *
+ * Silence and a register that would not answer are kept apart on purpose. A
+ * holder who has said nothing is a true answer the story is allowed to act on;
+ * a read that failed is this minute's bad luck, and a beat built on it would be
+ * a sentence nobody put on chain.
+ */
+async function focalStatement(id: Hex): Promise<{ statement: StoryStatement | null; statementError: string | null }> {
+  try {
+    const reading = await heldConsent(id);
+    if (!reading.stated || reading.entry === null) {
+      return NO_STATEMENT;
+    }
+    const { consent, writer, constraintInfo } = reading.entry;
+    return {
+      statement: {
+        summary: plainStatement(consent),
+        consent,
+        at: Number(reading.entry.at),
+        writer,
+        constraintInfo,
+      },
+      statementError: null,
+    };
+  } catch (caught) {
+    return { statement: null, statementError: reason(caught) };
+  }
 }
 
 /** The last read that came back whole, so a bad minute upstream costs nobody the story. */

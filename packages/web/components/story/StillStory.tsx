@@ -12,7 +12,7 @@ import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { ACCENT_RGB } from "@/components/story/palette";
 import { degradeSteps } from "@/components/story/measurements";
-import { BEAT } from "@/components/story/beats";
+import type { BeatTable } from "@/components/story/beats";
 
 /**
  * The same eight beats with the camera taken out.
@@ -23,11 +23,14 @@ import { BEAT } from "@/components/story/beats";
  */
 export function StillStory({
   data,
+  table,
   beats,
   samples = [],
   noWebgl = false,
 }: {
   data: StoryData;
+  /** The cut being told, which is where each chapter's side comes from. */
+  table: BeatTable;
   beats: StoryBeat[];
   samples?: TrySample[];
   /** True only when a context could not be opened, never for reduced motion. */
@@ -73,7 +76,7 @@ export function StillStory({
         </section>
 
         {beats.map((entry) => (
-          <section key={entry.key} className={BEAT[entry.key].align === "end" ? "text-end" : ""}>
+          <section key={entry.key} className={table.beat[entry.key]?.align === "end" ? "text-end" : ""}>
             {entry.key === "verified" ? <LadderDriver>{entry.body}</LadderDriver> : entry.body}
             {entry.key === "sealed" && picture !== null && <Still src={picture} />}
             {entry.key === "shared" && <Frames />}

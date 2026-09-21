@@ -7,18 +7,38 @@
  * budget the camera is using.
  */
 
-import { PAGES } from "@/components/story/beats";
-
 export const progress = {
   /** 0 to 1 across the whole story. */
   scroll: 0,
   made: 0,
   sealed: 0,
+  /** The stated beat, 0 on every cut of the film that does not carry one. */
+  stated: 0,
   shared: 0,
   verified: 0,
   trusted: 0,
   offer: 0,
   close: 0,
+};
+
+/**
+ * Where the focal plate's lower edge is on screen, in the renderer's own
+ * coordinates, for the one overlay that has to sit on it.
+ *
+ * The register's rule is drawn in the document rather than in the scene, so the
+ * four marks stay the same shapes the consent card draws and the dates stay
+ * real text at any pixel density. That leaves it needing the plate's position
+ * every frame, which is the trick the captions already use: the scene writes
+ * plain numbers from inside its render loop and the overlay reads them from its
+ * own frame. Only the cut that carries the stated beat asks the scene for it.
+ */
+export const plateEdge = {
+  /** True once the picture is really on the plate: nothing is written along a plate that is not there. */
+  shown: false,
+  leftX: 0,
+  leftY: 0,
+  rightX: 0,
+  rightY: 0,
 };
 
 export type ProbeState = "idle" | "pending" | "matched" | "refused";
@@ -68,9 +88,6 @@ export interface Reach {
   page: Move | null;
 }
 
-/** Eight screens of travel across the nine pages of the story: one step is one beat. */
-const TRAVEL = PAGES - 1;
-
 /** A beat divided into nudges, which is what an arrow key is worth. */
 const NUDGES = 6;
 
@@ -81,8 +98,13 @@ const NUDGES = 6;
  * Once the film has been read to its end the same keys move the page under it,
  * which is the only way a reader on a keyboard reaches the footer. Anything
  * else returns null and is left to the browser, Tab above all.
+ *
+ * `pages` is the cut's own page count, handed in by whoever is playing it: a
+ * step is one screen of travel, and a cut with a beat more in it has a screen
+ * more to divide. A key that moved a ninth of a ten page film would stop half
+ * way into every beat.
  */
-export function keyReach(key: string, shift: boolean, view: StoryView): Reach | null {
+export function keyReach(key: string, shift: boolean, view: StoryView, pages: number): Reach | null {
   if (key === "Home") {
     return { story: { to: "start" }, page: { to: "start" } };
   }
@@ -91,7 +113,8 @@ export function keyReach(key: string, shift: boolean, view: StoryView): Reach | 
   }
 
   const space = key === " " || key === "Spacebar";
-  const beat = view.max > 0 ? view.max / TRAVEL : 0;
+  const travel = Math.max(1, pages - 1);
+  const beat = view.max > 0 ? view.max / travel : 0;
   if (key === "PageDown" || (space && !shift)) {
     return along(true, beat, view.height, view);
   }

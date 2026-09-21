@@ -290,6 +290,12 @@ footer a::after {
 
   --status-verified: #3fbfa8;
   --status-failed: #c2586f;
+  /* The register's own two colours, which the film needs for the same reason it
+     needs the one above: the shot is black whatever the site's toggle says, and
+     the light theme's darker blue on it measured 3.3:1. These are the dark
+     theme's own values, 6.4:1 on the film's ground. */
+  --status-pending: #5b8def;
+  --status-disputed: #b06fd8;
 
   --scrim-from: rgb(11 11 12 / 0.92);
   --scrim-to: rgb(11 11 12 / 0);

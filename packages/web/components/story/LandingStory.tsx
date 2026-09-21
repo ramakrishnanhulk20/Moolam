@@ -4,7 +4,7 @@ import { AdaptiveDpr, Preload, ScrollControls, useScroll } from "@react-three/dr
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
 import { fieldPictures } from "@/components/story/scene/order";
@@ -12,7 +12,8 @@ import { CloseCard } from "@/components/story/CloseCard";
 import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
-import { TryPanel, type TrySample } from "@/components/story/TryPanel";
+import { TryPanel } from "@/components/story/TryPanel";
+import { pickSamples } from "@/lib/data/samples";
 import {
   film,
   forwardTouchMove,
@@ -29,7 +30,20 @@ import {
 import type { StoryData } from "@/components/story/data";
 import { degradeSteps, measurement } from "@/components/story/measurements";
 import { createTierState, nextTier, startTier, tierLevel } from "@/components/story/tier";
-import { BEAT, CAMERA_KEYS, PAGES, captionCue, played, span, type Beat, type BeatName } from "@/components/story/beats";
+import {
+  beatTable,
+  captionCue,
+  played,
+  span,
+  type Beat,
+  type BeatName,
+  type BeatTable,
+  type Pose,
+  type StoryVariant,
+} from "@/components/story/beats";
+import { InlineLedger, PlateLedger, type LedgerView } from "@/components/story/StatedLedger";
+import { STATED_COPY, statedWhyNot } from "@/components/story/statedCopy";
+import { fractionOf } from "@/components/consent/ledger";
 import { shortHex } from "@/lib/chain/client";
 
 /**
@@ -41,6 +55,7 @@ import { shortHex } from "@/lib/chain/client";
  * here so the table itself only ever describes the wide shot.
  */
 function sampleKeys(
+  keys: { at: number; pose: Pose }[],
   t: number,
   framing: number,
   reach: number,
@@ -48,12 +63,12 @@ function sampleKeys(
   outLook: THREE.Vector3,
 ) {
   const clamped = Math.min(1, Math.max(0, t));
-  let a = CAMERA_KEYS[0];
-  let b = CAMERA_KEYS[CAMERA_KEYS.length - 1];
-  for (let index = 0; index < CAMERA_KEYS.length - 1; index += 1) {
-    if (clamped >= CAMERA_KEYS[index].at && clamped <= CAMERA_KEYS[index + 1].at) {
-      a = CAMERA_KEYS[index];
-      b = CAMERA_KEYS[index + 1];
+  let a = keys[0];
+  let b = keys[keys.length - 1];
+  for (let index = 0; index < keys.length - 1; index += 1) {
+    if (clamped >= keys[index].at && clamped <= keys[index + 1].at) {
+      a = keys[index];
+      b = keys[index + 1];
       break;
     }
   }
@@ -74,6 +89,7 @@ function sampleKeys(
 
 function World({
   data,
+  table,
   pictures,
   plateCount,
   particles,
@@ -87,6 +103,8 @@ function World({
   onTier,
 }: {
   data: StoryData;
+  /** The cut being played. Every offset, pose and page count below comes out of it. */
+  table: BeatTable;
   pictures: string[];
   plateCount: number;
   spread: number;
@@ -114,7 +132,7 @@ function World({
 }) {
   const scroll = useScroll();
   const { camera } = useThree();
-  const field = useField(plateCount, pictures, spread);
+  const field = useField(plateCount, pictures, spread, table.beat.opening.arrive.pos);
 
   // The panels pinned over the scene sit outside this element, so they need a
   // handle on it to pass a wheel or a drag back to the story. The attribute is
@@ -135,12 +153,18 @@ function World({
     el.setAttribute("aria-label", label);
 
     const onKey = (event: KeyboardEvent) => {
-      const reach = keyReach(event.key, event.shiftKey, {
-        top: el.scrollTop,
-        max: el.scrollHeight - el.clientHeight,
-        height: window.innerHeight,
-        pageTop: window.scrollY,
-      });
+      const reach = keyReach(
+        event.key,
+        event.shiftKey,
+        {
+          top: el.scrollTop,
+          max: el.scrollHeight - el.clientHeight,
+          height: window.innerHeight,
+          pageTop: window.scrollY,
+        },
+        // One press is one beat of the cut being played, not of some other one.
+        table.pages,
+      );
       if (reach === null) {
         return;
       }
@@ -161,7 +185,7 @@ function World({
       el.removeEventListener("keydown", onKey);
       scroller.el = null;
     };
-  }, [label, scroll]);
+  }, [label, scroll, table.pages]);
 
   const pos = useMemo(() => new THREE.Vector3(), []);
   const look = useMemo(() => new THREE.Vector3(), []);
@@ -186,35 +210,39 @@ function World({
   useFrame(({ clock }, delta) => {
     const t = scroll.offset;
     const k = Math.min(1, delta * 3.2);
+    const beat = table.beat;
 
-    sampleKeys(t, framing, reach, pos, look);
+    sampleKeys(table.cameraKeys, t, framing, reach, pos, look);
     camera.position.lerp(pos, k);
     smoothLook.current.lerp(look, k);
     camera.lookAt(smoothLook.current);
 
-    approach.current = span(t, BEAT.opening.captionEnd, BEAT.made.start);
-    made.current = played(t, BEAT.made);
-    sealed.current = played(t, BEAT.sealed);
-    shared.current = played(t, BEAT.shared, 0.85);
-    verified.current = played(t, BEAT.verified, 0.85);
+    approach.current = span(t, beat.opening.captionEnd, beat.made.start);
+    made.current = played(t, beat.made);
+    sealed.current = played(t, beat.sealed);
+    shared.current = played(t, beat.shared, 0.85);
+    verified.current = played(t, beat.verified, 0.85);
 
     // The field dims while the camera is in among one plate, and comes back up
     // for the last beat, which is about how many of them there are.
     fade.current =
-      1 - 0.68 * span(t, BEAT.opening.captionEnd, BEAT.made.start) * (1 - span(t, BEAT.close.start, BEAT.close.start + 0.04));
+      1 - 0.68 * span(t, beat.opening.captionEnd, beat.made.start) * (1 - span(t, beat.close.start, beat.close.start + 0.04));
 
-    const offer = captionCue(t, BEAT.offer).shown;
+    const offer = captionCue(t, beat.offer, table.fade).shown;
     probing.current = offer * (probe.state === "idle" ? 0.35 : 1);
     answer.current = probe.state === "matched" ? 1 : probe.state === "refused" ? 2 : verified.current > 0.98 ? 1 : 0;
 
     progress.scroll = t;
     progress.made = made.current;
     progress.sealed = sealed.current;
+    // The rule has to be drawn and the four marks landed while the words are
+    // still there to read, so this one runs over almost the whole caption.
+    progress.stated = beat.stated === undefined ? 0 : played(t, beat.stated, 0.92);
     progress.shared = shared.current;
     progress.verified = verified.current;
-    progress.trusted = played(t, BEAT.trusted);
+    progress.trusted = played(t, beat.trusted);
     progress.offer = offer;
-    progress.close = captionCue(t, BEAT.close).shown;
+    progress.close = captionCue(t, beat.close, table.fade).shown;
 
     const measured = nextTier(tier.current, delta * 1000, clock.elapsedTime * 1000);
     if (measured.tier !== tier.current.tier) {
@@ -233,6 +261,7 @@ function World({
         url={data.focal?.picture ?? null}
         dropped={dropped}
         particles={particles}
+        edge={table.beat.stated !== undefined}
         refs={{ approach, made, sealed, verified, answer, probe: probing }}
       />
       <Copies
@@ -322,7 +351,7 @@ export interface StoryBeat {
  * stacked down a still page for anyone who has asked for less motion. Every
  * figure in them comes out of the one record data.ts chose.
  */
-function useBeats(data: StoryData): StoryBeat[] {
+function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView | null, still: boolean): StoryBeat[] {
   const t = useTranslations("story");
   const format = useFormatter();
 
@@ -333,6 +362,35 @@ function useBeats(data: StoryData): StoryBeat[] {
   const registered =
     data.focal === null ? "" : format.dateTime(new Date(data.focal.registeredAt * 1000), { dateStyle: "long" });
   const measuredOn = format.dateTime(new Date(measurement.measuredAt), { dateStyle: "long" });
+
+  // The new beat exists only where the cut carries it and the register really
+  // answered for this passport. Everything it says is the statement's own.
+  const stated: StoryBeat[] =
+    table.beat.stated === undefined || ledger === null || data.statement === null
+      ? []
+      : [
+          {
+            key: "stated",
+            body: (
+              // The rule lies across the lower quarter of the frame, so the
+              // words stand above it rather than through it.
+              <div className="sm:-translate-y-[9vh]">
+                <Eyebrow className="sm:justify-end">{STATED_COPY.kicker}</Eyebrow>
+                <Title className="sm:ms-auto sm:text-end">{STATED_COPY.title(data.statement.summary)}</Title>
+                <Body className="sm:ms-auto sm:text-end">{STATED_COPY.body}</Body>
+                {/* The picture of it. On a phone it stacks here with the words,
+                    under the shot; from 640 px up the pinned one lies along the
+                    plate's own lower edge instead and this one is not drawn. On
+                    the still page there is no scroll to draw it with and no
+                    plate to lie on, so it is simply here, finished. */}
+                <InlineLedger view={ledger} driven={!still} className={still ? "mt-8 ms-auto" : "mt-8 sm:hidden"} />
+                <Readout className="sm:ms-auto sm:text-end">
+                  {STATED_COPY.readout(format.dateTime(new Date(data.statement.at * 1000), { dateStyle: "long" }))}
+                </Readout>
+              </div>
+            ),
+          },
+        ];
 
   return [
     {
@@ -369,6 +427,7 @@ function useBeats(data: StoryData): StoryBeat[] {
         </>
       ),
     },
+    ...stated,
     {
       key: "shared",
       body: (
@@ -433,7 +492,62 @@ function useBeats(data: StoryData): StoryBeat[] {
   ];
 }
 
-export function LandingStory({ data }: { data: StoryData }) {
+/** How long one reading of the browser's clock is kept still, in seconds. */
+const CLOCK_HELD = 60;
+
+let clockAt = 0;
+
+/**
+ * The reader's own clock in whole seconds, held still between readings.
+ *
+ * A snapshot that answered a new number every time React asked would put React
+ * in a loop, and a rule whose smallest step is a day does not need a second
+ * hand. The film is browser only, so the third answer is never really used.
+ */
+function readClock(): number {
+  const seconds = Math.floor(Date.now() / 1000);
+  if (seconds - clockAt >= CLOCK_HELD) {
+    clockAt = seconds;
+  }
+  return clockAt;
+}
+
+/** Nothing pushes the time at the film. Any later render is enough. */
+const noClockWatch = () => () => undefined;
+
+const atRender = () => 0;
+
+/**
+ * The statement in the shape the drawing wants it: where it sits on the rule,
+ * and the two dates in the reader's own language.
+ *
+ * The end of the rule is this reader's own today rather than the moment the
+ * page was rendered, which is the same rule the passport card's ledger follows.
+ * The clock is read through a store rather than during the render, the same way
+ * the passport card reads it, so the reading is held still between renders and
+ * nothing here is a call to Date.now in the middle of one.
+ */
+function useLedgerView(data: StoryData): LedgerView | null {
+  const format = useFormatter();
+  const now = useSyncExternalStore(noClockWatch, readClock, atRender);
+
+  return useMemo(() => {
+    if (data.focal === null || data.statement === null || now === 0) {
+      return null;
+    }
+    const short = (seconds: number) =>
+      format.dateTime(new Date(seconds * 1000), { day: "numeric", month: "short", year: "numeric" });
+
+    return {
+      consent: data.statement.consent,
+      notch: fractionOf(data.statement.at, data.focal.registeredAt, Math.max(now, data.statement.at)),
+      registered: short(data.focal.registeredAt),
+      writtenShort: short(data.statement.at),
+    };
+  }, [data.focal, data.statement, format, now]);
+}
+
+export function LandingStory({ data, variant = "classic" }: { data: StoryData; variant?: StoryVariant }) {
   const t = useTranslations("story");
   const reduced = useReducedMotion();
   const [webgl] = useState(canDrawWebGL);
@@ -461,7 +575,11 @@ export function LandingStory({ data }: { data: StoryData }) {
 
   const level = tierLevel(tier);
   const still = filmStill || level.still;
-  const beats = useBeats(data);
+  // A cut with a beat about a statement nobody wrote is not a cut of this film:
+  // the same rule the bench prints its line from decides it, in one place.
+  const table = beatTable(variant === "stated" && statedWhyNot(data) === null ? "stated" : "classic");
+  const ledger = useLedgerView(data);
+  const beats = useBeats(data, table, ledger, still);
   const dpr = useMemo(() => [1, level.dpr] as [number, number], [level.dpr]);
 
   const onTier = useCallback((next: number) => {
@@ -493,20 +611,9 @@ export function LandingStory({ data }: { data: StoryData }) {
   // largest in the opening frame, so those are the ones already on their way.
   const pictures = useMemo(() => fieldPictures(data.plates), [data.plates]);
 
-  // The plates a judge can try are real records off the index, newest first, one
-  // picture each so the row is never the same image three times.
-  const samples = useMemo(() => {
-    const seen = new Set<string>();
-    const offered: TrySample[] = [];
-    for (const plate of data.plates) {
-      if (seen.has(plate.picture) || offered.length === 3) {
-        continue;
-      }
-      seen.add(plate.picture);
-      offered.push({ id: plate.id, url: plate.picture });
-    }
-    return offered;
-  }, [data.plates]);
+  // The plates a judge can try are real records off the index, picked by the one
+  // rule the verify page uses too, so the two screens never offer different rows.
+  const samples = useMemo(() => pickSamples(data.plates), [data.plates]);
 
   const credential = data.focal === null ? "c2pa manifest" : `c2pa ${shortHex(data.focal.creator, 6, 4)}`;
 
@@ -527,13 +634,21 @@ export function LandingStory({ data }: { data: StoryData }) {
   if (still) {
     return (
       <div data-story-tier={tier}>
-        <StillStory data={data} beats={beats} samples={samples} noWebgl={!webgl && reduced !== true} />
+        <StillStory
+          data={data}
+          table={table}
+          beats={beats}
+          samples={samples}
+          noWebgl={!webgl && reduced !== true}
+        />
       </div>
     );
   }
 
   return (
-    <SceneBoundary fallback={<StillStory data={data} beats={beats} samples={samples} noWebgl />}>
+    <SceneBoundary
+      fallback={<StillStory data={data} table={table} beats={beats} samples={samples} noWebgl />}
+    >
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
           to the scene, so the wheel is handed straight to it. The three handlers
           are on this wrapper rather than on each pinned panel: the scene's own
@@ -574,9 +689,10 @@ export function LandingStory({ data }: { data: StoryData }) {
                 the whole screen rather than the shot. Handing the pages that
                 same fraction back keeps a phone's thumb travel per beat exactly
                 what it was when the scroller was the band. */}
-            <ScrollControls pages={PAGES} distance={small ? PHONE_BAND : 1} damping={0.22}>
+            <ScrollControls pages={table.pages} distance={small ? PHONE_BAND : 1} damping={0.22}>
               <World
                 data={data}
+                table={table}
                 pictures={pictures}
                 plateCount={level.plates}
                 particles={level.particles}
@@ -626,7 +742,7 @@ export function LandingStory({ data }: { data: StoryData }) {
             still sits behind the words. Each one is on screen for exactly the beat
             it belongs to, and the travel between two beats carries no words at all. */}
         <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-          <Caption cue={BEAT.opening}>
+          <Caption cue={table.beat.opening} fade={table.fade}>
             <Opening kicker={t("kicker")} title={t("title")} line={t("line")} />
             {/* A phone has no foot to hang credits from: the shot ends at 45
                 percent of the window and the words own everything below it. So
@@ -636,15 +752,25 @@ export function LandingStory({ data }: { data: StoryData }) {
               <Credits />
             </div>
           </Caption>
-          <Caption cue={BEAT.opening} place="foot">
+          <Caption cue={table.beat.opening} fade={table.fade} place="foot">
             <Credits />
           </Caption>
-          {beats.map((entry) => (
-            <Caption key={entry.key} cue={BEAT[entry.key]}>
-              {entry.body}
-            </Caption>
-          ))}
+          {beats.map((entry) => {
+            const cue = table.beat[entry.key];
+            return cue === undefined ? null : (
+              <Caption key={entry.key} cue={cue} fade={table.fade}>
+                {entry.body}
+              </Caption>
+            );
+          })}
         </div>
+
+        {/* The one beat that is drawn rather than written, lying on the plate
+            itself. Hidden on a phone, where the same drawing stacks with the
+            words instead. */}
+        {table.beat.stated !== undefined && ledger !== null && (
+          <PlateLedger view={ledger} beat={table.beat.stated} fade={table.fade} />
+        )}
 
         <TryPanel onPreview={setDropped} samples={samples} />
         <CloseCard data={data} />
@@ -722,7 +848,18 @@ function FilmEnd() {
  * which is where the poster credits go on anything wider than a phone. It leaves
  * the scroll hint its own strip at the very bottom.
  */
-function Caption({ cue, children, place = "band" }: { cue: Beat; children: ReactNode; place?: "band" | "foot" }) {
+function Caption({
+  cue,
+  fade,
+  children,
+  place = "band",
+}: {
+  cue: Beat;
+  /** The cut's own fade, so a caption takes the same scroll distance in both. */
+  fade: number;
+  children: ReactNode;
+  place?: "band" | "foot";
+}) {
   const node = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -732,7 +869,7 @@ function Caption({ cue, children, place = "band" }: { cue: Beat; children: React
     const loop = () => {
       const el = node.current;
       if (el !== null) {
-        const { shown, y } = captionCue(progress.scroll, cue);
+        const { shown, y } = captionCue(progress.scroll, cue, fade);
         if (shown !== last) {
           last = shown;
           el.style.opacity = String(shown);
@@ -744,7 +881,7 @@ function Caption({ cue, children, place = "band" }: { cue: Beat; children: React
 
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [cue]);
+  }, [cue, fade]);
 
   return (
     <div
