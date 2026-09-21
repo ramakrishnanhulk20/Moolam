@@ -59,6 +59,44 @@ Moolam's registry is one such repository, searchable by the fingerprint of a cop
 Monad is Moolam's own design choice. The specification does not ask for it and does not sanction it.
 [Fingerprints](fingerprints) has the measured numbers for what survives and what does not.
 
+## Reserving a picture from AI training
+
+A separate rule governs the other direction: not marking AI output, but a creator refusing to have
+their work used as training data. Article 4(3) of [Directive (EU)
+2019/790](https://eur-lex.europa.eu/eli/dir/2019/790/oj) makes the text and data mining exception
+conditional, and says the condition is machine readable: it applies "on condition that the use of
+works and other subject matter referred to in that paragraph has not been expressly reserved by
+their rightholders in an appropriate manner, such as machine-readable means in the case of content
+made publicly available online."
+
+That is context, not a claim. Moolam does not say that writing a statement here is an appropriate
+reservation in the meaning of that Article, because that is not Moolam's to decide.
+
+What Moolam actually does is two things, and both ship today.
+
+| Where | What is written |
+| --- | --- |
+| Inside the file | A Creator Assertions Working Group Training and Data Mining assertion, version 1.1, label `cawg.training-mining`, inside the signed C2PA manifest |
+| On Monad | The same four values and any conditions text, appended with the block's timestamp to `MoolamConsent`, where only the passport's holder can write and nothing is ever edited |
+
+The vocabulary is the standard's, not Moolam's: `aiTraining`, `aiGenerativeTraining`, `aiInference`
+and `dataMining`, each `allowed`, `notAllowed` or `constrained`. The contract names the version on
+chain so a reader never has to guess. The standard also settles the awkward case: "In the absence of
+additional information, constrained shall be treated as equivalent to notAllowed."
+
+The second row exists because the first can be removed. A platform that recompresses a JPEG throws
+the manifest away, and the refusal goes with it. The chain copy is not in the file, so it survives
+that, and it answers for any past date rather than only for today.
+
+The C2PA specification does not ask for this and does not sanction it. It defines the assertion
+format and a soft binding; putting the same statement on a ledger is Moolam's own design choice,
+the same as putting the fingerprints there. Nothing in the specification mentions a blockchain, as
+the section above says.
+
+And none of it enforces anything. The register cannot stop a crawler that ignores it. It makes
+ignoring it provable, with a date, which is a different and smaller claim.
+[Say how AI may use a picture](../guides/ai-use-statements) is the creator's version of this page.
+
 ## History, not truth
 
 The standard's critics and Moolam's own docs land in the same place.

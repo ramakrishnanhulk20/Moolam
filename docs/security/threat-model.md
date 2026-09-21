@@ -23,6 +23,8 @@ not fix are listed last, on purpose.
 5. Any copy of the image that survives as a picture (re-encoded, resized,
    re-uploaded, rotated, mirrored, metadata stripped) resolves to its passport.
 6. Nobody can take money out of the registry except the person it is owed to.
+7. A statement about how AI may use a picture is written only by the address the registry says
+   holds that passport, is never edited or removed, and answers truthfully for any past day.
 
 ## Who attacks, and what they want
 
@@ -34,6 +36,8 @@ not fix are listed last, on purpose.
 | Fake verifier | To attest false matches, or to spam attestations |
 | Griefer | To flood disputes, oversized uploads, or the paid API |
 | Platform | To break provenance by re-encoding, cropping or stripping metadata |
+| Model trainer | To make an earlier "not for AI training" disappear, or look later than it was, so a picture reads as free on the day it was taken |
+| Statement griefer | To speak for a passport they do not hold, poison a reader's parser through the conditions text, or turn sponsored writes into Moolam's bill |
 | Us | A judge must be able to check that the operators cannot rewrite records |
 
 ## Entry points and what stops each attack
@@ -61,6 +65,61 @@ not fix are listed last, on purpose.
 | Verifier API | Request floods | 60 per minute per caller, read from the hop named in `TRUST_PROXY` rather than the socket, 429 | refused live, 429 on the 61st request, `attacks/verifier-api-limits.txt` |
 | Image itself | Re-encode, resize, re-upload, strip metadata | perceptual fingerprints, measured: 0 bits moved | measured in WO-0a |
 | Image itself | Rotate or mirror | eight dihedral fingerprints at query time | measured in WO-2 |
+| `setConsent` | Speak for a passport you do not hold | `ownerOf` is read from the registry inside the same call and compared with `msg.sender`; approvals and operators are refused, and a passport nobody minted is refused too | refused live, `NotPassportHolder`, `attacks/consent-from-stranger.txt` |
+| `setConsent` | Say conditions apply without saying what they are | the text is required exactly when a use is `Constrained`, and refused otherwise | refused live, `ConstraintInfoRequired`, `attacks/consent-text-rules.txt` |
+| `setConsent` | Poison a reader's parser through the conditions text | one predicate over every byte: printable ASCII, 0x20 to 0x7E, capped at 256 bytes | refused live, `ConstraintInfoNotPrintable` and `ConstraintInfoTooLong`, `attacks/consent-text-rules.txt` |
+| `setConsentBatch` | Make one call walk an unbounded list | `MAX_BATCH` is 32, checked before any passport is looked at; an empty list is refused too | refused live, `BatchTooLarge` and `EmptyBatch`, `attacks/consent-batch-limits.txt` |
+| `MoolamConsent` | Send it money, or find something to steal | no `receive`, no `fallback`, no payable function, no owner, no upgrade path | refused live, empty revert data, `attacks/consent-no-money.txt` |
+
+## The consent register
+
+`MoolamConsent` is where a passport's holder states whether their picture may be used to train AI.
+It is read by AI companies and their crawlers, by indexers, and by anyone taking a commercial or
+legal decision on what it says, so every value it stores is live input to somebody's parser. It
+holds no money and has no owner. The full reference is in [MoolamConsent](../api/consent).
+
+The write is authorised by a second contract's answer, so every ambiguity in "who holds it" applies
+to it: a passport that does not exist, a passport transferred a moment ago, an ERC-721 approval, an
+operator. The product's claim is "what was allowed on the day you took it", which makes the history
+the asset: any path that edits, reorders or deletes an entry breaks it. And because Moolam sponsors
+the fee on statements made through the app, a holder's writes are Moolam's bill.
+
+Reentrancy, signature replay, upgrade and admin abuse do not apply here. The only external call is a
+view on a fixed, immutable contract; there are no signatures, no owner, no proxy and no funds. They
+stay not applicable only while that remains true, which the last invariant pins.
+
+These eight are the definition of done, each with what proves it.
+
+| Invariant | What proves it |
+| --- | --- |
+| **Holder only.** Consent changes only in a call whose sender equals what the registry's `ownerOf` returns during that same call. Approvals and operators are refused. A passport that does not exist can never be written | refused live, `NotPassportHolder`, `attacks/consent-from-stranger.txt`; `MoolamConsent.fork.t.sol` test_aStrangerCannotSpeakForARealPassport, test_anAddressApprovedOnTheRealRegistryIsStillRefused and test_aPassportTheRealRegistryHasNeverMintedIsRefused, all against live mainnet state |
+| **Append only.** No function modifies or removes an existing entry, and for one passport the timestamps strictly increase | `MoolamConsent.invariants.t.sol` invariant_anEntryOnceWrittenNeverChanges, invariant_historyOnlyGrows and invariant_timestampsStrictlyIncrease, held over 256 runs and 8,192 calls with the single write and the batch competing for the same passports while they changed hands |
+| **True time queries.** `consentAt(id, t)` returns exactly the last entry at or before `t`, and "not stated" before the first. `consentOf` returns the last entry | `MoolamConsent.fuzz.t.sol`, which checks both against a plain reference model over 512 runs rather than by examples, and invariant_theLatestEntryIsTheOneInForce |
+| **Bounded writes per writer.** The same writer cannot change the same passport twice within `MIN_INTERVAL`, ten minutes. A different holder after a transfer is not made to wait, so a seller cannot lock a buyer out | `MoolamConsent.t.sol`, the `TooSoon` tests. Not in the live attacks, because proving it needs two writes ten minutes apart, which means two real transactions |
+| **Bounded, inert text.** At most 256 bytes, every byte printable ASCII, required when a use is constrained and refused otherwise, stored exactly as validated. One predicate over the bytes, not a list of bad strings | refused live, `ConstraintInfoRequired`, `ConstraintInfoNotPrintable` and `ConstraintInfoTooLong`, `attacks/consent-text-rules.txt`; `ConstraintInfoNotAllowed` in `MoolamConsent.t.sol` |
+| **One event per write, complete.** Every successful write emits exactly one `ConsentSet` carrying everything stored: passport, writer, index, the four uses, the text and the timestamp | `MoolamConsent.t.sol`, the event tests, and the batch tests that check one event per passport in the order given |
+| **Reads never fail.** Every view answers for any id and any timestamp, unknown ids as "not stated", a page capped at 64 and an empty page past the end | read live against the deployed contract: an unknown id answers `false` with an empty entry, and `historyPage` past the end answers `[]`, both in [MoolamConsent](../api/consent) |
+| **Nothing to steal, nobody in charge.** No owner, no upgrade path, no delegatecall, no selfdestruct, no payable function, no receive or fallback: a transfer of MON reverts | refused live, empty revert data, `attacks/consent-no-money.txt`; invariant_theContractHoldsNothing, driven by a handler that tries to pay the contract 1,652 times |
+
+Eight refusals were executed against the live contract on 2026-09-21 and saved in
+[consent-attacks.txt](../../proofs/consent-attacks.txt), with a valid statement from the real holder
+as the control that passes. They are `cast call` simulations rather than transactions, which is how
+the exact custom error is decoded, and they are reads only on purpose: writing the control would put
+a real statement on a real passport and change what the demo shows.
+
+### What the consent register deliberately does not do
+
+- It does not prove the holder owns the copyright. It records what the passport's holder states.
+- A transfer carries the right to change a statement. The old one stands until the new holder
+  changes it, and the history shows who wrote what and when.
+- It knows nothing about disputes. A disputed passport's statement must not be relied on, so a
+  reader takes the dispute status from the registry, and the verify service returns both together.
+- The clock is the block timestamp, so a time query is only as fine as the chain's clock.
+- No gasless relay and no signatures: a write is a plain call from the holder's wallet.
+- It cannot stop anyone from ignoring a statement. It makes ignoring it provable.
+- The text rule bounds the bytes and judges nothing else. It does not know what the text says or
+  where a link inside it points, so a reader that follows one still owes its own check. That is
+  written into the contract's own comment so the next reader does not assume more.
 
 ## Weaknesses we did not fix, stated plainly
 

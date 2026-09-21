@@ -1,0 +1,34 @@
+Moolam attack: consent-no-money
+REFUSED
+
+run         2026-09-21T10:14:58Z
+command     cast call, read only. Nothing was sent and nothing was signed
+network     Monad mainnet, chain 143
+consent     0x1151E69a82947920546e779c4C8c785b2a3C1277
+
+A plain transfer of MON to the consent register, with no calldata at all
+
+attack      send 1 wei to the contract with no function behind it
+call        a value call to 0x1151E69a82947920546e779c4C8c785b2a3C1277 with empty calldata
+from        0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+expected    a revert
+eth_call    refused, execution reverted with empty data
+raw         0x
+sent        nothing
+result      REFUSED
+
+Empty revert data is the right answer here, and the reason is worth stating. There is no error to
+name because there is no function to reach. The contract declares no `receive`, no `fallback` and
+no payable function, so a call carrying value with no calldata matches nothing and the EVM reverts.
+
+That is the last invariant: nothing to steal, nobody in charge. No owner, no upgrade path, no
+delegatecall, no selfdestruct. There is no pause to trip, no admin to compromise and no balance to
+drain, which is why reentrancy, upgrade abuse and admin abuse are marked not applicable to this
+contract rather than argued about. They stay not applicable only while this holds, which is what
+this check pins.
+
+It is also proved the other way round, continuously. The invariant suite's handler calls
+payTheContract, and over 256 runs and 8,192 calls it tried 1,652 times while
+invariant_theContractHoldsNothing checked the balance after every one. The suite is in
+packages/contracts/test/MoolamConsent.invariants.t.sol and the run is in
+proofs/consent-contract.txt.

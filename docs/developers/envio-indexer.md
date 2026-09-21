@@ -103,7 +103,7 @@ Codegen writes `.envio/types.d.ts`, which is git-ignored, and `envio-env.d.ts`, 
 and points TypeScript at it. Run codegen after any change to `config.yaml` or `schema.graphql`, or
 the handler types go stale.
 
-Nine handler tests cover the entities against the generated types. They drive events through
+Twenty-six tests cover the handlers and the consent mapping against the generated types. They drive events through
 Envio's `simulate`, and every simulated event has to sit at or after the `start_block` in
 `config.yaml`. An event below that block is filtered out before it reaches a handler, and the test
 fails with "items you passed to simulate never reached a handler" rather than an assertion error.

@@ -86,6 +86,13 @@ one copy with every scrap of metadata removed all resolved back to the same pass
   pins it, and the agent signs the generator half of the passport with its own Privy server wallet.
   Your passkey then signs the same digest, and both signatures ride one sponsored transaction. A
   creator may have three pictures drawn in a rolling 24 hours, and the count sits under the button.
+- Say how AI may use the picture, in the same breath as making it. Three plates in the studio, "Open
+  to AI use", "Not for AI training" and "Ask me first", with a use-by-use expander behind them and
+  saying nothing as a valid answer that sends nothing. The words go into the signed C2PA manifest and
+  the pinned metadata before anything is signed, and once the passport is confirmed a second
+  sponsored transaction writes the same words to `MoolamConsent` on Monad. The same three plates sit
+  on any passport page for its holder. A file's answer can be stripped out by the first platform that
+  recompresses it; the chain's answer cannot, and it can be asked for any past day.
 - "Allow edits from this app" on a passport you own grants a Privy signer once, held to a policy
   that allows `appendEdit` on the Moolam registry and nothing else. After that, drop the edited
   picture, say what changed and press "Add this edit": the child passport is pinned and sent from
@@ -267,7 +274,7 @@ sequenceDiagram
     R-->>X: event indexed
     X-->>W: log trigger fires
     W->>F: fetch image (downscaled copy under 100 KB)
-    W->>W: recompute fingerprint, nodes reach consensus
+    W->>W: recompute fingerprint (on the network, nodes must agree)
     W->>RC: writeReport(passportId, matched, distance)
     RC->>R: attest(...)
     R-->>X: VerificationAttested indexed
@@ -308,7 +315,7 @@ flowchart TD
 
 ### The click path (no setup, no wallet)
 
-Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). The first six steps are the two minutes, with no wallet and no seed phrase. Steps 7 to 9 are the agent, the edit and the registry, for anyone who wants the rest of it:
+Open the live app at https://moolam.vercel.app (on this machine, http://localhost:3210). The first seven steps are the two minutes, with no wallet and no seed phrase. Steps 8 to 10 are the agent, the edit and the registry, for anyone who wants the rest of it:
 
 1. Scroll the home page. Every floating plate is a real passport read from the registry; the captions quote the live block, the Chainlink attestation and the agent score. Near the end, the panel that says "Drop any copy of any image here, or choose a file" takes any image: drop a screenshot of one of the plates and the verify service answers in place with the match and its confidence.
 2. Open "Verify an image" in the header and press "Choose an image", or drop a file on the card. Picking it starts the check, so there is no upload button to find. Any copy of a registered image works: re-encoded, resized or mirrored. The card turns over with the matched passport, the confidence, the two fingerprint distances and whether a C2PA manifest is still attached, and "Verify another" clears it. An unregistered picture answers plainly that it is not registered and offers the studio.
@@ -316,9 +323,10 @@ Open the live app at https://moolam.vercel.app (on this machine, http://localhos
 4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
 5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
 6. Open the passport page from the receipt: the poster, the facts, the attestations (the Chainlink line: every real picture, fourteen as of 2026-09-17, carries a CRE re-check, read back in [proofs/rechecks.txt](proofs/rechecks.txt)), the lineage and a "Check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
-7. Back in "Register an image", press "Make one with the agent". Type a prompt or press one of the three examples, give it a title, and press "Make and register". The plate lights while the agent draws, the picture lands, and under "Two signatures, one transaction" the agent's seal fills with "Signed by the agent" before your device's unlock fills yours. One sponsored transaction carries both. The receipt names the model, agent 10249 and the new passport.
-8. Open a passport you own and scroll to its lineage. Press "Allow edits from this app": Privy asks once, and the signer it adds is held to a policy that allows `appendEdit` on the registry and nothing else. Drop an edited copy, add a title and a line on what changed, then press "Add this edit". It pins, sends from your own account with the fee sponsored, and the tree above redraws with the child. No passkey prompt on this one, and "Revoke" takes the permission back.
-9. Finish on "Explore" in the header: every passport on Monad, newest first, with the chips, the search by passport id and "Load more" for the rest. "Agents" beside it ranks the generators by trust score. Both read the live index, and both say so when it does not answer.
+7. Open the Monsoon passport at [/en/passport/0xcdb25d37...d771638](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and scroll to "How AI may use this picture". Drag the day scrubber back past 2026-09-18 and the page asks the chain what was in force on the day under the thumb: "Nothing stated yet" for any day before the statement, "Not for AI training" from the moment it was written. That is one `consentAt` call per day you land on, not today's answer with an old date printed over it. Thirteen real pictures carry a statement, and the passport's own holder is the only address that can write one.
+8. Back in "Register an image", press "Make one with the agent". Type a prompt or press one of the three examples, give it a title, and press "Make and register". The plate lights while the agent draws, the picture lands, and under "Two signatures, one transaction" the agent's seal fills with "Signed by the agent" before your device's unlock fills yours. One sponsored transaction carries both. The receipt names the model, agent 10249 and the new passport.
+9. Open a passport you own and scroll to its lineage. Press "Allow edits from this app": Privy asks once, and the signer it adds is held to a policy that allows `appendEdit` on the registry and nothing else. Drop an edited copy, add a title and a line on what changed, then press "Add this edit". It pins, sends from your own account with the fee sponsored, and the tree above redraws with the child. No passkey prompt on this one, and "Revoke" takes the permission back.
+10. Finish on "Explore" in the header: every passport on Monad, newest first, with the chips, the search by passport id and "Load more" for the rest. "Agents" beside it ranks the generators by trust score. Both read the live index, and both say so when it does not answer.
 
 ---
 
@@ -420,11 +428,14 @@ curl against the same URL works.
 
 | Package | Command | Tests |
 | --- | --- | --- |
-| Contracts | `npm test` from `packages/contracts` | 122 |
-| Verify service | `npm run test:verifier` | 153 |
-| Chain client and agents | `npm run test:agents` | 38 |
-| Indexer | `npm run test:indexer` | 12 |
-| Web app | `npm test` from `packages/web` | 577 |
+| Contracts | `npm test` from `packages/contracts` | 182 |
+| Verify service | `npm run test:verifier` | 234 |
+| Chain client and agents | `npm run test:agents` | 56 |
+| Indexer | `npm run test:indexer` | 26 |
+| Web app | `npm test` from `packages/web` | 928 |
+
+The contract count needs `MONAD_MAINNET_RPC_URL` in the root `.env`, because eleven of the tests
+fork Monad mainnet. Without it `forge test` runs 173 and skips the rest rather than failing.
 
 Foundry needs `-n monad` on anything that touches Monad, which the package scripts already carry.
 Without it `vm.createSelectFork` refuses, and the local EVM prices gas as Ethereum rather than as
@@ -484,7 +495,7 @@ match.
 
 ### Read a passport with viem
 
-The three ABIs live in [`packages/contracts/abi`](packages/contracts/abi).
+The four ABIs live in [`packages/contracts/abi`](packages/contracts/abi).
 
 ```ts
 import { createPublicClient, http } from "viem";
@@ -552,6 +563,25 @@ OpenZeppelin's unmodified ERC-721 surface.
 | `lastExecutedAt(passportId)`, `REGISTRY()`, `getForwarderAddress()`, `getExpectedAuthor()`, `getExpectedWorkflowName()`, `getExpectedWorkflowId()` | Anyone | What the receiver is pinned to, and the newest report accepted per passport | none |
 | `setForwarderAddress` / `setExpectedAuthor` / `setExpectedWorkflowName` / `setExpectedWorkflowId` | Owner | Chainlink's template setters. Each emits an event | `InvalidForwarderAddress`, `WorkflowNameRequiresAuthorValidation` |
 
+### MoolamConsent
+
+Immutable, no owner, append only, not payable. Where a passport's holder states whether AI may use
+their picture. The vocabulary is the Creator Assertions Working Group's Training and Data Mining
+assertion 1.1, named on chain as `STANDARD()` so a reader never has to guess. Full reference in
+[docs/api/consent.md](docs/api/consent.md).
+
+| Function | Who may call | What it does | Notable reverts |
+| --- | --- | --- | --- |
+| `setConsent(id, consent, constraintInfo)` | Only the address `ownerOf` returns for that passport, read inside the same call | Appends one statement: four uses, each not stated, allowed, not allowed or constrained, plus the conditions text | `NotPassportHolder`, `TooSoon`, `ConstraintInfoRequired`, `ConstraintInfoNotAllowed`, `ConstraintInfoTooLong`, `ConstraintInfoNotPrintable` |
+| `setConsentBatch(ids, consent, constraintInfo)` | The holder of every passport in the list | The same statement across at most 32 passports, all or nothing, with `ownerOf` read again for each | `EmptyBatch`, `BatchTooLarge`, plus whatever a single statement would revert with |
+| `consentOf(id)` | Anyone | What stands today, and whether anything has been stated at all | none. Reads never fail |
+| `consentAt(id, timestamp)` | Anyone | What was in force at that second, by binary search over an append-only history | none |
+| `historyLength(id)` / `historyPage(id, start, count)` | Anyone | How many statements, and a page of at most 64, oldest first | none |
+
+Constants: `STANDARD()` `"cawg.training-mining/1.1"`, `REGISTRY()`, `MIN_INTERVAL()` 600 seconds,
+`MAX_INFO_BYTES()` 256, `MAX_PAGE()` 64, `MAX_BATCH()` 32. One event, `ConsentSet`, carrying
+everything stored.
+
 ### The verify service
 
 Six routes, all JSON including errors. Full reference in
@@ -578,17 +608,20 @@ no trailing slash.
 
 | Suite | Tests | What it covers |
 | --- | --- | --- |
-| Contracts | 122 | 18 on the policy timelock, 75 on the registry covering every rule, custom error and event, 15 on the Chainlink receiver path, 5 fuzz tests, an invariant suite that drove 8,192 random calls through six actors, and 5 fork tests against real Monad mainnet state |
-| Verify service | 153 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
-| Chain client and agents | 38 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
-| Indexer | 12 | The handlers against the generated Envio types with the live mainnet addresses |
-| Web app | 577 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the edit panel, the dispute panel and the resolver console, the verify answer, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
+| Contracts | 182 | 18 on the policy timelock, 76 on the registry covering every rule, custom error and event, 16 on the Chainlink receiver path, 45 on the consent register, 13 fuzz tests, two invariant suites that each drove 8,192 random calls, and 11 fork tests against real Monad mainnet state |
+| Verify service | 234 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
+| Chain client and agents | 56 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
+| Indexer | 26 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, and the five consent summaries checked against the web app's own rule for all 256 combinations |
+| Web app | 928 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
 
-The six invariants all held: the contract balance always covers every liability, the bond total
-always equals the sum of open disputes, every edit points at a parent that exists, no image id is
-ever minted twice, attestations only ever come from an address the policy lists, and no passport
-appears while the registry is paused. Each test file opens with a note saying what it does not
-cover.
+The registry's six invariants all held: the contract balance always covers every liability, the bond
+total always equals the sum of open disputes, every edit points at a parent that exists, no image id
+is ever minted twice, attestations only ever come from an address the policy lists, and no passport
+appears while the registry is paused. The consent register's six held too, with the single write and
+the batch competing for the same three passports while those passports changed hands: an entry once
+written never changes, the history only grows, the contract holds nothing, the latest entry is the
+one in force, the writer held the passport, and timestamps strictly increase. Each test file opens
+with a note saying what it does not cover.
 
 The summary of the latest prove-it run follows, then every attack in the
 [threat model](docs/security/threat-model.md) executed against the live contracts, each with its
@@ -672,11 +705,11 @@ headroom on top of Monad's 10 MON reserve balance, which every account has to ke
 ```
 Moolam/
 ├── packages/
-│   ├── contracts/          Solidity, Foundry. The three contracts, 119 tests, deploy and proof scripts
-│   │   ├── src/            MoolamRegistry, VerifierPolicy, MoolamReceiver, the vendored Chainlink template
+│   ├── contracts/          Solidity, Foundry. The four contracts, 182 tests, deploy and proof scripts
+│   │   ├── src/            MoolamRegistry, VerifierPolicy, MoolamReceiver, MoolamConsent, the vendored Chainlink template
 │   │   ├── test/           unit, fuzz, invariant and mainnet fork suites
 │   │   ├── script/         Deploy, ConfigureReceiver, RegisterAgent, LiveProof
-│   │   ├── abi/            the three ABIs the app and the indexer read
+│   │   ├── abi/            the four ABIs the app and the indexer read
 │   │   └── deployments/    monad-mainnet.json, the source of truth for every script
 │   │
 │   ├── verifier/           The verify service: fingerprints, C2PA, the eight orientations, six routes
@@ -771,6 +804,15 @@ and the file the output is saved in.
 `dispute-money-rules`, `verifier-api-limits`. Every one was refused, each for the reason the design
 gives, and the outputs are saved in the repo.
 
+Four more against the consent register, saved under the same folder and listed in
+[docs/security/audits.md](docs/security/audits.md): a stranger speaking for a passport they do not
+hold, three ways of putting text the register will not keep beside a statement, a batch of 33 and a
+batch of none, and a plain transfer of MON to a contract with nothing payable on it. Eight refusals
+in all, with a valid statement from the real holder as the control that passes. These are `cast
+call` simulations rather than transactions, which is how the exact custom error is decoded, and the
+files say so: writing the control would put a real statement on a real passport. The whole session
+is in [proofs/consent-attacks.txt](proofs/consent-attacks.txt).
+
 A second pass of eight attacks, on a fork of Monad mainnet and on the browser code, is saved in
 [proofs/attacks/pass-2.txt](proofs/attacks/pass-2.txt): `npm run attack:pass2` and `npx vitest run test/attacks`.
 
@@ -807,9 +849,10 @@ MIT. See [LICENSE](LICENSE).
 - [Privy](https://privy.io) for the embedded wallets creators get without a seed phrase, the enclave
   the generator agent's key lives in, the policies that pin it to one function on one contract, and
   the session signers that let an editing session write without ten prompts.
-- [Chainlink CRE](https://chain.link) for the recheck: nodes that download the image themselves,
-  recompute the fingerprint in the sandbox, and have to agree before anything is signed (the re-checks on
-  chain today came from simulation runs).
+- [Chainlink CRE](https://chain.link) for the recheck: nodes that download the image themselves and
+  recompute the fingerprint in the sandbox. The workflow is written so that on Chainlink's network a
+  quorum must produce the identical verdict before a report is signed; every re-check on chain today
+  came from Chainlink's simulator with `--broadcast`, which is one machine and no consensus.
 - [Envio](https://envio.dev) for HyperIndex, which turns the events into the passports, edit trees,
   tallies and trust scores every screen and the verify service read.
 - [OpenZeppelin](https://openzeppelin.com) for the ERC-721, EIP-712, WebAuthn, P256, ECDSA,

@@ -62,7 +62,16 @@ Both end in one transaction and one record. The difference is how many names are
 
 Drop a picture on "Drop an image here" or press "Choose a file". JPEG, PNG or WebP, up to 20 MB.
 Give it a "Title": it goes into the C2PA manifest and the pinned metadata, so use the name you
-would call the picture. Then press "Register this image".
+would call the picture.
+
+Under the title is "Say how AI may use it", three plates you can pick one of: "Open to AI use", "Not
+for AI training" and "Ask me first". "answer use by use" opens the four uses if you want to answer
+them separately, and "Ask me first" asks for your conditions in your own words. Saying nothing is a
+choice too, and it gives nobody permission. Whatever you pick goes inside the file before anything
+is signed, and onto Monad the moment the passport is written. Every choice and what it does not do
+is in [Say how AI may use a picture](../guides/ai-use-statements).
+
+Then press "Register this image".
 
 Three steps run in order, and each one shows what it is waiting on.
 
@@ -84,6 +93,12 @@ finishes as "Written to Monad".
 The card then turns into "This image now has a passport" with the passport id, the block, the time,
 who paid the fee, and four links: the passport page, the transaction, the pinned image and
 "Register another image".
+
+If you said something about AI use, a fourth step follows the third: a second sponsored transaction
+writing the same words to the consent register, confirmed by reading the chain back and stamped on
+the receipt with how long Monad took. It is deliberately after the registration and separate from
+it, so a statement that fails or that you cancel leaves the passport registered. You can write it
+later from the passport's own page, and until you do the passport reads as nothing stated.
 
 ## Letting the agent draw it
 

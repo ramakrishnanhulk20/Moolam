@@ -1,0 +1,42 @@
+Moolam attack: consent-batch-limits
+REFUSED
+
+run         2026-09-21T10:14:58Z
+command     cast call, read only. Nothing was sent and nothing was signed
+network     Monad mainnet, chain 143
+consent     0x1151E69a82947920546e779c4C8c785b2a3C1277
+
+Two attempts to hand the batch call a list it should not walk
+
+from                0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, the holder
+MAX_BATCH           32, read back off the chain
+
+REFUSED  a batch of 33 passports
+          expected BatchTooLarge, got BatchTooLarge(33)
+          raw 0xa67b9f9e0000000000000000000000000000000000000000000000000000000000000021
+          0x21 is 33. The size is refused before a single passport is looked at, so a caller cannot
+          pay to find out, and the loop's cost is bounded before it starts.
+
+REFUSED  a batch of nothing
+          expected EmptyBatch, got EmptyBatch
+          raw 0xc2e5347d
+          An empty list would emit no event and change nothing while looking like a statement.
+
+result      REFUSED, two of two
+
+Why 32. The loop walks calldata the caller chose, so it needs a ceiling that is provably inside one
+transaction. The worst batch, 32 first statements each carrying a full 256 bytes of conditions text,
+measures 8,144,656 gas in test_gasOfTheMainActions, a bit over a quarter of Monad's 30,000,000 gas
+per transaction limit. A creator with more than 32 pictures sends a second call.
+
+The batch is all or nothing. Every passport goes through the same private write as a single
+statement, `ownerOf` is read again for each one, and the whole call reverts on the first passport
+that is refused, with that passport's own error. Naming the same passport twice in one call is
+refused as TooSoon, because the first write already happened this second, which is the same
+timestamp rule that orders every history rather than a set of ids kept on the side.
+
+What this file does not cover: the all or nothing behaviour itself. Proving it needs a batch that
+would partly succeed, which is a transaction. It is proved in
+packages/contracts/test/fork/MoolamConsent.fork.t.sol, where a passport the wallet does not hold is
+put second in a real list and the whole call reverts, leaving the first passport's history untouched
+at one entry.

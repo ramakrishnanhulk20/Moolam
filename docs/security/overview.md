@@ -56,6 +56,16 @@ notices.
 **Caps.** A passport holds at most 64 attestations, which bounds storage growth and keeps a full
 read comfortably inside one block.
 
+**The consent register has no owner at all.** `MoolamConsent` is immutable, has no pause, no upgrade
+path, no delegatecall and no selfdestruct, and declares no `receive`, no `fallback` and no payable
+function, so a transfer of MON to it reverts with empty data. Statements are only ever appended.
+Authority is the passport registry's answer to `ownerOf` read inside the same call and compared with
+`msg.sender`, so an ERC-721 approval, an operator and a passport nobody minted are all refused.
+Three caps bound what one holder can cost the app that sponsors their fee: ten minutes between
+statements from the same writer on the same passport, 256 bytes of printable ASCII on the conditions
+text, and 32 passports per batch. The text rule is one predicate over every byte rather than a list
+of shapes to refuse.
+
 ## Off chain
 
 **SSRF guard.** Any URL handed to `/verify` is checked before every connection and again after

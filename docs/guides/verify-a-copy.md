@@ -68,6 +68,28 @@ Under that it says whether a C2PA manifest survived: "C2PA manifest still attach
 manifest left in this file". The second one is the interesting case, and the whole reason the
 fingerprints are on chain. A platform that stripped the manifest did not strip the picture.
 
+### The holder's statement, under a match
+
+Under any match the card prints what the passport's holder has said about AI use, as a stamp headed
+"The holder's statement" and read from the register on Monad rather than from the file. It reads one
+of five ways: open to AI use, training included; not for AI training; ask first, conditions apply;
+allowed for some uses and not for others; or nothing about AI use. Where there are conditions, the
+holder's own words are printed with them.
+
+That is the lookup an AI company makes, and the reason the chain half exists: from the pixels alone,
+with the metadata stripped out on the way, to the creator's own word and the date they wrote it.
+
+A passport whose holder has never spoken for it says so and says what that means: "Its holder has
+said nothing about AI use. Silence is not permission." If the register could not be read, the card
+says the statement could not be read just now and adds that this is not permission either, because
+the register is on Monad and can be asked again in a moment. A failed read never fails the
+verification: the match is what you came for, so the answer still arrives.
+
+Beside it the card carries the passport's dispute status, and the two are meant to be read together.
+A statement on a passport under an open or upheld challenge should not be relied on: the record the
+holder's word rests on is itself in question. [Disputes](disputes) has the rules, and
+[Say how AI may use a picture](ai-use-statements) has what each statement means.
+
 ### Not registered
 
 "No passport matches this image." with a note underneath: "Cropped copies do not match yet. Try the

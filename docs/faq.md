@@ -40,6 +40,42 @@ nothing stronger. The [trust model](concepts/trust-model) states this narrowly, 
 shows both an exact re-registration being refused and a re-encoded copy being accepted as a separate
 record.
 
+## Does "not for AI training" actually stop anyone
+
+No, and nothing that writes a statement anywhere can. No crawler is obliged to read it, and the
+contract has no way to reach out and stop one. What it does is take away the excuse. Your answer is
+written inside the file as a signed C2PA assertion and onto Monad as a dated entry only you can
+write, so a company that trained on your picture after you refused cannot say it did not know, and
+cannot claim the record was made up afterwards. That is a smaller claim than a lock and it is the
+honest one. [Say how AI may use a picture](guides/ai-use-statements) has the rest.
+
+## Can I change my mind, and what happens to the old statement
+
+Yes, as often as you like. A new statement does not edit or delete the old one: the old one keeps
+its date and stays in the history, and the new one becomes the one that stands. Anyone asking what
+you allowed last March gets last March's answer rather than today's, which is the whole point of
+putting it on a chain instead of in a file you can rewrite. To go back to saying nothing, set all
+four uses to not stated, which takes the earlier statement out of force without hiding that you made
+it. One limit: the same wallet waits ten minutes before changing the same picture again, and the
+screen says when it opens.
+
+## What happens to my statement when I transfer the passport
+
+It stands until the new holder changes it. A passport is an ERC-721, and the right to speak for it
+moves with the token, so from then on only the new holder can write. The history names who wrote
+each statement and when, so a reader can tell one made by the person who held it then from one made
+by whoever holds it now. The ten minute wait follows the wallet rather than the picture, so a seller
+who writes just before a sale cannot lock the buyer out.
+
+## What does "ask first" mean to a crawler
+
+That it has to ask, and that not asking means no. The vocabulary is the Creator Assertions Working
+Group's Training and Data Mining assertion 1.1, and the standard settles the case in one sentence:
+"In the absence of additional information, constrained shall be treated as equivalent to
+notAllowed." So a crawler that reads your conditions and cannot reach you has to treat the picture
+as closed. Your conditions travel with the statement, at most 256 bytes of plain text, and the
+register refuses a statement that says conditions apply without saying what they are.
+
 ## Does Moolam store my image
 
 Verifying does not store anything: the file goes from your browser to the verify service, is
@@ -97,8 +133,11 @@ app's, because Privy's browser SDK has no call that removes one by id.
 Because nobody has re-checked it yet, and the page will not pretend otherwise. A re-check is an
 independent verifier fetching the pinned thumbnail, hashing it again and writing the answer on chain,
 and the Chainlink CRE workflow is what does it here. It needs the thumbnail reachable through an IPFS
-gateway and a quorum of nodes agreeing on the same verdict before anything is written, so a fresh
-passport reads "Not re-checked yet", which is the honest word for registered and nothing more. On
+gateway before anything is written, so a fresh passport reads "Not re-checked yet", which is the
+honest word for registered and nothing more. The workflow is written so that on Chainlink's network
+a quorum of nodes must produce the identical verdict before a report is signed; every re-check on
+chain today came from Chainlink's simulator with `--broadcast`, which is one machine and no
+consensus, and the passport page labels each one by the forwarder that delivered it. On
 Explore, the plates with a lit R mark are the ones that have one, and the "Re-checked" chip shows
 only those.
 
@@ -152,14 +191,15 @@ Privy access token. Everything, including status codes and the x402 route, is in
 ## Is the code audited
 
 No third party has audited these contracts. It is self-audited, and the evidence is in the
-repository: 119 Foundry tests including fuzz, invariant and mainnet fork tests, six invariants over
-8,192 calls, slither and solhint clean of anything untriaged, and twelve attacks executed against
-the live deployment and refused. Read [Audits](security/audits) as what was checked and by whom, not
-as an assurance.
+repository: 182 Foundry tests including fuzz, invariant and mainnet fork tests, twelve invariants
+each driven over 8,192 calls, slither and solhint clean of anything untriaged, twelve attacks
+executed as real transactions against the live deployment and refused, and eight more simulated
+against the consent register and refused. Read [Audits](security/audits) as what was checked and by
+whom, not as an assurance.
 
 ## What chains does this run on
 
-Monad mainnet, chain 143, and nothing else. The three Moolam contracts are deployed and verified
+Monad mainnet, chain 143, and nothing else. The four Moolam contracts are deployed and verified
 there, and the two registries Moolam reads but did not deploy, ERC-8004 identity and reputation, are
 Monad's canonical ones on the same chain.
 

@@ -8,7 +8,10 @@ Chainlink's network is the second opinion on every Moolam passport. When a creat
 image on Monad, this workflow wakes up, downloads the picture the passport points at, recomputes
 the perceptual fingerprint itself, and writes the result back on chain as an attestation. Nothing
 in that chain of steps trusts Moolam's own servers: the nodes fetch the image and do the maths
-themselves, and they have to agree with each other before anything is signed.
+themselves. The workflow is written so that on Chainlink's network a quorum of nodes must produce
+the identical verdict before a report is signed. Every re-check on chain today came from Chainlink's
+simulator with `--broadcast`, which is one machine and no consensus, and the passport page labels
+each one by the forwarder that delivered it. "What is on chain today" below has the transactions.
 
 The workflow lives in `packages/workflow/moolam-verifier/`.
 

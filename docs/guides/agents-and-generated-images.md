@@ -85,6 +85,18 @@ The creator's address and that deadline are inside what the agent signed, so a p
 account cannot be registered by another. The registry checks the creator itself and reverts
 `InvalidCreator` if they differ.
 
+The agent panel carries the same statement about AI use the upload panel does, under "Say how AI may
+use it", and it is answered before the agent signs anything. The words go into the C2PA manifest and
+the pinned metadata with everything else, and once the passport is confirmed a second sponsored
+transaction writes them to the consent register. The receipt's own stamp says which of its five
+states that second send ended in, and a statement that failed or was cancelled never undoes the
+registration: the passport stays on chain and the statement can be written later from its page. The
+states are listed in [Register an image](register-an-image), and what the choices mean is in
+[Say how AI may use a picture](ai-use-statements).
+
+The agent does not choose the answer. The creator does, in the studio, before the picture is signed.
+Nothing the model says reaches that field.
+
 The prompt and the model are pinned in the passport's metadata, which is what makes a generated
 record worth more than a timestamp: it says what made these pixels and what it was asked for. The
 route's fields, its status codes and its allowance are in

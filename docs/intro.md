@@ -22,22 +22,28 @@ computes the same fingerprints, tries all eight rotated and mirrored versions, a
 registered passports. On the prove-it run against Monad mainnet, six mangled copies of one image
 and one copy with every scrap of metadata removed all resolved back to the same passport.
 
+A creator can also say, at the moment they make a picture, whether AI may use it. The answer goes
+inside the file as a signed C2PA assertion and onto Monad as a dated entry only the passport's
+holder can write, so a platform that strips the file's metadata does not strip the answer.
+
 ## Live on Monad mainnet
 
-Chain 143, deployed in block 103054771, all three verified on MonadVision through Sourcify.
+Chain 143, all four verified on MonadVision through Sourcify.
 
 | Contract | Address | Deployed in block |
 | --- | --- | --- |
 | MoolamRegistry | [0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0) | 103054771 |
 | VerifierPolicy | [0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 |
 | MoolamReceiver | [0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 |
+| MoolamConsent | [0x1151E69a82947920546e779c4C8c785b2a3C1277](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 |
 
 Two contracts Moolam reads but did not deploy: Monad's canonical
 [ERC-8004 Identity Registry](https://monadvision.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432)
 at `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`, and Chainlink's production
 [Keystone Forwarder](https://monadvision.com/address/0x76c9cf548b4179F8901cda1f8623568b58215E62)
-at `0x76c9cf548b4179F8901cda1f8623568b58215E62`. The demo generator is agent 10248 on the identity
-registry.
+at `0x76c9cf548b4179F8901cda1f8623568b58215E62`. Two generator agents live on the identity registry.
+Agent 10249 is the studio's, whose key is a Privy server wallet under a policy, and it signs every
+picture the agent draws. Agent 10248 is owned by the deployer and signed the first seed passports.
 
 ## The three technologies underneath
 
@@ -48,8 +54,11 @@ is how an editing session writes ten edits without ten passkey prompts.
 
 **Chainlink CRE** is the second opinion. When a passport is registered, a log-triggered workflow
 downloads the image the passport points at, decodes the JPEG and recomputes the perceptual hash
-inside the sandbox, and the nodes have to agree on the verdict before it is signed into a report
-and written back on chain as an attestation.
+inside the sandbox, and the result is written back on chain as an attestation. The workflow is
+written so that on Chainlink's network a quorum of nodes must produce the identical verdict before
+a report is signed. Every re-check on chain today came from Chainlink's simulator with
+`--broadcast`, which is one machine and no consensus, and the passport page labels each one by the
+forwarder that delivered it.
 
 **Envio** turns the events into data. HyperIndex V3 builds the passports, the edit trees, the
 verification tallies, the disputes and the per-generator trust scores, and serves them over
@@ -61,6 +70,8 @@ GraphQL. The verify service reads its passport index from there.
   register an image of your own.
 - [How it works](concepts/how-it-works) walks the life of one passport from generation to
   verification.
+- [Say how AI may use a picture](guides/ai-use-statements) is the creator's side of the consent
+  register: the three choices, what each writes, and what none of them do.
 - [Architecture](developers/architecture) has the three diagrams and the interface.
 - [Prove it](developers/prove-it) is the one command that runs the whole promise against mainnet.
 - [Threat model](security/threat-model) lists every claim, the attack against it, and the file the

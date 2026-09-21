@@ -66,9 +66,11 @@ means a quorum of nodes agreed on the answer. An address that is neither gets no
 The Chainlink line is not a badge Moolam awards itself. A log-triggered Chainlink CRE workflow wakes
 on `PassportRegistered`, reads the passport back out of the registry rather than trusting the event,
 downloads the thumbnail on each node, decodes the JPEG and recomputes the 64-bit hash inside the
-sandbox, and a quorum has to produce the identical verdict before it is signed into a report.
-Chainlink's KeystoneForwarder delivers it to `MoolamReceiver`, which calls `attest`. The registry
-checks the receiver against `VerifierPolicy` before it writes.
+sandbox, and the verdict is signed into a report. Chainlink's KeystoneForwarder delivers it to
+`MoolamReceiver`, which calls `attest`. The registry checks the receiver against `VerifierPolicy`
+before it writes. The workflow is written so that on Chainlink's network a quorum of nodes must
+produce the identical verdict before that report is signed, which is the difference the forwarder
+line above names.
 
 A passport with no attestation says so plainly: "No verification has been written for this passport
 yet. The Chainlink workflow adds one when it re-checks the image." Where the index has no
@@ -109,6 +111,50 @@ anything the metadata claims."
 These are shown in full rather than shortened, because they are the part a verifier recomputes.
 What each hash is and how it is computed is in [Fingerprints](../concepts/fingerprints).
 
+## How AI may use this picture
+
+What the holder has said about AI training, read live from the consent register on Monad. Its own
+line says why it is not simply a line in the file: a file can carry a line saying its creator
+refuses AI training, and anyone can strip that line out on the way past. This is the same statement
+written to a register where only the holder of this passport can write it and nobody can take it
+back out.
+
+The block leads with the passport's life drawn as one rule, from the day it was registered to today,
+with every statement marked on it. Drag the thumb, or use the arrow keys, and the page asks the
+chain what was in force on the day under it: `consentAt` for that second, not today's answer with an
+old date printed over it. While it asks it says so, and if the chain does not answer for that day it
+says that too rather than filling the gap. Above the rule is the reading itself, headed "On this day,
+AI could", in one of five summaries: Open to AI use, Not for AI training, Ask the holder first,
+Stated use by use, or Nothing stated yet.
+
+Under the rule is what the summary loses.
+
+| On the block | What it is |
+| --- | --- |
+| The four uses | AI training, Generative AI training, AI inference and Data mining, each Not stated, Allowed, Not allowed or Conditions apply. They are independent, which is where training and inference are allowed to differ |
+| Conditions, in the holder's words | The text beside a statement that says conditions apply, with which uses it applies to. Present only when there is one |
+| Stated by | The address that held the passport when the statement was written, linked to MonadVision |
+| Written on | The block timestamp of that statement |
+| The history | Every statement this passport has collected, oldest first, each with its date and who wrote it, and the one that stands today marked |
+
+A passport nobody has spoken for is a designed state rather than an empty box: "Nobody has written a
+statement for this picture. It is reported here as silence, because that is what it is: no use has
+been allowed by it." The four marks are drawn in a colder family than the accent so a creator's no
+never reads as a fault.
+
+If the register cannot be read, the block says the chain could not be asked and that this is not
+permission either. It does not fall back to anything.
+
+**The control is the holder's alone.** A wallet that holds the passport sees "Say how AI may use it"
+under the block, with the same three plates the studio offers and a use-by-use expander. Anyone else
+sees only the reading. The send is sponsored, so it costs the holder nothing, and the page confirms
+it by reading the chain back rather than by trusting the send. The register takes one statement per
+wallet every ten minutes for the same picture, so after one lands the control locks and prints the
+time it opens again.
+
+What the choices mean and what they do not do is in
+[Say how AI may use a picture](ai-use-statements).
+
 ## Challenged
 
 This block only appears when a dispute exists. A passport nobody has challenged says nothing here,
@@ -145,7 +191,7 @@ matches. A crop does not, yet."
 
 | Source | What it supplies |
 | --- | --- |
-| Monad, read directly | The record, the owner, the attestations, the edits, the dispute, whether the creator has a passkey bound |
+| Monad, read directly | The record, the owner, the attestations, the edits, the dispute, whether the creator has a passkey bound, and every statement about AI use including the answer for a past day |
 | The Envio index | The transaction hash for each attestation, and the block for a fresh registration |
 | IPFS through the gateway | The picture, the title, the description and the prompt |
 

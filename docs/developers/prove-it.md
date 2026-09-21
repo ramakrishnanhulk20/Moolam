@@ -57,6 +57,25 @@ is on Monad mainnet where anyone can open it in the explorer. Using the same gas
 what rules out a revert that is really an out-of-gas. If the read had gone through, the run would
 say so and would not send the transaction.
 
+## What a reader can check in one command each
+
+None of these needs a clone, a key or any MON. They are `eth_call` against contracts anyone can
+read, and every one was run on 2026-09-21 with its real output pasted in the page it comes from.
+
+| Question | Command |
+| --- | --- |
+| What does this passport's holder allow AI to do today | `cast call 0x1151E69a82947920546e779c4C8c785b2a3C1277 "consentOf(bytes32)(bool,(uint64,address,(uint8,uint8,uint8,uint8),string))" <passportId> --rpc-url https://rpc.monad.xyz` |
+| What was in force on a given day | the same with `"consentAt(bytes32,uint64)(...)"` and the unix second |
+| How many times has the holder changed their mind | `cast call 0x1151E6... "historyLength(bytes32)(uint256)" <passportId> --rpc-url https://rpc.monad.xyz` |
+| Which vocabulary is this | `cast call 0x1151E6... "STANDARD()(string)" --rpc-url https://rpc.monad.xyz` |
+| Can a stranger write for a passport they do not hold | `cast call --from 0x000000000000000000000000000000000000dEaD 0x1151E6... "setConsent(bytes32,(uint8,uint8,uint8,uint8),string)" <passportId> '(2,2,2,2)' '' --rpc-url https://rpc.monad.xyz` |
+
+The last one is a simulation, so it sends nothing and signs nothing, and it comes back
+`NotPassportHolder` with the passport and the caller inside the error. The worked versions of all
+five, with their output, are in [MoolamConsent](../api/consent). The eight refusals that make up the
+consent register's part of the threat model are in
+[consent-attacks.txt](../../proofs/consent-attacks.txt).
+
 ## Running it
 
 ```bash
@@ -130,6 +149,9 @@ diff the result. The twelve attack transcripts are the exception: they stay unde
 | File | What it holds | Command |
 | --- | --- | --- |
 | [prove-it.txt](../../proofs/prove-it.txt) | This run, all six sections, rewritten each time | `npm run prove` |
+| [consent-contract.txt](../../proofs/consent-contract.txt) | The consent register's tests, coverage, invariant run, deploy dry run, fork tests and the live reads back | `forge test -n monad` in `packages/contracts` |
+| [consent-statements.txt](../../proofs/consent-statements.txt) | The thirteen real pictures that carry a statement, with the transaction and the read back for each | `npm run consent:state -- --send` in `packages/agents` |
+| [consent-attacks.txt](../../proofs/consent-attacks.txt) | Eight refusals from the live consent register, decoded, plus the control that passes | read only, `cast call`, run on 2026-09-21 |
 | [rechecks.txt](../../proofs/rechecks.txt) | The Chainlink re-check on each of the fourteen real pictures, read back from the registry, with the receiver restored and read back | read only, written on 2026-09-14 |
 | [attacks/pass-2.txt](../../proofs/attacks/pass-2.txt) | Eight attacks on the paths hardened after the review, run against a fork of Monad mainnet and the browser libraries | `npm run attack:pass2` in packages/agents |
 | [perf.txt](../../proofs/perf.txt) | Lighthouse on every judge-facing page, what the JavaScript is made of, and the film measured frame by frame | `node packages/web/scripts/perf/lighthouse.mjs` |

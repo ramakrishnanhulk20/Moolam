@@ -1,0 +1,45 @@
+Moolam attack: consent-text-rules
+REFUSED
+
+run         2026-09-21T10:14:58Z
+command     cast call, read only. Nothing was sent and nothing was signed
+network     Monad mainnet, chain 143
+consent     0x1151E69a82947920546e779c4C8c785b2a3C1277
+
+Three attempts to put text the register will not keep beside a statement, all from the real holder,
+so nothing but the text is wrong in any of them
+
+passport            0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638
+from                0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, the holder
+MAX_INFO_BYTES      256, read back off the chain
+
+REFUSED  conditions apply on all four uses, and no conditions text
+          expected ConstraintInfoRequired, got ConstraintInfoRequired
+          raw 0x33add7ec
+          "Ask me first" with nowhere to ask is not a statement anyone can act on.
+
+REFUSED  a conditions text carrying a newline byte
+          text "Ask first:" 0x0a "mail me"
+          expected ConstraintInfoNotPrintable, got ConstraintInfoNotPrintable(10)
+          raw 0xfd3fe8c3000000000000000000000000000000000000000000000000000000000000000a
+          Byte 10 is the newline. The position comes back, so a caller is told which byte is wrong
+          rather than only that one is. A newline splits a log line and a CSV row downstream.
+
+REFUSED  a conditions text of 257 bytes
+          expected ConstraintInfoTooLong, got ConstraintInfoTooLong(257)
+          raw 0x2bcfe3eb0000000000000000000000000000000000000000000000000000000000000101
+          0x101 is 257. The length is checked before the loop over the bytes, so the loop can never
+          run more than 256 times whatever the caller sends.
+
+result      REFUSED, three of three
+
+The rule is one predicate over every byte, printable ASCII from 0x20 to 0x7E, not a list of shapes
+to refuse, so there is no entry nobody thought of. It covers the control characters, the newline,
+and the raw bytes that start a UTF-8 escape. The text is bounded here once for every consumer, so a
+reader downstream gets the guarantee without having to ask for it.
+
+What it does not cover: the contract does not judge what the text says or where a link inside it
+points. A reader that follows one still owes its own check, and the contract's own comment says so.
+
+The fourth text rule, ConstraintInfoNotAllowed for a text sent with no constrained use, is proved in
+packages/contracts/test/MoolamConsent.t.sol rather than here.

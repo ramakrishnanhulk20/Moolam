@@ -24,3 +24,27 @@ Checked end to end on the live services the same hour, from the pixels alone:
 The question a label in a file cannot answer, asked of the contract with cast (consentAt for the Monsoon passport):
   one hour before the statement  -> false, nothing was stated
   after it                       -> true, (1789717128, 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, (2, 2, 2, 2), ""), history length 1
+
+THE TWO PATHS A PERSON USES, ON MAINNET WITH A REAL PASSKEY (2026-09-20, read back from the chain on 2026-09-21)
+Both statements below were made by Ram from the live site, signed in with his passkey wallet
+0xBB4Eb7bF3e4E4960EE0c2f535bd31c84dF35b6b2. Each transaction went to the ERC-4337 EntryPoint
+0x0000000071727De22E5E9d8BAf0edAc6f37da032 through a bundler (0xca1ef33a9522ef11265858592f0209b45473c846),
+so the send was sponsored and the creator paid nothing.
+
+1. The holder's control on a passport page (an existing picture, nothing stated until then):
+   passport 0x3dae5ee9d854d6af49857150873cefbe2df2a585e35ea86d34f0f47cb3b6403d  open (1, 1, 1, 1)
+   transaction 0x46010c7946ff6d4b772e52b64bcb9db062fdba0cd6eedfc05f2cf15326c85361  block 106391876
+   written 2026-09-20T06:29:18Z (1789885758)  gas used 321,405
+   cast call consentOf -> true, (1789885758, 0xBB4Eb7bF3e4E4960EE0c2f535bd31c84dF35b6b2, (1, 1, 1, 1), ""), history length 1
+
+2. The studio, stating at the moment of making ("Ant and Elephants", generated with Not for AI training):
+   passport 0xbcdb2f0f06997c3877869a867e98edc1c0abaaea43e1b24834741ed59ed874df
+   registered   0x04d286385ed04c65e32b14cc3d573031b1035920e9db20d85ce00ac31f0336af  block 106392736  2026-09-20T06:33:37Z (1789886017)
+   stated       0xfd6d9bf5872d3cee781636a1cebff520926ee0e761003a098abc9ef040b56d74  block 106392759  2026-09-20T06:33:44Z (1789886024)  gas used 321,417
+   The statement landed 23 blocks, seven seconds, after the registration.
+   cast call consentOf -> true, (1789886024, 0xBB4Eb7bF3e4E4960EE0c2f535bd31c84dF35b6b2, (2, 2, 2, 2), ""), history length 1
+   The pinned metadata (ipfs://bafkreigryg5ja4e7u6synafkj42zlpbfmpucjwn43p5euxyotkidy6mtca) carries the same words:
+   "training": { aiTraining, aiGenerativeTraining, aiInference, dataMining: "notAllowed", "standard": "cawg.training-mining/1.1" }
+   so the file, the metadata and the chain say one thing.
+
+Thirteen pictures now carry a statement: the eleven above and these two.

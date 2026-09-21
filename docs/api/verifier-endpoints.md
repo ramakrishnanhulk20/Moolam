@@ -44,7 +44,8 @@ curl -s -X POST http://localhost:4000/verify \
              | "mirror" | "mirror-rot90" | "mirror-rot180" | "mirror-rot270",
       score: number,
       consent: Consent,             // what the holder has stated, see below
-      dispute: Dispute              // whether the passport is challenged, see below
+      dispute: Dispute,             // whether the passport is challenged, see below
+      recheck: Recheck              // what has re-checked the picture since, see below
     } | null,
     matches: Match[],               // best first, at most 20
     confidence: number,             // 1 for an exact hit, 0 when nothing matched
@@ -142,6 +143,33 @@ not a clean record, it is this service saying it could not find out. The chain i
 the passport index because a dispute opened since the index was last rebuilt is exactly the one a
 reader must not miss.
 
+**What has re-checked the picture.** The same matches carry `recheck`: what the Chainlink CRE
+workflow found when it re-fetched this picture, recomputed its fingerprint and wrote the verdict to
+Monad. It comes from the passport index this service already holds in memory, the same records the
+match ran against, so it costs no call per verification and is as fresh as the service's last index
+refresh.
+
+```ts
+type Recheck =
+  | { source: "index", attestations: number, matched: number, mismatched: number,
+      latest: { matched: boolean, distance: number, at: number, receiver: `0x${string}` } }
+  | { source: "index", attestations: 0 }   // nothing has re-checked this passport yet
+  | { source: "unavailable" }               // this service cannot tell
+```
+
+`distance` is how many of the 64 fingerprint bits the recomputed value differs by, `at` is unix
+seconds, and `receiver` is the contract the verdict was written to. For the known picture in this
+page's examples the fact reads:
+
+```json
+{"source":"index","attestations":1,"matched":1,"mismatched":0,"latest":{"matched":true,"distance":0,"at":1789368639,"receiver":"0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04"}}
+```
+
+A count and a newest verdict that disagree are not reconciled: the whole fact goes out `unavailable`
+rather than half true. How each re-check was delivered, through Chainlink's simulation forwarder or
+its network forwarder, is on the passport page beside the transaction, because that is read from the
+transaction itself and not from the index.
+
 **Status codes.**
 
 | Code | When |
@@ -171,11 +199,11 @@ and risk the two copies drifting, the paid route does not offer it.
 **Response.** `200` with the same `{ result, manifest }` body as `/verify`, and the base64
 `PAYMENT-RESPONSE` header carrying the settlement: `{ success, transaction, network, payer }`.
 
-Each match carries the same `consent` and `dispute` fields, with the same sources, the same rule that
+Each match carries the same `consent`, `dispute` and `recheck` fields, with the same sources, the same rule that
 `constrained` reads as `notAllowed` to anyone who cannot reach the creator, and the same rule that a
-statement on an `open` or `upheld` passport should not be relied on. Both are attached before the
+statement on an `open` or `upheld` passport should not be relied on. All three are attached before the
 payment is settled, so the body the facilitator signs over and the answer the payer is served are the
-same. Nothing about payment changes either one: a read that fails answers `{ source: "unavailable" }`
+same. Nothing about payment changes any of them: a read that fails answers `{ source: "unavailable" }`
 and the paid verification still comes back `200`.
 
 **Status codes.**

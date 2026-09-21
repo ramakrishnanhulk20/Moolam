@@ -178,6 +178,8 @@ set -a; . .env; set +a
 | `npm run proof:anvil` | Deploy, bind, three passports and an edit on a fork, with gas per step. Spends no MON. |
 | `npm run seed` | One real passport on Monad mainnet, files pinned to IPFS. Spends MON. |
 | `npm run prove:privy` | Server wallets under a policy, enclave signing, session signers and sponsorship, live on Monad mainnet. Spends MON. |
+| `npm run consent:state` | Reads `consent-plan.json`, checks the demo wallet still holds each passport and what the register already says, groups the work into batches of at most 32, and simulates every call. A dry run: it sends nothing. |
+| `npm run consent:state -- --send` | The same, then sends, waits for the receipts, reads `consentOf` back for every passport and appends the result to `proofs/consent-statements.txt`. Spends MON unless the send is sponsored. |
 | `npm run edit:quorum` | Creates the key quorum the edit route signs with, whose one member is the public half of `PRIVY_AUTHORIZATION_KEY`, and writes `PRIVY_EDIT_SIGNER_ID` and `PRIVY_EDIT_POLICY_ID` into the root `.env`. Run once per deployment. Spends no MON. |
 | `npm run prove` | The prove-it run. Spends about 0.4 MON. See [Prove it](prove-it). |
 | `npm run agent -- "..."` | The demo agent. Spends MON and a cent or two of OpenAI credit. |
@@ -187,6 +189,15 @@ The tests and the anvil proof fork Monad mainnet locally, so the ERC-8004 Identi
 `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` is the real contract with real state while the
 balances are anvil's play money. The contracts are compiled by Foundry, so run `forge build` in
 `packages/contracts` first if `out/` is missing.
+
+### Stating how AI may use the demo pictures
+
+`npm run consent:state` writes the statements for the pictures the demo wallet holds, from
+`packages/agents/consent-plan.json`. It is a dry run unless `--send` is passed, and the dry run is
+worth running on its own: it proves the holder gate by simulating each call twice, once as the real
+wallet and once as `0x000...dEaD`, so a plan that would be refused is refused on this machine rather
+than on chain. Nothing is written for a passport the register already agrees with. The full steps
+are in `packages/agents/README.md`.
 
 ### Seeding a passport
 

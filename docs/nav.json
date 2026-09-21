@@ -55,6 +55,7 @@
     {
       "type": "section",
       "title": "Guides",
+      "open": true,
       "pages": [
         {
           "slug": "guides/register-an-image",
@@ -67,6 +68,11 @@
         {
           "slug": "guides/read-a-passport",
           "title": "Read a passport"
+        },
+        {
+          "slug": "guides/ai-use-statements",
+          "title": "Say how AI may use a picture",
+          "label": "AI use statements"
         },
         {
           "slug": "guides/explore",
@@ -89,6 +95,7 @@
     {
       "type": "section",
       "title": "Developers",
+      "open": true,
       "pages": [
         {
           "slug": "developers/architecture",
@@ -124,6 +131,7 @@
     {
       "type": "section",
       "title": "API Reference",
+      "open": true,
       "pages": [
         {
           "slug": "api/registry",
@@ -133,6 +141,10 @@
           "slug": "api/policy-and-receiver",
           "title": "VerifierPolicy and MoolamReceiver",
           "label": "Policy and receiver"
+        },
+        {
+          "slug": "api/consent",
+          "title": "MoolamConsent"
         },
         {
           "slug": "api/events",
@@ -151,6 +163,7 @@
     {
       "type": "section",
       "title": "Security",
+      "open": true,
       "pages": [
         {
           "slug": "security/overview",

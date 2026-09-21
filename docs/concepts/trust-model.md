@@ -21,6 +21,8 @@ What a Moolam passport actually proves, stated narrowly, and what it does not.
 4. Every edit descends from a parent that exists, and was written by the wallet that held the
    parent at the time.
 5. Every attestation came from an address the policy contract listed.
+6. Every statement about AI use was written by the address the registry said held that passport at
+   that moment, and carries the block timestamp it was written at.
 
 ## What it does not prove
 
@@ -42,6 +44,38 @@ nothing about the identity of whoever is holding that key.
 throwaway certificate, so every reader marks them untrusted. The chain record carries the
 signatures that matter. [Rules and standards](rules-and-standards) sets this beside what the C2PA
 specification and the EU texts actually ask for.
+
+## Statements about AI use
+
+A statement in `MoolamConsent` is evidence of one narrow thing: that the address the registry said
+held this passport at that second wrote these words. The contract reads `ownerOf` inside the same
+call and compares it with `msg.sender`, so an ERC-721 approval, an operator, or a passport nobody
+minted are all refused. Every entry is appended with the block's timestamp and never edited, so the
+history is what was said and when, and `consentAt` answers for any past day.
+
+What it is not evidence of:
+
+**It does not prove the holder owns the copyright.** It records what the passport's holder stated.
+Moolam does not check who owns the rights to a picture, and a passport proves who registered first
+rather than who created, which the section above states narrowly.
+
+**It does not bind anyone.** Nothing in the contract can stop a crawler that never reads it. The
+claim is smaller and more useful: a company that trains on a picture whose holder wrote "not for AI
+training" on a public chain, with a date, cannot say it did not know.
+
+**It is only as fine as the chain's clock.** The timestamp is the block's, so a time query answers
+to the second the block was sealed and no finer.
+
+**A transfer carries the right to change it.** The statement stands until the new holder changes it,
+and the history names who wrote each one, so a reader can tell a statement made by the person who
+held it then from one made by the person who holds it now.
+
+**Read it beside the dispute status.** A statement on a passport whose record is under challenge
+should not be relied on: the registry's design says that record is in question, and the holder's
+word about AI use rests on that record. The consent register knows nothing about disputes, which is
+deliberate, so a reader takes the dispute status from the registry. The verify service returns both
+facts together for exactly that reason, and it returns "could not find out" rather than a guess when
+either read fails. Neither is permission.
 
 ## The creator passkey
 
@@ -108,7 +142,8 @@ can never trap someone's money. `rescueNative` computes its amount as the balanc
 
 ## Who can change what
 
-`MoolamRegistry` is immutable. `VerifierPolicy` is the only moving part: the receiver list, the
+`MoolamRegistry` is immutable. `MoolamConsent` is immutable and has no owner at all: no pause, no
+upgrade, nobody to impersonate. `VerifierPolicy` is the only moving part: the receiver list, the
 dispute resolver, the treasury and the bond size. Every change that widens trust is queued and
 executes 24 hours later in the open. Removing a receiver is the one exception and is immediate,
 because a compromised verifier has to stop writing in the same block someone notices.

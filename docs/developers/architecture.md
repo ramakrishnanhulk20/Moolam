@@ -10,12 +10,14 @@ contracts depend on.
 ## System overview
 
 Five people or programs touch the system and each one enters through a different door. The creator
-binds a passkey and registers. The generator agent registers on the creator's behalf, with both
-signatures. An editing app appends edits through a Privy session signer. Anyone verifying uploads a
-copy to the verify service and never touches the chain at all. On chain, `MoolamRegistry` reads the
-P-256 precompile for passkeys, the ERC-8004 Identity Registry for agent ownership, and
-`VerifierPolicy` for who may attest. Off chain, the Chainlink CRE workflow re-fetches and
-re-fingerprints, Envio indexes the events, and the verify service reads passports out of Envio.
+binds a passkey and registers, and states how AI may use the picture. The generator agent registers
+on the creator's behalf, with both signatures. An editing app appends edits through a Privy session
+signer. Anyone verifying uploads a copy to the verify service and never touches the chain at all. On
+chain, `MoolamRegistry` reads the P-256 precompile for passkeys, the ERC-8004 Identity Registry for
+agent ownership, and `VerifierPolicy` for who may attest, while `MoolamConsent` reads the registry
+for who holds a passport. Off chain, the Chainlink CRE workflow re-fetches and re-fingerprints,
+Envio indexes the events, and the verify service reads passports out of Envio and statements
+straight off the consent register.
 
 ```mermaid
 flowchart LR
@@ -30,6 +32,7 @@ flowchart LR
         R[MoolamRegistry<br/>ERC-721 passports, edit tree,<br/>attestations, disputes]
         P[VerifierPolicy<br/>who may attest, 24h delay]
         RC[MoolamReceiver<br/>Chainlink ReceiverTemplate]
+        MC[MoolamConsent<br/>how AI may use a picture,<br/>dated and append only]
         I8[ERC-8004 Identity Registry<br/>canonical, read only]
         PC[P-256 precompile 0x0100]
     end
@@ -42,14 +45,18 @@ flowchart LR
     end
 
     C -- bindPasskey, register --> R
+    C -- setConsent --> MC
     G -- register on creator's behalf --> R
     E -- appendEdit --> R
     R -- WebAuthn verify --> PC
     R -- ownerOf agentId --> I8
     R -- isReceiver --> P
+    MC -- ownerOf passport --> R
     W -- writeReport --> RC -- attest --> R
     R -- events --> X
+    MC -- events --> X
     X -- GraphQL --> S
+    S -- consentOf --> MC
     S -- reads --> F
     W -- fetches image --> F
     V -- upload any copy --> S
@@ -60,6 +67,8 @@ flowchart TD
     C[Creator<br/>passkey] -- register --> R[Moolam<br/>Registry]
     G[Generator<br/>agent] -- register --> R
     E[Editing<br/>app] -- appendEdit --> R
+    C -- setConsent --> MC[Moolam<br/>Consent]
+    MC -- ownerOf --> R
     R -- verify --> PC[P-256<br/>precompile]
     R -- ownerOf --> I8[ERC-8004<br/>registry]
     R -- isReceiver --> P[Verifier<br/>Policy]
@@ -73,6 +82,7 @@ flowchart TD
     W -- writeReport --> RC[Moolam<br/>Receiver]
     RC -- attest --> R
     X -- GraphQL --> S[Verifier<br/>service]
+    S -- consentOf --> MC[Moolam<br/>Consent]
     V[Anyone<br/>verifying] -- uploads --> S
 ```
 
@@ -82,8 +92,11 @@ Everything before the `register` call is preparation that costs no gas: the fing
 manifest, the four IPFS pins, and the EIP-712 digest read back from the contract. Then two
 signatures over that one digest, the creator's passkey and the agent owner's wallet, and one
 transaction that checks both. The registration event is what wakes the Chainlink workflow, which
-fetches the image itself, recomputes the fingerprint, reaches consensus and writes the result back
-through `MoolamReceiver`.
+fetches the image itself, recomputes the fingerprint and writes the result back through
+`MoolamReceiver`. The workflow is written so that on Chainlink's network a quorum of nodes must
+produce the identical verdict before a report is signed. Every re-check on chain today came from
+Chainlink's simulator with `--broadcast`, which is one machine and no consensus, and the passport
+page labels each one by the forwarder that delivered it.
 
 ```mermaid
 sequenceDiagram
@@ -113,7 +126,7 @@ sequenceDiagram
     R-->>X: event indexed
     X-->>W: log trigger fires
     W->>F: fetch image (downscaled copy under 100 KB)
-    W->>W: recompute fingerprint, nodes reach consensus
+    W->>W: recompute fingerprint (on the network, nodes must agree)
     W->>RC: writeReport(passportId, matched, distance)
     RC->>R: attest(...)
     R-->>X: VerificationAttested indexed
@@ -145,13 +158,70 @@ Verification of a copy later runs entirely off chain: anyone uploads a file to t
 service computes the eight rotated and mirrored fingerprints, searches the index, and returns the
 best passport with its attestations, its edit chain and a confidence score.
 
+## A statement about AI use, and the day query
+
+A creator's answer to "may AI train on this" is written twice in the same minute and read back much
+later. The service writes it into the signed C2PA manifest and the pinned metadata before the
+passport exists, because a manifest is signed once and cannot be added to. The chain half waits
+until the registration is confirmed, then goes out as a second sponsored transaction from the
+creator's own wallet. If that second send fails, the passport stays registered and the statement can
+be written later from the passport page.
+
+The second half of the drawing is the question a label inside a file cannot answer. A reader asks
+the register what was in force on a given day, and gets that day's entry rather than today's.
+
+```mermaid
+sequenceDiagram
+    participant C as Creator (studio)
+    participant S as Verifier service
+    participant F as IPFS
+    participant R as MoolamRegistry
+    participant MC as MoolamConsent
+    participant V as A reader, later
+
+    C->>S: prepare(file, training statement)
+    S->>S: cawg.training-mining assertion into the signed manifest
+    S->>F: pin image, thumbnail, manifest, metadata
+    S-->>C: the words it wrote back, plus the passport fields
+    C->>R: register(input, creatorAuth, generatorSig)
+    R-->>C: PassportRegistered
+    C->>MC: setConsent(passportId, consent, constraintInfo)
+    MC->>R: ownerOf(passportId)
+    R-->>MC: the holder
+    MC-->>C: ConsentSet
+    C->>MC: consentOf(passportId) (view, to confirm)
+    V->>MC: consentAt(passportId, that day)
+    MC-->>V: the entry in force then, or nothing stated
+```
+
+```mermaid phone "Half one: the statement, written into the file and then onto the chain."
+flowchart TD
+    A1[Creator picks<br/>a statement] --> A2[Service writes<br/>the assertion]
+    A2 --> A3[IPFS pins<br/>the metadata]
+    A3 --> A4[Passport<br/>registered]
+    A4 --> A5[Second send,<br/>sponsored]
+    A5 --> A6[Register asks<br/>who holds it]
+    A6 --> A7[ConsentSet<br/>emitted]
+```
+
+```mermaid phone "Half two: what a reader asks, months later."
+flowchart TD
+    B1[Reader names<br/>a day] --> B2[consentAt on<br/>the register]
+    B2 --> B3[Binary search<br/>of the history]
+    B3 --> B4[The entry<br/>in force then]
+    B3 --> B5[Or nothing<br/>stated yet]
+```
+
 ## Contract dependency graph
 
 `MoolamRegistry` is built out of OpenZeppelin v5.6.1 and reads two contracts it does not own. It
 holds `IVerifierPolicy` as an immutable address set at deployment and Monad's ERC-8004 Identity
 Registry the same way. `MoolamReceiver` inherits Chainlink's `ReceiverTemplate` verbatim, vendored
 under `src/vendor/chainlink/` so it can be diffed against Chainlink's published source, and the
-Keystone Forwarder is the only address allowed to call `onReport`.
+Keystone Forwarder is the only address allowed to call `onReport`. `MoolamConsent` depends on
+nothing but an `IERC721` view: it holds the registry address as an immutable set at deployment and
+asks it `ownerOf`, which is the whole integration. The arrow points one way, so the registry does
+not know the consent register exists.
 
 ```mermaid
 flowchart TD
@@ -170,6 +240,7 @@ flowchart TD
     RC[MoolamReceiver] --> RT[Chainlink ReceiverTemplate]
     RC -. calls attest .-> MR
     FW[Keystone Forwarder, Chainlink] -. onReport .-> RC
+    MC[MoolamConsent] -. reads ownerOf .-> MR
 ```
 
 ```mermaid phone "Half one: what MoolamRegistry is built out of."
@@ -185,6 +256,7 @@ flowchart TD
     MR -. reads .-> IVP[IVerifier<br/>Policy]
     MR -. ownerOf .-> I8[ERC-8004<br/>registry]
     VP[Verifier<br/>Policy] -. implements .-> IVP
+    MC[Moolam<br/>Consent] -. ownerOf .-> MR
 ```
 
 ## How the app reads the chain
@@ -203,6 +275,8 @@ address taken out of it first.
 - `MoolamRegistry` has no upgrade path. Records, edits and attestations are only ever added. The
   owner can pause new writes and rescue tokens sent by mistake; the owner cannot edit or delete a
   passport.
+- `MoolamConsent` has no upgrade path and no owner at all. Statements are only ever appended, so a
+  new one supersedes an old one without hiding it, and nobody can pause it or take it back.
 - `VerifierPolicy` is the only mutable piece: the list of receivers allowed to attest, the dispute
   resolver, the treasury and the bond. Every change is queued and executes 24 hours later,
   publicly, except removing a receiver, which is immediate so a compromised verifier can be cut

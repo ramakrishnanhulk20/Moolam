@@ -39,7 +39,7 @@ const drawings = navPages().flatMap((page) => {
 const phones = drawings.filter((drawing) => drawing.phone);
 
 describe("the architecture diagrams", () => {
-  it("are the three of the page, each followed by the two redraws a phone gets", () => {
+  it("are the four of the page, each followed by the two redraws a phone gets", () => {
     expect(drawings.map((drawing) => `${drawing.where}${drawing.phone ? " phone" : ""}`)).toEqual([
       "developers/architecture #1",
       "developers/architecture #2 phone",
@@ -50,11 +50,14 @@ describe("the architecture diagrams", () => {
       "developers/architecture #7",
       "developers/architecture #8 phone",
       "developers/architecture #9 phone",
+      "developers/architecture #10",
+      "developers/architecture #11 phone",
+      "developers/architecture #12 phone",
     ]);
   });
 
   it("gives every redraw a line of its own, so a reader knows which half it is", () => {
-    expect(phones).toHaveLength(6);
+    expect(phones).toHaveLength(8);
     for (const drawing of phones) {
       expect(drawing.caption, drawing.where).toMatch(/^Half (one|two): .+\.$/);
     }

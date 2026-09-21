@@ -1,0 +1,140 @@
+Moolam: eight refusals from the live MoolamConsent, executed 2026-09-21T10:14:58Z.
+
+Nothing was sent. Every line below is `cast call`, which runs the call against the deployed contract
+on a node and returns what it would have done. No key was read, no transaction was signed, no state
+changed. `--from` names the address the call is simulated as, which is how a refusal that depends on
+the caller can be proved without holding that caller's key.
+
+contract   MoolamConsent 0x1151E69a82947920546e779c4C8c785b2a3C1277 on Monad mainnet, chain 143
+registry   0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0, read for ownerOf
+rpc        https://rpc.monad.xyz, at block 106722835
+passport   0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638 (monsoon-fishing-nets-drying)
+holder     0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, read from the registry, not chosen
+cast       1.8.1
+
+cast decodes each custom error by name from the ABI. The raw revert data is printed under each one,
+so the four byte selector can be checked by hand against `cast sig`.
+
+  NotPassportHolder(bytes32,address)   0x0c9ccf20      EmptyBatch()                      0xc2e5347d
+  TooSoon(bytes32,uint64)              0x47d98587      BatchTooLarge(uint256)            0xa67b9f9e
+  ConstraintInfoRequired()             0x33add7ec      ConstraintInfoTooLong(uint256)    0x2bcfe3eb
+  ConstraintInfoNotAllowed()           0x20532873      ConstraintInfoNotPrintable(uint)  0xfd3fe8c3
+
+================================================================================
+1. A stranger states for a passport they do not hold          REFUSED
+================================================================================
+Invariant 1, holder only. The caller is the burn address, which has never held anything.
+
+$ cast call --from 0x000000000000000000000000000000000000dEaD 0x1151E6... \
+    "setConsent(bytes32,(uint8,uint8,uint8,uint8),string)" \
+    0xcdb25d37...771638 '(2,2,2,2)' '' --rpc-url https://rpc.monad.xyz
+
+Error: execution reverted: NotPassportHolder(0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638, 0x000000000000000000000000000000000000dEaD)
+  data: "0x0c9ccf20cdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638000000000000000000000000000000000000000000000000000000000000dead"
+
+The error carries the passport and the caller, so the refusal names both sides of the comparison.
+
+================================================================================
+2. A constrained use with no conditions text                  REFUSED
+================================================================================
+Invariant 5. "Ask me first" is meaningless without somewhere to ask, so the contract will not store
+it. Sent from the real holder, so nothing but the text is wrong.
+
+$ cast call --from 0x85a88Ca8...39a6 ... '(3,3,3,3)' '' --rpc-url https://rpc.monad.xyz
+
+Error: execution reverted: ConstraintInfoRequired
+  data: "0x33add7ec"
+
+================================================================================
+3. Conditions text carrying a newline byte                    REFUSED
+================================================================================
+Invariant 5. A newline splits a log line and a CSV row in whatever reads this later. The text is
+"Ask first:" then 0x0a then "mail me", and byte 10 is the newline.
+
+$ cast call --from 0x85a88Ca8...39a6 ... '(3,3,3,3)' "$(printf 'Ask first:\nmail me')" --rpc-url ...
+
+Error: execution reverted: ConstraintInfoNotPrintable(10)
+  data: "0xfd3fe8c3000000000000000000000000000000000000000000000000000000000000000a"
+
+The position is returned, so a caller is told which byte is wrong rather than only that one is.
+
+================================================================================
+4. Conditions text of 257 bytes                               REFUSED
+================================================================================
+Invariant 5, the other end of the same rule. MAX_INFO_BYTES is 256, read back from the chain.
+
+$ cast call --from 0x85a88Ca8...39a6 ... '(3,3,3,3)' "$(printf 'A%.0s' $(seq 257))" --rpc-url ...
+
+Error: execution reverted: ConstraintInfoTooLong(257)
+  data: "0x2bcfe3eb0000000000000000000000000000000000000000000000000000000000000101"
+
+0x101 is 257. The length is checked before the loop over the bytes, so the loop can never run more
+than 256 times whatever the caller sends.
+
+================================================================================
+5. A batch of 33 passports                                    REFUSED
+================================================================================
+MAX_BATCH is 32, read back from the chain. The cap is what keeps the worst batch inside one Monad
+transaction: 32 first statements each carrying 256 bytes of text measures 8,144,656 gas.
+
+$ cast call --from 0x85a88Ca8...39a6 ... "setConsentBatch(bytes32[],(uint8,uint8,uint8,uint8),string)" \
+    "[<the same passport id 33 times>]" '(2,2,2,2)' '' --rpc-url https://rpc.monad.xyz
+
+Error: execution reverted: BatchTooLarge(33)
+  data: "0xa67b9f9e0000000000000000000000000000000000000000000000000000000000000021"
+
+The size is refused before a single passport is looked at, so a caller cannot pay to find out.
+
+================================================================================
+6. A batch of nothing                                         REFUSED
+================================================================================
+An empty list would emit no event and change nothing while looking like a statement.
+
+$ cast call --from 0x85a88Ca8...39a6 ... "setConsentBatch(...)" '[]' '(2,2,2,2)' '' --rpc-url ...
+
+Error: execution reverted: EmptyBatch
+  data: "0xc2e5347d"
+
+================================================================================
+7. A plain transfer of MON to the contract                    REFUSED
+================================================================================
+Invariant 8, nothing to steal. There is no receive and no fallback, so a value call with no data
+has nothing to land on and reverts with empty data.
+
+$ cast call --from 0x85a88Ca8...39a6 --value 1 0x1151E6...1277 --rpc-url https://rpc.monad.xyz
+
+Error: server returned an error response: error code 3: execution reverted, data: "0x"
+
+Empty revert data is the right answer here. There is no error to name because there is no function.
+
+================================================================================
+8. CONTROL: the holder states not allowed on all four uses    PASSES
+================================================================================
+The same call as attack 1 from the address the registry says holds the passport. It has to succeed,
+or the seven refusals above would prove nothing: a contract that refuses everything refuses nothing
+in particular.
+
+$ cast call --from 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6 0x1151E6...1277 \
+    "setConsent(bytes32,(uint8,uint8,uint8,uint8),string)" \
+    0xcdb25d37...771638 '(2,2,2,2)' '' --rpc-url https://rpc.monad.xyz
+
+0x
+
+No revert, and an empty return because setConsent returns nothing. The holder's last statement on
+this passport was written 2026-09-18T07:38:48Z, more than MIN_INTERVAL ago, so the ten minute rule
+does not bite here either.
+
+================================================================================
+WHAT THESE EIGHT DO NOT COVER
+================================================================================
+They are simulations. A simulation runs the same bytecode the same way a transaction would, and it
+is how the exact custom error is decoded, but nothing here is a transaction anyone can open in the
+explorer. The twelve attacks in docs/security/attacks/ are run twice, as a read and then as a real
+transaction; these eight are reads only, because writing the control would put a real statement on
+a real passport and change what the demo shows.
+
+They also do not cover TooSoon, the ten minute rule, or ConstraintInfoNotAllowed. Both are proved
+in packages/contracts/test/MoolamConsent.t.sol, and TooSoon needs two writes in ten minutes, which
+is a transaction. They say nothing about what the constraint text means or where a link inside it
+points: the contract bounds the bytes and judges nothing else, so a reader that follows one still
+owes its own check.

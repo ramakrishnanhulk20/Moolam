@@ -13,11 +13,13 @@ checked and by whom, not as an assurance.
 | Check | Result |
 | --- | --- |
 | `forge build` | Zero warnings |
-| 119 Foundry tests across six files | All pass. Unit, fuzz, invariant and mainnet fork |
-| Six invariants over 256 runs and 8,192 calls | All held, zero reverts |
+| 182 Foundry tests across eleven suites | All pass. Unit, fuzz, invariant and mainnet fork |
+| Twelve invariants over 256 runs and 8,192 calls each | All held, zero reverts |
+| `forge coverage` on `src/MoolamConsent.sol` | 100 percent of lines, statements, branches and functions |
 | `slither . --exclude-informational --exclude-low --exclude-dependencies` | Zero high, four medium |
 | `solhint` on `src/**` | No errors, no warnings |
-| Twelve attacks, executed | 12 of 12 refused |
+| Twelve attacks, executed as transactions | 12 of 12 refused |
+| Eight more against the consent register, executed as simulations | 8 of 8 refused, with the control passing |
 
 The four medium slither findings are accepted false positives: an append-only mapping of arrays,
 two plain zero checks, and one `tryRecover` whose error return is unused. The `arbitrary-send-eth`
@@ -25,6 +27,18 @@ on `_payOut` is suppressed inline with its reason, because the destination is ch
 on purpose and that is the whole point of `withdrawTo`. What bounds it is the amount: `_takeCredit`
 has already zeroed the caller's own balance, so the only money that can leave is money that caller
 was owed.
+
+Four findings name `MoolamConsent` or its interface and none of them stand. `uninitialized-state` on
+`_history` is the same false positive as the registry's `_attestations`: a mapping of arrays needs no
+initialiser. `calls-loop` on `_holderOf` reached from `setConsentBatch` is deliberate and is the
+point of the design, because authority is read fresh from the registry for every passport rather
+than assumed from the one before it, and `MAX_BATCH` caps how many times that can happen in one
+transaction. `timestamp` on the ten minute rule is a comparison against `block.timestamp`, which is
+what the rule is. `naming-convention` on `STANDARD`, `REGISTRY`, `MIN_INTERVAL`, `MAX_INFO_BYTES`,
+`MAX_PAGE` and `MAX_BATCH` is Solidity's own convention for a constant and an immutable, and the
+interface has to declare them with the same names so the generated getters match. Nothing else in
+the run mentions the contract, which is what a contract with one view call, no money and no owner
+should look like.
 
 `src/vendor/` is excluded from both linters. Chainlink's `ReceiverTemplate` is vendored verbatim
 with its own license header and floating pragma, so its style is Chainlink's to set.
@@ -40,7 +54,8 @@ in the docs site because these pages link to them.
 
 Each file is the whole attempt: what was tried, what the live contract or the live service
 answered, and the transaction hash where there is one. Nothing in them is written by hand. They are
-rewritten every time `npm run prove` runs.
+rewritten every time `npm run prove` runs. Four more, against the consent register, are listed under
+them and are run differently.
 
 | Attack | What it tries | What refuses it | Output |
 | --- | --- | --- | --- |
@@ -62,6 +77,23 @@ exact custom error is decoded. Then as a real transaction with the same gas limi
 is on Monad mainnet where anyone can open it in the explorer. Using the same gas limit for both is
 what rules out a revert that is really an out-of-gas.
 
+### Four more, against the consent register
+
+These are `cast call` simulations rather than transactions, run by hand on 2026-09-21 against the
+live contract at `0x1151E69a82947920546e779c4C8c785b2a3C1277`. A simulation runs the same bytecode
+the same way and is how the exact custom error is decoded, but nothing here can be opened in the
+explorer. They are reads only on purpose: writing the control would put a real statement on a real
+passport and change what the demo shows. The whole session, with every command as it was typed and
+a valid statement from the real holder as the control that passes, is in
+[consent-attacks.txt](../../proofs/consent-attacks.txt).
+
+| Attack | What it tries | What refuses it | Output |
+| --- | --- | --- | --- |
+| consent-from-stranger | Say how AI may use a picture somebody else holds | `NotPassportHolder` | [consent-from-stranger.txt](attacks/consent-from-stranger.txt) |
+| consent-text-rules | Conditions with nothing to read, a conditions text carrying a newline, and one of 257 bytes | `ConstraintInfoRequired`, `ConstraintInfoNotPrintable`, `ConstraintInfoTooLong` | [consent-text-rules.txt](attacks/consent-text-rules.txt) |
+| consent-batch-limits | A batch of 33 passports, and a batch of none | `BatchTooLarge`, `EmptyBatch` | [consent-batch-limits.txt](attacks/consent-batch-limits.txt) |
+| consent-no-money | Send MON to the consent register | An empty revert. No `receive`, no `fallback`, nothing payable | [consent-no-money.txt](attacks/consent-no-money.txt) |
+
 Two of the twelve are not mainnet transactions, and the files say so.
 `receiver-replay-and-wrong-chain` sits behind the forwarder check, so only Chainlink's own
 forwarder can reach it and three Foundry tests prove it instead. `privy-policy-refusal` and
@@ -70,12 +102,13 @@ transaction reaches Monad at all, which is the point.
 
 ## Verified source
 
-All three contracts are verified on MonadVision through Sourcify, so the deployed bytecode can be
+All four contracts are verified on MonadVision through Sourcify, so the deployed bytecode can be
 read against the source in this repository:
 
 - [MoolamRegistry](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0)
 - [VerifierPolicy](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821)
 - [MoolamReceiver](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04)
+- [MoolamConsent](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277)
 
 ## What this does not cover
 

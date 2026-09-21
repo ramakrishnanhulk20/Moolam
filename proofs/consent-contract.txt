@@ -1,9 +1,10 @@
 WO-80 and WO-80b MoolamConsent, proof pack, 2026-09-18.
 Updated in place after WO-80b added the batch call, the STANDARD name and the MAX_BATCH cap, so
 every number here is for the contract as it now stands.
-Nothing was broadcast. No transaction was sent, no private key was read or printed by hand, and no
-deployed contract was changed. The consent register is not on mainnet yet: deploying it is Ram's
-call to make later with the script proven below.
+Sections 1 to 5 were written before the deploy: nothing in them was broadcast, no transaction was
+sent, no private key was read or printed by hand, and no deployed contract was changed. The register
+went to Monad mainnet later the same day from the script proven in section 3: see LIVE ON MONAD
+MAINNET at the end of this file.
 
 ================================================================================
 1. TEST COUNTS

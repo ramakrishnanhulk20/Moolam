@@ -47,6 +47,29 @@ instead of Foundry's default 130, which would overpay by a fifth. And every acco
 10 MON reserve balance it cannot spend, so a wallet needs that on top of whatever it is about to
 pay.
 
+## Cheap enough to change your mind on the record
+
+A creator's statement about AI use has the same problem as a registration and a worse one on top. It
+has to be worth writing for one picture, and it has to be worth rewriting when the creator changes
+their mind, or the record is a snapshot of one afternoon rather than a history.
+
+`MoolamConsent` measures 117,337 gas for a passport's first statement and 91,036 for a later one.
+Stating one policy across 32 pictures in a single call is 2,371,445, which is 74,107 a picture,
+roughly half the price of saying the same thing 32 times. At the 102 gwei Monad was quoting when
+these were measured, that is about 0.014 MON for one, about 0.0077 MON a picture for the batch, and
+about 0.036 MON when a full 256 byte note about the conditions rides along. Moolam sponsors the fee
+through Privy, so a creator pays none of it.
+
+Asking what a picture allowed on a given day costs nothing at all, because `consentAt` is a view.
+The binary search behind it barely moves with the history length: 30,676 gas over two entries and
+35,539 over 256.
+
+The cap on a batch comes from the same arithmetic. The worst batch, 32 first statements each
+carrying 256 bytes of text, measures 8,144,656 gas, a bit over a quarter of Monad's 30,000,000 gas
+per transaction limit, which is what makes 32 a cap that is provably inside one transaction. The
+same Monad specific applies here as everywhere: the chain bills the gas limit declared, so a wallet
+that pads the limit on a 32 picture batch pays for the padding.
+
 ## Room to keep the record on chain
 
 Attestations are stored, not just emitted, and a passport can hold up to `MAX_ATTESTATIONS`, which

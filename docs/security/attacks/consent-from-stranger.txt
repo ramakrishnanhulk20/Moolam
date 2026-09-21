@@ -1,0 +1,36 @@
+Moolam attack: consent-from-stranger
+REFUSED
+
+run         2026-09-21T10:14:58Z
+command     cast call, read only. Nothing was sent and nothing was signed
+network     Monad mainnet, chain 143
+consent     0x1151E69a82947920546e779c4C8c785b2a3C1277
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+
+NotPassportHolder: an outsider tries to say how AI may use a picture somebody else holds
+
+passport            0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638
+held by             0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, read from the registry
+caller              0x000000000000000000000000000000000000dEaD, which has never held anything
+
+attack      state "not allowed on all four uses" for a passport the caller does not hold
+call        setConsent on 0x1151E69a82947920546e779c4C8c785b2a3C1277
+from        0x000000000000000000000000000000000000dEaD
+expected    NotPassportHolder
+eth_call    refused with NotPassportHolder(0xcdb25d37...771638, 0x00...dEaD), by the live contract
+raw         0x0c9ccf20cdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638
+            000000000000000000000000000000000000000000000000000000000000dead
+sent        nothing. cast call runs the call on a node and returns what it would have done
+result      REFUSED
+
+The error carries the passport and the caller, so the refusal names both sides of the comparison
+the contract made. Authority is `ownerOf` read from the registry during this same call and nothing
+else, so a transfer takes effect immediately and an ERC-721 approval is worth nothing here.
+
+The control: the same call from 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, the address the registry
+says holds that passport, returns 0x with no revert. Seven refusals prove nothing without it, since
+a contract that refuses everything refuses nothing in particular.
+
+Two cases this file does not reach, because both are refused inside a fork rather than on the live
+chain: an address approved on the real registry, and a passport the real registry has never minted.
+Both are in packages/contracts/test/fork/MoolamConsent.fork.t.sol against live mainnet state.

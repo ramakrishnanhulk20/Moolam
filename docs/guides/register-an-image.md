@@ -93,7 +93,28 @@ sent by choosing.
 ### Ready to register
 
 The upload panel. The card reads "Ready" over "Give an image its passport". Drop area, title field,
-and "Register this image". Three step rows sit under the button and light up in order.
+the statement about AI use, and "Register this image". Three step rows sit under the button and
+light up in order.
+
+### Saying how AI may use it
+
+Both panels carry the same block, headed "Say how AI may use it" under "Before it is signed", with
+one line on what becomes of the answer: "It goes inside the file before anything is signed, and onto
+Monad the moment the passport is written. One statement, in two places that both hold."
+
+Three plates: "Open to AI use", "Not for AI training" and "Ask me first". Under them, "answer use by
+use" opens the four uses so each can be set on its own. "Ask me first" needs a conditions text, and
+the counter under the box counts real bytes against the 256 the register keeps, not characters, so a
+line break or an accented letter is refused with the position of the byte that has to go.
+
+Saying nothing is a choice and the screen says so: "Saying nothing is a choice too, and it gives
+nobody permission. You can state it later from the passport page." Nothing is sent in that case, and
+no second transaction goes out.
+
+Pick one and the words travel into the C2PA manifest the verify service signs into your file and
+into the pinned metadata. After the passport is confirmed on chain, the studio sends a second
+sponsored transaction writing the same words to the consent register, and confirms it by reading the
+chain back.
 
 ### Preparing
 
@@ -126,6 +147,27 @@ Finishes as "Written to Monad".
 "This image now has a passport" over the pinned copy of your file, with the passport id, the block,
 the time, who paid the fee, and links to the passport page, the transaction on MonadVision, the
 pinned image and "Register another image".
+
+### The statement, on the receipt
+
+The statement has its own small state beside the registration, because it is a second transaction
+and it can end differently. The receipt stamp headed "How AI may use it" reads one of five ways.
+
+| State | What the receipt says | What it means |
+| --- | --- | --- |
+| `idle` | nothing yet | The send has not started |
+| `sending` | "Writing your statement", over "The same words that went into the file, now going to the consent register on Monad." | The second transaction is out |
+| `unconfirmed` | "Sent, and Monad has not shown it yet", over "Nothing has been sent a second time. Ask Monad again in a moment." | With an "Ask Monad again" button that reads the chain and sends nothing |
+| `stated` | "Stated on Monad in {ms} ms", with who paid the fee and your conditions if there were any | The register was read back and it holds the statement |
+| `failed` | "Registered, statement not written", over "The passport is on chain. You can write the statement from its own page whenever you like." | With "Write the statement again" |
+
+A creator who said nothing gets a stamp too: "Nothing stated about AI use", over "Silence is not
+permission. You can state it from the passport page at any time."
+
+The important rule is the one in the failed row. A statement that failed, or that you cancelled at
+the wallet prompt, never undoes the registration. The passport is on chain and stays there. The
+statement can be retried from the receipt or written later from the passport page, and until it is,
+the passport reads as nothing stated.
 
 ## The agent path, state by state
 

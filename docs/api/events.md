@@ -4,7 +4,7 @@ title: Events
 
 # Events
 
-Every event across the three contracts, what its fields carry, and when it fires. Indexed
+Every event across the four contracts, what its fields carry, and when it fires. Indexed
 parameters are marked.
 
 ## MoolamRegistry
@@ -131,6 +131,38 @@ covers a bond or an unclaimed credit.
 `OwnershipTransferStarted` and `OwnershipTransferred` from `Ownable2Step`. `EIP712DomainChanged`
 from `EIP712`.
 
+## MoolamConsent
+
+### ConsentSet
+
+```solidity
+event ConsentSet(
+    bytes32 indexed passportId,
+    address indexed writer,
+    uint256 indexed index,
+    Consent consent,
+    string  constraintInfo,
+    uint64  at
+)
+```
+
+Fires once for every statement a passport's holder writes about AI use, from `setConsent` and once
+per passport from `setConsentBatch`, in the order the batch names them. There is no event for a
+statement being removed, because none ever is.
+
+| Field | Meaning |
+| --- | --- |
+| `passportId` | The passport the statement is about |
+| `writer` | The address that held the passport when the statement was written |
+| `index` | Where this statement sits in the passport's history, counting from zero |
+| `consent` | The four use values: 0 not stated, 1 allowed, 2 not allowed, 3 conditions apply |
+| `constraintInfo` | The conditions in free text, empty unless a use is `Constrained` |
+| `at` | The block timestamp the statement was written at |
+
+The event carries exactly what was stored and nothing else, so an indexer reading the logs and a
+caller reading the storage cannot disagree. The full contract is in
+[MoolamConsent](consent).
+
 ## VerifierPolicy
 
 | Event | Fires when |
@@ -166,10 +198,16 @@ record.
 
 ## What the indexer consumes
 
-The Envio indexer subscribes to six registry events and two policy events:
+The Envio indexer subscribes to six registry events, two policy events and one consent event:
 
 - `MoolamRegistry`: `PasskeyBound`, `PassportRegistered`, `VerificationAttested`,
   `PassportFlagged`, `DisputeResolved`, `Transfer`
 - `VerifierPolicy`: `ReceiverAdded`, `ReceiverRemoved`
+- `MoolamConsent`: `ConsentSet`
 
 `Transfer` is what keeps `Passport.owner` current on a sale while `Passport.creator` never moves.
+
+The consent register was deployed ten days after the other three, so it carries its own start block in
+`config.yaml` and the sync skips 2.7 million blocks of nothing. No screen reads a statement from the
+index today: the passport page and the verify service both read the contract directly, because a
+statement written a moment ago is exactly the one a reader must not miss.
