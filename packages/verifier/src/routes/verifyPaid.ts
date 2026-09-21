@@ -2,8 +2,7 @@ import { decodePaymentSignatureHeader } from "@x402/core/http";
 import type { HTTPRequestContext, ProcessSettleResultResponse, x402HTTPResourceServer } from "@x402/core/server";
 import type { PaymentPayload } from "@x402/core/types";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { withConsent } from "../consentRead.js";
-import { withDispute } from "../disputeRead.js";
+import { withConsentAndDispute } from "../disputeRead.js";
 import { paymentLedger, type PaymentLedger } from "../x402/ledger.js";
 import { assertPaidRoute, contextFor, PAID_VERIFY_PATH, PAYMENT_SIGNATURE_HEADER } from "../x402/plugin.js";
 import { readUpload, statusOf, verifyBytes } from "./shared.js";
@@ -158,7 +157,8 @@ async function settleSequence(
  *
  * The consent statement and the dispute fact are attached before the payment is settled, so the
  * body the facilitator sees and the copy kept against a replayed payment are the same answer the
- * payer is served.
+ * payer is served. The two chain reads for one passport start at the same moment, so a caller
+ * never waits through one timeout and then the other.
  *
  * A caller with no payment gets 402 and the payment terms. A caller whose
  * payment fails verification gets the facilitator's reason. Payment is settled
@@ -236,8 +236,8 @@ export async function verifyPaidRoutes(
 
     let payload: { result: unknown; manifest: unknown };
     try {
-      const answer = await withConsent(await verifyBytes(app, await readUpload(request)), app.verifier.consent);
-      payload = await withDispute(answer, app.verifier.dispute);
+      const answer = await verifyBytes(app, await readUpload(request));
+      payload = await withConsentAndDispute(answer, app.verifier.consent, app.verifier.dispute);
     } catch (error) {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);

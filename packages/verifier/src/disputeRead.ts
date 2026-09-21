@@ -1,6 +1,6 @@
 import { type Transport } from "viem";
 import { env } from "./env.js";
-import { isPassportId, withMatchFact } from "./consentRead.js";
+import { isPassportId, withMatchFact, withMatchFacts, type ConsentReader } from "./consentRead.js";
 import { monadTransport, readClient } from "./reputation/registry.js";
 import type { Hex } from "./types.js";
 
@@ -185,6 +185,26 @@ export function offlineDisputeReader(): DisputeReader {
  */
 export async function withDispute<T extends { result: unknown }>(payload: T, reader: DisputeReader): Promise<T> {
   return await withMatchFact(payload, "dispute", async (id) => await reader.answerFor(id));
+}
+
+/**
+ * Attaches both facts a verify answer carries, for the exact match and the best match: the
+ * holder's statement on AI use, and the dispute status that says how much weight that statement
+ * should carry. Both verify routes call this one function rather than the consent walk followed by
+ * the dispute walk, so for each passport the two chain reads start at the same moment and are
+ * awaited together. Each reader keeps its own sixty second cache and its own five second timeout
+ * exactly as it does on its own, so the worst case for the whole attachment is one timeout, not two
+ * waited through in turn.
+ */
+export async function withConsentAndDispute<T extends { result: unknown }>(
+  payload: T,
+  consent: ConsentReader,
+  dispute: DisputeReader,
+): Promise<T> {
+  return await withMatchFacts(payload, async (id) => {
+    const [consentAnswer, disputeAnswer] = await Promise.all([consent.answerFor(id), dispute.answerFor(id)]);
+    return { consent: consentAnswer, dispute: disputeAnswer };
+  });
 }
 
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {

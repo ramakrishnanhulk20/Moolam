@@ -266,11 +266,9 @@ export async function withConsent<T extends { result: unknown }>(payload: T, rea
 /**
  * Attaches one fact under `field` to the passports a verify answer names, and to no others.
  *
- * At most two are read: the exact match, and the best match when it is a different passport. The
- * other candidates are near misses on a fingerprint, not pictures the caller asked about, and
- * reading twenty statements to answer one verification would put twenty chain calls behind every
- * upload. The consent statement and the dispute status are both attached this way, so the two can
- * never disagree about which passports a verification speaks for.
+ * A thin wrapper over `withMatchFacts` for a caller that only ever reads one fact on its own;
+ * `withConsentAndDispute` in disputeRead.ts is what the routes call, so the statement and the
+ * dispute status start their chain reads at the same moment instead of one after the other.
  *
  * Never throws. A verification that came back is what the caller came for, so anything unexpected
  * here leaves the answer exactly as it was.
@@ -279,6 +277,32 @@ export async function withMatchFact<T extends { result: unknown }, A>(
   payload: T,
   field: string,
   answerFor: (passportId: Hex) => Promise<A>,
+): Promise<T> {
+  return await withMatchFacts(payload, async (id) => ({ [field]: await answerFor(id) }));
+}
+
+/**
+ * Attaches however many facts `answerFor` resolves for one passport to the exact match and the
+ * best match, and to no others.
+ *
+ * At most two passports are read: the exact match, and the best match when it is a different
+ * passport (the same passport in both slots costs a single call to `answerFor`, not two). The
+ * other candidates in `matches` are near misses on a fingerprint, not pictures the caller asked
+ * about, and reading twenty statements to answer one verification would put twenty chain calls
+ * behind every upload.
+ *
+ * `answerFor` gets one passport id and returns every field to merge onto that passport's match at
+ * once, so a caller reading more than one fact per passport (the consent statement and the dispute
+ * status) starts every read for that passport at the same moment rather than waiting through one
+ * before starting the next. The two can never disagree about which passports a verification speaks
+ * for, because they are attached through this one walker.
+ *
+ * Never throws. A verification that came back is what the caller came for, so anything unexpected
+ * here leaves the answer exactly as it was.
+ */
+export async function withMatchFacts<T extends { result: unknown }>(
+  payload: T,
+  answerFor: (passportId: Hex) => Promise<Record<string, unknown>>,
 ): Promise<T> {
   try {
     const result = payload.result;
@@ -300,13 +324,13 @@ export async function withMatchFact<T extends { result: unknown }, A>(
       return payload;
     }
 
-    const answers = new Map<Hex, A>(
-      await Promise.all(wanted.map(async (id): Promise<[Hex, A]> => [id, await answerFor(id)])),
+    const answers = new Map<Hex, Record<string, unknown>>(
+      await Promise.all(wanted.map(async (id): Promise<[Hex, Record<string, unknown>]> => [id, await answerFor(id)])),
     );
 
     const withId = (match: Record<string, unknown>): Record<string, unknown> => {
-      const answer = isPassportId(match.id) ? answers.get(match.id.toLowerCase() as Hex) : undefined;
-      return answer === undefined ? match : { ...match, [field]: answer };
+      const extra = isPassportId(match.id) ? answers.get(match.id.toLowerCase() as Hex) : undefined;
+      return extra === undefined ? match : { ...match, ...extra };
     };
 
     const matches = Array.isArray(result.matches)
