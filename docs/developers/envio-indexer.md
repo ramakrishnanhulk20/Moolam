@@ -12,7 +12,7 @@ from HyperSync rather than an RPC node.
 ## The live endpoint
 
 ```
-https://indexer.dev.hyperindex.xyz/ae097f1/v1/graphql
+https://indexer.dev.hyperindex.xyz/a8a9316/v1/graphql
 ```
 
 The verify service reads its passport index from there when `PASSPORT_SOURCE=envio` and
