@@ -58,7 +58,9 @@
       "gap": "indexé jusqu’au bloc {block, number}, {blocks, number} blocs de retard sur la chaîne",
       "inStep": "indexé jusqu’au bloc {block, number}, au pas avec la chaîne"
     },
-    "source": "Code source"
+    "source": "Code source",
+    "privacy": "Confidentialité",
+    "terms": "Conditions"
   },
   "common": {
     "copy": "Copier",
@@ -251,6 +253,7 @@
       "error": "Le contrôle n’a pas eu lieu : {reason}",
       "tooLarge": "Ce fichier dépasse 20 Mo. Essayez une copie plus légère.",
       "notAnImage": "Ce n’est pas un fichier image. Déposez un JPEG, un PNG ou un WebP.",
+      "empty": "Ce fichier est vide. Choisissez de nouveau l'image.",
       "rateLimited": "Trop de contrôles en une minute. Attendez un instant et réessayez.",
       "sampleFailed": "Cet exemple n’est revenu d’aucune passerelle. Réessayez, ou déposez votre propre fichier.",
       "noMatch": "Pas enregistrée",
@@ -326,6 +329,7 @@
     "problem": {
       "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Envoyez une copie plus légère.",
       "notAnImage": "Ce fichier n’a pas pu être lu comme une image. JPEG, PNG ou WebP.",
+      "empty": "Ce fichier est vide. Choisissez de nouveau l'image.",
       "rateLimited": "Trop de contrôles depuis ici. Attendez une minute et réessayez.",
       "badRequest": "Le vérificateur a refusé cette requête.",
       "badResponse": "Le vérificateur a répondu dans une forme que cette page ne connaît pas.",
@@ -501,6 +505,7 @@
         "signedOut": "Cette session est déconnectée, le service n'a donc pas accepté la retouche.",
         "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Choisissez une copie plus légère.",
         "notAnImage": "Ce n'est pas un fichier image. Choisissez un JPEG, un PNG ou un WebP.",
+        "empty": "Ce fichier est vide. Choisissez de nouveau l'image.",
         "rateLimited": "Trop de requêtes depuis ici pour le moment. Patientez un instant et réessayez.",
         "badRequest": "Le service a refusé la requête.",
         "badResponse": "Le service a répondu dans une forme que cette app ne connaît pas.",
@@ -553,6 +558,7 @@
       "failed": "Le contrôle n’a pas eu lieu.",
       "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Envoyez une copie plus légère.",
       "notAnImage": "Ce n’est pas un fichier image. Déposez un JPEG, un PNG ou un WebP.",
+      "empty": "Ce fichier est vide. Choisissez de nouveau l'image.",
       "none": "Cette copie ne correspond à aucun passeport.",
       "same": "Oui. C’est la même image.",
       "sameExact": "Oui. Octet pour octet, c’est ce fichier.",
@@ -1146,6 +1152,7 @@
       "signedOut": "Votre session a expiré. Reconnectez-vous et l’envoi fonctionnera.",
       "tooLarge": "Ce fichier dépasse la limite de 20 Mo. Exportez-le plus léger et réessayez.",
       "notAnImage": "Ce fichier n’est ni un JPEG, ni un PNG, ni un WebP. Choisissez un fichier image.",
+      "empty": "Ce fichier est vide. Choisissez de nouveau l'image.",
       "rateLimited": "Ce compte a préparé 20 images dans la dernière heure, ce qui est la limite. Réessayez plus tard.",
       "pinFailed": "L’image n’a pas pu être épinglée sur IPFS, rien n’a donc été enregistré. Réessayez dans un instant.",
       "badRequest": "Le service de vérification a refusé cet envoi. Ce qu’il a dit se trouve ci-dessous.",
@@ -1279,6 +1286,12 @@
     "explore": "Explorer le registre",
     "verify": "Vérifier une image",
     "docs": "Lire la documentation"
+  },
+  "error": {
+    "code": "500",
+    "title": "Quelque chose a cassé",
+    "lede": "Cette page n'a pas pu s'afficher pour le moment. Rien sur Monad n'est touché : chaque passeport est toujours dans le registre. Réessayez la page, ou prenez l'un des chemins de retour.",
+    "retry": "Réessayer"
   },
   "retry": {
     "countdown": "Nouvel essai dans {seconds, plural, =1 {# seconde} other {# secondes}}",

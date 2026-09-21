@@ -1,13 +1,33 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { resolveDocsFile } from "@/lib/docs/files";
 import { resolveLink } from "@/lib/docs/links";
-import { navPages, neighbours, readNav, sectionOf } from "@/lib/docs/nav";
+import { isDraft, navPages, neighbours, readNav, sectionOf } from "@/lib/docs/nav";
 import { allSlugs, readPage } from "@/lib/docs/pages";
 import { repoRoot } from "@/lib/docs/paths";
 
+/** The pages a visitor can reach on the deployed site: everything except the drafts. */
 const pages = navPages();
+
+/** Every page the tree names, drafts included, which is what has to match the disk. */
+const written = navPages({ drafts: true });
+
+const DRAFTS = ["legal/privacy", "legal/terms"];
+
+/** Runs a check as the machine where work in progress is visible. */
+function withLabPages<T>(run: () => T): T {
+  process.env.NEXT_PUBLIC_LAB_PAGES = "1";
+  try {
+    return run();
+  } finally {
+    delete process.env.NEXT_PUBLIC_LAB_PAGES;
+  }
+}
+
+afterEach(() => {
+  delete process.env.NEXT_PUBLIC_LAB_PAGES;
+});
 
 /** Links inside code are examples, not links, so the fences come out first. */
 function linksIn(body: string): string[] {
@@ -17,16 +37,17 @@ function linksIn(body: string): string[] {
 
 describe("the pages the app can read", () => {
   it("finds every page on disk in the tree, and nothing else", () => {
-    expect(allSlugs().sort()).toEqual(pages.map((page) => page.slug).sort());
+    expect(allSlugs().sort()).toEqual(written.map((page) => page.slug).sort());
   });
 
-  it("has all 35 markdown files accounted for: 34 pages and the note beside the attack transcripts", () => {
+  it("has all 37 markdown files accounted for: 34 released pages, 2 drafts and the note beside the attack transcripts", () => {
     expect(pages).toHaveLength(34);
+    expect(written).toHaveLength(36);
     expect(existsSync(path.join(repoRoot, "docs", "security", "attacks", "README.md"))).toBe(true);
   });
 
   it("reads a title and a body for every slug in nav.json", () => {
-    for (const page of pages) {
+    for (const page of written) {
       const loaded = readPage(page.slug);
       expect(loaded, page.slug).not.toBeNull();
       expect(loaded?.title).toBe(page.title);
@@ -34,7 +55,7 @@ describe("the pages the app can read", () => {
     }
   });
 
-  it("puts every page in a section except the first and the last", () => {
+  it("puts every page in a section except the first and the last released one", () => {
     expect(sectionOf("concepts/why-monad")).toBe("Concepts");
     expect(sectionOf("intro")).toBeNull();
     expect(sectionOf("faq")).toBeNull();
@@ -59,10 +80,40 @@ describe("the pages the app can read", () => {
   });
 });
 
+describe("the two pages Ram has not released yet", () => {
+  it("names exactly the legal pages as drafts", () => {
+    expect(written.filter((page) => page.draft === true).map((page) => page.slug)).toEqual(DRAFTS);
+    for (const slug of DRAFTS) {
+      expect(isDraft(slug), slug).toBe(true);
+    }
+    expect(isDraft("faq")).toBe(false);
+  });
+
+  it("keeps them out of the tree, and their section with them, everywhere but the bench", () => {
+    expect(pages.map((page) => page.slug)).not.toContain("legal/privacy");
+    expect(readNav().some((entry) => entry.type === "section" && entry.title === "Legal")).toBe(false);
+    expect(pages[pages.length - 1].slug).toBe("faq");
+  });
+
+  it("shows them, in their own section, where the lab flag is on", () => {
+    withLabPages(() => {
+      expect(navPages().map((page) => page.slug)).toEqual(written.map((page) => page.slug));
+      expect(readNav().some((entry) => entry.type === "section" && entry.title === "Legal")).toBe(true);
+      expect(readNav().filter((entry) => entry.type === "section")).toHaveLength(7);
+      expect(neighbours("faq").next?.slug).toBe("legal/privacy");
+      expect(neighbours("legal/privacy").next?.slug).toBe("legal/terms");
+    });
+  });
+
+  it("still says which section a draft belongs to, for the page's own masthead", () => {
+    expect(sectionOf("legal/privacy")).toBe("Legal");
+  });
+});
+
 describe("every link written in a page", () => {
   it("lands on a page that exists or a file that exists", () => {
     const broken: string[] = [];
-    for (const page of pages) {
+    for (const page of written) {
       const body = readPage(page.slug)?.body ?? "";
       for (const target of linksIn(body)) {
         const link = resolveLink(page.slug, target);

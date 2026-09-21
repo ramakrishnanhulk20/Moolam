@@ -20,7 +20,75 @@ const ownGateway = (() => {
 
 const pictureHosts = [ownGateway, "ipfs.io", "dweb.link"].filter((host, at, all) => all.indexOf(host) === at);
 
+/** The origin of a configured URL, or nothing when the variable is unset or malformed. */
+function originOf(value: string | undefined, fallback: string): string[] {
+  try {
+    return [new URL(value === undefined || value.trim() === "" ? fallback : value.trim()).origin];
+  } catch {
+    return [];
+  }
+}
+
+// The two services the browser talks to directly, read the same way lib/env.ts
+// reads them and with the same fallbacks. The verify page fetches the verifier
+// and reads Monad from the browser, so both belong in connect-src; a local
+// setup lists its own localhost service here, which costs a deployed build
+// nothing because the deployed build has the real values.
+const serviceOrigins = [
+  ...originOf(process.env.NEXT_PUBLIC_VERIFIER_URL, "http://localhost:4010"),
+  ...originOf(process.env.NEXT_PUBLIC_MONAD_RPC_URL, "https://rpc1.monad.xyz"),
+];
+
+const pictureOrigins = pictureHosts.map((host) => `https://${host}`);
+
+// Measured on the live site signed out, page by page, from what the browser
+// really fetched: the app itself, Privy for sign in, WalletConnect's explorer
+// on the studio, the verify service, the gateways, and blob: and data: for the
+// dropped file's own preview.
+//
+// 'unsafe-inline' stays on script-src because Next's bootstrap script is
+// inline: the nonce alternative forces every page to render on the request,
+// which would cost this site its static pages. The policy ships report-only
+// because the list was measured signed out, and a policy that breaks sign in
+// would be worse than no policy at all.
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self'",
+  `img-src 'self' data: blob: ${pictureOrigins.join(" ")}`,
+  `connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com ${[...serviceOrigins, ...pictureOrigins].join(" ")}`,
+  "frame-src https://auth.privy.io",
+].join("; ");
+
 const nextConfig: NextConfig = {
+  // The framework's name and version is a free hint to anyone looking for a
+  // version with a known hole in it.
+  poweredByHeader: false,
+
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "x-content-type-options", value: "nosniff" },
+          { key: "referrer-policy", value: "strict-origin-when-cross-origin" },
+          { key: "x-frame-options", value: "DENY" },
+          // publickey-credentials-get has to stay allowed for this origin and
+          // for auth.privy.io, or passkey sign in stops working.
+          {
+            key: "permissions-policy",
+            value: 'camera=(), microphone=(), geolocation=(), payment=(), publickey-credentials-get=(self "https://auth.privy.io")',
+          },
+          { key: "content-security-policy-report-only", value: contentSecurityPolicy },
+        ],
+      },
+    ];
+  },
+
   // Pinned pictures are fetched by the optimizer, not by the browser, so the
   // gateway serves each one once and every later view is answered from the
   // optimizer's cache. A pinned file is content addressed and can never change

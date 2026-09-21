@@ -5,13 +5,18 @@ import { Masthead } from "@/components/docs/Masthead";
 import { OnThisPage } from "@/components/docs/OnThisPage";
 import { PrevNext } from "@/components/docs/PrevNext";
 import { slugFromSegments, segmentsFromSlug } from "@/lib/docs/links";
-import { navPages, neighbours, sectionOf } from "@/lib/docs/nav";
+import { draftsVisible } from "@/lib/docs/drafts";
+import { isDraft, navPages, neighbours, sectionOf } from "@/lib/docs/nav";
 import { readPage } from "@/lib/docs/pages";
 import { renderPage } from "@/lib/docs/render";
 
 type Params = { locale: string; slug?: string[] };
 
-/** Every page in the tree, built with the site. Anything else is a 404. */
+/**
+ * Every released page in the tree, built with the site. Anything else is a 404,
+ * and a draft page is released only where the lab flag is on: it is built and
+ * reachable on that machine and nowhere else.
+ */
 export function generateStaticParams() {
   return navPages().map((page) => ({ slug: segmentsFromSlug(page.slug) }));
 }
@@ -21,7 +26,7 @@ export const dynamicParams = false;
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
   const page = readPage(slugFromSegments(slug));
-  if (page === null) {
+  if (page === null || (isDraft(page.slug) && !draftsVisible())) {
     return {};
   }
   const { heading, text } = await renderPage(page.slug, page.body);
@@ -36,7 +41,9 @@ export default async function DocsPage({ params }: { params: Promise<Params> }) 
   setRequestLocale(locale);
 
   const page = readPage(slugFromSegments(slug));
-  if (page === null) {
+  // A page on disk that the tree does not release is not a page here: without
+  // this, a draft could be read by anyone who guessed its address.
+  if (page === null || (isDraft(page.slug) && !draftsVisible())) {
     notFound();
   }
 

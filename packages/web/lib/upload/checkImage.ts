@@ -19,11 +19,11 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const IMAGE_SUFFIXES = [".jpg", ".jpeg", ".png", ".webp"];
 
 /** The service's own codes, so each caller keeps the one table it already has. */
-export type RefusalCode = "too-large" | "not-an-image";
+export type RefusalCode = "too-large" | "not-an-image" | "empty";
 
 export interface Refusal {
   code: RefusalCode;
-  /** The file's own words: its type or name when the type is wrong, its size when it is too big. */
+  /** The file's own words: its type or name when the type is wrong, its size when it is too big, its name when it holds nothing. */
   reason: string;
 }
 
@@ -31,6 +31,13 @@ export interface Refusal {
 export function checkImage(file: File): Refusal | null {
   if (!isImage(file)) {
     return { code: "not-an-image", reason: file.type === "" ? file.name : file.type };
+  }
+  // A file with a picture's name and no bytes in it. The type test passes, the
+  // size test passes, and the service refuses it after a whole upload with a
+  // sentence of its own in English. Answered here instead, in the reader's
+  // language, before anything leaves the machine.
+  if (file.size === 0) {
+    return { code: "empty", reason: file.name };
   }
   if (file.size > MAX_UPLOAD_BYTES) {
     return { code: "too-large", reason: `${(file.size / 1_000_000).toFixed(1)} MB` };

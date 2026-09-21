@@ -58,7 +58,9 @@
       "gap": "indexed to block {block, number}, {blocks, number} blocks behind the chain",
       "inStep": "indexed to block {block, number}, in step with the chain"
     },
-    "source": "Source"
+    "source": "Source",
+    "privacy": "Privacy",
+    "terms": "Terms"
   },
   "common": {
     "copy": "Copy",
@@ -251,6 +253,7 @@
       "error": "The check did not run: {reason}",
       "tooLarge": "That file is over 20 MB. Try a smaller copy.",
       "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
+      "empty": "That file is empty. Choose the picture again.",
       "rateLimited": "Too many checks in a minute. Wait a moment and try again.",
       "sampleFailed": "That sample would not come back from any gateway. Try again, or drop your own file.",
       "noMatch": "Not registered",
@@ -326,6 +329,7 @@
     "problem": {
       "tooLarge": "That file is over the 20 MB limit. Send a smaller copy.",
       "notAnImage": "That file could not be read as an image. JPEG, PNG or WebP.",
+      "empty": "That file is empty. Choose the picture again.",
       "rateLimited": "Too many checks from here. Wait a minute and try again.",
       "badRequest": "The verifier would not take that request.",
       "badResponse": "The verifier answered in a shape this page does not know.",
@@ -501,6 +505,7 @@
         "signedOut": "This session is signed out, so the service would not take the edit.",
         "tooLarge": "That file is over the 20 MB limit. Choose a smaller copy.",
         "notAnImage": "That is not an image file. Choose a JPEG, PNG or WebP.",
+        "empty": "That file is empty. Choose the picture again.",
         "rateLimited": "Too many requests from here for now. Wait a moment and try again.",
         "badRequest": "The service turned the request down.",
         "badResponse": "The service answered in a shape this app does not know.",
@@ -553,6 +558,7 @@
       "failed": "The check did not run.",
       "tooLarge": "That file is over the 20 MB limit. Send a smaller copy.",
       "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
+      "empty": "That file is empty. Choose the picture again.",
       "none": "This copy matches no passport at all.",
       "same": "Yes. This is the same picture.",
       "sameExact": "Yes. Byte for byte, this is the file.",
@@ -1146,6 +1152,7 @@
       "signedOut": "Your session has expired. Sign in again and the upload will work.",
       "tooLarge": "That file is over the 20 MB limit. Export it smaller and try again.",
       "notAnImage": "That file is not a JPEG, a PNG or a WebP image. Choose an image file.",
+      "empty": "That file is empty. Choose the picture again.",
       "rateLimited": "This account has prepared 20 images in the last hour, which is the limit. Try again later.",
       "pinFailed": "The image could not be pinned to IPFS, so nothing was registered. Try again in a moment.",
       "badRequest": "The verify service refused this upload. What it said is below.",
@@ -1279,6 +1286,12 @@
     "explore": "Explore the registry",
     "verify": "Verify an image",
     "docs": "Read the docs"
+  },
+  "error": {
+    "code": "500",
+    "title": "Something broke",
+    "lede": "This page could not be shown just now. Nothing on Monad is affected: every passport is still in the registry. Try the page again, or take one of the ways back.",
+    "retry": "Try again"
   },
   "retry": {
     "countdown": "Trying again in {seconds, plural, =1 {# second} other {# seconds}}",

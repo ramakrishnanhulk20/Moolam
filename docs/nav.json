@@ -184,6 +184,23 @@
       "type": "page",
       "slug": "faq",
       "title": "FAQ"
+    },
+    {
+      "type": "section",
+      "title": "Legal",
+      "open": true,
+      "pages": [
+        {
+          "slug": "legal/privacy",
+          "title": "Privacy",
+          "draft": true
+        },
+        {
+          "slug": "legal/terms",
+          "title": "Terms",
+          "draft": true
+        }
+      ]
     }
   ]
 }

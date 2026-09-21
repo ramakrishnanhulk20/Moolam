@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
@@ -119,8 +120,12 @@ export default async function PassportPage({
   setRequestLocale(locale);
   const t = await getTranslations("passport");
 
+  // An id that is not a passport id, and an id the registry has no record of,
+  // are both a page that does not exist: they answer 404 with the site's own
+  // not-found page rather than 200 with a sentence, so a crawler never files a
+  // mistyped address as a real passport.
   if (!ID_PATTERN.test(id)) {
-    return <Notice text={t("notFound")} />;
+    notFound();
   }
 
   let record: PassportRecordBundle;
@@ -132,7 +137,7 @@ export default async function PassportPage({
 
   const { passport, attestations, edits, owner, dispute, hasPasskey } = record;
   if (passport === null) {
-    return <Notice text={t("notFound")} />;
+    notFound();
   }
 
   // The picture, the transaction links and the lineage's standing are the three

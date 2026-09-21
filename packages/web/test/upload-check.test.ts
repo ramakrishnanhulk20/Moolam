@@ -29,15 +29,24 @@ function sized(name: string, type: string, size: number): File {
  */
 const MESSAGES = fileURLToPath(new URL("../messages/", import.meta.url));
 
-function panelOf(file: string): Record<string, string> {
-  const messages = JSON.parse(readFileSync(`${MESSAGES}${file}`, "utf8")) as {
-    passport: { check: Record<string, string> };
-  };
-  return messages.passport.check;
-}
+/**
+ * Every namespace that turns a refusal code into a sentence, and the keys those
+ * codes map to. The tables in the five files that do the mapping are the source
+ * of these: a code with no line here reaches a reader as a blank message.
+ */
+const SENTENCES = {
+  studio: "studio.failure",
+  edit: "passport.edit.failure",
+  check: "passport.check",
+  tryIt: "story.tryIt",
+  verify: "verify.problem",
+};
+
+const CODE_KEYS = ["tooLarge", "notAnImage", "empty"];
 
 const tooBig = sized("holiday.jpg", "image/jpeg", 21 * 1024 * 1024);
 const notAnImage = new File(["notes"], "notes.txt", { type: "text/plain" });
+const emptyFile = new File([], "sunset.png", { type: "image/png" });
 
 describe("the check every upload path runs first", () => {
   it("mirrors the service's own limit", () => {
@@ -51,6 +60,19 @@ describe("the check every upload path runs first", () => {
 
   it("refuses a file that is not an image and says what it was", () => {
     expect(checkImage(notAnImage)).toEqual({ code: "not-an-image", reason: "text/plain" });
+  });
+
+  it("refuses a picture with no bytes in it and says which file it was", () => {
+    expect(emptyFile.size).toBe(0);
+    expect(checkImage(emptyFile)).toEqual({ code: "empty", reason: "sunset.png" });
+    expect(checkImage(new File([new Uint8Array(1)], "sunset.png", { type: "image/png" }))).toBeNull();
+  });
+
+  it("calls an empty file that is not a picture by the older name, which says more", () => {
+    expect(checkImage(new File([], "notes.txt", { type: "text/plain" }))).toEqual({
+      code: "not-an-image",
+      reason: "text/plain",
+    });
   });
 
   it("takes a jpeg, a png and a webp", () => {
@@ -70,6 +92,7 @@ describe("what each page says about a file it refuses", () => {
   it("gives the story's try panel a line it already has in every language", () => {
     expect(localRefusal(tooBig)).toBe("tooLarge");
     expect(localRefusal(notAnImage)).toBe("notAnImage");
+    expect(localRefusal(emptyFile)).toBe("empty");
     expect(localRefusal(new File(["x"], "picture.jpg", { type: "image/jpeg" }))).toBeNull();
     expect(en.story.tryIt.tooLarge.length).toBeGreaterThan(0);
     expect(en.story.tryIt.notAnImage.length).toBeGreaterThan(0);
@@ -78,6 +101,7 @@ describe("what each page says about a file it refuses", () => {
   it("gives the verify page the same sentence the service would have sent", () => {
     expect(chosenProblem(tooBig)).toEqual({ key: "problem.tooLarge" });
     expect(chosenProblem(notAnImage)).toEqual({ key: "problem.notAnImage" });
+    expect(chosenProblem(emptyFile)).toEqual({ key: "problem.empty" });
     expect(chosenProblem(new File(["x"], "picture.png", { type: "image/png" }))).toBeNull();
     expect(en.verify.problem.tooLarge.length).toBeGreaterThan(0);
     expect(en.verify.problem.notAnImage.length).toBeGreaterThan(0);
@@ -86,6 +110,7 @@ describe("what each page says about a file it refuses", () => {
   it("gives the passport panel a sentence per code, not the file's type", () => {
     expect(copyRefusal(tooBig)).toEqual({ key: "tooLarge" });
     expect(copyRefusal(notAnImage)).toEqual({ key: "notAnImage" });
+    expect(copyRefusal(emptyFile)).toEqual({ key: "empty" });
     expect(copyRefusal(new File(["x"], "picture.webp", { type: "image/webp" }))).toBeNull();
   });
 
@@ -98,14 +123,19 @@ describe("what each page says about a file it refuses", () => {
     expect(sentenceFor({ key: "problem.rateLimited", reason: "slow down" })).toBe("failed");
   });
 
-  it("says both sentences in every language the site serves", () => {
+  it("says every one of those sentences in every language the site serves", () => {
     const files = readdirSync(MESSAGES).filter((name) => name.endsWith(".json"));
     expect(files).toHaveLength(10);
 
     for (const file of files) {
-      const panel = panelOf(file);
-      expect(panel.tooLarge?.length ?? 0, file).toBeGreaterThan(0);
-      expect(panel.notAnImage?.length ?? 0, file).toBeGreaterThan(0);
+      const tree = JSON.parse(readFileSync(`${MESSAGES}${file}`, "utf8")) as Record<string, never>;
+
+      for (const [where, namespace] of Object.entries(SENTENCES)) {
+        const words = namespace.split(".").reduce<Record<string, string>>((at, step) => at[step] as never, tree);
+        for (const key of CODE_KEYS) {
+          expect(words[key]?.length ?? 0, `${file} ${where} ${key}`).toBeGreaterThan(0);
+        }
+      }
     }
   });
 

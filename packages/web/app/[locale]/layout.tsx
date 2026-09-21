@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense, type ReactNode } from "react";
@@ -15,6 +17,7 @@ import { StatusPending, SystemStatus } from "@/components/status/SystemStatus";
 import { CHAIN_ID, MONAD_EXPLORER, addresses } from "@/lib/chain/client";
 import { activeSource } from "@/lib/data/source";
 import { hasIndex } from "@/lib/status/read";
+import { labPagesOn } from "@/lib/docs/drafts";
 import { fontVariables } from "@/lib/fonts";
 import { Link, routing } from "@/lib/i18n/routing";
 import { siteUrl } from "@/app/robots";
@@ -66,6 +69,13 @@ export default async function LocaleLayout({
   const t = await getTranslations({ locale, namespace: "header" });
   const f = await getTranslations({ locale, namespace: "footer" });
   const source = activeSource();
+
+  // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
+  // in a test or on any other host. The bench pages only exist where the lab
+  // flag is on, and a page Ram is looking at on his own dev server is not a
+  // visit, so the two conditions are one line. Neither package sets a cookie
+  // and neither is given one.
+  const counted = process.env.VERCEL === "1" && !labPagesOn();
 
   // The studio is the one route in this bar that carries the wallet. Left to
   // prefetch, a reader of any other page quietly pulls half a megabyte of a
@@ -182,6 +192,25 @@ export default async function LocaleLayout({
                     >
                       {f("source")}
                     </a>
+                    {/* The two pages that say what this site stores and what it
+                        promises. They follow the same rule as the documents
+                        themselves: a draft is reachable only where the lab flag
+                        is on, so until Ram releases them these links are not on
+                        the page either. */}
+                    {labPagesOn() ? (
+                      <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <Link
+                          href="/docs/legal/privacy"
+                          className="transition-colors duration-200 hover:text-accent"
+                        >
+                          {f("privacy")}
+                        </Link>
+                        <Link href="/docs/legal/terms" className="transition-colors duration-200 hover:text-accent">
+                          {f("terms")}
+                        </Link>
+                      </span>
+                    ) : null}
+
                     {/* The three services, read while the page is rendered. The boundary
                         keeps a slow service off the critical path: the rest of the footer
                         is already on screen while the line is still waiting. */}
@@ -204,6 +233,14 @@ export default async function LocaleLayout({
             </LenisProvider>
           </IntlProvider>
         </ThemeProvider>
+        {/* Both mount after the page and fetch their script with defer, so
+            neither is on the path to the first paint. */}
+        {counted ? (
+          <>
+            <Analytics />
+            <SpeedInsights />
+          </>
+        ) : null}
       </body>
     </html>
   );

@@ -60,7 +60,9 @@
       "gap": "已索引到区块 {block, number}，落后链 {blocks, number} 个区块",
       "inStep": "已索引到区块 {block, number}，与链同步"
     },
-    "source": "源码"
+    "source": "源码",
+    "privacy": "隐私",
+    "terms": "条款"
   },
   "common": {
     "copy": "复制",
@@ -253,6 +255,7 @@
       "error": "这次核对没有跑起来：{reason}",
       "tooLarge": "这个文件超过 20 MB。换一份小一点的副本。",
       "notAnImage": "这不是图片文件。请拖入 JPEG、PNG 或 WebP。",
+      "empty": "这个文件是空的。请重新选择图片。",
       "rateLimited": "一分钟内核对太多次了。稍等片刻再试。",
       "sampleFailed": "这个样本没有从任何网关取回。请再试一次，或放入你自己的文件。",
       "noMatch": "尚未登记",
@@ -328,6 +331,7 @@
     "problem": {
       "tooLarge": "这个文件超过了 20 MB 的上限。请发一份小一点的副本。",
       "notAnImage": "这个文件读不出图片。请用 JPEG、PNG 或 WebP。",
+      "empty": "这个文件是空的。请重新选择图片。",
       "rateLimited": "从这里发起的核对太多了。等一分钟再试。",
       "badRequest": "验证服务不接受这个请求。",
       "badResponse": "验证服务返回的格式，这个页面看不懂。",
@@ -503,6 +507,7 @@
         "signedOut": "这个会话已经退出登录，服务不会接受这次编辑。",
         "tooLarge": "这个文件超过了 20 MB 的上限。请选一份小一点的副本。",
         "notAnImage": "这不是图片文件。请选 JPEG、PNG 或 WebP。",
+        "empty": "这个文件是空的。请重新选择图片。",
         "rateLimited": "这里的请求暂时太多了。稍等一下再试。",
         "badRequest": "服务拒绝了这个请求。",
         "badResponse": "服务返回的格式，这个应用看不懂。",
@@ -555,6 +560,7 @@
       "failed": "这次核对没有跑起来。",
       "tooLarge": "这个文件超过了 20 MB 的上限。请发一份小一点的副本。",
       "notAnImage": "这不是图片文件。请拖入 JPEG、PNG 或 WebP。",
+      "empty": "这个文件是空的。请重新选择图片。",
       "none": "这份副本与任何护照都不相符。",
       "same": "是。就是同一张图。",
       "sameExact": "是。逐字节一致，就是这个文件。",
@@ -1148,6 +1154,7 @@
       "signedOut": "你的登录已经过期。重新登录后就能上传。",
       "tooLarge": "这个文件超过了 20 MB 的上限。导出一份小一点的再试。",
       "notAnImage": "这个文件不是 JPEG、PNG 或 WebP 图片。请选一个图片文件。",
+      "empty": "这个文件是空的。请重新选择图片。",
       "rateLimited": "这个账户在过去一小时里已经准备了 20 张图片，到上限了。请稍后再试。",
       "pinFailed": "图片没能固定到 IPFS，所以什么都没有登记。稍后再试一次。",
       "badRequest": "验证服务拒收了这次上传。它给出的说法在下面。",
@@ -1281,6 +1288,12 @@
     "explore": "浏览登记处",
     "verify": "验证图片",
     "docs": "阅读文档"
+  },
+  "error": {
+    "code": "500",
+    "title": "出了点问题",
+    "lede": "这个页面现在无法显示。Monad 上的一切都没有受影响：每本护照都还在登记处。再试一次这个页面，或者选一条回去的路。",
+    "retry": "再试一次"
   },
   "retry": {
     "countdown": "{seconds} 秒后重试",

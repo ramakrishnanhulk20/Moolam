@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 import { reason } from "@/lib/chain/client";
 import { REGISTRY_DEPLOYED_AT, consentAt, passportIdFrom, secondsFrom } from "@/lib/chain/consent";
+import { callerAddress, tooMany, withinLimit } from "@/lib/api/limit";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * The scrubber asks about days, so the second a question arrives on is noise.
+ * Rounding every ask down to the minute it falls in means a loop over seconds
+ * asks the same question 60 times and pays the chain for one of them.
+ */
+export const ROUNDED_TO_SECONDS = 60;
+
+export function roundedDown(at: number): number {
+  return at - (at % ROUNDED_TO_SECONDS);
+}
 
 /** How long one answer is reused, here and in whatever shared cache sits in front of this app. */
 const HOLD_SECONDS = 60;
@@ -43,19 +55,32 @@ const held = new Map<string, { at: number; answer: Answer }>();
  * more than a day ahead of now, are refused with 400, so a made up ask never
  * reaches the chain. A failed read is a 503 and carries no endpoint: the app may
  * be reading Monad through an address that is itself an access token.
+ *
+ * One caller gets 60 asks a minute. Past that the answer is a 429 with the wait
+ * on it: this route reads Monad through the server's own endpoint, so an open
+ * loop here is spend rather than load.
  */
 export async function GET(request: Request) {
-  const asked = new URL(request.url).searchParams;
-  const id = passportIdFrom(asked.get("id"));
-  const at = secondsFrom(asked.get("at"));
+  const limit = withinLimit("consent-at", callerAddress(request));
+  if (!limit.ok) {
+    return tooMany(limit.retryAfter);
+  }
+
+  const query = new URL(request.url).searchParams;
+  const id = passportIdFrom(query.get("id"));
+  const asked = secondsFrom(query.get("at"));
   const now = Math.floor(Date.now() / 1000);
 
   if (id === null) {
     return NextResponse.json({ error: "id must be a passport id: 32 bytes of hex" }, { status: 400 });
   }
-  if (at === null || at < REGISTRY_DEPLOYED_AT || at > now + AHEAD_SECONDS) {
+  if (asked === null || asked < REGISTRY_DEPLOYED_AT || asked > now + AHEAD_SECONDS) {
     return NextResponse.json({ error: "at must be a moment since the registry was deployed" }, { status: 400 });
   }
+
+  // Rounded after the window is checked, so a question from the first minute of
+  // the registry's life is still a question rather than a refusal.
+  const at = Math.max(REGISTRY_DEPLOYED_AT, roundedDown(asked));
 
   const key = `${id}:${at}`;
   const remembered = held.get(key);

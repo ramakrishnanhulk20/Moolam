@@ -162,6 +162,7 @@ export function isEditDone(state: EditState): boolean {
 const UPLOAD_KEYS: Record<RefusalCode, string> = {
   "too-large": "tooLarge",
   "not-an-image": "notAnImage",
+  empty: "empty",
 };
 
 /**

@@ -10,7 +10,7 @@ import { fileFromSample } from "@/components/verify/sample";
 import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
-import { checkImage } from "@/lib/upload/checkImage";
+import { checkImage, type RefusalCode } from "@/lib/upload/checkImage";
 import type { TrySample } from "@/lib/data/samples";
 import { VerifierError, verify, type VerifierCode, type VerifyResponse } from "@/lib/verifier/client";
 
@@ -339,17 +339,26 @@ const REFUSALS: Partial<Record<VerifierCode, string>> = {
 };
 
 /**
+ * The same sentences for a file this browser refuses before sending it.
+ *
+ * It is a table of its own rather than a lookup in the one above, and it names
+ * every code the shared check can raise: when a new refusal appears, the
+ * compiler asks for its sentence here instead of a reader getting a blank one.
+ */
+const LOCAL_REFUSALS: Record<RefusalCode, string> = {
+  "too-large": "tooLarge",
+  "not-an-image": "notAnImage",
+  empty: "empty",
+};
+
+/**
  * The line for a file this browser refuses on its own, or null when the file is
  * worth sending. It answers with the same message keys a refusal from the
  * service uses, so one problem reads as one sentence however it was caught.
  */
 export function localRefusal(file: File): string | null {
   const refusal = checkImage(file);
-  if (refusal === null) {
-    return null;
-  }
-  // Both codes the shared check can raise are named in the table above.
-  return REFUSALS[refusal.code] ?? "error";
+  return refusal === null ? null : LOCAL_REFUSALS[refusal.code];
 }
 
 /** What went wrong, in a sentence rather than a status code. */

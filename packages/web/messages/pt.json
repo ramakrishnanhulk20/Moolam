@@ -59,7 +59,9 @@
       "gap": "indexado até o bloco {block, number}, {blocks, number} blocos atrás da rede",
       "inStep": "indexado até o bloco {block, number}, no passo da rede"
     },
-    "source": "Código"
+    "source": "Código",
+    "privacy": "Privacidade",
+    "terms": "Termos"
   },
   "common": {
     "copy": "Copiar",
@@ -252,6 +254,7 @@
       "error": "A conferência não rodou: {reason}",
       "tooLarge": "Esse arquivo passa de 20 MB. Tente uma cópia menor.",
       "notAnImage": "Isso não é um arquivo de imagem. Solte um JPEG, PNG ou WebP.",
+      "empty": "Esse arquivo está vazio. Escolha a imagem de novo.",
       "rateLimited": "Conferências demais em um minuto. Espere um instante e tente de novo.",
       "sampleFailed": "Essa amostra não voltou de nenhum gateway. Tente de novo ou solte o seu próprio arquivo.",
       "noMatch": "Não registrada",
@@ -327,6 +330,7 @@
     "problem": {
       "tooLarge": "Esse arquivo passa do limite de 20 MB. Mande uma cópia menor.",
       "notAnImage": "Esse arquivo não pôde ser lido como imagem. JPEG, PNG ou WebP.",
+      "empty": "Esse arquivo está vazio. Escolha a imagem de novo.",
       "rateLimited": "Conferências demais daqui. Espere um minuto e tente de novo.",
       "badRequest": "O verificador não aceitou essa requisição.",
       "badResponse": "O verificador respondeu num formato que esta página não conhece.",
@@ -502,6 +506,7 @@
         "signedOut": "Esta sessão está desconectada, então o serviço não aceitou a edição.",
         "tooLarge": "Esse arquivo passa do limite de 20 MB. Escolha uma cópia menor.",
         "notAnImage": "Isso não é um arquivo de imagem. Escolha um JPEG, PNG ou WebP.",
+        "empty": "Esse arquivo está vazio. Escolha a imagem de novo.",
         "rateLimited": "Por ora são pedidos demais vindos daqui. Espere um momento e tente de novo.",
         "badRequest": "O serviço recusou o pedido.",
         "badResponse": "O serviço respondeu num formato que este app não conhece.",
@@ -554,6 +559,7 @@
       "failed": "A conferência não rodou.",
       "tooLarge": "Esse arquivo passa do limite de 20 MB. Mande uma cópia menor.",
       "notAnImage": "Isso não é um arquivo de imagem. Solte um JPEG, PNG ou WebP.",
+      "empty": "Esse arquivo está vazio. Escolha a imagem de novo.",
       "none": "Esta cópia não bate com passaporte nenhum.",
       "same": "Sim. É a mesma imagem.",
       "sameExact": "Sim. Byte a byte, é este arquivo.",
@@ -1147,6 +1153,7 @@
       "signedOut": "Sua sessão expirou. Entre de novo e o envio vai funcionar.",
       "tooLarge": "Esse arquivo passa do limite de 20 MB. Exporte menor e tente de novo.",
       "notAnImage": "Esse arquivo não é uma imagem JPEG, PNG ou WebP. Escolha um arquivo de imagem.",
+      "empty": "Esse arquivo está vazio. Escolha a imagem de novo.",
       "rateLimited": "Esta conta preparou 20 imagens na última hora, que é o limite. Tente mais tarde.",
       "pinFailed": "A imagem não pôde ser fixada no IPFS, então nada foi registrado. Tente de novo daqui a pouco.",
       "badRequest": "O serviço de verificação recusou este envio. O que ele disse está abaixo.",
@@ -1280,6 +1287,12 @@
     "explore": "Explorar o registro",
     "verify": "Verificar uma imagem",
     "docs": "Ler a documentação"
+  },
+  "error": {
+    "code": "500",
+    "title": "Algo quebrou",
+    "lede": "Esta página não pôde ser mostrada agora. Nada na Monad foi afetado: cada passaporte continua no registro. Tente a página de novo, ou siga um dos caminhos de volta.",
+    "retry": "Tentar de novo"
   },
   "retry": {
     "countdown": "Nova tentativa em {seconds, plural, =1 {# segundo} other {# segundos}}",

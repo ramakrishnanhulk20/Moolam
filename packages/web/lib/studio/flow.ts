@@ -319,6 +319,7 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
 const UPLOAD_KEYS: Record<RefusalCode, string> = {
   "too-large": "tooLarge",
   "not-an-image": "notAnImage",
+  empty: "empty",
 };
 
 /**

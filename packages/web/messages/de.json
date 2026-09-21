@@ -58,7 +58,9 @@
       "gap": "bis Block {block, number} indexiert, {blocks, number} Blöcke hinter der Kette",
       "inStep": "bis Block {block, number} indexiert, im Gleichschritt mit der Kette"
     },
-    "source": "Quellcode"
+    "source": "Quellcode",
+    "privacy": "Datenschutz",
+    "terms": "Nutzungsbedingungen"
   },
   "common": {
     "copy": "Kopieren",
@@ -251,6 +253,7 @@
       "error": "Die Prüfung lief nicht: {reason}",
       "tooLarge": "Diese Datei ist über 20 MB. Probier eine kleinere Kopie.",
       "notAnImage": "Das ist keine Bilddatei. Zieh ein JPEG, PNG oder WebP her.",
+      "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
       "rateLimited": "Zu viele Prüfungen in einer Minute. Warte kurz und versuch es noch einmal.",
       "sampleFailed": "Dieses Beispiel kam von keinem Gateway zurück. Versuch es noch einmal oder zieh deine eigene Datei her.",
       "noMatch": "Nicht eingetragen",
@@ -326,6 +329,7 @@
     "problem": {
       "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Schick eine kleinere Kopie.",
       "notAnImage": "Diese Datei ließ sich nicht als Bild lesen. JPEG, PNG oder WebP.",
+      "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
       "rateLimited": "Zu viele Prüfungen von hier. Warte eine Minute und versuch es noch einmal.",
       "badRequest": "Der Prüfdienst hat diese Anfrage nicht angenommen.",
       "badResponse": "Der Prüfdienst hat in einer Form geantwortet, die diese Seite nicht kennt.",
@@ -501,6 +505,7 @@
         "signedOut": "Diese Sitzung ist abgemeldet, deshalb hat der Dienst die Bearbeitung nicht angenommen.",
         "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Wähle eine kleinere Kopie.",
         "notAnImage": "Das ist keine Bilddatei. Wähle ein JPEG, PNG oder WebP.",
+        "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
         "rateLimited": "Zurzeit kommen zu viele Anfragen von hier. Warte einen Moment und versuch es noch einmal.",
         "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
         "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
@@ -553,6 +558,7 @@
       "failed": "Die Prüfung lief nicht.",
       "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Schick eine kleinere Kopie.",
       "notAnImage": "Das ist keine Bilddatei. Zieh ein JPEG, PNG oder WebP her.",
+      "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
       "none": "Diese Kopie passt zu gar keinem Pass.",
       "same": "Ja. Das ist dasselbe Bild.",
       "sameExact": "Ja. Byte für Byte ist das die Datei.",
@@ -1146,6 +1152,7 @@
       "signedOut": "Deine Sitzung ist abgelaufen. Melde dich neu an, dann klappt der Upload.",
       "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Exportier sie kleiner und versuch es noch einmal.",
       "notAnImage": "Diese Datei ist kein JPEG, PNG oder WebP. Wähl eine Bilddatei.",
+      "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
       "rateLimited": "Dieses Konto hat in der letzten Stunde 20 Bilder vorbereitet, das ist die Grenze. Versuch es später.",
       "pinFailed": "Das Bild ließ sich nicht an IPFS heften, deshalb wurde nichts eingetragen. Versuch es gleich noch einmal.",
       "badRequest": "Der Prüfdienst hat diesen Upload abgelehnt. Was er gesagt hat, steht unten.",
@@ -1279,6 +1286,12 @@
     "explore": "Register entdecken",
     "verify": "Bild prüfen",
     "docs": "Dokumentation lesen"
+  },
+  "error": {
+    "code": "500",
+    "title": "Etwas ist kaputtgegangen",
+    "lede": "Diese Seite konnte gerade nicht angezeigt werden. Auf Monad ist nichts betroffen: jeder Pass liegt weiterhin im Register. Versuchen Sie die Seite erneut, oder nehmen Sie einen der Wege zurück.",
+    "retry": "Erneut versuchen"
   },
   "retry": {
     "countdown": "Neuer Versuch in {seconds, plural, =1 {# Sekunde} other {# Sekunden}}",

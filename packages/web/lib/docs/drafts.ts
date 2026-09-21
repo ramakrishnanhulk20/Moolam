@@ -1,0 +1,36 @@
+const LAB_PAGES = `NEXT_PUBLIC_${"LAB_PAGES"}`;
+
+/**
+ * The env read, with the name handed in rather than written at the point of
+ * use.
+ *
+ * Next replaces every NEXT_PUBLIC_ name it can see with the value the build
+ * ran with, and it folds what follows: written plainly, and even written as a
+ * template string, this check compiled down to `return false` in the build of
+ * 21 September 2026. Passing the name as an argument is the one shape the
+ * replacement has nothing to match on, so the value is read when the request
+ * is served. Either way the answer is the same on the machines that matter:
+ * the flag is on here and off on the deployed site, at build and at runtime.
+ */
+function valueOf(name: string): string | undefined {
+  return process.env[name];
+}
+
+/**
+ * Whether this is a machine where work in progress may be seen: Ram's own dev
+ * server, where NEXT_PUBLIC_LAB_PAGES is 1. It is false everywhere else,
+ * including the deployed site, and false in the browser, where process.env
+ * carries nothing this was not compiled with.
+ */
+export function labPagesOn(): boolean {
+  return valueOf(LAB_PAGES) === "1";
+}
+
+/**
+ * A page written but not released. It is reachable, listed, searchable and in
+ * the sitemap only where labPagesOn() is true. Taking the flag out of
+ * docs/nav.json is the whole release.
+ */
+export function draftsVisible(): boolean {
+  return labPagesOn();
+}

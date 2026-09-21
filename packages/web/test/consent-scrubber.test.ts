@@ -43,12 +43,21 @@ const CLOSED = {
   dataMining: "notAllowed",
 };
 
-/** A moment inside the window the route accepts, kept apart per test so the hold is not in the way. */
+/**
+ * A moment inside the window the route accepts, kept apart per test so the hold
+ * is not in the way. The route rounds every ask down to its minute, so the step
+ * is two minutes: one test's question must not land in another's minute.
+ */
 let moment = 1_789_717_000;
 
 function nextMoment(): number {
-  moment += 7;
+  moment += 120;
   return moment;
+}
+
+/** The minute an ask falls in, which is what the route reads and answers about. */
+function minuteOf(at: number): number {
+  return at - (at % 60);
 }
 
 function ask(query: string): Request {
@@ -108,11 +117,11 @@ describe("what the scrubber's reader answers", () => {
 
     expect(answer.status).toBe(200);
     expect(await answer.json()).toEqual({
-      asked: at,
+      asked: minuteOf(at),
       stated: true,
       entry: { at: 1_789_717_128, writer: WRITER, consent: CLOSED, constraintInfo: "" },
     });
-    expect(chain.consentAt).toHaveBeenCalledWith(ID, at);
+    expect(chain.consentAt).toHaveBeenCalledWith(ID, minuteOf(at));
   });
 
   it("lets a shared cache hold the answer for a minute", async () => {
@@ -138,7 +147,7 @@ describe("what the scrubber's reader answers", () => {
     chain.consentAt.mockResolvedValue({ stated: false, entry: null });
 
     const answer = await GET(ask(`id=${ID}&at=${at}`));
-    expect(await answer.json()).toEqual({ asked: at, stated: false, entry: null });
+    expect(await answer.json()).toEqual({ asked: minuteOf(at), stated: false, entry: null });
   });
 
   it("answers 503 for a failed read, with no endpoint or address in the body", async () => {

@@ -130,10 +130,11 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
   );
 }
 
-/** The two refusals this panel has its own sentence for, in the passport.check namespace. */
+/** The refusals this panel has its own sentence for, in the passport.check namespace. */
 const REFUSALS: Record<RefusalCode, string> = {
   "too-large": "tooLarge",
   "not-an-image": "notAnImage",
+  empty: "empty",
 };
 
 /**

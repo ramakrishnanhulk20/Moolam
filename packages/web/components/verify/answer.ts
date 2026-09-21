@@ -7,7 +7,7 @@ import {
   type MatchRecheck,
   type VerifyResponse,
 } from "@/lib/verifier/client";
-import { checkImage, MAX_UPLOAD_BYTES } from "@/lib/upload/checkImage";
+import { checkImage, MAX_UPLOAD_BYTES, type RefusalCode } from "@/lib/upload/checkImage";
 
 /** The limit lives in lib/upload with the check; the passport page reads it from here. */
 export { MAX_UPLOAD_BYTES };
@@ -134,6 +134,20 @@ export function verifyProblem(error: unknown): Problem {
 }
 
 /**
+ * The sentences for the refusals this page catches itself.
+ *
+ * The empty file is the one the service cannot say better: it answers 400 in
+ * English after the whole upload, and only this table is in the reader's
+ * language. Naming every code the shared check can raise means the compiler
+ * asks for a sentence when a new one appears.
+ */
+const CHOSEN: Record<RefusalCode, string> = {
+  "too-large": "problem.tooLarge",
+  "not-an-image": "problem.notAnImage",
+  empty: "problem.empty",
+};
+
+/**
  * What is wrong with a file the reader just chose, or null when it is worth
  * uploading. The size and type test is the shared one in lib/upload, so this
  * page refuses exactly what the service would have refused, and says it without
@@ -141,5 +155,5 @@ export function verifyProblem(error: unknown): Problem {
  */
 export function chosenProblem(file: File): Problem | null {
   const refusal = checkImage(file);
-  return refusal === null ? null : { key: PROBLEMS[refusal.code] };
+  return refusal === null ? null : { key: CHOSEN[refusal.code] };
 }
