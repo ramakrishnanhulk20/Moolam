@@ -26,6 +26,7 @@ import { Busy } from "../generate/gate.js";
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
+import { dayLimitRefusal } from "../limits/globalDay.js";
 import { FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
 import { prepareOrFallback, type PreparedResult } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
@@ -91,7 +92,8 @@ interface EditContext {
  *
  * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 409
  * `no-signer` when the owner has granted nothing this app can use, 409 `already-registered` when
- * the child is on chain already, 404 `no-parent`, 403 `not-owner`, 429 `quota` past EDITS_PER_DAY,
+ * the child is on chain already, 404 `no-parent`, 403 `not-owner`, 429 `quota` past EDITS_PER_DAY
+ * and 429 `global-limit` once GLOBAL_EDITS_PER_DAY is spent for everyone,
  * 502 `pin-failed`, `sign-failed`, `send-failed`, `send-pending`, `privy-unavailable` or
  * `chain-unavailable`, and 503 `busy`.
  */
@@ -141,7 +143,8 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
 /**
  * Everything from the owner's wallet to the transaction the chain settled.
  *
- * The checks that cost nothing come first, then the allowance, then the work. Only the decode sits
+ * The checks that cost nothing come first, then the creator's own allowance, then the day's
+ * ceiling for everyone, and only then the work. Only the decode sits
  * behind the shared prepare gate: holding a slot across the pins and the send would park two
  * creators behind one slow network call each.
  */
@@ -248,6 +251,20 @@ async function append(
     return reply.code(429).send({ error: "quota", quota: reservation.state });
   }
   const ticket = reservation.ticket;
+
+  // The day's ceiling for everyone, asked last of the three checks and before a pin or a sponsored
+  // send. A ceiling that is not this creator's fault must not eat their own allowance, so their
+  // slot goes back before the refusal is written.
+  const today = app.globalDay.tryTake("edits");
+  if (!today.ok) {
+    context.quota.release(identity.userId, ticket);
+    request.log.warn(
+      { url: request.url, used: today.use.used, max: today.use.max },
+      "rejected: /edit today's ceiling for everyone is spent",
+    );
+    const refusal = dayLimitRefusal(today.use);
+    return reply.code(429).header("retry-after", String(refusal.retryAfter)).send(refusal.body);
+  }
 
   // Past here the allowance is spent unless it is given back, and the flag says when it must not
   // be: once Privy has been asked to send, the edit may be on chain whatever this answer says.
@@ -454,7 +471,12 @@ async function append(
       quota: context.quota.state(identity.userId),
     });
   } finally {
-    if (!submitted) context.quota.release(identity.userId, ticket);
+    // The day's budget follows the creator's own allowance exactly, so the two are spent or given
+    // back together and /health's count can never drift from what was really sent.
+    if (!submitted) {
+      context.quota.release(identity.userId, ticket);
+      today.giveBack();
+    }
   }
 }
 

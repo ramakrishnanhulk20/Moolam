@@ -58,6 +58,36 @@ describe("parseEnv", () => {
     expect(parseEnv({ MONAD_RPC_FALLBACK_URL: "  " }).MONAD_RPC_FALLBACK_URL).toBe("https://rpc.monad.xyz");
   });
 
+  it("defaults the three ceilings for everyone and takes zero as a closed route", () => {
+    const parsed = parseEnv({});
+    expect(parsed.GLOBAL_PREPARES_PER_DAY).toBe(300);
+    expect(parsed.GLOBAL_GENERATIONS_PER_DAY).toBe(60);
+    expect(parsed.GLOBAL_EDITS_PER_DAY).toBe(150);
+
+    // Zero is the kill switch: a legal value that shuts one route for everyone without a deploy.
+    expect(parseEnv({ GLOBAL_GENERATIONS_PER_DAY: "0" }).GLOBAL_GENERATIONS_PER_DAY).toBe(0);
+    expect(parseEnv({ GLOBAL_EDITS_PER_DAY: "  " }).GLOBAL_EDITS_PER_DAY).toBe(150);
+  });
+
+  it("stops the boot on a ceiling that is not a whole number, without printing what was set", () => {
+    const wrong = "sixty-THAT-MUST-NOT-BE-PRINTED";
+
+    const thrown = (() => {
+      try {
+        parseEnv({ GLOBAL_GENERATIONS_PER_DAY: wrong });
+        return undefined;
+      } catch (error) {
+        return error as Error;
+      }
+    })();
+
+    expect(thrown?.message).toMatch(/GLOBAL_GENERATIONS_PER_DAY/);
+    expect(thrown?.message).not.toContain("THAT-MUST-NOT-BE-PRINTED");
+    expect(() => parseEnv({ GLOBAL_PREPARES_PER_DAY: "-1" })).toThrow(/GLOBAL_PREPARES_PER_DAY/);
+    expect(() => parseEnv({ GLOBAL_PREPARES_PER_DAY: "12.5" })).toThrow(/GLOBAL_PREPARES_PER_DAY/);
+    expect(() => parseEnv({ GLOBAL_EDITS_PER_DAY: "1000000" })).toThrow(/GLOBAL_EDITS_PER_DAY/);
+  });
+
   it("takes the C2PA certificate and key as a pair or not at all", () => {
     expect(() => parseEnv({ MOOLAM_C2PA_CERT_PATH: "certs/chain.pem" })).toThrow(/go together/);
     expect(() => parseEnv({ MOOLAM_C2PA_KEY_PATH: "certs/signer.key.pem" })).toThrow(/go together/);

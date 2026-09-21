@@ -67,6 +67,18 @@ const DEFAULT_EDITS_PER_DAY = "5";
 const DEFAULT_GENERATE_PER_DAY = "3";
 
 /**
+ * What the whole world may spend in a UTC day, per action.
+ *
+ * Every other limit is per Privy user id and accounts are free, so these are the only numbers that
+ * bound what ten throwaway accounts can cost. 300 prepares is about 1,200 Pinata pins and 300
+ * sponsored registers, roughly 11 MON at Monad's 100 gwei floor; 60 generations is about two
+ * dollars of image model spend; 150 edits is about 4.5 MON of sponsored gas and 600 pins.
+ */
+const DEFAULT_GLOBAL_PREPARES_PER_DAY = "300";
+const DEFAULT_GLOBAL_GENERATIONS_PER_DAY = "60";
+const DEFAULT_GLOBAL_EDITS_PER_DAY = "150";
+
+/**
  * How often the passport index is rebuilt from the source. A minute is well inside the time it
  * takes a creator to register an image and then go and verify it, and a rebuild of a few thousand
  * records costs milliseconds.
@@ -259,6 +271,9 @@ const schema = z
         }
         return count;
       }),
+    GLOBAL_PREPARES_PER_DAY: dayCeiling("GLOBAL_PREPARES_PER_DAY", DEFAULT_GLOBAL_PREPARES_PER_DAY),
+    GLOBAL_GENERATIONS_PER_DAY: dayCeiling("GLOBAL_GENERATIONS_PER_DAY", DEFAULT_GLOBAL_GENERATIONS_PER_DAY),
+    GLOBAL_EDITS_PER_DAY: dayCeiling("GLOBAL_EDITS_PER_DAY", DEFAULT_GLOBAL_EDITS_PER_DAY),
     MOOLAM_REGISTRY_ADDRESS: z
       .string()
       .trim()
@@ -360,6 +375,31 @@ const schema = z
       });
     }
   });
+
+/**
+ * A day's ceiling for everyone, where zero closes the action rather than meaning "no limit".
+ *
+ * Zero is the kill switch Ram can flip on Railway without a deploy, so it has to be a legal value
+ * here. The message never repeats what was set: a variable can hold something a log should not.
+ */
+function dayCeiling(name: string, fallback: string): z.ZodType<number> {
+  const MAX = 100_000;
+  return z
+    .string()
+    .trim()
+    .default(fallback)
+    .transform((value, ctx) => {
+      const count = Number(value.length === 0 ? fallback : value);
+      if (!Number.isInteger(count) || count < 0 || count > MAX) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${name} must be a whole number between 0 and ${MAX}, where 0 closes that route for everyone`,
+        });
+        return z.NEVER;
+      }
+      return count;
+    });
+}
 
 /**
  * A whole number of milliseconds, with a default and a floor. The ceiling of a day is there so a
@@ -479,6 +519,9 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     PRIVY_EDIT_POLICY_ID: source.PRIVY_EDIT_POLICY_ID,
     EDITS_PER_DAY: source.EDITS_PER_DAY,
     GENERATE_PER_DAY: source.GENERATE_PER_DAY,
+    GLOBAL_PREPARES_PER_DAY: source.GLOBAL_PREPARES_PER_DAY,
+    GLOBAL_GENERATIONS_PER_DAY: source.GLOBAL_GENERATIONS_PER_DAY,
+    GLOBAL_EDITS_PER_DAY: source.GLOBAL_EDITS_PER_DAY,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CONSENT_ADDRESS: source.CONSENT_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,

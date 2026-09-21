@@ -13,6 +13,7 @@ import { disputeReader, offlineDisputeReader, type DisputeReader } from "./dispu
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute } from "./env.js";
 import { waitingGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
+import { globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
@@ -121,6 +122,8 @@ function missingVariablesFor(route: ExpectedRoute): string[] {
 declare module "fastify" {
   interface FastifyInstance {
     verifier: Verifier;
+    /** What the whole world has spent today on the three routes that cost money. */
+    globalDay: GlobalDay;
   }
 }
 
@@ -210,6 +213,19 @@ export async function buildServer(
     trustProxy: env.TRUST_PROXY === "" ? false : env.TRUST_PROXY,
   });
 
+  // Registered before any route or plugin, because a child context copies the hooks the root had
+  // at the moment it was created: a hook added later would miss every route registered above it.
+  // These four are on every answer, the 404 and the error page included. Fastify advertises no
+  // framework header of its own, so there is none to switch off.
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("x-content-type-options", "nosniff");
+    reply.header("referrer-policy", "no-referrer");
+    reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
+    // The studio calls this service from another origin, so "cross-origin" is the only value here
+    // that cannot break it. "same-origin" would, and it is the value a template would have given.
+    reply.header("cross-origin-resource-policy", "cross-origin");
+  });
+
   const source = options.source ?? sourceFromEnv();
   let current = await loadIndex(source);
   const lookupExact = (sha256: Hex): PassportRecord | undefined => current.byId.get(sha256.toLowerCase() as Hex);
@@ -279,6 +295,16 @@ export async function buildServer(
   if (mounts.generate && registryCheck !== undefined) {
     await registryCheck();
   }
+
+  // One counter per server, not per module, so two servers in one test file never share a budget.
+  app.decorate(
+    "globalDay",
+    globalDay({
+      prepares: env.GLOBAL_PREPARES_PER_DAY,
+      generations: env.GLOBAL_GENERATIONS_PER_DAY,
+      edits: env.GLOBAL_EDITS_PER_DAY,
+    }),
+  );
 
   app.decorate("verifier", {
     get index(): HammingIndex {

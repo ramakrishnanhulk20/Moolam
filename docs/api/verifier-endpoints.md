@@ -375,6 +375,7 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
 | `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
+| `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither |
 | `503` | `busy`. The two-slot decode gate stayed full for thirty seconds. Nothing was pinned, so the call can be made again |
 
@@ -462,6 +463,7 @@ what the passport id is computed from. The browser must send these fields unchan
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. `{ "error": "unauthorized" }` |
 | `403` | `{ "error": "creator-mismatch" }`. The `creator` address is not one of the caller's own Privy wallets, read from their user record rather than taken from the request. A Privy user id this app does not know answers the same way |
 | `429` | Past `GENERATE_PER_DAY` in a rolling 24 hours, counted on the Privy user id. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
+| `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_GENERATIONS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is drawn and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | `model-failed`, `pin-failed` or `sign-failed`: the image model, Pinata or Privy's enclave would not play |
 | `503` | `busy`. Two pictures were already being drawn and no slot came free inside 90 seconds. The allowance is given back |
 
@@ -553,14 +555,57 @@ picture is a change to another one.
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
 | `415` | `not-an-image`, with `reason` when the header parsed and the pixels behind it did not decode |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
+| `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_EDITS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned, nothing is sent, and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused |
 | `502` | `{ "error": "send-pending", "transactionId": "...", "passportId": "0x...", "hash": "0x..." }`, the hash only when Privy reported one. Privy took the transaction and the chain did not show it inside the wait. It may still land, so a caller must check the chain and must never send it again. `passportId` is the child's own id, which is why the check is a read of that one passport rather than a guess at which edit under the parent belongs to this caller |
 | `502` | `privy-unavailable` or `chain-unavailable`: Privy or the Monad RPC did not answer while the parent, the owner and the signer were being checked. That all happens before the allowance is taken, so nothing was sent and nothing was spent |
 | `503` | `busy`. The shared decode gate, which matching, prepares and edits all queue on, stayed full for thirty seconds |
 
 The parent is checked first, because it is the one claim in the request that costs nothing to settle.
-Then the signer, then the ownership, then the allowance, and only then is a pin or a transaction
-spent.
+Then the signer, then the ownership, then the creator's own allowance, then today's budget for
+everyone, and only then is a pin or a transaction spent.
+
+## Today's budget for everyone
+
+Three ceilings bound what the whole world may spend in a UTC day, on the three routes that cost
+money:
+
+| Variable | Default | What it bounds |
+| --- | --- | --- |
+| `GLOBAL_PREPARES_PER_DAY` | 300 | Prepares, so about 1,200 Pinata pins and 300 sponsored registrations |
+| `GLOBAL_GENERATIONS_PER_DAY` | 60 | Pictures the agent draws, so about two dollars of image model spend |
+| `GLOBAL_EDITS_PER_DAY` | 150 | Edits, so about 600 pins and 150 sponsored `appendEdit` calls |
+
+Every other limit on this service is counted per Privy user id, and an account costs nothing to
+make, so these are the only numbers that bound a determined caller with a hundred accounts.
+
+Each ceiling is asked after the caller's token and their own allowance have both passed, and before
+the first thing that costs anything, so a request with no token can never take a slot. Past a
+ceiling the route answers `429` with the same body shape the per-user refusal uses:
+
+```ts
+{
+  error: "global-limit",
+  reason: "Moolam has reached today's limit for this action for everyone. It opens again at midnight UTC.",
+  quota: { used: number, limit: number, resetsAt: number }
+}
+```
+
+`resetsAt` is the unix second of the next midnight UTC, and the `retry-after` header holds how many
+seconds that is from now. `global-limit` is not a code the studio knows, so it reads the 429 as the
+"try later" it already shows, with the sentence above underneath.
+
+Setting a ceiling to `0` closes that route for everyone. That is a kill switch: it can be flipped on
+the host without a deploy, and the route answers the same 429 to every caller until it is raised.
+
+A refused generation or edit hands its slot straight back, in exactly the cases the per-user
+allowance does. A prepare does not, because the 20 an hour in front of it does not either: both
+count the attempt.
+
+What this does not do. The counts live in one process's memory, exactly like the per-user
+allowances, so a redeploy resets them and a second copy of the service would keep its own. They
+bound how many actions a day holds, never what one of them costs. And the real bound on sponsored
+gas is the daily cap on the Privy app, which is a dashboard setting that no code here can enforce.
 
 ## GET /health
 
@@ -569,7 +614,17 @@ curl -s http://localhost:4000/health
 ```
 
 ```ts
-{ ok: boolean, records: number, version: string, routes: string[] }
+{
+  ok: boolean,
+  records: number,
+  version: string,
+  routes: string[],
+  limits: {
+    prepares: { used: number, max: number },
+    generations: { used: number, max: number },
+    edits: { used: number, max: number }
+  }
+}
 ```
 
 `records` is how many passports the index is holding, which is what tells you whether the service
@@ -578,6 +633,10 @@ minute by default, so a passport registered a minute ago verifies without a rede
 the package version. `routes` is what this host actually mounted, which is where a deploy missing a
 key becomes visible from outside: a host without `PINATA_JWT` still boots and still verifies, and
 `prepare` is simply not in the list.
+
+`limits` is how much of [today's budget for everyone](#todays-budget-for-everyone) is gone, so a
+daily check can see a ceiling coming before creators meet it. It counts the whole world and names
+nobody: there is no per-caller data on this route.
 
 This is the one route outside the 60-a-minute limit. A status page, an uptime monitor or a build
 pre-rendering hundreds of pages may probe it as often as it likes and never reads a refusal as an

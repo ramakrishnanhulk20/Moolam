@@ -8,6 +8,7 @@ import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
+import { dayLimitRefusal } from "../limits/globalDay.js";
 import {
   CAPTURED_DESCRIPTION,
   CAPTURE_SOURCE_TYPE,
@@ -98,8 +99,8 @@ const sealedSchema = z.enum(["true", "false"]);
  * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed flag or training
  * statement, 413
  * over the size or pixel limit, 415 when the file is not an image, 409 `already-registered` when
- * the registry already holds this exact picture, 429 past the per-user limit, and 502 when Pinata
- * refuses a pin. The route is not mounted at all on a host that cannot sign a manifest.
+ * the registry already holds this exact picture, 429 past the per-user limit or `global-limit`
+ * once GLOBAL_PREPARES_PER_DAY is spent for everyone, and 502 when Pinata refuses a pin. The route is not mounted at all on a host that cannot sign a manifest.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
@@ -156,6 +157,20 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         const reason = error instanceof Error ? error.message : String(error);
         request.log.warn({ ip: request.ip, url: request.url, reason }, "rejected: /prepare image");
         return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
+      }
+
+      // The day's ceiling for everyone, asked after the token and the hourly limit above have both
+      // let this caller through and before the first thing that costs anything. It is never handed
+      // back, because the hourly limit in front of it is not handed back either: both count the
+      // attempt, and a refusal here is the only way nothing is counted at all.
+      const today = app.globalDay.tryTake("prepares");
+      if (!today.ok) {
+        request.log.warn(
+          { url: request.url, used: today.use.used, max: today.use.max },
+          "rejected: /prepare today's ceiling for everyone is spent",
+        );
+        const refusal = dayLimitRefusal(today.use);
+        return reply.code(429).header("retry-after", String(refusal.retryAfter)).send(refusal.body);
       }
 
       const settings = {

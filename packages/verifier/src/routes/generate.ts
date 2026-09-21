@@ -14,6 +14,7 @@ import { PromptRefused, billedOrUnknown, createImage, type ImageUsage } from "..
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
+import { dayLimitRefusal } from "../limits/globalDay.js";
 import {
   AI_SOURCE_TYPE,
   FINGERPRINT_VERSION,
@@ -124,7 +125,8 @@ type Pinned = Awaited<ReturnType<typeof pinFile>>;
  * 400 `deadline-passed`
  * when too little of the window is left for a person to answer a passkey prompt, 403
  * `creator-mismatch` when the creator is not one of the caller's wallets, 429 `quota` past
- * GENERATE_PER_DAY in a rolling day, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
+ * GENERATE_PER_DAY in a rolling day, 429 `global-limit` once GLOBAL_GENERATIONS_PER_DAY is spent
+ * for everyone, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
  * the three outside services will not play, and 503 `busy` when no drawing slot came free.
  *
  * A picture the provider never drew gives the daily slot back. A call that timed out or died in
@@ -198,6 +200,20 @@ export async function generateRoutes(
     }
     const ticket = reservation.ticket as number;
 
+    // The day's ceiling for everyone, asked last of the three checks and before the model is
+    // called. A ceiling that is not this creator's fault must not eat their own allowance, so
+    // their slot goes back before the refusal is written.
+    const today = app.globalDay.tryTake("generations");
+    if (!today.ok) {
+      quota.release(identity.userId, ticket);
+      request.log.warn(
+        { url: request.url, used: today.use.used, max: today.use.max },
+        "rejected: /generate today's ceiling for everyone is spent",
+      );
+      const refusal = dayLimitRefusal(today.use);
+      return reply.code(429).header("retry-after", String(refusal.retryAfter)).send(refusal.body);
+    }
+
     const sealed = parsed.data.sealed === true;
     let drawn: DrawnImage | SealedDrawnImage;
     try {
@@ -205,19 +221,24 @@ export async function generateRoutes(
     } catch (error) {
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);
+        today.giveBack();
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate busy");
         return reply.code(503).send({ error: "busy" });
       }
       if (error instanceof PromptRefused) {
         quota.release(identity.userId, ticket);
+        today.giveBack();
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate prompt refused");
         return reply.code(400).send({ error: "prompt-refused", reason: error.message });
       }
       // A 4xx is a call the provider turned down before it drew anything, so the slot goes back.
       // A timeout, a dead connection or a 5xx may have drawn and billed, and that one keeps it.
+      // The day's budget follows the creator's own allowance exactly: the two are spent or given
+      // back together, so /health's count can never drift from what was really drawn.
       const billed = billedOrUnknown(error);
       if (!billed) {
         quota.release(identity.userId, ticket);
+        today.giveBack();
       }
       const reason = error instanceof Error ? error.message : String(error);
       request.log.error({ url: request.url, reason, slotKept: billed }, "rejected: /generate model failed");

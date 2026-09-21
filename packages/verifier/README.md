@@ -133,8 +133,10 @@ fails the connection instead of reaching an internal service.
 curl -s -F "file=@packages/verifier/test-assets/original.jpg" http://localhost:4000/verify
 ```
 
-`GET /health` answers `{ ok, records, version }`, where `records` is how many
-passports the index is holding.
+`GET /health` answers `{ ok, records, version, routes, limits }`, where `records`
+is how many passports the index is holding and `limits` is how much of today's
+budget for everyone the three spending routes have used: `{ prepares: { used,
+max }, generations: { ... }, edits: { ... } }`. It names no caller.
 
 `POST /prepare` is the studio's backend. A signed-in creator's browser sends the
 image straight here, with their Privy access token in an `Authorization: Bearer`
@@ -166,7 +168,8 @@ says nothing at all, which is not the same as allowing it.
 
 It answers 401 for a missing, expired or foreign token, 400 for a bad title, kind
 or training statement, 413 over the 20 MB or 40 megapixel limits, 415 for a file
-that is not an image, 429 past 20 prepares an hour for one creator, and 502 with
+that is not an image, 429 past 20 prepares an hour for one creator or
+`global-limit` once `GLOBAL_PREPARES_PER_DAY` is spent for everyone, and 502 with
 `pin-failed` when Pinata refuses. The route is mounted only when the host has both
 `PINATA_JWT` and `PRIVY_APP_ID`; without them the service still verifies images
 and says once at boot that the studio side is off.
@@ -214,7 +217,8 @@ training statement the standard has no room for, 400
 turns the prompt down, 400 `deadline-passed` when drawing and pinning ate so much
 of the window that under two minutes are left to answer a passkey prompt, 403
 `creator-mismatch` when the creator is not one of the caller's own wallets, 429
-`quota` past `GENERATE_PER_DAY` pictures in a rolling 24 hours, 502
+`quota` past `GENERATE_PER_DAY` pictures in a rolling 24 hours, 429
+`global-limit` once `GLOBAL_GENERATIONS_PER_DAY` is spent for everyone, 502
 `model-failed`, `pin-failed` or `sign-failed` for the three outside services, and
 503 `busy` when both drawing slots have been full for 90 seconds. The token is
 checked, the creator is matched and the allowance is taken before a cent is
@@ -253,7 +257,8 @@ allowance. Order of refusals: 401 for a missing, expired or foreign token, 400
 for the fields, 413 and 415 for the image, 404 `no-parent` when the registry
 does not hold that parent, 409 `no-signer` when the creator has granted nothing
 this app can use under the edit policy, 403 `not-owner` when the parent belongs
-to another address, 429 `quota` past `EDITS_PER_DAY` in a rolling 24 hours, 502
+to another address, 429 `quota` past `EDITS_PER_DAY` in a rolling 24 hours, 429
+`global-limit` once `GLOBAL_EDITS_PER_DAY` is spent for everyone, 502
 `pin-failed`, `sign-failed` or `send-failed`, and 503 `busy` when both slots have
 been full for 90 seconds. A `send-failed` carries the registry's own error name
 in `reason`, because the call is run against current state before Privy is asked
@@ -262,6 +267,13 @@ to sign: a refused edit costs nothing and says which rule refused it.
 Browsers are only allowed to call any of this from an origin named in
 `CORS_ORIGINS`. Anything else gets no allow header back, which the browser turns
 into a refusal.
+
+Every answer carries `x-content-type-options: nosniff`, `referrer-policy:
+no-referrer`, `strict-transport-security: max-age=31536000; includeSubDomains`
+and `cross-origin-resource-policy: cross-origin`, the 404 and the error page
+included. That last one is the permissive value on purpose: the studio calls this
+service from another origin, and `same-origin` would break every upload. Nothing
+here advertises the framework.
 
 `POST /verify/paid` is the same answer behind an x402 payment: 5 cents in USDC
 on Monad mainnet, settled by Monad's facilitator, and the same `consent` and
@@ -298,6 +310,28 @@ can pick their own bucket by sending a header. `GET /health` is the one route
 outside the count: a probe that could be refused would read as an outage to the
 status footer and to uptime monitors, and it costs microseconds to answer. Every
 rejection is logged with its reason. Unknown routes answer with JSON, not HTML.
+
+On top of that, three ceilings bound what the whole world may spend in a UTC day:
+`GLOBAL_PREPARES_PER_DAY` (300), `GLOBAL_GENERATIONS_PER_DAY` (60) and
+`GLOBAL_EDITS_PER_DAY` (150). Every other limit here is counted per Privy user id
+and accounts are free, so without these, ten throwaway accounts could cost about
+180 MON of sponsored gas and 19,200 Pinata pins in a day. Each ceiling is checked
+after the caller's token and their own allowance have both passed and before
+anything is spent, so a caller with no token can never take a slot. Past a
+ceiling the route answers 429 with `{ "error": "global-limit", "reason": "...",
+"quota": { used, limit, resetsAt } }` and a `retry-after` header holding the
+seconds until midnight UTC. That is the same body shape as the per-user refusal,
+so the studio shows it without a change. Setting one of the three to 0 closes
+that route for everyone, which is a kill switch to flip on the host without a
+deploy.
+
+What these ceilings honestly do not do. The counts live in one process's memory,
+exactly like the per-user allowances, so a redeploy resets them and a second copy
+of the service would count its own. They bound how many actions a day holds, not
+what one of them costs. The real bound on sponsored gas is the daily cap on the
+Privy app, which is a dashboard setting no code here can enforce. A refused
+generation or edit hands its slot back in the same cases the per-user allowance
+does; a prepare does not, because the 20 an hour in front of it does not either.
 
 ## Registering a picture without publishing it
 
@@ -469,6 +503,9 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `PRIVY_EDIT_SIGNER_ID` | the key quorum the creator grants on their wallet for `/edit`. Its member is the public half of `PRIVY_AUTHORIZATION_KEY`, which is how this service signs as that signer. The id comes from `npm run edit:quorum` in `packages/agents`, which creates that quorum once and writes the id into the root `.env` |
 | `PRIVY_EDIT_POLICY_ID` | the policy that quorum is held to: `appendEdit` on the Moolam registry, no MON, nothing else. A wallet that granted the signer without this policy is refused |
 | `EDITS_PER_DAY` | how many edits one creator may append in 24 hours, default 5 |
+| `GLOBAL_PREPARES_PER_DAY` | how many prepares the whole world may make in a UTC day, default 300. 0 closes the route for everyone |
+| `GLOBAL_GENERATIONS_PER_DAY` | how many pictures the whole world may have drawn in a UTC day, default 60. 0 closes the route for everyone |
+| `GLOBAL_EDITS_PER_DAY` | how many edits the whole world may append in a UTC day, default 150. 0 closes the route for everyone |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.
