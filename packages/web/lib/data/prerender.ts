@@ -51,17 +51,13 @@ export async function knownAgentIds(): Promise<string[]> {
 const EXPLORE_TIMEOUT_MS = 30_000;
 
 /**
- * The view Explore opens on, read while the site is built.
+ * The view Explore opens on, read before the build draws the page.
  *
- * Explore is drawn on the request, because the chips and the search term live
- * in the address, so there is no page here for a build to make. What a build can
- * do is fill the hold behind the view nobody has pressed a chip on: these are
- * the three reads that view makes, and their answers land in the same data cache
- * the running site reads from. Everything stays held for a minute exactly as
- * before, and a hold that has gone stale is handed over as it stands while it
- * refreshes behind the reader. So this decides one thing only: whether the first
- * visitor after a deploy waits for a scan of the index and a gateway read for
- * every row it walks past.
+ * The opening view is a page the build makes, one copy per language, and all ten
+ * of them make these same three reads. Reading them once here, under a bound the
+ * page renders do not have, means the scan of the index happens before the ten
+ * pages rather than inside the first of them, and an index that is slow or down
+ * costs those pages their built copy and never the build itself.
  *
  * True when the view was read and held, false when the build went without it.
  */

@@ -18,9 +18,10 @@ export function siteUrl(): string {
 }
 
 /**
- * Everything is open to crawlers except the two routes that are not pages: the
- * hidden bench, which is a duplicate of the home page, and the search endpoint,
- * which answers JSON.
+ * Everything is open to crawlers except the routes that are not pages of their
+ * own: the hidden bench, which is a duplicate of the home page, the search
+ * endpoint, which answers JSON, and the inner route a narrowed Explore address
+ * is handed to, which a reader only ever sees as /explore.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -28,7 +29,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/lab", "/*/lab", "/docs-search"],
+        disallow: ["/lab", "/*/lab", "/docs-search", "/*/explore/view"],
       },
     ],
     sitemap: `${siteUrl()}/sitemap.xml`,

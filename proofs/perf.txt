@@ -687,3 +687,100 @@ change: the first row drawn without the page's script and its pictures fetched
 first. The cure for the first visitor is to make the opening view a built page like
 the passport and agent pages, with the chips and the search left to the request,
 which is the next order for this route.
+
+
+EXPLORE AS A BUILT PAGE, LOCAL NUMBERS
+--------------------------------------------------------------------------
+Measured 2026-09-21 on this machine against a production build of packages/web
+(NEXT_DIST_DIR=.next-verify) served by `next start` on port 3399. These are local
+production-build numbers. What the first visitor to the live site waits is
+measured by Fable after the deploy, because the last change to this route was
+worth 3.3 seconds locally and nothing at all on Vercel.
+
+WHAT CHANGED
+
+The view a bare /explore opens on is now a page the build makes, ten of them, one
+per language, and the host keeps each one and refreshes it behind whoever asks.
+The chips and the search term still live in the address, and an address that
+carries any of the three keys the page reads is drawn on the request by a sibling
+route, /<locale>/explore/view. One rule in proxy.ts sends it there, as a rewrite,
+so the reader's address bar still says /explore and every link written before the
+route split in two still works. Both routes draw the same component.
+
+THE BUILD
+
+  /[locale]/explore          ten paths, prerendered   /en /ta /hi and 7 more
+  /[locale]/explore/view     server-rendered on demand
+  Proxy (Middleware)         one rule, matcher /:locale/explore
+
+Revalidate on the stored page is 30 seconds, not the 60 the route asks for. The
+footer's status line is held for 30 in the layout every page shares, and Next
+takes the shortest hold in the tree. /en, the passport pages and the agent pages
+all read 30 for the same reason, so Explore now sits exactly where they do.
+
+THE FIRST REQUEST ON A FRESHLY STARTED SERVER
+
+  /en/explore                 first request  0.012 s   STALE, from the store
+  /en/explore                 again          0.007 s   HIT
+  /en/explore?utm_source=..   0.005 s   STALE, the built page: unknown keys do
+                                        not narrow
+  /en/explore?view=cards      0.024 s   drawn on the request
+  /en/explore?view=test       1.424 s   drawn on the request, nothing held yet
+  /en/explore?q=0xf0          0.519 s   drawn on the request
+  /en/explore?agent=10248     0.540 s   drawn on the request
+  /ta/explore                 0.006 s   the built page, in Tamil
+
+Before this order the same first request was 3.94 s on a freshly started local
+server with nothing held, and 4.08 s on Vercel. The first sheet is in the HTML:
+the served page names fifteen pictures by title, "Ant and Elephants" and
+"Dhanushkodi Ghost Town Church Under Storm Sky" first, with four plates drawn
+without a motion component and two pictures named in the head.
+
+WHAT STILL WORKS FROM THE BROWSER
+
+Headless Chrome against the same server. Load more on the all view took the sheet
+from 24 plates to 37. The Test images chip navigated without a document reload,
+the address bar read /en/explore?view=test, the chip lit, and the first plate was
+a prove-it card. The search box put /en/explore?view=pictures&q=0xf0 in the
+address and drew one plate. The load-more action posted to the bare /en/explore
+address, the one the build made, answered 24 rows and a cursor in 0.021 s.
+
+Layout shift, scripts/perf/layout-shift.mjs, two runs at each size:
+
+  1440x900   CLS 0.00000   no shift at all
+  375x667    CLS 0.00000   no shift at all
+
+A FAILED READ IS NEVER KEPT IN A BUILT PAGE
+
+Two builds prove it, because a page that is stored for a minute must never be
+stored with an error in it.
+
+A whole build with the index address pointed at nothing (127.0.0.1:9): the build
+finished, and /[locale]/explore came out server-rendered on demand with no page
+stored for it at all. The live build next to it stored ten. So an index that is
+down at build time costs the ten pages their built copy and never the build.
+
+A build against a forwarder that was taken away afterwards: the page was stored
+while the index answered, then the index started refusing. Nine requests over a
+minute, across two stale windows, every one of them answered the same fifteen
+pictures in 5 to 29 ms. The server log shows the refreshes failing behind them,
+"moolam-explore-sheet ... Error: the Envio endpoint answered 502", and the stored
+page was never replaced by the error.
+
+An address that is drawn on the request still says what went wrong in words,
+because nothing it draws is kept.
+
+A PASSPORT PAGE THE BUILD DID NOT MAKE, LOCALLY
+
+Asked for by the order, changed by nothing in it. A seed card the build makes no
+page for, three requests to the same production server:
+
+  first   1.094 s   x-nextjs-cache MISS
+  second  0.009 s   HIT
+  third   0.005 s   HIT
+
+So the page is stored on this machine, and nothing in the page or its reads stops
+it being stored. The second MISS seen on the live site on 2026-09-18 is the host,
+not the page. Worth reading the x-vercel-id of the two requests there before
+anything in the page is touched: two requests answered by different regions each
+fill their own store.

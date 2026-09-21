@@ -14,6 +14,7 @@ const READING = [
   "@/app/[locale]/layout.tsx",
   "@/app/[locale]/page.tsx",
   "@/app/[locale]/explore/page.tsx",
+  "@/app/[locale]/explore/view/page.tsx",
   "@/app/[locale]/agents/page.tsx",
   "@/app/[locale]/agent/[id]/page.tsx",
   "@/app/[locale]/verify/page.tsx",

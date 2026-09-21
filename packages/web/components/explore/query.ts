@@ -33,6 +33,21 @@ export interface ExploreSearch {
  */
 export const DEFAULT_SEARCH: ExploreSearch = { view: DEFAULT_VIEW, search: "", agent: null };
 
+/**
+ * The query keys this page reads.
+ *
+ * An address carrying any of them is asking for something other than the sheet
+ * the build made, so it is drawn on the request. readExploreSearch and the rule
+ * in proxy.ts both read this list, so a key can never narrow the page without
+ * being sent to the route that can draw it.
+ */
+export const EXPLORE_KEYS = ["view", "q", "agent"] as const;
+
+/** Whether an address asks for anything other than the view the build made. */
+export function narrowsExplore(params: URLSearchParams): boolean {
+  return EXPLORE_KEYS.some((key) => params.has(key));
+}
+
 function one(value: string | string[] | undefined): string {
   return (Array.isArray(value) ? (value[0] ?? "") : (value ?? "")).trim();
 }
