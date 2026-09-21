@@ -12,11 +12,13 @@ import {
   CAPTURED_DESCRIPTION,
   CAPTURE_SOURCE_TYPE,
   FINGERPRINT_VERSION,
+  SEALED_CAPTURED_DESCRIPTION,
   fileSlug,
   passportMetadata,
 } from "../metadata.js";
-import { prepareOrFallback } from "../prepare.js";
+import { prepareOrFallback, prepareSealed, type PreparedResult, type SealedResult } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
+import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile } from "../sealed.js";
 import { BadRequest, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
@@ -25,9 +27,11 @@ const CLAIM_GENERATOR = "moolam-studio/0.1.0";
 /**
  * How many images one signed-in creator may prepare an hour.
  *
- * Every prepare spends four pins on Ram's Pinata account and about a second of CPU, so the cap is
- * what stops one account draining the plan. It is counted on the verified Privy user id, which a
- * caller cannot choose, and falls back to the socket address for a caller with no valid token.
+ * Every prepare spends about a second of CPU and up to four pins on Ram's Pinata account, one of
+ * them for a sealed registration, so the cap is what stops one account draining the plan. It is
+ * counted on the verified Privy user id, which a caller cannot choose, and falls back to the
+ * socket address for a caller with no valid token. A sealed registration is counted the same as
+ * a public one: it is the same work and the same picture.
  */
 const PREPARES_PER_HOUR = 20;
 
@@ -53,7 +57,17 @@ interface Upload {
   bytes: Buffer;
   title: string;
   training?: TrainingConsent;
+  /** True when the creator is registering the picture without publishing it. */
+  sealed: boolean;
 }
+
+/**
+ * The only two words the sealed field may say.
+ *
+ * Anything else is refused rather than read as false. A typo that quietly meant "no" would
+ * publish a picture the creator asked us to keep, and no later screen could take that back.
+ */
+const sealedSchema = z.enum(["true", "false"]);
 
 /**
  * POST /prepare: everything a signed-in creator needs before they sign a passport.
@@ -74,7 +88,15 @@ interface Upload {
  * statement goes into the signed manifest and into the pinned metadata, so it travels with the
  * file and sits under the passkey signature rather than in a database of ours.
  *
- * Answers 401 for a missing or foreign token, 400 for a bad title, kind or training statement, 413
+ * With `sealed=true` the picture is registered without being published. Everything up to and
+ * including the signing is the same, and then nothing of the picture is pinned or written down:
+ * one small metadata document goes to IPFS, and the signed file itself comes back in the answer,
+ * base64, as the only copy there will be. The passport id is the sha256 of that file, so the
+ * chain still commits to the exact bytes. The answer is `no-store` and the creator's browser is
+ * the only thing that ends up holding the picture.
+ *
+ * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed flag or training
+ * statement, 413
  * over the size or pixel limit, 415 when the file is not an image, 409 `already-registered` when
  * the registry already holds this exact picture, 429 past the per-user limit, and 502 when Pinata
  * refuses a pin. The route is not mounted at all on a host that cannot sign a manifest.
@@ -111,15 +133,21 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         return reply.code(401).send({ error: "unauthorized" });
       }
 
+      // The fields live here rather than inside the reader so that a request which says it is
+      // sealed is known to be sealed even when reading it fails, and every answer from that
+      // point on, refusal included, can be marked uncacheable.
+      const fields = new Map<string, string>();
       let upload: Upload;
       try {
-        upload = await readStudioUpload(request);
+        upload = await readStudioUpload(request, fields);
       } catch (error) {
+        noStoreWhenSealed(reply, fields);
         const status = statusOf(error);
         const reason = error instanceof Error ? error.message : String(error);
         request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /prepare");
         return reply.code(status).send({ error: reason });
       }
+      noStoreWhenSealed(reply, fields);
 
       try {
         await readImageHeader(upload.bytes);
@@ -130,17 +158,25 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
       }
 
-      let studio;
+      const settings = {
+        title: upload.title,
+        claimGenerator: CLAIM_GENERATOR,
+        action: "c2pa.created" as const,
+        digitalSourceType: CAPTURE_SOURCE_TYPE,
+        training: upload.training,
+      };
+
+      let studio: SealedResult;
+      // Filled only for a public registration, because only a public registration pins a
+      // thumbnail and a manifest document. Its absence is what marks the sealed path below.
+      let published: PreparedResult | undefined;
       try {
-        studio = await app.verifier.runPrepare(() =>
-          prepareOrFallback(upload.bytes, {
-            title: upload.title,
-            claimGenerator: CLAIM_GENERATOR,
-            action: "c2pa.created",
-            digitalSourceType: CAPTURE_SOURCE_TYPE,
-            training: upload.training,
-          }),
-        );
+        if (upload.sealed) {
+          studio = await app.verifier.runPrepare(() => prepareSealed(upload.bytes, settings));
+        } else {
+          published = await app.verifier.runPrepare(() => prepareOrFallback(upload.bytes, settings));
+          studio = published;
+        }
       } catch (error) {
         const reason = error instanceof Error ? error.message : String(error);
         if (error instanceof Busy) {
@@ -167,11 +203,66 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
       }
 
       const slug = fileSlug(upload.title, studio.print.sha256);
+      const passport = (metadataURI: string): Record<string, unknown> => ({
+        exactHash: studio.print.sha256,
+        parentId: ZERO_BYTES32,
+        generatorAgentId: NO_AGENT.toString(),
+        phash: studio.print.phash.toString(),
+        blockhash256: studio.print.blockhash,
+        manifestHash: studio.manifestHash,
+        kind: HUMAN_KIND,
+        fingerprintVersion: FINGERPRINT_VERSION,
+        metadataURI,
+      });
+
+      if (published === undefined) {
+        let document;
+        try {
+          document = sealedMetadata({
+            title: upload.title,
+            description: SEALED_CAPTURED_DESCRIPTION,
+            passportId,
+            fingerprint: studio.print,
+            training: upload.training,
+          });
+        } catch (error) {
+          // The words that say which field did not fit are this service's own fault to fix, and
+          // they stay here. The caller gets the fixed sentence and the knowledge that nothing
+          // was pinned.
+          const reason = error instanceof Error ? error.message : String(error);
+          request.log.error({ url: request.url, reason }, "rejected: /prepare sealed record refused");
+          return reply.code(500).send(SEALED_METADATA_REFUSED);
+        }
+
+        let pinnedMetadata;
+        try {
+          pinnedMetadata = await pinJson(document, `${slug}.json`);
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
+          return reply.code(502).send({ error: "pin-failed" });
+        }
+
+        // The only copy of this file leaves in this answer, so it must not sit in a cache on the
+        // way. The base64 is never logged: nothing below writes a log line carrying it. The
+        // manifest is reported in the same words as on the public path, because a creator whose
+        // file the signer would not take has to hear it now: this is the only copy they get.
+        return reply.header("cache-control", "no-store").send({
+          passport: passport(pinnedMetadata.uri),
+          metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
+          manifest: studio.embedded ? { embedded: true } : { embedded: false, reason: studio.reason },
+          training: trainingStatement(upload.training),
+          preparedBy: identity.userId,
+          sealed: true,
+          signedFile: signedFile(studio.bytes, `${slug}.jpg`, passportId),
+        });
+      }
+
       try {
-        const image = await pinFile(studio.bytes, `${slug}.jpg`, "image/jpeg");
-        const thumbnail = await pinFile(studio.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
+        const image = await pinFile(published.bytes, `${slug}.jpg`, "image/jpeg");
+        const thumbnail = await pinFile(published.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
         const manifest =
-          studio.manifestDoc === undefined ? undefined : await pinJson(studio.manifestDoc, `${slug}-c2pa.json`);
+          published.manifestDoc === undefined ? undefined : await pinJson(published.manifestDoc, `${slug}-c2pa.json`);
 
         const metadata = passportMetadata({
           title: upload.title,
@@ -180,34 +271,24 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           thumbnail: thumbnail.uri,
           manifest: manifest?.uri,
           agentId: NO_AGENT,
-          fingerprint: studio.print,
+          fingerprint: published.print,
           training: upload.training,
         });
         const pinnedMetadata = await pinJson(metadata, `${slug}.json`);
 
         return reply.send({
-          passport: {
-            exactHash: studio.print.sha256,
-            parentId: ZERO_BYTES32,
-            generatorAgentId: NO_AGENT.toString(),
-            phash: studio.print.phash.toString(),
-            blockhash256: studio.print.blockhash,
-            manifestHash: studio.manifestHash,
-            kind: HUMAN_KIND,
-            fingerprintVersion: FINGERPRINT_VERSION,
-            metadataURI: pinnedMetadata.uri,
-          },
+          passport: passport(pinnedMetadata.uri),
           image: {
             cid: image.cid,
             uri: image.uri,
             gatewayUrl: gatewayUrl(image.uri),
-            bytes: studio.bytes.length,
-            width: studio.print.width,
-            height: studio.print.height,
+            bytes: published.bytes.length,
+            width: published.print.width,
+            height: published.print.height,
           },
           thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
           metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-          manifest: studio.embedded ? { embedded: true } : { embedded: false, reason: studio.reason },
+          manifest: published.embedded ? { embedded: true } : { embedded: false, reason: published.reason },
           training: trainingStatement(upload.training),
           preparedBy: identity.userId,
         });
@@ -259,16 +340,18 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
  * Reads the image and the two text fields out of the multipart body, in whatever order the
  * browser sent them.
  *
+ * The text fields go into the caller's map as they arrive, so a request that has already said it
+ * is sealed is still known to be sealed if a later field turns out to be unreadable.
+ *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
  * name, a title outside 1 to 120 characters, or any kind other than "human".
  */
-async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
+async function readStudioUpload(request: FastifyRequest, fields: Map<string, string>): Promise<Upload> {
   if (!request.isMultipart()) {
     throw new BadRequest('send the image in a multipart field named "file"');
   }
 
   let bytes: Buffer | undefined;
-  const fields = new Map<string, string>();
 
   try {
     for await (const part of request.parts({ limits: { fileSize: MAX_UPLOAD_BYTES } })) {
@@ -300,7 +383,44 @@ async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
     throw new BadRequest('the only kind the studio takes today is "human"');
   }
 
-  return { bytes, title: title.data, training: readTraining(fields.get("training")) };
+  return {
+    bytes,
+    title: title.data,
+    training: readTraining(fields.get("training")),
+    sealed: readSealed(fields.get("sealed")),
+  };
+}
+
+/**
+ * Marks the answer uncacheable the moment the request looks sealed, which is before this route
+ * knows whether it is going to refuse it.
+ *
+ * A refusal can repeat a title or a field the caller sent, and nothing on this path is worth
+ * keeping anywhere. Anything but an explicit "false" counts: a request that might have meant
+ * sealed gets the header, because the cost of being wrong that way is nothing.
+ */
+function noStoreWhenSealed(reply: FastifyReply, fields: Map<string, string>): void {
+  if ((fields.get("sealed") ?? "false").trim() !== "false") {
+    void reply.header("cache-control", "no-store");
+  }
+}
+
+/**
+ * Whether the creator is registering this picture without publishing it.
+ *
+ * Left out means no, which keeps every caller written before this field existed on exactly the
+ * behaviour they had. Present and unreadable is refused: the two answers are not symmetric, and
+ * guessing the safe one wrong publishes a file that cannot be unpublished.
+ */
+function readSealed(raw: string | undefined): boolean {
+  if (raw === undefined || raw.trim().length === 0) {
+    return false;
+  }
+  const parsed = sealedSchema.safeParse(raw.trim());
+  if (!parsed.success) {
+    throw new BadRequest('sealed must be "true" or "false"');
+  }
+  return parsed.data === "true";
 }
 
 /**

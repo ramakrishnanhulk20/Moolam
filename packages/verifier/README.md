@@ -299,6 +299,52 @@ outside the count: a probe that could be refused would read as an outage to the
 status footer and to uptime monitors, and it costs microseconds to answer. Every
 rejection is logged with its reason. Unknown routes answer with JSON, not HTML.
 
+## Registering a picture without publishing it
+
+A creator can register a picture and keep it. Send `sealed=true` as a field on
+`/prepare`, or `"sealed": true` in the `/generate` body, and the service does
+everything it normally does up to and including signing the C2PA manifest into
+the file, and then stops. It pins no image, no thumbnail and no manifest
+document, and writes nothing to disk. One small metadata file goes to IPFS, and
+the signed picture comes back inside the answer, base64, under `signedFile`.
+That is the only copy of it there will be.
+
+```sh
+curl -s -X POST http://localhost:4000/prepare \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@photo.jpg" -F "title=Monsoon fishing nets" -F "kind=human" \
+  -F "sealed=true"
+```
+
+The chain still commits to the exact bytes, because the passport id is the
+sha256 of the signed file. `signedFile.sha256` is that hash, and the browser
+checks it against `passport.exactHash` before it opens the passkey prompt: a
+creator who does not hold the file could never unseal the passport.
+
+What becomes public is what the pinned document says and nothing else: the
+title, the two fingerprints, the date, the AI use statement, the generator agent
+for a drawn picture, and the fact that it is sealed. A strict schema builds that
+document and refuses it if it carries an `image`, a `thumbnail`, a `manifest` or
+any key nobody described, so a later convenience cannot quietly add a pin. The
+prompt of a generated picture is left out unless the request says
+`"includePrompt": true`, because a prompt describes the picture in words.
+
+Every answer to a sealed request carries `Cache-Control: no-store`, refusals
+included, and no log line or error body carries the file or its base64. The
+answer also says whether the manifest went into the file, in the same
+`manifest: { embedded }` words the public path uses, because the copy the creator
+receives is the only one they will get. If this service ever builds a record that
+does not fit the sealed shape it answers 500 `sealed-metadata-refused`, pins
+nothing and keeps the detail in its log, rather than publishing a document nobody
+described. At the 20 MB upload limit the answer is about 26.7 MB of JSON, which
+Fastify serialises in roughly 90 ms.
+
+Two things this does not do. It does not hide a generated picture from the model
+provider that drew it, because that provider made the picture. It does not stop
+someone who already holds a copy from publishing it; what it gives you there is
+a hash that makes every copy checkable. Unsealing, which publishes the picture
+later, is a separate route and is not built yet.
+
 ## Which way up
 
 A photo taken sideways stores its pixels rotated and leaves an EXIF tag saying

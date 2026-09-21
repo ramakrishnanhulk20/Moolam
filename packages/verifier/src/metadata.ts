@@ -22,6 +22,19 @@ export const GENERATED_DESCRIPTION =
 export const CAPTURED_DESCRIPTION =
   "A picture registered with Moolam from a file its creator uploaded. The creator signed this fingerprint with a passkey before the registry would write the record.";
 
+/**
+ * What the two sealed documents say instead.
+ *
+ * They are written so that a reader who finds no image here knows why in the first sentence. A
+ * sealed passport is a complete record of a picture that was deliberately not published, and it
+ * must never read as a broken one.
+ */
+export const SEALED_CAPTURED_DESCRIPTION =
+  "A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.";
+
+export const SEALED_GENERATED_DESCRIPTION =
+  "An image made by the Moolam demo generator agent and registered sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.";
+
 export interface PassportMetadata {
   name: string;
   description: string;

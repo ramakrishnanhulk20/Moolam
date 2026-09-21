@@ -70,6 +70,13 @@ export interface PreparedResult {
   detail?: string;
 }
 
+/**
+ * The same result for a sealed registration, without the two things a sealed passport does not
+ * pin. They are missing from the type rather than left unused, so a later convenience cannot pin
+ * a thumbnail of a picture the creator asked us not to publish: there is nothing to pin.
+ */
+export type SealedResult = Omit<PreparedResult, "thumbnail" | "manifestDoc">;
+
 export interface PrepareOptions {
   title: string;
   claimGenerator: string;
@@ -97,6 +104,21 @@ export interface PrepareOptions {
  * signed file carries no readable manifest, or when no thumbnail small enough can be produced.
  */
 export async function prepareImage(source: Buffer, opts: PrepareOptions): Promise<PreparedImage> {
+  const signed = await signImage(source, opts);
+  return { ...signed, thumbnail: await makeThumbnail(signed.original) };
+}
+
+/**
+ * The signing half of prepareImage: the upright JPEG with the manifest in it, its fingerprint and
+ * the hash of the manifest store, and no thumbnail.
+ *
+ * It is separate so a sealed registration can stop here. Everything the chain commits to is in
+ * this result; the thumbnail exists only for the Chainlink verifier to fetch from IPFS, which is
+ * not something a sealed passport has.
+ *
+ * Throws exactly what prepareImage throws, minus the thumbnail's own failure.
+ */
+async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<PreparedImage, "thumbnail">> {
   if (source.length === 0) {
     throw new Error("prepareImage needs a non-empty image buffer.");
   }
@@ -132,7 +154,6 @@ export async function prepareImage(source: Buffer, opts: PrepareOptions): Promis
 
   return {
     original: signed,
-    thumbnail: await makeThumbnail(signed),
     fingerprint: signedPrint,
     manifestHash: manifest.manifestHash,
     manifest,
@@ -169,14 +190,7 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
       embedded: true,
     };
   } catch (error) {
-    if (error instanceof SignerUnavailable) {
-      throw error;
-    }
-    const refused =
-      error instanceof SignerRefusedFile
-        ? error
-        : new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
-
+    const refused = refusalOrThrow(error);
     const upright = await uprightImage(source);
     return {
       bytes: upright,
@@ -188,6 +202,59 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
       detail: refused.message.slice(0, 200),
     };
   }
+}
+
+/**
+ * The same preparation for a picture the creator is registering without publishing it.
+ *
+ * The signing, the fingerprint and the fallback are identical to prepareOrFallback, so a sealed
+ * passport commits to exactly what a public one would. What is missing is the thumbnail and the
+ * readable manifest document: both exist only to be pinned, and a sealed registration pins
+ * neither. Nothing derived from the picture is produced that nobody is going to use.
+ *
+ * One behaviour differs and it differs in the creator's favour: a picture whose thumbnail cannot
+ * be squeezed under the Chainlink fetch budget fails a public prepare and passes a sealed one,
+ * because that budget is about a file a sealed passport never publishes.
+ *
+ * Throws what prepareOrFallback throws: SignerUnavailable when this host can sign nothing at all,
+ * and a training statement this service may not write stops the picture before anything is signed.
+ */
+export async function prepareSealed(source: Buffer, options: PrepareOptions): Promise<SealedResult> {
+  trainingAssertion(options.training);
+
+  try {
+    const signed = await signImage(source, options);
+    return {
+      bytes: signed.original,
+      print: signed.fingerprint,
+      manifestHash: signed.manifestHash,
+      embedded: true,
+    };
+  } catch (error) {
+    const refused = refusalOrThrow(error);
+    const upright = await uprightImage(source);
+    return {
+      bytes: upright,
+      print: await fingerprint(upright),
+      manifestHash: ZERO_BYTES32,
+      embedded: false,
+      reason: NOT_EMBEDDED_REASON,
+      detail: refused.message.slice(0, 200),
+    };
+  }
+}
+
+/**
+ * Turns a failure from the signing path into the refusal a caller may fall back on, or lets it
+ * out when it is the one failure nothing may soften: a host that cannot sign at all.
+ */
+function refusalOrThrow(error: unknown): SignerRefusedFile {
+  if (error instanceof SignerUnavailable) {
+    throw error;
+  }
+  return error instanceof SignerRefusedFile
+    ? error
+    : new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
 }
 
 /**

@@ -18,10 +18,12 @@ import {
   AI_SOURCE_TYPE,
   FINGERPRINT_VERSION,
   GENERATED_DESCRIPTION,
+  SEALED_GENERATED_DESCRIPTION,
   fileSlug,
   passportMetadata,
 } from "../metadata.js";
-import { prepareOrFallback, type PreparedResult } from "../prepare.js";
+import { prepareOrFallback, prepareSealed, type PreparedResult, type SealedResult } from "../prepare.js";
+import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile, type SealedMetadata } from "../sealed.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-agent/0.1.0";
@@ -69,12 +71,25 @@ const bodySchema = z.object({
     z.string().trim().regex(/^[0-9]+$/, "deadline must be a whole number of unix seconds"),
   ]),
   training: trainingSchema.optional(),
+  sealed: z.boolean().optional(),
+  /**
+   * The prompt is the one public field that can describe the picture in words, so a sealed
+   * registration leaves it out unless the creator asks for it back.
+   */
+  includePrompt: z.boolean().optional(),
 });
 
-interface DrawnImage extends PreparedResult {
+interface Drawn {
   model: string;
   usage?: ImageUsage;
 }
+
+interface DrawnImage extends PreparedResult, Drawn {}
+
+interface SealedDrawnImage extends SealedResult, Drawn {}
+
+/** What one pin gives back, so the public branch can carry its pair to the answer. */
+type Pinned = Awaited<ReturnType<typeof pinFile>>;
 
 /**
  * POST /generate: the generator agent draws a picture for a signed-in creator and co-signs its
@@ -96,6 +111,13 @@ interface DrawnImage extends PreparedResult {
  * The creator may say how AI may use the picture in the same request, in an optional `training`
  * field. It is written into the manifest before the agent signs anything and into the pinned
  * metadata whose address both signatures cover.
+ *
+ * With `sealed: true` the picture is registered without being published. The drawing, the
+ * manifest, the fingerprint and the agent's signature are the same; what changes is that nothing
+ * of the picture is pinned or kept, one small metadata document goes to IPFS, and the signed file
+ * comes back in the answer as the only copy there will be. The prompt stays out of that document
+ * unless the creator sends `includePrompt: true`, because it describes the picture in words. The
+ * model provider drew this picture and has seen it, which sealed does not change.
  *
  * Answers 401 for a missing or foreign token, 400 for a bad prompt, title, creator, deadline or
  * training statement, 400 `prompt-refused` when the model's safety system turns the prompt down,
@@ -120,6 +142,13 @@ export async function generateRoutes(
     if (identity === undefined) {
       request.log.warn({ ip: request.ip, url: request.url }, "rejected: /generate unauthorized");
       return reply.code(401).send({ error: "unauthorized" });
+    }
+
+    // Read before the body is trusted, so that a refusal which repeats a field the caller sent
+    // is uncacheable too. Every answer to a sealed request carries this, not only the one that
+    // carries the picture.
+    if ((request.body as { sealed?: unknown } | undefined)?.sealed === true) {
+      void reply.header("cache-control", "no-store");
     }
 
     const parsed = bodySchema.safeParse(request.body);
@@ -169,9 +198,10 @@ export async function generateRoutes(
     }
     const ticket = reservation.ticket as number;
 
-    let drawn: DrawnImage;
+    const sealed = parsed.data.sealed === true;
+    let drawn: DrawnImage | SealedDrawnImage;
     try {
-      drawn = await gate(() => draw(parsed.data.prompt, parsed.data.title, parsed.data.training));
+      drawn = await gate(() => draw(parsed.data.prompt, parsed.data.title, parsed.data.training, sealed));
     } catch (error) {
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);
@@ -212,34 +242,63 @@ export async function generateRoutes(
     }
 
     const slug = fileSlug(parsed.data.title, drawn.print.sha256);
-    let pinnedImage;
-    let thumbnail;
-    let pinnedMetadata;
+    // Only a public registration was given a thumbnail and a manifest document to pin, so the
+    // absence of those is what marks the sealed path in the two branches below.
+    const published = "thumbnail" in drawn ? drawn : undefined;
+    let publicPins: { image: Pinned; thumbnail: Pinned } | undefined;
+    let pinnedMetadata: { cid: string; uri: `ipfs://${string}` };
     try {
-      pinnedImage = await pinFile(drawn.bytes, `${slug}.jpg`, "image/jpeg");
-      thumbnail = await pinFile(drawn.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
-      const manifest =
-        drawn.manifestDoc === undefined ? undefined : await pinJson(drawn.manifestDoc, `${slug}-c2pa.json`);
-
-      pinnedMetadata = await pinJson(
-        {
-          ...passportMetadata({
+      if (published === undefined) {
+        let document: SealedMetadata;
+        try {
+          document = sealedMetadata({
             title: parsed.data.title,
-            description: GENERATED_DESCRIPTION,
-            image: pinnedImage.uri,
-            thumbnail: thumbnail.uri,
-            manifest: manifest?.uri,
-            prompt: parsed.data.prompt,
-            agentId: env.GENERATOR_AGENT_ID,
+            description: SEALED_GENERATED_DESCRIPTION,
+            passportId: drawn.print.sha256,
             fingerprint: drawn.print,
+            agentId: env.GENERATOR_AGENT_ID,
             training: parsed.data.training,
-          }),
-          // Which model drew it is not part of the shared document, and a generated passport is
-          // worth less without it: it is the one field that says what made these pixels.
-          model: drawn.model,
-        },
-        `${slug}.json`,
-      );
+            model: drawn.model,
+            // The prompt is a description of the picture in the creator's own words, so a sealed
+            // passport leaves it out unless the creator asked for it to be public.
+            prompt: parsed.data.includePrompt === true ? parsed.data.prompt : undefined,
+          });
+        } catch (error) {
+          // Which field did not fit is this service's own fault to fix, so it stays in the log.
+          // The picture was drawn, so the daily slot stays spent, and nothing was pinned.
+          const reason = error instanceof Error ? error.message : String(error);
+          request.log.error({ url: request.url, reason }, "rejected: /generate sealed record refused");
+          return reply.code(500).send(SEALED_METADATA_REFUSED);
+        }
+
+        pinnedMetadata = await pinJson(document, `${slug}.json`);
+      } else {
+        const image = await pinFile(published.bytes, `${slug}.jpg`, "image/jpeg");
+        const thumbnail = await pinFile(published.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
+        const manifest =
+          published.manifestDoc === undefined ? undefined : await pinJson(published.manifestDoc, `${slug}-c2pa.json`);
+        publicPins = { image, thumbnail };
+
+        pinnedMetadata = await pinJson(
+          {
+            ...passportMetadata({
+              title: parsed.data.title,
+              description: GENERATED_DESCRIPTION,
+              image: image.uri,
+              thumbnail: thumbnail.uri,
+              manifest: manifest?.uri,
+              prompt: parsed.data.prompt,
+              agentId: env.GENERATOR_AGENT_ID,
+              fingerprint: published.print,
+              training: parsed.data.training,
+            }),
+            // Which model drew it is not part of the shared document, and a generated passport is
+            // worth less without it: it is the one field that says what made these pixels.
+            model: drawn.model,
+          },
+          `${slug}.json`,
+        );
+      }
     } catch (error) {
       // pinFile's message carries Pinata's status and its answer, and never the token.
       const reason = error instanceof Error ? error.message : String(error);
@@ -289,7 +348,7 @@ export async function generateRoutes(
       return reply.code(502).send({ error: "sign-failed" });
     }
 
-    return reply.send({
+    const answer = {
       passport: {
         exactHash: input.exactHash,
         parentId: input.parentId,
@@ -304,22 +363,42 @@ export async function generateRoutes(
         deadline: input.deadline.toString(),
       },
       generatorSig,
-      image: {
-        cid: pinnedImage.cid,
-        uri: pinnedImage.uri,
-        gatewayUrl: gatewayUrl(pinnedImage.uri),
-        bytes: drawn.bytes.length,
-        width: drawn.print.width,
-        height: drawn.print.height,
-      },
-      thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
       metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
+      // Both paths say this, and a sealed answer says it for the same reason a public one does:
+      // the creator has to know whether the file carries its provenance inside it.
       manifest: drawn.embedded ? { embedded: true } : { embedded: false, reason: drawn.reason },
       training: trainingStatement(parsed.data.training),
       model: drawn.model,
       agent: { id: input.generatorAgentId.toString(), wallet: agent.address },
       quota: quota.state(identity.userId),
       preparedBy: identity.userId,
+    };
+
+    if (published === undefined || publicPins === undefined) {
+      // The only copy of this picture leaves in this answer, so it must not sit in a cache on the
+      // way to the browser that asked for it.
+      return reply.header("cache-control", "no-store").send({
+        ...answer,
+        sealed: true,
+        signedFile: signedFile(drawn.bytes, `${slug}.jpg`, input.exactHash),
+      });
+    }
+
+    return reply.send({
+      ...answer,
+      image: {
+        cid: publicPins.image.cid,
+        uri: publicPins.image.uri,
+        gatewayUrl: gatewayUrl(publicPins.image.uri),
+        bytes: published.bytes.length,
+        width: published.print.width,
+        height: published.print.height,
+      },
+      thumbnail: {
+        cid: publicPins.thumbnail.cid,
+        uri: publicPins.thumbnail.uri,
+        gatewayUrl: gatewayUrl(publicPins.thumbnail.uri),
+      },
     });
   });
 }
@@ -333,15 +412,25 @@ export async function generateRoutes(
  * training statement when the creator made one, and a file the C2PA signer will not take still
  * produces a usable passport, it just loses the provenance that travels inside the file.
  */
-async function draw(prompt: string, title: string, training?: TrainingConsent): Promise<DrawnImage> {
+async function draw(
+  prompt: string,
+  title: string,
+  training: TrainingConsent | undefined,
+  sealed: boolean,
+): Promise<DrawnImage | SealedDrawnImage> {
   const image = await createImage(prompt, { timeoutMs: MODEL_TIMEOUT_MS });
-  const prepared = await prepareOrFallback(image.bytes, {
+  const settings = {
     title,
     claimGenerator: CLAIM_GENERATOR,
-    action: "c2pa.created",
+    action: "c2pa.created" as const,
     digitalSourceType: AI_SOURCE_TYPE,
     training,
-  });
+  };
+  if (sealed) {
+    const prepared = await prepareSealed(image.bytes, settings);
+    return { ...prepared, model: image.model, usage: image.usage };
+  }
+  const prepared = await prepareOrFallback(image.bytes, settings);
   return { ...prepared, model: image.model, usage: image.usage };
 }
 
