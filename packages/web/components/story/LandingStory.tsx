@@ -282,6 +282,19 @@ function World({
 const PHONE_BAND = 0.45;
 
 /**
+ * The same, on a phone too short for the words to fit under that.
+ *
+ * At 375x667 the longest chapters ran off the bottom of the screen in Tamil:
+ * the agent card and its three lines put the trusted chapter 163 px past it.
+ * The shot gives up nine per cent of the window there and the type in the band
+ * steps down with it, which is the rule under this one in globals.css.
+ */
+const SHORT_PHONE_BAND = 0.36;
+
+/** Under this many pixels of window height, a phone is a short one. */
+const SHORT_SCREEN = 700;
+
+/**
  * Keeps the shot in the top band of the window on a phone.
  *
  * The canvas fills the whole screen so the scroller built on it does too, which
@@ -481,7 +494,10 @@ function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView | null, 
           <Eyebrow className="sm:justify-end">{t("trusted.kicker")}</Eyebrow>
           <Title className="sm:ms-auto sm:text-end">{t("trusted.title")}</Title>
           {agentId !== null && (
-            <div className="mt-7 w-full max-w-[24rem] border border-line bg-white/[0.03] p-5 text-start backdrop-blur-sm sm:ms-auto">
+            <div
+              data-story-line="card"
+              className="mt-7 w-full max-w-[24rem] border border-line bg-white/[0.03] p-5 text-start backdrop-blur-sm sm:ms-auto"
+            >
               <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
                 {t("trusted.agent", { agent: agentId })}
               </p>
@@ -566,6 +582,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   const [webgl] = useState(canDrawWebGL);
   const filmStill = reduced === true || !webgl;
   const [small, setSmall] = useState(false);
+  const [short, setShort] = useState(false);
   const [dropped, setDropped] = useState<string | null>(null);
   const [start, setStart] = useState(0);
   const [tier, setTier] = useState(0);
@@ -573,17 +590,27 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
+    // The band is the phone framing, which starts where the side columns stop.
+    const narrow = window.matchMedia("(max-width: 639px)");
+    const low = window.matchMedia(`(max-height: ${SHORT_SCREEN - 1}px)`);
     // A screen that crosses the phone breakpoint is a different machine as far
     // as the field is concerned, so the measurement begins again from its tier.
     const read = () => {
       const at = startTier(window.innerWidth);
       setSmall(query.matches);
+      setShort(narrow.matches && low.matches);
       setStart(at);
       setTier(at);
     };
     read();
     query.addEventListener("change", read);
-    return () => query.removeEventListener("change", read);
+    narrow.addEventListener("change", read);
+    low.addEventListener("change", read);
+    return () => {
+      query.removeEventListener("change", read);
+      narrow.removeEventListener("change", read);
+      low.removeEventListener("change", read);
+    };
   }, []);
 
   const level = tierLevel(tier);
@@ -622,6 +649,13 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   // The same list, in the same order, that StoryStage asked the document to
   // start fetching. The field hands its first pictures to the plates that stand
   // largest in the opening frame, so those are the ones already on their way.
+  // The shot's share of the window, for the renderer alone: the whole of it on
+  // anything wider than a phone, less than usual on a phone too short to fit
+  // the words under it. Nothing the page lays out reads this. Both numbers are
+  // in globals.css too, where the seam and the words are placed from them, so
+  // neither moves while the browser works out which screen this is.
+  const band = small ? (short ? SHORT_PHONE_BAND : PHONE_BAND) : 1;
+
   const pictures = useMemo(() => fieldPictures(data.plates), [data.plates]);
 
   // The plates a judge can try are real records off the index, picked by the one
@@ -671,6 +705,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
         className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
         data-story="film"
         data-story-tier={tier}
+        data-story-short={short ? "true" : undefined}
         data-lenis-prevent
         onWheel={forwardWheel}
         onTouchStart={forwardTouchStart}
@@ -697,6 +732,14 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
             camera={{ position: [0.9, 0.35, 7.4], fov: small ? 54 : 40 }}
             dpr={dpr}
             gl={{ antialias: true, powerPreference: "high-performance" }}
+            // The shot is taken out of the screen reader's way rather than given
+            // a name of its own. Every word the film says is already on the page
+            // as text: the nine captions below are the same beats the still page
+            // stacks, and they are in the document whether or not their beat is
+            // the one on screen. The scroller around this canvas already carries
+            // the film's name, so a label here would say the same sentence
+            // twice and then stop at a picture nobody can use.
+            onCreated={({ gl }) => gl.domElement.setAttribute("aria-hidden", "true")}
           >
             {/* The scroller is as tall as the canvas, which on a phone is now
                 the whole screen rather than the shot. Handing the pages that
@@ -719,7 +762,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
                 onTier={onTier}
               />
             </ScrollControls>
-            <Band fraction={small ? PHONE_BAND : 1} />
+            <Band fraction={band} />
             <AdaptiveDpr pixelated />
             <Preload all />
           </Canvas>
@@ -738,18 +781,13 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
           }}
         />
 
-        {/* A phone has no room at the sides, so the shot ends at 45 percent of the
+        {/* A phone has no room at the sides, so the shot ends partway down the
             window and the words have the ground below it. The seam is a fade
-            rather than a cut, and the top strip clears the bar. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 sm:hidden"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(11,11,12,0) 28%, rgba(11,11,12,0.72) 41%, #0B0B0C 46%)," +
-              "linear-gradient(180deg, rgba(11,11,12,0.86) 0%, rgba(11,11,12,0) 18%)",
-          }}
-        />
+            rather than a cut, and the top strip clears the bar. Where the fade
+            sits is written in globals.css beside the band it belongs to, so the
+            seam and the words are placed by the same stylesheet and neither
+            waits for the browser to have measured the window. */}
+        <div aria-hidden className="story-seam pointer-events-none absolute inset-0 z-10 sm:hidden" />
 
         {/* The captions live outside the canvas, so the film scrim over the scene
             still sits behind the words. Each one is on screen for exactly the beat
@@ -962,6 +1000,7 @@ function Opening({ kicker, title, line }: { kicker: string; title: string; line:
 export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <p
+      data-story-line="kicker"
       className={`flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent ${className}`}
     >
       <span className="motif h-[9px] w-[9px]" />
@@ -973,6 +1012,7 @@ export function Eyebrow({ children, className = "" }: { children: ReactNode; cla
 export function Title({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <h2
+      data-story-line="title"
       className={`mt-5 max-w-[17ch] font-display text-[clamp(2rem,5.4vw,4.4rem)] font-semibold leading-[0.98] tracking-[-0.04em] ${className}`}
     >
       {children}
@@ -981,12 +1021,19 @@ export function Title({ children, className = "" }: { children: ReactNode; class
 }
 
 export function Body({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <p className={`mt-4 max-w-[38ch] text-base leading-relaxed text-text-muted ${className}`}>{children}</p>;
+  return (
+    <p data-story-line="body" className={`mt-4 max-w-[38ch] text-base leading-relaxed text-text-muted ${className}`}>
+      {children}
+    </p>
+  );
 }
 
 export function Readout({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <p className={`mt-5 max-w-[46ch] font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint ${className}`}>
+    <p
+      data-story-line="readout"
+      className={`mt-5 max-w-[46ch] font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint ${className}`}
+    >
       {children}
     </p>
   );

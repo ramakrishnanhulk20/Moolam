@@ -14,10 +14,18 @@ import { isOptimizable, nextSource } from "@/lib/images";
  * the seal plate drawn only after every gateway has refused.
  *
  * The box around it must be positioned, since the picture is laid over it.
+ *
+ * `alt` is the picture's own name. On a registry whose whole subject is the
+ * picture, an empty one tells a screen reader that the thing the page is about
+ * is decoration, so every caller that draws a registered picture passes the
+ * title it was registered under. The empty default is for the callers where the
+ * picture really is decoration: a wall of repeated thumbnails behind a heading,
+ * a plate in the film.
  */
 export function Picture({
   sources,
   sizes,
+  alt = "",
   className = "",
   quality = 70,
   priority = false,
@@ -25,6 +33,7 @@ export function Picture({
 }: {
   sources: string[];
   sizes: string;
+  alt?: string;
   className?: string;
   quality?: number;
   priority?: boolean;
@@ -44,7 +53,7 @@ export function Picture({
   return (
     <Image
       src={src}
-      alt=""
+      alt={alt}
       fill
       sizes={sizes}
       quality={quality}

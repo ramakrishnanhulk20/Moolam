@@ -8,6 +8,49 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { localeLabels, routing, usePathname, useRouter } from "@/lib/i18n/routing";
 
 /**
+ * Where this page lives: its own social address, and the same page in the other
+ * nine languages.
+ *
+ * Without the alternate links a crawler that reads the page rather than the
+ * sitemap sees ten unconnected copies of this site. They are rendered as real
+ * tags rather than declared in the layout's metadata because Next never tells a
+ * layout which page it is wrapping, and an hreflang pointing at the wrong page
+ * is worse than none. The address comes from the same hook the control below
+ * uses, which hands back the route with its locale stripped and its params
+ * intact, so these are the readings of the page actually being drawn.
+ *
+ * The three social lines are written here for the same reason, and because the
+ * layout declaring an openGraph block of its own would replace the one Next
+ * builds from the card file and take the picture with it.
+ */
+export function PageAddress({ site, ogLocale, siteName }: { site: string; ogLocale: string; siteName: string }) {
+  const pathname = usePathname();
+  const tail = pathname === "/" ? "" : pathname;
+  const here = (locale: string) => `${site}/${locale}${tail}`;
+  const active = useActiveLocale();
+
+  return (
+    <>
+      <meta property="og:url" content={here(active)} />
+      <meta property="og:locale" content={ogLocale} />
+      <meta property="og:site_name" content={siteName} />
+      {routing.locales.map((locale) => (
+        <link key={locale} rel="alternate" hrefLang={locale} href={here(locale)} />
+      ))}
+      {/* Where a reader whose language the site does not carry is sent. */}
+      <link rel="alternate" hrefLang="x-default" href={here(routing.defaultLocale)} />
+    </>
+  );
+}
+
+/** The locale in the address, or the default one for anything the routes do not carry. */
+function useActiveLocale(): string {
+  const params = useParams();
+  const raw = typeof params.locale === "string" ? params.locale : routing.defaultLocale;
+  return (routing.locales as readonly string[]).includes(raw) ? raw : routing.defaultLocale;
+}
+
+/**
  * Switches language without leaving the page: the pathname next-intl hands back
  * has the locale segment stripped, so the same route is re-rendered in the other
  * language with its params intact.
@@ -20,13 +63,11 @@ export function LocaleSwitch() {
   const t = useTranslations("header");
   const router = useRouter();
   const pathname = usePathname();
-  const params = useParams();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const reduced = useIsReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
-  const raw = typeof params.locale === "string" ? params.locale : routing.defaultLocale;
-  const active = (routing.locales as readonly string[]).includes(raw) ? raw : routing.defaultLocale;
+  const active = useActiveLocale();
 
   useEffect(() => {
     if (!open) return;
@@ -58,7 +99,10 @@ export function LocaleSwitch() {
     <div ref={shell} className="relative">
       <button
         type="button"
-        aria-label={t("language")}
+        // The chip shows the language's own name, so that name leads the label
+        // a screen reader hears and the one voice control listens for. Named
+        // "Language" while it read "English", neither could reach it.
+        aria-label={t("languageIs", { language: localeLabels[active as keyof typeof localeLabels] })}
         title={t("languageChange")}
         aria-expanded={open}
         aria-haspopup="listbox"

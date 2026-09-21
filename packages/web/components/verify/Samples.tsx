@@ -26,6 +26,7 @@ export function Samples({
   busy: boolean;
 }) {
   const t = useTranslations("verify");
+  const common = useTranslations("common");
 
   // An index that could not be reached hands back nothing. The page then reads
   // exactly as it did before rather than showing three empty frames.
@@ -68,6 +69,7 @@ export function Samples({
               <span className="grain relative block aspect-[4/3] w-full overflow-hidden border border-line transition-colors duration-200 group-hover:border-accent group-focus-visible:border-accent">
                 <Picture
                   sources={pictureSources(sample.url)}
+                  alt={sample.title ?? common("registeredPicture")}
                   sizes="(min-width: 1024px) 14rem, 30vw"
                   className="object-cover opacity-85 transition duration-500 group-hover:scale-[1.06] group-hover:opacity-100"
                 />

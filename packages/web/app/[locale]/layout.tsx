@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Analytics } from "@vercel/analytics/next";
@@ -7,7 +7,7 @@ import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense, type ReactNode } from "react";
 import { HeaderMenu } from "@/components/HeaderMenu";
-import { LocaleSwitch } from "@/components/LocaleSwitch";
+import { LocaleSwitch, PageAddress } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { IntlProvider } from "@/components/providers/IntlProvider";
@@ -29,6 +29,37 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+/**
+ * The colour a phone paints its own bar with. Two of them, because the site
+ * carries two palettes and the browser picks by the reader's system setting:
+ * the same two values --bg holds in globals.css. Without either, the bar stayed
+ * grey above a black film and above a cream page alike.
+ */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f2efe9" },
+    { media: "(prefers-color-scheme: dark)", color: "#08080a" },
+  ],
+};
+
+/**
+ * What Open Graph calls each of the ten languages. It wants a language and a
+ * territory, where the routes only carry a language, so each one is paired with
+ * the country the site's own copy is written for.
+ */
+const OG_LOCALES: Record<string, string> = {
+  en: "en_US",
+  ta: "ta_IN",
+  hi: "hi_IN",
+  zh: "zh_CN",
+  ja: "ja_JP",
+  ko: "ko_KR",
+  es: "es_ES",
+  fr: "fr_FR",
+  de: "de_DE",
+  pt: "pt_BR",
+};
+
 export async function generateMetadata({
   params,
 }: {
@@ -44,10 +75,18 @@ export async function generateMetadata({
   // a path, and without a base Next resolves those against whichever deployment
   // URL answered the crawler, so a link pasted into a chat would point its
   // picture at a preview host that nobody else can read.
+  //
+  // "./" is Next's way of saying "this page": it resolves the canonical against
+  // whatever route is being drawn, so one line here is right on all forty six
+  // pages. The hreflang links and the three social lines cannot be written
+  // here: a layout is never told which page it is wrapping, and an openGraph
+  // block declared at this level would replace the one Next builds from the
+  // card file and take the picture with it. PageAddress renders them instead.
   return {
     metadataBase: new URL(siteUrl()),
     title: { default: t("title"), template: t("titleTemplate") },
     description: t("description"),
+    alternates: { canonical: "./" },
   };
 }
 
@@ -68,6 +107,7 @@ export default async function LocaleLayout({
   const timeZone = await getTimeZone();
   const t = await getTranslations({ locale, namespace: "header" });
   const f = await getTranslations({ locale, namespace: "footer" });
+  const m = await getTranslations({ locale, namespace: "meta" });
   const source = activeSource();
 
   // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
@@ -95,6 +135,15 @@ export default async function LocaleLayout({
         <ScriptFace locale={locale} />
         <ThemeProvider>
           <IntlProvider locale={locale} timeZone={timeZone} messages={messages as Record<string, unknown>}>
+            {/* The ten addresses this page answers at, and its own. React lifts
+                these into the head, and they read the route from inside the
+                provider, which is where next-intl knows which locale to
+                strip. */}
+            <PageAddress
+              site={siteUrl()}
+              siteName={m("title")}
+              ogLocale={OG_LOCALES[locale] ?? OG_LOCALES[routing.defaultLocale]}
+            />
             <LenisProvider>
               <div className="flex min-h-dvh flex-col">
                 <header className="app-header sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
@@ -150,13 +199,15 @@ export default async function LocaleLayout({
                           key={item.href}
                           href={item.href}
                           prefetch={item.prefetch}
-                          className="text-text-muted transition-colors duration-200 hover:text-accent"
+                          className="tap text-text-muted transition-colors duration-200 hover:text-accent"
                         >
                           {item.label}
                         </Link>
                       ))}
                     </nav>
-                    <div className="hidden items-center gap-2 md:flex">
+                    {/* tap-row grows both chips to a 44 px target the same way
+                        the phone menu grows them, without moving anything. */}
+                    <div className="tap-row hidden items-center gap-2 md:flex">
                       <LocaleSwitch />
                       <ThemeToggle />
                     </div>

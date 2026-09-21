@@ -27,6 +27,7 @@ import { isTestCard, type ExplorePlate } from "./sort";
 export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: boolean }) {
   const t = useTranslations("explore");
   const kinds = useTranslations("kind");
+  const common = useTranslations("common");
   const format = useFormatter();
   const test = isTestCard(plate.title);
 
@@ -50,7 +51,17 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
         // forty plates costs the gateway nothing after the first view.
         <Picture
           sources={pictureSources(plate.thumbnailUrl)}
-          sizes="(min-width: 1280px) 22vw, (min-width: 640px) 33vw, 50vw"
+          alt={plate.title ?? common("registeredPicture")}
+          // A plate is four wide by five tall and the picture covers it, so what
+          // the browser has to fetch is the plate's HEIGHT, not its width. The
+          // old widths were the column widths, which had a 1440 px laptop
+          // painting a 316 px picture into a 416 px box, and about twice that on
+          // a 1.5 density screen. Each number below is a column plus the quarter
+          // again the height asks for. Two columns on a phone keep the width
+          // they had: the next size up the optimizer offers is the whole 512 px
+          // thumbnail, which is 57 per cent more bytes for nine per cent more
+          // picture, and a phone is the one place that trade is wrong.
+          sizes="(min-width: 1520px) 440px, (min-width: 1280px) 31vw, (min-width: 640px) 42vw, 50vw"
           priority={first}
           className="object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.07]"
           fallback={seal}

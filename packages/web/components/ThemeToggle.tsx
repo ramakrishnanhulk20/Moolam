@@ -33,7 +33,7 @@ export function ThemeToggle() {
       <button
         type="button"
         title={t("themeToLight")}
-        aria-label={t("themeToLight")}
+        aria-label={t("themeDarkAction")}
         onClick={() => setTheme("light")}
         className={`hidden dark:flex ${SHELL}`}
       >
@@ -43,7 +43,7 @@ export function ThemeToggle() {
       <button
         type="button"
         title={t("themeToDark")}
-        aria-label={t("themeToDark")}
+        aria-label={t("themeLightAction")}
         onClick={() => setTheme("dark")}
         className={`flex dark:hidden ${SHELL}`}
       >

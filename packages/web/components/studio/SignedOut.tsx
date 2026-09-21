@@ -30,7 +30,29 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
       <h2 className={`mt-5 max-w-[18ch] font-display text-[clamp(1.9rem,4vw,3.2rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}>
         {t("signedOut.heading")}
       </h2>
-      <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("signedOut.body")}</p>
+      {/* The one thing this page exists for, and it used to sit under four
+          explanations where nobody ever saw it: the launch audit found no
+          control of any kind in the first screen at 1440x900, on the page whose
+          whole job is to get a sign in. It follows the headline, the sentence
+          under it says what pressing it costs, and the rest of the card is what
+          a creator gets once they have. */}
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3"
+      >
+        <button
+          type="button"
+          onClick={onSignIn}
+          className="rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
+        >
+          {t("signedOut.button")}
+        </button>
+        <p className="max-w-[26ch] text-xs text-text-faint">{t("signedOut.methods")}</p>
+      </motion.div>
+
+      <p className="mt-7 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("signedOut.body")}</p>
 
       <ul className="mt-10 grid gap-y-7 border-t border-line pt-7 sm:grid-cols-3">
         {POINTS.map((point, index) => (
@@ -65,15 +87,6 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
           <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-text">{t("signedOut.points.consent.body")}</p>
         </motion.li>
       </ul>
-
-      <button
-        type="button"
-        onClick={onSignIn}
-        className="mt-9 rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
-      >
-        {t("signedOut.button")}
-      </button>
-      <p className="mt-4 text-xs text-text-faint">{t("signedOut.methods")}</p>
     </motion.section>
   );
 }

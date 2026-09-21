@@ -52,7 +52,7 @@ export function OnThisPage({ headings, variant }: { headings: Heading[]; variant
   }
 
   const list = (
-    <ul className="space-y-1">
+    <ul className="docs-contents space-y-1">
       {headings.map((heading) => (
         <li key={heading.id}>
           <a

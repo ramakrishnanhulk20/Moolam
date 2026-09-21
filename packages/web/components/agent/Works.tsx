@@ -21,6 +21,7 @@ export async function Works({
 }) {
   const t = await getTranslations("agent.works");
   const kinds = await getTranslations("kind");
+  const common = await getTranslations("common");
   const format = await getFormatter({ locale });
 
   return (
@@ -55,6 +56,7 @@ export async function Works({
                     // optimizer so the gateway is read once per file.
                     <Picture
                       sources={pictureSources(work.thumbnailUrl)}
+                      alt={work.title ?? common("registeredPicture")}
                       sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
                       fallback={

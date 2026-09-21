@@ -52,6 +52,10 @@
   --accent-ink: #fff5f7;
   --accent-soft: rgb(169 42 72 / 0.12);
 
+  /* The one colour in the docs that the highlighter's light theme gets wrong
+     here. See the rule beside .docs-code pre.shiki below. */
+  --code-keyword: #a92a48;
+
   --status-verified: #17786a;
   --status-pending: #2f5bb8;
   --status-disputed: #6d3f96;
@@ -251,6 +255,19 @@ footer a::after {
   transform: translateY(-50%);
 }
 
+/* The two lists in the docs are the one place the pad cannot be used: stacked
+   links are closer together than 44 px, so each pad would cover the lower half
+   of the link above it and a thumb aiming at one line would open the next.
+   These grow their own boxes instead, and only where there is no mouse, so the
+   rail beside a page on a laptop stays exactly as tight as it was drawn. */
+@media (hover: none) {
+  .docs-tree a,
+  .docs-contents a {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+}
+
 /* The repeated mark: a filled square with a hollow square inset in it, the seal.
    A real element rather than a square glyph, because a glyph square changes size
    and baseline with every face. The same shape is the favicon and the social card. */
@@ -393,12 +410,81 @@ html:not(.light) body:has([data-story="still"]) .app-header {
 .story-lower {
   position: absolute;
   inset-inline: 0;
+  /* The shot's share of the window on a phone. The same fraction is PHONE_BAND
+     in LandingStory.tsx, which is what the renderer draws into. It is written
+     here rather than handed down from the film, because the film only learns
+     the window size after it has mounted and the words would move once. */
   top: 45svh;
   bottom: 0;
   display: flex;
   align-items: flex-start;
   padding-top: 1.25rem;
   padding-bottom: 3.5rem;
+}
+
+/* A phone under 700 px tall.
+   At 375x667 the longest chapters ran off the bottom of the screen: in Tamil
+   the trusted one by 163 px, verified by 97, shared and stated by 36, with the
+   scroll hint sitting on the last line. The shot has already given up nine per
+   cent of the window above; here the words take the rest of it back, by
+   stepping the type down one size and closing the gaps between the lines.
+   Nothing outside the film's own caption band is touched. */
+@media (max-width: 639px) and (max-height: 699px) {
+  .story-lower {
+    /* SHORT_PHONE_BAND in LandingStory.tsx. */
+    top: 36svh;
+    padding-top: 0.6rem;
+    padding-bottom: 3rem;
+  }
+
+  .story-seam {
+    background:
+      linear-gradient(180deg, rgba(11, 11, 12, 0) 22%, rgba(11, 11, 12, 0.72) 33%, #0b0b0c 37%),
+      linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
+  }
+
+  .story-lower [data-story-line="kicker"] {
+    font-size: 10px;
+    letter-spacing: 0.18em;
+  }
+
+  .story-lower [data-story-line="title"] {
+    margin-top: 0.6rem;
+    font-size: 1.45rem;
+    line-height: 1.04;
+  }
+
+  .story-lower [data-story-line="body"] {
+    margin-top: 0.55rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  .story-lower [data-story-line="readout"] {
+    margin-top: 0.6rem;
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .story-lower [data-story-line="card"] {
+    margin-top: 0.7rem;
+    padding: 0.7rem 0.85rem;
+  }
+
+  .story-lower [data-story-line="card"] p:first-child {
+    font-size: 10px;
+  }
+
+  .story-lower [data-story-line="card"] p:nth-child(2) {
+    margin-top: 0.35rem;
+    font-size: 1.5rem;
+  }
+
+  .story-lower [data-story-line="card"] p:last-child {
+    margin-top: 0.25rem;
+    font-size: 10px;
+    line-height: 1.4;
+  }
 }
 
 @media (min-width: 640px) {
@@ -408,6 +494,15 @@ html:not(.light) body:has([data-story="still"]) .app-header {
     padding-top: var(--header-h);
     padding-bottom: 0;
   }
+}
+
+/* Where the shot stops being a shot and becomes the ground the words stand on.
+   The three stops are the 45 percent band scaled the way the film was drawn:
+   clear until just above the seam, half dark at it, solid a little past it. */
+.story-seam {
+  background:
+    linear-gradient(180deg, rgba(11, 11, 12, 0) 28%, rgba(11, 11, 12, 0.72) 41%, #0b0b0c 46%),
+    linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
 }
 
 /* A downward drag at the top of the story is a drag at the top of its own
@@ -792,6 +887,16 @@ body:has([data-story="film"]):not([data-story-end]) footer {
 .dark .docs-code pre.shiki,
 .dark .docs-code pre.shiki span {
   color: var(--shiki-dark);
+}
+
+/* github-light was drawn for a white code block. Ours is the page's sunken
+   cream, and on that ground the theme's keyword red, rgb(215,58,73), measures
+   3.54:1 at 13 px: the one contrast failure on the whole site. The keyword takes
+   the light palette's own red instead, which is the same family two shades down
+   and clears the bar at 5.2:1. The highlighter writes its colours onto each span
+   as a custom property, so the word that carries that red is what this names. */
+.light .docs-code pre.shiki span[style*="--shiki-light:#D73A49"] {
+  color: var(--code-keyword);
 }
 
 .docs-copy {

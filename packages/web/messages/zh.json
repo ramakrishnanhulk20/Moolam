@@ -19,7 +19,8 @@
   "meta": {
     "title": "Moolam",
     "description": "为每一张 AI 生成的图片配一本护照，成图的那一刻就登记到 Monad 上，任何重新编码过的副本都能验证。",
-    "titleTemplate": "%s | Moolam"
+    "titleTemplate": "%s | Moolam",
+    "home": "每一张 AI 生成的图片，在成图的那一刻就在 Monad 上拿到一本护照，所以缩放过或重新编码过的任何副本，依然能找回它自己的记录。"
   },
   "header": {
     "brand": "Moolam",
@@ -39,7 +40,10 @@
     },
     "themeToLight": "切换到浅色主题",
     "themeToDark": "切换到深色主题",
-    "languageChange": "切换语言"
+    "languageChange": "切换语言",
+    "languageIs": "{language}，切换语言",
+    "themeDarkAction": "深色主题，切换到浅色主题",
+    "themeLightAction": "浅色主题，切换到深色主题"
   },
   "footer": {
     "network": "Monad 主网，链 {chainId}",
@@ -72,7 +76,8 @@
     "unknown": "未知",
     "yes": "是",
     "no": "否",
-    "swapNotice": "临时图片。正式的那张随主视觉一起到位。"
+    "swapNotice": "临时图片。正式的那张随主视觉一起到位。",
+    "registeredPicture": "已登记的图片"
   },
   "kind": {
     "0": "生成",
@@ -83,7 +88,7 @@
     "kicker": "浏览",
     "title": "登记处",
     "rail": "Monad 上的每一本护照",
-    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，可以看到它的指纹、它的 manifest，以及写给它的每一次复核。",
+    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，就能看到它的指纹、它的 manifest 和每一次复核。",
     "counts": {
       "total": "护照",
       "generated": "生成",
@@ -861,7 +866,7 @@
   "studio": {
     "kicker": "工作室",
     "title": "登记图片",
-    "lede": "登录，用这台设备解锁一次，之后你做的每一张图都会在 Monad 上有自己的记录：取过指纹、由你签名，并且能从任何在互联网上活下来的副本追回。",
+    "lede": "登录，用这台设备解锁一次，之后你做的每一张图都会在 Monad 上有自己的记录：取过指纹，由你签名，能从任何副本追回。",
     "rail": "Moolam 工作室",
     "opening": "正在打开你的账户",
     "noWallet": "你已经登录，但 Monad 上还没有为你建好账户。刷新页面，或者退出后重新登录。",
@@ -1225,14 +1230,16 @@
     "diagramRegion": "图表，可滚动",
     "zoomIn": "放大",
     "zoomOut": "缩小",
-    "zoomReset": "复位"
+    "zoomReset": "复位",
+    "diagramNamed": "{name}，图表，可滚动",
+    "diagramNamedFull": "{name}，图表，原尺寸"
   },
   "resolve": {
     "title": "裁决争议",
     "heading": "处理未决的质疑",
     "kicker": "仲裁者控制台",
     "rail": "争议",
-    "lede": "注册表上所有仍未了结的质疑，连同图片、指控内容和背后的保证金。任何人都可以阅读本页，但只有政策指定的地址才能在这里作出裁决。",
+    "lede": "注册表上所有仍未了结的质疑，连同图片、指控和背后的保证金。任何人都可以阅读，但只有政策指定的地址才能裁决。",
     "resolverLabel": "仲裁者",
     "policyNote": "政策合约只指定一个地址，更换它需要公开等待 24 小时，任何关注者都能在生效前作出反应。",
     "youAre": "你就是仲裁者",

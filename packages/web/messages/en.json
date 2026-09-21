@@ -17,7 +17,8 @@
   "meta": {
     "title": "Moolam",
     "description": "A passport for every AI generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy.",
-    "titleTemplate": "%s | Moolam"
+    "titleTemplate": "%s | Moolam",
+    "home": "Every AI generated image gets a passport on Monad the moment it is made, so any copy of it, resized or re-encoded, still leads back to its record."
   },
   "header": {
     "brand": "Moolam",
@@ -37,7 +38,10 @@
     },
     "themeToLight": "Switch to the light theme",
     "themeToDark": "Switch to the dark theme",
-    "languageChange": "Change the language"
+    "languageChange": "Change the language",
+    "languageIs": "{language}, change the language",
+    "themeDarkAction": "Dark theme, switch to the light theme",
+    "themeLightAction": "Light theme, switch to the dark theme"
   },
   "footer": {
     "network": "Monad mainnet, chain {chainId}",
@@ -70,7 +74,8 @@
     "unknown": "unknown",
     "yes": "Yes",
     "no": "No",
-    "swapNotice": "Placeholder art. The real still lands with the hero build."
+    "swapNotice": "Placeholder art. The real still lands with the hero build.",
+    "registeredPicture": "Registered picture"
   },
   "kind": {
     "0": "Generated",
@@ -81,7 +86,7 @@
     "kicker": "Explore",
     "title": "The registry",
     "rail": "Every passport on Monad",
-    "lede": "Every picture registered on Monad, newest first, read from the index while this page loads. Open one for its fingerprint, its manifest and every re-check written against it.",
+    "lede": "Every picture registered on Monad, newest first, read from the index as this page loads. Open one for its fingerprint, its manifest and its re-checks.",
     "counts": {
       "total": "Passports",
       "generated": "Generated",
@@ -859,7 +864,7 @@
   "studio": {
     "kicker": "Studio",
     "title": "Register an image",
-    "lede": "Sign in, unlock with this device once, then every image you make gets its own record on Monad: fingerprinted, signed by you, and findable from any copy that survives the internet.",
+    "lede": "Sign in, unlock once with this device, and every image you make gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
     "rail": "Moolam studio",
     "opening": "Opening your account",
     "noWallet": "You are signed in, but no account was created on Monad yet. Reload the page, or sign out and sign in again.",
@@ -1223,14 +1228,16 @@
     "diagramRegion": "Diagram, scrollable",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
-    "zoomReset": "Reset"
+    "zoomReset": "Reset",
+    "diagramNamed": "{name}, diagram, scrollable",
+    "diagramNamedFull": "{name}, diagram, full size"
   },
   "resolve": {
     "title": "Resolve disputes",
     "heading": "Settle the open challenges",
     "kicker": "Resolver console",
     "rail": "DISPUTES",
-    "lede": "Every challenge the registry still has open, with the picture, the claim and the bond behind it. Anyone can read this page. Only the address the policy names can settle anything on it.",
+    "lede": "Every challenge the registry still has open, with the picture, the claim and the bond behind it. Anyone can read it; only the named resolver settles it.",
     "resolverLabel": "The resolver",
     "policyNote": "The policy contract names one address, and changing it waits 24 hours in the open, so anyone watching can react before it takes effect.",
     "youAre": "You are the resolver",

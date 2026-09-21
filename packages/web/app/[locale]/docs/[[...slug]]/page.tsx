@@ -32,8 +32,37 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { heading, text } = await renderPage(page.slug, page.body);
   return {
     title: (heading ?? page.title) === "Moolam" ? "Documentation" : (heading ?? page.title),
-    description: text.slice(0, 155).trim(),
+    description: openingLines(text),
   };
+}
+
+/** What a search result has room for before it starts cutting the line itself. */
+const DESCRIPTION_LIMIT = 155;
+
+/**
+ * The opening of a docs page, ended where a reader would end it.
+ *
+ * Cutting the prose at a character count stopped these lines mid-word: the docs
+ * home read "a passport on Mon". So the last full stop inside the budget wins,
+ * and a first sentence longer than the budget falls back to the last whole word.
+ */
+export function openingLines(text: string, limit = DESCRIPTION_LIMIT): string {
+  const line = text.trim().replace(/\s+/g, " ");
+  if (line.length <= limit) {
+    return line;
+  }
+
+  const window = line.slice(0, limit);
+  const sentence = Math.max(window.lastIndexOf(". "), window.lastIndexOf(". "));
+  if (sentence > limit / 3) {
+    return window.slice(0, sentence + 1);
+  }
+
+  // Three dots are part of the count, so the words stop three characters early.
+  const words = line.slice(0, limit - 3);
+  const lastSpace = words.lastIndexOf(" ");
+  const kept = lastSpace > limit / 3 ? words.slice(0, lastSpace) : words;
+  return `${kept.replace(/[\s,;:.-]+$/u, "")}...`;
 }
 
 export default async function DocsPage({ params }: { params: Promise<Params> }) {

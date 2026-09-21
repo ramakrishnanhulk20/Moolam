@@ -26,6 +26,7 @@ export async function Poster({
 }) {
   const t = await getTranslations("passport");
   const kinds = await getTranslations("kind");
+  const common = await getTranslations("common");
   const format = await getFormatter({ locale });
 
   const seal = (
@@ -47,6 +48,7 @@ export async function Poster({
         // size; every grid and every plate elsewhere uses the thumbnail.
         <Picture
           sources={pictureSources(art.imageUrl)}
+          alt={art.title ?? common("registeredPicture")}
           sizes="100vw"
           priority
           className="object-cover"

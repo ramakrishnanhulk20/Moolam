@@ -24,7 +24,7 @@ type Say = (key: string, plain: string) => string;
  * to the transform rather than through state, so a wheel turn never costs a
  * React render.
  */
-function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => void }) {
+function FullSize({ svg, say, label, close }: { svg: string; say: Say; label: string; close: () => void }) {
   const dialog = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const ink = useRef<HTMLDivElement>(null);
@@ -214,7 +214,7 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
 
   // docs-lightbox-control holds the 44 px hit area a thumb needs.
   const control =
-    "docs-lightbox-control rounded-[8px] border border-line px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
+    "docs-lightbox-control rounded-[8px] border border-line px-3 font-mono text-[12px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
   const round =
     "docs-lightbox-control rounded-[8px] border border-line font-mono text-base text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
 
@@ -223,7 +223,7 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
       ref={dialog}
       role="dialog"
       aria-modal="true"
-      aria-label={say("diagramFull", "Diagram, full size")}
+      aria-label={label}
       data-lenis-prevent
       className="fixed inset-0 z-[90] flex flex-col bg-bg/95 backdrop-blur-sm"
       initial={{ opacity: calm ? 1 : 0 }}
@@ -232,8 +232,8 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
       transition={{ duration: calm ? 0 : 0.18, ease: "easeOut" }}
     >
       <div className="flex items-center gap-2 border-b border-line px-4 py-3 sm:px-6">
-        <span className="hidden font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint sm:inline">
-          {say("diagramFull", "Diagram, full size")}
+        <span className="hidden font-mono text-[12px] uppercase tracking-[0.22em] text-text-faint sm:inline">
+          {label}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
           <button
@@ -246,7 +246,7 @@ function FullSize({ svg, say, close }: { svg: string; say: Say; close: () => voi
           </button>
           <span
             ref={readout}
-            className="w-14 text-center font-mono text-[10px] uppercase tracking-[0.18em] tabular-nums text-text-faint"
+            className="w-14 text-center font-mono text-[12px] uppercase tracking-[0.18em] tabular-nums text-text-faint"
           >
             100%
           </span>
@@ -305,6 +305,16 @@ export function DiagramFrame({
   // in them, the frame says its piece in English rather than printing a key.
   const say: Say = (key, plain) => (t.has(key) ? t(key) : plain);
 
+  // A drawing is named by the line written under it. Without that, every one of
+  // the twelve on the architecture page announced itself as "Diagram,
+  // scrollable" and a reader tabbing through them could not tell which half of
+  // which flow they had landed in.
+  const nameIt = (key: string, tail: string, unnamed: string) =>
+    caption === null ? unnamed : t.has(key) ? t(key, { name: caption }) : `${caption}, ${tail}`;
+
+  const regionLabel = nameIt("diagramNamed", "diagram, scrollable", say("diagramRegion", "Diagram, scrollable"));
+  const fullLabel = nameIt("diagramNamedFull", "diagram, full size", say("diagramFull", "Diagram, full size"));
+
   const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
   const [moved, setMoved] = useState(false);
@@ -348,7 +358,7 @@ export function DiagramFrame({
         data-lenis-prevent
         tabIndex={0}
         role="region"
-        aria-label={say("diagramRegion", "Diagram, scrollable")}
+        aria-label={regionLabel}
         className="docs-diagram-scroll"
       >
         <div className="docs-diagram-ink" dangerouslySetInnerHTML={{ __html: svg }} />
@@ -367,6 +377,7 @@ export function DiagramFrame({
                 <FullSize
                   svg={svg}
                   say={say}
+                  label={fullLabel}
                   close={() => {
                     setOpen(false);
                     opener.current?.focus();

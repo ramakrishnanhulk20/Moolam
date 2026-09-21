@@ -25,7 +25,7 @@ import { passportRegistration } from "@/lib/data/passports";
 
 export const alt = "A Moolam passport: the registered picture, its seal and the block it was written in";
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+export const contentType = "image/jpeg";
 
 // The brand files are read from disk and the faces are fetched, which is a node
 // job. The drawn card is then held for an hour: an unfurl in a chat has to come
@@ -46,6 +46,33 @@ const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 
 /** Longer than this and the title stops being a poster line, so it is cut. */
 const TITLE_LIMIT = 44;
+
+/**
+ * How long a description may be before a search result and a link preview start
+ * cutting it themselves, which they do mid-word.
+ */
+const DESCRIPTION_LIMIT = 160;
+
+/**
+ * The description, cut at a whole word.
+ *
+ * A passport's line leads with what the holder said about AI use and then
+ * carries whatever was pinned with the picture, which together ran to 297
+ * characters on the two records the launch audit measured. The lead is the part
+ * that matters, so the tail is what goes.
+ */
+export function shortDescription(text: string, limit = DESCRIPTION_LIMIT): string {
+  const line = text.trim().replace(/\s+/g, " ");
+  if (line.length <= limit) {
+    return line;
+  }
+  // Three dots are part of the count, so the words stop three characters early
+  // and the whole line still fits the budget.
+  const window = line.slice(0, limit - 3);
+  const lastSpace = window.lastIndexOf(" ");
+  const kept = lastSpace > limit / 2 ? window.slice(0, lastSpace) : window;
+  return `${kept.replace(/[\s,;:.-]+$/u, "")}...`;
+}
 
 /** What the card and the page head call a passport that pinned no name. */
 export function cardTitle(title: string | undefined, id: string): string {
@@ -90,7 +117,9 @@ export function passportShareMetadata(input: {
 }): Metadata {
   const heading = `${cardTitle(input.title, input.id)} on Moolam`;
   const said = input.description?.trim();
-  const description = said === undefined || said.length === 0 ? input.fallbackDescription : said;
+  const description = shortDescription(
+    said === undefined || said.length === 0 ? input.fallbackDescription : said,
+  );
   const base = `/${input.locale}/passport/${input.id}`;
 
   return {
@@ -408,19 +437,55 @@ function CardFace({ card }: { card: Card }) {
   );
 }
 
+/**
+ * High enough that the seal, the hairlines and the small mono line come through
+ * without a JPEG edge on them, which is what a lower number costs on a card
+ * that is mostly type over a photograph.
+ */
+const JPEG_QUALITY = 92;
+
+/**
+ * The drawn card as JPEG.
+ *
+ * The renderer only writes PNG, and a PNG of a 660 px photograph came out at
+ * 606 KB and 714 KB for the two records the launch audit measured. Several chat
+ * apps stop fetching a preview around 300 KB, so a shared passport arrived
+ * there as a bare link. The same face as JPEG is about a seventh of that.
+ *
+ * The encoder ships with Next as an optional package and is external to the
+ * server bundle, so it is asked for at the moment it is needed and a host that
+ * does not have it hands back the PNG exactly as before rather than no card.
+ */
+async function asJpeg(drawn: ImageResponse): Promise<Response> {
+  const png = Buffer.from(await drawn.arrayBuffer());
+  try {
+    const { default: sharp } = await import("sharp");
+    const jpeg = await sharp(png)
+      // Full colour rather than the usual halved chroma: the accent pink of the
+      // seal and the rule sits on near black, which is where halved chroma
+      // smears.
+      .jpeg({ quality: JPEG_QUALITY, chromaSubsampling: "4:4:4", mozjpeg: true })
+      .toBuffer();
+    return new Response(new Uint8Array(jpeg), { headers: { ...CARD_HEADERS, "content-type": "image/jpeg" } });
+  } catch {
+    return new Response(new Uint8Array(png), { headers: { ...CARD_HEADERS, "content-type": "image/png" } });
+  }
+}
+
 export default async function PassportCard({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
-}): Promise<ImageResponse> {
+}): Promise<Response> {
   const drawn = await readCard(params);
   if (drawn === null) {
-    return await genericCard();
+    return await asJpeg(await genericCard());
   }
 
-  return new ImageResponse(<CardFace card={drawn.card} />, {
-    ...size,
-    fonts: drawn.fonts.length === 0 ? undefined : drawn.fonts,
-    headers: CARD_HEADERS,
-  });
+  return await asJpeg(
+    new ImageResponse(<CardFace card={drawn.card} />, {
+      ...size,
+      fonts: drawn.fonts.length === 0 ? undefined : drawn.fonts,
+    }),
+  );
 }

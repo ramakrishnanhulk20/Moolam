@@ -43,7 +43,7 @@ export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
           type="button"
           onClick={() => setOpen(true)}
           aria-expanded={open}
-          className="flex items-center gap-2 rounded-[8px] border border-line px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent lg:hidden"
+          className="tap flex items-center gap-2 rounded-[8px] border border-line px-3 py-2 font-mono text-[12px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent lg:hidden"
         >
           <span aria-hidden className="flex flex-col gap-[3px]">
             <span className="block h-px w-4 bg-current" />
@@ -55,7 +55,7 @@ export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
 
         <Link
           href="/docs"
-          className="hidden font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint transition-colors duration-200 hover:text-accent lg:inline"
+          className="tap hidden font-mono text-[12px] uppercase tracking-[0.22em] text-text-faint transition-colors duration-200 hover:text-accent lg:inline"
         >
           {t("home")}
         </Link>
@@ -110,7 +110,7 @@ function ContentsDrawer({ nav, open, onClose }: { nav: NavEntry[]; open: boolean
               <button
                 type="button"
                 onClick={onClose}
-                className="tap rounded-[8px] border border-line px-2 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+                className="tap rounded-[8px] border border-line px-2 py-1 font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
               >
                 {t("close")}
               </button>

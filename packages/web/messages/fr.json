@@ -17,7 +17,8 @@
   "meta": {
     "title": "Moolam",
     "description": "Un passeport pour chaque image générée par IA, inscrit sur Monad à l’instant où elle est créée et vérifiable depuis n’importe quelle copie ré-encodée.",
-    "titleTemplate": "%s | Moolam"
+    "titleTemplate": "%s | Moolam",
+    "home": "Chaque image générée par IA reçoit un passeport sur Monad à l'instant où elle est créée, si bien que toute copie redimensionnée ou ré-encodée y ramène."
   },
   "header": {
     "brand": "Moolam",
@@ -37,7 +38,10 @@
     },
     "themeToLight": "Passer au thème clair",
     "themeToDark": "Passer au thème sombre",
-    "languageChange": "Changer de langue"
+    "languageChange": "Changer de langue",
+    "languageIs": "{language}, changer de langue",
+    "themeDarkAction": "Thème sombre, passer au thème clair",
+    "themeLightAction": "Thème clair, passer au thème sombre"
   },
   "footer": {
     "network": "Monad mainnet, chaîne {chainId}",
@@ -70,7 +74,8 @@
     "unknown": "inconnu",
     "yes": "Oui",
     "no": "Non",
-    "swapNotice": "Visuel provisoire. L’image définitive arrive avec le hero."
+    "swapNotice": "Visuel provisoire. L’image définitive arrive avec le hero.",
+    "registeredPicture": "Image enregistrée"
   },
   "kind": {
     "0": "Générée",
@@ -81,7 +86,7 @@
     "kicker": "Explorer",
     "title": "Le registre",
     "rail": "Chaque passeport sur Monad",
-    "lede": "Chaque image enregistrée sur Monad, la plus récente d'abord, lue dans l'index pendant le chargement de cette page. Ouvrez-en une pour voir son empreinte, son manifest et chaque vérification inscrite à son sujet.",
+    "lede": "Chaque image enregistrée sur Monad, la plus récente d'abord, lue dans l'index pendant le chargement de la page. Ouvrez-en une pour voir son empreinte.",
     "counts": {
       "total": "Passeports",
       "generated": "Générées",
@@ -859,7 +864,7 @@
   "studio": {
     "kicker": "Studio",
     "title": "Enregistrer une image",
-    "lede": "Connectez-vous, déverrouillez une fois avec cet appareil, et chaque image que vous créez reçoit son propre enregistrement sur Monad : empreintée, signée par vous, et retrouvable depuis n’importe quelle copie qui survit à internet.",
+    "lede": "Connectez-vous, déverrouillez une fois avec cet appareil, et chaque image que vous créez reçoit son propre enregistrement sur Monad, empreintée et signée.",
     "rail": "Studio Moolam",
     "opening": "Ouverture de votre compte",
     "noWallet": "Vous êtes connecté, mais aucun compte n’a encore été créé sur Monad. Rechargez la page, ou déconnectez-vous et reconnectez-vous.",
@@ -1223,14 +1228,16 @@
     "diagramRegion": "Schéma, défilement possible",
     "zoomIn": "Agrandir",
     "zoomOut": "Réduire",
-    "zoomReset": "Réinitialiser"
+    "zoomReset": "Réinitialiser",
+    "diagramNamed": "{name}, schéma, défilement possible",
+    "diagramNamedFull": "{name}, schéma, en taille réelle"
   },
   "resolve": {
     "title": "Trancher les litiges",
     "heading": "Réglez les contestations ouvertes",
     "kicker": "Console de l'arbitre",
     "rail": "LITIGES",
-    "lede": "Toutes les contestations encore ouvertes dans le registre, avec l'image, l'accusation et la caution derrière. Cette page se lit librement. Seule l'adresse désignée par la politique peut y trancher quoi que ce soit.",
+    "lede": "Toutes les contestations encore ouvertes dans le registre, avec l'image, l'accusation et la caution. La page se lit librement ; seul le résolveur tranche.",
     "resolverLabel": "L'arbitre",
     "policyNote": "Le contrat de politique désigne une seule adresse, et la changer demande 24 heures au vu de tous, de sorte que quiconque surveille peut réagir avant l'effet.",
     "youAre": "Vous êtes l'arbitre",

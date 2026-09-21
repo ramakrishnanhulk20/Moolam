@@ -17,7 +17,8 @@
   "meta": {
     "title": "Moolam",
     "description": "Un pasaporte para cada imagen generada por IA, registrado en Monad en el momento en que se crea y verificable desde cualquier copia recodificada.",
-    "titleTemplate": "%s | Moolam"
+    "titleTemplate": "%s | Moolam",
+    "home": "Cada imagen generada por IA recibe un pasaporte en Monad en cuanto se crea, así que cualquier copia, reescalada o recodificada, lleva a su registro."
   },
   "header": {
     "brand": "Moolam",
@@ -37,7 +38,10 @@
     },
     "themeToLight": "Cambiar al tema claro",
     "themeToDark": "Cambiar al tema oscuro",
-    "languageChange": "Cambiar el idioma"
+    "languageChange": "Cambiar el idioma",
+    "languageIs": "{language}, cambiar el idioma",
+    "themeDarkAction": "Tema oscuro, cambiar al tema claro",
+    "themeLightAction": "Tema claro, cambiar al tema oscuro"
   },
   "footer": {
     "network": "Monad mainnet, cadena {chainId}",
@@ -70,7 +74,8 @@
     "unknown": "desconocido",
     "yes": "Sí",
     "no": "No",
-    "swapNotice": "Imagen provisional. La definitiva llega con el hero."
+    "swapNotice": "Imagen provisional. La definitiva llega con el hero.",
+    "registeredPicture": "Imagen registrada"
   },
   "kind": {
     "0": "Generada",
@@ -81,7 +86,7 @@
     "kicker": "Explorar",
     "title": "El registro",
     "rail": "Cada pasaporte en Monad",
-    "lede": "Cada imagen registrada en Monad, la más reciente primero, leída del índice mientras carga esta página. Abre una y verás su huella, su manifest y cada comprobación escrita sobre ella.",
+    "lede": "Cada imagen registrada en Monad, la más reciente primero, leída del índice mientras carga esta página. Abre una y verás su huella y sus comprobaciones.",
     "counts": {
       "total": "Pasaportes",
       "generated": "Generadas",
@@ -859,7 +864,7 @@
   "studio": {
     "kicker": "Estudio",
     "title": "Registrar una imagen",
-    "lede": "Entra, desbloquea una vez con este dispositivo y cada imagen que hagas tendrá su propio registro en Monad: con huella, firmada por ti y localizable desde cualquier copia que sobreviva a internet.",
+    "lede": "Entra, desbloquea una vez con este dispositivo y cada imagen que hagas tendrá su propio registro en Monad: con huella, firmada por ti y localizable.",
     "rail": "Estudio Moolam",
     "opening": "Abriendo tu cuenta",
     "noWallet": "Has entrado, pero todavía no se ha creado ninguna cuenta en Monad. Recarga la página, o sal y vuelve a entrar.",
@@ -1223,14 +1228,16 @@
     "diagramRegion": "Diagrama, se puede desplazar",
     "zoomIn": "Acercar",
     "zoomOut": "Alejar",
-    "zoomReset": "Restablecer"
+    "zoomReset": "Restablecer",
+    "diagramNamed": "{name}, diagrama, se puede desplazar",
+    "diagramNamedFull": "{name}, diagrama, a tamaño real"
   },
   "resolve": {
     "title": "Resolver disputas",
     "heading": "Resuelve las impugnaciones abiertas",
     "kicker": "Consola del árbitro",
     "rail": "DISPUTAS",
-    "lede": "Todas las impugnaciones que el registro sigue teniendo abiertas, con la imagen, la acusación y la fianza detrás. Cualquiera puede leer esta página. Solo la dirección que nombra la política puede resolver algo aquí.",
+    "lede": "Todas las impugnaciones que el registro sigue teniendo abiertas, con la imagen, la acusación y la fianza. Cualquiera las lee; solo el resolutor decide.",
     "resolverLabel": "El árbitro",
     "policyNote": "El contrato de política nombra una sola dirección, y cambiarla espera 24 horas a la vista de todos, así que quien esté mirando puede reaccionar antes de que surta efecto.",
     "youAre": "Eres el árbitro",

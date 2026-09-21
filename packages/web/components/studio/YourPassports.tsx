@@ -14,6 +14,7 @@ import { useHeadingLeading } from "./leading";
  */
 export function YourPassports({ passports }: { passports: CreatorPassports }) {
   const t = useTranslations("studio");
+  const common = useTranslations("common");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const kinds = useTranslations("kind");
   const format = useFormatter();
@@ -56,7 +57,7 @@ export function YourPassports({ passports }: { passports: CreatorPassports }) {
                     // The pinned thumbnail, the same file a verifier fetches when it re-checks this image.
                     <img
                       src={passport.imageUrl}
-                      alt=""
+                      alt={passport.title ?? common("registeredPicture")}
                       loading="lazy"
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     />

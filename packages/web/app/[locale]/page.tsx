@@ -13,13 +13,17 @@ export const revalidate = 60;
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "story" });
+  const meta = await getTranslations({ locale, namespace: "meta" });
 
   // The card itself is app/opengraph-image.tsx, which Next attaches to every
   // route under it along with these two lines. Setting openGraph by hand here
   // would replace that whole block and take the picture with it.
   // The home page is the one page whose title is the brand on its own, so it
   // steps around the template rather than reading "Moolam | Moolam".
-  return { title: { absolute: t("title") }, description: t("line") };
+  // The film's tagline is five words, which is a poster line and not a search
+  // result. The description is the longer sentence that says what Moolam is and
+  // names the chain it runs on.
+  return { title: { absolute: t("title") }, description: meta("home") };
 }
 
 /**

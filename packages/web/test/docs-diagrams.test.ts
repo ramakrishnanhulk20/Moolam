@@ -174,6 +174,27 @@ describe("the frame around a diagram", () => {
     expect(figure?.querySelector("figcaption")?.textContent).toBe("Half two: the re-check.");
   });
 
+  it("names the drawing with the line written under it", async () => {
+    // Twelve drawings on one page all announced themselves as "Diagram,
+    // scrollable", so a reader tabbing through them could not tell which half
+    // of which flow they had landed in.
+    const named = await mount({ caption: "Half one: registering a picture." });
+    expect(named.querySelector(".docs-diagram-scroll")?.getAttribute("aria-label")).toBe(
+      "Half one: registering a picture., diagram, scrollable",
+    );
+    const panel = await openFull(named);
+    expect(panel?.getAttribute("aria-label")).toBe("Half one: registering a picture., diagram, full size");
+    await act(async () => {
+      panel?.querySelector<HTMLButtonElement>("button[data-close]")?.click();
+    });
+    await settle();
+    host?.remove();
+
+    // A drawing with no line under it keeps the general name.
+    const plain = await mount();
+    expect(plain.querySelector(".docs-diagram-scroll")?.getAttribute("aria-label")).toBe("Diagram, scrollable");
+  });
+
   it("opens the drawing in a panel on the body itself, never inside the page", async () => {
     const frame = await mount();
     const panel = await openFull(frame);

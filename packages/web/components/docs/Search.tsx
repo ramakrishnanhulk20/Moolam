@@ -146,7 +146,7 @@ export function DocsSearch() {
         }}
         onFocus={load}
         onMouseEnter={load}
-        className="group flex w-full items-center gap-2 rounded-[8px] border border-line bg-bg-sunken px-3 py-2 text-left text-[13px] text-text-faint transition-colors duration-200 hover:border-accent hover:text-accent sm:w-64"
+        className="tap group flex w-full items-center gap-2 rounded-[8px] border border-line bg-bg-sunken px-3 py-2 text-left text-[13px] text-text-faint transition-colors duration-200 hover:border-accent hover:text-accent sm:w-64"
       >
         <span aria-hidden className="motif h-[7px] w-[7px] shrink-0 opacity-70" />
         <span className="truncate">{t("search")}</span>
@@ -232,7 +232,7 @@ export function DocsSearch() {
                       {row.kind === "heading" ? "# " : ""}
                       {row.title}
                     </span>
-                    <span className="docs-clamp font-mono text-[11px] leading-relaxed text-text-faint">{row.note}</span>
+                    <span className="docs-clamp font-mono text-[12px] leading-relaxed text-text-faint">{row.note}</span>
                   </button>
                 ))}
               </div>

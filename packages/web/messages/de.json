@@ -17,7 +17,8 @@
   "meta": {
     "title": "Moolam",
     "description": "Ein Pass für jedes KI-Bild, im Moment seiner Entstehung auf Monad eingetragen und aus jeder neu kodierten Kopie prüfbar.",
-    "titleTemplate": "%s | Moolam"
+    "titleTemplate": "%s | Moolam",
+    "home": "Jedes KI-Bild bekommt im Moment seiner Entstehung einen Pass auf Monad, sodass auch jede verkleinerte oder neu kodierte Kopie dorthin zurückführt."
   },
   "header": {
     "brand": "Moolam",
@@ -37,7 +38,10 @@
     },
     "themeToLight": "Zum hellen Thema wechseln",
     "themeToDark": "Zum dunklen Thema wechseln",
-    "languageChange": "Sprache wechseln"
+    "languageChange": "Sprache wechseln",
+    "languageIs": "{language}, Sprache wechseln",
+    "themeDarkAction": "Dunkles Thema, zum hellen Thema wechseln",
+    "themeLightAction": "Helles Thema, zum dunklen Thema wechseln"
   },
   "footer": {
     "network": "Monad Mainnet, Kette {chainId}",
@@ -70,7 +74,8 @@
     "unknown": "unbekannt",
     "yes": "Ja",
     "no": "Nein",
-    "swapNotice": "Platzhalterbild. Das echte kommt mit dem Hero."
+    "swapNotice": "Platzhalterbild. Das echte kommt mit dem Hero.",
+    "registeredPicture": "Eingetragenes Bild"
   },
   "kind": {
     "0": "Erzeugt",
@@ -81,7 +86,7 @@
     "kicker": "Entdecken",
     "title": "Das Register",
     "rail": "Jeder Pass auf Monad",
-    "lede": "Jedes auf Monad eingetragene Bild, das neueste zuerst, beim Laden dieser Seite aus dem Index gelesen. Ein Klick zeigt den Fingerabdruck, das manifest und jede Nachprüfung, die dazu notiert wurde.",
+    "lede": "Jedes auf Monad eingetragene Bild, das neueste zuerst, beim Laden dieser Seite aus dem Index gelesen. Ein Klick zeigt Fingerabdruck und Nachprüfungen.",
     "counts": {
       "total": "Pässe",
       "generated": "Erzeugt",
@@ -859,7 +864,7 @@
   "studio": {
     "kicker": "Studio",
     "title": "Bild eintragen",
-    "lede": "Melde dich an, entsperre einmal mit diesem Gerät, und jedes Bild das du machst bekommt seinen eigenen Eintrag auf Monad: abgetastet, von dir signiert, und auffindbar aus jeder Kopie die das Internet übersteht.",
+    "lede": "Melde dich an, entsperre einmal mit diesem Gerät, und jedes Bild das du machst bekommt seinen eigenen Eintrag auf Monad: abgetastet und von dir signiert.",
     "rail": "Moolam Studio",
     "opening": "Dein Konto wird geöffnet",
     "noWallet": "Du bist angemeldet, aber auf Monad wurde noch kein Konto angelegt. Lade die Seite neu, oder melde dich ab und wieder an.",
@@ -1223,14 +1228,16 @@
     "diagramRegion": "Diagramm, scrollbar",
     "zoomIn": "Vergrößern",
     "zoomOut": "Verkleinern",
-    "zoomReset": "Zurücksetzen"
+    "zoomReset": "Zurücksetzen",
+    "diagramNamed": "{name}, Diagramm, scrollbar",
+    "diagramNamedFull": "{name}, Diagramm, volle Größe"
   },
   "resolve": {
     "title": "Streitfälle entscheiden",
     "heading": "Offene Einsprüche entscheiden",
     "kicker": "Schlichtungskonsole",
     "rail": "STREITFÄLLE",
-    "lede": "Jeder Einspruch, den die Registry noch offen hat, mit Bild, Vorwurf und der Kaution dahinter. Lesen darf diese Seite jede Person. Entscheiden darf hier nur die Adresse, die die Policy benennt.",
+    "lede": "Jeder Einspruch, den die Registry noch offen hat, mit Bild, Vorwurf und Kaution. Lesen darf jede Person; entscheiden darf nur die benannte Adresse.",
     "resolverLabel": "Die Schlichterin",
     "policyNote": "Der Policy-Vertrag benennt genau eine Adresse, und eine Änderung wartet 24 Stunden öffentlich, damit alle Zuschauenden vor dem Wirksamwerden reagieren können.",
     "youAre": "Du bist die Schlichterin",

@@ -71,7 +71,7 @@ export function DocsTree({ nav, onGo }: { nav: NavEntry[]; onGo?: () => void }) 
               type="button"
               onClick={() => setToggled((was) => ({ ...was, [entry.title]: !open }))}
               aria-expanded={open}
-              className="flex w-full items-center gap-2 py-1 text-left font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent"
+              className="flex w-full items-center gap-2 py-1 text-left font-mono text-[12px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent"
             >
               <span
                 aria-hidden
