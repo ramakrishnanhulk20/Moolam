@@ -1,8 +1,11 @@
 "use client";
 
 import { useFormatter, useTranslations } from "next-intl";
+import { UseBlock } from "@/components/consent/Marks";
+import { SUMMARY_TONES } from "@/components/consent/tones";
 import { Picture } from "@/components/passport/Picture";
 import { shortHex } from "@/lib/chain/client";
+import type { PassportStatement } from "@/lib/data/passports";
 import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
 import { isTestCard, type ExplorePlate } from "./sort";
@@ -62,9 +65,14 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       />
 
       <span className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
-        <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-text-muted">
-          <span className="motif h-[7px] w-[7px] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
-          {kinds(String(plate.kind))}
+        <span className="flex min-w-0 flex-col items-start gap-2.5">
+          <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-text-muted">
+            <span className="motif h-[7px] w-[7px] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
+            {kinds(String(plate.kind))}
+          </span>
+          {/* Truthiness rather than a null test: a sheet held from the minute
+              before this shipped has plates with no such field at all. */}
+          {plate.consent ? <Statement statement={plate.consent} /> : null}
         </span>
         <span className="flex items-center gap-1">
           <Mark on={plate.manifest} letter="M" label={t("marks.manifest")} tone="accent" />
@@ -105,6 +113,43 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
         />
       </span>
     </Link>
+  );
+}
+
+/**
+ * What the holder said about AI use, drawn on the picture itself.
+ *
+ * The same four marks and the same colours as the passport page, small enough
+ * to sit under the kind and far from the three letters in the other corner: a
+ * statement is a different kind of fact from a re-check, and the two should not
+ * read as one row of badges. A picture nobody has spoken for carries nothing at
+ * all, because silence is drawn as silence.
+ *
+ * The block already reads its four uses out for a screen reader. Here the
+ * statement and its date are what a reader browsing a sheet of forty needs, so
+ * the wrapper takes that reading and the marks inside it become decoration.
+ */
+function Statement({ statement }: { statement: PassportStatement }) {
+  const t = useTranslations("explore");
+  const summaries = useTranslations("passport.consent.summary");
+  const format = useFormatter();
+
+  const said = t("ai.mark", {
+    statement: summaries(statement.summary),
+    when: format.dateTime(new Date(statement.at * 1000), { dateStyle: "medium" }),
+  });
+
+  return (
+    <span
+      role="img"
+      aria-label={said}
+      title={said}
+      className={`opacity-80 transition-opacity duration-500 group-hover:opacity-100 ${
+        SUMMARY_TONES[statement.summary].ink
+      }`}
+    >
+      <UseBlock consent={statement.uses} size="h-2 w-2" />
+    </span>
   );
 }
 

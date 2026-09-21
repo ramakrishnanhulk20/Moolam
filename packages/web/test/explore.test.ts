@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { NO_MANIFEST, passportWhere, searchPattern } from "@/lib/data/passports";
 import { isTestCard, mergePlates, sortPlates } from "@/components/explore/sort";
 import {
+  AI_VIEWS,
   DEFAULT_VIEW,
   EXPLORE_VIEWS,
   exploreHref,
@@ -53,6 +54,42 @@ describe("what the index is asked for", () => {
     expect(passportWhere({ disputed: true, disputedReach: "field" })).toEqual({
       _and: [{ inheritedDisputed: { _eq: true } }],
     });
+  });
+
+  it("asks for the summary and the flag together, so silence and a choice never share a sheet", () => {
+    expect(passportWhere({ ai: "open" })).toEqual({
+      _and: [{ consentStated: { _eq: true } }, { consentSummary: { _eq: "open" } }],
+    });
+    expect(passportWhere({ ai: "closed" })).toEqual({
+      _and: [{ consentStated: { _eq: true } }, { consentSummary: { _eq: "closed" } }],
+    });
+    expect(passportWhere({ ai: "ask" })).toEqual({
+      _and: [{ consentStated: { _eq: true } }, { consentSummary: { _eq: "ask" } }],
+    });
+  });
+
+  it("reads nothing stated as the flag alone, which is the one thing the summary word cannot say", () => {
+    expect(passportWhere({ ai: "none" })).toEqual({ _and: [{ consentStated: { _eq: false } }] });
+  });
+
+  it("stacks an AI-use chip with a picture chip and a search term", () => {
+    expect(passportWhere({ ai: "open", kind: 0, search: "0xAB" })).toEqual({
+      _and: [
+        { kind: { _eq: 0 } },
+        { consentStated: { _eq: true } },
+        { consentSummary: { _eq: "open" } },
+        { id: { _ilike: "0xab%" } },
+      ],
+    });
+    expect(passportWhere({ ai: "none", rechecked: true })).toEqual({
+      _and: [{ attestationCount: { _gt: 0 } }, { consentStated: { _eq: false } }],
+    });
+  });
+
+  it("leaves a statement stated use by use to the Any chip, which is the only one true of it", () => {
+    for (const where of [passportWhere({ ai: "open" }), passportWhere({ ai: "closed" }), passportWhere({ ai: "ask" })]) {
+      expect(JSON.stringify(where)).not.toContain("mixed");
+    }
   });
 
   it("stacks the chips, the agent and the search into one and", () => {
@@ -143,16 +180,17 @@ describe("which pictures come first", () => {
 
 describe("the filter a link carries", () => {
   it("opens a bare address on the pictures", () => {
-    expect(readExploreSearch({})).toEqual({ view: "pictures", search: "", agent: null });
+    expect(readExploreSearch({})).toEqual({ view: "pictures", search: "", agent: null, ai: null });
     expect(DEFAULT_VIEW).toBe("pictures");
   });
 
   it("falls back to the chip the rest of the address implies when it names one this build lacks", () => {
-    expect(readExploreSearch({ view: "sideways" })).toEqual({ view: "pictures", search: "", agent: null });
+    expect(readExploreSearch({ view: "sideways" })).toEqual({ view: "pictures", search: "", agent: null, ai: null });
     expect(readExploreSearch({ view: "sideways", agent: "10248" })).toEqual({
       view: "all",
       search: "",
       agent: "10248",
+      ai: null,
     });
   });
 
@@ -164,7 +202,7 @@ describe("the filter a link carries", () => {
   });
 
   it("keeps the test chip when a link asks for it", () => {
-    expect(readExploreSearch({ view: "test" })).toEqual({ view: "test", search: "", agent: null });
+    expect(readExploreSearch({ view: "test" })).toEqual({ view: "test", search: "", agent: null, ai: null });
   });
 
   it("reads the chip, the term and the agent out of the URL", () => {
@@ -172,6 +210,7 @@ describe("the filter a link carries", () => {
       view: "rechecked",
       search: "0xAB",
       agent: "10248",
+      ai: null,
     });
   });
 
@@ -181,11 +220,11 @@ describe("the filter a link carries", () => {
   });
 
   it("turns each chip into the filter the index understands", () => {
-    expect(filterFor({ view: "generated", search: "", agent: null })).toEqual({ kind: 0 });
-    expect(filterFor({ view: "captured", search: "", agent: null })).toEqual({ kind: 1 });
-    expect(filterFor({ view: "edits", search: "", agent: null })).toEqual({ kind: 2 });
-    expect(filterFor({ view: "manifest", search: "", agent: null })).toEqual({ manifest: true });
-    expect(filterFor({ view: "disputed", search: "", agent: null })).toEqual({ disputed: true });
+    expect(filterFor({ view: "generated", search: "", agent: null, ai: null })).toEqual({ kind: 0 });
+    expect(filterFor({ view: "captured", search: "", agent: null, ai: null })).toEqual({ kind: 1 });
+    expect(filterFor({ view: "edits", search: "", agent: null, ai: null })).toEqual({ kind: 2 });
+    expect(filterFor({ view: "manifest", search: "", agent: null, ai: null })).toEqual({ manifest: true });
+    expect(filterFor({ view: "disputed", search: "", agent: null, ai: null })).toEqual({ disputed: true });
     expect(filterFor({ view: "all", search: "0xab", agent: "10249" })).toEqual({
       search: "0xab",
       generator: "10249",
@@ -193,9 +232,9 @@ describe("the filter a link carries", () => {
   });
 
   it("asks for one half of the registry on the two picture chips and for both on every other", () => {
-    expect(filterFor({ view: "pictures", search: "", agent: null })).toEqual({ pictures: "real" });
-    expect(filterFor({ view: "test", search: "", agent: null })).toEqual({ pictures: "test" });
-    expect(filterFor({ view: "all", search: "", agent: null })).toEqual({});
+    expect(filterFor({ view: "pictures", search: "", agent: null, ai: null })).toEqual({ pictures: "real" });
+    expect(filterFor({ view: "test", search: "", agent: null, ai: null })).toEqual({ pictures: "test" });
+    expect(filterFor({ view: "all", search: "", agent: null, ai: null })).toEqual({});
     expect(picturesFor("generated")).toBeUndefined();
     expect(isMixedView("all")).toBe(true);
     expect(isMixedView("pictures")).toBe(false);
@@ -207,19 +246,63 @@ describe("the filter a link carries", () => {
     expect(passportWhere({ pictures: "test", kind: 0 })).toEqual({ _and: [{ kind: { _eq: 0 } }] });
   });
 
+  it("reads the four answers about AI use out of the address, and nothing else", () => {
+    expect(readExploreSearch({ ai: "open" })).toEqual({ view: "all", search: "", agent: null, ai: "open" });
+    expect(readExploreSearch({ ai: "CLOSED" }).ai).toBe("closed");
+    expect(readExploreSearch({ ai: "ask" }).ai).toBe("ask");
+    expect(readExploreSearch({ ai: "none" }).ai).toBe("none");
+
+    // A word the index would not know, and the one summary no chip claims.
+    expect(readExploreSearch({ ai: "mixed" }).ai).toBeNull();
+    expect(readExploreSearch({ ai: "maybe" }).ai).toBeNull();
+    expect(readExploreSearch({ ai: "" }).ai).toBeNull();
+    expect(readExploreSearch({ ai: ["open", "closed"] }).ai).toBe("open");
+    expect([...AI_VIEWS]).toEqual(["open", "closed", "ask", "none"]);
+  });
+
+  it("opens an AI-use link on the whole registry, so the sheet is as long as the link promised", () => {
+    expect(readExploreSearch({ ai: "open" }).view).toBe("all");
+    expect(impliedView("", null, "closed")).toBe("all");
+    expect(impliedView("", null, null)).toBe("pictures");
+    expect(readExploreSearch({ ai: "open", view: "pictures" }).view).toBe("pictures");
+  });
+
+  it("turns each AI-use chip into the filter the index understands", () => {
+    for (const ai of AI_VIEWS) {
+      expect(filterFor({ view: "all", search: "", agent: null, ai })).toEqual({ ai });
+    }
+    expect(filterFor({ view: "generated", search: "0xab", agent: null, ai: "open" })).toEqual({
+      kind: 0,
+      ai: "open",
+      search: "0xab",
+    });
+  });
+
   it("writes the whole state back into a link anyone can share", () => {
-    expect(exploreHref({ view: "pictures", search: "", agent: null })).toBe("/explore");
-    expect(exploreHref({ view: "all", search: "", agent: null })).toBe("/explore?view=all");
-    expect(exploreHref({ view: "test", search: "", agent: null })).toBe("/explore?view=test");
-    expect(exploreHref({ view: "edits", search: "0x1a", agent: "10248" })).toBe(
+    expect(exploreHref({ view: "pictures", search: "", agent: null, ai: null })).toBe("/explore");
+    expect(exploreHref({ view: "all", search: "", agent: null, ai: null })).toBe("/explore?view=all");
+    expect(exploreHref({ view: "test", search: "", agent: null, ai: null })).toBe("/explore?view=test");
+    expect(exploreHref({ view: "edits", search: "0x1a", agent: "10248", ai: null })).toBe(
       "/explore?view=edits&q=0x1a&agent=10248",
     );
-    expect(exploreHref({ view: "all", search: "", agent: "10248" })).toBe("/explore?agent=10248");
+    expect(exploreHref({ view: "all", search: "", agent: "10248", ai: null })).toBe("/explore?agent=10248");
+    expect(exploreHref({ view: "all", search: "", agent: null, ai: "open" })).toBe("/explore?ai=open");
+    expect(exploreHref({ view: "pictures", search: "", agent: null, ai: "none" })).toBe(
+      "/explore?view=pictures&ai=none",
+    );
   });
 
   it("reads every link it writes back as the view it was copied from", () => {
+    const extras = [
+      { search: "", agent: null, ai: null },
+      { search: "0xab", agent: null, ai: null },
+      { search: "", agent: "10248", ai: null },
+      { search: "", agent: null, ai: "open" as const },
+      { search: "0xab", agent: "10248", ai: "ask" as const },
+    ];
+
     for (const view of EXPLORE_VIEWS) {
-      for (const extra of [{ search: "", agent: null }, { search: "0xab", agent: null }, { search: "", agent: "10248" }]) {
+      for (const extra of extras) {
         const state = { view, ...extra };
         const href = exploreHref(state);
         const params = Object.fromEntries(new URLSearchParams(href.split("?")[1] ?? ""));

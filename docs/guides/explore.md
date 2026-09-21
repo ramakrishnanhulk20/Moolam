@@ -18,11 +18,13 @@ ones a reader can look at, and the cards the repository's own scripts wrote sit 
 "Test images", rather than at the top of a judge's first screen. Nothing is hidden: "All" is the
 third chip and holds the whole registry.
 
-Three counts sit beside the title: "Passports", "Generated" and "Re-checked". They count the whole
-index however the grid is filtered. The first is the index's own running total. The other two are
-counted by asking for the matching ids, capped at a thousand, so a count that hit the cap prints as a
-number with a plus after it rather than pretending to be exact. The endpoint exposes no aggregate to
-ask instead.
+Four counts sit beside the title: "Passports", "Generated", "Re-checked" and "Carry a statement on
+AI use". They count the whole index however the grid is filtered. The first and the last are the
+index's own running totals. The middle two are counted by asking for the matching ids, capped at a
+thousand, so a count that hit the cap prints as a number with a plus after it rather than pretending
+to be exact. The endpoint exposes no aggregate to ask instead. An index that does not answer the
+last counter leaves it out rather than printing a zero, which would read as a registry where nobody
+has spoken.
 
 Under them, one line says how the registry divides: "7 pictures / 22 test images". That number is
 read the only way it can be, by fetching each pinned metadata document for its title, capped at the
@@ -61,9 +63,41 @@ typing does not fire a query per keystroke at the index. A link that carries a s
 agent id and names no chip opens on "All": it is asking about records rather than about which of them
 are test cards, and the pictures chip would answer it with an empty grid.
 
-Arriving from an agent's page adds a tenth chip, "Agent" and the id, with an x that clears it. A
+Arriving from an agent's page adds one more chip, "Agent" and the id, with an x that clears it. A
 chip this build no longer has falls back to the same chip the rest of the address implies, instead of
 an error page, because a link someone shared should still open.
+
+### Narrowing by what the holder said about AI use
+
+Under the chips, a row labelled "AI use" with five of its own: "Any", "Open to AI use", "Not for AI
+training", "Ask first" and "Nothing stated". They carry the same words the passport page uses for
+the same statement, so the two screens can never name one picture two ways, and they combine with
+the chips above and with the search box.
+
+| Address | The sheet it opens |
+| --- | --- |
+| `/explore?ai=open` | Pictures whose holders allow all four uses in the standard, training included |
+| `/explore?ai=closed` | Pictures whose holders refuse all four |
+| `/explore?ai=ask` | Pictures allowed only on the holder's own conditions |
+| `/explore?ai=none` | Pictures nobody has written a statement for |
+| `/explore?ai=open&view=generated` | Both at once: generated images whose holders allow AI use |
+
+A statement that answers each use on its own terms is summarised "mixed", and it appears under
+"Any" alone: no one of the four words above would be true of it. A picture nobody has spoken for is
+asked for by the flag rather than by the summary word, because the index writes `none` for silence
+and for a statement that named no use, and those are not the same answer.
+
+The whole sheet is one indexed query. The index flattens the newest statement onto the passport
+itself, so nothing loops over the chain and nothing walks a statement history to draw this. The
+query is on the [GraphQL page](../api/graphql#example-pictures-open-to-ai-use).
+
+The two sets somebody outside the product actually asks for carry a line above the sheet saying
+what they are. On "Open to AI use": "Pictures whose holders say AI may train on them. Each statement
+is dated on Monad, and the passport page answers for any past day." On "Not for AI training":
+"Pictures whose holders have refused AI use, on the record, with the date."
+
+An address that names an AI-use answer and no chip opens on "All", the same way a search term does:
+it is asking about statements rather than about which pictures are test cards.
 
 The index cannot be asked for the two picture chips. It stores no title, and a title is the only
 thing that separates a real picture from a test card, so the page reads whole pages of rows from the
@@ -81,6 +115,12 @@ The pinned thumbnail and the title, with the kind in one word at the top left, "
 | M | "C2PA manifest pinned with the picture" |
 | R | "Re-checked by Chainlink" when the attestation came through this deployment's receiver, otherwise "Re-checked on chain" |
 | D | "Disputed" |
+
+A picture whose holder has written a statement carries the four marks of that statement under the
+kind, in the cold colours the passport page draws them in, and reads out as the statement and its
+date: "Not for AI training, stated 18 Sep 2026". A picture nobody has spoken for carries nothing
+there at all, because silence is drawn as silence. The line under the chips says what the four
+marks are.
 
 A mark the registry does not support is a dim outline rather than absent, so a plate with nothing on
 it still reads as a plate with nothing on it. A picture the gateway will not hand over shows the seal

@@ -35,6 +35,7 @@ const PLATES = [...Array(6).keys()].map((index) => ({
   chainlink: false,
   disputed: false,
   agentId: null,
+  consent: null,
 }));
 
 function sheet() {
@@ -42,7 +43,7 @@ function sheet() {
     createElement(Grid, {
       first: PLATES,
       cursor: null,
-      search: { view: "pictures" as const, search: "", agent: null },
+      search: { view: "pictures" as const, search: "", agent: null, ai: null },
       indexError: null,
     }),
   );

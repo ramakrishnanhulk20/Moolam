@@ -4,7 +4,7 @@ import { z } from "zod";
 import { reason } from "@/lib/chain/client";
 import type { PassportCursor } from "@/lib/data/passports";
 import { sheetPage } from "./plates";
-import { EXPLORE_VIEWS, type ExploreView } from "./query";
+import { AI_VIEWS, EXPLORE_VIEWS, type ExploreAi, type ExploreView } from "./query";
 import type { ExplorePlate } from "./sort";
 
 /**
@@ -15,6 +15,7 @@ const requestSchema = z.object({
   view: z.enum(EXPLORE_VIEWS as unknown as [ExploreView, ...ExploreView[]]),
   search: z.string().max(80),
   agent: z.string().regex(/^[0-9]{1,20}$/).nullable(),
+  ai: z.enum(AI_VIEWS as unknown as [ExploreAi, ...ExploreAi[]]).nullable(),
   cursor: z
     .object({ registeredAt: z.string().regex(/^[0-9]{1,20}$/), id: z.string().regex(/^0x[0-9a-fA-F]{64}$/) })
     .nullable(),
@@ -37,10 +38,10 @@ export async function morePlates(input: unknown): Promise<MorePlates> {
     return { ok: false, error: "that request did not name a page of the registry" };
   }
 
-  const { view, search, agent, cursor } = parsed.data;
+  const { view, search, agent, ai, cursor } = parsed.data;
 
   try {
-    const page = await sheetPage({ view, search, agent }, cursor);
+    const page = await sheetPage({ view, search, agent, ai }, cursor);
     return { ok: true, plates: page.plates, cursor: page.cursor };
   } catch (error) {
     return { ok: false, error: reason(error) };

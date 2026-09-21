@@ -943,3 +943,37 @@ WHAT THIS DOES NOT COVER
   do the film's own older chapters: shared by 36 px, verified by 97 px and
   trusted by 163 px at the same size. That is the film's phone band, not this
   chapter, and nothing in this order changed it.
+
+
+================================================================================
+WO-85b  CONSENT ON EXPLORE, 2026-09-21
+================================================================================
+
+MEASURED WITH
+
+  Headless Chrome over the DevTools protocol against the dev server on
+  port 3210. Device metrics overridden, layout-shift entries collected from a
+  PerformanceObserver installed before navigation, read 3.5 s after load.
+
+SIDEWAYS SCROLL AND LAYOUT SHIFT
+
+  375x812   /en/explore                 scrollWidth 375, clientWidth 375, CLS 0
+  375x812   /en/explore?ai=open         scrollWidth 375, clientWidth 375, CLS 0
+  375x812   /ta/explore?ai=closed       scrollWidth 375, clientWidth 375, CLS 0
+  1440x900  /en/explore?ai=open         scrollWidth 1440, clientWidth 1440, CLS 0
+
+  No layout-shift entry was recorded at all on any of the four, so the new chip
+  row, the plate marks and the fourth count cost nothing that moves.
+
+TOUCH TARGETS AT 375 px
+
+  All fourteen chips measure 44 px tall, the five new ones included:
+  Any 53x44, Open to AI use 153x44, Not for AI training 192x44, Ask first
+  114x44, Nothing stated 153x44. The row scrolls sideways inside itself, which
+  is why chips sit past the viewport edge while the document does not scroll.
+
+WHAT THIS DOES NOT COVER
+
+  Nothing was measured on a real phone, and no first-paint timing was taken for
+  this order: the AI-use sheet is the same one query per sheet the other chips
+  make, with two more clauses in the where.

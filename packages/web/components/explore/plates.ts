@@ -39,6 +39,7 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         chainlink: row.chainlink,
         disputed: row.inheritedDisputed,
         agentId: row.generatorId,
+        consent: row.consent,
       };
     }),
   );
@@ -134,12 +135,18 @@ export interface SheetPage {
 }
 
 const heldSheet = unstable_cache(
-  async (view: ExploreSearch["view"], search: string, agent: string | null, cursor: PassportCursor | null) => {
+  async (
+    view: ExploreSearch["view"],
+    search: string,
+    agent: string | null,
+    ai: ExploreSearch["ai"],
+    cursor: PassportCursor | null,
+  ) => {
     const sheet = plateSheet(picturesFor(view));
     // Worked out once for the whole page rather than per row: the chip needs it
     // for its query, and every other chip needs it to light the D on an edit
     // whose picture was disputed.
-    const filter = { ...filterFor({ view, search, agent }), disputedReach: await disputedReach() };
+    const filter = { ...filterFor({ view, search, agent, ai }), disputedReach: await disputedReach() };
     const page = await explorePassports({ filter, cursor, keep: sheet.keep });
     return { plates: sheet.platesFor(page.passports), cursor: page.cursor };
   },
@@ -158,5 +165,5 @@ const heldSheet = unstable_cache(
  * that is why the grid is drawn from plates and not from index rows.
  */
 export async function sheetPage(search: ExploreSearch, cursor: PassportCursor | null = null): Promise<SheetPage> {
-  return await heldSheet(search.view, search.search, search.agent, cursor);
+  return await heldSheet(search.view, search.search, search.agent, search.ai, cursor);
 }

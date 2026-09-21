@@ -83,7 +83,8 @@
     "counts": {
       "total": "Passports",
       "generated": "Generated",
-      "rechecked": "Re-checked"
+      "rechecked": "Re-checked",
+      "stated": "Carry a statement on AI use"
     },
     "countsError": "The counts could not be read: {reason}.",
     "countsMissing": "no index answered",
@@ -106,6 +107,17 @@
       "manifest": "With manifest",
       "disputed": "Disputed"
     },
+    "ai": {
+      "label": "AI use",
+      "chipsLabel": "Filter by what the holder said about AI use",
+      "any": "Any",
+      "ask": "Ask first",
+      "none": "Nothing stated",
+      "mark": "{statement}, stated {when}",
+      "openLine": "Pictures whose holders say AI may train on them. Each statement is dated on Monad, and the passport page answers for any past day.",
+      "openQuery": "Query this set",
+      "closedLine": "Pictures whose holders have refused AI use, on the record, with the date."
+    },
     "searchLabel": "Search by passport id",
     "searchPlaceholder": "Passport id",
     "searchAction": "Search",
@@ -120,7 +132,8 @@
     "legend": {
       "manifest": "C2PA manifest pinned",
       "rechecked": "Re-checked on chain",
-      "disputed": "Under dispute"
+      "disputed": "Under dispute",
+      "consent": "Statement on AI use, four marks for the four uses"
     },
     "untitled": "Untitled",
     "noPicture": "No picture on the gateway",

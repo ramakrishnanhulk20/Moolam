@@ -85,7 +85,8 @@
     "counts": {
       "total": "パスポート",
       "generated": "生成",
-      "rechecked": "再検証済み"
+      "rechecked": "再検証済み",
+      "stated": "AI 利用の表明あり"
     },
     "countsError": "件数を読み取れませんでした: {reason}。",
     "countsMissing": "応答したインデックスがありません",
@@ -108,6 +109,17 @@
       "manifest": "manifest あり",
       "disputed": "異議あり"
     },
+    "ai": {
+      "label": "AI 利用",
+      "chipsLabel": "保有者の表明で絞り込む",
+      "any": "すべて",
+      "ask": "まず尋ねる",
+      "none": "表明なし",
+      "mark": "{statement}、{when} に表明",
+      "openLine": "保有者が AI の学習に使ってよいと言っている画像です。どの表明も Monad 上で日付が付き、パスポートのページは過去のどの日についても答えます。",
+      "openQuery": "この集合を問い合わせる",
+      "closedLine": "保有者が AI 利用を断った画像です。記録として、日付とともに残っています。"
+    },
     "searchLabel": "パスポート id で検索",
     "searchPlaceholder": "パスポート id",
     "searchAction": "検索",
@@ -122,7 +134,8 @@
     "legend": {
       "manifest": "C2PA manifest をピン留め",
       "rechecked": "チェーン上で再検証済み",
-      "disputed": "異議あり"
+      "disputed": "異議あり",
+      "consent": "AI 利用の表明、四つの用途に四つの印"
     },
     "untitled": "無題",
     "noPicture": "ゲートウェイに画像がありません",

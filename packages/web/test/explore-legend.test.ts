@@ -62,12 +62,13 @@ const marked = {
   chainlink: false,
   disputed: true,
   agentId: "10248",
+  consent: null,
 };
 
 const bare = { ...marked, manifest: false, rechecked: false, disputed: false };
 
 const sheet = () =>
-  render(createElement(Filters, { search: { view: "pictures" as const, search: "", agent: null } }));
+  render(createElement(Filters, { search: { view: "pictures" as const, search: "", agent: null, ai: null } }));
 
 describe("the letters on a plate", () => {
   it("says what each lit mark means, in the words of the thing it was read from", () => {

@@ -18,7 +18,8 @@ with lowercase addresses or you will miss rows.
 
 | Entity | Keyed by | Holds |
 | --- | --- | --- |
-| `Passport` | The image's exact hash, which is also the token id | The fingerprint, where it came from, where it sits in its edit tree, who holds it now, and the running verification tally |
+| `Passport` | The image's exact hash, which is also the token id | The fingerprint, where it came from, where it sits in its edit tree, who holds it now, the running verification tally, and the statement that stands about AI use |
+| `ConsentEntry` | `<passportId>-<index>` from the event's own index | One statement about AI use, exactly as it was written, never edited afterwards |
 | `Creator` | Wallet address | `passportCount` for everything it registered, `editCount` for the subset that were edits |
 | `Passkey` | Wallet address | The WebAuthn public key currently bound. Rebinding replaces the row |
 | `Generator` | ERC-8004 agent id | Its recheck record and its trust score |
@@ -26,11 +27,38 @@ with lowercase addresses or you will miss rows.
 | `Dispute` | Passport id | `status` mirrors the contract enum: 1 open, 2 upheld, 3 rejected |
 | `Receiver` | Verifier address | Whether the policy currently allows it, and since when |
 | `CreatorDay` | `<day>-<creator>` | A marker row so `DailyStats.uniqueCreators` can count distinct creators |
-| `DailyStats` | UTC day | `registrations`, `edits`, `attestations`, `disputes`, `uniqueCreators` |
-| `GlobalStats` | `global` | `passports`, `creators`, `generators`, `attestations`, `disputes` |
+| `DailyStats` | UTC day | `registrations`, `edits`, `attestations`, `disputes`, `uniqueCreators`, `consentStatements` |
+| `GlobalStats` | `global` | `passports`, `creators`, `generators`, `attestations`, `disputes`, `consentStatements`, `passportsWithConsent` |
 
 `edits` is a subset of `registrations`, not a figure beside it. `BigInt` fields come back as
 strings, which is why `phash` and `registeredAt` are quoted in the output below.
+
+`consentStatements` counts statements written and `passportsWithConsent` counts pictures that carry
+one. The two differ because a holder can restate: a counter that showed only the total would make a
+few holders changing their minds look like new pictures arriving.
+
+## The statement on a passport
+
+The newest statement is flattened onto the passport itself, so narrowing the registry by what
+holders have said is one indexed read rather than a walk through every statement ever written.
+
+| Field | Type | Holds |
+| --- | --- | --- |
+| `consentStated` | `Boolean` | Whether a statement has ever been written for this picture |
+| `consentSummary` | `String` | `open`, `closed`, `ask`, `mixed`, or `none` |
+| `consentAt` | `BigInt` | When the newest statement was written, in whole seconds |
+| `consentWriter` | `String` | The address that held the passport when it was written |
+| `consentCount` | `Int` | How many statements this passport has collected |
+| `consentAiTraining` | `Int` | 0 unspecified, 1 allowed, 2 not allowed, 3 conditions apply |
+| `consentAiGenerativeTraining` | `Int` | The same four values |
+| `consentAiInference` | `Int` | The same four values |
+| `consentDataMining` | `Int` | The same four values |
+| `consentInfo` | `String` | The conditions in the holder's own words, empty unless a use carries some |
+| `consentEntries` | `[ConsentEntry]` | Every statement this passport has collected |
+
+`consentSummary` reads `none` both for a picture nobody has spoken for and for a statement whose
+holder named no use at all, so `consentStated` is what separates silence from a choice. Ask for
+both together, the way the Explore filter does.
 
 ## Example: the newest passports
 
@@ -162,10 +190,119 @@ recomputed from the thumbnail matched the one the creator registered exactly. Th
 score of 67 is `round(100 * (1 + 1) / (1 + 0 + 0 + 2))`, one matched recheck against the smoothing
 prior.
 
+## Example: pictures open to AI use
+
+Every picture whose holder allows all four uses in the standard, newest statement first. This is
+the query behind the "Open to AI use" chip on [Explore](../guides/explore.md), and the whole answer
+is one indexed read: nothing loops over the chain to build it.
+
+```graphql
+query OpenToAiUse {
+  Passport(
+    where: { consentStated: { _eq: true }, consentSummary: { _eq: "open" } }
+    order_by: { consentAt: desc }
+    limit: 3
+  ) {
+    id
+    consentSummary
+    consentAt
+    consentWriter
+    consentCount
+  }
+}
+```
+
+Run against the live endpoint:
+
+```json
+{
+  "data": {
+    "Passport": [
+      {
+        "id": "0x3dae5ee9d854d6af49857150873cefbe2df2a585e35ea86d34f0f47cb3b6403d",
+        "consentSummary": "open",
+        "consentAt": "1789885758",
+        "consentWriter": "0xbb4eb7bf3e4e4960ee0c2f535bd31c84df35b6b2",
+        "consentCount": 1
+      },
+      {
+        "id": "0x5b3856dc4765c629e82f65ff920f13543f7c1ef818b52252d55b488387fe65b1",
+        "consentSummary": "open",
+        "consentAt": "1789717122",
+        "consentWriter": "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6",
+        "consentCount": 1
+      },
+      {
+        "id": "0x01f9243e5dafb9364ff4819c4f55379d5366acd37af2466ff69500ceb8438ed5",
+        "consentSummary": "open",
+        "consentAt": "1789717122",
+        "consentWriter": "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6",
+        "consentCount": 1
+      }
+    ]
+  }
+}
+```
+
+Swap `"open"` for `"closed"` to get the pictures whose holders have refused, or drop
+`consentSummary` and ask for `consentStated: { _eq: false }` to get the ones nobody has spoken for.
+
+## Example: one passport's statement history
+
+`ConsentEntry` is the table a reader quotes when they need what was allowed on the day they used a
+picture rather than what is allowed now. Nothing in it is ever edited, so the oldest row is still
+the first thing that holder said.
+
+```graphql
+query StatementHistory {
+  ConsentEntry(
+    where: { passport_id: { _eq: "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" } }
+    order_by: { index: asc }
+  ) {
+    index
+    summary
+    aiTraining
+    aiGenerativeTraining
+    aiInference
+    dataMining
+    constraintInfo
+    writer
+    at
+    txHash
+  }
+}
+```
+
+Run against the live endpoint:
+
+```json
+{
+  "data": {
+    "ConsentEntry": [
+      {
+        "index": 0,
+        "summary": "closed",
+        "aiTraining": 2,
+        "aiGenerativeTraining": 2,
+        "aiInference": 2,
+        "dataMining": 2,
+        "constraintInfo": "",
+        "writer": "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6",
+        "at": "1789717128",
+        "txHash": "0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61"
+      }
+    ]
+  }
+}
+```
+
+`writer` comes from the event and never from the transaction: a holder on a passkey wallet writes
+through the ERC-4337 EntryPoint, and the transaction's sender there is a bundler.
+
 ## Curl
 
 ```bash
 curl -s -X POST https://indexer.dev.hyperindex.xyz/a8a9316/v1/graphql \
   -H 'content-type: application/json' \
-  -d '{"query":"{ GlobalStats { id passports creators generators attestations disputes } }"}'
+  -d '{"query":"{ GlobalStats { id passports creators generators attestations disputes consentStatements passportsWithConsent } }"}'
 ```

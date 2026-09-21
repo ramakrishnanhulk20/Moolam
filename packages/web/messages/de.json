@@ -83,7 +83,8 @@
     "counts": {
       "total": "Pässe",
       "generated": "Erzeugt",
-      "rechecked": "Nachgeprüft"
+      "rechecked": "Nachgeprüft",
+      "stated": "Mit Erklärung zur KI-Nutzung"
     },
     "countsError": "Die Zahlen konnten nicht gelesen werden: {reason}.",
     "countsMissing": "kein Index hat geantwortet",
@@ -106,6 +107,17 @@
       "manifest": "Mit manifest",
       "disputed": "Bestritten"
     },
+    "ai": {
+      "label": "KI-Nutzung",
+      "chipsLabel": "Nach der Erklärung des Halters filtern",
+      "any": "Alle",
+      "ask": "Erst fragen",
+      "none": "Nichts erklärt",
+      "mark": "{statement}, erklärt am {when}",
+      "openLine": "Bilder, deren Halter sagen, dass eine KI damit trainieren darf. Jede Erklärung trägt ihr Datum auf Monad, und die Passseite antwortet für jeden vergangenen Tag.",
+      "openQuery": "Diese Menge abfragen",
+      "closedLine": "Bilder, deren Halter die KI-Nutzung abgelehnt haben, festgehalten mit Datum."
+    },
     "searchLabel": "Nach Pass-Id suchen",
     "searchPlaceholder": "Pass-Id",
     "searchAction": "Suchen",
@@ -120,7 +132,8 @@
     "legend": {
       "manifest": "C2PA-manifest angeheftet",
       "rechecked": "Auf der Kette nachgeprüft",
-      "disputed": "Bestritten"
+      "disputed": "Bestritten",
+      "consent": "Erklärung zur KI-Nutzung, vier Zeichen für vier Nutzungen"
     },
     "untitled": "Ohne Titel",
     "noPicture": "Kein Bild am Gateway",

@@ -9,6 +9,7 @@ import { Masthead } from "./Masthead";
 import { heldPictureSplit, sheetPage, type PictureSplit } from "./plates";
 import type { ExploreSearch } from "./query";
 import { ReadingProvider } from "./Reading";
+import { StatedLine } from "./Stated";
 import type { ExplorePlate } from "./sort";
 
 /** The head for both Explore routes, so the tab reads the same whichever drew the page. */
@@ -91,6 +92,7 @@ export async function ExploreSheet({
           screen is still the one the chips say it is. */}
       <ReadingProvider>
         <Filters search={search} />
+        <StatedLine ai={search.ai} />
         <Grid first={plates} cursor={cursor} search={search} indexError={gridError} />
       </ReadingProvider>
     </div>

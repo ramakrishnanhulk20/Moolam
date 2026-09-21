@@ -10,6 +10,7 @@ import {
   chain,
   registryAbi,
 } from "@/lib/chain/client";
+import { USE_FIELDS, asUseWord, type Consent, type Statement, type UseField } from "@/lib/chain/consent";
 import { passportTag } from "@/lib/chain/registry";
 import { reaches, type DisputedReach } from "./lineage";
 import { activeSource, envioUrl } from "./source";
@@ -446,6 +447,16 @@ export const NO_MANIFEST = `0x${"0".repeat(64)}`;
 /** Which half of the registry a view shows: the real pictures, or the seed test cards. */
 export type PassportPictures = "real" | "test";
 
+/**
+ * What a sheet may be narrowed to by what the holder has said about AI use.
+ *
+ * Three of them are the index's own summary words. "none" is the other side of
+ * the same field: a passport nobody has spoken for. A statement that answers
+ * each use on its own terms is summarised "mixed" and is deliberately not one
+ * of these, because no one of these four words would be true of it.
+ */
+export type PassportConsent = "open" | "closed" | "ask" | "none";
+
 /** What the Explore grid may narrow the registry down to. Nothing set means everything. */
 export interface PassportFilter {
   /** 0 Generated, 1 Captured, 2 Edited. */
@@ -463,6 +474,14 @@ export interface PassportFilter {
    * misses every copy of a picture proven fake.
    */
   disputedReach?: DisputedReach;
+  /**
+   * What the holder has said about AI use of the picture.
+   *
+   * The index flattens the newest statement onto the passport itself, so this
+   * is one indexed clause rather than a walk through every statement ever
+   * written.
+   */
+  ai?: PassportConsent;
   /** An ERC-8004 agent id, as the index stores it. */
   generator?: string;
   /** Matched against the passport id. The index stores no title, so there is nothing else to match. */
@@ -522,6 +541,9 @@ export function passportWhere(filter: PassportFilter, cursor?: PassportCursor | 
   if (filter.disputed === true) {
     clauses.push(disputedClause(filter.disputedReach));
   }
+  if (filter.ai !== undefined) {
+    clauses.push(...consentClauses(filter.ai));
+  }
   if (filter.generator !== undefined && filter.generator !== "") {
     clauses.push({ generator_id: { _eq: filter.generator } });
   }
@@ -559,6 +581,84 @@ function disputedClause(reach: DisputedReach | undefined): Record<string, unknow
   return reach === "field" ? { inheritedDisputed: { _eq: true } } : { id: { _in: [...reach.ids] } };
 }
 
+/**
+ * What one AI-use chip asks the index for.
+ *
+ * The flag comes first in every case. `consentSummary` reads "none" both for a
+ * passport nobody has spoken for and for a statement whose holder named no use
+ * at all, so asking for the word alone would put the two of them on the same
+ * sheet, and silence and a choice are not the same answer.
+ */
+function consentClauses(ai: PassportConsent): Record<string, unknown>[] {
+  if (ai === "none") {
+    return [{ consentStated: { _eq: false } }];
+  }
+  return [{ consentStated: { _eq: true } }, { consentSummary: { _eq: ai } }];
+}
+
+/** The statement that stands about one picture, as the index flattened it onto the passport. */
+export interface PassportStatement {
+  /** The plain summary the index worked out from the four uses. */
+  summary: Statement;
+  /** When it was written, in whole seconds, so a plate can print the date. */
+  at: number;
+  /** The four uses in the app's own words, never the contract's numbers. */
+  uses: Consent;
+}
+
+/** The summary words the index writes. Anything else is a statement this build will not read. */
+const SUMMARY_WORDS: readonly Statement[] = ["open", "closed", "ask", "mixed", "none"];
+
+/** Which index column holds each of the four uses. */
+const CONSENT_COLUMNS = {
+  aiTraining: "consentAiTraining",
+  aiGenerativeTraining: "consentAiGenerativeTraining",
+  aiInference: "consentAiInference",
+  dataMining: "consentDataMining",
+} as const satisfies Record<UseField, string>;
+
+/** One passport's consent columns, exactly as the index sends them. */
+interface ConsentRow {
+  consentStated: boolean;
+  consentSummary: string;
+  consentAt: string;
+  consentAiTraining: number;
+  consentAiGenerativeTraining: number;
+  consentAiInference: number;
+  consentDataMining: number;
+}
+
+/**
+ * The statement on one row, or null where the holder has not written one.
+ *
+ * A use outside the contract's own enum, or a summary word this build does not
+ * know, reads as no statement at all rather than as a guess. A plate then draws
+ * silence, which is the one answer that can never claim a permission nobody
+ * gave.
+ */
+export function statementFrom(row: ConsentRow): PassportStatement | null {
+  if (!row.consentStated) {
+    return null;
+  }
+
+  const summary = SUMMARY_WORDS.find((word) => word === row.consentSummary);
+  if (summary === undefined) {
+    return null;
+  }
+
+  const uses = {} as Consent;
+  for (const field of USE_FIELDS) {
+    const word = asUseWord(row[CONSENT_COLUMNS[field]]);
+    if (word === undefined) {
+      return null;
+    }
+    uses[field] = word;
+  }
+
+  const at = Number(row.consentAt);
+  return Number.isSafeInteger(at) && at >= 0 ? { summary, at, uses } : null;
+}
+
 /** One row of the Explore grid, as the index has it. The picture is read separately. */
 export interface ExplorePassport {
   id: Hex;
@@ -575,6 +675,8 @@ export interface ExplorePassport {
   /** That mark, or the same one on any picture this was edited from. */
   inheritedDisputed: boolean;
   generatorId: string | null;
+  /** What the holder has said about AI use, or null where nobody has spoken for it. */
+  consent: PassportStatement | null;
 }
 
 export interface ExplorePage {
@@ -629,6 +731,21 @@ export async function explorePassports(input: {
   return { passports: held, cursor: at };
 }
 
+/** One row of the Explore query, exactly as the index sends it, counters and all. */
+interface ExploreRow extends ConsentRow {
+  id: Hex;
+  kind: number;
+  registeredAt: string;
+  registeredBlock: string;
+  metadataURI: string;
+  manifestHash: string;
+  disputed: boolean;
+  inheritedDisputed?: boolean;
+  attestationCount: number;
+  attestations: { receiver: string }[];
+  generator: { id: string } | null;
+}
+
 /** One straight read of the index, with no sifting and no second page. */
 async function readPage(
   filter: PassportFilter,
@@ -653,24 +770,20 @@ async function readPage(
       attestationCount
       attestations(limit: 5) { receiver }
       generator { id }
+      consentStated
+      consentSummary
+      consentAt
+      consentAiTraining
+      consentAiGenerativeTraining
+      consentAiInference
+      consentDataMining
     }
   }`;
 
-  const data = await askIndex<{
-    Passport: {
-      id: Hex;
-      kind: number;
-      registeredAt: string;
-      registeredBlock: string;
-      metadataURI: string;
-      manifestHash: string;
-      disputed: boolean;
-      inheritedDisputed?: boolean;
-      attestationCount: number;
-      attestations: { receiver: string }[];
-      generator: { id: string } | null;
-    }[];
-  }>(query, { where: passportWhere(filter, cursor), limit });
+  const data = await askIndex<{ Passport: ExploreRow[] }>(query, {
+    where: passportWhere(filter, cursor),
+    limit,
+  });
 
   const passports = data.Passport.map((row) => ({
     id: row.id,
@@ -684,6 +797,7 @@ async function readPage(
     disputed: row.disputed,
     inheritedDisputed: row.disputed || reaches(filter.disputedReach, row),
     generatorId: row.generator?.id ?? null,
+    consent: statementFrom(row),
   }));
 
   const last = data.Passport[data.Passport.length - 1];
@@ -696,11 +810,18 @@ async function readPage(
   };
 }
 
-/** The three numbers over the grid. */
+/** The numbers over the grid. */
 export interface RegistryCounts {
   total: number;
   generated: number;
   rechecked: number;
+  /**
+   * How many pictures carry a statement on AI use, counted by the index itself,
+   * or null when it did not answer that counter. Null is printed as nothing at
+   * all rather than as a zero, which would read as a registry where nobody has
+   * spoken.
+   */
+  stated: number | null;
   /** True when a count reached the cap below and is a floor rather than a total. */
   capped: boolean;
 }
@@ -709,22 +830,24 @@ export interface RegistryCounts {
 const COUNT_CAP = 1_000;
 
 /**
- * How many passports the index holds, how many of them were generated, and how
- * many carry an independent re-check.
+ * How many passports the index holds, how many of them were generated, how many
+ * carry an independent re-check, and how many carry a statement on AI use.
  *
- * The index has no aggregate to ask, so the last two are counted by asking for
- * ids and nothing else, up to a cap. Reaching the cap is reported rather than
- * hidden: a number the page cannot stand behind should not be printed as a total.
+ * The index has no aggregate for the middle two, so they are counted by asking
+ * for ids and nothing else, up to a cap. Reaching the cap is reported rather
+ * than hidden: a number the page cannot stand behind should not be printed as a
+ * total. The last one the index does keep a counter for, so it is a true total
+ * whatever the cap does.
  */
 export async function registryCounts(): Promise<RegistryCounts> {
   const query = `query RegistryCounts($cap: Int!) {
-    GlobalStats(limit: 1) { passports }
+    GlobalStats(limit: 1) { passports passportsWithConsent }
     generated: Passport(where: { kind: { _eq: 0 } }, limit: $cap) { id }
     rechecked: Passport(where: { attestationCount: { _gt: 0 } }, limit: $cap) { id }
   }`;
 
   const data = await askIndex<{
-    GlobalStats: { passports: number }[];
+    GlobalStats: { passports: number; passportsWithConsent: number | null }[];
     generated: { id: string }[];
     rechecked: { id: string }[];
   }>(query, { cap: COUNT_CAP });
@@ -733,6 +856,7 @@ export async function registryCounts(): Promise<RegistryCounts> {
     total: data.GlobalStats[0]?.passports ?? 0,
     generated: data.generated.length,
     rechecked: data.rechecked.length,
+    stated: data.GlobalStats[0]?.passportsWithConsent ?? null,
     capped: data.generated.length === COUNT_CAP || data.rechecked.length === COUNT_CAP,
   };
 }

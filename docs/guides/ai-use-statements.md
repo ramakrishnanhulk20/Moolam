@@ -173,8 +173,13 @@ That is one real picture, `monsoon-fishing-nets-drying`. `(2, 2, 2, 2)` is not a
 uses, written by the wallet that held it at unix second 1789717128, which is 2026-09-18T07:38:48Z.
 Every function, every error and the query for a past date are in [MoolamConsent](../api/consent).
 
-## What is not built yet
+## Finding the pictures that carry one
 
-Explore has no filter for how AI may be used. You can read any passport's statement on its own page
-or through a verify result, but you cannot yet list the registry by it. That is a screen nobody has
-built, not a limit in the register.
+[Explore](explore#narrowing-by-what-the-holder-said-about-ai-use) narrows the registry by what
+holders have said: "Open to AI use", "Not for AI training", "Ask first" and "Nothing stated", each
+one a shareable address like `/explore?ai=open`, and every plate that carries a statement shows it
+with the date it was written.
+
+The masthead counts how many pictures carry one, and the whole sheet is a single indexed query
+against Envio rather than a walk over the chain. The same query is on the
+[GraphQL page](../api/graphql#example-pictures-open-to-ai-use) if you want to run it yourself.

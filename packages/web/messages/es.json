@@ -83,7 +83,8 @@
     "counts": {
       "total": "Pasaportes",
       "generated": "Generadas",
-      "rechecked": "Comprobadas"
+      "rechecked": "Comprobadas",
+      "stated": "Con declaración sobre el uso por IA"
     },
     "countsError": "No se pudieron leer los totales: {reason}.",
     "countsMissing": "ningún índice respondió",
@@ -106,6 +107,17 @@
       "manifest": "Con manifest",
       "disputed": "En disputa"
     },
+    "ai": {
+      "label": "Uso por IA",
+      "chipsLabel": "Filtrar por lo que dijo quien la tiene",
+      "any": "Cualquiera",
+      "ask": "Pregunta antes",
+      "none": "Sin declarar",
+      "mark": "{statement}, declarado el {when}",
+      "openLine": "Imágenes cuyos dueños permiten que una IA entrene con ellas. Cada declaración lleva su fecha en Monad, y la página del pasaporte responde por cualquier día pasado.",
+      "openQuery": "Consultar este conjunto",
+      "closedLine": "Imágenes cuyos dueños han rechazado el uso por IA, por escrito y con su fecha."
+    },
     "searchLabel": "Buscar por id de pasaporte",
     "searchPlaceholder": "Id de pasaporte",
     "searchAction": "Buscar",
@@ -120,7 +132,8 @@
     "legend": {
       "manifest": "Manifest C2PA fijado",
       "rechecked": "Comprobada en la cadena",
-      "disputed": "En disputa"
+      "disputed": "En disputa",
+      "consent": "Declaración sobre el uso por IA, cuatro marcas para los cuatro usos"
     },
     "untitled": "Sin título",
     "noPicture": "Sin imagen en la pasarela",

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import {
+  AI_VIEWS,
   DEFAULT_SEARCH,
   EXPLORE_KEYS,
   EXPLORE_VIEWS,
@@ -47,6 +48,7 @@ vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) 
 vi.mock("@/components/explore/Filters", () => ({ Filters: () => null }));
 vi.mock("@/components/explore/Grid", () => ({ Grid: () => null }));
 vi.mock("@/components/explore/Masthead", () => ({ Masthead: () => null }));
+vi.mock("@/components/explore/Stated", () => ({ StatedLine: () => null }));
 
 const { default: proxy } = await import("@/proxy");
 const { ExploreSheet } = await import("@/components/explore/Sheet");
@@ -69,6 +71,13 @@ describe("which route an Explore address lands on", () => {
     expect(landsOn("/en/explore?q=0xab")).toBe("/en/explore/view");
     expect(landsOn("/en/explore?agent=10248")).toBe("/en/explore/view");
     expect(landsOn("/ja/explore?view=edits&q=0x1a&agent=10248")).toBe("/ja/explore/view");
+    expect(landsOn("/en/explore?ai=open")).toBe("/en/explore/view");
+    expect(landsOn("/ta/explore?ai=none&view=test")).toBe("/ta/explore/view");
+  });
+
+  it("sends an AI-use address to the narrowed route with its answer still on it", () => {
+    const answer = proxy(new NextRequest(new URL("https://moolam.xyz/en/explore?ai=closed")));
+    expect(answer.headers.get("x-middleware-rewrite")).toBe("https://moolam.xyz/en/explore/view?ai=closed");
   });
 
   it("sends a chip this build no longer has to the request route too, which answers with the view it implies", () => {
@@ -91,22 +100,29 @@ describe("which route an Explore address lands on", () => {
     for (const key of EXPLORE_KEYS) {
       expect(narrowsExplore(new URLSearchParams(`${key}=x`)), key).toBe(true);
     }
-    expect([...EXPLORE_KEYS].sort()).toEqual(["agent", "q", "view"]);
+    expect([...EXPLORE_KEYS].sort()).toEqual(["agent", "ai", "q", "view"]);
   });
 });
 
 describe("the links the chips and the search box write", () => {
   it("lands every chip on a route that can draw what it asks for", () => {
     for (const view of EXPLORE_VIEWS) {
-      const href = exploreHref({ view, search: "", agent: null });
+      const href = exploreHref({ view, search: "", agent: null, ai: null });
       const narrowed = href !== "/explore";
       expect(landsOn(`/en${href}`), href).toBe(narrowed ? "/en/explore/view" : "/en/explore");
     }
   });
 
+  it("lands every AI-use chip on the route that draws it on the request", () => {
+    for (const ai of AI_VIEWS) {
+      const href = exploreHref({ view: "all", search: "", agent: null, ai });
+      expect(landsOn(`/en${href}`), href).toBe("/en/explore/view");
+    }
+  });
+
   it("lands a search and an agent link on the request route", () => {
-    expect(landsOn(`/en${exploreHref({ view: "all", search: "0x1a", agent: null })}`)).toBe("/en/explore/view");
-    expect(landsOn(`/en${exploreHref({ view: "all", search: "", agent: "10248" })}`)).toBe("/en/explore/view");
+    expect(landsOn(`/en${exploreHref({ view: "all", search: "0x1a", agent: null, ai: null })}`)).toBe("/en/explore/view");
+    expect(landsOn(`/en${exploreHref({ view: "all", search: "", agent: "10248", ai: null })}`)).toBe("/en/explore/view");
   });
 
   it("sends the chip the page opens on back to the built page", () => {
@@ -134,7 +150,7 @@ describe("a sheet that could not be read", () => {
   it("costs the request route nothing, because nothing it draws is kept", async () => {
     holds.sheetPage.mockRejectedValue(new Error("the Envio endpoint answered 502"));
 
-    await ExploreSheet({ locale: "en", search: { view: "test", search: "", agent: null }, stored: false });
+    await ExploreSheet({ locale: "en", search: { view: "test", search: "", agent: null, ai: null }, stored: false });
 
     expect(holds.connection).not.toHaveBeenCalled();
   });
@@ -165,7 +181,7 @@ describe("a sheet that could not be read", () => {
     await ExploreSheet({ locale: "en", search: DEFAULT_SEARCH, stored: true });
     expect(holds.sheetPage).toHaveBeenCalledWith(DEFAULT_SEARCH);
 
-    const narrowed = { view: "edits" as const, search: "0x1a", agent: "10248" };
+    const narrowed = { view: "edits" as const, search: "0x1a", agent: "10248", ai: null };
     await ExploreSheet({ locale: "ta", search: narrowed, stored: false });
     expect(holds.sheetPage).toHaveBeenLastCalledWith(narrowed);
   });

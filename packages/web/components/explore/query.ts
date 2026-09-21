@@ -1,4 +1,4 @@
-import type { PassportFilter, PassportPictures } from "@/lib/data/passports";
+import type { PassportConsent, PassportFilter, PassportPictures } from "@/lib/data/passports";
 
 /**
  * The three chips that say which half of the registry is on the sheet: the real
@@ -14,6 +14,14 @@ export const EXPLORE_VIEWS = [...PICTURE_VIEWS, ...RECORD_VIEWS] as const;
 
 export type ExploreView = (typeof EXPLORE_VIEWS)[number];
 
+/**
+ * The chips that narrow the sheet by what the holder said about AI use, in the
+ * order they are drawn. "Any" is the way back and carries no value at all.
+ */
+export const AI_VIEWS = ["open", "closed", "ask", "none"] as const satisfies readonly PassportConsent[];
+
+export type ExploreAi = (typeof AI_VIEWS)[number];
+
 /** What the page opens on: the pictures, with the test cards one chip away. */
 export const DEFAULT_VIEW: ExploreView = "pictures";
 
@@ -24,6 +32,8 @@ export interface ExploreSearch {
   search: string;
   /** An agent id, when a reader arrived from the agents page. */
   agent: string | null;
+  /** What the holder must have said about AI use, or null for any answer at all. */
+  ai: ExploreAi | null;
 }
 
 /**
@@ -31,7 +41,7 @@ export interface ExploreSearch {
  * before anybody opens the page. readExploreSearch answers with exactly this
  * for an address that names no chip, no term and no agent.
  */
-export const DEFAULT_SEARCH: ExploreSearch = { view: DEFAULT_VIEW, search: "", agent: null };
+export const DEFAULT_SEARCH: ExploreSearch = { view: DEFAULT_VIEW, search: "", agent: null, ai: null };
 
 /**
  * The query keys this page reads.
@@ -41,7 +51,7 @@ export const DEFAULT_SEARCH: ExploreSearch = { view: DEFAULT_VIEW, search: "", a
  * in proxy.ts both read this list, so a key can never narrow the page without
  * being sent to the route that can draw it.
  */
-export const EXPLORE_KEYS = ["view", "q", "agent"] as const;
+export const EXPLORE_KEYS = ["view", "q", "agent", "ai"] as const;
 
 /** Whether an address asks for anything other than the view the build made. */
 export function narrowsExplore(params: URLSearchParams): boolean {
@@ -56,13 +66,14 @@ function one(value: string | string[] | undefined): string {
  * The chip a URL that names none is on.
  *
  * A bare /explore opens on the pictures. A link that already carries a search
- * term or an agent id opens on the whole registry instead: someone who followed
- * "see its passports" from an agent, or shared a search for a passport id, is
- * asking about records rather than about which of them are test cards, and the
- * pictures chip would answer with an empty grid.
+ * term, an agent id or an AI-use answer opens on the whole registry instead:
+ * someone who followed "see its passports" from an agent, shared a search for a
+ * passport id, or was sent the set of pictures open to AI use is asking about
+ * records rather than about which of them are test cards, and the pictures chip
+ * would answer with a shorter grid than the link promised.
  */
-export function impliedView(search: string, agent: string | null): ExploreView {
-  return search !== "" || agent !== null ? "all" : DEFAULT_VIEW;
+export function impliedView(search: string, agent: string | null, ai: ExploreAi | null = null): ExploreView {
+  return search !== "" || agent !== null || ai !== null ? "all" : DEFAULT_VIEW;
 }
 
 /**
@@ -76,11 +87,14 @@ export function readExploreSearch(params: Record<string, string | string[] | und
   const digits = one(params.agent).replace(/[^0-9]/g, "");
   const agent = digits === "" ? null : digits;
   const search = one(params.q).slice(0, 80);
+  const said = one(params.ai).toLowerCase() as ExploreAi;
+  const ai = (AI_VIEWS as readonly string[]).includes(said) ? said : null;
 
   return {
-    view: (EXPLORE_VIEWS as readonly string[]).includes(view) ? view : impliedView(search, agent),
+    view: (EXPLORE_VIEWS as readonly string[]).includes(view) ? view : impliedView(search, agent, ai),
     search,
     agent,
+    ai,
   };
 }
 
@@ -107,6 +121,9 @@ export function filterFor(search: ExploreSearch): PassportFilter {
     filter.pictures = pictures;
   }
 
+  if (search.ai !== null) {
+    filter.ai = search.ai;
+  }
   if (search.search !== "") {
     filter.search = search.search;
   }
@@ -141,7 +158,7 @@ export function isMixedView(view: ExploreView): boolean {
  */
 export function exploreHref(search: ExploreSearch): string {
   const params = new URLSearchParams();
-  if (search.view !== impliedView(search.search, search.agent)) {
+  if (search.view !== impliedView(search.search, search.agent, search.ai)) {
     params.set("view", search.view);
   }
   if (search.search !== "") {
@@ -149,6 +166,9 @@ export function exploreHref(search: ExploreSearch): string {
   }
   if (search.agent !== null) {
     params.set("agent", search.agent);
+  }
+  if (search.ai !== null) {
+    params.set("ai", search.ai);
   }
   const query = params.toString();
   return query === "" ? "/explore" : `/explore?${query}`;

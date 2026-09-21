@@ -3,9 +3,20 @@
 import { useLinkStatus } from "next/link";
 import { useTranslations } from "next-intl";
 import { useEffect, useTransition } from "react";
+import { UseBlock } from "@/components/consent/Marks";
+import { SUMMARY_TONES } from "@/components/consent/tones";
+import type { Consent } from "@/lib/chain/consent";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import { useReading } from "./Reading";
-import { PICTURE_VIEWS, RECORD_VIEWS, exploreHref, type ExploreSearch, type ExploreView } from "./query";
+import {
+  AI_VIEWS,
+  PICTURE_VIEWS,
+  RECORD_VIEWS,
+  exploreHref,
+  type ExploreAi,
+  type ExploreSearch,
+  type ExploreView,
+} from "./query";
 
 /**
  * The chips, the search box, and the line that says what the three marks on a
@@ -21,6 +32,18 @@ import { PICTURE_VIEWS, RECORD_VIEWS, exploreHref, type ExploreSearch, type Expl
  * back through the filters a reader tried. The box is a form: typing does not
  * fire a query per keystroke at the index.
  */
+/**
+ * The four shapes at once, for the legend only: allowed, not allowed, on
+ * conditions, and a use nobody has spoken about. No picture is being described
+ * here, so this is never read out as one.
+ */
+const LEGEND_USES: Consent = {
+  aiTraining: "allowed",
+  aiGenerativeTraining: "notAllowed",
+  aiInference: "constrained",
+  dataMining: "unspecified",
+};
+
 export function Filters({ search }: { search: ExploreSearch }) {
   const t = useTranslations("explore");
   const router = useRouter();
@@ -107,6 +130,27 @@ export function Filters({ search }: { search: ExploreSearch }) {
         </form>
       </div>
 
+      {/* The one question the registry is for, asked of the sheet itself. It is
+          its own row under the chips rather than a tenth chip beside them: what
+          a holder said about AI use is a different question from what the
+          record says, and a reader narrowing by it should be able to see that
+          they have. The row scrolls sideways on a phone, like the one above it,
+          and the label stays put while it does. */}
+      <div className="mt-4 flex items-center gap-3 sm:mt-5">
+        <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+          {t("ai.label")}
+        </span>
+        <nav
+          aria-label={t("ai.chipsLabel")}
+          className="-me-5 flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain pe-5 [scrollbar-width:none] sm:-me-1 sm:flex-wrap sm:overflow-x-visible sm:pe-1"
+        >
+          <AiChip ai={null} search={search} />
+          {AI_VIEWS.map((ai) => (
+            <AiChip key={ai} ai={ai} search={search} />
+          ))}
+        </nav>
+      </div>
+
       {/* The three letters on a plate, said in words. A title never fires under
           a thumb, so on a phone they were three unexplained letters. The row
           keeps its height whether or not the sheet is being read, so nothing on
@@ -123,6 +167,15 @@ export function Filters({ search }: { search: ExploreSearch }) {
           <span aria-hidden>&middot;</span>
           <span>
             <span className="text-failed">D</span> {t("legend.disputed")}
+          </span>
+          <span aria-hidden>&middot;</span>
+          {/* One of each shape, in neutral ink: the legend is teaching the four
+              marks, not reporting a statement about any picture. */}
+          <span className="flex items-center gap-2">
+            <span aria-hidden className="text-text-muted">
+              <UseBlock consent={LEGEND_USES} size="h-2 w-2" />
+            </span>
+            {t("legend.consent")}
           </span>
         </p>
 
@@ -153,6 +206,38 @@ function Chip({ view, search, label }: { view: ExploreView; search: ExploreSearc
           : "border-line text-text-muted hover:border-line-strong hover:text-text"
       }`}
     >
+      <ChipLabel label={label} />
+    </Link>
+  );
+}
+
+/**
+ * One chip in the AI-use row, including the way back to any answer at all.
+ *
+ * Two of the four words are read straight out of the passport page's own
+ * vocabulary, so a picture called "Not for AI training" there can never be
+ * called something else here. Each answer carries the colour it is drawn in on
+ * that page as well, from the cold status family rather than the one accent.
+ */
+function AiChip({ ai, search }: { ai: ExploreAi | null; search: ExploreSearch }) {
+  const t = useTranslations("explore");
+  const said = useTranslations("passport.consent.summary");
+  const on = search.ai === ai;
+  const label = ai === null ? t("ai.any") : ai === "ask" || ai === "none" ? t(`ai.${ai}`) : said(ai);
+
+  return (
+    <Link
+      href={exploreHref({ ...search, ai })}
+      aria-current={on ? "true" : undefined}
+      className={`tap inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 ${
+        on
+          ? "border-accent bg-accent-soft text-accent"
+          : "border-line text-text-muted hover:border-line-strong hover:text-text"
+      }`}
+    >
+      {ai === null ? null : (
+        <span aria-hidden className={`h-[6px] w-[6px] shrink-0 ${SUMMARY_TONES[ai].fill}`} />
+      )}
       <ChipLabel label={label} />
     </Link>
   );

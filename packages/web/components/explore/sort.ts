@@ -1,3 +1,5 @@
+import type { PassportStatement } from "@/lib/data/passports";
+
 /** One plate in the grid: a passport, the picture its metadata pointed at, and its three marks. */
 export interface ExplorePlate {
   id: string;
@@ -17,6 +19,11 @@ export interface ExplorePlate {
    */
   disputed: boolean;
   agentId: string | null;
+  /**
+   * What the holder has said about AI use, or null where nobody has spoken for
+   * this picture. Silence is carried as null and drawn as nothing at all.
+   */
+  consent: PassportStatement | null;
 }
 
 /**

@@ -5,8 +5,8 @@ title: Envio indexer
 # Envio indexer
 
 `@moolam/indexer` turns Moolam's on-chain events into the data every screen and the verifier read:
-passports, the edit tree, verification results, disputes, passkey bindings, and the per-creator,
-per-generator and per-day counters. It is built on Envio HyperIndex V3 (`envio` 3.9.0), which syncs
+passports, the edit tree, verification results, disputes, passkey bindings, what each holder says
+AI may do with their picture, and the per-creator, per-generator and per-day counters. It is built on Envio HyperIndex V3 (`envio` 3.9.0), which syncs
 from HyperSync rather than an RPC node.
 
 ## The live endpoint
@@ -24,10 +24,14 @@ The verify service reads its passport index from there when `PASSPORT_SOURCE=env
 From `config.yaml`, chain 143, starting at block 103054771, which is the block the three contracts
 were deployed in. Nothing this index cares about exists before it.
 
-| Contract | Address | Events |
-| --- | --- | --- |
-| MoolamRegistry | `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0` | `PasskeyBound`, `PassportRegistered`, `VerificationAttested`, `PassportFlagged`, `DisputeResolved`, `Transfer` |
-| VerifierPolicy | `0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821` | `ReceiverAdded`, `ReceiverRemoved` |
+| Contract | Address | From block | Events |
+| --- | --- | --- | --- |
+| MoolamRegistry | `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0` | 103054771 | `PasskeyBound`, `PassportRegistered`, `VerificationAttested`, `PassportFlagged`, `DisputeResolved`, `Transfer` |
+| VerifierPolicy | `0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821` | 103054771 | `ReceiverAdded`, `ReceiverRemoved` |
+| MoolamConsent | `0x1151E69a82947920546e779c4C8c785b2a3C1277` | 105828247 | `ConsentSet` |
+
+The consent register was deployed ten days after the other two, so it carries a `start_block` of
+its own and the sync skips 2.7 million blocks it could find nothing in.
 
 Every passport row records the transaction that created it, through `field_selection`, so the app
 can link straight to the explorer without a second lookup.
@@ -40,6 +44,22 @@ ERC-721 token id. It carries the fingerprint (`phash`, `blockhash`, `manifestHas
 edit tree (`parent`, `root`, `depth`, plus a derived `children` list), who holds it now (`owner`),
 and the running verification tally (`attestationCount`, `matchedCount`, `mismatchedCount`,
 `disputed`).
+
+It also carries the statement that stands about AI use, flattened from the newest `ConsentEntry` so
+a filter is one indexed query: `consentStated`, `consentSummary` (`open`, `closed`, `ask`, `mixed`
+or `none`), the four numbers `consentAiTraining`, `consentAiGenerativeTraining`,
+`consentAiInference` and `consentDataMining`, the conditions in `consentInfo`, and who wrote it
+when in `consentWriter` and `consentAt`. `consentCount` is how many statements the passport has
+collected and `consentEntries` is the derived list of them. `consentSummary` reads `none` for a
+picture nobody has spoken for as well as for one whose holder wrote all four uses unspecified, so
+`consentStated` is what separates silence from a holder who chose it.
+
+**ConsentEntry.** One statement, keyed `<passportId>-<index>` from the event's own index, never
+edited after it is written. It holds the four numbers, the `summary`, the `constraintInfo`, the
+`writer`, the `at` the contract recorded and the `txHash`. This is the table a reader quotes when
+they need what was allowed on the day they used a picture, rather than what is allowed now. The
+writer comes from the event and never from the transaction: a holder with a passkey wallet writes
+through the ERC-4337 EntryPoint, so the transaction's sender is a bundler.
 
 **Creator.** One row per wallet that has registered something, with `passportCount` for everything
 it registered and `editCount` for the subset that were edits of an existing passport.
@@ -67,7 +87,10 @@ the day's passports back.
 registered that day and `edits` is the subset of those that had a parent, so edits are counted
 inside registrations, not beside them. `disputes` counts challenges raised. `uniqueCreators` counts
 the distinct creators who registered something that day, so a creator who posts five times counts
-once.
+once. `consentStatements` counts statements written, on both rows. `passportsWithConsent`, on the
+global row only, counts pictures that carry one: the two differ because a holder can restate, and a
+chart that showed only the total would make a few holders changing their minds look like new
+pictures arriving.
 
 Addresses are stored lowercase everywhere, including entity ids. Envio hands them back EIP-55
 checksummed, so the handlers lowercase them first: one casing rule across the whole API means a

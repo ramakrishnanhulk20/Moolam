@@ -83,7 +83,8 @@
     "counts": {
       "total": "Passeports",
       "generated": "Générées",
-      "rechecked": "Vérifiées"
+      "rechecked": "Vérifiées",
+      "stated": "Avec une déclaration sur l'usage par l'IA"
     },
     "countsError": "Les totaux n'ont pas pu être lus : {reason}.",
     "countsMissing": "aucun index n'a répondu",
@@ -106,6 +107,17 @@
       "manifest": "Avec manifest",
       "disputed": "Contestées"
     },
+    "ai": {
+      "label": "Usage par l'IA",
+      "chipsLabel": "Filtrer selon ce qu'a déclaré le détenteur",
+      "any": "Toutes",
+      "ask": "Demander d'abord",
+      "none": "Rien de déclaré",
+      "mark": "{statement}, déclaré le {when}",
+      "openLine": "Images dont les détenteurs autorisent une IA à s'entraîner dessus. Chaque déclaration est datée sur Monad, et la page du passeport répond pour n'importe quel jour passé.",
+      "openQuery": "Interroger cet ensemble",
+      "closedLine": "Images dont les détenteurs ont refusé l'usage par l'IA, inscrit avec sa date."
+    },
     "searchLabel": "Chercher par identifiant de passeport",
     "searchPlaceholder": "Identifiant de passeport",
     "searchAction": "Chercher",
@@ -120,7 +132,8 @@
     "legend": {
       "manifest": "Manifest C2PA épinglé",
       "rechecked": "Vérifiée sur la chaîne",
-      "disputed": "Contestée"
+      "disputed": "Contestée",
+      "consent": "Déclaration sur l'usage par l'IA, quatre marques pour quatre usages"
     },
     "untitled": "Sans titre",
     "noPicture": "Aucune image sur la passerelle",

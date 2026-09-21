@@ -77,10 +77,17 @@ export async function Masthead({
             className="rise border-t border-line pt-5 sm:pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
             style={{ animationDelay: "180ms" }}
           >
-            <dl className="grid grid-cols-3 gap-x-6 gap-y-2">
+            {/* Two up on a phone and again in the narrow column beside the
+                title, four across in between, so a five word label never has to
+                fit in a quarter of 400 px. */}
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-4 lg:grid-cols-2">
               <Count label={t("counts.total")} value={counts.total} lead />
               <Count label={t("counts.generated")} value={counts.generated} capped={counts.capped} />
               <Count label={t("counts.rechecked")} value={counts.rechecked} capped={counts.capped} />
+              {/* The index keeps this one as a counter of its own, so it is a
+                  total rather than a floor. Where it did not answer it, the
+                  figure is left out: a zero would say nobody has spoken. */}
+              {counts.stated === null ? null : <Count label={t("counts.stated")} value={counts.stated} />}
             </dl>
 
             {split === null ? null : (
