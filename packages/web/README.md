@@ -27,6 +27,15 @@ serving from:
 NEXT_DIST_DIR=.next-verify npm run build --workspace packages/web
 ```
 
+A production build now fails rather than shipping quietly when it cannot read
+the index: on 21 September a retired index address answered 404 on every
+build-time read, the build passed anyway, and four pages shipped
+live-rendered on stale data until the next deploy. `lib/data/prerender.ts`
+retries a 429 or a network failure three times, waiting 2, 5 and 10 seconds,
+and then throws, naming `NEXT_PUBLIC_ENVIO_GRAPHQL_URL`, so the deploy never
+happens. Setting `MOOLAM_BUILD_WITHOUT_INDEX=1` keeps a real outage shippable
+on purpose: the build logs loudly and falls back instead of throwing.
+
 The verify page needs the verifier service. Start it from the repo root with
 `npm run dev:verifier`; without it the page says so and names the command.
 
