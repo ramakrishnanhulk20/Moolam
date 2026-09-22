@@ -4,12 +4,13 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Eight routes. Everything is JSON, including errors and 404s. The service listens on `VERIFIER_PORT`,
-which defaults to 4000. Five of the eight are mounted only when the host is configured for them:
-`/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id,
-`/generate` and `/edit` each need those plus their own keys, and the two `/unseal` routes need
-exactly what `/prepare` needs. An unmounted route answers `404` like any other path that does not
-exist.
+Twelve routes. Everything is JSON, including errors and 404s. The service listens on
+`VERIFIER_PORT`, which defaults to 4000. Six of the twelve are mounted only when the host is
+configured for them: `/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a
+Privy app id, `/generate` and `/edit` each need those plus their own keys, and the two `/unseal`
+routes need exactly what `/prepare` needs. An unmounted route answers `404` like any other path
+that does not exist. The four `/recheck` routes are mounted on every host, and the three of them
+the runner uses answer `503` until `RUNNER_TOKEN` is set.
 
 ## POST /verify
 
@@ -700,6 +701,165 @@ A record is pinned once and never changes, so a hit is remembered for the life o
 miss never is. That keeps a passport page, which is read far more often than a passport is
 unsealed, from spending a Pinata request every time somebody opens it.
 
+## POST /recheck/request
+
+Asks for a Chainlink second opinion on a registered picture. Free, and no account: the runner that
+does the work decides for itself what it can afford, so a request costs this service nothing to
+take and nothing to serve.
+
+```bash
+curl -s -X POST http://localhost:4000/recheck/request \
+  -H 'content-type: application/json' \
+  -d '{"passportId":"0x75bf..."}'
+```
+
+```ts
+{
+  passportId: `0x${string}`,
+  status: "pending" | "running",
+  requestedAt: number,
+  position: number,
+  already: boolean
+}
+```
+
+`requestedAt` is unix milliseconds, like every time on these four routes. `position` is the place
+in the waiting line, 1 for the next one out, and `0` for a passport a runner already has in hand.
+`already` is true when this passport was already waiting or running, which is what makes the route
+idempotent: pressing the button twice is one request, and the second answer carries the first
+one's time. A passport asked for again after its last answer starts a fresh request at the back of
+the queue.
+
+| Code | When |
+| --- | --- |
+| `200` | Recorded, or already waiting |
+| `400` | The body is not `{ "passportId": "0x..." }` with 64 hex characters |
+| `404` | `no-passport`. This service's index does not hold that passport |
+| `409` | `sealed`. The picture was never published, so there is nothing for the Chainlink verifier to fetch. Publish it with [`/unseal`](#post-unseal) and ask again |
+| `429` | Ten a minute per address, rather than the sixty everything else gets |
+| `503` | `queue-full`. A thousand requests are waiting and none has been run |
+
+Whether a passport is sealed is read from its metadata document once per passport and then
+remembered for the life of the process, because the registry writes `metadataURI` at registration
+and has no setter: the answer can never change. Only passports the index already holds get that
+far, so the lifetime cost of this check is one gateway read per registered picture, whatever a
+caller does. A gateway that does not answer inside five seconds lets the request through; the
+runner refuses it later, which is the right way round for a request that spends nothing.
+
+## GET /recheck/status/:passportId
+
+Where a request got to.
+
+```ts
+{
+  passportId: `0x${string}`,
+  status: "none" | "pending" | "running" | "done" | "failed",
+  requestedAt?: number,
+  startedAt?: number,
+  finishedAt?: number,
+  reportTx?: `0x${string}`,
+  matched?: boolean,
+  distance?: number,
+  reason?: string
+}
+```
+
+`none` means nobody has asked, which is also what a request that finished more than seven days ago
+reads as: the verdict itself lives on the chain and on the passport page, and this queue only ever
+remembered who asked for it. `reportTx` is the transaction the Chainlink report landed in, and it
+is what separates `done` from `failed`. The answer carries `Cache-Control: public, max-age=30`,
+because a re-check takes minutes and a waiting page should not poll this service every second.
+
+| Code | When |
+| --- | --- |
+| `200` | Including `status: "none"` |
+| `400` | The id is not `0x` and 64 hex characters |
+
+## GET /recheck/queue
+
+What the runner should pick up, oldest first, at most fifty. Reading it claims nothing.
+
+```bash
+curl -s http://localhost:4000/recheck/queue -H "authorization: Bearer $RUNNER_TOKEN"
+```
+
+```ts
+{
+  items: { passportId: `0x${string}`, requestedAt: number, requestedBy: "public" }[],
+  pending: number,
+  running: number
+}
+```
+
+`pending` is the whole waiting line, so a runner can see there is more than the page it was handed.
+
+## POST /recheck/claim
+
+The runner takes one request before it starts work, so a second runner leaves it alone. Body is
+`{ "passportId": "0x..." }`. Answers the status shape above with `status: "running"`, `startedAt`
+and `reclaimed`.
+
+| Code | When |
+| --- | --- |
+| `200` | Taken. `reclaimed` is true when the last runner had been gone half an hour |
+| `404` | `no-request`. Nobody asked for this passport |
+| `409` | `already-running`, or `not-pending` for a request that is already answered |
+
+A request that has sat in `running` for more than thirty minutes may be claimed again, because that
+means the runner died rather than that it is slow: a simulation is given ten minutes by the runner
+itself. The worst case of a wrong guess is one duplicate second opinion, which the chain records as
+another attestation and nothing more.
+
+## POST /recheck/done
+
+The runner says what happened.
+
+```ts
+{
+  passportId: `0x${string}`,
+  reportTx?: `0x${string}`,
+  matched?: boolean,
+  distance?: number,
+  reason?: string
+}
+```
+
+A report transaction is what makes a request `done`; without one it is `failed`, whatever else the
+body carries, because a re-check with no report on chain did not happen. `reason` is cut to 200
+characters. Answers the status shape, `404 no-request`, or `409 not-running` for a request nobody
+claimed.
+
+## The runner's token
+
+The three routes above are the only ones on this service behind a shared token rather than a user
+login, because there is exactly one caller and it is a machine.
+
+| Code | When |
+| --- | --- |
+| `503` | `runner-disabled`. This host has no `RUNNER_TOKEN`, so it has no runner. A runner pointed at the wrong service learns that here instead of guessing at tokens |
+| `401` | `unauthorized`. No `Authorization: Bearer ...` header, or the wrong token. The comparison takes the same time whatever is sent, so a caller cannot find the token a character at a time |
+
+`RUNNER_TOKEN` must be at least 24 characters or the service refuses to boot. Nothing about the
+queue is secret: the three routes are held closed because claiming and reporting work are writes,
+not because the waiting line is private.
+
+## Where the queue is kept
+
+A JSON file at `RECHECK_QUEUE_PATH`, rewritten whole on every change: written to a temp name and
+renamed over the real one, so a process killed mid-write leaves the last good file untouched rather
+than half a file. It is loaded at boot, and a file that is missing, is not JSON or is from another
+version starts the queue empty with one line in the log.
+
+The queue never holds more than 1,000 requests, and a finished one is dropped after seven days or
+sooner if the room is needed. A request that is still waiting or running is never dropped, which is
+why a queue full of real work refuses the next caller with `queue-full` instead.
+
+The default path is the service's own working directory, which the container's user cannot write
+to. A host that wants the queue to survive a redeploy names a writable path, such as
+`/data/recheck-queue.json` on a mounted volume. Without one the queue still takes requests and
+still hands them to the runner; it forgets them when the process stops, and the cost of that is one
+press of a free button.
+
 ## Today's budget for everyone
 
 Four ceilings bound what the whole world may spend in a UTC day, on the four routes that cost
@@ -761,6 +921,12 @@ sealed is the one fact on this service that turns from private to public in an i
 cached "still sealed" would show a sealed plate over a picture that is already out. `GET /health`
 and both verify routes are untouched by this.
 
+The three `/recheck` POSTs are in the hook too, and so is `GET /recheck/queue`, which is the one
+answer here that exists only because the caller held the runner's token and must never be replayed
+to anyone else. `GET /recheck/status/:passportId` is the exception on this service: it is public,
+it is asked repeatedly while somebody waits, and it says so with `Cache-Control: public,
+max-age=30`.
+
 ## GET /health
 
 ```bash
@@ -778,7 +944,8 @@ curl -s http://localhost:4000/health
     generations: { used: number, max: number },
     edits: { used: number, max: number },
     unseals: { used: number, max: number }
-  }
+  },
+  recheck: { pending: number, running: number }
 }
 ```
 
@@ -792,6 +959,9 @@ key becomes visible from outside: a host without `PINATA_JWT` still boots and st
 `limits` is how much of [today's budget for everyone](#todays-budget-for-everyone) is gone, so a
 daily check can see a ceiling coming before creators meet it. It counts the whole world and names
 nobody: there is no per-caller data on this route.
+
+`recheck` is how many second opinions are waiting and how many a runner has in hand, which is where
+a runner that has died shows up from outside: `pending` climbs and `running` stays at zero.
 
 This is the one route outside the 60-a-minute limit. A status page, an uptime monitor or a build
 pre-rendering hundreds of pages may probe it as often as it likes and never reads a refusal as an

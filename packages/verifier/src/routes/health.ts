@@ -9,6 +9,9 @@ import type { FastifyInstance } from "fastify";
  *
  * `limits` is how the daily check sees a ceiling coming before creators do. It counts the whole
  * world, never one person: nothing here names a caller, a user id or an address.
+ *
+ * `recheck` is how many second opinions are waiting and how many a runner is working on, which is
+ * where a runner that has died shows up from outside: the pending count climbs and nothing runs.
  */
 export async function healthRoutes(app: FastifyInstance): Promise<void> {
   // A probe that can be refused lies about the service: a status footer, an uptime monitor or a
@@ -20,5 +23,6 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
     version: app.verifier.version,
     routes: app.verifier.routes,
     limits: app.globalDay.counts(),
+    recheck: app.recheck.counts(),
   }));
 }

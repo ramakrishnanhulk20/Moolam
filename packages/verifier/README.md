@@ -440,6 +440,40 @@ the thing anyone actually wants to know and is checkable by a stranger with a
 copy of the picture and no knowledge of this service. Fetch the image, hash it,
 compare it with the passport id on Monad.
 
+## Asking for a second opinion
+
+A Chainlink workflow re-checks registered pictures and writes what it found back
+on chain. Anyone can ask for one, free and without an account:
+
+```sh
+curl -s -X POST http://localhost:4000/recheck/request \
+  -H 'content-type: application/json' -d '{"passportId":"0x75bf..."}'
+curl -s http://localhost:4000/recheck/status/0x75bf...
+```
+
+The request is a line in a small queue, and a runner on a machine of its own
+picks it up, runs the workflow and reports back. Nothing on these routes spends
+anything, which is why the public one needs no login: the cost of a stranger
+pressing the button is the runner's time, and the runner has its own daily cap.
+Asking twice is one request, a passport this service's index does not hold is a
+404, and a sealed passport is refused because there is no published picture for
+the workflow to fetch.
+
+The runner's three routes are behind `RUNNER_TOKEN`, a shared token rather than
+a user login because there is exactly one caller and it is a machine: it reads
+`GET /recheck/queue`, takes a request with `POST /recheck/claim` so a second
+runner leaves it alone, and closes it with `POST /recheck/done`. A host that has
+not set the token answers 503 on all three. A claim that has been running for
+more than thirty minutes can be taken again, because that means the runner died.
+
+The queue is a JSON file at `RECHECK_QUEUE_PATH`, written to a temp name and
+renamed over the real one so a process killed mid-write leaves the last good
+file untouched. It holds at most a thousand requests and forgets a finished one
+after seven days. `GET /health` carries `recheck: { pending, running }`, which is
+where a runner that has died shows up from outside. Every route, every code and
+every shape is in
+[docs/api/verifier-endpoints.md](../../docs/api/verifier-endpoints.md).
+
 ## Which way up
 
 A photo taken sideways stores its pixels rotated and leaves an EXIF tag saying
@@ -568,6 +602,8 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `GLOBAL_GENERATIONS_PER_DAY` | how many pictures the whole world may have drawn in a UTC day, default 60. 0 closes the route for everyone |
 | `GLOBAL_EDITS_PER_DAY` | how many edits the whole world may append in a UTC day, default 150. 0 closes the route for everyone |
 | `GLOBAL_UNSEALS_PER_DAY` | how many sealed pictures the whole world may publish in a UTC day, default 50. 0 closes the route for everyone |
+| `RUNNER_TOKEN` | the bearer token the re-check runner sends, at least 24 characters. Unset, the three runner routes answer 503 and the public request and status routes keep working |
+| `RECHECK_QUEUE_PATH` | where the re-check queue file is kept, default `recheck-queue.json` in the working directory. Name a writable path such as `/data/recheck-queue.json` for the queue to survive a redeploy |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.

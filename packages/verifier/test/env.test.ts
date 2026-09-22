@@ -88,6 +88,21 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ GLOBAL_EDITS_PER_DAY: "1000000" })).toThrow(/GLOBAL_EDITS_PER_DAY/);
   });
 
+  it("leaves the re-check runner off when no token is set, and refuses a token short enough to guess", () => {
+    expect(parseEnv({}).RUNNER_TOKEN).toBeUndefined();
+    expect(parseEnv({ RUNNER_TOKEN: "   " }).RUNNER_TOKEN).toBeUndefined();
+    expect(() => parseEnv({ RUNNER_TOKEN: "letmein" })).toThrow(/RUNNER_TOKEN/);
+    expect(parseEnv({ RUNNER_TOKEN: "a-runner-token-long-enough-to-hold" }).RUNNER_TOKEN).toBe(
+      "a-runner-token-long-enough-to-hold",
+    );
+  });
+
+  it("keeps the re-check queue in the working directory until a path is named", () => {
+    expect(parseEnv({}).RECHECK_QUEUE_PATH).toContain("recheck-queue.json");
+    expect(parseEnv({ RECHECK_QUEUE_PATH: "  " }).RECHECK_QUEUE_PATH).toContain("recheck-queue.json");
+    expect(parseEnv({ RECHECK_QUEUE_PATH: "/data/queue.json" }).RECHECK_QUEUE_PATH).toBe("/data/queue.json");
+  });
+
   it("takes the C2PA certificate and key as a pair or not at all", () => {
     expect(() => parseEnv({ MOOLAM_C2PA_CERT_PATH: "certs/chain.pem" })).toThrow(/go together/);
     expect(() => parseEnv({ MOOLAM_C2PA_KEY_PATH: "certs/signer.key.pem" })).toThrow(/go together/);

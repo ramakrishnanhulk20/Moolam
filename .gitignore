@@ -43,3 +43,4 @@ packages/indexer/package-lock.json
 
 .env*
 BACKLOG.md
+recheck-queue.json

@@ -86,6 +86,16 @@ const DEFAULT_GLOBAL_EDITS_PER_DAY = "150";
 const DEFAULT_GLOBAL_UNSEALS_PER_DAY = "50";
 
 /**
+ * Where the re-check queue is kept when nothing names a path.
+ *
+ * The service's own working directory, which is the package folder in development and /app in the
+ * container. The container runs as a user that cannot write there, so a host that wants the queue
+ * to survive a redeploy names a writable path of its own. Without one the queue still takes
+ * requests and still hands them to the runner; it just forgets them when the process does.
+ */
+const DEFAULT_RECHECK_QUEUE_PATH = path.join(process.cwd(), "recheck-queue.json");
+
+/**
  * How often the passport index is rebuilt from the source. A minute is well inside the time it
  * takes a creator to register an image and then go and verify it, and a rebuild of a few thousand
  * records costs milliseconds.
@@ -282,6 +292,15 @@ const schema = z
     GLOBAL_GENERATIONS_PER_DAY: dayCeiling("GLOBAL_GENERATIONS_PER_DAY", DEFAULT_GLOBAL_GENERATIONS_PER_DAY),
     GLOBAL_EDITS_PER_DAY: dayCeiling("GLOBAL_EDITS_PER_DAY", DEFAULT_GLOBAL_EDITS_PER_DAY),
     GLOBAL_UNSEALS_PER_DAY: dayCeiling("GLOBAL_UNSEALS_PER_DAY", DEFAULT_GLOBAL_UNSEALS_PER_DAY),
+    RUNNER_TOKEN: optionalMinLength(
+      24,
+      "RUNNER_TOKEN must be at least 24 characters: it is the only thing between a stranger and the re-check queue",
+    ),
+    RECHECK_QUEUE_PATH: z
+      .string()
+      .trim()
+      .default(DEFAULT_RECHECK_QUEUE_PATH)
+      .transform((value) => (value.length === 0 ? DEFAULT_RECHECK_QUEUE_PATH : value)),
     MOOLAM_REGISTRY_ADDRESS: z
       .string()
       .trim()
@@ -531,6 +550,8 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GLOBAL_GENERATIONS_PER_DAY: source.GLOBAL_GENERATIONS_PER_DAY,
     GLOBAL_EDITS_PER_DAY: source.GLOBAL_EDITS_PER_DAY,
     GLOBAL_UNSEALS_PER_DAY: source.GLOBAL_UNSEALS_PER_DAY,
+    RUNNER_TOKEN: source.RUNNER_TOKEN,
+    RECHECK_QUEUE_PATH: source.RECHECK_QUEUE_PATH,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CONSENT_ADDRESS: source.CONSENT_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,

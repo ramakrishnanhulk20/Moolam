@@ -15,13 +15,22 @@ import { waitingGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { matchImage, type MatchResult } from "./match.js";
+import {
+  fileQueueStore,
+  memoryQueueStore,
+  recheckQueue,
+  type QueueStore,
+  type RecheckQueue,
+} from "./recheck/queue.js";
 import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
+import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
 import { unsealRoutes } from "./routes/unseal.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
+import { readMetadataDocument } from "./unseal.js";
 import { paymentServerFromEnv } from "./x402/plugin.js";
 import { EnvioSource } from "./source/EnvioSource.js";
 import { JsonFileSource } from "./source/JsonFileSource.js";
@@ -60,7 +69,24 @@ const MAX_JSON_BODY_BYTES = 16 * 1024;
  * limiter sends. Judging by the path rather than by what the route decided means an answer cannot
  * lose the header by taking an early exit.
  */
-const UNCACHEABLE = new Set(["/prepare", "/generate", "/edit", "/unseal"]);
+const UNCACHEABLE = new Set([
+  "/prepare",
+  "/generate",
+  "/edit",
+  "/unseal",
+  "/recheck/request",
+  "/recheck/claim",
+  "/recheck/done",
+]);
+
+/**
+ * How long the sealed lookup behind a re-check request gets.
+ *
+ * Shorter than the ten seconds an unseal allows, because this caller is waiting on a button and
+ * the answer is only used to refuse early: a gateway that does not answer in time lets the request
+ * through and the runner sorts it out.
+ */
+const SEALED_LOOKUP_MS = 5_000;
 
 /** The path on its own. A query string is not part of which route a request reached. */
 function pathOf(url: string): string {
@@ -79,6 +105,11 @@ function pathOf(url: string): string {
 function uncacheable(method: string, url: string): boolean {
   const path = pathOf(url);
   if (path === "/unseal" || path.startsWith("/unseal/")) {
+    return true;
+  }
+  // The runner's own read of the queue, for a third reason: it is the one answer here that only
+  // exists because a caller held the runner's token, and it must not be replayed to anyone else.
+  if (path === "/recheck/queue") {
     return true;
   }
   return method === "POST" && UNCACHEABLE.has(path);
@@ -159,6 +190,8 @@ declare module "fastify" {
     verifier: Verifier;
     /** What the whole world has spent today on the three routes that cost money. */
     globalDay: GlobalDay;
+    /** Who has asked for a Chainlink second opinion and what the runner did about it. */
+    recheck: RecheckQueue;
   }
 }
 
@@ -213,6 +246,10 @@ export function sourceFromEnv(): PassportSource {
  * condition, so a host that can run the studio can always publish a sealed
  * picture the studio registered.
  *
+ * The re-check queue is mounted on every host, because asking for a second opinion costs this
+ * service nothing to take and nothing to serve. Its three runner routes need RUNNER_TOKEN and say
+ * so with a 503 when the host has not set one.
+ *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
  * the same either way, so switching payment on adds a route and changes nothing
@@ -240,6 +277,7 @@ export async function buildServer(
     consent?: ConsentReader;
     dispute?: DisputeReader;
     checks?: { registry?: () => Promise<void> };
+    recheck?: { store?: QueueStore; runnerToken?: string; readDocument?: DocumentReader };
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -355,6 +393,21 @@ export async function buildServer(
     }),
   );
 
+  // One queue per server for the same reason, and under a test runner it keeps nothing: a unit
+  // suite must not leave a file behind in the repo, and two servers in one file must not read each
+  // other's requests.
+  app.decorate(
+    "recheck",
+    recheckQueue({
+      store:
+        options.recheck?.store ??
+        (env.NODE_ENV === "test" ? memoryQueueStore() : fileQueueStore(env.RECHECK_QUEUE_PATH)),
+      log: (line) => {
+        app.log.warn(line);
+      },
+    }),
+  );
+
   app.decorate("verifier", {
     get index(): HammingIndex {
       return current.index;
@@ -401,6 +454,20 @@ export async function buildServer(
 
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
+
+  // Mounted on every host, with or without a runner: the public request and status routes are the
+  // whole point of the queue, and the three runner routes say for themselves when no token is set.
+  // The default sealed lookup is off under a test runner, like the consent and dispute readers
+  // above, so no unit suite depends on a gateway being up.
+  await app.register(recheckRoutes, {
+    queue: app.recheck,
+    runnerToken: options.recheck?.runnerToken ?? env.RUNNER_TOKEN,
+    readDocument:
+      options.recheck?.readDocument ??
+      (env.NODE_ENV === "test"
+        ? undefined
+        : async (uri: string) => await readMetadataDocument(uri, { timeoutMs: SEALED_LOOKUP_MS })),
+  });
 
   if (mounts.prepare) {
     await app.register(prepareRoutes, options.prepare ?? {});
