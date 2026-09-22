@@ -8,55 +8,60 @@ import { isOptimizable, nextSource, optimizedUrl, pictureSources } from "@/lib/i
 import { publicEnv } from "@/lib/env";
 
 /**
- * Where a pinned picture is read from, and what happens when the first gateway
- * will not serve it.
+ * Where a pinned picture is read from, and what a plate does when it is not
+ * served.
  *
- * The account's own Pinata gateway has a monthly request allowance, so every
- * picture goes through Next's optimizer and is read from the gateway once. The
- * other half of that bargain is this: when the gateway is out of requests, or
- * down, the picture has somewhere else to come from.
+ * The account's own Pinata gateway is the only one in the list. Every picture
+ * goes through Next's optimizer, which reads the gateway once and serves every
+ * later view from its own cache. ipfs.io and dweb.link were here as a fallback
+ * until a check on 21 September found both refusing a direct browser fetch, so
+ * they only ever cost a plate two failed requests before the seal, and naming
+ * them let the optimizer fetch any address on either host for anyone who asked,
+ * out of this project's own monthly allowance.
  */
 
 const CID = "bafybeigdyrztktx5b5m2y4sogfjmc6xmpbstrvbwqrwzk6bxrn4qxeqmaa";
 const OWN = publicEnv.ipfsGateway.endsWith("/") ? publicEnv.ipfsGateway : `${publicEnv.ipfsGateway}/`;
 
 describe("the gateways one picture can be read from", () => {
-  it("puts the account's own gateway first and the public ones behind it", () => {
-    expect(pictureSources(`ipfs://${CID}`)).toEqual([
-      `${OWN}${CID}`,
-      `https://ipfs.io/ipfs/${CID}`,
-      `https://dweb.link/ipfs/${CID}`,
-    ]);
+  it("is the account's own gateway and nothing else", () => {
+    expect(pictureSources(`ipfs://${CID}`)).toEqual([`${OWN}${CID}`]);
   });
 
-  it("reads the content id back out of a gateway address, so a stored http URL falls back too", () => {
-    expect(pictureSources(`${OWN}${CID}`)).toEqual([
-      `${OWN}${CID}`,
-      `https://ipfs.io/ipfs/${CID}`,
-      `https://dweb.link/ipfs/${CID}`,
-    ]);
+  it("carries a stored gateway address through as it stands", () => {
+    expect(pictureSources(`${OWN}${CID}`)).toEqual([`${OWN}${CID}`]);
   });
 
-  it("carries the file inside a directory, which the content id alone would drop", () => {
-    expect(pictureSources(`ipfs://${CID}/still.jpg`)[1]).toBe(`https://ipfs.io/ipfs/${CID}/still.jpg`);
+  it("carries the file inside a directory, which a content id alone would drop", () => {
+    expect(pictureSources(`ipfs://${CID}/still.jpg`)).toEqual([`${OWN}${CID}/still.jpg`]);
   });
 
   it("leaves an address that is not on IPFS alone", () => {
     expect(pictureSources("https://example.com/still.jpg")).toEqual(["https://example.com/still.jpg"]);
   });
 
+  it("names no public gateway anywhere in the list", () => {
+    for (const uri of [`ipfs://${CID}`, `${OWN}${CID}`, `ipfs://${CID}/still.jpg`]) {
+      for (const source of pictureSources(uri)) {
+        expect(source, uri).toContain(OWN);
+      }
+    }
+  });
+
   it("walks the list once and then gives up, which is when the seal is drawn", () => {
     const sources = pictureSources(`ipfs://${CID}`);
-    expect(nextSource(sources, sources[0])).toBe(sources[1]);
-    expect(nextSource(sources, sources[1])).toBe(sources[2]);
-    expect(nextSource(sources, sources[2])).toBe(null);
+    expect(nextSource(sources, sources[0])).toBe(null);
   });
 });
 
 describe("what the optimizer is allowed to fetch", () => {
-  it("takes the gateways in the list", () => {
+  it("takes the account's own gateway", () => {
     expect(isOptimizable(`${OWN}${CID}`)).toBe(true);
-    expect(isOptimizable(`https://ipfs.io/ipfs/${CID}`)).toBe(true);
+  });
+
+  it("does not take a public gateway, which would serve any content id to anyone", () => {
+    expect(isOptimizable(`https://ipfs.io/ipfs/${CID}`)).toBe(false);
+    expect(isOptimizable(`https://dweb.link/ipfs/${CID}`)).toBe(false);
   });
 
   it("does not take a host next.config knows nothing about", () => {
@@ -77,7 +82,7 @@ describe("what the optimizer is allowed to fetch", () => {
 });
 
 describe("a plate whose gateway will not answer", () => {
-  it("swaps to the second gateway when the first one errors, and draws the seal only after the last", async () => {
+  it("draws the seal once the last address in the list has errored", async () => {
     const sources = pictureSources(`ipfs://${CID}`);
     const host = document.createElement("div");
     document.body.append(host);
@@ -99,13 +104,6 @@ describe("a plate whose gateway will not answer", () => {
     };
 
     expect(shown()).toContain(sources[0]);
-
-    for (const next of [sources[1], sources[2]]) {
-      await act(async () => {
-        (host.querySelector("img") as HTMLImageElement).dispatchEvent(new Event("error"));
-      });
-      expect(shown()).toContain(next);
-    }
 
     await act(async () => {
       (host.querySelector("img") as HTMLImageElement).dispatchEvent(new Event("error"));

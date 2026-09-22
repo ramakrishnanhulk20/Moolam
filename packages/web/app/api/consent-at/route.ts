@@ -82,10 +82,19 @@ export async function GET(request: Request) {
   // the registry's life is still a question rather than a refusal.
   const at = Math.max(REGISTRY_DEPLOYED_AT, roundedDown(asked));
 
+  // Whatever shared cache sits in front of this app keys on the whole address,
+  // seconds and all, so a public answer to a question carrying seconds would be
+  // an entry of its own for a reading this route rounds away. Sixty of those a
+  // minute, from anyone, and the cache is full of the same answer under sixty
+  // names. Only a whole minute is offered to the cache; anything else is
+  // answered from this process's own memory and told not to store. The scrubber
+  // sends whole minutes, so nothing a reader does lands on the second path.
+  const aligned = asked === at;
+
   const key = `${id}:${at}`;
   const remembered = held.get(key);
   if (remembered !== undefined && Date.now() - remembered.at < HOLD_SECONDS * 1_000) {
-    return answered(remembered.answer);
+    return answered(remembered.answer, aligned);
   }
 
   try {
@@ -105,7 +114,7 @@ export async function GET(request: Request) {
     };
 
     remember(key, answer);
-    return answered(answer);
+    return answered(answer, aligned);
   } catch (error) {
     // Never held: the next reader deserves a real attempt rather than this
     // minute's failure handed back to them.
@@ -113,9 +122,13 @@ export async function GET(request: Request) {
   }
 }
 
-function answered(answer: Answer) {
+function answered(answer: Answer, aligned: boolean) {
   return NextResponse.json(answer, {
-    headers: { "cache-control": `public, s-maxage=${HOLD_SECONDS}, stale-while-revalidate=${HOLD_SECONDS}` },
+    headers: {
+      "cache-control": aligned
+        ? `public, s-maxage=${HOLD_SECONDS}, stale-while-revalidate=${HOLD_SECONDS}`
+        : "private, no-store",
+    },
   });
 }
 

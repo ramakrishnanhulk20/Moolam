@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { VerifyScreen } from "@/components/verify/VerifyScreen";
 import { offeredSamples } from "@/lib/data/offeredSamples";
@@ -36,7 +37,15 @@ export default async function VerifyPage({ params }: { params: Promise<{ locale:
   // Real records, read here on the server. A judge with no Moolam picture on
   // their laptop has something to press, and it runs the same check a dropped
   // file gets.
-  const samples = await offeredSamples();
+  const { samples, error } = await offeredSamples();
+
+  if (samples.length === 0 && error !== null) {
+    // A registry with nothing in it yet is a true page and worth keeping for the
+    // minute. A row that is empty because the read failed is not, and keeping it
+    // would offer every visitor for the next minute a verify page with nothing
+    // to press. The connection takes this render out of the store.
+    await connection();
+  }
 
   // Tamil letters carry marks above and below the line, so the tight leading the
   // display face wants in Latin makes two lines touch.

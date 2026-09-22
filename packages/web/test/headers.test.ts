@@ -46,9 +46,13 @@ describe("the headers every page and every route answers with", () => {
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self'",
-        "img-src 'self' data: blob: https://lavender-personal-grasshopper-978.mypinata.cloud https://ipfs.io https://dweb.link",
-        "connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com https://verifier-production-d76f.up.railway.app https://rpc1.monad.xyz https://lavender-personal-grasshopper-978.mypinata.cloud https://ipfs.io https://dweb.link",
+        "img-src 'self' data: blob: https://lavender-personal-grasshopper-978.mypinata.cloud",
+        "connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com wss://relay.walletconnect.org https://verifier-production-d76f.up.railway.app https://rpc1.monad.xyz https://lavender-personal-grasshopper-978.mypinata.cloud",
         "frame-src https://auth.privy.io",
+        "worker-src 'self' blob:",
+        "child-src 'self' blob: https://auth.privy.io",
+        "report-uri /api/csp-report",
+        "report-to csp",
       ].join("; "),
     );
   });
@@ -64,5 +68,39 @@ describe("the headers every page and every route answers with", () => {
     ]) {
       expect(policy, origin).toContain(origin);
     }
+  });
+
+  it("names the three a signed in visitor reaches, which a signed out measurement never sees", async () => {
+    const policy = (await headers())["content-security-policy-report-only"];
+
+    // The wallet relay in @privy-io's ox builds a Worker from a blob URL, and
+    // @walletconnect/core opens this socket. Both are read from the shipped
+    // SDKs rather than from a page load, because neither happens until somebody
+    // signs in.
+    expect(policy).toContain("worker-src 'self' blob:");
+    expect(policy).toContain("wss://relay.walletconnect.org");
+    expect(policy).toContain("child-src 'self' blob: https://auth.privy.io");
+  });
+
+  it("sends the reports somewhere, which is the only thing that makes report-only a measurement", async () => {
+    const sent = await headers();
+    expect(sent["content-security-policy-report-only"]).toContain("report-uri /api/csp-report");
+    expect(sent["reporting-endpoints"]).toBe('csp="/api/csp-report"');
+  });
+});
+
+describe("what the image optimizer is allowed to fetch", () => {
+  it("names one host and one path on it, so the allowance cannot be spent by a stranger", () => {
+    // The optimizer fetches whatever address it is handed. A public gateway
+    // here would serve any content id to anyone out of this project's monthly
+    // transformations; the account's own gateway answers 403 for anything this
+    // account has not pinned.
+    expect(config.images?.remotePatterns).toEqual([
+      {
+        protocol: "https",
+        hostname: "lavender-personal-grasshopper-978.mypinata.cloud",
+        pathname: "/ipfs/**",
+      },
+    ]);
   });
 });

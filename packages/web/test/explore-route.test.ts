@@ -52,11 +52,26 @@ vi.mock("@/components/explore/Stated", () => ({ StatedLine: () => null }));
 
 const { default: proxy } = await import("@/proxy");
 const { ExploreSheet } = await import("@/components/explore/Sheet");
+const { PER_MINUTE, forgetCallers } = await import("@/lib/api/limit");
+
+// The counters behind the rule are this process's memory, so one test's flood
+// would otherwise be the next test's refusal.
+beforeEach(() => {
+  forgetCallers();
+});
+
+/** One request through the rule, from a named caller. */
+function through(address: string, from?: string) {
+  const request = new NextRequest(new URL(address, "https://moolam.xyz"));
+  if (from !== undefined) {
+    request.headers.set("x-vercel-forwarded-for", from);
+  }
+  return proxy(request);
+}
 
 /** Where one address is drawn, given the rule in front of the route. */
 function landsOn(address: string): string {
-  const answer = proxy(new NextRequest(new URL(address, "https://moolam.xyz")));
-  const rewritten = answer.headers.get("x-middleware-rewrite");
+  const rewritten = through(address).headers.get("x-middleware-rewrite");
   return rewritten === null ? new URL(address, "https://moolam.xyz").pathname : new URL(rewritten).pathname;
 }
 
@@ -101,6 +116,57 @@ describe("which route an Explore address lands on", () => {
       expect(narrowsExplore(new URLSearchParams(`${key}=x`)), key).toBe(true);
     }
     expect([...EXPLORE_KEYS].sort()).toEqual(["agent", "ai", "q", "view"]);
+  });
+
+  it("drops the keys the page cannot read, so a campaign tag is not a sheet of its own", () => {
+    const answer = through("/en/explore?view=test&utm_source=x&fbclid=1&ref=post");
+
+    expect(answer.headers.get("x-middleware-rewrite")).toBe("https://moolam.xyz/en/explore/view?view=test");
+  });
+
+  it("keeps every key the page does read, in the order the link carried them", () => {
+    const answer = through("/ja/explore?view=edits&q=0x1a&agent=10248&ai=open&gclid=9");
+
+    expect(answer.headers.get("x-middleware-rewrite")).toBe(
+      "https://moolam.xyz/ja/explore/view?view=edits&q=0x1a&agent=10248&ai=open",
+    );
+  });
+});
+
+describe("what one caller may ask the narrowed route for", () => {
+  it("draws sixty narrowed sheets a minute and refuses the sixty first in words a reader can read", () => {
+    for (let at = 0; at < PER_MINUTE; at += 1) {
+      expect(through("/en/explore?q=0x1a", "203.0.113.7").headers.get("x-middleware-rewrite"), `ask ${at + 1}`).toBe(
+        "https://moolam.xyz/en/explore/view?q=0x1a",
+      );
+    }
+
+    const refused = through("/en/explore?q=0x1a", "203.0.113.7");
+
+    expect(refused.status).toBe(429);
+    expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(refused.headers.get("content-type")).toContain("text/html");
+    expect(refused.headers.get("x-middleware-rewrite")).toBe(null);
+  });
+
+  it("never counts the bare page, which the build made and nobody pays for twice", () => {
+    for (let at = 0; at < PER_MINUTE * 2; at += 1) {
+      expect(through("/en/explore", "203.0.113.7").headers.get("x-middleware-rewrite"), `ask ${at + 1}`).toBe(null);
+    }
+
+    expect(through("/en/explore?q=0x1a", "203.0.113.7").headers.get("x-middleware-rewrite")).toBe(
+      "https://moolam.xyz/en/explore/view?q=0x1a",
+    );
+  });
+
+  it("keeps one caller's flood off another caller", () => {
+    for (let at = 0; at < PER_MINUTE + 5; at += 1) {
+      through("/en/explore?q=0x1a", "203.0.113.7");
+    }
+
+    expect(through("/en/explore?q=0x1a", "198.51.100.42").headers.get("x-middleware-rewrite")).toBe(
+      "https://moolam.xyz/en/explore/view?q=0x1a",
+    );
   });
 });
 

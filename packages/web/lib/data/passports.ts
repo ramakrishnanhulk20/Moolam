@@ -971,10 +971,17 @@ export async function generatorStandings(limit = 50): Promise<GeneratorStanding[
  * because the first-seen stamp is a bigint by the time a caller sees it and a
  * bigint cannot be stored.
  */
-const heldStandingRows = unstable_cache(async (limit: number) => await standingRows(limit), ["moolam-generator-standings"], {
-  revalidate: HOLD_SECONDS,
-  tags: [CACHE_TAGS.index],
-});
+function heldStandingRows(limit: number): Promise<StandingRow[]> {
+  // The limit is part of the name. Held under one name for every limit, the
+  // agents board asking for fifty would be answered with whatever shorter
+  // roster a caller asking for five had put there a moment earlier.
+  const held = unstable_cache(async () => await standingRows(limit), ["moolam-generator-standings", String(limit)], {
+    revalidate: HOLD_SECONDS,
+    tags: [CACHE_TAGS.index],
+  });
+
+  return held();
+}
 
 export async function heldGeneratorStandings(limit = 50): Promise<GeneratorStanding[]> {
   return (await heldStandingRows(limit)).map((row) => ({ ...row, firstSeenAt: BigInt(row.firstSeenAt) }));
@@ -1006,7 +1013,7 @@ async function standingRows(limit: number): Promise<StandingRow[]> {
  * A page that reads the registry has to be able to tell "nothing matched" from
  * "nobody answered", so everything here throws instead of returning an empty list.
  */
-async function askIndex<T>(query: string, variables: Record<string, unknown>): Promise<T> {
+export async function askIndex<T>(query: string, variables: Record<string, unknown>): Promise<T> {
   const response = await fetch(envioUrl(), {
     method: "POST",
     headers: { "content-type": "application/json" },

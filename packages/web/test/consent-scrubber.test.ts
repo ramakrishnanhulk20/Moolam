@@ -124,11 +124,22 @@ describe("what the scrubber's reader answers", () => {
     expect(chain.consentAt).toHaveBeenCalledWith(ID, minuteOf(at));
   });
 
-  it("lets a shared cache hold the answer for a minute", async () => {
+  it("lets a shared cache hold the answer to a whole minute for a minute", async () => {
     chain.consentAt.mockResolvedValue({ stated: false, entry: null });
 
-    const answer = await GET(ask(`id=${ID}&at=${nextMoment()}`));
+    const answer = await GET(ask(`id=${ID}&at=${minuteOf(nextMoment())}`));
     expect(answer.headers.get("cache-control")).toBe("public, s-maxage=60, stale-while-revalidate=60");
+  });
+
+  it("refuses the shared cache an ask that carries seconds, which would be sixty entries for one answer", async () => {
+    chain.consentAt.mockResolvedValue({ stated: false, entry: null });
+    const at = nextMoment();
+    expect(at % 60, "the fixture has to carry seconds for this to mean anything").not.toBe(0);
+
+    const answer = await GET(ask(`id=${ID}&at=${at}`));
+
+    expect(answer.status).toBe(200);
+    expect(answer.headers.get("cache-control")).toBe("private, no-store");
   });
 
   it("answers the same moment twice without asking the chain twice", async () => {

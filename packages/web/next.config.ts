@@ -18,7 +18,13 @@ const ownGateway = (() => {
   }
 })();
 
-const pictureHosts = [ownGateway, "ipfs.io", "dweb.link"].filter((host, at, all) => all.indexOf(host) === at);
+// One host, and one path on it. The optimizer fetches whatever address it is
+// handed, so a public gateway in this list is a stranger's free image service
+// paid for out of this project's monthly transformations: anyone with a list of
+// content ids could spend the allowance in an afternoon. The account's own
+// Pinata gateway answers 403 for anything this account has not pinned, so
+// naming it alone bounds the optimizer to this project's own files.
+const pictureHosts = [ownGateway];
 
 /** The origin of a configured URL, or nothing when the variable is unset or malformed. */
 function originOf(value: string | undefined, fallback: string): string[] {
@@ -41,16 +47,26 @@ const serviceOrigins = [
 
 const pictureOrigins = pictureHosts.map((host) => `https://${host}`);
 
+/** Where the browser posts what this policy would have blocked. */
+const REPORT_ROUTE = "/api/csp-report";
+
 // Measured on the live site signed out, page by page, from what the browser
 // really fetched: the app itself, Privy for sign in, WalletConnect's explorer
-// on the studio, the verify service, the gateways, and blob: and data: for the
-// dropped file's own preview.
+// on the studio, the verify service, the gateway, and blob: and data: for the
+// dropped file's own preview. Three more are in the list from reading the
+// shipped SDKs rather than from a load, because they only happen once somebody
+// signs in: the wallet relay ox in @privy-io connects a Worker built from a
+// blob URL, @walletconnect/core opens wss://relay.walletconnect.org, and Privy
+// draws auth.privy.io in a frame.
 //
 // 'unsafe-inline' stays on script-src because Next's bootstrap script is
 // inline: the nonce alternative forces every page to render on the request,
 // which would cost this site its static pages. The policy ships report-only
 // because the list was measured signed out, and a policy that breaks sign in
-// would be worse than no policy at all.
+// would be worse than no policy at all. report-uri is what turns report-only
+// from a comment into a measurement; report-to is the newer spelling of the
+// same thing and a browser that ignores the relative endpoint still honours
+// report-uri.
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -60,8 +76,13 @@ const contentSecurityPolicy = [
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self'",
   `img-src 'self' data: blob: ${pictureOrigins.join(" ")}`,
-  `connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com ${[...serviceOrigins, ...pictureOrigins].join(" ")}`,
+  `connect-src 'self' blob: https://auth.privy.io https://api.privy.io https://explorer-api.walletconnect.com wss://relay.walletconnect.org ${[...serviceOrigins, ...pictureOrigins].join(" ")}`,
   "frame-src https://auth.privy.io",
+  "worker-src 'self' blob:",
+  // The fallback a browser too old for frame-src and worker-src reads instead.
+  "child-src 'self' blob: https://auth.privy.io",
+  `report-uri ${REPORT_ROUTE}`,
+  "report-to csp",
 ].join("; ");
 
 const nextConfig: NextConfig = {
@@ -83,6 +104,7 @@ const nextConfig: NextConfig = {
             key: "permissions-policy",
             value: 'camera=(), microphone=(), geolocation=(), payment=(), publickey-credentials-get=(self "https://auth.privy.io")',
           },
+          { key: "reporting-endpoints", value: `csp="${REPORT_ROUTE}"` },
           { key: "content-security-policy-report-only", value: contentSecurityPolicy },
         ],
       },
@@ -94,7 +116,7 @@ const nextConfig: NextConfig = {
   // optimizer's cache. A pinned file is content addressed and can never change
   // under its own address, so the cache is held for a year.
   images: {
-    remotePatterns: pictureHosts.map((hostname) => ({ protocol: "https" as const, hostname })),
+    remotePatterns: pictureHosts.map((hostname) => ({ protocol: "https" as const, hostname, pathname: "/ipfs/**" })),
     qualities: [70, 75],
     minimumCacheTTL: 31_536_000,
     // The optimizer reads the gateway once per width it is asked for, so the

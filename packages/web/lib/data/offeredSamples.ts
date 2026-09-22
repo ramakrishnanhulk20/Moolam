@@ -2,9 +2,7 @@ import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
 import { heldStory } from "@/components/story/data";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
-import { heldConsent } from "@/lib/chain/consent";
-import { heldArt } from "@/lib/data/passports";
-import { envioUrl } from "@/lib/data/source";
+import { askIndex, heldArt } from "@/lib/data/passports";
 import { pickSamples, type SampleMark, type TrySample } from "./samples";
 
 /**
@@ -20,11 +18,21 @@ import { pickSamples, type SampleMark, type TrySample } from "./samples";
 /** How many of the newest plates are weighed before three are offered. */
 const CANDIDATES = 6;
 
+/**
+ * The five summary words the index writes for a statement, which is also the
+ * list lib/data/passports reads one back with. Anything outside it is a
+ * statement this build cannot read, and silence is the only answer that can
+ * never claim a permission nobody gave.
+ */
+const SUMMARY_WORDS = new Set(["open", "closed", "ask", "mixed", "none"]);
+
 /** One candidate as the index has it. The title is read separately, from the pinned document. */
 interface SampleRow {
   id: string;
   metadataURI: string;
   attestationCount: number;
+  consentStated: boolean;
+  consentSummary: string;
 }
 
 const SAMPLE_ROWS = `query SampleRows($ids: [String!]!) {
@@ -32,30 +40,38 @@ const SAMPLE_ROWS = `query SampleRows($ids: [String!]!) {
     id
     metadataURI
     attestationCount
+    consentStated
+    consentSummary
   }
 }`;
+
+/** The row of pictures, and the story's own words when nothing could be read at all. */
+export interface OfferedSamples {
+  samples: TrySample[];
+  /** Null on a good read, including a registry that genuinely holds no pictures yet. */
+  error: string | null;
+}
 
 /**
  * The pictures to offer, with their names.
  *
  * Every read in here is held, and the page above it is rebuilt a minute at a
- * time, so offering samples costs one index query and a handful of register
- * reads a minute however many people open the page. An index or a register that
- * will not answer costs the ordering and the titles, never the row: the plates
- * are still the newest real pictures and still verify for real.
+ * time, so offering samples costs one index query and a handful of gateway
+ * reads a minute however many people open the page. An index that will not
+ * answer costs the ordering and the titles, never the row: the plates are still
+ * the newest real pictures and still verify for real.
  */
-export async function offeredSamples(limit = 3): Promise<TrySample[]> {
+export async function offeredSamples(limit = 3): Promise<OfferedSamples> {
   const story = await heldStory();
   const plates = story.plates.slice(0, CANDIDATES);
   if (plates.length === 0) {
-    return [];
+    return { samples: [], error: story.error };
   }
 
   const rows = await heldRows(plates.map((plate) => plate.id.toLowerCase()));
-  const marks = await marksFor(plates.map((plate) => plate.id), rows);
-  const picked = pickSamples(plates, marks, limit);
+  const picked = pickSamples(plates, marksFor(plates.map((plate) => plate.id), rows), limit);
 
-  return await Promise.all(
+  const samples = await Promise.all(
     picked.map(async (sample) => {
       const uri = rows[sample.id.toLowerCase()]?.metadataURI;
       if (uri === undefined) {
@@ -65,6 +81,8 @@ export async function offeredSamples(limit = 3): Promise<TrySample[]> {
       return art.title === undefined ? sample : { ...sample, title: art.title };
     }),
   );
+
+  return { samples, error: story.error };
 }
 
 /**
@@ -88,47 +106,31 @@ async function heldRows(ids: string[]): Promise<Record<string, SampleRow>> {
 }
 
 async function sampleRows(ids: string[]): Promise<Record<string, SampleRow>> {
-  const response = await fetch(envioUrl(), {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ query: SAMPLE_ROWS, variables: { ids } }),
-    signal: AbortSignal.timeout(10_000),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`the Envio endpoint answered ${response.status}`);
-  }
-
-  const body = (await response.json()) as { errors?: { message: string }[]; data?: { Passport: SampleRow[] } };
-  if (body.errors !== undefined && body.errors.length > 0) {
-    throw new Error(body.errors.map((entry) => entry.message).join("; "));
-  }
-  if (body.data === undefined) {
-    throw new Error("the Envio endpoint returned no data block");
-  }
-
-  return Object.fromEntries(body.data.Passport.map((row) => [row.id.toLowerCase(), row]));
+  const data = await askIndex<{ Passport: SampleRow[] }>(SAMPLE_ROWS, { ids });
+  return Object.fromEntries(data.Passport.map((row) => [row.id.toLowerCase(), row]));
 }
 
 /**
  * Whether each candidate carries a statement and a re-check.
  *
- * The statement is read from the register on Monad rather than from the index,
- * which does not hold that field yet, and a read that fails reads as no
- * statement: this only orders a row of three pictures, so a wrong guess costs
- * nothing a reader could be misled by.
+ * Both come off the one index row. The register on Monad holds the same
+ * statement, but asking it costs one chain read per candidate to decide the
+ * order of three pictures, and the index has flattened the answer onto the
+ * passport already. A candidate with no row, which is what an index that would
+ * not answer leaves behind, reads as neither: a missing mark costs the order
+ * and never the row.
  */
-async function marksFor(ids: Hex[], rows: Record<string, SampleRow>): Promise<Record<string, SampleMark>> {
-  const marks = await Promise.all(
-    ids.map(async (id) => {
-      const reading = await heldConsent(id).catch(() => ({ stated: false }));
+function marksFor(ids: Hex[], rows: Record<string, SampleRow>): Record<string, SampleMark> {
+  return Object.fromEntries(
+    ids.map((id) => {
+      const row = rows[id.toLowerCase()];
       return [
         id.toLowerCase(),
-        { stated: reading.stated, rechecked: (rows[id.toLowerCase()]?.attestationCount ?? 0) > 0 },
+        {
+          stated: row !== undefined && row.consentStated && SUMMARY_WORDS.has(row.consentSummary),
+          rechecked: (row?.attestationCount ?? 0) > 0,
+        },
       ] as const;
     }),
   );
-
-  return Object.fromEntries(marks);
 }

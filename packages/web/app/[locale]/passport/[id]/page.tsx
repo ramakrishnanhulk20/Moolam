@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
@@ -132,6 +133,12 @@ export default async function PassportPage({
   try {
     record = await heldPassportRecord(id as Hex);
   } catch (error) {
+    // One bad second on the chain must never become the page everyone opening
+    // this passport is handed for the next minute. Asking for the connection
+    // takes this render out of the store the way the Explore sheet does: a
+    // build leaves the page to be drawn on the request, and a refresh keeps the
+    // last good page it already has and tries the chain again on the next one.
+    await connection();
     return <Notice text={t("error", { reason: reason(error) })} tone="failed" />;
   }
 

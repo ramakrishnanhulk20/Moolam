@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 
-const stub = vi.hoisted(() => ({ record: vi.fn() }));
+const stub = vi.hoisted(() => ({ record: vi.fn(), connection: vi.fn() }));
+
+// The read-failure branch asks for the connection so the failure is never kept,
+// and the real one wants a request behind it. What that is for is held shut in
+// test/never-stored.test.ts.
+vi.mock("next/server", async (real) => ({
+  ...(await real<typeof import("next/server")>()),
+  connection: stub.connection,
+}));
 
 // next-intl's navigation helpers reach for next/navigation, which only resolves
 // inside the bundler. The link is all the page's components take from it.
@@ -39,6 +47,7 @@ function open(id: string) {
 
 beforeEach(() => {
   stub.record.mockReset();
+  stub.connection.mockReset().mockResolvedValue(undefined);
 });
 
 describe("a passport address that is not a passport", () => {
