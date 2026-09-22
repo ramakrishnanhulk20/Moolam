@@ -100,7 +100,7 @@ and `PRIVY_AUTHORIZATION_KEY`.
 ## What a passing run looks like
 
 The recorded run of 2026-09-08 registered passport
-`0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80` in block 103059393 for 376,104
+`0x0e940dfadb10c49bf1a2578cc12167242a9e2aec06500337f4889556379cda80` in block 103059393 for 376,128
 gas, on chain 143 against registry `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`.
 
 Section 2, the six copies:

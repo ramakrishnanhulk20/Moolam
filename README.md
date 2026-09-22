@@ -64,7 +64,7 @@ one copy with every scrap of metadata removed all resolved back to the same pass
 | Survives metadata stripping | No. Strip the manifest and nothing is left | Not measured here | No | Yes. The stripped copy came back at 0.99 confidence with the manifest confirmed gone |
 | Who can verify | Anyone with a C2PA reader, while the manifest is still attached | The platform that embedded it | Nobody | Anyone. Post the file to the open verify service, or read the registry yourself |
 | Who vouches | Whoever holds the signing certificate | The platform | Nobody | The creator's passkey and the generator agent's ERC-8004 owner, then a Chainlink CRE re-check on top |
-| Cost per image | Free | Free | Free | 376,104 gas on the live mainnet run, about 0.0376 MON at Monad's 100 gwei minimum base fee |
+| Cost per image | Free | Free | Free | 376,128 gas on the live mainnet run, about 0.0376 MON at Monad's 100 gwei minimum base fee |
 
 ---
 
@@ -691,7 +691,7 @@ in Foundry's Monad network family so the pricing matches the chain this ships on
 | `flag`, opening a dispute with its bond | 172,939 | 0.0173 MON |
 | `withdraw` | 40,717 | 0.0041 MON |
 
-The real mainnet register in the prove-it run came in higher, at **376,104 gas, about 0.0376 MON**,
+The real mainnet register in the prove-it run came in higher, at **376,128 gas, about 0.0376 MON**,
 because that passport carries a longer metadata URI and the first touch of the ERC-8004 registry in
 a block pays the cold account cost. That is the number to quote for one image in production.
 
