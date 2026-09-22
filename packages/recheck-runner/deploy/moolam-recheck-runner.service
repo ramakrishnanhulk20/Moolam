@@ -1,0 +1,46 @@
+[Unit]
+Description=Moolam re-check runner: the Chainlink second opinion on every new picture
+Documentation=https://github.com/moolam/moolam/tree/master/packages/recheck-runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=moolam
+Group=moolam
+WorkingDirectory=/srv/moolam/packages/recheck-runner
+
+# The only file holding a secret. Root writes it at 0600 and the service user reads it.
+EnvironmentFile=/etc/moolam/runner.env
+Environment=NODE_ENV=production
+Environment=HOME=/var/lib/moolam-recheck-runner
+
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=30
+
+# The CRE CLI compiles the workflow on every run, so a hung compile must not take the box with it.
+TimeoutStopSec=60
+KillSignal=SIGTERM
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=moolam-recheck
+
+# Nothing here needs more than its own state directory and the checked out repository. The repo
+# is writable because the CRE CLI compiles the workflow into that folder on every run.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/moolam
+StateDirectory=moolam-recheck-runner
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,34 @@
+Initializing...
+Loading settings...
+Checking RPC connectivity...
+Compiling workflow...
+✓ Workflow compiled
+✓ Simulation limits enabled
+  HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
+  Binary hash: a55f1f6f7ddf36656ae53958481b304e9f5bc5343e017d5edd8bd1c5e0f65e06
+  Config hash: a9cfe357a5075cc38af76b6f2b13bbff32a43f182dca812d998f4af141dd8f89
+Fetching transaction receipt for 0x40ae6d620c35eeb6e36b68d188d9960294bb210abadca86fd58c71209b7b05e3...
+2026-09-22T17:42:53Z [SIMULATION] Simulator Initialized
+
+2026-09-22T17:42:53Z [SIMULATION] Running trigger trigger=evm:ChainSelector:8481857512324358265@1.0.0
+2026-09-22T17:42:54Z [USER LOG] passport 0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e stored phash 0x63779c989c7f3121
+2026-09-22T17:42:57Z [USER LOG] thumbnail bafkreiat7zzulyxlwgifgpprxsjpzl52vvvopjvhzb4sk6nyts2bhlldau 40681 bytes
+2026-09-22T17:42:57Z [USER LOG] recomputed 0x63779c989c7f3121 distance 0 matched true
+2026-09-22T17:42:57Z [USER LOG] report tx 0x0000000000000000000000000000000000000000000000000000000000000000
+
+✓ Workflow Simulation Result:
+"0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e distance 0 matched true tx 0x0000000000000000000000000000000000000000000000000000000000000000"
+
+2026-09-22T17:42:57Z [SIMULATION] Execution finished signal received
+2026-09-22T17:42:57Z [SIMULATION] Skipping WorkflowEngineV2
+
+╭──────────────────────────────────────────────────────╮
+│ Simulation complete! Ready to deploy your workflow?  │
+│                                                      │
+│ Run cre account access to request deployment access. │
+╰──────────────────────────────────────────────────────╯
+
+⚠️  Update available! You’re running 1.32.0, but 1.35.0 is the latest.
+Run `cre update` or visit https://github.com/smartcontractkit/cre-cli/releases to upgrade.
+
+exit 0

@@ -1,0 +1,24 @@
+{
+  "name": "@moolam/recheck-runner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The always-on runner that gives every new Moolam picture its Chainlink second opinion.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts",
+    "once": "tsx src/main.ts --once",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

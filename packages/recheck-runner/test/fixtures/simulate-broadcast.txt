@@ -1,0 +1,11 @@
+The four lines a broadcast run prints, copied from the run Ram recorded on 2026-09-17 in
+kitchen/reports/recheck-run-20260917-0713.txt (passport 0x0c45b008db, report transaction
+0x085d8500ab86dc1f9028d8375b92e5b4b569d83d5f3c96c32e38679e5b6a3602, confirmed on chain). The
+surrounding lines are the ones the same CLI prints on every run and are in simulate-dry-run.txt.
+
+2026-09-17T12:43:49Z [USER LOG] passport 0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e stored phash 0x63779c989c7f3121
+2026-09-17T12:43:51Z [USER LOG] recomputed 0x63779c989c7f3121 distance 0 matched true
+2026-09-17T12:43:52Z [USER LOG] report tx 0x085d8500ab86dc1f9028d8375b92e5b4b569d83d5f3c96c32e38679e5b6a3602
+
+✓ Workflow Simulation Result:
+"0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e distance 0 matched true tx 0x085d8500ab86dc1f9028d8375b92e5b4b569d83d5f3c96c32e38679e5b6a3602"

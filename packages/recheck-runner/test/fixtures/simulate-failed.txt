@@ -1,0 +1,16 @@
+Initializing...
+Loading settings...
+Checking RPC connectivity...
+Compiling workflow...
+✓ Workflow compiled
+✓ Simulation limits enabled
+  HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
+  Binary hash: a55f1f6f7ddf36656ae53958481b304e9f5bc5343e017d5edd8bd1c5e0f65e06
+  Config hash: a9cfe357a5075cc38af76b6f2b13bbff32a43f182dca812d998f4af141dd8f89
+Fetching transaction receipt for 0xc432d323a2b71ab2855da8cc6f133d40299c85602dd53477c9fa0c68eab66b72...
+2026-09-22T17:43:43Z [SIMULATION] Simulator Initialized
+
+2026-09-22T17:43:43Z [SIMULATION] Running trigger trigger=evm:ChainSelector:8481857512324358265@1.0.0
+2026-09-22T17:43:43Z [SIMULATION] Skipping WorkflowEngineV2
+✗ failed to run trigger evm:ChainSelector:8481857512324358265@1.0.0: log does not match registered filter for trigger trigger_reg_1111111111111111111111111111111111111111111111111111111111111111_0: log address 0000000071727de22e5e9d8baf0edac6f37da032 does not match any of the addresses in the filter
+exit 1
