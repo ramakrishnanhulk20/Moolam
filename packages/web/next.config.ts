@@ -89,6 +89,9 @@ const nextConfig: NextConfig = {
   // The framework's name and version is a free hint to anyone looking for a
   // version with a known hole in it.
   poweredByHeader: false,
+  // The dev badge sat over the Home tab of the phone bar at the bottom left,
+  // which is the thing under review on the bench. Dev only.
+  devIndicators: { position: "top-right" },
 
   async headers() {
     return [
