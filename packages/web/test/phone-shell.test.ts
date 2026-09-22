@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BAR_HEIGHT, BAR_ROOM, activeTab, barShown, type Tab } from "@/components/shell/tabs";
@@ -129,6 +130,55 @@ describe("the order the bar is drawn and walked in", () => {
     const { TABS } = await import("@/components/lab/phone/words");
     expect(TABS.find((tab) => tab.key === "make")?.prefetch).toBe(false);
     expect(TABS.filter((tab) => tab.prefetch === false)).toHaveLength(1);
+  });
+});
+
+describe("whether the bar is seen, and whether it can be reached", () => {
+  it("is simply there on every page that is not the film", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    expect(barLook({ guideOpen: false, filmPlaying: false, close: 0 })).toEqual({ opacity: 1, inert: false });
+  });
+
+  it("keeps out of the film until the closing card comes in", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0 })).toEqual({ opacity: 0, inert: true });
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0.25 })).toEqual({ opacity: 0.25, inert: true });
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: 1 })).toEqual({ opacity: 1, inert: false });
+  });
+
+  it("takes itself out of the tab order for exactly as long as it cannot be seen", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0.5 }).inert).toBe(true);
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0.51 }).inert).toBe(false);
+  });
+
+  it("is awake while the guide is open, whatever the film is doing", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    // Two of the guide's three steps point at tabs. A bar that is invisible and
+    // inert on the film's first screen would leave the walk pointing at nothing.
+    expect(barLook({ guideOpen: true, filmPlaying: true, close: 0 })).toEqual({ opacity: 1, inert: false });
+    expect(barLook({ guideOpen: true, filmPlaying: false, close: 0 })).toEqual({ opacity: 1, inert: false });
+  });
+
+  it("goes back to the film's own rule the moment the guide closes", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    const open = barLook({ guideOpen: true, filmPlaying: true, close: 0.1 });
+    const shut = barLook({ guideOpen: false, filmPlaying: true, close: 0.1 });
+    expect(open).toEqual({ opacity: 1, inert: false });
+    expect(shut).toEqual({ opacity: 0.1, inert: true });
+  });
+
+  it("never asks for an opacity outside nothing and all of it", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: -3 }).opacity).toBe(0);
+    expect(barLook({ guideOpen: false, filmPlaying: true, close: 4 }).opacity).toBe(1);
+  });
+
+  it("reads the two facts off the page and nothing else", () => {
+    const source = readFileSync("components/shell/BottomBar.tsx", "utf8");
+    expect(source).toContain('document.querySelector("[data-guide-open]")');
+    expect(source).toContain("document.querySelector('[data-story=\"film\"]')");
+    expect(source).toContain("close: progress.close");
   });
 });
 

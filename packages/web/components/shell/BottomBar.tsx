@@ -11,6 +11,43 @@ import { BAR_HEIGHT, activeTab, barShown, type Tab } from "./tabs";
 /** Flat is five equal tabs. Raised lifts the middle one onto a disc above the bar. */
 export type BarShape = "flat" | "raised";
 
+/** What the bar can see of the page it is standing on, in one frame. */
+export interface BarView {
+  /** True while the first-visit guide is open somewhere in the document. */
+  guideOpen: boolean;
+  /** True while the pinned film is on the page, which is the home route alone. */
+  filmPlaying: boolean;
+  /** How far the film's closing card has come in, 0 to 1. */
+  close: number;
+}
+
+/**
+ * Whether the bar is seen and whether it can be reached, decided from those
+ * three facts and nothing else.
+ *
+ * The film owns the whole window: it is pinned, it takes the wheel, and a bar
+ * across the bottom of it would sit over the captions and the drop panel. So on
+ * that one route the bar rides the story's own closing signal and arrives with
+ * the closing card and the footer.
+ *
+ * The guide overrules it. A first visitor is being walked through the three
+ * things they can do here, and two of those steps point at tabs; a bar that is
+ * invisible and inert while the film is still playing would leave the walk
+ * pointing at nothing. So while the guide is open the bar is there, whatever
+ * the film is doing, and it goes back to the film's rule the moment the guide
+ * closes.
+ *
+ * Anything invisible is also taken out of the tab order: a reader on a keyboard
+ * should not land on five links they cannot see.
+ */
+export function barLook(view: BarView): { opacity: number; inert: boolean } {
+  if (view.guideOpen || !view.filmPlaying) {
+    return { opacity: 1, inert: false };
+  }
+  const opacity = Math.min(1, Math.max(0, view.close));
+  return { opacity, inert: opacity <= 0.5 };
+}
+
 /**
  * The bar a thumb lives on: five places, always there, at the bottom of the
  * screen where a thumb already is.
@@ -43,30 +80,35 @@ export function BottomBar({
   const shell = useRef<HTMLElement>(null);
   const overFilm = film ?? route === "/";
 
-  // The film owns the whole window: it is pinned, it takes the wheel, and a bar
-  // across the bottom of it would sit over the captions and the drop panel. So
-  // on that one route the bar rides the story's own closing signal, the number
-  // the scene writes every frame, and arrives with the closing card and the
-  // footer. On the still page there is no film element, the loop reads 1, and
-  // the bar is simply there, which is what a reader who asked for less motion
-  // should get.
+  // barLook decides; this loop only reads the page for it, every frame, because
+  // the number it reads is written by the scene's own render loop and putting
+  // it in React state would re-render the bar sixty times a second. On a route
+  // with no film there is nothing to read: the bar is simply there, which is
+  // also what a reader who asked for less motion gets, because the still cut
+  // carries no film element.
   useEffect(() => {
     if (!overFilm || !drawn) {
       return;
     }
     let frame = 0;
-    let gone: boolean | null = null;
+    let was: boolean | null = null;
 
     const loop = () => {
       const node = shell.current;
       if (node !== null) {
-        const playing = document.querySelector('[data-story="film"]') !== null;
-        const shown = playing ? progress.close : 1;
-        node.style.opacity = String(shown);
-        const next = shown <= 0.5;
-        if (next !== gone) {
-          gone = next;
-          node.inert = next;
+        const look = barLook({
+          guideOpen: document.querySelector("[data-guide-open]") !== null,
+          filmPlaying: document.querySelector('[data-story="film"]') !== null,
+          close: progress.close,
+        });
+        // The opacity is written on every frame, not only when it changes: the
+        // entrance animation writes the same property from its own loop, and a
+        // frame this one skips is a frame that animation wins. The tab order is
+        // only touched when the answer changes, because that one moves focus.
+        node.style.opacity = String(look.opacity);
+        if (look.inert !== was) {
+          was = look.inert;
+          node.inert = look.inert;
         }
       }
       frame = requestAnimationFrame(loop);
