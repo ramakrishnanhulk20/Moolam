@@ -79,6 +79,13 @@ const DEFAULT_GLOBAL_GENERATIONS_PER_DAY = "60";
 const DEFAULT_GLOBAL_EDITS_PER_DAY = "150";
 
 /**
+ * Unsealing is the rarest thing this service does and the most expensive per call: it pins a whole
+ * picture, its thumbnail, its manifest and the record, and the picture can be 20 MB. Fifty is far
+ * more than a judging fortnight needs and about 200 pins at the ceiling.
+ */
+const DEFAULT_GLOBAL_UNSEALS_PER_DAY = "50";
+
+/**
  * How often the passport index is rebuilt from the source. A minute is well inside the time it
  * takes a creator to register an image and then go and verify it, and a rebuild of a few thousand
  * records costs milliseconds.
@@ -274,6 +281,7 @@ const schema = z
     GLOBAL_PREPARES_PER_DAY: dayCeiling("GLOBAL_PREPARES_PER_DAY", DEFAULT_GLOBAL_PREPARES_PER_DAY),
     GLOBAL_GENERATIONS_PER_DAY: dayCeiling("GLOBAL_GENERATIONS_PER_DAY", DEFAULT_GLOBAL_GENERATIONS_PER_DAY),
     GLOBAL_EDITS_PER_DAY: dayCeiling("GLOBAL_EDITS_PER_DAY", DEFAULT_GLOBAL_EDITS_PER_DAY),
+    GLOBAL_UNSEALS_PER_DAY: dayCeiling("GLOBAL_UNSEALS_PER_DAY", DEFAULT_GLOBAL_UNSEALS_PER_DAY),
     MOOLAM_REGISTRY_ADDRESS: z
       .string()
       .trim()
@@ -522,6 +530,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GLOBAL_PREPARES_PER_DAY: source.GLOBAL_PREPARES_PER_DAY,
     GLOBAL_GENERATIONS_PER_DAY: source.GLOBAL_GENERATIONS_PER_DAY,
     GLOBAL_EDITS_PER_DAY: source.GLOBAL_EDITS_PER_DAY,
+    GLOBAL_UNSEALS_PER_DAY: source.GLOBAL_UNSEALS_PER_DAY,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CONSENT_ADDRESS: source.CONSENT_ADDRESS,
     CORS_ORIGINS: source.CORS_ORIGINS,

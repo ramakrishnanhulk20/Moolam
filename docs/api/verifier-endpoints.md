@@ -4,11 +4,12 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Six routes. Everything is JSON, including errors and 404s. The service listens on `VERIFIER_PORT`,
-which defaults to 4000. Four of the six are mounted only when the host is configured for them:
-`/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id, and
-`/generate` and `/edit` each need those plus their own keys. An unmounted route answers `404` like
-any other path that does not exist.
+Eight routes. Everything is JSON, including errors and 404s. The service listens on `VERIFIER_PORT`,
+which defaults to 4000. Five of the eight are mounted only when the host is configured for them:
+`/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id,
+`/generate` and `/edit` each need those plus their own keys, and the two `/unseal` routes need
+exactly what `/prepare` needs. An unmounted route answers `404` like any other path that does not
+exist.
 
 ## POST /verify
 
@@ -565,9 +566,143 @@ The parent is checked first, because it is the one claim in the request that cos
 Then the signer, then the ownership, then the creator's own allowance, then today's budget for
 everyone, and only then is a pin or a transaction spent.
 
+## POST /unseal
+
+The holder of a sealed passport publishes the picture it committed to. A sealed passport is a hash
+on chain with no picture behind it; unsealing is the creator handing that picture over, and from
+then on it is an ordinary passport the Chainlink workflow can re-check.
+
+Mounted on the same terms as `/prepare`: a Pinata token to pin with and a Privy app id to check
+tokens against. Nothing here signs on a wallet or sends a transaction.
+
+**Request.** A multipart body with one file and one text part, in any order, and the holder's Privy
+access token in an `Authorization: Bearer` header.
+
+| Part | Type | Rule |
+| --- | --- | --- |
+| `file` | file | The signed file the service handed back at registration. Up to 20 MB and 40 megapixels |
+| `passportId` | text | `0x` and 64 hex characters, the sealed passport being opened |
+
+```bash
+curl -s -X POST http://localhost:4000/unseal \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@the-file-we-handed-back.jpg" -F "passportId=0x75bf..."
+```
+
+**What it checks, before a byte is pinned.**
+
+Only the holder unseals. The token names a Privy user, the Privy user record names their embedded
+wallets, and `ownerOf` on the registry has to be one of them at that moment. The wallet never comes
+from the body, and the holder is read from the chain rather than from the index, because an index
+is a copy of the chain a minute ago and a passport can change hands in a minute.
+
+Unsealing publishes exactly what was registered. The sha-256 of the upload must equal the passport
+id, which is the registry's own rule for what a passport id is, and the fingerprint recomputed from
+the upload must equal the one recorded on chain. A caller holding a different picture publishes
+nothing.
+
+The passport must still be sealed. Its metadata document is read through the gateway and has to say
+`"sealed": true`. A document that cannot be read is answered `502`, never treated as "public
+already": that reading would refuse a creator their own unseal because a gateway was slow.
+
+The thumbnail must fit. The sealed path makes no thumbnail, so a picture the public path would have
+refused for its 60 KB budget can be registered sealed. Publishing it would leave a passport the
+Chainlink workflow can never fetch and so can never re-check, which reads as a fault for ever, so
+the unseal is refused with `422` instead.
+
+**Response.** `200` with the four things now on IPFS.
+
+```ts
+{
+  passportId: `0x${string}`,
+  image: { cid, uri, gatewayUrl },
+  thumbnail: { cid, uri, gatewayUrl },
+  manifest?: { cid, uri, gatewayUrl },   // absent when the file carries no readable manifest
+  record: { cid, uri, gatewayUrl },
+  unsealedBy: `0x${string}`,             // the wallet the registry says holds it
+  unsealedAt: string,                    // ISO 8601
+  fingerprint: { phash, blockhash, version },
+  quota: { used: number, limit: number, resetsAt: number }
+}
+```
+
+**Nothing on chain changes, and nothing can.** The registry writes `metadataURI` once at
+registration and has no setter, so the sealed document stays the passport's metadata for ever. The
+picture's address lives in the `record`: a small JSON document pinned under a name worked out from
+the passport id, which is what makes it findable again by a service that has just been redeployed
+and keeps no database. The record names the passport, the three addresses, the wallet that opened
+it and the time.
+
+The record is not signed. A signature would only say Moolam published the file; the hash says the
+bytes are the registered ones, which is the thing anyone actually wants to know and is checkable by
+a stranger with a copy of the picture and no knowledge of this service. Fetch the image, hash it,
+compare with the passport id on Monad.
+
+**Status codes.**
+
+| Code | When |
+| --- | --- |
+| `200` | Published |
+| `400` | Not a multipart body, no `file` part, a file part under another name, or a `passportId` that is not 32 bytes of hex |
+| `400` | `{ "error": "hash-mismatch", "passportId": "0x..." }`. The upload is not the file this passport commits to. Usually the creator kept their own copy of the picture rather than the file this service signed and handed back |
+| `400` | `{ "error": "fingerprint-mismatch", "passportId": "0x...", "recomputed": {...} }`. The bytes hash right and the fingerprint recomputed from them is not the one on chain |
+| `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
+| `403` | `not-holder`. The registry says another wallet holds this passport. A Privy user id this app does not know answers the same way |
+| `404` | `no-passport`. The registry has no passport with that id |
+| `409` | `not-sealed`. The passport's metadata document is already public, so there is nothing to unseal |
+| `409` | `{ "error": "already-unsealed", "passportId": "0x...", "record": {...} }`. A record is pinned for this passport already |
+| `413` | Over the 20 MB byte limit, or over 40 megapixels |
+| `415` | `not-an-image`, with `reason` when the header parsed and the pixels behind it did not decode |
+| `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. Nothing was pinned |
+| `429` | Past `EDITS_PER_DAY` in a rolling 24 hours, which is the allowance unsealing shares. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
+| `429` | `{ "error": "global-limit", ... }` once `GLOBAL_UNSEALS_PER_DAY` is spent by everyone together. See [Today's budget for everyone](#todays-budget-for-everyone) |
+| `502` | `pin-failed`. Nothing reached IPFS |
+| `502` | `{ "error": "record-pin-failed", "passportId": "0x...", "image": {...}, "thumbnail": {...}, "reason": "..." }`. The picture is public and the record that points at it is not. This is the one half-done state the route can end in, and the answer says so rather than failing silently, because the caller has to know their picture is already out there. Sending the same file again lands on the same three addresses, because every pin is content addressed, and finishes the record |
+| `502` | `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`: the Monad RPC, the gateway or Privy did not answer. All of that happens before the allowance is taken, so nothing was spent |
+| `503` | `busy`. The shared decode gate, which matching, prepares, edits and unseals all queue on, stayed full for thirty seconds |
+
+Both allowances go back whenever the request pinned nothing, because an unseal sends no
+transaction: a request that pinned nothing has cost the world nothing to keep.
+
+## GET /unseal/:passportId
+
+Where the picture of an unsealed passport lives, or that there is none yet. The passport page
+cannot learn this from the chain, so it asks here.
+
+```bash
+curl -s http://localhost:4000/unseal/0x75bf...
+```
+
+```ts
+{
+  passportId: `0x${string}`,
+  image: { cid, uri, gatewayUrl },
+  thumbnail: { cid, uri, gatewayUrl },
+  manifest?: { cid, uri, gatewayUrl },
+  record: { cid, uri, gatewayUrl },
+  unsealedBy: `0x${string}`,
+  unsealedAt: string
+}
+```
+
+The answer carries the record's own address as well as the three it names, so a reader who does not
+want to take this service's word for it can open the record on IPFS and hash the picture
+themselves.
+
+| Code | When |
+| --- | --- |
+| `200` | A record was found and read |
+| `400` | The id is not `0x` and 64 hex characters |
+| `404` | `{ "error": "not-unsealed", "passportId": "0x..." }`. No record is pinned for this passport |
+| `503` | `lookup-unavailable`. This service could not find out, which is not the same as "not unsealed" and must never be shown as one |
+
+A record is pinned once and never changes, so a hit is remembered for the life of the process and a
+miss never is. That keeps a passport page, which is read far more often than a passport is
+unsealed, from spending a Pinata request every time somebody opens it.
+
 ## Today's budget for everyone
 
-Three ceilings bound what the whole world may spend in a UTC day, on the three routes that cost
+Four ceilings bound what the whole world may spend in a UTC day, on the four routes that cost
 money:
 
 | Variable | Default | What it bounds |
@@ -575,6 +710,7 @@ money:
 | `GLOBAL_PREPARES_PER_DAY` | 300 | Prepares, so about 1,200 Pinata pins and 300 sponsored registrations |
 | `GLOBAL_GENERATIONS_PER_DAY` | 60 | Pictures the agent draws, so about two dollars of image model spend |
 | `GLOBAL_EDITS_PER_DAY` | 150 | Edits, so about 600 pins and 150 sponsored `appendEdit` calls |
+| `GLOBAL_UNSEALS_PER_DAY` | 50 | Sealed pictures published, so about 200 pins, and the pictures are whole files rather than thumbnails |
 
 Every other limit on this service is counted per Privy user id, and an account costs nothing to
 make, so these are the only numbers that bound a determined caller with a hundred accounts.
@@ -598,7 +734,7 @@ seconds that is from now. `global-limit` is not a code the studio knows, so it r
 Setting a ceiling to `0` closes that route for everyone. That is a kill switch: it can be flipped on
 the host without a deploy, and the route answers the same 429 to every caller until it is raised.
 
-All three routes hand a slot back whenever the request that took it spent nothing. The rule is the
+All four routes hand a slot back whenever the request that took it spent nothing. The rule is the
 same everywhere: the slot goes back on any exit before the first pin, which covers a signer that is
 down, a queue that stayed full, a picture the registry already holds, a file that will not decode
 and a record the service refused to publish. From the first pin onwards it stays taken, because the
@@ -611,14 +747,19 @@ allowances, so a redeploy resets them and a second copy of the service would kee
 bound how many actions a day holds, never what one of them costs. And the real bound on sponsored
 gas is the daily cap on the Privy app, which is a dashboard setting that no code here can enforce.
 
-## Nothing these three routes answer is cacheable
+## Nothing on these routes is cacheable
 
-Every reply to a POST on `/prepare`, `/generate` and `/edit` carries `Cache-Control: no-store`,
-whatever its status. It is set in one hook on the way out rather than by each route, so the replies
-no handler writes carry it too: the `401` sent before the body is read, the `413` raised in the
-middle of an upload and the `429` from the rate limiter. These answers hold a title, a prompt, a
-wallet address or, for a sealed registration, the only copy of a picture, and none of that belongs
-in a proxy or a browser store. `GET /health` and both verify routes are untouched by this.
+Every reply to a POST on `/prepare`, `/generate`, `/edit` and `/unseal` carries
+`Cache-Control: no-store`, whatever its status. It is set in one hook on the way out rather than by
+each route, so the replies no handler writes carry it too: the `401` sent before the body is read,
+the `413` raised in the middle of an upload and the `429` from the rate limiter. These answers hold
+a title, a prompt, a wallet address or, for a sealed registration, the only copy of a picture, and
+none of that belongs in a proxy or a browser store.
+
+`GET /unseal/:passportId` is in the same hook for a different reason: whether a passport is still
+sealed is the one fact on this service that turns from private to public in an instant, and a
+cached "still sealed" would show a sealed plate over a picture that is already out. `GET /health`
+and both verify routes are untouched by this.
 
 ## GET /health
 
@@ -635,7 +776,8 @@ curl -s http://localhost:4000/health
   limits: {
     prepares: { used: number, max: number },
     generations: { used: number, max: number },
-    edits: { used: number, max: number }
+    edits: { used: number, max: number },
+    unseals: { used: number, max: number }
   }
 }
 ```

@@ -16,7 +16,7 @@ import {
   type DayAction,
 } from "../src/limits/globalDay.js";
 
-const CEILINGS: Record<DayAction, number> = { prepares: 2, generations: 1, edits: 0 };
+const CEILINGS: Record<DayAction, number> = { prepares: 2, generations: 1, edits: 0, unseals: 4 };
 
 /** A clock a test moves by hand. Returns the reader and a setter that takes an ISO instant. */
 function clock(start: string): { now: () => number; set: (at: string) => void } {
@@ -50,6 +50,7 @@ describe("the day's budget for everyone", () => {
       prepares: { used: 1, max: 2 },
       generations: { used: 0, max: 1 },
       edits: { used: 0, max: 0 },
+      unseals: { used: 0, max: 4 },
     });
   });
 

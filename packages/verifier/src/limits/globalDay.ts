@@ -1,10 +1,10 @@
 /** Unix time ignores leap seconds, so every UTC day is exactly this many milliseconds long. */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The three things a caller can make this service spend: pins, model calls and sponsored gas. */
-export type DayAction = "prepares" | "generations" | "edits";
+/** The things a caller can make this service spend: pins, model calls and sponsored gas. */
+export type DayAction = "prepares" | "generations" | "edits" | "unseals";
 
-export const DAY_ACTIONS: readonly DayAction[] = ["prepares", "generations", "edits"];
+export const DAY_ACTIONS: readonly DayAction[] = ["prepares", "generations", "edits", "unseals"];
 
 /** What the code the studio does not know reads as: a 429 it already treats as "try later". */
 export const GLOBAL_LIMIT_CODE = "global-limit";
@@ -55,7 +55,7 @@ export interface GlobalDay {
  * The clock is a parameter so a test can walk it over midnight without waiting for one.
  */
 export function globalDay(max: Record<DayAction, number>, now: () => number = Date.now): GlobalDay {
-  const used: Record<DayAction, number> = { prepares: 0, generations: 0, edits: 0 };
+  const used = Object.fromEntries(DAY_ACTIONS.map((action) => [action, 0])) as Record<DayAction, number>;
   let day = Math.floor(now() / DAY_MS);
 
   const currentDay = (): number => {
@@ -66,9 +66,9 @@ export function globalDay(max: Record<DayAction, number>, now: () => number = Da
     // days is the one everything is reported and compared against, so a backwards step is a no-op.
     if (today > day) {
       day = today;
-      used.prepares = 0;
-      used.generations = 0;
-      used.edits = 0;
+      for (const action of DAY_ACTIONS) {
+        used[action] = 0;
+      }
     }
     return day;
   };
@@ -105,11 +105,9 @@ export function globalDay(max: Record<DayAction, number>, now: () => number = Da
     counts(): Record<DayAction, { used: number; max: number }> {
       // Asked for the side effect: a probe read after midnight must not report yesterday's counts.
       currentDay();
-      return {
-        prepares: { used: used.prepares, max: max.prepares },
-        generations: { used: used.generations, max: max.generations },
-        edits: { used: used.edits, max: max.edits },
-      };
+      return Object.fromEntries(
+        DAY_ACTIONS.map((action) => [action, { used: used[action], max: max[action] }]),
+      ) as Record<DayAction, { used: number; max: number }>;
     },
   };
 }

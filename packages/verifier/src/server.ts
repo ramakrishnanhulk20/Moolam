@@ -19,6 +19,7 @@ import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
+import { unsealRoutes } from "./routes/unseal.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
 import { paymentServerFromEnv } from "./x402/plugin.js";
@@ -59,12 +60,28 @@ const MAX_JSON_BODY_BYTES = 16 * 1024;
  * limiter sends. Judging by the path rather than by what the route decided means an answer cannot
  * lose the header by taking an early exit.
  */
-const UNCACHEABLE = new Set(["/prepare", "/generate", "/edit"]);
+const UNCACHEABLE = new Set(["/prepare", "/generate", "/edit", "/unseal"]);
 
 /** The path on its own. A query string is not part of which route a request reached. */
 function pathOf(url: string): string {
   const query = url.indexOf("?");
   return query === -1 ? url : url.slice(0, query);
+}
+
+/**
+ * Whether this answer may sit in a cache.
+ *
+ * The four POSTs above carry a title, a prompt, a wallet or a whole picture. The unseal reads are
+ * here for a different reason: whether a passport is still sealed is the one fact on this service
+ * that changes from private to public in an instant, and a cached "still sealed" would show a
+ * sealed plate over a picture that is already out.
+ */
+function uncacheable(method: string, url: string): boolean {
+  const path = pathOf(url);
+  if (path === "/unseal" || path.startsWith("/unseal/")) {
+    return true;
+  }
+  return method === "POST" && UNCACHEABLE.has(path);
 }
 
 export interface Verifier {
@@ -192,6 +209,10 @@ export function sourceFromEnv(): PassportSource {
  * signer the creator granted, so it is mounted on the same terms and says once at boot when it is
  * off. It does not need an image model key: nothing is drawn.
  *
+ * The unseal route needs exactly what prepare needs and is mounted on the same
+ * condition, so a host that can run the studio can always publish a sealed
+ * picture the studio registered.
+ *
  * The paid route is mounted only when the environment enables it, or when a
  * caller hands in its own payment server. Everything else about the service is
  * the same either way, so switching payment on adds a route and changes nothing
@@ -215,6 +236,7 @@ export async function buildServer(
     prepare?: { keys?: PrivyKeys };
     generate?: { keys?: PrivyKeys };
     edit?: { keys?: PrivyKeys };
+    unseal?: { keys?: PrivyKeys };
     consent?: ConsentReader;
     dispute?: DisputeReader;
     checks?: { registry?: () => Promise<void> };
@@ -242,7 +264,7 @@ export async function buildServer(
     // The studio calls this service from another origin, so "cross-origin" is the only value here
     // that cannot break it. "same-origin" would, and it is the value a template would have given.
     reply.header("cross-origin-resource-policy", "cross-origin");
-    if (request.method === "POST" && UNCACHEABLE.has(pathOf(request.url))) {
+    if (uncacheable(request.method, request.url)) {
       reply.header("cache-control", "no-store");
     }
   });
@@ -297,6 +319,11 @@ export async function buildServer(
     "verify/paid": payments !== undefined,
   };
 
+  // Unsealing needs exactly what a prepare needs, a token to pin with and an app id to check
+  // creators against, so it rides on the same condition rather than on a name of its own in
+  // EXPECT_ROUTES: a host that can run the studio can always finish what the studio started.
+  const canUnseal = options.unseal !== undefined || mounts.prepare;
+
   const refusals = env.EXPECT_ROUTES.filter((route) => !mounts[route]).map((route) => {
     const missing = missingVariablesFor(route);
     return `${route} needs ${missing.length === 0 ? "settings this host does not have" : missing.join(", ")}`;
@@ -324,6 +351,7 @@ export async function buildServer(
       prepares: env.GLOBAL_PREPARES_PER_DAY,
       generations: env.GLOBAL_GENERATIONS_PER_DAY,
       edits: env.GLOBAL_EDITS_PER_DAY,
+      unseals: env.GLOBAL_UNSEALS_PER_DAY,
     }),
   );
 
@@ -344,6 +372,7 @@ export async function buildServer(
       ...(mounts.prepare ? ["prepare"] : []),
       ...(mounts.generate ? ["generate"] : []),
       ...(mounts.edit ? ["edit"] : []),
+      ...(canUnseal ? ["unseal"] : []),
       "health",
     ],
   });
@@ -395,6 +424,12 @@ export async function buildServer(
     app.log.info(
       "edit route off: on top of what /prepare needs it wants PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY, PRIVY_EDIT_SIGNER_ID and PRIVY_EDIT_POLICY_ID, and this host is missing at least one",
     );
+  }
+
+  if (canUnseal) {
+    await app.register(unsealRoutes, options.unseal ?? options.prepare ?? {});
+  } else {
+    app.log.info("unseal route off: it needs the same PINATA_JWT and PRIVY_APP_ID that /prepare needs");
   }
 
   if (payments !== undefined) {

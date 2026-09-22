@@ -395,8 +395,50 @@ detail stays in the log, and trying again costs the creator only the upload.
 Two things this does not do. It does not hide a generated picture from the model
 provider that drew it, because that provider made the picture. It does not stop
 someone who already holds a copy from publishing it; what it gives you there is
-a hash that makes every copy checkable. Unsealing, which publishes the picture
-later, is a separate route and is not built yet.
+a hash that makes every copy checkable.
+
+## Publishing a sealed picture later
+
+The holder uploads the file they kept to `POST /unseal` with the passport id,
+and the service publishes the picture, its thumbnail and its manifest.
+
+```sh
+curl -s -X POST http://localhost:4000/unseal \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -F "file=@the-file-we-handed-back.jpg" -F "passportId=0x75bf..."
+```
+
+Two checks decide it and both run before a byte is pinned. Only the holder
+unseals: the caller's token names a Privy user, that user record names their
+embedded wallets, and `ownerOf` on the registry has to be one of them at that
+moment. And unsealing publishes exactly what was registered: the sha-256 of the
+upload must be the passport id, and the fingerprint recomputed from it must be
+the one the chain recorded. A caller holding a different picture publishes
+nothing.
+
+Two more refusals. A passport whose metadata document is already public cannot
+be unsealed again. And a picture whose thumbnail cannot be squeezed under the
+Chainlink verifier's fetch budget is refused with `thumbnail-too-large`: the
+sealed path makes no thumbnail, so such a picture can be registered sealed
+although the public path would have turned it away, and publishing it would
+leave a passport the workflow could never re-check.
+
+Nothing about the passport on chain changes, because nothing about it can. The
+registry writes `metadataURI` once at registration and has no setter, so the
+sealed document stays the passport's metadata for ever. The picture's address
+goes into a small record pinned beside it, under a name worked out from the
+passport id, and `GET /unseal/:passportId` answers with it or with
+`not-unsealed`:
+
+```sh
+curl -s http://localhost:4000/unseal/0x75bf...
+```
+
+The record is not signed, on purpose. A signature would only say Moolam
+published the file; the hash says the bytes are the registered ones, which is
+the thing anyone actually wants to know and is checkable by a stranger with a
+copy of the picture and no knowledge of this service. Fetch the image, hash it,
+compare it with the passport id on Monad.
 
 ## Which way up
 
@@ -525,6 +567,7 @@ lines. See `corpus/README.md`. The image files are gitignored.
 | `GLOBAL_PREPARES_PER_DAY` | how many prepares the whole world may make in a UTC day, default 300. 0 closes the route for everyone |
 | `GLOBAL_GENERATIONS_PER_DAY` | how many pictures the whole world may have drawn in a UTC day, default 60. 0 closes the route for everyone |
 | `GLOBAL_EDITS_PER_DAY` | how many edits the whole world may append in a UTC day, default 150. 0 closes the route for everyone |
+| `GLOBAL_UNSEALS_PER_DAY` | how many sealed pictures the whole world may publish in a UTC day, default 50. 0 closes the route for everyone |
 
 All of it is checked at boot and a bad value names itself, so
 `VERIFIER_PORT=abc` stops the service before it listens rather than after.

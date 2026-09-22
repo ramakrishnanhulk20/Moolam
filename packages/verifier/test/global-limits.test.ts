@@ -36,6 +36,7 @@ const SETTINGS = vi.hoisted(() => {
   process.env.GLOBAL_PREPARES_PER_DAY = "1";
   process.env.GLOBAL_GENERATIONS_PER_DAY = "1";
   process.env.GLOBAL_EDITS_PER_DAY = "1";
+  process.env.GLOBAL_UNSEALS_PER_DAY = "1";
   process.env.EXPECT_ROUTES = "";
   process.env.X402_ENABLED = "false";
   return settings;
@@ -275,6 +276,7 @@ describe("the day's ceiling for everyone", () => {
       prepares: { used: 0, max: 1 },
       generations: { used: 0, max: 1 },
       edits: { used: 0, max: 1 },
+      unseals: { used: 0, max: 1 },
     });
     expect(pins).toBe(0);
     expect(stubs.createImage.mock.calls.length).toBe(drawnBefore);
@@ -366,6 +368,7 @@ describe("the day's ceiling for everyone", () => {
       prepares: { used: 1, max: 1 },
       generations: { used: 1, max: 1 },
       edits: { used: 1, max: 1 },
+      unseals: { used: 0, max: 1 },
     });
     expect(JSON.stringify(body)).not.toContain("did:privy:");
   });

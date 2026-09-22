@@ -20,6 +20,7 @@ vi.hoisted(() => {
   process.env.GLOBAL_PREPARES_PER_DAY = "7";
   process.env.GLOBAL_GENERATIONS_PER_DAY = "5";
   process.env.GLOBAL_EDITS_PER_DAY = "3";
+  process.env.GLOBAL_UNSEALS_PER_DAY = "9";
 });
 
 const { buildServer } = await import("../src/server.js");
@@ -47,7 +48,7 @@ describe("GET /health", () => {
 
   it("names the routes this host mounted, in order", async () => {
     const response = await app.inject({ method: "GET", url: "/health" });
-    expect(response.json().routes).toEqual(["verify", "prepare", "edit", "health"]);
+    expect(response.json().routes).toEqual(["verify", "prepare", "edit", "unseal", "health"]);
   });
 
   it("says how much of the day's budget for everyone is gone, with the ceilings from the environment", async () => {
@@ -57,6 +58,7 @@ describe("GET /health", () => {
       prepares: { used: 0, max: 7 },
       generations: { used: 0, max: 5 },
       edits: { used: 0, max: 3 },
+      unseals: { used: 0, max: 9 },
     });
   });
 
