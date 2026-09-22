@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { RUN, type BenchState, type Path } from "./fixtures";
 
 /**
@@ -86,58 +87,107 @@ export function useBench(): Bench {
   return { path, state, running, since, choose, show, press };
 }
 
+/** The room left between the sticky strip and the panel's top after a press. */
+const GAP = 16;
+
+/** How long the button holds the press on itself before the panel changes. */
+const ACKNOWLEDGED = 220;
+
 /**
- * Keeps the pressed pixel where the thumb left it.
+ * Where the page has to go for the answer to a press to be on screen.
  *
- * The panel is taller than a phone screen, so swapping its face alone would
- * leave the creator looking at whatever the page put in that place afterwards,
- * which is the whole complaint this bench exists to answer. Called in a layout
- * effect, this puts the new face's own top under the press in the same frame:
- * the thing they touched turns into the thing they asked for.
- *
- * The hold afterwards is not belt and braces. The page gets much shorter when a
- * long form folds away, and the smooth scroll library re-clamps its own idea of
- * where the page is a few hundred milliseconds later, which threw the answer off
- * the top of the screen. The hold ends the moment the reader takes the page
- * back, so it can never fight a scroll of their own.
+ * panelTop is where the panel's top sits on the screen, stickyBottom is how much
+ * of the top of the screen is already spoken for (on the bench the bar over every
+ * page plus the dial strip, on the real studio the bar alone), and the answer is
+ * how far the page has to move. It is null when the top already sits in the good
+ * band: under the sticky strip and no lower than a third of the way down, which
+ * is where the whole first screen of progress is already readable.
  */
-export function anchorTo(panel: HTMLElement | null, pressedAt: number): void {
+export function scrollTarget(panelTop: number, stickyBottom: number, viewportHeight: number): number | null {
+  if (panelTop >= stickyBottom && panelTop <= viewportHeight / 3) {
+    return null;
+  }
+  return panelTop - stickyBottom - GAP;
+}
+
+/** How much of the top of the screen is spoken for above this panel. */
+function stickyAbove(panel: HTMLElement): number {
+  const style = getComputedStyle(panel);
+  for (const name of ["--bench-top", "--header-h"]) {
+    const height = Number.parseFloat(style.getPropertyValue(name));
+    if (Number.isFinite(height)) {
+      return height;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Puts the panel's top just under the sticky strip, in one move.
+ *
+ * One scroll is enough, with nothing held afterwards: both drawings reserve the
+ * height of what comes next, and the bench turns the browser's own scroll
+ * anchoring off, which was the thing that used to undo this half a second later.
+ * A reader who wants to be somewhere else can leave the moment it lands.
+ */
+export function bringIntoView(panel: HTMLElement | null, reduced: boolean): void {
   if (panel === null) {
     return;
   }
 
-  const settle = () => {
-    const top = panel.getBoundingClientRect().top + window.scrollY;
-    const want = Math.max(0, Math.round(top - pressedAt));
-    if (Math.round(window.scrollY) !== want) {
-      window.scrollTo({ top: want, behavior: "instant" });
+  const move = scrollTarget(panel.getBoundingClientRect().top, stickyAbove(panel), window.innerHeight);
+  if (move === null) {
+    return;
+  }
+
+  window.scrollTo({
+    top: Math.max(0, window.scrollY + move),
+    behavior: reduced ? "instant" : "smooth",
+  });
+}
+
+/**
+ * The press, answered in two beats: the button first, the panel after.
+ *
+ * The label on the button becomes the run's first line and the button goes quiet
+ * in the same frame the thumb comes off it, so the press is acknowledged before
+ * anything on the page moves. A beat later the panel turns or folds and the page
+ * brings its top into view.
+ */
+export function usePressed(
+  panel: RefObject<HTMLElement | null>,
+  bench: Bench,
+): { pressing: boolean; press: () => void; again: () => void } {
+  const reduced = useIsReducedMotion();
+  const [pressing, setPressing] = useState(false);
+  const wanted = useRef(false);
+  const timer = useRef(0);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  useLayoutEffect(() => {
+    if (wanted.current) {
+      wanted.current = false;
+      bringIntoView(panel.current, reduced);
     }
-  };
+  }, [bench.state, panel, reduced]);
 
-  settle();
+  const press = useCallback(() => {
+    window.clearTimeout(timer.current);
+    setPressing(true);
+    timer.current = window.setTimeout(() => {
+      setPressing(false);
+      wanted.current = true;
+      bench.press();
+    }, ACKNOWLEDGED);
+  }, [bench]);
 
-  const until = Date.now() + 1_100;
-  let frame = 0;
-  const stop = () => {
-    cancelAnimationFrame(frame);
-    window.removeEventListener("wheel", stop);
-    window.removeEventListener("touchstart", stop);
-    window.removeEventListener("keydown", stop);
-  };
+  const again = useCallback(() => {
+    wanted.current = true;
+    bench.show("idle");
+  }, [bench]);
 
-  const hold = () => {
-    settle();
-    if (Date.now() < until) {
-      frame = requestAnimationFrame(hold);
-    } else {
-      stop();
-    }
-  };
-  frame = requestAnimationFrame(hold);
-
-  window.addEventListener("wheel", stop, { passive: true });
-  window.addEventListener("touchstart", stop, { passive: true });
-  window.addEventListener("keydown", stop);
+  return { pressing, press, again };
 }
 
 /**

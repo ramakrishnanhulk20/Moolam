@@ -2,11 +2,11 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import type { RegisterState } from "@/lib/studio/flow";
-import { anchorTo, type Bench } from "./bench";
+import { usePressed, type Bench } from "./bench";
 import { BENCH_PASSPORT_ID, fixtureState, stepsOf, type BenchState, type Path } from "./fixtures";
 import { Elapsed, FailureLine, FormFace, ReceiptBody, StepLines } from "./parts";
 
@@ -20,30 +20,14 @@ import { Elapsed, FailureLine, FormFace, ReceiptBody, StepLines } from "./parts"
  */
 export function StatusBand({ bench }: { bench: Bench }) {
   const panel = useRef<HTMLDivElement>(null);
-  const pressed = useRef<number | null>(null);
   const reduced = useIsReducedMotion();
   const state = fixtureState(bench.path, bench.state);
   const folded = bench.state !== "idle";
 
-  // Same rule as the other drawing: the band lands where the press was. The
-  // band is pinned, so putting the panel's own top under the thumb puts the
-  // band there and the answer grows down the screen from it.
-  useLayoutEffect(() => {
-    if (pressed.current !== null) {
-      anchorTo(panel.current, pressed.current);
-      pressed.current = null;
-    }
-  }, [bench.state]);
-
-  const press = (at: number) => {
-    pressed.current = at;
-    bench.press();
-  };
-
-  const again = (at: number) => {
-    pressed.current = at;
-    bench.show("idle");
-  };
+  // Same rule as the other drawing: the button answers first, then the form
+  // folds and the page puts the panel's top under the sticky strip, which is
+  // where the band pins itself and where the run grows from.
+  const { pressing, press, again } = usePressed(panel, bench);
 
   return (
     <div ref={panel} data-drawing="band" data-face={folded ? "folded" : "form"} className="relative">
@@ -73,7 +57,7 @@ export function StatusBand({ bench }: { bench: Bench }) {
               transition={reduced ? { duration: 0.15 } : { duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
               className="p-6 sm:p-9"
             >
-              <FormFace path={bench.path} busy={false} onPress={press} />
+              <FormFace path={bench.path} busy={pressing} onPress={press} />
             </motion.div>
           ) : (
             <motion.div
@@ -83,7 +67,7 @@ export function StatusBand({ bench }: { bench: Bench }) {
               transition={reduced ? { duration: 0.15 } : { duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
               className="p-6 sm:p-9"
             >
-              <Under bench={bench} state={state} onPress={press} onAnother={again} />
+              <Under bench={bench} state={state} pressing={pressing} onPress={press} onAnother={again} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -103,7 +87,7 @@ function Band({
 }: {
   bench: Bench;
   state: RegisterState;
-  onAnother: (at: number) => void;
+  onAnother: () => void;
 }) {
   const t = useTranslations("studio");
   const done = isDone(bench.state);
@@ -144,7 +128,8 @@ function Band({
         {done ? (
           <button
             type="button"
-            onClick={(event) => onAnother(event.currentTarget.getBoundingClientRect().top)}
+            data-again
+            onClick={onAnother}
             className="hidden shrink-0 rounded-[8px] border border-line px-4 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:block"
           >
             Make another
@@ -167,13 +152,15 @@ function Band({
 function Under({
   bench,
   state,
+  pressing,
   onPress,
   onAnother,
 }: {
   bench: Bench;
   state: RegisterState;
-  onPress: (at: number) => void;
-  onAnother: (at: number) => void;
+  pressing: boolean;
+  onPress: () => void;
+  onAnother: () => void;
 }) {
   const t = useTranslations("studio");
 
@@ -183,7 +170,8 @@ function Under({
         <ReceiptBody path={bench.path} state={state} />
         <button
           type="button"
-          onClick={(event) => onAnother(event.currentTarget.getBoundingClientRect().top)}
+          data-again
+          onClick={onAnother}
           className="mt-8 rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:hidden"
         >
           Make another
@@ -199,7 +187,8 @@ function Under({
       {bench.state === "failed" ? (
         <button
           type="button"
-          onClick={(event) => onPress(event.currentTarget.getBoundingClientRect().top)}
+          disabled={pressing}
+          onClick={onPress}
           className="mt-6 rounded-[8px] border border-line px-5 py-3 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
         >
           {t("actions.again")}

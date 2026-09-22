@@ -171,12 +171,13 @@ export function FormFace({
   onPress,
 }: {
   path: Path;
+  /** True from the moment the button is pressed until the panel answers. */
   busy: boolean;
-  /** Handed the press button's own place on screen, so the answer can land there. */
-  onPress: (at: number) => void;
+  onPress: () => void;
 }) {
   const t = useTranslations("studio");
   const agent = useTranslations("studio.generate");
+  const started = useTranslations(path === "generate" ? "studio.generate.steps" : "studio.register.steps");
   const [title, setTitle] = useState(TITLE);
   const [prompt, setPrompt] = useState(PROMPT);
   const [draft, setDraft] = useState<ConsentDraft>({
@@ -276,13 +277,24 @@ export function FormFace({
         disabled={busy}
       />
 
+      {/* The press is answered here before anything else moves: the label turns
+          into the first line of the run and the button goes quiet. The room for
+          two lines is held from the start, because a button that grows under the
+          thumb moves the whole page with it. */}
       <button
         type="button"
         disabled={busy}
-        onClick={(event) => onPress(event.currentTarget.getBoundingClientRect().top)}
-        className="mt-8 w-full rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
+        data-press
+        onClick={onPress}
+        className={`mt-8 flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-70 sm:inline-flex sm:min-h-0 sm:w-auto ${
+          busy ? "normal-case" : "uppercase tracking-[0.14em]"
+        }`}
       >
-        {path === "generate" ? agent("submit") : t("register.submit")}
+        {busy
+          ? started(path === "generate" ? "draw.running" : "prepare.running", { model: "" })
+          : path === "generate"
+            ? agent("submit")
+            : t("register.submit")}
       </button>
     </div>
   );
@@ -449,7 +461,7 @@ export function ReceiptButtons({
   onAnother,
   stacked = false,
 }: {
-  onAnother: (at: number) => void;
+  onAnother: () => void;
   stacked?: boolean;
 }) {
   const t = useTranslations("studio");
@@ -464,7 +476,8 @@ export function ReceiptButtons({
       </Link>
       <button
         type="button"
-        onClick={(event) => onAnother(event.currentTarget.getBoundingClientRect().top)}
+        data-again
+        onClick={onAnother}
         className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
       >
         Make another

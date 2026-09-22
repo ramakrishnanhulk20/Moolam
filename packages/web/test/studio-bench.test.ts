@@ -11,7 +11,7 @@ import { StateDial } from "@/components/lab/studio/StateDial";
 import { StatusBand } from "@/components/lab/studio/StatusBand";
 import { TurnCard } from "@/components/lab/studio/TurnCard";
 import { BENCH_STATES, fixtureState, type BenchState, type Path } from "@/components/lab/studio/fixtures";
-import type { Bench } from "@/components/lab/studio/bench";
+import { bringIntoView, scrollTarget, type Bench } from "@/components/lab/studio/bench";
 
 // next-intl's navigation helpers reach for next/navigation, which only resolves
 // inside the bundler. The link is the one thing these drawings use from it.
@@ -143,6 +143,53 @@ describe("both drawings, at every state", () => {
       expect(markup).toContain(en.studio.consent.receipt.later);
       expect(markup).toContain(en.studio.register.doneHeading);
     }
+  });
+});
+
+describe("where the page goes after a press", () => {
+  // A laptop: the bar over every page plus the bench's own dial strip.
+  const STICKY = 198;
+  const TALL = 900;
+
+  it("leaves the page alone when the panel is already under the strip", () => {
+    expect(scrollTarget(STICKY, STICKY, TALL)).toBeNull();
+    expect(scrollTarget(260, STICKY, TALL)).toBeNull();
+    expect(scrollTarget(TALL / 3, STICKY, TALL)).toBeNull();
+  });
+
+  it("lifts a panel whose top is below the fold to sixteen px under the strip", () => {
+    expect(scrollTarget(820, STICKY, TALL)).toBe(820 - STICKY - 16);
+    expect(scrollTarget(TALL / 3 + 1, STICKY, TALL)).toBe(TALL / 3 + 1 - STICKY - 16);
+  });
+
+  it("brings a panel that has gone above the strip back down", () => {
+    expect(scrollTarget(-420, STICKY, TALL)).toBe(-420 - STICKY - 16);
+    expect(scrollTarget(STICKY - 1, STICKY, TALL)).toBe(-17);
+  });
+
+  it("scrolls at once for a reader who asked for less motion, and smoothly for everyone else", () => {
+    const moves: { top: number; behavior: string }[] = [];
+    const panel = { getBoundingClientRect: () => ({ top: 900 }) } as unknown as HTMLElement;
+
+    vi.stubGlobal("window", {
+      scrollY: 200,
+      innerHeight: TALL,
+      scrollTo: (to: { top: number; behavior: string }) => moves.push(to),
+    });
+    vi.stubGlobal("getComputedStyle", () => ({
+      getPropertyValue: (name: string) => (name === "--bench-top" ? `${STICKY}px` : ""),
+    }));
+
+    bringIntoView(panel, true);
+    bringIntoView(panel, false);
+    bringIntoView(null, false);
+
+    expect(moves).toEqual([
+      { top: 200 + 900 - STICKY - 16, behavior: "instant" },
+      { top: 200 + 900 - STICKY - 16, behavior: "smooth" },
+    ]);
+
+    vi.unstubAllGlobals();
   });
 });
 

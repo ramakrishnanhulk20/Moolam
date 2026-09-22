@@ -84,7 +84,13 @@ export function StudioBench() {
 
   return (
     <Surface>
+      {/* Scroll anchoring is off for the whole bench. A press makes a long form
+          fold away, and the browser answers by putting the scroll back where the
+          folded content used to hold it, which undid the one scroll that brings
+          the progress into view about 600 ms after it landed. The drawings do
+          their own anchoring, deliberately, in bench.ts. */}
       <div
+        className="[overflow-anchor:none]"
         style={
           tops === null
             ? undefined
