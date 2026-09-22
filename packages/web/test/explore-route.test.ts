@@ -61,10 +61,13 @@ beforeEach(() => {
 });
 
 /** One request through the rule, from a named caller. */
-function through(address: string, from?: string) {
+function through(address: string, from?: string, headers: Record<string, string> = {}) {
   const request = new NextRequest(new URL(address, "https://moolam.xyz"));
   if (from !== undefined) {
     request.headers.set("x-vercel-forwarded-for", from);
+  }
+  for (const [name, value] of Object.entries(headers)) {
+    request.headers.set(name, value);
   }
   return proxy(request);
 }
@@ -147,6 +150,22 @@ describe("what one caller may ask the narrowed route for", () => {
     expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
     expect(refused.headers.get("content-type")).toContain("text/html");
     expect(refused.headers.get("x-middleware-rewrite")).toBe(null);
+  });
+
+  it("lets the router's prefetches through without counting them, so a reader's own presses are never spent by the page", () => {
+    // Fourteen chips are on screen at once, and the router used to prefetch every one on every
+    // page view: four page views spent the whole minute before a single press.
+    for (let at = 0; at < PER_MINUTE * 2; at += 1) {
+      const prefetched = through("/en/explore?view=test", "203.0.113.9", { "next-router-prefetch": "1" });
+      expect(prefetched.status, `prefetch ${at + 1}`).toBe(200);
+      expect(prefetched.headers.get("x-middleware-rewrite")).toBe("https://moolam.xyz/en/explore/view?view=test");
+    }
+    const purposed = through("/en/explore?view=test", "203.0.113.9", { purpose: "prefetch" });
+    expect(purposed.status).toBe(200);
+
+    const pressed = through("/en/explore?q=0x1a", "203.0.113.9");
+    expect(pressed.status).toBe(200);
+    expect(pressed.headers.get("x-middleware-rewrite")).toBe("https://moolam.xyz/en/explore/view?q=0x1a");
   });
 
   it("never counts the bare page, which the build made and nobody pays for twice", () => {

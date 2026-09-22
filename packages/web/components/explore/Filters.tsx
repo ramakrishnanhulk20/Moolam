@@ -75,6 +75,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
           {search.agent === null ? null : (
             <Link
               href={exploreHref({ ...search, agent: null })}
+              prefetch={false}
               className="tap ms-1 flex min-h-[44px] shrink-0 items-center gap-2 rounded-[8px] border border-accent px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-accent transition-colors duration-200 hover:border-line-strong hover:text-text-muted sm:min-h-0"
             >
               {t("agentFilter", { id: search.agent })}
@@ -197,12 +198,18 @@ export function Filters({ search }: { search: ExploreSearch }) {
   );
 }
 
+// Every chip is a narrowed view drawn on the request, one index scan each. The
+// router used to prefetch all of them the moment they were on screen, fourteen
+// scans per page view against a budget the whole site shares, and every one
+// counted against the reader's own limit before they had pressed a thing. A
+// chip is fetched when it is pressed, and not before.
 function Chip({ view, search, label }: { view: ExploreView; search: ExploreSearch; label: string }) {
   const on = search.view === view;
 
   return (
     <Link
       href={exploreHref({ ...search, view })}
+      prefetch={false}
       aria-current={on ? "true" : undefined}
       className={`tap inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 ${
         on
@@ -232,6 +239,7 @@ function AiChip({ ai, search }: { ai: ExploreAi | null; search: ExploreSearch })
   return (
     <Link
       href={exploreHref({ ...search, ai })}
+      prefetch={false}
       aria-current={on ? "true" : undefined}
       className={`tap inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 ${
         on
