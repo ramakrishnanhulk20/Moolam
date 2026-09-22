@@ -138,9 +138,11 @@ describe("where the rule ends", () => {
     const long = spans.find((span) => span.textContent === `${en.passport.consent.scrub}${en.passport.consent.scrubStep}`);
     const short = spans.find((span) => span.textContent === en.passport.consent.scrubTouch);
 
-    expect(long?.className).toContain("pointer-fine:sm:inline");
-    expect(long?.className).toContain("hidden");
-    expect(short?.className).toContain("pointer-fine:sm:hidden");
+    // The pointer alone decides it. A mouse in a narrow window has the same
+    // arrow keys beside it as a mouse in a wide one, and used to be told half
+    // the sentence.
+    expect(long?.className).toBe("hidden pointer-fine:inline");
+    expect(short?.className).toBe("pointer-fine:hidden");
     expect(en.passport.consent.scrubTouch).not.toContain("arrow");
   });
 

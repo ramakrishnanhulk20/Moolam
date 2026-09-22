@@ -555,21 +555,31 @@ const atRender = () => 0;
  * The clock is read through a store rather than during the render, the same way
  * the passport card reads it, so the reading is held still between renders and
  * nothing here is a call to Date.now in the middle of one.
+ *
+ * The chapter itself does not wait for that clock. Everything in it is the
+ * chain's answer, already on the server, and a page rendered without a browser,
+ * a still page and a reader with no script all carry the ninth chapter. Only
+ * the two parts the clock really owns, where the notch falls and the word at
+ * the far end of the rule, are held back until there is a browser to ask.
  */
 function useLedgerView(data: StoryData): LedgerView | null {
   const format = useFormatter();
   const now = useSyncExternalStore(noClockWatch, readClock, atRender);
 
   return useMemo(() => {
-    if (data.focal === null || data.statement === null || now === 0) {
+    if (data.focal === null || data.statement === null) {
       return null;
     }
     const short = (seconds: number) =>
       format.dateTime(new Date(seconds * 1000), { day: "numeric", month: "short", year: "numeric" });
+    const dated = now !== 0;
 
     return {
       consent: data.statement.consent,
-      notch: fractionOf(data.statement.at, data.focal.registeredAt, Math.max(now, data.statement.at)),
+      dated,
+      // Without a clock the rule runs to the statement's own day and the notch
+      // is at its end, which is the one place it cannot be wrong.
+      notch: dated ? fractionOf(data.statement.at, data.focal.registeredAt, Math.max(now, data.statement.at)) : 1,
       registered: short(data.focal.registeredAt),
       writtenShort: short(data.statement.at),
     };
@@ -744,8 +754,11 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
             {/* The scroller is as tall as the canvas, which on a phone is now
                 the whole screen rather than the shot. Handing the pages that
                 same fraction back keeps a phone's thumb travel per beat exactly
-                what it was when the scroller was the band. */}
-            <ScrollControls pages={table.pages} distance={small ? PHONE_BAND : 1} damping={0.22}>
+                what it was when the scroller was the band. It is the band's own
+                fraction, the one the renderer draws into: a short phone gives
+                the shot less of the window, and the thumb has to be given the
+                same less or a beat runs longer than the shot it belongs to. */}
+            <ScrollControls pages={table.pages} distance={band} damping={0.22}>
               <World
                 data={data}
                 table={table}

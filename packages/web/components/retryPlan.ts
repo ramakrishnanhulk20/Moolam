@@ -37,6 +37,16 @@ export function waitBefore(tried: number, rateLimited: boolean): number | null {
 }
 
 /**
+ * How long Try now goes quiet for after a press, in seconds, once the schedule
+ * has stopped.
+ *
+ * By then nothing else holds the button back: one press is one request, and a
+ * finger held on it would be a burst at an endpoint that has already turned
+ * this page away three times.
+ */
+export const PRESS_QUIET_SECONDS = 10;
+
+/**
  * One second of the countdown.
  *
  * A tab nobody is looking at holds where it is rather than reaching the end and

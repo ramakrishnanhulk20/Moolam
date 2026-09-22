@@ -41,6 +41,24 @@ export const plateEdge = {
   rightY: 0,
 };
 
+/**
+ * Forget where the plate was.
+ *
+ * These are plain numbers the scene writes and the rule reads from its own
+ * frame, so nothing tells the rule that the plate has gone. A cut without the
+ * stated beat, a scene taken down for the still page, or a reader who has
+ * scrolled the film away would otherwise leave `shown` standing at true, and
+ * the rule would be drawn along the last place a plate stood. The film's own
+ * `ended` and `past` are put back the same way when their loop stops.
+ */
+export function resetPlateEdge() {
+  plateEdge.shown = false;
+  plateEdge.leftX = 0;
+  plateEdge.leftY = 0;
+  plateEdge.rightX = 0;
+  plateEdge.rightY = 0;
+}
+
 export type ProbeState = "idle" | "pending" | "matched" | "refused";
 
 /** The visitor's own upload, written by the drop panel and read by the plate. */

@@ -29,6 +29,15 @@ import { plateEdge, progress } from "@/components/story/signals";
 /** One statement, ready to draw: no bigints, no chain types, nothing left to format. */
 export interface LedgerView {
   consent: Consent;
+  /**
+   * True once the reader's own clock has been read.
+   *
+   * The rule ends at this reader's today, which no server knows. Everything
+   * else here is the chain's, so the chapter is drawn from the server's answer
+   * and the two things the clock owns, the notch's place and the word at the
+   * far end, wait for the browser.
+   */
+  dated: boolean;
   /** Where the statement sits on the rule, 0 at the registration day and 1 at today. */
   notch: number;
   /** Already in the reader's own language, formatted by whoever had the formatter. */
@@ -36,23 +45,48 @@ export interface LedgerView {
   writtenShort: string;
 }
 
+/** One frame of the drawing: how much rule is down, how far the notch has landed, and each mark. */
+export interface LedgerShape {
+  drawn: number;
+  landed: number;
+  marks: number[];
+}
+
+/** How much of the rule the notch fades in over. */
+const LAND = 0.06;
+
+/** A shape for one loop to keep and write into, so a frame of film allocates nothing. */
+export function emptyShape(): LedgerShape {
+  return { drawn: 0, landed: 0, marks: [0, 0, 0, 0] };
+}
+
 /**
  * How far the drawing has got, from how far the beat has played.
  *
- * The rule draws first, the notch lands the moment the rule reaches the day it
- * belongs to, and the four marks stamp one after another once the rule is home.
- * Pure, so the order can be checked without a browser.
+ * The rule draws first, the notch lands as the rule reaches the day it belongs
+ * to, and the four marks stamp one after another once the rule is home. Written
+ * into a shape the caller already has: the two loops that read this run sixty
+ * times a second and would otherwise leave an object and an array behind on
+ * every frame.
  */
-export function ledgerShape(played: number, notch: number): { drawn: number; landed: number; marks: number[] } {
+export function shapeInto(into: LedgerShape, played: number, notch: number): LedgerShape {
   const along = span(played, 0, 0.45);
-  const drawn = 1 - Math.pow(1 - along, 3);
-  return {
-    drawn,
-    landed: clamp01((drawn - notch) / 0.06),
+  into.drawn = 1 - Math.pow(1 - along, 3);
+  // The fade window is held inside the rule. A statement written today sits at
+  // the rule's own end, where there is no rule left after it to fade over, and
+  // its notch and its date stood half drawn for ever.
+  into.landed = clamp01((into.drawn - Math.min(notch, 1 - LAND)) / LAND);
+  for (let at = 0; at < into.marks.length; at += 1) {
     // The last one is down well before the words start to leave, so the four
     // of them are a picture to look at rather than a thing that was happening.
-    marks: [0, 1, 2, 3].map((at) => clamp01((played - (0.48 + at * 0.08)) / 0.1)),
-  };
+    into.marks[at] = clamp01((played - (0.48 + at * 0.08)) / 0.1);
+  }
+  return into;
+}
+
+/** The same shape, on a fresh object. Pure, so the order can be checked without a browser. */
+export function ledgerShape(played: number, notch: number): LedgerShape {
+  return shapeInto(emptyShape(), played, notch);
 }
 
 /**
@@ -125,6 +159,8 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
     let frame = 0;
     let wasShown = -1;
 
+    // One shape for the whole loop, written over every frame.
+    const shape = emptyShape();
     const { write, fade9 } = writer();
 
     const loop = () => {
@@ -157,7 +193,7 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
       const y = Math.min(Math.max(leftY + (from - leftX) * slope, height * 0.46), height * 0.84);
       const angle = (Math.atan(slope) * 180) / Math.PI;
 
-      const shape = ledgerShape(progress.stated, view.notch);
+      shapeInto(shape, progress.stated, view.notch);
       const notchAt = length * view.notch;
       const row = notchAt + 20 + ROW > length ? notchAt - 20 - ROW : notchAt + 20;
 
@@ -236,11 +272,20 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
         {/* The far end of the rule is today, so the word ends where the rule
             does whatever its length: a fixed pull to the left fitted the
             English word and hung a longer one off the end of the shot. */}
-        <span ref={today} className="absolute left-0 top-[11px] origin-left will-change-transform">
+        <span
+          ref={today}
+          className="absolute left-0 top-[11px] origin-left will-change-transform"
+          style={{ visibility: view.dated ? undefined : "hidden" }}
+        >
           <span className={`block -translate-x-full whitespace-nowrap text-white/65 ${LABEL}`}>{t("today")}</span>
         </span>
 
-        <div ref={notch} data-rule="notch" className="absolute left-0 top-0 h-0 w-0 origin-center will-change-transform">
+        <div
+          ref={notch}
+          data-rule="notch"
+          className="absolute left-0 top-0 h-0 w-0 origin-center will-change-transform"
+          style={{ visibility: view.dated ? undefined : "hidden" }}
+        >
           <div className="absolute left-0 top-[-14px] h-[26px] w-[1.5px] bg-pending" />
           <span ref={written} className={`absolute left-0 top-[-28px] whitespace-nowrap text-pending will-change-transform ${LABEL}`}>
             {view.writtenShort}
@@ -323,6 +368,7 @@ export function InlineLedger({
   driven?: boolean;
   className?: string;
 }) {
+  const root = useRef<HTMLDivElement>(null);
   const drawn = useRef<HTMLDivElement>(null);
   const notch = useRef<HTMLDivElement>(null);
   const stamps = useRef<(HTMLDivElement | null)[]>([]);
@@ -332,14 +378,16 @@ export function InlineLedger({
   const at = `${(view.notch * 100).toFixed(2)}%`;
 
   useEffect(() => {
-    if (!driven) {
+    const box = root.current;
+    if (!driven || box === null) {
       return;
     }
     let frame = 0;
+    const shape = emptyShape();
     const { write, fade9 } = writer();
 
     const loop = () => {
-      const shape = ledgerShape(progress.stated, view.notch);
+      shapeInto(shape, progress.stated, view.notch);
       write(drawn.current, `scaleX(${shape.drawn.toFixed(4)})`);
       fade9(notch.current, shape.landed);
       for (const [index, node] of stamps.current.entries()) {
@@ -348,18 +396,50 @@ export function InlineLedger({
       frame = requestAnimationFrame(loop);
     };
 
-    frame = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(frame);
+    const stop = () => {
+      if (frame !== 0) {
+        cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    };
+
+    // From 640 px up this block is display:none and the same drawing is pinned
+    // to the plate instead. An element with no box has nothing to write to, and
+    // every desktop reader was paying for sixty frames a second of it for the
+    // whole life of the page. So the loop runs while the element really is on
+    // screen and not otherwise, which also leaves the phone's frame to the
+    // scene while the beat is somewhere else.
+    const watch = new IntersectionObserver((entries) => {
+      if (entries[entries.length - 1].isIntersecting) {
+        if (frame === 0) {
+          frame = requestAnimationFrame(loop);
+        }
+      } else {
+        stop();
+      }
+    });
+    watch.observe(box);
+
+    return () => {
+      watch.disconnect();
+      stop();
+    };
   }, [driven, view.notch]);
 
   return (
-    <div aria-hidden data-stated-ledger="inline" className={`w-full max-w-[22rem] ${className}`}>
+    <div ref={root} aria-hidden data-stated-ledger="inline" className={`w-full max-w-[22rem] ${className}`}>
       {/* The two ends of the rule, each pinned to its own side and allowed to
           wrap: the registration line is a date in the reader's language and in
           Tamil or German it is half again as long as the English one. */}
       <div className="flex items-baseline justify-between gap-3 font-mono text-[9px] uppercase leading-[1.4] tracking-[0.16em] text-text-faint">
         <span className="text-start">{t("registered", { when: view.registered })}</span>
-        <span className="shrink-0 text-end">{t("today")}</span>
+        {/* The far end of the rule is this reader's own today. The word keeps
+            its place in the line from the first paint, so nothing moves when
+            the browser's clock arrives, and it is only readable once it can be
+            true. */}
+        <span className="shrink-0 text-end" style={{ visibility: view.dated ? undefined : "hidden" }}>
+          {t("today")}
+        </span>
       </div>
 
       <div className="relative mt-2.5 h-px w-full bg-white/25">
@@ -372,7 +452,7 @@ export function InlineLedger({
         <div
           ref={notch}
           className="absolute top-0 h-0 w-0"
-          style={{ left: at, opacity: driven ? 0 : 1 }}
+          style={{ left: at, opacity: driven ? 0 : 1, visibility: view.dated ? undefined : "hidden" }}
         >
           <div className="absolute left-0 top-[-9px] h-[19px] w-[1.5px] bg-pending" />
           <span

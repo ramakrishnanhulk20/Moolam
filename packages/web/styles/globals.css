@@ -437,12 +437,6 @@ html:not(.light) body:has([data-story="still"]) .app-header {
     padding-bottom: 3rem;
   }
 
-  .story-seam {
-    background:
-      linear-gradient(180deg, rgba(11, 11, 12, 0) 22%, rgba(11, 11, 12, 0.72) 33%, #0b0b0c 37%),
-      linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
-  }
-
   .story-lower [data-story-line="kicker"] {
     font-size: 10px;
     letter-spacing: 0.18em;
@@ -503,6 +497,19 @@ html:not(.light) body:has([data-story="still"]) .app-header {
   background:
     linear-gradient(180deg, rgba(11, 11, 12, 0) 28%, rgba(11, 11, 12, 0.72) 41%, #0b0b0c 46%),
     linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
+}
+
+/* The same three stops scaled to the 36 percent band of a short phone. It has
+   to come after the rule above rather than beside the band it belongs to: the
+   two say the same thing about the same element, so the later one is the one
+   the browser keeps. Written the other way round it was dead and a phone under
+   700 px tall read its captions over the bright part of the shot. */
+@media (max-width: 639px) and (max-height: 699px) {
+  .story-seam {
+    background:
+      linear-gradient(180deg, rgba(11, 11, 12, 0) 22%, rgba(11, 11, 12, 0.72) 33%, #0b0b0c 37%),
+      linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
+  }
 }
 
 /* A downward drag at the top of the story is a drag at the top of its own

@@ -1,5 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
@@ -7,9 +7,19 @@ import type { Hex } from "viem";
 import type { Consent } from "@/lib/chain/consent";
 import type { StoryData, StoryFocal, StoryStatement } from "@/components/story/data";
 import { statedBlock, storyCut } from "@/components/story/stated";
-import { InlineLedger, ledgerShape } from "@/components/story/StatedLedger";
+import { InlineLedger, ledgerShape, shapeInto } from "@/components/story/StatedLedger";
+import { LandingStory } from "@/components/story/LandingStory";
 import { fractionOf } from "@/components/consent/ledger";
 import en from "@/messages/en.json";
+
+// The film carries the site's own links. Rendered here without a router, they
+// are the one thing in it that needs a browser's address bar.
+vi.mock("@/lib/i18n/routing", () => ({
+  Link: (props: { href: string; children?: unknown }) =>
+    createElement("a", { href: props.href }, props.children as never),
+  useRouter: () => ({ refresh: () => undefined }),
+  usePathname: () => "/",
+}));
 
 /**
  * The beat about the holder's word on AI use.
@@ -224,6 +234,7 @@ describe("the chapter in ten languages", () => {
 describe("the drawing", () => {
   const view = {
     consent: CLOSED,
+    dated: true,
     notch: fractionOf(WRITTEN, REGISTERED, NOW),
     registered: "17 Sep 2026",
     writtenShort: "18 Sep 2026",
@@ -283,5 +294,89 @@ describe("the drawing", () => {
     expect(markup.split("M1.8 10.2 L10.2 1.8").length - 1).toBe(2);
     expect(markup).toContain('fill="currentColor"');
     expect(markup).toContain("M1 1 L11 11 L1 11 Z");
+  });
+});
+
+/**
+ * The notch at the end of the rule.
+ *
+ * A statement written today sits where the rule stops, and so does one written
+ * by a reader whose clock is a little behind the chain's. The notch faded in
+ * over the rule that came after it, and after the last bit of rule there is
+ * none, so on 2026-09-21 that reader was shown a notch and a date at a third
+ * of their ink for as long as they looked at the beat.
+ */
+describe("the notch, wherever the statement falls", () => {
+  it("is fully drawn once the rule has passed it, at the end of the rule as anywhere else", () => {
+    for (const notch of [0, 0.2, 0.94, 0.95, 1]) {
+      expect(ledgerShape(1, notch).landed, `notch ${notch}`).toBe(1);
+    }
+  });
+
+  it("is not drawn at all before the rule has got anywhere near it", () => {
+    expect(ledgerShape(0, 0.2).landed).toBe(0);
+    expect(ledgerShape(0, 1).landed).toBe(0);
+    // A fifth of the way in the rule is barely started and the notch is still
+    // most of a rule away.
+    expect(ledgerShape(0.08, 0.95).landed).toBe(0);
+  });
+
+  it("lands as the rule reaches the day, not a beat later", () => {
+    const notch = 0.5;
+    const shape = ledgerShape(0.2, notch);
+    expect(shape.drawn).toBeGreaterThan(notch);
+    expect(shape.landed).toBe(1);
+  });
+
+  it("leaves nothing behind on the frames it is read on", () => {
+    const shape = ledgerShape(0.3, 0.4);
+    const marks = shape.marks;
+    const again = shapeInto(shape, 0.9, 0.4);
+    // The same object and the same array, written over rather than replaced:
+    // this runs sixty times a second in two loops.
+    expect(again).toBe(shape);
+    expect(again.marks).toBe(marks);
+    expect(again.marks).toEqual([1, 1, 1, 1]);
+  });
+});
+
+/**
+ * The ninth chapter on a page that has no browser yet.
+ *
+ * The whole chapter hung on a reading of the reader's own clock, which is zero
+ * until there is a browser. So the server-rendered page, the still page and a
+ * read with no script at all came one chapter short, and what was missing was
+ * the beat about the one thing this product is for.
+ */
+describe("the chapter a server renders", () => {
+  const film = (over: Partial<StoryData> = {}) =>
+    render(createElement(LandingStory, { data: story(over), variant: "stated" as const }));
+
+  it("carries the chapter's own title, written from the chain's answer", () => {
+    const markup = film();
+    expect(markup).toContain(`${en.passport.consent.summary.closed}.`);
+    expect(markup).toContain(en.story.stated.kicker);
+    expect(markup).toContain("Statement written on Monad");
+  });
+
+  it("draws the rule and the four marks with it", () => {
+    const markup = film();
+    expect(markup).toContain('data-stated-ledger="inline"');
+    expect(markup.split("data-stated-mark").length - 1).toBe(4);
+  });
+
+  it("holds back only what the reader's clock owns", () => {
+    const markup = film();
+    // The word at the far end of the rule keeps its place in the line, so
+    // nothing moves when the clock arrives, and it is unreadable until it can
+    // be true.
+    expect(markup).toContain(`<span class="shrink-0 text-end" style="visibility:hidden">${en.story.stated.today}</span>`);
+    expect(markup).toContain("visibility:hidden");
+  });
+
+  it("tells no chapter at all on a day the register had nothing to say", () => {
+    const markup = film({ statement: null });
+    expect(markup).not.toContain(`${en.passport.consent.summary.closed}.`);
+    expect(markup).not.toContain('data-stated-ledger="inline"');
   });
 });

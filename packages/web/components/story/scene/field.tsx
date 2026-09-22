@@ -15,7 +15,7 @@ import {
   type Degrade,
 } from "./textures";
 import { ACCENT, REFUSED, VERIFIED } from "@/components/story/palette";
-import { plateEdge } from "@/components/story/signals";
+import { plateEdge, resetPlateEdge } from "@/components/story/signals";
 
 export const ACCENT_COLOR = new THREE.Color(ACCENT);
 export const MATCHED_COLOR = new THREE.Color(VERIFIED);
@@ -328,6 +328,16 @@ export function FocalPlate({
       visitor.current.needsUpdate = true;
     }
   }, [texture, droppedTexture]);
+
+  // The rule over the film follows the edge this plate publishes, and only this
+  // cut publishes one. A cut change or a scene that has gone leaves it with the
+  // last place a plate stood, so it is put back here rather than left standing.
+  useEffect(() => {
+    if (!tracksEdge) {
+      resetPlateEdge();
+    }
+    return resetPlateEdge;
+  }, [tracksEdge]);
 
   useFrame(({ clock, camera }) => {
     const node = group.current;

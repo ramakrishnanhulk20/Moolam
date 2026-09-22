@@ -9,6 +9,7 @@ import { UseBlock, UseLegend } from "./Marks";
 import { ConsentChip } from "./Summary";
 import {
   askConsentAt,
+  askedMinute,
   daysAcross,
   fractionOf,
   secondsForDay,
@@ -42,6 +43,16 @@ function readClock(): number {
 
 /** Nothing pushes the time at this card. A reload, or any later render, is enough. */
 const noWatch = () => () => undefined;
+
+/**
+ * How far past the render a reader's own clock may carry the end of the rule.
+ *
+ * The route answers for a day either side of its own now, so a device running
+ * a day fast would ask about a moment it refuses and the card would meet an
+ * error on the first drag. Just under a day is as far as the rule can honestly
+ * reach anyway: the page's own clock came from the chain.
+ */
+const CLOCK_REACH = 23 * 60 * 60;
 
 /**
  * When this reader arrived, with the server's own clock standing in until there
@@ -94,8 +105,10 @@ export function ConsentLedger({
 
   // A reader's clock is never let to pull the end of the rule backwards: a
   // browser running a day slow would otherwise hide a statement the register
-  // has already taken.
-  const now = Math.max(rendered, useArrival(rendered));
+  // has already taken. Nor may it run away with it: a clock a day fast would
+  // push the rule's end past the window the route will answer for.
+  const arrival = useArrival(rendered);
+  const now = Math.min(Math.max(rendered, arrival), rendered + CLOCK_REACH);
 
   const lastDay = daysAcross(registeredAt, now);
   const segments = useMemo(() => segmentsOf(registeredAt, now, entries), [registeredAt, now, entries]);
@@ -108,7 +121,9 @@ export function ConsentLedger({
   const [failed, setFailed] = useState<string | null>(null);
 
   const onDay = day ?? lastDay;
-  const asked = secondsForDay(onDay, registeredAt, now);
+  // Asked on the whole minute, so every reader of this passport on this day
+  // asks the same URL and the answer in front of the route is shared.
+  const asked = askedMinute(secondsForDay(onDay, registeredAt, now));
 
   useEffect(() => {
     // The end of the rule is the moment the server already answered for. Asking
@@ -230,13 +245,16 @@ export function ConsentLedger({
           falls on the marks over a statement or on the thumb's own target. */}
       {/* A thumb has no arrow keys, so a coarse pointer is told to drag and
           nothing else. The swap is a media query rather than a guess at the
-          device, because the same page can be opened either way. */}
+          device, because the same page can be opened either way, and it asks
+          about the pointer alone: a mouse in a narrow window is still a mouse
+          with arrow keys beside it, and it used to be told half the sentence.
+          Exactly one of the two is ever displayed. */}
       <p className="mt-12 truncate text-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-        <span className="hidden pointer-fine:sm:inline">
+        <span className="pointer-fine:hidden">{t("scrubTouch")}</span>
+        <span className="hidden pointer-fine:inline">
           {t("scrub")}
           {t("scrubStep")}
         </span>
-        <span className="pointer-fine:sm:hidden">{t("scrubTouch")}</span>
       </p>
 
       {/* The rule itself. The whole life of the passport, left to right. */}

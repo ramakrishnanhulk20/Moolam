@@ -42,6 +42,21 @@ export interface LedgerAnswer {
   entry: LedgerEntry | null;
 }
 
+/** The step the route already rounds a question down to, and the step a reader asks on. */
+export const ASK_STEP_SECONDS = 60;
+
+/**
+ * The moment a question is asked about, taken down to the whole minute.
+ *
+ * The notches are days, so nothing about the answer moves. What it buys is one
+ * URL: without it every reader asked about the second their own card happened
+ * to be opened, and a shared cache in front of the route held a key per reader
+ * for an answer they were all going to get.
+ */
+export function askedMinute(seconds: number): number {
+  return seconds - (seconds % ASK_STEP_SECONDS);
+}
+
 /**
  * How the card asks what stood on a day.
  *
