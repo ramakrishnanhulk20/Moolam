@@ -1110,6 +1110,89 @@
         "recheck": "Preguntar a Monad otra vez"
       }
     },
+    "sealed": {
+      "switch": {
+        "label": "Mantener esta imagen sellada",
+        "note": "Moolam publica el pasaporte, no la imagen. Guarda el archivo que te devolvemos: es la única copia que puede abrir este pasaporte.",
+        "panelHeading": "Qué se hace público",
+        "panelLine": "Todo lo de abajo sale en el momento en que firmas, y de un registro inmutable no se puede recuperar nada. La imagen no está en la lista.",
+        "sketchCaption": "Esto es todo lo que se hace público de la imagen.",
+        "inFile": "Archivo fijado",
+        "onChain": "En Monad",
+        "leftOut": "Se queda fuera",
+        "promptLabel": "Incluir el prompt",
+        "promptNote": "El prompt queda en privado mientras no lo incluyas."
+      },
+      "fields": {
+        "commitment": {
+          "label": "El identificador del pasaporte",
+          "line": "El sha-256 del archivo que te devolvemos. La cadena se compromete con esos bytes exactos sin mostrarlos."
+        },
+        "fingerprint": {
+          "label": "Las dos huellas",
+          "line": "Un hash perceptual de 64 bits y el hash de bloques de 16 por 16 dibujado arriba. Luces y sombras a grandes rasgos, nada más."
+        },
+        "name": {
+          "label": "El título que escribes",
+          "line": "El nombre que le pongas es el que todos leerán, así que elígelo pensando en eso."
+        },
+        "description": {
+          "label": "La línea que escribe Moolam",
+          "line": "Una frase fija que dice cómo se hizo este pasaporte. Nunca describe la imagen."
+        },
+        "creator": {
+          "label": "Tu dirección de cartera",
+          "line": "El registro anota quién lo registró, como en cualquier pasaporte."
+        },
+        "generator": {
+          "label": "El identificador del agente",
+          "line": "Qué agente de Moolam la dibujó y en qué registro ERC-8004 está identificado."
+        },
+        "createdAt": {
+          "label": "La fecha",
+          "line": "El momento en que se creó este registro, que es justo el sentido de registrar pronto."
+        },
+        "training": {
+          "label": "Tu declaración sobre el uso por IA",
+          "line": "Las cuatro respuestas que diste arriba, con las palabras del estándar CAWG."
+        },
+        "sealed": {
+          "label": "La palabra sellado",
+          "line": "Para que la página del pasaporte, Explore y la vista previa digan que la imagen no está publicada."
+        },
+        "model": {
+          "label": "Qué modelo la dibujó",
+          "line": "El nombre del modelo de imagen, igual que en un pasaporte publicado."
+        },
+        "prompt": {
+          "label": "El prompt",
+          "line": "Palabras que describen la imagen, así que se queda fuera del archivo salvo que lo incluyas."
+        }
+      },
+      "plate": {
+        "sealed": "Sellado",
+        "untitled": "Sin título",
+        "line": "La imagen no está publicada. Tú tienes la única copia.",
+        "registered": "Registrado el {date}. La imagen no está publicada."
+      },
+      "handback": {
+        "kicker": "Tu única copia",
+        "heading": "El archivo firmado está en este navegador",
+        "body": "Moolam no fijó nada de la imagen ni guardó nada. Guárdalo antes de cerrar esta página.",
+        "save": "Guardar el archivo firmado",
+        "saved": "Guardado. Déjalo donde puedas encontrarlo.",
+        "only": "Es la única copia que puede abrir este pasaporte."
+      },
+      "done": {
+        "label": "Sellado en Monad",
+        "body": "La imagen no está publicada. Moolam no guarda ninguna copia."
+      },
+      "receipt": {
+        "label": "Sellado en Monad",
+        "detail": "La imagen no está publicada. Moolam no guarda ninguna copia.",
+        "fingerprintDetail": "Tomado del archivo firmado, que nunca salió de este navegador. Manifiesto C2PA incrustado: {manifest}."
+      }
+    },
     "receipt": {
       "heading": "Lo que acaba de pasar",
       "body": "Cada paso queda sellado aquí en cuanto ocurre. Nada de esta lista es una suposición.",
@@ -1194,7 +1277,11 @@
       "agentSignFailed": "La imagen se dibujó y se fijó, y la cuenta del agente no quiso firmar el pasaporte. Inténtalo otra vez. Si sigue pasando, lo más probable es la política sobre la cuenta del agente.",
       "agentBusy": "Moolam está atendiendo todas las imágenes que puede a la vez. Inténtalo dentro de un minuto.",
       "promptTooShort": "Escribe unas palabras más. El agente necesita al menos ocho caracteres.",
-      "promptTooLong": "Esa instrucción pasa de 600 caracteres. Acórtala y pídelo otra vez."
+      "promptTooLong": "Esa instrucción pasa de 600 caracteres. Acórtala y pídelo otra vez.",
+      "sealedMismatch": "El archivo que recibimos no coincide con el pasaporte. No se registró nada. Inténtalo otra vez.",
+      "sealedNotHeld": "El servicio de verificación no devolvió el archivo sellado, así que no se firmó nada. Inténtalo otra vez.",
+      "sealedRecordRefused": "El servicio de verificación no quiso publicar este registro sellado, así que no se fijó ni se registró nada. Inténtalo otra vez.",
+      "sealedFileRefused": "El servicio de verificación no pudo devolver un archivo que coincidiera con este pasaporte, así que no se fijó ni se registró nada. Inténtalo otra vez."
     },
     "actions": {
       "signIn": "Entrar otra vez",

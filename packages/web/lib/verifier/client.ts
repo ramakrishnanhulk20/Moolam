@@ -61,6 +61,31 @@ const trainingSchema = z.object({
 
 const cidSchema = z.object({ cid: z.string().min(1), uri: z.string().min(1) });
 
+/**
+ * The signed picture itself, base64, as a sealed answer hands it back.
+ *
+ * It travels in the answer because the service pins no copy of it and keeps
+ * none: this is the only copy there will be, and the browser checks its hash
+ * against the passport id before anything is signed.
+ */
+const signedFileSchema = z.object({
+  name: z.string().min(1),
+  type: z.string().min(1),
+  bytes: z.string().min(1),
+  sha256: hexWord,
+});
+
+/**
+ * A key a sealed answer may not carry a value for.
+ *
+ * A sealed registration pins no image, no thumbnail and no manifest document,
+ * so an answer that says sealed and still names a pin is not a sealed answer
+ * this app knows. It is refused as malformed rather than read as either kind,
+ * because guessing which half to believe is how a picture gets published by
+ * accident.
+ */
+const noPin = z.undefined().optional();
+
 const manifestSchema = z.union([
   z.object({ embedded: z.literal(true) }),
   z.object({ embedded: z.literal(false), reason: z.string().optional() }),
@@ -73,7 +98,17 @@ export const quotaSchema = z.object({
   resetsAt: z.number().int().positive(),
 });
 
-export const prepareResponseSchema = z.object({
+const pinnedImage = cidSchema.extend({
+  gatewayUrl: z.string().min(1),
+  bytes: z.number().int().nonnegative(),
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+});
+
+const pinnedThumbnail = cidSchema.extend({ gatewayUrl: z.string().min(1) });
+
+/** Everything both kinds of prepare answer carry, whatever became public. */
+const preparedFields = {
   passport: z.object({
     exactHash: hexWord,
     parentId: hexWord,
@@ -85,18 +120,36 @@ export const prepareResponseSchema = z.object({
     fingerprintVersion: z.number().int().min(1).max(255),
     metadataURI: z.string().min(1),
   }),
-  image: cidSchema.extend({
-    gatewayUrl: z.string().min(1),
-    bytes: z.number().int().nonnegative(),
-    width: z.number().int().positive(),
-    height: z.number().int().positive(),
-  }),
-  thumbnail: cidSchema.extend({ gatewayUrl: z.string().min(1) }),
   metadata: cidSchema,
   manifest: manifestSchema,
   training: trainingSchema.optional(),
   preparedBy: z.string().min(1),
-});
+};
+
+/**
+ * The two answers /prepare can give, and nothing in between.
+ *
+ * The sealed one carries the file and no pin; the public one carries the pins
+ * and says nothing about sealing. An answer that mixes them fits neither, so it
+ * is refused: the public branch names `sealed` as false on purpose, or a
+ * sealed answer that still carried a pinned image would quietly pass as a
+ * published one.
+ */
+export const prepareResponseSchema = z.union([
+  z.object({
+    ...preparedFields,
+    sealed: z.literal(true),
+    signedFile: signedFileSchema,
+    image: noPin,
+    thumbnail: noPin,
+  }),
+  z.object({
+    ...preparedFields,
+    sealed: z.literal(false).optional(),
+    image: pinnedImage,
+    thumbnail: pinnedThumbnail,
+  }),
+]);
 
 /**
  * What the agent hands back after it has drawn, pinned and signed.
@@ -106,7 +159,7 @@ export const prepareResponseSchema = z.object({
  * browser's, because the agent's signature is already over them, so the
  * creator's passkey has to sign exactly what came back.
  */
-export const generateResponseSchema = z.object({
+const drawnFields = {
   passport: z.object({
     exactHash: hexWord,
     parentId: hexWord,
@@ -121,13 +174,6 @@ export const generateResponseSchema = z.object({
     deadline: decimal,
   }),
   generatorSig: signatureWord,
-  image: cidSchema.extend({
-    gatewayUrl: z.string().min(1),
-    bytes: z.number().int().nonnegative(),
-    width: z.number().int().positive(),
-    height: z.number().int().positive(),
-  }),
-  thumbnail: cidSchema.extend({ gatewayUrl: z.string().min(1) }),
   metadata: cidSchema,
   manifest: manifestSchema,
   model: z.string().min(1),
@@ -135,7 +181,24 @@ export const generateResponseSchema = z.object({
   quota: quotaSchema,
   training: trainingSchema.optional(),
   preparedBy: z.string().min(1),
-});
+};
+
+/** The same two answers on the agent path, held apart by the same rule. */
+export const generateResponseSchema = z.union([
+  z.object({
+    ...drawnFields,
+    sealed: z.literal(true),
+    signedFile: signedFileSchema,
+    image: noPin,
+    thumbnail: noPin,
+  }),
+  z.object({
+    ...drawnFields,
+    sealed: z.literal(false).optional(),
+    image: pinnedImage,
+    thumbnail: pinnedThumbnail,
+  }),
+]);
 
 /**
  * What /edit answers with once the child passport is on chain.
@@ -299,6 +362,10 @@ export const verifyResponseSchema = z.object({
 export type PrepareResponse = z.infer<typeof prepareResponseSchema>;
 export type EditResponse = z.infer<typeof editResponseSchema>;
 export type GenerateResponse = z.infer<typeof generateResponseSchema>;
+/** The answers that carry the picture instead of a link to it. */
+export type SealedPrepareResponse = Extract<PrepareResponse, { sealed: true }>;
+export type SealedGenerateResponse = Extract<GenerateResponse, { sealed: true }>;
+export type SignedFile = z.infer<typeof signedFileSchema>;
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
@@ -332,6 +399,8 @@ export type VerifierCode =
   | "already-registered"
   | "busy"
   | "pin-failed"
+  | "sealed-metadata-refused"
+  | "sealed-file-refused"
   | "offline"
   | "bad-response";
 
@@ -400,6 +469,8 @@ export async function prepare(options: {
   title: string;
   accessToken: string;
   training?: TrainingRequest;
+  /** True to register the picture without publishing it. The route reads the two words and nothing else. */
+  sealed?: boolean;
   signal?: AbortSignal;
 }): Promise<PrepareResponse> {
   const body = new FormData();
@@ -408,6 +479,11 @@ export async function prepare(options: {
   body.append("kind", "human");
   if (options.training !== undefined) {
     body.append("training", JSON.stringify(options.training));
+  }
+  // Left out rather than sent as false, so a service that predates sealing
+  // reads the same request it always did.
+  if (options.sealed === true) {
+    body.append("sealed", "true");
   }
 
   return await post("/prepare", body, prepareResponseSchema, {
@@ -434,17 +510,25 @@ export async function generate(options: {
   deadline: bigint | number;
   accessToken: string;
   training?: TrainingRequest;
+  /** True to register the drawing without publishing it. */
+  sealed?: boolean;
+  /** Whether the prompt joins the public record. It only has a meaning on a sealed drawing. */
+  includePrompt?: boolean;
   signal?: AbortSignal;
 }): Promise<GenerateResponse> {
+  const sealed = options.sealed === true;
   // A statement that was not made is left out of the body rather than sent as
   // null: the route refuses a key it has no room for, and an empty statement
-  // and no statement mean the same thing to it.
+  // and no statement mean the same thing to it. The prompt choice travels the
+  // same way, because on a published drawing the prompt is public regardless.
   const body = JSON.stringify({
     prompt: options.prompt,
     title: options.title,
     creator: options.creator,
     deadline: options.deadline.toString(),
     training: options.training,
+    sealed: sealed ? true : undefined,
+    includePrompt: sealed ? options.includePrompt === true : undefined,
   });
 
   return await post("/generate", body, generateResponseSchema, {
@@ -580,6 +664,8 @@ const BODY_CODES: Record<string, VerifierCode> = {
   "sign-failed": "sign-failed",
   busy: "busy",
   "pin-failed": "pin-failed",
+  "sealed-metadata-refused": "sealed-metadata-refused",
+  "sealed-file-refused": "sealed-file-refused",
   "no-signer": "no-signer",
   "not-owner": "not-owner",
   "no-parent": "no-parent",

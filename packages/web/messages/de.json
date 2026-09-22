@@ -1110,6 +1110,89 @@
         "recheck": "Monad noch einmal fragen"
       }
     },
+    "sealed": {
+      "switch": {
+        "label": "Dieses Bild versiegelt lassen",
+        "note": "Moolam veröffentlicht den Passport, nicht das Bild. Sichere die Datei, die wir dir zurückgeben: sie ist die einzige Kopie, die diesen Passport wieder öffnen kann.",
+        "panelHeading": "Was öffentlich wird",
+        "panelLine": "Alles hier unten geht in dem Moment hinaus, in dem du unterschreibst, und aus einem unveränderlichen Register lässt sich nichts zurückholen. Das Bild selbst steht nicht auf der Liste.",
+        "sketchCaption": "Mehr wird vom Bild nicht öffentlich.",
+        "inFile": "Gepinnte Datei",
+        "onChain": "Auf Monad",
+        "leftOut": "Bleibt weg",
+        "promptLabel": "Den Prompt mitveröffentlichen",
+        "promptNote": "Der Prompt bleibt privat, solange du ihn nicht dazunimmst."
+      },
+      "fields": {
+        "commitment": {
+          "label": "Die Passport-Kennung",
+          "line": "Der SHA-256 der Datei, die wir dir zurückgeben. Die Kette legt sich auf genau diese Bytes fest, ohne sie zu zeigen."
+        },
+        "fingerprint": {
+          "label": "Die zwei Fingerabdrücke",
+          "line": "Ein 64-Bit-Wahrnehmungshash und der 16 mal 16 große Blockhash oben. Grob hell und dunkel, mehr nicht."
+        },
+        "name": {
+          "label": "Der Titel, den du tippst",
+          "line": "Wie du es nennst, so lesen es alle. Nenne es mit diesem Gedanken."
+        },
+        "description": {
+          "label": "Die Zeile, die Moolam schreibt",
+          "line": "Ein fester Satz dazu, wie dieser Passport entstanden ist. Er beschreibt nie das Bild."
+        },
+        "creator": {
+          "label": "Deine Wallet-Adresse",
+          "line": "Das Register hält fest, wer eingetragen hat, wie bei jedem Passport."
+        },
+        "generator": {
+          "label": "Die Agenten-Kennung",
+          "line": "Welcher Moolam-Agent gezeichnet hat und in welchem ERC-8004-Register er geführt wird."
+        },
+        "createdAt": {
+          "label": "Das Datum",
+          "line": "Der Moment, in dem dieser Eintrag entstand, und genau darum geht es beim frühen Eintragen."
+        },
+        "training": {
+          "label": "Deine Angabe zur KI-Nutzung",
+          "line": "Die vier Antworten von oben, in den Worten des CAWG-Standards."
+        },
+        "sealed": {
+          "label": "Das Wort versiegelt",
+          "line": "Damit Passport-Seite, Explore und die Linkvorschau alle sagen, dass das Bild nicht veröffentlicht ist."
+        },
+        "model": {
+          "label": "Welches Modell gezeichnet hat",
+          "line": "Der Name des Bildmodells, wie bei einem veröffentlichten Passport."
+        },
+        "prompt": {
+          "label": "Der Prompt",
+          "line": "Worte, die das Bild beschreiben. Er bleibt aus der Datei heraus, bis du ihn hineinnimmst."
+        }
+      },
+      "plate": {
+        "sealed": "Versiegelt",
+        "untitled": "Ohne Titel",
+        "line": "Das Bild ist nicht veröffentlicht. Du hältst die einzige Kopie.",
+        "registered": "Eingetragen am {date}. Das Bild ist nicht veröffentlicht."
+      },
+      "handback": {
+        "kicker": "Deine einzige Kopie",
+        "heading": "Die signierte Datei liegt in diesem Browser",
+        "body": "Moolam hat nichts vom Bild gepinnt und nichts behalten. Sichere sie, bevor du diese Seite schließt.",
+        "save": "Signierte Datei sichern",
+        "saved": "Gesichert. Leg sie dorthin, wo du sie wiederfindest.",
+        "only": "Das ist die einzige Kopie, die diesen Passport wieder öffnen kann."
+      },
+      "done": {
+        "label": "Auf Monad versiegelt",
+        "body": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie."
+      },
+      "receipt": {
+        "label": "Auf Monad versiegelt",
+        "detail": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
+        "fingerprintDetail": "Aus der signierten Datei, die diesen Browser nie verlassen hat. C2PA-Manifest eingebettet: {manifest}."
+      }
+    },
     "receipt": {
       "heading": "Was gerade passiert ist",
       "body": "Jeder Schritt wird hier gestempelt, sobald er landet. Nichts auf dieser Liste ist geraten.",
@@ -1194,7 +1277,11 @@
       "agentSignFailed": "Das Bild wurde gezeichnet und angeheftet, und die Wallet des Agenten wollte den Pass nicht signieren. Versuch es noch einmal. Wenn es dabei bleibt, ist die Richtlinie auf der Wallet des Agenten die wahrscheinliche Ursache.",
       "agentBusy": "Moolam bearbeitet gerade so viele Bilder gleichzeitig, wie es schafft. Versuch es in einer Minute noch einmal.",
       "promptTooShort": "Schreib ein paar Wörter mehr. Der Agent braucht mindestens acht Zeichen.",
-      "promptTooLong": "Dieser Prompt ist länger als 600 Zeichen. Kürze ihn und frag noch einmal."
+      "promptTooLong": "Dieser Prompt ist länger als 600 Zeichen. Kürze ihn und frag noch einmal.",
+      "sealedMismatch": "Die Datei, die zurückkam, passt nicht zum Passport. Es wurde nichts eingetragen. Versuch es noch einmal.",
+      "sealedNotHeld": "Der Prüfdienst hat die versiegelte Datei nicht zurückgegeben, deshalb wurde nichts signiert. Versuch es noch einmal.",
+      "sealedRecordRefused": "Der Prüfdienst hat diesen versiegelten Eintrag nicht veröffentlicht, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal.",
+      "sealedFileRefused": "Der Prüfdienst konnte keine Datei zurückgeben, die zu diesem Passport passt, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal."
     },
     "actions": {
       "signIn": "Neu anmelden",

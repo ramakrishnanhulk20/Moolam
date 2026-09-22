@@ -63,8 +63,12 @@ export class AuthCheckFailed extends Error {
  *
  * `deadline-passed` means the picture was drawn and the window to sign it closed, so the slot is
  * spent and the honest offer is a new drawing with a new window.
+ *
+ * The two sealed refusals both mean the same thing to the creator: nothing was pinned, nothing was
+ * registered, and trying again costs them the upload. What the service could not do with the
+ * record or the file is its own fault to fix and stays in its log.
  */
-const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
+const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"]; quiet?: boolean }> = {
   offline: { key: "serviceOffline", next: "again" },
   "creator-mismatch": { key: "creatorMismatch", next: "signOut" },
   "deadline-passed": { key: "deadlinePassed", next: "again" },
@@ -79,6 +83,11 @@ const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
   "sign-failed": { key: "agentSignFailed", next: "again" },
   busy: { key: "agentBusy", next: "again" },
   "pin-failed": { key: "pinFailed", next: "again" },
+  // The service's own words on these two are a full sentence saying what was
+  // not done, in English. The line above already says it in the reader's
+  // language, so repeating it underneath would only be saying it twice.
+  "sealed-metadata-refused": { key: "sealedRecordRefused", next: "again", quiet: true },
+  "sealed-file-refused": { key: "sealedFileRefused", next: "again", quiet: true },
   "bad-request": { key: "badRequest" },
   "bad-response": { key: "badResponse", next: "again" },
 };
@@ -120,7 +129,8 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
     const mapped = VERIFIER_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
     // Some failures are named in the body and nothing more, so printing the
     // service's word under the sentence would only repeat the code back.
-    const named = error.message === error.code ? { ...mapped } : { ...mapped, reason: error.message };
+    const { quiet, ...copy } = mapped;
+    const named = quiet === true || error.message === error.code ? { ...copy } : { ...copy, reason: error.message };
     // The duplicate answer carries the passport that already holds the picture, so the screen can
     // send the reader there instead of leaving them with a dead end.
     return error.passportId === undefined ? named : { ...named, passportId: error.passportId };

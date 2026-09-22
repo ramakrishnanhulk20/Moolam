@@ -20,6 +20,7 @@ import { EXAMPLE_PROMPTS, PROMPT_MAX, PROMPT_MIN, atLimit } from "@/lib/studio/g
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
 import { FailureNote } from "./FailureNote";
+import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -36,6 +37,9 @@ export function GeneratePanel({
   onPrompt,
   onTitle,
   onConsent,
+  onSealed,
+  onIncludePrompt,
+  onSaved,
   onGenerate,
   onReset,
   onUnsponsored,
@@ -48,6 +52,12 @@ export function GeneratePanel({
   onPrompt: (prompt: string) => void;
   onTitle: (title: string) => void;
   onConsent: (draft: ConsentDraft) => void;
+  /** Register this drawing without publishing it. */
+  onSealed: (on: boolean) => void;
+  /** Whether the prompt joins the sealed record. Only asked once the switch is on. */
+  onIncludePrompt: (include: boolean) => void;
+  /** The creator has written the one copy of a sealed drawing to their own disk. */
+  onSaved: () => void;
   onGenerate: () => void;
   onReset: () => void;
   onUnsponsored: () => void;
@@ -62,7 +72,7 @@ export function GeneratePanel({
   const characters = state.prompt.trim().length;
 
   if (done) {
-    return <Generated state={state} wallet={wallet} onReset={onReset} />;
+    return <Generated state={state} wallet={wallet} onReset={onReset} onSaved={onSaved} />;
   }
 
   return (
@@ -142,6 +152,16 @@ export function GeneratePanel({
 
       <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
 
+      <SealedChoice
+        on={state.sealed.on}
+        onChange={onSealed}
+        bits={sketchOf(state.generated?.passport.blockhash256)}
+        generated
+        includePrompt={state.sealed.includePrompt}
+        onIncludePrompt={onIncludePrompt}
+        disabled={busy}
+      />
+
       <div className="mt-8 flex flex-wrap items-center gap-5">
         <button
           type="button"
@@ -153,6 +173,16 @@ export function GeneratePanel({
         </button>
         <Quota state={state} />
       </div>
+
+      {state.sealed.file === null ? null : (
+        <SealedFileCard
+          file={state.sealed.file}
+          bits={sketchOf(state.generated?.passport.blockhash256)}
+          title={state.title}
+          saved={state.sealed.saved}
+          onSaved={onSaved}
+        />
+      )}
 
       <Signatures state={state} />
 
@@ -209,12 +239,25 @@ function Plate({ state }: { state: RegisterState }) {
   const t = useTranslations("studio.generate");
   const reduced = useIsReducedMotion();
   const drawing = state.steps.draw === "running";
-  const image = state.generated?.image ?? null;
+  const drawn = state.generated;
+  const image = drawn?.image ?? null;
+  // A kept drawing has no pinned picture to read back, so the plate holds its
+  // fingerprint instead of an empty frame.
+  const sealed = drawn?.sealed === true ? sketchOf(drawn.passport.blockhash256) : null;
 
   return (
     <div className="grain relative mt-8 min-h-[14rem] overflow-hidden border border-line-strong bg-bg-sunken">
       <AnimatePresence mode="wait" initial={false}>
-        {image === null ? (
+        {drawn?.sealed === true ? (
+          <motion.div
+            key="sealed"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <SealedDrawing bits={sealed} label={t("plateLabel")} model={t("model", { model: drawn.model })} />
+          </motion.div>
+        ) : image === null ? (
           <motion.div
             key={drawing ? "drawing" : "empty"}
             initial={{ opacity: 0 }}
@@ -448,7 +491,17 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
 }
 
 /** The same stub the upload path ends on, with the agent named on it. */
-function Generated({ state, wallet, onReset }: { state: RegisterState; wallet?: Hex; onReset: () => void }) {
+function Generated({
+  state,
+  wallet,
+  onReset,
+  onSaved,
+}: {
+  state: RegisterState;
+  wallet?: Hex;
+  onReset: () => void;
+  onSaved: () => void;
+}) {
   const t = useTranslations("studio.generate");
   const shared = useTranslations("studio");
   const kinds = useTranslations("kind");
@@ -466,7 +519,16 @@ function Generated({ state, wallet, onReset }: { state: RegisterState; wallet?: 
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       className="grain relative overflow-hidden border border-line bg-bg-raised"
     >
-      {generated === null ? null : (
+      {generated !== null && generated.sealed === true ? (
+        <SealedDoneBand
+          file={state.sealed.file}
+          bits={sketchOf(generated.passport.blockhash256)}
+          title={state.title}
+          registeredAt={state.registeredAt}
+          saved={state.sealed.saved}
+          onSaved={onSaved}
+        />
+      ) : generated === null ? null : (
         <div className="relative">
           {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
           <img src={generated.image.gatewayUrl} alt="" className="max-h-[24rem] w-full object-cover" />
@@ -490,7 +552,9 @@ function Generated({ state, wallet, onReset }: { state: RegisterState; wallet?: 
           <Row label={t("agentRow")} value={generated === null ? "" : t("signatures.agentId", { id: generated.agent.id })} />
           <Row label={t("modelRow")} value={generated?.model ?? ""} mono />
           <Row label={t("title")} value={state.title} />
-          <Row label={t("prompt")} value={state.prompt} />
+          {generated !== null && generated.sealed === true && !state.sealed.includePrompt ? null : (
+            <Row label={t("prompt")} value={state.prompt} />
+          )}
           <Row label={shared("register.passportId")} value={id ?? ""} mono />
         </dl>
 
@@ -530,7 +594,7 @@ function Generated({ state, wallet, onReset }: { state: RegisterState; wallet?: 
               {shared("register.openAddress", { wallet: shortHex(wallet) })}
             </a>
           )}
-          {generated === null ? null : (
+          {generated === null || generated.sealed === true ? null : (
             <a
               href={gatewayUrl(generated.image.uri)}
               target="_blank"

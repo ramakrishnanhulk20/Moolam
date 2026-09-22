@@ -1110,6 +1110,89 @@
         "recheck": "Ask Monad again"
       }
     },
+    "sealed": {
+      "switch": {
+        "label": "Keep this picture sealed",
+        "note": "Moolam publishes the passport, not the picture. Save the file we hand back: it is the only copy that can unseal this passport.",
+        "panelHeading": "What becomes public",
+        "panelLine": "Everything below goes out the moment you sign, and nothing can be taken back off an immutable registry. The picture itself is not on the list.",
+        "sketchCaption": "The whole of the picture that becomes public.",
+        "inFile": "Pinned file",
+        "onChain": "On Monad",
+        "leftOut": "Left out",
+        "promptLabel": "Include the prompt",
+        "promptNote": "The prompt stays private unless you include it."
+      },
+      "fields": {
+        "commitment": {
+          "label": "The passport id",
+          "line": "The sha-256 of the file we hand back. The chain commits to the exact bytes without showing them."
+        },
+        "fingerprint": {
+          "label": "The two fingerprints",
+          "line": "A 64 bit perceptual hash, and the 16 by 16 block hash drawn above. Rough light and dark, nothing finer."
+        },
+        "name": {
+          "label": "The title you type",
+          "line": "Whatever you name it is the name everyone reads, so name it with that in mind."
+        },
+        "description": {
+          "label": "The line Moolam writes",
+          "line": "One fixed sentence saying how this passport was made. It never describes the picture."
+        },
+        "creator": {
+          "label": "Your wallet address",
+          "line": "The registry records who registered it, the way it does for every passport."
+        },
+        "generator": {
+          "label": "The agent id",
+          "line": "Which Moolam agent drew it, and the ERC-8004 registry it is identified in."
+        },
+        "createdAt": {
+          "label": "The date",
+          "line": "The moment this record was made, which is the whole point of registering early."
+        },
+        "training": {
+          "label": "Your statement on AI use",
+          "line": "The four answers you gave above, in the words the CAWG standard uses."
+        },
+        "sealed": {
+          "label": "The word sealed",
+          "line": "So a passport page, Explore and a link preview all say the picture is not published."
+        },
+        "model": {
+          "label": "Which model drew it",
+          "line": "The name of the image model, the same as on a published passport."
+        },
+        "prompt": {
+          "label": "The prompt",
+          "line": "Words that describe the picture, so it stays out of the file unless you put it in."
+        }
+      },
+      "plate": {
+        "sealed": "Sealed",
+        "untitled": "Untitled",
+        "line": "The picture is not published. You hold the only copy.",
+        "registered": "Registered {date}. The picture is not published."
+      },
+      "handback": {
+        "kicker": "Your only copy",
+        "heading": "The signed file is in this browser",
+        "body": "Moolam pinned nothing of the picture and kept nothing. Save it before you close this page.",
+        "save": "Save the signed file",
+        "saved": "Saved. Keep it somewhere you will find it again.",
+        "only": "This is the only copy that can unseal this passport."
+      },
+      "done": {
+        "label": "Sealed on Monad",
+        "body": "The picture is not published. Moolam keeps no copy."
+      },
+      "receipt": {
+        "label": "Sealed on Monad",
+        "detail": "The picture is not published. Moolam keeps no copy.",
+        "fingerprintDetail": "Taken from the signed file, which never left this browser. C2PA manifest embedded: {manifest}."
+      }
+    },
     "receipt": {
       "heading": "What just happened",
       "body": "Every step gets stamped here as it lands. Nothing on this list is a guess.",
@@ -1194,7 +1277,11 @@
       "agentSignFailed": "The picture was drawn and pinned, and the agent's wallet would not sign the passport. Try again. If it keeps happening, the policy on the agent's wallet is the likely cause.",
       "agentBusy": "Moolam is handling as many pictures at once as it can. Try again in a minute.",
       "promptTooShort": "Write a few more words. The agent needs at least eight characters to draw from.",
-      "promptTooLong": "That prompt is longer than 600 characters. Shorten it and ask again."
+      "promptTooLong": "That prompt is longer than 600 characters. Shorten it and ask again.",
+      "sealedMismatch": "The file we got back does not match the passport. Nothing was registered. Try again.",
+      "sealedNotHeld": "The verify service did not hand back the sealed file, so nothing was signed. Try again.",
+      "sealedRecordRefused": "The verify service refused to publish this sealed record, so nothing was pinned and nothing was registered. Try again.",
+      "sealedFileRefused": "The verify service could not hand back a file matching this passport, so nothing was pinned and nothing was registered. Try again."
     },
     "actions": {
       "signIn": "Sign in again",

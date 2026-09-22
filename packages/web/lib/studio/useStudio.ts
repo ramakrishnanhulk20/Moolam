@@ -19,7 +19,8 @@ import { confirmSetConsent } from "@/lib/consent/confirm";
 import { describeConsentFailure } from "@/lib/consent/failure";
 import { createPasskey, rememberCredential, signDigest } from "@/lib/passkey/browser";
 import { checkAuth } from "@/lib/passkey/verify";
-import { VerifierError, generate, prepare } from "@/lib/verifier/client";
+import { decideSealed } from "@/lib/sealed/handback";
+import { VerifierError, generate, prepare, type GenerateResponse, type PrepareResponse } from "@/lib/verifier/client";
 import { accountName, type AccountName, type SignedInUser } from "./account";
 import { bindReducer, initialBindState, type BindState } from "./binding";
 import { statedFrom, trainingFrom } from "./consent";
@@ -75,6 +76,12 @@ export interface Studio {
     setMode: (mode: Mode) => void;
     /** What the creator says about AI use. It travels with the file and then goes to the register. */
     setConsent: (draft: ConsentDraft) => void;
+    /** Register the picture without publishing it. Off until the creator asks for it. */
+    setSealed: (on: boolean) => void;
+    /** On the agent path only: whether the prompt joins the sealed record. */
+    setIncludePrompt: (include: boolean) => void;
+    /** Writes the one copy of a sealed picture to the creator's own disk. */
+    saveSealed: () => void;
     /**
      * The statement again, for a creator whose passport landed and whose
      * statement did not. While one is out it only asks Monad again: a statement
@@ -594,6 +601,40 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     [embedded, finishRegister, submit, wallet],
   );
 
+  /**
+   * Invariant 3 of the sealed threat model, standing between the service's
+   * answer and the passkey prompt.
+   *
+   * The browser decodes the file it was handed, hashes it, and holds that hash
+   * against both the one the service sent beside it and the passport id the
+   * registry is about to commit to. Only when all three agree does the file go
+   * into the panel, where the creator sees the plate and the save control, and
+   * only then does this return true and let the prompt open.
+   *
+   * A frame is waited for on purpose: a passkey prompt is a window over the
+   * page, and what it covers has to be drawn before it opens rather than found
+   * underneath afterwards.
+   */
+  const holdSealedFile = useCallback(
+    async (answer: PrepareResponse | GenerateResponse, asked: boolean): Promise<boolean> => {
+      const decision = await decideSealed(answer, asked);
+      if (decision.next === "stop") {
+        // Which of the three ways the check failed is this app's or the
+        // service's problem to fix and stays out of the creator's way.
+        dispatchRegister({ type: "failed", failure: { key: decision.failure, next: "again" }, stage: "prepare" });
+        return false;
+      }
+      if (decision.file === null) {
+        return true;
+      }
+
+      dispatchRegister({ type: "sealedFile", file: decision.file });
+      await painted();
+      return true;
+    },
+    [],
+  );
+
   const registerImage = useCallback(async () => {
     if (embedded === undefined || wallet === undefined) {
       return;
@@ -644,6 +685,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         title: register.title.trim(),
         accessToken: token,
         training: trainingFrom(register.consent),
+        sealed: register.sealed.on,
       });
       dispatchRegister({ type: "prepared", prepared });
       // The service's echo, not the plates: it trimmed the words and wrote them
@@ -651,6 +693,12 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       stated.current = statedFrom(prepared.training);
     } catch (error) {
       dispatchRegister({ type: "failed", failure: describeFailure(error, "prepare"), stage: "prepare" });
+      return;
+    }
+
+    // Nothing is signed until this browser holds the picture and has proved it
+    // is the one the passport commits to.
+    if (!(await holdSealedFile(prepared, register.sealed.on))) {
       return;
     }
 
@@ -686,9 +734,11 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     binding,
     embedded,
     getAccessToken,
+    holdSealedFile,
     register.consent,
     register.failure,
     register.file,
+    register.sealed.on,
     register.title,
     register.unsponsored,
     sendRegister,
@@ -757,6 +807,8 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         deadline,
         accessToken: token,
         training: trainingFrom(register.consent),
+        sealed: register.sealed.on,
+        includePrompt: register.sealed.includePrompt,
       });
       dispatchRegister({ type: "drawn", response: drawn });
       // The agent signed the metadata address, and this statement is inside
@@ -777,6 +829,10 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     // their unlock over it.
     if (drawn.passport.creator.toLowerCase() !== wallet.toLowerCase()) {
       dispatchRegister({ type: "failed", failure: { key: "creatorMismatch", next: "signOut" }, stage: "prepare" });
+      return;
+    }
+
+    if (!(await holdSealedFile(drawn, register.sealed.on))) {
       return;
     }
 
@@ -805,9 +861,12 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     binding,
     embedded,
     getAccessToken,
+    holdSealedFile,
     register.consent,
     register.failure,
     register.prompt,
+    register.sealed.includePrompt,
+    register.sealed.on,
     register.title,
     register.unsponsored,
     sendRegister,
@@ -877,6 +936,9 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       setPrompt: (prompt: string) => dispatchRegister({ type: "prompt", prompt }),
       setMode: (mode: Mode) => dispatchRegister({ type: "mode", mode }),
       setConsent: (draft: ConsentDraft) => dispatchRegister({ type: "consent", draft }),
+      setSealed: (on: boolean) => dispatchRegister({ type: "sealed", on }),
+      setIncludePrompt: (include: boolean) => dispatchRegister({ type: "includePrompt", include }),
+      saveSealed: () => dispatchRegister({ type: "sealedSaved" }),
       registerImage,
       generateImage,
       resend,
@@ -921,6 +983,23 @@ async function billed(hash: Hex | undefined): Promise<Charge | undefined> {
  */
 function passkeyNotReady(binding: Binding): Failure {
   return { key: "passkeyNotReady", reason: binding.error ?? undefined, next: "again" };
+}
+
+/**
+ * One drawn frame.
+ *
+ * Between a dispatch and the next line of an async function React has rendered
+ * but the browser has not necessarily painted, and the thing waiting on the
+ * other side of this is a passkey window that covers the page.
+ */
+function painted(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame !== "function") {
+      resolve();
+      return;
+    }
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
 }
 
 function randomDigest(): Hex {

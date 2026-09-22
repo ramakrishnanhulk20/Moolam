@@ -643,3 +643,157 @@ describe("the edit the owner appends without a passkey", () => {
     expect(failure.quota).toEqual({ used: 5, limit: 5, resetsAt: 1788961533 });
   });
 });
+
+/**
+ * The two answers a sealed registration can come back with, and the one shape
+ * that must never be read as either: an answer that says sealed and still names
+ * a pin. Believing half of that answer is how a picture a creator asked us to
+ * keep ends up on IPFS.
+ */
+describe("a sealed answer", () => {
+  const sealedPrepare = {
+    passport: preparePayload.passport,
+    metadata: { cid: "bafkreimetadata", uri: "ipfs://bafkreimetadata" },
+    manifest: { embedded: true },
+    preparedBy: "did:privy:cm123",
+    sealed: true,
+    signedFile: {
+      name: "kadal-at-dawn-abababab.jpg",
+      type: "image/jpeg",
+      bytes: "/9j/4AAQSkZJRg==",
+      sha256: WORD,
+    },
+  };
+
+  const sealedGenerate = {
+    passport: generatePayload.passport,
+    generatorSig: generatePayload.generatorSig,
+    metadata: sealedPrepare.metadata,
+    manifest: { embedded: false, reason: "the signer was down" },
+    model: "gpt-image-1",
+    agent: generatePayload.agent,
+    quota: generatePayload.quota,
+    preparedBy: "did:privy:cm123",
+    sealed: true,
+    signedFile: sealedPrepare.signedFile,
+  };
+
+  it("parses the file, the metadata pin and the manifest without any picture pin", () => {
+    const parsed = prepareResponseSchema.parse(sealedPrepare);
+    expect(parsed.sealed).toBe(true);
+    expect(parsed.image).toBeUndefined();
+    expect(parsed.signedFile?.sha256).toBe(WORD);
+    expect(parsed.signedFile?.name).toBe("kadal-at-dawn-abababab.jpg");
+
+    const drawn = generateResponseSchema.parse(sealedGenerate);
+    expect(drawn.sealed).toBe(true);
+    expect(drawn.thumbnail).toBeUndefined();
+    expect(drawn.manifest).toEqual({ embedded: false, reason: "the signer was down" });
+  });
+
+  it("refuses one that claims sealed and still carries a pinned image or thumbnail", () => {
+    expect(prepareResponseSchema.safeParse({ ...sealedPrepare, image: preparePayload.image }).success).toBe(false);
+    expect(prepareResponseSchema.safeParse({ ...sealedPrepare, thumbnail: preparePayload.thumbnail }).success).toBe(
+      false,
+    );
+    expect(generateResponseSchema.safeParse({ ...sealedGenerate, image: generatePayload.image }).success).toBe(false);
+  });
+
+  it("refuses one whose manifest is a pin rather than a yes or no", () => {
+    const pinnedManifest = { ...sealedPrepare, manifest: { cid: "bafkreimanifest", uri: "ipfs://bafkreimanifest" } };
+    expect(prepareResponseSchema.safeParse(pinnedManifest).success).toBe(false);
+  });
+
+  it("refuses one with no file to hand back, or a hash that is not 32 bytes", () => {
+    const noFile: Record<string, unknown> = { ...sealedPrepare };
+    delete noFile.signedFile;
+    expect(prepareResponseSchema.safeParse(noFile).success).toBe(false);
+
+    const shortHash = { ...sealedPrepare, signedFile: { ...sealedPrepare.signedFile, sha256: "0xabcd" } };
+    expect(prepareResponseSchema.safeParse(shortHash).success).toBe(false);
+
+    const noBytes = { ...sealedPrepare, signedFile: { ...sealedPrepare.signedFile, bytes: "" } };
+    expect(prepareResponseSchema.safeParse(noBytes).success).toBe(false);
+  });
+
+  it("refuses a published answer that has been marked sealed", () => {
+    expect(prepareResponseSchema.safeParse({ ...preparePayload, sealed: true }).success).toBe(false);
+    expect(generateResponseSchema.safeParse({ ...generatePayload, sealed: true }).success).toBe(false);
+  });
+
+  it("still parses a published answer, with or without the word", () => {
+    expect(prepareResponseSchema.parse(preparePayload).image?.cid).toBe("bafkreiimage");
+    expect(prepareResponseSchema.parse({ ...preparePayload, sealed: false }).image?.cid).toBe("bafkreiimage");
+  });
+
+  it("sends the sealed field on prepare only when the creator asked for it", async () => {
+    const asked = stubFetch(200, sealedPrepare);
+    await prepare({ file: imageFile(), title: "Kadal at dawn", accessToken: "token-123", sealed: true });
+    const [, init] = asked.mock.calls[0] as unknown as [string, RequestInit];
+    expect((init.body as FormData).get("sealed")).toBe("true");
+
+    vi.unstubAllGlobals();
+    const public_ = stubFetch(200, preparePayload);
+    await prepare({ file: imageFile(), title: "Kadal at dawn", accessToken: "token-123" });
+    const [, plain] = public_.mock.calls[0] as unknown as [string, RequestInit];
+    expect((plain.body as FormData).get("sealed")).toBeNull();
+  });
+
+  it("sends sealed and the prompt choice on generate, and neither on a published drawing", async () => {
+    const asked = stubFetch(200, sealedGenerate);
+    await generate({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "token-123",
+      sealed: true,
+      includePrompt: true,
+    });
+    const [, init] = asked.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({ sealed: true, includePrompt: true });
+
+    vi.unstubAllGlobals();
+    const kept = stubFetch(200, sealedGenerate);
+    await generate({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "token-123",
+      sealed: true,
+    });
+    const [, quiet] = kept.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(quiet.body as string)).toMatchObject({ sealed: true, includePrompt: false });
+
+    vi.unstubAllGlobals();
+    const published = stubFetch(200, generatePayload);
+    await generate({
+      prompt: "a fishing boat at first light off the Coromandel coast",
+      title: "First light",
+      creator: CREATOR,
+      deadline: 1788878733n,
+      accessToken: "token-123",
+      includePrompt: true,
+    });
+    const [, body] = published.mock.calls[0] as unknown as [string, RequestInit];
+    const keys = Object.keys(JSON.parse(body.body as string));
+    expect(keys).not.toContain("sealed");
+    expect(keys).not.toContain("includePrompt");
+  });
+
+  it("names the two refusals a sealed registration has of its own", async () => {
+    for (const code of ["sealed-metadata-refused", "sealed-file-refused"] as const) {
+      stubFetch(500, { error: code, reason: "nothing was pinned and nothing was registered" }, false);
+      const failure = await prepare({
+        file: imageFile(),
+        title: "Kadal at dawn",
+        accessToken: "token-123",
+        sealed: true,
+      }).catch((error) => error);
+      expect(failure.code).toBe(code);
+      expect(failure.named).toBe(true);
+      vi.unstubAllGlobals();
+    }
+  });
+});

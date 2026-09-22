@@ -8,7 +8,8 @@ import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { useHeadingLeading } from "./leading";
 import { initialBindState } from "@/lib/studio/binding";
-import { initialRegisterState, isBusy, type Mode } from "@/lib/studio/flow";
+import { initialRegisterState, holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
+import { useUnsavedFileWarning } from "@/lib/sealed/save";
 import { BindCard } from "./BindCard";
 import { GeneratePanel } from "./GeneratePanel";
 import { IdentityStrip } from "./IdentityStrip";
@@ -53,6 +54,9 @@ const WAITING: StudioState = {
     setPrompt: NOTHING,
     setMode: NOTHING,
     setConsent: NOTHING,
+    setSealed: NOTHING,
+    setIncludePrompt: NOTHING,
+    saveSealed: NOTHING,
     registerImage: NOTHING_YET,
     generateImage: NOTHING_YET,
     resend: NOTHING_YET,
@@ -128,6 +132,9 @@ function Studio({ initialMode }: { initialMode: Mode }) {
   const t = useTranslations("studio");
   const studio = useStudio(initialMode);
   const [rebinding, setRebinding] = useState(false);
+
+  // The only copy of a sealed picture lives in this tab until it is saved.
+  useUnsavedFileWarning(holdsUnsavedFile(studio.register));
 
   // The bind card is a detour, not a destination. It opens on a clean card, it
   // closes the moment the key is on chain or the creator backs out, and neither
@@ -206,6 +213,9 @@ function Studio({ initialMode }: { initialMode: Mode }) {
                       onPrompt={studio.actions.setPrompt}
                       onTitle={studio.actions.setTitle}
                       onConsent={studio.actions.setConsent}
+                      onSealed={studio.actions.setSealed}
+                      onIncludePrompt={studio.actions.setIncludePrompt}
+                      onSaved={studio.actions.saveSealed}
                       onGenerate={studio.actions.generateImage}
                       onReset={studio.actions.reset}
                       onUnsponsored={() => void studio.actions.resend(true)}
@@ -219,6 +229,8 @@ function Studio({ initialMode }: { initialMode: Mode }) {
                       onChoose={studio.actions.choose}
                       onTitle={studio.actions.setTitle}
                       onConsent={studio.actions.setConsent}
+                      onSealed={studio.actions.setSealed}
+                      onSaved={studio.actions.saveSealed}
                       onRegister={studio.actions.registerImage}
                       onReset={studio.actions.reset}
                       onUnsponsored={() => void studio.actions.resend(true)}

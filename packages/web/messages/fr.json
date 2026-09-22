@@ -1110,6 +1110,89 @@
         "recheck": "Redemander à Monad"
       }
     },
+    "sealed": {
+      "switch": {
+        "label": "Garder cette image scellée",
+        "note": "Moolam publie le passeport, pas l'image. Enregistre le fichier que nous te rendons : c'est la seule copie qui peut desceller ce passeport.",
+        "panelHeading": "Ce qui devient public",
+        "panelLine": "Tout ce qui suit part au moment où tu signes, et rien ne se reprend sur un registre immuable. L'image, elle, n'est pas dans la liste.",
+        "sketchCaption": "Voilà tout ce qui devient public de l'image.",
+        "inFile": "Fichier épinglé",
+        "onChain": "Sur Monad",
+        "leftOut": "Laissé de côté",
+        "promptLabel": "Inclure le prompt",
+        "promptNote": "Le prompt reste privé tant que tu ne l'inclus pas."
+      },
+      "fields": {
+        "commitment": {
+          "label": "L'identifiant du passeport",
+          "line": "Le sha-256 du fichier que nous te rendons. La chaîne s'engage sur ces octets exacts sans les montrer."
+        },
+        "fingerprint": {
+          "label": "Les deux empreintes",
+          "line": "Un hash perceptuel de 64 bits et le hash de blocs 16 sur 16 dessiné plus haut. Du clair et du sombre en gros, rien de plus fin."
+        },
+        "name": {
+          "label": "Le titre que tu écris",
+          "line": "Le nom que tu donnes est celui que tout le monde lira, choisis-le en le sachant."
+        },
+        "description": {
+          "label": "La ligne que Moolam écrit",
+          "line": "Une phrase fixe qui dit comment ce passeport a été fait. Elle ne décrit jamais l'image."
+        },
+        "creator": {
+          "label": "L'adresse de ton portefeuille",
+          "line": "Le registre note qui a enregistré, comme pour chaque passeport."
+        },
+        "generator": {
+          "label": "L'identifiant de l'agent",
+          "line": "Quel agent Moolam l'a dessinée, et dans quel registre ERC-8004 il est identifié."
+        },
+        "createdAt": {
+          "label": "La date",
+          "line": "Le moment où cet enregistrement a été fait, ce qui est tout l'intérêt d'enregistrer tôt."
+        },
+        "training": {
+          "label": "Ta déclaration sur l'usage par l'IA",
+          "line": "Les quatre réponses données plus haut, dans les mots de la norme CAWG."
+        },
+        "sealed": {
+          "label": "Le mot scellé",
+          "line": "Pour que la page du passeport, Explore et l'aperçu de lien disent tous que l'image n'est pas publiée."
+        },
+        "model": {
+          "label": "Quel modèle l'a dessinée",
+          "line": "Le nom du modèle d'image, comme sur un passeport publié."
+        },
+        "prompt": {
+          "label": "Le prompt",
+          "line": "Des mots qui décrivent l'image : il reste hors du fichier tant que tu ne l'y mets pas."
+        }
+      },
+      "plate": {
+        "sealed": "Scellé",
+        "untitled": "Sans titre",
+        "line": "L'image n'est pas publiée. Tu détiens la seule copie.",
+        "registered": "Enregistré le {date}. L'image n'est pas publiée."
+      },
+      "handback": {
+        "kicker": "Ta seule copie",
+        "heading": "Le fichier signé est dans ce navigateur",
+        "body": "Moolam n'a rien épinglé de l'image et n'en garde rien. Enregistre-le avant de fermer cette page.",
+        "save": "Enregistrer le fichier signé",
+        "saved": "Enregistré. Range-le là où tu le retrouveras.",
+        "only": "C'est la seule copie qui peut desceller ce passeport."
+      },
+      "done": {
+        "label": "Scellé sur Monad",
+        "body": "L'image n'est pas publiée. Moolam n'en garde aucune copie."
+      },
+      "receipt": {
+        "label": "Scellé sur Monad",
+        "detail": "L'image n'est pas publiée. Moolam n'en garde aucune copie.",
+        "fingerprintDetail": "Pris sur le fichier signé, qui n'a jamais quitté ce navigateur. Manifeste C2PA intégré : {manifest}."
+      }
+    },
     "receipt": {
       "heading": "Ce qui vient de se passer",
       "body": "Chaque étape est tamponnée ici dès qu’elle arrive. Rien dans cette liste n’est une supposition.",
@@ -1194,7 +1277,11 @@
       "agentSignFailed": "L'image a été dessinée et épinglée, et le portefeuille de l'agent n'a pas voulu signer le passeport. Réessayez. Si cela persiste, la politique posée sur le portefeuille de l'agent en est la cause la plus probable.",
       "agentBusy": "Moolam traite déjà autant d’images qu’il le peut à la fois. Réessayez dans une minute.",
       "promptTooShort": "Écrivez quelques mots de plus. L'agent a besoin d'au moins huit caractères.",
-      "promptTooLong": "Cette consigne dépasse 600 caractères. Raccourcissez-la et redemandez."
+      "promptTooLong": "Cette consigne dépasse 600 caractères. Raccourcissez-la et redemandez.",
+      "sealedMismatch": "Le fichier revenu ne correspond pas au passeport. Rien n'a été enregistré. Réessaie.",
+      "sealedNotHeld": "Le service de vérification n'a pas rendu le fichier scellé, donc rien n'a été signé. Réessaie.",
+      "sealedRecordRefused": "Le service de vérification a refusé de publier cet enregistrement scellé, donc rien n'a été épinglé ni enregistré. Réessaie.",
+      "sealedFileRefused": "Le service de vérification n'a pas pu rendre un fichier correspondant à ce passeport, donc rien n'a été épinglé ni enregistré. Réessaie."
     },
     "actions": {
       "signIn": "Se reconnecter",

@@ -1111,6 +1111,89 @@
         "recheck": "Perguntar à Monad de novo"
       }
     },
+    "sealed": {
+      "switch": {
+        "label": "Manter esta imagem lacrada",
+        "note": "A Moolam publica o passaporte, não a imagem. Guarde o arquivo que devolvemos: é a única cópia capaz de abrir este passaporte.",
+        "panelHeading": "O que se torna público",
+        "panelLine": "Tudo abaixo sai no momento em que você assina, e nada se recupera de um registro imutável. A imagem em si não está na lista.",
+        "sketchCaption": "Isto é tudo o que se torna público da imagem.",
+        "inFile": "Arquivo fixado",
+        "onChain": "Na Monad",
+        "leftOut": "Fica de fora",
+        "promptLabel": "Incluir o prompt",
+        "promptNote": "O prompt fica privado enquanto você não o incluir."
+      },
+      "fields": {
+        "commitment": {
+          "label": "O identificador do passaporte",
+          "line": "O sha-256 do arquivo que devolvemos. A cadeia se compromete com esses bytes exatos sem mostrá-los."
+        },
+        "fingerprint": {
+          "label": "As duas impressões",
+          "line": "Um hash perceptual de 64 bits e o hash de blocos 16 por 16 desenhado acima. Claro e escuro em traços grossos, nada mais fino."
+        },
+        "name": {
+          "label": "O título que você escreve",
+          "line": "O nome que der é o nome que todos vão ler, então escolha pensando nisso."
+        },
+        "description": {
+          "label": "A linha que a Moolam escreve",
+          "line": "Uma frase fixa dizendo como este passaporte foi feito. Ela nunca descreve a imagem."
+        },
+        "creator": {
+          "label": "O endereço da sua carteira",
+          "line": "O registro anota quem registrou, como em qualquer passaporte."
+        },
+        "generator": {
+          "label": "O identificador do agente",
+          "line": "Qual agente da Moolam desenhou, e em qual registro ERC-8004 ele é identificado."
+        },
+        "createdAt": {
+          "label": "A data",
+          "line": "O momento em que este registro foi feito, que é todo o sentido de registrar cedo."
+        },
+        "training": {
+          "label": "Sua declaração sobre uso por IA",
+          "line": "As quatro respostas que você deu acima, nas palavras do padrão CAWG."
+        },
+        "sealed": {
+          "label": "A palavra lacrado",
+          "line": "Para que a página do passaporte, o Explore e a prévia do link digam que a imagem não está publicada."
+        },
+        "model": {
+          "label": "Qual modelo desenhou",
+          "line": "O nome do modelo de imagem, igual ao de um passaporte publicado."
+        },
+        "prompt": {
+          "label": "O prompt",
+          "line": "São palavras que descrevem a imagem, então fica fora do arquivo a menos que você o inclua."
+        }
+      },
+      "plate": {
+        "sealed": "Lacrado",
+        "untitled": "Sem título",
+        "line": "A imagem não está publicada. Você tem a única cópia.",
+        "registered": "Registrado em {date}. A imagem não está publicada."
+      },
+      "handback": {
+        "kicker": "Sua única cópia",
+        "heading": "O arquivo assinado está neste navegador",
+        "body": "A Moolam não fixou nada da imagem e não guardou nada. Salve antes de fechar esta página.",
+        "save": "Salvar o arquivo assinado",
+        "saved": "Salvo. Deixe onde você vá encontrar de novo.",
+        "only": "Esta é a única cópia capaz de abrir este passaporte."
+      },
+      "done": {
+        "label": "Lacrado na Monad",
+        "body": "A imagem não está publicada. A Moolam não guarda nenhuma cópia."
+      },
+      "receipt": {
+        "label": "Lacrado na Monad",
+        "detail": "A imagem não está publicada. A Moolam não guarda nenhuma cópia.",
+        "fingerprintDetail": "Tirado do arquivo assinado, que nunca saiu deste navegador. Manifesto C2PA embutido: {manifest}."
+      }
+    },
     "receipt": {
       "heading": "O que acabou de acontecer",
       "body": "Cada passo é carimbado aqui assim que acontece. Nada nesta lista é chute.",
@@ -1195,7 +1278,11 @@
       "agentSignFailed": "A imagem foi desenhada e fixada, e a carteira do agente não quis assinar o passaporte. Tente de novo. Se continuar, a política na carteira do agente é a causa mais provável.",
       "agentBusy": "O Moolam já está cuidando do máximo de imagens que consegue ao mesmo tempo. Tente daqui a um minuto.",
       "promptTooShort": "Escreva mais algumas palavras. O agente precisa de pelo menos oito caracteres.",
-      "promptTooLong": "Essa instrução passa de 600 caracteres. Encurte e peça de novo."
+      "promptTooLong": "Essa instrução passa de 600 caracteres. Encurte e peça de novo.",
+      "sealedMismatch": "O arquivo que voltou não corresponde ao passaporte. Nada foi registrado. Tente de novo.",
+      "sealedNotHeld": "O serviço de verificação não devolveu o arquivo lacrado, então nada foi assinado. Tente de novo.",
+      "sealedRecordRefused": "O serviço de verificação recusou publicar este registro lacrado, então nada foi fixado nem registrado. Tente de novo.",
+      "sealedFileRefused": "O serviço de verificação não conseguiu devolver um arquivo correspondente a este passaporte, então nada foi fixado nem registrado. Tente de novo."
     },
     "actions": {
       "signIn": "Entrar de novo",

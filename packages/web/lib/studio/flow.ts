@@ -1,6 +1,7 @@
 import type { Hex } from "viem";
 import type { ConsentDraft } from "@/lib/consent/call";
 import type { ConsentFailure } from "@/lib/consent/failure";
+import type { SealedHandback } from "@/lib/sealed/handback";
 import type { GenerateResponse, PrepareResponse, QuotaState } from "@/lib/verifier/client";
 import { checkImage as checkUpload, type RefusalCode } from "@/lib/upload/checkImage";
 import { NOTHING_TO_STATE } from "./consent";
@@ -109,6 +110,24 @@ export interface Statement {
   failure: ConsentFailure | null;
 }
 
+/**
+ * The creator's choice to register a picture without publishing it, and what
+ * that choice has produced so far.
+ *
+ * `file` is the one copy of the signed picture there will ever be: the verify
+ * service pinned nothing of it and kept nothing. It is only ever set once this
+ * browser has held its bytes against the passport id, which is invariant 3 of
+ * the sealed threat model, so a file in here has already passed that check.
+ */
+export interface SealedRun {
+  on: boolean;
+  /** Only ever asked on the agent path: whether the prompt joins the public record. */
+  includePrompt: boolean;
+  file: SealedHandback | null;
+  /** True once the creator has written the file to their own disk at least once. */
+  saved: boolean;
+}
+
 export interface RegisterState {
   mode: Mode;
   file: File | null;
@@ -116,6 +135,8 @@ export interface RegisterState {
   prompt: string;
   /** What the creator has said about AI use on the panel, before anything is sent. */
   consent: ConsentDraft;
+  /** Whether this picture is being kept, and the file it produced. */
+  sealed: SealedRun;
   /** The second send: the same statement, written to the consent register once the passport is on chain. */
   statement: Statement;
   steps: Record<Step, StepState>;
@@ -145,6 +166,10 @@ export type RegisterAction =
   | { type: "title"; title: string }
   | { type: "prompt"; prompt: string }
   | { type: "consent"; draft: ConsentDraft }
+  | { type: "sealed"; on: boolean }
+  | { type: "includePrompt"; include: boolean }
+  | { type: "sealedFile"; file: SealedHandback }
+  | { type: "sealedSaved" }
   | { type: "stating" }
   | { type: "statementSent"; hash?: Hex }
   | { type: "stated"; sent: ConsentDraft; at: number; waitedMs: number; hash?: Hex; sponsored: boolean }
@@ -168,6 +193,9 @@ const WAITING: Record<Step, StepState> = {
   send: "waiting",
 };
 
+/** Nothing asked for and nothing held: the state both panels open in. */
+const NOTHING_SEALED: SealedRun = { on: false, includePrompt: false, file: null, saved: false };
+
 const NOTHING_SAID: Statement = {
   state: "idle",
   sent: null,
@@ -184,6 +212,7 @@ export const initialRegisterState: RegisterState = {
   title: "",
   prompt: "",
   consent: NOTHING_TO_STATE,
+  sealed: NOTHING_SEALED,
   statement: NOTHING_SAID,
   steps: WAITING,
   prepared: null,
@@ -215,6 +244,7 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         title: state.title,
         prompt: state.prompt,
         consent: state.consent,
+        sealed: { ...NOTHING_SEALED, on: state.sealed.on, includePrompt: state.sealed.includePrompt },
         quota: state.quota,
       };
     case "choose":
@@ -225,6 +255,9 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         title: state.title,
         prompt: state.prompt,
         consent: state.consent,
+        // The switch is a decision about this creator's work, not about one
+        // upload, so a second picture opens with the same answer showing.
+        sealed: { ...NOTHING_SEALED, on: state.sealed.on, includePrompt: state.sealed.includePrompt },
         quota: state.quota,
       };
     case "title":
@@ -233,6 +266,17 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
       return { ...state, prompt: action.prompt };
     case "consent":
       return { ...state, consent: action.draft };
+    case "sealed":
+      return { ...state, sealed: { ...state.sealed, on: action.on } };
+    case "includePrompt":
+      return { ...state, sealed: { ...state.sealed, includePrompt: action.include } };
+    case "sealedFile":
+      // The file arrives already checked against the passport id, which is the
+      // only way this action is ever dispatched. Nothing has been saved yet, so
+      // the page starts warning before it is left.
+      return { ...state, sealed: { ...state.sealed, file: action.file, saved: false } };
+    case "sealedSaved":
+      return { ...state, sealed: { ...state.sealed, saved: true } };
     case "start":
       return {
         ...state,
@@ -311,7 +355,12 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         },
       };
     case "reset":
-      return { ...initialRegisterState, mode: state.mode, quota: state.quota };
+      return {
+        ...initialRegisterState,
+        mode: state.mode,
+        sealed: { ...NOTHING_SEALED, on: state.sealed.on, includePrompt: state.sealed.includePrompt },
+        quota: state.quota,
+      };
   }
 }
 
@@ -332,6 +381,16 @@ const UPLOAD_KEYS: Record<RefusalCode, string> = {
 export function checkImage(file: File): Failure | null {
   const refusal = checkUpload(file);
   return refusal === null ? null : { key: UPLOAD_KEYS[refusal.code], reason: refusal.reason };
+}
+
+/**
+ * True while the only copy of a picture is in this tab and nowhere else.
+ *
+ * The page warns before it is left on this, and stops warning the moment the
+ * file has been written to disk once.
+ */
+export function holdsUnsavedFile(state: RegisterState): boolean {
+  return state.sealed.file !== null && !state.sealed.saved;
 }
 
 export function isRegistered(state: RegisterState): boolean {

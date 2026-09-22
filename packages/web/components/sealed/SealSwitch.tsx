@@ -26,6 +26,15 @@ export interface SealSwitchWords {
 }
 
 /**
+ * What each row of the list is called, keyed by the field's own key.
+ *
+ * The list itself stays in fields.ts, held against the verify service's schema
+ * by a test. Only the words are passed in, so the studio can hand it ten
+ * languages without a second copy of the list existing anywhere.
+ */
+export type SealedFieldWords = Record<string, { label: string; line: string }>;
+
+/**
  * The studio's one switch, and the panel that says what signing will publish.
  *
  * This is invariant 8 of the sealed threat model: the fingerprint sketch and
@@ -44,6 +53,7 @@ export function SealSwitch({
   includePrompt = false,
   onIncludePrompt,
   words,
+  fieldWords,
   disabled = false,
   className = "",
 }: {
@@ -56,6 +66,8 @@ export function SealSwitch({
   includePrompt?: boolean;
   onIncludePrompt?: (include: boolean) => void;
   words: SealSwitchWords;
+  /** The rows in the reader's language. Without it each row keeps the English in fields.ts. */
+  fieldWords?: SealedFieldWords;
   disabled?: boolean;
   className?: string;
 }) {
@@ -105,6 +117,7 @@ export function SealSwitch({
                   <Row
                     key={field.key}
                     field={field}
+                    said={fieldWords?.[field.key]}
                     tag={field.source === "chain" ? words.onChain : words.inFile}
                     leftOut={field.optional === true && !includePrompt ? words.leftOut : null}
                   />
@@ -133,14 +146,27 @@ export function SealSwitch({
 }
 
 /** One row of the list: the key as the document writes it, what it is, and why it is there. */
-function Row({ field, tag, leftOut }: { field: SealedPublicField; tag: string; leftOut: string | null }) {
+function Row({
+  field,
+  said,
+  tag,
+  leftOut,
+}: {
+  field: SealedPublicField;
+  said?: { label: string; line: string };
+  tag: string;
+  leftOut: string | null;
+}) {
+  const label = said?.label ?? field.label;
+  const line = said?.line ?? field.line;
+
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 border-t border-line py-3.5 sm:flex-nowrap">
       <span className="min-w-0">
         <span className={`block text-sm font-medium leading-snug ${leftOut === null ? "text-text" : "text-text-faint"}`}>
-          {field.label}
+          {label}
         </span>
-        <span className="mt-1 block max-w-[52ch] text-xs leading-relaxed text-text-faint">{field.line}</span>
+        <span className="mt-1 block max-w-[52ch] text-xs leading-relaxed text-text-faint">{line}</span>
       </span>
       <span className="flex shrink-0 items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em]">
         {leftOut === null ? null : <span className="text-text-faint">{leftOut}</span>}

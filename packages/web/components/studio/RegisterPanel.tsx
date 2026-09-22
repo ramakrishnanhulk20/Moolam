@@ -21,6 +21,7 @@ import type { Failure } from "@/lib/studio/problems";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
 import { FailureNote } from "./FailureNote";
+import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -34,6 +35,8 @@ export function RegisterPanel({
   onChoose,
   onTitle,
   onConsent,
+  onSealed,
+  onSaved,
   onRegister,
   onReset,
   onUnsponsored,
@@ -46,6 +49,10 @@ export function RegisterPanel({
   onChoose: (file: File) => void;
   onTitle: (title: string) => void;
   onConsent: (draft: ConsentDraft) => void;
+  /** Register this picture without publishing it. */
+  onSealed: (on: boolean) => void;
+  /** The creator has written the one copy of a sealed picture to their own disk. */
+  onSaved: () => void;
   onRegister: () => void;
   onReset: () => void;
   onUnsponsored: () => void;
@@ -87,7 +94,7 @@ export function RegisterPanel({
   }
 
   if (done) {
-    return <Registered state={state} wallet={wallet} onReset={onReset} />;
+    return <Registered state={state} wallet={wallet} onReset={onReset} onSaved={onSaved} />;
   }
 
   return (
@@ -184,6 +191,13 @@ export function RegisterPanel({
 
       <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
 
+      <SealedChoice
+        on={state.sealed.on}
+        onChange={onSealed}
+        bits={sketchOf(state.prepared?.passport.blockhash256)}
+        disabled={busy}
+      />
+
       <button
         type="button"
         onClick={onRegister}
@@ -192,6 +206,16 @@ export function RegisterPanel({
       >
         {t("register.submit")}
       </button>
+
+      {state.sealed.file === null ? null : (
+        <SealedFileCard
+          file={state.sealed.file}
+          bits={sketchOf(state.prepared?.passport.blockhash256)}
+          title={state.title}
+          saved={state.sealed.saved}
+          onSaved={onSaved}
+        />
+      )}
 
       <ol className="mt-9 space-y-px border-t border-line pt-1">
         {STEPS.map((step, index) => (
@@ -284,11 +308,24 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
   );
 }
 
-function Registered({ state, wallet, onReset }: { state: RegisterState; wallet?: Hex; onReset: () => void }) {
+function Registered({
+  state,
+  wallet,
+  onReset,
+  onSaved,
+}: {
+  state: RegisterState;
+  wallet?: Hex;
+  onReset: () => void;
+  onSaved: () => void;
+}) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const format = useFormatter();
   const id = passportId(state);
+  const prepared = state.prepared;
+  // The answer decides, not the switch: what was registered is what came back.
+  const sealed = prepared !== null && prepared.sealed === true;
   // A statement is out from the same wallet. Starting a new picture under it
   // would take the screen away from a write Monad has not shown yet.
   const stating = isStating(state);
@@ -300,11 +337,20 @@ function Registered({ state, wallet, onReset }: { state: RegisterState; wallet?:
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       className="grain relative overflow-hidden border border-line bg-bg-raised"
     >
-      {state.prepared === null ? null : (
+      {sealed ? (
+        <SealedDoneBand
+          file={state.sealed.file}
+          bits={sketchOf(prepared?.passport.blockhash256)}
+          title={state.title}
+          registeredAt={state.registeredAt}
+          saved={state.sealed.saved}
+          onSaved={onSaved}
+        />
+      ) : prepared === null || prepared.sealed === true ? null : (
         <div className="relative">
           {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
           <img
-            src={state.prepared.image.gatewayUrl}
+            src={prepared.image.gatewayUrl}
             alt=""
             className="max-h-[24rem] w-full object-cover"
           />
@@ -367,9 +413,9 @@ function Registered({ state, wallet, onReset }: { state: RegisterState; wallet?:
               {t("register.openAddress", { wallet: shortHex(wallet) })}
             </a>
           )}
-          {state.prepared === null ? null : (
+          {prepared === null || prepared.sealed === true ? null : (
             <a
-              href={gatewayUrl(state.prepared.image.uri)}
+              href={gatewayUrl(prepared.image.uri)}
               target="_blank"
               rel="noreferrer"
               className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"

@@ -6,6 +6,8 @@ import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { plainStatement } from "@/lib/chain/consent";
 import { feeInMon } from "@/lib/chain/fee";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import type { SealedHandback } from "@/lib/sealed/handback";
+import { useSealedSave } from "@/lib/sealed/save";
 import type { Studio } from "@/lib/studio/useStudio";
 
 interface Mark {
@@ -33,7 +35,11 @@ export function Receipt({ studio }: { studio: Studio }) {
   const words = useTranslations("passport.consent");
   const format = useFormatter();
   const reduced = useIsReducedMotion();
-  const marks = collect(studio, t, words, format);
+  const file = studio.register.sealed.file;
+  // Reached through the studio rather than taken off it, the way the statement's
+  // own button is: a screen that has not mounted the hook yet has no actions.
+  const save = useSealedSave(file, () => studio.actions.saveSealed());
+  const marks = collect(studio, t, words, format, file, save);
 
   return (
     <aside className="relative lg:ps-12">
@@ -130,7 +136,15 @@ type Translate = (key: string, values?: Record<string, string | number>) => stri
 type Words = Translate & { has: (key: string) => boolean };
 type Format = ReturnType<typeof useFormatter>;
 
-function collect(studio: Studio, t: Translate, words: Words, format: Format): Mark[] {
+function collect(
+  studio: Studio,
+  t: Translate,
+  words: Words,
+  format: Format,
+  /** The one copy of a sealed picture, while this browser still holds it, and the control that writes it. */
+  file: SealedHandback | null,
+  save: () => void,
+): Mark[] {
   const marks: Mark[] = [];
 
   if (studio.authenticated) {
@@ -165,23 +179,48 @@ function collect(studio: Studio, t: Translate, words: Words, format: Format): Ma
 
   const prepared = studio.register.prepared;
   if (prepared !== null) {
-    marks.push({
-      key: "fingerprint",
-      label: t("receipt.fingerprint"),
-      value: prepared.passport.exactHash,
-      detail: t("receipt.fingerprintDetail", {
-        width: prepared.image.width,
-        height: prepared.image.height,
-        manifest: prepared.manifest.embedded ? t("receipt.manifestYes") : t("receipt.manifestNo"),
-      }),
-    });
-    marks.push({
-      key: "pinned",
-      label: t("receipt.pinned"),
-      value: prepared.image.cid,
-      href: gatewayUrl(prepared.image.uri),
-      detail: t("receipt.pinnedDetail"),
-    });
+    const manifest = prepared.manifest.embedded ? t("receipt.manifestYes") : t("receipt.manifestNo");
+
+    if (prepared.sealed === true) {
+      // No pixels were measured here to quote: the fingerprint was taken from
+      // the file this browser is holding, which is the whole point.
+      marks.push({
+        key: "fingerprint",
+        label: t("receipt.fingerprint"),
+        value: prepared.passport.exactHash,
+        detail: t("sealed.receipt.fingerprintDetail", { manifest }),
+      });
+      // Where the public record went, and the one control that matters on this
+      // screen: the file itself, again, for as long as the page is open.
+      marks.push({
+        key: "sealed",
+        label: t("sealed.receipt.label"),
+        value: prepared.metadata.cid,
+        href: gatewayUrl(prepared.metadata.uri),
+        detail: t("sealed.receipt.detail"),
+        lines: file === null ? undefined : [t("sealed.handback.only")],
+        action: file === null ? undefined : { label: t("sealed.handback.save"), onClick: save },
+        tone: "verified",
+      });
+    } else {
+      marks.push({
+        key: "fingerprint",
+        label: t("receipt.fingerprint"),
+        value: prepared.passport.exactHash,
+        detail: t("receipt.fingerprintDetail", {
+          width: prepared.image.width,
+          height: prepared.image.height,
+          manifest,
+        }),
+      });
+      marks.push({
+        key: "pinned",
+        label: t("receipt.pinned"),
+        value: prepared.image.cid,
+        href: gatewayUrl(prepared.image.uri),
+        detail: t("receipt.pinnedDetail"),
+      });
+    }
   }
 
   if (studio.register.digest !== null) {
