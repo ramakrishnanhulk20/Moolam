@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
+import ta from "@/messages/ta.json";
 import { DoneActions } from "@/components/studio/DoneActions";
 import { RegisterPanel } from "@/components/studio/RegisterPanel";
 import { GeneratePanel } from "@/components/studio/GeneratePanel";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/studio/flow";
 import type { SealedHandback } from "@/lib/sealed/handback";
 import type { GenerateResponse, PrepareResponse } from "@/lib/verifier/client";
+import { STUDIO_KEYS, countsBySaying } from "./studio-keys.mjs";
 
 /**
  * The studio as one box: a press folds the form into a band, the run grows under
@@ -33,7 +35,7 @@ vi.mock("@/lib/i18n/routing", () => ({
     createElement("a", { href: props.href }, props.children as never),
 }));
 
-function render(node: ReactElement): string {
+function render(node: ReactElement, locale: "en" | "ta" = "en"): string {
   const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
     locale: string;
     messages: unknown;
@@ -41,7 +43,7 @@ function render(node: ReactElement): string {
   }>;
 
   return renderToStaticMarkup(
-    createElement(Provider, { locale: "en", messages: en, timeZone: "Asia/Kolkata" }, node),
+    createElement(Provider, { locale, messages: locale === "en" ? en : ta, timeZone: "Asia/Kolkata" }, node),
   );
 }
 
@@ -318,6 +320,33 @@ describe("the band, at every state the flow can hold", () => {
     ]);
     expect(render(createElement(RegisterPanel, { state: unsponsored, ...uploadHandlers }))).toContain(
       en.studio.actions.unsponsored,
+    );
+  });
+});
+
+describe("the chip on the band", () => {
+  it("says both of its faces in ten languages", () => {
+    for (const { path, count } of countsBySaying()) {
+      expect(count, path).toBe(10);
+    }
+    expect(STUDIO_KEYS).toContain("studio.sealed.plate.public");
+  });
+
+  it("reads the word rather than carrying an English one, in English and in Tamil", () => {
+    const kept = walk(upload(STARTED), [{ type: "sealed", on: true }]);
+    expect(render(createElement(RegisterPanel, { state: kept, ...uploadHandlers }))).toContain(
+      en.studio.sealed.plate.sealed,
+    );
+    expect(render(createElement(RegisterPanel, { state: kept, ...uploadHandlers }), "ta")).toContain(
+      ta.studio.sealed.plate.sealed,
+    );
+
+    const open = upload(STARTED);
+    expect(render(createElement(RegisterPanel, { state: open, ...uploadHandlers }))).toContain(
+      en.studio.sealed.plate.public,
+    );
+    expect(render(createElement(RegisterPanel, { state: open, ...uploadHandlers }), "ta")).toContain(
+      ta.studio.sealed.plate.public,
     );
   });
 });

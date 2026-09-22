@@ -1295,6 +1295,7 @@
       },
       "plate": {
         "sealed": "已封存",
+        "public": "公开",
         "untitled": "无标题",
         "line": "图片没有公开。唯一的副本在你手里。",
         "registered": "{date} 登记。图片没有公开。"

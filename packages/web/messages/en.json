@@ -1293,6 +1293,7 @@
       },
       "plate": {
         "sealed": "Sealed",
+        "public": "Public",
         "untitled": "Untitled",
         "line": "The picture is not published. You hold the only copy.",
         "registered": "Registered {date}. The picture is not published."

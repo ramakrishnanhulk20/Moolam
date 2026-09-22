@@ -1294,6 +1294,7 @@
       },
       "plate": {
         "sealed": "Lacrado",
+        "public": "Público",
         "untitled": "Sem título",
         "line": "A imagem não está publicada. Você tem a única cópia.",
         "registered": "Registrado em {date}. A imagem não está publicada."

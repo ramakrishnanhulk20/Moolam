@@ -9,7 +9,6 @@ import {
   type RegisterState,
   type Step,
 } from "@/lib/studio/flow";
-import { PUBLIC_WORD } from "./words";
 
 /**
  * The one line the form folds into, pinned to the top of the box.
@@ -63,7 +62,7 @@ export function StatusBand({ state }: { state: RegisterState }) {
         </p>
 
         <span className="hidden shrink-0 border border-line px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted sm:inline">
-          {sealed ? t("sealed.plate.sealed") : PUBLIC_WORD}
+          {t(sealed ? "sealed.plate.sealed" : "sealed.plate.public")}
         </span>
 
         <span

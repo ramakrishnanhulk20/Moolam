@@ -1293,6 +1293,7 @@
       },
       "plate": {
         "sealed": "Versiegelt",
+        "public": "Öffentlich",
         "untitled": "Ohne Titel",
         "line": "Das Bild ist nicht veröffentlicht. Du hältst die einzige Kopie.",
         "registered": "Eingetragen am {date}. Das Bild ist nicht veröffentlicht."
