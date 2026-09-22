@@ -108,5 +108,5 @@ Moolam is not directed at children. Who may hold an account is decided by Privy'
 
 ## Who runs this
 
-Moolam is one person's project entered in a hackathon, not a company. Ram builds it and runs it, and
+Moolam is one person's project entered in a hackathon, not a company. Ramakrishnan builds it and runs it, and
 questions about this page go to ramakrishnanhulk20@gmail.com.

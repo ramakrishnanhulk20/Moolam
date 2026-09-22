@@ -98,5 +98,5 @@ account of what this software does and what it does not do. Whoever runs Moolam 
 
 ## Who runs this
 
-Moolam is one person's project entered in a hackathon, not a company. Ram builds it and runs it, and
+Moolam is one person's project entered in a hackathon, not a company. Ramakrishnan builds it and runs it, and
 questions about these terms go to ramakrishnanhulk20@gmail.com.

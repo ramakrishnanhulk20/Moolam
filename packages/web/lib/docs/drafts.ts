@@ -34,3 +34,15 @@ export function labPagesOn(): boolean {
 export function draftsVisible(): boolean {
   return labPagesOn();
 }
+
+/**
+ * The one rule readNav applies to a page: held back once it is marked draft,
+ * unless the caller may see drafts. readNav keeps its own copy of this check
+ * inline for both a page and a section's pages; this copy exists so the rule
+ * stays under a test that marks its own page draft, for a day nav.json names
+ * none. Defaults to the real flag so a check against one page reads the same
+ * switch readNav does.
+ */
+export function isReleased(page: { draft?: boolean }, showDrafts: boolean = draftsVisible()): boolean {
+  return showDrafts || page.draft !== true;
+}

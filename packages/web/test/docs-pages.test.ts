@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { isReleased } from "@/lib/docs/drafts";
 import { resolveDocsFile } from "@/lib/docs/files";
 import { resolveLink } from "@/lib/docs/links";
 import { isDraft, navPages, neighbours, readNav, sectionOf } from "@/lib/docs/nav";
@@ -40,8 +41,8 @@ describe("the pages the app can read", () => {
     expect(allSlugs().sort()).toEqual(written.map((page) => page.slug).sort());
   });
 
-  it("has all 39 markdown files accounted for: 36 released pages, 2 drafts and the note beside the attack transcripts", () => {
-    expect(pages).toHaveLength(36);
+  it("has all 39 markdown files accounted for: 38 released pages and the note beside the attack transcripts", () => {
+    expect(pages).toHaveLength(38);
     expect(written).toHaveLength(38);
     expect(existsSync(path.join(repoRoot, "docs", "security", "attacks", "README.md"))).toBe(true);
   });
@@ -59,7 +60,7 @@ describe("the pages the app can read", () => {
     expect(sectionOf("concepts/why-monad")).toBe("Concepts");
     expect(sectionOf("intro")).toBeNull();
     expect(sectionOf("faq")).toBeNull();
-    expect(readNav().filter((entry) => entry.type === "section")).toHaveLength(6);
+    expect(readNav().filter((entry) => entry.type === "section")).toHaveLength(7);
   });
 
   it("walks the whole tree with previous and next", () => {
@@ -80,33 +81,33 @@ describe("the pages the app can read", () => {
   });
 });
 
-describe("the two pages Ram has not released yet", () => {
-  it("names exactly the legal pages as drafts", () => {
-    expect(written.filter((page) => page.draft === true).map((page) => page.slug)).toEqual(DRAFTS);
+describe("drafts, now that nothing is held back", () => {
+  it("names no page as a draft, now that the legal pages are released", () => {
+    expect(written.filter((page) => page.draft === true)).toEqual([]);
+    expect(pages).toEqual(written);
     for (const slug of DRAFTS) {
-      expect(isDraft(slug), slug).toBe(true);
+      expect(isDraft(slug), slug).toBe(false);
     }
     expect(isDraft("faq")).toBe(false);
   });
 
-  it("keeps them out of the tree, and their section with them, everywhere but the bench", () => {
-    expect(pages.map((page) => page.slug)).not.toContain("legal/privacy");
-    expect(readNav().some((entry) => entry.type === "section" && entry.title === "Legal")).toBe(false);
-    expect(pages[pages.length - 1].slug).toBe("faq");
-  });
-
-  it("shows them, in their own section, where the lab flag is on", () => {
-    withLabPages(() => {
-      expect(navPages().map((page) => page.slug)).toEqual(written.map((page) => page.slug));
-      expect(readNav().some((entry) => entry.type === "section" && entry.title === "Legal")).toBe(true);
-      expect(readNav().filter((entry) => entry.type === "section")).toHaveLength(7);
-      expect(neighbours("faq").next?.slug).toBe("legal/privacy");
-      expect(neighbours("legal/privacy").next?.slug).toBe("legal/terms");
-    });
-  });
-
-  it("still says which section a draft belongs to, for the page's own masthead", () => {
+  it("puts the legal pages in the tree, in their own section, for everyone", () => {
+    expect(pages.map((page) => page.slug)).toContain("legal/privacy");
+    expect(pages.map((page) => page.slug)).toContain("legal/terms");
+    expect(readNav().some((entry) => entry.type === "section" && entry.title === "Legal")).toBe(true);
+    expect(neighbours("faq").next?.slug).toBe("legal/privacy");
+    expect(neighbours("legal/privacy").next?.slug).toBe("legal/terms");
     expect(sectionOf("legal/privacy")).toBe("Legal");
+  });
+
+  it("would still hold a page back if a fixture nav marked it draft, until drafts are shown", () => {
+    const unreleased = { slug: "example/unreleased", title: "Unreleased", draft: true };
+    const released = { slug: "example/released", title: "Released" };
+    expect(isReleased(unreleased, false)).toBe(false);
+    expect(isReleased(released, false)).toBe(true);
+    withLabPages(() => {
+      expect(isReleased(unreleased)).toBe(true);
+    });
   });
 });
 

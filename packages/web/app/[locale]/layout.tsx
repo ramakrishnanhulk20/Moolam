@@ -244,23 +244,20 @@ export default async function LocaleLayout({
                       {f("source")}
                     </a>
                     {/* The two pages that say what this site stores and what it
-                        promises. They follow the same rule as the documents
-                        themselves: a draft is reachable only where the lab flag
-                        is on, so until Ram releases them these links are not on
-                        the page either. */}
-                    {labPagesOn() ? (
-                      <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                        <Link
-                          href="/docs/legal/privacy"
-                          className="transition-colors duration-200 hover:text-accent"
-                        >
-                          {f("privacy")}
-                        </Link>
-                        <Link href="/docs/legal/terms" className="transition-colors duration-200 hover:text-accent">
-                          {f("terms")}
-                        </Link>
-                      </span>
-                    ) : null}
+                        promises. Released on 22 September 2026; a page that is
+                        still a draft is held back by its flag in docs/nav.json,
+                        never by this footer. */}
+                    <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <Link
+                        href="/docs/legal/privacy"
+                        className="transition-colors duration-200 hover:text-accent"
+                      >
+                        {f("privacy")}
+                      </Link>
+                      <Link href="/docs/legal/terms" className="transition-colors duration-200 hover:text-accent">
+                        {f("terms")}
+                      </Link>
+                    </span>
 
                     {/* The three services, read while the page is rendered. The boundary
                         keeps a slow service off the critical path: the rest of the footer

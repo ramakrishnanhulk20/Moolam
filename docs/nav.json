@@ -201,13 +201,11 @@
       "pages": [
         {
           "slug": "legal/privacy",
-          "title": "Privacy",
-          "draft": true
+          "title": "Privacy"
         },
         {
           "slug": "legal/terms",
-          "title": "Terms",
-          "draft": true
+          "title": "Terms"
         }
       ]
     }
