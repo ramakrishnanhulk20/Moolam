@@ -44,6 +44,10 @@
           "title": "Why Monad"
         },
         {
+          "slug": "concepts/business-model",
+          "title": "Business model"
+        },
+        {
           "slug": "concepts/trust-model",
           "title": "Trust model"
         },

@@ -41,9 +41,9 @@ describe("the pages the app can read", () => {
     expect(allSlugs().sort()).toEqual(written.map((page) => page.slug).sort());
   });
 
-  it("has all 39 markdown files accounted for: 38 released pages and the note beside the attack transcripts", () => {
-    expect(pages).toHaveLength(38);
-    expect(written).toHaveLength(38);
+  it("has all 40 markdown files accounted for: 39 released pages and the note beside the attack transcripts", () => {
+    expect(pages).toHaveLength(39);
+    expect(written).toHaveLength(39);
     expect(existsSync(path.join(repoRoot, "docs", "security", "attacks", "README.md"))).toBe(true);
   });
 

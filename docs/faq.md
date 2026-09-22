@@ -109,6 +109,17 @@ the button: "Moolam pays the network fee. It cannot pay the bond: that is your o
 your account the moment this lands." A paid verification over x402 is the other one, at 5 cents in
 USDC and no gas, because the facilitator pays the settlement itself.
 
+## How would Moolam make money
+
+Nothing in the app charges today. Registering, generating and editing are sponsored, inside daily
+limits the whole app shares, and every re-check today is run by Moolam itself. That is the cost of
+proving the product works, not the business.
+
+The plan for after: a paid Creator Pro tier, a per-call price for machines over the x402 route
+already built into the verify service, agents paying for their own passports once sponsorship ends,
+and service deals for newsrooms and agencies. None of it is built yet.
+[Business model](concepts/business-model) has the numbers behind it.
+
 ## What draws the picture when the agent makes one
 
 An image model, `gpt-image-1-mini` by default, at 1024 by 1024 and medium quality, which is about a
