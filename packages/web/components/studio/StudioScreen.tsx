@@ -2,8 +2,9 @@
 
 import { MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { isPrivyConfigured } from "@/lib/env";
+import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { useHeadingLeading } from "./leading";
@@ -19,6 +20,7 @@ import { RecoverCard } from "./RecoverCard";
 import { RegisterPanel } from "./RegisterPanel";
 import { SignedOut } from "./SignedOut";
 import { WaitLabel } from "./WaitLabel";
+import { hasStarted, useStickyTop, useStudioPress } from "./press";
 import { YourPassports } from "./YourPassports";
 
 /** A control that cannot do anything yet, on the page that is waiting for the wallet. */
@@ -93,13 +95,10 @@ function Waiting() {
   return (
     <MotionConfig reducedMotion="user">
       <Shell>
-        <div className="mt-14 grid gap-14 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-0">
-          <div className="lg:pe-14">
-            <StudioWaiting />
-          </div>
-
+        <Box>
+          <StudioWaiting />
           <Receipt studio={WAITING} />
-        </div>
+        </Box>
       </Shell>
     </MotionConfig>
   );
@@ -132,6 +131,15 @@ function Studio({ initialMode }: { initialMode: Mode }) {
   const t = useTranslations("studio");
   const studio = useStudio(initialMode);
   const [rebinding, setRebinding] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const reduced = useIsReducedMotion();
+  const top = useStickyTop(box);
+
+  // The press is answered on the button, then the form folds into the band and
+  // the page brings the box's top under the bar, so the whole run is in view
+  // without a scroll. The same move runs in reverse for Make another.
+  const folded = hasStarted(studio.register);
+  const { pressing, press } = useStudioPress(box, folded, reduced);
 
   // The only copy of a sealed picture lives in this tab until it is saved.
   useUnsavedFileWarning(holdsUnsavedFile(studio.register));
@@ -158,8 +166,8 @@ function Studio({ initialMode }: { initialMode: Mode }) {
           />
         ) : null}
 
-        <div className="mt-14 grid gap-14 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)] lg:gap-0">
-          <div className="lg:pe-14">
+        <Box hold={box} top={top}>
+          <>
             {!studio.ready ? (
               <StudioWaiting />
             ) : !studio.authenticated ? (
@@ -199,24 +207,28 @@ function Studio({ initialMode }: { initialMode: Mode }) {
               />
             ) : (
               <>
-                <PathChoice
-                  mode={studio.register.mode}
-                  busy={isBusy(studio.register)}
-                  onMode={studio.actions.setMode}
-                />
+                {folded ? null : (
+                  <PathChoice
+                    mode={studio.register.mode}
+                    busy={isBusy(studio.register)}
+                    onMode={studio.actions.setMode}
+                  />
+                )}
 
-                <div className="mt-6">
+                <div className={folded ? "" : "mt-6"}>
                   {studio.register.mode === "generate" ? (
                     <GeneratePanel
                       state={studio.register}
                       wallet={studio.wallet}
+                      receipt={<Receipt studio={studio} />}
+                      pressing={pressing}
                       onPrompt={studio.actions.setPrompt}
                       onTitle={studio.actions.setTitle}
                       onConsent={studio.actions.setConsent}
                       onSealed={studio.actions.setSealed}
                       onIncludePrompt={studio.actions.setIncludePrompt}
                       onSaved={studio.actions.saveSealed}
-                      onGenerate={studio.actions.generateImage}
+                      onGenerate={() => press(() => void studio.actions.generateImage())}
                       onReset={studio.actions.reset}
                       onUnsponsored={() => void studio.actions.resend(true)}
                       onBind={toBind}
@@ -226,12 +238,14 @@ function Studio({ initialMode }: { initialMode: Mode }) {
                     <RegisterPanel
                       state={studio.register}
                       wallet={studio.wallet}
+                      receipt={<Receipt studio={studio} />}
+                      pressing={pressing}
                       onChoose={studio.actions.choose}
                       onTitle={studio.actions.setTitle}
                       onConsent={studio.actions.setConsent}
                       onSealed={studio.actions.setSealed}
                       onSaved={studio.actions.saveSealed}
-                      onRegister={studio.actions.registerImage}
+                      onRegister={() => press(() => void studio.actions.registerImage())}
                       onReset={studio.actions.reset}
                       onUnsponsored={() => void studio.actions.resend(true)}
                       onBind={toBind}
@@ -248,14 +262,63 @@ function Studio({ initialMode }: { initialMode: Mode }) {
                 {t("register.balance", { mon: (Number(studio.balance) / 1e18).toFixed(4) })}
               </p>
             ) : null}
-          </div>
+          </>
 
-          <Receipt studio={studio} />
-        </div>
+          {/* The stub belongs to the panel when there is one, so it lands under
+              the run rather than under the card above it. Every other state of
+              this screen still gets it, in the same column, under its card. */}
+          {onPanel(studio, bindRoute) ? null : <Receipt studio={studio} />}
+        </Box>
 
         {studio.authenticated && studio.wallet !== undefined ? <YourPassports passports={studio.passports} /> : null}
       </Shell>
     </MotionConfig>
+  );
+}
+
+/** True when the register or generate panel is the card on screen, and holds the stub itself. */
+function onPanel(studio: StudioState, bindRoute: boolean): boolean {
+  return (
+    studio.ready &&
+    studio.authenticated &&
+    !studio.walletMissing &&
+    studio.binding.status === "bound" &&
+    !bindRoute
+  );
+}
+
+/**
+ * The one box the whole studio lives in.
+ *
+ * The panel and the stub used to be two columns at lg, which put the answer to a
+ * press below the fold of a laptop screen and beside it on a phone. They are one
+ * column at every width now, off centre under the title rather than stretched
+ * across the page, so the press, the run and the receipt read downwards as one
+ * thing.
+ *
+ * Scroll anchoring is off inside it: a press folds a long form away, and the
+ * browser answers that by putting the scroll back where the folded content used
+ * to hold it, which undoes the one scroll that brings the run into view. Proved
+ * on the bench in WO-124b.
+ */
+function Box({
+  children,
+  hold,
+  top,
+}: {
+  children: ReactNode;
+  hold?: React.RefObject<HTMLDivElement | null>;
+  top?: number | null;
+}) {
+  return (
+    <div
+      ref={hold}
+      data-studio-box
+      className="mt-14 w-full max-w-[48rem] [overflow-anchor:none]"
+      style={top === null || top === undefined ? undefined : ({ "--studio-top": `${top}px` } as CSSProperties)}
+    >
+      {children}
+    </div>
   );
 }
 

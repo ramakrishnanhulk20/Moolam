@@ -380,7 +380,7 @@ describe("the register panel", () => {
     expect(markup).toContain("Paid by Moolam through Privy");
   });
 
-  it("keeps the register button shut while a send is out, and offers the recheck instead", () => {
+  it("takes the register button off the screen while a send is out, and offers the recheck instead", () => {
     const wallet = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as const;
     const state = {
       ...initialRegisterState,
@@ -392,7 +392,10 @@ describe("the register panel", () => {
     } as RegisterState;
 
     const markup = render("en", createElement(RegisterPanel, { state, wallet, ...handlers, onRecheck: NOOP }));
-    expect(tagBefore(markup, "Register this image")).toContain('disabled=""');
+    // The form is folded into the band by now, so there is no button to press
+    // rather than a button that says no.
+    expect(markup).not.toContain("Register this image");
+    expect(markup).toContain("Sent, and Monad has not shown it yet");
     expect(markup).toContain("Ask Monad again");
     expect(markup).not.toContain("pay the fee myself");
   });

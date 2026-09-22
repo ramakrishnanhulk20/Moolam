@@ -2,15 +2,14 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import type { Hex } from "viem";
-import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
+import { shortHex } from "@/lib/chain/client";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
-import { Link } from "@/lib/i18n/routing";
 import {
   GENERATE_STEPS,
   isBusy,
   isRegistered,
-  isStating,
   passportId,
   type RegisterState,
   type Step,
@@ -19,8 +18,11 @@ import {
 import { EXAMPLE_PROMPTS, PROMPT_MAX, PROMPT_MIN, atLimit } from "@/lib/studio/generate";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
+import { DoneActions } from "./DoneActions";
 import { FailureNote } from "./FailureNote";
 import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
+import { StatusBand } from "./StatusBand";
+import { hasStarted } from "./press";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -34,6 +36,8 @@ import { useHeadingLeading } from "./leading";
 export function GeneratePanel({
   state,
   wallet,
+  receipt,
+  pressing = false,
   onPrompt,
   onTitle,
   onConsent,
@@ -49,6 +53,10 @@ export function GeneratePanel({
   state: RegisterState;
   /** Only for the fallback link, when a sponsored send landed without handing back a hash. */
   wallet?: Hex;
+  /** The stub, which is part of this one box and sits under whatever face is showing. */
+  receipt?: ReactNode;
+  /** True from the moment the button is pressed until the run has actually started. */
+  pressing?: boolean;
   onPrompt: (prompt: string) => void;
   onTitle: (title: string) => void;
   onConsent: (draft: ConsentDraft) => void;
@@ -71,11 +79,34 @@ export function GeneratePanel({
   const spent = atLimit(state.quota);
   const characters = state.prompt.trim().length;
 
-  if (done) {
-    return <Generated state={state} wallet={wallet} onReset={onReset} onSaved={onSaved} />;
+  const folded = hasStarted(state);
+
+  if (done || folded) {
+    return (
+      <div data-studio-panel="generate" data-face={done ? "receipt" : "run"}>
+        <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
+          <StatusBand state={state} />
+        </div>
+        {done ? (
+          <Generated state={state} onSaved={onSaved} />
+        ) : (
+          <Run
+            state={state}
+            onGenerate={onGenerate}
+            onBind={onBind}
+            onUnsponsored={onUnsponsored}
+            onRecheck={onRecheck}
+            onSaved={onSaved}
+          />
+        )}
+        {receipt}
+        {done ? <DoneActions state={state} wallet={wallet} onReset={onReset} /> : null}
+      </div>
+    );
   }
 
   return (
+    <div data-studio-panel="generate" data-face="form">
     <motion.section
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -162,30 +193,30 @@ export function GeneratePanel({
         disabled={busy}
       />
 
+      {/* The press is answered here before anything else moves: the label turns
+          into the first line of the run and the button goes quiet. The room for
+          two lines is held from the start, because a button that grows under the
+          thumb moves the whole page with it. */}
       <div className="mt-8 flex flex-wrap items-center gap-5">
         <button
           type="button"
           onClick={onGenerate}
-          disabled={busy || spent || characters < PROMPT_MIN || draftProblem(state.consent) !== null}
-          className="w-full rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
+          disabled={pressing || busy || spent || characters < PROMPT_MIN || draftProblem(state.consent) !== null}
+          data-press
+          className={`flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
+            pressing ? "normal-case" : "uppercase tracking-[0.14em]"
+          }`}
         >
-          {t("submit")}
+          {pressing ? t("steps.draw.running") : t("submit")}
         </button>
         <Quota state={state} />
       </div>
 
-      {state.sealed.file === null ? null : (
-        <SealedFileCard
-          file={state.sealed.file}
-          bits={sketchOf(state.generated?.passport.blockhash256)}
-          title={state.title}
-          saved={state.sealed.saved}
-          onSaved={onSaved}
-        />
-      )}
-
       <Signatures state={state} />
 
+      {/* What the press is about to do, in the same five lines the run itself
+          uses. A creator should be able to read the whole of it before they
+          start, which is the one thing a folded run cannot show them. */}
       <ol className="mt-9 space-y-px border-t border-line pt-1">
         {GENERATE_STEPS.map((step, index) => (
           <StepRow key={step} step={step} index={index} state={state} />
@@ -205,6 +236,80 @@ export function GeneratePanel({
           />
         </div>
       )}
+    </motion.section>
+    {receipt}
+    </div>
+  );
+}
+
+/**
+ * What the box holds while the agent is at work: the plate the picture lands on,
+ * the two seals, the five steps, the one copy of a sealed drawing, and whatever
+ * went wrong.
+ *
+ * The plate and the seals stay through the run because they are the answer
+ * arriving: a minute of five step labels and nothing else is the wait this
+ * screen was built to make readable.
+ */
+function Run({
+  state,
+  onGenerate,
+  onBind,
+  onUnsponsored,
+  onRecheck,
+  onSaved,
+}: {
+  state: RegisterState;
+  onGenerate: () => void;
+  onBind: () => void;
+  onUnsponsored: () => void;
+  onRecheck?: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+      className="border border-line bg-bg-raised p-6 sm:p-9"
+    >
+      <Plate state={state} />
+
+      <ol className="mt-8 space-y-px">
+        {GENERATE_STEPS.map((step, index) => (
+          <StepRow key={step} step={step} index={index} state={state} />
+        ))}
+      </ol>
+
+      {state.sealed.file === null ? null : (
+        <SealedFileCard
+          file={state.sealed.file}
+          bits={sketchOf(state.generated?.passport.blockhash256)}
+          title={state.title}
+          saved={state.sealed.saved}
+          onSaved={onSaved}
+        />
+      )}
+
+      <Signatures state={state} />
+
+      {state.failure === null ? null : (
+        <div className="mt-7">
+          <FailureNote
+            failure={state.failure}
+            passportId={passportId(state)}
+            onAgain={onGenerate}
+            onGenerateAgain={onGenerate}
+            onBind={onBind}
+            onUnsponsored={onUnsponsored}
+            onRecheck={onRecheck}
+          />
+        </div>
+      )}
+
+      <div className="mt-7">
+        <Quota state={state} />
+      </div>
     </motion.section>
   );
 }
@@ -491,17 +596,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
 }
 
 /** The same stub the upload path ends on, with the agent named on it. */
-function Generated({
-  state,
-  wallet,
-  onReset,
-  onSaved,
-}: {
-  state: RegisterState;
-  wallet?: Hex;
-  onReset: () => void;
-  onSaved: () => void;
-}) {
+function Generated({ state, onSaved }: { state: RegisterState; onSaved: () => void }) {
   const t = useTranslations("studio.generate");
   const shared = useTranslations("studio");
   const kinds = useTranslations("kind");
@@ -509,8 +604,6 @@ function Generated({
   const format = useFormatter();
   const id = passportId(state);
   const generated = state.generated;
-  // A statement is out from the same wallet, so nothing here starts a new run.
-  const stating = isStating(state);
 
   return (
     <motion.section
@@ -557,62 +650,6 @@ function Generated({
           )}
           <Row label={shared("register.passportId")} value={id ?? ""} mono />
         </dl>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {id === null ? null : (
-            <Link
-              href={`/passport/${id}`}
-              className="rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              {shared("register.openPassport")}
-            </Link>
-          )}
-          {generated === null ? null : (
-            <Link
-              href={`/agent/${generated.agent.id}`}
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {t("openAgent")}
-            </Link>
-          )}
-          {state.txHash !== null ? (
-            <a
-              href={`${MONAD_EXPLORER}/tx/${state.txHash}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {shared("register.openTx", { hash: shortHex(state.txHash) })}
-            </a>
-          ) : wallet === undefined ? null : (
-            <a
-              href={`${MONAD_EXPLORER}/address/${wallet}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {shared("register.openAddress", { wallet: shortHex(wallet) })}
-            </a>
-          )}
-          {generated === null || generated.sealed === true ? null : (
-            <a
-              href={gatewayUrl(generated.image.uri)}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {shared("register.openImage")}
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={stating}
-            className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
-          >
-            {t("another")}
-          </button>
-        </div>
 
         <p className="mt-6 font-mono text-[11px] text-text-faint">
           {state.registeredAt === null

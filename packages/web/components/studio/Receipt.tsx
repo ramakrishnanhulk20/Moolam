@@ -44,18 +44,17 @@ export function Receipt({ studio }: { studio: Studio }) {
   const marks = collect(studio, t, words, format, file, save);
 
   return (
-    <aside className="relative lg:ps-12">
+    /* The stub is part of the one box now, so its tear is a horizontal line
+       across the top of it with a notch punched at each end, rather than the
+       vertical rule it used to hang off beside a second column. */
+    <aside data-studio-receipt className="relative mt-10 border-t border-dashed border-line-strong pt-10">
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-y-0 start-0 hidden border-s border-dashed border-line-strong lg:block"
+        className="pointer-events-none absolute -top-3 -start-3 h-6 w-6 rounded-full border border-line bg-bg"
       />
       <span
         aria-hidden
-        className="pointer-events-none absolute -top-3 -start-3 hidden h-6 w-6 rounded-full border border-line bg-bg lg:block"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-3 -start-3 hidden h-6 w-6 rounded-full border border-line bg-bg lg:block"
+        className="pointer-events-none absolute -top-3 -end-3 h-6 w-6 rounded-full border border-line bg-bg"
       />
 
       <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">{t("receipt.heading")}</p>

@@ -169,6 +169,7 @@ describe("the file handed back before the unlock", () => {
       createElement(RegisterPanel, {
         state: sealedState({
           prepared: SEALED_PREPARED,
+          steps: { ...initialRegisterState.steps, prepare: "done", sign: "running" },
           sealed: { on: true, includePrompt: false, file: HELD, saved: false },
         }),
         ...uploadHandlers,
@@ -193,6 +194,7 @@ describe("the file handed back before the unlock", () => {
       createElement(RegisterPanel, {
         state: sealedState({
           prepared: SEALED_PREPARED,
+          steps: { ...initialRegisterState.steps, prepare: "done", sign: "running" },
           sealed: { on: true, includePrompt: false, file: HELD, saved: true },
         }),
         ...uploadHandlers,

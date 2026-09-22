@@ -58,6 +58,21 @@ changes with the one you pick.
 
 Both end in one transaction and one record. The difference is how many names are on it.
 
+## One box, start to finish
+
+Whichever way you pick, the studio is one box and everything happens inside it. The form fills it
+while you are getting ready. The moment you press, the form folds away into a slim band pinned to
+the top of the box, carrying the title you typed, the file or the model, whether this one is being
+published or kept sealed, and the studio's own word for the step it is on. The progress rows grow
+under the band, the stub of stamps grows under those, and the way to the passport is at the end.
+
+The press is answered before anything moves: the button takes the first line of the run as its own
+label and goes quiet under your thumb, then the box's top comes up under the bar at the top of the
+page so the whole run is in front of you without a scroll. That holds on a phone and on a laptop.
+When you press "Register another image" the form unfolds again, clean, in the same place. It is the
+one thing the box will not do while a sealed picture is still only in this browser: the button stays
+shut and says "This is the only copy that can unseal this passport." until you have saved the file.
+
 ## Registering an image you already have
 
 Drop a picture on "Drop an image here" or press "Choose a file". JPEG, PNG or WebP, up to 20 MB.
@@ -90,9 +105,9 @@ device".
 record the passport" while the studio polls the registry once a second for up to 90 seconds. It
 finishes as "Written to Monad".
 
-The card then turns into "This image now has a passport" with the passport id, the block, the time,
-who paid the fee, and four links: the passport page, the transaction, the pinned image and
-"Register another image".
+The box then turns into "This image now has a passport" with the passport id, the block, the time
+and who paid the fee, the stub of stamps under it, and at the end four ways on: the passport page,
+the transaction, the pinned image and "Register another image".
 
 If you said something about AI use, a fourth step follows the third: a second sponsored transaction
 writing the same words to the consent register, confirmed by reading the chain back and stamped on
@@ -143,8 +158,9 @@ When they are used up the line reads "Today's pictures are used up." instead.
 
 ## The receipt
 
-Down the right of the studio is a stub headed "What just happened", with one line under it: "Every
-step gets stamped here as it lands. Nothing on this list is a guess."
+Under the progress rows, in the same box and torn off along a dashed line, is a stub headed "What
+just happened", with one line under it: "Every step gets stamped here as it lands. Nothing on this
+list is a guess."
 
 Each stamp is a fact the studio actually established, in the order it happened: "Signed in", "Your
 account on Monad", "Passkey bound", "Exact hash", "Pinned to IPFS", "Digest you signed", "Sent to
@@ -159,8 +175,8 @@ billed in gas and MON along with who paid it, with the amount the sponsored send
 the "Sent to Monad" stamp above it.
 
 A run through the agent stamps the same list, because both paths hand the receipt the same prepared
-block. It does not name the agent. The agent id and the wallet that signed are on the seal beside
-the picture and on the finished card.
+block. It does not name the agent. The agent id and the wallet that signed are on the seal under the
+plate and on the finished card.
 
 Under the stamps, once the registration is really on Monad, is one quiet link: "See all your pictures".
 It opens `/mine`, the page holding everything this account has registered, which the bar at the top of

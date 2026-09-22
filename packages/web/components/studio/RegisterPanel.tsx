@@ -2,16 +2,13 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { Hex } from "viem";
-import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
-import { Link } from "@/lib/i18n/routing";
 import {
   STEPS,
   checkImage,
   isBusy,
   isRegistered,
-  isStating,
   passportId,
   type RegisterState,
   type Step,
@@ -20,8 +17,11 @@ import {
 import type { Failure } from "@/lib/studio/problems";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
+import { DoneActions } from "./DoneActions";
 import { FailureNote } from "./FailureNote";
 import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
+import { StatusBand } from "./StatusBand";
+import { hasStarted } from "./press";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -32,6 +32,8 @@ import { useHeadingLeading } from "./leading";
 export function RegisterPanel({
   state,
   wallet,
+  receipt,
+  pressing = false,
   onChoose,
   onTitle,
   onConsent,
@@ -46,6 +48,10 @@ export function RegisterPanel({
   state: RegisterState;
   /** Only for the fallback link, when a sponsored send landed without handing back a hash. */
   wallet?: Hex;
+  /** The stub, which is part of this one box and sits under whatever face is showing. */
+  receipt?: ReactNode;
+  /** True from the moment the button is pressed until the run has actually started. */
+  pressing?: boolean;
   onChoose: (file: File) => void;
   onTitle: (title: string) => void;
   onConsent: (draft: ConsentDraft) => void;
@@ -93,11 +99,34 @@ export function RegisterPanel({
     take(event.dataTransfer.files?.[0]);
   }
 
-  if (done) {
-    return <Registered state={state} wallet={wallet} onReset={onReset} onSaved={onSaved} />;
+  const folded = hasStarted(state);
+
+  if (done || folded) {
+    return (
+      <div data-studio-panel="upload" data-face={done ? "receipt" : "run"}>
+        <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
+          <StatusBand state={state} />
+        </div>
+        {done ? (
+          <Registered state={state} onSaved={onSaved} />
+        ) : (
+          <Run
+            state={state}
+            onRegister={onRegister}
+            onBind={onBind}
+            onUnsponsored={onUnsponsored}
+            onRecheck={onRecheck}
+            onSaved={onSaved}
+          />
+        )}
+        {receipt}
+        {done ? <DoneActions state={state} wallet={wallet} onReset={onReset} /> : null}
+      </div>
+    );
   }
 
   return (
+    <div data-studio-panel="upload" data-face="form">
     <motion.section
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -198,14 +227,84 @@ export function RegisterPanel({
         disabled={busy}
       />
 
+      {/* The press is answered here before anything else moves: the label turns
+          into the first line of the run and the button goes quiet. The room for
+          two lines is held from the start, because a button that grows under the
+          thumb moves the whole page with it. */}
       <button
         type="button"
         onClick={onRegister}
-        disabled={busy || state.file === null || draftProblem(state.consent) !== null}
-        className="mt-8 w-full rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
+        disabled={pressing || busy || state.file === null || draftProblem(state.consent) !== null}
+        data-press
+        className={`mt-8 flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
+          pressing ? "normal-case" : "uppercase tracking-[0.14em]"
+        }`}
       >
-        {t("register.submit")}
+        {pressing ? t("register.steps.prepare.running") : t("register.submit")}
       </button>
+
+      {/* What the press is about to do, in the same three lines the run itself
+          uses. A creator should be able to read the whole of it before they
+          start, which is the one thing a folded run cannot show them. */}
+      <ol className="mt-9 space-y-px border-t border-line pt-1">
+        {STEPS.map((step, index) => (
+          <StepRow key={step} step={step} index={index} state={state} />
+        ))}
+      </ol>
+
+      {state.failure === null ? null : (
+        <div className="mt-7">
+          <FailureNote
+            failure={state.failure}
+            passportId={passportId(state)}
+            onAgain={onRegister}
+            onBind={onBind}
+            onUnsponsored={onUnsponsored}
+            onRecheck={onRecheck}
+          />
+        </div>
+      )}
+    </motion.section>
+    {receipt}
+    </div>
+  );
+}
+
+/**
+ * What the box holds while the run is out: the three steps, the one copy of a
+ * sealed picture, and whatever went wrong.
+ *
+ * The form is gone by now and the band above carries the name, so this is only
+ * the progress. The rows keep the place they had at the foot of the form, which
+ * is where a creator already looks for them.
+ */
+function Run({
+  state,
+  onRegister,
+  onBind,
+  onUnsponsored,
+  onRecheck,
+  onSaved,
+}: {
+  state: RegisterState;
+  onRegister: () => void;
+  onBind: () => void;
+  onUnsponsored: () => void;
+  onRecheck?: () => void;
+  onSaved: () => void;
+}) {
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
+      className="border border-line bg-bg-raised p-6 sm:p-9"
+    >
+      <ol className="space-y-px">
+        {STEPS.map((step, index) => (
+          <StepRow key={step} step={step} index={index} state={state} />
+        ))}
+      </ol>
 
       {state.sealed.file === null ? null : (
         <SealedFileCard
@@ -216,12 +315,6 @@ export function RegisterPanel({
           onSaved={onSaved}
         />
       )}
-
-      <ol className="mt-9 space-y-px border-t border-line pt-1">
-        {STEPS.map((step, index) => (
-          <StepRow key={step} step={step} index={index} state={state} />
-        ))}
-      </ol>
 
       {state.failure === null ? null : (
         <div className="mt-7">
@@ -308,17 +401,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
   );
 }
 
-function Registered({
-  state,
-  wallet,
-  onReset,
-  onSaved,
-}: {
-  state: RegisterState;
-  wallet?: Hex;
-  onReset: () => void;
-  onSaved: () => void;
-}) {
+function Registered({ state, onSaved }: { state: RegisterState; onSaved: () => void }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const format = useFormatter();
@@ -326,9 +409,6 @@ function Registered({
   const prepared = state.prepared;
   // The answer decides, not the switch: what was registered is what came back.
   const sealed = prepared !== null && prepared.sealed === true;
-  // A statement is out from the same wallet. Starting a new picture under it
-  // would take the screen away from a write Monad has not shown yet.
-  const stating = isStating(state);
 
   return (
     <motion.section
@@ -384,54 +464,6 @@ function Registered({
           />
           <Row label={t("register.fee")} value={state.unsponsored ? t("register.feeOwn") : t("register.feeSponsored")} />
         </dl>
-
-        <div className="mt-8 flex flex-wrap items-center gap-3">
-          {id === null ? null : (
-            <Link
-              href={`/passport/${id}`}
-              className="rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
-            >
-              {t("register.openPassport")}
-            </Link>
-          )}
-          {state.txHash !== null ? (
-            <a
-              href={`${MONAD_EXPLORER}/tx/${state.txHash}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {t("register.openTx", { hash: shortHex(state.txHash) })}
-            </a>
-          ) : wallet === undefined ? null : (
-            <a
-              href={`${MONAD_EXPLORER}/address/${wallet}`}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {t("register.openAddress", { wallet: shortHex(wallet) })}
-            </a>
-          )}
-          {prepared === null || prepared.sealed === true ? null : (
-            <a
-              href={gatewayUrl(prepared.image.uri)}
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-            >
-              {t("register.openImage")}
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={stating}
-            className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
-          >
-            {t("register.another")}
-          </button>
-        </div>
       </div>
     </motion.section>
   );
