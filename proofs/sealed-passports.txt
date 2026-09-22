@@ -1,0 +1,25 @@
+SEALED PASSPORTS ON MONAD MAINNET (read back from the chain and the live screens on 2026-09-22)
+
+The first sealed passport was registered from the live studio on 2026-09-22 at 12:23:50 UTC, the same
+evening the sealed flow went live, by a person signing in with a passkey. Moolam holds no copy of the
+picture: the passport's document on IPFS (ipfs://bafkreifkvld3vxondgeacbbzayovnoua...) carries the
+keys name, description, sealed, commitment, fingerprint, generator, training, createdAt and model, and no
+image, thumbnail or manifest key. The chain commits to the file through the passport id, which is the
+file's SHA-256.
+
+  passport   0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c
+  title      Old but strong (drawn by the demo agent, 10249, from the creator's prompt; the prompt was not published)
+  holder     0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a
+  registered block 107,034,322
+  statement  consentOf -> true (1790079837 [1.79e9], 0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a, (1, 1, 1, 1), "") 
+
+What the live site shows for it, checked from outside the same hour:
+  /en/passport/<id>          200: the sealed plate drawn from the block hash, "The picture is not published",
+                             the commitment where the picture's addresses would be, "No public copy to re-check"
+                             in the second-opinion section, and the holder's "Publish the picture" control
+  /en/passport/<id>/opengraph-image   200 image/jpeg, 65,298 bytes: the sealed card with the sketch
+  /en/explore                the plate carries the S mark, aria-label "Sealed: this picture was never published"
+  POST /recheck/request      409 sealed: a re-check needs a public picture, so the queue refuses it
+  GET /recheck/status/<id>   {"status":"none"}
+
+What this does not prove: the unseal path, which needs the holder's saved file and their passkey.
