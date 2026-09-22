@@ -83,6 +83,25 @@ async function mount(node: ReactNode): Promise<HTMLDivElement> {
   return host;
 }
 
+/**
+ * Waits for the walk to draw its card.
+ *
+ * It looks for its anchor before it says anything, and in a test nothing is
+ * ever on the screen, so the card arrives when that wait is over. A page has
+ * the same pause, and it is why the guide never lands in the wrong place.
+ */
+async function drawn(host: HTMLElement): Promise<HTMLElement> {
+  for (let tries = 0; tries < 40; tries += 1) {
+    if (host.querySelector("h3") !== null) {
+      return host;
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
+  throw new Error("the walk never drew its card");
+}
+
 function press(host: HTMLElement, key: string, shiftKey = false) {
   const panel = host.querySelector('[role="dialog"]');
   if (panel === null) {
@@ -195,8 +214,10 @@ describe("drawing A, the three cards", () => {
 describe("drawing B, the walk", () => {
   it("goes one, two, three and then closes", async () => {
     const closed: string[] = [];
-    const host = await mount(
-      createElement(GuideWalk, { open: true, onClose: (why: string) => closed.push(why), stage: "frame" }),
+    const host = await drawn(
+      await mount(
+        createElement(GuideWalk, { open: true, onClose: (why: string) => closed.push(why), stage: "frame" }),
+      ),
     );
 
     expect(host.querySelector("h3")?.textContent).toBe("guide.steps.check.title");
@@ -215,8 +236,10 @@ describe("drawing B, the walk", () => {
 
   it("closes on Escape and on Skip", async () => {
     const closed: string[] = [];
-    const host = await mount(
-      createElement(GuideWalk, { open: true, onClose: (why: string) => closed.push(why), stage: "frame" }),
+    const host = await drawn(
+      await mount(
+        createElement(GuideWalk, { open: true, onClose: (why: string) => closed.push(why), stage: "frame" }),
+      ),
     );
     await act(async () => press(host, "Escape"));
     await act(async () => buttonNamed(host, "guide.skip").click());
@@ -286,18 +309,24 @@ describe("where the light falls", () => {
     expect(spotFor("mine", page("<p>a page with no header and no bar</p>"), origin)).toBeNull();
   });
 
-  it("says where the thing is when none of it is on the screen", async () => {
+  it("says where the thing is when none of it is on the screen, but not before it has waited", async () => {
     const host = await mount(
       createElement(GuideWalk, { open: true, onClose: () => undefined, stage: "frame" }),
     );
+    // The bar arrives a moment after the page, so the walk waits half a second
+    // before it will say a thing is missing. The wait is real time, not fake:
+    // the loop that measures runs on animation frames.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    });
     expect(host.textContent).toContain("guide.steps.check.elsewhere");
   });
 });
 
 describe("the words", () => {
   it("all come from the message files, none of them from the code", async () => {
-    const host = await mount(
-      createElement(GuideWalk, { open: true, onClose: () => undefined, stage: "frame" }),
+    const host = await drawn(
+      await mount(createElement(GuideWalk, { open: true, onClose: () => undefined, stage: "frame" })),
     );
     const said = host.textContent ?? "";
 

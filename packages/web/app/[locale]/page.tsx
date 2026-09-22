@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { FirstVisitGuide } from "@/components/guide/FirstVisitGuide";
 import { StoryStage } from "@/components/story/StoryStage";
 import { heldStory } from "@/components/story/data";
 
@@ -52,6 +53,11 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   return (
     <div className="-mt-[73px]">
       <StoryStage data={data} variant="stated" />
+      {/* The one screen a first visitor always lands on, so the one place the
+          guide is offered from. It draws nothing on the server and nothing for
+          a device that has already been here, and it is the ear for the
+          footer's "show the guide again". */}
+      <FirstVisitGuide />
     </div>
   );
 }

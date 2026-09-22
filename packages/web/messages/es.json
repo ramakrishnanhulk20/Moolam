@@ -51,6 +51,34 @@
       "mine": "Mías"
     }
   },
+  "guide": {
+    "dialog": "Dónde mirar en Moolam",
+    "step": "{shown} de {total}",
+    "next": "Siguiente",
+    "done": "Listo",
+    "skip": "Omitir",
+    "again": "Ver la guía otra vez",
+    "steps": {
+      "check": {
+        "title": "Verifica cualquier imagen",
+        "line": "Sube una imagen y Moolam te dice si tiene pasaporte en Monad y qué permitió quien la creó.",
+        "action": "Verificar una imagen",
+        "elsewhere": "Está en la barra de arriba en un portátil y en la barra de abajo en un teléfono."
+      },
+      "make": {
+        "title": "Crea una y recibe su pasaporte",
+        "line": "Registra una imagen en el estudio. Dos firmas, alrededor de un segundo, y queda un registro que nadie puede cambiar en silencio.",
+        "action": "Registrar una imagen",
+        "elsewhere": "Está en la barra de arriba en un portátil y es la pestaña del medio en un teléfono."
+      },
+      "find": {
+        "title": "Encuentra las tuyas",
+        "line": "Cada imagen que registraste en este dispositivo, en un solo lugar, con su pasaporte y su historial.",
+        "action": "Mis imágenes",
+        "elsewhere": "Está junto a las demás en la barra de arriba y en la última pestaña en un teléfono."
+      }
+    }
+  },
   "footer": {
     "network": "Monad mainnet, cadena {chainId}",
     "registry": "Registro",

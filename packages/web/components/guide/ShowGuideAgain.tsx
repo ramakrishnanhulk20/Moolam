@@ -1,7 +1,7 @@
 "use client";
 
-import { GUIDE_OPEN_EVENT } from "./FirstVisitGuide";
 import { forgetGuideSeen } from "./seen";
+import { tellGuideToOpen } from "./signal";
 
 /**
  * The way back to the guide for somebody who skipped it and wishes they had
@@ -30,7 +30,7 @@ export function ShowGuideAgain({
       type="button"
       onClick={() => {
         forgetGuideSeen();
-        window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));
+        tellGuideToOpen();
         onOpen?.();
       }}
       className={`tap transition-colors duration-200 hover:text-accent focus-visible:text-accent ${className}`}

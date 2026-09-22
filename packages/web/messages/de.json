@@ -51,6 +51,34 @@
       "mine": "Meine"
     }
   },
+  "guide": {
+    "dialog": "Wo es bei Moolam zu finden ist",
+    "step": "{shown} von {total}",
+    "next": "Weiter",
+    "done": "Fertig",
+    "skip": "Überspringen",
+    "again": "Anleitung wieder anzeigen",
+    "steps": {
+      "check": {
+        "title": "Jedes Bild prüfen",
+        "line": "Ein Bild hineingeben, und Moolam sagt, ob es einen Pass auf Monad hat und was beim Erstellen erlaubt wurde.",
+        "action": "Bild prüfen",
+        "elsewhere": "Am Laptop in der Leiste oben, am Telefon in der Leiste unten."
+      },
+      "make": {
+        "title": "Eines machen und den Pass bekommen",
+        "line": "Ein Bild im Studio eintragen. Zwei Signaturen, etwa eine Sekunde, und ein Eintrag, den niemand still ändern kann.",
+        "action": "Bild eintragen",
+        "elsewhere": "Am Laptop in der Leiste oben, am Telefon der mittlere Tab."
+      },
+      "find": {
+        "title": "Die eigenen finden",
+        "line": "Jedes auf diesem Gerät eingetragene Bild an einem Ort, mit Pass und Verlauf.",
+        "action": "Meine Bilder",
+        "elsewhere": "Oben in der Leiste neben den anderen, am Telefon der letzte Tab."
+      }
+    }
+  },
   "footer": {
     "network": "Monad Mainnet, Kette {chainId}",
     "registry": "Register",

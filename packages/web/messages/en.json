@@ -51,6 +51,34 @@
       "mine": "Mine"
     }
   },
+  "guide": {
+    "dialog": "Where to look on Moolam",
+    "step": "{shown} of {total}",
+    "next": "Next",
+    "done": "Done",
+    "skip": "Skip",
+    "again": "Show the guide again",
+    "steps": {
+      "check": {
+        "title": "Check any picture",
+        "line": "Drop in an image and Moolam says whether it holds a passport on Monad, and what its creator allowed.",
+        "action": "Verify an image",
+        "elsewhere": "It is in the bar at the top on a laptop, and on the bar at the bottom of a phone."
+      },
+      "make": {
+        "title": "Make one and get its passport",
+        "line": "Register an image in the studio. Two signatures, about a second, and it carries a record nobody can quietly edit.",
+        "action": "Register an image",
+        "elsewhere": "It is in the bar at the top on a laptop, and the middle tab on a phone."
+      },
+      "find": {
+        "title": "Find yours",
+        "line": "Every picture you registered on this device, in one place, each with its passport and its history.",
+        "action": "My pictures",
+        "elsewhere": "It sits beside the others in the bar at the top, and on the last tab on a phone."
+      }
+    }
+  },
   "footer": {
     "network": "Monad mainnet, chain {chainId}",
     "registry": "Registry",

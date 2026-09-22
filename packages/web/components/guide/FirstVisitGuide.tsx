@@ -4,15 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "@/lib/i18n/routing";
 import { GuideWalk } from "./GuideWalk";
 import { guideShouldShowHere, markGuideSeen, onLabPage } from "./seen";
-
-/**
- * What the footer entry shouts when somebody asks for the guide back.
- *
- * A window event rather than a context or a store: the entry lives in the
- * layout's footer and the guide is mounted by a page, so the two are never in
- * the same tree and nothing has to be lifted to hold them together.
- */
-export const GUIDE_OPEN_EVENT = "moolam:guide:open";
+import { GUIDE_OPEN_EVENT } from "./signal";
 
 const watchers = new Set<() => void>();
 

@@ -37,7 +37,8 @@ vi.mock("@/lib/i18n/routing", () => ({
   }) => createElement("a", { href, className, onClick }, children),
 }));
 
-const { FirstVisitGuide, GUIDE_OPEN_EVENT } = await import("@/components/guide/FirstVisitGuide");
+const { FirstVisitGuide } = await import("@/components/guide/FirstVisitGuide");
+const { GUIDE_OPEN_EVENT } = await import("@/components/guide/signal");
 const { ShowGuideAgain } = await import("@/components/guide/ShowGuideAgain");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -81,8 +82,47 @@ async function mount(node: ReactNode): Promise<HTMLDivElement> {
   return host;
 }
 
+/**
+ * Waits for the walk to draw its card.
+ *
+ * It looks for its anchor before it says anything, and in a test nothing is
+ * ever on the screen, so the card arrives when that wait is over. A page has
+ * the same pause, and it is why the guide never lands in the wrong place.
+ */
+async function drawn(host: HTMLElement): Promise<HTMLElement> {
+  for (let tries = 0; tries < 40; tries += 1) {
+    if (host.querySelector("h3") !== null) {
+      return host;
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
+  throw new Error("the walk never drew its card");
+}
+
 function walking(host: HTMLElement): boolean {
   return host.querySelector('[role="dialog"]') !== null;
+}
+
+/**
+ * Whether the walk arrives, given time.
+ *
+ * It looks for the thing its first step talks about before it draws anything at
+ * all, so "is it open" is a question with a short wait in it. A shut guide is
+ * asked the same way, for as long as the waiting would have taken, or the test
+ * would pass on the pause rather than on the rule.
+ */
+async function opened(host: HTMLElement, ms = 2000): Promise<boolean> {
+  for (let waited = 0; waited < ms; waited += 50) {
+    if (walking(host)) {
+      return true;
+    }
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
+  return walking(host);
 }
 
 /**
@@ -135,22 +175,22 @@ afterEach(() => {
 
 describe("who is shown the walk", () => {
   it("opens it for a device that has never been here", async () => {
-    expect(walking(await mount(createElement(FirstVisitGuide)))).toBe(true);
+    expect(await opened(await mount(createElement(FirstVisitGuide)))).toBe(true);
   });
 
   it("stays shut once the device carries the mark", async () => {
     window.localStorage.setItem(GUIDE_SEEN_KEY, "1");
-    expect(walking(await mount(createElement(FirstVisitGuide)))).toBe(false);
+    expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
   });
 
   it("stays shut for a device that has signed in here before", async () => {
     window.localStorage.setItem(RETURNING_KEY, "1");
-    expect(walking(await mount(createElement(FirstVisitGuide)))).toBe(false);
+    expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
   });
 
   it("stays shut on a bench page", async () => {
     here.path = "/lab/guide";
-    expect(walking(await mount(createElement(FirstVisitGuide)))).toBe(false);
+    expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
   });
 
   it("renders nothing on the server, whatever this browser holds", () => {
@@ -160,16 +200,16 @@ describe("who is shown the walk", () => {
 
 describe("the ways out", () => {
   it("writes the mark on Skip and does not come back", async () => {
-    const host = await mount(createElement(FirstVisitGuide));
+    const host = await drawn(await mount(createElement(FirstVisitGuide)));
     await act(async () => buttonNamed(host, "guide.skip").click());
 
     expect(window.localStorage.getItem(GUIDE_SEEN_KEY)).toBe("1");
     expect(await gone(host)).toBe(true);
-    expect(walking(await mount(createElement(FirstVisitGuide)))).toBe(false);
+    expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
   });
 
   it("writes the mark when the last step is finished", async () => {
-    const host = await mount(createElement(FirstVisitGuide));
+    const host = await drawn(await mount(createElement(FirstVisitGuide)));
     for (let step = 0; step < 2; step += 1) {
       await act(async () => buttonNamed(host, "guide.next").click());
     }
@@ -178,7 +218,7 @@ describe("the ways out", () => {
   });
 
   it("writes the mark when a step's own link is followed", async () => {
-    const host = await mount(createElement(FirstVisitGuide));
+    const host = await drawn(await mount(createElement(FirstVisitGuide)));
     const link = host.querySelector('a[href="/verify"]');
     await act(async () => {
       link?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -194,12 +234,12 @@ describe("asking for it back from the footer", () => {
     const host = await mount(
       createElement(Fragment, null, createElement(FirstVisitGuide), createElement(ShowGuideAgain)),
     );
-    expect(walking(host)).toBe(false);
+    expect(await opened(host, 900)).toBe(false);
 
     await act(async () => buttonNamed(host, "Show the guide again").click());
 
     expect(window.localStorage.getItem(GUIDE_SEEN_KEY)).toBeNull();
-    expect(walking(host)).toBe(true);
+    expect(await opened(host)).toBe(true);
   });
 
   it("opens on the event alone, wherever it was sent from", async () => {
@@ -208,7 +248,7 @@ describe("asking for it back from the footer", () => {
     await act(async () => {
       window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));
     });
-    expect(walking(host)).toBe(true);
+    expect(await opened(host)).toBe(true);
   });
 
   it("is quiet on a bench page, where the guide would be over a drawing of itself", async () => {
@@ -217,6 +257,6 @@ describe("asking for it back from the footer", () => {
     await act(async () => {
       window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));
     });
-    expect(walking(host)).toBe(false);
+    expect(await opened(host, 900)).toBe(false);
   });
 });

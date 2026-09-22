@@ -8,6 +8,7 @@ import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "nex
 import { Suspense, type ReactNode } from "react";
 import { LocaleSwitch, PageAddress } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
+import { ShowGuideAgain } from "@/components/guide/ShowGuideAgain";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BottomBar } from "@/components/shell/BottomBar";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
@@ -112,6 +113,7 @@ export default async function LocaleLayout({
   const m = await getTranslations({ locale, namespace: "meta" });
   const mine = await getTranslations({ locale, namespace: "mine" });
   const bar = await getTranslations({ locale, namespace: "shell" });
+  const g = await getTranslations({ locale, namespace: "guide" });
   const source = activeSource();
 
   // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
@@ -124,13 +126,17 @@ export default async function LocaleLayout({
   // The studio is the one route in this bar that carries the wallet. Left to
   // prefetch, a reader of any other page quietly pulls half a megabyte of a
   // screen they may never open, so that link is fetched when it is clicked.
+  //
+  // The last two carry the name the first visit guide points at, the same names
+  // the phone's tabs carry below. Only one of the two is ever on the screen, so
+  // the guide can look for the name and take whichever answers.
   const nav = [
-    { href: "/", label: t("nav.home"), prefetch: undefined },
-    { href: "/explore", label: t("nav.explore"), prefetch: undefined },
-    { href: "/agents", label: t("nav.agents"), prefetch: undefined },
-    { href: "/docs", label: t("nav.docs"), prefetch: undefined },
-    { href: "/verify", label: t("nav.verify"), prefetch: undefined },
-    { href: "/studio", label: t("nav.studio"), prefetch: false },
+    { href: "/", label: t("nav.home"), prefetch: undefined, anchor: undefined },
+    { href: "/explore", label: t("nav.explore"), prefetch: undefined, anchor: undefined },
+    { href: "/agents", label: t("nav.agents"), prefetch: undefined, anchor: undefined },
+    { href: "/docs", label: t("nav.docs"), prefetch: undefined, anchor: undefined },
+    { href: "/verify", label: t("nav.verify"), prefetch: undefined, anchor: "verify" },
+    { href: "/studio", label: t("nav.studio"), prefetch: false, anchor: "studio" },
   ] as const;
 
   // The phone's whole navigation, in the order a thumb reads it: the raised
@@ -222,6 +228,7 @@ export default async function LocaleLayout({
                           key={item.href}
                           href={item.href}
                           prefetch={item.prefetch}
+                          data-guide-anchor={item.anchor}
                           className="tap text-text-muted transition-colors duration-200 hover:text-accent"
                         >
                           {item.label}
@@ -235,6 +242,7 @@ export default async function LocaleLayout({
                       <Link
                         href="/mine"
                         prefetch={false}
+                        data-guide-anchor="mine"
                         className="tap whitespace-nowrap text-text-muted transition-colors duration-200 hover:text-accent"
                       >
                         {mine("entry")}
@@ -301,6 +309,10 @@ export default async function LocaleLayout({
                       <Link href="/docs/legal/terms" className="transition-colors duration-200 hover:text-accent">
                         {f("terms")}
                       </Link>
+                      {/* The way back to the first visit guide, for anyone who
+                          skipped it or wants it again. It forgets the mark on
+                          this device and shouts; the home page hears it. */}
+                      <ShowGuideAgain label={g("again")} />
                     </span>
 
                     {/* The three services, read while the page is rendered. The boundary
