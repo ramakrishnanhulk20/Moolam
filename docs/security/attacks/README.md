@@ -10,6 +10,9 @@ mainnet where anyone can open it in the explorer. Using the same gas limit for b
 out a revert that is really an out-of-gas. If the read had gone through, the run would say so and
 would not send the transaction.
 
+Eleven of these attacks, and one control that has to pass, can also be sent from the browser and
+answered by the live contracts while you watch, on the [Try to break it](../try-to-break-it.md) page.
+
 The four `consent-*` files are the exception and say so on their own first line. They are `cast
 call` simulations run by hand against the live consent register, with no transaction behind them,
 because writing the control would put a real statement on a real passport and change what the demo

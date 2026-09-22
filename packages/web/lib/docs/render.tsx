@@ -12,6 +12,7 @@ import remarkParse from "remark-parse";
 import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { CONTINUE, SKIP, visit } from "unist-util-visit";
+import { BreakIt } from "@/components/docs/BreakIt";
 import { CodeBlock } from "@/components/docs/CodeBlock";
 import { DocsLink } from "@/components/docs/DocsLink";
 import { Mermaid } from "@/components/docs/Mermaid";
@@ -30,6 +31,13 @@ export type RenderedPage = {
 };
 
 const mermaidClass = "mermaid-source";
+
+/**
+ * The fence that mounts the attack screen. It carries no source of its own:
+ * the twelve attacks are data in components/docs/breakIt, because each one has
+ * to match a transcript that was executed against the live contracts.
+ */
+const breakItClass = "break-it-mount";
 
 export type DiagramVariant = "both" | "wide" | "phone";
 
@@ -87,6 +95,16 @@ function pairDiagrams() {
  * the highlighter expects.
  */
 function codeToHast(state: State, node: Code): Element {
+  if (node.lang === "break-it") {
+    const mount: Element = {
+      type: "element",
+      tagName: "div",
+      properties: { className: [breakItClass] },
+      children: [],
+    };
+    state.patch(node, mount);
+    return mount;
+  }
   if (node.lang === "mermaid") {
     const { variant, caption } = readDiagramMeta(node.meta);
     const drawing: Element = {
@@ -196,6 +214,9 @@ const components: Partial<Components> = {
     );
   },
   div({ node, children, className, ...rest }) {
+    if (className === breakItClass) {
+      return <BreakIt />;
+    }
     if (className === mermaidClass) {
       const held = node?.properties ?? {};
       const variant = typeof held.dataVariant === "string" ? (held.dataVariant as DiagramVariant) : "both";
