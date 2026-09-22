@@ -1,8 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { Link } from "@/lib/i18n/routing";
 import { GuideGround, type GuideClose, type GuideStage } from "./GuideGround";
 import { GuideMarkDrawing } from "./marks";
 import { guideSteps, nextStep } from "./steps";
@@ -13,25 +15,40 @@ export interface Spot {
   y: number;
   width: number;
   height: number;
-  /** True when the light is sitting on a stand-in rather than the real thing. */
-  standIn: boolean;
 }
 
 const PAD = 8;
 const CARD = 320;
 
 /**
+ * Whether an element is really on the screen: rendered, not display none, and
+ * not inside something switched off.
+ *
+ * getClientRects is empty for anything display none, which is exactly how the
+ * header's links disappear on a phone and how the bottom bar's tabs disappear
+ * on a laptop. offsetParent would have been the shorter test and the wrong one:
+ * it reads null for a fixed element, which the bar is.
+ */
+function onScreen(node: HTMLElement): boolean {
+  if (node.closest("[inert]") !== null) {
+    return false;
+  }
+  const box = node.getBoundingClientRect();
+  return node.getClientRects().length > 0 && box.width > 0 && box.height > 0;
+}
+
+/**
  * Finds the thing a step talks about and measures it against the stage.
  *
- * A first-time visitor has no "My pictures" in the header, because that entry
- * only appears for a device that has signed in. So a missing anchor is a normal
- * state, not a fault: the light falls back to the menu and the card says where
- * the real thing will be.
+ * Both the header and the bottom bar carry the same anchor, and only one of
+ * them is ever on the screen, so the first visible one is the right one without
+ * this having to know anything about widths. Nothing visible is a normal
+ * answer, not a fault: "My pictures" only appears for a device that has signed
+ * in before, which a first-time visitor is not.
  */
 export function spotFor(anchor: string, root: ParentNode, origin: DOMRect): Spot | null {
-  const real = root.querySelector<HTMLElement>(`[data-guide-anchor="${anchor}"]`);
-  const node = real ?? root.querySelector<HTMLElement>('[data-guide-anchor="menu"]');
-  if (node === null) {
+  const node = [...root.querySelectorAll<HTMLElement>(`[data-guide-anchor="${anchor}"]`)].find(onScreen);
+  if (node === undefined) {
     return null;
   }
 
@@ -41,12 +58,11 @@ export function spotFor(anchor: string, root: ParentNode, origin: DOMRect): Spot
     y: box.top - origin.top - PAD,
     width: box.width + PAD * 2,
     height: box.height + PAD * 2,
-    standIn: real === null,
   };
 }
 
 /**
- * Drawing B: one step at a time, with the light on the real thing.
+ * The walk: one step at a time, with the light on the real thing.
  *
  * The dim is painted by the spotlight itself, as a very large shadow around the
  * hole, so whatever is being talked about stays sharp while everything else
@@ -62,9 +78,10 @@ export function GuideWalk({
   open: boolean;
   onClose: (reason: GuideClose) => void;
   stage?: GuideStage;
-  /** Where to look for the anchors. The bench passes its own mock window. */
+  /** Where to look for the anchors. A bench passes its own mock window. */
   scope?: RefObject<HTMLElement | null>;
 }) {
+  const t = useTranslations("guide");
   const reduced = useIsReducedMotion();
   const [index, setIndex] = useState(0);
   const [spot, setSpot] = useState<Spot | null>(null);
@@ -86,7 +103,7 @@ export function GuideWalk({
 
   // Measuring is the one thing that cannot be done while rendering: the step
   // has to be on the screen before its box can be read. It runs again on every
-  // resize, because the header rearranges itself on the way down to a phone.
+  // resize, because the header's links and the bar's tabs trade places there.
   useEffect(() => {
     if (!open) {
       return;
@@ -106,25 +123,34 @@ export function GuideWalk({
     return () => window.removeEventListener("resize", measure);
   }, [open, scope, step.anchor]);
 
-  const go = (reason: GuideClose) => onClose(reason);
   const forward = () => {
     const after = nextStep(index);
     if (after === null) {
-      go("done");
+      onClose("done");
     } else {
       setIndex(after);
     }
   };
 
   // Under the light when there is room, over it when there is not, and never
-  // off the side of the screen.
+  // off the side of the screen. With nothing lit the card goes to the bottom
+  // middle, where a sheet on a phone would be.
   const below = spot !== null && spot.y + spot.height + 190 < room.height;
-  const cardTop =
-    spot === null ? room.height / 2 - 130 : below ? spot.y + spot.height + 26 : Math.max(16, spot.y - 210);
-  const cardLeft =
+  const place =
     spot === null
-      ? Math.max(16, room.width / 2 - CARD / 2)
-      : Math.min(Math.max(16, spot.x - 12), Math.max(16, room.width - CARD - 16));
+      ? {
+          bottom: "calc(24px + env(safe-area-inset-bottom))",
+          left: Math.max(16, room.width / 2 - CARD / 2),
+        }
+      : {
+          top: below ? spot.y + spot.height + 26 : Math.max(16, spot.y - 210),
+          left: Math.min(Math.max(16, spot.x - 12), Math.max(16, room.width - CARD - 16)),
+        };
+
+  const counter = t("step", {
+    shown: String(index + 1).padStart(2, "0"),
+    total: String(guideSteps.length).padStart(2, "0"),
+  });
 
   return (
     <GuideGround
@@ -137,7 +163,7 @@ export function GuideWalk({
       // as what it is: a thing that is not on this screen.
       ground={spot === null ? "blur" : "clear"}
       closeOnGround={false}
-      label="Where to look on Moolam"
+      label={t("dialog")}
     >
       <div ref={wrap} className="absolute inset-0">
         {/* The dim is this element's own shadow, so the hole in it is the real
@@ -175,37 +201,47 @@ export function GuideWalk({
           initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: reduced ? 0.2 : 0.5, ease: [0.16, 1, 0.3, 1] }}
-          style={{ top: cardTop, left: cardLeft, width: Math.min(CARD, Math.max(240, room.width - 32)) }}
+          style={{ ...place, width: Math.min(CARD, Math.max(240, room.width - 32)) }}
           className="pointer-events-auto absolute rounded-[8px] border border-line bg-[color:var(--bg-raised)] p-5 shadow-[0_24px_60px_rgb(0_0_0/0.5)]"
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
-                {step.number} of {String(guideSteps.length).padStart(2, "0")}
-              </p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">{counter}</p>
               <h3 className="mt-2 max-w-[16ch] font-display text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]">
-                {step.title}
+                {t(`steps.${step.id}.title`)}
               </h3>
             </div>
             <GuideMarkDrawing mark={step.mark} reduced={reduced} />
           </div>
 
-          <p className="mt-3 text-[13px] leading-relaxed text-text-muted">{step.line}</p>
+          <p className="mt-3 text-[13px] leading-relaxed text-text-muted">{t(`steps.${step.id}.line`)}</p>
 
-          {spot === null || spot.standIn ? (
+          {spot === null ? (
             <p className="mt-3 border-t border-line pt-3 text-[12px] leading-relaxed text-text-faint">
-              {spot === null
-                ? "This one is not on the screen yet. In the app it sits in the header, beside the others."
-                : "At this width the header items are behind the menu, so the light is on the menu. In the phone shell it sits on the bottom bar tab."}
+              {t(`steps.${step.id}.elsewhere`)}
             </p>
           ) : null}
 
+          {/* Somebody sold on this step should not have to remember it and find
+              it afterwards, so the step carries its own way there. The mark is
+              written on the way out, like every other close. */}
+          <Link
+            href={step.href}
+            prefetch={false}
+            onClick={() => onClose("go")}
+            className="group mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:text-text focus-visible:text-text"
+          >
+            {t(`steps.${step.id}.action`)}
+            <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
+              &rarr;
+            </span>
+          </Link>
+
           <div className="mt-5 flex items-center justify-between gap-4">
-            <span className="flex items-center gap-1.5" aria-label={`Step ${index + 1} of ${guideSteps.length}`}>
+            <span aria-hidden className="flex items-center gap-1.5">
               {guideSteps.map((dot, at) => (
                 <span
                   key={dot.id}
-                  aria-hidden
                   className={`h-[6px] w-[6px] transition-colors duration-300 ${
                     at === index ? "bg-accent" : "bg-line-strong"
                   }`}
@@ -216,17 +252,17 @@ export function GuideWalk({
             <span className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => go("skip")}
+                onClick={() => onClose("skip")}
                 className="tap rounded-[8px] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-faint transition-colors duration-200 hover:text-accent focus-visible:text-accent"
               >
-                Skip
+                {t("skip")}
               </button>
               <button
                 type="button"
                 onClick={forward}
                 className="tap group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:scale-[1.04] focus-visible:scale-[1.04]"
               >
-                {nextStep(index) === null ? "Done" : "Next"}
+                {nextStep(index) === null ? t("done") : t("next")}
                 <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
                   &rarr;
                 </span>

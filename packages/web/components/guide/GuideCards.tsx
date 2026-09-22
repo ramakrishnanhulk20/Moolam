@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, type Variants } from "framer-motion";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
@@ -96,7 +97,7 @@ export function GuideCards({
           <ul className="mt-3.5 grid gap-2.5 sm:mt-8 sm:grid-cols-3 sm:gap-4">
             {guideSteps.map((step) => (
               <motion.li key={step.id} variants={rise} className="min-w-0">
-                <StepCard step={step} reduced={reduced} onGo={onGo} onClose={onClose} />
+                <StepCard step={step} at={guideSteps.indexOf(step)} reduced={reduced} onGo={onGo} onClose={onClose} />
               </motion.li>
             ))}
           </ul>
@@ -108,15 +109,20 @@ export function GuideCards({
 
 function StepCard({
   step,
+  at,
   reduced,
   onGo,
   onClose,
 }: {
   step: GuideStep;
+  /** Which of the three this is, for the figure in the corner. */
+  at: number;
   reduced: boolean;
   onGo?: (step: GuideStep) => void;
   onClose: (reason: GuideClose) => void;
 }) {
+  const t = useTranslations("guide");
+
   // The drawing moves for a mouse and for a keyboard alike, so the focused card
   // is as alive as the hovered one.
   const [lit, setLit] = useState(false);
@@ -124,22 +130,22 @@ function StepCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-4">
-        <span className="font-mono text-[10px] tracking-[0.2em] text-accent">{step.number}</span>
+        <span className="font-mono text-[10px] tracking-[0.2em] text-accent">{String(at + 1).padStart(2, "0")}</span>
         <GuideMarkDrawing mark={step.mark} reduced={reduced} />
       </div>
 
       <h3 className="mt-2.5 flex max-w-[20ch] items-baseline gap-2 font-display text-[1.05rem] font-semibold leading-[1.1] tracking-[-0.03em] sm:mt-4 sm:max-w-[18ch] sm:text-[1.25rem]">
-        {step.title}
+        {t(`steps.${step.id}.title`)}
         {/* On a phone the whole card is the button, so the arrow rides on the
             title and the row below is not needed. */}
         <span aria-hidden className="text-accent transition-transform duration-200 group-hover:translate-x-1 sm:hidden">
           &rarr;
         </span>
       </h3>
-      <p className="mt-1.5 max-w-[38ch] text-[13px] leading-relaxed text-text-muted sm:mt-2 sm:pb-5 sm:text-sm">{step.line}</p>
+      <p className="mt-1.5 max-w-[38ch] text-[13px] leading-relaxed text-text-muted sm:mt-2 sm:pb-5 sm:text-sm">{t(`steps.${step.id}.line`)}</p>
 
       <span className="mt-auto hidden items-center gap-2 self-start rounded-[8px] border border-line px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.14em] text-text-muted transition-colors duration-200 group-hover:border-accent group-hover:text-accent group-focus-within:border-accent group-focus-within:text-accent sm:inline-flex">
-        {step.action}
+        {t(`steps.${step.id}.action`)}
         <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
           &rarr;
         </span>

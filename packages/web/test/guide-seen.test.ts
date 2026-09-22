@@ -12,7 +12,7 @@ import {
   onLabPage,
   signedInBefore,
 } from "@/components/guide/seen";
-import { guideSteps, nextStep } from "@/components/guide/steps";
+import { guideKeys, guideSteps, nextStep } from "@/components/guide/steps";
 
 /**
  * The first-visit guide is the one thing on the site that is allowed to
@@ -105,7 +105,6 @@ describe("the three steps", () => {
   it("run check, make, find, in that order", () => {
     expect(guideSteps.map((step) => step.id)).toEqual(["check", "make", "find"]);
     expect(guideSteps.map((step) => step.href)).toEqual(["/verify", "/studio", "/mine"]);
-    expect(guideSteps.map((step) => step.number)).toEqual(["01", "02", "03"]);
   });
 
   it("walks forward and stops at the last one", () => {
@@ -114,13 +113,37 @@ describe("the three steps", () => {
     expect(nextStep(2)).toBeNull();
   });
 
-  it("says one plain line and names one real route for each step", () => {
+  it("carry facts only: where it goes, what it points at, which drawing", () => {
     for (const step of guideSteps) {
-      expect(step.line.length).toBeLessThan(140);
-      expect(step.line.endsWith(".")).toBe(true);
       expect(step.href.startsWith("/")).toBe(true);
-      expect(step.anchor).not.toBe("");
-      expect(step.action).not.toBe("");
+      expect(step.anchor).toBe(step.id === "check" ? "verify" : step.id === "make" ? "studio" : "mine");
+      expect(["check", "make", "find"]).toContain(step.mark);
+      // Every word comes from the message files. A string left here would be
+      // English on all ten languages and nobody would see it until it shipped.
+      expect(Object.keys(step).sort()).toEqual(["anchor", "href", "id", "mark"]);
     }
+  });
+
+  it("name every key the ten message files owe the guide", () => {
+    expect(guideKeys()).toEqual([
+      "guide.dialog",
+      "guide.step",
+      "guide.next",
+      "guide.done",
+      "guide.skip",
+      "guide.again",
+      "guide.steps.check.title",
+      "guide.steps.check.line",
+      "guide.steps.check.action",
+      "guide.steps.check.elsewhere",
+      "guide.steps.make.title",
+      "guide.steps.make.line",
+      "guide.steps.make.action",
+      "guide.steps.make.elsewhere",
+      "guide.steps.find.title",
+      "guide.steps.find.line",
+      "guide.steps.find.action",
+      "guide.steps.find.elsewhere",
+    ]);
   });
 });

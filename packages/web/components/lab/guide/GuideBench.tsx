@@ -80,7 +80,7 @@ export function GuideBench() {
   };
 
   const took = (step: GuideStep) => {
-    setWent(`Pressed "${step.action}". On the real page this goes to ${step.href} and the guide closes.`);
+    setWent(`Pressed "${step.id}". On the real page this goes to ${step.href} and the guide closes.`);
   };
 
   return (
