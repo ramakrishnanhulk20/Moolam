@@ -1,0 +1,11 @@
+{
+  "schedule": "0 */5 * * * *",
+  "chainId": 143,
+  "passportId": "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638",
+  "expectedPhash": "0x6ccf137087789a25",
+  "accessLinkEndpoint": "https://api.pinata.cloud/v3/files/private/download_link",
+  "privateFileUrl": "https://lavender-personal-grasshopper-978.mypinata.cloud/files/bafkreifqi353vfs5ucdx3ydewealjk6ufwfqahuzvjsipbgwwks4tfwkh4",
+  "linkExpirySeconds": 120,
+  "secretId": "SEALED_FETCH_KEY",
+  "matchThreshold": 10
+}

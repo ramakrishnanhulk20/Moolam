@@ -1,0 +1,10 @@
+# The spike never reads or writes a chain, so it runs under the target that carries no Monad
+# settings. staging-settings is the group packages/workflow/project.yaml already defines for work
+# that stays off chain.
+staging-settings:
+  user-workflow:
+    workflow-name: "moolam-sealed-spike"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.json"
+    secrets-path: "./secrets.yaml"
