@@ -6,6 +6,7 @@ import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { plainStatement } from "@/lib/chain/consent";
 import { feeInMon } from "@/lib/chain/fee";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { Link } from "@/lib/i18n/routing";
 import type { SealedHandback } from "@/lib/sealed/handback";
 import { useSealedSave } from "@/lib/sealed/save";
 import type { Studio } from "@/lib/studio/useStudio";
@@ -32,6 +33,7 @@ interface Mark {
  */
 export function Receipt({ studio }: { studio: Studio }) {
   const t = useTranslations("studio");
+  const mine = useTranslations("mine");
   const words = useTranslations("passport.consent");
   const format = useFormatter();
   const reduced = useIsReducedMotion();
@@ -127,6 +129,30 @@ export function Receipt({ studio }: { studio: Studio }) {
             ))}
           </AnimatePresence>
         </ol>
+      )}
+
+      {/* Where this picture went, once it is really on Monad. The panel beside
+          this stub offers the passport that was just made; this is the rest of
+          them, which until now were only at the foot of the studio. A sealed
+          registration gets it too: the picture is not published, the record
+          still is. */}
+      {studio.register.registeredAt === null ? null : (
+        <motion.div
+          initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="mt-6 border-t border-line pt-5"
+        >
+          <Link
+            href="/mine"
+            className="tap group inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted transition-colors duration-200 hover:text-accent"
+          >
+            {mine("receiptLink")}
+            <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
+              &rarr;
+            </span>
+          </Link>
+        </motion.div>
       )}
     </aside>
   );

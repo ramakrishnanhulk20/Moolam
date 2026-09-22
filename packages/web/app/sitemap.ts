@@ -52,7 +52,13 @@ export function sitemapEntries(input: {
   return [...pages, ...records];
 }
 
-/** The five app pages plus every docs page the tree names, in tree order. */
+/**
+ * The five app pages plus every docs page the tree names, in tree order.
+ *
+ * /mine is deliberately not among them. It is one person's own list, it says
+ * nothing to a visitor who is not signed in, and robots.txt closes it for the
+ * same reason.
+ */
 export function pagePaths(): string[] {
   return ["/", "/explore", "/agents", "/verify", "/studio", ...navPages().map((page) => pageHref(page.slug))];
 }

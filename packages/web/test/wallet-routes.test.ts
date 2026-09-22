@@ -8,7 +8,11 @@ const web = fileURLToPath(new URL("..", import.meta.url));
 /** The packages that only a screen which signs has any use for. */
 const WALLET = ["@privy-io/react-auth", "@privy-io/wagmi", "wagmi", "@tanstack/react-query"];
 
-const SIGNING = ["@/app/[locale]/studio/page.tsx", "@/app/[locale]/resolve/page.tsx"];
+const SIGNING = [
+  "@/app/[locale]/studio/page.tsx",
+  "@/app/[locale]/resolve/page.tsx",
+  "@/app/[locale]/mine/page.tsx",
+];
 
 const READING = [
   "@/app/[locale]/layout.tsx",

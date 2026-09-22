@@ -11,8 +11,12 @@ import { useHeadingLeading } from "./leading";
  * Everything this account has registered, read from the index rather than from
  * anything this session remembers. An account with nothing in it says so in
  * words, and never shows a placeholder row.
+ *
+ * The heading is the caller's to choose: the studio wears it as a section at
+ * the foot of a working screen, and /mine wears it under a page whose whole
+ * subject it already is, so the two want different words over the same grid.
  */
-export function YourPassports({ passports }: { passports: CreatorPassports }) {
+export function YourPassports({ passports, heading }: { passports: CreatorPassports; heading?: string }) {
   const t = useTranslations("studio");
   const common = useTranslations("common");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
@@ -23,7 +27,7 @@ export function YourPassports({ passports }: { passports: CreatorPassports }) {
     <section className="mt-24 border-t border-line pt-10 sm:mt-32">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h2 className={`font-display text-[clamp(1.6rem,3.2vw,2.6rem)] uppercase tracking-[-0.02em] ${leading}`}>
-          {t("passports.heading")}
+          {heading ?? t("passports.heading")}
         </h2>
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("passports.source")}</p>
       </div>

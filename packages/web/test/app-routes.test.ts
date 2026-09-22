@@ -30,9 +30,9 @@ describe("what robots.txt says", () => {
     return Array.isArray(only) ? only[0] : only;
   };
 
-  it("opens the site and closes the two routes that are not pages", () => {
+  it("opens the site and closes the routes that are not pages for a crawler", () => {
     expect(rule().allow).toBe("/");
-    expect(rule().disallow).toEqual(["/lab", "/*/lab", "/docs-search", "/*/explore/view"]);
+    expect(rule().disallow).toEqual(["/lab", "/*/lab", "/docs-search", "/*/explore/view", "/*/mine"]);
   });
 
   it("names the sitemap on the public domain", () => {

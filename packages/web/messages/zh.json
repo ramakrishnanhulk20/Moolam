@@ -1316,7 +1316,7 @@
       "wouldHaveCost": "你自己付要花 {fee} MON。"
     },
     "passports": {
-      "heading": "你的护照",
+      "heading": "你的图片",
       "source": "从索引实时读取",
       "reading": "正在读取这个账户登记过的全部内容。",
       "unreadable": "读不到你的护照：{reason}。请刷新页面。",
@@ -1513,6 +1513,24 @@
       "rateLimited": "这里的请求太多了，等一分钟。",
       "notAnswering": "校验服务现在没有回应。",
       "unknown": "申请没有送出去。"
+    }
+  },
+  "mine": {
+    "title": "你的图片",
+    "description": "你在这里登记过的每一张图片，用你自己的账户从索引读出。",
+    "kicker": "你的账户",
+    "heading": "你做的",
+    "lede": "你的账户登记过的每一张图片，从索引读出。",
+    "rail": "由你登记",
+    "grid": "你的图片",
+    "entry": "我的图片",
+    "receiptLink": "查看你的全部图片",
+    "opening": "正在打开你的账户",
+    "signedOut": {
+      "kicker": "你还没有登录",
+      "heading": "登录后就能看到你在这台设备上登记的图片",
+      "button": "登录并显示",
+      "body": "这份列表按你账户的地址从索引读取，所以在任何一台登录的设备上看到的都是同一批图片。"
     }
   }
 }

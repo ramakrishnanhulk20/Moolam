@@ -1315,7 +1315,7 @@
       "wouldHaveCost": "Teria custado {fee} MON a você."
     },
     "passports": {
-      "heading": "Seus passaportes",
+      "heading": "Suas imagens",
       "source": "Lidos ao vivo do índice",
       "reading": "Lendo tudo que esta conta registrou.",
       "unreadable": "Seus passaportes não puderam ser lidos: {reason}. Recarregue a página.",
@@ -1512,6 +1512,24 @@
       "rateLimited": "Pedidos demais daqui, espere um minuto.",
       "notAnswering": "O serviço de verificação não está respondendo agora.",
       "unknown": "O pedido não entrou."
+    }
+  },
+  "mine": {
+    "title": "Suas imagens",
+    "description": "Cada imagem que você registrou aqui, lida do índice com a sua própria conta.",
+    "kicker": "Sua conta",
+    "heading": "Feito por você",
+    "lede": "Cada imagem que a sua conta registrou, lida do índice.",
+    "rail": "Registrado por você",
+    "grid": "Suas imagens",
+    "entry": "Minhas imagens",
+    "receiptLink": "Ver todas as suas imagens",
+    "opening": "Abrindo sua conta",
+    "signedOut": {
+      "kicker": "Você não entrou",
+      "heading": "Entre para ver as imagens que você registrou neste dispositivo",
+      "button": "Entrar e mostrar",
+      "body": "A lista é lida do índice pelo endereço da sua conta, então em qualquer dispositivo onde você entrar aparecem as mesmas imagens."
     }
   }
 }

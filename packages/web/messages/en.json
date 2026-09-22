@@ -1314,7 +1314,7 @@
       "wouldHaveCost": "It would have cost you {fee} MON."
     },
     "passports": {
-      "heading": "Your passports",
+      "heading": "Your pictures",
       "source": "Read live from the index",
       "reading": "Reading everything this account has registered.",
       "unreadable": "Your passports could not be read: {reason}. Reload the page.",
@@ -1511,6 +1511,24 @@
       "rateLimited": "Too many requests from here, wait a minute.",
       "notAnswering": "The verify service is not answering just now.",
       "unknown": "The request did not go through."
+    }
+  },
+  "mine": {
+    "title": "Your pictures",
+    "description": "Every picture you have registered here, read from the index with your own account.",
+    "kicker": "Your account",
+    "heading": "Made by you",
+    "lede": "Every picture your account registered, read from the index.",
+    "rail": "Registered by you",
+    "grid": "Your pictures",
+    "entry": "My pictures",
+    "receiptLink": "See all your pictures",
+    "opening": "Opening your account",
+    "signedOut": {
+      "kicker": "You are not signed in",
+      "heading": "Sign in to see the pictures you registered on this device",
+      "button": "Sign in and show them",
+      "body": "The list is read from the index against your account's address, so the same pictures come back on any device you sign in on."
     }
   }
 }

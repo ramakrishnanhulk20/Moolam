@@ -162,6 +162,10 @@ A run through the agent stamps the same list, because both paths hand the receip
 block. It does not name the agent. The agent id and the wallet that signed are on the seal beside
 the picture and on the finished card.
 
+Under the stamps, once the registration is really on Monad, is one quiet link: "See all your pictures".
+It opens `/mine`, the page holding everything this account has registered, which the bar at the top of
+every page carries as "My pictures".
+
 ## Registering the same image twice
 
 The passport id is the sha256 of the registered bytes, so the same file can only ever have one

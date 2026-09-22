@@ -1314,7 +1314,7 @@
       "wouldHaveCost": "Dich hätte es {fee} MON gekostet."
     },
     "passports": {
-      "heading": "Deine Pässe",
+      "heading": "Deine Bilder",
       "source": "Live aus dem Index gelesen",
       "reading": "Alles wird gelesen, was dieses Konto eingetragen hat.",
       "unreadable": "Deine Pässe konnten nicht gelesen werden: {reason}. Lade die Seite neu.",
@@ -1511,6 +1511,24 @@
       "rateLimited": "Zu viele Anfragen von hier, bitte eine Minute warten.",
       "notAnswering": "Der Prüfdienst antwortet gerade nicht.",
       "unknown": "Die Anfrage ist nicht durchgegangen."
+    }
+  },
+  "mine": {
+    "title": "Deine Bilder",
+    "description": "Jedes Bild das du hier eingetragen hast, mit deinem eigenen Konto aus dem Index gelesen.",
+    "kicker": "Dein Konto",
+    "heading": "Von dir gemacht",
+    "lede": "Jedes Bild das dein Konto eingetragen hat, aus dem Index gelesen.",
+    "rail": "Von dir eingetragen",
+    "grid": "Deine Bilder",
+    "entry": "Meine Bilder",
+    "receiptLink": "Alle deine Bilder ansehen",
+    "opening": "Dein Konto wird geöffnet",
+    "signedOut": {
+      "kicker": "Du bist nicht angemeldet",
+      "heading": "Melde dich an um die Bilder zu sehen die du auf diesem Gerät eingetragen hast",
+      "button": "Anmelden und anzeigen",
+      "body": "Die Liste wird mit der Adresse deines Kontos aus dem Index gelesen, also stehen auf jedem Gerät bei dem du dich anmeldest dieselben Bilder."
     }
   }
 }

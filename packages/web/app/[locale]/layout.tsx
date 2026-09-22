@@ -108,6 +108,7 @@ export default async function LocaleLayout({
   const t = await getTranslations({ locale, namespace: "header" });
   const f = await getTranslations({ locale, namespace: "footer" });
   const m = await getTranslations({ locale, namespace: "meta" });
+  const mine = await getTranslations({ locale, namespace: "mine" });
   const source = activeSource();
 
   // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
@@ -193,7 +194,10 @@ export default async function LocaleLayout({
                     <span className="hidden text-xs uppercase tracking-[0.24em] text-text-faint md:inline">
                       {t("tagline")}
                     </span>
-                    <nav className="ml-auto hidden items-center gap-5 text-sm md:flex">
+                    {/* gap-4 rather than gap-5: the seventh link needs 98 px the
+                        bar did not have, and at 20 px between links the language
+                        and theme chips dropped to a second row. */}
+                    <nav className="ml-auto hidden items-center gap-4 text-sm md:flex">
                       {nav.map((item) => (
                         <Link
                           key={item.href}
@@ -204,6 +208,18 @@ export default async function LocaleLayout({
                           {item.label}
                         </Link>
                       ))}
+                      {/* The way back to your own pictures. Everyone gets it,
+                          signed in or not: a first visitor should be able to see
+                          that the page exists, and pressing it signed out lands
+                          on the card that offers the sign in. Not prefetched,
+                          because that page carries the wallet. */}
+                      <Link
+                        href="/mine"
+                        prefetch={false}
+                        className="tap whitespace-nowrap text-text-muted transition-colors duration-200 hover:text-accent"
+                      >
+                        {mine("entry")}
+                      </Link>
                     </nav>
                     {/* tap-row grows both chips to a 44 px target the same way
                         the phone menu grows them, without moving anything. */}
@@ -215,6 +231,7 @@ export default async function LocaleLayout({
                         would otherwise wrap into three. */}
                     <HeaderMenu
                       links={nav.map((item) => ({ href: item.href, label: item.label, prefetch: item.prefetch }))}
+                      mine={mine("entry")}
                     />
                   </div>
                 </header>

@@ -1314,7 +1314,7 @@
       "wouldHaveCost": "Cela vous aurait coûté {fee} MON."
     },
     "passports": {
-      "heading": "Vos passeports",
+      "heading": "Vos images",
       "source": "Lus en direct depuis l’index",
       "reading": "Lecture de tout ce que ce compte a enregistré.",
       "unreadable": "Vos passeports n’ont pas pu être lus : {reason}. Rechargez la page.",
@@ -1511,6 +1511,24 @@
       "rateLimited": "Trop de demandes depuis ici, attendez une minute.",
       "notAnswering": "Le service de vérification ne répond pas pour le moment.",
       "unknown": "La demande n'est pas passée."
+    }
+  },
+  "mine": {
+    "title": "Vos images",
+    "description": "Chaque image que vous avez enregistrée ici, lue dans l’index avec votre propre compte.",
+    "kicker": "Votre compte",
+    "heading": "Fait par vous",
+    "lede": "Chaque image enregistrée par votre compte, lue dans l’index.",
+    "rail": "Enregistré par vous",
+    "grid": "Vos images",
+    "entry": "Mes images",
+    "receiptLink": "Voir toutes vos images",
+    "opening": "Ouverture de votre compte",
+    "signedOut": {
+      "kicker": "Vous n’êtes pas connecté",
+      "heading": "Connectez-vous pour voir les images enregistrées depuis cet appareil",
+      "button": "Se connecter et les afficher",
+      "body": "La liste est lue dans l’index à partir de l’adresse de votre compte, donc les mêmes images reviennent sur n’importe quel appareil où vous vous connectez."
     }
   }
 }

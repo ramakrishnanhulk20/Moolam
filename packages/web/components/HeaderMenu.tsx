@@ -25,7 +25,7 @@ export interface MenuLink {
  * takes the keyboard while it is open, and shuts on a choice, on Escape and on
  * a tap outside it.
  */
-export function HeaderMenu({ links }: { links: MenuLink[] }) {
+export function HeaderMenu({ links, mine }: { links: MenuLink[]; mine: string }) {
   const t = useTranslations("header");
   const reduced = useIsReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
@@ -147,6 +147,22 @@ export function HeaderMenu({ links }: { links: MenuLink[] }) {
                   {item.label}
                 </Link>
               ))}
+
+              {/* The same entry the desktop bar carries, last in the list, and
+                  not prefetched for the same reason: that page carries the
+                  wallet. */}
+              <Link
+                href="/mine"
+                prefetch={false}
+                onClick={() => setOpenAt(null)}
+                style={reduced ? undefined : { animationDelay: `${40 + links.length * 45}ms` }}
+                className="rise group flex items-baseline gap-4 border-b border-line py-3.5 font-display text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.03em] text-text transition-colors duration-200 hover:text-accent"
+              >
+                <span aria-hidden className="font-mono text-[10px] tracking-[0.2em] text-text-faint">
+                  0{links.length + 1}
+                </span>
+                {mine}
+              </Link>
             </nav>
 
             {/* Both chips are drawn small on purpose and both are grown to a

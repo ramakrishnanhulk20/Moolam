@@ -1314,7 +1314,7 @@
       "wouldHaveCost": "A ti te habría costado {fee} MON."
     },
     "passports": {
-      "heading": "Tus pasaportes",
+      "heading": "Tus imágenes",
       "source": "Leídos en vivo del índice",
       "reading": "Leyendo todo lo que ha registrado esta cuenta.",
       "unreadable": "No se pudieron leer tus pasaportes: {reason}. Recarga la página.",
@@ -1511,6 +1511,24 @@
       "rateLimited": "Demasiadas peticiones desde aquí, espera un minuto.",
       "notAnswering": "El servicio de verificación no responde ahora mismo.",
       "unknown": "La petición no llegó a entrar."
+    }
+  },
+  "mine": {
+    "title": "Tus imágenes",
+    "description": "Cada imagen que registraste aquí, leída del índice con tu propia cuenta.",
+    "kicker": "Tu cuenta",
+    "heading": "Hecho por ti",
+    "lede": "Cada imagen que registró tu cuenta, leída del índice.",
+    "rail": "Registrado por ti",
+    "grid": "Tus imágenes",
+    "entry": "Mis imágenes",
+    "receiptLink": "Ver todas tus imágenes",
+    "opening": "Abriendo tu cuenta",
+    "signedOut": {
+      "kicker": "No has entrado",
+      "heading": "Entra para ver las imágenes que registraste en este dispositivo",
+      "button": "Entrar y verlas",
+      "body": "La lista se lee del índice con la dirección de tu cuenta, así que en cualquier dispositivo donde entres aparecen las mismas imágenes."
     }
   }
 }

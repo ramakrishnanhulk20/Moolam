@@ -1,0 +1,65 @@
+"use client";
+
+import { motion } from "framer-motion";
+import { useTranslations } from "next-intl";
+import { useHeadingLeading } from "@/components/studio/leading";
+
+/**
+ * What a signed out visitor sees on /mine.
+ *
+ * The list on this page is read with an account's own address, so there is
+ * nothing to show and nothing to guess at until someone signs in. The card says
+ * that in one line and offers the only control that changes it, with the same
+ * sign in the studio uses.
+ */
+export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
+  const t = useTranslations("mine");
+  const studio = useTranslations("studio");
+  const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
+
+  return (
+    <motion.section
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      className="relative mt-16 max-w-[62ch] border border-line bg-bg-raised p-7 sm:mt-24 sm:p-10"
+    >
+      {/* The motif, oversized, hung off the card's own corner. The mark itself
+          is wrapped rather than positioned: the .motif rule in globals.css sets
+          position relative and it is written outside Tailwind's layers, so it
+          wins over any position utility put on the same element. */}
+      <span aria-hidden className="pointer-events-none absolute -right-5 -top-5 hidden opacity-[0.14] sm:block">
+        <span className="motif block h-14 w-14" />
+      </span>
+
+      <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+        <span className="motif h-[9px] w-[9px]" />
+        {t("signedOut.kicker")}
+      </p>
+
+      <h2
+        className={`mt-5 max-w-[22ch] font-display text-[clamp(1.7rem,3.6vw,2.8rem)] font-semibold uppercase tracking-[-0.025em] ${leading}`}
+      >
+        {t("signedOut.heading")}
+      </h2>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+        className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3"
+      >
+        <button
+          type="button"
+          onClick={onSignIn}
+          className="rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
+        >
+          {t("signedOut.button")}
+        </button>
+        <p className="max-w-[26ch] text-xs text-text-faint">{studio("signedOut.methods")}</p>
+      </motion.div>
+
+      <p className="mt-7 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("signedOut.body")}</p>
+    </motion.section>
+  );
+}
