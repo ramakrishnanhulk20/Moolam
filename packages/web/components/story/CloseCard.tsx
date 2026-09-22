@@ -156,9 +156,22 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
         </dl>
 
         {/* Where the two counts were written. It sat in the row as a third
-            figure, where a chain id read as a count of something. */}
+            figure, where a chain id read as a count of something.
+
+            The way out to the evidence rides on this line rather than on the
+            row of calls above it. At 375 px the two calls already fill that
+            row: 330 of 335 px in Portuguese, 323 in Tamil, so a third item
+            there wraps and pushes the card's last line towards the fold. This
+            line is 141 px of 335 in the longest language, so the link fits
+            beside it and every box above stays where it was. */}
         <p className="mt-1 font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:mt-4 sm:text-[11px] sm:tracking-[0.16em]">
           {t("chain", { chainId: CHAIN_ID })}
+          <span aria-hidden className="px-2 opacity-50">
+            &middot;
+          </span>
+          <Link href="/docs/proof" className="transition-colors duration-200 hover:text-accent focus-visible:text-accent">
+            {t("proof")}
+          </Link>
         </p>
 
         {data.error !== null && <p className="mt-6 max-w-[52ch] text-sm text-failed">{t("error", { reason: data.error })}</p>}

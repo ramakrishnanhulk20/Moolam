@@ -1,0 +1,131 @@
+---
+title: Proof
+---
+
+# Proof
+
+This page is for a judge with ten minutes. Every row is one claim, the screen that shows it, the
+file that does it, the test that holds it, and the transaction on Monad where there is one.
+
+Nothing here is planned work. Everything in these tables ships today, on Monad mainnet, chain 143.
+Checked on 2026-09-22: every link on this page answered, every file is in the repo, every test name
+is in the suite, and every transaction was read back from Monad by its hash and is recorded in
+`proofs/` or in the attack transcript that names it. Where a claim is smaller than it looks, the row says so,
+and [what is deliberately not claimed](#what-is-deliberately-not-claimed) is its own section at the
+bottom.
+
+The four contracts and their Sourcify matches are on the [Introduction](intro). The long version of
+any row is in [Architecture](developers/architecture), the [Threat model](security/threat-model) or
+the API pages.
+
+## The track: primitives for trust, provenance and user-owned data
+
+Track 04 asks for "protocol-level primitives for trust, provenance, and user-owned data", and the
+grand champion is "The best build of Metropolis". The program's own FAQ says judges "need to be
+able to verify what you built". This section answers that sentence.
+
+| Claim | See it | File | Test or run | On Monad |
+| --- | --- | --- | --- | --- |
+| A primitive, not a platform feature. Four contracts, no upgrade proxy, ownership renounceable, and the agent identity belongs to a registry Moolam did not deploy | [Contracts](https://moolam.vercel.app/en/docs/developers/contracts) | `packages/contracts/src/MoolamRegistry.sol` | `test_renouncingOwnershipLocksOutRemoveReceiverAndPauseForever` | [Registry `0xa191…80C0`](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0), Sourcify match |
+| A passport survives re-encoding. Six mangled copies of one picture and a copy stripped of all metadata resolved to the same passport. The mirrored copy came back 0 of 64 bits apart | [Verify an image](https://moolam.vercel.app/en/verify) | `packages/verifier/src/fingerprint.ts`, `dihedral.ts`, `match.ts` | `npm run prove` sections 2 and 3, saved in [prove-it.txt](../proofs/prove-it.txt); 360 copies and 0 false positives in [robustness.txt](../proofs/robustness.txt) | [Registration `0x599b…5834`](https://monadvision.com/tx/0x599b33957f4efced343ee93c88acd48e6339b1afed08078d3bedd61a078e5834) |
+| The holder's statement on how AI may use a picture is a dated public record, appended and never edited. Thirteen pictures carry one | [Monsoon passport, "How AI may use this picture"](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) | `packages/contracts/src/MoolamConsent.sol`, `packages/web/app/api/consent-at/route.ts` | `test_consentAtAnswersBeforeOnAndAfterEachWrite`, `invariant_anEntryOnceWrittenNeverChanges` | [Statement `0x79d4…4b61`](https://monadvision.com/tx/0x79d4de54855e958cd54cbecda3cc8ad734adfb24ffbfc4e6ef126191b4ad4b61), block 105833742 |
+| The day scrubber asks the chain what was in force on a past day. One `consentAt` call per day landed on, not today's answer with an old date printed over it | The same passport page | `packages/web/components/passport/ConsentPanel.tsx` | `consent-scrubber.test.ts`, "hands back the statement the chain says was in force, with the moment asked" | [Consent register `0x1151…1277`](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) |
+| A challenge costs a bond, only the named resolver settles it, and the money leaves by a pull payment | [Disputes](https://moolam.vercel.app/en/docs/guides/disputes) | `packages/contracts/src/MoolamRegistry.sol` | `test_flagHoldsTheBond`, `invariant_balanceCoversEveryLiability` | Three refusals sent on mainnet: [InvalidBond](https://monadvision.com/tx/0x9f2f9e1e3b5a966daed4c89128220438f20d185b52323c5e7e335547aee46b3a), [NotResolver](https://monadvision.com/tx/0x950cdd908d8651d28590cc8105234f76c83d9b15a0d2a8f5a1030129d135a26e), [NothingToWithdraw](https://monadvision.com/tx/0xb58e21a41fc85162ff6bf03e84e577d2c7d56db1fd18ea7d57b894e1354a9957) |
+| An edit is a child passport with a parent link, not an overwrite. The original stays the root of its tree | [Edits and lineage](https://moolam.vercel.app/en/docs/guides/edits-and-lineage) | `packages/contracts/src/MoolamRegistry.sol`, `packages/indexer/src/tree.ts` | `test_appendEditRecordsTheChildAndMintsToTheParentOwner`; the indexer test "keeps the original as the root all the way down a two level edit chain" | [Edit `0xbb12…dbf4`](https://monadvision.com/tx/0xbb12ecc5b3b925c6143f4451e6c293ce69db68a2d12fe35528b47b8874d9dbf4) |
+| An agent's identity is an ERC-8004 token on Monad's canonical registry. Moolam reads `ownerOf` and can never mint, revoke or edit one | [Agent 10249](https://moolam.vercel.app/en/agent/10249) | `packages/contracts/src/MoolamRegistry.sol` | `test_aRealAgentIsMintedAndOwnedByTheWalletThatRegisteredIt`, a fork test against the live registry | [ERC-8004 `0x8004…a432`](https://monadvision.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432) |
+| The attacks were executed, not described. Twelve run twice each, as a read and then as a real transaction. Eight more against the consent register, eight more on a mainnet fork | [Threat model](https://moolam.vercel.app/en/docs/security/threat-model) | `docs/security/attacks/`, [consent-attacks.txt](../proofs/consent-attacks.txt), [pass-2.txt](../proofs/attacks/pass-2.txt) | `npm run prove` section 5, 12 of 12 refused | [Passkey replay refused](https://monadvision.com/tx/0xf99e40ccc6e51621bec3442644c2fb8c43f55c376a773b46672f3d4e5be3b54c), [attestation from a stranger refused](https://monadvision.com/tx/0x35b3b83d1b5f112859b9e1cdcf01b9e38da631825baafb784516a9f9fd99aff3) |
+| Every promise carries an invariant, and the invariant names the file that holds it | [Threat model, entry points](https://moolam.vercel.app/en/docs/security/threat-model) | `docs/security/threat-model.md` | `MoolamRegistry.invariants.t.sol`, `MoolamConsent.invariants.t.sol` | Ran against the deployed bytecode in the fork suite, [fork-tests.txt](../proofs/fork-tests.txt) |
+
+## Chainlink CRE: an orchestration layer
+
+The bounty asks for "meaningful use as an orchestration layer", "blockchain plus external API, data
+source, LLM or agent", and "a successful CLI simulation".
+
+| Claim | See it | File | Test or run | On Monad |
+| --- | --- | --- | --- | --- |
+| The workflow orchestrates, it does not read a feed. A log trigger fires on a registration, the workflow reads the passport from Monad, fetches the picture over HTTP, decodes the JPEG and recomputes the fingerprint in the sandbox, then writes the verdict back on chain | [Chainlink CRE workflow](https://moolam.vercel.app/en/docs/developers/chainlink-workflow) | `packages/workflow/moolam-verifier/workflow.ts`, `decode.ts`, `phash.ts` | `MoolamReceiver.t.sol`, 16 tests | [Receiver `0x0d69…ff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) |
+| A successful CLI simulation, fourteen times. Every one of the fourteen real pictures on the registry carries a re-check delivered on chain, with its recomputed fingerprint and its bit distance | [Monsoon passport, "Second opinion"](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) | [rechecks.txt](../proofs/rechecks.txt) | `verify-recheck.test.ts`, "reads the live shape: one re-check that matched, with its distance, day and receiver" | [Re-check `0x59e6…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa), distance 0 |
+| The receiver accepts this workflow and nothing else. It is pinned to the workflow author and the workflow name, and a report from any other sender is refused before it is read | [Policy and receiver](https://moolam.vercel.app/en/docs/api/policy-and-receiver) | `packages/contracts/src/MoolamReceiver.sol` | `test_aReportCarryingAnotherAuthorIsRefused`, `test_aReportCarryingAnotherWorkflowNameIsRefused`, `test_aReportFromAnyOtherAddressIsRefused` | [Report from a fake forwarder refused](https://monadvision.com/tx/0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4) |
+| The delivery label is honest. Each verdict says which forwarder delivered it, and today every one says simulation forwarder rather than claiming a network reached consensus | The same passport page, under each verdict | `packages/web/components/passport/Attestations.tsx` | `attestation-delivery.test.ts`, "says a simulation run when the report came through the simulation forwarder" and "names the workflow rather than claiming an independent network" | [Simulation forwarder `0x9eF6…784d`](https://monadvision.com/address/0x9eF6468C5f37b976E57d52054c693269479A784d) beside the [production Keystone forwarder](https://monadvision.com/address/0x76c9cf548b4179F8901cda1f8623568b58215E62) |
+| Confidential Workflows, Chainlink's CRE release of 7 August 2026 (CLI v1.29.0, the release that also added Monad mainnet support), run as a spike. A private file nobody can fetch from a public gateway was pulled with a credential inside the handler, fingerprinted there, and matched the fingerprint on chain at 0 bits. Only the verdict crossed out | No screen. This one is a spike, and the release is on [Chainlink's CRE release notes](https://docs.chain.link/cre/release-notes) | `packages/workflow/moolam-sealed-spike/workflow.ts` and its `README.md` | `cre workflow simulate moolam-sealed-spike`, and a wrong credential ends the run at the link call with a 401 and no fingerprint | Nothing. No transaction, no `--broadcast`, no receiver. The simulator says of itself: "The simulator is not a real TEE, and is meant to debug." One machine, no hardware isolation, no node consensus |
+
+## Envio: depth of use
+
+The bounty asks for a "non-trivial schema, derived or aggregated entities", "working, live, correct
+data", "originality" and "craft".
+
+| Claim | See it | File | Test or run | On Monad |
+| --- | --- | --- | --- | --- |
+| Derived entities, not a log mirror. `Creator`, `Generator` with its trust score, `CreatorDay`, `DailyStats`, `GlobalStats`, `ConsentEntry`, and the flattened statement on every `Passport` | [Envio indexer](https://moolam.vercel.app/en/docs/developers/envio-indexer) | `packages/indexer/schema.graphql`, `packages/indexer/src/trust.ts`, `packages/indexer/src/day.ts`, `packages/indexer/src/consent.ts` | 26 indexer tests, saved in [indexer-tests.txt](../proofs/indexer-tests.txt); "splits the daily counters by UTC day while the global totals keep adding up" | Watches all four contracts from their deploy blocks |
+| `inheritedDisputed`: an edit made after its parent lost a challenge is marked, so a reader does not have to walk the tree to find out | [Explore](https://moolam.vercel.app/en/explore), the Disputed chip | `packages/indexer/src/tree.ts` | "gives an edit made after its parent lost a challenge the inherited mark", and "marks every edit already made from a passport when its challenge is upheld" | No dispute has ever been opened on mainnet, so this is held by the tests and by attack 6 on a mainnet fork in [pass-2.txt](../proofs/attacks/pass-2.txt) |
+| Working, live, correct. This query was run against the hosted endpoint on 2026-09-22 and the answer is below, untouched | [GraphQL](https://moolam.vercel.app/en/docs/api/graphql) | `packages/indexer/src/EventHandlers.ts` | The 26 tests above, plus `npx tsc --noEmit` against the generated types | The fourteen re-checks in [rechecks.txt](../proofs/rechecks.txt) are fourteen of the fifteen attestation rows the index returns, the fifteenth being an earlier delivery |
+| The app reads the index, never a fixture. Explore, its AI-use filter, Agents, and the film's own counts all read live and say so when the index does not answer | [Explore](https://moolam.vercel.app/en/explore) and [Agents](https://moolam.vercel.app/en/agents) | `packages/web/components/explore/query.ts`, `packages/web/lib/data/passports.ts` | `explore-consent.test.ts`, "says how many pictures carry a statement, counted by the index itself"; `index-retry.test.ts` | The registry and the consent register, read through the index |
+
+```graphql
+query ProofToday {
+  GlobalStats {
+    passports
+    creators
+    generators
+    attestations
+    disputes
+    consentStatements
+    passportsWithConsent
+  }
+}
+```
+
+```json
+{ "passports": 37, "creators": 4, "generators": 2, "attestations": 15,
+  "disputes": 0, "consentStatements": 13, "passportsWithConsent": 13 }
+```
+
+## Privy: beyond login
+
+The bounty asks for use "beyond login", a demo that must "clearly show the Privy-powered function", and
+gives a bonus for several Privy features. Moolam uses five: embedded wallets, passkeys, gas
+sponsorship, session signers under a policy, and server wallets with a key quorum.
+
+| Claim | See it | File | Test or run | On Monad |
+| --- | --- | --- | --- | --- |
+| Embedded wallets. An email code creates an account on Monad with no seed phrase and no extension | [Register an image](https://moolam.vercel.app/en/studio) | `packages/web/components/providers/PrivyProvider.tsx`, `packages/web/components/providers/WalletProvider.tsx` | `wallet-gate.test.ts`, `wallet-returning.test.ts` | [Creator `0x85a8…39a6`](https://monadvision.com/address/0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6) |
+| Passkeys, bound on chain and checked by Monad's P-256 precompile at `0x0100`. Both user presence and user verification are required, so only someone who touched the sensor can make a passport | The same screen, "Use this device's unlock" | `packages/web/lib/passkey/webauthn.ts`, `verify.ts`, `packages/contracts/src/MoolamRegistry.sol` | `parity.test.ts`, "agrees field for field on one signature"; `test_bindPasskeyRefusesAnAssertionWithoutUserVerification` | [Bind `0x34cf…fffa`](https://monadvision.com/tx/0x34cfc868eadf3f6a082637dd39d684e4192266d1c3a153e18beb2738e1b1fffa), sponsored |
+| Gas sponsorship on every write. The recorded run printed "sponsorship: on, the app paid the gas, not the creator's wallet" | Every receipt, where "Network fee" reads "Paid by Moolam through Privy" | `packages/web/components/studio/Receipt.tsx` | [privy.txt](../proofs/privy.txt) | The two passkey sends below went through the ERC-4337 [EntryPoint](https://monadvision.com/address/0x0000000071727De22E5E9d8BAf0edAc6f37da032) from a bundler, so the creator paid nothing |
+| Session signers under a policy. A creator grants the editing app one signer, held to `appendEdit` on the Moolam registry and nothing else. Revoke it and Privy refuses the same call before it reaches Monad | "Allow edits from this app", on any passport you hold. The walkthrough is in [Edits and lineage](https://moolam.vercel.app/en/docs/guides/edits-and-lineage) | `packages/agents/src/privy/sessionSigner.ts`, `packages/verifier/src/edit/` | `packages/web/test/attacks/duplicate-child.test.ts`; the revoked signer is refused in [privy.txt](../proofs/privy.txt) step 7 | [Edit signed by the session signer `0xbb12…dbf4`](https://monadvision.com/tx/0xbb12ecc5b3b925c6143f4451e6c293ce69db68a2d12fe35528b47b8874d9dbf4) |
+| Server wallets with a key quorum: an agent transacting from a wallet built on Privy. The demo agent's key lives in Privy's enclave under a policy that allows `register` on one contract on chain 143 carrying no MON, and EIP-712 signing over that same contract. It signs the generator half of every picture it draws | [Agent 10249](https://moolam.vercel.app/en/agent/10249), and the studio's "Make one with the agent" | `packages/agents/src/privy/serverWallet.ts`, `generatorSigner.ts`, `policies.ts` | [privy.txt](../proofs/privy.txt) steps 3 to 5: the agent registered under policy `kvq9627q5dfpv90xegi5h1cj`, and both a MON transfer and an `appendEdit` came back `policy_violation` with nothing signed | [Register by the agent `0xbf6a…9079`](https://monadvision.com/tx/0xbf6a3fa04fc46bedb9b513f20084b407c8ce1741552ed0ea622c10eb6a489079) |
+| Two transactions a person really made, with a real passkey, on 20 September 2026. One from a passport page on an existing picture, one from the studio at the moment of making | [The passport that was stated on](https://moolam.vercel.app/en/passport/0x3dae5ee9d854d6af49857150873cefbe2df2a585e35ea86d34f0f47cb3b6403d) | [consent-statements.txt](../proofs/consent-statements.txt) | Read back from the chain with `cast call consentOf` the next day | [Holder's statement `0x4601…5361`](https://monadvision.com/tx/0x46010c7946ff6d4b772e52b64bcb9db062fdba0cd6eedfc05f2cf15326c85361) in block 106391876, and the [studio's statement `0xfd6d…6d74`](https://monadvision.com/tx/0xfd6d9bf5872d3cee781636a1cebff520926ee0e761003a098abc9ef040b56d74) seven seconds after its [registration](https://monadvision.com/tx/0x04d286385ed04c65e32b14cc3d573031b1035920e9db20d85ce00ac31f0336af) |
+
+## Monad itself
+
+| Claim | See it | File | Test or run | On Monad |
+| --- | --- | --- | --- | --- |
+| Four contracts on chain 143, all verified through Sourcify, deployed by one repeatable script | [Introduction](intro) | `packages/contracts/script/` | [deploy-dryrun.txt](../proofs/deploy-dryrun.txt) | [Registry](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0), [Policy](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821), [Receiver](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04), [Consent](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) |
+| The P-256 precompile at `0x0100` is what makes a passkey a first class signer here. No server checks the WebAuthn assertion, and it cannot be added after the fact | [Why Monad](https://moolam.vercel.app/en/docs/concepts/why-monad) | `packages/contracts/src/MoolamRegistry.sol`, through OpenZeppelin's WebAuthn library | `test_registerRejectsAPasskeySignatureFromAnotherDevice`, `test_registerRejectsAPasskeySignatureOverAnotherPassport` | Every registration transaction in this page's rows |
+| Gas, measured rather than estimated. The live registration cost 376,128 gas, and Monad bills the limit declared rather than the gas used | [Why Monad](https://moolam.vercel.app/en/docs/concepts/why-monad) | [gas.txt](../proofs/gas.txt) | `forge test --gas-report`; a first statement measures 117,337 gas and a later one 91,036 | [The 376,128 gas registration](https://monadvision.com/tx/0x599b33957f4efced343ee93c88acd48e6339b1afed08078d3bedd61a078e5834) |
+| Sub-second blocks, measured on one real pair of sends. The studio's statement landed 23 blocks, seven seconds, after the registration it belongs to | [Register an image](https://moolam.vercel.app/en/studio), where the receipt prints the milliseconds it measured in the browser | `packages/web/components/studio/Receipt.tsx` | `studio-render.test.ts` pins the receipt's confirmation line in every language | [Registration](https://monadvision.com/tx/0x04d286385ed04c65e32b14cc3d573031b1035920e9db20d85ce00ac31f0336af) at block 106392736, [statement](https://monadvision.com/tx/0xfd6d9bf5872d3cee781636a1cebff520926ee0e761003a098abc9ef040b56d74) at block 106392759 |
+| A live registry, not a demo fixture: 37 passports, 4 creators, 2 generators, 13 statements today | [Explore](https://moolam.vercel.app/en/explore) | `packages/web/lib/data/passports.ts` | The query above, run on 2026-09-22 | Every row reads from the four contracts |
+
+## What is deliberately not claimed
+
+- No copyright proof. A passport proves who registered first. It does not prove who created the
+  picture and it does not prove who owns the rights to it.
+- No compliance claim. Registering a picture here does not make a provider or a deployer compliant
+  with any law. [Rules and standards](concepts/rules-and-standards) sets what Moolam does beside
+  what the C2PA specification and the EU texts actually ask for.
+- No network consensus on the re-checks. Every re-check on chain today came from Chainlink's
+  simulator run with `--broadcast`. That is one machine and no quorum, and the passport page says so
+  under each verdict.
+- No watermark. Moolam writes nothing imperceptible into the picture. A product that needs
+  machine-readable marking in the file itself still needs a watermarking layer beside this one.
+- No crop resistance. Cutting about ten percent off each edge breaks both fingerprints: 0 of 24
+  copies matched in the sweep. [Fingerprints](concepts/fingerprints) has the numbers.
+
+## Try to break it
+
+Reading a refusal is weaker than watching one. [Try to break it](security/try-to-break-it) sends
+eleven of these attacks, and one control that has to pass, from the browser to the deployed
+contracts on Monad mainnet as `eth_call`, so the refusal that comes back is the contract's own and
+nothing is signed or spent.
+
+The transcripts behind every refusal are in `docs/security/attacks/`, and the full sessions are in
+[prove-it.txt](../proofs/prove-it.txt) and [consent-attacks.txt](../proofs/consent-attacks.txt).

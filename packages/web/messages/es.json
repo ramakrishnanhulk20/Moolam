@@ -274,6 +274,7 @@
       "body": "Un pasaporte para cada imagen generada, escrito en Monad en el momento en que se crea, revisado por un flujo de Chainlink y localizable desde cualquier copia que sobreviva a internet.",
       "register": "Registrar una imagen",
       "verify": "Verificar una imagen",
+      "proof": "Ver las pruebas",
       "passports": "Pasaportes",
       "attestations": "Comprobaciones en cadena",
       "chain": "en Monad, cadena {chainId}",

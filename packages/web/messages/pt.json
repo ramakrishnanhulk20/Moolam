@@ -275,6 +275,7 @@
       "body": "Um passaporte para cada imagem gerada, gravado na Monad no instante em que ela nasce, conferido de novo por um fluxo da Chainlink e localizável a partir de qualquer cópia que sobreviva à internet.",
       "register": "Registrar uma imagem",
       "verify": "Verificar uma imagem",
+      "proof": "Ver as provas",
       "passports": "Passaportes",
       "attestations": "Verificações na rede",
       "chain": "na Monad, rede {chainId}",

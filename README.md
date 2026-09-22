@@ -12,6 +12,7 @@
 
 <p align="center">
   <a href="https://moolam.vercel.app">Live App</a> &nbsp;|&nbsp;
+  <a href="https://moolam.vercel.app/en/docs/proof">Proof</a> &nbsp;|&nbsp;
   <a href="https://moolam.vercel.app/en/docs">Documentation</a> &nbsp;|&nbsp;
   <a href="https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0">Contracts on MonadVision</a>
 </p>
@@ -312,6 +313,8 @@ flowchart TD
 ---
 
 ## The two-minute judge path
+
+Every claim on one page: [the proof](https://moolam.vercel.app/en/docs/proof).
 
 ### The click path (no setup, no wallet)
 

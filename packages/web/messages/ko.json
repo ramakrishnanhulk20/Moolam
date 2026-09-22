@@ -276,6 +276,7 @@
       "body": "생성된 모든 이미지에 여권을. 만들어지는 순간 Monad에 기록되고, Chainlink 워크플로가 다시 확인하며, 인터넷에서 살아남은 어떤 사본에서도 되찾을 수 있습니다.",
       "register": "이미지 등록",
       "verify": "이미지 검증",
+      "proof": "증거 보기",
       "passports": "여권",
       "attestations": "체인 위의 검증",
       "chain": "Monad에서, 체인 {chainId}",

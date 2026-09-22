@@ -274,6 +274,7 @@
       "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by a Chainlink workflow, and findable from any copy that survives the internet.",
       "register": "Register an image",
       "verify": "Verify an image",
+      "proof": "See the proof",
       "passports": "Passports",
       "attestations": "Verifications on chain",
       "chain": "on Monad, chain {chainId}",

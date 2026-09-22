@@ -7,6 +7,11 @@
       "label": "Introduction"
     },
     {
+      "type": "page",
+      "slug": "proof",
+      "title": "Proof"
+    },
+    {
       "type": "section",
       "title": "Getting Started",
       "open": true,
@@ -173,6 +178,10 @@
         {
           "slug": "security/threat-model",
           "title": "Threat model"
+        },
+        {
+          "slug": "security/try-to-break-it",
+          "title": "Try to break it"
         },
         {
           "slug": "security/audits",

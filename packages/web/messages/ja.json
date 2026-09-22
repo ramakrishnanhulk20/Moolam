@@ -276,6 +276,7 @@
       "body": "生成されたすべての画像に一冊のパスポートを。生まれた瞬間に Monad へ書き込み、Chainlink ワークフローが再確認し、インターネットを生き延びたどのコピーからでもたどれます。",
       "register": "画像を登録",
       "verify": "画像を検証",
+      "proof": "証拠を見る",
       "passports": "パスポート",
       "attestations": "チェーン上の検証",
       "chain": "Monad 上、チェーン {chainId}",

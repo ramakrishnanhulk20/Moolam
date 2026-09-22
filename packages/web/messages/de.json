@@ -274,6 +274,7 @@
       "body": "Ein Pass für jedes erzeugte Bild, im Moment seiner Entstehung auf Monad geschrieben, von einem Chainlink-Workflow nachgeprüft und aus jeder Kopie auffindbar, die das Internet übersteht.",
       "register": "Bild eintragen",
       "verify": "Bild prüfen",
+      "proof": "Die Belege ansehen",
       "passports": "Pässe",
       "attestations": "Prüfungen auf der Kette",
       "chain": "auf Monad, Kette {chainId}",

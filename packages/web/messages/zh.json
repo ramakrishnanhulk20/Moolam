@@ -276,6 +276,7 @@
       "body": "为每一张生成图片配一本护照，成图的那一刻就写进 Monad，由 Chainlink 工作流复核，并且能从任何在互联网上活下来的副本追回。",
       "register": "登记图片",
       "verify": "验证图片",
+      "proof": "查看证据",
       "passports": "护照",
       "attestations": "链上验证",
       "chain": "在 Monad 上，链 {chainId}",
