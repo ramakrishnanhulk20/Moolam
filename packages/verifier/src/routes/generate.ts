@@ -14,7 +14,7 @@ import { PromptRefused, billedOrUnknown, createImage, type ImageUsage } from "..
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
-import { dayLimitRefusal } from "../limits/globalDay.js";
+import { takeToday } from "../limits/dayGate.js";
 import {
   AI_SOURCE_TYPE,
   FINGERPRINT_VERSION,
@@ -24,7 +24,13 @@ import {
   passportMetadata,
 } from "../metadata.js";
 import { prepareOrFallback, prepareSealed, type PreparedResult, type SealedResult } from "../prepare.js";
-import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile, type SealedMetadata } from "../sealed.js";
+import {
+  SEALED_METADATA_REFUSED,
+  sealedMetadata,
+  signedFile,
+  type SealedMetadata,
+  type SignedFile,
+} from "../sealed.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-agent/0.1.0";
@@ -83,14 +89,50 @@ const bodySchema = z.object({
 interface Drawn {
   model: string;
   usage?: ImageUsage;
+  /**
+   * Whether the creator asked for this picture to be registered without being published.
+   *
+   * It is carried on the drawing rather than worked out again from the shape of it: a picture
+   * with no thumbnail happens to be a sealed one today, and guessing from that would make the
+   * answer depend on a coincidence instead of on what the creator asked for.
+   */
+  sealed: boolean;
 }
 
-interface DrawnImage extends PreparedResult, Drawn {}
+interface DrawnImage extends PreparedResult, Drawn {
+  sealed: false;
+}
 
-interface SealedDrawnImage extends SealedResult, Drawn {}
+interface SealedDrawnImage extends SealedResult, Drawn {
+  sealed: true;
+}
 
-/** What one pin gives back, so the public branch can carry its pair to the answer. */
-type Pinned = Awaited<ReturnType<typeof pinFile>>;
+/** What a sealed answer adds to the shared fields: the only copy of the picture there will be. */
+interface SealedCopy {
+  sealed: true;
+  signedFile: SignedFile;
+}
+
+/** What a public answer adds instead: where the picture and its thumbnail were pinned. */
+interface PinnedPicture {
+  image: { cid: string; uri: string; gatewayUrl: string; bytes: number; width: number; height: number };
+  thumbnail: { cid: string; uri: string; gatewayUrl: string };
+}
+
+/**
+ * What a creator is told when the file this service is about to hand back does not hash to the
+ * passport id, or carries no bytes at all.
+ *
+ * The check runs before the sealed document is pinned, so this answer can promise that nothing was
+ * published. A commitment sitting on IPFS to a picture the creator never received cannot be taken
+ * back, and on this path there is no second copy to try again with. Which of the two ways it
+ * failed is this service's own fault to fix and stays in the log.
+ */
+const SEALED_FILE_REFUSED = {
+  error: "sealed-file-refused",
+  reason:
+    "this service could not hand back a sealed file matching the passport it was about to commit to, so nothing was pinned and nothing was registered. Please try again.",
+} as const;
 
 /**
  * POST /generate: the generator agent draws a picture for a signed-in creator and co-signs its
@@ -146,13 +188,6 @@ export async function generateRoutes(
       return reply.code(401).send({ error: "unauthorized" });
     }
 
-    // Read before the body is trusted, so that a refusal which repeats a field the caller sent
-    // is uncacheable too. Every answer to a sealed request carries this, not only the one that
-    // carries the picture.
-    if ((request.body as { sealed?: unknown } | undefined)?.sealed === true) {
-      void reply.header("cache-control", "no-store");
-    }
-
     const parsed = bodySchema.safeParse(request.body);
     if (!parsed.success) {
       const reason = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
@@ -203,31 +238,28 @@ export async function generateRoutes(
     // The day's ceiling for everyone, asked last of the three checks and before the model is
     // called. A ceiling that is not this creator's fault must not eat their own allowance, so
     // their slot goes back before the refusal is written.
-    const today = app.globalDay.tryTake("generations");
-    if (!today.ok) {
+    const today = takeToday(app, request, reply, "generations", () => {
       quota.release(identity.userId, ticket);
-      request.log.warn(
-        { url: request.url, used: today.use.used, max: today.use.max },
-        "rejected: /generate today's ceiling for everyone is spent",
-      );
-      const refusal = dayLimitRefusal(today.use);
-      return reply.code(429).header("retry-after", String(refusal.retryAfter)).send(refusal.body);
+    });
+    if (!today.ok) {
+      return today.refused;
     }
 
-    const sealed = parsed.data.sealed === true;
     let drawn: DrawnImage | SealedDrawnImage;
     try {
-      drawn = await gate(() => draw(parsed.data.prompt, parsed.data.title, parsed.data.training, sealed));
+      drawn = await gate(() =>
+        draw(parsed.data.prompt, parsed.data.title, parsed.data.training, parsed.data.sealed === true),
+      );
     } catch (error) {
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);
-        today.giveBack();
+        today.slot.giveBack();
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate busy");
         return reply.code(503).send({ error: "busy" });
       }
       if (error instanceof PromptRefused) {
         quota.release(identity.userId, ticket);
-        today.giveBack();
+        today.slot.giveBack();
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate prompt refused");
         return reply.code(400).send({ error: "prompt-refused", reason: error.message });
       }
@@ -238,12 +270,16 @@ export async function generateRoutes(
       const billed = billedOrUnknown(error);
       if (!billed) {
         quota.release(identity.userId, ticket);
-        today.giveBack();
+        today.slot.giveBack();
       }
-      const reason = error instanceof Error ? error.message : String(error);
-      request.log.error({ url: request.url, reason, slotKept: billed }, "rejected: /generate model failed");
+      request.log.error(
+        { url: request.url, reason: reasonOf(error), slotKept: billed },
+        "rejected: /generate model failed",
+      );
       return reply.code(502).send({ error: "model-failed" });
     }
+    // Past here the picture exists and the provider has been paid for it, so the day's slot stays
+    // spent however this request ends: the ceiling is there to bound spend, not attempts.
 
     // What the picture cost is the one number this route spends money on, so it is logged on
     // every success rather than left to the provider's dashboard.
@@ -263,43 +299,85 @@ export async function generateRoutes(
     }
 
     const slug = fileSlug(parsed.data.title, drawn.print.sha256);
-    // Only a public registration was given a thumbnail and a manifest document to pin, so the
-    // absence of those is what marks the sealed path in the two branches below.
-    const published = "thumbnail" in drawn ? drawn : undefined;
-    let publicPins: { image: Pinned; thumbnail: Pinned } | undefined;
+    // What this answer carries on top of the shared fields, chosen by the flag the creator sent.
+    let carried: SealedCopy | PinnedPicture;
     let pinnedMetadata: { cid: string; uri: `ipfs://${string}` };
-    try {
-      if (published === undefined) {
-        let document: SealedMetadata;
-        try {
-          document = sealedMetadata({
-            title: parsed.data.title,
-            description: SEALED_GENERATED_DESCRIPTION,
-            passportId: drawn.print.sha256,
-            fingerprint: drawn.print,
-            agentId: env.GENERATOR_AGENT_ID,
-            training: parsed.data.training,
-            model: drawn.model,
-            // The prompt is a description of the picture in the creator's own words, so a sealed
-            // passport leaves it out unless the creator asked for it to be public.
-            prompt: parsed.data.includePrompt === true ? parsed.data.prompt : undefined,
-          });
-        } catch (error) {
-          // Which field did not fit is this service's own fault to fix, so it stays in the log.
-          // The picture was drawn, so the daily slot stays spent, and nothing was pinned.
-          const reason = error instanceof Error ? error.message : String(error);
-          request.log.error({ url: request.url, reason }, "rejected: /generate sealed record refused");
-          return reply.code(500).send(SEALED_METADATA_REFUSED);
-        }
 
+    if (drawn.sealed) {
+      let document: SealedMetadata;
+      try {
+        document = sealedMetadata({
+          title: parsed.data.title,
+          description: SEALED_GENERATED_DESCRIPTION,
+          passportId: drawn.print.sha256,
+          fingerprint: drawn.print,
+          agentId: env.GENERATOR_AGENT_ID,
+          training: parsed.data.training,
+          model: drawn.model,
+          // The prompt is a description of the picture in the creator's own words, so a sealed
+          // passport leaves it out unless the creator asked for it to be public.
+          prompt: parsed.data.includePrompt === true ? parsed.data.prompt : undefined,
+        });
+      } catch (error) {
+        // Which field did not fit is this service's own fault to fix, so it stays in the log.
+        // The picture was drawn, so the daily slot stays spent, and nothing was pinned.
+        request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /generate sealed record refused");
+        return reply.code(500).send(SEALED_METADATA_REFUSED);
+      }
+
+      // The file is packed and checked against the id the chain will commit to before the document
+      // is pinned, never after. A pinned commitment to a picture the creator did not receive
+      // cannot be taken back, and this service keeps no second copy to try again with.
+      let file: SignedFile;
+      try {
+        file = signedFile(drawn.bytes, `${slug}.jpg`, drawn.print.sha256 as Hex);
+      } catch (error) {
+        request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /generate sealed file refused");
+        return reply.code(500).send(SEALED_FILE_REFUSED);
+      }
+
+      try {
         pinnedMetadata = await pinJson(document, `${slug}.json`);
-      } else {
-        const image = await pinFile(published.bytes, `${slug}.jpg`, "image/jpeg");
-        const thumbnail = await pinFile(published.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
-        const manifest =
-          published.manifestDoc === undefined ? undefined : await pinJson(published.manifestDoc, `${slug}-c2pa.json`);
-        publicPins = { image, thumbnail };
+      } catch (error) {
+        // pinFile's message carries Pinata's status and its answer, and never the token.
+        request.log.error(
+          { ip: request.ip, url: request.url, reason: reasonOf(error) },
+          "rejected: /generate sealed pin failed",
+        );
+        return reply.code(502).send({ error: "pin-failed" });
+      }
+      carried = { sealed: true, signedFile: file };
+    } else {
+      // The picture, its thumbnail and the manifest document do not depend on each other, so they
+      // go to Pinata at once rather than one after the next. Settled rather than raced, because a
+      // failure still has to say in the log which of the three did land and is now paid for.
+      const [imagePin, thumbnailPin, manifestPin] = await Promise.allSettled([
+        pinFile(drawn.bytes, `${slug}.jpg`, "image/jpeg"),
+        pinFile(drawn.thumbnail, `${slug}-thumb.jpg`, "image/jpeg"),
+        drawn.manifestDoc === undefined ? Promise.resolve(undefined) : pinJson(drawn.manifestDoc, `${slug}-c2pa.json`),
+      ]);
 
+      if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
+        const attempted = [imagePin, thumbnailPin, manifestPin];
+        // pinFile's message carries Pinata's status and its answer, and never the token.
+        request.log.error(
+          {
+            ip: request.ip,
+            url: request.url,
+            reason: attempted
+              .filter((one) => one.status === "rejected")
+              .map((one) => reasonOf(one.reason))
+              .join("; "),
+            landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
+          },
+          "rejected: /generate pin failed",
+        );
+        return reply.code(502).send({ error: "pin-failed" });
+      }
+
+      const image = imagePin.value;
+      const thumbnail = thumbnailPin.value;
+      try {
         pinnedMetadata = await pinJson(
           {
             ...passportMetadata({
@@ -307,10 +385,10 @@ export async function generateRoutes(
               description: GENERATED_DESCRIPTION,
               image: image.uri,
               thumbnail: thumbnail.uri,
-              manifest: manifest?.uri,
+              manifest: manifestPin.value?.uri,
               prompt: parsed.data.prompt,
               agentId: env.GENERATOR_AGENT_ID,
-              fingerprint: published.print,
+              fingerprint: drawn.print,
               training: parsed.data.training,
             }),
             // Which model drew it is not part of the shared document, and a generated passport is
@@ -319,12 +397,25 @@ export async function generateRoutes(
           },
           `${slug}.json`,
         );
+      } catch (error) {
+        request.log.error(
+          { ip: request.ip, url: request.url, reason: reasonOf(error) },
+          "rejected: /generate metadata pin failed",
+        );
+        return reply.code(502).send({ error: "pin-failed" });
       }
-    } catch (error) {
-      // pinFile's message carries Pinata's status and its answer, and never the token.
-      const reason = error instanceof Error ? error.message : String(error);
-      request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /generate pin failed");
-      return reply.code(502).send({ error: "pin-failed" });
+
+      carried = {
+        image: {
+          cid: image.cid,
+          uri: image.uri,
+          gatewayUrl: gatewayUrl(image.uri),
+          bytes: drawn.bytes.length,
+          width: drawn.print.width,
+          height: drawn.print.height,
+        },
+        thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
+      };
     }
 
     const input: PassportInput = {
@@ -395,32 +486,10 @@ export async function generateRoutes(
       preparedBy: identity.userId,
     };
 
-    if (published === undefined || publicPins === undefined) {
-      // The only copy of this picture leaves in this answer, so it must not sit in a cache on the
-      // way to the browser that asked for it.
-      return reply.header("cache-control", "no-store").send({
-        ...answer,
-        sealed: true,
-        signedFile: signedFile(drawn.bytes, `${slug}.jpg`, input.exactHash),
-      });
-    }
-
-    return reply.send({
-      ...answer,
-      image: {
-        cid: publicPins.image.cid,
-        uri: publicPins.image.uri,
-        gatewayUrl: gatewayUrl(publicPins.image.uri),
-        bytes: published.bytes.length,
-        width: published.print.width,
-        height: published.print.height,
-      },
-      thumbnail: {
-        cid: publicPins.thumbnail.cid,
-        uri: publicPins.thumbnail.uri,
-        gatewayUrl: gatewayUrl(publicPins.thumbnail.uri),
-      },
-    });
+    // A sealed answer carries the only copy of the picture and a public one carries where to find
+    // it. Neither may sit in a cache on the way to the browser that asked for it, which the hook
+    // in server.ts puts on every answer this route sends.
+    return reply.send({ ...answer, ...carried });
   });
 }
 
@@ -449,10 +518,14 @@ async function draw(
   };
   if (sealed) {
     const prepared = await prepareSealed(image.bytes, settings);
-    return { ...prepared, model: image.model, usage: image.usage };
+    return { ...prepared, model: image.model, usage: image.usage, sealed: true };
   }
   const prepared = await prepareOrFallback(image.bytes, settings);
-  return { ...prepared, model: image.model, usage: image.usage };
+  return { ...prepared, model: image.model, usage: image.usage, sealed: false };
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**

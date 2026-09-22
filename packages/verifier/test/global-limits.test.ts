@@ -338,6 +338,26 @@ describe("the day's ceiling for everyone", () => {
     expect(again.json().error).toBe("global-limit");
   }, 90_000);
 
+  it("refuses all three routes in one shape, because one gate writes the refusal for all of them", async () => {
+    const refusals = [
+      await prepare("did:privy:one-gate-prepare"),
+      await generate("did:privy:one-gate-draw", "One gate"),
+      await edit("did:privy:one-gate-edit", "one gate"),
+    ];
+
+    for (const refusal of refusals) {
+      expect(refusal.statusCode).toBe(429);
+    }
+    // The same body word for word on all three, which is what the shared gate buys: the block used
+    // to be copied into each route, and one copy had already drifted from the other two.
+    const bodies = refusals.map((refusal) => refusal.json());
+    expect(bodies[1]).toEqual(bodies[0]);
+    expect(bodies[2]).toEqual(bodies[0]);
+
+    const seconds = refusals.map((refusal) => Number(refusal.headers["retry-after"]));
+    expect(Math.max(...seconds) - Math.min(...seconds)).toBeLessThanOrEqual(1);
+  }, 60_000);
+
   it("reports every count and ceiling on /health, and nothing about any caller", async () => {
     const response = await app.inject({ method: "GET", url: "/health" });
     const body = response.json();

@@ -1,7 +1,7 @@
 import { type Transport } from "viem";
 import { env } from "./env.js";
-import { isPassportId, withMatchFact, withMatchFacts, type ConsentReader } from "./consentRead.js";
-import { recheckFor } from "./recheck.js";
+import { isPassportId, withMatchFacts, type ConsentAnswer, type ConsentReader } from "./consentRead.js";
+import { recheckFor, type RecheckAnswer } from "./recheck.js";
 import { monadTransport, readClient } from "./reputation/registry.js";
 import type { Hex, PassportRecord } from "./types.js";
 
@@ -68,6 +68,16 @@ export const DISPUTE_READ_TIMEOUT_MS = 5_000;
 export type DisputeAnswer = { source: "chain"; status: DisputeStatus } | { source: "unavailable" };
 
 const UNAVAILABLE: DisputeAnswer = { source: "unavailable" };
+
+/**
+ * What the other two facts say when their own reader could not answer.
+ *
+ * They live here rather than being imported because each of those modules keeps its own word for
+ * this and neither exports it; what matters is that all three say the same thing, which is that
+ * this service could not find out, and never that there is nothing to find.
+ */
+const CONSENT_UNAVAILABLE: ConsentAnswer = { source: "unavailable" };
+const RECHECK_UNAVAILABLE: RecheckAnswer = { source: "unavailable" };
 
 /** The decoded shape of one `getDispute` call. */
 export type DisputeCall = (passportId: Hex) => Promise<{
@@ -159,18 +169,19 @@ export function disputeReader(
         cache.delete(key);
       }
 
-      let raw: Awaited<ReturnType<DisputeCall>>;
       try {
-        raw = await withTimeout(call(key), timeoutMs);
+        // Reading the status sits inside the same try as the call that produced it. A call that
+        // resolves to something with no status on it, undefined among them, has to come out as
+        // "unavailable" here rather than as a thrown error at the walker, where it would cost this
+        // passport its consent statement and its re-check count as well.
+        const answer = answerFromChain(await withTimeout(call(key), timeoutMs));
+        if (answer.source === "chain") {
+          remember(key, answer);
+        }
+        return answer;
       } catch {
         return UNAVAILABLE;
       }
-
-      const answer = answerFromChain(raw);
-      if (answer.source === "chain") {
-        remember(key, answer);
-      }
-      return answer;
     },
   };
 }
@@ -178,14 +189,6 @@ export function disputeReader(
 /** A reader that answers "unavailable" for everything without opening a connection. */
 export function offlineDisputeReader(): DisputeReader {
   return { answerFor: async () => UNAVAILABLE };
-}
-
-/**
- * Attaches the dispute fact to the answer the verify routes already built, through the same walker
- * the consent statement goes through, so both speak for exactly the same passports.
- */
-export async function withDispute<T extends { result: unknown }>(payload: T, reader: DisputeReader): Promise<T> {
-  return await withMatchFact(payload, "dispute", async (id) => await reader.answerFor(id));
 }
 
 /**
@@ -201,6 +204,11 @@ export async function withDispute<T extends { result: unknown }>(payload: T, rea
  * by the passport id, which is the sha256 of the registered bytes. It is a map hit on records the
  * match itself just ran against, so the fact is as fresh as the last index refresh and no slower
  * than answering without it.
+ *
+ * The three are read behind their own guards, so one reader that throws where it promised not to
+ * costs its own field and nothing else. Losing the consent statement is bad; losing the dispute
+ * status and the second opinion along with it, because of one bad answer from one chain, is the
+ * failure this shape is here to make impossible.
  */
 export async function withPassportFacts<T extends { result: unknown }>(
   payload: T,
@@ -209,9 +217,28 @@ export async function withPassportFacts<T extends { result: unknown }>(
   recordFor: (passportId: Hex) => PassportRecord | undefined,
 ): Promise<T> {
   return await withMatchFacts(payload, async (id) => {
-    const [consentAnswer, disputeAnswer] = await Promise.all([consent.answerFor(id), dispute.answerFor(id)]);
-    return { consent: consentAnswer, dispute: disputeAnswer, recheck: recheckFor(recordFor(id)) };
+    const [consentAnswer, disputeAnswer, recheckAnswer] = await Promise.all([
+      orUnavailable(async () => await consent.answerFor(id), CONSENT_UNAVAILABLE),
+      orUnavailable(async () => await dispute.answerFor(id), UNAVAILABLE),
+      orUnavailable(async () => recheckFor(recordFor(id)), RECHECK_UNAVAILABLE),
+    ]);
+    return { consent: consentAnswer, dispute: disputeAnswer, recheck: recheckAnswer };
   });
+}
+
+/**
+ * One fact's reader, with its failure kept off the other two.
+ *
+ * Every reader here promises never to reject, and each one keeps that promise inside itself. This
+ * is the belt for the day one of them stops keeping it: a verify answer that lost one fact is
+ * worth far more to a reader than one that lost all three.
+ */
+async function orUnavailable<T>(read: () => Promise<T>, unavailable: T): Promise<T> {
+  try {
+    return await read();
+  } catch {
+    return unavailable;
+  }
 }
 
 function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {

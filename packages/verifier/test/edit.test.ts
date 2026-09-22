@@ -330,8 +330,9 @@ describe("POST /edit", () => {
 
   it("gives the daily slot back when the picture could not be pinned", async () => {
     const user = "did:privy:pin-fail-user";
-    // pinFile retries a 500 once, so both attempts have to be refused for the pin to fail.
-    pinFailures = 2;
+    // The picture, the thumbnail and the manifest go up at once and pinFile retries a 500 once, so
+    // six refusals is what it takes for none of the three to land.
+    pinFailures = 6;
 
     const refused = await ask(user, goodFields());
 

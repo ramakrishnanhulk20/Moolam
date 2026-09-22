@@ -35,7 +35,7 @@ import {
 } from "../src/sealed.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
-import { makeImage } from "./helpers.js";
+import { makeImage, makeOversizeImage } from "./helpers.js";
 
 // env.ts validates once at import, so everything the two routes read has to be set before any
 // module in this file loads. vi.hoisted runs before the imports above. The Pinata token is a
@@ -58,6 +58,8 @@ const stubs = vi.hoisted(() => ({
   embeddedWallets: vi.fn(),
   embedManifest: vi.fn(),
   sealedMetadata: vi.fn(),
+  signedFile: vi.fn(),
+  prepareSealed: vi.fn(),
 }));
 
 vi.mock("../src/edit/registry.js", async (importOriginal) => ({
@@ -77,7 +79,16 @@ vi.mock("../src/c2pa.js", async (importOriginal) => {
 vi.mock("../src/sealed.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../src/sealed.js")>();
   stubs.sealedMetadata.mockImplementation(real.sealedMetadata);
-  return { ...real, sealedMetadata: stubs.sealedMetadata };
+  stubs.signedFile.mockImplementation(real.signedFile);
+  return { ...real, sealedMetadata: stubs.sealedMetadata, signedFile: stubs.signedFile };
+});
+
+// The real pipeline for every test but the one that needs a sealed drawing to carry a key the
+// sealed path has no use for, which is how the answer proves it is chosen by the creator's flag.
+vi.mock("../src/prepare.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/prepare.js")>();
+  stubs.prepareSealed.mockImplementation(real.prepareSealed);
+  return { ...real, prepareSealed: stubs.prepareSealed };
 });
 
 vi.mock("../src/auth/wallet.js", () => ({ embeddedWallets: stubs.embeddedWallets }));
@@ -555,7 +566,9 @@ describe("a sealed registration", () => {
     expect(answer.image.gatewayUrl).toMatch(/^https:\/\/moolam-test\.mypinata\.cloud\/ipfs\//);
     expect(answer.thumbnail.uri).toMatch(/^ipfs:\/\//);
     expect(answer.manifest).toEqual({ embedded: true });
-    expect(response.headers["cache-control"]).toBeUndefined();
+    // Every answer from this route is no-store now, a public registration included: it carries a
+    // title and an address a creator sent us, and none of it belongs in a proxy.
+    expect(response.headers["cache-control"]).toBe("no-store");
 
     const metadata = JSON.parse((made[3] as Pin).bytes.toString("utf8"));
     expect(metadata.image).toBe(answer.image.uri);
@@ -614,7 +627,9 @@ describe("a sealed registration", () => {
     expect(sealedRefusal.statusCode).toBe(publicRefusal.statusCode);
     expect(sealedRefusal.json()).toEqual(publicRefusal.json());
     expect(sealedRefusal.headers["cache-control"]).toBe("no-store");
-    expect(publicRefusal.headers["cache-control"]).toBeUndefined();
+    // A public request to the same route gets it too. It used to depend on the route having read
+    // the sealed field, which is a thing several answers never get far enough to do.
+    expect(publicRefusal.headers["cache-control"]).toBe("no-store");
 
     const accepted = await prepare(app, "did:privy:sealed-refusal", {
       title: "Kept",
@@ -624,6 +639,83 @@ describe("a sealed registration", () => {
     expect(accepted.statusCode).toBe(200);
     expect(accepted.headers["cache-control"]).toBe("no-store");
   }, 60_000);
+
+  it("marks the answers no handler writes as well: the 401 before the body and the 413 mid-upload", async () => {
+    const { payload, headers } = multipart({ title: "No token", kind: "human", sealed: "true" }, IMAGE);
+    const noToken = await app.inject({ method: "POST", url: "/prepare", payload, headers });
+
+    expect(noToken.statusCode).toBe(401);
+    // The route refuses before it has read a field, so nothing in the handler could have set this.
+    expect(noToken.headers["cache-control"]).toBe("no-store");
+
+    const tooBig = await prepare(
+      app,
+      "did:privy:sealed-too-many-pixels",
+      { title: "Far too many pixels", kind: "human", sealed: "true" },
+      await makeOversizeImage(),
+    );
+    expect(tooBig.statusCode).toBe(413);
+    expect(tooBig.headers["cache-control"]).toBe("no-store");
+
+    // The hook names three paths and touches nothing else: a probe is meant to be cacheable.
+    const health = await app.inject({ method: "GET", url: "/health" });
+    expect(health.statusCode).toBe(200);
+    expect(health.headers["cache-control"]).toBeUndefined();
+  }, 60_000);
+
+  it("refuses a sealed registration whose file does not match its passport, with nothing pinned", async () => {
+    const preparedMark = pins.length;
+    stubs.signedFile.mockImplementationOnce(() => {
+      throw new Error("the sealed file does not hash to the passport id, so it could never unseal it");
+    });
+    const prepared = await prepare(app, "did:privy:sealed-file-refused", {
+      title: "A file we will not commit to",
+      kind: "human",
+      sealed: "true",
+    });
+
+    expect(prepared.statusCode).toBe(500);
+    expect(prepared.json().error).toBe("sealed-file-refused");
+    expect(Object.keys(prepared.json()).sort()).toEqual(["error", "reason"]);
+    // The check runs before the pin, so the creator is not left holding a passport id that is
+    // published on IPFS and commits to a file nobody has.
+    expect(pinsSince(preparedMark)).toHaveLength(0);
+    expect(prepared.body).not.toContain("could never unseal");
+
+    const drawnMark = pins.length;
+    stubs.signedFile.mockImplementationOnce(() => {
+      throw new Error("there is no sealed file to hand back");
+    });
+    const generated = await generate(
+      "did:privy:sealed-file-refused-draw",
+      drawn("Drawn and not committed to", { sealed: true }),
+    );
+
+    expect(generated.statusCode).toBe(500);
+    expect(generated.json().error).toBe("sealed-file-refused");
+    expect(pinsSince(drawnMark)).toHaveLength(0);
+  }, 120_000);
+
+  it("keeps a generation sealed because the creator said so, not because the drawing looks sealed", async () => {
+    const actual = await vi.importActual<typeof import("../src/prepare.js")>("../src/prepare.js");
+    // A sealed drawing that happens to carry a thumbnail. The answer used to be chosen by looking
+    // for that key, so this picture would have been pinned and published against the creator's word.
+    stubs.prepareSealed.mockImplementationOnce(async (bytes: Buffer, settings: never) => ({
+      ...(await actual.prepareSealed(bytes, settings)),
+      thumbnail: Buffer.from("a key the sealed path has no use for"),
+    }));
+
+    const mark = pins.length;
+    const response = await generate("did:privy:sealed-by-flag", drawn("Sealed whatever the shape", { sealed: true }));
+
+    expect(response.statusCode).toBe(200);
+    const answer = response.json();
+    expect(answer.sealed).toBe(true);
+    expect(answer.image).toBeUndefined();
+    expect(answer.thumbnail).toBeUndefined();
+    expect(answer.signedFile.sha256).toBe(answer.passport.exactHash);
+    expect(pinsSince(mark).map((pin) => pin.type)).toEqual(["application/json"]);
+  }, 120_000);
 
   it("answers sealed-metadata-refused and pins nothing when the record does not fit the sealed shape", async () => {
     const document = aSealedDocument();

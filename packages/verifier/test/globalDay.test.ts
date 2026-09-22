@@ -115,6 +115,28 @@ describe("the day's budget for everyone", () => {
     expect(day.tryTake("prepares").ok).toBe(false);
   });
 
+  it("keeps today's counts when the clock steps backwards, and still reports the greater day", () => {
+    const time = clock("2026-09-21T13:45:00Z");
+    const day = globalDay(CEILINGS, time.now);
+
+    const taken = day.tryTake("prepares");
+    expect(taken.ok).toBe(true);
+
+    // What an NTP correction or a container clock catching up looks like: the day number goes
+    // down. Reading that as a new day would wipe the counts and hand the world a second budget.
+    time.set("2026-09-20T13:45:00Z");
+
+    expect(day.counts().prepares).toEqual({ used: 1, max: 2 });
+    const second = day.tryTake("prepares");
+    expect(second.ok).toBe(true);
+    expect(second.use.resetsAt).toBe(Date.UTC(2026, 8, 22) / 1000);
+    expect(day.tryTake("prepares").ok).toBe(false);
+
+    // The slot taken before the step still belongs to this same day, so it goes back once.
+    taken.giveBack();
+    expect(day.counts().prepares.used).toBe(1);
+  });
+
   it("reports the counts as of now, so a probe after midnight never reads yesterday", () => {
     const time = clock("2026-09-21T10:00:00Z");
     const day = globalDay(CEILINGS, time.now);

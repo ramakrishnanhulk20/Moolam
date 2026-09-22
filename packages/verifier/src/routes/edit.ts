@@ -26,7 +26,7 @@ import { Busy } from "../generate/gate.js";
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
-import { dayLimitRefusal } from "../limits/globalDay.js";
+import { takeToday } from "../limits/dayGate.js";
 import { FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
 import { prepareOrFallback, type PreparedResult } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
@@ -83,8 +83,9 @@ interface EditContext {
  *
  * The wallet comes from the Privy user record, never from the request, and the ownership check is
  * read from the chain before anything is spent. A creator with two embedded wallets gets the one
- * that holds the parent. The daily allowance is taken once the request is known to be worth
- * serving and given back whenever the edit fails before Privy was asked to send.
+ * that holds the parent. The creator's own daily allowance is taken once the request is known to
+ * be worth serving and given back whenever the edit fails before Privy was asked to send; the
+ * day's ceiling for everyone goes back only when the request pinned nothing and sent nothing.
  *
  * Every answer that leaves a transaction out on the network carries `passportId`, the child's own
  * id, so the browser can watch the registry for that one passport instead of guessing which edit
@@ -255,20 +256,20 @@ async function append(
   // The day's ceiling for everyone, asked last of the three checks and before a pin or a sponsored
   // send. A ceiling that is not this creator's fault must not eat their own allowance, so their
   // slot goes back before the refusal is written.
-  const today = app.globalDay.tryTake("edits");
-  if (!today.ok) {
+  const today = takeToday(app, request, reply, "edits", () => {
     context.quota.release(identity.userId, ticket);
-    request.log.warn(
-      { url: request.url, used: today.use.used, max: today.use.max },
-      "rejected: /edit today's ceiling for everyone is spent",
-    );
-    const refusal = dayLimitRefusal(today.use);
-    return reply.code(429).header("retry-after", String(refusal.retryAfter)).send(refusal.body);
+  });
+  if (!today.ok) {
+    return today.refused;
   }
 
-  // Past here the allowance is spent unless it is given back, and the flag says when it must not
-  // be: once Privy has been asked to send, the edit may be on chain whatever this answer says.
+  // Two flags, because the two allowances answer different questions. The creator's own is about
+  // what they got: it goes back unless Privy was asked to send, because until then no edit of
+  // theirs can be on chain. The day's ceiling is about what the world spent: it goes back only
+  // when this request spent nothing at all, and a pin that landed is money spent whether or not
+  // the edit ever reached the chain.
   let submitted = false;
+  let pinned = false;
   try {
     let edited: PreparedResult;
     try {
@@ -311,15 +312,39 @@ async function append(
     }
 
     const slug = fileSlug(upload.title, edited.print.sha256);
-    let pinnedImage;
-    let thumbnail;
+    // The picture, its thumbnail and the manifest document do not depend on each other, so they go
+    // to Pinata at once rather than one after the next. Settled rather than raced, because a
+    // failure still has to say what did land: a pin that succeeded is paid for, and that is what
+    // decides whether this request keeps the day's slot.
+    const [imagePin, thumbnailPin, manifestPin] = await Promise.allSettled([
+      pinFile(edited.bytes, `${slug}.jpg`, "image/jpeg"),
+      pinFile(edited.thumbnail, `${slug}-thumb.jpg`, "image/jpeg"),
+      edited.manifestDoc === undefined ? Promise.resolve(undefined) : pinJson(edited.manifestDoc, `${slug}-c2pa.json`),
+    ]);
+    const attempted = [imagePin, thumbnailPin, manifestPin];
+    pinned = attempted.some((one) => one.status === "fulfilled" && one.value !== undefined);
+
+    if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
+      // pinFile's message carries Pinata's status and its answer, and never the token.
+      request.log.error(
+        {
+          ip: request.ip,
+          url: request.url,
+          reason: attempted
+            .filter((one) => one.status === "rejected")
+            .map((one) => reasonOf(one.reason))
+            .join("; "),
+          landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
+        },
+        "rejected: /edit pin failed",
+      );
+      return reply.code(502).send({ error: "pin-failed" });
+    }
+
+    const pinnedImage = imagePin.value;
+    const thumbnail = thumbnailPin.value;
     let pinnedMetadata;
     try {
-      pinnedImage = await pinFile(edited.bytes, `${slug}.jpg`, "image/jpeg");
-      thumbnail = await pinFile(edited.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
-      const manifest =
-        edited.manifestDoc === undefined ? undefined : await pinJson(edited.manifestDoc, `${slug}-c2pa.json`);
-
       pinnedMetadata = await pinJson(
         {
           ...passportMetadata({
@@ -327,7 +352,7 @@ async function append(
             description: EDITED_DESCRIPTION,
             image: pinnedImage.uri,
             thumbnail: thumbnail.uri,
-            manifest: manifest?.uri,
+            manifest: manifestPin.value?.uri,
             agentId: NO_AGENT,
             fingerprint: edited.print,
           }),
@@ -339,9 +364,10 @@ async function append(
         `${slug}.json`,
       );
     } catch (error) {
-      // pinFile's message carries Pinata's status and its answer, and never the token.
-      const reason = error instanceof Error ? error.message : String(error);
-      request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /edit pin failed");
+      request.log.error(
+        { ip: request.ip, url: request.url, reason: reasonOf(error) },
+        "rejected: /edit metadata pin failed",
+      );
       return reply.code(502).send({ error: "pin-failed" });
     }
 
@@ -471,11 +497,14 @@ async function append(
       quota: context.quota.state(identity.userId),
     });
   } finally {
-    // The day's budget follows the creator's own allowance exactly, so the two are spent or given
-    // back together and /health's count can never drift from what was really sent.
     if (!submitted) {
       context.quota.release(identity.userId, ticket);
-      today.giveBack();
+    }
+    // An edit that pinned and then failed on the gas estimate or the send still spent four files
+    // of somebody's Pinata plan. Handing the day's slot back there would let one bad afternoon at
+    // a provider spend the whole budget twice over while /health reported nothing used.
+    if (!submitted && !pinned) {
+      today.slot.giveBack();
     }
   }
 }

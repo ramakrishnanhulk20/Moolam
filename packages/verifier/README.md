@@ -325,13 +325,27 @@ so the studio shows it without a change. Setting one of the three to 0 closes
 that route for everyone, which is a kill switch to flip on the host without a
 deploy.
 
+A slot goes back to the world whenever the request that took it spent nothing.
+All three routes follow one rule: the slot is taken after the token and the
+caller's own allowance, and handed back on any exit before the first pin, which
+covers a signer that is down, a queue that stayed full, a picture the registry
+already holds, a file that will not decode and a sealed record this service
+refused to publish. From the first pin onwards the slot stays taken, because the
+ceiling is there to bound what is spent and a pin is money. `/generate` counts
+the drawing as the spend, so a picture the provider drew keeps its slot however
+the request ends, and a prompt the model turned down hands it back.
+
 What these ceilings honestly do not do. The counts live in one process's memory,
 exactly like the per-user allowances, so a redeploy resets them and a second copy
 of the service would count its own. They bound how many actions a day holds, not
 what one of them costs. The real bound on sponsored gas is the daily cap on the
-Privy app, which is a dashboard setting no code here can enforce. A refused
-generation or edit hands its slot back in the same cases the per-user allowance
-does; a prepare does not, because the 20 an hour in front of it does not either.
+Privy app, which is a dashboard setting no code here can enforce.
+
+Nothing any of the three routes answers may sit in a cache: every reply to a POST
+on `/prepare`, `/generate` and `/edit` carries `Cache-Control: no-store`, put
+there in one hook rather than by each route, so the answers no handler writes
+carry it too. That is the 401 before the body is read, the 413 raised in the
+middle of an upload and the 429 from the rate limiter.
 
 ## Registering a picture without publishing it
 
@@ -367,11 +381,16 @@ Every answer to a sealed request carries `Cache-Control: no-store`, refusals
 included, and no log line or error body carries the file or its base64. The
 answer also says whether the manifest went into the file, in the same
 `manifest: { embedded }` words the public path uses, because the copy the creator
-receives is the only one they will get. If this service ever builds a record that
-does not fit the sealed shape it answers 500 `sealed-metadata-refused`, pins
-nothing and keeps the detail in its log, rather than publishing a document nobody
-described. At the 20 MB upload limit the answer is about 26.7 MB of JSON, which
-Fastify serialises in roughly 90 ms.
+receives is the only one they will get. At the 20 MB upload limit the answer is
+about 26.7 MB of JSON, which Fastify serialises in roughly 90 ms.
+
+Two refusals protect the creator from being left with a commitment and no
+picture, and both happen before anything reaches IPFS. If this service builds a
+record that does not fit the sealed shape it answers 500
+`sealed-metadata-refused`. If the file it is about to hand back has no bytes, or
+hashes to anything other than the passport id, it answers 500
+`sealed-file-refused`. Either way nothing is pinned, nothing is registered, the
+detail stays in the log, and trying again costs the creator only the upload.
 
 Two things this does not do. It does not hide a generated picture from the model
 provider that drew it, because that provider made the picture. It does not stop

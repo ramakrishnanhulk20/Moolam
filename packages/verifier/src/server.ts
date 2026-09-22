@@ -49,6 +49,24 @@ const MAX_CONCURRENT_MATCHES = 2;
  */
 const MAX_JSON_BODY_BYTES = 16 * 1024;
 
+/**
+ * The routes whose answers must never sit in a cache, proxy or browser store.
+ *
+ * A sealed registration hands back the only copy of a picture, and a refusal on any of the three
+ * can repeat a title, a prompt or a field the caller sent. It is set in the hook rather than in
+ * the handlers because the answers that most need it are the ones no handler writes: the 401
+ * before the body is read, the 413 raised in the middle of the upload, and the 429 the rate
+ * limiter sends. Judging by the path rather than by what the route decided means an answer cannot
+ * lose the header by taking an early exit.
+ */
+const UNCACHEABLE = new Set(["/prepare", "/generate", "/edit"]);
+
+/** The path on its own. A query string is not part of which route a request reached. */
+function pathOf(url: string): string {
+  const query = url.indexOf("?");
+  return query === -1 ? url : url.slice(0, query);
+}
+
 export interface Verifier {
   index: HammingIndex;
   lookupExact: (sha256: Hex) => PassportRecord | undefined;
@@ -217,13 +235,16 @@ export async function buildServer(
   // at the moment it was created: a hook added later would miss every route registered above it.
   // These four are on every answer, the 404 and the error page included. Fastify advertises no
   // framework header of its own, so there is none to switch off.
-  app.addHook("onSend", async (_request, reply) => {
+  app.addHook("onSend", async (request, reply) => {
     reply.header("x-content-type-options", "nosniff");
     reply.header("referrer-policy", "no-referrer");
     reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
     // The studio calls this service from another origin, so "cross-origin" is the only value here
     // that cannot break it. "same-origin" would, and it is the value a template would have given.
     reply.header("cross-origin-resource-policy", "cross-origin");
+    if (request.method === "POST" && UNCACHEABLE.has(pathOf(request.url))) {
+      reply.header("cache-control", "no-store");
+    }
   });
 
   const source = options.source ?? sourceFromEnv();

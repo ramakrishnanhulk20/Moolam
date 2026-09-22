@@ -22,6 +22,7 @@ import type { Hex, PassportRecord } from "../src/types.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
 
 const HOLDER = "0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7" as Hex;
+const RECHECKER = "0x0d69055c43eacb3b1ca687ca2263a049bc7eff04" as Hex;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Hex;
 const ZERO_HASH = `0x${"00".repeat(32)}` as Hex;
 
@@ -133,6 +134,61 @@ describe("withPassportFacts", () => {
     for (const match of result.matches) {
       expect(match.consent).toEqual({ source: "unavailable" });
       expect(match.dispute).toEqual({ source: "unavailable" });
+    }
+  });
+
+  it("loses only the fact whose reader failed, never the other two", async () => {
+    const passport = `0x${"55".repeat(32)}` as Hex;
+    const record = recordFor(
+      { sha256: passport, phash: 9n, blockhash: ZERO_HASH, width: 64, height: 64, format: "jpeg" },
+      {
+        rechecks: {
+          attestations: 1,
+          matched: 1,
+          mismatched: 0,
+          latest: { receiver: RECHECKER, matched: true, distance: 0, at: 1_789_368_639 },
+        },
+      },
+    );
+    const stated: ConsentCall = async () =>
+      [
+        true,
+        {
+          at: 1_700_000_000n,
+          writer: HOLDER,
+          consent: { aiTraining: 2, aiGenerativeTraining: 2, aiInference: 1, dataMining: 1 },
+          constraintInfo: "",
+        },
+      ] as const;
+    const answer = { result: { exact: passport, best: { id: passport, score: 1 }, matches: [] }, manifest: {} };
+
+    // A chain call that answers with something the reader cannot read. Reading the status used to
+    // sit outside the reader's own try, so this threw past the walker and took all three facts.
+    const unreadable = await withPassportFacts(
+      answer,
+      consentReader({ call: stated }),
+      disputeReader({ call: (async () => undefined) as unknown as DisputeCall }),
+      (id) => (id === passport ? record : undefined),
+    );
+
+    // A reader that breaks its promise and rejects outright, which the walker guards separately.
+    const broken = await withPassportFacts(
+      answer,
+      consentReader({ call: stated }),
+      {
+        answerFor: async () => {
+          throw new Error("the dispute reader fell over");
+        },
+      },
+      (id) => (id === passport ? record : undefined),
+    );
+
+    for (const [what, payload] of [["unreadable", unreadable], ["broken", broken]] as const) {
+      const best = (payload.result as unknown as { best: Record<string, unknown> }).best;
+      expect(best.dispute, what).toEqual({ source: "unavailable" });
+      expect(best.consent, what).toMatchObject({ source: "chain", stated: true, aiTraining: "notAllowed" });
+      expect(best.recheck, what).toMatchObject({ source: "index", attestations: 1, matched: 1 });
+      expect(Object.keys(best), what).toEqual(["id", "score", "consent", "dispute", "recheck"]);
     }
   });
 });

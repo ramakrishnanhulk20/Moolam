@@ -128,6 +128,33 @@ describe("the re-check fact", () => {
       recheckFor(bareRecord({ rechecks: rechecks({ attestations: 0, matched: 0, mismatched: 0 }) })),
     ).toEqual({ source: "unavailable" });
   });
+
+  it("refuses a row whose own three counts disagree, rather than publishing a confident number", () => {
+    // Two and none do not make three. One of the three numbers is wrong and nothing here can say
+    // which, so "3 re-checks, 2 of them matched" never goes out.
+    expect(recheckFor(bareRecord({ rechecks: rechecks({ attestations: 3, matched: 2, mismatched: 0 }) }))).toEqual({
+      source: "unavailable",
+    });
+
+    // The newest verdict is a match under a matched count of zero.
+    expect(recheckFor(bareRecord({ rechecks: rechecks({ attestations: 2, matched: 0, mismatched: 2 }) }))).toEqual({
+      source: "unavailable",
+    });
+
+    // The newest verdict is a mismatch under a mismatched count of zero.
+    expect(
+      recheckFor(
+        bareRecord({
+          rechecks: rechecks({
+            attestations: 2,
+            matched: 2,
+            mismatched: 0,
+            latest: { receiver: RECEIVER, matched: false, distance: 30, at: 1_789_700_000 },
+          }),
+        }),
+      ),
+    ).toEqual({ source: "unavailable" });
+  });
 });
 
 describe("reading the re-check fields off an index row", () => {

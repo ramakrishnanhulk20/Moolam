@@ -598,14 +598,27 @@ seconds that is from now. `global-limit` is not a code the studio knows, so it r
 Setting a ceiling to `0` closes that route for everyone. That is a kill switch: it can be flipped on
 the host without a deploy, and the route answers the same 429 to every caller until it is raised.
 
-A refused generation or edit hands its slot straight back, in exactly the cases the per-user
-allowance does. A prepare does not, because the 20 an hour in front of it does not either: both
-count the attempt.
+All three routes hand a slot back whenever the request that took it spent nothing. The rule is the
+same everywhere: the slot goes back on any exit before the first pin, which covers a signer that is
+down, a queue that stayed full, a picture the registry already holds, a file that will not decode
+and a record the service refused to publish. From the first pin onwards it stays taken, because the
+ceiling bounds what is spent and a pin is money. `/generate` counts the drawing as the spend, so a
+picture the provider drew keeps its slot however the request ends, and a prompt the model turned
+down hands it back.
 
 What this does not do. The counts live in one process's memory, exactly like the per-user
 allowances, so a redeploy resets them and a second copy of the service would keep its own. They
 bound how many actions a day holds, never what one of them costs. And the real bound on sponsored
 gas is the daily cap on the Privy app, which is a dashboard setting that no code here can enforce.
+
+## Nothing these three routes answer is cacheable
+
+Every reply to a POST on `/prepare`, `/generate` and `/edit` carries `Cache-Control: no-store`,
+whatever its status. It is set in one hook on the way out rather than by each route, so the replies
+no handler writes carry it too: the `401` sent before the body is read, the `413` raised in the
+middle of an upload and the `429` from the rate limiter. These answers hold a title, a prompt, a
+wallet address or, for a sealed registration, the only copy of a picture, and none of that belongs
+in a proxy or a browser store. `GET /health` and both verify routes are untouched by this.
 
 ## GET /health
 

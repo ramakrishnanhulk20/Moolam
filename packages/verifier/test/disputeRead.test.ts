@@ -14,9 +14,10 @@ import {
   DISPUTE_TTL_MS,
   disputeAbi,
   disputeReader,
-  withDispute,
+  withPassportFacts,
   type DisputeCall,
 } from "../src/disputeRead.js";
+import { offlineConsentReader } from "../src/consentRead.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
@@ -161,12 +162,14 @@ describe("dispute reader", () => {
     expect(DISPUTE_READ_TIMEOUT_MS).toBe(5_000);
   });
 
-  it("reads the exact passport and the best match, and nothing else in the list", async () => {
+  // Through withPassportFacts, the one walker both verify routes call. The thin withDispute that
+  // used to sit here had no caller in the service and is gone; what it proved lives here.
+  it("attaches the status to the exact passport and the best match, and to nothing else in the list", async () => {
     const other = `0x${"ab".repeat(32)}` as Hex;
     const third = `0x${"cd".repeat(32)}` as Hex;
     const { read, asked } = readerFor({ [PASSPORT]: 0, [other]: 1 });
 
-    const payload = await withDispute(
+    const payload = await withPassportFacts(
       {
         result: {
           exact: PASSPORT,
@@ -175,7 +178,9 @@ describe("dispute reader", () => {
         },
         manifest: { present: false },
       },
+      offlineConsentReader(),
       read,
+      () => undefined,
     );
 
     const result = payload.result as unknown as {

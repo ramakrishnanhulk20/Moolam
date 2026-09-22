@@ -8,7 +8,7 @@ import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
-import { dayLimitRefusal } from "../limits/globalDay.js";
+import { takeToday } from "../limits/dayGate.js";
 import {
   CAPTURED_DESCRIPTION,
   CAPTURE_SOURCE_TYPE,
@@ -19,7 +19,7 @@ import {
 } from "../metadata.js";
 import { prepareOrFallback, prepareSealed, type PreparedResult, type SealedResult } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
-import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile } from "../sealed.js";
+import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile, type SignedFile } from "../sealed.js";
 import { BadRequest, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
@@ -69,6 +69,22 @@ interface Upload {
  * publish a picture the creator asked us to keep, and no later screen could take that back.
  */
 const sealedSchema = z.enum(["true", "false"]);
+
+/**
+ * What a creator is told when the file this service is about to hand back does not hash to the
+ * passport id, or carries no bytes at all.
+ *
+ * The check runs before the sealed document is pinned, so this answer can promise that nothing was
+ * published. A commitment sitting on IPFS to a file the creator never received is the one outcome
+ * a sealed registration must never leave behind, and it is the outcome a check after the pin
+ * would leave. Which of the two ways it failed is this service's own fault to fix and stays in the
+ * log, where it belongs.
+ */
+const SEALED_FILE_REFUSED = {
+  error: "sealed-file-refused",
+  reason:
+    "this service could not hand back a sealed file matching the passport it was about to commit to, so nothing was pinned and nothing was registered. Please try again.",
+} as const;
 
 /**
  * POST /prepare: everything a signed-in creator needs before they sign a passport.
@@ -134,21 +150,15 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         return reply.code(401).send({ error: "unauthorized" });
       }
 
-      // The fields live here rather than inside the reader so that a request which says it is
-      // sealed is known to be sealed even when reading it fails, and every answer from that
-      // point on, refusal included, can be marked uncacheable.
-      const fields = new Map<string, string>();
       let upload: Upload;
       try {
-        upload = await readStudioUpload(request, fields);
+        upload = await readStudioUpload(request);
       } catch (error) {
-        noStoreWhenSealed(reply, fields);
         const status = statusOf(error);
         const reason = error instanceof Error ? error.message : String(error);
         request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /prepare");
         return reply.code(status).send({ error: reason });
       }
-      noStoreWhenSealed(reply, fields);
 
       try {
         await readImageHeader(upload.bytes);
@@ -160,136 +170,184 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
       }
 
       // The day's ceiling for everyone, asked after the token and the hourly limit above have both
-      // let this caller through and before the first thing that costs anything. It is never handed
-      // back, because the hourly limit in front of it is not handed back either: both count the
-      // attempt, and a refusal here is the only way nothing is counted at all.
-      const today = app.globalDay.tryTake("prepares");
+      // let this caller through and before the first thing that costs anything.
+      const today = takeToday(app, request, reply, "prepares");
       if (!today.ok) {
-        request.log.warn(
-          { url: request.url, used: today.use.used, max: today.use.max },
-          "rejected: /prepare today's ceiling for everyone is spent",
-        );
-        const refusal = dayLimitRefusal(today.use);
-        return reply.code(429).header("retry-after", String(refusal.retryAfter)).send(refusal.body);
+        return today.refused;
       }
 
-      const settings = {
-        title: upload.title,
-        claimGenerator: CLAIM_GENERATOR,
-        action: "c2pa.created" as const,
-        digitalSourceType: CAPTURE_SOURCE_TYPE,
-        training: upload.training,
-      };
-
-      let studio: SealedResult;
-      // Filled only for a public registration, because only a public registration pins a
-      // thumbnail and a manifest document. Its absence is what marks the sealed path below.
-      let published: PreparedResult | undefined;
+      // The ceiling bounds what the world may spend, so a slot that bought nothing goes back. The
+      // first pin is where this request starts costing money: before it, every exit hands the slot
+      // over to the next creator, and from it the slot stays taken however the request ends. An
+      // hour of Pinata or the signer being down used to close the studio until midnight.
+      let pinned = false;
       try {
-        if (upload.sealed) {
-          studio = await app.verifier.runPrepare(() => prepareSealed(upload.bytes, settings));
-        } else {
-          published = await app.verifier.runPrepare(() => prepareOrFallback(upload.bytes, settings));
-          studio = published;
-        }
-      } catch (error) {
-        const reason = error instanceof Error ? error.message : String(error);
-        if (error instanceof Busy) {
-          request.log.warn({ url: request.url, reason }, "rejected: /prepare busy");
-          return reply.code(503).send({ error: "busy" });
-        }
-        if (error instanceof SignerUnavailable) {
-          request.log.error({ url: request.url, reason }, "rejected: /prepare the signer is down");
-          return reply.code(502).send({ error: "sign-failed" });
-        }
-        // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
-        // truncated upload only fails here. That is the caller's file, not this service breaking.
-        request.log.warn({ url: request.url, reason }, "rejected: /prepare undecodable image");
-        return reply.code(415).send({ error: "not-an-image", reason: "the file could not be decoded" });
-      }
-      if (!studio.embedded) {
-        request.log.warn({ url: request.url, reason: studio.detail }, "prepare: manifest not embedded");
-      }
+        const settings = {
+          title: upload.title,
+          claimGenerator: CLAIM_GENERATOR,
+          action: "c2pa.created" as const,
+          digitalSourceType: CAPTURE_SOURCE_TYPE,
+          training: upload.training,
+        };
 
-      const passportId = studio.print.sha256 as Hex;
-      if (await alreadyRegistered(chain, registry, passportId, request)) {
-        request.log.warn({ url: request.url, user: identity.userId, passportId }, "rejected: /prepare duplicate");
-        return reply.code(409).send({ error: "already-registered", passportId });
-      }
-
-      const slug = fileSlug(upload.title, studio.print.sha256);
-      const passport = (metadataURI: string): Record<string, unknown> => ({
-        exactHash: studio.print.sha256,
-        parentId: ZERO_BYTES32,
-        generatorAgentId: NO_AGENT.toString(),
-        phash: studio.print.phash.toString(),
-        blockhash256: studio.print.blockhash,
-        manifestHash: studio.manifestHash,
-        kind: HUMAN_KIND,
-        fingerprintVersion: FINGERPRINT_VERSION,
-        metadataURI,
-      });
-
-      if (published === undefined) {
-        let document;
+        let studio: SealedResult;
+        // Filled only for a public registration, because only a public registration pins a
+        // thumbnail and a manifest document. Its absence is what marks the sealed path below.
+        let published: PreparedResult | undefined;
         try {
-          document = sealedMetadata({
-            title: upload.title,
-            description: SEALED_CAPTURED_DESCRIPTION,
-            passportId,
-            fingerprint: studio.print,
-            training: upload.training,
+          if (upload.sealed) {
+            studio = await app.verifier.runPrepare(() => prepareSealed(upload.bytes, settings));
+          } else {
+            published = await app.verifier.runPrepare(() => prepareOrFallback(upload.bytes, settings));
+            studio = published;
+          }
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          if (error instanceof Busy) {
+            request.log.warn({ url: request.url, reason }, "rejected: /prepare busy");
+            return reply.code(503).send({ error: "busy" });
+          }
+          if (error instanceof SignerUnavailable) {
+            request.log.error({ url: request.url, reason }, "rejected: /prepare the signer is down");
+            return reply.code(502).send({ error: "sign-failed" });
+          }
+          // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
+          // truncated upload only fails here. That is the caller's file, not this service breaking.
+          request.log.warn({ url: request.url, reason }, "rejected: /prepare undecodable image");
+          return reply.code(415).send({ error: "not-an-image", reason: "the file could not be decoded" });
+        }
+        if (!studio.embedded) {
+          request.log.warn({ url: request.url, reason: studio.detail }, "prepare: manifest not embedded");
+        }
+
+        const passportId = studio.print.sha256 as Hex;
+        if (await alreadyRegistered(chain, registry, passportId, request)) {
+          request.log.warn({ url: request.url, user: identity.userId, passportId }, "rejected: /prepare duplicate");
+          return reply.code(409).send({ error: "already-registered", passportId });
+        }
+
+        const slug = fileSlug(upload.title, studio.print.sha256);
+        const passport = (metadataURI: string): Record<string, unknown> => ({
+          exactHash: studio.print.sha256,
+          parentId: ZERO_BYTES32,
+          generatorAgentId: NO_AGENT.toString(),
+          phash: studio.print.phash.toString(),
+          blockhash256: studio.print.blockhash,
+          manifestHash: studio.manifestHash,
+          kind: HUMAN_KIND,
+          fingerprintVersion: FINGERPRINT_VERSION,
+          metadataURI,
+        });
+
+        if (published === undefined) {
+          let document;
+          try {
+            document = sealedMetadata({
+              title: upload.title,
+              description: SEALED_CAPTURED_DESCRIPTION,
+              passportId,
+              fingerprint: studio.print,
+              training: upload.training,
+            });
+          } catch (error) {
+            // The words that say which field did not fit are this service's own fault to fix, and
+            // they stay here. The caller gets the fixed sentence and the knowledge that nothing
+            // was pinned.
+            const reason = error instanceof Error ? error.message : String(error);
+            request.log.error({ url: request.url, reason }, "rejected: /prepare sealed record refused");
+            return reply.code(500).send(SEALED_METADATA_REFUSED);
+          }
+
+          // The file is packed and checked against the id the chain will commit to before the
+          // document is pinned, never after. A pinned commitment to a file the creator did not
+          // receive cannot be taken back, and the file itself has no second copy to try again with.
+          let file: SignedFile;
+          try {
+            file = signedFile(studio.bytes, `${slug}.jpg`, passportId);
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            request.log.error({ url: request.url, reason }, "rejected: /prepare sealed file refused");
+            return reply.code(500).send(SEALED_FILE_REFUSED);
+          }
+
+          let pinnedMetadata;
+          try {
+            pinnedMetadata = await pinJson(document, `${slug}.json`);
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
+            return reply.code(502).send({ error: "pin-failed" });
+          }
+          pinned = true;
+
+          // The base64 is never logged: nothing below writes a log line carrying it. The manifest
+          // is reported in the same words as on the public path, because a creator whose file the
+          // signer would not take has to hear it now: this is the only copy they get.
+          return reply.send({
+            passport: passport(pinnedMetadata.uri),
+            metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
+            manifest: studio.embedded ? { embedded: true } : { embedded: false, reason: studio.reason },
+            training: trainingStatement(upload.training),
+            preparedBy: identity.userId,
+            sealed: true,
+            signedFile: file,
           });
-        } catch (error) {
-          // The words that say which field did not fit are this service's own fault to fix, and
-          // they stay here. The caller gets the fixed sentence and the knowledge that nothing
-          // was pinned.
-          const reason = error instanceof Error ? error.message : String(error);
-          request.log.error({ url: request.url, reason }, "rejected: /prepare sealed record refused");
-          return reply.code(500).send(SEALED_METADATA_REFUSED);
         }
 
-        let pinnedMetadata;
-        try {
-          pinnedMetadata = await pinJson(document, `${slug}.json`);
-        } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
-          request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
+        // The picture, its thumbnail and the manifest document do not depend on each other, so
+        // they go to Pinata at once rather than one after the next. Settled rather than raced,
+        // because a failure still has to say what did land: a pin that succeeded is paid for and
+        // is what decides whether this request keeps the day's slot.
+        const [imagePin, thumbnailPin, manifestPin] = await Promise.allSettled([
+          pinFile(published.bytes, `${slug}.jpg`, "image/jpeg"),
+          pinFile(published.thumbnail, `${slug}-thumb.jpg`, "image/jpeg"),
+          published.manifestDoc === undefined
+            ? Promise.resolve(undefined)
+            : pinJson(published.manifestDoc, `${slug}-c2pa.json`),
+        ]);
+        const attempted = [imagePin, thumbnailPin, manifestPin];
+        pinned = attempted.some((one) => one.status === "fulfilled" && one.value !== undefined);
+
+        if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
+          // pinFile's message carries Pinata's status and its answer, and never the token.
+          request.log.error(
+            {
+              ip: request.ip,
+              url: request.url,
+              reason: attempted
+                .filter((one) => one.status === "rejected")
+                .map((one) => reasonOf(one.reason))
+                .join("; "),
+              landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
+            },
+            "rejected: /prepare pin failed",
+          );
           return reply.code(502).send({ error: "pin-failed" });
         }
 
-        // The only copy of this file leaves in this answer, so it must not sit in a cache on the
-        // way. The base64 is never logged: nothing below writes a log line carrying it. The
-        // manifest is reported in the same words as on the public path, because a creator whose
-        // file the signer would not take has to hear it now: this is the only copy they get.
-        return reply.header("cache-control", "no-store").send({
-          passport: passport(pinnedMetadata.uri),
-          metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-          manifest: studio.embedded ? { embedded: true } : { embedded: false, reason: studio.reason },
-          training: trainingStatement(upload.training),
-          preparedBy: identity.userId,
-          sealed: true,
-          signedFile: signedFile(studio.bytes, `${slug}.jpg`, passportId),
-        });
-      }
-
-      try {
-        const image = await pinFile(published.bytes, `${slug}.jpg`, "image/jpeg");
-        const thumbnail = await pinFile(published.thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
-        const manifest =
-          published.manifestDoc === undefined ? undefined : await pinJson(published.manifestDoc, `${slug}-c2pa.json`);
-
+        const image = imagePin.value;
+        const thumbnail = thumbnailPin.value;
         const metadata = passportMetadata({
           title: upload.title,
           description: CAPTURED_DESCRIPTION,
           image: image.uri,
           thumbnail: thumbnail.uri,
-          manifest: manifest?.uri,
+          manifest: manifestPin.value?.uri,
           agentId: NO_AGENT,
           fingerprint: published.print,
           training: upload.training,
         });
-        const pinnedMetadata = await pinJson(metadata, `${slug}.json`);
+
+        let pinnedMetadata;
+        try {
+          pinnedMetadata = await pinJson(metadata, `${slug}.json`);
+        } catch (error) {
+          request.log.error(
+            { ip: request.ip, url: request.url, reason: reasonOf(error) },
+            "rejected: /prepare metadata pin failed",
+          );
+          return reply.code(502).send({ error: "pin-failed" });
+        }
 
         return reply.send({
           passport: passport(pinnedMetadata.uri),
@@ -307,11 +365,10 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           training: trainingStatement(upload.training),
           preparedBy: identity.userId,
         });
-      } catch (error) {
-        // pinFile's message carries Pinata's status and its answer, and never the token.
-        const reason = error instanceof Error ? error.message : String(error);
-        request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare pin failed");
-        return reply.code(502).send({ error: "pin-failed" });
+      } finally {
+        if (!pinned) {
+          today.slot.giveBack();
+        }
       }
     },
   );
@@ -355,18 +412,16 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
  * Reads the image and the two text fields out of the multipart body, in whatever order the
  * browser sent them.
  *
- * The text fields go into the caller's map as they arrive, so a request that has already said it
- * is sealed is still known to be sealed if a later field turns out to be unreadable.
- *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
  * name, a title outside 1 to 120 characters, or any kind other than "human".
  */
-async function readStudioUpload(request: FastifyRequest, fields: Map<string, string>): Promise<Upload> {
+async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {
     throw new BadRequest('send the image in a multipart field named "file"');
   }
 
   let bytes: Buffer | undefined;
+  const fields = new Map<string, string>();
 
   try {
     for await (const part of request.parts({ limits: { fileSize: MAX_UPLOAD_BYTES } })) {
@@ -404,20 +459,6 @@ async function readStudioUpload(request: FastifyRequest, fields: Map<string, str
     training: readTraining(fields.get("training")),
     sealed: readSealed(fields.get("sealed")),
   };
-}
-
-/**
- * Marks the answer uncacheable the moment the request looks sealed, which is before this route
- * knows whether it is going to refuse it.
- *
- * A refusal can repeat a title or a field the caller sent, and nothing on this path is worth
- * keeping anywhere. Anything but an explicit "false" counts: a request that might have meant
- * sealed gets the header, because the cost of being wrong that way is nothing.
- */
-function noStoreWhenSealed(reply: FastifyReply, fields: Map<string, string>): void {
-  if ((fields.get("sealed") ?? "false").trim() !== "false") {
-    void reply.header("cache-control", "no-store");
-  }
 }
 
 /**
@@ -490,8 +531,14 @@ async function alreadyRegistered(
   try {
     return await passportExists(chain, registry, passportId);
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    request.log.warn({ url: request.url, reason }, "prepare: the duplicate check could not reach the chain");
+    request.log.warn(
+      { url: request.url, reason: reasonOf(error) },
+      "prepare: the duplicate check could not reach the chain",
+    );
     return false;
   }
+}
+
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

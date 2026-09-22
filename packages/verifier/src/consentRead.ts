@@ -237,18 +237,19 @@ export function consentReader(
         cache.delete(key);
       }
 
-      let raw: Awaited<ReturnType<ConsentCall>>;
       try {
-        raw = await withTimeout(call(key), timeoutMs);
+        // Reading the answer sits inside the same try as the call that produced it. A call that
+        // resolves to something this reader cannot destructure, undefined among them, has to come
+        // out as "unavailable" here rather than as a thrown error at the walker, where it would
+        // cost this passport its dispute status and its re-check count as well.
+        const answer = answerFromChain(await withTimeout(call(key), timeoutMs));
+        if (answer.source === "chain") {
+          remember(key, answer);
+        }
+        return answer;
       } catch {
         return UNAVAILABLE;
       }
-
-      const answer = answerFromChain(raw);
-      if (answer.source === "chain") {
-        remember(key, answer);
-      }
-      return answer;
     },
   };
 }
@@ -256,29 +257,6 @@ export function consentReader(
 /** A reader that answers "unavailable" for everything without opening a connection. */
 export function offlineConsentReader(): ConsentReader {
   return { answerFor: async () => UNAVAILABLE };
-}
-
-/** Attaches the statement to the answer the verify routes already built. */
-export async function withConsent<T extends { result: unknown }>(payload: T, reader: ConsentReader): Promise<T> {
-  return await withMatchFact(payload, "consent", async (id) => await reader.answerFor(id));
-}
-
-/**
- * Attaches one fact under `field` to the passports a verify answer names, and to no others.
- *
- * A thin wrapper over `withMatchFacts` for a caller that only ever reads one fact on its own;
- * `withPassportFacts` in disputeRead.ts is what the routes call, so the statement and the
- * dispute status start their chain reads at the same moment instead of one after the other.
- *
- * Never throws. A verification that came back is what the caller came for, so anything unexpected
- * here leaves the answer exactly as it was.
- */
-export async function withMatchFact<T extends { result: unknown }, A>(
-  payload: T,
-  field: string,
-  answerFor: (passportId: Hex) => Promise<A>,
-): Promise<T> {
-  return await withMatchFacts(payload, async (id) => ({ [field]: await answerFor(id) }));
 }
 
 /**

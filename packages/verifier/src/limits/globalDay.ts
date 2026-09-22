@@ -60,13 +60,17 @@ export function globalDay(max: Record<DayAction, number>, now: () => number = Da
 
   const currentDay = (): number => {
     const today = Math.floor(now() / DAY_MS);
-    if (today !== day) {
+    // Only a clock that moved forward starts a new day. A host whose clock steps backwards, which
+    // is what an NTP correction or a container clock catching up looks like, would otherwise wipe
+    // the counts and hand the whole world a second budget for the same day. The greater of the two
+    // days is the one everything is reported and compared against, so a backwards step is a no-op.
+    if (today > day) {
       day = today;
       used.prepares = 0;
       used.generations = 0;
       used.edits = 0;
     }
-    return today;
+    return day;
   };
 
   const describe = (action: DayAction, today: number): DayUse => ({

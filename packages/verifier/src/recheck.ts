@@ -91,9 +91,12 @@ export function rechecksFrom(row: unknown): PassportRechecks | undefined {
  * The record is one the service already holds in memory from its last index refresh, so this costs
  * no network call and no chain read: the fact is exactly as fresh as the match that produced it.
  *
- * A count and a verdict that disagree (a newest verdict under a count of zero, or a count above
- * zero with no verdict to show) are not reconciled. One of the two is wrong and there is no way to
- * tell which, so the whole fact goes out unavailable rather than half true.
+ * A count and a verdict that disagree are not reconciled. One of the three numbers is wrong and
+ * there is no way to tell which, so the whole fact goes out unavailable rather than half true.
+ * Four shapes disagree: a newest verdict under a count of zero, a count above zero with no verdict
+ * to show, matched and mismatched that do not add up to the total, and a newest verdict whose own
+ * kind was never counted. The last two are the ones that would otherwise publish a confident
+ * number: "3 re-checks, 2 matched" under a total the index never agreed with is worse than silence.
  */
 export function recheckFor(record: PassportRecord | undefined): RecheckAnswer {
   const rechecks = record?.rechecks;
@@ -104,6 +107,12 @@ export function recheckFor(record: PassportRecord | undefined): RecheckAnswer {
     return rechecks.latest === null ? { source: "index", attestations: 0 } : UNAVAILABLE;
   }
   if (rechecks.latest === null) {
+    return UNAVAILABLE;
+  }
+  if (rechecks.matched + rechecks.mismatched !== rechecks.attestations) {
+    return UNAVAILABLE;
+  }
+  if (rechecks.latest.matched ? rechecks.matched === 0 : rechecks.mismatched === 0) {
     return UNAVAILABLE;
   }
 

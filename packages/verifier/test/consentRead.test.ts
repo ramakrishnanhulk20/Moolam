@@ -15,9 +15,9 @@ import {
   CONSENT_TTL_MS,
   consentAbi,
   consentReader,
-  withConsent,
   type ConsentCall,
 } from "../src/consentRead.js";
+import { offlineDisputeReader, withPassportFacts } from "../src/disputeRead.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
@@ -213,12 +213,14 @@ describe("consent reader", () => {
     expect(CONSENT_READ_TIMEOUT_MS).toBe(5_000);
   });
 
-  it("reads the exact passport and the best match, and nothing else in the list", async () => {
+  // Through withPassportFacts, the one walker both verify routes call. The thin withConsent that
+  // used to sit here had no caller in the service and is gone; what it proved lives here.
+  it("attaches the statement to the exact passport and the best match, and to nothing else in the list", async () => {
     const other = `0x${"ab".repeat(32)}` as Hex;
     const third = `0x${"cd".repeat(32)}` as Hex;
     const { read, asked } = readerFor({ [PASSPORT]: entry([2, 2, 2, 2]), [other]: entry([1, 1, 1, 1]) });
 
-    const payload = await withConsent(
+    const payload = await withPassportFacts(
       {
         result: {
           exact: PASSPORT,
@@ -228,6 +230,8 @@ describe("consent reader", () => {
         manifest: { present: false },
       },
       read,
+      offlineDisputeReader(),
+      () => undefined,
     );
 
     const result = payload.result as unknown as {
