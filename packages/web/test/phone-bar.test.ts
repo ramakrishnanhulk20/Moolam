@@ -40,7 +40,7 @@ describe("the layout on a phone", () => {
     // 375 before the move: the lowest element ended 57 px past the bar's top.
     expect(layout).toContain('<footer className="border-t border-line pb-[var(--bar-room)] md:pb-0">');
     const css = readFileSync("styles/globals.css", "utf8");
-    expect(css).toContain("--bar-room: calc(56px + env(safe-area-inset-bottom));");
+    expect(css).toContain("--bar-room: calc(84px + env(safe-area-inset-bottom));");
   });
 
   it("keeps the docs reachable from the foot of every page", () => {
