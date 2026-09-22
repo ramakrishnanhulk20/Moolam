@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Reveal } from "@/components/lab/sponsors/Reveal";
 import { BottomBar } from "@/components/shell/BottomBar";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
@@ -24,10 +24,11 @@ const DRAWINGS = {
  * Both drawings of the phone shell, side by side, with a real page in each.
  *
  * Nothing here is a mock: the film, the sheet, the drop panel and the studio
- * card are the app's own components reading the live index. The page being
- * framed lives in the address, so opening the sheet asks the index for the
- * sheet and for nothing else, and the same rendered page is handed to both
- * frames rather than read twice.
+ * card are the app's own components reading the live index. Each frame is an
+ * iframe of this same route in its full bleed mode, so the page inside has a
+ * 375 or 360 pixel viewport of its own and lays itself out exactly as a phone
+ * would. The page being framed lives in the address, so opening the sheet asks
+ * the index for the sheet and for nothing else.
  */
 export function PhoneBench({
   page,
@@ -35,30 +36,33 @@ export function PhoneBench({
   install,
   full,
   size,
+  ground,
   safe,
 }: {
-  /** The page being framed, which is the only one this render asked the index for. */
+  /** The page being framed. In the bench view the frames load it; only full bleed renders it here. */
   page: PageKey;
   content: ReactNode;
   install: InstallShape;
   /** Set by ?full=a or ?full=b: one drawing filling the window, for the browser's phone emulation. */
   full: "a" | "b" | null;
   size: number;
+  /** Which palette the frames are drawn in, asked for in the address. */
+  ground: "dark" | "light";
   /** True where something around this window is pretending to have a home indicator. */
   safe: boolean;
 }) {
   const [playing, setPlaying] = useState(false);
   const phone = PHONES[size] ?? PHONES[0];
-  const route = PAGE_ROUTE[page];
 
   if (full !== null) {
-    return <FullBleed drawing={full} page={page} content={content} safe={safe} />;
+    return <FullBleed drawing={full} page={page} content={content} ground={ground} safe={safe} />;
   }
 
-  const at = (change: Partial<{ page: PageKey; size: number; full: string }>) => {
+  const at = (change: Partial<{ page: PageKey; size: number; ground: string; full: string }>) => {
     const query = new URLSearchParams({
       page: change.page ?? page,
       size: String(change.size ?? size),
+      ground: change.ground ?? ground,
     });
     if (change.full !== undefined) {
       query.set("full", change.full);
@@ -99,13 +103,20 @@ export function PhoneBench({
                 chosen={phone.label}
                 options={PHONES.map((one, index) => ({ word: one.label, href: at({ size: index }) }))}
               />
+              <Choice
+                label="Ground"
+                chosen={ground === "dark" ? "Dark" : "Light"}
+                options={[
+                  { word: "Dark", href: at({ ground: "dark" }) },
+                  { word: "Light", href: at({ ground: "light" }) },
+                ]}
+              />
             </div>
-            <p className="mt-4 max-w-[70ch] text-sm leading-relaxed text-text-faint">
-              Both frames follow the site&rsquo;s own theme: press the theme chip in either one. A media query reads
-              the window and not the box, so the page inside takes the laptop&rsquo;s layout and is clipped rather
-              than reflowed. The bar, the header, the safe strip and the room under the page are exactly the
-              phone&rsquo;s. For the page&rsquo;s own columns as a phone gets them, open a drawing full bleed and use
-              the browser&rsquo;s phone emulation.
+            <p className="mt-4 max-w-[74ch] text-sm leading-relaxed text-text-faint">
+              Each frame is a window of its own, so what is in it is the real page at a phone&rsquo;s own width,
+              laid out the way a phone lays it out. The Ground chip sets both frames. The theme chip inside a frame
+              is the site&rsquo;s own control and the site keeps one theme for the whole origin, so pressing it flips
+              both frames together, measured rather than assumed.
             </p>
           </div>
         </Reveal>
@@ -120,9 +131,11 @@ export function PhoneBench({
           {(["a", "b"] as const).map((drawing, index) => (
             <Reveal key={drawing} delay={0.1 + index * 0.08}>
               <figure className="flex flex-col items-center">
-                <PhoneFrame shape={drawing === "b" ? "raised" : "flat"} phone={phone} route={route} film={false}>
-                  {content}
-                </PhoneFrame>
+                <PhoneFrame
+                  src={`${at({ full: drawing })}&safe=1`}
+                  phone={phone}
+                  title={`Drawing ${drawing.toUpperCase()}, ${PAGE_WORDS[page]}, ${phone.label}`}
+                />
                 <figcaption className="mt-6 max-w-[34ch] text-center">
                   <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent">
                     {DRAWINGS[drawing].title}
@@ -163,29 +176,58 @@ function FullBleed({
   drawing,
   page,
   content,
+  ground,
   safe,
 }: {
   drawing: "a" | "b";
   page: PageKey;
   content: ReactNode;
+  ground: "dark" | "light";
   safe: boolean;
 }) {
+  // The ground goes on this document's own root, which is where the site keeps
+  // it and the only place Tailwind's dark variant reads. A class on a wrapper
+  // would paint the palette and still hand every component inside the dark
+  // branch. next-themes writes the same attribute from its own mount effect,
+  // which runs after this one, so the pin is written again on the next frame.
+  // Inside a frame this is the frame's document alone: the theme chip in the
+  // bar below changes this window and not its neighbour.
+  useEffect(() => {
+    const root = document.documentElement;
+    const pin = () => {
+      root.classList.remove("dark", "light");
+      root.classList.add(ground);
+    };
+    pin();
+    const frame = requestAnimationFrame(pin);
+    return () => cancelAnimationFrame(frame);
+  }, [ground]);
+
   const room: Record<string, string> = { paddingBottom: BAR_ROOM };
   if (safe) {
     room["--bar-safe"] = "34px";
   }
 
   const other = (key: PageKey | null, swap: boolean) =>
-    `?full=${swap ? (drawing === "a" ? "b" : "a") : drawing}&page=${key ?? page}${safe ? "&safe=1" : ""}`;
+    `?full=${swap ? (drawing === "a" ? "b" : "a") : drawing}&page=${key ?? page}&ground=${ground}${safe ? "&safe=1" : ""}`;
 
   return (
     <div style={room}>
-      <style>{".app-header, body footer { display: none !important; }"}</style>
+      {/* The site's own bar and footer come off this route in this mode: two
+          headers stacked would be measuring a screen nobody will have. The
+          scrollbar goes with them, because a phone draws none and a laptop one
+          would take 15 px off the page inside a frame. */}
+      <style>
+        {".app-header, body footer { display: none !important; }" +
+          "html { scrollbar-width: none; } html::-webkit-scrollbar { display: none; }"}
+      </style>
 
-      {/* Shut by default: the point of this mode is the first screen, and a
-          strip of bench chrome standing in it would be measuring a phone
-          nobody has. Every chip is a link, because this mode renders one page
-          and one page only. */}
+      {/* No bench chrome at all inside a frame, where the caption under the
+          frame already names the drawing and every pixel of the 812 belongs to
+          the phone. Opened on its own this strip is how the page is changed,
+          and it is shut until it is wanted. Every chip is a link, because this
+          mode renders one page and one page only. */}
+      {!safe && (
       <details className="border-b border-line bg-bg-raised px-4 py-2">
         <summary className="tap cursor-pointer font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent">
           Bench, drawing {drawing.toUpperCase()}, {PAGE_WORDS[page]}
@@ -211,13 +253,14 @@ function FullBleed({
             Drawing {drawing === "a" ? "B" : "A"}
           </a>
           <a
-            href={`?page=${page}`}
+            href={`?page=${page}&ground=${ground}`}
             className="tap rounded-[8px] border border-line px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-faint transition-colors duration-200 hover:border-accent hover:text-accent"
           >
             Both frames
           </a>
         </nav>
       </details>
+      )}
 
       <PhoneHeader brand="Moolam" />
       {content}

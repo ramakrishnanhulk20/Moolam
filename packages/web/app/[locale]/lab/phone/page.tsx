@@ -25,9 +25,10 @@ const KEYS: PageKey[] = ["home", "explore", "verify", "make", "mine"];
  * The phone bench: the tab bar Ram asked for on 22 September, in two drawings,
  * with the real pages inside the frames.
  *
- * One render draws one page, named in the address, and hands the same rendered
- * page to both frames. Looking at the sheet therefore asks the index for the
- * sheet and for nothing else, and asks for it once.
+ * The bench view itself reads nothing: each frame is an iframe of this same
+ * route in its full bleed mode, and that mode renders exactly one page, named
+ * in the address. Looking at the sheet therefore asks the index for the sheet
+ * and for nothing else.
  *
  * Nothing links here and the flag that opens it is only set on this machine.
  * The bench is English: no word of it goes into the ten message files until a
@@ -53,6 +54,8 @@ export default async function PhoneLabPage({
   const wanted = one(asked.page);
   const page = (KEYS as string[]).includes(wanted) ? (wanted as PageKey) : "home";
   const size = one(asked.size) === "1" ? 1 : 0;
+  const asGround = one(asked.ground);
+  const ground = asGround === "light" ? "light" : "dark";
 
   const app = manifest();
   const install: InstallShape = {
@@ -71,9 +74,10 @@ export default async function PhoneLabPage({
       full={full}
       page={page}
       size={size}
+      ground={ground}
       safe={one(asked.safe) === "1"}
       install={install}
-      content={await framed(page, locale)}
+      content={full === null ? null : await framed(page, locale)}
     />
   );
 }
