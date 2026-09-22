@@ -111,6 +111,13 @@ const nextConfig: NextConfig = {
           { key: "content-security-policy-report-only", value: contentSecurityPolicy },
         ],
       },
+      // The phone bench frames the real pages in same-origin iframes so each
+      // frame gets a viewport of its own and the page inside it reflows the way
+      // a phone would draw it. Every other route stays DENY, and so does this
+      // one outside development, where the bench is not served at all.
+      ...(process.env.NODE_ENV === "development"
+        ? [{ source: "/:locale/lab/:path*", headers: [{ key: "x-frame-options", value: "SAMEORIGIN" }] }]
+        : []),
     ];
   },
 
