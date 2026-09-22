@@ -6,10 +6,12 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense, type ReactNode } from "react";
-import { HeaderMenu } from "@/components/HeaderMenu";
 import { LocaleSwitch, PageAddress } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { BottomBar } from "@/components/shell/BottomBar";
+import { PhoneHeader } from "@/components/shell/PhoneHeader";
+import type { Tab } from "@/components/shell/tabs";
 import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
@@ -109,6 +111,7 @@ export default async function LocaleLayout({
   const f = await getTranslations({ locale, namespace: "footer" });
   const m = await getTranslations({ locale, namespace: "meta" });
   const mine = await getTranslations({ locale, namespace: "mine" });
+  const bar = await getTranslations({ locale, namespace: "shell" });
   const source = activeSource();
 
   // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
@@ -130,6 +133,18 @@ export default async function LocaleLayout({
     { href: "/studio", label: t("nav.studio"), prefetch: false },
   ] as const;
 
+  // The phone's whole navigation, in the order a thumb reads it: the raised
+  // Make sits in the middle, which is the drawing Ram picked on 23 September.
+  // Two of the five are never prefetched because both pages carry the wallet.
+  // The last three carry the name the first-visit guide points at.
+  const tabs: Tab[] = [
+    { key: "home", href: "/", label: bar("tabs.home") },
+    { key: "explore", href: "/explore", label: bar("tabs.explore") },
+    { key: "make", href: "/studio", label: bar("tabs.make"), prefetch: false, anchor: "studio" },
+    { key: "verify", href: "/verify", label: bar("tabs.verify"), anchor: "verify" },
+    { key: "mine", href: "/mine", label: bar("tabs.mine"), prefetch: false, anchor: "mine" },
+  ];
+
   return (
     <html lang={locale} className={fontVariables} suppressHydrationWarning>
       <body className="min-h-dvh bg-bg text-text antialiased">
@@ -147,10 +162,14 @@ export default async function LocaleLayout({
             />
             <LenisProvider>
               <div className="flex min-h-dvh flex-col">
-                <header className="app-header sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur-md">
-                  {/* The phone bar is one fixed row so its height is a number the film can
-                      pull itself up by, --header-h in globals.css. From md it grows back to
-                      the padded bar the rest of the site was measured with. */}
+                {/* Below md the top of the screen is the wordmark and the two
+                    chips, and everything the old menu button held is in the tab
+                    bar at the bottom instead. It keeps the app-header class, so
+                    the rules in globals.css that dress this bar over the film
+                    still find it. */}
+                <PhoneHeader brand={t("brand")} className="app-header md:hidden" />
+
+                <header className="app-header sticky top-0 z-40 hidden border-b border-line bg-bg/85 backdrop-blur-md md:block">
                   <div className="mx-auto flex h-[55px] w-full max-w-[1400px] items-center gap-x-6 px-5 sm:px-8 md:h-auto md:flex-wrap md:gap-y-3 md:py-4">
                     {/* The lockup files carry clear space on every side, so the box is 63 px
                         tall for 24 px of cap height and the negative margin keeps the bar the
@@ -227,18 +246,18 @@ export default async function LocaleLayout({
                       <LocaleSwitch />
                       <ThemeToggle />
                     </div>
-                    {/* Everything above, behind one button, from the width where the row
-                        would otherwise wrap into three. */}
-                    <HeaderMenu
-                      links={nav.map((item) => ({ href: item.href, label: item.label, prefetch: item.prefetch }))}
-                      mine={mine("entry")}
-                    />
                   </div>
                 </header>
 
                 <main className="flex-1">{children}</main>
 
-                <footer className="border-t border-line">
+                {/* The room the tab bar asks for, on the last thing in the
+                    column rather than on main: the footer comes after main, so
+                    main's own padding left the registry line and the three
+                    service lights 57 px behind the bar, measured at 375. The
+                    room is the bar's 56 px plus whatever the phone keeps for
+                    its home indicator, which is --bar-room in globals.css. */}
+                <footer className="border-t border-line pb-[var(--bar-room)] md:pb-0">
                   <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-x-8 gap-y-3 px-5 py-6 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-8">
                     <span>{f("network", { chainId: CHAIN_ID })}</span>
                     <a
@@ -260,11 +279,19 @@ export default async function LocaleLayout({
                     >
                       {f("source")}
                     </a>
-                    {/* The two pages that say what this site stores and what it
-                        promises. Released on 22 September 2026; a page that is
+                    {/* The docs, and the two pages that say what this site
+                        stores and what it promises. Docs are in the desktop bar
+                        at the top, which a phone no longer has: the five tabs
+                        are the product's own places and the docs are not one of
+                        them, so this is where a phone reaches them from. The
+                        word is the one the top bar already uses, in all ten
+                        languages. Released on 22 September 2026; a page that is
                         still a draft is held back by its flag in docs/nav.json,
                         never by this footer. */}
                     <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <Link href="/docs" className="transition-colors duration-200 hover:text-accent">
+                        {t("nav.docs")}
+                      </Link>
                       <Link
                         href="/docs/legal/privacy"
                         className="transition-colors duration-200 hover:text-accent"
@@ -294,6 +321,14 @@ export default async function LocaleLayout({
                     </Suspense>
                   </div>
                 </footer>
+
+                {/* The phone's navigation, under the thumb, on every page but a
+                    bench. It draws itself out of the way while the film on the
+                    home page is being scrolled and arrives with the closing
+                    card. */}
+                <div className="md:hidden">
+                  <BottomBar tabs={tabs} label={bar("label")} shape="raised" />
+                </div>
               </div>
             </LenisProvider>
           </IntlProvider>

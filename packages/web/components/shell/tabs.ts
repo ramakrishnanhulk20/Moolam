@@ -15,6 +15,12 @@ export interface Tab {
   label: string;
   /** false for a route whose page carries the wallet, so the bar does not fetch it. */
   prefetch?: boolean;
+  /**
+   * The name the first-visit guide knows this place by. The walk measures the
+   * element carrying it and cuts its spotlight over it, so the three steps
+   * point at the real tabs rather than at a drawing of them.
+   */
+  anchor?: string;
 }
 
 /**

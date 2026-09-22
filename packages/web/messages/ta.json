@@ -26,8 +26,6 @@
     "themeDark": "இருள் தோற்றம்",
     "themeLight": "ஒளித் தோற்றம்",
     "language": "மொழி",
-    "menu": "பட்டியல்",
-    "menuClose": "பட்டியலை மூடு",
     "nav": {
       "home": "முகப்பு",
       "explore": "ஆராய்",
@@ -42,6 +40,16 @@
     "languageIs": "{language}, மொழியை மாற்று",
     "themeDarkAction": "இருள் தோற்றம், ஒளித் தோற்றத்திற்கு மாற்று",
     "themeLightAction": "ஒளித் தோற்றம், இருள் தோற்றத்திற்கு மாற்று"
+  },
+  "shell": {
+    "label": "பிரிவுகள்",
+    "tabs": {
+      "home": "முகப்பு",
+      "explore": "ஆராய்",
+      "make": "உருவாக்கு",
+      "verify": "சரிபார்",
+      "mine": "எனது"
+    }
   },
   "footer": {
     "network": "Monad மெயின்நெட், செயின் {chainId}",

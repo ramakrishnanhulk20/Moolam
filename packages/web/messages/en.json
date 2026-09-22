@@ -26,8 +26,6 @@
     "themeDark": "Dark theme",
     "themeLight": "Light theme",
     "language": "Language",
-    "menu": "Menu",
-    "menuClose": "Close menu",
     "nav": {
       "home": "Home",
       "explore": "Explore",
@@ -42,6 +40,16 @@
     "languageIs": "{language}, change the language",
     "themeDarkAction": "Dark theme, switch to the light theme",
     "themeLightAction": "Light theme, switch to the dark theme"
+  },
+  "shell": {
+    "label": "Sections",
+    "tabs": {
+      "home": "Home",
+      "explore": "Explore",
+      "make": "Make",
+      "verify": "Verify",
+      "mine": "Mine"
+    }
   },
   "footer": {
     "network": "Monad mainnet, chain {chainId}",

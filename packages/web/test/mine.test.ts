@@ -39,18 +39,17 @@ describe("the entry in the header", () => {
     expect(layout).not.toContain("col-start-1 row-start-1");
   });
 
-  it("is in the phone menu too, last in the list and closing it on a tap", () => {
-    const menu = read("components/HeaderMenu.tsx");
-    const at = menu.indexOf('href="/mine"');
-    expect(at).toBeGreaterThan(-1);
-    const link = menu.slice(at, at + 700);
-    expect(link).toContain("prefetch={false}");
-    expect(link).toContain("onClick={() => setOpenAt(null)}");
-    expect(link).toContain("0{links.length + 1}");
-    expect(link).toContain("{mine}");
-    // The same stagger every row above it gets, and no motion for a reader who
-    // asked for none.
-    expect(link).toContain("animationDelay: `${40 + links.length * 45}ms`");
-    expect(menu).not.toContain("MineEntry");
+  it("is the last tab on the phone bar, and still never prefetched", () => {
+    // The menu that used to hold it is gone: below md the five tabs are the
+    // navigation, and Mine is the fifth.
+    const from = layout.indexOf("const tabs: Tab[] = [");
+    const tabs = layout.slice(from, layout.indexOf("];", from));
+    const at = layout.indexOf('key: "mine"');
+    expect(at).toBeGreaterThan(layout.indexOf('key: "verify"'));
+    expect(layout.slice(at, at + 160)).toContain('href: "/mine"');
+    expect(layout.slice(at, at + 160)).toContain("prefetch: false");
+    expect(layout.slice(at, at + 160)).toContain('anchor: "mine"');
+    expect(tabs).not.toContain("MineEntry");
+    expect(layout).not.toContain("HeaderMenu");
   });
 });

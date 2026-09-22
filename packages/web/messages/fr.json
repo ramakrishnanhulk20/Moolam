@@ -26,8 +26,6 @@
     "themeDark": "Thème sombre",
     "themeLight": "Thème clair",
     "language": "Langue",
-    "menu": "Menu",
-    "menuClose": "Fermer le menu",
     "nav": {
       "home": "Accueil",
       "explore": "Explorer",
@@ -42,6 +40,16 @@
     "languageIs": "{language}, changer de langue",
     "themeDarkAction": "Thème sombre, passer au thème clair",
     "themeLightAction": "Thème clair, passer au thème sombre"
+  },
+  "shell": {
+    "label": "Sections",
+    "tabs": {
+      "home": "Accueil",
+      "explore": "Explorer",
+      "make": "Créer",
+      "verify": "Vérifier",
+      "mine": "Mes images"
+    }
   },
   "footer": {
     "network": "Monad mainnet, chaîne {chainId}",

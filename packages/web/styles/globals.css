@@ -118,9 +118,8 @@ body {
 /* How tall the bar over every page is, measured once here.
    Three things read it: the film, which pulls itself up by exactly this much so
    its first frame fills the window; the strip painted behind the bar while the
-   film runs; and the phone menu panel, which hangs from the bottom of the bar.
-   The phone bar is a single fixed row, so its number is the row plus its one
-   pixel border. */
+   film runs; and the phone header, which is a single fixed row, so its number
+   is the row plus its one pixel border. */
 :root {
   --header-h: 63px;
 }
@@ -129,6 +128,14 @@ body {
   :root {
     --header-h: 56px;
   }
+}
+
+/* And how much room the tab bar under a phone page asks that page to leave: its
+   own 56 px, plus whatever the phone keeps for its home indicator, which is
+   34 px on the tall iPhones and nothing on a laptop. Only the pages read it;
+   the bar draws its own strip from the same env(). */
+:root {
+  --bar-room: calc(56px + env(safe-area-inset-bottom));
 }
 
 /* Chinese, Japanese, Korean and Devanagari letters fill the whole em box, so the

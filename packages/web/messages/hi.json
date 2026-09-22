@@ -27,8 +27,6 @@
     "themeDark": "गहरी थीम",
     "themeLight": "हल्की थीम",
     "language": "भाषा",
-    "menu": "मेन्यू",
-    "menuClose": "मेन्यू बंद करें",
     "nav": {
       "home": "मुखपृष्ठ",
       "explore": "देखें",
@@ -43,6 +41,16 @@
     "languageIs": "{language}, भाषा बदलें",
     "themeDarkAction": "गहरी थीम, हल्की थीम पर जाएँ",
     "themeLightAction": "हल्की थीम, गहरी थीम पर जाएँ"
+  },
+  "shell": {
+    "label": "अनुभाग",
+    "tabs": {
+      "home": "होम",
+      "explore": "देखें",
+      "make": "बनाएँ",
+      "verify": "जाँच",
+      "mine": "मेरी"
+    }
   },
   "footer": {
     "network": "Monad मेननेट, चेन {chainId}",

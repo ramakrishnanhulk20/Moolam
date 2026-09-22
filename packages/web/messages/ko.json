@@ -28,8 +28,6 @@
     "themeDark": "다크 테마",
     "themeLight": "라이트 테마",
     "language": "언어",
-    "menu": "메뉴",
-    "menuClose": "메뉴 닫기",
     "nav": {
       "home": "홈",
       "explore": "둘러보기",
@@ -44,6 +42,16 @@
     "languageIs": "{language}, 언어 바꾸기",
     "themeDarkAction": "다크 테마, 라이트 테마로 바꾸기",
     "themeLightAction": "라이트 테마, 다크 테마로 바꾸기"
+  },
+  "shell": {
+    "label": "섹션",
+    "tabs": {
+      "home": "홈",
+      "explore": "둘러보기",
+      "make": "등록",
+      "verify": "검증",
+      "mine": "내 이미지"
+    }
   },
   "footer": {
     "network": "Monad 메인넷, 체인 {chainId}",

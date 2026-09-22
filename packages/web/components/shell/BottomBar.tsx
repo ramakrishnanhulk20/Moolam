@@ -6,7 +6,7 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { progress } from "@/components/story/signals";
 import { Link, usePathname } from "@/lib/i18n/routing";
 import { TabMark } from "./TabMark";
-import { BAR_HEIGHT, activeTab, type Tab } from "./tabs";
+import { BAR_HEIGHT, activeTab, barShown, type Tab } from "./tabs";
 
 /** Flat is five equal tabs. Raised lifts the middle one onto a disc above the bar. */
 export type BarShape = "flat" | "raised";
@@ -38,6 +38,7 @@ export function BottomBar({
   const here = usePathname();
   const route = at ?? here;
   const active = activeTab(route);
+  const drawn = barShown(route);
   const reduced = useIsReducedMotion();
   const shell = useRef<HTMLElement>(null);
   const overFilm = film ?? route === "/";
@@ -50,7 +51,7 @@ export function BottomBar({
   // the bar is simply there, which is what a reader who asked for less motion
   // should get.
   useEffect(() => {
-    if (!overFilm) {
+    if (!overFilm || !drawn) {
       return;
     }
     let frame = 0;
@@ -73,7 +74,13 @@ export function BottomBar({
 
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [overFilm]);
+  }, [overFilm, drawn]);
+
+  // A bench draws its own bar, often two of them, and a third across the page
+  // would be measuring the wrong thing.
+  if (!drawn) {
+    return null;
+  }
 
   const raised = shape === "raised" ? "make" : null;
 
@@ -121,6 +128,7 @@ function FlatTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduced:
       prefetch={tab.prefetch}
       aria-current={active ? "page" : undefined}
       data-tab={tab.key}
+      data-guide-anchor={tab.anchor}
       data-active={active ? "true" : undefined}
       className={`group flex h-full w-full flex-col items-center justify-center gap-1 transition-colors duration-200 ${
         active ? "text-accent" : "text-text-faint hover:text-text"
@@ -130,7 +138,9 @@ function FlatTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduced:
       <span className="transition-transform duration-200 group-hover:-translate-y-0.5">
         <TabMark name={tab.key} />
       </span>
-      <span className="font-mono text-[10px] uppercase leading-none tracking-[0.1em]">{tab.label}</span>
+      <span className="max-w-full truncate px-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.1em]">
+        {tab.label}
+      </span>
     </Link>
   );
 }
@@ -150,6 +160,7 @@ function RaisedTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduce
       prefetch={tab.prefetch}
       aria-current={active ? "page" : undefined}
       data-tab={tab.key}
+      data-guide-anchor={tab.anchor}
       data-active={active ? "true" : undefined}
       className="group flex h-full w-full flex-col items-center justify-end gap-1 pb-2 text-text-faint transition-colors duration-200 hover:text-accent"
     >
@@ -161,7 +172,9 @@ function RaisedTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduce
         <TabMark name={tab.key} size={24} />
       </span>
       <span
-        className={`font-mono text-[10px] uppercase leading-none tracking-[0.1em] ${active ? "text-accent" : ""}`}
+        className={`max-w-full truncate px-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.1em] ${
+          active ? "text-accent" : ""
+        }`}
       >
         {tab.label}
       </span>

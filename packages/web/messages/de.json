@@ -26,8 +26,6 @@
     "themeDark": "Dunkles Thema",
     "themeLight": "Helles Thema",
     "language": "Sprache",
-    "menu": "Menü",
-    "menuClose": "Menü schließen",
     "nav": {
       "home": "Start",
       "explore": "Entdecken",
@@ -42,6 +40,16 @@
     "languageIs": "{language}, Sprache wechseln",
     "themeDarkAction": "Dunkles Thema, zum hellen Thema wechseln",
     "themeLightAction": "Helles Thema, zum dunklen Thema wechseln"
+  },
+  "shell": {
+    "label": "Bereiche",
+    "tabs": {
+      "home": "Start",
+      "explore": "Entdecken",
+      "make": "Erstellen",
+      "verify": "Prüfen",
+      "mine": "Meine"
+    }
   },
   "footer": {
     "network": "Monad Mainnet, Kette {chainId}",

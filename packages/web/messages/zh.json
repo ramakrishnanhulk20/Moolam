@@ -28,8 +28,6 @@
     "themeDark": "深色主题",
     "themeLight": "浅色主题",
     "language": "语言",
-    "menu": "菜单",
-    "menuClose": "关闭菜单",
     "nav": {
       "home": "首页",
       "explore": "浏览",
@@ -44,6 +42,16 @@
     "languageIs": "{language}，切换语言",
     "themeDarkAction": "深色主题，切换到浅色主题",
     "themeLightAction": "浅色主题，切换到深色主题"
+  },
+  "shell": {
+    "label": "版块",
+    "tabs": {
+      "home": "首页",
+      "explore": "浏览",
+      "make": "登记",
+      "verify": "验证",
+      "mine": "我的"
+    }
   },
   "footer": {
     "network": "Monad 主网，链 {chainId}",

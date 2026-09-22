@@ -26,8 +26,6 @@
     "themeDark": "Tema oscuro",
     "themeLight": "Tema claro",
     "language": "Idioma",
-    "menu": "Menú",
-    "menuClose": "Cerrar el menú",
     "nav": {
       "home": "Inicio",
       "explore": "Explorar",
@@ -42,6 +40,16 @@
     "languageIs": "{language}, cambiar el idioma",
     "themeDarkAction": "Tema oscuro, cambiar al tema claro",
     "themeLightAction": "Tema claro, cambiar al tema oscuro"
+  },
+  "shell": {
+    "label": "Secciones",
+    "tabs": {
+      "home": "Inicio",
+      "explore": "Explorar",
+      "make": "Crear",
+      "verify": "Verificar",
+      "mine": "Mías"
+    }
   },
   "footer": {
     "network": "Monad mainnet, cadena {chainId}",

@@ -28,8 +28,6 @@
     "themeDark": "ダークテーマ",
     "themeLight": "ライトテーマ",
     "language": "言語",
-    "menu": "メニュー",
-    "menuClose": "メニューを閉じる",
     "nav": {
       "home": "ホーム",
       "explore": "一覧",
@@ -44,6 +42,16 @@
     "languageIs": "{language}、言語を変える",
     "themeDarkAction": "ダークテーマ、ライトテーマに切り替える",
     "themeLightAction": "ライトテーマ、ダークテーマに切り替える"
+  },
+  "shell": {
+    "label": "セクション",
+    "tabs": {
+      "home": "ホーム",
+      "explore": "一覧",
+      "make": "登録",
+      "verify": "検証",
+      "mine": "自分の画像"
+    }
   },
   "footer": {
     "network": "Monad メインネット、チェーン {chainId}",
