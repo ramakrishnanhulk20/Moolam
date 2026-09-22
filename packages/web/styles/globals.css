@@ -131,7 +131,7 @@ body {
 }
 
 /* And how much room the tab bar under a phone page asks that page to leave: its
-   own 56 px, plus whatever the phone keeps for its home indicator, which is
+   own 56 px and the 28 the raised Make stands above it, plus whatever the phone keeps for its home indicator, which is
    34 px on the tall iPhones and nothing on a laptop. Only the pages read it;
    the bar draws its own strip from the same env(). */
 :root {
