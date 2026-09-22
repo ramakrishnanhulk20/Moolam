@@ -1479,5 +1479,38 @@
     "now": "Réessayer maintenant",
     "trying": "Essai en cours",
     "stopped": "Toujours injoignable. Le registre est sur Monad et les pages de passeport le lisent directement."
+  },
+  "recheck": {
+    "button": "Demander une revérification",
+    "again": "Réessayer",
+    "checkNow": "Regarder à nouveau",
+    "note": "Gratuit. Le workflow Chainlink récupère l'image et inscrit son verdict sur Monad. Les demandes sont traitées par lots, en général dans la journée.",
+    "sending": "Envoi de la demande.",
+    "queued": "Demandée le {at}. Place {position} dans la file.",
+    "queuedWaiting": "Demandée le {at}. En attente dans la file.",
+    "already": "Déjà demandée le {at}. Place {position} dans la file.",
+    "alreadyWaiting": "Déjà demandée le {at}. En attente dans la file.",
+    "running": "En cours : le workflow récupère l'image et recalcule l'empreinte.",
+    "done": "Terminé : revérifiée le {at}.",
+    "doneNoTime": "Terminé : cette image a été revérifiée.",
+    "openTx": "Transaction {hash}",
+    "failed": "N'a pas pu s'exécuter : {reason}",
+    "failedNoReason": "N'a pas pu s'exécuter. Aucune raison n'a été donnée.",
+    "stopped": "Cette page a cessé de regarder au bout d'une demi-heure. Appuyez pour regarder à nouveau.",
+    "stamp": {
+      "sending": "Envoi",
+      "queued": "Dans la file",
+      "running": "En cours",
+      "done": "Terminé",
+      "failed": "Échec"
+    },
+    "failure": {
+      "noPassport": "Le service de vérification ne connaît pas ce passeport, il n'y a donc rien à revérifier.",
+      "sealed": "L'image de ce passeport n'a jamais été publiée, le workflow n'a donc rien à récupérer.",
+      "queueFull": "La file est pleine de demandes que personne n'a encore traitées. Réessayez plus tard.",
+      "rateLimited": "Trop de demandes depuis ici, attendez une minute.",
+      "notAnswering": "Le service de vérification ne répond pas pour le moment.",
+      "unknown": "La demande n'est pas passée."
+    }
   }
 }

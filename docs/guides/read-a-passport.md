@@ -138,6 +138,13 @@ yet. The Chainlink workflow adds one when it re-checks the image." Where the ind
 transaction for one, it says "The index does not carry the transaction for this one." rather than
 linking somewhere it cannot back up.
 
+Under the block, on every passport whose picture is published, there is a button that says "Request
+a re-check": anyone can press it, it costs nothing and needs no account, and it puts the passport in
+a queue the Chainlink workflow is run against, usually within the day. The line under it reports
+where that request stands, from its place in the queue to the transaction the new verdict was
+written in, and a sealed passport does not show it because there is no published picture for the
+workflow to fetch.
+
 The workflow is described in full in [Chainlink workflow](../developers/chainlink-workflow).
 
 ## The record

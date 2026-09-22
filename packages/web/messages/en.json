@@ -1479,5 +1479,38 @@
     "now": "Try now",
     "trying": "Trying",
     "stopped": "Still unreachable. The registry itself is on Monad and the passport pages read it directly."
+  },
+  "recheck": {
+    "button": "Request a re-check",
+    "again": "Try again",
+    "checkNow": "Check again",
+    "note": "Free. Chainlink's workflow re-fetches the picture and writes its verdict on Monad. Requests are run in batches, usually within the day.",
+    "sending": "Sending the request.",
+    "queued": "Requested {at}. Position {position} in the queue.",
+    "queuedWaiting": "Requested {at}. Waiting in the queue.",
+    "already": "Already requested {at}. Position {position} in the queue.",
+    "alreadyWaiting": "Already requested {at}. Waiting in the queue.",
+    "running": "Running now: the workflow is fetching the picture and hashing it again.",
+    "done": "Done: re-checked {at}.",
+    "doneNoTime": "Done: this picture has been re-checked.",
+    "openTx": "Transaction {hash}",
+    "failed": "Could not run: {reason}",
+    "failedNoReason": "Could not run. The runner did not say why.",
+    "stopped": "This page stopped checking after half an hour. Press to look again.",
+    "stamp": {
+      "sending": "Sending",
+      "queued": "In the queue",
+      "running": "Running",
+      "done": "Done",
+      "failed": "Could not run"
+    },
+    "failure": {
+      "noPassport": "The verify service does not know this passport, so there is nothing for it to re-check.",
+      "sealed": "This passport's picture was never published, so the workflow has nothing to fetch.",
+      "queueFull": "The queue is full of requests nobody has run yet. Try again later.",
+      "rateLimited": "Too many requests from here, wait a minute.",
+      "notAnswering": "The verify service is not answering just now.",
+      "unknown": "The request did not go through."
+    }
   }
 }

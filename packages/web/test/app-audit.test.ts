@@ -15,6 +15,7 @@ import type { MatchedPassport } from "@/components/verify/lookup";
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: unknown }) =>
     createElement("a", { href: props.href }, props.children as never),
+  useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
 }));
 
 const ID = `0x${"2b".repeat(32)}` as `0x${string}`;

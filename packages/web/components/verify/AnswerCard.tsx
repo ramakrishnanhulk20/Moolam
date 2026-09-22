@@ -11,8 +11,9 @@ import { sealedBits } from "@/components/passport/sealed";
 import { SealedSketch } from "@/components/sealed/Sketch";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
+import { RecheckRequest } from "@/components/passport/RecheckRequest";
 import { DisputeLine } from "./DisputeLine";
-import { SecondOpinion } from "./SecondOpinion";
+import { SecondOpinion, hasSecondOpinion } from "./SecondOpinion";
 import { agentChipId, percent, type Answer, type Problem } from "./answer";
 import type { MatchedPassport } from "./lookup";
 
@@ -240,8 +241,12 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
             <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("recheck.label")}</p>
             <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("sealed.recheck")}</p>
           </div>
-        ) : (
+        ) : hasSecondOpinion(answer.recheck) ? (
           <SecondOpinion recheck={answer.recheck} id={answer.id} className="mt-6" />
+        ) : (
+          // The service could not say what anyone else has found, which is no
+          // reason to take away the one thing a reader can do about that.
+          <RecheckRequest passportId={answer.id} className="mt-6 border-s-2 border-line ps-5" />
         )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">

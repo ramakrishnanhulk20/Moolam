@@ -1479,5 +1479,38 @@
     "now": "Jetzt versuchen",
     "trying": "Versuch läuft",
     "stopped": "Weiterhin nicht erreichbar. Das Register liegt auf Monad, und die Passseiten lesen es direkt."
+  },
+  "recheck": {
+    "button": "Nachprüfung anfordern",
+    "again": "Noch einmal versuchen",
+    "checkNow": "Erneut nachsehen",
+    "note": "Kostenlos. Der Chainlink-Workflow holt das Bild erneut und schreibt sein Urteil auf Monad. Anfragen werden gebündelt abgearbeitet, meist noch am selben Tag.",
+    "sending": "Die Anfrage geht raus.",
+    "queued": "Angefordert am {at}. Platz {position} in der Warteschlange.",
+    "queuedWaiting": "Angefordert am {at}. Wartet in der Warteschlange.",
+    "already": "Bereits angefordert am {at}. Platz {position} in der Warteschlange.",
+    "alreadyWaiting": "Bereits angefordert am {at}. Wartet in der Warteschlange.",
+    "running": "Läuft gerade: der Workflow holt das Bild und berechnet den Fingerabdruck neu.",
+    "done": "Fertig: am {at} nachgeprüft.",
+    "doneNoTime": "Fertig: dieses Bild wurde nachgeprüft.",
+    "openTx": "Transaktion {hash}",
+    "failed": "Konnte nicht laufen: {reason}",
+    "failedNoReason": "Konnte nicht laufen. Es wurde kein Grund genannt.",
+    "stopped": "Diese Seite hat nach einer halben Stunde aufgehört nachzusehen. Zum erneuten Nachsehen drücken.",
+    "stamp": {
+      "sending": "Wird gesendet",
+      "queued": "In der Warteschlange",
+      "running": "Läuft",
+      "done": "Fertig",
+      "failed": "Nicht gelaufen"
+    },
+    "failure": {
+      "noPassport": "Der Prüfdienst kennt diesen Pass nicht, es gibt also nichts nachzuprüfen.",
+      "sealed": "Das Bild dieses Passes wurde nie veröffentlicht, der Workflow hat also nichts zum Holen.",
+      "queueFull": "Die Warteschlange ist voll mit Anfragen, die noch niemand abgearbeitet hat. Später noch einmal versuchen.",
+      "rateLimited": "Zu viele Anfragen von hier, bitte eine Minute warten.",
+      "notAnswering": "Der Prüfdienst antwortet gerade nicht.",
+      "unknown": "Die Anfrage ist nicht durchgegangen."
+    }
   }
 }

@@ -6,6 +6,7 @@ import type { Attestation } from "@/lib/chain/registry";
 import { heldReportDelivery, type ReportDelivery } from "@/lib/chain/reports";
 import { transactionFor, type IndexedAttestation } from "./indexed";
 import { attestationSource } from "./labels";
+import { RecheckRequest } from "./RecheckRequest";
 
 /** What getTranslations hands back, so a row can be given one rather than await its own. */
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
@@ -78,6 +79,9 @@ export async function Attestations({
           </div>
 
           <div className="rise" style={{ animationDelay: "90ms" }}>
+            {/* A sealed passport gets no button: there is no published picture
+                for a workflow to fetch, and the block above has already said so
+                in those words. */}
             {attestations.length === 0 ? (
               <div className="max-w-[52ch] border-s-2 border-line ps-5">
                 {sealed ? (
@@ -114,6 +118,8 @@ export async function Attestations({
                 ))}
               </ul>
             )}
+
+            {sealed ? null : <RecheckRequest className="mt-8 border-t border-line pt-7" />}
           </div>
         </div>
       </div>

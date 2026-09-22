@@ -4,6 +4,19 @@ import { useFormatter, useTranslations } from "next-intl";
 import type { Hex } from "viem";
 import { Link } from "@/lib/i18n/routing";
 import type { MatchRecheck } from "@/lib/verifier/client";
+import { RecheckRequest } from "@/components/passport/RecheckRequest";
+
+/**
+ * Whether this block draws anything at all.
+ *
+ * The card asks before it lays the answer out, because the one thing that must
+ * still be offered when this block is silent is the button under it.
+ */
+export function hasSecondOpinion(
+  recheck?: MatchRecheck,
+): recheck is Exclude<MatchRecheck, { source: "unavailable" }> {
+  return recheck !== undefined && recheck.source !== "unavailable";
+}
 
 /**
  * Who else has checked this picture, in one line.
@@ -32,7 +45,7 @@ export function SecondOpinion({
   const t = useTranslations("verify.recheck");
   const format = useFormatter();
 
-  if (recheck === undefined || recheck.source === "unavailable") {
+  if (!hasSecondOpinion(recheck)) {
     return null;
   }
 
@@ -45,6 +58,7 @@ export function SecondOpinion({
           {t("none")}
         </p>
         <p className="mt-3 max-w-[56ch] text-xs leading-relaxed text-text-faint">{t("noneNote")}</p>
+        <RecheckRequest passportId={id} className="mt-5" />
       </Frame>
     );
   }
@@ -76,6 +90,8 @@ export function SecondOpinion({
       >
         {t("link")}
       </Link>
+
+      <RecheckRequest passportId={id} className="mt-5" />
     </Frame>
   );
 }

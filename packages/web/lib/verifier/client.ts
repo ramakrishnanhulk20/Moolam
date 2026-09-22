@@ -371,6 +371,51 @@ const matchSchema = z.object({
   score: z.number(),
 });
 
+/**
+ * Where a re-check request stands, in the queue route's own five words.
+ *
+ * "none" is the service saying nobody has asked about this passport, which is
+ * an answer rather than a failure: the reader is the first to ask.
+ */
+const recheckWord = z.enum(["none", "pending", "running", "done", "failed"]);
+
+/**
+ * What POST /recheck/request answers. Times are epoch milliseconds, as the
+ * queue records them.
+ *
+ * The position counts from 1 and is 0 for a request that is not waiting any
+ * more because a runner already has it, so a screen prints the number only
+ * when there is one. `already` is the route saying this passport was in the
+ * queue before this press, which is not a refusal: the answer is the same
+ * record either way.
+ */
+export const recheckRequestSchema = z.object({
+  passportId: hexWord,
+  status: z.enum(["pending", "running", "done", "failed"]),
+  requestedAt: z.number().int().nonnegative(),
+  position: z.number().int().nonnegative().optional(),
+  already: z.boolean().optional(),
+});
+
+/**
+ * What GET /recheck/status/:passportId answers.
+ *
+ * Everything but the word itself is optional, because each word carries its
+ * own fields: nothing has a start time before it runs and nothing has a
+ * transaction before it is done.
+ */
+export const recheckStatusSchema = z.object({
+  passportId: hexWord.optional(),
+  status: recheckWord,
+  requestedAt: z.number().int().nonnegative().optional(),
+  startedAt: z.number().int().nonnegative().optional(),
+  finishedAt: z.number().int().nonnegative().optional(),
+  reportTx: hexWord.optional(),
+  matched: z.boolean().optional(),
+  distance: z.number().int().nonnegative().optional(),
+  reason: z.string().optional(),
+});
+
 export const verifyResponseSchema = z.object({
   result: z.object({
     exact: hexWord.nullable(),
@@ -396,6 +441,24 @@ export const verifyResponseSchema = z.object({
     softBinding: z.object({ alg: z.string(), phash: decimal, blockhash: hexWord }).optional(),
   }),
 });
+
+export type RecheckRequested = z.infer<typeof recheckRequestSchema>;
+export type RecheckStatus = z.infer<typeof recheckStatusSchema>;
+
+/**
+ * The three answers a reader can get about a re-check request, and never a
+ * fourth.
+ *
+ * "none" means the service looked and nobody has asked for this passport. A
+ * service that has no queue route yet answers 404 and is read the same way,
+ * because the truth on both is identical from a reader's seat: there is no
+ * request in flight and the button is worth offering. "unknown" is the service
+ * or the network failing to say, which is never drawn as a verdict of its own.
+ */
+export type RecheckLookup =
+  | { state: "known"; status: RecheckStatus }
+  | { state: "none" }
+  | { state: "unknown"; reason: string };
 
 export type PrepareResponse = z.infer<typeof prepareResponseSchema>;
 export type EditResponse = z.infer<typeof editResponseSchema>;
@@ -715,6 +778,85 @@ export async function readUnsealRecord(
     : { state: "unknown", reason: "the record that came back is for another passport" };
 }
 
+/**
+ * How long a re-check request waits for an answer.
+ *
+ * The route writes one line to a file and answers, so a wait longer than this
+ * is the service being unreachable rather than busy, and the reader is better
+ * told that than left watching a button for two minutes.
+ */
+const RECHECK_TIMEOUT_MS = 15_000;
+
+/**
+ * Asks for a Chainlink re-check of one passport.
+ *
+ * Free, and no account: a request is a line in the verify service's queue and
+ * the Chainlink run it leads to happens on a runner's own machine. Asking
+ * twice is not an error, it answers the same record with `already` set.
+ */
+export async function requestRecheck(
+  passportId: Hex,
+  options: { signal?: AbortSignal } = {},
+): Promise<RecheckRequested> {
+  return await post("/recheck/request", JSON.stringify({ passportId }), recheckRequestSchema, {
+    signal: options.signal,
+    headers: { "content-type": "application/json" },
+    timeoutMs: RECHECK_TIMEOUT_MS,
+  });
+}
+
+/**
+ * Where a passport's re-check request got to, or that nobody has asked.
+ *
+ * It never throws, because every screen that asks has the same next move for
+ * anything that is not a clean answer: keep the button and say nothing the
+ * service did not say. The route holds its answer for 30 seconds, so a page
+ * that asks again a minute later costs the service one read.
+ */
+export async function readRecheckStatus(
+  passportId: Hex,
+  options: { signal?: AbortSignal } = {},
+): Promise<RecheckLookup> {
+  const path = `/recheck/status/${passportId}`;
+  const timeout = AbortSignal.timeout(LOOKUP_TIMEOUT_MS);
+  const signal = options.signal === undefined ? timeout : AbortSignal.any([options.signal, timeout]);
+
+  let response: Response;
+  try {
+    response = await fetch(verifierUrl(path), { method: "GET", signal });
+  } catch {
+    return { state: "unknown", reason: `the verify service at ${verifierUrl(path)} did not answer` };
+  }
+
+  if (!response.ok) {
+    // A service without the queue route has no request to report, which reads
+    // the same as a service that has one and knows of none. Every other
+    // refusal says nothing about this passport and stays unknown.
+    if (response.status === 404) {
+      return { state: "none" };
+    }
+    return { state: "unknown", reason: (await failureOf(response)).message };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { state: "unknown", reason: "the verify service answered with something that is not JSON" };
+  }
+
+  const parsed = recheckStatusSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { state: "unknown", reason: "the verify service answered in a shape this app does not know" };
+  }
+  // An answer filed under another passport is somebody else's request, so it
+  // is no answer about this one.
+  if (parsed.data.passportId !== undefined && parsed.data.passportId.toLowerCase() !== passportId.toLowerCase()) {
+    return { state: "unknown", reason: "the answer that came back is for another passport" };
+  }
+  return parsed.data.status === "none" ? { state: "none" } : { state: "known", status: parsed.data };
+}
+
 /** Matches an image against the registry. No sign in: anyone may check a picture. */
 export async function verify(options: { file: File; signal?: AbortSignal }): Promise<VerifyResponse> {
   const body = new FormData();
@@ -751,14 +893,15 @@ async function post<T>(
   path: string,
   body: BodyInit,
   schema: z.ZodType<T>,
-  options: { signal?: AbortSignal; headers?: Record<string, string> },
+  options: { signal?: AbortSignal; headers?: Record<string, string>; timeoutMs?: number },
 ): Promise<T> {
   let response: Response;
   // A service that accepts the request and never answers would otherwise hold a screen in its
   // busy state for good. The cap is generous because /generate draws for up to a minute and /edit
   // waits for Privy and the receipt; a timed-out call reads as offline, the caller's own abort
-  // travels on unchanged.
-  const timeout = AbortSignal.timeout(requestTimeoutMs);
+  // travels on unchanged. A route that only writes a line and answers asks for a shorter wait of
+  // its own rather than borrowing that cap.
+  const timeout = AbortSignal.timeout(options.timeoutMs ?? requestTimeoutMs);
   const signal = options.signal === undefined ? timeout : AbortSignal.any([options.signal, timeout]);
   try {
     response = await fetch(verifierUrl(path), {

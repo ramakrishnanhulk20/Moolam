@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createTranslator } from "next-intl";
 import type { Hex } from "viem";
@@ -19,6 +20,12 @@ import type { ReportDelivery } from "@/lib/chain/reports";
 
 const locale = { current: "en" as "en" | "ta" };
 const delivery = { current: "simulation" as ReportDelivery };
+
+vi.mock("@/lib/i18n/routing", () => ({
+  Link: (props: { href: string; children?: unknown; className?: string }) =>
+    createElement("a", { href: props.href, className: props.className }, props.children as never),
+  useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
+}));
 
 vi.mock("next-intl/server", () => ({
   getTranslations: async (namespace: string) =>

@@ -1480,5 +1480,38 @@
     "now": "Tentar agora",
     "trying": "Tentando",
     "stopped": "Continua sem resposta. O registro está na Monad e as páginas de passaporte o leem diretamente."
+  },
+  "recheck": {
+    "button": "Pedir uma reconferência",
+    "again": "Tentar de novo",
+    "checkNow": "Olhar de novo",
+    "note": "Gratuito. O fluxo da Chainlink busca a imagem de novo e grava o veredito dele na Monad. Os pedidos são atendidos em lotes, em geral no mesmo dia.",
+    "sending": "Enviando o pedido.",
+    "queued": "Pedida em {at}. Posição {position} na fila.",
+    "queuedWaiting": "Pedida em {at}. Esperando na fila.",
+    "already": "Já estava pedida em {at}. Posição {position} na fila.",
+    "alreadyWaiting": "Já estava pedida em {at}. Esperando na fila.",
+    "running": "Rodando agora: o fluxo está buscando a imagem e calculando a impressão de novo.",
+    "done": "Pronto: reconferida em {at}.",
+    "doneNoTime": "Pronto: esta imagem já foi reconferida.",
+    "openTx": "Transação {hash}",
+    "failed": "Não deu para rodar: {reason}",
+    "failedNoReason": "Não deu para rodar. Ninguém disse por quê.",
+    "stopped": "Esta página parou de olhar depois de meia hora. Toque para olhar de novo.",
+    "stamp": {
+      "sending": "Enviando",
+      "queued": "Na fila",
+      "running": "Rodando",
+      "done": "Pronto",
+      "failed": "Não rodou"
+    },
+    "failure": {
+      "noPassport": "O serviço de verificação não conhece este passaporte, então não há o que reconferir.",
+      "sealed": "A imagem deste passaporte nunca foi publicada, então o fluxo não tem o que buscar.",
+      "queueFull": "A fila está cheia de pedidos que ninguém rodou ainda. Tente mais tarde.",
+      "rateLimited": "Pedidos demais daqui, espere um minuto.",
+      "notAnswering": "O serviço de verificação não está respondendo agora.",
+      "unknown": "O pedido não entrou."
+    }
   }
 }

@@ -1479,5 +1479,38 @@
     "now": "Probar ahora",
     "trying": "Probando",
     "stopped": "Sigue sin responder. El registro está en Monad y las páginas de pasaporte lo leen directamente."
+  },
+  "recheck": {
+    "button": "Pedir una revisión",
+    "again": "Intentar otra vez",
+    "checkNow": "Mirar otra vez",
+    "note": "Gratis. El flujo de trabajo de Chainlink vuelve a traer la imagen y escribe su veredicto en Monad. Las peticiones se atienden por tandas, normalmente el mismo día.",
+    "sending": "Enviando la petición.",
+    "queued": "Pedida el {at}. Puesto {position} en la cola.",
+    "queuedWaiting": "Pedida el {at}. Esperando en la cola.",
+    "already": "Ya estaba pedida el {at}. Puesto {position} en la cola.",
+    "alreadyWaiting": "Ya estaba pedida el {at}. Esperando en la cola.",
+    "running": "En marcha: el flujo está trayendo la imagen y calculando la huella otra vez.",
+    "done": "Hecho: revisada el {at}.",
+    "doneNoTime": "Hecho: esta imagen ya fue revisada.",
+    "openTx": "Transacción {hash}",
+    "failed": "No se pudo ejecutar: {reason}",
+    "failedNoReason": "No se pudo ejecutar. No se dio ningún motivo.",
+    "stopped": "Esta página dejó de mirar al cabo de media hora. Pulsa para mirar otra vez.",
+    "stamp": {
+      "sending": "Enviando",
+      "queued": "En la cola",
+      "running": "En marcha",
+      "done": "Hecho",
+      "failed": "No se pudo"
+    },
+    "failure": {
+      "noPassport": "El servicio de verificación no conoce este pasaporte, así que no hay nada que revisar.",
+      "sealed": "La imagen de este pasaporte nunca se publicó, así que el flujo no tiene nada que traer.",
+      "queueFull": "La cola está llena de peticiones que nadie ha ejecutado todavía. Inténtalo más tarde.",
+      "rateLimited": "Demasiadas peticiones desde aquí, espera un minuto.",
+      "notAnswering": "El servicio de verificación no responde ahora mismo.",
+      "unknown": "La petición no llegó a entrar."
+    }
   }
 }

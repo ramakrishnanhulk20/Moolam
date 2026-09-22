@@ -14,6 +14,7 @@ import { verifyResponseSchema, type MatchRecheck } from "@/lib/verifier/client";
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: unknown }) =>
     createElement("a", { href: props.href }, props.children as never),
+  useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
 }));
 
 /**
@@ -166,6 +167,19 @@ const MATCHED: MatchRecheck = {
   latest: { matched: true, distance: 1, at: 1789368639, receiver: RECEIVER as `0x${string}` },
 };
 
+
+/**
+ * The verdict line on its own, without the control under it.
+ *
+ * The button that asks for a new re-check sits inside the same block, and its
+ * own words name Chainlink and its hover state names the accent. Neither is a
+ * statement about what the chain holds, so the two checks below read the part
+ * above it.
+ */
+function line(markup: string): string {
+  const mark = markup.indexOf("data-recheck=");
+  return mark < 0 ? markup : markup.slice(0, mark);
+}
 describe("the second opinion line, in all four of its states", () => {
   it("says who re-checked the picture, what they did and how far apart it came out", () => {
     const markup = render(createElement(SecondOpinion, { recheck: MATCHED, id: ID }));
@@ -190,7 +204,7 @@ describe("the second opinion line, in all four of its states", () => {
     expect(markup).toContain("did not match");
     expect(markup).toContain("19 of 64 bits apart");
     expect(markup).toContain("text-failed");
-    expect(markup).not.toContain("text-accent");
+    expect(line(markup)).not.toContain("text-accent");
   });
 
   it("says nothing has re-checked it yet when the count is zero", () => {
@@ -199,7 +213,7 @@ describe("the second opinion line, in all four of its states", () => {
     );
 
     expect(markup).toContain("Not re-checked yet.");
-    expect(markup).not.toContain("Chainlink");
+    expect(line(markup)).not.toContain("Chainlink");
   });
 
   it("draws nothing at all when the service could not tell, and nothing when it never said", () => {

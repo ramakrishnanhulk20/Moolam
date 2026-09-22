@@ -105,6 +105,13 @@ A statement on a passport under an open or upheld challenge should not be relied
 holder's word rests on is itself in question. [Disputes](disputes) has the rules, and
 [Say how AI may use a picture](ai-use-statements) has what each statement means.
 
+Under those two the card carries the second opinion: what an independent Chainlink CRE workflow
+found when it fetched the registered picture and hashed it again, or that nothing has re-checked it
+yet. A button under that line says "Request a re-check", and anyone reading the answer can press it:
+it is free, it needs no account and no wallet, and it puts the passport in a queue the workflow is
+run against, usually within the day. The line under the button then reports where the request
+stands, and when the verdict lands it links the transaction it was written in.
+
 ### Not registered
 
 "No passport matches this image." with a note underneath: "Cropped copies do not match yet. Try the

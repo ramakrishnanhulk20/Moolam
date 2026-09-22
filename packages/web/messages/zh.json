@@ -1481,5 +1481,38 @@
     "now": "立即重试",
     "trying": "正在重试",
     "stopped": "仍然联系不上。注册表本身在 Monad 上，护照页面直接读取它。"
+  },
+  "recheck": {
+    "button": "申请复核",
+    "again": "再试一次",
+    "checkNow": "再看一次",
+    "note": "免费。Chainlink 的工作流会重新取回图片，并把判定写到 Monad 上。申请按批次执行，通常当天就有结果。",
+    "sending": "正在发送申请。",
+    "queued": "{at} 提交。排在队列第 {position} 位。",
+    "queuedWaiting": "{at} 提交。正在队列里等待。",
+    "already": "{at} 已经有人申请过。排在队列第 {position} 位。",
+    "alreadyWaiting": "{at} 已经有人申请过。正在队列里等待。",
+    "running": "正在运行：工作流正在取回图片并重新计算指纹。",
+    "done": "完成：{at} 已复核。",
+    "doneNoTime": "完成：这张图片已经复核过。",
+    "openTx": "交易 {hash}",
+    "failed": "没能运行：{reason}",
+    "failedNoReason": "没能运行。没有说明原因。",
+    "stopped": "这个页面在半小时后停止查看。按一下再看一次。",
+    "stamp": {
+      "sending": "发送中",
+      "queued": "在队列中",
+      "running": "运行中",
+      "done": "完成",
+      "failed": "没能运行"
+    },
+    "failure": {
+      "noPassport": "校验服务不认识这本护照，所以没有可复核的东西。",
+      "sealed": "这本护照的图片从未公开，所以工作流没有可取回的东西。",
+      "queueFull": "队列里都是还没人执行的申请。请稍后再试。",
+      "rateLimited": "这里的请求太多了，等一分钟。",
+      "notAnswering": "校验服务现在没有回应。",
+      "unknown": "申请没有送出去。"
+    }
   }
 }

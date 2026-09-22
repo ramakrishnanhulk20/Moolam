@@ -22,6 +22,7 @@ import { verifyResponseSchema } from "@/lib/verifier/client";
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: unknown; className?: string }) =>
     createElement("a", { href: props.href, className: props.className }, props.children as never),
+  useRouter: () => ({ refresh: () => undefined, push: () => undefined }),
 }));
 
 vi.mock("@/components/passport/Picture", () => ({
