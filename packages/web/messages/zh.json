@@ -153,7 +153,12 @@
     "end": "符合条件的护照都在这里了。",
     "shown": "已显示 {count, number} 条",
     "empty": "还没有护照符合这个筛选。",
-    "error": "无法读取索引：{reason}。"
+    "error": "无法读取索引：{reason}。",
+    "sealed": {
+      "mark": "已封存：这张图片从未公开",
+      "legend": "已封存，没有公开图片",
+      "word": "已封存"
+    }
   },
   "agents": {
     "kicker": "智能体",
@@ -390,6 +395,11 @@
       "open": "这本护照正被提出异议。在异议了结之前，不要依赖它关于 AI 使用的声明。",
       "upheld": "针对这本护照的异议成立。请把它的记录，以及它关于 AI 使用的声明，都当作不可靠。",
       "rejected": "曾有人对这本护照提出异议，并被驳回。"
+    },
+    "sealed": {
+      "matched": "与一本已封存的护照匹配。登记的图片没有公开。",
+      "label": "已封存",
+      "recheck": "没有可供复核的公开副本。要复核就得先公开图片。"
     }
   },
   "passport": {
@@ -794,6 +804,16 @@
           "signIn": "登录"
         }
       }
+    },
+    "sealed": {
+      "label": "已封存",
+      "posterLine": "{date} 登记。图片没有公开。Moolam 不留任何副本。",
+      "standing": "已封存，没有公开副本",
+      "commitmentLabel": "链上的承诺",
+      "commitmentAlgorithm": "用 {algorithm} 取哈希",
+      "commitmentLine": "拿着这个文件的人都可以算出它的哈希，再与护照编号对照。",
+      "recheck": "没有可供复核的公开副本。要复核就得先公开图片。",
+      "edit": "这本护照已封存，在图片公开之前无法编辑。"
     }
   },
   "agent": {

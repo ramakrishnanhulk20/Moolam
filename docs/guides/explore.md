@@ -126,6 +126,21 @@ A mark the registry does not support is a dim outline rather than absent, so a p
 it still reads as a plate with nothing on it. A picture the gateway will not hand over shows the seal
 and "No picture on the gateway"; a passport whose metadata carries no name reads "Untitled".
 
+### A sealed plate
+
+A passport whose picture was never published has no thumbnail to draw, so the plate draws its block
+hash instead: the same 16 by 16 grid its own page opens with. It carries a fourth mark, S, which
+reads out as "Sealed: this picture was never published", and the word "Sealed" beside the date, so
+the plate says what it is without anybody having to hover it. The line under the chips names the
+letter along with the other three.
+
+It is never given "No picture on the gateway". That sentence belongs to a published picture the
+gateway would not serve, and the two states must not read the same.
+
+The counts and the "7 pictures / 22 test images" line are unchanged. The index does not carry
+whether a passport is sealed, so the split cannot count sealed records separately without a change
+to the index's schema: a sealed record counts as a picture there, which is what it is.
+
 ### Load more
 
 Twenty four plates a page. "Load more" asks for the next twenty four from where the last one ended,

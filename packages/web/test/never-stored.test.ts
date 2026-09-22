@@ -58,7 +58,9 @@ vi.mock("@/lib/data/passports", () => ({ heldRegistration: vi.fn() }));
 vi.mock("@/lib/data/prerender", () => ({ realPictureIds: async () => [] }));
 vi.mock("@/lib/data/offeredSamples", () => ({ offeredSamples: holds.samples }));
 
-vi.mock("@/components/passport/art", () => ({ readArt: vi.fn() }));
+// The real reader always answers with a document, even when it is empty: the
+// page reads fields off it, so a mock that answers nothing is not this reader.
+vi.mock("@/components/passport/art", () => ({ readArt: vi.fn(async () => ({ missing: true })) }));
 vi.mock("@/components/passport/Attestations", () => ({ Attestations: () => null }));
 vi.mock("@/components/passport/CheckCopy", () => ({ CheckCopy: () => null }));
 vi.mock("@/components/passport/DisputeNote", () => ({ DisputeNote: () => null }));

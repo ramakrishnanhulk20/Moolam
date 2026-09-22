@@ -40,6 +40,8 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         disputed: row.inheritedDisputed,
         agentId: row.generatorId,
         consent: row.consent,
+        sealed: art?.sealed === true,
+        blockhash: art?.blockhash,
       };
     }),
   );

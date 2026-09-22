@@ -26,7 +26,7 @@ import { Mono } from "./Mono";
  * The owner's panel itself, in a file of its own so that nothing on a passport page reaches the
  * wallet SDK until this component is asked for. EditPanel.tsx holds the gate and pulls this in.
  */
-export function Editor({ parentId, owner }: { parentId: Hex; owner: Hex | null }) {
+export function Editor({ parentId, owner, sealed = false }: { parentId: Hex; owner: Hex | null; sealed?: boolean }) {
   const router = useRouter();
   // The tree above this panel is rendered on the server from the chain, so once the child is on
   // chain the page is asked to read itself again rather than being patched in the browser. The
@@ -45,11 +45,12 @@ export function Editor({ parentId, owner }: { parentId: Hex; owner: Hex | null }
     return null;
   }
 
-  return <Panel edit={edit} />;
+  return <Panel edit={edit} sealed={sealed} />;
 }
 
-function Panel({ edit }: { edit: PassportEdit }) {
+function Panel({ edit, sealed }: { edit: PassportEdit; sealed: boolean }) {
   const t = useTranslations("passport.edit");
+  const sealedWords = useTranslations("passport.sealed");
   const calm = useReducedMotion() === true;
   const { state } = edit;
 
@@ -70,7 +71,12 @@ function Panel({ edit }: { edit: PassportEdit }) {
         {t("heading")}
       </h2>
 
-      {!edit.configured ? (
+      {/* An edit is a new picture registered from this one, and the service has
+          to read the picture to make it. A sealed passport has none to read, so
+          the holder is told that in one line and the drop zone is not drawn. */}
+      {sealed ? (
+        <p className="mt-5 max-w-[48ch] text-sm leading-relaxed text-text-muted">{sealedWords("edit")}</p>
+      ) : !edit.configured ? (
         <p className="mt-5 max-w-[48ch] text-sm leading-relaxed text-text-muted">{t("notConfigured")}</p>
       ) : isEditDone(state) ? (
         <Recorded edit={edit} />

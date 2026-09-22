@@ -152,7 +152,12 @@
     "end": "Esses são todos os passaportes que combinam.",
     "shown": "{count, number} à vista",
     "empty": "Nenhum passaporte combina com este filtro ainda.",
-    "error": "Não foi possível ler o índice: {reason}."
+    "error": "Não foi possível ler o índice: {reason}.",
+    "sealed": {
+      "mark": "Lacrado: esta imagem nunca foi publicada",
+      "legend": "Lacrado, nenhuma imagem publicada",
+      "word": "Lacrado"
+    }
   },
   "agents": {
     "kicker": "Agentes",
@@ -389,6 +394,11 @@
       "open": "Este passaporte está contestado. Não confie na declaração dele sobre uso por IA enquanto a contestação não for resolvida.",
       "upheld": "Uma contestação contra este passaporte foi aceita. Trate o registo dele, e a declaração dele sobre uso por IA, como pouco confiáveis.",
       "rejected": "Uma contestação foi levantada contra este passaporte e recusada."
+    },
+    "sealed": {
+      "matched": "Corresponde a um passaporte lacrado. A imagem registrada não está publicada.",
+      "label": "Lacrado",
+      "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada."
     }
   },
   "passport": {
@@ -793,6 +803,16 @@
           "signIn": "Entrar"
         }
       }
+    },
+    "sealed": {
+      "label": "Lacrado",
+      "posterLine": "Registrado em {date}. A imagem não está publicada. A Moolam não guarda nenhuma cópia.",
+      "standing": "Lacrado, então não há cópia pública",
+      "commitmentLabel": "O compromisso",
+      "commitmentAlgorithm": "Com hash {algorithm}",
+      "commitmentLine": "Quem tem o arquivo pode calcular o hash dele e comparar com o identificador do passaporte.",
+      "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada.",
+      "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada."
     }
   },
   "agent": {

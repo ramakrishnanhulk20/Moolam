@@ -151,7 +151,12 @@
     "end": "That is every passport that matches.",
     "shown": "{count, number} shown",
     "empty": "No passport matches this filter yet.",
-    "error": "The index could not be read: {reason}."
+    "error": "The index could not be read: {reason}.",
+    "sealed": {
+      "mark": "Sealed: this picture was never published",
+      "legend": "Sealed, no picture published",
+      "word": "Sealed"
+    }
   },
   "agents": {
     "kicker": "Agents",
@@ -388,6 +393,11 @@
       "open": "This passport is under challenge. Do not rely on its statement on AI use until the challenge is settled.",
       "upheld": "A challenge against this passport was upheld. Treat its record, and its statement on AI use, as unreliable.",
       "rejected": "A challenge was raised against this passport and rejected."
+    },
+    "sealed": {
+      "matched": "Matches a sealed passport. The registered picture is not published.",
+      "label": "Sealed",
+      "recheck": "No public copy to re-check. A re-check needs the picture to be published."
     }
   },
   "passport": {
@@ -792,6 +802,16 @@
           "signIn": "Sign in"
         }
       }
+    },
+    "sealed": {
+      "label": "Sealed",
+      "posterLine": "Registered on {date}. The picture is not published. Moolam keeps no copy.",
+      "standing": "Sealed, so there is no public copy",
+      "commitmentLabel": "The commitment",
+      "commitmentAlgorithm": "Hashed with {algorithm}",
+      "commitmentLine": "Anyone holding the file can hash it and compare it with the passport id.",
+      "recheck": "No public copy to re-check. A re-check needs the picture to be published.",
+      "edit": "This passport is sealed, so it cannot be edited until the picture is published."
     }
   },
   "agent": {

@@ -49,10 +49,16 @@ export async function Facts({
       <section className="rise">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <h2 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">{t("record")}</h2>
+          {/* A sealed passport has never been re-checked and never will be
+              while it stays sealed, so "Not re-checked yet" would read as a
+              fault the holder could fix. It says what it is instead, in the
+              same cold ink as the rest of the standing family. */}
           <p
-            className={`border border-line bg-bg-raised px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] ${standingClass(standing)}`}
+            className={`border border-line bg-bg-raised px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] ${
+              art.sealed === true && standing === "unverified" ? "text-text-muted" : standingClass(standing)
+            }`}
           >
-            {t(`standing.${standing}`)}
+            {art.sealed === true && standing === "unverified" ? t("sealed.standing") : t(`standing.${standing}`)}
           </p>
         </div>
 
@@ -153,6 +159,29 @@ export async function Facts({
               />
             )}
           </ul>
+
+          {/* Where the picture's own address would be on a published record,
+              a sealed one says what the chain is holding instead: the hash of
+              the file the creator kept. It is not a link, because there is
+              nothing at the other end of it by design. */}
+          {art.sealed === true ? (
+            <div className="mt-7 max-w-[54ch] border-s-2 border-accent/50 ps-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                {t("sealed.commitmentLabel")}
+              </p>
+              <div className="tap-row mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <Mono value={passport.id} className="min-w-0 text-xs leading-relaxed text-text" />
+                <CopyButton value={passport.id} />
+              </div>
+              <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
+                {/* The registry's own rule is that a passport id is the sha-256
+                    of the registered file, so that is what stands when the
+                    pinned document does not name the algorithm itself. */}
+                {t("sealed.commitmentAlgorithm", { algorithm: art.commitment?.algorithm ?? "sha-256" })}
+              </p>
+              <p className="mt-4 text-sm leading-relaxed text-text-muted">{t("sealed.commitmentLine")}</p>
+            </div>
+          ) : null}
         </div>
       </section>
 

@@ -151,7 +151,12 @@
     "end": "Das sind alle Pässe, die passen.",
     "shown": "{count, number} zu sehen",
     "empty": "Noch passt kein Pass zu diesem Filter.",
-    "error": "Der Index konnte nicht gelesen werden: {reason}."
+    "error": "Der Index konnte nicht gelesen werden: {reason}.",
+    "sealed": {
+      "mark": "Versiegelt: dieses Bild wurde nie veröffentlicht",
+      "legend": "Versiegelt, kein Bild veröffentlicht",
+      "word": "Versiegelt"
+    }
   },
   "agents": {
     "kicker": "Agenten",
@@ -388,6 +393,11 @@
       "open": "Dieser Pass wird angefochten. Verlass dich auf seine Erklärung zur KI-Nutzung erst, wenn die Anfechtung entschieden ist.",
       "upheld": "Eine Anfechtung gegen diesen Pass war erfolgreich. Behandle seinen Eintrag und seine Erklärung zur KI-Nutzung als nicht verlässlich.",
       "rejected": "Gegen diesen Pass wurde eine Anfechtung erhoben und abgewiesen."
+    },
+    "sealed": {
+      "matched": "Passt zu einem versiegelten Pass. Das eingetragene Bild ist nicht veröffentlicht.",
+      "label": "Versiegelt",
+      "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden."
     }
   },
   "passport": {
@@ -792,6 +802,16 @@
           "signIn": "Anmelden"
         }
       }
+    },
+    "sealed": {
+      "label": "Versiegelt",
+      "posterLine": "Eingetragen am {date}. Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
+      "standing": "Versiegelt, also gibt es keine öffentliche Kopie",
+      "commitmentLabel": "Die Festlegung",
+      "commitmentAlgorithm": "Gehasht mit {algorithm}",
+      "commitmentLine": "Wer die Datei hat, kann sie hashen und mit der Pass-Kennung vergleichen.",
+      "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden.",
+      "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist."
     }
   },
   "agent": {

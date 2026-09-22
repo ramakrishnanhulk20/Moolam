@@ -915,7 +915,10 @@ const heldDocument = unstable_cache(
       art.title !== undefined ||
       art.description !== undefined ||
       art.prompt !== undefined ||
-      art.thumbnailUrl !== undefined;
+      art.thumbnailUrl !== undefined ||
+      // A sealed document is a real answer with no picture in it, so it is held
+      // like any other rather than read again on every view.
+      art.sealed === true;
     if (!said) {
       throw new GatewaySilent(metadataURI);
     }

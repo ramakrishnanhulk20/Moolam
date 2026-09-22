@@ -68,6 +68,21 @@ Under that it says whether a C2PA manifest survived: "C2PA manifest still attach
 manifest left in this file". The second one is the interesting case, and the whole reason the
 fingerprints are on chain. A platform that stripped the manifest did not strip the picture.
 
+### Matches a sealed passport
+
+The picture you dropped in can match a passport whose own picture was never published. The match is
+as real as any other, because the fingerprints it was matched against are on Monad rather than in
+any file, but there is nothing to show beside the verdict.
+
+The card says so in a line of its own: "Matches a sealed passport. The registered picture is not
+published." Where the matched picture would be, it draws that passport's block hash, with "Sealed"
+beside the verdict at the top. The statement on AI use and the dispute line read exactly as they do
+for any other match. The second opinion says "No public copy to re-check. A re-check needs the
+picture to be published." rather than reporting a re-check that will never come as "not yet".
+
+Opening the passport from here lands on the sealed page described in
+[Read a passport](read-a-passport).
+
 ### The holder's statement, under a match
 
 Under any match the card prints what the passport's holder has said about AI use, as a stamp headed

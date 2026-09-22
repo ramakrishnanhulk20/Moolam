@@ -165,7 +165,13 @@ export default async function PassportPage({
 
       {/* The second opinion leads, straight under the poster: it is the one
           fact on this page nobody could have written about themselves. */}
-      <Attestations attestations={attestations} indexed={indexed} phash={passport.phash} locale={locale} />
+      <Attestations
+        attestations={attestations}
+        indexed={indexed}
+        phash={passport.phash}
+        locale={locale}
+        sealed={art.sealed === true}
+      />
 
       {/* The three panels that write share one provider, so the wallet SDK is
           fetched and mounted once for a page that may ask about the reader
@@ -209,7 +215,7 @@ export default async function PassportPage({
             <div className="rise">
               <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
               {/* Only the wallet that holds this passport ever sees this panel. */}
-              <EditPanel parentId={passport.id} owner={owner} />
+              <EditPanel parentId={passport.id} owner={owner} sealed={art.sealed === true} />
             </div>
             <div className="rise" style={{ animationDelay: "90ms" }}>
               <CheckCopy passportId={passport.id} />

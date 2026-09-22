@@ -36,6 +36,32 @@ If the gateway will not hand the picture over, the poster shows the seal and say
 unavailable from IPFS right now" rather than a broken image icon. The record is on chain either
 way.
 
+## A sealed passport
+
+Some passports have no picture on them, and that is the record rather than a failure. A creator can
+register a picture without publishing it: the verify service fingerprints and signs the file, hands
+the only copy back to them, and pins a small record that carries no image, no thumbnail and no
+manifest document. The passport id is the sha256 of that file, so Monad commits to the exact bytes
+without anybody being able to see them.
+
+Such a page reads differently in four places, and never as a fault.
+
+| On the page | What a sealed passport shows |
+| --- | --- |
+| The poster | The 16 by 16 block hash drawn large, the word "Sealed", and "Registered on that day. The picture is not published. Moolam keeps no copy." Never the seal and "Image unavailable from IPFS right now", which is what a gateway having a bad minute gets |
+| Standing | "Sealed, so there is no public copy", in place of "Not re-checked yet" |
+| Checked again, by someone else | "No public copy to re-check. A re-check needs the picture to be published." The Chainlink workflow fetches the picture from its own address, and there is none to fetch |
+| The record | "The commitment": the passport id in full, with the algorithm it was hashed with and one line, "Anyone holding the file can hash it and compare it with the passport id." It replaces the link to the picture, because there is nothing at the other end of one |
+
+Everything else on the page is the same: the creator, the owner, the lineage, what the holder has
+said about AI use, and the dispute panel. The one thing the holder cannot do yet is add an edit: an
+edit is a new picture made from this one, and the service has no picture to read, so the panel says
+"This passport is sealed, so it cannot be edited until the picture is published."
+
+The drawing on the poster is the block hash and nothing more: a 16 by 16 reading of light and dark
+that the chain already holds in public. It is rough composition, not the picture, and the studio
+shows the creator exactly that before they sign.
+
 ## Checked again, by someone else
 
 The loudest block on the page, and the one that separates a passport from a caption. Its own line

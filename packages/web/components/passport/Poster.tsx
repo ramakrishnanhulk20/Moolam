@@ -1,15 +1,22 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { SealedPlate } from "@/components/sealed/SealedPlate";
 import { shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
 import { pictureSources } from "@/lib/images";
 import type { Art } from "./art";
 import { Picture } from "./Picture";
+import { sealedBits } from "./sealed";
 
 /**
  * The passport as a poster: the registered picture full-bleed, the scrim over
  * it, and the title and the seal sitting on the still. A gateway that will not
  * hand the picture over gets the seal on a dark plate and a sentence, never a
  * broken image icon.
+ *
+ * A sealed passport opens on the sealed plate instead, at the same height and
+ * in the same type. It is not the same state as a gateway that would not
+ * answer, and it must never be drawn with those words: there is no picture to
+ * fetch, because the creator chose not to publish one.
  *
  * The date carries its own word. Under the kind alone, "Captured" sat where a
  * label belongs and read as the label for the date, which said the wrong thing
@@ -28,6 +35,31 @@ export async function Poster({
   const kinds = await getTranslations("kind");
   const common = await getTranslations("common");
   const format = await getFormatter({ locale });
+
+  if (art.sealed === true) {
+    const registered = format.dateTime(new Date(Number(passport.registeredAt) * 1000), { dateStyle: "medium" });
+
+    return (
+      // The plate is the whole header here, so it keeps the element the rest of
+      // the page's landmarks are laid out against.
+      <header>
+        <SealedPlate
+          // The chain's own word first. The pinned document says the same
+          // thing, and it is the fallback for the day the two ever disagree.
+          bits={sealedBits(passport.blockhash256, art.blockhash)}
+          title={art.title ?? null}
+          size="poster"
+          as="h1"
+          shortId={shortHex(passport.id, 10, 8)}
+          words={{
+            sealed: t("sealed.label"),
+            line: t("sealed.posterLine", { date: registered }),
+            untitled: t("untitled"),
+          }}
+        />
+      </header>
+    );
+  }
 
   const seal = (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">

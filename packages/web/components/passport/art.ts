@@ -17,7 +17,13 @@ const metadataSchema = z.object({
   prompt: z.string().optional(),
   image: z.string().optional(),
   thumbnail: z.string().optional(),
+  sealed: z.boolean().optional(),
+  commitment: z.object({ algorithm: z.string(), value: z.string() }).optional(),
+  fingerprint: z.object({ blockhash: z.string().optional() }).optional(),
 });
+
+/** A 32 byte word as the sealed document writes it, which is what the sketch is drawn from. */
+const BLOCK_HASH = /^0x[0-9a-f]{64}$/;
 
 export interface Art {
   title?: string;
@@ -27,11 +33,44 @@ export interface Art {
   imageUrl?: string;
   /** The small copy, for a grid. Falls back to the full image when none was pinned. */
   thumbnailUrl?: string;
+  /**
+   * True when this passport's picture was never published. There is no image
+   * and no thumbnail to ask any gateway for, and that is the record as it was
+   * registered rather than anything missing.
+   */
+  sealed?: true;
+  /** How the chain's hold on the sealed file is written down: the algorithm, and the passport id. */
+  commitment?: { algorithm: string; value: string };
+  /** The 256 bit block hash of a sealed picture, the one trace of it anybody outside the creator sees. */
+  blockhash?: string;
   /** True when the gateway did not answer or the document was not readable. */
   missing: boolean;
 }
 
 const TIMEOUT_MS = 8_000;
+
+/**
+ * Documents that said sealed and still named a picture, so the line about each
+ * one is written once rather than on every read of the same record.
+ *
+ * The verify service's schema has no room for such a document, so one appearing
+ * means something wrote a record this reader disagrees with. The picture wins:
+ * it is pinned, so it is already public, and hiding a published picture behind
+ * a seal would tell a creator something about their own record that is not true.
+ */
+const contradicted = new Set<string>();
+
+function noteContradiction(url: string): void {
+  if (contradicted.has(url)) {
+    return;
+  }
+  // Bounded, because a set that grows on an error path is a leak nobody watches.
+  if (contradicted.size >= 200) {
+    contradicted.clear();
+  }
+  contradicted.add(url);
+  console.log(`moolam: this document says sealed and still names a picture, so it is read as published: ${url}`);
+}
 
 /**
  * Reads one passport's metadata, through the account's own gateway first and
@@ -72,13 +111,32 @@ async function readFrom(url: string): Promise<Art | null> {
     // real address becomes an img src; anything else gets the seal plate.
     const image = pictureUri(parsed.data.image);
     const small = pictureUri(parsed.data.thumbnail) ?? image;
+
+    const claimsSealed = parsed.data.sealed === true;
+    const sealed = claimsSealed && small === undefined;
+    if (claimsSealed && !sealed) {
+      noteContradiction(url);
+    }
+
+    const blockhash = parsed.data.fingerprint?.blockhash;
+
     return {
       title: name,
       description,
       prompt,
       imageUrl: image === undefined ? undefined : gatewayUrl(image),
       thumbnailUrl: small === undefined ? undefined : gatewayUrl(small),
-      missing: small === undefined,
+      ...(sealed
+        ? {
+            sealed: true as const,
+            commitment: parsed.data.commitment,
+            blockhash: blockhash !== undefined && BLOCK_HASH.test(blockhash) ? blockhash : undefined,
+          }
+        : {}),
+      // A sealed record is not missing anything. It has no picture because its
+      // creator chose that, which is the one state this flag must never blame
+      // on a gateway.
+      missing: !sealed && small === undefined,
     };
   } catch {
     return null;

@@ -25,14 +25,23 @@ export async function Attestations({
   indexed,
   phash,
   locale,
+  sealed = false,
 }: {
   attestations: Attestation[];
   indexed: IndexedAttestation[];
   /** The fingerprint the registry stored when this picture was registered. */
   phash: bigint;
   locale: string;
+  /**
+   * True when this passport's picture was never published. A re-check works by
+   * fetching the picture from its own address, so there is nothing here for a
+   * workflow to do, and saying it has not happened yet would read as a fault
+   * rather than as the record its creator asked for.
+   */
+  sealed?: boolean;
 }) {
   const t = await getTranslations("passport.attestations");
+  const sealedWords = await getTranslations("passport.sealed");
   const common = await getTranslations("common");
   const format = await getFormatter({ locale });
 
@@ -71,8 +80,20 @@ export async function Attestations({
           <div className="rise" style={{ animationDelay: "90ms" }}>
             {attestations.length === 0 ? (
               <div className="max-w-[52ch] border-s-2 border-line ps-5">
-                <p className="text-sm leading-relaxed text-text-muted">{t("empty")}</p>
-                <p className="mt-4 text-sm leading-relaxed text-text-faint">{t("whatIsRecheck")}</p>
+                {sealed ? (
+                  <>
+                    <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+                      <span className="motif h-[9px] w-[9px]" />
+                      {sealedWords("label")}
+                    </p>
+                    <p className="mt-4 text-sm leading-relaxed text-text-muted">{sealedWords("recheck")}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm leading-relaxed text-text-muted">{t("empty")}</p>
+                    <p className="mt-4 text-sm leading-relaxed text-text-faint">{t("whatIsRecheck")}</p>
+                  </>
+                )}
               </div>
             ) : (
               <ul className="space-y-px bg-line">

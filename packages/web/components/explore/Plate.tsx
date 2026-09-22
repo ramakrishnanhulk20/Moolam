@@ -4,6 +4,8 @@ import { useFormatter, useTranslations } from "next-intl";
 import { UseBlock } from "@/components/consent/Marks";
 import { SUMMARY_TONES } from "@/components/consent/tones";
 import { Picture } from "@/components/passport/Picture";
+import { sealedBits } from "@/components/passport/sealed";
+import { SealedSketch } from "@/components/sealed/Sketch";
 import { shortHex } from "@/lib/chain/client";
 import type { PassportStatement } from "@/lib/data/passports";
 import { pictureSources } from "@/lib/images";
@@ -17,7 +19,9 @@ import { isTestCard, type ExplorePlate } from "./sort";
  * The same language as the plates in the film on the home page, drawn in CSS
  * rather than WebGL because a grid of forty of them has to work on a phone.
  * A gateway that will not serve the picture leaves the plate dark with the seal
- * on it, never a broken image icon.
+ * on it, never a broken image icon. A sealed passport is a different thing
+ * again: there is no picture to serve, so the plate draws the block hash and
+ * says sealed, in the corner and in words.
  *
  * `first` marks a plate in the row a reader can see before scrolling. Its
  * picture is named in the head of the page and fetched ahead of the rest, which
@@ -30,6 +34,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   const common = useTranslations("common");
   const format = useFormatter();
   const test = isTestCard(plate.title);
+  const sealed = plate.sealed === true;
 
   const seal = (
     <span className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center">
@@ -43,7 +48,23 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       href={`/passport/${plate.id}`}
       className="group relative block aspect-[4/5] min-w-0 overflow-hidden bg-bg-sunken outline-offset-[-2px]"
     >
-      {plate.thumbnailUrl === null ? (
+      {sealed ? (
+        // The block hash drawn, which is the only trace of a sealed picture
+        // anyone outside the creator ever sees. It sits in the top half the way
+        // the poster's does, so the title below it lands on the ground rather
+        // than on a grid of lit cells.
+        <span className="pointer-events-none absolute inset-x-0 top-[9%] flex h-[52%] justify-center">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute end-[-18%] top-[-30%] h-[110%] w-[70%] rounded-full bg-accent-soft blur-[48px]"
+          />
+          <SealedSketch
+            bits={sealedBits(plate.blockhash)}
+            size="plate"
+            className="relative h-full transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
+          />
+        </span>
+      ) : plate.thumbnailUrl === null ? (
         seal
       ) : (
         // The pinned thumbnail, the same file a verifier fetches when it
@@ -94,6 +115,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
             tone="verified"
           />
           <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="failed" />
+          <Mark on={sealed} letter="S" label={t("sealed.mark")} tone="accent" />
         </span>
       </span>
 
@@ -115,6 +137,14 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
             <>
               <span aria-hidden className="h-[8px] w-px bg-line-strong" />
               <span className="text-text-faint">{t("seedCard")}</span>
+            </>
+          ) : null}
+          {/* The letter in the corner is the mark; this is the word, so the
+              plate says sealed to a reader who is not hovering anything. */}
+          {sealed ? (
+            <>
+              <span aria-hidden className="h-[8px] w-px bg-line-strong" />
+              <span className="text-accent">{t("sealed.word")}</span>
             </>
           ) : null}
         </span>

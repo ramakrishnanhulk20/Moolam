@@ -685,7 +685,16 @@ async function pictureFor(uri: string): Promise<Picture | null> {
     throw new GatewayQuiet(uri);
   }
 
-  const record = document as { image?: unknown; thumbnail?: unknown; name?: unknown };
+  const record = document as { image?: unknown; thumbnail?: unknown; name?: unknown; sealed?: unknown };
+
+  // A sealed passport is left out of the film on purpose. The film is a reel of
+  // registered pictures, and this one has no picture to show: its own page,
+  // Explore and the verify answer all draw it as the sealed record it is, which
+  // is where it reads as designed rather than as a gap in a row of stills.
+  if (record.sealed === true) {
+    return null;
+  }
+
   const image = typeof record.image === "string" && record.image.startsWith("ipfs://") ? record.image : null;
   const thumbnail = typeof record.thumbnail === "string" && record.thumbnail.startsWith("ipfs://") ? record.thumbnail : null;
 

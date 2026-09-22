@@ -435,7 +435,7 @@ curl against the same URL works.
 | Verify service | `npm run test:verifier` | 321 |
 | Chain client and agents | `npm run test:agents` | 56 |
 | Indexer | `npm run test:indexer` | 26 |
-| Web app | `npm test` from `packages/web` | 1317 |
+| Web app | `npm test` from `packages/web` | 1356 |
 
 The contract count needs `MONAD_MAINNET_RPC_URL` in the root `.env`, because eleven of the tests
 fork Monad mainnet. Without it `forge test` runs 173 and skips the rest rather than failing.
@@ -615,7 +615,7 @@ no trailing slash.
 | Verify service | 321 | Fingerprints, the eight orientations, C2PA soft bindings, the fetch guard, the prepare, generate and edit routes with their token checks, quotas and refusal codes, the training assertion written into the manifest and the metadata, the consent, dispute and re-check facts attached to every verify answer, the index refresh, the boot refusals, the proxy trust and body limits, and the x402 path including a settlement that is broadcast but still unconfirmed and a payment asked about twice |
 | Chain client and agents | 56 | The EIP-712 digests checked against the contract's own `hashPassport` and `hashBind`, the whole write path on a fork of mainnet, six refusals decoded to their error names, the sponsored-send handling (hash polling, refusal classification, the nonce guard), and the key quorum the edit signer is granted from |
 | Indexer | 26 | The handlers against the generated Envio types with the live mainnet addresses, the `ConsentSet` handler replaying the thirteen real statements from mainnet, and the five consent summaries checked against the web app's own rule for all 256 combinations |
-| Web app | 1317 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
+| Web app | 1356 | The passkey, CBOR, DER and calldata libraries, the verifier client, both studio paths and their confirm-by-state, the consent field and its second send, the passport's consent ledger and day scrubber, the edit panel, the dispute panel and the resolver console, the verify answer and its statement stamp, the share cards, the footer status line, the explore query and its sort rule, the docs pages and the trust pages |
 
 The registry's six invariants all held: the contract balance always covers every liability, the bond
 total always equals the sum of open disputes, every edit points at a parent that exists, no image id

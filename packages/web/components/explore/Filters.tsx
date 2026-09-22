@@ -169,6 +169,10 @@ export function Filters({ search }: { search: ExploreSearch }) {
             <span className="text-failed">D</span> {t("legend.disputed")}
           </span>
           <span aria-hidden>&middot;</span>
+          <span>
+            <span className="text-accent">S</span> {t("sealed.legend")}
+          </span>
+          <span aria-hidden>&middot;</span>
           {/* One of each shape, in neutral ink: the legend is teaching the four
               marks, not reporting a statement about any picture. */}
           <span className="flex items-center gap-2">

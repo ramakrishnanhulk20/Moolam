@@ -13,6 +13,10 @@ export interface MatchedPassport {
   disputed: boolean;
   title?: string;
   thumbnailUrl?: string;
+  /** True when the registered picture was never published, so there is no copy to show. */
+  sealed?: boolean;
+  /** The block hash on the chain, which is what a sealed answer draws in place of the picture. */
+  blockhash256?: Hex;
 }
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -50,5 +54,7 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
     disputed: passport.disputed,
     title: art.title,
     thumbnailUrl: art.thumbnailUrl,
+    sealed: art.sealed === true,
+    blockhash256: passport.blockhash256,
   };
 }

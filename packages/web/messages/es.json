@@ -151,7 +151,12 @@
     "end": "Esos son todos los pasaportes que coinciden.",
     "shown": "{count, number} a la vista",
     "empty": "Ningún pasaporte coincide con este filtro todavía.",
-    "error": "No se pudo leer el índice: {reason}."
+    "error": "No se pudo leer el índice: {reason}.",
+    "sealed": {
+      "mark": "Sellado: esta imagen nunca se publicó",
+      "legend": "Sellado, sin imagen publicada",
+      "word": "Sellado"
+    }
   },
   "agents": {
     "kicker": "Agentes",
@@ -388,6 +393,11 @@
       "open": "Este pasaporte está impugnado. No te fíes de su declaración sobre el uso por IA hasta que se resuelva la impugnación.",
       "upheld": "Una impugnación contra este pasaporte prosperó. Trata su registro, y su declaración sobre el uso por IA, como poco fiables.",
       "rejected": "Se presentó una impugnación contra este pasaporte y fue rechazada."
+    },
+    "sealed": {
+      "matched": "Coincide con un pasaporte sellado. La imagen registrada no está publicada.",
+      "label": "Sellado",
+      "recheck": "No hay copia pública que revisar. Para revisarla habría que publicar la imagen."
     }
   },
   "passport": {
@@ -792,6 +802,16 @@
           "signIn": "Entrar"
         }
       }
+    },
+    "sealed": {
+      "label": "Sellado",
+      "posterLine": "Registrado el {date}. La imagen no está publicada. Moolam no guarda ninguna copia.",
+      "standing": "Sellado, así que no hay copia pública",
+      "commitmentLabel": "El compromiso",
+      "commitmentAlgorithm": "Con hash {algorithm}",
+      "commitmentLine": "Quien tenga el archivo puede calcular su hash y compararlo con el identificador del pasaporte.",
+      "recheck": "No hay copia pública que revisar. Para revisarla habría que publicar la imagen.",
+      "edit": "Este pasaporte está sellado, así que no se puede editar hasta que la imagen se publique."
     }
   },
   "agent": {

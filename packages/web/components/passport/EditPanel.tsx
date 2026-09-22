@@ -24,6 +24,6 @@ const Editor = dynamic(() => import("./Editor").then((module) => module.Editor),
  * The hook waits for the wallet's own provider. Privy's hooks warn into the console on every
  * render that happens without it, and this panel is blank until they answer anyway.
  */
-export function EditPanel(props: { parentId: Hex; owner: Hex | null }) {
+export function EditPanel(props: { parentId: Hex; owner: Hex | null; sealed?: boolean }) {
   return useWalletMounted() ? <Editor {...props} /> : null;
 }

@@ -8,6 +8,8 @@ import { unstable_cache } from "next/cache";
 import { ImageResponse } from "next/og";
 import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
+import { sealedBits } from "@/components/passport/sealed";
+import { SKETCH_SIDE } from "@/components/sealed/bits";
 import { shortHex } from "@/lib/chain/client";
 import { getPassport } from "@/lib/chain/registry";
 import { passportRegistration } from "@/lib/data/passports";
@@ -89,8 +91,24 @@ export function cardTitle(title: string | undefined, id: string): string {
  * because "registered, and we will not say where" is not worth printing.
  */
 export function registeredLine(block: bigint | null, registeredAt: bigint | null): string {
+  return `Registered on Monad${where(block, registeredAt)}`;
+}
+
+/**
+ * The same line for a passport whose picture was never published.
+ *
+ * The card says sealed in the corner and again here, because a link preview is
+ * often the whole of what anybody sees and a card with no picture on it must
+ * not read as a card that failed to load one.
+ */
+export function sealedLine(block: bigint | null, registeredAt: bigint | null): string {
+  return `Sealed on Monad${where(block, registeredAt)}`;
+}
+
+/** The block if the index has it, the chain's own timestamp if it does not, nothing if neither. */
+function where(block: bigint | null, registeredAt: bigint | null): string {
   if (block !== null) {
-    return `Registered on Monad, block ${block.toLocaleString("en-US")}`;
+    return `, block ${block.toLocaleString("en-US")}`;
   }
   if (registeredAt !== null) {
     const when = new Intl.DateTimeFormat("en-GB", {
@@ -99,9 +117,9 @@ export function registeredLine(block: bigint | null, registeredAt: bigint | null
       year: "numeric",
       timeZone: "UTC",
     }).format(new Date(Number(registeredAt) * 1000));
-    return `Registered on Monad, ${when}`;
+    return `, ${when}`;
   }
-  return "Registered on Monad";
+  return "";
 }
 
 /**
@@ -252,10 +270,21 @@ async function genericCard(): Promise<ImageResponse> {
   return await appCard();
 }
 
+/** The sentence under a sealed card's line, so a reader is told what they are not seeing. */
+const SEALED_NOTE = "The picture is not published.";
+
+/** What the word in the corner of a sealed card says. */
+const SEALED_WORD = "SEALED";
+
 interface Card {
   title: string;
   line: string;
   short: string;
+  /**
+   * The 256 bits of the block hash, drawn where the picture would be on a
+   * sealed record, or an empty list on a published one.
+   */
+  bits: boolean[];
   /** The pinned picture as a data URL, or null when the gateway did not hand it over. */
   still: string | null;
   mark: string | null;
@@ -280,16 +309,20 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
     }
 
     const [art, block] = await Promise.all([readArt(passport.metadataURI), indexedBlock(passport.id)]);
+    const sealed = art.sealed === true;
     const title = cardTitle(art.title, passport.id);
-    const line = registeredLine(block, passport.registeredAt);
+    const line = sealed ? sealedLine(block, passport.registeredAt) : registeredLine(block, passport.registeredAt);
     const short = shortHex(passport.id, 10, 8);
 
     const [still, mark, word, heavy, plain] = await Promise.all([
-      picture(passport.id, art),
+      // A sealed record has nothing pinned to fetch, and asking the gateway for
+      // a picture that was never published is how a card ends up with a hole
+      // in it while the request times out.
+      sealed ? null : picture(passport.id, art),
       seal,
       wordmark,
       face("Archivo", 700, title),
-      face("IBM+Plex+Mono", 400, `${line}${short}`),
+      face("IBM+Plex+Mono", 400, `${line}${short}${SEALED_NOTE}${SEALED_WORD}`),
     ]);
 
     const fonts: Face[] = [
@@ -302,6 +335,7 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
         title,
         line,
         short,
+        bits: sealed ? sealedBits(passport.blockhash256, art.blockhash) : [],
         still,
         mark,
         word,
@@ -318,8 +352,45 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
   }
 }
 
+/**
+ * The block hash drawn in the renderer's own language.
+ *
+ * The component the lab bench uses is written in Tailwind classes, which satori
+ * cannot read, so the same 16 by 16 grid is laid out here in plain boxes. The
+ * cell and the gap are whole pixels: the picture is drawn once at a fixed size,
+ * and a fractional cell is where a grid picks up a seam.
+ */
+const SKETCH_BOX = 280;
+const SKETCH_GAP = 2;
+const SKETCH_CELL = (SKETCH_BOX - SKETCH_GAP * (SKETCH_SIDE - 1)) / SKETCH_SIDE;
+
+function Sketch({ bits }: { bits: boolean[] }) {
+  const rows = Array.from({ length: SKETCH_SIDE }, (_, row) => bits.slice(row * SKETCH_SIDE, (row + 1) * SKETCH_SIDE));
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: SKETCH_GAP }}>
+      {rows.map((row, at) => (
+        <div key={at} style={{ display: "flex", gap: SKETCH_GAP }}>
+          {row.map((lit, column) => (
+            <div
+              key={column}
+              style={{
+                display: "flex",
+                width: SKETCH_CELL,
+                height: SKETCH_CELL,
+                background: lit ? PAPER : "rgba(245,243,239,0.07)",
+              }}
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function CardFace({ card }: { card: Card }) {
-  const { title, line, short, still, mark, word, display, mono, titleSize } = card;
+  const { title, line, short, bits, still, mark, word, display, mono, titleSize } = card;
+  const sealed = bits.length > 0;
 
   return (
     <div
@@ -347,7 +418,15 @@ function CardFace({ card }: { card: Card }) {
               "radial-gradient(70% 60% at 50% 45%, rgba(255,183,197,0.16) 0%, rgba(11,11,12,0) 70%)",
           }}
         >
-          {mark === null ? null : <img src={mark} width={220} height={220} alt="" style={{ opacity: 0.5 }} />}
+          {/* A sealed record puts its fingerprint where the picture would be.
+              Everything else that has no picture keeps the seal. */}
+          {sealed ? (
+            <div style={{ display: "flex", marginTop: -96 }}>
+              <Sketch bits={bits} />
+            </div>
+          ) : mark === null ? null : (
+            <img src={mark} width={220} height={220} alt="" style={{ opacity: 0.5 }} />
+          )}
         </div>
       ) : (
         <img
@@ -402,6 +481,12 @@ function CardFace({ card }: { card: Card }) {
         <div style={{ display: "flex", fontSize: 21, letterSpacing: 4, color: "rgba(245,243,239,0.74)" }}>
           {short}
         </div>
+        {sealed ? (
+          <>
+            <div style={{ display: "flex", width: 1, height: 22, background: "rgba(245,243,239,0.28)" }} />
+            <div style={{ display: "flex", fontSize: 21, letterSpacing: 6, color: ACCENT }}>{SEALED_WORD}</div>
+          </>
+        ) : null}
       </div>
 
       <div
@@ -428,6 +513,13 @@ function CardFace({ card }: { card: Card }) {
           {title}
         </div>
         <div style={{ display: "flex", marginTop: 22, fontSize: 24, letterSpacing: 2, color: ACCENT }}>{line}</div>
+        {sealed ? (
+          <div
+            style={{ display: "flex", marginTop: 10, fontSize: 22, letterSpacing: 1, color: "rgba(245,243,239,0.76)" }}
+          >
+            {SEALED_NOTE}
+          </div>
+        ) : null}
       </div>
 
       {word === null ? null : (

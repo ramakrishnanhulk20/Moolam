@@ -7,6 +7,8 @@ import { ConsentStamp } from "@/components/consent/ConsentStamp";
 import { pictureSources } from "@/lib/images";
 import { Mono } from "@/components/passport/Mono";
 import { Picture } from "@/components/passport/Picture";
+import { sealedBits } from "@/components/passport/sealed";
+import { SealedSketch } from "@/components/sealed/Sketch";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { DisputeLine } from "./DisputeLine";
@@ -144,6 +146,7 @@ function Checking({ name }: { name: string }) {
 function Result({ answer, passport }: { answer: Answer; passport: MatchedPassport | null }) {
   const t = useTranslations("verify");
   const agentId = agentChipId(passport);
+  const sealed = passport?.sealed === true;
 
   if (answer.kind === "miss") {
     return (
@@ -200,6 +203,15 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           <p className="mt-6 text-sm leading-relaxed text-text-muted">{t("others", { count: answer.others })}</p>
         )}
 
+        {/* The match is real and the picture behind it is not there to look at.
+            That is said here, right under the verdict, rather than left to the
+            reader to work out from an empty frame. */}
+        {sealed ? (
+          <p className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+            {t("sealed.matched")}
+          </p>
+        ) : null}
+
         <p className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
           {answer.manifest ? t("manifestPresent") : t("manifestMissing")}
         </p>
@@ -211,7 +223,17 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
             picture and hashed it again. */}
         <ConsentStamp consent={answer.consent} className="mt-8" />
         <DisputeLine dispute={answer.dispute} className="mt-4" />
-        <SecondOpinion recheck={answer.recheck} id={answer.id} className="mt-6" />
+        {/* A re-check works by fetching the registered picture from its own
+            address. A sealed passport has none, so the block says that instead
+            of reporting a re-check that will never come as "not yet". */}
+        {sealed ? (
+          <div data-second-opinion className="mt-6 border-s-2 border-line ps-5">
+            <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("recheck.label")}</p>
+            <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("sealed.recheck")}</p>
+          </div>
+        ) : (
+          <SecondOpinion recheck={answer.recheck} id={answer.id} className="mt-6" />
+        )}
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link
@@ -241,11 +263,15 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
   );
 }
 
-/** The matched passport as a film still, or the seal when IPFS will not hand the picture over. */
+/**
+ * The matched passport as a film still: the picture, the block hash when the
+ * picture was never published, or the seal when IPFS will not hand it over.
+ */
 function Still({ passport, exact }: { passport: MatchedPassport | null; exact: boolean }) {
   const t = useTranslations("verify");
   const format = useFormatter();
   const kinds = useTranslations("kind");
+  const sealed = passport?.sealed === true;
 
   const seal = (
     <span className="absolute inset-0 flex flex-col items-center justify-center gap-3">
@@ -258,7 +284,15 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
 
   return (
     <div className="grain relative aspect-[16/9] overflow-hidden border-b border-line bg-bg-sunken">
-      {passport?.thumbnailUrl === undefined ? (
+      {sealed ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span
+            aria-hidden
+            className="pointer-events-none absolute h-[120%] w-[45%] rounded-full bg-accent-soft blur-[60px]"
+          />
+          <SealedSketch bits={sealedBits(passport?.blockhash256)} size="plate" className="relative h-[78%]" />
+        </span>
+      ) : passport?.thumbnailUrl === undefined ? (
         seal
       ) : (
         // The pinned copy of the registered image, read back through the
@@ -272,9 +306,12 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
       )}
       <div className="scrim pointer-events-none absolute inset-0" />
 
-      <p className="absolute inset-x-0 top-0 flex items-center gap-3 p-5 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
-        <span className="motif h-[9px] w-[9px]" />
-        {exact ? t("exact") : t("matched")}
+      <p className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-x-4 gap-y-1 p-5 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
+        <span className="flex items-center gap-3">
+          <span className="motif h-[9px] w-[9px]" />
+          {exact ? t("exact") : t("matched")}
+        </span>
+        {sealed ? <span className="text-accent">{t("sealed.label")}</span> : null}
       </p>
 
       {passport === null ? null : (

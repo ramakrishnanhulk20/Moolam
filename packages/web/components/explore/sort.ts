@@ -24,6 +24,14 @@ export interface ExplorePlate {
    * this picture. Silence is carried as null and drawn as nothing at all.
    */
   consent: PassportStatement | null;
+  /**
+   * True when the picture was registered without being published. Such a plate
+   * has no thumbnail and never will: it is drawn as the record it is rather
+   * than as a picture the gateway would not serve.
+   */
+  sealed?: boolean;
+  /** The 256 bit block hash a sealed plate is drawn from, read from the pinned document. */
+  blockhash?: string;
 }
 
 /**

@@ -151,7 +151,12 @@
     "end": "Voilà tous les passeports qui correspondent.",
     "shown": "{count, number} affichés",
     "empty": "Aucun passeport ne correspond encore à ce filtre.",
-    "error": "L'index n'a pas pu être lu : {reason}."
+    "error": "L'index n'a pas pu être lu : {reason}.",
+    "sealed": {
+      "mark": "Scellé : cette image n'a jamais été publiée",
+      "legend": "Scellé, aucune image publiée",
+      "word": "Scellé"
+    }
   },
   "agents": {
     "kicker": "Agents",
@@ -388,6 +393,11 @@
       "open": "Ce passeport est contesté. Ne vous fiez pas à sa déclaration sur l’usage par l’IA tant que la contestation n’est pas tranchée.",
       "upheld": "Une contestation contre ce passeport a été retenue. Tenez son enregistrement, et sa déclaration sur l’usage par l’IA, pour peu fiables.",
       "rejected": "Une contestation a été portée contre ce passeport et rejetée."
+    },
+    "sealed": {
+      "matched": "Correspond à un passeport scellé. L'image enregistrée n'est pas publiée.",
+      "label": "Scellé",
+      "recheck": "Aucune copie publique à revérifier. Il faudrait publier l'image pour cela."
     }
   },
   "passport": {
@@ -792,6 +802,16 @@
           "signIn": "Se connecter"
         }
       }
+    },
+    "sealed": {
+      "label": "Scellé",
+      "posterLine": "Enregistré le {date}. L'image n'est pas publiée. Moolam n'en garde aucune copie.",
+      "standing": "Scellé, donc aucune copie publique",
+      "commitmentLabel": "L'engagement",
+      "commitmentAlgorithm": "Haché avec {algorithm}",
+      "commitmentLine": "Qui détient le fichier peut le hacher et le comparer à l'identifiant du passeport.",
+      "recheck": "Aucune copie publique à revérifier. Il faudrait publier l'image pour cela.",
+      "edit": "Ce passeport est scellé : il ne peut pas être modifié tant que l'image n'est pas publiée."
     }
   },
   "agent": {
