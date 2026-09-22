@@ -79,7 +79,7 @@ export function Row({ agent, place }: { agent: AgentRow; place: number }) {
 
       {/* Outside the link above: a link inside a link is not a thing a browser can draw. */}
       <Link
-        href={`/explore?agent=${agent.id}`}
+        href={`/explore/view?agent=${agent.id}`}
         className="mb-8 inline-block font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent sm:mb-10"
       >
         {t("seeWorks")}

@@ -280,15 +280,15 @@ describe("the filter a link carries", () => {
 
   it("writes the whole state back into a link anyone can share", () => {
     expect(exploreHref({ view: "pictures", search: "", agent: null, ai: null })).toBe("/explore");
-    expect(exploreHref({ view: "all", search: "", agent: null, ai: null })).toBe("/explore?view=all");
-    expect(exploreHref({ view: "test", search: "", agent: null, ai: null })).toBe("/explore?view=test");
+    expect(exploreHref({ view: "all", search: "", agent: null, ai: null })).toBe("/explore/view?view=all");
+    expect(exploreHref({ view: "test", search: "", agent: null, ai: null })).toBe("/explore/view?view=test");
     expect(exploreHref({ view: "edits", search: "0x1a", agent: "10248", ai: null })).toBe(
-      "/explore?view=edits&q=0x1a&agent=10248",
+      "/explore/view?view=edits&q=0x1a&agent=10248",
     );
-    expect(exploreHref({ view: "all", search: "", agent: "10248", ai: null })).toBe("/explore?agent=10248");
-    expect(exploreHref({ view: "all", search: "", agent: null, ai: "open" })).toBe("/explore?ai=open");
+    expect(exploreHref({ view: "all", search: "", agent: "10248", ai: null })).toBe("/explore/view?agent=10248");
+    expect(exploreHref({ view: "all", search: "", agent: null, ai: "open" })).toBe("/explore/view?ai=open");
     expect(exploreHref({ view: "pictures", search: "", agent: null, ai: "none" })).toBe(
-      "/explore?view=pictures&ai=none",
+      "/explore/view?view=pictures&ai=none",
     );
   });
 

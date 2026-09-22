@@ -15,7 +15,9 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  return await exploreMetadata(locale);
+  // A narrowed sheet is one of thousands of addresses for the same registry;
+  // the bare page is the one worth an index entry.
+  return { ...(await exploreMetadata(locale)), robots: { index: false, follow: true } };
 }
 
 /**

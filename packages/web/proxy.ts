@@ -20,7 +20,8 @@ import { callerAddress, tooManyPage, withinLimit } from "@/lib/api/limit";
  * bare page is never counted: it is built ahead of time and costs nothing.
  */
 export default function proxy(request: NextRequest): NextResponse {
-  if (!narrowsExplore(request.nextUrl.searchParams)) {
+  const onView = /\/explore\/view\/?$/.test(request.nextUrl.pathname);
+  if (!onView && !narrowsExplore(request.nextUrl.searchParams)) {
     return NextResponse.next();
   }
 
@@ -39,8 +40,13 @@ export default function proxy(request: NextRequest): NextResponse {
     }
   }
 
+  // The chips link to the view route directly. An older link, or one typed by
+  // hand, still names the bare page with a query, and is handed to the same
+  // route so it keeps working.
   const narrowed = request.nextUrl.clone();
-  narrowed.pathname = `${narrowed.pathname.replace(/\/+$/, "")}/view`;
+  if (!onView) {
+    narrowed.pathname = `${narrowed.pathname.replace(/\/+$/, "")}/view`;
+  }
 
   // A campaign tag or a tracking parameter riding along would otherwise be a
   // cache entry of its own for a sheet the page draws identically, so the only
@@ -51,9 +57,12 @@ export default function proxy(request: NextRequest): NextResponse {
     }
   }
 
+  if (onView && narrowed.search === request.nextUrl.search) {
+    return NextResponse.next();
+  }
   return NextResponse.rewrite(narrowed);
 }
 
 // Only the Explore addresses reach this. Every other page on the site is served
 // with nothing in front of it.
-export const config = { matcher: "/:locale/explore" };
+export const config = { matcher: ["/:locale/explore", "/:locale/explore/view"] };

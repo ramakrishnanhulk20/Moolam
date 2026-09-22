@@ -171,5 +171,10 @@ export function exploreHref(search: ExploreSearch): string {
     params.set("ai", search.ai);
   }
   const query = params.toString();
-  return query === "" ? "/explore" : `/explore?${query}`;
+  // A narrowed view points straight at the route that draws it on the request.
+  // The bare page is built ahead of time, and a browser that has it cached
+  // treats a change in the query string as no change at all: on 22 September a
+  // press on a chip changed the address and drew nothing, because the router
+  // reused the built page. A different path is a different page to it.
+  return query === "" ? "/explore" : `/explore/view?${query}`;
 }

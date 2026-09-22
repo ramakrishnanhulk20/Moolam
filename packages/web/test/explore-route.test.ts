@@ -168,6 +168,20 @@ describe("what one caller may ask the narrowed route for", () => {
     expect(pressed.headers.get("x-middleware-rewrite")).toBe("https://moolam.xyz/en/explore/view?q=0x1a");
   });
 
+  it("limits and cleans the view route the chips now point at, and rewrites nothing when the address is already clean", () => {
+    const clean = through("/en/explore/view?view=test", "203.0.113.11");
+    expect(clean.status).toBe(200);
+    expect(clean.headers.get("x-middleware-rewrite")).toBe(null);
+
+    const junk = through("/en/explore/view?view=test&utm_source=x", "203.0.113.11");
+    expect(junk.headers.get("x-middleware-rewrite")).toBe("https://moolam.xyz/en/explore/view?view=test");
+
+    for (let at = 2; at < PER_MINUTE; at += 1) {
+      through("/en/explore/view?q=0x1a", "203.0.113.11");
+    }
+    expect(through("/en/explore/view?q=0x1a", "203.0.113.11").status).toBe(429);
+  });
+
   it("never counts the bare page, which the build made and nobody pays for twice", () => {
     for (let at = 0; at < PER_MINUTE * 2; at += 1) {
       expect(through("/en/explore", "203.0.113.7").headers.get("x-middleware-rewrite"), `ask ${at + 1}`).toBe(null);
