@@ -62,6 +62,41 @@ The drawing on the poster is the block hash and nothing more: a 16 by 16 reading
 that the chain already holds in public. It is rough composition, not the picture, and the studio
 shows the creator exactly that before they sign.
 
+## Publishing a sealed picture later
+
+A seal is not forever unless its holder wants it to be. The wallet the registry says holds a sealed
+passport sees one more panel on the page, under the lineage: "Publish the picture". Nobody else sees
+it at all.
+
+It asks for the signed file that was handed back at registration. The browser hashes that file on
+the machine it is on and compares the hash with the passport id, and a file that is not the
+registered one is refused right there, with nothing uploaded and nothing spent. Only a file that
+matches is offered a Publish button, and pressing it is the one thing on this site that cannot be
+undone: the picture, its thumbnail and its manifest are pinned to IPFS and stay public and
+permanent. The panel says so before the button exists.
+
+The verify service checks the same two things again, against the chain, before it pins a byte: the
+sha256 of the upload has to be the passport id, and the fingerprint recomputed from it has to be the
+one Monad recorded. It also refuses a picture whose thumbnail cannot be made small enough for the
+Chainlink verifier to fetch, because publishing that would leave a passport nobody could ever
+re-check.
+
+Nothing on chain changes, and nothing can. The registry writes a passport's metadata address once
+and has no setter, so the sealed document stays its metadata for good. Where the picture went is
+said by a small record pinned beside it, named after the passport, and that is what the page reads.
+
+Once it is published, the page reads as any other passport: the picture on the poster, the link to
+its address in the record, and a second opinion that says "not re-checked yet" until the Chainlink
+workflow runs, because now there is something for it to fetch. Two lines are added rather than taken
+away: a "Published" clause on the poster's metadata row, and in the record "Registered with no
+picture published, and published by its holder on that day. The file's hash is the passport id",
+with a link to the record itself. Explore shows the picture on its plate like any other, and a copy
+of it checked on the verify page matches with the same line.
+
+If the lookup cannot answer, the page keeps the sealed drawing and says nothing about the record.
+"Could not find out" and "not published" are two different answers, and this site never prints the
+first as the second.
+
 ## Checked again, by someone else
 
 The loudest block on the page, and the one that separates a passport from a caption. Its own line

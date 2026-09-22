@@ -399,6 +399,9 @@
       "matched": "Corresponde a um passaporte lacrado. A imagem registrada não está publicada.",
       "label": "Lacrado",
       "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada."
+    },
+    "unsealed": {
+      "matched": "Este passaporte foi registrado selado e quem o tem publicou a imagem em {date}."
     }
   },
   "passport": {
@@ -813,6 +816,69 @@
       "commitmentLine": "Quem tem o arquivo pode calcular o hash dele e comparar com o identificador do passaporte.",
       "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada.",
       "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada."
+    },
+    "unseal": {
+      "kicker": "Publicar é com você",
+      "heading": "Publicar a imagem",
+      "body": "Escolha o arquivo assinado que você guardou no registro. O serviço confere que é o arquivo registrado e então o fixa no IPFS.",
+      "permanent": "Isto não tem volta. Depois de publicada, a imagem fica pública para sempre e qualquer pessoa pode baixá-la.",
+      "choose": "Escolher o arquivo guardado",
+      "chooseAnother": "Escolher outro arquivo",
+      "checking": "Conferindo este arquivo no seu aparelho",
+      "matched": "Este é o arquivo registrado",
+      "matchedLine": "O hash dele é o identificador do passaporte {id}. Nada saiu deste aparelho ainda.",
+      "publish": "Publicar este arquivo",
+      "sending": "Fixando a imagem, a miniatura e o manifesto",
+      "allowance": "{used} de {limit} edições e publicações hoje",
+      "done": {
+        "label": "Publicada",
+        "body": "A imagem, a miniatura e o manifesto estão no IPFS, e um registro pequeno ao lado diz onde. Nada mudou na chain, porque nada pode mudar: o endereço de metadados deste passaporte foi escrito uma vez só.",
+        "at": "Publicada em {when}",
+        "image": "Imagem",
+        "thumbnail": "Miniatura",
+        "manifest": "Manifesto",
+        "record": "Registro",
+        "check": "Qualquer pessoa pode baixar a imagem, calcular o hash e comparar com o identificador do passaporte na Monad. Essa é a prova inteira, e ela não depende deste serviço."
+      },
+      "failure": {
+        "notTheFile": "Este não é o arquivo registrado. O passaporte se compromete com o arquivo exato que o serviço assinou e devolveu, não com a sua própria cópia da imagem.",
+        "fingerprintMismatch": "O hash bate, mas a impressão calculada a partir destes bytes não é a que está na chain, então nada foi publicado.",
+        "notHolder": "O registro diz que outra carteira tem este passaporte, e só ela pode publicar a imagem.",
+        "noPassport": "O registro não tem nenhum passaporte com este identificador.",
+        "notSealed": "A imagem deste passaporte já é pública, não sobrou nada para publicar.",
+        "alreadyUnsealed": "Este passaporte já foi publicado. Abra a página de novo para ver a imagem.",
+        "thumbnailTooLarge": "Esta imagem não cabe numa miniatura pequena o bastante para o verificador da Chainlink baixar, então publicá-la deixaria um passaporte que ninguém poderia reconferir. Nada foi fixado.",
+        "quota": "São {used} de {limit} para hoje. A cota volta às {at}.",
+        "todayFull": "O orçamento de publicações de hoje, que é de todo mundo, acabou. Nada foi fixado e nada foi gasto. Tente amanhã.",
+        "pinFailed": "A imagem não pôde ser fixada no IPFS, então nada foi publicado.",
+        "recordPinFailed": "A imagem está publicada e o registro que aponta para ela não. Envie o mesmo arquivo de novo para terminar: nada é fixado duas vezes.",
+        "dependencyDown": "Um serviço necessário não respondeu, então nada foi publicado e nada foi gasto. Tente daqui a um minuto.",
+        "lookupUnavailable": "O serviço não conseguiu descobrir se este passaporte já estava publicado, então não publicou nada. Tente daqui a pouco.",
+        "busy": "O serviço está cuidando de quantas imagens consegue ao mesmo tempo. Tente daqui a pouco.",
+        "signedOut": "Esta sessão está desconectada, então o serviço não aceitou o arquivo.",
+        "notAnImage": "Isso não é um arquivo de imagem. Escolha o arquivo assinado que você guardou.",
+        "tooLarge": "Esse arquivo passa do limite de 20 MB.",
+        "empty": "Esse arquivo está vazio. Escolha o arquivo de novo.",
+        "unreadable": "Não deu para ler este arquivo no seu aparelho. Escolha de novo.",
+        "rateLimited": "Muitos pedidos daqui por enquanto. Espere um pouco e tente de novo.",
+        "badRequest": "O serviço recusou o pedido.",
+        "badResponse": "O serviço respondeu num formato que este app não conhece.",
+        "offline": "O serviço de verificação não respondeu, então nada foi publicado.",
+        "fileMissing": "Escolha primeiro o arquivo que você guardou.",
+        "unknown": "Algo deu errado antes de o arquivo ser enviado."
+      },
+      "actions": {
+        "again": "Tentar de novo",
+        "chooseAgain": "Escolher outro arquivo",
+        "later": "Tentar daqui a um minuto",
+        "signIn": "Entrar",
+        "showPicture": "Ver a imagem"
+      }
+    },
+    "unsealed": {
+      "poster": "Publicada em {date}",
+      "label": "Selado no início",
+      "line": "Registrado sem publicar a imagem, e publicada por quem o tem em {date}. O hash do arquivo é o identificador do passaporte."
     }
   },
   "agent": {

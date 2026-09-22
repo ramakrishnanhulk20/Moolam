@@ -27,7 +27,10 @@ import { isTestCard, type ExplorePlate } from "./sort";
 export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate[]> {
   return await Promise.all(
     rows.map(async (row) => {
-      const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI);
+      // The id goes with the address: a sealed row's picture may have been
+      // published since, and the record that says so is filed under the
+      // passport rather than under the document.
+      const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI, row.id);
       return {
         id: row.id,
         kind: row.kind,

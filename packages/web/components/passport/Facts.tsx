@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getFormatter, getTranslations } from "next-intl/server";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
@@ -40,6 +40,7 @@ export async function Facts({
 }) {
   const t = await getTranslations("passport");
   const common = await getTranslations("common");
+  const format = await getFormatter();
   const tokenId = BigInt(passport.id).toString();
   const metadataCid = cidOf(passport.metadataURI);
   const imageCid = art.imageUrl === undefined ? null : cidOf(art.imageUrl);
@@ -181,7 +182,37 @@ export async function Facts({
               </p>
               <p className="mt-4 text-sm leading-relaxed text-text-muted">{t("sealed.commitmentLine")}</p>
             </div>
-          ) : null}
+          ) : art.unsealed === undefined ? null : (
+            // The other end of the same story. This picture has an address like
+            // any other, and the one thing a reader would not otherwise know is
+            // that it was held back at registration and published later by the
+            // wallet that holds it. The record that says so is linked, because
+            // anybody can open it and hash the picture themselves.
+            <div className="mt-7 max-w-[54ch] border-s-2 border-accent/50 ps-5">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
+                {t("unsealed.label")}
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-text-muted">
+                {t("unsealed.line", {
+                  date: format.dateTime(new Date(art.unsealed.at), { dateStyle: "medium" }),
+                })}
+              </p>
+              <div className="tap-row mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                <a
+                  href={gatewayUrl(art.unsealed.record.uri)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 text-text-muted transition-colors duration-200 hover:text-accent"
+                >
+                  <Mono
+                    value={t("ipfsCid", { cid: art.unsealed.record.cid })}
+                    className="text-xs leading-relaxed"
+                  />
+                </a>
+                <CopyButton value={art.unsealed.record.uri} />
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

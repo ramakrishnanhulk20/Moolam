@@ -1,6 +1,8 @@
 import type { Hex } from "viem";
 import { readArt } from "@/components/passport/art";
+import { gatewayUrl } from "@/lib/chain/client";
 import { getPassport } from "@/lib/chain/registry";
+import { readUnsealRecord } from "@/lib/verifier/client";
 
 /** The few facts the answer card shows about the passport an image matched. */
 export interface MatchedPassport {
@@ -17,6 +19,8 @@ export interface MatchedPassport {
   sealed?: boolean;
   /** The block hash on the chain, which is what a sealed answer draws in place of the picture. */
   blockhash256?: Hex;
+  /** ISO 8601, set when this passport was registered sealed and published by its holder later. */
+  unsealedAt?: string;
 }
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -44,6 +48,12 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
   }
 
   const art = await readArt(passport.metadataURI);
+  // A sealed document says sealed for ever, so a passport whose holder has
+  // published the picture since is only knowable from the record filed under
+  // its id. This page already talks to the verify service directly, which is
+  // the point of it, so it asks there rather than through this app's server.
+  const lookup = art.sealed === true ? await readUnsealRecord(passport.id) : ({ state: "sealed" } as const);
+  const published = lookup.state === "unsealed" ? lookup.record : null;
 
   return {
     id: passport.id,
@@ -53,8 +63,9 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
     generatorAgentId: passport.generatorAgentId.toString(),
     disputed: passport.disputed,
     title: art.title,
-    thumbnailUrl: art.thumbnailUrl,
-    sealed: art.sealed === true,
+    thumbnailUrl: published === null ? art.thumbnailUrl : gatewayUrl(published.thumbnail.uri),
+    sealed: art.sealed === true && published === null,
     blockhash256: passport.blockhash256,
+    unsealedAt: published?.unsealedAt,
   };
 }

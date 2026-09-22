@@ -145,6 +145,7 @@ function Checking({ name }: { name: string }) {
 
 function Result({ answer, passport }: { answer: Answer; passport: MatchedPassport | null }) {
   const t = useTranslations("verify");
+  const format = useFormatter();
   const agentId = agentChipId(passport);
   const sealed = passport?.sealed === true;
 
@@ -210,7 +211,15 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           <p className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
             {t("sealed.matched")}
           </p>
-        ) : null}
+        ) : passport?.unsealedAt === undefined ? null : (
+          // The picture is here to look at, and one thing about it is worth
+          // saying: it was registered with nothing published and its holder
+          // published it later, which is why the copy in hand matches a
+          // passport older than the picture's own address.
+          <p className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+            {t("unsealed.matched", { date: format.dateTime(new Date(passport.unsealedAt), { dateStyle: "medium" }) })}
+          </p>
+        )}
 
         <p className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
           {answer.manifest ? t("manifestPresent") : t("manifestMissing")}

@@ -34,6 +34,9 @@ vi.mock("@/components/passport/art", async () => {
 });
 
 vi.mock("@/lib/chain/registry", () => ({
+  // The card also reaches the registry for the name a passport's held reads are
+  // filed under, because it asks whether a sealed picture has been published.
+  passportTag: (id: string) => `passport:${id.toLowerCase()}`,
   getPassport: async () => ({
     id: ID,
     exactHash: ID,
@@ -95,12 +98,15 @@ describe("the share card for a sealed passport", () => {
     expect(bytes.byteLength).toBeLessThan(300_000);
 
     // The renderer loads its own wasm through a data URL, and the two font
-    // requests are the card's own. Anything else would be a read of a picture
-    // that was never published.
-    const gatewayReads = gateway.calls.filter(
+    // requests are the card's own. The one call to the verify service asks
+    // whether this sealed passport has been published since, which is a
+    // question about a record and never a read of the picture. Anything else
+    // would be a read of a picture that was never published.
+    const outside = gateway.calls.filter(
       (url) => !url.includes("fonts.googleapis.com") && !url.startsWith("data:"),
     );
-    expect(gatewayReads).toEqual([]);
+    expect(outside.filter((url) => !url.includes("/unseal/"))).toEqual([]);
+    expect(outside.filter((url) => url.includes("/unseal/")).length).toBe(1);
 
     // Run with SEALED_CARD=1 to put the drawn card where a person can look at it.
     if (process.env.SEALED_CARD === "1") {

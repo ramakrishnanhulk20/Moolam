@@ -127,6 +127,20 @@ export async function Poster({
             </span>
             <span aria-hidden className="h-[10px] w-px bg-line-strong" />
             <span>{t("fingerprintVersion", { version: passport.fingerprintVersion })}</span>
+            {/* Where the sealed line stood. This passport was registered with
+                no picture behind it and its holder published one later, which
+                is worth one quiet clause on the poster and a full sentence in
+                the record below. */}
+            {art.unsealed === undefined ? null : (
+              <>
+                <span aria-hidden className="h-[10px] w-px bg-line-strong" />
+                <span className="text-accent">
+                  {t("unsealed.poster", {
+                    date: format.dateTime(new Date(art.unsealed.at), { dateStyle: "medium" }),
+                  })}
+                </span>
+              </>
+            )}
           </p>
         </div>
       </div>

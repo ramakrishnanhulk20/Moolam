@@ -16,6 +16,7 @@ import { heldIndexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
+import { UnsealPanel } from "@/components/passport/UnsealPanel";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { reason } from "@/lib/chain/client";
 import { heldConsent, heldConsentHistory, heldMinInterval, heldStandard } from "@/lib/chain/consent";
@@ -26,6 +27,7 @@ import { headTimestamp } from "@/lib/chain/time";
 import { activeSource } from "@/lib/data/source";
 import { inheritedDisputed } from "@/lib/data/lineage";
 import { heldRegistration } from "@/lib/data/passports";
+import { withUnseal } from "@/lib/data/unseal";
 import { realPictureIds } from "@/lib/data/prerender";
 import { passportShareMetadata } from "./opengraph-image";
 
@@ -151,7 +153,11 @@ export default async function PassportPage({
   // things this page can do without, so none of them is allowed to fail the
   // render.
   const [art, indexed, registration, ancestorDisputed, consent] = await Promise.all([
-    readArt(passport.metadataURI),
+    // A sealed document keeps saying sealed for ever, because the chain points
+    // at it and it cannot be rewritten. The record pinned beside it is what
+    // says the holder has published the picture since, so every screen below
+    // reads the document and that record together.
+    readArt(passport.metadataURI).then(async (document) => await withUnseal(document, passport.id)),
     heldIndexedAttestations(passport.id),
     registrationOf(passport.id),
     ancestorsDisputed(passport.parentId),
@@ -214,6 +220,8 @@ export default async function PassportPage({
           <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
             <div className="rise">
               <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
+              {/* Only the wallet that holds a still sealed passport sees this one. */}
+              <UnsealPanel passportId={passport.id} owner={owner} sealed={art.sealed === true} />
               {/* Only the wallet that holds this passport ever sees this panel. */}
               <EditPanel parentId={passport.id} owner={owner} sealed={art.sealed === true} />
             </div>

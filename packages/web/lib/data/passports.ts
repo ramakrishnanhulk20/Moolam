@@ -13,6 +13,7 @@ import {
 import { USE_FIELDS, asUseWord, type Consent, type Statement, type UseField } from "@/lib/chain/consent";
 import { passportTag } from "@/lib/chain/registry";
 import { reaches, type DisputedReach } from "./lineage";
+import { withUnseal } from "./unseal";
 import { activeSource, envioUrl } from "./source";
 
 /** One row of the latest-passports strip. */
@@ -942,15 +943,20 @@ const heldDocument = unstable_cache(
  * there is no cache to hold it in, a unit test for one, the document is simply
  * read: a picture is worth more than the saving.
  */
-export async function heldArt(metadataURI: string): Promise<Art> {
+export async function heldArt(metadataURI: string, id?: Hex): Promise<Art> {
+  let art: Art;
   try {
-    return await heldDocument(metadataURI);
+    art = await heldDocument(metadataURI);
   } catch (error) {
     if (error instanceof GatewaySilent || (error as Error | undefined)?.name === "GatewaySilent") {
       return { missing: true };
     }
-    return await readArt(metadataURI);
+    art = await readArt(metadataURI);
   }
+  // Only a sealed document costs a lookup, and the answer to that one is held
+  // under the passport's own name rather than with the document, because the
+  // document can never change and the record can appear at any time.
+  return await withUnseal(art, id);
 }
 
 /** One generating agent the index has seen, with everything it has counted for it. */

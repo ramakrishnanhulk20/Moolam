@@ -398,6 +398,9 @@
       "matched": "Passt zu einem versiegelten Pass. Das eingetragene Bild ist nicht veröffentlicht.",
       "label": "Versiegelt",
       "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden."
+    },
+    "unsealed": {
+      "matched": "Dieser Pass wurde versiegelt eingetragen, und am {date} hat seine Halterin das Bild veröffentlicht."
     }
   },
   "passport": {
@@ -812,6 +815,69 @@
       "commitmentLine": "Wer die Datei hat, kann sie hashen und mit der Pass-Kennung vergleichen.",
       "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden.",
       "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist."
+    },
+    "unseal": {
+      "kicker": "Ihre Veröffentlichung",
+      "heading": "Das Bild veröffentlichen",
+      "body": "Wählen Sie die signierte Datei, die Sie beim Eintragen gespeichert haben. Der Dienst prüft, ob es die eingetragene Datei ist, und pinnt sie dann.",
+      "permanent": "Das lässt sich nicht rückgängig machen. Einmal veröffentlicht, ist das Bild dauerhaft öffentlich und jeder kann es abrufen.",
+      "choose": "Gespeicherte Datei wählen",
+      "chooseAnother": "Andere Datei wählen",
+      "checking": "Die Datei wird auf Ihrem Gerät geprüft",
+      "matched": "Das ist die eingetragene Datei",
+      "matchedLine": "Ihr Hash ist die Pass-Kennung {id}. Bisher hat nichts dieses Gerät verlassen.",
+      "publish": "Diese Datei veröffentlichen",
+      "sending": "Bild, Vorschaubild und Manifest werden gepinnt",
+      "allowance": "{used} von {limit} Bearbeitungen und Veröffentlichungen heute",
+      "done": {
+        "label": "Veröffentlicht",
+        "body": "Das Bild, sein Vorschaubild und sein Manifest liegen auf IPFS, und ein kleiner Eintrag daneben sagt, wo. Auf der Chain hat sich nichts geändert, denn das geht gar nicht: die Metadaten-Adresse dieses Passes wurde einmal geschrieben und hat keinen Setter.",
+        "at": "Veröffentlicht am {when}",
+        "image": "Bild",
+        "thumbnail": "Vorschaubild",
+        "manifest": "Manifest",
+        "record": "Eintrag",
+        "check": "Jeder kann das Bild holen, es hashen und mit der Pass-Kennung auf Monad vergleichen. Das ist der ganze Beweis, und er braucht diesen Dienst nicht."
+      },
+      "failure": {
+        "notTheFile": "Das ist nicht die eingetragene Datei. Der Pass steht für genau die Datei, die der Dienst signiert und zurückgegeben hat, nicht für Ihre eigene Kopie des Bildes.",
+        "fingerprintMismatch": "Der Hash stimmt, der daraus berechnete Fingerabdruck aber nicht mit dem auf der Chain, also wurde nichts veröffentlicht.",
+        "notHolder": "Laut Registry hält eine andere Wallet diesen Pass, und nur sie kann das Bild veröffentlichen.",
+        "noPassport": "Die Registry kennt keinen Pass mit dieser Kennung.",
+        "notSealed": "Das Bild dieses Passes ist bereits öffentlich, es gibt nichts mehr zu veröffentlichen.",
+        "alreadyUnsealed": "Dieser Pass wurde schon veröffentlicht. Öffnen Sie die Seite erneut, um das Bild zu sehen.",
+        "thumbnailTooLarge": "Aus diesem Bild lässt sich kein Vorschaubild machen, das der Chainlink-Prüfer noch laden kann. Veröffentlicht bliebe ein Pass, den niemand je nachprüfen könnte. Es wurde nichts gepinnt.",
+        "quota": "Das sind {used} von {limit} für heute. Das Kontingent kommt um {at} zurück.",
+        "todayFull": "Das gemeinsame Tagesbudget fürs Veröffentlichen ist aufgebraucht. Es wurde nichts gepinnt und nichts verbraucht. Versuchen Sie es morgen wieder.",
+        "pinFailed": "Das Bild ließ sich nicht auf IPFS pinnen, also wurde nichts veröffentlicht.",
+        "recordPinFailed": "Das Bild ist veröffentlicht, der Eintrag, der darauf zeigt, aber nicht. Schicken Sie dieselbe Datei noch einmal, dann ist es fertig: nichts wird doppelt gepinnt.",
+        "dependencyDown": "Ein nötiger Dienst hat nicht geantwortet, also wurde nichts veröffentlicht und nichts verbraucht. Versuchen Sie es in einer Minute wieder.",
+        "lookupUnavailable": "Der Dienst konnte nicht feststellen, ob dieser Pass schon veröffentlicht wurde, und hat deshalb nichts veröffentlicht. Versuchen Sie es gleich noch einmal.",
+        "busy": "Der Dienst bearbeitet gerade so viele Bilder, wie er kann. Versuchen Sie es gleich noch einmal.",
+        "signedOut": "Diese Sitzung ist abgemeldet, der Dienst hat die Datei nicht angenommen.",
+        "notAnImage": "Das ist keine Bilddatei. Wählen Sie die signierte Datei, die Sie gespeichert haben.",
+        "tooLarge": "Diese Datei ist größer als die Grenze von 20 MB.",
+        "empty": "Diese Datei ist leer. Wählen Sie sie noch einmal.",
+        "unreadable": "Diese Datei ließ sich auf Ihrem Gerät nicht lesen. Wählen Sie sie noch einmal.",
+        "rateLimited": "Zu viele Anfragen von hier im Moment. Kurz warten und noch einmal versuchen.",
+        "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
+        "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
+        "offline": "Der Prüfdienst hat nicht geantwortet, also wurde nichts veröffentlicht.",
+        "fileMissing": "Wählen Sie zuerst die gespeicherte Datei.",
+        "unknown": "Etwas ist schiefgegangen, bevor die Datei losgeschickt wurde."
+      },
+      "actions": {
+        "again": "Noch einmal versuchen",
+        "chooseAgain": "Andere Datei wählen",
+        "later": "In einer Minute noch einmal versuchen",
+        "signIn": "Anmelden",
+        "showPicture": "Bild anzeigen"
+      }
+    },
+    "unsealed": {
+      "poster": "Veröffentlicht am {date}",
+      "label": "Zuerst versiegelt",
+      "line": "Ohne veröffentlichtes Bild eingetragen und am {date} von der haltenden Wallet veröffentlicht. Der Hash der Datei ist die Pass-Kennung."
     }
   },
   "agent": {

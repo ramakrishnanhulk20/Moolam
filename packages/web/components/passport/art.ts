@@ -43,6 +43,19 @@ export interface Art {
   commitment?: { algorithm: string; value: string };
   /** The 256 bit block hash of a sealed picture, the one trace of it anybody outside the creator sees. */
   blockhash?: string;
+  /**
+   * Set when this passport was registered sealed and its holder published the
+   * picture later. The pinned document still says sealed, because the chain
+   * points at it for ever and it can never be rewritten; the record named here
+   * is what says the picture is out, and when, and who opened it.
+   */
+  unsealed?: {
+    /** ISO 8601, as the record was written. */
+    at: string;
+    /** The wallet the registry said held the passport at that moment. */
+    by: string;
+    record: { cid: string; uri: string };
+  };
   /** True when the gateway did not answer or the document was not readable. */
   missing: boolean;
 }

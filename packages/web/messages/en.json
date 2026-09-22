@@ -398,6 +398,9 @@
       "matched": "Matches a sealed passport. The registered picture is not published.",
       "label": "Sealed",
       "recheck": "No public copy to re-check. A re-check needs the picture to be published."
+    },
+    "unsealed": {
+      "matched": "This passport was registered sealed and its holder published the picture on {date}."
     }
   },
   "passport": {
@@ -812,6 +815,69 @@
       "commitmentLine": "Anyone holding the file can hash it and compare it with the passport id.",
       "recheck": "No public copy to re-check. A re-check needs the picture to be published.",
       "edit": "This passport is sealed, so it cannot be edited until the picture is published."
+    },
+    "unseal": {
+      "kicker": "Yours to publish",
+      "heading": "Publish the picture",
+      "body": "Choose the signed file you saved when you registered. The service checks that it is the registered file, then pins it.",
+      "permanent": "This cannot be undone. Once the picture is published it is public and permanent, and anyone can fetch it.",
+      "choose": "Choose the file you saved",
+      "chooseAnother": "Choose another file",
+      "checking": "Checking this file on your device",
+      "matched": "This is the registered file",
+      "matchedLine": "Its hash is the passport id {id}. Nothing has left this device yet.",
+      "publish": "Publish this file",
+      "sending": "Pinning the picture, its thumbnail and its manifest",
+      "allowance": "{used} of {limit} edits and publishes today",
+      "done": {
+        "label": "Published",
+        "body": "The picture, its thumbnail and its manifest are on IPFS, and a small record beside them says where. Nothing on chain changed, because nothing can: this passport's metadata address was written once and has no setter.",
+        "at": "Published on {when}",
+        "image": "Picture",
+        "thumbnail": "Thumbnail",
+        "manifest": "Manifest",
+        "record": "Record",
+        "check": "Anyone can fetch the picture, hash it and compare it with the passport id on Monad. That is the whole proof, and it needs nothing from this service."
+      },
+      "failure": {
+        "notTheFile": "This is not the registered file. The passport commits to the exact file the service signed and handed back, not to your own copy of the picture.",
+        "fingerprintMismatch": "The bytes hash right and the fingerprint read from them is not the one on chain, so nothing was published.",
+        "notHolder": "The registry says another wallet holds this passport, so only that wallet can publish the picture.",
+        "noPassport": "The registry has no passport with this id.",
+        "notSealed": "This passport's picture is already public, so there is nothing left to publish.",
+        "alreadyUnsealed": "This passport has been published already. Open the page again to see the picture.",
+        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so publishing it would leave a passport nobody can ever re-check. Nothing was pinned.",
+        "quota": "That is {used} of {limit} for today. The allowance comes back at {at}.",
+        "todayFull": "Everyone's budget for publishing today is spent. Nothing was pinned and nothing was spent. Try again tomorrow.",
+        "pinFailed": "The picture could not be pinned to IPFS, so nothing was published.",
+        "recordPinFailed": "The picture is published and the record that points at it is not. Send the same file again to finish it: nothing is pinned twice.",
+        "dependencyDown": "A service this needs did not answer, so nothing was published and nothing was spent. Try again in a minute.",
+        "lookupUnavailable": "The service could not find out whether this passport has been published already, so it published nothing. Try again in a moment.",
+        "busy": "The service is handling as many pictures at once as it can. Try again in a moment.",
+        "signedOut": "This session is signed out, so the service would not take the file.",
+        "notAnImage": "That is not an image file. Choose the signed file you saved.",
+        "tooLarge": "That file is over the 20 MB limit.",
+        "empty": "That file is empty. Choose the file again.",
+        "unreadable": "This file could not be read from your device. Choose it again.",
+        "rateLimited": "Too many requests from here for now. Wait a moment and try again.",
+        "badRequest": "The service turned the request down.",
+        "badResponse": "The service answered in a shape this app does not know.",
+        "offline": "The verify service did not answer, so nothing was published.",
+        "fileMissing": "Choose the file you saved first.",
+        "unknown": "Something went wrong before the file was sent."
+      },
+      "actions": {
+        "again": "Try again",
+        "chooseAgain": "Choose another file",
+        "later": "Try again in a minute",
+        "signIn": "Sign in",
+        "showPicture": "Show the picture"
+      }
+    },
+    "unsealed": {
+      "poster": "Published {date}",
+      "label": "Sealed at first",
+      "line": "Registered with no picture published, and published by its holder on {date}. The file's hash is the passport id."
     }
   },
   "agent": {

@@ -107,6 +107,44 @@ const pinnedImage = cidSchema.extend({
 
 const pinnedThumbnail = cidSchema.extend({ gatewayUrl: z.string().min(1) });
 
+/** One pinned file as the unseal route names it: the content id, the address, and a link that resolves it. */
+const pinnedFile = cidSchema.extend({ gatewayUrl: z.string().min(1) });
+
+/**
+ * The record that says where the picture of an unsealed passport lives.
+ *
+ * Nothing on chain changes when a sealed passport is opened, because nothing
+ * can: the registry writes metadataURI once. So this small pinned document is
+ * the only thing that points from the passport to the picture, and the four
+ * addresses in it are the whole answer.
+ */
+export const unsealRecordSchema = z.object({
+  passportId: hexWord,
+  image: pinnedFile,
+  thumbnail: pinnedFile,
+  manifest: pinnedFile.optional(),
+  record: pinnedFile,
+  unsealedBy: addressWord,
+  /** ISO 8601, as the service wrote it into the record. */
+  unsealedAt: z.string().min(1),
+});
+
+/**
+ * What POST /unseal answers with once the picture is public.
+ *
+ * The fingerprint and the allowance are optional here although the route always
+ * sends them. By the time this answer arrives the picture is already pinned and
+ * permanent, so a shape this app half knows must never be reported to the
+ * holder as a failure: the four addresses are what the screen needs and the
+ * rest is a bonus.
+ */
+export const unsealResponseSchema = unsealRecordSchema.extend({
+  fingerprint: z
+    .object({ phash: z.string().min(1), blockhash: hexWord, version: z.number().int().min(1).max(255) })
+    .optional(),
+  quota: quotaSchema.optional(),
+});
+
 /** Everything both kinds of prepare answer carry, whatever became public. */
 const preparedFields = {
   passport: z.object({
@@ -366,6 +404,22 @@ export type GenerateResponse = z.infer<typeof generateResponseSchema>;
 export type SealedPrepareResponse = Extract<PrepareResponse, { sealed: true }>;
 export type SealedGenerateResponse = Extract<GenerateResponse, { sealed: true }>;
 export type SignedFile = z.infer<typeof signedFileSchema>;
+export type UnsealRecord = z.infer<typeof unsealRecordSchema>;
+export type UnsealResponse = z.infer<typeof unsealResponseSchema>;
+
+/**
+ * The three answers a reader can get about whether a sealed passport has been
+ * opened, and never a fourth.
+ *
+ * "sealed" is the service saying it looked and there is no record. "unknown" is
+ * the service, or the network, saying it could not find out, which is not the
+ * same thing and must never be drawn as one: a screen that reads "unknown" as
+ * "still sealed" would tell a holder their published picture is private.
+ */
+export type UnsealLookup =
+  | { state: "unsealed"; record: UnsealRecord }
+  | { state: "sealed" }
+  | { state: "unknown"; reason: string };
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
@@ -420,6 +474,14 @@ export interface VerifierDetail {
    * and a caller cannot read "nothing was sent" into silence.
    */
   named?: boolean;
+  /**
+   * The exact word the service put in the body's `error` field, kept as it was sent.
+   *
+   * The code above is this app's shared vocabulary, and several routes answer one status with
+   * several different words. A screen that needs to tell `hash-mismatch` from `not-sealed` reads
+   * this; everything that only needs the family keeps reading the code.
+   */
+  serviceCode?: string;
 }
 
 /** One failure a screen can branch on, with the service's own words kept in the message. */
@@ -432,6 +494,7 @@ export class VerifierError extends Error {
   readonly hash?: Hex;
   readonly passportId?: Hex;
   readonly named: boolean;
+  readonly serviceCode?: string;
 
   constructor(
     code: VerifierCode,
@@ -449,6 +512,7 @@ export class VerifierError extends Error {
     this.hash = detail.hash;
     this.passportId = detail.passportId;
     this.named = detail.named === true;
+    this.serviceCode = detail.serviceCode;
   }
 }
 
@@ -566,6 +630,89 @@ export async function edit(options: {
     signal: options.signal,
     headers: { authorization: `Bearer ${options.accessToken}` },
   });
+}
+
+/**
+ * Publishes the picture a sealed passport committed to.
+ *
+ * The file is the signed one the service handed back at registration, which the
+ * caller has already hashed on the device: the service checks the same thing
+ * again, against the chain, and pins nothing if either check fails.
+ *
+ * This is the one call in this app that cannot be undone. Once it answers, the
+ * picture, its thumbnail and its manifest are on IPFS for good.
+ */
+export async function unseal(options: {
+  file: File;
+  passportId: Hex;
+  accessToken: string;
+  signal?: AbortSignal;
+}): Promise<UnsealResponse> {
+  const body = new FormData();
+  body.append("file", options.file);
+  body.append("passportId", options.passportId);
+
+  return await post("/unseal", body, unsealResponseSchema, {
+    signal: options.signal,
+    headers: { authorization: `Bearer ${options.accessToken}` },
+  });
+}
+
+/**
+ * How long the record lookup waits. A passport page is not worth holding for
+ * two minutes over one small document, and a lookup that does not answer leaves
+ * the page saying exactly what it said before it asked.
+ */
+const LOOKUP_TIMEOUT_MS = 8_000;
+
+/**
+ * Where an unsealed passport's picture lives, or that there is no record.
+ *
+ * It never throws. Every way this can go wrong other than a plain "no record
+ * here" comes back as "unknown", because the caller's next move is the same for
+ * all of them: keep saying what the pinned document says and claim nothing
+ * about the record either way.
+ */
+export async function readUnsealRecord(
+  passportId: Hex,
+  options: { signal?: AbortSignal } = {},
+): Promise<UnsealLookup> {
+  const path = `/unseal/${passportId}`;
+  const timeout = AbortSignal.timeout(LOOKUP_TIMEOUT_MS);
+  const signal = options.signal === undefined ? timeout : AbortSignal.any([options.signal, timeout]);
+
+  let response: Response;
+  try {
+    response = await fetch(verifierUrl(path), { method: "GET", signal });
+  } catch {
+    return { state: "unknown", reason: `the verify service at ${verifierUrl(path)} did not answer` };
+  }
+
+  if (!response.ok) {
+    const failure = await failureOf(response);
+    // Only the service's own word turns into "there is no record". A 404 from
+    // an edge, a proxy or a mistyped host says nothing about this passport.
+    return failure.serviceCode === "not-unsealed" && response.status === 404
+      ? { state: "sealed" }
+      : { state: "unknown", reason: failure.message };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { state: "unknown", reason: "the verify service answered with something that is not JSON" };
+  }
+
+  const parsed = unsealRecordSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { state: "unknown", reason: "the verify service answered in a shape this app does not know" };
+  }
+  // A record filed under another passport is somebody else's picture, so it is
+  // no answer about this one.
+  return parsed.data.passportId.toLowerCase() === passportId.toLowerCase()
+    ? { state: "unsealed", record: parsed.data }
+    : { state: "unknown", reason: "the record that came back is for another passport" };
 }
 
 /** Matches an image against the registry. No sign in: anyone may check a picture. */
@@ -737,6 +884,7 @@ async function failureOf(response: Response): Promise<VerifierError> {
     hash: hexWordOrNothing(body.hash),
     passportId: hexWordOrNothing(body.passportId),
     named: typeof body.error === "string" && body.error.length > 0,
+    serviceCode: typeof body.error === "string" && body.error.length > 0 ? body.error : undefined,
   });
 }
 

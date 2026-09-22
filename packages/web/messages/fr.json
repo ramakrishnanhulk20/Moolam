@@ -398,6 +398,9 @@
       "matched": "Correspond à un passeport scellé. L'image enregistrée n'est pas publiée.",
       "label": "Scellé",
       "recheck": "Aucune copie publique à revérifier. Il faudrait publier l'image pour cela."
+    },
+    "unsealed": {
+      "matched": "Ce passeport a été inscrit scellé, et son détenteur a publié l'image le {date}."
     }
   },
   "passport": {
@@ -812,6 +815,69 @@
       "commitmentLine": "Qui détient le fichier peut le hacher et le comparer à l'identifiant du passeport.",
       "recheck": "Aucune copie publique à revérifier. Il faudrait publier l'image pour cela.",
       "edit": "Ce passeport est scellé : il ne peut pas être modifié tant que l'image n'est pas publiée."
+    },
+    "unseal": {
+      "kicker": "À vous de publier",
+      "heading": "Publier l'image",
+      "body": "Choisissez le fichier signé que vous avez enregistré au moment de l'inscription. Le service vérifie que c'est bien le fichier inscrit, puis il l'épingle.",
+      "permanent": "Cela ne s'annule pas. Une fois publiée, l'image est publique et permanente, et n'importe qui peut la récupérer.",
+      "choose": "Choisir le fichier enregistré",
+      "chooseAnother": "Choisir un autre fichier",
+      "checking": "Vérification du fichier sur votre appareil",
+      "matched": "C'est bien le fichier inscrit",
+      "matchedLine": "Son empreinte est l'identifiant du passeport {id}. Rien n'a encore quitté cet appareil.",
+      "publish": "Publier ce fichier",
+      "sending": "Épinglage de l'image, de sa vignette et de son manifeste",
+      "allowance": "{used} retouches et publications sur {limit} aujourd'hui",
+      "done": {
+        "label": "Publiée",
+        "body": "L'image, sa vignette et son manifeste sont sur IPFS, et une petite fiche à côté dit où. Rien n'a changé sur la chaîne, et rien ne le peut : l'adresse des métadonnées de ce passeport a été écrite une seule fois.",
+        "at": "Publiée le {when}",
+        "image": "Image",
+        "thumbnail": "Vignette",
+        "manifest": "Manifeste",
+        "record": "Fiche",
+        "check": "N'importe qui peut récupérer l'image, la hacher et comparer avec l'identifiant du passeport sur Monad. C'est toute la preuve, et elle ne doit rien à ce service."
+      },
+      "failure": {
+        "notTheFile": "Ce n'est pas le fichier inscrit. Le passeport engage exactement le fichier que le service a signé et vous a rendu, pas votre propre copie de l'image.",
+        "fingerprintMismatch": "L'empreinte de hachage est bonne, mais celle recalculée sur ces octets n'est pas celle de la chaîne, donc rien n'a été publié.",
+        "notHolder": "Le registre dit qu'un autre portefeuille détient ce passeport, et lui seul peut publier l'image.",
+        "noPassport": "Le registre n'a aucun passeport avec cet identifiant.",
+        "notSealed": "L'image de ce passeport est déjà publique, il n'y a plus rien à publier.",
+        "alreadyUnsealed": "Ce passeport a déjà été publié. Rouvrez la page pour voir l'image.",
+        "thumbnailTooLarge": "Cette image ne peut pas être réduite à une vignette assez petite pour que le vérificateur Chainlink la télécharge : la publier laisserait un passeport que personne ne pourrait jamais recontrôler. Rien n'a été épinglé.",
+        "quota": "Cela fait {used} sur {limit} pour aujourd'hui. Le quota revient à {at}.",
+        "todayFull": "Le budget de publication du jour, partagé par tout le monde, est épuisé. Rien n'a été épinglé ni dépensé. Réessayez demain.",
+        "pinFailed": "L'image n'a pas pu être épinglée sur IPFS, donc rien n'a été publié.",
+        "recordPinFailed": "L'image est publiée et la fiche qui y mène ne l'est pas. Renvoyez le même fichier pour terminer : rien n'est épinglé deux fois.",
+        "dependencyDown": "Un service nécessaire n'a pas répondu, donc rien n'a été publié ni dépensé. Réessayez dans une minute.",
+        "lookupUnavailable": "Le service n'a pas pu savoir si ce passeport était déjà publié, il n'a donc rien publié. Réessayez dans un instant.",
+        "busy": "Le service traite déjà autant d'images qu'il le peut. Réessayez dans un instant.",
+        "signedOut": "Cette session est déconnectée, le service n'a pas accepté le fichier.",
+        "notAnImage": "Ce n'est pas un fichier image. Choisissez le fichier signé que vous avez enregistré.",
+        "tooLarge": "Ce fichier dépasse la limite de 20 Mo.",
+        "empty": "Ce fichier est vide. Choisissez-le à nouveau.",
+        "unreadable": "Ce fichier n'a pas pu être lu depuis votre appareil. Choisissez-le à nouveau.",
+        "rateLimited": "Trop de requêtes depuis ici pour l'instant. Attendez un moment et réessayez.",
+        "badRequest": "Le service a refusé la requête.",
+        "badResponse": "Le service a répondu sous une forme que cette app ne connaît pas.",
+        "offline": "Le service de vérification n'a pas répondu, donc rien n'a été publié.",
+        "fileMissing": "Choisissez d'abord le fichier que vous avez enregistré.",
+        "unknown": "Quelque chose a échoué avant l'envoi du fichier."
+      },
+      "actions": {
+        "again": "Réessayer",
+        "chooseAgain": "Choisir un autre fichier",
+        "later": "Réessayer dans une minute",
+        "signIn": "Se connecter",
+        "showPicture": "Voir l'image"
+      }
+    },
+    "unsealed": {
+      "poster": "Publiée le {date}",
+      "label": "Scellé au départ",
+      "line": "Inscrit sans publier l'image, puis publiée par son détenteur le {date}. L'empreinte du fichier est l'identifiant du passeport."
     }
   },
   "agent": {

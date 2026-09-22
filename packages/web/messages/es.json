@@ -398,6 +398,9 @@
       "matched": "Coincide con un pasaporte sellado. La imagen registrada no está publicada.",
       "label": "Sellado",
       "recheck": "No hay copia pública que revisar. Para revisarla habría que publicar la imagen."
+    },
+    "unsealed": {
+      "matched": "Este pasaporte se registró sellado y quien lo tiene publicó la imagen el {date}."
     }
   },
   "passport": {
@@ -812,6 +815,69 @@
       "commitmentLine": "Quien tenga el archivo puede calcular su hash y compararlo con el identificador del pasaporte.",
       "recheck": "No hay copia pública que revisar. Para revisarla habría que publicar la imagen.",
       "edit": "Este pasaporte está sellado, así que no se puede editar hasta que la imagen se publique."
+    },
+    "unseal": {
+      "kicker": "Te toca publicar",
+      "heading": "Publicar la imagen",
+      "body": "Elige el archivo firmado que guardaste al registrar. El servicio comprueba que sea el archivo registrado y luego lo fija en IPFS.",
+      "permanent": "Esto no se puede deshacer. Una vez publicada, la imagen es pública y permanente, y cualquiera puede descargarla.",
+      "choose": "Elegir el archivo guardado",
+      "chooseAnother": "Elegir otro archivo",
+      "checking": "Comprobando este archivo en tu dispositivo",
+      "matched": "Este es el archivo registrado",
+      "matchedLine": "Su hash es el identificador del pasaporte {id}. Todavía no ha salido nada de este dispositivo.",
+      "publish": "Publicar este archivo",
+      "sending": "Fijando la imagen, su miniatura y su manifiesto",
+      "allowance": "{used} de {limit} ediciones y publicaciones hoy",
+      "done": {
+        "label": "Publicada",
+        "body": "La imagen, su miniatura y su manifiesto están en IPFS, y un pequeño registro al lado dice dónde. En la cadena no cambió nada, porque no puede cambiar: la dirección de metadatos de este pasaporte se escribió una sola vez.",
+        "at": "Publicada el {when}",
+        "image": "Imagen",
+        "thumbnail": "Miniatura",
+        "manifest": "Manifiesto",
+        "record": "Registro",
+        "check": "Cualquiera puede descargar la imagen, calcular su hash y compararlo con el identificador del pasaporte en Monad. Esa es toda la prueba, y no necesita nada de este servicio."
+      },
+      "failure": {
+        "notTheFile": "Este no es el archivo registrado. El pasaporte se compromete con el archivo exacto que el servicio firmó y devolvió, no con tu propia copia de la imagen.",
+        "fingerprintMismatch": "El hash coincide, pero la huella calculada a partir de estos bytes no es la que está en la cadena, así que no se publicó nada.",
+        "notHolder": "El registro dice que otra cartera tiene este pasaporte, y solo ella puede publicar la imagen.",
+        "noPassport": "El registro no tiene ningún pasaporte con este identificador.",
+        "notSealed": "La imagen de este pasaporte ya es pública, no queda nada por publicar.",
+        "alreadyUnsealed": "Este pasaporte ya se publicó. Abre la página otra vez para ver la imagen.",
+        "thumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que el verificador de Chainlink la descargue, así que publicarla dejaría un pasaporte que nadie podría volver a comprobar. No se fijó nada.",
+        "quota": "Van {used} de {limit} para hoy. El cupo vuelve a las {at}.",
+        "todayFull": "El presupuesto de publicaciones de hoy para todo el mundo se ha agotado. No se fijó ni se gastó nada. Inténtalo mañana.",
+        "pinFailed": "La imagen no se pudo fijar en IPFS, así que no se publicó nada.",
+        "recordPinFailed": "La imagen está publicada y el registro que apunta a ella no. Envía el mismo archivo otra vez para terminarlo: nada se fija dos veces.",
+        "dependencyDown": "Un servicio necesario no respondió, así que no se publicó ni se gastó nada. Inténtalo dentro de un minuto.",
+        "lookupUnavailable": "El servicio no pudo averiguar si este pasaporte ya estaba publicado, así que no publicó nada. Inténtalo en un momento.",
+        "busy": "El servicio está atendiendo tantas imágenes como puede a la vez. Inténtalo en un momento.",
+        "signedOut": "Esta sesión está cerrada, así que el servicio no aceptó el archivo.",
+        "notAnImage": "Eso no es un archivo de imagen. Elige el archivo firmado que guardaste.",
+        "tooLarge": "Ese archivo pasa del límite de 20 MB.",
+        "empty": "Ese archivo está vacío. Elige el archivo otra vez.",
+        "unreadable": "No se pudo leer este archivo desde tu dispositivo. Elígelo otra vez.",
+        "rateLimited": "Demasiadas peticiones desde aquí por ahora. Espera un momento e inténtalo otra vez.",
+        "badRequest": "El servicio rechazó la petición.",
+        "badResponse": "El servicio respondió con una forma que esta app no conoce.",
+        "offline": "El servicio de verificación no respondió, así que no se publicó nada.",
+        "fileMissing": "Elige primero el archivo que guardaste.",
+        "unknown": "Algo salió mal antes de enviar el archivo."
+      },
+      "actions": {
+        "again": "Intentar otra vez",
+        "chooseAgain": "Elegir otro archivo",
+        "later": "Intentar en un minuto",
+        "signIn": "Iniciar sesión",
+        "showPicture": "Ver la imagen"
+      }
+    },
+    "unsealed": {
+      "poster": "Publicada el {date}",
+      "label": "Sellado al principio",
+      "line": "Registrado sin publicar la imagen, y publicada por quien lo tiene el {date}. El hash del archivo es el identificador del pasaporte."
     }
   },
   "agent": {

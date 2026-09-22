@@ -8,6 +8,7 @@ import { unstable_cache } from "next/cache";
 import { ImageResponse } from "next/og";
 import type { Hex } from "viem";
 import { readArt, type Art } from "@/components/passport/art";
+import { withUnseal } from "@/lib/data/unseal";
 import { sealedBits } from "@/components/passport/sealed";
 import { SKETCH_SIDE } from "@/components/sealed/bits";
 import { shortHex } from "@/lib/chain/client";
@@ -308,7 +309,13 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
       return null;
     }
 
-    const [art, block] = await Promise.all([readArt(passport.metadataURI), indexedBlock(passport.id)]);
+    const [art, block] = await Promise.all([
+      // The record beside the document is what says a sealed passport has been
+      // published since, so the card draws the picture rather than the seal for
+      // a link somebody shares after unsealing.
+      readArt(passport.metadataURI).then(async (document) => await withUnseal(document, passport.id)),
+      indexedBlock(passport.id),
+    ]);
     const sealed = art.sealed === true;
     const title = cardTitle(art.title, passport.id);
     const line = sealed ? sealedLine(block, passport.registeredAt) : registeredLine(block, passport.registeredAt);
