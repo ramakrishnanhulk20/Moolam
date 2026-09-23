@@ -211,15 +211,18 @@ const BY_GENERATOR = `query PassportsByGenerator($generator: String!, $limit: In
  * checksummed address from a wallet still finds its rows. This reads Envio
  * only: the chain fallback would need a log scan per creator, which is a
  * different and much slower thing than the strip's one query.
+ *
+ * `offset` skips that many of the newest rows, which is how /mine reads the
+ * pages after its first.
  */
-export async function passportsByCreator(address: Hex, limit = 24): Promise<PassportListing[]> {
+export async function passportsByCreator(address: Hex, limit = 24, offset = 0): Promise<PassportListing[]> {
   return await listPassports(
-    `query PassportsByCreator($creator: String!, $limit: Int!) {
-      Passport(where: { creator_id: { _eq: $creator } }, order_by: { registeredAt: desc }, limit: $limit) {
+    `query PassportsByCreator($creator: String!, $limit: Int!, $offset: Int!) {
+      Passport(where: { creator_id: { _eq: $creator } }, order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit, offset: $offset) {
         ${LISTING_FIELDS}
       }
     }`,
-    { creator: address.toLowerCase(), limit },
+    { creator: address.toLowerCase(), limit, offset },
   );
 }
 

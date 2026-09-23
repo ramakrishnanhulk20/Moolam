@@ -36,9 +36,22 @@ vi.mock("@privy-io/react-auth", () => ({
   useWallets: () => ({ wallets: privy.wallets }),
 }));
 
-const list = vi.hoisted(() => ({
-  current: { status: "ready", passports: [], error: null, refresh: () => undefined } as CreatorPassports,
-}));
+/** The hook's answer with nothing in it, and nothing left to read. */
+const EMPTY = vi.hoisted(
+  () =>
+    ({
+      status: "ready",
+      passports: [],
+      error: null,
+      refresh: () => undefined,
+      hasMore: false,
+      loadingMore: false,
+      moreError: null,
+      more: () => undefined,
+    }) as CreatorPassports,
+);
+
+const list = vi.hoisted(() => ({ current: EMPTY }));
 
 vi.mock("@/lib/studio/useCreatorPassports", () => ({ useCreatorPassports: () => list.current }));
 
@@ -91,7 +104,7 @@ describe("the page a person finds their own pictures on", () => {
   beforeEach(() => {
     privy.session = { ready: true, authenticated: false, login: () => undefined };
     privy.wallets = [];
-    list.current = { status: "ready", passports: [], error: null, refresh: () => undefined };
+    list.current = EMPTY;
   });
 
   it("asks a signed out reader to sign in, and says what for", () => {
@@ -117,7 +130,7 @@ describe("the page a person finds their own pictures on", () => {
   it("shows the account's pictures, newest first, each one linking to its passport", () => {
     privy.session = { ready: true, authenticated: true, login: () => undefined };
     privy.wallets = [{ walletClientType: "privy", address: `0x${"11".repeat(20)}` }];
-    list.current = { status: "ready", passports: [PASSPORT], error: null, refresh: () => undefined };
+    list.current = { ...EMPTY, passports: [PASSPORT] };
 
     const markup = render("en", createElement(MineScreen));
     expect(markup).toContain(en.mine.grid);
@@ -132,6 +145,73 @@ describe("the page a person finds their own pictures on", () => {
 
     const markup = render("en", createElement(MineScreen));
     expect(markup).toContain(en.studio.passports.empty);
+    expect(markup).not.toContain(en.explore.loadMore);
+  });
+});
+
+describe("every picture, not only the newest twelve", () => {
+  beforeEach(() => {
+    privy.session = { ready: true, authenticated: true, login: () => undefined };
+    privy.wallets = [{ walletClientType: "privy", address: `0x${"11".repeat(20)}` }];
+  });
+
+  it("offers Load more under the grid while the index holds older pictures", () => {
+    list.current = { ...EMPTY, passports: [PASSPORT], hasMore: true };
+
+    const markup = render("en", createElement(MineScreen));
+    expect(markup).toContain(`>${en.explore.loadMore}</button>`);
+    expect(markup.indexOf(en.explore.loadMore)).toBeGreaterThan(markup.indexOf("A hill at first light"));
+  });
+
+  it("says it in Tamil too", () => {
+    list.current = { ...EMPTY, passports: [PASSPORT], hasMore: true };
+    expect(render("ta", createElement(MineScreen))).toContain(`>${ta.explore.loadMore}</button>`);
+  });
+
+  it("offers nothing more once the last page is on screen", () => {
+    list.current = { ...EMPTY, passports: [PASSPORT], hasMore: false };
+    expect(render("en", createElement(MineScreen))).not.toContain(en.explore.loadMore);
+  });
+
+  it("shows the wait on the button itself, and takes no second press", () => {
+    list.current = { ...EMPTY, passports: [PASSPORT], hasMore: true, loadingMore: true };
+
+    const markup = render("en", createElement(MineScreen));
+    const button = markup.slice(markup.lastIndexOf("<button"), markup.lastIndexOf("</button>"));
+    expect(button).toContain(en.explore.loading);
+    expect(button).toContain("disabled");
+    expect(button).toContain('aria-busy="true"');
+    expect(markup).toContain("A hill at first light");
+  });
+
+  it("keeps the pictures already read when the next page fails, and says why beside the press", () => {
+    list.current = {
+      ...EMPTY,
+      passports: [PASSPORT],
+      hasMore: true,
+      moreError: "the Envio endpoint answered 429",
+    };
+
+    const markup = render("en", createElement(MineScreen));
+    expect(markup).toContain("A hill at first light");
+    expect(markup).toContain(`>${en.explore.loadMore}</button>`);
+    expect(markup).toContain(en.explore.error.replace("{reason}", "the Envio endpoint answered 429"));
+  });
+
+  it("offers no press while the first page is still being read or could not be", () => {
+    list.current = { ...EMPTY, status: "reading", hasMore: true };
+    expect(render("en", createElement(MineScreen))).not.toContain(en.explore.loadMore);
+
+    list.current = { ...EMPTY, status: "unreadable", error: "down", hasMore: true };
+    expect(render("en", createElement(MineScreen))).not.toContain(en.explore.loadMore);
+  });
+});
+
+describe("the studio's foot keeps its short list", () => {
+  it("still calls the hook with no page size, so it reads the newest twelve", () => {
+    const studio = read("lib/studio/useStudio.ts");
+    expect(studio).toMatch(/useCreatorPassports\(authenticated \? wallet : undefined\)/);
+    expect(read("lib/studio/useCreatorPassports.ts")).toContain("pageSize = 12");
   });
 });
 

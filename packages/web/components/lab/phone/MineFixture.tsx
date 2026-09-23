@@ -39,7 +39,7 @@ export function MineFixture() {
         </button>
       </header>
 
-      <YourPassports passports={{ status: "ready", passports: [], error: null, refresh: () => undefined }} />
+      <YourPassports passports={{ status: "ready", passports: [], error: null, refresh: () => undefined, hasMore: false, loadingMore: false, moreError: null, more: () => undefined }} />
     </div>
   );
 }

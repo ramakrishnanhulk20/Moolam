@@ -67,7 +67,7 @@ const WAITING: StudioState = {
     clearBind: NOTHING,
     reset: NOTHING,
   },
-  passports: { status: "reading", passports: [], error: null, refresh: NOTHING },
+  passports: { status: "reading", passports: [], error: null, refresh: NOTHING, hasMore: false, loadingMore: false, moreError: null, more: NOTHING },
 };
 
 /**

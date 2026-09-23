@@ -9,7 +9,7 @@ import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { WaitLabel } from "@/components/studio/WaitLabel";
 import { YourPassports } from "@/components/studio/YourPassports";
 import { isPrivyConfigured } from "@/lib/env";
-import { useCreatorPassports } from "@/lib/studio/useCreatorPassports";
+import { useCreatorPassports, type CreatorPassports } from "@/lib/studio/useCreatorPassports";
 import { SignInCard } from "./SignInCard";
 
 /**
@@ -84,7 +84,47 @@ function Pictures() {
   if (wallet === undefined) {
     return <Notice text={t("noWallet")} />;
   }
-  return <YourPassports passports={passports} heading={grid} />;
+  return (
+    <>
+      <YourPassports passports={passports} heading={grid} />
+      <LoadMore passports={passports} />
+    </>
+  );
+}
+
+/**
+ * The press that reads the next page of this account's pictures.
+ *
+ * It says it is working on its own face, and a page that would not come back
+ * is reported on the same line, with the rows already read left where they are.
+ * The words are the Explore grid's, because it is the same press over the same
+ * index.
+ */
+function LoadMore({ passports }: { passports: CreatorPassports }) {
+  const t = useTranslations("explore");
+
+  if (passports.status !== "ready" || !passports.hasMore) {
+    return null;
+  }
+
+  return (
+    <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
+      <button
+        type="button"
+        onClick={passports.more}
+        disabled={passports.loadingMore}
+        aria-busy={passports.loadingMore}
+        className="rounded-[8px] border border-line-strong px-6 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:cursor-wait disabled:text-text-faint"
+      >
+        {passports.loadingMore ? t("loading") : t("loadMore")}
+      </button>
+      {passports.moreError === null ? null : (
+        <p role="alert" className="max-w-[54ch] text-sm leading-relaxed text-failed">
+          {t("error", { reason: passports.moreError })}
+        </p>
+      )}
+    </div>
+  );
 }
 
 function Notice({ text, tone = "muted" }: { text: string; tone?: "muted" | "failed" }) {
