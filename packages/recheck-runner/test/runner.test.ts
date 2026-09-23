@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readConfig, type Config } from "../src/config.js";
-import type { Document } from "../src/document.js";
+import type { Document, RecordLookup } from "../src/document.js";
 import type { PassportRow } from "../src/index-read.js";
 import type { Claim, DoneReport, QueueClient } from "../src/queue.js";
 import type { SimulateRequest, SimulateResult } from "../src/simulate.js";
@@ -40,11 +40,13 @@ function row(passportId: string, extra: Partial<PassportRow> = {}): PassportRow 
 }
 
 const DOCUMENTS: Record<string, Document> = {
-  [`ipfs://document-${PICTURE.slice(2, 4)}`]: { title: "A lighthouse in fog", sealed: false, readable: true },
-  [`ipfs://document-${SEALED.slice(2, 4)}`]: { title: "A kept picture", sealed: true, readable: true },
-  [`ipfs://document-${SEED.slice(2, 4)}`]: { title: "Moolam seed 4", sealed: false, readable: true },
-  [`ipfs://document-${ASKED.slice(2, 4)}`]: { title: "Harbour at dusk", sealed: false, readable: true },
+  [`ipfs://document-${PICTURE.slice(2, 4)}`]: { title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true },
+  [`ipfs://document-${SEALED.slice(2, 4)}`]: { title: "A kept picture", sealed: true, unsealed: false, readable: true },
+  [`ipfs://document-${SEED.slice(2, 4)}`]: { title: "Moolam seed 4", sealed: false, unsealed: false, readable: true },
+  [`ipfs://document-${ASKED.slice(2, 4)}`]: { title: "Harbour at dusk", sealed: false, unsealed: false, readable: true },
 };
+
+const UNREADABLE: Document = { title: null, sealed: false, unsealed: false, readable: false };
 
 interface Kitchen {
   deps: Deps;
@@ -52,6 +54,7 @@ interface Kitchen {
   runs: SimulateRequest[];
   claims: string[];
   reports: DoneReport[];
+  lookups: string[];
   state: () => RunnerState;
 }
 
@@ -65,12 +68,14 @@ function kitchen(input: {
   simulate?: (request: SimulateRequest) => SimulateResult;
   state?: RunnerState;
   queueFails?: boolean;
+  record?: (passportId: string) => RecordLookup;
 }): Kitchen {
   const config: Config = readConfig({ ...ENV, ...input.env });
   const lines: string[] = [];
   const runs: SimulateRequest[] = [];
   const claims: string[] = [];
   const reports: DoneReport[] = [];
+  const lookups: string[] = [];
   const known = new Map<string, PassportRow>();
   for (const one of [...(input.sweep ?? []), ...(input.rows ?? [])]) {
     known.set(one.id, one);
@@ -100,8 +105,11 @@ function kitchen(input: {
       unrechecked: async () => input.sweep ?? [],
       byId: async (passportId) => known.get(passportId) ?? null,
     },
-    readDocument: async (metadataURI) =>
-      DOCUMENTS[metadataURI] ?? { title: null, sealed: false, readable: false },
+    readDocument: async (metadataURI) => DOCUMENTS[metadataURI] ?? UNREADABLE,
+    unsealRecord: async (passportId) => {
+      lookups.push(passportId);
+      return input.record?.(passportId) ?? { kind: "none" };
+    },
     eventIndex: async (txHash) => (txHash.startsWith("0xdddd") ? 1 : 0),
     balanceWei: async () => input.balance ?? 28_266_000_000_000_000_000n,
     simulate: async (request) => {
@@ -125,7 +133,7 @@ function kitchen(input: {
     now: () => NOW,
   };
 
-  return { deps, lines, runs, claims, reports, state: () => state };
+  return { deps, lines, runs, claims, reports, lookups, state: () => state };
 }
 
 describe("one pass of the runner", () => {
@@ -228,7 +236,7 @@ describe("one pass of the runner", () => {
         first = false;
         throw new Error("the gateway closed the connection");
       }
-      return DOCUMENTS[metadataURI] ?? { title: null, sealed: false, readable: false };
+      return DOCUMENTS[metadataURI] ?? UNREADABLE;
     };
 
     const summary = await onePass(kit.deps);
@@ -256,6 +264,61 @@ describe("one pass of the runner", () => {
     const summary = await onePass(kit.deps);
     expect(summary.ran).toBe(1);
     expect(kit.lines.join(" ")).toContain("could not read the request queue");
+  });
+});
+
+describe("a passport registered sealed and published since", () => {
+  it("is re-checked with the same command as a public one once its unseal record exists", async () => {
+    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "found" }) });
+    const summary = await onePass(kit.deps);
+
+    expect(kit.lookups).toEqual([SEALED]);
+    expect(summary.done).toBe(1);
+    expect(kit.runs[0]).toMatchObject({ txHash: row(SEALED).txHash, eventIndex: 0, broadcast: true });
+    expect(kit.lines.join(" ")).toContain("published the picture since");
+  });
+
+  it("is picked up by the sweep too", async () => {
+    const kit = kitchen({ sweep: [row(SEALED)], record: () => ({ kind: "found" }) });
+    const summary = await onePass(kit.deps);
+    expect(summary.ran).toBe(1);
+  });
+
+  it("is refused as sealed when the service has no record for it", async () => {
+    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "none" }) });
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.reports[0]?.reason).toContain("is sealed, so there is no published picture");
+    expect(kit.state().recent[SEALED]).toBeDefined();
+  });
+
+  it("is refused when the record served for it names another passport", async () => {
+    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "mismatch" }) });
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.reports[0]?.reason).toContain("names another passport");
+  });
+
+  it("is tried again later, spending nothing, when the lookup timed out or answered 500", async () => {
+    for (const reason of ["the unseal record lookup did not answer within 10 seconds", "the unseal record lookup answered status 500"]) {
+      const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], sweep: [row(SEALED)], record: () => ({ kind: "failed", reason }) });
+      const summary = await onePass(kit.deps);
+
+      expect(kit.runs).toHaveLength(0);
+      expect(summary.ran).toBe(0);
+      expect(kit.reports).toHaveLength(0);
+      expect(kit.state().reports).toBe(0);
+      expect(kit.state().failures).toBe(0);
+      expect(kit.state().recent[SEALED]).toBeUndefined();
+      expect(kit.lines.join(" ")).toContain("trying again next pass");
+      expect(kit.lines.join(" ")).not.toContain("is sealed, so there is no published picture");
+    }
+  });
+
+  it("never asks for a record when the document is public", async () => {
+    const kit = kitchen({ sweep: [row(PICTURE)] });
+    await onePass(kit.deps);
+    expect(kit.lookups).toHaveLength(0);
   });
 });
 

@@ -150,9 +150,15 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
 3. For each passport in turn, one at a time:
    - a request is claimed first, `POST /recheck/claim`. A claim somebody else holds means skip.
    - the index row gives the registration transaction, which is the only place it is written down.
-   - the pinned document decides whether to go on: a sealed passport has no published picture and
-     is refused with that reason; a seed test card is swept past, though it still runs if somebody
-     asked for it by hand.
+   - the pinned document decides whether to go on: a seed test card is swept past, though it still
+     runs if somebody asked for it by hand. A sealed document sends one more question to the verify
+     service, `GET /unseal/<id>` with a ten second timeout, because the document on chain says
+     sealed for ever and only the unseal record beside it says the holder has published the picture
+     since. A record means the passport is re-checked with the same command as a public one; a 404
+     means it is refused as sealed; a record about another passport is refused; any other status, a
+     timeout or a body that is not JSON means try again next pass, with no report counted, no
+     cooldown started and no failure counted. Pointed at `deploy/queue-stub.mjs`, which has no
+     unseal route, a sealed passport reads as never published.
    - the CRE wallet's balance is read again, because the passport before it spent from the same
      wallet.
    - the receipt gives the event index: the position of `PassportRegistered` among the logs of its

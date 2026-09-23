@@ -30,12 +30,15 @@ import {
 import { z } from "zod";
 import { decodeJpeg } from "./decode";
 import { hamming64, perceptualHash, toBytes32, toHex64 } from "./phash";
+import { choosePicture, toFetchUrl, type RecordReply } from "./picture";
 
 export const configSchema = z.object({
 	chain: z.string(),
 	registry: z.string(),
 	receiver: z.string(),
 	gateway: z.string(),
+	/** The verify service, asked only for the unseal record of a passport registered sealed. */
+	verifierUrl: z.string().startsWith("https://"),
 	matchThreshold: z.number(),
 });
 type Config = z.infer<typeof configSchema>;
@@ -83,14 +86,6 @@ const JSON_DATA_URI = "data:application/json,";
 
 const httpClient = new cre.capabilities.HTTPClient();
 
-/** Turns an ipfs:// reference, a bare content id or an https URL into something we can GET. */
-const toFetchUrl = (gateway: string, reference: string): string => {
-	if (reference.startsWith("https://") || reference.startsWith("http://")) return reference;
-	const path = reference.startsWith(IPFS_SCHEME) ? reference.slice(IPFS_SCHEME.length) : reference;
-	const base = gateway.endsWith("/") ? gateway : `${gateway}/`;
-	return `${base}${path}`;
-};
-
 /** The content id on its own, so a reader of the logs can fetch the same bytes we did. */
 const referenceId = (reference: string): string => {
 	const withoutScheme = reference.startsWith(IPFS_SCHEME)
@@ -135,6 +130,38 @@ const readMetadata = (
 };
 
 /**
+ * The verify service's unseal record for a passport registered sealed: one GET, asked only when the
+ * document names no picture. The run never goes on from here with anything but a 200 whose record
+ * choosePicture accepts, and a call that does not answer at all stops it with the passport id and
+ * no URL, since the service's address is configuration and not something a log reader needs.
+ */
+const readUnsealRecord = (nodeRuntime: NodeRuntime<Config>, passportId: string): RecordReply => {
+	const base = nodeRuntime.config.verifierUrl.replace(/\/+$/, "");
+	let response: { statusCode: number; body: Uint8Array };
+	try {
+		response = httpClient
+			.sendRequest(nodeRuntime, {
+				url: `${base}/unseal/${passportId}`,
+				method: "GET",
+				timeout: "10s",
+			})
+			.result();
+	} catch {
+		throw new Error(`unseal record lookup for passport ${passportId} did not answer`);
+	}
+
+	let body: string;
+	try {
+		body = new TextDecoder("utf-8", { fatal: true }).decode(response.body);
+	} catch {
+		throw new Error(
+			`unseal record for passport ${passportId} is not readable text (status ${response.statusCode})`,
+		);
+	}
+	return { status: response.statusCode, body };
+};
+
+/**
  * One node's own answer: download the picture the passport points at, fingerprint it, and measure
  * how far that is from the fingerprint the creator registered. Every node does this by itself and
  * consensus only accepts the run when a quorum produced the identical answer, so the downloaded
@@ -144,19 +171,29 @@ const verifyThumbnail = (
 	nodeRuntime: NodeRuntime<Config>,
 	metadataURI: string,
 	storedPhashHex: string,
+	passportId: string,
 ): Verification => {
+	const { gateway } = nodeRuntime.config;
 	const metadata = readMetadata(nodeRuntime, metadataURI);
-	const reference = metadata.thumbnail ?? metadata.image;
-	if (typeof reference !== "string" || reference.length === 0) {
-		throw new Error("passport metadata has no thumbnail or image to check");
+
+	let choice = choosePicture(metadata, passportId, gateway);
+	if (choice.kind === "ask-record") {
+		const record = readUnsealRecord(nodeRuntime, passportId);
+		choice = choosePicture(metadata, passportId, gateway, record);
+		if (choice.kind === "fetch") {
+			nodeRuntime.log(
+				`unseal record for passport ${passportId} read (status ${record.status}), thumbnail ${referenceId(choice.reference)}`,
+			);
+		}
+	}
+	if (choice.kind !== "fetch") {
+		throw new Error(
+			choice.kind === "refused" ? choice.reason : `passport ${passportId} has no picture to check`,
+		);
 	}
 
-	const bytes = fetchBytes(
-		nodeRuntime,
-		toFetchUrl(nodeRuntime.config.gateway, reference),
-		"thumbnail",
-	);
-	nodeRuntime.log(`thumbnail ${referenceId(reference)} ${bytes.length} bytes`);
+	const bytes = fetchBytes(nodeRuntime, choice.url, "thumbnail");
+	nodeRuntime.log(`thumbnail ${referenceId(choice.reference)} ${bytes.length} bytes`);
 
 	const image = decodeJpeg(bytes);
 	const recomputed = perceptualHash(image.pixels, image.width, image.height, image.channels);
@@ -256,7 +293,7 @@ export const onPassportRegistered = (runtime: Runtime<Config>, log: EVMLog): str
 	const verification = runtime
 		.runInNodeMode(verifyThumbnail, consensusIdenticalAggregation<Verification>(), {
 			schema: verificationSchema,
-		})(passport.metadataURI, storedPhash)
+		})(passport.metadataURI, storedPhash, passportId)
 		.result();
 
 	runtime.log(

@@ -1,11 +1,17 @@
 import type { Fetcher } from "./net.js";
 
-/** What the pinned document says, reduced to the two things that decide whether a run happens. */
+/** What the pinned document says, reduced to the things that decide whether a run happens. */
 export interface Document {
   /** The `name` field, which is the only thing separating a picture from a seed test card. */
   title: string | null;
-  /** True when the passport was registered with no public picture at all. */
+  /** True when the passport has no public picture: registered sealed and never published. */
   sealed: boolean;
+  /**
+   * True when the passport was registered sealed and its holder has published the picture since.
+   * The document on chain cannot be rewritten, so only the unseal record beside it says so, and
+   * such a passport is re-checked exactly like a public one.
+   */
+  unsealed: boolean;
   /** False when no gateway gave a document this could read. */
   readable: boolean;
 }
@@ -21,6 +27,18 @@ const TEST_TITLE = /^moolam (seed|prove-it|privy proof)\b/i;
 const IPFS_SCHEME = "ipfs://";
 const JSON_DATA_URI = "data:application/json,";
 const TIMEOUT_MS = 10_000;
+const PASSPORT_ID = /^0x[0-9a-f]{64}$/;
+
+/**
+ * What the verify service's GET /unseal/{passportId} said. "failed" is kept apart from "none" on
+ * purpose: a service that could not answer says nothing about the passport, so it must never be read
+ * as "still sealed" (refused for good) nor as "published" (a report spent on a guess).
+ */
+export type RecordLookup =
+  | { kind: "found" }
+  | { kind: "none" }
+  | { kind: "mismatch" }
+  | { kind: "failed"; reason: string };
 
 /**
  * Whether this is one of the seed test cards.
@@ -51,7 +69,7 @@ export async function readDocument(
   gateway: string,
   fetcher: Fetcher = fetch,
 ): Promise<Document> {
-  const unreadable: Document = { title: null, sealed: false, readable: false };
+  const unreadable: Document = { title: null, sealed: false, unsealed: false, readable: false };
 
   let text: string;
   if (metadataURI.startsWith(JSON_DATA_URI)) {
@@ -92,7 +110,7 @@ export async function readDocument(
  */
 export function describe(parsed: unknown): Document {
   if (typeof parsed !== "object" || parsed === null) {
-    return { title: null, sealed: false, readable: false };
+    return { title: null, sealed: false, unsealed: false, readable: false };
   }
   const record = parsed as Record<string, unknown>;
   const name = typeof record.name === "string" ? record.name : null;
@@ -101,8 +119,80 @@ export function describe(parsed: unknown): Document {
   return {
     title: name,
     sealed: record.sealed === true && picture === null,
+    unsealed: false,
     readable: true,
   };
+}
+
+/**
+ * The third kind: a sealed document whose unseal record exists is a published picture. Anything
+ * short of a found record leaves the document as it was, and the runner deals with "failed" and
+ * "mismatch" before it gets here.
+ */
+export function withRecord(document: Document, record: RecordLookup): Document {
+  if (!document.sealed || record.kind !== "found") {
+    return document;
+  }
+  return { ...document, sealed: false, unsealed: true };
+}
+
+/**
+ * The one rule for comparing passport ids, used on both the id the runner holds and the id the
+ * record names, so letter case can neither pass a mismatch nor fail a match.
+ */
+export function passportKey(value: string): string {
+  return value.toLowerCase();
+}
+
+/**
+ * Asks the verify service whether a sealed passport's picture has been published since.
+ *
+ * A 404 is the service saying there is no record. Every other failure, a status that is neither 200
+ * nor 404, a timeout, a body that is not JSON or names no passport, is "failed" with a reason that
+ * names the status and never the URL. A record about another passport is "mismatch", which the
+ * runner refuses rather than retries.
+ */
+export async function readUnsealRecord(
+  serviceUrl: string,
+  passportId: string,
+  fetcher: Fetcher = fetch,
+): Promise<RecordLookup> {
+  const id = passportKey(passportId);
+  if (!PASSPORT_ID.test(id)) {
+    return { kind: "failed", reason: "the passport id is not 32 bytes of hex" };
+  }
+
+  let response: Response;
+  try {
+    response = await fetcher(`${serviceUrl}/unseal/${id}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (error) {
+    const timedOut = error instanceof Error && error.name === "TimeoutError";
+    return {
+      kind: "failed",
+      reason: timedOut
+        ? `the unseal record lookup did not answer within ${TIMEOUT_MS / 1000} seconds`
+        : "the unseal record lookup could not reach the verify service",
+    };
+  }
+
+  if (response.status === 404) {
+    return { kind: "none" };
+  }
+  if (response.status !== 200) {
+    return { kind: "failed", reason: `the unseal record lookup answered status ${response.status}` };
+  }
+
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return { kind: "failed", reason: "the unseal record lookup answered status 200 with a body that is not JSON" };
+  }
+  const named = typeof body === "object" && body !== null ? (body as { passportId?: unknown }).passportId : undefined;
+  if (typeof named !== "string") {
+    return { kind: "failed", reason: "the unseal record lookup answered status 200 with no passport id" };
+  }
+  return passportKey(named) === id ? { kind: "found" } : { kind: "mismatch" };
 }
 
 function uriOf(value: unknown): string | null {

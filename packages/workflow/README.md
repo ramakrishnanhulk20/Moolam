@@ -27,6 +27,16 @@ themselves, and they have to agree with each other before anything is signed.
 3. **Fetch.** Inside node mode, each node reads the passport's metadata document (an `ipfs://` file
    through the gateway, or an inline `data:application/json,` document), then downloads the
    thumbnail it names. Two HTTP requests per run, against a limit of five.
+
+   A passport registered sealed names no picture, and its document can never be rewritten, so when
+   the document says `sealed: true` with no `thumbnail` or `image` key the node asks the verify
+   service once, `GET {verifierUrl}/unseal/{passportId}`. On a 200 the record must name the same
+   passport id as the log (both lower-cased by one function in `picture.ts`), and its thumbnail must
+   be `ipfs://` followed by a content id and nothing else; the URL is then built on the configured
+   gateway, and the record's own https link is never used. A 404, any other status, a timeout or a
+   body that is not JSON stops the run with no report, and the error names the status and the
+   passport id, never a URL. That path is three HTTP requests per run: document, record, thumbnail.
+   The record answer is about 1.6 KB.
 4. **Fingerprint.** `decode.ts` decodes the JPEG with jpeg-js, pure JavaScript because the sandbox
    is QuickJS on WebAssembly with no native modules. `phash.ts` recomputes the same 64-bit
    fingerprint the verifier stores: grey through linear light, 32 by 32, 2D DCT, the 8 by 8 block
@@ -54,7 +64,8 @@ themselves, and they have to agree with each other before anything is signed.
 | `moolam-verifier/workflow.ts` | The trigger, the read, the fetch, the consensus wrapper and the write |
 | `moolam-verifier/phash.ts` | The pure TypeScript fingerprint, matched to sharp-phash |
 | `moolam-verifier/decode.ts` | JPEG decoding inside the sandbox |
-| `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, match threshold |
+| `moolam-verifier/picture.ts` | Which picture a run fingerprints, including an unsealed passport's, with no network so it is tested from `packages/recheck-runner/test/workflow-picture.test.ts` |
+| `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, verify service, match threshold |
 | `spike/decode-spike.ts` | The throwaway run that proved a JPEG can be decoded in the sandbox at all |
 | `../verifier/test/workflow-phash.test.ts` | Holds this fingerprint against the verifier's sharp based one |
 

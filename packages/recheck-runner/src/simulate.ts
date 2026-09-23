@@ -47,6 +47,15 @@ const NO_TX = `0x${"0".repeat(64)}`;
 const REPORT_TX = /report tx (0x[0-9a-fA-F]{64})/g;
 const VERDICT = /recomputed (0x[0-9a-fA-F]{16}) distance (\d+) matched (true|false)/g;
 const TROUBLE = /(^✗.*$)|(^.*\b(panic|revert(ed)?|error|failed)\b.*$)/gim;
+// A failed run's reason is posted to the verify service, which serves it on a public status route.
+// The CLI prints whole endpoint addresses in some lines, the RPC health check with its provider key
+// among them, so no address and no bearer value leaves this process inside a reason.
+const ADDRESS = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
+const BEARER = /\bbearer\s+\S+/gi;
+
+export function redact(line: string): string {
+  return line.replace(ADDRESS, "[address removed]").replace(BEARER, "Bearer [removed]");
+}
 
 /**
  * The exact command the launch scripts run, built rather than pasted together.
@@ -110,7 +119,7 @@ export function parseSimulation(output: string): {
           distance: Number(verdict[2]),
           matched: verdict[3] === "true",
         }),
-    trouble: troubles.at(-1) ?? null,
+    trouble: troubles.length === 0 ? null : redact(troubles.at(-1) ?? ""),
   };
 }
 

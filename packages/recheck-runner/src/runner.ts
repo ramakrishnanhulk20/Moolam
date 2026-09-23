@@ -1,6 +1,6 @@
 import { formatMon, type Config } from "./config.js";
-import type { Document } from "./document.js";
-import { isRealPicture } from "./document.js";
+import type { Document, RecordLookup } from "./document.js";
+import { isRealPicture, readUnsealRecord, withRecord } from "./document.js";
 import type { IndexClient, PassportRow } from "./index-read.js";
 import { cut } from "./net.js";
 import type { QueueClient } from "./queue.js";
@@ -14,6 +14,11 @@ export interface Deps {
   queue: QueueClient;
   index: IndexClient;
   readDocument: (metadataURI: string) => Promise<Document>;
+  /**
+   * Whether a sealed passport's holder has published the picture since. Left out, the verify
+   * service's own GET /unseal route is asked, at the address the queue already uses.
+   */
+  unsealRecord?: (passportId: string) => Promise<RecordLookup>;
   eventIndex: (txHash: string, passportId: string) => Promise<number>;
   balanceWei: () => Promise<bigint>;
   simulate: (request: SimulateRequest) => Promise<SimulateResult>;
@@ -154,9 +159,24 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     return await refuse(`passport ${short} already carries ${row.attestationCount} re-check(s)`);
   }
 
-  const document = await deps.readDocument(row.metadataURI);
+  let document = await deps.readDocument(row.metadataURI);
   if (document.sealed) {
-    return await refuse(`passport ${short} is sealed, so there is no published picture to re-check`);
+    const lookup = deps.unsealRecord ?? ((passportId: string) => readUnsealRecord(config.verifyServiceUrl, passportId));
+    const record = await lookup(candidate.passportId);
+    if (record.kind === "failed") {
+      // Nothing is known either way, so nothing is spent: no report, no cooldown, no failure
+      // count. The next pass asks again.
+      log(`passport ${short} is sealed and its unseal record could not be read (${record.reason}), trying again next pass`);
+      return skip();
+    }
+    if (record.kind === "mismatch") {
+      return await refuse(`passport ${short} is sealed and the unseal record served for it names another passport`);
+    }
+    document = withRecord(document, record);
+    if (document.sealed) {
+      return await refuse(`passport ${short} is sealed, so there is no published picture to re-check`);
+    }
+    log(`passport ${short} was registered sealed and its holder has published the picture since, re-checking it`);
   }
   if (candidate.source === "sweep" && !isRealPicture(document)) {
     log(`passport ${short} is a seed test card or has no readable document, not sweeping it`);

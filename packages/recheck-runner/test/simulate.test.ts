@@ -96,6 +96,20 @@ describe("reading what the simulator printed", () => {
     expect(parsed.matched).toBeUndefined();
     expect(parsed.trouble).toContain("log does not match registered filter");
   });
+
+  it("never carries an endpoint address or a bearer value into the reason it hands on", () => {
+    const parsed = parseSimulation(
+      [
+        "RPC health check failed for https://example-name.monad-mainnet.quiknode.pro/5ecre7k3y/ (status 401)",
+        "fetch error: GET https://gw.mypinata.cloud/files/bafy?X-Algorithm=PINATA1&X-Signature=abc failed with Bearer eyJhbGciOi.secret",
+      ].join("\n"),
+    );
+    expect(parsed.trouble).toContain("failed with Bearer [removed]");
+    expect(parsed.trouble).toContain("[address removed]");
+    for (const leaked of ["quiknode", "5ecre7k3y", "mypinata", "X-Signature", "eyJhbGciOi"]) {
+      expect(parsed.trouble).not.toContain(leaked);
+    }
+  });
 });
 
 describe("one run", () => {
