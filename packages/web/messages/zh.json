@@ -1247,7 +1247,7 @@
         "promptLabel": "连提示词一起公开",
         "promptNote": "只要你不加进去，提示词就一直是私密的。",
         "privateLabel": "让 Chainlink 私下重新核对",
-        "privateNote": "Moolam 在私有存储上保留一份宽 512 像素的小副本。一个 Chainlink 机密工作流打开它，重新核对指纹，只把结论写到 Monad。",
+        "privateNote": "Moolam 在私有存储上保留一份长边 512 像素的小副本。一个 Chainlink 机密工作流打开它，重新核对指纹，只把结论写到 Monad。",
         "privateWho": "没有人能从网上打开它。Moolam 的运营者和存储服务商可以。目前工作流运行在 Chainlink 的模拟器里，那不是真正的安全飞地。你随时可以在护照页删除这份副本。"
       },
       "fields": {
@@ -1305,26 +1305,32 @@
         "public": "公开",
         "untitled": "无标题",
         "line": "图片没有公开。唯一的副本在你手里。",
+        "linePrivate": "图片没有公开。完整的副本只在你手里。",
         "registered": "{date} 登记。图片没有公开。"
       },
       "handback": {
         "kicker": "你唯一的副本",
         "heading": "签名后的文件就在这个浏览器里",
         "body": "Moolam 没有固定图片的任何部分，也没有留下任何东西。关掉这页之前先保存。",
+        "bodyPrivate": "Moolam 没有固定图片本身的任何部分。它只保留你要求的那份私有小副本。关掉这页之前先保存签名后的文件。",
         "save": "保存签名后的文件",
         "saved": "已保存。放在你能再找到的地方。",
         "only": "这是唯一能解封这本护照的副本。"
       },
       "done": {
         "label": "已在 Monad 上封存",
-        "body": "图片没有公开。Moolam 不留任何副本。"
+        "body": "图片没有公开。Moolam 不留任何副本。",
+        "bodyPrivate": "图片没有公开。Moolam 只保留你要求的那份私有小副本。"
       },
       "receipt": {
         "label": "已在 Monad 上封存",
         "detail": "图片没有公开。Moolam 不留任何副本。",
+        "detailPrivate": "图片没有公开。Moolam 只保留你要求的那份私有小副本。",
         "fingerprintDetail": "取自签名后的文件，它从未离开这个浏览器。已嵌入 C2PA 清单：{manifest}。",
         "privateLabel": "已保留私有副本",
-        "privateDetail": "供 Chainlink 私下重新核对。你随时可以在护照页删除它。"
+        "privateDetail": "供 Chainlink 私下重新核对。<page>你随时可以在护照页删除它。</page>",
+        "noPrivateLabel": "没有私有副本",
+        "noPrivateDetail": "你要求了私下重新核对，但服务没有保留副本，所以这本护照没有副本。它已封存，任何部分都没有被保留。"
       }
     },
     "receipt": {

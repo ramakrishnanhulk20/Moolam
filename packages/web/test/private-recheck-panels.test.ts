@@ -228,7 +228,8 @@ describe("the stub", () => {
   it("stamps the private copy when the answer says one was kept", () => {
     const markup = render("en", createElement(Receipt, { studio: studioWith({ ...SEALED, privateRecheck: true }, true) }));
     expect(markup).toContain(en.studio.sealed.receipt.privateLabel);
-    expect(markup).toContain(escaped(en.studio.sealed.receipt.privateDetail));
+    // The last sentence is a link to the passport page, so the line is read without its two tags.
+    expect(markup).toContain(escaped(en.studio.sealed.receipt.privateDetail.split("<page>")[0]));
   });
 
   it("stamps nothing about a copy the answer did not report, whatever the switch said", () => {

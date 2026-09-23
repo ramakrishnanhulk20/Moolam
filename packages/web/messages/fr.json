@@ -1245,7 +1245,7 @@
         "promptLabel": "Inclure le prompt",
         "promptNote": "Le prompt reste privé tant que tu ne l'inclus pas.",
         "privateLabel": "Laisser Chainlink la revérifier en privé",
-        "privateNote": "Moolam garde une petite copie, de 512 pixels de large, sur un stockage privé. Un workflow confidentiel Chainlink l'ouvre pour revérifier l'empreinte et n'inscrit que le verdict sur Monad.",
+        "privateNote": "Moolam garde une petite copie, de 512 pixels sur son plus grand côté, sur un stockage privé. Un workflow confidentiel Chainlink l'ouvre pour revérifier l'empreinte et n'inscrit que le verdict sur Monad.",
         "privateWho": "Personne ne peut l'ouvrir depuis le web. L'opérateur de Moolam et le fournisseur de stockage le peuvent. Aujourd'hui, le workflow tourne dans le simulateur de Chainlink, qui n'est pas une vraie enclave. Tu peux supprimer la copie depuis la page du passeport à tout moment."
       },
       "fields": {
@@ -1303,26 +1303,32 @@
         "public": "Public",
         "untitled": "Sans titre",
         "line": "L'image n'est pas publiée. Tu détiens la seule copie.",
+        "linePrivate": "L'image n'est pas publiée. Tu détiens la seule copie complète.",
         "registered": "Enregistré le {date}. L'image n'est pas publiée."
       },
       "handback": {
         "kicker": "Ta seule copie",
         "heading": "Le fichier signé est dans ce navigateur",
         "body": "Moolam n'a rien épinglé de l'image et n'en garde rien. Enregistre-le avant de fermer cette page.",
+        "bodyPrivate": "Moolam n'a rien épinglé de l'image elle-même. Il ne garde que la petite copie privée que tu as demandée. Enregistre le fichier signé avant de fermer cette page.",
         "save": "Enregistrer le fichier signé",
         "saved": "Enregistré. Range-le là où tu le retrouveras.",
         "only": "C'est la seule copie qui peut desceller ce passeport."
       },
       "done": {
         "label": "Scellé sur Monad",
-        "body": "L'image n'est pas publiée. Moolam n'en garde aucune copie."
+        "body": "L'image n'est pas publiée. Moolam n'en garde aucune copie.",
+        "bodyPrivate": "L'image n'est pas publiée. Moolam ne garde que la petite copie privée que tu as demandée."
       },
       "receipt": {
         "label": "Scellé sur Monad",
         "detail": "L'image n'est pas publiée. Moolam n'en garde aucune copie.",
+        "detailPrivate": "L'image n'est pas publiée. Moolam ne garde que la petite copie privée que tu as demandée.",
         "fingerprintDetail": "Pris sur le fichier signé, qui n'a jamais quitté ce navigateur. Manifeste C2PA intégré : {manifest}.",
         "privateLabel": "Copie privée conservée",
-        "privateDetail": "Pour la revérification privée de Chainlink. Supprime-la depuis la page du passeport quand tu veux."
+        "privateDetail": "Pour la revérification privée de Chainlink. <page>Supprime-la depuis la page du passeport quand tu veux.</page>",
+        "noPrivateLabel": "Aucune copie privée",
+        "noPrivateDetail": "Tu as demandé une revérification privée et le service n'a gardé aucune copie, donc ce passeport n'en a pas. Il est scellé et rien n'en a été gardé."
       }
     },
     "receipt": {

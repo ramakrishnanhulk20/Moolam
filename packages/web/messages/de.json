@@ -1245,7 +1245,7 @@
         "promptLabel": "Den Prompt mitveröffentlichen",
         "promptNote": "Der Prompt bleibt privat, solange du ihn nicht dazunimmst.",
         "privateLabel": "Chainlink das Bild privat nachprüfen lassen",
-        "privateNote": "Moolam behält eine kleine Kopie, 512 Pixel breit, auf privatem Speicher. Ein vertraulicher Chainlink-Workflow öffnet sie, prüft den Fingerabdruck nach und schreibt nur das Urteil auf Monad.",
+        "privateNote": "Moolam behält eine kleine Kopie, 512 Pixel an der längsten Seite, auf privatem Speicher. Ein vertraulicher Chainlink-Workflow öffnet sie, prüft den Fingerabdruck nach und schreibt nur das Urteil auf Monad.",
         "privateWho": "Aus dem Web kann niemand sie öffnen. Der Betreiber von Moolam und der Speicheranbieter können es. Heute läuft der Workflow in Chainlinks Simulator, und der ist keine echte Enklave. Du kannst die Kopie jederzeit auf der Passport-Seite löschen."
       },
       "fields": {
@@ -1303,26 +1303,32 @@
         "public": "Öffentlich",
         "untitled": "Ohne Titel",
         "line": "Das Bild ist nicht veröffentlicht. Du hältst die einzige Kopie.",
+        "linePrivate": "Das Bild ist nicht veröffentlicht. Du hältst die einzige vollständige Kopie.",
         "registered": "Eingetragen am {date}. Das Bild ist nicht veröffentlicht."
       },
       "handback": {
         "kicker": "Deine einzige Kopie",
         "heading": "Die signierte Datei liegt in diesem Browser",
         "body": "Moolam hat nichts vom Bild gepinnt und nichts behalten. Sichere sie, bevor du diese Seite schließt.",
+        "bodyPrivate": "Moolam hat nichts vom Bild selbst gepinnt. Es behält nur die kleine private Kopie, um die du gebeten hast. Sichere die signierte Datei, bevor du diese Seite schließt.",
         "save": "Signierte Datei sichern",
         "saved": "Gesichert. Leg sie dorthin, wo du sie wiederfindest.",
         "only": "Das ist die einzige Kopie, die diesen Passport wieder öffnen kann."
       },
       "done": {
         "label": "Auf Monad versiegelt",
-        "body": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie."
+        "body": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
+        "bodyPrivate": "Das Bild ist nicht veröffentlicht. Moolam behält nur die kleine private Kopie, um die du gebeten hast."
       },
       "receipt": {
         "label": "Auf Monad versiegelt",
         "detail": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
+        "detailPrivate": "Das Bild ist nicht veröffentlicht. Moolam behält nur die kleine private Kopie, um die du gebeten hast.",
         "fingerprintDetail": "Aus der signierten Datei, die diesen Browser nie verlassen hat. C2PA-Manifest eingebettet: {manifest}.",
         "privateLabel": "Private Kopie behalten",
-        "privateDetail": "Für die private Nachprüfung durch Chainlink. Lösch sie auf der Passport-Seite, wann immer du willst."
+        "privateDetail": "Für die private Nachprüfung durch Chainlink. <page>Lösch sie auf der Passport-Seite, wann immer du willst.</page>",
+        "noPrivateLabel": "Keine private Kopie",
+        "noPrivateDetail": "Du hast um eine private Nachprüfung gebeten, und der Dienst hat keine Kopie behalten, also hat dieser Passport keine. Er ist versiegelt, und nichts davon wurde behalten."
       }
     },
     "receipt": {

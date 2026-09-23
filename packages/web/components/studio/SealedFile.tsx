@@ -112,12 +112,15 @@ export function SealedFileCard({
   title,
   saved,
   onSaved,
+  privateCopy = false,
 }: {
   file: SealedHandback;
   bits: boolean[] | null;
   title: string;
   saved: boolean;
   onSaved: () => void;
+  /** True only when the service's own answer says it kept the small private copy. */
+  privateCopy?: boolean;
 }) {
   const t = useTranslations("studio.sealed.handback");
 
@@ -133,7 +136,7 @@ export function SealedFileCard({
 
       <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
         <div className="w-[min(11rem,45%)] shrink-0">
-          <Plate bits={bits} title={title} />
+          <Plate bits={bits} title={title} privateCopy={privateCopy} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -141,7 +144,9 @@ export function SealedFileCard({
           <h3 className="mt-3 max-w-[22ch] font-display text-[clamp(1.2rem,2.4vw,1.7rem)] font-semibold uppercase leading-[1.05] tracking-[-0.02em]">
             {t("heading")}
           </h3>
-          <p className="mt-3 max-w-[48ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+          <p className="mt-3 max-w-[48ch] text-sm leading-relaxed text-text-muted">
+            {privateCopy ? t("bodyPrivate") : t("body")}
+          </p>
           <SaveControl file={file} saved={saved} onSaved={onSaved} />
         </div>
       </div>
@@ -163,6 +168,7 @@ export function SealedDoneBand({
   registeredAt,
   saved,
   onSaved,
+  privateCopy = false,
 }: {
   /** Null when this browser no longer holds the file, which a reload leaves behind. */
   file: SealedHandback | null;
@@ -171,6 +177,8 @@ export function SealedDoneBand({
   registeredAt: number | null;
   saved: boolean;
   onSaved: () => void;
+  /** True only when the service's own answer says it kept the small private copy. */
+  privateCopy?: boolean;
 }) {
   const t = useTranslations("studio.sealed.done");
 
@@ -181,7 +189,7 @@ export function SealedDoneBand({
         className="pointer-events-none absolute end-[6%] top-[-18%] h-[70%] w-[46%] rounded-full bg-accent-soft blur-[70px]"
       />
       <div className="relative w-[min(13rem,60%)] sm:w-full">
-        <Plate bits={bits} title={title} registeredAt={registeredAt} />
+        <Plate bits={bits} title={title} registeredAt={registeredAt} privateCopy={privateCopy} />
       </div>
 
       <div className="relative min-w-0">
@@ -189,7 +197,9 @@ export function SealedDoneBand({
           <span className="motif h-[9px] w-[9px]" />
           {t("label")}
         </p>
-        <p className="mt-4 max-w-[44ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+        <p className="mt-4 max-w-[44ch] text-sm leading-relaxed text-text-muted">
+          {privateCopy ? t("bodyPrivate") : t("body")}
+        </p>
         {file === null ? null : <SaveControl file={file} saved={saved} onSaved={onSaved} />}
       </div>
     </div>
@@ -249,15 +259,22 @@ function SaveControl({ file, saved, onSaved }: { file: SealedHandback; saved: bo
   );
 }
 
-/** The sealed plate, or the frame it will fill once the fingerprint is in. */
+/**
+ * The sealed plate, or the frame it will fill once the fingerprint is in.
+ *
+ * With a private copy kept the creator no longer holds the only copy, only the
+ * only full one, and the plate has to say so rather than the older sentence.
+ */
 function Plate({
   bits,
   title,
   registeredAt,
+  privateCopy,
 }: {
   bits: boolean[] | null;
   title: string;
   registeredAt?: number | null;
+  privateCopy: boolean;
 }) {
   const t = useTranslations("studio.sealed.plate");
   const format = useFormatter();
@@ -268,7 +285,7 @@ function Plate({
 
   const line =
     registeredAt === undefined || registeredAt === null
-      ? t("line")
+      ? t(privateCopy ? "linePrivate" : "line")
       : t("registered", { date: format.dateTime(new Date(registeredAt), { dateStyle: "medium" }) });
 
   return (

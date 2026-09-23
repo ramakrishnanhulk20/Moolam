@@ -114,7 +114,7 @@ const SWITCH_WORDS = {
   promptLabel: "Include the prompt",
   promptNote: "The prompt stays private unless you include it.",
   privateLabel: "Let Chainlink re-check this privately",
-  privateNote: "Moolam keeps one small copy, 512 pixels wide, on private storage.",
+  privateNote: "Moolam keeps one small copy, 512 pixels on its longest side, on private storage.",
   privateWho: "Nobody can open it from the web. Moolam's operator and the storage provider can.",
 };
 

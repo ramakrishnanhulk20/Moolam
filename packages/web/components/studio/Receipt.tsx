@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { plainStatement } from "@/lib/chain/consent";
 import { feeInMon } from "@/lib/chain/fee";
@@ -9,6 +10,7 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import type { SealedHandback } from "@/lib/sealed/handback";
 import { useSealedSave } from "@/lib/sealed/save";
+import { passportId } from "@/lib/studio/flow";
 import type { Studio } from "@/lib/studio/useStudio";
 
 interface Mark {
@@ -16,7 +18,8 @@ interface Mark {
   label: string;
   /** Left out on a stamp whose whole fact is its label, such as a private copy with no public address. */
   value?: string;
-  detail?: string;
+  /** Text, or text with one in-app link in it, such as the way to delete a kept copy. */
+  detail?: ReactNode;
   href?: string;
   tone?: "accent" | "verified";
   /** The one figure on this mark worth reading from across the room. */
@@ -42,7 +45,24 @@ export function Receipt({ studio }: { studio: Studio }) {
   // Reached through the studio rather than taken off it, the way the statement's
   // own button is: a screen that has not mounted the hook yet has no actions.
   const save = useSealedSave(file, () => studio.actions.saveSealed());
-  const marks = collect(studio, t, words, format, file, save);
+  // The kept copy is deleted from the passport page, so the sentence that says
+  // so goes there. The same id the done screen's Open passport uses.
+  const id = passportId(studio.register);
+  const privateDetail = t.rich("sealed.receipt.privateDetail", {
+    page: (chunks) =>
+      id === null ? (
+        chunks
+      ) : (
+        <Link
+          href={`/passport/${id}`}
+          data-private-copy-link
+          className="text-text-muted underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
+        >
+          {chunks}
+        </Link>
+      ),
+  });
+  const marks = collect(studio, t, words, format, file, save, privateDetail);
 
   return (
     /* The stub is part of the one box now, so its tear is a horizontal line
@@ -170,6 +190,8 @@ function collect(
   /** The one copy of a sealed picture, while this browser still holds it, and the control that writes it. */
   file: SealedHandback | null,
   save: () => void,
+  /** The kept copy's line, already carrying its link to the passport page. */
+  privateDetail: ReactNode,
 ): Mark[] {
   const marks: Mark[] = [];
 
@@ -223,19 +245,26 @@ function collect(
         label: t("sealed.receipt.label"),
         value: prepared.metadata.cid,
         href: gatewayUrl(prepared.metadata.uri),
-        detail: t("sealed.receipt.detail"),
+        detail: prepared.privateRecheck === true ? t("sealed.receipt.detailPrivate") : t("sealed.receipt.detail"),
         lines: file === null ? undefined : [t("sealed.handback.only")],
         action: file === null ? undefined : { label: t("sealed.handback.save"), onClick: save },
         tone: "verified",
       });
-      // Only the service's own answer stamps this. The switch says what was
-      // asked for; this says what was kept, and the copy's address is never on
-      // screen because it is never public.
+      // Only the service's own answer stamps a kept copy. The switch says what
+      // was asked for; this says what was kept, and the copy's address is never
+      // on screen because it is never public. A creator who asked and got no
+      // copy is told so, rather than left to read silence as a yes.
       if (prepared.privateRecheck === true) {
         marks.push({
           key: "privateCopy",
           label: t("sealed.receipt.privateLabel"),
-          detail: t("sealed.receipt.privateDetail"),
+          detail: privateDetail,
+        });
+      } else if (studio.register.sealed.privateRecheck === true) {
+        marks.push({
+          key: "noPrivateCopy",
+          label: t("sealed.receipt.noPrivateLabel"),
+          detail: t("sealed.receipt.noPrivateDetail"),
         });
       }
     } else {

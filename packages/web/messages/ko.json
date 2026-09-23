@@ -1247,7 +1247,7 @@
         "promptLabel": "프롬프트도 함께 공개",
         "promptNote": "포함하지 않는 한 프롬프트는 비공개로 남습니다.",
         "privateLabel": "Chainlink가 비공개로 다시 확인하게 하기",
-        "privateNote": "Moolam은 너비 512픽셀의 작은 사본 하나를 비공개 저장소에 둡니다. Chainlink 기밀 워크플로가 그것을 열어 지문을 다시 확인하고 판정만 Monad에 기록합니다.",
+        "privateNote": "Moolam은 긴 변 512픽셀의 작은 사본 하나를 비공개 저장소에 둡니다. Chainlink 기밀 워크플로가 그것을 열어 지문을 다시 확인하고 판정만 Monad에 기록합니다.",
         "privateWho": "웹에서는 아무도 열 수 없습니다. Moolam 운영자와 저장소 제공자는 열 수 있습니다. 지금은 워크플로가 Chainlink 시뮬레이터에서 돌아가며, 이는 진짜 엔클레이브가 아닙니다. 사본은 패스포트 페이지에서 언제든 지울 수 있습니다."
       },
       "fields": {
@@ -1305,26 +1305,32 @@
         "public": "공개",
         "untitled": "제목 없음",
         "line": "사진은 공개되지 않습니다. 유일한 사본은 당신에게 있습니다.",
+        "linePrivate": "사진은 공개되지 않습니다. 온전한 사본은 당신에게만 있습니다.",
         "registered": "{date}에 등록. 사진은 공개되지 않습니다."
       },
       "handback": {
         "kicker": "당신의 유일한 사본",
         "heading": "서명된 파일이 이 브라우저 안에 있습니다",
         "body": "Moolam은 사진을 아무것도 고정하지 않았고 아무것도 두지 않았습니다. 이 페이지를 닫기 전에 저장하세요.",
+        "bodyPrivate": "Moolam은 사진 자체를 아무것도 고정하지 않았습니다. 당신이 요청한 작은 비공개 사본 하나만 둡니다. 이 페이지를 닫기 전에 서명된 파일을 저장하세요.",
         "save": "서명된 파일 저장",
         "saved": "저장했습니다. 다시 찾을 수 있는 곳에 두세요.",
         "only": "이 패스포트를 풀 수 있는 사본은 이것뿐입니다."
       },
       "done": {
         "label": "Monad 위에 봉인됨",
-        "body": "사진은 공개되지 않습니다. Moolam은 사본을 두지 않습니다."
+        "body": "사진은 공개되지 않습니다. Moolam은 사본을 두지 않습니다.",
+        "bodyPrivate": "사진은 공개되지 않습니다. Moolam은 당신이 요청한 작은 비공개 사본만 둡니다."
       },
       "receipt": {
         "label": "Monad 위에 봉인됨",
         "detail": "사진은 공개되지 않습니다. Moolam은 사본을 두지 않습니다.",
+        "detailPrivate": "사진은 공개되지 않습니다. Moolam은 당신이 요청한 작은 비공개 사본만 둡니다.",
         "fingerprintDetail": "이 브라우저를 떠난 적 없는 서명된 파일에서 얻었습니다. C2PA 매니페스트 삽입: {manifest}.",
         "privateLabel": "비공개 사본 보관됨",
-        "privateDetail": "Chainlink의 비공개 재확인을 위한 것입니다. 원할 때 패스포트 페이지에서 지우세요."
+        "privateDetail": "Chainlink의 비공개 재확인을 위한 것입니다. <page>원할 때 패스포트 페이지에서 지우세요.</page>",
+        "noPrivateLabel": "비공개 사본 없음",
+        "noPrivateDetail": "비공개 재확인을 요청했지만 서비스가 사본을 두지 않았으므로 이 패스포트에는 사본이 없습니다. 봉인되었고 아무것도 남아 있지 않습니다."
       }
     },
     "receipt": {

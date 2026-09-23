@@ -290,6 +290,7 @@ function Run({
           title={state.title}
           saved={state.sealed.saved}
           onSaved={onSaved}
+          privateCopy={state.prepared?.privateRecheck === true}
         />
       )}
 
@@ -622,6 +623,7 @@ function Generated({ state, onSaved }: { state: RegisterState; onSaved: () => vo
           registeredAt={state.registeredAt}
           saved={state.sealed.saved}
           onSaved={onSaved}
+          privateCopy={state.prepared?.privateRecheck === true}
         />
       ) : generated === null ? null : (
         <div className="relative">

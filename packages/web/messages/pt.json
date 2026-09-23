@@ -1246,7 +1246,7 @@
         "promptLabel": "Incluir o prompt",
         "promptNote": "O prompt fica privado enquanto você não o incluir.",
         "privateLabel": "Deixar a Chainlink conferir de novo em privado",
-        "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels de largura, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para conferir de novo a impressão digital e grava só o veredito na Monad.",
+        "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels no lado maior, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para conferir de novo a impressão digital e grava só o veredito na Monad.",
         "privateWho": "Ninguém consegue abri-la pela web. O operador da Moolam e o provedor de armazenamento conseguem. Hoje o fluxo roda no simulador da Chainlink, que não é um enclave de verdade. Você pode apagar a cópia pela página do passaporte quando quiser."
       },
       "fields": {
@@ -1304,26 +1304,32 @@
         "public": "Público",
         "untitled": "Sem título",
         "line": "A imagem não está publicada. Você tem a única cópia.",
+        "linePrivate": "A imagem não está publicada. Você tem a única cópia completa.",
         "registered": "Registrado em {date}. A imagem não está publicada."
       },
       "handback": {
         "kicker": "Sua única cópia",
         "heading": "O arquivo assinado está neste navegador",
         "body": "A Moolam não fixou nada da imagem e não guardou nada. Salve antes de fechar esta página.",
+        "bodyPrivate": "A Moolam não fixou nada da imagem em si. Guarda só a cópia privada pequena que você pediu. Salve o arquivo assinado antes de fechar esta página.",
         "save": "Salvar o arquivo assinado",
         "saved": "Salvo. Deixe onde você vá encontrar de novo.",
         "only": "Esta é a única cópia capaz de abrir este passaporte."
       },
       "done": {
         "label": "Lacrado na Monad",
-        "body": "A imagem não está publicada. A Moolam não guarda nenhuma cópia."
+        "body": "A imagem não está publicada. A Moolam não guarda nenhuma cópia.",
+        "bodyPrivate": "A imagem não está publicada. A Moolam guarda só a cópia privada pequena que você pediu."
       },
       "receipt": {
         "label": "Lacrado na Monad",
         "detail": "A imagem não está publicada. A Moolam não guarda nenhuma cópia.",
+        "detailPrivate": "A imagem não está publicada. A Moolam guarda só a cópia privada pequena que você pediu.",
         "fingerprintDetail": "Tirado do arquivo assinado, que nunca saiu deste navegador. Manifesto C2PA embutido: {manifest}.",
         "privateLabel": "Cópia privada guardada",
-        "privateDetail": "Para a conferência privada da Chainlink. Apague-a pela página do passaporte quando quiser."
+        "privateDetail": "Para a conferência privada da Chainlink. <page>Apague-a pela página do passaporte quando quiser.</page>",
+        "noPrivateLabel": "Nenhuma cópia privada",
+        "noPrivateDetail": "Você pediu uma conferência privada e o serviço não guardou nenhuma cópia, então este passaporte não tem nenhuma. Ele está lacrado e nada dele foi guardado."
       }
     },
     "receipt": {
