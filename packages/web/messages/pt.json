@@ -483,7 +483,7 @@
       "whatIsRecheck": "Uma reconferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad pelo contrato receptor. Ninguém pode gravar uma sobre a própria imagem.",
       "private": {
         "badge": "Reconferência privada",
-        "line": "Reconferida em privado por um fluxo confidencial da Chainlink. Rodou no simulador da Chainlink em uma única máquina, que não é um enclave de verdade."
+        "line": "Reconferida em privado por um fluxo confidencial da Chainlink. Rodou em uma única máquina, no simulador da Chainlink, que não é um enclave de verdade."
       }
     },
     "children": {
@@ -926,7 +926,7 @@
       "heading": "A cópia privada da Moolam",
       "body": "A Moolam guarda uma cópia pequena desta imagem, com 512 pixels no lado maior, para que um fluxo confidencial da Chainlink possa reconferi-la. Só você pode apagá-la.",
       "delete": "Apagar a cópia privada da Moolam",
-      "confirm": "Isto não tem volta. Sem a cópia nenhuma reconferência privada pode rodar de novo, e o passaporte continua lacrado.",
+      "confirm": "Isto não tem volta. Sem a cópia nenhuma reconferência privada pode rodar de novo, e o passaporte continuará lacrado.",
       "confirmDelete": "Apagar",
       "keep": "Manter",
       "sending": "Apagando a cópia privada",
@@ -1282,9 +1282,9 @@
         "leftOut": "Fica de fora",
         "promptLabel": "Incluir o prompt",
         "promptNote": "O prompt fica privado enquanto você não o incluir.",
-        "privateLabel": "Deixar a Chainlink conferir de novo em privado",
-        "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels no lado maior, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para conferir de novo a impressão digital e grava só o veredito na Monad.",
-        "privateWho": "Ninguém consegue abri-la pela web. O operador da Moolam e o provedor de armazenamento conseguem. Hoje o fluxo roda no simulador da Chainlink, que não é um enclave de verdade. Você pode apagar a cópia pela página do passaporte quando quiser."
+        "privateLabel": "Deixar a Chainlink reconferir esta imagem em privado",
+        "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels no lado maior, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para reconferir a impressão digital e grava só o veredito na Monad.",
+        "privateWho": "Ninguém consegue abri-la pela web. O operador da Moolam e o provedor de armazenamento conseguem. Por enquanto o fluxo roda no simulador da Chainlink, que não é um enclave de verdade. Você pode apagar a cópia pela página do passaporte quando quiser."
       },
       "fields": {
         "commitment": {
@@ -1332,7 +1332,7 @@
           "line": "São palavras que descrevem a imagem, então fica fora do arquivo a menos que você o inclua."
         },
         "privateRecheck": {
-          "label": "Que você pediu uma conferência privada",
+          "label": "Que você pediu uma reconferência privada",
           "line": "Uma palavra no arquivo fixado, para que a página do passaporte possa dizer isso. O endereço da cópia nunca aparece nele."
         }
       },
@@ -1364,9 +1364,9 @@
         "detailPrivate": "A imagem não está publicada. A Moolam guarda só a cópia privada pequena que você pediu.",
         "fingerprintDetail": "Tirado do arquivo assinado, que nunca saiu deste navegador. Manifesto C2PA embutido: {manifest}.",
         "privateLabel": "Cópia privada guardada",
-        "privateDetail": "Para a conferência privada da Chainlink. <page>Apague-a pela página do passaporte quando quiser.</page>",
+        "privateDetail": "Para a reconferência privada da Chainlink. <page>Apague-a pela página do passaporte quando quiser.</page>",
         "noPrivateLabel": "Nenhuma cópia privada",
-        "noPrivateDetail": "Você pediu uma conferência privada e o serviço não guardou nenhuma cópia, então este passaporte não tem nenhuma. Ele está lacrado e nada dele foi guardado."
+        "noPrivateDetail": "Você pediu uma reconferência privada e o serviço não guardou nenhuma cópia, então este passaporte não tem nenhuma. Ele está lacrado e nada dele foi guardado."
       }
     },
     "receipt": {

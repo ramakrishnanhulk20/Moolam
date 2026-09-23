@@ -482,7 +482,7 @@
       "whatIsRecheck": "Una recomprobación es un flujo CRE de Chainlink que descarga este archivo por su cuenta, vuelve a calcular la huella y escribe esa respuesta en Monad a través del contrato receptor. Nadie puede escribir una sobre su propia imagen.",
       "private": {
         "badge": "Revisión privada",
-        "line": "Recomprobada en privado por un flujo confidencial de Chainlink. Se ejecutó en el simulador de Chainlink en una sola máquina, que no es un enclave real."
+        "line": "Recomprobada en privado por un flujo confidencial de Chainlink. Se ejecutó en una sola máquina, en el simulador de Chainlink, que no es un enclave real."
       }
     },
     "children": {
@@ -925,7 +925,7 @@
       "heading": "La copia privada de Moolam",
       "body": "Moolam guarda una copia pequeña de esta imagen, de 512 píxeles en su lado más largo, para que un flujo confidencial de Chainlink pueda volver a comprobarla. Solo tú puedes borrarla.",
       "delete": "Borrar la copia privada de Moolam",
-      "confirm": "Esto no se puede deshacer. Sin la copia no se podrá hacer otra revisión privada, y el pasaporte sigue sellado.",
+      "confirm": "Esto no se puede deshacer. Sin la copia no se podrá hacer otra revisión privada, y el pasaporte seguirá sellado.",
       "confirmDelete": "Borrar",
       "keep": "Conservarla",
       "sending": "Borrando la copia privada",
@@ -1283,7 +1283,7 @@
         "promptNote": "El prompt queda en privado mientras no lo incluyas.",
         "privateLabel": "Dejar que Chainlink la vuelva a comprobar en privado",
         "privateNote": "Moolam guarda una copia pequeña, de 512 píxeles en su lado más largo, en almacenamiento privado. Un flujo confidencial de Chainlink la abre para volver a comprobar la huella y solo escribe el veredicto en Monad.",
-        "privateWho": "Nadie puede abrirla desde la web. El operador de Moolam y el proveedor de almacenamiento sí pueden. Hoy el flujo corre en el simulador de Chainlink, que no es un enclave real. Puedes borrar la copia desde la página del pasaporte cuando quieras."
+        "privateWho": "Nadie puede abrirla desde la web. El operador de Moolam y el proveedor de almacenamiento sí pueden. Por ahora el flujo se ejecuta en el simulador de Chainlink, que no es un enclave real. Puedes borrar la copia desde la página del pasaporte cuando quieras."
       },
       "fields": {
         "commitment": {
@@ -1331,7 +1331,7 @@
           "line": "Palabras que describen la imagen, así que se queda fuera del archivo salvo que lo incluyas."
         },
         "privateRecheck": {
-          "label": "Que pediste una comprobación privada",
+          "label": "Que pediste una revisión privada",
           "line": "Una palabra en el archivo fijado, para que la página del pasaporte pueda decirlo. La dirección de la copia nunca aparece en él."
         }
       },
@@ -1363,9 +1363,9 @@
         "detailPrivate": "La imagen no está publicada. Moolam solo guarda la pequeña copia privada que pediste.",
         "fingerprintDetail": "Tomado del archivo firmado, que nunca salió de este navegador. Manifiesto C2PA incrustado: {manifest}.",
         "privateLabel": "Copia privada guardada",
-        "privateDetail": "Para la comprobación privada de Chainlink. <page>Bórrala desde la página del pasaporte cuando quieras.</page>",
+        "privateDetail": "Para la revisión privada de Chainlink. <page>Bórrala desde la página del pasaporte cuando quieras.</page>",
         "noPrivateLabel": "Sin copia privada",
-        "noPrivateDetail": "Pediste una comprobación privada y el servicio no guardó ninguna copia, así que este pasaporte no tiene ninguna. Está sellado y no se guardó nada de él."
+        "noPrivateDetail": "Pediste una revisión privada y el servicio no guardó ninguna copia, así que este pasaporte no tiene ninguna. Está sellado y no se guardó nada de él."
       }
     },
     "receipt": {

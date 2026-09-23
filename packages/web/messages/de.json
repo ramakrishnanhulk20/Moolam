@@ -482,7 +482,7 @@
       "whatIsRecheck": "Eine Nachprüfung heißt: ein Chainlink-CRE-Workflow holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort über den Receiver-Vertrag auf Monad. Über das eigene Bild kann niemand eine schreiben.",
       "private": {
         "badge": "Private Nachprüfung",
-        "line": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow. Er lief im Simulator von Chainlink auf einem einzigen Rechner, der keine echte Enklave ist."
+        "line": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow. Er lief auf einem einzigen Rechner in Chainlinks Simulator, der keine echte Enklave ist."
       }
     },
     "children": {
@@ -921,7 +921,7 @@
       }
     },
     "privateCopy": {
-      "kicker": "Ihre Löschung",
+      "kicker": "Löschen liegt bei Ihnen",
       "heading": "Die private Kopie von Moolam",
       "body": "Moolam behält eine kleine Kopie dieses Bildes, 512 Pixel an der längsten Seite, damit ein vertraulicher Chainlink-Workflow es nachprüfen kann. Nur Sie können sie löschen.",
       "delete": "Die private Kopie von Moolam löschen",
@@ -935,7 +935,7 @@
         "notHolder": "Laut Registry hält eine andere Wallet diesen Pass, und nur sie kann die Kopie löschen.",
         "noPassport": "Die Registry kennt keinen Pass mit dieser Kennung.",
         "nothingKept": "Dieser Pass hat nie um eine private Kopie gebeten, also gibt es nichts zu löschen.",
-        "deleteFailed": "Ein Teil der Löschung ist nicht durchgegangen, die Kopie ist vielleicht noch da. Drücken Sie noch einmal auf Löschen, um es abzuschließen.",
+        "deleteFailed": "Ein Teil der Löschung ist nicht durchgegangen, die Kopie ist vielleicht noch da. Drücken Sie noch einmal auf Löschen, um den Vorgang abzuschließen.",
         "dependencyDown": "Ein nötiger Dienst hat nicht geantwortet, also wurde nichts gelöscht. Versuchen Sie es in einer Minute wieder.",
         "rateLimited": "Zu viele Anfragen von hier im Moment. Kurz warten und noch einmal versuchen.",
         "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
@@ -1283,7 +1283,7 @@
         "promptNote": "Der Prompt bleibt privat, solange du ihn nicht dazunimmst.",
         "privateLabel": "Chainlink das Bild privat nachprüfen lassen",
         "privateNote": "Moolam behält eine kleine Kopie, 512 Pixel an der längsten Seite, auf privatem Speicher. Ein vertraulicher Chainlink-Workflow öffnet sie, prüft den Fingerabdruck nach und schreibt nur das Urteil auf Monad.",
-        "privateWho": "Aus dem Web kann niemand sie öffnen. Der Betreiber von Moolam und der Speicheranbieter können es. Heute läuft der Workflow in Chainlinks Simulator, und der ist keine echte Enklave. Du kannst die Kopie jederzeit auf der Passport-Seite löschen."
+        "privateWho": "Aus dem Web kann niemand sie öffnen. Der Betreiber von Moolam und der Speicheranbieter können es. Derzeit läuft der Workflow in Chainlinks Simulator, der keine echte Enklave ist. Du kannst die Kopie jederzeit auf der Passseite löschen."
       },
       "fields": {
         "commitment": {
@@ -1331,8 +1331,8 @@
           "line": "Worte, die das Bild beschreiben. Er bleibt aus der Datei heraus, bis du ihn hineinnimmst."
         },
         "privateRecheck": {
-          "label": "Dass du eine private Nachprüfung verlangt hast",
-          "line": "Ein Wort in der gepinnten Datei, damit eine Passport-Seite es sagen kann. Die Adresse der Kopie steht nie darin."
+          "label": "Dass du um eine private Nachprüfung gebeten hast",
+          "line": "Ein Wort in der gepinnten Datei, damit eine Passseite es sagen kann. Die Adresse der Kopie steht nie darin."
         }
       },
       "plate": {
@@ -1362,10 +1362,10 @@
         "detail": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
         "detailPrivate": "Das Bild ist nicht veröffentlicht. Moolam behält nur die kleine private Kopie, um die du gebeten hast.",
         "fingerprintDetail": "Aus der signierten Datei, die diesen Browser nie verlassen hat. C2PA-Manifest eingebettet: {manifest}.",
-        "privateLabel": "Private Kopie behalten",
-        "privateDetail": "Für die private Nachprüfung durch Chainlink. <page>Lösch sie auf der Passport-Seite, wann immer du willst.</page>",
+        "privateLabel": "Private Kopie aufbewahrt",
+        "privateDetail": "Für die private Nachprüfung durch Chainlink. <page>Lösch sie auf der Passseite, wann immer du willst.</page>",
         "noPrivateLabel": "Keine private Kopie",
-        "noPrivateDetail": "Du hast um eine private Nachprüfung gebeten, und der Dienst hat keine Kopie behalten, also hat dieser Passport keine. Er ist versiegelt, und nichts davon wurde behalten."
+        "noPrivateDetail": "Du hast um eine private Nachprüfung gebeten, und der Dienst hat keine Kopie behalten, also hat dieser Pass keine. Er ist versiegelt, und nichts davon wurde behalten."
       }
     },
     "receipt": {

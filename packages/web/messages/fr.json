@@ -482,7 +482,7 @@
       "whatIsRecheck": "Une revérification, c’est un workflow CRE de Chainlink qui récupère ce fichier lui-même, recalcule l’empreinte et inscrit cette réponse sur Monad via le contrat récepteur. Personne ne peut en écrire une sur sa propre image.",
       "private": {
         "badge": "Revérification privée",
-        "line": "Revérifiée en privé par un workflow confidentiel Chainlink. Il a tourné dans le simulateur de Chainlink sur une seule machine, qui n'est pas une vraie enclave."
+        "line": "Revérifiée en privé par un workflow confidentiel Chainlink. Il s'est exécuté sur une seule machine, dans le simulateur de Chainlink, qui n'est pas une vraie enclave."
       }
     },
     "children": {
@@ -925,7 +925,7 @@
       "heading": "La copie privée de Moolam",
       "body": "Moolam garde une petite copie de cette image, de 512 pixels sur son plus grand côté, pour qu'un workflow confidentiel Chainlink puisse la revérifier. Vous seul pouvez la supprimer.",
       "delete": "Supprimer la copie privée de Moolam",
-      "confirm": "Cela ne s'annule pas. Sans la copie, aucune revérification privée ne sera plus possible, et le passeport reste scellé.",
+      "confirm": "Cela ne s'annule pas. Sans la copie, aucune revérification privée ne sera plus possible, et le passeport restera scellé.",
       "confirmDelete": "Supprimer",
       "keep": "La garder",
       "sending": "Suppression de la copie privée",
@@ -1283,7 +1283,7 @@
         "promptNote": "Le prompt reste privé tant que tu ne l'inclus pas.",
         "privateLabel": "Laisser Chainlink la revérifier en privé",
         "privateNote": "Moolam garde une petite copie, de 512 pixels sur son plus grand côté, sur un stockage privé. Un workflow confidentiel Chainlink l'ouvre pour revérifier l'empreinte et n'inscrit que le verdict sur Monad.",
-        "privateWho": "Personne ne peut l'ouvrir depuis le web. L'opérateur de Moolam et le fournisseur de stockage le peuvent. Aujourd'hui, le workflow tourne dans le simulateur de Chainlink, qui n'est pas une vraie enclave. Tu peux supprimer la copie depuis la page du passeport à tout moment."
+        "privateWho": "Personne ne peut l'ouvrir depuis le web. L'opérateur de Moolam et le fournisseur de stockage le peuvent. Pour l'instant, le workflow s'exécute dans le simulateur de Chainlink, qui n'est pas une vraie enclave. Tu peux supprimer la copie depuis la page du passeport à tout moment."
       },
       "fields": {
         "commitment": {
