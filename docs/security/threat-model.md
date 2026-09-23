@@ -121,6 +121,84 @@ a real statement on a real passport and change what the demo shows.
   where a link inside it points, so a reader that follows one still owes its own check. That is
   written into the contract's own comment so the next reader does not assume more.
 
+## Sealed pictures
+
+A creator can register a picture without publishing it. The passport id on Monad is the SHA-256 of
+the exact file, so the chain commits to those bytes without showing them. Moolam pins one small JSON
+document and no picture, no thumbnail and no manifest. The verify service signs the file, hands it
+straight back to the creator's browser and keeps nothing, so the creator holds the only copy. Later
+the holder may unseal: the service takes that file and publishes it only if its SHA-256 is the
+passport id and its fingerprint is the one on chain. Unsealing publishes exactly the registered bytes
+or nothing. The routes are described in [Verifier endpoints](../api/verifier-endpoints).
+
+### What is public by design
+
+Sealed hides the picture, not the passport. These are public from the moment of registration:
+
+- the passport id, which is the file's hash
+- the title the creator typed
+- the two fingerprints: a 64-bit perceptual hash, and a 256-bit block hash that is a 16 by 16 sketch
+  of light and dark squares and shows the rough layout of the picture
+- the creator's wallet and the date
+- the statement on how AI may use the picture, when the creator made one
+- the fact that it is sealed
+- for a picture the agent drew, the agent's id and the model's name. The prompt is left out
+
+The sealed plate on the passport page is drawn from exactly those 256 bits. What a visitor sees there
+is what anyone can already read from the chain, so nobody is surprised by it.
+
+### What sealed promises
+
+1. Moolam stores nothing of a sealed picture: no file pin, and no file left on disk.
+2. Moolam publishes nothing of it: the one document it pins has no image, thumbnail, manifest or
+   prompt in it.
+3. The creator holds the signed file before the chain holds the passport. The studio will not open
+   the passkey prompt until the browser has the file and its SHA-256 equals the passport id.
+4. No answer on the sealed routes is cached, refusals included, and no log line carries the picture.
+5. Only the wallet the registry names as holder, read at that moment, can unseal through Moolam.
+6. Unsealing publishes exactly the registered bytes, or nothing.
+7. Sealed is said in words wherever a passport shows, and never reads as broken, as re-checked or as
+   public.
+8. The creator sees what becomes public before signing.
+
+Promises 3 and 8 are the studio's own screens before the passkey prompt. The attack pass below does
+not cover them, and this page does not claim it does. For promise 7, the verify answer and the
+passport page are attacked below; Explore and the share card were read from outside on 2026-09-22
+and are recorded in [sealed-passports.txt](../../proofs/sealed-passports.txt).
+
+### Entry points and what stops each attack
+
+Attack pass 3 ran on 2026-09-23 in two halves, both saved in
+[pass-3.txt](../../proofs/attacks/pass-3.txt). The route half runs the real routes, the real C2PA
+signer and the real schema, with Pinata, Privy and the registry reads stubbed so every pin can be
+counted. The live half sends single requests to the hosted service and the live site, and reads the
+chain. It sends no transaction and spends nothing.
+
+| Entry point | Attack | What stops it | Proof |
+|---|---|---|---|
+| Sealed `/prepare` and `/generate` | Get the service to store or publish the picture anyway: a file pin, a thumbnail, or a field smuggled into the body (`image`, `thumbnail`, `manifest`, `prompt`, `animation_url`, `external_url`) | The sealed path pins one JSON document and calls no file pin. What is pinned is the strict schema's own output, so an unknown field is dropped, and a body with more than four text parts is refused before it is read | 1a: one pin and 0 files on each route; 1b: all six fields dropped, and all six at once refused `too-many-fields` with 0 pins; 1d: 0 files left on disk with the C2PA signer on. Not covered: a write by the signer outside the watched folders. [pass-3.txt](../../proofs/attacks/pass-3.txt) |
+| Caching and logs | Read the picture, or a refusal that repeats a title, out of a proxy, a browser store or the service log | One hook sets `Cache-Control: no-store` on every answer from these routes, whatever the status. No log line carries a body | 2a: 14 of 14 answers no-store across 200, 400, 401, 413 and 429 on the three routes; 279 log lines scanned and no slice of the picture in them. Not covered: a proxy that ignores no-store, and the host's own request log. [pass-3.txt](../../proofs/attacks/pass-3.txt) |
+| `/unseal` | A stranger opens someone else's passport; the holder sends different bytes; the bytes hash right but the chain's fingerprint differs; a picture too detailed for the re-check's thumbnail budget is published | The token names a Privy user whose wallets must include `ownerOf`, read from the chain at that moment. The upload's SHA-256 must be the passport id and its fingerprint the chain's. A picture whose thumbnail cannot fit in 60,000 bytes is refused, because it would be a passport that can never be re-checked. A refusal pins nothing | 3a: 403 `not-holder`; 3b: 400 `hash-mismatch`; 3c: 400 `fingerprint-mismatch`, three ways; 3d: 422 `thumbnail-too-large`; 0 pins on each. 3e, the control: the holder with the right file gets exactly four pins. [pass-3.txt](../../proofs/attacks/pass-3.txt) |
+| `/verify` and `/recheck/request` | Make a sealed passport read as public or broken to an API caller, send the Chainlink runner after a picture that was never published, or keep an unsealed one out of the queue | Every match in a verify answer carries `picture`: public, sealed, or unsealed with the time its holder published it. The re-check queue refuses a sealed passport and takes an unsealed one | 4a: `{"state":"sealed"}` on the file and on a re-encode, with no image or thumbnail address in either answer; 4b: 409 `sealed` and nothing queued; 4c: `{"state":"unsealed"}` with the record's time, and the re-check answered 200 pending. [pass-3.txt](../../proofs/attacks/pass-3.txt) |
+| The live service, from outside | Unseal with no token, a malformed token, a token signed by a key made on the spot, and an `alg none` token; a sealed prepare with no token; find the picture in the live sealed document or the live passport page | Tokens are checked against Privy's key set, issuer, audience, algorithm and expiry. The live document passes the service's own strict schema | 5a to 5d and 5f: 401 and no-store, and 5e shows nothing was published by them; 5h: 9 keys, 0 links, commitment equals the passport id; 5i: no IPFS address on the page that the chain and the unseal record do not name. [pass-3.txt](../../proofs/attacks/pass-3.txt) |
+
+The pass found two gaps and both were fixed the same day. The verify answer did not say a match was
+sealed (4a), and the re-check queue refused the one unsealed passport as sealed because it read only
+the sealed document (5g). After commit 7b97770 the route half shows both fixed, and the live service,
+running that build since 07:37 UTC, answered 200 pending for the same passport. The section "After
+the fixes" at the end of [pass-3.txt](../../proofs/attacks/pass-3.txt) holds that run.
+
+### The first unseal on mainnet
+
+Passport `0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c`, "Old but strong", was
+registered sealed from the live studio on 2026-09-22 at 12:23:50 UTC. Its holder published it at
+12:27:28 UTC, four minutes later, through the unseal route with the file the studio had handed back.
+The sealed document on chain is unchanged, because the registry cannot rewrite it. A record pinned
+beside it says the picture is public since, and the passport page reads the two together (5e and
+5i). Its Chainlink re-check is in the queue and read pending at 07:38 UTC on 2026-09-23, so no
+re-check of a picture that was sealed first has been delivered yet. The addresses are in
+[sealed-passports.txt](../../proofs/sealed-passports.txt).
+
 ## Weaknesses we did not fix, stated plainly
 
 - **First registered wins.** A passport proves who registered first, not who
@@ -166,5 +244,26 @@ a real statement on a real passport and change what the demo shows.
   free: each subdomain is its own registrable domain, so no other deployment can
   reach our keys. On a custom domain the rule has to be kept by hand, which means
   every subdomain under it stays ours.
+- **The orphan pin of a sealed prepare.** The sealed document is pinned before the creator signs,
+  because its address is part of what they sign. A creator who walks away leaves that document on
+  IPFS for good, holding the title, the fingerprints and the hash, with no passport behind it. Attack
+  1e shows it, and nothing tidies it up yet.
+- **A title is the creator's own public words.** The title is published as typed, sealed or not, up
+  to 120 characters. Someone who pastes a picture into it publishes at most 72 bytes of one, which is
+  no picture (attack 1c).
+- **The sketch is public.** The block hash is a 16 by 16 light and dark sketch of the picture. It
+  shows the rough layout and nothing finer, and the passport page draws it large so nobody is misled.
+- **Front-running a sealed registration.** The registry is immutable and first registered wins, so
+  someone who copies the hash out of a pending transaction and lands first holds the passport. That
+  is as true of public pictures. For a sealed one the dispute path is weaker, because a challenge is
+  judged only on what each side chooses to reveal.
+- **The image model's provider has seen a generated picture.** It drew the picture. Sealed keeps it
+  from the public, not from them.
+- **The creator holds the only copy.** Moolam keeps nothing of a sealed picture, so a creator who
+  loses the signed file can never unseal that passport. Any copy of the picture still matches it in
+  Verify, because matching runs on the public fingerprints, not on the file.
+- **The picture passes through the service's memory.** To fingerprint and sign it, the verify service
+  holds the picture in memory for the length of one request, about 100 MB at the peak for a 20 MB
+  file, and Node does not wipe freed memory. Nothing is written to disk (attack 1d).
 - **Self-audited.** No third party has audited these contracts. The attack
   scripts and their outputs are the evidence, and they are in this repo.

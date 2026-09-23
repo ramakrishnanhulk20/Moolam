@@ -19,6 +19,13 @@ because writing the control would put a real statement on a real passport and ch
 shows. The whole session, with every command exactly as it was typed, is in
 `proofs/consent-attacks.txt` so anyone can run it again.
 
+Sealed pictures have their own pass, pass 3, saved whole in
+[proofs/attacks/pass-3.txt](../../../proofs/attacks/pass-3.txt) rather than as one file per attack.
+Fourteen attacks run on the verify service's routes (`npx vitest run test/attacks-sealed.test.ts` in
+`packages/verifier`) and nine against the live service and site (`npm run attack:pass3` in
+`packages/agents`), which sends no transaction. The claims they back are in the threat model's
+"Sealed pictures" section.
+
 | File | What it tries | What refuses it |
 | --- | --- | --- |
 | `passkey-replay.txt` | Take the creator's WebAuthn assertion off a real passport and use it on a second passport with a different image hash | InvalidPasskeySignature. The assertion signs the digest, and the digest covers every field |

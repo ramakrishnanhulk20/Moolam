@@ -838,6 +838,9 @@ is in [proofs/consent-attacks.txt](proofs/consent-attacks.txt).
 
 A second pass of eight attacks, on a fork of Monad mainnet and on the browser code, is saved in
 [proofs/attacks/pass-2.txt](proofs/attacks/pass-2.txt): `npm run attack:pass2` and `npx vitest run test/attacks`.
+A third pass, on sealed pictures, is saved in [proofs/attacks/pass-3.txt](proofs/attacks/pass-3.txt):
+`npm run attack:pass3` in `packages/agents` and `npx vitest run test/attacks-sealed.test.ts` in
+`packages/verifier`.
 
 ### What Moolam does not defend against
 

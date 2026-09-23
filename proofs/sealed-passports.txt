@@ -41,6 +41,9 @@ picture has been published since, and every screen reads the two together.
   /en/passport/<id>   200: the picture is drawn from the record's image address, and no other IPFS
                       picture address appears in the page
 
-What this does not prove yet: a Chainlink re-check of a picture that was sealed first. On 2026-09-23 the
-re-check queue still refused this passport as sealed, because it read only the sealed document; that
-is being fixed, and the re-check will be recorded here when it lands.
+What this does not prove yet: a Chainlink re-check of a picture that was sealed first. On the morning of
+2026-09-23 the re-check queue still refused this passport as sealed, because it read only the sealed
+document (proofs/attacks/pass-3.txt, 5g). Fixed the same day in commit 7b97770 (the queue) and 77ef9c3
+(the workflow and the runner read the unseal record); the live service has run that build since 07:37
+UTC and took the request (200, pending). A dry run of the real workflow, with nothing sent, read the
+record and matched the chain at distance 2. The re-check itself will be recorded here when it lands.

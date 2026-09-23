@@ -202,3 +202,40 @@ Summary, one line per live attack: what it found | what it did not cover | verdi
   5i  the live passport page for the sealed passport: 200, 0 IPFS address the chain and the unseal record do not name, 0 stray IPFS image, and the picture the holder published is shown | not covered: what the browser fetches after hydration, which only the rendered HTML and payload are checked for here | PASS
 
 finished 2026-09-23T07:16:06.753Z, chain block 107,259,187
+
+
+AFTER THE FIXES (2026-09-23, commit 7b97770)
+============================================
+
+What changed. Attack 4a now finds the picture state on every match: a copy of a sealed passport
+answers picture {"state":"sealed"}, so an API or x402 caller learns it is sealed and not only that it
+matched. Finding 5g's refusal is gone for a passport its holder has unsealed: attack 4c shows the
+match saying unsealed with the record's time, and the re-check request answered 200 pending instead
+of 409 sealed.
+
+The live service has run this build since 2026-09-23 07:37 UTC (Railway deployment ac53d423). There,
+a live verify answer carries "picture":{"state":"public"} for the Monsoon picture, and
+POST /recheck/request for the unsealed passport 0x98054962... answered 200 pending instead of 409.
+Read back afterwards with GET /recheck/status/0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c:
+{"status":"pending","requestedAt":1790149131962}, which is 2026-09-23 07:38:51 UTC.
+
+cd packages/verifier && npx vitest run test/attacks-sealed.test.ts --reporter=verbose 2>&1 | grep -E "4a|4c|1b"
+(run at 2026-09-23T07:39:44Z on HEAD a837368, 14 of 14 tests passed; the service's JSON log lines and
+the lines that matched only because a hash or a request id contains "1b" or "4a" are left out; the
+1b "all six at once" line and the 4a and 4c verdict lines under each heading are from the same run
+and are added so the change can be read: the body with too many fields now answers too-many-fields,
+where the first run above printed Premature close)
+
+ ✓ test/attacks-sealed.test.ts > attack 1: nothing of the picture is stored or published (invariants 1 and 2) > 1b drops every smuggled body field, and refuses a body with too many of them 250ms
+ ✓ test/attacks-sealed.test.ts > attack 4: sealed never reads as public or broken (invariant 7) > 4a answers a copy of a sealed passport with no image or thumbnail address, and says whether it is sealed 78ms
+ ✓ test/attacks-sealed.test.ts > attack 4: sealed never reads as public or broken (invariant 7) > 4c says unsealed on a copy of a passport its holder published, and queues its re-check 66ms
+  1b  smuggled fields image, thumbnail, manifest, prompt, animation_url, external_url
+        /prepare + all six at once   400 {"error":"too-many-fields"}, pins 0
+  4a  POST /verify with a copy of a sealed passport the index holds
+      PASS on the picture, no image, thumbnail or gateway address in either answer; PASS on the flag: the match carries picture {"state":"sealed"} in both answers, so an API or x402 caller is told the picture is sealed and not only the match; not covered: the web's verify card, which reads the flag itself and is tested in packages/web/test/sealed-verify.test.ts, and /verify/paid, which attaches the same fact through the same function and is tested in test/passportFacts.test.ts
+        the signed file itself   200, best 0xc4ed5a6a95... confidence 1.000, keys result,manifest, image or thumbnail address none, sealed flag present
+        a quality 70 re-encode   200, best 0xc4ed5a6a95... confidence 0.961, keys result,manifest, image or thumbnail address none, sealed flag present
+  4c  a sealed passport its holder has unsealed since (finding 5g), through /verify and /recheck/request
+      PASS, the copy's match says unsealed with the record's time, and the re-check request is 200 pending, not 409 sealed; not covered: the live Pinata listing and the gateway read behind the record, which are stubbed here and read live in production
+        verify picture {"state":"unsealed","at":"2026-09-22T12:27:28.000Z"}
+        recheck answer {"passportId":"0xd932468e8f...","status":"pending","requestedAt":1790149184890,"position":1,"already":false}
