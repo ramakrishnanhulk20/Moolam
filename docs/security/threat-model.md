@@ -195,9 +195,12 @@ registered sealed from the live studio on 2026-09-22 at 12:23:50 UTC. Its holder
 12:27:28 UTC, four minutes later, through the unseal route with the file the studio had handed back.
 The sealed document on chain is unchanged, because the registry cannot rewrite it. A record pinned
 beside it says the picture is public since, and the passport page reads the two together (5e and
-5i). Its Chainlink re-check is in the queue and read pending at 07:38 UTC on 2026-09-23, so no
-re-check of a picture that was sealed first has been delivered yet. The addresses are in
-[sealed-passports.txt](../../proofs/sealed-passports.txt).
+5i). On 2026-09-23 the Chainlink workflow re-checked it through that record: distance 2, matched,
+report transaction
+[0x48aa7543...](https://monadvision.com/tx/0x48aa75431f6f564ad8dd53806d7723ec397adca25ddb21f5e8e3eb0888f96ce0),
+a simulation run on one machine like every re-check on chain today. The addresses are in
+[sealed-passports.txt](../../proofs/sealed-passports.txt) and the row in
+[rechecks.txt](../../proofs/rechecks.txt).
 
 ## Weaknesses we did not fix, stated plainly
 

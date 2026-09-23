@@ -40,3 +40,13 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 0
 With these, every one of the fourteen real pictures on the registry carries a re-check; the seed test cards carry none by design.
+
+Chainlink CRE re-check on the first picture that was registered sealed and later published by its holder, written 2026-09-23
+Old but strong was registered sealed on 2026-09-22 at 12:23:50 UTC and unsealed by its holder four minutes later (proofs/sealed-passports.txt). Its document on chain still says sealed, so the workflow read the verify service's public unseal record for the thumbnail (commit 77ef9c3), fetched it through Moolam's own gateway and recomputed the fingerprint. Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-4.sh, one machine, no network consensus; the studio registration's PassportRegistered log is event index 1.
+recomputed fingerprint and distance from the run: 0x1f1bc103fbef6f47 (2), matched; the chain stores 0x1f1fc003fbef6f47
+
+passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
+0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c | 0x48aa75431f6f564ad8dd53806d7723ec397adca25ddb21f5e8e3eb0888f96ce0 | 1 | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 2, 0x0000000000000000000000000000000000000000000000001f1bc103fbef6f47, 1790149475 [1.79e9])]
+
+receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
+attestation counts: 0 before, 1 after
