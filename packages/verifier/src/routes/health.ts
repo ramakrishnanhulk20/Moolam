@@ -7,8 +7,9 @@ import type { FastifyInstance } from "fastify";
  * The route list is what makes a misconfigured deploy visible from outside: a host missing a key
  * still boots and still verifies, and `routes` is where that shows up.
  *
- * `limits` is how the daily check sees a ceiling coming before creators do. It counts the whole
- * world, never one person: nothing here names a caller, a user id or an address.
+ * `limits` is how the daily check sees a ceiling coming before creators do, and `limits.links` is how
+ * many read links to private copies were minted today against their ceiling of 100 (B15). It counts
+ * the whole world, never one person: nothing here names a caller, a user id or an address.
  *
  * `recheck` is how many second opinions are waiting and how many a runner is working on, which is
  * where a runner that has died shows up from outside: the pending count climbs and nothing runs.

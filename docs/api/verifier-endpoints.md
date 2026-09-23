@@ -4,13 +4,14 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Twelve routes. Everything is JSON, including errors and 404s. The service listens on
-`VERIFIER_PORT`, which defaults to 4000. Six of the twelve are mounted only when the host is
+Fifteen routes. Everything is JSON, including errors and 404s. The service listens on
+`VERIFIER_PORT`, which defaults to 4000. Nine of the fifteen are mounted only when the host is
 configured for them: `/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a
 Privy app id, `/generate` and `/edit` each need those plus their own keys, and the two `/unseal`
-routes need exactly what `/prepare` needs. An unmounted route answers `404` like any other path
-that does not exist. The four `/recheck` routes are mounted on every host, and the three of them
-the runner uses answer `503` until `RUNNER_TOKEN` is set.
+routes and the three `/sealed` routes need exactly what `/prepare` needs. An unmounted route answers
+`404` like any other path that does not exist. The four `/recheck` routes are mounted on every host,
+and the three of them the runner uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link`
+answers `503` until `SEALED_LINK_TOKEN` is set.
 
 ## POST /verify
 
@@ -752,6 +753,131 @@ A record is pinned once and never changes, so a hit is remembered for the life o
 miss never is. That keeps a passport page, which is read far more often than a passport is
 unsealed, from spending a Pinata request every time somebody opens it.
 
+## GET /sealed/status/:passportId
+
+Whether Moolam still keeps the private copy of a sealed passport whose creator asked for a private
+Chainlink re-check. The copy is one 512 pixel thumbnail on Pinata's private network, kept under
+`sealed-thumb-<passportId>.jpg`. No token.
+
+```bash
+curl -s http://localhost:4000/sealed/status/0x75bf...
+```
+
+```ts
+{
+  passportId: `0x${string}`,
+  state: "kept" | "gone" | "unknown",
+  privateRecheck: boolean
+}
+```
+
+The passport has to be on the registry, read from the chain. Its metadata document then decides
+whether Pinata is asked at all: only a document that is sealed, says `privateRecheck: true`, carries
+no `image` or `thumbnail` key and commits to this very passport id counts as asking. Any other
+document answers `privateRecheck: false` and `state: "gone"` without a Pinata request.
+
+For a document that asks, the private listing is read and filtered on the whole file name.
+`kept` is exactly one file under the name. `gone` is a listing that finished and found none.
+`unknown` is everything this service cannot tell: the chain, the gateway or the listing did not
+answer, or two files share the name. Unknown is never shown as kept or as gone. When the document
+itself could not be read, `privateRecheck` is `false` because the service does not know.
+
+| Code | When |
+| --- | --- |
+| `200` | Any of the three states |
+| `400` | The id is not `0x` and 64 hex characters |
+| `404` | `{ "error": "no-passport", "passportId": "0x..." }`. The registry holds no such passport |
+| `429` | Thirty a minute per address, rather than the sixty everything else gets |
+
+`kept` and `gone` are held in memory for 60 seconds per passport and carry
+`Cache-Control: public, max-age=60`. `unknown` and every refusal carry `no-store` and are never
+held, because they are the answers that must be asked again. A delete through
+[`/sealed/forget`](#post-sealedforget) drops the memory for that passport at once.
+
+## POST /sealed/link
+
+A read link to one passport's private copy, for the confidential Chainlink workflow that re-checks
+it. The link is a bearer secret for the two minutes it lives.
+
+```bash
+curl -s -X POST http://localhost:4000/sealed/link \
+  -H "Authorization: Bearer $SEALED_LINK_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"passportId":"0x75bf..."}'
+```
+
+```ts
+{ url: string, expiresAt: string }   // expiresAt is ISO 8601, 120 seconds from the request
+```
+
+A link is minted only when every check holds, and they run in this order. The token is compared in
+constant time. The id is 32 bytes of hex, lower-cased once. The registry holds the passport. Its
+metadata document, read through the service's own guarded fetch, asks for a private re-check and
+commits to this very id. The re-check queue holds a request for it that a runner claimed less than
+ten minutes ago, so a stolen token opens only what is being run right now. Exactly one private file
+has the passport's name. The link is then asked of Pinata for a fixed 120 seconds, never a time from
+the request, and parsed again before it is sent: it has to be `https` on the host
+`PINATA_GATEWAY_URL` names.
+
+| Code | When |
+| --- | --- |
+| `200` | The link and when it stops working |
+| `400` | The body is not `{ "passportId": "0x..." }` with 64 hex characters |
+| `401` | `unauthorized`. No `Authorization: Bearer ...` header, or the wrong token |
+| `404` | `no-passport`. The registry holds no such passport |
+| `404` | `nothing-kept`. The passport's document did not ask for a private re-check |
+| `404` | `gone`. No private file has the passport's name |
+| `409` | `commitment-mismatch`. The document commits to a different passport id |
+| `409` | `not-claimed`. No runner claimed this passport's request in the last ten minutes: nobody asked, it is still waiting, it is answered, or the claim is older |
+| `409` | `ambiguous`. More than one private file has the passport's name |
+| `429` | `link-cap`. Five links for this passport in the last hour |
+| `429` | `{ "error": "global-limit", ... }` once 100 links were minted today across every passport. See [Today's budget for everyone](#todays-budget-for-everyone) |
+| `502` | `link-unavailable`. Pinata did not mint the link, or answered one that is not `https` on the configured gateway |
+| `503` | `not-configured`. This host has no `SEALED_LINK_TOKEN`, so it mints nothing |
+| `503` | `chain-unavailable`, `metadata-unavailable` or `lookup-unavailable`. The chain, the gateway or the private listing did not answer, which is never read as a no |
+
+Every refusal carries the error and the passport id and nothing else: no URL and no file id. No log
+line carries the link or the token either. `SEALED_LINK_TOKEN` must be at least 24 characters or the
+service refuses to boot. The two caps are taken only after every check passed, and once the link is
+asked of Pinata they stay spent, because a request that timed out may still have signed one.
+
+## POST /sealed/forget
+
+The holder deletes Moolam's private copy of their passport.
+
+```bash
+curl -s -X POST http://localhost:4000/sealed/forget \
+  -H "Authorization: Bearer $PRIVY_ACCESS_TOKEN" \
+  -H 'content-type: application/json' \
+  -d '{"passportId":"0x75bf..."}'
+```
+
+```ts
+{ passportId: `0x${string}`, deleted: number }
+```
+
+Only the holder deletes, checked the way `/unseal` checks it: the Privy token names a user, the
+Privy user record names their embedded wallets, and `ownerOf` on the registry, read at that moment,
+has to be one of them. Then every private file whose name is exactly the passport's is deleted, two
+included, and `deleted` says how many. The status memory for the passport is dropped at once, so
+neither `/sealed/status` nor the re-check queue goes on saying `kept`. The answer and the log line
+carry the count and never a file id.
+
+| Code | When |
+| --- | --- |
+| `200` | Deleted, with the count. `0` when the copy was already gone |
+| `400` | The body is not `{ "passportId": "0x..." }` with 64 hex characters |
+| `401` | The Privy token is missing or fails a check. `{ "error": "unauthorized" }` |
+| `403` | `not-holder`. The registry says another wallet holds this passport. A Privy user id this app does not know answers the same way |
+| `404` | `no-passport`. The registry holds no such passport |
+| `404` | `nothing-kept`. The passport's document did not ask for a private re-check |
+| `502` | `privy-unavailable`. Privy did not answer the wallet lookup |
+| `502` | `{ "error": "delete-failed", "passportId": "0x...", "deleted": n }`. Pinata refused at least one delete. Send the same request again to finish |
+| `503` | `chain-unavailable`, `metadata-unavailable` or `lookup-unavailable`. Nothing was deleted: a listing that did not finish is never read as "nothing there" |
+
+A deleted copy cannot be put back by any route. The passport, its sealed document and its verdicts
+on chain are untouched; what goes is the private re-check, which needs the copy.
+
 ## POST /recheck/request
 
 Asks for a Chainlink second opinion on a registered picture. Free, and no account: the runner that
@@ -786,7 +912,7 @@ the queue.
 | `200` | Recorded, or already waiting |
 | `400` | The body is not `{ "passportId": "0x..." }` with 64 hex characters |
 | `404` | `no-passport`. This service's index does not hold that passport |
-| `409` | `sealed`. The picture was never published, so there is nothing for the Chainlink verifier to fetch. Publish it with [`/unseal`](#post-unseal) and ask again. A passport its holder has unsealed since is queued like a public one |
+| `409` | `sealed`. The picture was never published, so there is nothing for the Chainlink verifier to fetch. Publish it with [`/unseal`](#post-unseal) and ask again. A passport its holder has unsealed since is queued like a public one, and so is a sealed passport whose private copy is kept (below) |
 | `429` | Ten a minute per address, rather than the sixty everything else gets |
 | `503` | `queue-full`. A thousand requests are waiting and none has been run |
 
@@ -799,6 +925,11 @@ waits at most a minute to be re-checked. Only passports the index already holds 
 caller cannot turn this route into a gateway or Pinata read per request. A gateway or a record
 lookup that does not answer inside five seconds lets the request through; the runner refuses it
 later, which is the right way round for a request that spends nothing.
+
+A sealed passport whose document asks for a private re-check is queued only while
+[`/sealed/status`](#get-sealedstatuspassportid) says its copy is `kept`, and while it says
+`unknown`, because the runner checks the status again before it spends anything. A copy that is
+`gone` gets the same `409 sealed` a plain sealed passport gets.
 
 ## GET /recheck/status/:passportId
 
@@ -917,7 +1048,7 @@ press of a free button.
 ## Today's budget for everyone
 
 Four ceilings bound what the whole world may spend in a UTC day, on the four routes that cost
-money:
+money, and a fifth bounds how many read links to private copies exist:
 
 | Variable | Default | What it bounds |
 | --- | --- | --- |
@@ -925,6 +1056,7 @@ money:
 | `GLOBAL_GENERATIONS_PER_DAY` | 60 | Pictures the agent draws, so about two dollars of image model spend |
 | `GLOBAL_EDITS_PER_DAY` | 150 | Edits, so about 600 pins and 150 sponsored `appendEdit` calls |
 | `GLOBAL_UNSEALS_PER_DAY` | 50 | Sealed pictures published, so about 200 pins, and the pictures are whole files rather than thumbnails |
+| none, fixed in code | 100 | Links [`/sealed/link`](#post-sealedlink) mints, across every passport. It spends nothing; it bounds how much of the private store a stolen link token could open in a day |
 
 Every other limit on this service is counted per Privy user id, and an account costs nothing to
 make, so these are the only numbers that bound a determined caller with a hundred accounts.
@@ -981,6 +1113,10 @@ to anyone else. `GET /recheck/status/:passportId` is the exception on this servi
 it is asked repeatedly while somebody waits, and it says so with `Cache-Control: public,
 max-age=30`.
 
+`POST /sealed/link` and `POST /sealed/forget` are in the hook as well: a link is a bearer secret
+until it expires, and a delete names a holder's passport. `GET /sealed/status/:passportId` sets its
+own header: `public, max-age=60` for `kept` and `gone`, `no-store` for `unknown` and every refusal.
+
 ## GET /health
 
 ```bash
@@ -997,7 +1133,8 @@ curl -s http://localhost:4000/health
     prepares: { used: number, max: number },
     generations: { used: number, max: number },
     edits: { used: number, max: number },
-    unseals: { used: number, max: number }
+    unseals: { used: number, max: number },
+    links: { used: number, max: number }
   },
   recheck: { pending: number, running: number }
 }
@@ -1011,8 +1148,9 @@ key becomes visible from outside: a host without `PINATA_JWT` still boots and st
 `prepare` is simply not in the list.
 
 `limits` is how much of [today's budget for everyone](#todays-budget-for-everyone) is gone, so a
-daily check can see a ceiling coming before creators meet it. It counts the whole world and names
-nobody: there is no per-caller data on this route.
+daily check can see a ceiling coming before creators meet it. `links` is the private read links
+minted today against their ceiling of 100. It counts the whole world and names nobody: there is no
+per-caller data on this route. A host that mounts the unseal routes lists `sealed` in `routes` too.
 
 `recheck` is how many second opinions are waiting and how many a runner has in hand, which is where
 a runner that has died shows up from outside: `pending` climbs and `running` stays at zero.

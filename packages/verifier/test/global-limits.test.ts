@@ -277,6 +277,7 @@ describe("the day's ceiling for everyone", () => {
       generations: { used: 0, max: 1 },
       edits: { used: 0, max: 1 },
       unseals: { used: 0, max: 1 },
+      links: { used: 0, max: 100 },
     });
     expect(pins).toBe(0);
     expect(stubs.createImage.mock.calls.length).toBe(drawnBefore);
@@ -369,6 +370,7 @@ describe("the day's ceiling for everyone", () => {
       generations: { used: 1, max: 1 },
       edits: { used: 1, max: 1 },
       unseals: { used: 0, max: 1 },
+      links: { used: 0, max: 100 },
     });
     expect(JSON.stringify(body)).not.toContain("did:privy:");
   });

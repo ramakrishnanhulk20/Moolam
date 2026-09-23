@@ -272,6 +272,28 @@ export function privateThumbnailName(passportId: Hex): string {
   return `sealed-thumb-${id}.jpg`;
 }
 
+/**
+ * What a passport's metadata document says about a private re-check of that passport (B1).
+ *
+ * "asked" needs both halves: the one predicate above, and a `commitment.value` that is exactly the
+ * passport id the caller gave, lower-cased. The comparison is plain string equality with no second
+ * normalising step, so a document whose commitment is written in capitals, or names any other
+ * passport, is "other-passport" and never chooses a file. The id itself comes from the caller and
+ * the chain, never from the document: this only decides whether the document agrees with it.
+ */
+export type PrivateRecheckAsk = "asked" | "not-asked" | "other-passport";
+
+export function privateRecheckFor(document: unknown, passportId: Hex): PrivateRecheckAsk {
+  if (!privatelyRecheckable(document)) {
+    return "not-asked";
+  }
+  const commitment = (document as Record<string, unknown>).commitment;
+  if (typeof commitment !== "object" || commitment === null || Array.isArray(commitment)) {
+    return "other-passport";
+  }
+  return (commitment as Record<string, unknown>).value === passportId.toLowerCase() ? "asked" : "other-passport";
+}
+
 /** What the chain said about a passport id before anything private is made for it. */
 export type Registration = "registered" | "free" | "unreachable";
 

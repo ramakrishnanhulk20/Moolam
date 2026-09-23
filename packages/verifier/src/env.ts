@@ -296,6 +296,10 @@ const schema = z
       24,
       "RUNNER_TOKEN must be at least 24 characters: it is the only thing between a stranger and the re-check queue",
     ),
+    SEALED_LINK_TOKEN: optionalMinLength(
+      24,
+      "SEALED_LINK_TOKEN must be at least 24 characters: with a passport id it mints a read link to that passport's private copy",
+    ),
     RECHECK_QUEUE_PATH: z
       .string()
       .trim()
@@ -551,6 +555,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GLOBAL_EDITS_PER_DAY: source.GLOBAL_EDITS_PER_DAY,
     GLOBAL_UNSEALS_PER_DAY: source.GLOBAL_UNSEALS_PER_DAY,
     RUNNER_TOKEN: source.RUNNER_TOKEN,
+    SEALED_LINK_TOKEN: source.SEALED_LINK_TOKEN,
     RECHECK_QUEUE_PATH: source.RECHECK_QUEUE_PATH,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CONSENT_ADDRESS: source.CONSENT_ADDRESS,

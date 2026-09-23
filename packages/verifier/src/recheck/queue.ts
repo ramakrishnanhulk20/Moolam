@@ -187,6 +187,11 @@ export interface RecheckQueue {
   /** The oldest waiting requests, at most `limit`, marking nothing. */
   pending: (limit: number) => RecheckItem[];
   claim: (passportId: Hex) => ClaimOutcome;
+  /**
+   * Whether a runner holds this passport's request right now and claimed it less than `windowMs`
+   * ago, by this queue's own clock. Pending, answered and unknown requests are all false.
+   */
+  claimedWithin: (passportId: Hex, windowMs: number) => boolean;
   finish: (passportId: Hex, outcome: FinishInput) => FinishOutcome;
   counts: () => { pending: number; running: number };
   /** Everything held, newest last, for the health line and for tests. */
@@ -363,6 +368,16 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
       items.set(id, claimed);
       save();
       return { ok: true, item: { ...claimed }, reclaimed: abandoned };
+    },
+
+    claimedWithin: (passportId, windowMs) => {
+      const held = items.get(passportId.toLowerCase() as Hex);
+      if (held === undefined || held.status !== "running" || held.startedAt === undefined) {
+        return false;
+      }
+      // A claim stamped in the future is a clock that stepped back, and doubt refuses.
+      const age = now() - held.startedAt;
+      return age >= 0 && age < windowMs;
     },
 
     finish: (passportId, outcome) => {

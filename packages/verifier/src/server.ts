@@ -27,6 +27,7 @@ import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
+import { SEALED_LINKS_PER_DAY, privateCopyStatus, sealedRoutes } from "./routes/sealed.js";
 import { BadRequest } from "./routes/shared.js";
 import { unsealRoutes } from "./routes/unseal.js";
 import { verifyRoutes } from "./routes/verify.js";
@@ -85,6 +86,11 @@ const UNCACHEABLE = new Set([
   "/recheck/request",
   "/recheck/claim",
   "/recheck/done",
+  // Every answer here either is a read link to a private copy or refuses one, and a link is a
+  // bearer secret until it expires.
+  "/sealed/link",
+  // The holder's delete names a wallet's passport and says what was deleted for them.
+  "/sealed/forget",
 ]);
 
 /**
@@ -385,6 +391,7 @@ export async function buildServer(
     generate?: { keys?: PrivyKeys };
     edit?: { keys?: PrivyKeys };
     unseal?: { keys?: PrivyKeys };
+    sealed?: { keys?: PrivyKeys; linkToken?: string };
     consent?: ConsentReader;
     dispute?: DisputeReader;
     picture?: PictureReader;
@@ -512,6 +519,7 @@ export async function buildServer(
       generations: env.GLOBAL_GENERATIONS_PER_DAY,
       edits: env.GLOBAL_EDITS_PER_DAY,
       unseals: env.GLOBAL_UNSEALS_PER_DAY,
+      links: SEALED_LINKS_PER_DAY,
     }),
   );
 
@@ -548,7 +556,7 @@ export async function buildServer(
       ...(mounts.prepare ? ["prepare"] : []),
       ...(mounts.generate ? ["generate"] : []),
       ...(mounts.edit ? ["edit"] : []),
-      ...(canUnseal ? ["unseal"] : []),
+      ...(canUnseal ? ["unseal", "sealed"] : []),
       "health",
     ],
   });
@@ -585,6 +593,10 @@ export async function buildServer(
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
 
+  // One memory of which private copies are kept, shared by /sealed/status, the holder's delete and
+  // the re-check queue, so the three can never disagree about a passport inside the same minute.
+  const copies = privateCopyStatus();
+
   // Mounted on every host, with or without a runner: the public request and status routes are the
   // whole point of the queue, and the three runner routes say for themselves when no token is set.
   // The default sealed lookup is off under a test runner, like the consent and dispute readers
@@ -594,6 +606,7 @@ export async function buildServer(
     runnerToken: options.recheck?.runnerToken ?? env.RUNNER_TOKEN,
     readDocument: options.recheck?.readDocument ?? (env.NODE_ENV === "test" ? undefined : liveDocument),
     findRecord: options.recheck?.findRecord ?? (env.NODE_ENV === "test" ? undefined : liveRecord),
+    privateCopy: copies,
   });
 
   if (mounts.prepare) {
@@ -624,6 +637,19 @@ export async function buildServer(
     await app.register(unsealRoutes, options.unseal ?? options.prepare ?? {});
   } else {
     app.log.info("unseal route off: it needs the same PINATA_JWT and PRIVY_APP_ID that /prepare needs");
+  }
+
+  // The private copy routes ride on the unseal condition: a host that can unseal holds the Pinata
+  // token the lookups need and the Privy app id the holder's delete checks against.
+  if (canUnseal) {
+    await app.register(sealedRoutes, {
+      copies,
+      queue: app.recheck,
+      linkToken: options.sealed?.linkToken ?? env.SEALED_LINK_TOKEN,
+      keys: (options.sealed ?? options.unseal ?? options.prepare ?? {}).keys,
+    });
+  } else {
+    app.log.info("sealed routes off: they need the same PINATA_JWT and PRIVY_APP_ID that /prepare needs");
   }
 
   if (payments !== undefined) {

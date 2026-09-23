@@ -1,10 +1,13 @@
 /** Unix time ignores leap seconds, so every UTC day is exactly this many milliseconds long. */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** The things a caller can make this service spend: pins, model calls and sponsored gas. */
-export type DayAction = "prepares" | "generations" | "edits" | "unseals";
+/**
+ * The things a caller can make this service spend: pins, model calls and sponsored gas, and the
+ * read links /sealed/link mints to private copies, which spend nothing but exposure.
+ */
+export type DayAction = "prepares" | "generations" | "edits" | "unseals" | "links";
 
-export const DAY_ACTIONS: readonly DayAction[] = ["prepares", "generations", "edits", "unseals"];
+export const DAY_ACTIONS: readonly DayAction[] = ["prepares", "generations", "edits", "unseals", "links"];
 
 /** What the code the studio does not know reads as: a 429 it already treats as "try later". */
 export const GLOBAL_LIMIT_CODE = "global-limit";

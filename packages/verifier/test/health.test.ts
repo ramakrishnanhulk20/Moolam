@@ -48,7 +48,7 @@ describe("GET /health", () => {
 
   it("names the routes this host mounted, in order", async () => {
     const response = await app.inject({ method: "GET", url: "/health" });
-    expect(response.json().routes).toEqual(["verify", "prepare", "edit", "unseal", "health"]);
+    expect(response.json().routes).toEqual(["verify", "prepare", "edit", "unseal", "sealed", "health"]);
   });
 
   it("says how much of the day's budget for everyone is gone, with the ceilings from the environment", async () => {
@@ -59,6 +59,7 @@ describe("GET /health", () => {
       generations: { used: 0, max: 5 },
       edits: { used: 0, max: 3 },
       unseals: { used: 0, max: 9 },
+      links: { used: 0, max: 100 },
     });
   });
 

@@ -477,7 +477,7 @@ describe("unsealing a sealed passport", () => {
 
   it("refuses everyone once today's ceiling for unseals is spent", async () => {
     const closed = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
-    closed.globalDay = globalDay({ prepares: 5, generations: 5, edits: 5, unseals: 0 });
+    closed.globalDay = globalDay({ prepares: 5, generations: 5, edits: 5, unseals: 0, links: 5 });
     await closed.ready();
 
     try {

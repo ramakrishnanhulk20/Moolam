@@ -3,8 +3,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { bearerToken } from "../auth/privy.js";
 import type { RecheckItem, RecheckQueue } from "../recheck/queue.js";
+import { privatelyRecheckable } from "../sealed.js";
 import type { Hex, PassportRecord } from "../types.js";
 import { pictureStateOf, type DocumentReader, type UnsealRecordFinder } from "../unseal.js";
+import type { PrivateCopyStatus } from "./sealed.js";
 
 export type { DocumentReader } from "../unseal.js";
 
@@ -54,6 +56,8 @@ export interface RecheckRouteOptions {
   readDocument?: DocumentReader;
   /** Finds the record a sealed passport was published under. Undefined reads every sealed passport as unknown. */
   findRecord?: UnsealRecordFinder;
+  /** Whether a private copy is kept, the same answer /sealed/status gives. Undefined reads as unknown. */
+  privateCopy?: PrivateCopyStatus;
 }
 
 /**
@@ -96,7 +100,18 @@ export async function recheckRoutes(app: FastifyInstance, options: RecheckRouteO
         return reply.code(404).send({ error: "no-passport", passportId });
       }
 
-      if ((await sealed(record)) === "sealed") {
+      const picture = await sealed(record);
+      // B11: a sealed passport whose document asks for a private re-check is queued only while its
+      // copy reads kept, or while nobody can tell and the runner checks again before it spends. A
+      // copy that is gone, or a passport the chain does not hold, is refused like any sealed one.
+      let refuseSealed = picture === "sealed";
+      if (picture === "sealed-private") {
+        const copy = options.privateCopy === undefined ? undefined : await options.privateCopy.statusOf(passportId);
+        const state = copy === undefined ? "unknown" : copy.found ? copy.state : "gone";
+        refuseSealed = state === "gone";
+        request.log.info({ passportId, copy: state }, "recheck: sealed passport with a private copy");
+      }
+      if (refuseSealed) {
         request.log.warn({ ip: request.ip, passportId }, "rejected: /recheck/request sealed passport");
         return reply.code(409).send({
           error: "sealed",
@@ -256,13 +271,15 @@ function runnerRefusal(request: FastifyRequest, reply: FastifyReply, token: stri
   return undefined;
 }
 
-function sameToken(given: string, expected: string): boolean {
+/** Compares two tokens in the same time whatever they hold. Shared with /sealed/link. */
+export function sameToken(given: string, expected: string): boolean {
   const a = Buffer.from(given, "utf8");
   const b = Buffer.from(expected, "utf8");
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-type SealedAnswer = "sealed" | "public" | "unsealed" | "unknown";
+/** "sealed-private" is a sealed document that passes the one privately re-checkable predicate (B7). */
+type SealedAnswer = "sealed" | "sealed-private" | "public" | "unsealed" | "unknown";
 
 /**
  * Whether this passport's picture is out where the Chainlink verifier can fetch it.
@@ -278,12 +295,15 @@ type SealedAnswer = "sealed" | "public" | "unsealed" | "unknown";
  * A read that fails answers "unknown" and is not remembered, and an unknown request is queued. A
  * sealed passport slipping through costs the runner one refusal; a gateway or Pinata being slow
  * must never cost a real picture its second opinion.
+ *
+ * A sealed document that also passes the privately re-checkable predicate answers "sealed-private"
+ * and is held the same minute, and whether its copy is still kept is the route's next question.
  */
 function sealedChecker(
   read: DocumentReader | undefined,
   findRecord: UnsealRecordFinder | undefined,
 ): (record: PassportRecord) => Promise<SealedAnswer> {
-  const known = new Map<Hex, { state: "sealed" | "public" | "unsealed"; until: number }>();
+  const known = new Map<Hex, { state: Exclude<SealedAnswer, "unknown">; until: number }>();
   const inFlight = new Map<Hex, Promise<SealedAnswer>>();
   const finder: UnsealRecordFinder =
     findRecord ??
@@ -309,13 +329,22 @@ function sealedChecker(
 
     const task = (async (): Promise<SealedAnswer> => {
       try {
-        const reading = await pictureStateOf(record, read, finder);
+        // The document pictureStateOf reads is kept here, so the private re-check predicate runs on
+        // the very bytes that said sealed rather than on a second read that could differ.
+        let document: unknown;
+        const keeping: DocumentReader = async (uri) => {
+          document = await read(uri);
+          return document;
+        };
+        const reading = await pictureStateOf(record, keeping, finder);
         if (reading.state === "unreadable") {
           return "unknown";
         }
+        const state: Exclude<SealedAnswer, "unknown"> =
+          reading.state === "sealed" && privatelyRecheckable(document) ? "sealed-private" : reading.state;
         const until = reading.state === "sealed" ? Date.now() + SEALED_TTL_MS : Number.POSITIVE_INFINITY;
-        known.set(record.id, { state: reading.state, until });
-        return reading.state;
+        known.set(record.id, { state, until });
+        return state;
       } finally {
         inFlight.delete(record.id);
       }
