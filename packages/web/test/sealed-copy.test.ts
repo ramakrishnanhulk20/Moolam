@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { SEALED_KEYS, countsBySaying } from "./sealed-keys.mjs";
+import { SEALED_KEYS, countsBySaying, said } from "./sealed-keys.mjs";
 import { SEALED_PUBLIC_FIELDS } from "@/components/sealed/fields";
 
 /**
@@ -39,9 +39,13 @@ describe("the sealed copy, counted", () => {
   });
 
   it("names one row for every field the list can draw, so no row falls back to English", () => {
+    // Read from the files themselves, so a row added by a later order is held
+    // to ten languages whichever list counted its keys.
     for (const field of SEALED_PUBLIC_FIELDS) {
-      expect(SEALED_KEYS).toContain(`studio.sealed.fields.${field.key}.label`);
-      expect(SEALED_KEYS).toContain(`studio.sealed.fields.${field.key}.line`);
+      for (const locale of locales) {
+        expect(said(locale, `studio.sealed.fields.${field.key}.label`), `${locale} ${field.key}`).toBe(true);
+        expect(said(locale, `studio.sealed.fields.${field.key}.line`), `${locale} ${field.key}`).toBe(true);
+      }
     }
   });
 

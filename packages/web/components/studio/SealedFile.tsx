@@ -40,6 +40,8 @@ export function SealedChoice({
   generated = false,
   includePrompt = false,
   onIncludePrompt,
+  privateRecheck = false,
+  onPrivateRecheck,
   disabled = false,
 }: {
   on: boolean;
@@ -48,6 +50,9 @@ export function SealedChoice({
   generated?: boolean;
   includePrompt?: boolean;
   onIncludePrompt?: (include: boolean) => void;
+  /** The private re-check under the switch. Not offered unless a handler is passed. */
+  privateRecheck?: boolean;
+  onPrivateRecheck?: (on: boolean) => void;
   disabled?: boolean;
 }) {
   const t = useTranslations("studio.sealed.switch");
@@ -68,6 +73,8 @@ export function SealedChoice({
       generated={generated}
       includePrompt={includePrompt}
       onIncludePrompt={onIncludePrompt}
+      privateRecheck={privateRecheck}
+      onPrivateRecheck={onPrivateRecheck}
       disabled={disabled}
       className="mt-10"
       words={{
@@ -81,6 +88,9 @@ export function SealedChoice({
         leftOut: t("leftOut"),
         promptLabel: t("promptLabel"),
         promptNote: t("promptNote"),
+        privateLabel: t("privateLabel"),
+        privateNote: t("privateNote"),
+        privateWho: t("privateWho"),
       }}
       fieldWords={fieldWords}
     />

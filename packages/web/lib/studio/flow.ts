@@ -123,6 +123,13 @@ export interface SealedRun {
   on: boolean;
   /** Only ever asked on the agent path: whether the prompt joins the public record. */
   includePrompt: boolean;
+  /**
+   * Whether one small private copy is kept for a Chainlink re-check. Only ever
+   * true while `on` is, and off again whenever a form opens. The reducer always
+   * writes it; it is optional only so a state built by hand elsewhere, such as
+   * a lab fixture, still reads as off.
+   */
+  privateRecheck?: boolean;
   file: SealedHandback | null;
   /** True once the creator has written the file to their own disk at least once. */
   saved: boolean;
@@ -166,7 +173,8 @@ export type RegisterAction =
   | { type: "title"; title: string }
   | { type: "prompt"; prompt: string }
   | { type: "consent"; draft: ConsentDraft }
-  | { type: "sealed"; on: boolean }
+  /** The private re-check rides the same action, so turning sealed off can never leave it on. */
+  | { type: "sealed"; on: boolean; privateRecheck?: boolean }
   | { type: "includePrompt"; include: boolean }
   | { type: "sealedFile"; file: SealedHandback }
   | { type: "sealedSaved" }
@@ -194,7 +202,7 @@ const WAITING: Record<Step, StepState> = {
 };
 
 /** Nothing asked for and nothing held: the state both panels open in. */
-const NOTHING_SEALED: SealedRun = { on: false, includePrompt: false, file: null, saved: false };
+const NOTHING_SEALED: SealedRun = { on: false, includePrompt: false, privateRecheck: false, file: null, saved: false };
 
 const NOTHING_SAID: Statement = {
   state: "idle",
@@ -256,8 +264,14 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         prompt: state.prompt,
         consent: state.consent,
         // The switch is a decision about this creator's work, not about one
-        // upload, so a second picture opens with the same answer showing.
-        sealed: { ...NOTHING_SEALED, on: state.sealed.on, includePrompt: state.sealed.includePrompt },
+        // upload, so a second picture opens with the same answer showing. The
+        // private re-check is still on screen in the same form, so it stays too.
+        sealed: {
+          ...NOTHING_SEALED,
+          on: state.sealed.on,
+          includePrompt: state.sealed.includePrompt,
+          privateRecheck: state.sealed.privateRecheck === true,
+        },
         quota: state.quota,
       };
     case "title":
@@ -267,7 +281,14 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
     case "consent":
       return { ...state, consent: action.draft };
     case "sealed":
-      return { ...state, sealed: { ...state.sealed, on: action.on } };
+      return {
+        ...state,
+        sealed: {
+          ...state.sealed,
+          on: action.on,
+          privateRecheck: action.on ? (action.privateRecheck ?? state.sealed.privateRecheck === true) : false,
+        },
+      };
     case "includePrompt":
       return { ...state, sealed: { ...state.sealed, includePrompt: action.include } };
     case "sealedFile":

@@ -1243,7 +1243,10 @@
         "onChain": "Auf Monad",
         "leftOut": "Bleibt weg",
         "promptLabel": "Den Prompt mitveröffentlichen",
-        "promptNote": "Der Prompt bleibt privat, solange du ihn nicht dazunimmst."
+        "promptNote": "Der Prompt bleibt privat, solange du ihn nicht dazunimmst.",
+        "privateLabel": "Chainlink das Bild privat nachprüfen lassen",
+        "privateNote": "Moolam behält eine kleine Kopie, 512 Pixel breit, auf privatem Speicher. Ein vertraulicher Chainlink-Workflow öffnet sie, prüft den Fingerabdruck nach und schreibt nur das Urteil auf Monad.",
+        "privateWho": "Aus dem Web kann niemand sie öffnen. Der Betreiber von Moolam und der Speicheranbieter können es. Heute läuft der Workflow in Chainlinks Simulator, und der ist keine echte Enklave. Du kannst die Kopie jederzeit auf der Passport-Seite löschen."
       },
       "fields": {
         "commitment": {
@@ -1289,6 +1292,10 @@
         "prompt": {
           "label": "Der Prompt",
           "line": "Worte, die das Bild beschreiben. Er bleibt aus der Datei heraus, bis du ihn hineinnimmst."
+        },
+        "privateRecheck": {
+          "label": "Dass du eine private Nachprüfung verlangt hast",
+          "line": "Ein Wort in der gepinnten Datei, damit eine Passport-Seite es sagen kann. Die Adresse der Kopie steht nie darin."
         }
       },
       "plate": {
@@ -1313,7 +1320,9 @@
       "receipt": {
         "label": "Auf Monad versiegelt",
         "detail": "Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
-        "fingerprintDetail": "Aus der signierten Datei, die diesen Browser nie verlassen hat. C2PA-Manifest eingebettet: {manifest}."
+        "fingerprintDetail": "Aus der signierten Datei, die diesen Browser nie verlassen hat. C2PA-Manifest eingebettet: {manifest}.",
+        "privateLabel": "Private Kopie behalten",
+        "privateDetail": "Für die private Nachprüfung durch Chainlink. Lösch sie auf der Passport-Seite, wann immer du willst."
       }
     },
     "receipt": {
@@ -1404,7 +1413,11 @@
       "sealedMismatch": "Die Datei, die zurückkam, passt nicht zum Passport. Es wurde nichts eingetragen. Versuch es noch einmal.",
       "sealedNotHeld": "Der Prüfdienst hat die versiegelte Datei nicht zurückgegeben, deshalb wurde nichts signiert. Versuch es noch einmal.",
       "sealedRecordRefused": "Der Prüfdienst hat diesen versiegelten Eintrag nicht veröffentlicht, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal.",
-      "sealedFileRefused": "Der Prüfdienst konnte keine Datei zurückgeben, die zu diesem Passport passt, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal."
+      "sealedFileRefused": "Der Prüfdienst konnte keine Datei zurückgeben, die zu diesem Passport passt, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal.",
+      "privateRecheckNeedsSealed": "Der Prüfdienst behält keine private Kopie eines Bildes, das nicht versiegelt ist, deshalb wurde nichts gepinnt und nichts eingetragen. Lade das Studio neu und versuch es noch einmal.",
+      "privateCopyNotPrivate": "Der Speicheranbieter hat die kleine Kopie nicht privat gehalten, deshalb hat Moolam angehalten: nichts wurde gepinnt und nichts eingetragen. Schalte die private Nachprüfung aus, um dieses Bild ohne sie versiegelt einzutragen.",
+      "privateChainUnreachable": "Moolam hat Monad nicht erreicht, um zu prüfen, ob dieses Bild neu ist, deshalb wurde keine private Kopie behalten und nichts eingetragen. Versuch es gleich noch einmal.",
+      "privateThumbnailTooLarge": "Dieses Bild hat zu viele feine Details für die kleine Kopie, die Chainlink zum Nachprüfen öffnet, deshalb wurde nichts gepinnt und nichts eingetragen. Lass es versiegelt und die private Nachprüfung aus, dann wird es eingetragen."
     },
     "actions": {
       "signIn": "Neu anmelden",

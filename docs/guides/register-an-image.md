@@ -116,6 +116,16 @@ into the pinned metadata. After the passport is confirmed on chain, the studio s
 sponsored transaction writing the same words to the consent register, and confirms it by reading the
 chain back.
 
+### A private re-check of a sealed picture
+
+Turn on "Keep this picture sealed" and a second switch appears straight under it, off every time the
+form opens: "Let Chainlink re-check this privately". With it on, the verify service keeps one small
+copy, 512 pixels on its longest side, on Pinata's private network, and the pinned file gains one
+word, `privateRecheck`, which the list of what becomes public shows as its own row. Nobody can open
+the copy from the web. Moolam's operator and Pinata can, and today the Chainlink workflow that reads
+it runs in the simulator, which is not a real enclave. The receipt stamps "Private copy kept" only
+when the service's answer says one was kept, and turning sealed off turns this off with it.
+
 ### Preparing
 
 "Fingerprinting and pinning, about ten seconds". The browser posts the file straight to the verify

@@ -23,6 +23,14 @@ export interface SealSwitchWords {
   leftOut: string;
   promptLabel: string;
   promptNote: string;
+  /**
+   * The private re-check's three lines. Optional so a screen that does not
+   * offer the choice need not carry them; the choice is not drawn without them.
+   */
+  privateLabel?: string;
+  privateNote?: string;
+  /** Who can open the private copy. It names them, because "nobody" would be untrue. */
+  privateWho?: string;
 }
 
 /**
@@ -52,6 +60,8 @@ export function SealSwitch({
   generated = false,
   includePrompt = false,
   onIncludePrompt,
+  privateRecheck = false,
+  onPrivateRecheck,
   words,
   fieldWords,
   disabled = false,
@@ -65,6 +75,9 @@ export function SealSwitch({
   generated?: boolean;
   includePrompt?: boolean;
   onIncludePrompt?: (include: boolean) => void;
+  /** Whether one small private copy is kept for a Chainlink re-check. Only asked while sealed is on. */
+  privateRecheck?: boolean;
+  onPrivateRecheck?: (on: boolean) => void;
   words: SealSwitchWords;
   /** The rows in the reader's language. Without it each row keeps the English in fields.ts. */
   fieldWords?: SealedFieldWords;
@@ -72,7 +85,12 @@ export function SealSwitch({
   className?: string;
 }) {
   const reduced = useIsReducedMotion();
-  const fields = sealedFieldsFor({ generated });
+  const offersPrivate = onPrivateRecheck !== undefined && words.privateLabel !== undefined;
+  const fields = sealedFieldsFor({ generated, privateRecheck: offersPrivate && privateRecheck });
+  // The rows that come and go with the private re-check are drawn apart from
+  // the rest, so they can arrive and leave without the list redrawing.
+  const steady = fields.filter((field) => field.when !== "privateRecheck");
+  const asked = fields.filter((field) => field.when === "privateRecheck");
 
   return (
     <div className={`relative border-t border-line pt-8 ${className}`}>
@@ -91,6 +109,24 @@ export function SealSwitch({
             transition={reduced ? { duration: 0.15 } : { duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
+            {/* Straight under the switch it depends on, and above the list it
+                adds a row to, so the row arrives below the thumb and the
+                switch itself never moves when it is pressed. */}
+            {offersPrivate ? (
+              <div data-private-recheck className="mt-7 border-s-2 border-accent/50 ps-5">
+                <Switch
+                  on={privateRecheck}
+                  onChange={onPrivateRecheck}
+                  disabled={disabled}
+                  label={words.privateLabel ?? ""}
+                  reduced={reduced}
+                  small
+                />
+                <p className="mt-3 max-w-[52ch] text-xs leading-relaxed text-text-faint">{words.privateNote}</p>
+                <p className="mt-2 max-w-[52ch] text-xs leading-relaxed text-text-muted">{words.privateWho}</p>
+              </div>
+            ) : null}
+
             <div className="mt-7 border border-line bg-bg-raised p-5 sm:p-7">
               <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
                 <div className="min-w-0 flex-1">
@@ -113,15 +149,32 @@ export function SealSwitch({
               </div>
 
               <ul className="mt-7">
-                {fields.map((field) => (
-                  <Row
-                    key={field.key}
-                    field={field}
-                    said={fieldWords?.[field.key]}
-                    tag={field.source === "chain" ? words.onChain : words.inFile}
-                    leftOut={field.optional === true && !includePrompt ? words.leftOut : null}
-                  />
+                {steady.map((field) => (
+                  <li key={field.key} className={ROW}>
+                    <RowWords
+                      field={field}
+                      said={fieldWords?.[field.key]}
+                      tag={field.source === "chain" ? words.onChain : words.inFile}
+                      leftOut={field.optional === true && !includePrompt ? words.leftOut : null}
+                    />
+                  </li>
                 ))}
+                <AnimatePresence initial={false}>
+                  {asked.map((field) => (
+                    <motion.li
+                      key={field.key}
+                      initial={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                      animate={reduced ? { opacity: 1 } : { opacity: 1, height: "auto" }}
+                      exit={reduced ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                      transition={reduced ? { duration: 0.15 } : { duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      className="overflow-hidden"
+                    >
+                      <div className={ROW}>
+                        <RowWords field={field} said={fieldWords?.[field.key]} tag={words.inFile} leftOut={null} />
+                      </div>
+                    </motion.li>
+                  ))}
+                </AnimatePresence>
               </ul>
 
               {generated && onIncludePrompt !== undefined ? (
@@ -145,8 +198,11 @@ export function SealSwitch({
   );
 }
 
+const ROW =
+  "flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 border-t border-line py-3.5 sm:flex-nowrap";
+
 /** One row of the list: the key as the document writes it, what it is, and why it is there. */
-function Row({
+function RowWords({
   field,
   said,
   tag,
@@ -161,19 +217,20 @@ function Row({
   const line = said?.line ?? field.line;
 
   return (
-    <li className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1.5 border-t border-line py-3.5 sm:flex-nowrap">
+    <>
       <span className="min-w-0">
         <span className={`block text-sm font-medium leading-snug ${leftOut === null ? "text-text" : "text-text-faint"}`}>
           {label}
         </span>
         <span className="mt-1 block max-w-[52ch] text-xs leading-relaxed text-text-faint">{line}</span>
       </span>
-      <span className="flex shrink-0 items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em]">
+      {/* Wraps on a phone: a long key and its tag are wider than the row at 375. */}
+      <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] sm:shrink-0 sm:flex-nowrap">
         {leftOut === null ? null : <span className="text-text-faint">{leftOut}</span>}
         <span className="text-text-faint/80">{field.key}</span>
         <span className="text-accent">{tag}</span>
       </span>
-    </li>
+    </>
   );
 }
 

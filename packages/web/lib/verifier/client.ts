@@ -86,6 +86,16 @@ const signedFileSchema = z.object({
  */
 const noPin = z.undefined().optional();
 
+/**
+ * Whether the service kept one private copy for a Chainlink re-check.
+ *
+ * Only a sealed answer may say yes, and only with the word `true`. A published
+ * answer has its picture on IPFS already, so one that claims a private copy is
+ * not an answer this app knows and is refused rather than half believed.
+ */
+const privateCopyKept = z.literal(true).optional();
+const noPrivateCopy = z.undefined().optional();
+
 const manifestSchema = z.union([
   z.object({ embedded: z.literal(true) }),
   z.object({ embedded: z.literal(false), reason: z.string().optional() }),
@@ -180,12 +190,14 @@ export const prepareResponseSchema = z.union([
     signedFile: signedFileSchema,
     image: noPin,
     thumbnail: noPin,
+    privateRecheck: privateCopyKept,
   }),
   z.object({
     ...preparedFields,
     sealed: z.literal(false).optional(),
     image: pinnedImage,
     thumbnail: pinnedThumbnail,
+    privateRecheck: noPrivateCopy,
   }),
 ]);
 
@@ -229,12 +241,14 @@ export const generateResponseSchema = z.union([
     signedFile: signedFileSchema,
     image: noPin,
     thumbnail: noPin,
+    privateRecheck: privateCopyKept,
   }),
   z.object({
     ...drawnFields,
     sealed: z.literal(false).optional(),
     image: pinnedImage,
     thumbnail: pinnedThumbnail,
+    privateRecheck: noPrivateCopy,
   }),
 ]);
 
@@ -598,6 +612,8 @@ export async function prepare(options: {
   training?: TrainingRequest;
   /** True to register the picture without publishing it. The route reads the two words and nothing else. */
   sealed?: boolean;
+  /** True to keep one private copy for a Chainlink re-check. Only ever sent with sealed. */
+  privateRecheck?: boolean;
   signal?: AbortSignal;
 }): Promise<PrepareResponse> {
   const body = new FormData();
@@ -611,6 +627,11 @@ export async function prepare(options: {
   // reads the same request it always did.
   if (options.sealed === true) {
     body.append("sealed", "true");
+  }
+  // The service refuses the private copy without sealed, so the pair is held
+  // together here and a published request stays byte for byte what it was.
+  if (options.sealed === true && options.privateRecheck === true) {
+    body.append("privateRecheck", "true");
   }
 
   return await post("/prepare", body, prepareResponseSchema, {
@@ -641,6 +662,8 @@ export async function generate(options: {
   sealed?: boolean;
   /** Whether the prompt joins the public record. It only has a meaning on a sealed drawing. */
   includePrompt?: boolean;
+  /** True to keep one private copy for a Chainlink re-check. Only ever sent with sealed. */
+  privateRecheck?: boolean;
   signal?: AbortSignal;
 }): Promise<GenerateResponse> {
   const sealed = options.sealed === true;
@@ -656,6 +679,7 @@ export async function generate(options: {
     training: options.training,
     sealed: sealed ? true : undefined,
     includePrompt: sealed ? options.includePrompt === true : undefined,
+    privateRecheck: sealed && options.privateRecheck === true ? true : undefined,
   });
 
   return await post("/generate", body, generateResponseSchema, {

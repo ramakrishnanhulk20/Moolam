@@ -344,6 +344,24 @@ describe("a registration the creator keeps", () => {
     }
   });
 
+  it("hands the private re-check to prepare only when the creator turned it on", async () => {
+    service.prepare.mockResolvedValue({ ...sealedAnswer(), privateRecheck: true });
+    const asked = await mount();
+    await act(async () => {
+      asked.read().actions.setSealed(true);
+      asked.read().actions.setSealed(true, true);
+    });
+    await run(asked);
+    expect(service.prepare.mock.calls[0]?.[0]).toMatchObject({ sealed: true, privateRecheck: true });
+    expect(asked.read().register.prepared?.privateRecheck).toBe(true);
+    document.body.innerHTML = "";
+
+    service.prepare.mockResolvedValue(sealedAnswer());
+    const quiet = await mount();
+    await run(quiet);
+    expect(service.prepare.mock.calls[1]?.[0]).toMatchObject({ sealed: true, privateRecheck: false });
+  });
+
   it("leaves a published registration exactly as it was", async () => {
     service.prepare.mockResolvedValue({
       ...sealedAnswer(),

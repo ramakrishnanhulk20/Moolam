@@ -16,8 +16,11 @@
 /** Where the value lands: in the one pinned file, or in the registry record itself. */
 export type SealedFieldSource = "document" | "chain";
 
-/** When a row applies: to every sealed registration, or only to a drawn picture. */
-export type SealedFieldWhen = "always" | "generated";
+/**
+ * When a row applies: to every sealed registration, only to a drawn picture, or
+ * only while the creator has asked for a private re-check.
+ */
+export type SealedFieldWhen = "always" | "generated" | "privateRecheck";
 
 export interface SealedPublicField {
   /** The key in the sealed document, or the registry's own name for the value. */
@@ -115,6 +118,13 @@ export const SEALED_PUBLIC_FIELDS: SealedPublicField[] = [
     line: "Words that describe the picture, so it stays out of the file unless you put it in.",
     optional: true,
   },
+  {
+    key: "privateRecheck",
+    source: "document",
+    when: "privateRecheck",
+    label: "That you asked for a private re-check",
+    line: "One word in the pinned file, so a passport page can say it. The copy's address is never in it.",
+  },
 ];
 
 /** The keys of the pinned document, which is what the schema in the verify service must match. */
@@ -127,7 +137,20 @@ export const SEALED_DOCUMENT_KEYS = SEALED_PUBLIC_FIELDS.filter((field) => field
  *
  * A picture nobody drew has no agent, no model and no prompt, and a list that
  * showed them would be promising to publish three things that will not exist.
+ * The private re-check's one word is listed only while it is asked for, for the
+ * same reason.
  */
-export function sealedFieldsFor({ generated }: { generated: boolean }): SealedPublicField[] {
-  return SEALED_PUBLIC_FIELDS.filter((field) => generated || field.when === "always");
+export function sealedFieldsFor({
+  generated,
+  privateRecheck = false,
+}: {
+  generated: boolean;
+  privateRecheck?: boolean;
+}): SealedPublicField[] {
+  return SEALED_PUBLIC_FIELDS.filter(
+    (field) =>
+      field.when === "always" ||
+      (field.when === "generated" && generated) ||
+      (field.when === "privateRecheck" && privateRecheck),
+  );
 }

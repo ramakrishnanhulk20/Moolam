@@ -82,7 +82,13 @@ describe("what the register screen remembers about sealing", () => {
   const picture = new File(["x"], "picture.jpg", { type: "image/jpeg" });
 
   it("opens with the switch off and nothing held", () => {
-    expect(initialRegisterState.sealed).toEqual({ on: false, includePrompt: false, file: null, saved: false });
+    expect(initialRegisterState.sealed).toEqual({
+      on: false,
+      includePrompt: false,
+      privateRecheck: false,
+      file: null,
+      saved: false,
+    });
     expect(holdsUnsavedFile(initialRegisterState)).toBe(false);
   });
 

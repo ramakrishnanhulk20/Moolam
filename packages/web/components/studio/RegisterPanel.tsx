@@ -55,8 +55,8 @@ export function RegisterPanel({
   onChoose: (file: File) => void;
   onTitle: (title: string) => void;
   onConsent: (draft: ConsentDraft) => void;
-  /** Register this picture without publishing it. */
-  onSealed: (on: boolean) => void;
+  /** Register this picture without publishing it, and whether a private copy is kept for a re-check. */
+  onSealed: (on: boolean, privateRecheck?: boolean) => void;
   /** The creator has written the one copy of a sealed picture to their own disk. */
   onSaved: () => void;
   onRegister: () => void;
@@ -222,8 +222,10 @@ export function RegisterPanel({
 
       <SealedChoice
         on={state.sealed.on}
-        onChange={onSealed}
+        onChange={(on) => onSealed(on)}
         bits={sketchOf(state.prepared?.passport.blockhash256)}
+        privateRecheck={state.sealed.privateRecheck === true}
+        onPrivateRecheck={(keep) => onSealed(true, keep)}
         disabled={busy}
       />
 

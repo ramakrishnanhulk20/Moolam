@@ -145,7 +145,7 @@ function schemaKeys(): string[] {
 describe("what the studio says becomes public", () => {
   it("lists every key of the sealed document the verify service pins, and no others", () => {
     const keys = schemaKeys();
-    expect(keys).toHaveLength(10);
+    expect(keys).toHaveLength(11);
     expect([...SEALED_DOCUMENT_KEYS].sort()).toEqual([...keys].sort());
   });
 
@@ -158,6 +158,14 @@ describe("what the studio says becomes public", () => {
     expect(sealedFieldsFor({ generated: false }).map((field) => field.key)).not.toContain("prompt");
     expect(sealedFieldsFor({ generated: false }).map((field) => field.key)).not.toContain("generator");
     expect(sealedFieldsFor({ generated: true }).map((field) => field.key)).toContain("prompt");
+  });
+
+  it("lists the private re-check's one word only while it is asked for", () => {
+    expect(sealedFieldsFor({ generated: false }).map((field) => field.key)).not.toContain("privateRecheck");
+    expect(sealedFieldsFor({ generated: true }).map((field) => field.key)).not.toContain("privateRecheck");
+    expect(sealedFieldsFor({ generated: false, privateRecheck: true }).map((field) => field.key)).toContain(
+      "privateRecheck",
+    );
   });
 
   it("draws the panel with every key, the sketch and the note about the file, once the switch is on", () => {

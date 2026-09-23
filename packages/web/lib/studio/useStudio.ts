@@ -76,8 +76,11 @@ export interface Studio {
     setMode: (mode: Mode) => void;
     /** What the creator says about AI use. It travels with the file and then goes to the register. */
     setConsent: (draft: ConsentDraft) => void;
-    /** Register the picture without publishing it. Off until the creator asks for it. */
-    setSealed: (on: boolean) => void;
+    /**
+     * Register the picture without publishing it. Off until the creator asks for it.
+     * The second answer is the private re-check under it, which sealed off turns off.
+     */
+    setSealed: (on: boolean, privateRecheck?: boolean) => void;
     /** On the agent path only: whether the prompt joins the sealed record. */
     setIncludePrompt: (include: boolean) => void;
     /** Writes the one copy of a sealed picture to the creator's own disk. */
@@ -686,6 +689,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         accessToken: token,
         training: trainingFrom(register.consent),
         sealed: register.sealed.on,
+        privateRecheck: register.sealed.privateRecheck === true,
       });
       dispatchRegister({ type: "prepared", prepared });
       // The service's echo, not the plates: it trimmed the words and wrote them
@@ -739,6 +743,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     register.failure,
     register.file,
     register.sealed.on,
+    register.sealed.privateRecheck,
     register.title,
     register.unsponsored,
     sendRegister,
@@ -809,6 +814,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
         training: trainingFrom(register.consent),
         sealed: register.sealed.on,
         includePrompt: register.sealed.includePrompt,
+        privateRecheck: register.sealed.privateRecheck === true,
       });
       dispatchRegister({ type: "drawn", response: drawn });
       // The agent signed the metadata address, and this statement is inside
@@ -867,6 +873,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     register.prompt,
     register.sealed.includePrompt,
     register.sealed.on,
+    register.sealed.privateRecheck,
     register.title,
     register.unsponsored,
     sendRegister,
@@ -936,7 +943,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       setPrompt: (prompt: string) => dispatchRegister({ type: "prompt", prompt }),
       setMode: (mode: Mode) => dispatchRegister({ type: "mode", mode }),
       setConsent: (draft: ConsentDraft) => dispatchRegister({ type: "consent", draft }),
-      setSealed: (on: boolean) => dispatchRegister({ type: "sealed", on }),
+      setSealed: (on: boolean, privateRecheck?: boolean) => dispatchRegister({ type: "sealed", on, privateRecheck }),
       setIncludePrompt: (include: boolean) => dispatchRegister({ type: "includePrompt", include }),
       saveSealed: () => dispatchRegister({ type: "sealedSaved" }),
       registerImage,

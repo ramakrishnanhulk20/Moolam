@@ -14,7 +14,8 @@ import type { Studio } from "@/lib/studio/useStudio";
 interface Mark {
   key: string;
   label: string;
-  value: string;
+  /** Left out on a stamp whose whole fact is its label, such as a private copy with no public address. */
+  value?: string;
   detail?: string;
   href?: string;
   tone?: "accent" | "verified";
@@ -93,7 +94,7 @@ export function Receipt({ studio }: { studio: Studio }) {
                     </p>
                   </>
                 )}
-                {mark.href === undefined ? (
+                {mark.value === undefined ? null : mark.href === undefined ? (
                   <p className="mt-2 break-all font-mono text-xs text-text">{mark.value}</p>
                 ) : (
                   <a
@@ -227,6 +228,16 @@ function collect(
         action: file === null ? undefined : { label: t("sealed.handback.save"), onClick: save },
         tone: "verified",
       });
+      // Only the service's own answer stamps this. The switch says what was
+      // asked for; this says what was kept, and the copy's address is never on
+      // screen because it is never public.
+      if (prepared.privateRecheck === true) {
+        marks.push({
+          key: "privateCopy",
+          label: t("sealed.receipt.privateLabel"),
+          detail: t("sealed.receipt.privateDetail"),
+        });
+      }
     } else {
       marks.push({
         key: "fingerprint",

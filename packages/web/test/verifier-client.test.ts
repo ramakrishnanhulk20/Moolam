@@ -797,3 +797,124 @@ describe("a sealed answer", () => {
     }
   });
 });
+
+/**
+ * The private re-check: one more field out, one more word back.
+ *
+ * The request is checked twice over, the multipart field on /prepare and the
+ * JSON key on /generate, because a choice that is off must leave the request
+ * exactly as it was before this choice existed.
+ */
+describe("a private re-check", () => {
+  const sealedPrepare = {
+    passport: preparePayload.passport,
+    metadata: { cid: "bafkreimetadata", uri: "ipfs://bafkreimetadata" },
+    manifest: { embedded: true },
+    preparedBy: "did:privy:cm123",
+    sealed: true,
+    signedFile: { name: "kadal-at-dawn-abababab.jpg", type: "image/jpeg", bytes: "/9j/4AAQSkZJRg==", sha256: WORD },
+  };
+
+  const sealedGenerate = {
+    passport: generatePayload.passport,
+    generatorSig: generatePayload.generatorSig,
+    metadata: sealedPrepare.metadata,
+    manifest: { embedded: true },
+    model: "gpt-image-1",
+    agent: generatePayload.agent,
+    quota: generatePayload.quota,
+    preparedBy: "did:privy:cm123",
+    sealed: true,
+    signedFile: sealedPrepare.signedFile,
+  };
+
+  const drawing = {
+    prompt: "a fishing boat at first light off the Coromandel coast",
+    title: "First light",
+    creator: CREATOR,
+    deadline: 1788878733n,
+    accessToken: "token-123",
+  };
+
+  it("sends privateRecheck on prepare only when it is on and the picture is sealed", async () => {
+    const asked = stubFetch(200, { ...sealedPrepare, privateRecheck: true });
+    await prepare({ file: imageFile(), title: "Kadal", accessToken: "t", sealed: true, privateRecheck: true });
+    const [, on] = asked.mock.calls[0] as unknown as [string, RequestInit];
+    expect((on.body as FormData).get("privateRecheck")).toBe("true");
+
+    for (const options of [
+      { sealed: true, privateRecheck: false },
+      { sealed: true },
+      { sealed: false, privateRecheck: true },
+      {},
+    ]) {
+      vi.unstubAllGlobals();
+      const fetched = stubFetch(200, options.sealed === true ? sealedPrepare : preparePayload);
+      await prepare({ file: imageFile(), title: "Kadal", accessToken: "t", ...options });
+      const [, init] = fetched.mock.calls[0] as unknown as [string, RequestInit];
+      const body = init.body as FormData;
+      expect(body.has("privateRecheck"), JSON.stringify(options)).toBe(false);
+      // The fields that are left are the ones a request carried before this choice existed.
+      expect([...body.keys()].sort(), JSON.stringify(options)).toEqual(
+        options.sealed === true ? ["file", "kind", "sealed", "title"] : ["file", "kind", "title"],
+      );
+    }
+  });
+
+  it("sends privateRecheck as the JSON true on generate only when it is on and the drawing is sealed", async () => {
+    const asked = stubFetch(200, { ...sealedGenerate, privateRecheck: true });
+    await generate({ ...drawing, sealed: true, privateRecheck: true });
+    const [, on] = asked.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(on.body as string).privateRecheck).toBe(true);
+
+    for (const options of [{ sealed: true, privateRecheck: false }, { sealed: true }, { privateRecheck: true }]) {
+      vi.unstubAllGlobals();
+      const fetched = stubFetch(200, options.sealed === true ? sealedGenerate : generatePayload);
+      await generate({ ...drawing, ...options });
+      const [, init] = fetched.mock.calls[0] as unknown as [string, RequestInit];
+      expect(Object.keys(JSON.parse(init.body as string)), JSON.stringify(options)).not.toContain("privateRecheck");
+    }
+  });
+
+  it("reads the word back on a sealed answer, from both routes", () => {
+    expect(prepareResponseSchema.parse({ ...sealedPrepare, privateRecheck: true }).privateRecheck).toBe(true);
+    expect(generateResponseSchema.parse({ ...sealedGenerate, privateRecheck: true }).privateRecheck).toBe(true);
+    expect(prepareResponseSchema.parse(sealedPrepare).privateRecheck).toBeUndefined();
+    expect(generateResponseSchema.parse(sealedGenerate).privateRecheck).toBeUndefined();
+  });
+
+  it("refuses the word as anything but true, and on a published answer at all", () => {
+    for (const word of [false, "true", 1]) {
+      expect(prepareResponseSchema.safeParse({ ...sealedPrepare, privateRecheck: word }).success, String(word)).toBe(
+        false,
+      );
+      expect(generateResponseSchema.safeParse({ ...sealedGenerate, privateRecheck: word }).success, String(word)).toBe(
+        false,
+      );
+    }
+    expect(prepareResponseSchema.safeParse({ ...preparePayload, privateRecheck: true }).success).toBe(false);
+    expect(generateResponseSchema.safeParse({ ...generatePayload, privateRecheck: true }).success).toBe(false);
+  });
+
+  it("keeps the service's own word on each of its four refusals", async () => {
+    for (const [status, word] of [
+      [400, "private-recheck-needs-sealed"],
+      [409, "private-copy-not-private"],
+      [503, "chain-unreachable"],
+      [422, "thumbnail-too-large"],
+    ] as const) {
+      stubFetch(status, { error: word }, false);
+      const failure = await prepare({
+        file: imageFile(),
+        title: "Kadal",
+        accessToken: "t",
+        sealed: true,
+        privateRecheck: true,
+      }).catch((error) => error);
+      expect(failure).toBeInstanceOf(VerifierError);
+      expect(failure.serviceCode, word).toBe(word);
+      expect(failure.status, word).toBe(status);
+      vi.unstubAllGlobals();
+    }
+  });
+});

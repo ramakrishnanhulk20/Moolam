@@ -60,8 +60,8 @@ export function GeneratePanel({
   onPrompt: (prompt: string) => void;
   onTitle: (title: string) => void;
   onConsent: (draft: ConsentDraft) => void;
-  /** Register this drawing without publishing it. */
-  onSealed: (on: boolean) => void;
+  /** Register this drawing without publishing it, and whether a private copy is kept for a re-check. */
+  onSealed: (on: boolean, privateRecheck?: boolean) => void;
   /** Whether the prompt joins the sealed record. Only asked once the switch is on. */
   onIncludePrompt: (include: boolean) => void;
   /** The creator has written the one copy of a sealed drawing to their own disk. */
@@ -185,11 +185,13 @@ export function GeneratePanel({
 
       <SealedChoice
         on={state.sealed.on}
-        onChange={onSealed}
+        onChange={(on) => onSealed(on)}
         bits={sketchOf(state.generated?.passport.blockhash256)}
         generated
         includePrompt={state.sealed.includePrompt}
         onIncludePrompt={onIncludePrompt}
+        privateRecheck={state.sealed.privateRecheck === true}
+        onPrivateRecheck={(keep) => onSealed(true, keep)}
         disabled={busy}
       />
 

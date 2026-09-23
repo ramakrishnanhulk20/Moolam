@@ -1243,7 +1243,10 @@
         "onChain": "En Monad",
         "leftOut": "Se queda fuera",
         "promptLabel": "Incluir el prompt",
-        "promptNote": "El prompt queda en privado mientras no lo incluyas."
+        "promptNote": "El prompt queda en privado mientras no lo incluyas.",
+        "privateLabel": "Dejar que Chainlink la vuelva a comprobar en privado",
+        "privateNote": "Moolam guarda una copia pequeña, de 512 píxeles de ancho, en almacenamiento privado. Un flujo confidencial de Chainlink la abre para volver a comprobar la huella y solo escribe el veredicto en Monad.",
+        "privateWho": "Nadie puede abrirla desde la web. El operador de Moolam y el proveedor de almacenamiento sí pueden. Hoy el flujo corre en el simulador de Chainlink, que no es un enclave real. Puedes borrar la copia desde la página del pasaporte cuando quieras."
       },
       "fields": {
         "commitment": {
@@ -1289,6 +1292,10 @@
         "prompt": {
           "label": "El prompt",
           "line": "Palabras que describen la imagen, así que se queda fuera del archivo salvo que lo incluyas."
+        },
+        "privateRecheck": {
+          "label": "Que pediste una comprobación privada",
+          "line": "Una palabra en el archivo fijado, para que la página del pasaporte pueda decirlo. La dirección de la copia nunca aparece en él."
         }
       },
       "plate": {
@@ -1313,7 +1320,9 @@
       "receipt": {
         "label": "Sellado en Monad",
         "detail": "La imagen no está publicada. Moolam no guarda ninguna copia.",
-        "fingerprintDetail": "Tomado del archivo firmado, que nunca salió de este navegador. Manifiesto C2PA incrustado: {manifest}."
+        "fingerprintDetail": "Tomado del archivo firmado, que nunca salió de este navegador. Manifiesto C2PA incrustado: {manifest}.",
+        "privateLabel": "Copia privada guardada",
+        "privateDetail": "Para la comprobación privada de Chainlink. Bórrala desde la página del pasaporte cuando quieras."
       }
     },
     "receipt": {
@@ -1404,7 +1413,11 @@
       "sealedMismatch": "El archivo que recibimos no coincide con el pasaporte. No se registró nada. Inténtalo otra vez.",
       "sealedNotHeld": "El servicio de verificación no devolvió el archivo sellado, así que no se firmó nada. Inténtalo otra vez.",
       "sealedRecordRefused": "El servicio de verificación no quiso publicar este registro sellado, así que no se fijó ni se registró nada. Inténtalo otra vez.",
-      "sealedFileRefused": "El servicio de verificación no pudo devolver un archivo que coincidiera con este pasaporte, así que no se fijó ni se registró nada. Inténtalo otra vez."
+      "sealedFileRefused": "El servicio de verificación no pudo devolver un archivo que coincidiera con este pasaporte, así que no se fijó ni se registró nada. Inténtalo otra vez.",
+      "privateRecheckNeedsSealed": "El servicio de verificación no guarda una copia privada de una imagen que no está sellada, así que no se fijó ni se registró nada. Recarga el estudio e inténtalo otra vez.",
+      "privateCopyNotPrivate": "El proveedor de almacenamiento no mantuvo privada la copia pequeña, así que Moolam se detuvo y no se fijó ni se registró nada. Desactiva la comprobación privada para registrar esta imagen sellada sin ella.",
+      "privateChainUnreachable": "Moolam no pudo llegar a Monad para comprobar que esta imagen es nueva, así que no guardó ninguna copia privada ni registró nada. Inténtalo de nuevo en un momento.",
+      "privateThumbnailTooLarge": "Esta imagen tiene demasiado detalle fino para la copia pequeña que Chainlink abre al volver a comprobarla, así que no se fijó ni se registró nada. Mantenla sellada con la comprobación privada desactivada y se registrará."
     },
     "actions": {
       "signIn": "Entrar otra vez",

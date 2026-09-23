@@ -1243,7 +1243,10 @@
         "onChain": "Sur Monad",
         "leftOut": "Laissé de côté",
         "promptLabel": "Inclure le prompt",
-        "promptNote": "Le prompt reste privé tant que tu ne l'inclus pas."
+        "promptNote": "Le prompt reste privé tant que tu ne l'inclus pas.",
+        "privateLabel": "Laisser Chainlink la revérifier en privé",
+        "privateNote": "Moolam garde une petite copie, de 512 pixels de large, sur un stockage privé. Un workflow confidentiel Chainlink l'ouvre pour revérifier l'empreinte et n'inscrit que le verdict sur Monad.",
+        "privateWho": "Personne ne peut l'ouvrir depuis le web. L'opérateur de Moolam et le fournisseur de stockage le peuvent. Aujourd'hui, le workflow tourne dans le simulateur de Chainlink, qui n'est pas une vraie enclave. Tu peux supprimer la copie depuis la page du passeport à tout moment."
       },
       "fields": {
         "commitment": {
@@ -1289,6 +1292,10 @@
         "prompt": {
           "label": "Le prompt",
           "line": "Des mots qui décrivent l'image : il reste hors du fichier tant que tu ne l'y mets pas."
+        },
+        "privateRecheck": {
+          "label": "Le fait que tu as demandé une revérification privée",
+          "line": "Un mot dans le fichier épinglé, pour que la page du passeport puisse le dire. L'adresse de la copie n'y figure jamais."
         }
       },
       "plate": {
@@ -1313,7 +1320,9 @@
       "receipt": {
         "label": "Scellé sur Monad",
         "detail": "L'image n'est pas publiée. Moolam n'en garde aucune copie.",
-        "fingerprintDetail": "Pris sur le fichier signé, qui n'a jamais quitté ce navigateur. Manifeste C2PA intégré : {manifest}."
+        "fingerprintDetail": "Pris sur le fichier signé, qui n'a jamais quitté ce navigateur. Manifeste C2PA intégré : {manifest}.",
+        "privateLabel": "Copie privée conservée",
+        "privateDetail": "Pour la revérification privée de Chainlink. Supprime-la depuis la page du passeport quand tu veux."
       }
     },
     "receipt": {
@@ -1404,7 +1413,11 @@
       "sealedMismatch": "Le fichier revenu ne correspond pas au passeport. Rien n'a été enregistré. Réessaie.",
       "sealedNotHeld": "Le service de vérification n'a pas rendu le fichier scellé, donc rien n'a été signé. Réessaie.",
       "sealedRecordRefused": "Le service de vérification a refusé de publier cet enregistrement scellé, donc rien n'a été épinglé ni enregistré. Réessaie.",
-      "sealedFileRefused": "Le service de vérification n'a pas pu rendre un fichier correspondant à ce passeport, donc rien n'a été épinglé ni enregistré. Réessaie."
+      "sealedFileRefused": "Le service de vérification n'a pas pu rendre un fichier correspondant à ce passeport, donc rien n'a été épinglé ni enregistré. Réessaie.",
+      "privateRecheckNeedsSealed": "Le service de vérification ne garde pas de copie privée d'une image qui n'est pas scellée, donc rien n'a été épinglé ni enregistré. Recharge le studio et réessaie.",
+      "privateCopyNotPrivate": "Le fournisseur de stockage n'a pas gardé la petite copie privée, donc Moolam s'est arrêté : rien n'a été épinglé ni enregistré. Désactive la revérification privée pour enregistrer cette image scellée sans elle.",
+      "privateChainUnreachable": "Moolam n'a pas pu joindre Monad pour vérifier que cette image est nouvelle, donc aucune copie privée n'a été gardée et rien n'a été enregistré. Réessaie dans un instant.",
+      "privateThumbnailTooLarge": "Cette image a trop de détails fins pour la petite copie que Chainlink ouvre pour la revérifier, donc rien n'a été épinglé ni enregistré. Garde-la scellée, revérification privée désactivée, et elle sera enregistrée."
     },
     "actions": {
       "signIn": "Se reconnecter",

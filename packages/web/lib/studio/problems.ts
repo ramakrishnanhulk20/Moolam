@@ -93,6 +93,25 @@ const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"]; quiet
 };
 
 /**
+ * The four refusals a private re-check has of its own, read off the service's
+ * word in the body because each shares its status with other answers.
+ *
+ * Every one of them means nothing was pinned and nothing was registered. The
+ * service's words are English and only restate the code, so none is printed
+ * under the sentence. Only an unreachable chain is worth trying again as it
+ * stands; the others would refuse the same request the same way, so their
+ * sentence says what to change instead. A published picture can be refused for
+ * its thumbnail too, and the same sentence is true for it: sealed with the
+ * private re-check off makes no thumbnail at all.
+ */
+const PRIVATE_RECHECK_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
+  "private-recheck-needs-sealed": { key: "privateRecheckNeedsSealed" },
+  "private-copy-not-private": { key: "privateCopyNotPrivate" },
+  "chain-unreachable": { key: "privateChainUnreachable", next: "again" },
+  "thumbnail-too-large": { key: "privateThumbnailTooLarge" },
+};
+
+/**
  * The refusals that happened before a byte left the wallet, so the same signed
  * bytes can go out again with no second passkey prompt.
  */
@@ -126,6 +145,10 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
   }
 
   if (error instanceof VerifierError) {
+    const own = PRIVATE_RECHECK_KEYS[error.serviceCode ?? ""];
+    if (own !== undefined) {
+      return { ...own };
+    }
     const mapped = VERIFIER_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
     // Some failures are named in the body and nothing more, so printing the
     // service's word under the sentence would only repeat the code back.
