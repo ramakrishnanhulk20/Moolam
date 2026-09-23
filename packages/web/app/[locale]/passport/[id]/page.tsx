@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { unstable_cache } from "next/cache";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
@@ -16,12 +17,13 @@ import { heldIndexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
+import { PrivateCopyPanel } from "@/components/passport/PrivateCopyPanel";
 import { UnsealPanel } from "@/components/passport/UnsealPanel";
 import { WalletProvider } from "@/components/providers/WalletProvider";
-import { reason } from "@/lib/chain/client";
+import { HOLD_SECONDS, reason } from "@/lib/chain/client";
 import { heldConsent, heldConsentHistory, heldMinInterval, heldStandard } from "@/lib/chain/consent";
 import type { ConsentReading } from "@/lib/chain/consent";
-import { DisputeStatus, ZERO_ID, heldPassportRecord } from "@/lib/chain/registry";
+import { DisputeStatus, ZERO_ID, heldPassportRecord, passportTag } from "@/lib/chain/registry";
 import type { PassportRecordBundle } from "@/lib/chain/registry";
 import { headTimestamp } from "@/lib/chain/time";
 import { activeSource } from "@/lib/data/source";
@@ -29,6 +31,7 @@ import { inheritedDisputed } from "@/lib/data/lineage";
 import { heldRegistration } from "@/lib/data/passports";
 import { withUnseal } from "@/lib/data/unseal";
 import { realPictureIds } from "@/lib/data/prerender";
+import { sealedStatus, type SealedCopyLookup } from "@/lib/verifier/client";
 import { passportShareMetadata } from "./opengraph-image";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -164,6 +167,10 @@ export default async function PassportPage({
     consentOf(passport.id),
   ]);
   const standing = standingOf({ disputed: passport.disputed, inherited: ancestorDisputed, attestations });
+  // Asked only of a sealed document that asked for the private re-check, so
+  // every other passport page costs the verify service nothing.
+  const privateCopy =
+    art.sealed === true && art.privateRecheck === true ? await privateCopyOf(passport.id) : undefined;
 
   return (
     <article>
@@ -177,6 +184,7 @@ export default async function PassportPage({
         phash={passport.phash}
         locale={locale}
         sealed={art.sealed === true}
+        privateCopy={privateCopy}
       />
 
       {/* The three panels that write share one provider, so the wallet SDK is
@@ -222,6 +230,13 @@ export default async function PassportPage({
               <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
               {/* Only the wallet that holds a still sealed passport sees this one. */}
               <UnsealPanel passportId={passport.id} owner={owner} sealed={art.sealed === true} />
+              {/* Only the holder, and only while Moolam keeps the private copy. */}
+              <PrivateCopyPanel
+                passportId={passport.id}
+                owner={owner}
+                sealed={art.sealed === true}
+                privateCopy={privateCopy}
+              />
               {/* Only the wallet that holds this passport ever sees this panel. */}
               <EditPanel parentId={passport.id} owner={owner} sealed={art.sealed === true} />
             </div>
@@ -278,6 +293,46 @@ async function consentOf(id: Hex): Promise<ConsentRecord | null> {
     return { reading, history, standard, minInterval, now: Number(now) };
   } catch {
     return null;
+  }
+}
+
+/** Thrown inside the held read when the service could not tell, so that answer is never kept. */
+class CopyStateSilent extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CopyStateSilent";
+  }
+}
+
+/**
+ * Whether Moolam still keeps the private copy, held under this passport's own
+ * name for the same minute as everything else on the page. The holder's delete
+ * drops that name, so the page reads gone on the render that follows.
+ *
+ * Only kept and gone are held. Unknown is asked again on the next render,
+ * because remembering "could not tell" would hide a copy that is there.
+ */
+async function privateCopyOf(id: Hex): Promise<SealedCopyLookup["state"]> {
+  const held = unstable_cache(
+    async () => {
+      const lookup = await sealedStatus(id);
+      if (lookup.state === "unknown") {
+        throw new CopyStateSilent(lookup.reason);
+      }
+      return lookup.state;
+    },
+    ["moolam-private-copy", id.toLowerCase()],
+    { revalidate: HOLD_SECONDS, tags: [passportTag(id)] },
+  );
+
+  try {
+    return await held();
+  } catch (error) {
+    if (error instanceof CopyStateSilent || (error as Error | undefined)?.name === "CopyStateSilent") {
+      return "unknown";
+    }
+    // Anywhere there is no cache to hold it in, the service is simply asked.
+    return (await sealedStatus(id)).state;
   }
 }
 

@@ -19,8 +19,14 @@ describe("who wrote an attestation", () => {
     expect(attestationSource(addresses.registry)).toBe("other");
   });
 
-  it("takes the receiver to compare against as an argument, so a redeploy is one value", () => {
-    expect(attestationSource(SOMEONE_ELSE, SOMEONE_ELSE)).toBe("chainlink");
+  it("names the private re-check's receiver as Chainlink too, since only the confidential workflow writes through it", () => {
+    expect(attestationSource(addresses.sealedReceiver)).toBe("chainlink");
+    expect(attestationSource(addresses.sealedReceiver.toLowerCase())).toBe("chainlink");
+  });
+
+  it("takes the receivers to compare against as an argument, so a redeploy is one value", () => {
+    expect(attestationSource(SOMEONE_ELSE, [SOMEONE_ELSE])).toBe("chainlink");
+    expect(attestationSource(CHAINLINK_RECEIVER, [SOMEONE_ELSE])).toBe("other");
   });
 });
 

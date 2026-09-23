@@ -18,6 +18,9 @@ const metadataSchema = z.object({
   image: z.string().optional(),
   thumbnail: z.string().optional(),
   sealed: z.boolean().optional(),
+  // Read as anything, so a document that writes the word some other way is not
+  // thrown away whole: only the boolean true asks for a private re-check.
+  privateRecheck: z.unknown().optional(),
   commitment: z.object({ algorithm: z.string(), value: z.string() }).optional(),
   fingerprint: z.object({ blockhash: z.string().optional() }).optional(),
 });
@@ -39,6 +42,12 @@ export interface Art {
    * registered rather than anything missing.
    */
   sealed?: true;
+  /**
+   * True when a sealed document asked Moolam to keep one small private copy for
+   * a Chainlink re-check. The document says so for ever; whether the copy is
+   * still kept is a separate question for the verify service.
+   */
+  privateRecheck?: true;
   /** How the chain's hold on the sealed file is written down: the algorithm, and the passport id. */
   commitment?: { algorithm: string; value: string };
   /** The 256 bit block hash of a sealed picture, the one trace of it anybody outside the creator sees. */
@@ -114,7 +123,8 @@ async function readFrom(url: string): Promise<Art | null> {
       return null;
     }
 
-    const parsed = metadataSchema.safeParse(await response.json());
+    const document: unknown = await response.json();
+    const parsed = metadataSchema.safeParse(document);
     if (!parsed.success) {
       return null;
     }
@@ -144,6 +154,7 @@ async function readFrom(url: string): Promise<Art | null> {
             sealed: true as const,
             commitment: parsed.data.commitment,
             blockhash: blockhash !== undefined && BLOCK_HASH.test(blockhash) ? blockhash : undefined,
+            ...(asksPrivateRecheck(document) ? { privateRecheck: true as const } : {}),
           }
         : {}),
       // A sealed record is not missing anything. It has no picture because its
@@ -154,6 +165,24 @@ async function readFrom(url: string): Promise<Art | null> {
   } catch {
     return null;
   }
+}
+
+/**
+ * The same rule the verify service, the queue, the runner and the sealed
+ * workflow all use: sealed and privateRecheck are the boolean true, and the
+ * document has neither an image nor a thumbnail key, whatever their values.
+ */
+function asksPrivateRecheck(document: unknown): boolean {
+  if (typeof document !== "object" || document === null || Array.isArray(document)) {
+    return false;
+  }
+  const fields = document as Record<string, unknown>;
+  return (
+    fields.sealed === true &&
+    fields.privateRecheck === true &&
+    !Object.hasOwn(fields, "image") &&
+    !Object.hasOwn(fields, "thumbnail")
+  );
 }
 
 function pictureUri(value: string | undefined): string | undefined {

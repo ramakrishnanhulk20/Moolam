@@ -479,7 +479,11 @@
       "recomputedGrid": "Recomputed by the workflow",
       "verdict": "A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
       "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from the file it fetched itself. Every cell that disagrees is marked.",
-      "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad through the receiver contract. Nobody can write one about their own picture."
+      "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad through the receiver contract. Nobody can write one about their own picture.",
+      "private": {
+        "badge": "Private re-check",
+        "line": "Re-checked privately by a Chainlink confidential workflow. It ran in Chainlink's simulator on one machine, which is not a real enclave."
+      }
     },
     "children": {
       "heading": "Edits",
@@ -845,11 +849,17 @@
     "sealed": {
       "label": "Sealed",
       "posterLine": "Registered on {date}. The picture is not published. Moolam keeps no copy.",
+      "posterLinePrivate": "Registered on {date}. The picture is not published. Moolam keeps only a small private copy, for the private re-check.",
       "standing": "Sealed, so there is no public copy",
       "commitmentLabel": "The commitment",
       "commitmentAlgorithm": "Hashed with {algorithm}",
       "commitmentLine": "Anyone holding the file can hash it and compare it with the passport id.",
       "recheck": "No public copy to re-check. A re-check needs the picture to be published.",
+      "privateCopy": {
+        "kept": "A private re-check can run on the small copy Moolam keeps.",
+        "gone": "Moolam's private copy was deleted, so no private re-check can run.",
+        "unknown": "Moolam could not read the private copy's state just now."
+      },
       "edit": "This passport is sealed, so it cannot be edited until the picture is published."
     },
     "unseal": {
@@ -908,6 +918,33 @@
         "later": "Try again in a minute",
         "signIn": "Sign in",
         "showPicture": "Show the picture"
+      }
+    },
+    "privateCopy": {
+      "kicker": "Yours to delete",
+      "heading": "Moolam's private copy",
+      "body": "Moolam keeps one small copy of this picture, 512 pixels on its longest side, so a Chainlink confidential workflow can re-check it. Only you can delete it.",
+      "delete": "Delete Moolam's private copy",
+      "confirm": "This cannot be undone. Without the copy no private re-check can run again, and the passport stays sealed.",
+      "confirmDelete": "Delete",
+      "keep": "Keep it",
+      "sending": "Deleting the private copy",
+      "done": "Deleted. Moolam keeps nothing of this picture now.",
+      "failure": {
+        "signedOut": "This session is signed out, so the service would not delete anything.",
+        "notHolder": "The registry says another wallet holds this passport, so only that wallet can delete the copy.",
+        "noPassport": "The registry has no passport with this id.",
+        "nothingKept": "This passport never asked for a private copy, so there is nothing to delete.",
+        "deleteFailed": "Part of the delete did not go through, so the copy may still be kept. Press Delete again to finish it.",
+        "dependencyDown": "A service this needs did not answer, so nothing was deleted. Try again in a minute.",
+        "rateLimited": "Too many requests from here for now. Wait a moment and try again.",
+        "badRequest": "The service turned the request down.",
+        "badResponse": "The service answered in a shape this app does not know.",
+        "offline": "The verify service did not answer, so nothing was deleted.",
+        "unknown": "Something went wrong before the request was sent."
+      },
+      "actions": {
+        "signIn": "Sign in"
       }
     },
     "unsealed": {

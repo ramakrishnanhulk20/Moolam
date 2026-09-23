@@ -479,7 +479,11 @@
       "recomputedGrid": "Vom Workflow neu berechnet",
       "verdict": "Ein Chainlink-CRE-Workflow hat dieses Bild noch einmal geholt und seinen Fingerabdruck neu berechnet: <apart>{bits} von 64 Bit auseinander</apart>.",
       "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den der Workflow aus der selbst geholten Datei berechnet hat. Jede Zelle, die abweicht, ist markiert.",
-      "whatIsRecheck": "Eine Nachprüfung heißt: ein Chainlink-CRE-Workflow holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort über den Receiver-Vertrag auf Monad. Über das eigene Bild kann niemand eine schreiben."
+      "whatIsRecheck": "Eine Nachprüfung heißt: ein Chainlink-CRE-Workflow holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort über den Receiver-Vertrag auf Monad. Über das eigene Bild kann niemand eine schreiben.",
+      "private": {
+        "badge": "Private Nachprüfung",
+        "line": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow. Er lief im Simulator von Chainlink auf einem einzigen Rechner, der keine echte Enklave ist."
+      }
     },
     "children": {
       "heading": "Bearbeitungen",
@@ -845,11 +849,17 @@
     "sealed": {
       "label": "Versiegelt",
       "posterLine": "Eingetragen am {date}. Das Bild ist nicht veröffentlicht. Moolam behält keine Kopie.",
+      "posterLinePrivate": "Eingetragen am {date}. Das Bild ist nicht veröffentlicht. Moolam behält nur eine kleine private Kopie, für die private Nachprüfung.",
       "standing": "Versiegelt, also gibt es keine öffentliche Kopie",
       "commitmentLabel": "Die Festlegung",
       "commitmentAlgorithm": "Gehasht mit {algorithm}",
       "commitmentLine": "Wer die Datei hat, kann sie hashen und mit der Pass-Kennung vergleichen.",
       "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden.",
+      "privateCopy": {
+        "kept": "Eine private Nachprüfung kann auf der kleinen Kopie laufen, die Moolam behält.",
+        "gone": "Die private Kopie von Moolam wurde gelöscht, also kann keine private Nachprüfung mehr laufen.",
+        "unknown": "Moolam konnte den Stand der privaten Kopie gerade nicht lesen."
+      },
       "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist."
     },
     "unseal": {
@@ -908,6 +918,33 @@
         "later": "In einer Minute noch einmal versuchen",
         "signIn": "Anmelden",
         "showPicture": "Bild anzeigen"
+      }
+    },
+    "privateCopy": {
+      "kicker": "Ihre Löschung",
+      "heading": "Die private Kopie von Moolam",
+      "body": "Moolam behält eine kleine Kopie dieses Bildes, 512 Pixel an der längsten Seite, damit ein vertraulicher Chainlink-Workflow es nachprüfen kann. Nur Sie können sie löschen.",
+      "delete": "Die private Kopie von Moolam löschen",
+      "confirm": "Das lässt sich nicht rückgängig machen. Ohne die Kopie kann keine private Nachprüfung mehr laufen, und der Pass bleibt versiegelt.",
+      "confirmDelete": "Löschen",
+      "keep": "Behalten",
+      "sending": "Die private Kopie wird gelöscht",
+      "done": "Gelöscht. Moolam behält jetzt nichts mehr von diesem Bild.",
+      "failure": {
+        "signedOut": "Diese Sitzung ist abgemeldet, der Dienst hat nichts gelöscht.",
+        "notHolder": "Laut Registry hält eine andere Wallet diesen Pass, und nur sie kann die Kopie löschen.",
+        "noPassport": "Die Registry kennt keinen Pass mit dieser Kennung.",
+        "nothingKept": "Dieser Pass hat nie um eine private Kopie gebeten, also gibt es nichts zu löschen.",
+        "deleteFailed": "Ein Teil der Löschung ist nicht durchgegangen, die Kopie ist vielleicht noch da. Drücken Sie noch einmal auf Löschen, um es abzuschließen.",
+        "dependencyDown": "Ein nötiger Dienst hat nicht geantwortet, also wurde nichts gelöscht. Versuchen Sie es in einer Minute wieder.",
+        "rateLimited": "Zu viele Anfragen von hier im Moment. Kurz warten und noch einmal versuchen.",
+        "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
+        "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
+        "offline": "Der Prüfdienst hat nicht geantwortet, also wurde nichts gelöscht.",
+        "unknown": "Etwas ist schiefgegangen, bevor die Anfrage losgeschickt wurde."
+      },
+      "actions": {
+        "signIn": "Anmelden"
       }
     },
     "unsealed": {

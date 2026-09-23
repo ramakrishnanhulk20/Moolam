@@ -53,7 +53,9 @@ export async function Poster({
           shortId={shortHex(passport.id, 10, 8)}
           words={{
             sealed: t("sealed.label"),
-            line: t("sealed.posterLine", { date: registered }),
+            // "Keeps no copy" would be untrue once the creator asked for the
+            // private re-check, so that passport gets its own line.
+            line: t(art.privateRecheck === true ? "sealed.posterLinePrivate" : "sealed.posterLine", { date: registered }),
             untitled: t("untitled"),
           }}
         />

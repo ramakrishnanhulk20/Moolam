@@ -62,6 +62,13 @@ The drawing on the poster is the block hash and nothing more: a 16 by 16 reading
 that the chain already holds in public. It is rough composition, not the picture, and the studio
 shows the creator exactly that before they sign.
 
+A creator who asked for the private re-check reads three lines differently. The poster says "Moolam
+keeps only a small private copy, for the private re-check." The second opinion block says whether
+that copy is still kept, and while it is, offers "Request a re-check"; a verdict from the sealed
+receiver is badged "Private re-check" and says the confidential workflow ran in Chainlink's
+simulator on one machine, which is not a real enclave. The holder alone sees "Delete Moolam's private
+copy", which asks once more before it deletes, cannot be undone and leaves the passport sealed.
+
 ## Publishing a sealed picture later
 
 A seal is not forever unless its holder wants it to be. The wallet the registry says holds a sealed

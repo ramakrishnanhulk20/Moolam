@@ -480,7 +480,11 @@
       "recomputedGrid": "Recalculada pelo fluxo",
       "verdict": "Um fluxo CRE da Chainlink baixou esta imagem de novo e recalculou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
       "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou do arquivo que ele mesmo baixou. Cada célula diferente fica marcada.",
-      "whatIsRecheck": "Uma reconferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad pelo contrato receptor. Ninguém pode gravar uma sobre a própria imagem."
+      "whatIsRecheck": "Uma reconferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad pelo contrato receptor. Ninguém pode gravar uma sobre a própria imagem.",
+      "private": {
+        "badge": "Reconferência privada",
+        "line": "Reconferida em privado por um fluxo confidencial da Chainlink. Rodou no simulador da Chainlink em uma única máquina, que não é um enclave de verdade."
+      }
     },
     "children": {
       "heading": "Edições",
@@ -846,11 +850,17 @@
     "sealed": {
       "label": "Lacrado",
       "posterLine": "Registrado em {date}. A imagem não está publicada. A Moolam não guarda nenhuma cópia.",
+      "posterLinePrivate": "Registrado em {date}. A imagem não está publicada. A Moolam guarda só uma cópia privada pequena, para a reconferência privada.",
       "standing": "Lacrado, então não há cópia pública",
       "commitmentLabel": "O compromisso",
       "commitmentAlgorithm": "Com hash {algorithm}",
       "commitmentLine": "Quem tem o arquivo pode calcular o hash dele e comparar com o identificador do passaporte.",
       "recheck": "Não há cópia pública para reconferir. Para isso, a imagem precisaria ser publicada.",
+      "privateCopy": {
+        "kept": "Uma reconferência privada pode rodar na cópia pequena que a Moolam guarda.",
+        "gone": "A cópia privada da Moolam foi apagada, então nenhuma reconferência privada pode rodar.",
+        "unknown": "A Moolam não conseguiu ler agora o estado da cópia privada."
+      },
       "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada."
     },
     "unseal": {
@@ -909,6 +919,33 @@
         "later": "Tentar daqui a um minuto",
         "signIn": "Entrar",
         "showPicture": "Ver a imagem"
+      }
+    },
+    "privateCopy": {
+      "kicker": "Apagar é com você",
+      "heading": "A cópia privada da Moolam",
+      "body": "A Moolam guarda uma cópia pequena desta imagem, com 512 pixels no lado maior, para que um fluxo confidencial da Chainlink possa reconferi-la. Só você pode apagá-la.",
+      "delete": "Apagar a cópia privada da Moolam",
+      "confirm": "Isto não tem volta. Sem a cópia nenhuma reconferência privada pode rodar de novo, e o passaporte continua lacrado.",
+      "confirmDelete": "Apagar",
+      "keep": "Manter",
+      "sending": "Apagando a cópia privada",
+      "done": "Apagada. A Moolam não guarda mais nada desta imagem.",
+      "failure": {
+        "signedOut": "Esta sessão está desconectada, então o serviço não apagou nada.",
+        "notHolder": "O registro diz que outra carteira tem este passaporte, e só ela pode apagar a cópia.",
+        "noPassport": "O registro não tem nenhum passaporte com este identificador.",
+        "nothingKept": "Este passaporte nunca pediu uma cópia privada, então não há nada para apagar.",
+        "deleteFailed": "Parte da exclusão não foi concluída, então a cópia ainda pode estar guardada. Toque em Apagar de novo para terminar.",
+        "dependencyDown": "Um serviço necessário não respondeu, então nada foi apagado. Tente daqui a um minuto.",
+        "rateLimited": "Muitos pedidos daqui por enquanto. Espere um pouco e tente de novo.",
+        "badRequest": "O serviço recusou o pedido.",
+        "badResponse": "O serviço respondeu num formato que este app não conhece.",
+        "offline": "O serviço de verificação não respondeu, então nada foi apagado.",
+        "unknown": "Algo deu errado antes de o pedido ser enviado."
+      },
+      "actions": {
+        "signIn": "Entrar"
       }
     },
     "unsealed": {

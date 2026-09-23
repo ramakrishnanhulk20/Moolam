@@ -71,6 +71,7 @@ vi.mock("@/components/passport/indexed", () => ({ heldIndexedAttestations: vi.fn
 vi.mock("@/components/passport/labels", () => ({ standingOf: () => "clear" }));
 vi.mock("@/components/passport/Lineage", () => ({ Lineage: () => null }));
 vi.mock("@/components/passport/Poster", () => ({ Poster: () => null }));
+vi.mock("@/components/passport/PrivateCopyPanel", () => ({ PrivateCopyPanel: () => null }));
 vi.mock("@/components/consent/ConsentSection", () => ({ ConsentSection: () => null }));
 vi.mock("@/components/consent/share", () => ({ shareDescription: () => "" }));
 vi.mock("@/components/providers/WalletProvider", () => ({ WalletProvider: () => null }));

@@ -479,7 +479,11 @@
       "recomputedGrid": "Recalculada por el flujo",
       "verdict": "Un flujo CRE de Chainlink volvió a descargar esta imagen y recalculó su huella: <apart>{bits} de 64 bits de diferencia</apart>.",
       "gridNote": "La primera cuadrícula es la huella que el registro guardó cuando se registró la imagen. La segunda es la que el flujo calculó a partir del archivo que descargó él mismo. Cada celda que no coincide queda marcada.",
-      "whatIsRecheck": "Una recomprobación es un flujo CRE de Chainlink que descarga este archivo por su cuenta, vuelve a calcular la huella y escribe esa respuesta en Monad a través del contrato receptor. Nadie puede escribir una sobre su propia imagen."
+      "whatIsRecheck": "Una recomprobación es un flujo CRE de Chainlink que descarga este archivo por su cuenta, vuelve a calcular la huella y escribe esa respuesta en Monad a través del contrato receptor. Nadie puede escribir una sobre su propia imagen.",
+      "private": {
+        "badge": "Revisión privada",
+        "line": "Recomprobada en privado por un flujo confidencial de Chainlink. Se ejecutó en el simulador de Chainlink en una sola máquina, que no es un enclave real."
+      }
     },
     "children": {
       "heading": "Ediciones",
@@ -845,11 +849,17 @@
     "sealed": {
       "label": "Sellado",
       "posterLine": "Registrado el {date}. La imagen no está publicada. Moolam no guarda ninguna copia.",
+      "posterLinePrivate": "Registrado el {date}. La imagen no está publicada. Moolam solo guarda una copia privada pequeña, para la revisión privada.",
       "standing": "Sellado, así que no hay copia pública",
       "commitmentLabel": "El compromiso",
       "commitmentAlgorithm": "Con hash {algorithm}",
       "commitmentLine": "Quien tenga el archivo puede calcular su hash y compararlo con el identificador del pasaporte.",
       "recheck": "No hay copia pública que revisar. Para revisarla habría que publicar la imagen.",
+      "privateCopy": {
+        "kept": "Se puede hacer una revisión privada con la copia pequeña que guarda Moolam.",
+        "gone": "La copia privada de Moolam se borró, así que ya no se puede hacer ninguna revisión privada.",
+        "unknown": "Moolam no pudo leer ahora mismo el estado de la copia privada."
+      },
       "edit": "Este pasaporte está sellado, así que no se puede editar hasta que la imagen se publique."
     },
     "unseal": {
@@ -908,6 +918,33 @@
         "later": "Intentar en un minuto",
         "signIn": "Iniciar sesión",
         "showPicture": "Ver la imagen"
+      }
+    },
+    "privateCopy": {
+      "kicker": "Te toca borrar",
+      "heading": "La copia privada de Moolam",
+      "body": "Moolam guarda una copia pequeña de esta imagen, de 512 píxeles en su lado más largo, para que un flujo confidencial de Chainlink pueda volver a comprobarla. Solo tú puedes borrarla.",
+      "delete": "Borrar la copia privada de Moolam",
+      "confirm": "Esto no se puede deshacer. Sin la copia no se podrá hacer otra revisión privada, y el pasaporte sigue sellado.",
+      "confirmDelete": "Borrar",
+      "keep": "Conservarla",
+      "sending": "Borrando la copia privada",
+      "done": "Borrada. Moolam ya no guarda nada de esta imagen.",
+      "failure": {
+        "signedOut": "Esta sesión está cerrada, así que el servicio no borró nada.",
+        "notHolder": "El registro dice que otra cartera tiene este pasaporte, y solo ella puede borrar la copia.",
+        "noPassport": "El registro no tiene ningún pasaporte con este identificador.",
+        "nothingKept": "Este pasaporte nunca pidió una copia privada, así que no hay nada que borrar.",
+        "deleteFailed": "Una parte del borrado no se completó, así que la copia puede seguir guardada. Pulsa Borrar otra vez para terminar.",
+        "dependencyDown": "Un servicio necesario no respondió, así que no se borró nada. Inténtalo dentro de un minuto.",
+        "rateLimited": "Demasiadas peticiones desde aquí por ahora. Espera un momento e inténtalo otra vez.",
+        "badRequest": "El servicio rechazó la petición.",
+        "badResponse": "El servicio respondió con una forma que esta app no conoce.",
+        "offline": "El servicio de verificación no respondió, así que no se borró nada.",
+        "unknown": "Algo salió mal antes de enviar la petición."
+      },
+      "actions": {
+        "signIn": "Iniciar sesión"
       }
     },
     "unsealed": {

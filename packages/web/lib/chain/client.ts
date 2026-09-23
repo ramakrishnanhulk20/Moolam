@@ -26,6 +26,12 @@ export const addresses = {
    */
   forwarder: "0x76c9cf548b4179F8901cda1f8623568b58215E62" as Hex,
   simulationForwarder: "0x9eF6468C5f37b976E57d52054c693269479A784d" as Hex,
+  /**
+   * The second receiver, written to only by the confidential workflow that
+   * re-checks a sealed picture from the small private copy Moolam keeps. A row
+   * from it is a private re-check and is labelled as one.
+   */
+  sealedReceiver: "0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A" as Hex,
 } as const;
 
 /** The block the registry was deployed in: nothing it emitted exists before it. */

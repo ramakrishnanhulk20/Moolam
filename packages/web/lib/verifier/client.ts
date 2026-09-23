@@ -456,6 +456,22 @@ export const verifyResponseSchema = z.object({
   }),
 });
 
+/**
+ * What GET /sealed/status/:passportId answers: whether Moolam still keeps the
+ * small private copy a sealed passport's creator asked for.
+ */
+export const sealedStatusSchema = z.object({
+  passportId: hexWord,
+  state: z.enum(["kept", "gone", "unknown"]),
+  privateRecheck: z.boolean(),
+});
+
+/** What POST /sealed/forget answers once the holder's delete went through. `deleted` is 0 when nothing was left. */
+export const forgetResponseSchema = z.object({
+  passportId: hexWord,
+  deleted: z.number().int().nonnegative(),
+});
+
 export type RecheckRequested = z.infer<typeof recheckRequestSchema>;
 export type RecheckStatus = z.infer<typeof recheckStatusSchema>;
 
@@ -497,6 +513,16 @@ export type UnsealLookup =
   | { state: "unsealed"; record: UnsealRecord }
   | { state: "sealed" }
   | { state: "unknown"; reason: string };
+/**
+ * Whether the private copy of a sealed passport is still kept, and never a
+ * fourth answer.
+ *
+ * "unknown" covers every way the service or the network could fail to say,
+ * and it is never drawn as kept or as gone: a page that read it as gone would
+ * tell a creator their copy was deleted when nobody knows.
+ */
+export type SealedCopyLookup = { state: "kept" } | { state: "gone" } | { state: "unknown"; reason: string };
+export type ForgetResponse = z.infer<typeof forgetResponseSchema>;
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
@@ -879,6 +905,75 @@ export async function readRecheckStatus(
     return { state: "unknown", reason: "the answer that came back is for another passport" };
   }
   return parsed.data.status === "none" ? { state: "none" } : { state: "known", status: parsed.data };
+}
+
+/**
+ * Whether Moolam still keeps the private copy of one sealed passport.
+ *
+ * It never throws, for the same reason the two lookups above do not: every
+ * answer that is not a clean "kept" or "gone" leads to the same screen, which
+ * offers nothing and says it could not tell.
+ */
+export async function sealedStatus(
+  passportId: Hex,
+  options: { signal?: AbortSignal } = {},
+): Promise<SealedCopyLookup> {
+  const path = `/sealed/status/${passportId}`;
+  const timeout = AbortSignal.timeout(LOOKUP_TIMEOUT_MS);
+  const signal = options.signal === undefined ? timeout : AbortSignal.any([options.signal, timeout]);
+
+  let response: Response;
+  try {
+    response = await fetch(verifierUrl(path), { method: "GET", signal });
+  } catch {
+    return { state: "unknown", reason: `the verify service at ${verifierUrl(path)} did not answer` };
+  }
+
+  if (!response.ok) {
+    return { state: "unknown", reason: (await failureOf(response)).message };
+  }
+
+  let payload: unknown;
+  try {
+    payload = await response.json();
+  } catch {
+    return { state: "unknown", reason: "the verify service answered with something that is not JSON" };
+  }
+
+  const parsed = sealedStatusSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { state: "unknown", reason: "the verify service answered in a shape this app does not know" };
+  }
+  if (parsed.data.passportId.toLowerCase() !== passportId.toLowerCase()) {
+    return { state: "unknown", reason: "the answer that came back is for another passport" };
+  }
+  // The service never keeps a copy for a document that did not ask for one, so
+  // an answer that says both is not one this app can believe either half of.
+  if (parsed.data.state === "kept" && !parsed.data.privateRecheck) {
+    return { state: "unknown", reason: "the service said a copy is kept for a passport that did not ask for one" };
+  }
+  return parsed.data.state === "unknown"
+    ? { state: "unknown", reason: "the verify service could not read the private copy's state" }
+    : { state: parsed.data.state };
+}
+
+/**
+ * Deletes Moolam's private copy of one sealed passport, for its holder only.
+ *
+ * The service checks the Privy token against the wallet the registry names as
+ * holder at that moment. Nothing on chain changes: the passport stays sealed,
+ * and what goes is the private re-check, which needs the copy.
+ */
+export async function forgetPrivateCopy(options: {
+  passportId: Hex;
+  accessToken: string;
+  signal?: AbortSignal;
+}): Promise<ForgetResponse> {
+  return await post("/sealed/forget", JSON.stringify({ passportId: options.passportId }), forgetResponseSchema, {
+    signal: options.signal,
+    headers: { authorization: `Bearer ${options.accessToken}`, "content-type": "application/json" },
+    timeoutMs: RECHECK_TIMEOUT_MS,
+  });
 }
 
 /** Matches an image against the registry. No sign in: anyone may check a picture. */

@@ -4,6 +4,7 @@ import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import { bitsApart, bitsOf, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
 import { heldReportDelivery, type ReportDelivery } from "@/lib/chain/reports";
+import type { SealedCopyLookup } from "@/lib/verifier/client";
 import { transactionFor, type IndexedAttestation } from "./indexed";
 import { attestationSource } from "./labels";
 import { RecheckRequest } from "./RecheckRequest";
@@ -27,6 +28,7 @@ export async function Attestations({
   phash,
   locale,
   sealed = false,
+  privateCopy,
 }: {
   attestations: Attestation[];
   indexed: IndexedAttestation[];
@@ -40,11 +42,22 @@ export async function Attestations({
    * rather than as the record its creator asked for.
    */
   sealed?: boolean;
+  /**
+   * Set only for a sealed passport whose creator asked for the private
+   * re-check: whether Moolam still keeps the small copy that re-check runs on.
+   * Unknown is its own answer and is never drawn as kept or as gone.
+   */
+  privateCopy?: SealedCopyLookup["state"];
 }) {
   const t = await getTranslations("passport.attestations");
   const sealedWords = await getTranslations("passport.sealed");
   const common = await getTranslations("common");
   const format = await getFormatter({ locale });
+
+  // A sealed picture can be re-checked only from the private copy, so the
+  // control is offered on one while that copy is kept and never otherwise.
+  const offerRecheck = !sealed || privateCopy === "kept";
+  const copyLine = sealed && privateCopy !== undefined ? sealedWords(`privateCopy.${privateCopy}`) : null;
 
   // Which forwarder carried each report is a chain read, so it is done here,
   // once per row, rather than inside a row that the list has already resolved.
@@ -79,9 +92,10 @@ export async function Attestations({
           </div>
 
           <div className="rise" style={{ animationDelay: "90ms" }}>
-            {/* A sealed passport gets no button: there is no published picture
-                for a workflow to fetch, and the block above has already said so
-                in those words. */}
+            {/* A plain sealed passport gets no button: there is no published
+                picture for a workflow to fetch, and the block says so in those
+                words. One that asked for the private re-check says where its
+                copy stands instead. */}
             {attestations.length === 0 ? (
               <div className="max-w-[52ch] border-s-2 border-line ps-5">
                 {sealed ? (
@@ -90,7 +104,9 @@ export async function Attestations({
                       <span className="motif h-[9px] w-[9px]" />
                       {sealedWords("label")}
                     </p>
-                    <p className="mt-4 text-sm leading-relaxed text-text-muted">{sealedWords("recheck")}</p>
+                    <p data-private-copy={privateCopy} className="mt-4 text-sm leading-relaxed text-text-muted">
+                      {copyLine ?? sealedWords("recheck")}
+                    </p>
                   </>
                 ) : (
                   <>
@@ -119,7 +135,15 @@ export async function Attestations({
               </ul>
             )}
 
-            {sealed ? null : <RecheckRequest className="mt-8 border-t border-line pt-7" />}
+            {offerRecheck ? (
+              <RecheckRequest className="mt-8 border-t border-line pt-7" />
+            ) : attestations.length > 0 && copyLine !== null ? (
+              // Under earlier verdicts the control's place says why there is
+              // no control now, so a deleted copy reads as a choice, not a fault.
+              <p data-private-copy={privateCopy} className="mt-8 max-w-[54ch] border-t border-line pt-7 text-sm leading-relaxed text-text-muted">
+                {copyLine}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
@@ -151,6 +175,9 @@ function Row({
   common: Translate;
 }) {
   const source = attestationSource(attestation.receiver);
+  // Written only by the confidential workflow that reads Moolam's private copy
+  // of a sealed picture, so it is named for that and for where it really ran.
+  const isPrivate = attestation.receiver.toLowerCase() === addresses.sealedReceiver.toLowerCase();
 
   const recomputed = phashWord(attestation.recomputed);
   const registeredBits = bitsOf(phash);
@@ -162,14 +189,28 @@ function Row({
 
   return (
     <li className="bg-bg p-6 sm:p-8">
-      <p className={`flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] ${attestation.matched ? "text-verified" : "text-failed"}`}>
-        <span aria-hidden className={`h-2 w-2 ${attestation.matched ? "bg-verified" : "bg-failed"}`} />
-        {attestation.matched ? t("matched") : t("notMatched")}
-      </p>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <p className={`flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] ${attestation.matched ? "text-verified" : "text-failed"}`}>
+          <span aria-hidden className={`h-2 w-2 ${attestation.matched ? "bg-verified" : "bg-failed"}`} />
+          {attestation.matched ? t("matched") : t("notMatched")}
+        </p>
+        {isPrivate ? (
+          <p data-private-badge className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+            <span aria-hidden className="motif h-[9px] w-[9px]" />
+            {t("private.badge")}
+          </p>
+        ) : null}
+      </div>
 
-      <p className="mt-5 max-w-[24ch] font-display text-[clamp(1.3rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-        {source === "chainlink" ? t("byChainlink") : t("byReceiver")}
-      </p>
+      {isPrivate ? (
+        <p className="mt-5 max-w-[40ch] font-display text-[clamp(1.1rem,2.1vw,1.55rem)] font-semibold leading-[1.15] tracking-[-0.02em]">
+          {t("private.line")}
+        </p>
+      ) : (
+        <p className="mt-5 max-w-[24ch] font-display text-[clamp(1.3rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
+          {source === "chainlink" ? t("byChainlink") : t("byReceiver")}
+        </p>
+      )}
 
       {/* Two equal columns rather than a flex row: the captions are different
           lengths, and a pair of fingerprints drawn at different sizes reads as
@@ -219,7 +260,7 @@ function Row({
         )}
         {source === "chainlink" ? (
           <a
-            href={`${MONAD_EXPLORER}/address/${addresses.receiver}`}
+            href={`${MONAD_EXPLORER}/address/${attestation.receiver}`}
             target="_blank"
             rel="noreferrer"
             className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint transition-colors duration-200 hover:text-accent"

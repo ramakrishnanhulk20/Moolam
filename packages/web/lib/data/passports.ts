@@ -797,7 +797,9 @@ async function readPage(
     metadataURI: row.metadataURI,
     manifest: row.manifestHash.toLowerCase() !== NO_MANIFEST,
     rechecked: row.attestationCount > 0,
-    chainlink: row.attestations.some((one) => one.receiver.toLowerCase() === addresses.receiver.toLowerCase()),
+    chainlink: row.attestations.some((one) =>
+      [addresses.receiver, addresses.sealedReceiver].some((known) => known.toLowerCase() === one.receiver.toLowerCase()),
+    ),
     disputed: row.disputed,
     inheritedDisputed: row.disputed || reaches(filter.disputedReach, row),
     generatorId: row.generator?.id ?? null,

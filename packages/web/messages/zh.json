@@ -481,7 +481,11 @@
       "recomputedGrid": "工作流重新算出的指纹",
       "verdict": "一个 Chainlink CRE 工作流重新取回这张图，又算了一遍指纹：<apart>64 位中差 {bits} 位</apart>。",
       "gridNote": "第一格是登记时注册表存下的指纹。第二格是工作流用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
-      "whatIsRecheck": "复核，就是一个 Chainlink CRE 工作流自己把这份文件取回去，重新算一遍指纹，再通过接收合约把答案写到 Monad 上。谁也没法给自己的图写一条。"
+      "whatIsRecheck": "复核，就是一个 Chainlink CRE 工作流自己把这份文件取回去，重新算一遍指纹，再通过接收合约把答案写到 Monad 上。谁也没法给自己的图写一条。",
+      "private": {
+        "badge": "私下复核",
+        "line": "由 Chainlink 机密工作流私下复核。它在 Chainlink 的模拟器里、在一台机器上运行，那不是真正的安全飞地。"
+      }
     },
     "children": {
       "heading": "编辑版本",
@@ -847,11 +851,17 @@
     "sealed": {
       "label": "已封存",
       "posterLine": "{date} 登记。图片没有公开。Moolam 不留任何副本。",
+      "posterLinePrivate": "{date} 登记。图片没有公开。Moolam 只保留一份小的私有副本，用于私下复核。",
       "standing": "已封存，没有公开副本",
       "commitmentLabel": "链上的承诺",
       "commitmentAlgorithm": "用 {algorithm} 取哈希",
       "commitmentLine": "拿着这个文件的人都可以算出它的哈希，再与护照编号对照。",
       "recheck": "没有可供复核的公开副本。要复核就得先公开图片。",
+      "privateCopy": {
+        "kept": "可以在 Moolam 保留的小副本上做一次私下复核。",
+        "gone": "Moolam 的私有副本已删除，所以无法再做私下复核。",
+        "unknown": "Moolam 暂时读不到私有副本的状态。"
+      },
       "edit": "这本护照已封存，在图片公开之前无法编辑。"
     },
     "unseal": {
@@ -910,6 +920,33 @@
         "later": "过一分钟再试",
         "signIn": "登录",
         "showPicture": "查看图片"
+      }
+    },
+    "privateCopy": {
+      "kicker": "由你来删除",
+      "heading": "Moolam 的私有副本",
+      "body": "Moolam 保留这张图片的一份小副本，长边 512 像素，供 Chainlink 机密工作流复核。只有你能删除它。",
+      "delete": "删除 Moolam 的私有副本",
+      "confirm": "这一步无法撤回。没有副本就再也不能做私下复核，护照仍然保持封存。",
+      "confirmDelete": "删除",
+      "keep": "保留",
+      "sending": "正在删除私有副本",
+      "done": "已删除。Moolam 现在不再保留这张图片的任何东西。",
+      "failure": {
+        "signedOut": "这个会话已登出，服务什么都没有删除。",
+        "notHolder": "注册表显示这本护照在另一个钱包手里，只有那个钱包能删除副本。",
+        "noPassport": "注册表里没有这个编号的护照。",
+        "nothingKept": "这本护照从没要求保留私有副本，所以没有东西可删。",
+        "deleteFailed": "删除有一部分没有完成，副本可能还在。再按一次删除来完成。",
+        "dependencyDown": "需要的一项服务没有回应，所以什么都没删除。过一分钟再试。",
+        "rateLimited": "这里的请求暂时太多。稍等片刻再试。",
+        "badRequest": "服务没有接受这个请求。",
+        "badResponse": "服务的回应格式是这个应用不认识的。",
+        "offline": "校验服务没有回应，所以什么都没删除。",
+        "unknown": "请求还没发出去就出了问题。"
+      },
+      "actions": {
+        "signIn": "登录"
       }
     },
     "unsealed": {
