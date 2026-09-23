@@ -57,6 +57,7 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 
 const { buildServer } = await import("../src/server.js");
 const { sealedMetadata } = await import("../src/sealed.js");
+const { env } = await import("../src/env.js");
 
 const PRIVATE_FILES_URL = "https://api.pinata.cloud/v3/files/private";
 const LINK_URL = `${PRIVATE_FILES_URL}/download_link`;
@@ -801,6 +802,38 @@ describe("POST /sealed/link (B1, B3, B4, B5, B15, D3)", () => {
       await day.close();
     }
   }, 60_000);
+
+  it("B15: GLOBAL_LINKS_PER_DAY at 0 is the kill switch: the global-limit refusal, and no link asked of Pinata", async () => {
+    const id = idOf(0x5a);
+    register(id, sealedDocument(id));
+    keep(nameOf(id));
+    // env.ts parses once per file, so the switch is flipped on the parsed value for one server only.
+    const ceiling = env.GLOBAL_LINKS_PER_DAY;
+    env.GLOBAL_LINKS_PER_DAY = 0;
+    let off: FastifyInstance | undefined;
+    try {
+      off = await build({
+        recheck: {
+          readDocument: async (uri: string) => await stubs.readMetadataDocument(uri),
+          findRecord: async () => undefined,
+          store: storeOf([running(id, 1)]),
+        },
+      });
+      const mark = calls.length;
+      const refused = await link(id, { on: off, ip: "203.0.113.120" });
+      const health = await off.inject({ method: "GET", url: "/health" });
+
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json().error).toBe("global-limit");
+      expect(refused.headers["retry-after"]).toBeDefined();
+      expectNothingOfTheFile(refused);
+      expect(callsSince(mark, "link")).toHaveLength(0);
+      expect(health.json().limits.links).toEqual({ used: 0, max: 0 });
+    } finally {
+      env.GLOBAL_LINKS_PER_DAY = ceiling;
+      await off?.close();
+    }
+  });
 
   it("B5: no log line carries the link, its signature or the token, on a success or on any refusal", async () => {
     const logged = await build({ logger: true });

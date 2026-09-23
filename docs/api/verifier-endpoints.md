@@ -694,7 +694,7 @@ compare with the passport id on Monad.
 
 | Code | When |
 | --- | --- |
-| `200` | Published |
+| `200` | Published. Once the record is pinned, a private copy kept for a private re-check is deleted by its exact name, `sealed-thumb-<passportId>.jpg`, and [`/sealed/status`](#get-sealedstatuspassportid) reads `gone` at once. A lookup or delete that fails is logged with the passport id and changes nothing in this answer |
 | `400` | Not a multipart body, no `file` part, a file part under another name, or a `passportId` that is not 32 bytes of hex |
 | `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
 | `400` | `{ "error": "hash-mismatch", "passportId": "0x..." }`. The upload is not the file this passport commits to. Usually the creator kept their own copy of the picture rather than the file this service signed and handed back |
@@ -831,7 +831,7 @@ the request, and parsed again before it is sent: it has to be `https` on the hos
 | `409` | `not-claimed`. No runner claimed this passport's request in the last ten minutes: nobody asked, it is still waiting, it is answered, or the claim is older |
 | `409` | `ambiguous`. More than one private file has the passport's name |
 | `429` | `link-cap`. Five links for this passport in the last hour |
-| `429` | `{ "error": "global-limit", ... }` once 100 links were minted today across every passport. See [Today's budget for everyone](#todays-budget-for-everyone) |
+| `429` | `{ "error": "global-limit", ... }` once `GLOBAL_LINKS_PER_DAY` links were minted today across every passport, 100 by default. At `0` every request that passes the checks answers this, which switches the route off. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | `link-unavailable`. Pinata did not mint the link, or answered one that is not `https` on the configured gateway |
 | `503` | `not-configured`. This host has no `SEALED_LINK_TOKEN`, so it mints nothing |
 | `503` | `chain-unavailable`, `metadata-unavailable` or `lookup-unavailable`. The chain, the gateway or the private listing did not answer, which is never read as a no |
@@ -1056,7 +1056,7 @@ money, and a fifth bounds how many read links to private copies exist:
 | `GLOBAL_GENERATIONS_PER_DAY` | 60 | Pictures the agent draws, so about two dollars of image model spend |
 | `GLOBAL_EDITS_PER_DAY` | 150 | Edits, so about 600 pins and 150 sponsored `appendEdit` calls |
 | `GLOBAL_UNSEALS_PER_DAY` | 50 | Sealed pictures published, so about 200 pins, and the pictures are whole files rather than thumbnails |
-| none, fixed in code | 100 | Links [`/sealed/link`](#post-sealedlink) mints, across every passport. It spends nothing; it bounds how much of the private store a stolen link token could open in a day |
+| `GLOBAL_LINKS_PER_DAY` | 100 | Links [`/sealed/link`](#post-sealedlink) mints, across every passport. It spends nothing; it bounds how much of the private store a stolen link token could open in a day |
 
 Every other limit on this service is counted per Privy user id, and an account costs nothing to
 make, so these are the only numbers that bound a determined caller with a hundred accounts.
@@ -1136,7 +1136,17 @@ curl -s http://localhost:4000/health
     unseals: { used: number, max: number },
     links: { used: number, max: number }
   },
-  recheck: { pending: number, running: number }
+  recheck: { pending: number, running: number },
+  sweep: {
+    mode: "off" | "dry" | "delete",
+    lastRun: null | {
+      at: string,                         // ISO 8601, when the run started
+      mode: "dry" | "delete",
+      outcome: "finished" | "stopped",    // stopped: a listing or chain read failed, nothing marked
+      more: boolean,                      // the listing stopped at 10 pages or 200 files
+      counts: { listed, oddNames, undated, young, registered, marked, deleted, failed }
+    }
+  }
 }
 ```
 
@@ -1149,11 +1159,20 @@ key becomes visible from outside: a host without `PINATA_JWT` still boots and st
 
 `limits` is how much of [today's budget for everyone](#todays-budget-for-everyone) is gone, so a
 daily check can see a ceiling coming before creators meet it. `links` is the private read links
-minted today against their ceiling of 100. It counts the whole world and names nobody: there is no
-per-caller data on this route. A host that mounts the unseal routes lists `sealed` in `routes` too.
+minted today against `GLOBAL_LINKS_PER_DAY`. It counts the whole world and names nobody: there is
+no per-caller data on this route. A host that mounts the unseal routes lists `sealed` in `routes` too.
 
 `recheck` is how many second opinions are waiting and how many a runner has in hand, which is where
 a runner that has died shows up from outside: `pending` climbs and `running` stays at zero.
+
+`sweep` is the hourly sweep of private copies whose passport never reached the chain, set by
+`PRIVATE_SWEEP`. It first runs an hour after boot and never at boot. Each run lists at most 10 pages
+and 200 files named `sealed-thumb-`, keeps only exact thumbnail names Pinata says were uploaded more
+than 48 hours ago, and marks a file only when the registry answered that its passport does not
+exist. A chain read that failed, a listing it could not finish or an answer in an unknown shape
+stops the run with nothing marked. In `dry`, the default, the host's log names each file it would
+delete and its age in hours; in `delete` it deletes them. `off` is also what a host with no Pinata
+token reports. No file name, file id or reason appears here: they stay in the host's log.
 
 This is the one route outside the 60-a-minute limit. A status page, an uptime monitor or a build
 pre-rendering hundreds of pages may probe it as often as it likes and never reads a refusal as an

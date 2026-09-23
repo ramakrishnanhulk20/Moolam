@@ -7,6 +7,9 @@
 // pinned when either fails. It also holds the model's two added notes: a passport whose document
 // is already public cannot be unsealed again, and a picture whose thumbnail will not fit the
 // Chainlink budget is refused rather than published as a passport that can never be re-checked.
+// From opt-in B (WO-136c): once the picture is public, a private copy kept for a private re-check
+// is deleted by its exact name, /sealed/status reads gone at once, and a lookup or delete that
+// fails changes nothing about the answer.
 // The picture in the happy path is made by the real sealed pipeline, so the bytes under test are
 // the bytes a sealed registration would have handed the creator.
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
@@ -71,6 +74,7 @@ const { fingerprint } = await import("../src/fingerprint.js");
 const unseal = await vi.importActual<typeof import("../src/unseal.js")>("../src/unseal.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
+const PRIVATE_FILES_URL = "https://api.pinata.cloud/v3/files/private";
 const HOLDER = getAddress("0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6");
 const STRANGER = getAddress("0x1111111111111111111111111111111111111111");
 const METADATA_URI = "ipfs://bafysealeddocument";
@@ -85,6 +89,50 @@ interface Pin {
 const pins: Pin[] = [];
 /** Names whose pin is refused, so a test can fail the record alone and leave the picture public. */
 let refusePin: (name: string) => boolean = () => false;
+
+/** The private files on the stub account, and what the private half of Pinata was asked. */
+const privateFiles: { id: string; name: string; cid: string }[] = [];
+const privateDeleted: string[] = [];
+const privatePinata = { listFails: false, deleteFails: false };
+let privateCounter = 0;
+
+function keepPrivate(name: string): { id: string; name: string; cid: string } {
+  privateCounter += 1;
+  const file = {
+    id: `0199a3c2-5d7e-7f10-9a1b-${privateCounter.toString(16).padStart(12, "0")}`,
+    name,
+    cid: `bafkreiprivate${privateCounter.toString().padStart(30, "0")}`,
+  };
+  privateFiles.push(file);
+  return file;
+}
+
+/**
+ * The private listing and delete at the fetch layer. The listing answers every name that starts
+ * with the filter, looser than any real filter, so the exact-name check in the route is what runs.
+ */
+function privateAnswer(url: string, method: string): Response | undefined {
+  if (url.startsWith(`${PRIVATE_FILES_URL}?`) && method === "GET") {
+    if (privatePinata.listFails) return new Response("down", { status: 500 });
+    const name = new URL(url).searchParams.get("name") ?? "";
+    const files = privateFiles
+      .filter((file) => file.name.startsWith(name))
+      .map((file) => ({ ...file, created_at: "2026-09-23T08:00:00Z" }));
+    return new Response(JSON.stringify({ data: { files, next_page_token: "" } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  if (url.startsWith(`${PRIVATE_FILES_URL}/`) && method === "DELETE") {
+    if (privatePinata.deleteFails) return new Response("down", { status: 500 });
+    const id = url.slice(PRIVATE_FILES_URL.length + 1);
+    privateDeleted.push(id);
+    const at = privateFiles.findIndex((file) => file.id === id);
+    if (at !== -1) privateFiles.splice(at, 1);
+    return new Response(JSON.stringify({ data: null }), { status: 200 });
+  }
+  return undefined;
+}
 
 let signing: CryptoKey;
 let verifying: CryptoKey;
@@ -218,6 +266,10 @@ describe("unsealing a sealed passport", () => {
     const realFetch = globalThis.fetch;
     vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
+      const privately = privateAnswer(url, init?.method ?? "GET");
+      if (privately !== undefined) {
+        return privately;
+      }
       if (url !== UPLOAD_URL) {
         return await realFetch(input, init);
       }
@@ -247,6 +299,10 @@ describe("unsealing a sealed passport", () => {
   beforeEach(() => {
     pins.length = 0;
     refusePin = () => false;
+    privateFiles.length = 0;
+    privateDeleted.length = 0;
+    privatePinata.listFails = false;
+    privatePinata.deleteFails = false;
     stubs.readPassport.mockReset().mockResolvedValue({
       registeredAt: 1_758_000_000,
       phash: sealedFile.phash,
@@ -545,6 +601,65 @@ describe("unsealing a sealed passport", () => {
     expect(answer.reason).toContain("published");
     expect(pins).toHaveLength(3);
   }, 60_000);
+
+  it("deletes the private copy by its exact name once the picture is public, and /sealed/status reads gone at once", async () => {
+    const id = sealedFile.passportId;
+    stubs.readMetadataDocument.mockResolvedValue(
+      sealedMetadata({
+        title: "Monsoon nets, sealed",
+        description: "A picture registered with Moolam and kept sealed.",
+        passportId: id,
+        fingerprint: { sha256: id, phash: sealedFile.phash, blockhash: sealedFile.blockhash, width: 640, height: 480, format: "jpeg" },
+        privateRecheck: true,
+      }),
+    );
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    const lookalike = keepPrivate(`sealed-thumb-${id}.jpg.old`);
+    const status = async (): Promise<LightMyRequestResponse> =>
+      await app.inject({ method: "GET", url: `/sealed/status/${id}`, remoteAddress: "198.51.100.45" });
+
+    expect((await status()).json().state).toBe("kept");
+    const response = await ask("did:privy:unseal-private-copy");
+
+    expect(response.statusCode).toBe(200);
+    expect(pins).toHaveLength(4);
+    expect(privateDeleted).toEqual([kept.id]);
+    expect(privateFiles).toEqual([lookalike]);
+    expect(response.body).not.toContain(kept.id);
+    // Without the drop, the status memory would go on saying kept for the rest of its minute.
+    expect((await status()).json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
+  }, 60_000);
+
+  it("answers exactly as before when the private delete or the lookup fails, and logs the passport id", async () => {
+    const id = sealedFile.passportId;
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    const loud = await buildServer({ source: emptySource, logger: true, unseal: { keys: verifying } });
+    await loud.ready();
+    try {
+      privatePinata.deleteFails = true;
+      const deleteDown = await captureLog(async () => await ask("did:privy:unseal-delete-down", { on: loud }));
+      privatePinata.deleteFails = false;
+      privatePinata.listFails = true;
+      const lookupDown = await captureLog(async () => await ask("did:privy:unseal-lookup-private-down", { on: loud }));
+
+      for (const { response } of [deleteDown, lookupDown]) {
+        expect(response.statusCode).toBe(200);
+        const answer = response.json();
+        expect(answer.error).toBeUndefined();
+        expect(answer.passportId).toBe(id);
+        expect(answer.record.uri).toMatch(/^ipfs:\/\/.+/);
+        expect(response.body).not.toContain("private");
+      }
+      expect(privateFiles).toEqual([kept]);
+      const partly = deleteDown.logged.split("\n").find((line) => line.includes("only partly deleted")) ?? "";
+      expect(partly).toContain(id);
+      expect(partly).not.toContain(kept.id);
+      const notLooked = lookupDown.logged.split("\n").find((line) => line.includes("could not look for a private copy")) ?? "";
+      expect(notLooked).toContain(id);
+    } finally {
+      await loud.close();
+    }
+  }, 120_000);
 });
 
 describe("GET /unseal/:passportId", () => {

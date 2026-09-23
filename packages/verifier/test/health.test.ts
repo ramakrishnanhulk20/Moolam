@@ -1,7 +1,7 @@
 // Covers what GET /health answers: liveness, the index size, the package version, the list of
 // routes this host mounted, in the documented order, how much of the day's budget for everyone is
-// gone, and that the probe is never rate-limited, since a probe that can be refused would read as
-// an outage.
+// gone, the private copy sweep's mode and last run, and that the probe is never rate-limited, since
+// a probe that can be refused would read as an outage.
 // The generate route and the paid route are switched off below so the list is the same on any
 // machine, whatever the developer's .env happens to hold.
 // Does NOT cover the routes themselves, which have their own files, and does not cover what a
@@ -21,6 +21,8 @@ vi.hoisted(() => {
   process.env.GLOBAL_GENERATIONS_PER_DAY = "5";
   process.env.GLOBAL_EDITS_PER_DAY = "3";
   process.env.GLOBAL_UNSEALS_PER_DAY = "9";
+  process.env.GLOBAL_LINKS_PER_DAY = "11";
+  process.env.PRIVATE_SWEEP = "";
 });
 
 const { buildServer } = await import("../src/server.js");
@@ -59,8 +61,51 @@ describe("GET /health", () => {
       generations: { used: 0, max: 5 },
       edits: { used: 0, max: 3 },
       unseals: { used: 0, max: 9 },
-      links: { used: 0, max: 100 },
+      links: { used: 0, max: 11 },
     });
+  });
+
+  it("shows the sweep's mode, dry by default, and after a run its time and counts with no file named", async () => {
+    expect((await app.inject({ method: "GET", url: "/health" })).json().sweep).toEqual({ mode: "dry", lastRun: null });
+
+    const at = Date.parse("2026-09-23T12:00:00Z");
+    const orphan = `0x${"0c".repeat(32)}`;
+    const swept = await buildServer({
+      source: emptySource,
+      logger: false,
+      prepare: {},
+      sweep: {
+        mode: "delete",
+        deps: {
+          list: async () => ({
+            files: [{ id: "0199a3c2-5d7e-7f10-9a1b-00000000000c", name: `sealed-thumb-${orphan}.jpg`, cid: "bafkreiprivate0c", createdAt: "2026-09-20T12:00:00Z" }],
+            more: false,
+          }),
+          registered: async () => false,
+          remove: async () => undefined,
+          now: () => at,
+        },
+      },
+    });
+    try {
+      await swept.privateSweep.runOnce();
+      const body = (await swept.inject({ method: "GET", url: "/health" })).json();
+
+      expect(body.sweep).toEqual({
+        mode: "delete",
+        lastRun: {
+          at: "2026-09-23T12:00:00.000Z",
+          mode: "delete",
+          outcome: "finished",
+          more: false,
+          counts: { listed: 1, oddNames: 0, undated: 0, young: 0, registered: 0, marked: 1, deleted: 1, failed: 0 },
+        },
+      });
+      expect(JSON.stringify(body)).not.toContain("sealed-thumb-");
+      expect(JSON.stringify(body)).not.toContain("0199a3c2");
+    } finally {
+      await swept.close();
+    }
   });
 
   it("is never rate-limited: the 61st probe in a minute from one address still answers", async () => {

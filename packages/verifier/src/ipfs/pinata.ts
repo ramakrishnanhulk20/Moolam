@@ -326,6 +326,73 @@ export async function findPrivateByName(name: string): Promise<PrivateListing[]>
   );
 }
 
+/** How far one sweep's listing pages, and how many of our rows it reads, before it stops for the run. */
+export const PRIVATE_PREFIX_MAX_PAGES = 10;
+export const PRIVATE_PREFIX_MAX_FILES = 200;
+
+/**
+ * Private files whose name starts with `prefix`, for the sweep of copies whose passport never
+ * reached the chain.
+ *
+ * Pinata's name filter is used only to shorten the list, because its matching rule is not
+ * documented; `startsWith` here is the check, and whatever the caller does next with a name is
+ * the caller's own stricter check. It reads at most `maxPages` pages and keeps at most `maxFiles`
+ * rows, and `more` says the account may hold rows past where it stopped. Stopping at a bound is
+ * not an error: every row it hands back is one Pinata listed.
+ *
+ * Throws, and never answers a short list, when a page cannot be read, when Pinata answers with an
+ * error status or a shape this client does not know: a listing it could not finish is "cannot
+ * tell", and the sweep must not act on part of one.
+ */
+export async function listPrivateByPrefix(
+  prefix: string,
+  options: { maxPages?: number; maxFiles?: number } = {},
+): Promise<{ files: PrivateListing[]; more: boolean }> {
+  if (prefix.length === 0) {
+    throw new Error("listPrivateByPrefix needs a name prefix.");
+  }
+  const maxPages = options.maxPages ?? PRIVATE_PREFIX_MAX_PAGES;
+  const maxFiles = options.maxFiles ?? PRIVATE_PREFIX_MAX_FILES;
+
+  const found: PrivateListing[] = [];
+  let pageToken: string | undefined;
+  for (let page = 1; page <= maxPages; page += 1) {
+    const query = new URLSearchParams({ name: prefix, limit: String(PRIVATE_LIST_PAGE_SIZE) });
+    if (pageToken !== undefined) {
+      query.set("pageToken", pageToken);
+    }
+    const response = await fetch(`${PRIVATE_FILES_URL}?${query.toString()}`, {
+      headers: { Authorization: `Bearer ${readToken()}` },
+      signal: AbortSignal.timeout(PRIVATE_CALL_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw new Error(`Pinata answered ${response.status} to the private listing, so the sweep cannot tell what is kept`);
+    }
+
+    const parsed = privateListingSchema.safeParse(await response.json());
+    if (!parsed.success) {
+      throw new Error("Pinata listed private files in a shape this client does not know, so the sweep cannot tell what is kept");
+    }
+    const files = parsed.data.data.files ?? [];
+    for (const file of files) {
+      if (file.name === null || !file.name.startsWith(prefix)) {
+        continue;
+      }
+      if (found.length === maxFiles) {
+        return { files: found, more: true };
+      }
+      found.push({ id: file.id, name: file.name, cid: file.cid, createdAt: file.created_at });
+    }
+
+    const next = parsed.data.data.next_page_token ?? "";
+    if (files.length === 0 || next.length === 0) {
+      return { files: found, more: false };
+    }
+    pageToken = next;
+  }
+  return { files: found, more: true };
+}
+
 /**
  * Deletes one private file by its Pinata id.
  *

@@ -1,5 +1,5 @@
 import { APIError } from "@privy-io/node";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { embeddedWallets } from "../auth/wallet.js";
@@ -9,11 +9,12 @@ import { ImageTooLarge, fingerprint, readImageHeader, type Fingerprint, type Hex
 import { Busy } from "../generate/gate.js";
 import { privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
-import { pinFile, pinJson } from "../ipfs/pinata.js";
+import { deletePrivateFile, findPrivateByName, pinFile, pinJson, type PrivateListing } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { fileSlug, manifestDocument } from "../metadata.js";
 import { UNSEAL_THUMBNAIL_TOO_LARGE_REASON, type PreparedImage } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
+import { privateThumbnailName } from "../sealed.js";
 import {
   findUnsealRecord,
   fingerprintMatches,
@@ -34,6 +35,7 @@ import {
   type ThumbnailAttempt,
   type UnsealRecord,
 } from "../unseal.js";
+import type { PrivateCopyStatus } from "./sealed.js";
 import { BadRequest, statusOf } from "./shared.js";
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
@@ -85,13 +87,21 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * public cannot be unsealed again, and a picture whose thumbnail will not fit the Chainlink fetch
  * budget is refused rather than published as a passport the workflow could never re-check.
  *
+ * Once the picture and its record are public, a private copy kept for a private re-check has no
+ * reason left to exist, so it is deleted by its exact name and the private copy status memory is
+ * told to forget the passport. That step never changes the answer: a lookup or delete that fails is
+ * logged with the passport id and the copy stays until the holder or an operator deletes it.
+ *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
  * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed` or `already-unsealed`, 413 and
  * 415 for the image, 422 `thumbnail-too-large`, 429 for the caller's own allowance and for today's
  * ceiling, 502 `pin-failed`, `record-pin-failed`, `chain-unavailable`, `metadata-unavailable` or
  * `privy-unavailable`, and 503 `busy`.
  */
-export async function unsealRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
+export async function unsealRoutes(
+  app: FastifyInstance,
+  options: { keys?: PrivyKeys; copies?: PrivateCopyStatus } = {},
+): Promise<void> {
   const quota = dailyQuota(env.EDITS_PER_DAY);
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
@@ -115,7 +125,7 @@ export async function unsealRoutes(app: FastifyInstance, options: { keys?: Privy
       return reply.code(status).send({ error: reason });
     }
 
-    return await open(app, request, reply, identity, upload, { quota, chain, registry, known });
+    return await open(app, request, reply, identity, upload, { quota, chain, registry, known, copies: options.copies });
   });
 
   /**
@@ -170,6 +180,8 @@ interface UnsealContext {
   chain: ReturnType<typeof readClient>;
   registry: Hex;
   known: Known;
+  /** The memory behind /sealed/status, so a deleted private copy reads gone at once. */
+  copies?: PrivateCopyStatus;
 }
 
 /**
@@ -445,6 +457,8 @@ async function open(
     const pinnedAt: PinnedRecord = { cid: pinnedRecord.cid, uri: pinnedRecord.uri };
     context.known.set(upload.passportId, { record, pinned: pinnedAt });
 
+    await forgetPrivateCopy(upload.passportId, request.log, context.copies);
+
     request.log.info(
       { user: identity.userId, passportId: upload.passportId, image: image.cid, record: pinnedRecord.cid },
       "unseal: published",
@@ -464,6 +478,47 @@ async function open(
       context.quota.release(identity.userId, ticket);
       today.slot.giveBack();
     }
+  }
+}
+
+/**
+ * Deletes every private file named exactly after this passport, now that the picture is public.
+ *
+ * The name comes from the passport id the upload hashed to, never from the document (B1), and the
+ * listing is filtered on the whole name here as well as inside the Pinata client (B3), so a file
+ * whose name only starts the same is never touched. The listing pages at most five pages before it
+ * refuses to answer, which bounds the loop. The status memory is dropped whatever happened, so the
+ * next /sealed/status read goes back to Pinata. Never throws: a failure is logged with the passport
+ * id and a count, never a file id, and the unseal answers exactly as it would have.
+ */
+async function forgetPrivateCopy(passportId: Hex, log: FastifyBaseLogger, copies?: PrivateCopyStatus): Promise<void> {
+  const name = privateThumbnailName(passportId);
+  try {
+    let files: PrivateListing[];
+    try {
+      files = (await findPrivateByName(name)).filter((file) => file.name === name);
+    } catch (error) {
+      log.error({ passportId, reason: reasonOf(error) }, "unseal: could not look for a private copy, it stays");
+      return;
+    }
+
+    let deleted = 0;
+    let failed = 0;
+    for (const file of files) {
+      try {
+        await deletePrivateFile(file.id);
+        deleted += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    if (failed > 0) {
+      log.error({ passportId, deleted, failed }, "unseal: the private copy was only partly deleted");
+    } else if (deleted > 0) {
+      log.info({ passportId, deleted }, "unseal: private copy deleted, the picture is public");
+    }
+  } finally {
+    copies?.drop(passportId);
   }
 }
 

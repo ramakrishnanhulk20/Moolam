@@ -42,9 +42,6 @@ export const LINK_CLAIM_WINDOW_MS = 10 * 60 * 1000;
 /** Links one passport may be given in an hour (B15). A run needs one; five covers its retries. */
 export const LINKS_PER_PASSPORT_PER_HOUR = 5;
 
-/** Links the whole service may mint in a UTC day (B15), shown in /health beside the other ceilings. */
-export const SEALED_LINKS_PER_DAY = 100;
-
 const HOUR_MS = 60 * 60 * 1000;
 
 /** How many passports the hourly counter remembers before it sweeps out the ones with no recent link. */

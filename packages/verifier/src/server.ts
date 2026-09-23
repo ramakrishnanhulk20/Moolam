@@ -10,7 +10,7 @@ import type { PrivyKeys } from "./auth/privy.js";
 import { checkRegistry } from "./boot/registryChecks.js";
 import { consentReader, offlineConsentReader, type ConsentReader } from "./consentRead.js";
 import { disputeReader, offlineDisputeReader, type DisputeReader } from "./disputeRead.js";
-import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute } from "./env.js";
+import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSweepMode } from "./env.js";
 import { waitingGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { globalDay, type GlobalDay } from "./limits/globalDay.js";
@@ -27,11 +27,12 @@ import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
-import { SEALED_LINKS_PER_DAY, privateCopyStatus, sealedRoutes } from "./routes/sealed.js";
+import { privateCopyStatus, sealedRoutes } from "./routes/sealed.js";
 import { BadRequest } from "./routes/shared.js";
 import { unsealRoutes } from "./routes/unseal.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
+import { privateSweep, type PrivateSweep, type SweepDeps } from "./sweep.js";
 import {
   offlinePictureReader,
   pictureReader,
@@ -308,6 +309,8 @@ declare module "fastify" {
     globalDay: GlobalDay;
     /** Who has asked for a Chainlink second opinion and what the runner did about it. */
     recheck: RecheckQueue;
+    /** The hourly sweep of private copies whose passport never registered, for /health to report. */
+    privateSweep: PrivateSweep;
   }
 }
 
@@ -392,6 +395,8 @@ export async function buildServer(
     edit?: { keys?: PrivyKeys };
     unseal?: { keys?: PrivyKeys };
     sealed?: { keys?: PrivyKeys; linkToken?: string };
+    /** Replaces the sweep's mode or its Pinata, chain and clock, for tests. Given, it is scheduled even under a test runner. */
+    sweep?: { mode?: PrivateSweepMode; deps?: Partial<SweepDeps> };
     consent?: ConsentReader;
     dispute?: DisputeReader;
     picture?: PictureReader;
@@ -519,7 +524,7 @@ export async function buildServer(
       generations: env.GLOBAL_GENERATIONS_PER_DAY,
       edits: env.GLOBAL_EDITS_PER_DAY,
       unseals: env.GLOBAL_UNSEALS_PER_DAY,
-      links: SEALED_LINKS_PER_DAY,
+      links: env.GLOBAL_LINKS_PER_DAY,
     }),
   );
 
@@ -634,7 +639,7 @@ export async function buildServer(
   }
 
   if (canUnseal) {
-    await app.register(unsealRoutes, options.unseal ?? options.prepare ?? {});
+    await app.register(unsealRoutes, { ...(options.unseal ?? options.prepare ?? {}), copies });
   } else {
     app.log.info("unseal route off: it needs the same PINATA_JWT and PRIVY_APP_ID that /prepare needs");
   }
@@ -655,6 +660,23 @@ export async function buildServer(
   if (payments !== undefined) {
     await app.register(verifyPaidRoutes, { payments });
   }
+
+  // The sweep needs the same Pinata token the private copy routes use, so it rides on the same
+  // condition and reports "off" on a host that has none. Under a test runner it is never scheduled
+  // unless a test hands in its own Pinata and chain, so no unit suite can reach either an hour in.
+  const sweep = privateSweep({
+    mode: canUnseal ? (options.sweep?.mode ?? env.PRIVATE_SWEEP) : "off",
+    log: app.log,
+    deps: options.sweep?.deps,
+  });
+  app.decorate("privateSweep", sweep);
+  if (options.sweep !== undefined || env.NODE_ENV !== "test") {
+    const stopSweep = sweep.start();
+    app.addHook("onClose", async () => {
+      stopSweep();
+    });
+  }
+  app.log.info({ mode: sweep.mode }, "private copy sweep: first run an hour after boot, then hourly");
 
   app.setNotFoundHandler((request, reply) => {
     request.log.warn({ ip: request.ip, method: request.method, url: request.url }, "rejected: unknown route");

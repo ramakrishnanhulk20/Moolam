@@ -88,6 +88,7 @@ const { buildServer } = await import("../src/server.js");
 const { makeImage } = await import("./helpers.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
+const PRIVATE_FILES_URL = "https://api.pinata.cloud/v3/files/private";
 const PROMPT = "A lighthouse in a monsoon storm, painted in thick oils";
 const CREATOR = getAddress("0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6" as Hex);
 const emptySource = { load: async () => [] };
@@ -221,6 +222,14 @@ function recordingPinata(): void {
   const realFetch = globalThis.fetch;
   vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     const url = input instanceof Request ? input.url : String(input);
+    // A finished unseal looks for a private copy to delete. None was kept for these passports, and
+    // the lookup must never reach the real account.
+    if (url.startsWith(`${PRIVATE_FILES_URL}?`)) {
+      return new Response(JSON.stringify({ data: { files: [], next_page_token: "" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
     if (url !== UPLOAD_URL) {
       return await realFetch(input, init);
     }

@@ -69,6 +69,14 @@ describe("parseEnv", () => {
     expect(parseEnv({ GLOBAL_EDITS_PER_DAY: "  " }).GLOBAL_EDITS_PER_DAY).toBe(150);
   });
 
+  it("defaults the links ceiling to 100 and takes zero as /sealed/link switched off", () => {
+    expect(parseEnv({}).GLOBAL_LINKS_PER_DAY).toBe(100);
+    expect(parseEnv({ GLOBAL_LINKS_PER_DAY: "  " }).GLOBAL_LINKS_PER_DAY).toBe(100);
+    expect(parseEnv({ GLOBAL_LINKS_PER_DAY: "0" }).GLOBAL_LINKS_PER_DAY).toBe(0);
+    expect(() => parseEnv({ GLOBAL_LINKS_PER_DAY: "-1" })).toThrow(/GLOBAL_LINKS_PER_DAY/);
+    expect(() => parseEnv({ GLOBAL_LINKS_PER_DAY: "ten" })).toThrow(/GLOBAL_LINKS_PER_DAY/);
+  });
+
   it("stops the boot on a ceiling that is not a whole number, without printing what was set", () => {
     const wrong = "sixty-THAT-MUST-NOT-BE-PRINTED";
 

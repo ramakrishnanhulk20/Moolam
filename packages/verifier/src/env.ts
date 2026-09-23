@@ -86,6 +86,22 @@ const DEFAULT_GLOBAL_EDITS_PER_DAY = "150";
 const DEFAULT_GLOBAL_UNSEALS_PER_DAY = "50";
 
 /**
+ * Read links to private copies the whole service may mint in a UTC day (B15). A re-check run needs
+ * one, so a hundred is far past what the runner's own daily budget can use, and zero switches
+ * /sealed/link off for everyone like every other ceiling here.
+ */
+const DEFAULT_GLOBAL_LINKS_PER_DAY = "100";
+
+/**
+ * What the hourly sweep of orphaned private copies does: nothing, log what it would delete, or
+ * delete. Dry is the default so a new host only logs until an operator has read a few runs and
+ * switches it on (ruling D5).
+ */
+export const PRIVATE_SWEEP_MODES = ["off", "dry", "delete"] as const;
+
+export type PrivateSweepMode = (typeof PRIVATE_SWEEP_MODES)[number];
+
+/**
  * Where the re-check queue is kept when nothing names a path.
  *
  * The service's own working directory, which is the package folder in development and /app in the
@@ -292,6 +308,13 @@ const schema = z
     GLOBAL_GENERATIONS_PER_DAY: dayCeiling("GLOBAL_GENERATIONS_PER_DAY", DEFAULT_GLOBAL_GENERATIONS_PER_DAY),
     GLOBAL_EDITS_PER_DAY: dayCeiling("GLOBAL_EDITS_PER_DAY", DEFAULT_GLOBAL_EDITS_PER_DAY),
     GLOBAL_UNSEALS_PER_DAY: dayCeiling("GLOBAL_UNSEALS_PER_DAY", DEFAULT_GLOBAL_UNSEALS_PER_DAY),
+    GLOBAL_LINKS_PER_DAY: dayCeiling("GLOBAL_LINKS_PER_DAY", DEFAULT_GLOBAL_LINKS_PER_DAY),
+    PRIVATE_SWEEP: z
+      .string()
+      .trim()
+      .default("dry")
+      .transform((value) => (value.length === 0 ? "dry" : value))
+      .pipe(z.enum(PRIVATE_SWEEP_MODES, { error: 'PRIVATE_SWEEP must be "off", "dry" or "delete"' })),
     RUNNER_TOKEN: optionalMinLength(
       24,
       "RUNNER_TOKEN must be at least 24 characters: it is the only thing between a stranger and the re-check queue",
@@ -554,6 +577,8 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GLOBAL_GENERATIONS_PER_DAY: source.GLOBAL_GENERATIONS_PER_DAY,
     GLOBAL_EDITS_PER_DAY: source.GLOBAL_EDITS_PER_DAY,
     GLOBAL_UNSEALS_PER_DAY: source.GLOBAL_UNSEALS_PER_DAY,
+    GLOBAL_LINKS_PER_DAY: source.GLOBAL_LINKS_PER_DAY,
+    PRIVATE_SWEEP: source.PRIVATE_SWEEP,
     RUNNER_TOKEN: source.RUNNER_TOKEN,
     SEALED_LINK_TOKEN: source.SEALED_LINK_TOKEN,
     RECHECK_QUEUE_PATH: source.RECHECK_QUEUE_PATH,
