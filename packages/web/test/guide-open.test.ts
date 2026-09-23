@@ -189,7 +189,7 @@ describe("who is shown the walk", () => {
   });
 
   it("stays shut on a bench page", async () => {
-    here.path = "/lab/guide";
+    here.path = "/lab/studio";
     expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
   });
 
@@ -251,8 +251,8 @@ describe("asking for it back from the footer", () => {
     expect(await opened(host)).toBe(true);
   });
 
-  it("is quiet on a bench page, where the guide would be over a drawing of itself", async () => {
-    here.path = "/lab/guide";
+  it("is quiet on a lab page, where it would be laid over a bench of the product", async () => {
+    here.path = "/lab/studio";
     const host = await mount(createElement(FirstVisitGuide));
     await act(async () => {
       window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));

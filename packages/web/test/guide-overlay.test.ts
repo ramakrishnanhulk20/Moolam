@@ -27,7 +27,6 @@ vi.mock("@/lib/i18n/routing", () => ({
   }) => createElement("a", { href, className, onClick }, children),
 }));
 
-const { GuideCards } = await import("@/components/guide/GuideCards");
 const { GuideWalk, spotFor } = await import("@/components/guide/GuideWalk");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -163,51 +162,6 @@ describe("the page under the guide", () => {
     release();
     expect(document.body.style.overflow).toBe("");
     expect(document.body.style.paddingRight).toBe("4px");
-  });
-});
-
-describe("drawing A, the three cards", () => {
-  it("shows the three, in order, each with a way there", async () => {
-    const host = await mount(createElement(GuideCards, { open: true, onClose: () => undefined, stage: "frame" }));
-    // The arrow beside a title on a phone is decorative and hidden from
-    // anything that reads the page out, so it is dropped here too.
-    const titles = [...host.querySelectorAll("h3")].map((node) => node.firstChild?.textContent);
-    expect(titles).toEqual([
-      "guide.steps.check.title",
-      "guide.steps.make.title",
-      "guide.steps.find.title",
-    ]);
-    expect([...host.querySelectorAll("a")].map((node) => node.getAttribute("href"))).toEqual([
-      "/verify",
-      "/studio",
-      "/mine",
-    ]);
-    expect(host.querySelector('[role="dialog"]')?.getAttribute("aria-modal")).toBe("true");
-    expect(host.textContent).toContain("Shown once");
-  });
-
-  it("closes on Escape and on a press on the ground", async () => {
-    const closed: string[] = [];
-    const host = await mount(
-      createElement(GuideCards, { open: true, onClose: (why: string) => closed.push(why), stage: "frame" }),
-    );
-
-    await act(async () => press(host, "Escape"));
-    expect(closed).toEqual(["escape"]);
-
-    const ground = host.querySelector("[data-guide-open] > div");
-    await act(async () => {
-      ground?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-    expect(closed).toEqual(["escape", "ground"]);
-
-    await act(async () => buttonNamed(host, "Skip").click());
-    expect(closed).toEqual(["escape", "ground", "skip"]);
-  });
-
-  it("paints nothing at all while it is shut", async () => {
-    const host = await mount(createElement(GuideCards, { open: false, onClose: () => undefined, stage: "frame" }));
-    expect(host.querySelector('[role="dialog"]')).toBeNull();
   });
 });
 

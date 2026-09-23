@@ -63,7 +63,7 @@ export function FirstVisitGuide() {
     marksChanged();
   }, []);
 
-  // A bench page is where this was drawn, and a guide over a drawing of itself
+  // A lab page is a bench for the product itself, and a guide laid over one
   // helps nobody. It is the one place the footer entry is deliberately quiet.
   const open = !onLabPage(path) && (asked || first === "yes");
 

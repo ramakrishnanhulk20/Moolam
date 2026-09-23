@@ -10,6 +10,12 @@ your own into it. Nothing here needs a wallet extension, a seed phrase or any MO
 The app is at https://moolam.vercel.app. It is a Next.js app deployed on Vercel, and it reads Monad mainnet
 directly, so what you see on it is the chain.
 
+The first time you open the home page, a short walk of three steps points at the three things to
+press: "Verify an image", "Register an image" and "My pictures". Press "Next" to go through it or
+"Skip" to close it. It shows once per device, and not at all on a device that has signed in here
+before. To see it again, press "Show the guide again" in the footer of the home page, beside Docs,
+Privacy and Terms, and it opens there and then.
+
 ## 1. Check a copy, before signing in to anything
 
 Open the home page and scroll to the panel headed "Drop any copy of any image here, or choose a

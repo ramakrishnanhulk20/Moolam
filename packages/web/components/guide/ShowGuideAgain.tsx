@@ -16,12 +16,9 @@ import { tellGuideToOpen } from "./signal";
  * that knows which language the footer is being read in.
  */
 export function ShowGuideAgain({
-  onOpen,
   className = "",
   label = "Show the guide again",
 }: {
-  /** The bench passes its own opener. On the real footer the event is enough. */
-  onOpen?: () => void;
   className?: string;
   label?: string;
 }) {
@@ -31,7 +28,6 @@ export function ShowGuideAgain({
       onClick={() => {
         forgetGuideSeen();
         tellGuideToOpen();
-        onOpen?.();
       }}
       className={`tap transition-colors duration-200 hover:text-accent focus-visible:text-accent ${className}`}
     >

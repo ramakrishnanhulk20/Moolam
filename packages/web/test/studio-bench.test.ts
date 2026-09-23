@@ -11,7 +11,8 @@ import { StateDial } from "@/components/lab/studio/StateDial";
 import { StatusBand } from "@/components/lab/studio/StatusBand";
 import { TurnCard } from "@/components/lab/studio/TurnCard";
 import { BENCH_STATES, fixtureState, type BenchState, type Path } from "@/components/lab/studio/fixtures";
-import { bringIntoView, scrollTarget, type Bench } from "@/components/lab/studio/bench";
+import { bringIntoView, type Bench } from "@/components/lab/studio/bench";
+import { scrollTarget } from "@/components/studio/press";
 
 // next-intl's navigation helpers reach for next/navigation, which only resolves
 // inside the bundler. The link is the one thing these drawings use from it.
@@ -176,9 +177,10 @@ describe("where the page goes after a press", () => {
       innerHeight: TALL,
       scrollTo: (to: { top: number; behavior: string }) => moves.push(to),
     });
-    vi.stubGlobal("getComputedStyle", () => ({
-      getPropertyValue: (name: string) => (name === "--bench-top" ? `${STICKY}px` : ""),
-    }));
+    vi.stubGlobal("document", {
+      querySelectorAll: () => [{ getBoundingClientRect: () => ({ height: STICKY }) }],
+    });
+    vi.stubGlobal("getComputedStyle", () => ({ position: "sticky", getPropertyValue: () => "" }));
 
     bringIntoView(panel, true);
     bringIntoView(panel, false);

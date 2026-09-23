@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { scrollTarget, stickyAbove } from "@/components/studio/press";
 import { RUN, type BenchState, type Path } from "./fixtures";
 
 /**
@@ -87,40 +88,8 @@ export function useBench(): Bench {
   return { path, state, running, since, choose, show, press };
 }
 
-/** The room left between the sticky strip and the panel's top after a press. */
-const GAP = 16;
-
 /** How long the button holds the press on itself before the panel changes. */
 const ACKNOWLEDGED = 220;
-
-/**
- * Where the page has to go for the answer to a press to be on screen.
- *
- * panelTop is where the panel's top sits on the screen, stickyBottom is how much
- * of the top of the screen is already spoken for (on the bench the bar over every
- * page plus the dial strip, on the real studio the bar alone), and the answer is
- * how far the page has to move. It is null when the top already sits in the good
- * band: under the sticky strip and no lower than a third of the way down, which
- * is where the whole first screen of progress is already readable.
- */
-export function scrollTarget(panelTop: number, stickyBottom: number, viewportHeight: number): number | null {
-  if (panelTop >= stickyBottom && panelTop <= viewportHeight / 3) {
-    return null;
-  }
-  return panelTop - stickyBottom - GAP;
-}
-
-/** How much of the top of the screen is spoken for above this panel. */
-function stickyAbove(panel: HTMLElement): number {
-  const style = getComputedStyle(panel);
-  for (const name of ["--bench-top", "--header-h"]) {
-    const height = Number.parseFloat(style.getPropertyValue(name));
-    if (Number.isFinite(height)) {
-      return height;
-    }
-  }
-  return 0;
-}
 
 /**
  * Puts the panel's top just under the sticky strip, in one move.

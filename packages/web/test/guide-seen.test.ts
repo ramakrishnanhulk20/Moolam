@@ -95,9 +95,9 @@ describe("where the guide may appear", () => {
 
   it("never appears on a bench page", () => {
     expect(onLabPage("/en/lab")).toBe(true);
-    expect(onLabPage("/en/lab/guide")).toBe(true);
+    expect(onLabPage("/en/lab/studio")).toBe(true);
     expect(onLabPage("/en/collaborate")).toBe(false);
-    expect(guideShouldShow({ ...fresh, path: "/en/lab/guide" })).toBe(false);
+    expect(guideShouldShow({ ...fresh, path: "/en/lab/studio" })).toBe(false);
   });
 });
 
