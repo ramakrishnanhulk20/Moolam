@@ -50,3 +50,14 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 before, 1 after
+
+Chainlink CRE re-check on Ant and Elephants, the picture Ram registered through the studio on 2026-09-20, written 2026-09-23
+It was the one real picture on the registry without a re-check (a census of all 38 passports on 2026-09-23: 16 real pictures, 15 re-checked). Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-5.sh; event index 1 of the studio registration.
+recomputed fingerprint and distance from the run: 0x198df3e566199e99 (0), matched
+
+passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
+0xbcdb2f0f06997c3877869a867e98edc1c0abaaea43e1b24834741ed59ed874df | 0x7e6927e2336cfd3797c6eb0b43eb330c6a2cec48a44b0bdfafd097f6774c1dad | true | 1000000 | [(0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04, true, 0, 0x000000000000000000000000000000000000000000000000198df3e566199e99, 1790150362 [1.79e9])]
+
+receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
+attestation counts: 0 before, 1 after
+With these, every one of the sixteen real pictures on the registry carries a re-check; the seed and proof cards carry none by design, apart from one seed card re-checked on 2026-09-08 before this file existed.
