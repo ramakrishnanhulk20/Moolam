@@ -43,6 +43,14 @@ describe("the runner's configuration", () => {
     expect(config.target).toBe("monad-mainnet");
   });
 
+  it("finds the sealed workflow beside the public one unless told otherwise", () => {
+    expect(readConfig(complete).sealedWorkflowDir).toBe("/srv/moolam/packages/workflow/moolam-sealed-verifier");
+    expect(readConfig({ ...complete, CRE_WORKFLOW_DIR: "D:\\Projects\\Monad\\packages\\workflow\\moolam-verifier\\" }).sealedWorkflowDir).toBe(
+      "D:\\Projects\\Monad\\packages\\workflow\\moolam-sealed-verifier",
+    );
+    expect(readConfig({ ...complete, CRE_SEALED_WORKFLOW_DIR: "/opt/sealed" }).sealedWorkflowDir).toBe("/opt/sealed");
+  });
+
   it("drops a trailing slash from the service address so no route is built with two", () => {
     expect(readConfig(complete).verifyServiceUrl).toBe("https://verify.example");
   });

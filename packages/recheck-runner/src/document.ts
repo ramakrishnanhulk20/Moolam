@@ -14,6 +14,12 @@ export interface Document {
   unsealed: boolean;
   /** False when no gateway gave a document this could read. */
   readable: boolean;
+  /**
+   * True when the document passes privatelyRecheckable: sealed, a private re-check asked for, and
+   * no picture named. Such a passport is routed to the sealed workflow while its private copy is
+   * kept. The document never changes, so this says nothing about whether the copy still exists.
+   */
+  privateRecheck: boolean;
 }
 
 /**
@@ -69,7 +75,7 @@ export async function readDocument(
   gateway: string,
   fetcher: Fetcher = fetch,
 ): Promise<Document> {
-  const unreadable: Document = { title: null, sealed: false, unsealed: false, readable: false };
+  const unreadable: Document = { title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false };
 
   let text: string;
   if (metadataURI.startsWith(JSON_DATA_URI)) {
@@ -110,7 +116,7 @@ export async function readDocument(
  */
 export function describe(parsed: unknown): Document {
   if (typeof parsed !== "object" || parsed === null) {
-    return { title: null, sealed: false, unsealed: false, readable: false };
+    return { title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false };
   }
   const record = parsed as Record<string, unknown>;
   const name = typeof record.name === "string" ? record.name : null;
@@ -121,7 +127,29 @@ export function describe(parsed: unknown): Document {
     sealed: record.sealed === true && picture === null,
     unsealed: false,
     readable: true,
+    privateRecheck: privatelyRecheckable(parsed),
   };
+}
+
+/**
+ * Whether a metadata document asks for a private re-check and leaves nothing public to re-check.
+ *
+ * A byte for byte copy of the verify service's predicate in packages/verifier/src/sealed.ts and of
+ * the sealed workflow's in packages/workflow/moolam-sealed-verifier/private-copy.ts, held to both
+ * by test/sealed-private-copy.test.ts and run against the service's shared fixture set, so the
+ * queue, this runner and the workflow cannot disagree about a document.
+ */
+export function privatelyRecheckable(document: unknown): boolean {
+  if (typeof document !== "object" || document === null || Array.isArray(document)) {
+    return false;
+  }
+  const fields = document as Record<string, unknown>;
+  return (
+    fields.sealed === true &&
+    fields.privateRecheck === true &&
+    !Object.hasOwn(fields, "image") &&
+    !Object.hasOwn(fields, "thumbnail")
+  );
 }
 
 /**

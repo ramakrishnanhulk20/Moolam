@@ -43,7 +43,7 @@ describe("reading the pinned document", () => {
       GATEWAY,
       answer({ name: "A lighthouse in fog", thumbnail: "ipfs://bafkreithumb" }),
     );
-    expect(document).toEqual({ title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true });
+    expect(document).toEqual({ title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true, privateRecheck: false });
     expect(isRealPicture(document)).toBe(true);
   });
 
@@ -80,7 +80,7 @@ describe("reading the pinned document", () => {
 
   it("says unreadable rather than guessing when the gateway refuses", async () => {
     const document = await readDocument("ipfs://bafkreigone", GATEWAY, answer("nope", false));
-    expect(document).toEqual({ title: null, sealed: false, unsealed: false, readable: false });
+    expect(document).toEqual({ title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false });
     expect(isRealPicture(document)).toBe(false);
   });
 
@@ -92,6 +92,17 @@ describe("reading the pinned document", () => {
   it("refuses a metadata address that is neither ipfs nor http", async () => {
     const document = await readDocument("who-knows", GATEWAY, answer({ name: "never read" }));
     expect(document.readable).toBe(false);
+  });
+
+  it("marks a sealed document that asks for a private re-check, and only that one", async () => {
+    const asks = await readDocument(
+      "ipfs://bafkreiprivate",
+      GATEWAY,
+      answer({ name: "Old but strong", sealed: true, privateRecheck: true }),
+    );
+    expect(asks).toMatchObject({ sealed: true, privateRecheck: true });
+    expect(describeDocument({ name: "Plain", sealed: true }).privateRecheck).toBe(false);
+    expect(describeDocument({ name: "Named", sealed: true, privateRecheck: true, image: "ipfs://x" }).privateRecheck).toBe(false);
   });
 
   it("does not take a picture reference that is a sentence rather than an address", () => {
@@ -120,7 +131,7 @@ describe("the unseal record beside a sealed document", () => {
     expect(urls).toEqual([`${SERVICE}/unseal/${PASSPORT.toLowerCase()}`]);
 
     const document = withRecord(describeDocument(SEALED_DOCUMENT), record);
-    expect(document).toEqual({ title: "A kept picture", sealed: false, unsealed: true, readable: true });
+    expect(document).toEqual({ title: "A kept picture", sealed: false, unsealed: true, readable: true, privateRecheck: false });
     expect(isRealPicture(document)).toBe(true);
   });
 

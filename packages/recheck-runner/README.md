@@ -159,6 +159,17 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
      timeout or a body that is not JSON means try again next pass, with no report counted, no
      cooldown started and no failure counted. Pointed at `deploy/queue-stub.mjs`, which has no
      unseal route, a sealed passport reads as never published.
+   - a document that is sealed, asks for a private re-check and names no picture (the same
+     `privatelyRecheckable` predicate as the verify service and the sealed workflow, held byte for
+     byte by `test/sealed-private-copy.test.ts`) goes to `moolam-sealed-verifier` instead, after the
+     wallet check below. `GET /sealed/status/<id>` is read just before the spend: kept goes on; gone
+     is handled exactly as a plain sealed passport, through the unseal record; unknown means try
+     again next pass with nothing spent, claimed or counted. The env file must carry
+     `CRE_SEALED_LINK_TOKEN`, checked by name before anything is asked of the queue, or the
+     passport is refused with that reason. A sweep candidate then gets a request of its own,
+     `POST /recheck/request`, and is claimed, because the service mints a private link only under a
+     live claim. That claim is handed back through `/recheck/done` whatever happens, a failed run, a
+     simulator that would not start and a dry run included.
    - the CRE wallet's balance is read again, because the passport before it spent from the same
      wallet.
    - the receipt gives the event index: the position of `PassportRegistered` among the logs of its
@@ -170,7 +181,9 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
    - one log line, and the state file is written.
 
 Only lines matching one of three known patterns are ever taken out of the simulator's output, so
-nothing the CLI happens to print can reach a log by accident.
+nothing the CLI happens to print can reach a log by accident. Every reason is then stripped of
+addresses, bearer values, the parameters of a signed download link, the verify service's host and
+the sealed link token before it is logged or posted, because the queue serves it on a public route.
 
 ### The guards
 
@@ -186,7 +199,8 @@ nothing the CLI happens to print can reach a log by accident.
 
 ## Configuration
 
-Environment only. Nothing is read from a file the runner opens itself, and no value is ever logged.
+Environment only, and no value is ever logged. The one file the runner opens is the CLI's env
+file, and only to find `CRE_SEALED_LINK_TOKEN` in it before a sealed run.
 
 | Name | What it is |
 | --- | --- |
@@ -195,7 +209,8 @@ Environment only. Nothing is read from a file the runner opens itself, and no va
 | `ENVIO_GRAPHQL_URL` | The hosted index |
 | `MONAD_RPC_URL` | A public endpoint is enough: balances and receipts only |
 | `CRE_WORKFLOW_DIR` | The folder holding `workflow.yaml` |
-| `CRE_ENV_FILE` | The file the CRE CLI reads for itself, holding `CRE_ETH_PRIVATE_KEY` and `MONAD_MAINNET_RPC_URL`. The runner never opens it |
+| `CRE_SEALED_WORKFLOW_DIR` | Optional. The sealed workflow's folder, by default `moolam-sealed-verifier` beside `CRE_WORKFLOW_DIR` |
+| `CRE_ENV_FILE` | The file the CRE CLI reads for itself, holding `CRE_ETH_PRIVATE_KEY`, `MONAD_MAINNET_RPC_URL` and, for private re-checks, `CRE_SEALED_LINK_TOKEN`. The runner reads that last name only, to refuse a sealed run without it and to strip its value from reasons |
 | `CRE_WALLET_ADDRESS` | The wallet watched against the floor |
 | `RUNNER_STATE_PATH` | Where the day's count and the recent list are kept |
 | `PINATA_GATEWAY_URL` | Optional. Defaults to the gateway the workflow's own `config.json` names |

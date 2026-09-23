@@ -17,7 +17,17 @@ export interface Config {
   registry: string;
   /** The folder holding workflow.yaml, passed to the CLI as its last path segment. */
   workflowDir: string;
-  /** The env file the CLI reads for itself. The runner never opens it. */
+  /**
+   * The sealed workflow's folder, for a passport whose document asks for a private re-check. By
+   * default the moolam-sealed-verifier folder beside workflowDir, so the CLI runs both from the
+   * same packages/workflow project.
+   */
+  sealedWorkflowDir: string;
+  /**
+   * The env file the CLI reads for itself. The runner opens it for one thing only: to check, by
+   * name, that it carries CRE_SEALED_LINK_TOKEN before a sealed run, and to strip that value out of
+   * any reason it posts. No value from it is ever logged.
+   */
   envFile: string;
   target: string;
   /** The wallet that pays for every report, watched against the floor below. */
@@ -77,6 +87,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     gatewayUrl: withSlash(env.PINATA_GATEWAY_URL?.trim() || GATEWAY),
     registry: (env.MOOLAM_REGISTRY_ADDRESS?.trim() || REGISTRY).toLowerCase(),
     workflowDir: text(env, "CRE_WORKFLOW_DIR"),
+    sealedWorkflowDir: env.CRE_SEALED_WORKFLOW_DIR?.trim() || besideWorkflow(text(env, "CRE_WORKFLOW_DIR")),
     envFile: text(env, "CRE_ENV_FILE"),
     target: env.CRE_WORKFLOW_TARGET?.trim() || "monad-mainnet",
     creWallet: text(env, "CRE_WALLET_ADDRESS").toLowerCase(),
@@ -100,6 +111,11 @@ function text(env: NodeJS.ProcessEnv, name: string): string {
 
 function trimEnd(value: string): string {
   return value.endsWith("/") ? value.slice(0, -1) : value;
+}
+
+/** The sealed workflow's folder beside the public one, by string so it keeps the caller's slashes. */
+function besideWorkflow(workflowDir: string): string {
+  return workflowDir.replace(/[\\/]+$/, "").replace(/[^\\/]+$/, "moolam-sealed-verifier");
 }
 
 function withSlash(value: string): string {

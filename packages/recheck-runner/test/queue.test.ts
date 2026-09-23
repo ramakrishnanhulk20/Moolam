@@ -61,6 +61,22 @@ describe("the request queue client", () => {
     expect(await queue.claim(ID)).toBe("not-requested");
   });
 
+  it("asks for a request of its own on the public route, without the runner token", async () => {
+    const codes = [200, 409, 503];
+    let at = 0;
+    const { sent, fetcher } = recorder(() => json({ passportId: ID, status: "pending" }, codes[at++] ?? 500));
+    const queue = queueClient(BASE, TOKEN, fetcher);
+    expect(await queue.request(ID)).toBe("placed");
+    expect(await queue.request(ID)).toBe("sealed");
+    expect(await queue.request(ID)).toBe("failed");
+    expect(sent[0]).toEqual({ url: "https://verify.example/recheck/request", method: "POST", authorization: "", body: { passportId: ID } });
+
+    const down = (async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+    expect(await queueClient(BASE, TOKEN, down).request(ID)).toBe("failed");
+  });
+
   it("reports a finished run with its transaction", async () => {
     const { sent, fetcher } = recorder(() => json({ ok: true }));
     await queueClient(BASE, TOKEN, fetcher).done({

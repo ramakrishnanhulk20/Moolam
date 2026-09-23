@@ -1,0 +1,10 @@
+# The name is what the second receiver, 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, is pinned to,
+# so a verdict this workflow writes lands there and nowhere else, and the public receiver refuses it.
+monad-mainnet:
+  user-workflow:
+    workflow-name: "moolam-sealed-verifier"
+    deployment-registry: "private"
+  workflow-artifacts:
+    workflow-path: "./main.ts"
+    config-path: "./config.json"
+    secrets-path: "./secrets.yaml"

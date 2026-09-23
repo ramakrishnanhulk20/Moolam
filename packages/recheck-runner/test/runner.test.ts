@@ -1,9 +1,11 @@
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { readConfig, type Config } from "../src/config.js";
 import type { Document, RecordLookup } from "../src/document.js";
 import type { PassportRow } from "../src/index-read.js";
-import type { Claim, DoneReport, QueueClient } from "../src/queue.js";
-import type { SimulateRequest, SimulateResult } from "../src/simulate.js";
+import type { Claim, DoneReport, Placed, QueueClient } from "../src/queue.js";
+import type { CopyState } from "../src/sealed.js";
+import { runSimulation, type SimulateRequest, type SimulateResult } from "../src/simulate.js";
 import { emptyState, noteRecent, type RunnerState } from "../src/state.js";
 import { onePass, type Deps } from "../src/runner.js";
 
@@ -27,6 +29,7 @@ const PICTURE = id("a");
 const SEALED = id("b");
 const SEED = id("c");
 const ASKED = id("d");
+const PRIVATE = id("e");
 
 function row(passportId: string, extra: Partial<PassportRow> = {}): PassportRow {
   return {
@@ -40,13 +43,14 @@ function row(passportId: string, extra: Partial<PassportRow> = {}): PassportRow 
 }
 
 const DOCUMENTS: Record<string, Document> = {
-  [`ipfs://document-${PICTURE.slice(2, 4)}`]: { title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true },
-  [`ipfs://document-${SEALED.slice(2, 4)}`]: { title: "A kept picture", sealed: true, unsealed: false, readable: true },
-  [`ipfs://document-${SEED.slice(2, 4)}`]: { title: "Moolam seed 4", sealed: false, unsealed: false, readable: true },
-  [`ipfs://document-${ASKED.slice(2, 4)}`]: { title: "Harbour at dusk", sealed: false, unsealed: false, readable: true },
+  [`ipfs://document-${PICTURE.slice(2, 4)}`]: { title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true, privateRecheck: false },
+  [`ipfs://document-${SEALED.slice(2, 4)}`]: { title: "A kept picture", sealed: true, unsealed: false, readable: true, privateRecheck: false },
+  [`ipfs://document-${SEED.slice(2, 4)}`]: { title: "Moolam seed 4", sealed: false, unsealed: false, readable: true, privateRecheck: false },
+  [`ipfs://document-${ASKED.slice(2, 4)}`]: { title: "Harbour at dusk", sealed: false, unsealed: false, readable: true, privateRecheck: false },
+  [`ipfs://document-${PRIVATE.slice(2, 4)}`]: { title: "Old but strong", sealed: true, unsealed: false, readable: true, privateRecheck: true },
 };
 
-const UNREADABLE: Document = { title: null, sealed: false, unsealed: false, readable: false };
+const UNREADABLE: Document = { title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false };
 
 interface Kitchen {
   deps: Deps;
@@ -55,8 +59,12 @@ interface Kitchen {
   claims: string[];
   reports: DoneReport[];
   lookups: string[];
+  /** Every queue, status and simulator call in the order it was made. */
+  calls: string[];
   state: () => RunnerState;
 }
+
+const SEALED_TOKEN = "sealed-link-token-4f1b9c0e77d2a6";
 
 function kitchen(input: {
   env?: NodeJS.ProcessEnv;
@@ -69,6 +77,9 @@ function kitchen(input: {
   state?: RunnerState;
   queueFails?: boolean;
   record?: (passportId: string) => RecordLookup;
+  copy?: CopyState;
+  placed?: Placed;
+  token?: string | null;
 }): Kitchen {
   const config: Config = readConfig({ ...ENV, ...input.env });
   const lines: string[] = [];
@@ -76,6 +87,7 @@ function kitchen(input: {
   const claims: string[] = [];
   const reports: DoneReport[] = [];
   const lookups: string[] = [];
+  const calls: string[] = [];
   const known = new Map<string, PassportRow>();
   for (const one of [...(input.sweep ?? []), ...(input.rows ?? [])]) {
     known.set(one.id, one);
@@ -89,11 +101,17 @@ function kitchen(input: {
       }
       return input.pending ?? [];
     },
+    request: async (passportId) => {
+      calls.push(`request ${passportId}`);
+      return input.placed ?? "placed";
+    },
     claim: async (passportId) => {
+      calls.push(`claim ${passportId}`);
       claims.push(passportId);
       return input.claim === undefined ? "claimed" : input.claim(passportId);
     },
     done: async (report) => {
+      calls.push(`done ${report.passportId}`);
       reports.push(report);
     },
   };
@@ -110,9 +128,15 @@ function kitchen(input: {
       lookups.push(passportId);
       return input.record?.(passportId) ?? { kind: "none" };
     },
+    sealedStatus: async (passportId) => {
+      calls.push(`status ${passportId}`);
+      return input.copy ?? "kept";
+    },
+    sealedToken: () => (input.token === undefined ? SEALED_TOKEN : input.token),
     eventIndex: async (txHash) => (txHash.startsWith("0xdddd") ? 1 : 0),
     balanceWei: async () => input.balance ?? 28_266_000_000_000_000_000n,
     simulate: async (request) => {
+      calls.push(`simulate ${path.basename(request.workflowDir)}`);
       runs.push(request);
       return (
         input.simulate?.(request) ?? {
@@ -133,7 +157,7 @@ function kitchen(input: {
     now: () => NOW,
   };
 
-  return { deps, lines, runs, claims, reports, lookups, state: () => state };
+  return { deps, lines, runs, claims, reports, lookups, calls, state: () => state };
 }
 
 describe("one pass of the runner", () => {
@@ -429,5 +453,144 @@ describe("dry-run mode", () => {
     const kit = kitchen({ env: { RUNNER_DRY_RUN: "1" }, sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.lines.join("\n")).toContain("dry run: passport 0xaaaaaaaaaa would be re-checked");
+  });
+});
+
+describe("a passport asking for a private re-check", () => {
+  const SEALED_DIR = "moolam-sealed-verifier";
+
+  it("is routed to the sealed workflow folder, and a public passport is not", async () => {
+    const kit = kitchen({ sweep: [row(PRIVATE), row(PICTURE)] });
+    const summary = await onePass(kit.deps);
+
+    expect(summary.ran).toBe(2);
+    expect(path.basename(kit.runs[0]?.workflowDir ?? "")).toBe(SEALED_DIR);
+    expect(path.basename(kit.runs[1]?.workflowDir ?? "")).toBe("moolam-verifier");
+    expect(kit.lookups).toHaveLength(0);
+  });
+
+  it("goes on when the copy is kept: a request, then a claim, then the simulator, then the release", async () => {
+    const kit = kitchen({ sweep: [row(PRIVATE)], copy: "kept" });
+    await onePass(kit.deps);
+
+    expect(kit.calls).toEqual([
+      `status ${PRIVATE}`,
+      `request ${PRIVATE}`,
+      `claim ${PRIVATE}`,
+      `simulate ${SEALED_DIR}`,
+      `done ${PRIVATE}`,
+    ]);
+    expect(kit.state().reports).toBe(1);
+  });
+
+  it("does not ask for a second request when the passport came off the queue already claimed", async () => {
+    const kit = kitchen({ pending: [PRIVATE], rows: [row(PRIVATE)] });
+    await onePass(kit.deps);
+    expect(kit.calls).toEqual([`claim ${PRIVATE}`, `status ${PRIVATE}`, `simulate ${SEALED_DIR}`, `done ${PRIVATE}`]);
+  });
+
+  it("treats a copy that is gone exactly as a plain sealed passport: refused, nothing spent", async () => {
+    const kit = kitchen({ pending: [PRIVATE], rows: [row(PRIVATE)], copy: "gone" });
+    const summary = await onePass(kit.deps);
+
+    expect(kit.runs).toHaveLength(0);
+    expect(summary.ran).toBe(0);
+    expect(kit.lookups).toEqual([PRIVATE]);
+    expect(kit.reports[0]?.reason).toContain("is sealed, so there is no published picture to re-check");
+    expect(kit.state().reports).toBe(0);
+    expect(kit.calls).not.toContain(`request ${PRIVATE}`);
+  });
+
+  it("re-checks a gone copy's passport publicly when its holder has published the picture since", async () => {
+    const kit = kitchen({ sweep: [row(PRIVATE)], copy: "gone", record: () => ({ kind: "found" }) });
+    await onePass(kit.deps);
+    expect(path.basename(kit.runs[0]?.workflowDir ?? "")).toBe("moolam-verifier");
+    expect(kit.calls).not.toContain(`request ${PRIVATE}`);
+  });
+
+  it("tries again later when the copy's state is unknown, spending nothing and claiming nothing", async () => {
+    const kit = kitchen({ sweep: [row(PRIVATE)], copy: "unknown" });
+    const summary = await onePass(kit.deps);
+
+    expect(kit.runs).toHaveLength(0);
+    expect(summary.ran).toBe(0);
+    expect(kit.calls).toEqual([`status ${PRIVATE}`]);
+    expect(kit.state().reports).toBe(0);
+    expect(kit.state().failures).toBe(0);
+    expect(kit.state().recent[PRIVATE]).toBeUndefined();
+    expect(kit.lines.join(" ")).toContain("trying again next pass");
+  });
+
+  it("refuses with a named reason when the env file carries no CRE_SEALED_LINK_TOKEN, before any request", async () => {
+    const kit = kitchen({ pending: [PRIVATE], rows: [row(PRIVATE)], token: null });
+    await onePass(kit.deps);
+
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.calls).not.toContain(`request ${PRIVATE}`);
+    expect(kit.state().reports).toBe(0);
+    expect(kit.reports[0]?.reason).toContain("has no CRE_SEALED_LINK_TOKEN");
+  });
+
+  it("refuses when the queue reads the copy as gone, and runs nothing when the claim is taken", async () => {
+    const sealed = kitchen({ sweep: [row(PRIVATE)], placed: "sealed" });
+    await onePass(sealed.deps);
+    expect(sealed.runs).toHaveLength(0);
+    expect(sealed.calls).not.toContain(`claim ${PRIVATE}`);
+    expect(sealed.lines.join(" ")).toContain("reads its private copy as gone");
+
+    const taken = kitchen({ sweep: [row(PRIVATE)], claim: () => "taken" });
+    await onePass(taken.deps);
+    expect(taken.runs).toHaveLength(0);
+    expect(taken.reports).toHaveLength(0);
+    expect(taken.state().reports).toBe(0);
+  });
+
+  it("releases the claim through /recheck/done when the run fails", async () => {
+    const kit = kitchen({
+      sweep: [row(PRIVATE)],
+      simulate: () => ({ ok: false, reason: "the private copy fetch returned status 403", printed: "cre ..." }),
+    });
+    await onePass(kit.deps);
+    expect(kit.reports).toEqual([{ passportId: PRIVATE, reason: "the private copy fetch returned status 403" }]);
+  });
+
+  it("releases the claim when the simulator cannot even be started", async () => {
+    const kit = kitchen({ sweep: [row(PRIVATE)] });
+    kit.deps.simulate = async () => {
+      throw new Error("spawn cre ENOENT");
+    };
+    await onePass(kit.deps);
+    expect(kit.reports).toEqual([{ passportId: PRIVATE, reason: "the simulation could not be run" }]);
+    expect(kit.lines.join(" ")).toContain("could not be handled");
+  });
+
+  it("releases the claim in a dry run too, and spends nothing", async () => {
+    const kit = kitchen({
+      env: { RUNNER_DRY_RUN: "1" },
+      sweep: [row(PRIVATE)],
+      simulate: () => ({ ok: true, recomputed: "0x1f1bc103fbef6f47", distance: 2, matched: true, printed: "cre ..." }),
+    });
+    await onePass(kit.deps);
+
+    expect(kit.runs[0]?.broadcast).toBe(false);
+    expect(kit.reports).toEqual([{ passportId: PRIVATE, reason: "a dry run, so nothing was written", matched: true, distance: 2 }]);
+    expect(kit.state().reports).toBe(0);
+  });
+
+  it("posts a reason with no download link, no service address and no token in it (B5)", async () => {
+    const link =
+      "https://lavender-personal-grasshopper-978.mypinata.cloud/files/bafkreigwx2?X-Algorithm=PINATA1&X-Date=1790000000&X-Expires=120&X-Method=GET&X-Signature=9c1f0a";
+    const line = `✗ failed: GET ${link} errored after verify.example/sealed/link answered with token ${SEALED_TOKEN}; retry X-Signature=9c1f0a against https://verify.example/sealed/link`;
+    const kit = kitchen({ sweep: [row(PRIVATE)] });
+    kit.deps.simulate = (request) => runSimulation(request, async () => ({ output: line, code: 1, timedOut: false }));
+    await onePass(kit.deps);
+
+    const posted = kit.reports[0]?.reason ?? "";
+    expect(posted).not.toBe("");
+    for (const leaked of ["mypinata", "X-Signature", "X-Algorithm", "9c1f0a", "verify.example", SEALED_TOKEN]) {
+      expect(posted).not.toContain(leaked);
+      expect(kit.lines.join("\n")).not.toContain(leaked);
+    }
+    expect(kit.runs).toHaveLength(0);
   });
 });

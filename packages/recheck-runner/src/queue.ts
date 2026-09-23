@@ -3,6 +3,12 @@ import { HttpError, cut, textOf, type Fetcher } from "./net.js";
 /** What happened when the runner tried to take a request off the queue. */
 export type Claim = "claimed" | "not-requested" | "taken" | "disabled";
 
+/**
+ * What happened when the runner asked the queue for a request of its own. "sealed" is the queue's
+ * 409: it reads the passport's private copy as gone, so there is nothing for a sealed run to open.
+ */
+export type Placed = "placed" | "sealed" | "failed";
+
 export interface DoneReport {
   passportId: string;
   reportTx?: string;
@@ -14,6 +20,11 @@ export interface DoneReport {
 export interface QueueClient {
   /** The pending requests, oldest first. An empty list when the queue is switched off. */
   pending(): Promise<string[]>;
+  /**
+   * Makes sure a request exists for this passport, the public POST /recheck/request. A sealed run
+   * needs one, because the service mints a private link only for a passport the runner has claimed.
+   */
+  request(passportId: string): Promise<Placed>;
   claim(passportId: string): Promise<Claim>;
   done(report: DoneReport): Promise<void>;
 }
@@ -41,6 +52,25 @@ export function queueClient(baseUrl: string, token: string, fetcher: Fetcher = f
         throw new HttpError("the re-check queue", response.status, await textOf(response));
       }
       return readIds(await response.json());
+    },
+
+    async request(passportId: string): Promise<Placed> {
+      // The public route, so the runner token is not sent with it.
+      let response: Response;
+      try {
+        response = await fetcher(`${baseUrl}/recheck/request`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ passportId }),
+          signal: AbortSignal.timeout(15_000),
+        });
+      } catch {
+        return "failed";
+      }
+      if (response.ok) {
+        return "placed";
+      }
+      return response.status === 409 ? "sealed" : "failed";
     },
 
     async claim(passportId: string): Promise<Claim> {

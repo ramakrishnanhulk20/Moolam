@@ -12,6 +12,8 @@ export interface SimulateRequest {
   /** False in dry-run mode, which is the only thing that keeps --broadcast off the command line. */
   broadcast: boolean;
   timeoutMs: number;
+  /** Values that must not survive into a reason, the sealed link token among them. Never printed. */
+  scrub?: string[];
 }
 
 export interface Command {
@@ -52,9 +54,26 @@ const TROUBLE = /(^✗.*$)|(^.*\b(panic|revert(ed)?|error|failed)\b.*$)/gim;
 // among them, so no address and no bearer value leaves this process inside a reason.
 const ADDRESS = /\b[a-z][a-z0-9+.-]*:\/\/\S+/gi;
 const BEARER = /\bbearer\s+\S+/gi;
+// The parameters of a signed private download link, caught even where a line carries the query
+// without the address in front of it.
+const SIGNED_QUERY = /\bX-(Algorithm|Date|Expires|Method|Signature)=[^\s&]*/gi;
 
-export function redact(line: string): string {
-  return line.replace(ADDRESS, "[address removed]").replace(BEARER, "Bearer [removed]");
+/**
+ * A line with every address, bearer value and signed link parameter taken out, and every value in
+ * `scrub` too: the sealed link token, and the verify service's host where it appears without a
+ * scheme. Used on every reason before it is logged or posted to the queue's public status.
+ */
+export function redact(line: string, scrub: readonly string[] = []): string {
+  let clean = line
+    .replace(ADDRESS, "[address removed]")
+    .replace(BEARER, "Bearer [removed]")
+    .replace(SIGNED_QUERY, "[signature removed]");
+  for (const value of scrub) {
+    if (value !== "") {
+      clean = clean.split(value).join("[removed]");
+    }
+  }
+  return clean;
 }
 
 /**
@@ -97,7 +116,10 @@ export function simulateCommand(request: SimulateRequest): Command {
  * CLI happened to print can be carried into a log by accident. The zero report hash is treated as
  * no transaction at all, which is exactly what a run without --broadcast produces.
  */
-export function parseSimulation(output: string): {
+export function parseSimulation(
+  output: string,
+  scrub: readonly string[] = [],
+): {
   reportTx: string | null;
   recomputed?: string;
   distance?: number;
@@ -119,7 +141,7 @@ export function parseSimulation(output: string): {
           distance: Number(verdict[2]),
           matched: verdict[3] === "true",
         }),
-    trouble: troubles.length === 0 ? null : redact(troubles.at(-1) ?? ""),
+    trouble: troubles.length === 0 ? null : redact(troubles.at(-1) ?? "", scrub),
   };
 }
 
@@ -136,7 +158,7 @@ export async function runSimulation(
 ): Promise<SimulateResult> {
   const command = simulateCommand(request);
   const result = await exec(command, request.timeoutMs);
-  const parsed = parseSimulation(result.output);
+  const parsed = parseSimulation(result.output, request.scrub);
 
   const verdict = {
     ...(parsed.recomputed === undefined ? {} : { recomputed: parsed.recomputed }),

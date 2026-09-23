@@ -57,6 +57,77 @@ themselves, and they have to agree with each other before anything is signed.
    Chainlink's own guidance says a report can be replayed later or on another chain; the receiver
    rejects a wrong chain id and any timestamp that is not newer than the last one for that passport.
 
+## Private re-checks: `moolam-sealed-verifier`
+
+A creator who seals a picture can ask for a private Chainlink re-check. The verify service then
+keeps one 512 px thumbnail on Pinata's private network, where no public gateway serves it. The
+public workflow above cannot reach that file, so a second workflow does the job, using Chainlink's
+Confidential Workflows: the handler is registered with `handlerInTee(...)`, so it runs inside an
+enclave, and only the verdict leaves it.
+
+1. **Trigger.** The same `PassportRegistered` log trigger as the public workflow, registered with
+   `handlerInTee(trigger, handler, {})`: any registered enclave, any region.
+2. **Read.** `getPassport` at the log's block, with the public workflow's fallback to the latest
+   block, made through `runtime.usingTheDons()`. Chain reads never run inside the enclave; the only
+   thing sent out is the passport id, which is public.
+3. **Document.** Read through the configured gateway from an `ipfs://` content id and nothing else.
+   An http(s) address, a data URI or anything after the content id ends the run with no report.
+4. **The predicate.** `privatelyRecheckable` in `private-copy.ts`, a byte for byte copy of the verify
+   service's, held to it and to the shared fixture set by
+   `packages/recheck-runner/test/sealed-private-copy.test.ts`. False ends the run with no report.
+5. **The link.** The secret `SEALED_LINK_TOKEN` from the runtime, then one POST to
+   `{verifierUrl}/sealed/link`. The service answers with a link only while the runner holds a claim
+   on that passport in the re-check queue. The link is opened only if it reads as `https://` on the
+   configured private gateway host, checked by hand because the sandbox has no URL parser.
+6. **The bytes.** One GET on the link, ten seconds. A status other than 200, an empty body or a body
+   over 60,000 bytes is refused before the decoder sees it. This fetch is the sealed workflow's own:
+   its errors name the status and the passport id, never the link or the token.
+7. **Fingerprint.** `../moolam-verifier/decode.ts` and `../moolam-verifier/phash.ts`, imported, not
+   copied. Ten bits or fewer from the stored fingerprint is a match.
+8. **The crossing.** `runtime.usingTheDons()`, one report over the same six fields, written to the
+   second receiver `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` with a gas limit of 1,000,000. That
+   receiver is pinned to the name `moolam-sealed-verifier`, so the chain itself says which workflow
+   wrote each verdict.
+
+Three HTTP calls per run (document, link, bytes) against CRE's 15, and one to three contract reads.
+The log lines keep the public workflow's shapes, `recomputed 0x.. distance N matched true` and
+`report tx 0x..`, so the runner reads both. The folder holds `workflow.ts` (the handler),
+`private-copy.ts` (the predicate, the link host check, the size cap and every refusal text, with no
+imports so the runner's suite tests it under Node) and `secrets.yaml` (the name
+`CRE_SEALED_LINK_TOKEN`, never a value).
+
+Dry run on 2026-09-23, no `--broadcast`, against the unsealed passport's registration (tx
+`0x789afc2f...b8b8`, event index 1). Its document is sealed with no private re-check asked, so the
+run stops at the predicate and nothing is reported:
+
+```
+[USER LOG] passport 0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c stored phash 0x1f1fc003fbef6f47
+✗ workflow execution failed: passport 0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c is not privately re-checkable: its document does not ask for a private re-check or names a public picture, so there is no private copy to open
+```
+
+```bash
+export CRE_SEALED_LINK_TOKEN=...   # the value set on the verify service, never written to a file here
+cre workflow simulate moolam-sealed-verifier --target monad-mainnet --non-interactive \
+  --trigger-index 0 --evm-tx-hash <tx> --evm-event-index <n> -e ../../.env
+```
+
+What it does not prove:
+
+- **The simulator is one machine, not an enclave.** It says so itself: "The simulator is not a real
+  TEE, and is meant to debug. Do not use it for sensitive information." So a run proves the shape of
+  the code and that the capability accepts it. It does not prove hardware isolation, and there is no
+  node consensus behind the verdict either.
+- **Deploying it needs access Moolam does not have.** Confidential Workflows is a private beta,
+  invite only, separate from ordinary CRE deploy access.
+- **The logic is public, only the data is private.** The workflow binary handed to the enclave is
+  revealed. What the enclave keeps from the machine's operator is the token, the link, the bytes and
+  the values made from them.
+- **The logs would have to go.** The handler logs the stored fingerprint, the size of the copy and
+  the verdict, which the runner reads in simulation. A deployed confidential handler should log
+  nothing, because a log leaves the enclave.
+- Moolam's operator, the Pinata account holder and the machine running the simulator can all see the
+  thumbnail.
+
 ## Files
 
 | File | What it holds |

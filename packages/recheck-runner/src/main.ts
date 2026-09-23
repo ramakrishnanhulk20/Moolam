@@ -25,6 +25,7 @@ function opening(config: Config): string {
     `daily cap ${config.maxReportsPerDay}`,
     `MON floor ${formatMon(config.minMonWei)}`,
     `workflow ${config.workflowDir}`,
+    `sealed workflow ${config.sealedWorkflowDir}`,
     `env file ${config.envFile}`,
     `target ${config.target}`,
     `state ${config.statePath}`,
