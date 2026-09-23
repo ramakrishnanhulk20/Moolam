@@ -1,0 +1,204 @@
+MOOLAM ATTACK PASS 3: SEALED PICTURES
+=====================================
+
+What this is: the sealed-picture feature (shape A, Moolam keeps nothing) attacked on purpose,
+against the eight invariants in the sealed threat model's section C and its "Added after the first
+build" list. Two halves, both executed, both saved here as they printed.
+
+date          2026-09-23
+commit        4ecc9cf67d395fcc5bfd9ab7568e5e04af6026c3 (HEAD when both halves ran; the two new
+              attack files are not committed yet)
+chain block   107,259,187 on Monad mainnet, chain 143 (the live half's reads)
+
+The route half runs the real routes with the real C2PA signer, the real sealed pipeline and the
+real strict schema. Pinata is answered by a recording client, Privy tokens are signed by a key the
+test makes, and the registry reads are stubbed. It does not cover invariants 3 and 8, which are the
+studio's own screens before the passkey prompt.
+
+The live half makes reads and single HTTP requests only, against the hosted verify service, the
+gateway and the live site. It sends no transaction and spends nothing. It does not cover a signed-in
+caller, which only the route half can do without spending.
+
+Two findings, printed where they were found and not fixed here:
+  4a  the verify service's JSON answer for a copy of a sealed passport carries no sealed flag. The
+      web's verify card learns it from the metadata document, so a person sees "sealed", and an API
+      or x402 caller is told the match but not that the picture is sealed.
+  5g  the one sealed passport on mainnet was unsealed by its holder on 2026-09-22 at 12:27:28 UTC,
+      four minutes after it was registered, so its picture is public. POST /recheck/request still
+      answers 409 sealed and tells the caller to publish first: the queue reads only the sealed flag
+      in the metadata document, which is written once and never changes.
+Two gaps landed as the threat model already names them: 1c (a title is the creator's own public
+words) and 1e (the orphan metadata pin of a prepare that is never registered).
+
+
+THE ROUTE HALF: npx vitest run test/attacks-sealed.test.ts --reporter=verbose, in packages/verifier
+====================================================================================================
+(the service's own JSON log lines from attack 2a are left out here; the test scanned them)
+
+RUN  v5.0.0 D:/Projects/Monad/packages/verifier
+
+ ✓ test/attacks-sealed.test.ts > attack 1: nothing of the picture is stored or published (invariants 1 and 2) > 1a pins one strict JSON document and not a single file, on /prepare and on /generate 123ms
+ ✓ test/attacks-sealed.test.ts > attack 1: nothing of the picture is stored or published (invariants 1 and 2) > 1b drops every smuggled body field, and refuses a body with too many of them 231ms
+ ✓ test/attacks-sealed.test.ts > attack 1: nothing of the picture is stored or published (invariants 1 and 2) > 1c publishes a data: or ipfs:// title as the creator's own words, capped at 120 characters 64ms
+ ✓ test/attacks-sealed.test.ts > attack 1: nothing of the picture is stored or published (invariants 1 and 2) > 1d leaves nothing on disk after a sealed prepare with the C2PA signer on 33ms
+ ✓ test/attacks-sealed.test.ts > attack 1: nothing of the picture is stored or published (invariants 1 and 2) > 1e leaves the orphan pin a prepare makes before any registration, as documented 32ms
+ ✓ test/attacks-sealed.test.ts > attack 2: nothing cached or logged (invariant 4) > 2a answers no-store on every sealed answer, the refusals included, and logs no picture 476ms
+ ✓ test/attacks-sealed.test.ts > attack 3: only the holder unseals, and only the registered bytes (invariants 5 and 6) > 3a refuses the right bytes from a caller whose wallet is not ownerOf, with nothing pinned 2ms
+ ✓ test/attacks-sealed.test.ts > attack 3: only the holder unseals, and only the registered bytes (invariants 5 and 6) > 3b refuses the holder sending bytes whose SHA-256 is not the passport id, with nothing pinned 7ms
+ ✓ test/attacks-sealed.test.ts > attack 3: only the holder unseals, and only the registered bytes (invariants 5 and 6) > 3c refuses the right hash when the chain's fingerprint differs, with nothing pinned 18ms
+ ✓ test/attacks-sealed.test.ts > attack 3: only the holder unseals, and only the registered bytes (invariants 5 and 6) > 3d applies the public path's thumbnail rule when a sealed picture too big for it is unsealed 438ms
+ ✓ test/attacks-sealed.test.ts > attack 3: only the holder unseals, and only the registered bytes (invariants 5 and 6) > 3e publishes exactly the documented four pins for the holder, the right bytes and a matching fingerprint 25ms
+stdout | test/attacks-sealed.test.ts
+Moolam attack pass 3, the route half: sealed pictures, executed with vitest.
+date        2026-09-23T07:16:22.425Z
+pins        recorded at the fetch layer; tokens signed by a key made in this file; chain reads stubbed
+
+  1a  sealed /prepare and sealed /generate, pins counted at the fetch layer
+      PASS, /prepare made 1 pin (0 files), /generate made 1 pin (0 files), both documents pass the strict schema; not covered: a real Pinata upload, only the call this service makes to it
+        /prepare pinned  {"name":"Sealed nets","description":"A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.","sealed":true,"commitment":{"algorithm":"sha-256","value":"0xe6f716d0f4..."},"fingerprint":{"phash":"0xc2ca35729c25708e","blockhash":"0x0000000000...","version":1},"createdAt":"2026-09-23T07:16:20.859Z"}
+        /generate pinned {"name":"Sealed lighthouse","description":"An image made by the Moolam demo generator agent and registered sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.","sealed":true,"commitment":{"algorithm":"sha-256","value":"0x6c2b26b1b1..."},"fingerprint":{"phash":"0x1668e96098836687","blockhash":"0x0000003000...","version":1},"generator":{"agentId":"10249","registry":"0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"},"createdAt":"2026-09-23T07:16:20.908Z","model":"gpt-image-1-mini"}
+  1b  smuggled fields image, thumbnail, manifest, prompt, animation_url, external_url
+      REFUSED, every one dropped before the pin (the strict schema's own output is what is pinned), and all six in one body refused with nothing pinned; not covered: a field smuggled inside the training statement, which consent.ts refuses and test/consent.test.ts covers
+        /prepare + image         200, pinned keys commitment,createdAt,description,fingerprint,name,sealed
+        /prepare + thumbnail     200, pinned keys commitment,createdAt,description,fingerprint,name,sealed
+        /prepare + manifest      200, pinned keys commitment,createdAt,description,fingerprint,name,sealed
+        /prepare + prompt        200, pinned keys commitment,createdAt,description,fingerprint,name,sealed
+        /prepare + animation_url 200, pinned keys commitment,createdAt,description,fingerprint,name,sealed
+        /prepare + external_url  200, pinned keys commitment,createdAt,description,fingerprint,name,sealed
+        /prepare + all six at once   400 {"error":"Premature close"}, pins 0
+        /generate + image,thumbnail,manifest,animation_url,external_url  200, pinned {"name":"Smuggled into a drawing","description":"An image made by the Moolam demo generator agent and registered sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.","sealed":true,"commitment":{"algorithm":"sha-256","value":"0x298fec3429..."},"fingerprint":{"phash":"0x1668e96098836687","blockhash":"0x0000003000...","version":1},"generator":{"agentId":"10249","registry":"0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"},"createdAt":"2026-09-23T07:16:21.140Z","model":"gpt-image-1-mini"}
+  1c  a title that is a data: URI and one that is an ipfs:// link
+      LANDED AS EXPECTED, the title is published as typed: it is the creator's own public words (threat model B, Metadata), and 120 characters hold at most 72 bytes of a picture; not covered: how a reader renders the name, which is the web's half and is not executed here
+        data: URI     pinned {"name":"data:image/jpeg;base64,/9j/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/2","description":"A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.","sealed":true,"commitment":{"algorithm":"sha-256","value":"0x2eeab03c83..."},"fingerprint":{"phash":"0xc2ca35729c25708e","blockhash":"0x0000000000...","version":1},"createdAt":"2026-09-23T07:16:21.173Z"}
+        ipfs:// link  pinned {"name":"ipfs://bafkreiattackerchosenlinkinthetitle","description":"A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.","sealed":true,"commitment":{"algorithm":"sha-256","value":"0x720aace11b..."},"fingerprint":{"phash":"0xc2ca35729c25708e","blockhash":"0x0000000000...","version":1},"createdAt":"2026-09-23T07:16:21.203Z"}
+        a 121 character data: title   400 {"error":"send a \"title\" field of 1 to 120 characters"}
+  1d  a sealed prepare with the signer on, disk listed before and after, node:fs spied
+      PASS, 0 new files in the private temp dir, 0 in 2 watched directories, 0 JavaScript write opens, 0 survivors; not covered: writes by the Rust signer outside the temp dir and the watched directories, which only a system-level trace would show
+        temp dir entries before 0, after 0
+        watched D:\Projects\Monad\packages\verifier, D:\Projects\Monad\packages\verifier\test-assets
+        write opens seen none
+  1e  a sealed prepare that is never registered (the orphan pin)
+      LANDED AS EXPECTED, the document is pinned before the creator signs because its address is part of what they sign; it holds only the title, the fingerprints and the hash, which the studio lists before it calls the service; not covered: the later tidy that would unpin a document whose passport never appeared within a day, which does not exist yet
+        pinned and never registered: {"name":"Walked away","description":"A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.","sealed":true,"commitment":{"algorithm":"sha-256","value":"0x33faf2654e..."},"fingerprint":{"phash":"0xc2ca35729c25708e","blockhash":"0x0000000000...","version":1},"createdAt":"2026-09-23T07:16:21.270Z"}
+  2a  every sealed answer's cache header, and the logger's output, on /prepare, /generate and /unseal
+      PASS, 14 of 14 answers no-store (200, 400, 401, 413 and 429 on each route but /unseal's 200, which attack 3e shows), 0 picture bytes in the log; not covered: a proxy or CDN that ignores no-store, and the host's own request log, which is outside this process
+        /prepare 200 sealed              200 cache-control: no-store
+        /prepare 400 bad field           400 cache-control: no-store
+        /prepare 401 no token            401 cache-control: no-store
+        /prepare 413 over the byte cap   413 cache-control: no-store
+        /prepare 429 hourly limit        429 cache-control: no-store
+        /generate 200 sealed             200 cache-control: no-store
+        /generate 400 bad field          400 cache-control: no-store
+        /generate 401 no token           401 cache-control: no-store
+        /generate 413 over the body cap  413 cache-control: no-store
+        /generate 429 daily quota        429 cache-control: no-store
+        /unseal 400 bad field            400 cache-control: no-store
+        /unseal 401 no token             401 cache-control: no-store
+        /unseal 413 over the byte cap    413 cache-control: no-store
+        /unseal 429 per-minute limit     429 cache-control: no-store
+        log captured 54776 characters over 279 lines; longest base64 run 28 characters; no slice of the two signed files or the upload, as base64, raw or hex
+  3a  the registered bytes, sent by a signed-in caller whose wallet is not the holder
+      REFUSED, 403 {"error":"not-holder"}, pins 0; not covered: Privy's own mapping from a user to their wallets, which is stubbed here and read live in production
+        caller wallets [0x1111111111111111111111111111111111111111], ownerOf 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+  3b  the holder's token with a different picture under the sealed passport id
+      REFUSED, 400 hash-mismatch before any chain read, pins 0; not covered: a second preimage of SHA-256, which is out of reach by the hash's own strength
+        passport 0x012ad1e1d075d2cd36c7ae68f960dd083281ed3b1ae644753df8eff53dc6c9d7
+  3c  the holder and the right bytes, with the chain's fingerprint read back different
+      REFUSED, all three differences answered fingerprint-mismatch, pins 0; not covered: the real registry read, which is stubbed here to say what an older fingerprint recipe would have stored
+        phash off by one       400 fingerprint-mismatch, pins 0
+        block hash zeroed      400 fingerprint-mismatch, pins 0
+        fingerprint version 2  400 fingerprint-mismatch, pins 0
+  3d  a picture whose thumbnail cannot fit the workflow's 60 KB budget, registered sealed and then unsealed
+      REFUSED, unseal 422 thumbnail-too-large with the 60,000 byte limit named, pins 0; not covered: the Chainlink workflow's own fetch, whose 60 KB budget is taken from the workflow and not measured here
+        public /prepare of the same picture   415 {"error":"not-an-image","reason":"the file could not be decoded"}, pins 0
+        sealed /prepare of it                 200, one JSON pin, passport 0xae6745c77dc8326e0b02c13f627e288152b5603f772b5d01a06fc3d6e3afdea3
+        unseal                                422 {"error":"thumbnail-too-large","limit":60000,"reason":"this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so unsealing it would publish a passport that can never be re-checked. Nothing was pinned."}
+  3e  positive control: the holder, the registered bytes, the chain's own fingerprint
+      PASS, 200 no-store and exactly the four pins the route documents: picture, thumbnail, manifest, record; not covered: a real Pinata upload and a real registry read, both stubbed
+        image/jpeg          57012 bytes  sealed-for-attack-three-012ad1e1.jpg
+        image/jpeg           6849 bytes  sealed-for-attack-three-012ad1e1-thumb.jpg
+        application/json      576 bytes  sealed-for-attack-three-012ad1e1-c2pa.json
+        application/json      558 bytes  unseal-0x012ad1e1d0....json
+  4a  POST /verify with a copy of a sealed passport the index holds
+      PASS on the picture, no image, thumbnail or gateway address in either answer; LANDED, NOT DOCUMENTED on the flag: the verify service's answer does not say sealed, the web's verify card learns it from the metadata document (packages/web/components/verify/lookup.ts), so an API or x402 caller is told the match but not that the picture is sealed; not covered: the web's verify card, which reads the flag itself and is tested in packages/web/test/sealed-verify.test.ts
+        the signed file itself   200, best 0x0c4cd06d36... confidence 1.000, keys result,manifest, image or thumbnail address none, sealed flag absent
+        a quality 70 re-encode   200, best 0x0c4cd06d36... confidence 0.961, keys result,manifest, image or thumbnail address none, sealed flag absent
+        the exact answer, whole: {"result":{"exact":"0x0c4cd06d36...","best":{"id":"0x0c4cd06d36...","phashDistance":0,"blockhashDistance":0,"variant":"identity","score":1,"consent":{"source":"unavailable"},"dispute":{"source":"unavailable"},"recheck":{"source":"unavailable"}},"matches":[{"id":"0x0c4cd06d36...","phashDistance":0,"blockhashDistance":0,"variant":"identity","score":1,"consent":{"source":"unavailable"},"dispute":{"source":"unavailable"},"recheck":{"source":"unavailable"}}],"confidence":1,"queried":{"sha256":"0x0c4cd06d36...","phash":"14544998186032195981","blockhash":"0x0000000000...","width":640,"height":480,"format":"jpeg"}},"manifest":{"present":true,"manifestHash":"0x7332f15a24...","title":"Sealed for attack four","claimGenerator":"moolam-studio/0.1.0","actions":["c2pa.created"],"ingredients":0,"softBinding":{"alg":"com.moolam.phash-blockhash.v1","phash":"14544998186032195981","blockhash":"0x0000000000..."}}}
+  4b  POST /recheck/request for a sealed passport, its document read through the injected reader
+      REFUSED, 409 sealed, no-store, and the queue still says none; not covered: a gateway that cannot be read, where the route queues the request and the runner refuses it later, by design
+        answer {"error":"sealed","passportId":"0x0c4cd06d36...","reason":"this passport's picture was never published, so there is nothing for the Chainlink verifier to fetch and re-check. Publish it first and then ask again."}
+
+ ✓ test/attacks-sealed.test.ts > attack 4: sealed never reads as public or broken (invariant 7) > 4a answers a copy of a sealed passport with no image or thumbnail address, and says whether it is sealed 89ms
+ ✓ test/attacks-sealed.test.ts > attack 4: sealed never reads as public or broken (invariant 7) > 4b refuses a re-check for a sealed passport with 409 sealed, and queues nothing 2ms
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  12:46:18
+   Duration  3.56s (tests 60%, import 33%, transform 7%)
+
+The full verify service suite after this file was added: npm test in packages/verifier
+  Test Files  37 passed (37)
+       Tests  376 passed (376)
+
+THE LIVE HALF: npm run attack:pass3, in packages/agents
+=======================================================
+> @moolam/agents@0.1.0 attack:pass3
+> tsx scripts/attack-pass-3.ts
+
+Moolam attack pass 3, the live half: the sealed passport, attacked from outside.
+Reads and HTTP only. No transaction is sent and nothing is spent.
+
+date        2026-09-23T07:16:01.257Z
+commit      4ecc9cf67d395fcc5bfd9ab7568e5e04af6026c3
+chain       Monad mainnet, chain 143, read at block 107,259,187
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+passport    0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c
+creator     0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a, registered at unix 1790079830
+holder      0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a (ownerOf at the block above)
+metadata    ipfs://bafkreifkvld3vxondgeacbbzayovnouaxykfouc64kusq4qx2jsbab47w4
+verifier    https://verifier-production-d76f.up.railway.app
+site        https://moolam.vercel.app
+
+5a  POST /unseal for the sealed passport with no token
+      401, cache-control no-store, {"error":"unauthorized"}
+5b  POST /unseal for the sealed passport with a malformed bearer
+      401, cache-control no-store, {"error":"unauthorized"}
+5c  POST /unseal for the sealed passport with an ES256 token signed by a key made on the spot, right issuer and audience
+      401, cache-control no-store, {"error":"unauthorized"}
+5d  POST /unseal for the sealed passport with an alg none token, right issuer and audience
+      401, cache-control no-store, {"error":"unauthorized"}
+5e  GET /unseal/<id> after the four attempts
+      200, cache-control no-store
+      200, unsealed at 2026-09-22T12:27:28.511Z by 0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a, before this run started, the chain's holder
+      published addresses: image bafybeidrcahmf3caddcuiqzphufwhhn2t6pnb4og5mr6s4gsqpo3zt2g4e, thumbnail bafkreigwx2nxhx7uotk6kzevdjwkakowu4al6rt6tetra447xoxpdmcpri, manifest bafkreiejiqnq7tvpn2bnrzjt4x4yz2wop22f2fqquy4b7s2jlehljorhvi, record bafkreibms3wx5anhjntthlm32trbgfw3zuqdsno3ppalz6wdz6zoyi4npi
+5f  POST /prepare with sealed=true and no token
+      401, cache-control no-store, {"error":"unauthorized"}
+5g  POST /recheck/request for the sealed passport
+      409, cache-control no-store, {"error":"sealed","passportId":"0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c","reason":"this passport's picture was never published, so th...
+      finding: this passport was unsealed by its holder before the run, so its picture is public,
+      and the queue still refuses it as sealed. Its answer tells the caller to publish first.
+5h  the live sealed document on IPFS, through the gateway named in .env
+      200, strict schema accepts it
+      keys name, description, sealed, commitment, fingerprint, generator, training, createdAt, model
+      string values scanned 15, http, https or ipfs links none
+      commitment equals the passport id
+5i  GET https://moolam.vercel.app/en/passport/<id>
+      200, 186,259 characters of HTML
+      IPFS address bafybeidrcahmf3caddcuiqzphufwhhn2t6pnb4og5mr6s4gsqpo3zt2g4e: the unsealed picture
+      IPFS address bafkreibms3wx5anhjntthlm32trbgfw3zuqdsno3ppalz6wdz6zoyi4npi: the unseal record
+      IPFS address bafkreifkvld3vxondgeacbbzayovnouaxykfouc64kusq4qx2jsbab47w4: the sealed document
+      mentions of the gateway host from .env 14, <img> tags 3, of which on IPFS 1, of which not from the unseal record 0
+
+Summary, one line per live attack: what it found | what it did not cover | verdict
+====================================================================================
+  5a  POST /unseal with no token: 401 {"error":"unauthorized"}, no-store | not covered: a valid token, which the route tests cover | REFUSED
+  5b  POST /unseal with a malformed bearer: 401 {"error":"unauthorized"}, no-store | not covered: a valid token, which the route tests cover | REFUSED
+  5c  POST /unseal with an ES256 token signed by a key made on the spot, right issuer and audience: 401 {"error":"unauthorized"}, no-store | not covered: a token Privy itself issued to another user, which the route test 3a covers | REFUSED
+  5d  POST /unseal with an alg none token, right issuer and audience: 401 {"error":"unauthorized"}, no-store | not covered: a token Privy itself issued to another user, which the route test 3a covers | REFUSED
+  5e  GET /unseal/<id>, nothing was published by 5a to 5d: 200, unsealed at 2026-09-22T12:27:28.511Z by 0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a, before this run started, the chain's holder, no-store | not covered: Pinata's own listing, which this answer is read from | PASS
+  5f  POST /prepare with sealed=true and no token: 401 {"error":"unauthorized"}, no-store | not covered: a signed-in sealed prepare, which would pin and is proved by the route tests 1a to 1e | REFUSED
+  5g  POST /recheck/request for the sealed passport: 409 {"error":"sealed..., no-store, though the holder has unsealed it (see the finding above) | not covered: the runner's own refusal, for the case where the gateway read times out and the request is queued | REFUSED
+  5h  the live sealed document, validated with the verify service's own strict schema: schema accepts, 9 keys, 0 links, commitment matches | not covered: copies of the document on other gateways, which are the same bytes by content address | PASS
+  5i  the live passport page for the sealed passport: 200, 0 IPFS address the chain and the unseal record do not name, 0 stray IPFS image, and the picture the holder published is shown | not covered: what the browser fetches after hydration, which only the rendered HTML and payload are checked for here | PASS
+
+finished 2026-09-23T07:16:06.753Z, chain block 107,259,187
