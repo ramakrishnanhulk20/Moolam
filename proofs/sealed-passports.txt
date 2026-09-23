@@ -22,4 +22,25 @@ What the live site shows for it, checked from outside the same hour:
   POST /recheck/request      409 sealed: a re-check needs a public picture, so the queue refuses it
   GET /recheck/status/<id>   {"status":"none"}
 
-What this does not prove: the unseal path, which needs the holder's saved file and their passkey.
+What this did not prove when it was written: the unseal path, which needs the holder's saved file and
+their passkey.
+
+THE SAME PASSPORT, UNSEALED BY ITS HOLDER (read back on 2026-09-23 by proofs/attacks/pass-3.txt, 5e)
+
+Four minutes after it was registered, the holder published the picture through the unseal route with
+the signed file the studio had handed back. The verify service checked that the file's SHA-256 equals the
+passport id and that its fingerprint equals the chain's, then pinned it publicly with a record beside
+it. The sealed document on chain is unchanged (it cannot be rewritten); the record is what says the
+picture has been published since, and every screen reads the two together.
+
+  unsealed at     2026-09-22 12:27:28 UTC, by 0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a (the chain's holder)
+  image           ipfs://bafybeidrcahmf3caddcuiqzphufwhhn2t6pnb4og5mr6s4gsqpo3zt2g4e
+  thumbnail       ipfs://bafkreigwx2nxhx7uotk6kzevdjwkakowu4al6rt6tetra447xoxpdmcpri
+  manifest        ipfs://bafkreiejiqnq7tvpn2bnrzjt4x4yz2wop22f2fqquy4b7s2jlehljorhvi
+  record          ipfs://bafkreibms3wx5anhjntthlm32trbgfw3zuqdsno3ppalz6wdz6zoyi4npi
+  /en/passport/<id>   200: the picture is drawn from the record's image address, and no other IPFS
+                      picture address appears in the page
+
+What this does not prove yet: a Chainlink re-check of a picture that was sealed first. On 2026-09-23 the
+re-check queue still refused this passport as sealed, because it read only the sealed document; that
+is being fixed, and the re-check will be recorded here when it lands.
