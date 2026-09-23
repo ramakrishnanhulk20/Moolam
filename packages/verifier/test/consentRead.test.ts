@@ -21,6 +21,7 @@ import { offlineDisputeReader, withPassportFacts } from "../src/disputeRead.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
+import { offlinePictureReader } from "../src/unseal.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { Hex, PassportRecord } from "../src/types.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
@@ -232,6 +233,7 @@ describe("consent reader", () => {
       read,
       offlineDisputeReader(),
       () => undefined,
+      offlinePictureReader(),
     );
 
     const result = payload.result as unknown as {

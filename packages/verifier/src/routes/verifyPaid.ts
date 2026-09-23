@@ -155,10 +155,10 @@ async function settleSequence(
  * fetch from reaching a private address; rather than copy those checks and
  * risk the two copies drifting, the paid route does not offer it.
  *
- * The consent statement, the dispute fact and the re-check fact are attached before the payment is
- * settled, so the body the facilitator sees and the copy kept against a replayed payment are the
- * same answer the payer is served. The two chain reads for one passport start at the same moment,
- * so a caller never waits through one timeout and then the other.
+ * The consent statement, the dispute fact, the re-check fact and the picture state are attached
+ * before the payment is settled, so the body the facilitator sees and the copy kept against a
+ * replayed payment are the same answer the payer is served. The reads for one passport start at
+ * the same moment, so a caller never waits through one timeout and then another.
  *
  * A caller with no payment gets 402 and the payment terms. A caller whose
  * payment fails verification gets the facilitator's reason. Payment is settled
@@ -242,6 +242,7 @@ export async function verifyPaidRoutes(
         app.verifier.consent,
         app.verifier.dispute,
         app.verifier.lookupExact,
+        app.verifier.picture,
       );
     } catch (error) {
       const status = statusOf(error);

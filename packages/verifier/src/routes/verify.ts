@@ -12,9 +12,11 @@ import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
  *
  * The matched passport carries what its holder stated about AI use, read from the consent
  * contract, whether it is under dispute, read from the registry, and what has re-checked the
- * picture, read from the records this service already holds. The two chain reads for one passport
- * start at the same moment, so a caller never waits through one timeout and then the other. A read
- * that fails leaves that field as { source: "unavailable" } and the match stands.
+ * picture, read from the records this service already holds, and whether the picture is public,
+ * sealed, or sealed and published later by its holder, read from its metadata document and its
+ * unseal record. The reads for one passport start at the same moment, so a caller never waits
+ * through one timeout and then another. A read that fails leaves that field as
+ * { source: "unavailable" } and the match stands.
  *
  * Answers 503 `busy` when no matching slot came free in time.
  */
@@ -24,7 +26,13 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       const bytes = request.isMultipart() ? await readUpload(request) : await readFromUrl(request);
       const answer = await verifyBytes(app, bytes);
       return reply.send(
-        await withPassportFacts(answer, app.verifier.consent, app.verifier.dispute, app.verifier.lookupExact),
+        await withPassportFacts(
+          answer,
+          app.verifier.consent,
+          app.verifier.dispute,
+          app.verifier.lookupExact,
+          app.verifier.picture,
+        ),
       );
     } catch (error) {
       const status = statusOf(error);

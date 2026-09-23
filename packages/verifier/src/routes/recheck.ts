@@ -4,7 +4,15 @@ import { z } from "zod";
 import { bearerToken } from "../auth/privy.js";
 import type { RecheckItem, RecheckQueue } from "../recheck/queue.js";
 import type { Hex, PassportRecord } from "../types.js";
-import { sealedStateOf } from "../unseal.js";
+import { pictureStateOf, type DocumentReader, type UnsealRecordFinder } from "../unseal.js";
+
+export type { DocumentReader } from "../unseal.js";
+
+/**
+ * How long a "sealed" answer is held before the unseal record is looked for again. A holder can
+ * publish the picture at any moment, so this is the longest a fresh unseal waits to be re-checked.
+ */
+const SEALED_TTL_MS = 60_000;
 
 /** How many waiting requests one read of the queue hands over. The runner works through one page. */
 const QUEUE_PAGE = 50;
@@ -39,14 +47,13 @@ const doneSchema = z.object({
   reason: z.string().trim().min(1).max(2000).optional(),
 });
 
-/** Reads a passport's metadata document. Swapped in tests so no request leaves the process. */
-export type DocumentReader = (uri: string) => Promise<unknown>;
-
 export interface RecheckRouteOptions {
   queue: RecheckQueue;
   /** The runner's bearer token. Undefined or empty switches the three runner routes off. */
   runnerToken?: string;
   readDocument?: DocumentReader;
+  /** Finds the record a sealed passport was published under. Undefined reads every sealed passport as unknown. */
+  findRecord?: UnsealRecordFinder;
 }
 
 /**
@@ -64,7 +71,7 @@ export interface RecheckRouteOptions {
 export async function recheckRoutes(app: FastifyInstance, options: RecheckRouteOptions): Promise<void> {
   const queue = options.queue;
   const token = options.runnerToken === undefined || options.runnerToken.length === 0 ? undefined : options.runnerToken;
-  const sealed = sealedChecker(options.readDocument);
+  const sealed = sealedChecker(options.readDocument, options.findRecord);
 
   /**
    * POST /recheck/request: somebody asks for this passport to be re-checked.
@@ -255,23 +262,34 @@ function sameToken(given: string, expected: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+type SealedAnswer = "sealed" | "public" | "unsealed" | "unknown";
+
 /**
- * Whether this passport's picture was ever published, remembered for the life of the process.
+ * Whether this passport's picture is out where the Chainlink verifier can fetch it.
  *
- * The index records carry no sealed flag, so the only place the answer lives is the metadata
- * document the passport points at. That document is pinned once and the registry has no setter for
- * metadataURI, so the answer can never go stale and one read per passport is the whole lifetime
- * cost: a caller cannot turn this route into a gateway read per request, because the second
- * request for the same passport is answered from memory and only passports the index already knows
- * ever get this far.
+ * The index records carry no sealed flag, so the answer starts from the metadata document the
+ * passport points at, and for a document that says sealed, from the record its holder pins on
+ * unsealing. The document is written once, so "public" can never go stale, and a record is never
+ * taken back, so neither can "unsealed": both are remembered for the life of the process. "sealed"
+ * is the one answer that changes, the moment the holder publishes, so it is held for a minute and
+ * then asked again. A caller cannot turn this route into a gateway read per request: a repeat is
+ * answered from memory, and only passports the index already knows ever get this far.
  *
  * A read that fails answers "unknown" and is not remembered, and an unknown request is queued. A
- * sealed passport slipping through costs the runner one refusal; a gateway being slow must never
- * cost a real picture its second opinion.
+ * sealed passport slipping through costs the runner one refusal; a gateway or Pinata being slow
+ * must never cost a real picture its second opinion.
  */
-function sealedChecker(read: DocumentReader | undefined): (record: PassportRecord) => Promise<"sealed" | "public" | "unknown"> {
-  const known = new Map<Hex, "sealed" | "public">();
-  const inFlight = new Map<Hex, Promise<"sealed" | "public" | "unknown">>();
+function sealedChecker(
+  read: DocumentReader | undefined,
+  findRecord: UnsealRecordFinder | undefined,
+): (record: PassportRecord) => Promise<SealedAnswer> {
+  const known = new Map<Hex, { state: "sealed" | "public" | "unsealed"; until: number }>();
+  const inFlight = new Map<Hex, Promise<SealedAnswer>>();
+  const finder: UnsealRecordFinder =
+    findRecord ??
+    (async () => {
+      throw new Error("this host has no unseal record finder");
+    });
 
   return async (record) => {
     if (read === undefined) {
@@ -279,23 +297,25 @@ function sealedChecker(read: DocumentReader | undefined): (record: PassportRecor
     }
     const settled = known.get(record.id);
     if (settled !== undefined) {
-      return settled;
+      if (settled.until > Date.now()) {
+        return settled.state;
+      }
+      known.delete(record.id);
     }
     const running = inFlight.get(record.id);
     if (running !== undefined) {
       return await running;
     }
 
-    const task = (async (): Promise<"sealed" | "public" | "unknown"> => {
+    const task = (async (): Promise<SealedAnswer> => {
       try {
-        const state = sealedStateOf(await read(record.metadataURI));
-        if (state === "unreadable") {
+        const reading = await pictureStateOf(record, read, finder);
+        if (reading.state === "unreadable") {
           return "unknown";
         }
-        known.set(record.id, state);
-        return state;
-      } catch {
-        return "unknown";
+        const until = reading.state === "sealed" ? Date.now() + SEALED_TTL_MS : Number.POSITIVE_INFINITY;
+        known.set(record.id, { state: reading.state, until });
+        return reading.state;
       } finally {
         inFlight.delete(record.id);
       }

@@ -83,6 +83,7 @@ vi.mock("../src/unseal.js", async (importOriginal) => ({
 
 const { PACKAGE_ROOT } = await import("../src/env.js");
 const { sealedMetadataSchema } = await import("../src/sealed.js");
+const { pictureReader, unsealRecord } = await import("../src/unseal.js");
 const { buildServer } = await import("../src/server.js");
 const { makeImage } = await import("./helpers.js");
 
@@ -961,29 +962,53 @@ describe("attack 3: only the holder unseals, and only the registered bytes (inva
 
 describe("attack 4: sealed never reads as public or broken (invariant 7)", () => {
   const METADATA_URI = "ipfs://bafysealeddocumentforattack4";
+  const UNSEALED_URI = "ipfs://bafysealeddocumentforattack4c";
+  const UNSEALED_AT = new Date("2026-09-22T12:27:28.000Z");
   let sealed: Sealed;
+  let opened: Sealed;
   let indexed: FastifyInstance;
 
   beforeAll(async () => {
     sealed = await sealThroughTheRoute("did:privy:attack-4-seal", "Sealed for attack four", await makeImage(44));
-    const indexedRecord = {
-      id: sealed.passportId,
-      phash: sealed.phash,
-      blockhash: sealed.blockhash,
+    // A second sealed passport whose holder has since published the picture, the shape finding 5g
+    // found live on mainnet: its document still says sealed, and an unseal record says otherwise.
+    opened = await sealThroughTheRoute("did:privy:attack-4c-seal", "Sealed then opened", await makeImage(45));
+    const indexedRecord = (which: Sealed, metadataURI: string) => ({
+      id: which.passportId,
+      phash: which.phash,
+      blockhash: which.blockhash,
       creator: CREATOR,
       parentId: null,
       registeredAt: 1_758_000_000,
-      metadataURI: METADATA_URI,
+      metadataURI,
+    });
+    const documents = new Map<string, Record<string, unknown>>([
+      [METADATA_URI, sealed.document],
+      [UNSEALED_URI, opened.document],
+    ]);
+    const readDocument = async (uri: string): Promise<unknown> => {
+      const document = documents.get(uri);
+      expect(document, uri).toBeDefined();
+      return document;
     };
+    const findRecord = async (passportId: Hex) =>
+      passportId === opened.passportId
+        ? unsealRecord({
+            passportId,
+            image: "ipfs://bafyopenedimage",
+            thumbnail: "ipfs://bafyopenedthumb",
+            unsealedBy: CREATOR,
+            unsealedAt: UNSEALED_AT,
+          })
+        : undefined;
     indexed = await buildServer({
-      source: { load: async () => [indexedRecord] },
+      source: { load: async () => [indexedRecord(sealed, METADATA_URI), indexedRecord(opened, UNSEALED_URI)] },
       logger: false,
+      picture: pictureReader({ readDocument, findRecord }),
       recheck: {
         runnerToken: "moolam-runner-token-for-attack-4",
-        readDocument: async (uri: string) => {
-          expect(uri).toBe(METADATA_URI);
-          return sealed.document;
-        },
+        readDocument,
+        findRecord,
       },
     });
     await indexed.ready();
@@ -1017,7 +1042,9 @@ describe("attack 4: sealed never reads as public or broken (invariant 7)", () =>
       expect(text, label).not.toMatch(/https?:\/\//);
       expect(text, label).not.toContain("mypinata.cloud");
       expect(text, label).not.toMatch(/"(image|thumbnail|gatewayUrl|metadataURI)"/);
-      const carriesFlag = /"sealed"\s*:\s*true/.test(text);
+      // The match says sealed in the service's own words, and as a state rather than a fault.
+      expect(answer.result.best.picture, label).toEqual({ state: "sealed" });
+      const carriesFlag = /"picture"\s*:\s*\{\s*"state"\s*:\s*"sealed"\s*\}/.test(text);
       if (carriesFlag) flagged += 1;
       detail.push(
         `${label.padEnd(24)} ${response.statusCode}, best ${answer.result.best.id.slice(0, 12)}... confidence ${answer.result.confidence.toFixed(3)}, keys ${Object.keys(answer).join(",")}, image or thumbnail address none, sealed flag ${carriesFlag ? "present" : "absent"}`,
@@ -1025,14 +1052,14 @@ describe("attack 4: sealed never reads as public or broken (invariant 7)", () =>
     }
     detail.push(`the exact answer, whole: ${exact.body.replace(/0x([0-9a-f]{10})[0-9a-f]{54}/g, "0x$1...")}`);
 
-    // This pins today's answer, so the change that adds the flag has to update this proof too.
-    expect(flagged).toBe(0);
+    expect(flagged).toBe(2);
     record({
       n: "4a",
       what: "POST /verify with a copy of a sealed passport the index holds",
       verdict:
-        "PASS on the picture, no image, thumbnail or gateway address in either answer; LANDED, NOT DOCUMENTED on the flag: the verify service's answer does not say sealed, the web's verify card learns it from the metadata document (packages/web/components/verify/lookup.ts), so an API or x402 caller is told the match but not that the picture is sealed",
-      notCovered: "the web's verify card, which reads the flag itself and is tested in packages/web/test/sealed-verify.test.ts",
+        'PASS on the picture, no image, thumbnail or gateway address in either answer; PASS on the flag: the match carries picture {"state":"sealed"} in both answers, so an API or x402 caller is told the picture is sealed and not only the match',
+      notCovered:
+        "the web's verify card, which reads the flag itself and is tested in packages/web/test/sealed-verify.test.ts, and /verify/paid, which attaches the same fact through the same function and is tested in test/passportFacts.test.ts",
       detail,
     });
   }, 120_000);
@@ -1056,6 +1083,32 @@ describe("attack 4: sealed never reads as public or broken (invariant 7)", () =>
       verdict: `REFUSED, ${response.statusCode} sealed, no-store, and the queue still says ${status.json().status}`,
       notCovered: "a gateway that cannot be read, where the route queues the request and the runner refuses it later, by design",
       detail: [`answer ${response.body.replace(/0x([0-9a-f]{10})[0-9a-f]{54}/g, "0x$1...")}`],
+    });
+  }, 60_000);
+
+  it("4c says unsealed on a copy of a passport its holder published, and queues its re-check", async () => {
+    const copy = await verify(await sharp(opened.bytes).jpeg({ quality: 70 }).toBuffer());
+    const asked = await indexed.inject({
+      method: "POST",
+      url: "/recheck/request",
+      payload: { passportId: opened.passportId },
+      remoteAddress: "198.51.100.36",
+    });
+
+    expect(copy.statusCode).toBe(200);
+    expect(copy.json().result.best.id).toBe(opened.passportId);
+    expect(copy.json().result.best.picture).toEqual({ state: "unsealed", at: UNSEALED_AT.toISOString() });
+    expect(asked.statusCode).toBe(200);
+    expect(asked.json()).toMatchObject({ passportId: opened.passportId, status: "pending" });
+    record({
+      n: "4c",
+      what: "a sealed passport its holder has unsealed since (finding 5g), through /verify and /recheck/request",
+      verdict: `PASS, the copy's match says unsealed with the record's time, and the re-check request is ${asked.statusCode} ${asked.json().status}, not 409 sealed`,
+      notCovered: "the live Pinata listing and the gateway read behind the record, which are stubbed here and read live in production",
+      detail: [
+        `verify picture ${JSON.stringify(copy.json().result.best.picture)}`,
+        `recheck answer ${asked.body.replace(/0x([0-9a-f]{10})[0-9a-f]{54}/g, "0x$1...")}`,
+      ],
     });
   }, 60_000);
 });

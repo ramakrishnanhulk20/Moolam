@@ -1,5 +1,5 @@
 // Covers withPassportFacts, the one function both verify routes call to attach the consent
-// statement and the dispute status together: the same passport in both the exact and best slot
+// statement, the dispute status, the re-check fact and the picture state together: the same passport in both the exact and best slot
 // costs one read of each rather than two, every read for two different matches has started before
 // the first one gives up (so a dead chain costs one timeout, not several in turn), and the key
 // order a caller sees is unchanged. The "started together" tests look at the order of events and
@@ -8,8 +8,12 @@
 // The chain here is a plain stub function, not a fake transport, because the eth_call encoding is
 // already covered by consentRead.test.ts and disputeRead.test.ts; this file is about the ordering
 // of the reads, not the reads themselves.
-// Does NOT cover the enum mapping, the caches, or each reader's own timeout in isolation, which are
-// consentRead.test.ts and disputeRead.test.ts, and does not cover a live RPC.
+// The picture state is read through the real pictureReader with its document reader and unseal
+// record finder stubbed: each of its four answers on a /verify and a /verify/paid answer, a finder
+// that throws, a reader that breaks its promise, a read slower than its bound, and its memory.
+// Does NOT cover the enum mapping, the consent and dispute caches, or each chain reader's own
+// timeout in isolation, which are consentRead.test.ts and disputeRead.test.ts; pictureStateOf's own
+// cases are test/pictureState.test.ts. It does not cover a live RPC, gateway or Pinata.
 
 import { describe, expect, it, vi } from "vitest";
 import { consentReader, type ConsentCall } from "../src/consentRead.js";
@@ -19,6 +23,14 @@ import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { Hex, PassportRecord } from "../src/types.js";
+import {
+  offlinePictureReader,
+  pictureReader,
+  unsealRecord,
+  type DocumentReader,
+  type PictureReader,
+  type UnsealRecordFinder,
+} from "../src/unseal.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
 
 const HOLDER = "0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7" as Hex;
@@ -95,6 +107,7 @@ describe("withPassportFacts", () => {
       consentReader({ call: consentCall }),
       disputeReader({ call: disputeCall }),
       () => undefined,
+      offlinePictureReader(),
     );
 
     expect(consentAsked).toEqual([passport]);
@@ -125,6 +138,7 @@ describe("withPassportFacts", () => {
       consent,
       dispute,
       () => undefined,
+      offlinePictureReader(),
     );
 
     // Two passports, two facts each: four reads, all under way before any timeout fired.
@@ -169,6 +183,7 @@ describe("withPassportFacts", () => {
       consentReader({ call: stated }),
       disputeReader({ call: (async () => undefined) as unknown as DisputeCall }),
       (id) => (id === passport ? record : undefined),
+      offlinePictureReader(),
     );
 
     // A reader that breaks its promise and rejects outright, which the walker guards separately.
@@ -181,6 +196,7 @@ describe("withPassportFacts", () => {
         },
       },
       (id) => (id === passport ? record : undefined),
+      offlinePictureReader(),
     );
 
     for (const [what, payload] of [["unreadable", unreadable], ["broken", broken]] as const) {
@@ -188,7 +204,7 @@ describe("withPassportFacts", () => {
       expect(best.dispute, what).toEqual({ source: "unavailable" });
       expect(best.consent, what).toMatchObject({ source: "chain", stated: true, aiTraining: "notAllowed" });
       expect(best.recheck, what).toMatchObject({ source: "index", attestations: 1, matched: 1 });
-      expect(Object.keys(best), what).toEqual(["id", "score", "consent", "dispute", "recheck"]);
+      expect(Object.keys(best), what).toEqual(["id", "score", "consent", "dispute", "recheck", "picture"]);
     }
   });
 });
@@ -272,5 +288,213 @@ describe("both facts on the verify routes, read together", () => {
     } finally {
       await app.close();
     }
+  });
+});
+
+/** A payment server that always verifies and settles, recording the body it settled over. */
+function paidStub() {
+  const settle = vi.fn(async (_payload: unknown, _requirements: unknown, _extensions: unknown, context: unknown) => ({
+    success: true,
+    errorReason: "",
+    transaction: "0x4a",
+    headers: {},
+    response: { status: 200, headers: {}, body: {} },
+    seen: (context as { responseBody: Buffer }).responseBody.toString("utf8"),
+  }));
+  const payments = {
+    initialize: async () => undefined,
+    processHTTPRequest: async () => ({
+      type: "payment-verified",
+      paymentPayload: {},
+      paymentRequirements: {},
+      declaredExtensions: [],
+      cancellationDispatcher: { cancel: async () => undefined },
+    }),
+    processSettlement: settle,
+  } as unknown as Parameters<typeof verifyPaidRoutes>[1]["payments"];
+  return { payments, settle };
+}
+
+const UNSEALED_AT = "2026-09-22T12:27:28.000Z";
+const SEALED_DOCUMENT = { name: "a sealed picture", sealed: true };
+
+function recordOf(passportId: Hex): ReturnType<typeof unsealRecord> {
+  return unsealRecord({
+    passportId,
+    image: "ipfs://bafyimage",
+    thumbnail: "ipfs://bafythumb",
+    unsealedBy: HOLDER,
+    unsealedAt: new Date(UNSEALED_AT),
+  });
+}
+
+describe("the picture state on the verify routes", () => {
+  it("says public, sealed, unsealed with its time, or unavailable, on /verify and /verify/paid alike", async () => {
+    const states = ["public", "sealed", "unsealed", "unavailable"] as const;
+    const images = new Map<string, Buffer>();
+    const records: PassportRecord[] = [];
+    for (const [index, state] of states.entries()) {
+      const image = await makeImage(93 + index);
+      images.set(state, image);
+      records.push(recordFor(await fingerprint(image), { metadataURI: `ipfs://bafy${state}document` }));
+    }
+    const unsealedId = records[2]?.id as Hex;
+    const readDocument: DocumentReader = async (uri) => {
+      if (uri === "ipfs://bafypublicdocument") return { name: "a picture", image: "ipfs://bafyimage" };
+      if (uri === "ipfs://bafyunavailabledocument") throw new Error("the gateway answered 504");
+      return SEALED_DOCUMENT;
+    };
+    const findRecord: UnsealRecordFinder = async (id) => (id === unsealedId ? recordOf(id) : undefined);
+    const expected = {
+      public: { state: "public" },
+      sealed: { state: "sealed" },
+      unsealed: { state: "unsealed", at: UNSEALED_AT },
+      unavailable: { source: "unavailable" },
+    };
+
+    const { payments, settle } = paidStub();
+    const app = await buildServer({
+      source: sourceOf(records),
+      logger: false,
+      picture: pictureReader({ readDocument, findRecord }),
+    });
+    await app.register(verifyPaidRoutes, { payments });
+    await app.ready();
+
+    try {
+      for (const [index, state] of states.entries()) {
+        for (const url of ["/verify", "/verify/paid"]) {
+          const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", images.get(state) as Buffer);
+          const response = await app.inject({ method: "POST", url, payload, headers });
+
+          expect(response.statusCode, `${state} ${url}`).toBe(200);
+          const body = response.json();
+          expect(body.result.exact, `${state} ${url}`).toBe(records[index]?.id);
+          expect(body.result.best.picture, `${state} ${url}`).toEqual(expected[state]);
+          // The state goes out and the address the answer came from does not.
+          expect(response.body, `${state} ${url}`).not.toContain("ipfs://");
+        }
+      }
+      // The body the payment settled over carries the same fact the payer was served.
+      const settled = (await settle.mock.results[1]?.value) as { seen: string };
+      expect(JSON.parse(settled.seen).result.best.picture).toEqual(expected.sealed);
+    } finally {
+      await app.close();
+    }
+  }, 60_000);
+
+  it("loses only the picture when the unseal lookup throws, and keeps consent, dispute and recheck", async () => {
+    const image = await makeImage(97);
+    const record = recordFor(await fingerprint(image), {
+      metadataURI: "ipfs://bafysealeddocument",
+      rechecks: {
+        attestations: 1,
+        matched: 1,
+        mismatched: 0,
+        latest: { receiver: RECHECKER, matched: true, distance: 0, at: 1_789_368_639 },
+      },
+    });
+    const consent = consentReader({
+      call: async () =>
+        [
+          true,
+          {
+            at: 1_700_000_000n,
+            writer: HOLDER,
+            consent: { aiTraining: 2, aiGenerativeTraining: 2, aiInference: 1, dataMining: 1 },
+            constraintInfo: "",
+          },
+        ] as const,
+    });
+    const dispute = disputeReader({
+      call: async () => ({ challenger: ZERO_ADDRESS, bond: 0n, evidenceHash: ZERO_HASH, status: 0, openedAt: 0n }),
+    });
+    const picture = pictureReader({
+      readDocument: async () => SEALED_DOCUMENT,
+      findRecord: async () => {
+        throw new Error("Pinata answered 500 to the record lookup");
+      },
+    });
+
+    const app = await buildServer({ source: sourceOf([record]), logger: false, consent, dispute, picture });
+    await app.ready();
+    try {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const response = await app.inject({ method: "POST", url: "/verify", payload, headers });
+
+      expect(response.statusCode).toBe(200);
+      const best = response.json().result.best;
+      expect(best.picture).toEqual({ source: "unavailable" });
+      expect(best.consent).toMatchObject({ source: "chain", stated: true, aiTraining: "notAllowed" });
+      expect(best.dispute).toEqual({ source: "chain", status: "none" });
+      expect(best.recheck).toMatchObject({ source: "index", attestations: 1, matched: 1 });
+    } finally {
+      await app.close();
+    }
+
+    // A picture reader that breaks its own promise and rejects is guarded the same way.
+    const broken: PictureReader = {
+      answerFor: async () => {
+        throw new Error("the picture reader fell over");
+      },
+    };
+    const walked = await withPassportFacts(
+      { result: { exact: record.id, best: { id: record.id, score: 1 }, matches: [] }, manifest: {} },
+      consent,
+      dispute,
+      (id) => (id === record.id ? record : undefined),
+      broken,
+    );
+    const walkedBest = (walked.result as unknown as { best: Record<string, unknown> }).best;
+    expect(walkedBest.picture).toEqual({ source: "unavailable" });
+    expect(walkedBest.consent).toMatchObject({ source: "chain", stated: true });
+    expect(walkedBest.recheck).toMatchObject({ source: "index", attestations: 1 });
+  }, 60_000);
+
+  it("gives up on a picture read that outlasts its bound, and answers unavailable", async () => {
+    const reader = pictureReader({
+      readDocument: () => new Promise(() => undefined),
+      findRecord: async () => undefined,
+      timeoutMs: 50,
+    });
+    expect(await reader.answerFor({ id: `0x${"77".repeat(32)}` as Hex, metadataURI: "ipfs://bafyslow" })).toEqual({
+      source: "unavailable",
+    });
+    expect(await reader.answerFor(undefined)).toEqual({ source: "unavailable" });
+  });
+
+  it("keeps public and unsealed for good, asks again about sealed after a minute, and never keeps a failure", async () => {
+    const reads: string[] = [];
+    const published = new Set<Hex>();
+    let gatewayUp = false;
+    const readDocument: DocumentReader = async (uri) => {
+      reads.push(uri);
+      if (!gatewayUp) throw new Error("the gateway answered 504");
+      return uri === "ipfs://bafypublic" ? { name: "a picture" } : SEALED_DOCUMENT;
+    };
+    const findRecord: UnsealRecordFinder = async (id) => (published.has(id) ? recordOf(id) : undefined);
+    const reader = pictureReader({ readDocument, findRecord });
+    const publicOne = { id: `0x${"81".repeat(32)}` as Hex, metadataURI: "ipfs://bafypublic" };
+    const sealedOne = { id: `0x${"82".repeat(32)}` as Hex, metadataURI: "ipfs://bafysealed" };
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      expect(await reader.answerFor(publicOne)).toEqual({ source: "unavailable" });
+      gatewayUp = true;
+      expect(await reader.answerFor(publicOne)).toEqual({ state: "public" });
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "sealed" });
+      published.add(sealedOne.id);
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "sealed" });
+
+      vi.setSystemTime(Date.now() + 61_000);
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "unsealed", at: UNSEALED_AT });
+      vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000);
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "unsealed", at: UNSEALED_AT });
+      expect(await reader.answerFor(publicOne)).toEqual({ state: "public" });
+    } finally {
+      vi.useRealTimers();
+    }
+    // The failed read, the first public read, the first sealed read and the one after the minute.
+    expect(reads).toEqual(["ipfs://bafypublic", "ipfs://bafypublic", "ipfs://bafysealed", "ipfs://bafysealed"]);
   });
 });

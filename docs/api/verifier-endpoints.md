@@ -47,7 +47,8 @@ curl -s -X POST http://localhost:4000/verify \
       score: number,
       consent: Consent,             // what the holder has stated, see below
       dispute: Dispute,             // whether the passport is challenged, see below
-      recheck: Recheck              // what has re-checked the picture since, see below
+      recheck: Recheck,             // what has re-checked the picture since, see below
+      picture: Picture              // whether the picture is public or sealed, see below
     } | null,
     matches: Match[],               // best first, at most 20
     confidence: number,             // 1 for an exact hit, 0 when nothing matched
@@ -172,6 +173,31 @@ rather than half true. How each re-check was delivered, through Chainlink's simu
 its network forwarder, is on the passport page beside the transaction, because that is read from the
 transaction itself and not from the index.
 
+**Whether the picture is public or sealed.** The same matches carry `picture`. A sealed passport is a
+hash on chain with no picture behind it, and its holder can publish the picture later with
+[`/unseal`](#post-unseal); this field says which of those a match is, so a caller reading the JSON
+learns it without opening the metadata document themselves.
+
+```ts
+type Picture =
+  | { state: "public" }                    // registered in the open
+  | { state: "sealed" }                    // registered without the picture, which was never published
+  | { state: "unsealed", at: string }      // registered sealed, published later by its holder
+  | { source: "unavailable" }              // this service could not find out
+```
+
+`at` is the ISO 8601 time from the unseal record, the moment the holder published the picture. The
+state is read from the passport's metadata document and, only for a document that says sealed, from
+the unseal record pinned under the passport's id, which is believed only when it names this
+passport. A document that cannot be read, a record lookup that fails, and anything slower than the
+same five second cap the other reads get come back `unavailable`, never as `sealed` or `public`, and
+never fail the verification.
+
+`public` and `unsealed` are held in memory for good, because a document is written once and an
+unseal record is never taken back. `sealed` is held for 60 seconds, since it is the one answer the
+holder can change. Nothing in the field says where the picture lives: a sealed match carries no
+address to try, and an unsealed one is found through [`GET /unseal/:passportId`](#get-unsealpassportid).
+
 **Status codes.**
 
 | Code | When |
@@ -201,9 +227,9 @@ and risk the two copies drifting, the paid route does not offer it.
 **Response.** `200` with the same `{ result, manifest }` body as `/verify`, and the base64
 `PAYMENT-RESPONSE` header carrying the settlement: `{ success, transaction, network, payer }`.
 
-Each match carries the same `consent`, `dispute` and `recheck` fields, with the same sources, the same rule that
+Each match carries the same `consent`, `dispute`, `recheck` and `picture` fields, with the same sources, the same rule that
 `constrained` reads as `notAllowed` to anyone who cannot reach the creator, and the same rule that a
-statement on an `open` or `upheld` passport should not be relied on. All three are attached before the
+statement on an `open` or `upheld` passport should not be relied on. All four are attached before the
 payment is settled, so the body the facilitator signs over and the answer the payer is served are the
 same. Nothing about payment changes any of them: a read that fails answers `{ source: "unavailable" }`
 and the paid verification still comes back `200`.
@@ -372,10 +398,12 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | --- | --- |
 | `200` | Prepared and pinned |
 | `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, a `kind` other than `human`, or a `training` statement that is not JSON, is over 1024 bytes, carries a key or a value the standard has no room for, or breaks the `constraintInfo` rule. The message names the field |
+| `400` | `{ "error": "too-many-fields" }`. The body carries more than four text parts. Nothing is read further and nothing is pinned |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. A key set that cannot be fetched answers the same way, so a caller never learns the difference between a bad token and a bad network. `{ "error": "unauthorized" }` |
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
 | `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not |
+| `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. The `reason` says so and adds that registering the picture sealed still works, because a sealed prepare makes no thumbnail. Nothing is pinned and the day's slot is given back. A sealed prepare makes no thumbnail and never answers this |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither |
@@ -549,6 +577,7 @@ picture is a change to another one.
 | --- | --- |
 | `200` | Pinned and sent |
 | `400` | Not a multipart body, no `file` part, a file part under another name, a `title` outside 1 to 120 characters, a `parentId` that is not 32 bytes of hex, or a `note` over 280 characters |
+| `400` | `{ "error": "too-many-fields" }`. The body carries more than four text parts. Nothing is read further and nothing is pinned |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
 | `403` | `not-owner`. None of this caller's wallets is the one the registry says holds the parent. A creator with more than one embedded wallet is matched by the address on chain, not by which wallet is listed first |
 | `404` | `no-parent`. The registry has no passport with that id |
@@ -645,6 +674,7 @@ compare with the passport id on Monad.
 | --- | --- |
 | `200` | Published |
 | `400` | Not a multipart body, no `file` part, a file part under another name, or a `passportId` that is not 32 bytes of hex |
+| `400` | `{ "error": "too-many-fields" }`. The body carries more than four text parts. Nothing is read further and nothing is pinned |
 | `400` | `{ "error": "hash-mismatch", "passportId": "0x..." }`. The upload is not the file this passport commits to. Usually the creator kept their own copy of the picture rather than the file this service signed and handed back |
 | `400` | `{ "error": "fingerprint-mismatch", "passportId": "0x...", "recomputed": {...} }`. The bytes hash right and the fingerprint recomputed from them is not the one on chain |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
@@ -735,16 +765,19 @@ the queue.
 | `200` | Recorded, or already waiting |
 | `400` | The body is not `{ "passportId": "0x..." }` with 64 hex characters |
 | `404` | `no-passport`. This service's index does not hold that passport |
-| `409` | `sealed`. The picture was never published, so there is nothing for the Chainlink verifier to fetch. Publish it with [`/unseal`](#post-unseal) and ask again |
+| `409` | `sealed`. The picture was never published, so there is nothing for the Chainlink verifier to fetch. Publish it with [`/unseal`](#post-unseal) and ask again. A passport its holder has unsealed since is queued like a public one |
 | `429` | Ten a minute per address, rather than the sixty everything else gets |
 | `503` | `queue-full`. A thousand requests are waiting and none has been run |
 
-Whether a passport is sealed is read from its metadata document once per passport and then
-remembered for the life of the process, because the registry writes `metadataURI` at registration
-and has no setter: the answer can never change. Only passports the index already holds get that
-far, so the lifetime cost of this check is one gateway read per registered picture, whatever a
-caller does. A gateway that does not answer inside five seconds lets the request through; the
-runner refuses it later, which is the right way round for a request that spends nothing.
+Whether a passport is sealed is read from its metadata document, and for a document that says
+sealed, from the unseal record its holder pins on publishing the picture. The registry writes
+`metadataURI` at registration and has no setter, so the document says sealed for ever; the record is
+what says the picture is out since. A public or unsealed answer is remembered for the life of the
+process, because neither can change back, and a sealed one for 60 seconds, so a holder who unseals
+waits at most a minute to be re-checked. Only passports the index already holds get that far, so a
+caller cannot turn this route into a gateway or Pinata read per request. A gateway or a record
+lookup that does not answer inside five seconds lets the request through; the runner refuses it
+later, which is the right way round for a request that spends nothing.
 
 ## GET /recheck/status/:passportId
 

@@ -62,7 +62,7 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
   privy: () => ({}),
 }));
 
-const { THUMBNAIL_MAX_BYTES, prepareSealed } = await import("../src/prepare.js");
+const { THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } = await import("../src/prepare.js");
 const { globalDay } = await import("../src/limits/globalDay.js");
 const { sealedMetadata } = await import("../src/sealed.js");
 const { buildServer } = await import("../src/server.js");
@@ -455,6 +455,8 @@ describe("unsealing a sealed passport", () => {
     expect(response.statusCode).toBe(422);
     expect(response.json().error).toBe("thumbnail-too-large");
     expect(response.json().limit).toBe(THUMBNAIL_MAX_BYTES);
+    // The same sentence a public /prepare answers with, so one code always carries one reason.
+    expect(response.json().reason).toBe(UNSEAL_THUMBNAIL_TOO_LARGE_REASON);
     expect(pins).toHaveLength(0);
   }, 60_000);
 

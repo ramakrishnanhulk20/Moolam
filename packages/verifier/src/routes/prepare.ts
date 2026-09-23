@@ -17,7 +17,14 @@ import {
   fileSlug,
   passportMetadata,
 } from "../metadata.js";
-import { prepareOrFallback, prepareSealed, type PreparedResult, type SealedResult } from "../prepare.js";
+import {
+  THUMBNAIL_TOO_LARGE_REASON,
+  ThumbnailTooLarge,
+  prepareOrFallback,
+  prepareSealed,
+  type PreparedResult,
+  type SealedResult,
+} from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
 import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile, type SignedFile } from "../sealed.js";
 import { BadRequest, statusOf } from "./shared.js";
@@ -114,7 +121,8 @@ const SEALED_FILE_REFUSED = {
  *
  * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed flag or training
  * statement, 413
- * over the size or pixel limit, 415 when the file is not an image, 409 `already-registered` when
+ * over the size or pixel limit, 415 when the file is not an image, 422 `thumbnail-too-large` when a
+ * public picture's thumbnail cannot fit the Chainlink fetch budget, 409 `already-registered` when
  * the registry already holds this exact picture, 429 past the per-user limit or `global-limit`
  * once GLOBAL_PREPARES_PER_DAY is spent for everyone, and 502 when Pinata refuses a pin. The route is not mounted at all on a host that cannot sign a manifest.
  */
@@ -210,6 +218,17 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           if (error instanceof SignerUnavailable) {
             request.log.error({ url: request.url, reason }, "rejected: /prepare the signer is down");
             return reply.code(502).send({ error: "sign-failed" });
+          }
+          // A real picture with too much detail to fit the Chainlink fetch budget. Calling it
+          // "not an image" sent creators looking for a fault in a file that has none. Only the
+          // public path makes a thumbnail, so a sealed prepare never lands here.
+          if (error instanceof ThumbnailTooLarge) {
+            request.log.warn({ url: request.url, reason }, "rejected: /prepare thumbnail too large");
+            return reply.code(422).send({
+              error: "thumbnail-too-large",
+              limit: error.limit,
+              reason: THUMBNAIL_TOO_LARGE_REASON,
+            });
           }
           // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
           // truncated upload only fails here. That is the caller's file, not this service breaking.

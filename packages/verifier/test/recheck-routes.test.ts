@@ -1,10 +1,11 @@
 // Covers the four re-check routes: the public request and status, and the three the runner holds a
 // token for. It holds up what the queue promises from outside: an id that is not a passport, a
-// passport the index does not know, a sealed passport whose picture was never published, the same
-// request twice, ten a minute from one address, a queue with no room left, a host with no runner
+// passport the index does not know, a sealed passport whose picture was never published, one whose
+// holder published it later (queued like a public one, including after a minute-old sealed answer),
+// one whose record lookup failed (queued, the runner decides), the same request twice, ten a minute from one address, a queue with no room left, a host with no runner
 // token at all, a wrong token, a claim another runner is already on, a claim abandoned for half an
 // hour, a report with a transaction and one without, and the two counts /health carries.
-// The sealed lookup is injected, so no test here reads a gateway, and the queue store is injected
+// The sealed lookup and the unseal record finder are injected, so no test here reads a gateway or Pinata, and the queue store is injected
 // where a test needs the service to start with work already in it.
 // Does NOT cover the queue module's own rules, which are in test/recheck-queue.test.ts, and does
 // not cover the runner, which lives in its own package and is another order.
@@ -12,6 +13,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import type { QueueStore, RecheckItem } from "../src/recheck/queue.js";
+import { unsealRecord, type UnsealRecord } from "../src/unseal.js";
 import type { Hex, PassportRecord } from "../src/types.js";
 
 vi.hoisted(() => {
@@ -28,6 +30,9 @@ const PUBLIC = "0x11111111111111111111111111111111111111111111111111111111111111
 const SEALED = "0x2222222222222222222222222222222222222222222222222222222222222222" as Hex;
 const SECOND = "0x3333333333333333333333333333333333333333333333333333333333333333" as Hex;
 const UNKNOWN = "0x4444444444444444444444444444444444444444444444444444444444444444" as Hex;
+const UNSEALED = "0x5555555555555555555555555555555555555555555555555555555555555555" as Hex;
+const LOOKUP_DOWN = "0x6666666666666666666666666666666666666666666666666666666666666666" as Hex;
+const SEALED_LATER = "0x7777777777777777777777777777777777777777777777777777777777777777" as Hex;
 const TX = "0xabababababababababababababababababababababababababababababababab";
 
 const HALF_HOUR = 30 * 60 * 1000;
@@ -49,6 +54,9 @@ const source = {
     record(PUBLIC, "ipfs://public"),
     record(SEALED, "ipfs://sealed"),
     record(SECOND, "ipfs://public"),
+    record(UNSEALED, "ipfs://sealed"),
+    record(LOOKUP_DOWN, "ipfs://sealed"),
+    record(SEALED_LATER, "ipfs://sealed"),
   ],
 };
 
@@ -57,6 +65,24 @@ const reads: string[] = [];
 const readDocument = async (uri: string): Promise<unknown> => {
   reads.push(uri);
   return uri === "ipfs://sealed" ? { sealed: true } : { name: "a picture", image: "ipfs://bafypicture" };
+};
+
+/** The passports whose holders have published the picture, as the record finder sees them. */
+const published = new Set<Hex>([UNSEALED]);
+const findRecord = async (passportId: Hex): Promise<UnsealRecord | undefined> => {
+  if (passportId === LOOKUP_DOWN) {
+    throw new Error("Pinata answered 500 to the record lookup");
+  }
+  if (!published.has(passportId)) {
+    return undefined;
+  }
+  return unsealRecord({
+    passportId,
+    image: "ipfs://bafyimage",
+    thumbnail: "ipfs://bafythumb",
+    unsealedBy: "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6" as Hex,
+    unsealedAt: new Date("2026-09-22T12:27:28Z"),
+  });
 };
 
 function waiting(count: number, from: number): RecheckItem[] {
@@ -85,8 +111,8 @@ const FRESH = "0x00000000000000000000000000000000000000000000000000000000000000b
 
 beforeAll(async () => {
   const now = Date.now();
-  app = await buildServer({ source, logger: false, recheck: { runnerToken: TOKEN, readDocument } });
-  noRunner = await buildServer({ source, logger: false, recheck: { runnerToken: "", readDocument } });
+  app = await buildServer({ source, logger: false, recheck: { runnerToken: TOKEN, readDocument, findRecord } });
+  noRunner = await buildServer({ source, logger: false, recheck: { runnerToken: "", readDocument, findRecord } });
   full = await buildServer({
     source,
     logger: false,
@@ -98,6 +124,7 @@ beforeAll(async () => {
     recheck: {
       runnerToken: TOKEN,
       readDocument,
+      findRecord,
       store: storeOf([
         ...waiting(60, now),
         { passportId: STALE, status: "running", requestedAt: now - 40 * 60 * 1000, requestedBy: "public", startedAt: now - HALF_HOUR - 60_000 },
@@ -194,6 +221,36 @@ describe("POST /recheck/request", () => {
 
     expect(response.statusCode).toBe(503);
     expect(response.json().error).toBe("queue-full");
+  });
+
+  it("queues a passport its holder unsealed like a public one, though its document still says sealed", async () => {
+    const response = await ask(UNSEALED, "198.51.100.11");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ passportId: UNSEALED, status: "pending", already: false });
+  });
+
+  it("queues a sealed passport whose record lookup failed, and leaves the runner to decide", async () => {
+    const response = await ask(LOOKUP_DOWN, "198.51.100.12");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ passportId: LOOKUP_DOWN, status: "pending" });
+  });
+
+  it("holds a sealed answer for a minute, then queues the passport once its holder has unsealed it", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      expect((await ask(SEALED_LATER, "198.51.100.13")).statusCode).toBe(409);
+      published.add(SEALED_LATER);
+      expect((await ask(SEALED_LATER, "198.51.100.13")).statusCode).toBe(409);
+
+      vi.setSystemTime(Date.now() + 61_000);
+      const later = await ask(SEALED_LATER, "198.51.100.13");
+      expect(later.statusCode).toBe(200);
+      expect(later.json()).toMatchObject({ passportId: SEALED_LATER, status: "pending" });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -388,6 +445,7 @@ describe("GET /health", () => {
       recheck: {
         runnerToken: TOKEN,
         readDocument,
+        findRecord,
         store: storeOf([
           ...waiting(2, now),
           { passportId: FRESH, status: "running", requestedAt: now, requestedBy: "public", startedAt: now },

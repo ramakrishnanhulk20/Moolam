@@ -12,7 +12,7 @@ import { dailyQuota } from "../generate/quota.js";
 import { pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { fileSlug, manifestDocument } from "../metadata.js";
-import type { PreparedImage } from "../prepare.js";
+import { UNSEAL_THUMBNAIL_TOO_LARGE_REASON, type PreparedImage } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
 import {
   findUnsealRecord,
@@ -364,8 +364,7 @@ async function open(
       return reply.code(422).send({
         error: "thumbnail-too-large",
         limit: attempt.limit,
-        reason:
-          "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so unsealing it would publish a passport that can never be re-checked. Nothing was pinned.",
+        reason: UNSEAL_THUMBNAIL_TOO_LARGE_REASON,
       });
     }
     const thumbnail = attempt.thumbnail;

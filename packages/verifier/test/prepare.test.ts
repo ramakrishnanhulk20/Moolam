@@ -4,14 +4,16 @@
 // leaves with a readable manifest, a picture the registry already holds is refused before
 // anything is pinned, a host that cannot sign does not mount at all, the signer's own words never
 // reach the answer, a training statement reaches the manifest, the pinned metadata and the answer
-// while a malformed one is refused, and a missing token, a bad title and a text file are each
-// refused.
+// while a malformed one is refused, a missing token, a bad title and a text file are each
+// refused, a real picture whose thumbnail cannot fit the Chainlink budget is told so with 422
+// rather than 415, while a file whose pixels do not decode keeps 415.
 // Does NOT cover a real pin to Pinata (the live check in the work order does that), a real read
 // of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
 // hour.
 
 import { Reader } from "@contentauth/c2pa-node";
 import { SignJWT, generateKeyPair } from "jose";
+import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { SignerRefusedFile, SignerUnavailable, readManifest } from "../src/c2pa.js";
@@ -19,6 +21,7 @@ import { TRAINING_ASSERTION_LABEL } from "../src/consent.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { fileSlug } from "../src/metadata.js";
+import { THUMBNAIL_MAX_BYTES, THUMBNAIL_TOO_LARGE_REASON } from "../src/prepare.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import { makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
@@ -324,6 +327,60 @@ describe("POST /prepare", () => {
     expect(response.statusCode).toBe(415);
     expect(response.json()).toEqual({ error: "not-an-image" });
   });
+
+  it("refuses a picture whose thumbnail cannot fit the Chainlink budget with 422, and pins nothing", async () => {
+    // Pure noise at full quality: the one kind of picture a 512 pixel JPEG cannot squeeze under 60 KB.
+    const side = 512;
+    const raw = Buffer.alloc(side * side * 3);
+    let state = 12345;
+    for (let i = 0; i < raw.length; i += 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      raw[i] = (state >> 16) & 0xff;
+    }
+    const noise = await sharp(raw, { raw: { width: side, height: side, channels: 3 } }).jpeg({ quality: 100 }).toBuffer();
+    const pinsBefore = pinned.size;
+    const { payload, headers } = body({
+      file: { name: "noise.jpg", type: "image/jpeg", bytes: noise },
+      fields: { title: "Static", kind: "human" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:noise-user")}` },
+      remoteAddress: "203.0.113.26",
+    });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toEqual({
+      error: "thumbnail-too-large",
+      limit: THUMBNAIL_MAX_BYTES,
+      reason: THUMBNAIL_TOO_LARGE_REASON,
+    });
+    expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
+
+  it("keeps 415 for a picture whose header reads and whose pixels do not decode", async () => {
+    const truncated = IMAGE.subarray(0, Math.floor(IMAGE.length / 2));
+    const pinsBefore = pinned.size;
+    const { payload, headers } = body({
+      file: { name: "cut.jpg", type: "image/jpeg", bytes: truncated },
+      fields: { title: "Cut short", kind: "human" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:truncated-user")}` },
+      remoteAddress: "203.0.113.27",
+    });
+
+    expect(response.statusCode).toBe(415);
+    expect(response.json().error).toBe("not-an-image");
+    expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
 
   it("refuses a picture the registry already holds with 409, before anything is pinned", async () => {
     stubs.passportExists.mockResolvedValueOnce(true);

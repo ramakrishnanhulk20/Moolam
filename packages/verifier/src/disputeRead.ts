@@ -4,6 +4,7 @@ import { isPassportId, withMatchFacts, type ConsentAnswer, type ConsentReader } 
 import { recheckFor, type RecheckAnswer } from "./recheck.js";
 import { monadTransport, readClient } from "./reputation/registry.js";
 import type { Hex, PassportRecord } from "./types.js";
+import type { PictureAnswer, PictureReader } from "./unseal.js";
 
 /**
  * The one function this service calls on MoolamRegistry. `getDispute` answers for any id, so a
@@ -70,14 +71,15 @@ export type DisputeAnswer = { source: "chain"; status: DisputeStatus } | { sourc
 const UNAVAILABLE: DisputeAnswer = { source: "unavailable" };
 
 /**
- * What the other two facts say when their own reader could not answer.
+ * What the other three facts say when their own reader could not answer.
  *
  * They live here rather than being imported because each of those modules keeps its own word for
- * this and neither exports it; what matters is that all three say the same thing, which is that
+ * this and none of them exports it; what matters is that all four say the same thing, which is that
  * this service could not find out, and never that there is nothing to find.
  */
 const CONSENT_UNAVAILABLE: ConsentAnswer = { source: "unavailable" };
 const RECHECK_UNAVAILABLE: RecheckAnswer = { source: "unavailable" };
+const PICTURE_UNAVAILABLE: PictureAnswer = { source: "unavailable" };
 
 /** The decoded shape of one `getDispute` call. */
 export type DisputeCall = (passportId: Hex) => Promise<{
@@ -192,9 +194,10 @@ export function offlineDisputeReader(): DisputeReader {
 }
 
 /**
- * Attaches the three facts a verify answer carries, for the exact match and the best match: the
+ * Attaches the four facts a verify answer carries, for the exact match and the best match: the
  * holder's statement on AI use, the dispute status that says how much weight that statement should
- * carry, and what has re-checked the picture since it was registered. Both verify routes call this
+ * carry, what has re-checked the picture since it was registered, and whether the picture itself
+ * is public, sealed, or sealed and published later by its holder. Both verify routes call this
  * one function rather than one walk per fact, so for each passport the two chain reads start at the
  * same moment and are awaited together. Each reader keeps its own sixty second cache and its own
  * five second timeout exactly as it does on its own, so the worst case for the whole attachment is
@@ -205,24 +208,34 @@ export function offlineDisputeReader(): DisputeReader {
  * match itself just ran against, so the fact is as fresh as the last index refresh and no slower
  * than answering without it.
  *
- * The three are read behind their own guards, so one reader that throws where it promised not to
+ * The picture fact reads the passport's metadata document and, for a sealed one, the record its
+ * holder pins on unsealing. It starts at the same moment as the two chain reads and is bounded by
+ * the same five seconds, so it adds no wait of its own. It is what tells an API or x402 caller
+ * that a match is sealed, which the answer never said before: nothing in it names where the
+ * picture lives either way.
+ *
+ * The four are read behind their own guards, so one reader that throws where it promised not to
  * costs its own field and nothing else. Losing the consent statement is bad; losing the dispute
- * status and the second opinion along with it, because of one bad answer from one chain, is the
- * failure this shape is here to make impossible.
+ * status, the second opinion and the picture state along with it, because of one bad answer from
+ * one source, is the failure this shape is here to make impossible.
  */
 export async function withPassportFacts<T extends { result: unknown }>(
   payload: T,
   consent: ConsentReader,
   dispute: DisputeReader,
   recordFor: (passportId: Hex) => PassportRecord | undefined,
+  picture: PictureReader,
 ): Promise<T> {
   return await withMatchFacts(payload, async (id) => {
-    const [consentAnswer, disputeAnswer, recheckAnswer] = await Promise.all([
+    // One index lookup feeds both facts that need the record, so they describe the same copy of it.
+    const record = await orUnavailable(async () => recordFor(id), undefined);
+    const [consentAnswer, disputeAnswer, recheckAnswer, pictureAnswer] = await Promise.all([
       orUnavailable(async () => await consent.answerFor(id), CONSENT_UNAVAILABLE),
       orUnavailable(async () => await dispute.answerFor(id), UNAVAILABLE),
-      orUnavailable(async () => recheckFor(recordFor(id)), RECHECK_UNAVAILABLE),
+      orUnavailable(async () => recheckFor(record), RECHECK_UNAVAILABLE),
+      orUnavailable(async () => await picture.answerFor(record), PICTURE_UNAVAILABLE),
     ]);
-    return { consent: consentAnswer, dispute: disputeAnswer, recheck: recheckAnswer };
+    return { consent: consentAnswer, dispute: disputeAnswer, recheck: recheckAnswer, picture: pictureAnswer };
   });
 }
 
@@ -231,7 +244,7 @@ export async function withPassportFacts<T extends { result: unknown }>(
  *
  * Every reader here promises never to reject, and each one keeps that promise inside itself. This
  * is the belt for the day one of them stops keeping it: a verify answer that lost one fact is
- * worth far more to a reader than one that lost all three.
+ * worth far more to a reader than one that lost all four.
  */
 async function orUnavailable<T>(read: () => Promise<T>, unavailable: T): Promise<T> {
   try {

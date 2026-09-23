@@ -441,6 +441,207 @@ export async function readUnsealRecord(
   return parsed.data;
 }
 
+/** Reads a passport's metadata document. Swapped in tests so no request leaves the process. */
+export type DocumentReader = (uri: string) => Promise<unknown>;
+
+/**
+ * Finds the record a passport was unsealed under: the record, undefined when there is none, and a
+ * throw when this service could not find out.
+ */
+export type UnsealRecordFinder = (passportId: Hex) => Promise<UnsealRecord | undefined>;
+
+/**
+ * Four answers about a passport's picture. "unsealed" is a sealed document plus a record that says
+ * its holder published the picture later, which is the only way a sealed passport ever changes:
+ * the document itself is written once and says sealed for ever.
+ */
+export type PictureState = "public" | "sealed" | "unsealed" | "unreadable";
+
+export type PictureReading =
+  | { state: "public" | "sealed" | "unreadable" }
+  | { state: "unsealed"; at: string };
+
+const UNREADABLE: PictureReading = { state: "unreadable" };
+
+/**
+ * Whether a passport's picture is public, sealed, or sealed and then published by its holder.
+ *
+ * The record lookup runs only for a document that says sealed, so a public passport costs one
+ * document read and no Pinata request. A record is believed only when it fits the published shape
+ * and names this passport, whoever handed it over: the finder is injectable, and the time it
+ * carries goes out to strangers in a verify answer.
+ *
+ * Never throws. A document that cannot be read, a record lookup that fails, and a record that is
+ * malformed or about another passport all answer "unreadable", never "sealed" or "public": either
+ * guess would print something about the picture that this service does not know.
+ */
+export async function pictureStateOf(
+  passport: { id: Hex; metadataURI: string },
+  readDocument: DocumentReader,
+  findRecord: UnsealRecordFinder,
+): Promise<PictureReading> {
+  let document: unknown;
+  try {
+    document = await readDocument(passport.metadataURI);
+  } catch {
+    return UNREADABLE;
+  }
+
+  const flag = sealedStateOf(document);
+  if (flag !== "sealed") {
+    return { state: flag };
+  }
+
+  let found: UnsealRecord | undefined;
+  try {
+    found = await findRecord(passport.id);
+  } catch {
+    return UNREADABLE;
+  }
+  if (found === undefined) {
+    return { state: "sealed" };
+  }
+
+  const parsed = unsealRecordSchema.safeParse(found);
+  if (!parsed.success || parsed.data.passportId !== passport.id.toLowerCase()) {
+    return UNREADABLE;
+  }
+  return { state: "unsealed", at: parsed.data.unsealedAt };
+}
+
+/**
+ * The live record finder: the name lookup on Pinata, then the record itself read back and checked.
+ *
+ * Throws when the lookup cannot answer, and whatever readUnsealRecord throws for a record that
+ * cannot be read or is not about this passport. pictureStateOf reads every one of those as
+ * "unreadable".
+ */
+export async function unsealRecordFor(
+  passportId: Hex,
+  options: { lookup?: LookupOptions; read?: SafeFetchOptions } = {},
+): Promise<UnsealRecord | undefined> {
+  const found = await findUnsealRecord(passportId, options.lookup);
+  if (found.state === "none") {
+    return undefined;
+  }
+  if (found.state === "unavailable") {
+    throw new UnreachableTarget(`the unseal record lookup could not answer: ${found.reason}`);
+  }
+  return await readUnsealRecord(found.record.uri, passportId, options.read);
+}
+
+/**
+ * The picture fact a verify answer carries. "unavailable" is the same word the consent, dispute and
+ * re-check facts use when their own read could not answer, and it covers "unreadable" too: both
+ * mean this service could not find out, which must never be printed as sealed or as public.
+ */
+export type PictureAnswer =
+  | { state: "public" }
+  | { state: "sealed" }
+  | { state: "unsealed"; at: string }
+  | { source: "unavailable" };
+
+export interface PictureReader {
+  /** Never rejects. A passport the index does not hold, a failed read and a slow one are "unavailable". */
+  answerFor: (passport: { id: Hex; metadataURI: string } | undefined) => Promise<PictureAnswer>;
+}
+
+/** How long a "sealed" answer is held: a holder can publish the picture at any moment. */
+export const PICTURE_SEALED_TTL_MS = 60_000;
+
+/** How many passports are remembered at once, on the same reasoning as the consent and dispute memories. */
+export const PICTURE_CACHE_MAX = 2_000;
+
+/** How long one read may take, the same five seconds the consent and dispute reads get. */
+export const PICTURE_READ_TIMEOUT_MS = 5_000;
+
+const PICTURE_UNAVAILABLE: PictureAnswer = { source: "unavailable" };
+
+/**
+ * Reads a passport's picture state for the verify answers, with a memory in front of it.
+ *
+ * "public" and "unsealed" are kept for as long as there is room, because neither can change: the
+ * document is written once and an unseal record is never taken back. "sealed" is kept for a minute,
+ * because that is the one answer the holder can change, and a failed or slow read is never kept.
+ *
+ * Tests pass their own readDocument and findRecord; nothing here touches the network on its own.
+ */
+export function pictureReader(options: {
+  readDocument: DocumentReader;
+  findRecord: UnsealRecordFinder;
+  sealedTtlMs?: number;
+  maxEntries?: number;
+  timeoutMs?: number;
+}): PictureReader {
+  const sealedTtlMs = options.sealedTtlMs ?? PICTURE_SEALED_TTL_MS;
+  const maxEntries = options.maxEntries ?? PICTURE_CACHE_MAX;
+  const timeoutMs = options.timeoutMs ?? PICTURE_READ_TIMEOUT_MS;
+  const cache = new Map<Hex, { answer: PictureAnswer; expiresAt: number }>();
+
+  const remember = (key: Hex, answer: PictureAnswer, ttl: number): void => {
+    // Deleting first keeps the map in write order, which is what makes the first key the oldest.
+    cache.delete(key);
+    while (cache.size >= maxEntries) {
+      const oldest = cache.keys().next();
+      if (oldest.done === true) {
+        break;
+      }
+      cache.delete(oldest.value);
+    }
+    cache.set(key, { answer, expiresAt: Date.now() + ttl });
+  };
+
+  return {
+    answerFor: async (passport) => {
+      if (passport === undefined || !PASSPORT_ID.test(passport.id.toLowerCase())) {
+        return PICTURE_UNAVAILABLE;
+      }
+      const key = passport.id.toLowerCase() as Hex;
+
+      const held = cache.get(key);
+      if (held !== undefined) {
+        if (held.expiresAt > Date.now()) {
+          return held.answer;
+        }
+        cache.delete(key);
+      }
+
+      let reading: PictureReading;
+      try {
+        reading = await withPictureTimeout(
+          pictureStateOf({ id: key, metadataURI: passport.metadataURI }, options.readDocument, options.findRecord),
+          timeoutMs,
+        );
+      } catch {
+        return PICTURE_UNAVAILABLE;
+      }
+
+      if (reading.state === "unreadable") {
+        return PICTURE_UNAVAILABLE;
+      }
+      const answer: PictureAnswer =
+        reading.state === "unsealed" ? { state: "unsealed", at: reading.at } : { state: reading.state };
+      remember(key, answer, reading.state === "sealed" ? sealedTtlMs : Number.POSITIVE_INFINITY);
+      return answer;
+    },
+  };
+}
+
+/** A reader that answers "unavailable" for everything without opening a connection. */
+export function offlinePictureReader(): PictureReader {
+  return { answerFor: async () => PICTURE_UNAVAILABLE };
+}
+
+function withPictureTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const limit = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`the picture read took longer than ${ms} ms`)), ms);
+  });
+  return Promise.race([work, limit]).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
 /** The three ways an address is printed in an answer, the same shape the other routes use. */
 export function pinnedOut(uri: string, cid: string): { cid: string; uri: string; gatewayUrl: string } {
   return { cid, uri, gatewayUrl: gatewayUrl(uri) };

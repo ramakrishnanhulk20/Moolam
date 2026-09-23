@@ -3,9 +3,9 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import multipart from "@fastify/multipart";
+import multipart, { type Multipart } from "@fastify/multipart";
 import type { x402HTTPResourceServer } from "@x402/core/server";
-import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import Fastify, { type FastifyError, type FastifyInstance, type FastifyRequest } from "fastify";
 import type { PrivyKeys } from "./auth/privy.js";
 import { checkRegistry } from "./boot/registryChecks.js";
 import { consentReader, offlineConsentReader, type ConsentReader } from "./consentRead.js";
@@ -27,10 +27,18 @@ import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
 import { prepareRoutes } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
+import { BadRequest } from "./routes/shared.js";
 import { unsealRoutes } from "./routes/unseal.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
-import { readMetadataDocument } from "./unseal.js";
+import {
+  offlinePictureReader,
+  pictureReader,
+  readMetadataDocument,
+  unsealRecordFor,
+  type PictureReader,
+  type UnsealRecordFinder,
+} from "./unseal.js";
 import { paymentServerFromEnv } from "./x402/plugin.js";
 import { EnvioSource } from "./source/EnvioSource.js";
 import { JsonFileSource } from "./source/JsonFileSource.js";
@@ -88,6 +96,106 @@ const UNCACHEABLE = new Set([
  */
 const SEALED_LOOKUP_MS = 5_000;
 
+/** The live metadata read behind a sealed lookup, bounded the same way as the lookup itself. */
+const liveDocument: DocumentReader = async (uri) => await readMetadataDocument(uri, { timeoutMs: SEALED_LOOKUP_MS });
+
+/** The live unseal record finder, with both of its reads held to the same bound. */
+const liveRecord: UnsealRecordFinder = async (passportId) =>
+  await unsealRecordFor(passportId, {
+    lookup: { timeoutMs: SEALED_LOOKUP_MS },
+    read: { timeoutMs: SEALED_LOOKUP_MS },
+  });
+
+/** The multipart parser's code for a body with more text fields than the limit below allows. */
+const FIELDS_LIMIT = "FST_FIELDS_LIMIT";
+
+/** What a file part's read throws when the parser cut it off to report something else. */
+const PREMATURE_CLOSE = "ERR_STREAM_PREMATURE_CLOSE";
+
+/**
+ * How many queued parts a cut-off file read looks through for the parser's own reason. Only the
+ * fields the limit let in can be queued ahead of it, so this is far more than can ever be there.
+ */
+const CAUSE_SEARCH_PARTS = 64;
+
+function codeOf(error: unknown): unknown {
+  return (error as { code?: unknown } | null)?.code;
+}
+
+type PartsReader = FastifyRequest["parts"];
+type Parts = ReturnType<PartsReader>;
+
+/**
+ * Looks behind a file read the parser cut off, for the reason it cut it.
+ *
+ * When a body carries more text fields than the limit, the multipart plugin stops the parse and
+ * destroys the file part that is still streaming, and it queues the real reason behind that part.
+ * The file read only ever sees the stream closing under it, so without this the caller is told
+ * "Premature close", which names nothing they can fix. Any other reason, a caller that hung up
+ * among them, is left as it was.
+ */
+async function causeBehind(inner: Parts): Promise<Error | undefined> {
+  try {
+    for (let pulled = 0; pulled < CAUSE_SEARCH_PARTS; pulled += 1) {
+      const next = await inner.next();
+      if (next.done === true) {
+        return undefined;
+      }
+    }
+  } catch (error) {
+    return codeOf(error) === FIELDS_LIMIT ? new BadRequest("too-many-fields") : undefined;
+  }
+  return undefined;
+}
+
+/**
+ * The multipart reader every route uses, with the field limit named as what it is.
+ *
+ * The limit itself is the plugin's and is unchanged: a fifth text field still stops the parse. What
+ * changes is the answer. The limit surfaces either straight out of the part iterator, or, when a
+ * file was streaming at the time, as a premature close on that file; both come out here as one
+ * BadRequest("too-many-fields"), which every multipart route already answers as 400 with its
+ * message as the error.
+ */
+function partsNamingTheFieldLimit(parts: PartsReader): PartsReader {
+  return function (this: FastifyRequest, options) {
+    const inner = parts.call(this, options);
+    const guarded = async function* () {
+      try {
+        while (true) {
+          let next: IteratorResult<Multipart>;
+          try {
+            next = await inner.next();
+          } catch (error) {
+            throw codeOf(error) === FIELDS_LIMIT ? new BadRequest("too-many-fields") : error;
+          }
+          if (next.done === true) {
+            return;
+          }
+          const part = next.value;
+          if (part.type === "file") {
+            const read = part.toBuffer.bind(part);
+            part.toBuffer = async () => {
+              try {
+                return await read();
+              } catch (error) {
+                if (codeOf(error) !== PREMATURE_CLOSE) {
+                  throw error;
+                }
+                throw (await causeBehind(inner)) ?? error;
+              }
+            };
+          }
+          yield part;
+        }
+      } finally {
+        await inner.return?.(undefined);
+      }
+    };
+    return guarded();
+  };
+}
+
 /** The path on its own. A query string is not part of which route a request reached. */
 function pathOf(url: string): string {
   const query = url.indexOf("?");
@@ -128,6 +236,8 @@ export interface Verifier {
   consent: ConsentReader;
   /** Reads whether a passport is under dispute, which is how that statement should be read. */
   dispute: DisputeReader;
+  /** Reads whether a passport's picture is public, sealed, or sealed and published later. */
+  picture: PictureReader;
   /** The routes this host mounted, so /health can say what it is able to serve. */
   routes: string[];
 }
@@ -257,9 +367,10 @@ export function sourceFromEnv(): PassportSource {
  *
  * Both verify routes also read the matched passport's consent statement from the
  * MoolamConsent contract at CONSENT_ADDRESS, and whether that passport is under
- * dispute from the registry at MOOLAM_REGISTRY_ADDRESS. Neither read can fail a
- * verification: each is bounded by its own timeout and answers "unavailable"
- * when the chain does not.
+ * dispute from the registry at MOOLAM_REGISTRY_ADDRESS, and whether its picture is
+ * public, sealed, or sealed and published later, from its metadata document and
+ * its unseal record. None of these reads can fail a verification: each is bounded
+ * by its own timeout and answers "unavailable" when its source does not.
  *
  * Throws when the source cannot be read or holds malformed records, when x402 is on without a
  * base URL to quote, when EXPECT_ROUTES names a route this host cannot mount, and when the
@@ -276,8 +387,14 @@ export async function buildServer(
     unseal?: { keys?: PrivyKeys };
     consent?: ConsentReader;
     dispute?: DisputeReader;
+    picture?: PictureReader;
     checks?: { registry?: () => Promise<void> };
-    recheck?: { store?: QueueStore; runnerToken?: string; readDocument?: DocumentReader };
+    recheck?: {
+      store?: QueueStore;
+      runnerToken?: string;
+      readDocument?: DocumentReader;
+      findRecord?: UnsealRecordFinder;
+    };
   } = {},
 ): Promise<FastifyInstance> {
   const app = Fastify({
@@ -315,6 +432,11 @@ export async function buildServer(
   // a public RPC being up. A test that wants a statement passes its own reader.
   const consent = options.consent ?? (env.NODE_ENV === "test" ? offlineConsentReader() : consentReader());
   const dispute = options.dispute ?? (env.NODE_ENV === "test" ? offlineDisputeReader() : disputeReader());
+  const picture =
+    options.picture ??
+    (env.NODE_ENV === "test"
+      ? offlinePictureReader()
+      : pictureReader({ readDocument: liveDocument, findRecord: liveRecord }));
 
   const reload = async (): Promise<void> => {
     try {
@@ -419,6 +541,7 @@ export async function buildServer(
     reload,
     consent,
     dispute,
+    picture,
     routes: [
       "verify",
       ...(mounts["verify/paid"] ? ["verify/paid"] : []),
@@ -442,6 +565,12 @@ export async function buildServer(
   await app.register(multipart, {
     limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 4 },
   });
+  // Added on the root before any route is registered, so every route's context copies it.
+  app.addHook("preValidation", async (request) => {
+    if (request.isMultipart()) {
+      request.parts = partsNamingTheFieldLimit(request.parts);
+    }
+  });
 
   await app.register(rateLimit, {
     max: RATE_LIMIT_PER_MINUTE,
@@ -458,15 +587,12 @@ export async function buildServer(
   // Mounted on every host, with or without a runner: the public request and status routes are the
   // whole point of the queue, and the three runner routes say for themselves when no token is set.
   // The default sealed lookup is off under a test runner, like the consent and dispute readers
-  // above, so no unit suite depends on a gateway being up.
+  // above, so no unit suite depends on a gateway or Pinata being up.
   await app.register(recheckRoutes, {
     queue: app.recheck,
     runnerToken: options.recheck?.runnerToken ?? env.RUNNER_TOKEN,
-    readDocument:
-      options.recheck?.readDocument ??
-      (env.NODE_ENV === "test"
-        ? undefined
-        : async (uri: string) => await readMetadataDocument(uri, { timeoutMs: SEALED_LOOKUP_MS })),
+    readDocument: options.recheck?.readDocument ?? (env.NODE_ENV === "test" ? undefined : liveDocument),
+    findRecord: options.recheck?.findRecord ?? (env.NODE_ENV === "test" ? undefined : liveRecord),
   });
 
   if (mounts.prepare) {

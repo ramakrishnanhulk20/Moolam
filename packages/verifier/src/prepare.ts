@@ -18,6 +18,30 @@ export type { Fingerprint, ManifestSummary };
  */
 export const THUMBNAIL_MAX_BYTES = 60_000;
 
+/**
+ * What a caller is told when a picture's thumbnail will not fit the budget above. Both routes
+ * answer under the one code thumbnail-too-large, and each sentence names what the caller was
+ * trying to do: a public registration, which a sealed one can still replace, or an unseal.
+ */
+export const THUMBNAIL_TOO_LARGE_REASON =
+  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a public passport for it could never be re-checked. Registering it sealed makes no thumbnail and still works. Nothing was pinned.";
+
+export const UNSEAL_THUMBNAIL_TOO_LARGE_REASON =
+  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so unsealing it would publish a passport that can never be re-checked. Nothing was pinned.";
+
+/**
+ * The picture decoded and resized, and its thumbnail is still over THUMBNAIL_MAX_BYTES at the
+ * lowest quality tried. It is its own class so a route can tell it from a file that would not
+ * decode at all: this one is a real picture with too much detail, and the caller deserves to know.
+ */
+export class ThumbnailTooLarge extends Error {
+  readonly limit = THUMBNAIL_MAX_BYTES;
+  constructor(message: string) {
+    super(message);
+    this.name = "ThumbnailTooLarge";
+  }
+}
+
 /** Longest side of the thumbnail in pixels. Small enough to decode fast, large enough to hash. */
 export const THUMBNAIL_LONGEST_SIDE = 512;
 
@@ -101,7 +125,8 @@ export interface PrepareOptions {
  * describes a different picture than the one being registered is worse than no manifest.
  *
  * Throws when the buffer is empty, when the C2PA library will not sign the container, when the
- * signed file carries no readable manifest, or when no thumbnail small enough can be produced.
+ * signed file carries no readable manifest, and ThumbnailTooLarge when no thumbnail small enough
+ * can be produced.
  */
 export async function prepareImage(source: Buffer, opts: PrepareOptions): Promise<PreparedImage> {
   const signed = await signImage(source, opts);
@@ -246,10 +271,11 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
 
 /**
  * Turns a failure from the signing path into the refusal a caller may fall back on, or lets it
- * out when it is the one failure nothing may soften: a host that cannot sign at all.
+ * out when falling back cannot help: a host that cannot sign at all, and a thumbnail over the
+ * budget, which the unsigned fallback would make from the very same pixels.
  */
 function refusalOrThrow(error: unknown): SignerRefusedFile {
-  if (error instanceof SignerUnavailable) {
+  if (error instanceof SignerUnavailable || error instanceof ThumbnailTooLarge) {
     throw error;
   }
   return error instanceof SignerRefusedFile
@@ -304,6 +330,9 @@ async function isProgressive(source: Buffer): Promise<boolean> {
  *
  * The output is a baseline JPEG on purpose: the Chainlink sandbox decodes with jpeg-js, which
  * reads baseline files only, so a progressive thumbnail would fail every verification.
+ *
+ * Throws ThumbnailTooLarge when even the lowest quality is over the budget, and whatever sharp
+ * throws for pixels it cannot decode.
  */
 export async function makeThumbnail(image: Buffer): Promise<Buffer> {
   const resized = sharp(image, { limitInputPixels: MAX_IMAGE_PIXELS }).resize({
@@ -322,7 +351,7 @@ export async function makeThumbnail(image: Buffer): Promise<Buffer> {
     smallest = candidate.length;
   }
 
-  throw new Error(
+  throw new ThumbnailTooLarge(
     `The thumbnail is still ${smallest} bytes at quality ${QUALITY_FLOOR}, over the ${THUMBNAIL_MAX_BYTES} byte cap.`,
   );
 }

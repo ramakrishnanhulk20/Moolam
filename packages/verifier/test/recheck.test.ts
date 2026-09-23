@@ -13,6 +13,7 @@ import { fingerprint } from "../src/fingerprint.js";
 import { recheckFor, rechecksFrom } from "../src/recheck.js";
 import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
 import { buildServer } from "../src/server.js";
+import { offlinePictureReader } from "../src/unseal.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { Hex, PassportRechecks, PassportRecord } from "../src/types.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
@@ -220,6 +221,7 @@ describe("the fact on the verify answers", () => {
         asked.push(id);
         return id === passport ? record : undefined;
       },
+      offlinePictureReader(),
     );
 
     const result = payload.result as { best: Record<string, unknown>; matches: Record<string, unknown>[] };
