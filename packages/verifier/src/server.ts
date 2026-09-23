@@ -151,7 +151,7 @@ async function causeBehind(inner: Parts): Promise<Error | undefined> {
 /**
  * The multipart reader every route uses, with the field limit named as what it is.
  *
- * The limit itself is the plugin's and is unchanged: a fifth text field still stops the parse. What
+ * The limit itself is the plugin's and is unchanged: a sixth text field still stops the parse. What
  * changes is the answer. The limit surfaces either straight out of the part iterator, or, when a
  * file was streaming at the time, as a premature close on that file; both come out here as one
  * BadRequest("too-many-fields"), which every multipart route already answers as 400 with its
@@ -562,8 +562,9 @@ export async function buildServer(
     allowedHeaders: ["Authorization", "Content-Type"],
   });
 
+  // Five text fields: the studio's /prepare sends title, kind, training, sealed and privateRecheck.
   await app.register(multipart, {
-    limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 4 },
+    limits: { fileSize: MAX_UPLOAD_BYTES, files: 1, fields: 5 },
   });
   // Added on the root before any route is registered, so every route's context copies it.
   app.addHook("preValidation", async (request) => {

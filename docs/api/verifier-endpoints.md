@@ -326,6 +326,7 @@ exist and the service answers `404`.
 | `title` | text | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
 | `kind` | text | `human` is the only value the studio takes today |
 | `training` | text | Optional. A JSON object saying how AI may use the picture: `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`, each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` when a choice is constrained |
+| `privateRecheck` | text | Optional, `true` or `false`. `true` is accepted only together with `sealed` set to `true`, and keeps one private thumbnail for a later private Chainlink re-check, see below. Without `sealed` it is a `400` |
 
 The `training` statement is written into the signed C2PA manifest as one `cawg.training-mining`
 assertion and into the pinned metadata, so it travels inside the file and sits under the creator's
@@ -333,6 +334,18 @@ passkey signature, which signs the metadata address. A choice left out states no
 is not the same as allowing it. `constraintInfo` is required when a choice is `constrained`, refused
 otherwise, and is at most 256 bytes of printable ASCII, the same rule the consent contract enforces,
 so a statement made here can be written on chain unchanged.
+
+**The private re-check.** With `sealed=true` and `privateRecheck=true` the service keeps one more
+thing: a thumbnail of the signed file, 512 pixels on its longest side and made exactly as a public
+prepare makes one, uploaded to Pinata's private network under the name
+`sealed-thumb-<passport id in lower case>.jpg` with the passport id as the `passportId` key-value.
+Private files are not served on the public IPFS network; Moolam's operator and the Pinata account
+holder can still open it. The order is fixed: the registry is asked whether the picture is already
+registered, then the private copy is uploaded, then the metadata document is pinned. The copy is
+kept only when Pinata answers that it is private under exactly that name, and it is deleted again if
+the document pin fails. The pinned document gains `"privateRecheck": true` and nothing that names
+the private file, and the answer gains `privateRecheck: true`. Nothing else changes for a public or
+a plain sealed prepare.
 
 **Headers.** `Authorization: Bearer <Privy access token>`, plus the multipart `Content-Type` the
 browser or curl sets. The token has to be signed by the app's own key set, carry the issuer
@@ -398,16 +411,19 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | --- | --- |
 | `200` | Prepared and pinned |
 | `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, a `kind` other than `human`, or a `training` statement that is not JSON, is over 1024 bytes, carries a key or a value the standard has no room for, or breaks the `constraintInfo` rule. The message names the field |
-| `400` | `{ "error": "too-many-fields" }`. The body carries more than four text parts. Nothing is read further and nothing is pinned |
+| `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
+| `400` | `{ "error": "private-recheck-needs-sealed" }`. `privateRecheck` is `true` and `sealed` is not. Nothing is pinned |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. A key set that cannot be fetched answers the same way, so a caller never learns the difference between a bad token and a bad network. `{ "error": "unauthorized" }` |
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
+| `409` | `{ "error": "private-copy-not-private" }`. Pinata answered the private upload with a file that is not on its private network or not under the name sent, as it does for bytes the account already holds publicly. No document is pinned, nothing is registered, and the file id Pinata gave back goes to the log for an operator |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
 | `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not |
-| `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. The `reason` says so and adds that registering the picture sealed still works, because a sealed prepare makes no thumbnail. Nothing is pinned and the day's slot is given back. A sealed prepare makes no thumbnail and never answers this |
+| `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. The `reason` says so and adds that registering the picture sealed still works, because a sealed prepare makes no thumbnail. Nothing is pinned and the day's slot is given back. A plain sealed prepare makes no thumbnail and never answers this; one with `privateRecheck` does, and its `reason` says a private re-check could never open the thumbnail and a plain sealed registration still works |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
-| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither |
+| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither. With `privateRecheck`, a refused or timed out private upload answers this with no document pinned, and a document pin that fails after the private copy was kept answers this after the copy is deleted |
 | `503` | `busy`. The two-slot decode gate stayed full for thirty seconds. Nothing was pinned, so the call can be made again |
+| `503` | `{ "error": "chain-unreachable" }`. `privateRecheck` was asked for and the check for an existing passport could not reach the chain, so no private copy was made and nothing was pinned. A public or plain sealed prepare goes on in that case, as it always has |
 
 **CORS.** A browser may call this service only from an origin listed in `CORS_ORIGINS`, and those
 are exact origins: `https://moolam.app`, never a wildcard, a path or a trailing slash. The allowed
@@ -435,6 +451,7 @@ Mounted only when the host has everything `/prepare` needs plus an image model k
 | `creator` | string | `0x` and 40 hex characters. The wallet that will sign and send, and it goes inside what the agent signs |
 | `deadline` | number or numeric string | Unix seconds, between 10 minutes and 2 hours from now. The studio asks for 30 minutes |
 | `training` | object | Optional. The same statement `/prepare` takes: `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`, each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` when a choice is constrained |
+| `privateRecheck` | boolean | Optional. `true` is accepted only together with `sealed: true`, and keeps one private thumbnail exactly as `/prepare` does under "The private re-check". The answer gains `privateRecheck: true`. Without `sealed` it is a `400` before anything is drawn |
 
 The `training` statement is written into the signed C2PA manifest as one `cawg.training-mining`
 assertion and into the pinned metadata, before the agent signs, so it is inside both signatures:
@@ -490,12 +507,16 @@ what the passport id is computed from. The browser must send these fields unchan
 | `400` | A field outside its rule, a deadline outside the 10 minute to 2 hour window, or a `training` statement the standard has no room for. The reason names the field |
 | `400` | `{ "error": "prompt-refused", "reason": "..." }` when the model's safety system turns the prompt down. The day's allowance is given back |
 | `400` | `{ "error": "deadline-passed" }` when the picture was drawn and too little of the window was left for the agent to sign something a person could still use. The picture exists, so the day's allowance stays spent |
+| `400` | `{ "error": "private-recheck-needs-sealed" }`. `privateRecheck` is `true` and `sealed` is not. Nothing is drawn or pinned and the allowance is untouched |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. `{ "error": "unauthorized" }` |
 | `403` | `{ "error": "creator-mismatch" }`. The `creator` address is not one of the caller's own Privy wallets, read from their user record rather than taken from the request. A Privy user id this app does not know answers the same way |
+| `409` | With `privateRecheck`: `{ "error": "already-registered", "passportId": "0x..." }` when the registry already holds the drawn picture, or `{ "error": "private-copy-not-private" }` as under `/prepare`. No document is pinned; the picture was drawn, so the allowance stays spent |
+| `422` | With `privateRecheck`: `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }` when the drawing's thumbnail cannot fit the Chainlink budget. Nothing is pinned and the allowance stays spent |
 | `429` | Past `GENERATE_PER_DAY` in a rolling 24 hours, counted on the Privy user id. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_GENERATIONS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is drawn and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | `model-failed`, `pin-failed` or `sign-failed`: the image model, Pinata or Privy's enclave would not play |
 | `503` | `busy`. Two pictures were already being drawn and no slot came free inside 90 seconds. The allowance is given back |
+| `503` | With `privateRecheck`: `{ "error": "chain-unreachable" }` when the check for an existing passport could not reach the chain. No private copy is made and nothing is pinned; the picture was drawn, so the allowance stays spent |
 
 **The allowance.** `GENERATE_PER_DAY`, three by default, per verified Privy user id over a rolling 24
 hours. A refused prompt and a request that never got a drawing slot hand the slot back. A model that
@@ -577,7 +598,7 @@ picture is a change to another one.
 | --- | --- |
 | `200` | Pinned and sent |
 | `400` | Not a multipart body, no `file` part, a file part under another name, a `title` outside 1 to 120 characters, a `parentId` that is not 32 bytes of hex, or a `note` over 280 characters |
-| `400` | `{ "error": "too-many-fields" }`. The body carries more than four text parts. Nothing is read further and nothing is pinned |
+| `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
 | `403` | `not-owner`. None of this caller's wallets is the one the registry says holds the parent. A creator with more than one embedded wallet is matched by the address on chain, not by which wallet is listed first |
 | `404` | `no-parent`. The registry has no passport with that id |
@@ -674,7 +695,7 @@ compare with the passport id on Monad.
 | --- | --- |
 | `200` | Published |
 | `400` | Not a multipart body, no `file` part, a file part under another name, or a `passportId` that is not 32 bytes of hex |
-| `400` | `{ "error": "too-many-fields" }`. The body carries more than four text parts. Nothing is read further and nothing is pinned |
+| `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
 | `400` | `{ "error": "hash-mismatch", "passportId": "0x..." }`. The upload is not the file this passport commits to. Usually the creator kept their own copy of the picture rather than the file this service signed and handed back |
 | `400` | `{ "error": "fingerprint-mismatch", "passportId": "0x...", "recomputed": {...} }`. The bytes hash right and the fingerprint recomputed from them is not the one on chain |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |

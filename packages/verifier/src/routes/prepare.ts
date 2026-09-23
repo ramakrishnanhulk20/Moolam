@@ -3,7 +3,6 @@ import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { SignerUnavailable, ensureSigner } from "../c2pa.js";
 import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
-import { passportExists } from "../edit/registry.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
@@ -18,15 +17,28 @@ import {
   passportMetadata,
 } from "../metadata.js";
 import {
+  PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
   THUMBNAIL_TOO_LARGE_REASON,
   ThumbnailTooLarge,
+  makeThumbnail,
   prepareOrFallback,
   prepareSealed,
   type PreparedResult,
   type SealedResult,
 } from "../prepare.js";
+import type { PrivateFile } from "../ipfs/pinata.js";
 import { readClient } from "../reputation/registry.js";
-import { SEALED_METADATA_REFUSED, sealedMetadata, signedFile, type SignedFile } from "../sealed.js";
+import {
+  CHAIN_UNREACHABLE,
+  PRIVATE_RECHECK_NEEDS_SEALED,
+  SEALED_METADATA_REFUSED,
+  dropPrivateCopy,
+  keepPrivateCopy,
+  registrationOf,
+  sealedMetadata,
+  signedFile,
+  type SignedFile,
+} from "../sealed.js";
 import { BadRequest, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
@@ -67,10 +79,12 @@ interface Upload {
   training?: TrainingConsent;
   /** True when the creator is registering the picture without publishing it. */
   sealed: boolean;
+  /** True when a sealed creator also asked for a private Chainlink re-check. Never true unsealed. */
+  privateRecheck: boolean;
 }
 
 /**
- * The only two words the sealed field may say.
+ * The only two words the sealed and privateRecheck fields may say.
  *
  * Anything else is refused rather than read as false. A typo that quietly meant "no" would
  * publish a picture the creator asked us to keep, and no later screen could take that back.
@@ -119,12 +133,23 @@ const SEALED_FILE_REFUSED = {
  * chain still commits to the exact bytes. The answer is `no-store` and the creator's browser is
  * the only thing that ends up holding the picture.
  *
- * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed flag or training
- * statement, 413
- * over the size or pixel limit, 415 when the file is not an image, 422 `thumbnail-too-large` when a
- * public picture's thumbnail cannot fit the Chainlink fetch budget, 409 `already-registered` when
- * the registry already holds this exact picture, 429 past the per-user limit or `global-limit`
- * once GLOBAL_PREPARES_PER_DAY is spent for everyone, and 502 when Pinata refuses a pin. The route is not mounted at all on a host that cannot sign a manifest.
+ * With `sealed=true` and `privateRecheck=true` one more thing is kept: a 512 px thumbnail of the
+ * signed file on Pinata's private network, named after the passport id, so a later private
+ * Chainlink run can re-check the picture without it ever being public. It is made only after the
+ * chain has said the picture is not registered, it is uploaded before the document is pinned, and
+ * it is deleted again if that pin fails. The public document gains `privateRecheck: true` and
+ * nothing that names the private file.
+ *
+ * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed or privateRecheck
+ * flag or training statement, 400 `private-recheck-needs-sealed` for privateRecheck without
+ * sealed, 413 over the size or pixel limit, 415 when the file is not an image, 422
+ * `thumbnail-too-large` when a public or privately re-checked picture's thumbnail cannot fit the
+ * Chainlink fetch budget, 409 `already-registered` when the registry already holds this exact
+ * picture, 409 `private-copy-not-private` when Pinata did not keep the private copy private under
+ * its name, 429 past the per-user limit or `global-limit` once GLOBAL_PREPARES_PER_DAY is spent
+ * for everyone, 502 when Pinata refuses a pin, and 503 `chain-unreachable` when a private re-check
+ * was asked for and the duplicate check could not reach the chain. The route is not mounted at all
+ * on a host that cannot sign a manifest.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
@@ -202,9 +227,18 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         // Filled only for a public registration, because only a public registration pins a
         // thumbnail and a manifest document. Its absence is what marks the sealed path below.
         let published: PreparedResult | undefined;
+        // Filled only when a sealed creator asked for a private re-check. It is made by the same
+        // makeThumbnail the public path uses, from the signed bytes, so the private run hashes
+        // the same thumbnail a public run would (B14).
+        let privateThumbnail: Buffer | undefined;
         try {
           if (upload.sealed) {
-            studio = await app.verifier.runPrepare(() => prepareSealed(upload.bytes, settings));
+            const made = await app.verifier.runPrepare(async () => {
+              const sealed = await prepareSealed(upload.bytes, settings);
+              return { sealed, thumbnail: upload.privateRecheck ? await makeThumbnail(sealed.bytes) : undefined };
+            });
+            studio = made.sealed;
+            privateThumbnail = made.thumbnail;
           } else {
             published = await app.verifier.runPrepare(() => prepareOrFallback(upload.bytes, settings));
             studio = published;
@@ -220,14 +254,15 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             return reply.code(502).send({ error: "sign-failed" });
           }
           // A real picture with too much detail to fit the Chainlink fetch budget. Calling it
-          // "not an image" sent creators looking for a fault in a file that has none. Only the
-          // public path makes a thumbnail, so a sealed prepare never lands here.
+          // "not an image" sent creators looking for a fault in a file that has none. A plain
+          // sealed prepare makes no thumbnail and never lands here; a privately re-checked one
+          // does, and is told a plain sealed registration still works.
           if (error instanceof ThumbnailTooLarge) {
             request.log.warn({ url: request.url, reason }, "rejected: /prepare thumbnail too large");
             return reply.code(422).send({
               error: "thumbnail-too-large",
               limit: error.limit,
-              reason: THUMBNAIL_TOO_LARGE_REASON,
+              reason: upload.sealed ? PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON : THUMBNAIL_TOO_LARGE_REASON,
             });
           }
           // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
@@ -240,9 +275,17 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         }
 
         const passportId = studio.print.sha256 as Hex;
-        if (await alreadyRegistered(chain, registry, passportId, request)) {
+        const registration = await registrationOf(chain, registry, passportId, request.log);
+        if (registration === "registered") {
           request.log.warn({ url: request.url, user: identity.userId, passportId }, "rejected: /prepare duplicate");
           return reply.code(409).send({ error: "already-registered", passportId });
+        }
+        if (registration === "unreachable" && upload.privateRecheck) {
+          request.log.warn(
+            { url: request.url, user: identity.userId, passportId },
+            "rejected: /prepare no private copy without a duplicate check",
+          );
+          return reply.code(503).send(CHAIN_UNREACHABLE);
         }
 
         const slug = fileSlug(upload.title, studio.print.sha256);
@@ -267,6 +310,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
               passportId,
               fingerprint: studio.print,
               training: upload.training,
+              privateRecheck: upload.privateRecheck,
             });
           } catch (error) {
             // The words that say which field did not fit are this service's own fault to fix, and
@@ -289,12 +333,31 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             return reply.code(500).send(SEALED_FILE_REFUSED);
           }
 
+          // The private copy goes up before the document, so a document that says privateRecheck
+          // is never pinned for a copy that was refused.
+          let privateCopy: PrivateFile | undefined;
+          if (upload.privateRecheck) {
+            if (privateThumbnail === undefined) {
+              throw new Error("a private re-check was asked for and no thumbnail was made");
+            }
+            const copy = await keepPrivateCopy(privateThumbnail, passportId, request.log);
+            if ("refused" in copy) {
+              pinned = copy.landed;
+              return reply.code(copy.refused.status).send(copy.refused.body);
+            }
+            privateCopy = copy.kept;
+            pinned = true;
+          }
+
           let pinnedMetadata;
           try {
             pinnedMetadata = await pinJson(document, `${slug}.json`);
           } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
+            if (privateCopy !== undefined) {
+              await dropPrivateCopy(privateCopy, request.log);
+            }
             return reply.code(502).send({ error: "pin-failed" });
           }
           pinned = true;
@@ -309,6 +372,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             training: trainingStatement(upload.training),
             preparedBy: identity.userId,
             sealed: true,
+            ...(privateCopy === undefined ? {} : { privateRecheck: true }),
             signedFile: file,
           });
         }
@@ -472,28 +536,36 @@ async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
     throw new BadRequest('the only kind the studio takes today is "human"');
   }
 
+  const sealed = readFlag(fields.get("sealed"), "sealed");
+  const privateRecheck = readFlag(fields.get("privateRecheck"), "privateRecheck");
+  if (privateRecheck && !sealed) {
+    throw new BadRequest(PRIVATE_RECHECK_NEEDS_SEALED.error);
+  }
+
   return {
     bytes,
     title: title.data,
     training: readTraining(fields.get("training")),
-    sealed: readSealed(fields.get("sealed")),
+    sealed,
+    privateRecheck,
   };
 }
 
 /**
- * Whether the creator is registering this picture without publishing it.
+ * Reads one of the two yes-or-no fields: sealed, and privateRecheck.
  *
- * Left out means no, which keeps every caller written before this field existed on exactly the
+ * Left out means no, which keeps every caller written before the field existed on exactly the
  * behaviour they had. Present and unreadable is refused: the two answers are not symmetric, and
- * guessing the safe one wrong publishes a file that cannot be unpublished.
+ * guessing the safe one wrong publishes a file that cannot be unpublished, or keeps a private copy
+ * the creator did not ask for.
  */
-function readSealed(raw: string | undefined): boolean {
+function readFlag(raw: string | undefined, field: "sealed" | "privateRecheck"): boolean {
   if (raw === undefined || raw.trim().length === 0) {
     return false;
   }
   const parsed = sealedSchema.safeParse(raw.trim());
   if (!parsed.success) {
-    throw new BadRequest('sealed must be "true" or "false"');
+    throw new BadRequest(`${field} must be "true" or "false"`);
   }
   return parsed.data === "true";
 }
@@ -531,31 +603,6 @@ function readTraining(raw: string | undefined): TrainingConsent | undefined {
     throw new BadRequest(detail);
   }
   return statement.data;
-}
-
-/**
- * Whether the registry already holds this exact picture.
- *
- * Asked before anything is pinned, so the same file uploaded twice gets a plain answer instead of
- * four fresh pins and a transaction the registry would refuse anyway. A chain this host cannot
- * reach does not stop a prepare: the registry makes the same check when the browser sends the
- * passport, so a missed check costs pins and never correctness.
- */
-async function alreadyRegistered(
-  chain: ReturnType<typeof readClient>,
-  registry: Hex,
-  passportId: Hex,
-  request: FastifyRequest,
-): Promise<boolean> {
-  try {
-    return await passportExists(chain, registry, passportId);
-  } catch (error) {
-    request.log.warn(
-      { url: request.url, reason: reasonOf(error) },
-      "prepare: the duplicate check could not reach the chain",
-    );
-    return false;
-  }
 }
 
 function reasonOf(error: unknown): string {

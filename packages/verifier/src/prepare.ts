@@ -21,10 +21,14 @@ export const THUMBNAIL_MAX_BYTES = 60_000;
 /**
  * What a caller is told when a picture's thumbnail will not fit the budget above. Both routes
  * answer under the one code thumbnail-too-large, and each sentence names what the caller was
- * trying to do: a public registration, which a sealed one can still replace, or an unseal.
+ * trying to do: a public registration, which a sealed one can still replace, a sealed one with a
+ * private re-check, which a plain sealed one can still replace, or an unseal.
  */
 export const THUMBNAIL_TOO_LARGE_REASON =
   "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a public passport for it could never be re-checked. Registering it sealed makes no thumbnail and still works. Nothing was pinned.";
+
+export const PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON =
+  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a private re-check could never open it. Registering it sealed without the private re-check makes no thumbnail and still works. Nothing was pinned.";
 
 export const UNSEAL_THUMBNAIL_TOO_LARGE_REASON =
   "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so unsealing it would publish a passport that can never be re-checked. Nothing was pinned.";

@@ -1,0 +1,138 @@
+{
+  "about": "Shared cases for privatelyRecheckable(document). The verify service and the sealed workflow run their copy of the predicate against every case here and must agree with `recheckable`.",
+  "cases": [
+    {
+      "name": "public",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam.",
+        "image": "ipfs://bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "thumbnail": "ipfs://bafkreibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "fingerprint": {
+          "phash": "0x6ccf137087789a25",
+          "blockhash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "version": 1
+        }
+      }
+    },
+    {
+      "name": "plain sealed",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam and kept sealed.",
+        "sealed": true,
+        "commitment": {
+          "algorithm": "sha-256",
+          "value": "0xabababababababababababababababababababababababababababababababab"
+        },
+        "fingerprint": {
+          "phash": "0x6ccf137087789a25",
+          "blockhash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "version": 1
+        },
+        "createdAt": "2026-09-23T10:00:00.000Z"
+      }
+    },
+    {
+      "name": "sealed plus privateRecheck",
+      "recheckable": true,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam and kept sealed.",
+        "sealed": true,
+        "commitment": {
+          "algorithm": "sha-256",
+          "value": "0xabababababababababababababababababababababababababababababababab"
+        },
+        "fingerprint": {
+          "phash": "0x6ccf137087789a25",
+          "blockhash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "version": 1
+        },
+        "createdAt": "2026-09-23T10:00:00.000Z",
+        "privateRecheck": true
+      }
+    },
+    {
+      "name": "privateRecheck without sealed",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam.",
+        "privateRecheck": true,
+        "fingerprint": {
+          "phash": "0x6ccf137087789a25",
+          "blockhash": "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "version": 1
+        }
+      }
+    },
+    {
+      "name": "sealed plus privateRecheck plus an image key",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam and kept sealed.",
+        "sealed": true,
+        "privateRecheck": true,
+        "image": "ipfs://bafkreiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "commitment": {
+          "algorithm": "sha-256",
+          "value": "0xabababababababababababababababababababababababababababababababab"
+        }
+      }
+    },
+    {
+      "name": "sealed plus privateRecheck plus a thumbnail key set to null",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam and kept sealed.",
+        "sealed": true,
+        "privateRecheck": true,
+        "thumbnail": null
+      }
+    },
+    {
+      "name": "privateRecheck as the string true",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "description": "A picture registered with Moolam and kept sealed.",
+        "sealed": true,
+        "privateRecheck": "true"
+      }
+    },
+    {
+      "name": "sealed as the string true",
+      "recheckable": false,
+      "document": {
+        "name": "Harbour at dusk",
+        "sealed": "true",
+        "privateRecheck": true
+      }
+    },
+    {
+      "name": "a non-object: null",
+      "recheckable": false,
+      "document": null
+    },
+    {
+      "name": "a non-object: an array holding a recheckable document",
+      "recheckable": false,
+      "document": [{ "sealed": true, "privateRecheck": true }]
+    },
+    {
+      "name": "a non-object: a string",
+      "recheckable": false,
+      "document": "{\"sealed\":true,\"privateRecheck\":true}"
+    },
+    {
+      "name": "a non-object: a number",
+      "recheckable": false,
+      "document": 1
+    }
+  ]
+}

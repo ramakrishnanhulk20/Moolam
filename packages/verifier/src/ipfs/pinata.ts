@@ -126,6 +126,299 @@ async function upload(
 }
 
 /**
+ * Where Pinata keeps files on its private network: listed and deleted under this path, and a
+ * timed read link minted under its download_link child. The guides print the link path without
+ * `/private` and that path answers 404; the API reference and the live account agree on this one.
+ */
+const PRIVATE_FILES_URL = "https://api.pinata.cloud/v3/files/private";
+const PRIVATE_LINK_URL = `${PRIVATE_FILES_URL}/download_link`;
+
+/** Every private call is a small request or a thumbnail under 60 KB, so ten seconds is generous. */
+export const PRIVATE_CALL_TIMEOUT_MS = 10_000;
+
+/**
+ * How far a name lookup pages before it gives up and says it cannot tell. One passport has one
+ * name, so a real answer is one row on the first page; five pages of 100 is far past anything a
+ * correct account holds under one name.
+ */
+export const PRIVATE_LIST_MAX_PAGES = 5;
+const PRIVATE_LIST_PAGE_SIZE = 100;
+
+/**
+ * The longest read link this client will ask for. The caller fixes the expiry in code, and this
+ * cap stops a later caller from minting a link that outlives the run it was made for.
+ */
+export const PRIVATE_LINK_MAX_SECONDS = 300;
+
+/** The only kind of file this service keeps privately is a baseline JPEG thumbnail. */
+const PRIVATE_FILE_TYPE = "image/jpeg";
+
+/** Pinata file ids are UUIDs; anything else is refused before it is put in a path. */
+const FILE_ID = /^[0-9A-Za-z-]{1,64}$/;
+
+/** A content id is base32 or base58 letters and digits. "pending" is Pinata's word for none yet. */
+const CONTENT_ID = /^[0-9A-Za-z]{20,100}$/;
+
+/** A file Pinata says it holds on the private network under the name this service chose. */
+export interface PrivateFile {
+  id: string;
+  name: string;
+  cid: string;
+  network: "private";
+}
+
+/** One row of a private listing whose name is exactly the one asked for. */
+export interface PrivateListing {
+  id: string;
+  name: string;
+  cid: string;
+  createdAt?: string;
+}
+
+/**
+ * Pinata answered a private upload with something other than a private file under the name sent.
+ *
+ * The case met in the spike: bytes whose content id the account already holds publicly came back
+ * as that public file, with `is_duplicate` true and `network` public. Nothing is deleted on this
+ * answer, because the id may belong to someone's public pin; the id is carried so the log can name
+ * it for an operator to look at.
+ */
+export class PrivateCopyNotPrivate extends Error {
+  readonly fileId: string | undefined;
+  constructor(message: string, fileId: string | undefined) {
+    super(message);
+    this.name = "PrivateCopyNotPrivate";
+    this.fileId = fileId;
+  }
+}
+
+const privateUploadSchema = z.object({
+  data: z.object({
+    id: z.string().regex(FILE_ID),
+    name: z.string().nullish(),
+    cid: z.string().min(1),
+    network: z.string().nullish(),
+  }),
+});
+
+const privateListingSchema = z.object({
+  data: z.object({
+    files: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          name: z.string().nullable(),
+          cid: z.string().min(1),
+          created_at: z.string().optional(),
+        }),
+      )
+      .nullable(),
+    next_page_token: z.string().nullish(),
+  }),
+});
+
+const downloadLinkSchema = z.object({ data: z.string().min(1) });
+
+/**
+ * Uploads bytes to Pinata's private network under an exact name, with key-values beside it, and
+ * hands back the file only when Pinata says it is private and named as asked.
+ *
+ * There is one attempt and no retry: a retry after a stalled upload could leave a second file under
+ * the same name, and the caller would rather refuse than guess.
+ *
+ * Throws PrivateCopyNotPrivate when the answer's network is not `private` (a missing field
+ * included) or its name is not the one sent. Throws a plain Error when the bytes or name are empty,
+ * when Pinata refuses (the message names the status only), after PRIVATE_CALL_TIMEOUT_MS, or when
+ * the answer has no file id.
+ */
+export async function pinPrivateFile(
+  bytes: Buffer,
+  name: string,
+  keyvalues: Record<string, string>,
+): Promise<PrivateFile> {
+  if (bytes.length === 0) {
+    throw new Error(`Refusing to keep ${name} privately: there are no bytes.`);
+  }
+  if (name.length === 0) {
+    throw new Error("pinPrivateFile needs a file name.");
+  }
+
+  const form = new FormData();
+  form.append("file", new File([new Uint8Array(bytes)], name, { type: PRIVATE_FILE_TYPE }));
+  form.append("network", "private");
+  form.append("name", name);
+  form.append("keyvalues", JSON.stringify(keyvalues));
+
+  const response = await fetch(UPLOAD_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${readToken()}` },
+    body: form,
+    signal: AbortSignal.timeout(PRIVATE_CALL_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Pinata refused the private upload of ${name}: ${response.status}`);
+  }
+
+  const parsed = privateUploadSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error(`Pinata took the private upload of ${name} but answered with no file id this client can read.`);
+  }
+  const file = parsed.data.data;
+  if (file.network !== "private" || file.name !== name) {
+    throw new PrivateCopyNotPrivate(
+      `Pinata answered the private upload of ${name} with network ${String(file.network)} and name ${String(file.name)}`,
+      file.id,
+    );
+  }
+  return { id: file.id, name: file.name, cid: file.cid, network: "private" };
+}
+
+/**
+ * Every private file whose name is exactly `name`, oldest first as Pinata lists them.
+ *
+ * Pinata's name filter does not say how it matches, so it is used only to shorten the list; the
+ * whole-name equality below is the check. It pages through at most PRIVATE_LIST_MAX_PAGES pages.
+ *
+ * Throws, and never answers an empty list, when a page cannot be read, when Pinata answers with an
+ * error status or a shape this client does not know, or when the pages run out before the listing
+ * does: each of those is "cannot tell", and an empty answer would read as "no such file".
+ */
+export async function findPrivateByName(name: string): Promise<PrivateListing[]> {
+  if (name.length === 0) {
+    throw new Error("findPrivateByName needs a file name.");
+  }
+
+  const found: PrivateListing[] = [];
+  let pageToken: string | undefined;
+  for (let page = 1; page <= PRIVATE_LIST_MAX_PAGES; page += 1) {
+    const query = new URLSearchParams({ name, limit: String(PRIVATE_LIST_PAGE_SIZE) });
+    if (pageToken !== undefined) {
+      query.set("pageToken", pageToken);
+    }
+    const response = await fetch(`${PRIVATE_FILES_URL}?${query.toString()}`, {
+      headers: { Authorization: `Bearer ${readToken()}` },
+      signal: AbortSignal.timeout(PRIVATE_CALL_TIMEOUT_MS),
+    });
+    if (!response.ok) {
+      throw new Error(`Pinata answered ${response.status} to the private listing, so it cannot tell what is kept`);
+    }
+
+    const parsed = privateListingSchema.safeParse(await response.json());
+    if (!parsed.success) {
+      throw new Error("Pinata listed private files in a shape this client does not know, so it cannot tell what is kept");
+    }
+    const files = parsed.data.data.files ?? [];
+    for (const file of files) {
+      if (file.name === name) {
+        found.push({ id: file.id, name: file.name, cid: file.cid, createdAt: file.created_at });
+      }
+    }
+
+    const next = parsed.data.data.next_page_token ?? "";
+    if (files.length === 0 || next.length === 0) {
+      return found;
+    }
+    pageToken = next;
+  }
+
+  throw new Error(
+    `The private listing for ${name} ran past ${PRIVATE_LIST_MAX_PAGES} pages, so it cannot tell what is kept`,
+  );
+}
+
+/**
+ * Deletes one private file by its Pinata id.
+ *
+ * Throws on an id that is not the shape Pinata issues, on any status but 2xx (Pinata documents no
+ * answer for an unknown id, so none is read as "already gone"), and after PRIVATE_CALL_TIMEOUT_MS.
+ */
+export async function deletePrivateFile(id: string): Promise<void> {
+  if (!FILE_ID.test(id)) {
+    throw new Error("deletePrivateFile was given something that is not a Pinata file id.");
+  }
+  const response = await fetch(`${PRIVATE_FILES_URL}/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${readToken()}` },
+    signal: AbortSignal.timeout(PRIVATE_CALL_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Pinata answered ${response.status} to deleting private file ${id}`);
+  }
+}
+
+/**
+ * Mints a read link to one private file on the account's dedicated gateway, valid for
+ * `expiresSeconds` from now.
+ *
+ * The link is a bearer secret until it expires, so no message this function throws carries it,
+ * and the answer is checked before it is returned: https, the configured gateway's host, the
+ * `/files/<cid>` path asked for, and a signature parameter. The expiry is the caller's constant;
+ * nothing here reads it from a request.
+ *
+ * Throws on a content id that is not one, an expiry outside 1 to PRIVATE_LINK_MAX_SECONDS, a
+ * gateway that is not an account's own `*.mypinata.cloud` host (Pinata signs links for those
+ * only), any status but 2xx, a timeout, or an answer that fails the check above.
+ */
+export async function privateDownloadLink(cid: string, expiresSeconds: number): Promise<string> {
+  if (!CONTENT_ID.test(cid)) {
+    throw new Error("privateDownloadLink was given something that is not a content id.");
+  }
+  if (!Number.isInteger(expiresSeconds) || expiresSeconds < 1 || expiresSeconds > PRIVATE_LINK_MAX_SECONDS) {
+    throw new Error(`A private link lives between 1 and ${PRIVATE_LINK_MAX_SECONDS} seconds.`);
+  }
+  const gateway = dedicatedGateway();
+  const target = `${gateway.origin}/files/${cid}`;
+
+  const response = await fetch(PRIVATE_LINK_URL, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${readToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      url: target,
+      date: Math.floor(Date.now() / 1000),
+      expires: expiresSeconds,
+      method: "GET",
+    }),
+    signal: AbortSignal.timeout(PRIVATE_CALL_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    throw new Error(`Pinata answered ${response.status} to the private link request`);
+  }
+
+  const parsed = downloadLinkSchema.safeParse(await response.json());
+  if (!parsed.success) {
+    throw new Error("Pinata answered the private link request in a shape this client does not know");
+  }
+  let link: URL;
+  try {
+    link = new URL(parsed.data.data);
+  } catch {
+    throw new Error("Pinata answered the private link request with something that is not a URL");
+  }
+  if (
+    link.protocol !== "https:" ||
+    link.host !== gateway.host ||
+    link.pathname !== `/files/${cid}` ||
+    !link.searchParams.has("X-Signature")
+  ) {
+    throw new Error("Pinata answered the private link request with a link for another host, file or form");
+  }
+  return link.toString();
+}
+
+/**
+ * The account's own gateway, taken from PINATA_GATEWAY_URL. Pinata signs private links only for a
+ * dedicated `*.mypinata.cloud` host, so the shared public gateway is refused here by name rather
+ * than sent off to fail.
+ */
+function dedicatedGateway(): URL {
+  const gateway = new URL(PINATA_GATEWAY);
+  if (gateway.protocol !== "https:" || !gateway.hostname.endsWith(".mypinata.cloud")) {
+    throw new Error("PINATA_GATEWAY_URL must be the account's own https://<name>.mypinata.cloud gateway to mint a private link.");
+  }
+  return gateway;
+}
+
+/**
  * Reads the Pinata token at the moment it is needed, not at import, so the verify service can
  * boot and answer /verify on a host that was never given a pinning token. The message never
  * repeats the token itself.

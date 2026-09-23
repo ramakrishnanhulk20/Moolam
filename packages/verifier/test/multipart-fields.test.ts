@@ -1,8 +1,8 @@
 // Covers the multipart field limit's answer on the three routes that read a multipart body with
 // text fields: /prepare, /edit and /unseal. A body with more text fields than the limit answers
 // 400 { "error": "too-many-fields" } whether the file part comes before the fields or after them,
-// where it used to answer "Premature close", and nothing is pinned. A body at the limit still
-// parses, so the limit itself has not moved. /generate takes a JSON body only and never parses a
+// where it used to answer "Premature close", and nothing is pinned. A body at the limit of five
+// still parses. /generate takes a JSON body only and never parses a
 // multipart one, so the same body there is refused as "not JSON" and never reaches the limit.
 // Pinata is answered by a stub at the fetch layer that only counts; nothing leaves the process.
 // Does NOT cover a caller who hangs up in the middle of an upload, which is the other way a file
@@ -76,7 +76,7 @@ async function send(
   });
 }
 
-/** Five text fields: one more than the parser takes. The extra ones are the smuggling kind. */
+/** Five extra text fields, which puts every route past the parser's five. The smuggling kind. */
 const FIVE = {
   image: "ipfs://bafysmuggled",
   thumbnail: "ipfs://bafythumb",
@@ -134,8 +134,8 @@ describe("a multipart body with more text fields than the limit", () => {
     });
   }
 
-  it("still parses a body at the limit, so the limit itself has not moved", async () => {
-    const atLimit = { passportId: "0xnothex", a: "1", b: "2", c: "3" };
+  it("still parses a body at the limit of five text fields", async () => {
+    const atLimit = { passportId: "0xnothex", a: "1", b: "2", c: "3", d: "4" };
     for (const fileFirst of [false, true]) {
       const response = await send("/unseal", atLimit, fileFirst, `did:privy:fields-at-limit-${String(fileFirst)}`);
 

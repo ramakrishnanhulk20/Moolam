@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import {
   TRAINING_STANDARD,
@@ -7,7 +8,9 @@ import {
   type TrainingConsent,
   type TrainingStatement,
 } from "./consent.js";
+import { passportExists } from "./edit/registry.js";
 import type { Fingerprint, Hex } from "./fingerprint.js";
+import { PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, type PrivateFile } from "./ipfs/pinata.js";
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
 
 /**
@@ -81,9 +84,40 @@ export const sealedMetadataSchema = z.strictObject({
   createdAt: z.iso.datetime(),
   model: z.string().trim().min(1).optional(),
   prompt: z.string().trim().min(1).optional(),
+  /**
+   * The creator asked for a private Chainlink re-check, so a thumbnail is kept on Pinata's private
+   * network. Only the flag is public: the private file's id, content id and name never appear
+   * here, and only `true` is accepted, never the string or `false`.
+   */
+  privateRecheck: z.literal(true).optional(),
 });
 
 export type SealedMetadata = z.infer<typeof sealedMetadataSchema>;
+
+/**
+ * Whether a metadata document asks for a private re-check and leaves nothing public to re-check.
+ *
+ * This is the one predicate the verify service, the queue, the runner and the sealed workflow all
+ * mean by "privately re-checkable", and test/fixtures/sealed-documents.json is the shared set of
+ * cases every copy of it is run against. It reads any value, including a document someone
+ * registered outside Moolam, and says yes only when `sealed` and `privateRecheck` are the boolean
+ * `true` and the document has neither an `image` nor a `thumbnail` key, whatever their values.
+ *
+ * It does not say a private copy exists: the document never changes and the file can be deleted.
+ * Whether the copy is still kept is a separate question for Pinata.
+ */
+export function privatelyRecheckable(document: unknown): boolean {
+  if (typeof document !== "object" || document === null || Array.isArray(document)) {
+    return false;
+  }
+  const fields = document as Record<string, unknown>;
+  return (
+    fields.sealed === true &&
+    fields.privateRecheck === true &&
+    !Object.hasOwn(fields, "image") &&
+    !Object.hasOwn(fields, "thumbnail")
+  );
+}
 
 /**
  * This service built a document it will not publish, because the shape above has no room for
@@ -124,6 +158,8 @@ export interface SealedMetadataInput {
   model?: string;
   /** The prompt, and only ever when the creator asked for it to be published. */
   prompt?: string;
+  /** True when the creator asked for a private re-check and a private thumbnail was kept. */
+  privateRecheck?: boolean;
   createdAt?: Date;
 }
 
@@ -158,6 +194,7 @@ export function sealedMetadata(input: SealedMetadataInput): SealedMetadata {
     createdAt: (input.createdAt ?? new Date()).toISOString(),
     model: input.model,
     prompt: input.prompt,
+    privateRecheck: input.privateRecheck === true ? true : undefined,
   });
 }
 
@@ -210,4 +247,112 @@ export function signedFile(bytes: Buffer, name: string, passportId: Hex): Signed
     throw new Error("the sealed file does not hash to the passport id, so it could never unseal it");
   }
   return { name, type: SEALED_FILE_TYPE, bytes: bytes.toString("base64"), sha256 };
+}
+
+/** privateRecheck was asked for on a registration that is not sealed. Nothing is pinned. */
+export const PRIVATE_RECHECK_NEEDS_SEALED = { error: "private-recheck-needs-sealed" } as const;
+
+/** Pinata did not keep the private copy private under its name, so nothing was registered (B16). */
+export const PRIVATE_COPY_NOT_PRIVATE = { error: "private-copy-not-private" } as const;
+
+/** The duplicate check could not reach the chain, so no private copy was made (B2). */
+export const CHAIN_UNREACHABLE = { error: "chain-unreachable" } as const;
+
+/**
+ * The only name a private thumbnail is ever kept under: the passport id, lower-cased once here,
+ * so every later lookup, link and deletion compares against the same string.
+ *
+ * Throws when the id is not 0x and 64 hex characters.
+ */
+export function privateThumbnailName(passportId: Hex): string {
+  const id = passportId.toLowerCase();
+  if (!PASSPORT_ID.test(id)) {
+    throw new Error("a private thumbnail is named after a passport id: 0x and 64 hex characters");
+  }
+  return `sealed-thumb-${id}.jpg`;
+}
+
+/** What the chain said about a passport id before anything private is made for it. */
+export type Registration = "registered" | "free" | "unreachable";
+
+/**
+ * Asks the registry whether it already holds this passport, and keeps "could not ask" apart from
+ * "no". A public or plain sealed prepare may go on after "unreachable", because the registry makes
+ * the same check when the browser sends the passport. A private copy may not (B2): it would be a
+ * thumbnail kept under a name that could already belong to someone else's registered passport.
+ */
+export async function registrationOf(
+  chain: Parameters<typeof passportExists>[0],
+  registry: Hex,
+  passportId: Hex,
+  log: FastifyBaseLogger,
+): Promise<Registration> {
+  try {
+    return (await passportExists(chain, registry, passportId)) ? "registered" : "free";
+  } catch (error) {
+    log.warn(
+      { passportId, reason: error instanceof Error ? error.message : String(error) },
+      "prepare: the duplicate check could not reach the chain",
+    );
+    return "unreachable";
+  }
+}
+
+/**
+ * The private copy step, or the refusal a route answers with instead. `landed` says whether
+ * Pinata may now hold a file because of this request, which decides whether the day's slot stays
+ * spent.
+ */
+export type PrivateCopy =
+  | { kept: PrivateFile }
+  | { refused: { status: 409 | 502; body: { error: string } }; landed: boolean };
+
+/**
+ * Keeps one thumbnail on Pinata's private network for a sealed passport whose creator asked for a
+ * private re-check.
+ *
+ * The caller has already made the thumbnail with makeThumbnail from the signed bytes, checked
+ * those bytes hash to the passport id, and heard "free" from the chain. The file is named after
+ * the passport id and carries it as the `passportId` key-value, and it is kept only if Pinata
+ * says it is private under that exact name (B16). Anything else answers 409
+ * private-copy-not-private and logs the file id Pinata gave back, and nothing is deleted, because
+ * that id can be a public pin the account already held. An upload Pinata refused or that timed
+ * out answers 502 pin-failed.
+ */
+export async function keepPrivateCopy(
+  thumbnail: Buffer,
+  passportId: Hex,
+  log: FastifyBaseLogger,
+): Promise<PrivateCopy> {
+  const id = passportId.toLowerCase();
+  try {
+    const kept = await pinPrivateFile(thumbnail, privateThumbnailName(passportId), { passportId: id });
+    log.info({ passportId: id, fileId: kept.id }, "prepare: private copy kept");
+    return { kept };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    if (error instanceof PrivateCopyNotPrivate) {
+      log.error({ passportId: id, fileId: error.fileId, reason }, "rejected: the private copy is not private");
+      return { refused: { status: 409, body: PRIVATE_COPY_NOT_PRIVATE }, landed: true };
+    }
+    log.error({ passportId: id, reason }, "rejected: the private copy was not kept");
+    return { refused: { status: 502, body: { error: "pin-failed" } }, landed: false };
+  }
+}
+
+/**
+ * Deletes a private copy the registration it was made for will never use, after the document pin
+ * failed. Best effort: a failure is logged with the file id for an operator and never changes the
+ * answer the caller is about to get.
+ */
+export async function dropPrivateCopy(file: PrivateFile, log: FastifyBaseLogger): Promise<void> {
+  try {
+    await deletePrivateFile(file.id);
+    log.warn({ fileId: file.id, name: file.name }, "prepare: private copy deleted after the document pin failed");
+  } catch (error) {
+    log.error(
+      { fileId: file.id, name: file.name, reason: error instanceof Error ? error.message : String(error) },
+      "prepare: could not delete the private copy after the document pin failed",
+    );
+  }
 }

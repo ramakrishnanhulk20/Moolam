@@ -23,9 +23,24 @@ import {
   fileSlug,
   passportMetadata,
 } from "../metadata.js";
-import { prepareOrFallback, prepareSealed, type PreparedResult, type SealedResult } from "../prepare.js";
+import type { PrivateFile } from "../ipfs/pinata.js";
 import {
+  PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+  ThumbnailTooLarge,
+  makeThumbnail,
+  prepareOrFallback,
+  prepareSealed,
+  type PreparedResult,
+  type SealedResult,
+} from "../prepare.js";
+import { readClient } from "../reputation/registry.js";
+import {
+  CHAIN_UNREACHABLE,
+  PRIVATE_RECHECK_NEEDS_SEALED,
   SEALED_METADATA_REFUSED,
+  dropPrivateCopy,
+  keepPrivateCopy,
+  registrationOf,
   sealedMetadata,
   signedFile,
   type SealedMetadata,
@@ -84,6 +99,8 @@ const bodySchema = z.object({
    * registration leaves it out unless the creator asks for it back.
    */
   includePrompt: z.boolean().optional(),
+  /** A private Chainlink re-check of a sealed picture. Refused without `sealed: true`. */
+  privateRecheck: z.boolean().optional(),
 });
 
 interface Drawn {
@@ -105,11 +122,17 @@ interface DrawnImage extends PreparedResult, Drawn {
 
 interface SealedDrawnImage extends SealedResult, Drawn {
   sealed: true;
+  /**
+   * Made only when the creator asked for a private re-check, by the public path's own
+   * makeThumbnail from the signed bytes (B14).
+   */
+  privateThumbnail?: Buffer;
 }
 
 /** What a sealed answer adds to the shared fields: the only copy of the picture there will be. */
 interface SealedCopy {
   sealed: true;
+  privateRecheck?: true;
   signedFile: SignedFile;
 }
 
@@ -162,6 +185,15 @@ const SEALED_FILE_REFUSED = {
  * unless the creator sends `includePrompt: true`, because it describes the picture in words. The
  * model provider drew this picture and has seen it, which sealed does not change.
  *
+ * With `sealed: true` and `privateRecheck: true` a 512 px thumbnail of the signed file is also kept
+ * on Pinata's private network, exactly as /prepare keeps one: only after the chain says the
+ * picture is not registered, before the document is pinned, deleted again if that pin fails, and
+ * named nowhere in the document, which gains `privateRecheck: true`. `privateRecheck` without
+ * `sealed` is refused with 400 `private-recheck-needs-sealed` before anything is drawn; the other
+ * refusals it adds are 409 `already-registered`, 409 `private-copy-not-private`, 422
+ * `thumbnail-too-large` and 503 `chain-unreachable`, all after the picture was drawn, so the daily
+ * slot stays spent.
+ *
  * Answers 401 for a missing or foreign token, 400 for a bad prompt, title, creator, deadline or
  * training statement, 400 `prompt-refused` when the model's safety system turns the prompt down,
  * 400 `deadline-passed`
@@ -180,6 +212,8 @@ export async function generateRoutes(
 ): Promise<void> {
   const gate = waitingGate(MAX_CONCURRENT_GENERATIONS, MAX_GATE_WAIT_MS);
   const quota = dailyQuota(env.GENERATE_PER_DAY);
+  const chain = readClient();
+  const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
   app.post("/generate", async (request: FastifyRequest, reply: FastifyReply) => {
     const identity = await identify(request, options.keys);
@@ -193,6 +227,10 @@ export async function generateRoutes(
       const reason = parsed.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ");
       return reply.code(400).send({ error: reason });
     }
+    if (parsed.data.privateRecheck === true && parsed.data.sealed !== true) {
+      return reply.code(400).send(PRIVATE_RECHECK_NEEDS_SEALED);
+    }
+    const privateRecheck = parsed.data.privateRecheck === true;
 
     const deadline = BigInt(parsed.data.deadline);
     const ahead = Number(deadline) - Math.floor(Date.now() / 1000);
@@ -248,9 +286,20 @@ export async function generateRoutes(
     let drawn: DrawnImage | SealedDrawnImage;
     try {
       drawn = await gate(() =>
-        draw(parsed.data.prompt, parsed.data.title, parsed.data.training, parsed.data.sealed === true),
+        draw(parsed.data.prompt, parsed.data.title, parsed.data.training, parsed.data.sealed === true, privateRecheck),
       );
     } catch (error) {
+      // Only a private re-check makes a thumbnail of a sealed drawing, and a drawing too detailed
+      // for the budget was drawn and paid for, so the slot stays spent. A public drawing that
+      // lands here keeps the answer it had before this branch existed.
+      if (error instanceof ThumbnailTooLarge && privateRecheck) {
+        request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate thumbnail too large");
+        return reply.code(422).send({
+          error: "thumbnail-too-large",
+          limit: error.limit,
+          reason: PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+        });
+      }
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);
         today.slot.giveBack();
@@ -317,6 +366,7 @@ export async function generateRoutes(
           // The prompt is a description of the picture in the creator's own words, so a sealed
           // passport leaves it out unless the creator asked for it to be public.
           prompt: parsed.data.includePrompt === true ? parsed.data.prompt : undefined,
+          privateRecheck,
         });
       } catch (error) {
         // Which field did not fit is this service's own fault to fix, so it stays in the log.
@@ -336,6 +386,34 @@ export async function generateRoutes(
         return reply.code(500).send(SEALED_FILE_REFUSED);
       }
 
+      // The same step /prepare takes, in the same order: the chain first (B2), then the private
+      // copy, then the document, so a document that says privateRecheck never points past a
+      // refused copy.
+      let privateCopy: PrivateFile | undefined;
+      if (privateRecheck) {
+        const passportId = drawn.print.sha256 as Hex;
+        const registration = await registrationOf(chain, registry, passportId, request.log);
+        if (registration === "registered") {
+          request.log.warn({ url: request.url, user: identity.userId, passportId }, "rejected: /generate duplicate");
+          return reply.code(409).send({ error: "already-registered", passportId });
+        }
+        if (registration === "unreachable") {
+          request.log.warn(
+            { url: request.url, user: identity.userId, passportId },
+            "rejected: /generate no private copy without a duplicate check",
+          );
+          return reply.code(503).send(CHAIN_UNREACHABLE);
+        }
+        if (drawn.privateThumbnail === undefined) {
+          throw new Error("a private re-check was asked for and no thumbnail was made");
+        }
+        const copy = await keepPrivateCopy(drawn.privateThumbnail, passportId, request.log);
+        if ("refused" in copy) {
+          return reply.code(copy.refused.status).send(copy.refused.body);
+        }
+        privateCopy = copy.kept;
+      }
+
       try {
         pinnedMetadata = await pinJson(document, `${slug}.json`);
       } catch (error) {
@@ -344,9 +422,15 @@ export async function generateRoutes(
           { ip: request.ip, url: request.url, reason: reasonOf(error) },
           "rejected: /generate sealed pin failed",
         );
+        if (privateCopy !== undefined) {
+          await dropPrivateCopy(privateCopy, request.log);
+        }
         return reply.code(502).send({ error: "pin-failed" });
       }
-      carried = { sealed: true, signedFile: file };
+      carried =
+        privateCopy === undefined
+          ? { sealed: true, signedFile: file }
+          : { sealed: true, privateRecheck: true, signedFile: file };
     } else {
       // The picture, its thumbnail and the manifest document do not depend on each other, so they
       // go to Pinata at once rather than one after the next. Settled rather than raced, because a
@@ -507,6 +591,7 @@ async function draw(
   title: string,
   training: TrainingConsent | undefined,
   sealed: boolean,
+  privateRecheck: boolean,
 ): Promise<DrawnImage | SealedDrawnImage> {
   const image = await createImage(prompt, { timeoutMs: MODEL_TIMEOUT_MS });
   const settings = {
@@ -518,7 +603,8 @@ async function draw(
   };
   if (sealed) {
     const prepared = await prepareSealed(image.bytes, settings);
-    return { ...prepared, model: image.model, usage: image.usage, sealed: true };
+    const privateThumbnail = privateRecheck ? await makeThumbnail(prepared.bytes) : undefined;
+    return { ...prepared, privateThumbnail, model: image.model, usage: image.usage, sealed: true };
   }
   const prepared = await prepareOrFallback(image.bytes, settings);
   return { ...prepared, model: image.model, usage: image.usage, sealed: false };
