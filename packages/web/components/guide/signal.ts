@@ -12,3 +12,41 @@ export const GUIDE_OPEN_EVENT = "moolam:guide:open";
 export function tellGuideToOpen(): void {
   window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));
 }
+
+/**
+ * The note a press elsewhere leaves for the home page, which is the only page
+ * that carries the walk. A shout cannot cross a navigation, so the footer on
+ * another page writes this, goes home, and the guide reads it once on arrival.
+ *
+ * sessionStorage rather than localStorage: the request belongs to this tab and
+ * this moment, and a note that outlived the tab could open the walk days later
+ * on a visit nobody asked it for.
+ */
+export const GUIDE_ASKED_KEY = "moolam:guide:asked";
+
+/**
+ * Leaves the note. Answers false when the browser refuses storage, in which
+ * case the reader still goes home and the walk opens only if it would anyway.
+ */
+export function askGuideAfterNavigation(): boolean {
+  try {
+    window.sessionStorage.setItem(GUIDE_ASKED_KEY, "1");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether a note was waiting, removing it in the same breath so a reload of
+ * the home page never opens the walk a second time.
+ */
+export function takeGuideRequest(): boolean {
+  try {
+    const asked = window.sessionStorage.getItem(GUIDE_ASKED_KEY) === "1";
+    window.sessionStorage.removeItem(GUIDE_ASKED_KEY);
+    return asked;
+  } catch {
+    return false;
+  }
+}

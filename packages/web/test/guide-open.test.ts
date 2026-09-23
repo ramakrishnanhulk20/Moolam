@@ -24,6 +24,7 @@ const here = { path: "/" };
 // have hidden the one case this file cares about most.
 vi.mock("@/lib/i18n/routing", () => ({
   usePathname: () => here.path,
+  useRouter: () => ({ push: () => undefined }),
   Link: ({
     href,
     className,

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "@/lib/i18n/routing";
 import { GuideWalk } from "./GuideWalk";
 import { guideShouldShowHere, markGuideSeen, onLabPage } from "./seen";
-import { GUIDE_OPEN_EVENT } from "./signal";
+import { GUIDE_OPEN_EVENT, takeGuideRequest } from "./signal";
 
 const watchers = new Set<() => void>();
 
@@ -38,8 +38,9 @@ function marksChanged(): void {
  * the server snapshot is "no", the real one lands in the pass straight after.
  *
  * Every way out writes the mark, including following a step's link, so nobody
- * is asked twice. The footer entry forgets the mark and shouts, which is why
- * there is a second way in that ignores the mark entirely.
+ * is asked twice. The footer entry forgets the mark and shouts, or, from
+ * another page, leaves a note and comes here, which is why there is a second
+ * way in that ignores the mark entirely.
  */
 export function FirstVisitGuide() {
   const path = usePathname();
@@ -54,6 +55,12 @@ export function FirstVisitGuide() {
   useEffect(() => {
     const open = () => setAsked(true);
     window.addEventListener(GUIDE_OPEN_EVENT, open);
+    // The footer on another page cannot shout across a navigation, so it
+    // leaves a note and brings the reader here. The note is spent on arrival,
+    // which keeps a reload of this page from opening the walk again.
+    if (takeGuideRequest()) {
+      open();
+    }
     return () => window.removeEventListener(GUIDE_OPEN_EVENT, open);
   }, []);
 

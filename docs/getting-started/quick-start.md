@@ -13,8 +13,8 @@ directly, so what you see on it is the chain.
 The first time you open the home page, a short walk of three steps points at the three things to
 press: "Verify an image", "Register an image" and "My pictures". Press "Next" to go through it or
 "Skip" to close it. It shows once per device, and not at all on a device that has signed in here
-before. To see it again, press "Show the guide again" in the footer of the home page, beside Docs,
-Privacy and Terms, and it opens there and then.
+before. To see it again, press "Show the guide again" in the footer of any page, beside Docs,
+Privacy and Terms, and the walk opens on the home page.
 
 ## 1. Check a copy, before signing in to anything
 
