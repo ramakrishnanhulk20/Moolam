@@ -184,7 +184,7 @@ chain. It sends no transaction and spends nothing.
 
 The pass found two gaps and both were fixed the same day. The verify answer did not say a match was
 sealed (4a), and the re-check queue refused the one unsealed passport as sealed because it read only
-the sealed document (5g). After commit 7b97770 the route half shows both fixed, and the live service,
+the sealed document (5g). After commit d07df6e the route half shows both fixed, and the live service,
 running that build since 07:37 UTC, answered 200 pending for the same passport. The section "After
 the fixes" at the end of [pass-3.txt](../../proofs/attacks/pass-3.txt) holds that run.
 

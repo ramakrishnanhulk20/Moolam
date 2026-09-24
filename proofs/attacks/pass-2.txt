@@ -7,7 +7,7 @@ Every write below goes to the fork. Nothing here can reach mainnet.
 
 date        2026-09-16T07:21:21.755Z
 fork block  105,258,267 of Monad mainnet, chain 143
-commit      13c54f123fc96e9417913b08d8ea950274959793
+commit      6bf70774f42a08f0aa8aad0d76ac657f4bd34ade
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0 (deployed, forked)
 policy      0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 (deployed, forked)
 receiver    0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 (deployed, forked)

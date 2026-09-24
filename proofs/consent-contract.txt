@@ -188,7 +188,7 @@ LIVE ON MONAD MAINNET, 2026-09-18
 MoolamConsent  0x1151E69a82947920546e779c4C8c785b2a3C1277
 deploy tx      0x49794a54f498bd843d5044a9d49f2a730f4d8c439553fc5e128f72e3499e1833
 block          105828247, gas used 1,231,793, the deployer paid 0.1256 MON (34.6022 before, 34.4765 after)
-source         commit f154b1b, checked against the working tree by the launch script before it sent anything
+source         commit f30bd75, checked against the working tree by the launch script before it sent anything
 Sourcify       match on creation and runtime code, verified 2026-09-18T07:10:59Z, job 0a8b1ed1-ddc2-4174-bcee-5b510ef2ac9d
 
 Read back from the chain with cast, not from the deploy script's log:

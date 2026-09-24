@@ -381,7 +381,7 @@ Before any of today's work the home page carried 45 scripts and 1561 kB.
 THE HELD PAGES ON THE LIVE SITE
 --------------------------------------------------------------------------
 Measured 2026-09-17 from Chennai with curl, 92 seconds after Vercel finished
-building commit de0e25f, two requests per page, the first one being the first
+building commit 46abdbe, two requests per page, the first one being the first
 anyone made to that page on the new build.
 
   /en/passport/0xcdb2...   first  PRERENDER  1.00 s     second  HIT  0.47 s
@@ -397,17 +397,17 @@ Chennai to the region that holds the page, not rendering.
 
 THE LIVE SITE AFTER THE DAY'S FOUR CHANGES
 --------------------------------------------------------------------------
-Measured 2026-09-17 against https://moolam.vercel.app on commit 54f82f4, ninety
+Measured 2026-09-17 against https://moolam.vercel.app on commit f68e2c1, ninety
 seconds after Vercel finished the build, with the same runner as every table
 above, middle of three runs per page.
 
   node packages/web/scripts/perf/lighthouse.mjs --base https://moolam.vercel.app --profile both --runs 3
 
 What changed on the live site since the 2026-09-16 table: the wallet SDK loads
-only on the routes that sign (e00c88b), a passport fetches it only on a device
+only on the routes that sign (73942a8), a passport fetches it only on a device
 that has signed in before and its two writing panels bring their code with them
-(84ed72f, 54f82f4), and the passport page is built once and held with the real
-pictures and the known agents pre-rendered at build (de0e25f).
+(bad41f6, f68e2c1), and the passport page is built once and held with the real
+pictures and the known agents pre-rendered at build (46abdbe).
 
                        mobile                        desktop
 page                 score   LCP     TBT    CLS     score   LCP     TBT   CLS
@@ -671,7 +671,7 @@ on a dev server of this pass's own on port 3399:
 EXPLORE ON THE LIVE SITE, AND WHAT DID NOT CARRY OVER
 --------------------------------------------------------------------------
 Measured 2026-09-18 from Chennai with curl, 103 seconds after Vercel finished
-building commit fe0ed11, the first requests anyone made to these pages on it.
+building commit 966d45b, the first requests anyone made to these pages on it.
 
   /en/explore                 first   MISS  4.08 s     second  MISS  0.76 s
   /en/explore?pictures=test   first   MISS  0.51 s
@@ -785,7 +785,7 @@ not the page. Worth reading the x-vercel-id of the two requests there before
 anything in the page is touched: two requests answered by different regions each
 fill their own store.
 
-EXPLORE ON THE LIVE SITE AFTER IT BECAME A BUILT PAGE (2026-09-21, commit dd19dc2, measured from India with curl)
+EXPLORE ON THE LIVE SITE AFTER IT BECAME A BUILT PAGE (2026-09-21, commit 6580b38, measured from India with curl)
 The first request to each address after the new build went live, then a repeat:
   /en/explore              first  x-vercel-cache PRERENDER  ttfb 1.28 s   (the same first request measured 4.08 s on 2026-09-18)
   /ta/explore              first  x-vercel-cache PRERENDER  ttfb 1.29 s
@@ -850,7 +850,7 @@ seconds rather than five because a 429 is the index asking for room.
 
 What this does not cover: the ten queries a single dev render makes of the same
 read. That multiplier is the dev server rendering the route once per locale and
-it is the same on Explore, which has been a built page since dd19dc2. The built
+it is the same on Explore, which has been a built page since 6580b38. The built
 server answers /en/agents from the page it made, with no query at all.
 
 ================================================================================

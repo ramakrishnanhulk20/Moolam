@@ -42,7 +42,7 @@ attestation counts: 0 0
 With these, every one of the fourteen real pictures on the registry carries a re-check; the seed test cards carry none by design.
 
 Chainlink CRE re-check on the first picture that was registered sealed and later published by its holder, written 2026-09-23
-Old but strong was registered sealed on 2026-09-22 at 12:23:50 UTC and unsealed by its holder four minutes later (proofs/sealed-passports.txt). Its document on chain still says sealed, so the workflow read the verify service's public unseal record for the thumbnail (commit 77ef9c3), fetched it through Moolam's own gateway and recomputed the fingerprint. Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-4.sh, one machine, no network consensus; the studio registration's PassportRegistered log is event index 1.
+Old but strong was registered sealed on 2026-09-22 at 12:23:50 UTC and unsealed by its holder four minutes later (proofs/sealed-passports.txt). Its document on chain still says sealed, so the workflow read the verify service's public unseal record for the thumbnail (commit 9ae539c), fetched it through Moolam's own gateway and recomputed the fingerprint. Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-4.sh, one machine, no network consensus; the studio registration's PassportRegistered log is event index 1.
 recomputed fingerprint and distance from the run: 0x1f1bc103fbef6f47 (2), matched; the chain stores 0x1f1fc003fbef6f47
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)

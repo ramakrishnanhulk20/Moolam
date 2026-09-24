@@ -6,7 +6,7 @@ against the eight invariants in the sealed threat model's section C and its "Add
 build" list. Two halves, both executed, both saved here as they printed.
 
 date          2026-09-23
-commit        4ecc9cf67d395fcc5bfd9ab7568e5e04af6026c3 (HEAD when both halves ran; the two new
+commit        09aab2f7f7e96116cf7bec39f2cccc54d6c7a63a (HEAD when both halves ran; the two new
               attack files are not committed yet)
 chain block   107,259,187 on Monad mainnet, chain 143 (the live half's reads)
 
@@ -149,7 +149,7 @@ Moolam attack pass 3, the live half: the sealed passport, attacked from outside.
 Reads and HTTP only. No transaction is sent and nothing is spent.
 
 date        2026-09-23T07:16:01.257Z
-commit      4ecc9cf67d395fcc5bfd9ab7568e5e04af6026c3
+commit      09aab2f7f7e96116cf7bec39f2cccc54d6c7a63a
 chain       Monad mainnet, chain 143, read at block 107,259,187
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 passport    0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c
@@ -204,7 +204,7 @@ Summary, one line per live attack: what it found | what it did not cover | verdi
 finished 2026-09-23T07:16:06.753Z, chain block 107,259,187
 
 
-AFTER THE FIXES (2026-09-23, commit 7b97770)
+AFTER THE FIXES (2026-09-23, commit d07df6e)
 ============================================
 
 What changed. Attack 4a now finds the picture state on every match: a copy of a sealed passport
@@ -220,7 +220,7 @@ Read back afterwards with GET /recheck/status/0x980549624f85e4ef47043383c5a746cb
 {"status":"pending","requestedAt":1790149131962}, which is 2026-09-23 07:38:51 UTC.
 
 cd packages/verifier && npx vitest run test/attacks-sealed.test.ts --reporter=verbose 2>&1 | grep -E "4a|4c|1b"
-(run at 2026-09-23T07:39:44Z on HEAD a837368, 14 of 14 tests passed; the service's JSON log lines and
+(run at 2026-09-23T07:39:44Z on HEAD 437e134, 14 of 14 tests passed; the service's JSON log lines and
 the lines that matched only because a hash or a request id contains "1b" or "4a" are left out; the
 1b "all six at once" line and the 4a and 4c verdict lines under each heading are from the same run
 and are added so the change can be read: the body with too many fields now answers too-many-fields,
