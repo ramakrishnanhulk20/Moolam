@@ -10,6 +10,7 @@ import { heldPictureSplit, sheetPage, type PictureSplit } from "./plates";
 import type { ExploreSearch } from "./query";
 import { ReadingProvider } from "./Reading";
 import { StatedLine } from "./Stated";
+import type { Opening } from "@/components/studio/opening";
 import type { ExplorePlate } from "./sort";
 
 /** The head for both Explore routes, so the tab reads the same whichever drew the page. */
@@ -38,11 +39,14 @@ export async function ExploreSheet({
   locale,
   search,
   stored,
+  opening = "full",
 }: {
   locale: string;
   search: ExploreSearch;
   /** True where this render is kept and served to everybody for the next minute. */
   stored: boolean;
+  /** "compact" changes the phone layout only; a laptop gets today's page either way. */
+  opening?: Opening;
 }) {
   let plates: ExplorePlate[] = [];
   let cursor: PassportCursor | null = null;
@@ -86,12 +90,21 @@ export async function ExploreSheet({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
-      <Masthead locale={locale} counts={counts} countsError={countsError} split={split} view={search.view} />
+    <div
+      className={`mx-auto w-full max-w-[1400px] px-5 sm:px-8 sm:py-24 ${opening === "compact" ? "pb-16 pt-7" : "py-16"}`}
+    >
+      <Masthead
+        locale={locale}
+        counts={counts}
+        countsError={countsError}
+        split={split}
+        view={search.view}
+        opening={opening}
+      />
       {/* The chips and the grid share one piece of state: whether the sheet on
           screen is still the one the chips say it is. */}
       <ReadingProvider>
-        <Filters search={search} />
+        <Filters search={search} opening={opening} />
         <StatedLine ai={search.ai} />
         <Grid first={plates} cursor={cursor} search={search} indexError={gridError} />
       </ReadingProvider>

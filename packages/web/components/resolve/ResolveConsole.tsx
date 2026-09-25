@@ -11,6 +11,7 @@ import { useResolveDisputes, type ResolveDisputes } from "@/lib/disputes/useReso
 import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
+import type { Opening } from "@/components/studio/opening";
 
 const NOTHING = () => undefined;
 const NOTHING_YET = async () => undefined;
@@ -44,17 +45,25 @@ const WAITING: ResolveDisputes = {
  * console on every render that happens without it, so until it is up the queue
  * is drawn from the same standing the hook would report: nothing read yet.
  */
-export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
+export function ResolveConsole({
+  resolver,
+  disputes,
+  opening = "full",
+}: {
+  resolver: Hex;
+  disputes: OpenDispute[];
+  opening?: Opening;
+}) {
   const mounted = useWalletMounted();
 
   return mounted ? (
-    <Console resolver={resolver} disputes={disputes} />
+    <Console resolver={resolver} disputes={disputes} opening={opening} />
   ) : (
-    <Desk desk={WAITING} resolver={resolver} disputes={disputes} />
+    <Desk desk={WAITING} resolver={resolver} disputes={disputes} opening={opening} />
   );
 }
 
-function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
+function Console({ resolver, disputes, opening }: { resolver: Hex; disputes: OpenDispute[]; opening: Opening }) {
   const router = useRouter();
   // Which passport the settle that is out belongs to. The hook reports the busy
   // one and sets it before the wallet is even asked, so by the time a settle
@@ -80,14 +89,26 @@ function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[
     }
   }, [desk.busy]);
 
-  return <Desk desk={desk} resolver={resolver} disputes={disputes} />;
+  return <Desk desk={desk} resolver={resolver} disputes={disputes} opening={opening} />;
 }
 
-function Desk({ desk, resolver, disputes }: { desk: ResolveDisputes; resolver: Hex; disputes: OpenDispute[] }) {
+function Desk({
+  desk,
+  resolver,
+  disputes,
+  opening,
+}: {
+  desk: ResolveDisputes;
+  resolver: Hex;
+  disputes: OpenDispute[];
+  opening: Opening;
+}) {
   const t = useTranslations("resolve");
 
+  // Under the compact opening the two cards start just under the short
+  // title, inside the first screen of a laptop.
   return (
-    <div className="mt-14">
+    <div data-resolve-desk className={opening === "compact" ? "mt-7 sm:mt-8" : "mt-14"}>
       <Standing desk={desk} resolver={resolver} />
 
       {disputes.length === 0 ? (
@@ -214,9 +235,22 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
 
       <div className="lg:border-s lg:border-line lg:ps-12">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("creditLabel")}</p>
-        <p className="mt-2 font-display text-[clamp(1.8rem,4vw,3rem)] font-semibold leading-[0.95] tracking-[-0.04em] tabular-nums">
-          {owed === null ? t("creditUnread") : t("mon", { amount: formatEther(owed) })}
-        </p>
+        {/* Until the registry has been asked there is no figure, and a status
+            is said as a status: small, in the label's ink. The headline slot is
+            kept for the amount itself once it is read. */}
+        {owed === null ? (
+          <p data-credit-unread className="mt-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
+            <span aria-hidden className="h-1.5 w-1.5 bg-line-strong" />
+            {t("creditUnread")}
+          </p>
+        ) : (
+          <p
+            data-credit-amount
+            className="mt-2 font-display text-[clamp(1.8rem,4vw,3rem)] font-semibold leading-[0.95] tracking-[-0.04em] tabular-nums"
+          >
+            {t("mon", { amount: formatEther(owed) })}
+          </p>
+        )}
         <p className="mt-4 max-w-[40ch] text-sm leading-relaxed text-text-muted">{t("creditBody")}</p>
 
         {owed !== null && owed > 0n && desk.authenticated ? (

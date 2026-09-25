@@ -37,7 +37,14 @@ export function Row({ agent, place }: { agent: AgentRow; place: number }) {
               {t("agentId", { id: agent.id })}
             </p>
 
-            <h2 className="mt-4 max-w-[18ch] font-display text-[clamp(1.7rem,4vw,2.9rem)] font-semibold uppercase leading-[0.95] tracking-[-0.035em] transition-colors duration-300 group-hover:text-accent">
+            {/* Sized for the longest name on the board, "Moolam generator on a
+                Privy server wallet": two lines in the laptop column and three at
+                most across a phone. The trust score beside it is the number the
+                page is about, so the name no longer outweighs it. */}
+            <h2
+              data-agent-name
+              className="mt-4 max-w-[26ch] font-display text-[clamp(1.35rem,2.6vw,2.1rem)] font-semibold uppercase leading-[1] tracking-[-0.03em] transition-colors duration-300 group-hover:text-accent"
+            >
               {agent.name ?? t("unnamed")}
             </h2>
 

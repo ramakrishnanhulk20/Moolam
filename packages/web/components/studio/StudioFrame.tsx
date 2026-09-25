@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode, RefObject } from "react";
+import { useOpening } from "./opening";
 import { SignedOut } from "./SignedOut";
 import { WaitLabel } from "./WaitLabel";
 
@@ -30,11 +31,15 @@ export function StudioBox({
   hold?: RefObject<HTMLDivElement | null>;
   top?: number | null;
 }) {
+  // Under the compact opening the box starts where its column starts: the
+  // opening above it already ends on a rule.
+  const compact = useOpening() === "compact";
+
   return (
     <div
       ref={hold}
       data-studio-box
-      className="mt-14 w-full max-w-[48rem] [overflow-anchor:none]"
+      className={`${compact ? "mt-0" : "mt-14"} w-full max-w-[48rem] [overflow-anchor:none]`}
       style={top === null || top === undefined ? undefined : ({ "--studio-top": `${top}px` } as CSSProperties)}
     >
       {children}

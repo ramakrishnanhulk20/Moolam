@@ -1,4 +1,6 @@
 import { getTranslations } from "next-intl/server";
+import type { Opening } from "./opening";
+import { ToolOpening } from "./ToolOpening";
 
 /**
  * The words at the top of the studio, drawn on the server.
@@ -9,8 +11,12 @@ import { getTranslations } from "next-intl/server";
  * first byte, in every language, and the reduced-motion rule in globals.css
  * turns the rise off.
  */
-export async function StudioIntro({ locale }: { locale: string }) {
+export async function StudioIntro({ locale, opening = "full" }: { locale: string; opening?: Opening }) {
   const t = await getTranslations({ locale, namespace: "studio" });
+
+  if (opening === "compact") {
+    return <ToolOpening kicker={t("kicker")} title={t("title")} line={t("lede")} locale={locale} />;
+  }
 
   // Tamil letters carry marks above and below the line, so the tight leading
   // the display face wants in Latin makes two lines touch.

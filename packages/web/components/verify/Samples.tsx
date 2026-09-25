@@ -20,10 +20,13 @@ export function Samples({
   samples,
   onPick,
   busy,
+  compact = false,
 }: {
   samples: TrySample[];
   onPick: (sample: TrySample) => void;
   busy: boolean;
+  /** Under the compact opening the row sits closer to the drop box, so it is in the first screen. */
+  compact?: boolean;
 }) {
   const t = useTranslations("verify");
   const common = useTranslations("common");
@@ -41,7 +44,7 @@ export function Samples({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.3 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-8"
+      className={compact ? "mt-5" : "mt-8"}
     >
       <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
         <span className="motif h-[8px] w-[8px] opacity-50" />

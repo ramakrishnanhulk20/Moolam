@@ -33,7 +33,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   const kinds = useTranslations("kind");
   const common = useTranslations("common");
   const format = useFormatter();
-  const test = isTestCard(plate.title);
+  const test = isTestCard(plate.title, plate.id);
   const sealed = plate.sealed === true;
 
   const seal = (
@@ -43,26 +43,90 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     </span>
   );
 
+  // A grid rather than a row with the two ends pushed apart: the kind and the
+  // letters can never be drawn over each other, whatever the language or the
+  // plate's width. On a plate narrower than 17rem, which is every plate on a
+  // phone, the letters take a line of their own under the kind.
+  const top = (
+    <span
+      data-plate-top
+      className={`pointer-events-none grid grid-cols-1 content-start items-start gap-x-3 gap-y-2 p-3 @[17rem]:grid-cols-[minmax(0,1fr)_auto] ${
+        sealed ? "relative shrink-0" : "absolute inset-x-0 top-0"
+      }`}
+    >
+      {/* A sealed plate on a phone has its marks in a column beside the
+          drawing, and no width there for the kind as well; the kind waits for
+          a wider plate or the passport page. */}
+      <span
+        data-plate-kind
+        className={`min-w-0 items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-text-muted [overflow-wrap:anywhere] ${
+          sealed ? "hidden @[17rem]:flex" : "flex"
+        }`}
+      >
+        <span className="motif h-[7px] w-[7px] shrink-0 opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
+        <span className="min-w-0">{kinds(String(plate.kind))}</span>
+      </span>
+      <span data-plate-marks className="flex shrink-0 items-center gap-1 @[17rem]:row-span-2 @[17rem]:justify-end">
+        <Mark on={plate.manifest} letter="M" label={t("marks.manifest")} tone="accent" />
+        <Mark
+          on={plate.rechecked}
+          letter="R"
+          label={plate.chainlink ? t("marks.chainlink") : t("marks.rechecked")}
+          tone="verified"
+        />
+        <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="failed" />
+        <Mark on={sealed} letter="S" label={t("sealed.mark")} tone="accent" />
+      </span>
+      {/* On a narrow plate the word sits under its letter instead of taking a
+          third line at the foot, which is height the drawing needs. The lit S
+          already carries it for a screen reader. */}
+      {sealed ? (
+        <span aria-hidden className="font-mono text-[9px] uppercase tracking-[0.2em] text-accent @[17rem]:hidden">
+          {t("sealed.word")}
+        </span>
+      ) : null}
+      {/* Truthiness rather than a null test: a sheet held from the minute
+          before this shipped has plates with no such field at all. */}
+      {plate.consent ? (
+        <span className="mt-0.5 flex">
+          <Statement statement={plate.consent} />
+        </span>
+      ) : null}
+    </span>
+  );
+
   return (
     <Link
       href={`/passport/${plate.id}`}
-      className="group relative block aspect-[4/5] min-w-0 overflow-hidden bg-bg-sunken outline-offset-[-2px]"
+      data-plate={sealed ? "sealed" : "picture"}
+      className={`group @container relative aspect-[4/5] min-w-0 overflow-hidden bg-bg-sunken outline-offset-[-2px] ${
+        sealed ? "flex flex-col" : "block"
+      }`}
     >
       {sealed ? (
         // The block hash drawn, which is the only trace of a sealed picture
-        // anyone outside the creator ever sees. It sits in the top half the way
-        // the poster's does, so the title below it lands on the ground rather
-        // than on a grid of lit cells.
-        <span className="pointer-events-none absolute inset-x-0 top-[9%] flex h-[52%] justify-center">
+        // anyone outside the creator ever sees. The plate is a column here: the
+        // marks and the drawing in whatever height is left, then the words on a
+        // ground of their own. A two line title and a date that wraps on a
+        // phone used to climb up into the lit cells; now the drawing gives way
+        // to them, and to the marks, which stand above it on a wide plate and
+        // beside it on a phone.
+        <span className="relative flex min-h-0 flex-1 flex-row @[17rem]:flex-col">
+          {top}
           <span
-            aria-hidden
-            className="pointer-events-none absolute end-[-18%] top-[-30%] h-[110%] w-[70%] rounded-full bg-accent-soft blur-[48px]"
-          />
-          <SealedSketch
-            bits={sealedBits(plate.blockhash)}
-            size="plate"
-            className="relative h-full transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
-          />
+            data-sealed-drawing
+            className="pointer-events-none relative flex min-h-0 min-w-0 flex-1 items-start justify-center pb-2 pe-3 pt-3 [container-type:size] @[17rem]:px-3 @[17rem]:pb-3 @[17rem]:pt-0"
+          >
+            <span
+              aria-hidden
+              className="pointer-events-none absolute end-[-18%] top-[-30%] h-[110%] w-[70%] rounded-full bg-accent-soft blur-[48px]"
+            />
+            <SealedSketch
+              bits={sealedBits(plate.blockhash)}
+              size="plate"
+              className="relative h-[min(100cqw,100cqh)] w-[min(100cqw,100cqh)] transition-transform duration-[900ms] ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.05]"
+            />
+          </span>
         </span>
       ) : plate.thumbnailUrl === null ? (
         seal
@@ -90,36 +154,31 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       )}
 
       <span className="grain pointer-events-none absolute inset-0" />
-      <span className="scrim pointer-events-none absolute inset-0" />
+      {sealed ? null : <span className="scrim pointer-events-none absolute inset-0" />}
+      {/* The same scrim turned over, so the kind, the letters and the AI-use
+          marks keep their ground on a bright sky or a white shirt the way the
+          title does at the foot. Quieter than the foot's: there is less to
+          read up here, and most of the picture should still show. */}
+      {sealed ? null : (
+        <span
+          aria-hidden
+          data-plate-top-scrim
+          className="pointer-events-none absolute inset-x-0 top-0 h-[34%] bg-[linear-gradient(to_bottom,var(--scrim-from),var(--scrim-to))] opacity-80"
+        />
+      )}
       <span
         aria-hidden
         className="pointer-events-none absolute inset-0 border border-transparent transition-colors duration-500 group-hover:border-accent/60"
       />
 
-      <span className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
-        <span className="flex min-w-0 flex-col items-start gap-2.5">
-          <span className="flex items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-text-muted">
-            <span className="motif h-[7px] w-[7px] opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
-            {kinds(String(plate.kind))}
-          </span>
-          {/* Truthiness rather than a null test: a sheet held from the minute
-              before this shipped has plates with no such field at all. */}
-          {plate.consent ? <Statement statement={plate.consent} /> : null}
-        </span>
-        <span className="flex items-center gap-1">
-          <Mark on={plate.manifest} letter="M" label={t("marks.manifest")} tone="accent" />
-          <Mark
-            on={plate.rechecked}
-            letter="R"
-            label={plate.chainlink ? t("marks.chainlink") : t("marks.rechecked")}
-            tone="verified"
-          />
-          <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="failed" />
-          <Mark on={sealed} letter="S" label={t("sealed.mark")} tone="accent" />
-        </span>
-      </span>
+      {sealed ? null : top}
 
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 p-3 pt-8 sm:p-4">
+      <span
+        data-plate-foot
+        className={`pointer-events-none p-3 sm:p-4 ${
+          sealed ? "relative border-t border-line bg-bg-raised" : "absolute inset-x-0 bottom-0 pt-8"
+        }`}
+      >
         {/* Two lines, not one with a tail of dots. At 375 px a plate is 166 px
             wide and almost every real title was cut: "Monsoon Fishing Nets
             Drying" arrived as "Monsoon Fishing N...". */}
@@ -142,10 +201,10 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
           {/* The letter in the corner is the mark; this is the word, so the
               plate says sealed to a reader who is not hovering anything. */}
           {sealed ? (
-            <>
+            <span className="hidden items-center gap-x-2 @[17rem]:flex">
               <span aria-hidden className="h-[8px] w-px bg-line-strong" />
               <span className="text-accent">{t("sealed.word")}</span>
-            </>
+            </span>
           ) : null}
         </span>
         <span

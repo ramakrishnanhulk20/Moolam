@@ -79,7 +79,7 @@ export function plateSheet(pictures: PassportPictures | undefined): PlateSheet {
       if (pictures === undefined) {
         return rows;
       }
-      return rows.filter((row) => isTestCard(built.get(row.id)?.title ?? null) === (pictures === "test"));
+      return rows.filter((row) => isTestCard(built.get(row.id)?.title ?? null, row.id) === (pictures === "test"));
     },
     platesFor: (rows) => rows.map((row) => built.get(row.id)).filter((plate): plate is ExplorePlate => plate !== undefined),
   };
@@ -114,10 +114,10 @@ export async function pictureSplit(): Promise<PictureSplit> {
     const wave = await Promise.all(
       rows.slice(at, at + SPLIT_WAVE).map(async (row) => {
         const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI);
-        return art?.title ?? null;
+        return isTestCard(art?.title ?? null, row.id);
       }),
     );
-    real += wave.filter((title) => !isTestCard(title)).length;
+    real += wave.filter((test) => !test).length;
   }
 
   return { real, test: rows.length - real, scanned: rows.length, capped: rows.length >= SPLIT_CAP };

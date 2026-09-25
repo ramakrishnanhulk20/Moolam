@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useHeadingLeading } from "./leading";
+import { useOpening } from "./opening";
 
 const POINTS = ["wallet", "passkey", "gas"] as const;
 
@@ -17,15 +18,27 @@ const POINTS = ["wallet", "passkey", "gas"] as const;
 export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
+  const cardLeading = useHeadingLeading("leading-[1.15]", "leading-[1.35]");
+  const compact = useOpening() === "compact";
 
   return (
-    <section className="rise relative border border-line bg-bg-raised p-7 sm:p-10">
+    <section data-signed-out className="rise relative border border-line bg-bg-raised p-7 sm:p-10">
       <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
         <span className="motif h-[9px] w-[9px]" />
         {t("signedOut.kicker")}
       </p>
 
-      <h2 className={`mt-5 max-w-[18ch] font-display text-[clamp(1.9rem,4vw,3.2rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}>
+      {/* Under the compact opening the page's own title is the one heading
+          that shouts, so the card's is a card's: the same words, in sentence
+          case, at a size that holds them to two lines. */}
+      <h2
+        data-card-heading={compact ? "card" : "display"}
+        className={
+          compact
+            ? `mt-4 max-w-[30ch] font-display text-[clamp(1.25rem,2vw,1.6rem)] font-semibold tracking-[-0.02em] ${cardLeading}`
+            : `mt-5 max-w-[18ch] font-display text-[clamp(1.9rem,4vw,3.2rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`
+        }
+      >
         {t("signedOut.heading")}
       </h2>
       {/* The one thing this page exists for, and it used to sit under four

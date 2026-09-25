@@ -10,8 +10,15 @@ export async function Masthead({ section, title }: { section: string | null; tit
 
   return (
     <header className="docs-masthead" data-motif="seal">
+      {/* A page outside any group would label itself "Documentation", which
+          the bar above already says beside the search box on a laptop. There
+          the bar's word is the one kept; on a phone the bar has no room for it,
+          so the kicker stays. */}
       <p
-        className="rise flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-accent"
+        data-docs-kicker
+        className={`rise flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.28em] text-accent ${
+          section === null ? "lg:hidden" : ""
+        }`}
         style={{ animationDelay: "40ms" }}
       >
         <span aria-hidden className="motif h-[7px] w-[7px]" />

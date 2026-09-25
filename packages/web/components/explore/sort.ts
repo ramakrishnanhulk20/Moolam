@@ -43,15 +43,34 @@ export interface ExplorePlate {
 const TEST_TITLE = /^moolam (seed|prove-it|privy proof)\b/i;
 
 /**
- * Whether a plate is one of the test cards those scripts wrote.
+ * Pictures Ram registered while trying the studio, named by id rather than by
+ * title because their titles read like real work: "Iphone 18 pro max" and "Old
+ * but strong". Their passports stay where they are and still open; they only
+ * sort and count with the test cards. Ids are kept lower case.
+ */
+const TEST_IDS: ReadonlySet<string> = new Set([
+  "0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09",
+  "0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c",
+]);
+
+/**
+ * Whether a plate is one of the test cards those scripts wrote, or one of the
+ * uploads named above.
  *
- * The title is the only thing that separates them. The agent id does not: the
+ * The title is what separates the scripts' cards. The agent id does not: the
  * seed script signs every card it writes with the demo generator, so "has a
  * generator" would call every seed card a real picture. A plate whose metadata
  * would not load has no title to judge, and those sort with the test cards
  * rather than above pictures a reader can actually see.
+ *
+ * The id is optional so a caller holding only a title still gets the title
+ * rule; every caller that has the id should pass it, or the chips, the counts
+ * and the order stop agreeing.
  */
-export function isTestCard(title: string | null): boolean {
+export function isTestCard(title: string | null, id?: string | null): boolean {
+  if (id !== undefined && id !== null && TEST_IDS.has(id.toLowerCase())) {
+    return true;
+  }
   const clean = (title ?? "").trim();
   return clean === "" || TEST_TITLE.test(clean);
 }
@@ -65,7 +84,7 @@ export function isTestCard(title: string | null): boolean {
  */
 export function sortPlates<T extends { id: string; registeredAt: number; title: string | null }>(plates: T[]): T[] {
   return [...plates].sort((left, right) => {
-    const rank = Number(isTestCard(left.title)) - Number(isTestCard(right.title));
+    const rank = Number(isTestCard(left.title, left.id)) - Number(isTestCard(right.title, right.id));
     if (rank !== 0) {
       return rank;
     }

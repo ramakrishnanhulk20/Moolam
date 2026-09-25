@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { reason } from "@/lib/chain/client";
 import { heldGeneratorStandings } from "@/lib/data/passports";
+import type { Opening } from "@/components/studio/opening";
 import { Board } from "./Board";
 import { roster, type AgentRow } from "./roster";
 
@@ -12,7 +13,7 @@ import { roster, type AgentRow } from "./roster";
  * identity registry that will not answer costs a name and nothing else, so only
  * the index read can fail this page.
  */
-export async function AgentsSheet({ locale }: { locale: string }) {
+export async function AgentsSheet({ locale, opening = "full" }: { locale: string; opening?: Opening }) {
   let agents: AgentRow[] = [];
   let error: string | null = null;
 
@@ -31,5 +32,5 @@ export async function AgentsSheet({ locale }: { locale: string }) {
     await connection();
   }
 
-  return <Board agents={agents} error={error} locale={locale} />;
+  return <Board agents={agents} error={error} locale={locale} opening={opening} />;
 }
