@@ -977,3 +977,97 @@ WHAT THIS DOES NOT COVER
   Nothing was measured on a real phone, and no first-paint timing was taken for
   this order: the AI-use sheet is the same one query per sheet the other chips
   make, with two more clauses in the where.
+
+
+================================================================================
+HOME SPEED, AND A CALIBRATION AGAINST THE LIVE SITE, 2026-09-25
+================================================================================
+
+WHAT CHANGED
+
+  The Verify link in the header and the Verify tab on the phone bar no longer
+  fetch their page when they come into view. They fetch it on intent: a pointer
+  over them, focus, or a touch. Explore does the same, because the live home
+  page fetched Explore's payload and code by 2.4 s on a phone (one Lighthouse
+  run of https://moolam.vercel.app/en, before any change). Agents and Docs were not fetched
+  in the first five seconds on a phone and stay as they were. The switch is the
+  one in Next 16.3.4's own guide (dist/docs/01-app/02-guides/prefetching.md,
+  "Hover-triggered prefetch"): prefetch false until intent, then null.
+
+  Vercel Analytics and Speed Insights mount once the page has painted and gone
+  idle (requestIdleCallback, 4 s timeout, a 2 s timer where there is none), and
+  their code comes in by import(), so it is a chunk of its own
+  (0xyns2el6b-tm.js in this build) and no longer part of the layout's script.
+  The Speed Insights script (/_vercel/speed-insights/script.js, byte for byte
+  the same as va.vercel-scripts.com/v1/speed-insights/script.js, sha256
+  c7037207...564f5b) is web-vitals, and its observe helper at byte 2083 reads
+  r.observe(Object.assign({type:e,buffered:!0},n||{})); FCP calls it with
+  "paint" (byte 3365) and LCP with "largest-contentful-paint" (byte 9113), so a
+  paint that happened before the script arrived is still reported.
+
+MEASURED WITH
+
+  NEXT_DIST_DIR=.next-wo151 next build, exit 0, then next start -p 3485.
+  node packages/web/scripts/perf/lighthouse.mjs --base <base> --profile mobile
+    --paths /en,/en/docs --runs 3        (middle of three per page)
+  The local /en/docs is the calibration page: unchanged since the live build.
+
+  Pass 1, 18:45 to 18:50
+  page                    score   LCP      TBT      JS
+  local /en                  83   4525ms    61ms   339 kB
+  local /en/docs             82   4969ms    39ms   464 kB
+  live  /en                  69   2919ms   699ms   782 kB
+  live  /en/docs             72   3083ms   994ms   508 kB
+
+  Pass 2, 18:51 to 18:55, the same four again
+  page                    score   LCP      TBT      JS
+  local /en                  82   4537ms   105ms   339 kB
+  local /en/docs             82   4889ms    50ms   464 kB
+  live  /en                  79   1720ms   569ms   781 kB
+  live  /en/docs            100   1717ms    18ms   508 kB
+
+  Lighthouse's CPU benchmark on the last run of each page: pass 1 local 3624
+  and 3576, live 2796 and 1622; pass 2 local 2858 and 3268, live 2991 and 3532.
+  The live docs run in pass 1 was taken with the machine at under half its
+  usual speed (other sessions were running), which is where its 994 ms of TBT
+  came from. Pass 2 is the steady one, and it agrees with the live docs reading
+  of 2026-09-17 (99, 1879 ms).
+
+THE GAP, AND WHAT IT PREDICTS
+
+  On /en/docs, pass 2: local 82 and 4889 ms, live 100 and 1717 ms. Live scores
+  18 points higher and paints 3.2 s sooner (LCP a third of the local figure).
+  Local /en is 82 on the same pass, the same as local docs, so on that gap the
+  new home page would score at the top of the scale live: 95 to 100, with a
+  simulated LCP near 1.6 s. The old home page live is 79 in the same pass.
+  On pass 1's gap (10 points the other way) the prediction would be 73; that
+  gap came from a slowed machine, not the page, and is not the one to use.
+
+AGAINST THE EARLIER BUILD OF THE SAME DAY, SAME MACHINE
+
+  local /en then: 84, LCP 4382 ms, JS 490 kB over 26 scripts.
+  local /en now:  83 and 82, LCP 4525 and 4537 ms, JS 339 kB over 18 scripts.
+  151 kB and 8 scripts fewer, and no route prefetch at all on a phone in the
+  first seconds (network log of the last run: the only _rsc requests are /en's
+  own two). The local score did not move: the simulated LCP is still the h1
+  behind every script asked for before it, which is the local artefact the
+  gap above measures.
+
+INTENT, IN A REAL BROWSER ON THIS BUILD
+
+  Headless Chrome, guide already seen, route fetches recorded:
+  375x812, 7 s after load: none. Touch on the Verify tab: /en/verify. Pointer
+  on the Explore tab: /en/explore.
+  1440x900, 7 s after load: /en/agents, /en/docs and one passport. Pointer on
+  the header Verify: /en/verify. Focus on the header Explore: /en/explore.
+  On a first visit the guide's scrim covers the page, so a pointer reaches
+  nothing under it; focus still fetches.
+
+WHAT THIS DOES NOT COVER
+
+  The analytics mount was not seen in production: the layout only mounts it
+  where VERCEL=1, so a local build never draws it. The unit tests cover the
+  idle wait and the timer. That Speed Insights still reports FCP and LCP rests
+  on the buffered flag cited above, not on a live dashboard reading.
+  The prediction is one calibration pair on one evening; a live reading after
+  the next deploy is the proof.

@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { hasLocale } from "next-intl";
 import { getMessages, getTimeZone, getTranslations, setRequestLocale } from "next-intl/server";
 import { Suspense, type ReactNode } from "react";
@@ -10,7 +8,8 @@ import { LocaleSwitch, PageAddress } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ShowGuideAgain } from "@/components/guide/ShowGuideAgain";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { BottomBar } from "@/components/shell/BottomBar";
+import { BottomBar, IntentLink } from "@/components/shell/BottomBar";
+import { LateInsights } from "@/components/shell/LateInsights";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import type { Tab } from "@/components/shell/tabs";
 import { IntlProvider } from "@/components/providers/IntlProvider";
@@ -127,15 +126,21 @@ export default async function LocaleLayout({
   // prefetch, a reader of any other page quietly pulls half a megabyte of a
   // screen they may never open, so that link is fetched when it is clicked.
   //
+  // Verify and Explore are fetched on intent, the way the phone's tabs are
+  // (see IntentLink): Verify's page carries the whole check, and both landed
+  // inside the first seconds of the home page when fetched on sight. Agents and
+  // Docs stay as they were: neither was fetched in the home page's first five
+  // seconds on a phone.
+  //
   // The last two carry the name the first visit guide points at, the same names
   // the phone's tabs carry below. Only one of the two is ever on the screen, so
   // the guide can look for the name and take whichever answers.
   const nav = [
     { href: "/", label: t("nav.home"), prefetch: undefined, anchor: undefined },
-    { href: "/explore", label: t("nav.explore"), prefetch: undefined, anchor: undefined },
+    { href: "/explore", label: t("nav.explore"), prefetch: "intent", anchor: undefined },
     { href: "/agents", label: t("nav.agents"), prefetch: undefined, anchor: undefined },
     { href: "/docs", label: t("nav.docs"), prefetch: undefined, anchor: undefined },
-    { href: "/verify", label: t("nav.verify"), prefetch: undefined, anchor: "verify" },
+    { href: "/verify", label: t("nav.verify"), prefetch: "intent", anchor: "verify" },
     { href: "/studio", label: t("nav.studio"), prefetch: false, anchor: "studio" },
   ] as const;
 
@@ -233,17 +238,28 @@ export default async function LocaleLayout({
                         bar did not have, and at 20 px between links the language
                         and theme chips dropped to a second row. */}
                     <nav className="ml-auto hidden items-center gap-4 text-sm md:flex">
-                      {nav.map((item) => (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          prefetch={item.prefetch}
-                          data-guide-anchor={item.anchor}
-                          className="tap text-text-muted transition-colors duration-200 hover:text-accent"
-                        >
-                          {item.label}
-                        </Link>
-                      ))}
+                      {nav.map((item) =>
+                        item.prefetch === "intent" ? (
+                          <IntentLink
+                            key={item.href}
+                            href={item.href}
+                            data-guide-anchor={item.anchor}
+                            className="tap text-text-muted transition-colors duration-200 hover:text-accent"
+                          >
+                            {item.label}
+                          </IntentLink>
+                        ) : (
+                          <Link
+                            key={item.href}
+                            href={item.href}
+                            prefetch={item.prefetch}
+                            data-guide-anchor={item.anchor}
+                            className="tap text-text-muted transition-colors duration-200 hover:text-accent"
+                          >
+                            {item.label}
+                          </Link>
+                        ),
+                      )}
                       {/* The way back to your own pictures. Everyone gets it,
                           signed in or not: a first visitor should be able to see
                           that the page exists, and pressing it signed out lands
@@ -355,14 +371,9 @@ export default async function LocaleLayout({
             </LenisProvider>
           </IntlProvider>
         </ThemeProvider>
-        {/* Both mount after the page and fetch their script with defer, so
-            neither is on the path to the first paint. */}
-        {counted ? (
-          <>
-            <Analytics />
-            <SpeedInsights />
-          </>
-        ) : null}
+        {/* Vercel's counter and Speed Insights, mounted once the page has
+            painted and gone idle, with their code in a chunk of its own. */}
+        {counted ? <LateInsights /> : null}
       </body>
     </html>
   );

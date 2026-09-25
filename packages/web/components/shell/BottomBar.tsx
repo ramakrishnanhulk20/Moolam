@@ -1,12 +1,68 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { progress } from "@/components/story/signals";
 import { Link, usePathname } from "@/lib/i18n/routing";
 import { TabMark } from "./TabMark";
-import { BAR_HEIGHT, activeTab, barShown, type Tab } from "./tabs";
+import { BAR_HEIGHT, activeTab, barShown, type Tab, type TabKey } from "./tabs";
+
+/**
+ * The tabs whose page is fetched when a thumb or a pointer reaches for it,
+ * rather than the moment the bar is drawn.
+ *
+ * Verify's page brings the whole check with it (viem, the verify client, the
+ * consent ABI, noble), and a tab in view pulled all of it into the first
+ * seconds of the home page on a phone, where Lighthouse counts it. Explore's
+ * payload and code landed by 2.4 s on the live home page on 25 September. The
+ * two wallet tabs are never fetched at all and stay that way.
+ */
+const ON_INTENT: ReadonlySet<TabKey> = new Set<TabKey>(["explore", "verify"]);
+
+/**
+ * A link that fetches its page once a reader shows they are about to open it:
+ * a pointer over it, focus on it, or a thumb landing on it.
+ *
+ * This is the switch Next 16's own prefetching guide gives: hold prefetch off,
+ * then hand it back to Next's default (null) on intent. Next then sees a link
+ * in view that may prefetch and fetches it straight away, a few hundred
+ * milliseconds before the click lands.
+ */
+export function IntentLink({
+  onPointerEnter,
+  onFocus,
+  onTouchStart,
+  ...rest
+}: Omit<ComponentProps<typeof Link>, "prefetch">) {
+  const [wanted, setWanted] = useState(false);
+  return (
+    <Link
+      {...rest}
+      prefetch={wanted ? null : false}
+      onPointerEnter={(event) => {
+        onPointerEnter?.(event);
+        setWanted(true);
+      }}
+      onFocus={(event) => {
+        onFocus?.(event);
+        setWanted(true);
+      }}
+      onTouchStart={(event) => {
+        onTouchStart?.(event);
+        setWanted(true);
+      }}
+    />
+  );
+}
+
+/** A tab's link, fetched on intent when the tab is one of ON_INTENT and as its own flag says otherwise. */
+function TabLink({ tab, ...rest }: { tab: Tab } & Omit<ComponentProps<typeof Link>, "href" | "prefetch">) {
+  if (tab.prefetch !== false && ON_INTENT.has(tab.key)) {
+    return <IntentLink href={tab.href} {...rest} />;
+  }
+  return <Link href={tab.href} prefetch={tab.prefetch} {...rest} />;
+}
 
 /** Flat is five equal tabs. Raised lifts the middle one onto a disc above the bar. */
 export type BarShape = "flat" | "raised";
@@ -187,9 +243,8 @@ export function BottomBar({
  */
 function FlatTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduced: boolean }) {
   return (
-    <Link
-      href={tab.href}
-      prefetch={tab.prefetch}
+    <TabLink
+      tab={tab}
       aria-current={active ? "page" : undefined}
       data-tab={tab.key}
       data-guide-anchor={tab.anchor}
@@ -205,7 +260,7 @@ function FlatTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduced:
       <span className="max-w-full truncate px-0.5 font-mono text-[10px] uppercase leading-none tracking-[0.1em]">
         {tab.label}
       </span>
-    </Link>
+    </TabLink>
   );
 }
 
@@ -219,9 +274,8 @@ function FlatTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduced:
  */
 function RaisedTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduced: boolean }) {
   return (
-    <Link
-      href={tab.href}
-      prefetch={tab.prefetch}
+    <TabLink
+      tab={tab}
       aria-current={active ? "page" : undefined}
       data-tab={tab.key}
       data-guide-anchor={tab.anchor}
@@ -242,7 +296,7 @@ function RaisedTab({ tab, active, reduced }: { tab: Tab; active: boolean; reduce
       >
         {tab.label}
       </span>
-    </Link>
+    </TabLink>
   );
 }
 
