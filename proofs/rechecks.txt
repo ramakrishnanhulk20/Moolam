@@ -93,4 +93,4 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 before, 1 after
-With this, every one of the nineteen real pictures on the registry carries a re-check, two of them written by the private workflow through the sealed receiver.
+With this, every one of the seventeen real pictures on the registry carries a re-check, one of them written by the private workflow through the sealed receiver (counted on 2026-09-25 at index block 107,960,831, after Iphone 18 pro max and Old but strong were counted as test images).

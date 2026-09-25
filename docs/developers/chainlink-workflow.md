@@ -145,7 +145,7 @@ true and distance 0.
 
 ## What is on chain today
 
-The nineteen re-checks on the nineteen real pictures (seven on 2026-09-14, seven on 2026-09-17, two on 2026-09-23, one of those on a picture registered sealed and published later by its holder, and three on 2026-09-25, two of them by the private workflow through its own receiver, described below) were all written this way: `cre workflow simulate
+The seventeen re-checks on the seventeen real pictures, counted on 2026-09-25 at index block 107,960,831 (seven on 2026-09-14, seven on 2026-09-17, one on 2026-09-23, and two on 2026-09-25, one of them by the private workflow through its own receiver, described below), were all written this way: `cre workflow simulate
 --broadcast`, the receiver pointed at the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`
 for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
 by the four steps above. They are real transactions with real gas, and they prove the workflow code and

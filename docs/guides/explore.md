@@ -26,7 +26,7 @@ to be exact. The endpoint exposes no aggregate to ask instead. An index that doe
 last counter leaves it out rather than printing a zero, which would read as a registry where nobody
 has spoken.
 
-Under them, one line says how the registry divides: "7 pictures / 22 test images". That number is
+Under them, one line says how the registry divides: "17 pictures / 24 test images". That number is
 read the only way it can be, by fetching each pinned metadata document for its title, capped at the
 newest two hundred, and a read that hit the cap says so in the line.
 
@@ -137,7 +137,7 @@ letter along with the other three.
 It is never given "No picture on the gateway". That sentence belongs to a published picture the
 gateway would not serve, and the two states must not read the same.
 
-The counts and the "7 pictures / 22 test images" line are unchanged. The index does not carry
+The counts and the "17 pictures / 24 test images" line are unchanged. The index does not carry
 whether a passport is sealed, so the split cannot count sealed records separately without a change
 to the index's schema: a sealed record counts as a picture there, which is what it is.
 

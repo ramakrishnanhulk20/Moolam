@@ -78,7 +78,8 @@ later one 91,036, and stating one policy across 32 pictures in a single call is 
 creator nothing, and reading what a passport allowed on any date is an `eth_call` that costs nobody
 anything at all.
 
-Thirteen real pictures carry a statement today. Eleven were written on 2026-09-18 in three sponsored
+Fifteen real pictures carry a statement, counted on 2026-09-25 at index block 107,961,293: the thirteen
+below and two written on 2026-09-25. Eleven were written on 2026-09-18 in three sponsored
 transactions, and two more on 2026-09-20 by a person signing with a real passkey: one from the
 control on a passport page, and one from the studio at the moment of making, where the statement
 landed 23 blocks and seven seconds after the registration. The transaction hashes and the reads back
