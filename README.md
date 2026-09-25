@@ -19,6 +19,17 @@
 
 ---
 
+## Chainlink CRE in two minutes
+
+Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's agent trust scores are counted from those opinions. The workflow wakes on a `PassportRegistered` log, reads the passport from Monad, fetches the picture from IPFS, decodes it and recomputes its fingerprint inside the workflow, reaches consensus on the verdict, and writes it back to Monad through `MoolamReceiver`.
+
+- **See one.** [Monsoon Fishing Nets Drying](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and its report [`0x59e6a8d5…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa): the passport card shows the verdict, the distance and the transaction.
+- **See the private one.** [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4) was never published. The confidential workflow (`handlerInTee`) fetched a private copy with a secret and wrote its report [`0xa38fd971…c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954) through a second receiver.
+- **Run one yourself.** With the CRE CLI signed in (`cre login`), this dry run sends nothing:
+  `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive --trigger-index 0 --evm-tx-hash <a PassportRegistered tx> --evm-event-index 0`, from `packages/workflow`.
+- **The code.** [`packages/workflow/moolam-verifier`](packages/workflow/moolam-verifier) (public) and [`packages/workflow/moolam-sealed-verifier`](packages/workflow/moolam-sealed-verifier) (confidential), with the full walk-through in [the Chainlink workflow page](https://moolam.vercel.app/en/docs/developers/chainlink-workflow).
+- **Where it stands.** All 17 real pictures, and 20 passports in all, carry a re-check written on Monad mainnet (index census, 2026-09-25). Every report was sent with `cre workflow simulate --broadcast` through the CRE simulation forwarder, because Moolam's CRE organisation does not have deploy access yet. Each passport card says so in plain words.
+
 ## Live on Monad mainnet
 
 Chain 143. The first three were deployed in block 103054771 and MoolamConsent in block 105828247, all verified on MonadVision through Sourcify.

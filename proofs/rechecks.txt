@@ -82,7 +82,7 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 
 sealed receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x64323036636163326334
 attestation counts: 0 before, 1 after
-With this, every one of the eighteen real pictures on the registry carries a re-check, two of them written by the private workflow through the sealed receiver.
+With this, every one of the eighteen real pictures then on the registry carried a re-check, two of them written by the private workflow through the sealed receiver.
 
 Chainlink CRE re-check on Chettinad Courtyard Before the Monsoon, drawn by agent 10249 and registered through the studio on 2026-09-25, written 2026-09-25
 Same registry, receiver, workflow and simulation forwarder as the public runs above; run from the maintainer's machine; event index 1 of the studio registration.
