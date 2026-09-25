@@ -2,7 +2,7 @@
 
 import { useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import type { CSSProperties } from "react";
+import { useState, type CSSProperties } from "react";
 import { Link } from "@/lib/i18n/routing";
 
 /** How far the buttons trail the label, in milliseconds. The film's own stagger. */
@@ -20,6 +20,13 @@ const TRAIL = 100;
 export function HeroCredits({ entered }: { entered: boolean }) {
   const t = useTranslations("home.hero");
   const reduced = useReducedMotion();
+  const [risen, setRisen] = useState(false);
+
+  // The first screen has painted its words once the title has settled and the
+  // two calls under it have finished rising, and this is the one place that
+  // knows both. The first-visit guide waits for the mark: on a slow phone it
+  // used to arrive seconds before the hero it introduces, over a black page.
+  const painted = entered && (reduced === true || risen);
 
   // Someone who has asked for less motion is simply given the block. Everyone
   // else gets the film's own rise, started the moment the title has settled.
@@ -39,7 +46,7 @@ export function HeroCredits({ entered }: { entered: boolean }) {
   const row = enter(TRAIL);
 
   return (
-    <div className="pointer-events-none w-fit">
+    <div className="pointer-events-none w-fit" data-hero-shown={painted ? "true" : undefined}>
       <p
         className={`font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint ${label.className}`}
         style={label.style}
@@ -49,13 +56,23 @@ export function HeroCredits({ entered }: { entered: boolean }) {
       <div
         className={`mt-4 flex flex-wrap items-center gap-2 sm:gap-3 ${row.className}`}
         style={row.style}
+        onAnimationEnd={(event) => {
+          if (event.target === event.currentTarget) {
+            setRisen(true);
+          }
+        }}
       >
         {/* The studio carries the wallet SDK. Left to prefetch, it would pull
             about 130 kB of it behind every reading of the film, so it loads on
-            the tap. The query opens the studio on the generate panel. */}
+            the tap. The query opens the studio on the generate panel.
+
+            data-hero-call is what the first-visit guide reads to keep its card
+            off these two: a visitor it has just told what the site does must
+            still be able to press the button that does it. */}
         <Link
           href={{ pathname: "/studio", query: { mode: "generate" } }}
           prefetch={false}
+          data-hero-call="generate"
           className="group pointer-events-auto inline-flex items-center gap-2 rounded-[8px] bg-accent px-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
         >
           {t("generate")}
@@ -65,6 +82,7 @@ export function HeroCredits({ entered }: { entered: boolean }) {
         </Link>
         <Link
           href="/verify"
+          data-hero-call="verify"
           className="pointer-events-auto rounded-[8px] border border-line px-2 py-2.5 text-[10px] uppercase tracking-[0.06em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
         >
           {t("verify")}

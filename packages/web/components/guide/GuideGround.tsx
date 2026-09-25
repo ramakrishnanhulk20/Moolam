@@ -6,6 +6,17 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { lockPage, tabTarget } from "./focus";
 
 export type GuideStage = "window" | "frame";
+
+/**
+ * The classes that make the guide dark whatever the page under it is set to.
+ *
+ * The first swaps every colour token for everything inside it. It cannot swap
+ * the ink a child inherits, though: the body's colour was worked out against
+ * the light palette before it was handed down, so a heading with no colour of
+ * its own came out as the light theme's black on the guide's black card. The
+ * second class makes the scope work its own ink out again, from its own tokens.
+ */
+export const GUIDE_SCOPE = "dark text-text";
 export type GuideClose = "skip" | "ground" | "escape" | "done" | "go";
 
 /**
@@ -61,12 +72,11 @@ export function GuideGround({
   return (
     // The guide carries the dark palette whatever the page under it is set to,
     // for the same reason the film does: it is laid on a scrim, and the light
-    // theme's ink on that scrim is black on black. The one class swaps every
-    // colour token for everything inside it.
+    // theme's ink on that scrim is black on black.
     <AnimatePresence>
       {open ? (
         <div
-          className={`dark ${stage === "window" ? "fixed z-[70]" : "absolute z-30"} inset-0`}
+          className={`${GUIDE_SCOPE} ${stage === "window" ? "fixed z-[70]" : "absolute z-30"} inset-0`}
           onKeyDown={onKey}
           data-guide-open
         >

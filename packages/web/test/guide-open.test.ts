@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Fragment, act, createElement, type FunctionComponent, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { GUIDE_SEEN_KEY, RETURNING_KEY } from "@/components/guide/seen";
@@ -77,8 +77,10 @@ function wrap(node: ReactNode) {
 async function mount(node: ReactNode): Promise<HTMLDivElement> {
   const host = document.createElement("div");
   document.body.append(host);
+  const root = createRoot(host);
+  roots.push(root);
   await act(async () => {
-    createRoot(host).render(wrap(node));
+    root.render(wrap(node));
   });
   return host;
 }
@@ -155,6 +157,11 @@ function buttonNamed(host: HTMLElement, label: string): HTMLButtonElement {
 }
 
 beforeEach(() => {
+  // The walk waits for the home page's hero to have painted its words. These
+  // cases are about who is let in, so every page here has already painted.
+  const hero = document.createElement("div");
+  hero.setAttribute("data-hero-shown", "true");
+  document.body.append(hero);
   window.localStorage.clear();
   here.path = "/";
   vi.stubGlobal("matchMedia", (query: string) => ({
@@ -169,7 +176,16 @@ beforeEach(() => {
   }));
 });
 
+// The walk measures on every animation frame, so a root left mounted keeps
+// rendering into the next test, after its stand-ins have been taken away.
+const roots: Root[] = [];
+
 afterEach(() => {
+  act(() => {
+    for (const root of roots.splice(0)) {
+      root.unmount();
+    }
+  });
   vi.unstubAllGlobals();
   document.body.innerHTML = "";
 });

@@ -28,6 +28,40 @@ function marksChanged(): void {
 }
 
 /**
+ * Whether the home page's first screen has painted its words.
+ *
+ * The hero's credit block raises the mark once its title has settled and its
+ * two calls have finished rising. The walk introduces that screen, so it waits
+ * for it: on a slow phone the walk used to open 3.7 seconds before the hero,
+ * over a black page, and dim the hero's arrival when it came.
+ *
+ * Read the way the bottom bar reads the film, by looking at the page on each
+ * animation frame, and only while the walk is waiting to open. Once the mark
+ * has been seen the looking stops for good.
+ */
+function useHeroPainted(wanted: boolean): boolean {
+  const [painted, setPainted] = useState(false);
+
+  useEffect(() => {
+    if (!wanted || painted) {
+      return;
+    }
+    let frame = 0;
+    const look = () => {
+      if (document.querySelector("[data-hero-shown]") !== null) {
+        setPainted(true);
+        return;
+      }
+      frame = requestAnimationFrame(look);
+    };
+    frame = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(frame);
+  }, [wanted, painted]);
+
+  return painted;
+}
+
+/**
  * The first visit guide, as it ships: three steps over the real page, once per
  * device.
  *
@@ -36,6 +70,9 @@ function marksChanged(): void {
  * guessed would hand React a tree that does not match the one it is hydrating.
  * useSyncExternalStore is how the rest of this app reads a browser only fact:
  * the server snapshot is "no", the real one lands in the pass straight after.
+ *
+ * It opens only once the hero it introduces is on the screen: see
+ * useHeroPainted above.
  *
  * Every way out writes the mark, including following a step's link, so nobody
  * is asked twice. The footer entry forgets the mark and shouts, or, from
@@ -72,7 +109,8 @@ export function FirstVisitGuide() {
 
   // A lab page is a bench for the product itself, and a guide laid over one
   // helps nobody. It is the one place the footer entry is deliberately quiet.
-  const open = !onLabPage(path) && (asked || first === "yes");
+  const wanted = !onLabPage(path) && (asked || first === "yes");
+  const open = useHeroPainted(wanted) && wanted;
 
   return <GuideWalk open={open} onClose={close} />;
 }

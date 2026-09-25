@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, createElement, type FunctionComponent, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { reachableIn, lockPage, tabTarget } from "@/components/guide/focus";
 import { guideKeys } from "@/components/guide/steps";
@@ -44,7 +44,16 @@ beforeEach(() => {
   }));
 });
 
+// The walk measures on every animation frame, so a root left mounted keeps
+// rendering into the next test, after its stand-ins have been taken away.
+const roots: Root[] = [];
+
 afterEach(() => {
+  act(() => {
+    for (const root of roots.splice(0)) {
+      root.unmount();
+    }
+  });
   vi.unstubAllGlobals();
   document.body.innerHTML = "";
 });
@@ -74,8 +83,10 @@ const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
 async function mount(node: ReactNode): Promise<HTMLDivElement> {
   const host = document.createElement("div");
   document.body.append(host);
+  const root = createRoot(host);
+  roots.push(root);
   await act(async () => {
-    createRoot(host).render(
+    root.render(
       createElement(Provider, { locale: "en", messages: guideMessages(), timeZone: "Asia/Kolkata" }, node as never),
     );
   });

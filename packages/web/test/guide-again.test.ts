@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Fragment, act, createElement, type FunctionComponent, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { GUIDE_SEEN_KEY, RETURNING_KEY } from "@/components/guide/seen";
 import { guideKeys } from "@/components/guide/steps";
@@ -56,8 +56,10 @@ const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
 async function mount(node: ReactNode): Promise<HTMLDivElement> {
   const host = document.createElement("div");
   document.body.append(host);
+  const root = createRoot(host);
+  roots.push(root);
   await act(async () => {
-    createRoot(host).render(
+    root.render(
       createElement(
         Provider,
         { locale: "en", messages: guideMessages(), timeZone: "Asia/Kolkata" },
@@ -107,6 +109,11 @@ function refuseSessionStorage(): void {
 }
 
 beforeEach(() => {
+  // The walk waits for the home page's hero to have painted its words. These
+  // cases are about who is let in, so every page here has already painted.
+  const hero = document.createElement("div");
+  hero.setAttribute("data-hero-shown", "true");
+  document.body.append(hero);
   window.localStorage.clear();
   window.sessionStorage.clear();
   here.path = "/";
@@ -123,7 +130,16 @@ beforeEach(() => {
   }));
 });
 
+// The walk measures on every animation frame, so a root left mounted keeps
+// rendering into the next test, after its stand-ins have been taken away.
+const roots: Root[] = [];
+
 afterEach(() => {
+  act(() => {
+    for (const root of roots.splice(0)) {
+      root.unmount();
+    }
+  });
   if (realSessionStorage !== undefined) {
     Object.defineProperty(window, "sessionStorage", realSessionStorage);
   }

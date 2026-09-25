@@ -7,6 +7,7 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { GuideGround, type GuideClose, type GuideStage } from "./GuideGround";
 import { GuideMarkDrawing } from "./marks";
+import { HANG, cardWidth, placeCard, type Box, type Placement } from "./place";
 import { guideSteps, nextStep } from "./steps";
 
 /** The box the guide is drawn in: the window, or a bench's mock window. */
@@ -26,7 +27,18 @@ export interface Spot {
 }
 
 const PAD = 8;
-const CARD = 320;
+
+/** What the walk has measured: the stage, the light, and where the card goes once it can be placed. */
+interface View {
+  room: { width: number; height: number };
+  spot: Spot | null;
+  place: Placement | null;
+}
+
+/** The phone's home indicator strip, read off the padding the wrapper asks CSS for. */
+function safeBottom(node: HTMLElement | null): number {
+  return node === null ? 0 : Number.parseFloat(window.getComputedStyle(node).paddingBottom) || 0;
+}
 
 /**
  * How long the walk waits for a step's anchor before deciding it is not on this
@@ -87,11 +99,27 @@ export function spotFor(
   };
 }
 
-/** One spot as a string, so a rect that has not moved costs nothing. */
-function same(spot: Spot | null): string {
-  return spot === null
-    ? "none"
-    : `${spot.x} ${spot.y} ${spot.width} ${spot.height}`;
+/**
+ * The hero's two calls, where a reader can see them, measured against the stage.
+ *
+ * A call the film has faded out while being scrolled is left out: the card
+ * only has to stay off what a visitor could actually press. Opacity is asked
+ * of the browser where it can answer, and a browser that cannot is taken at
+ * its word that the call is there.
+ */
+export function heroCalls(root: ParentNode, origin: Stage): Box[] {
+  return [...root.querySelectorAll<HTMLElement>("[data-hero-call]")]
+    .filter(onScreen)
+    .filter((node) => typeof node.checkVisibility !== "function" || node.checkVisibility({ opacityProperty: true }))
+    .map((node) => {
+      const box = node.getBoundingClientRect();
+      return {
+        x: Math.round(box.left - origin.left),
+        y: Math.round(box.top - origin.top),
+        width: Math.round(box.width),
+        height: Math.round(box.height),
+      };
+    });
 }
 
 /**
@@ -117,13 +145,11 @@ export function GuideWalk({
   const t = useTranslations("guide");
   const reduced = useIsReducedMotion();
   const [index, setIndex] = useState(0);
-  const [spot, setSpot] = useState<Spot | null>(null);
   // null until the walk has looked at least once. Nothing may be drawn before
   // that: see the note on measured below.
-  const [room, setRoom] = useState<{ width: number; height: number } | null>(
-    null,
-  );
+  const [view, setView] = useState<View | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
+  const holder = useRef<HTMLDivElement>(null);
 
   const step = guideSteps[index];
 
@@ -134,7 +160,7 @@ export function GuideWalk({
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) {
-      setRoom(null);
+      setView(null);
       if (index !== 0) {
         setIndex(0);
       }
@@ -142,15 +168,16 @@ export function GuideWalk({
   }
 
   // Measuring is the one thing that cannot be done while rendering: the step has
-  // to be on the screen before its box can be read.
+  // to be on the screen before its box can be read, and so does the card, whose
+  // height decides where it can go.
   //
   // It keeps looking, every frame, because the thing being pointed at moves. The
   // bottom bar slides up from its own height when it arrives, so a single
   // measurement on open put the light 56 px below the tab on a phone, under the
-  // very tab it was meant to be lighting. A frame whose rect has not changed
-  // costs one getBoundingClientRect and no render at all, so the loop is quiet
-  // the moment the page settles, and this is also what handles a resize, a
-  // rotation and a header that rearranges itself on the way down to a phone.
+  // very tab it was meant to be lighting. A frame where nothing has changed
+  // costs a few box reads and no render at all, so the loop is quiet the moment
+  // the page settles, and this is also what handles a resize, a rotation and a
+  // header that rearranges itself on the way down to a phone.
   useEffect(() => {
     if (!open) {
       return;
@@ -174,20 +201,35 @@ export function GuideWalk({
             }
           : frameNode.getBoundingClientRect();
 
-      {
-        const next = spotFor(
-          step.anchor,
-          scope?.current ?? document.body,
-          origin,
-        );
-        // Nothing found, and it may still be on its way: the bottom bar mounts
-        // a moment after the page does and wakes a moment after that. Say
-        // nothing rather than say the wrong thing.
-        const waiting = next === null && performance.now() - from < PATIENCE;
-        if (!waiting && same(next) !== held) {
-          held = same(next);
-          setRoom({ width: origin.width, height: origin.height });
-          setSpot(next);
+      const root = scope?.current ?? document.body;
+      const spot = spotFor(step.anchor, root, origin);
+      // Nothing found, and it may still be on its way: the bottom bar mounts
+      // a moment after the page does and wakes a moment after that. Say
+      // nothing rather than say the wrong thing.
+      const waiting = spot === null && performance.now() - from < PATIENCE;
+      if (!waiting) {
+        const room = { width: origin.width, height: origin.height };
+        // The card is drawn unseen at its real width first, because its height
+        // is what decides where it can go. Until it has been measured it has
+        // no place, and a card with no place is not shown.
+        const card = holder.current;
+        const place =
+          card === null
+            ? null
+            : placeCard({
+                stage: room,
+                spot,
+                height: card.offsetHeight,
+                safeBottom: safeBottom(wrap.current),
+                keepClear: heroCalls(root, origin),
+              });
+        // One string for the whole view, so a frame where nothing moved
+        // costs a comparison and no render.
+        const next: View = { room, spot, place };
+        const key = JSON.stringify(next);
+        if (key !== held) {
+          held = key;
+          setView(next);
         }
       }
       frame = requestAnimationFrame(look);
@@ -212,44 +254,9 @@ export function GuideWalk({
   // second while the first was still being measured moved it across the window a
   // frame later: one layout shift of 0.174 on the home page, the whole of that
   // page's score, for a card that had simply been drawn too early.
-  const measured = room !== null;
-  const width = room?.width ?? 0;
-  const height = room?.height ?? 0;
-
-  // Under the light when there is room, over it when there is not, and never
-  // off the side of the screen. With nothing lit the card goes to the bottom
-  // middle, where a sheet on a phone would be.
-  //
-  // The placement is carried as a transform rather than as top and left. The
-  // card follows the light, and the light follows a bottom bar that slides up
-  // from its own height as it arrives, so a card placed with top moved with it
-  // and the browser counted every frame of that as the page shifting under the
-  // reader: 0.015 on a phone. A transform moves nothing as far as layout is
-  // concerned, which is why the spotlight itself never cost anything.
-  const below = spot !== null && spot.y + spot.height + 190 < height;
-  const cardWidth = Math.min(CARD, Math.max(240, width - 32));
-  const anchored =
-    spot === null
-      ? {
-          bottom: "calc(24px + env(safe-area-inset-bottom))",
-          left: Math.max(16, width / 2 - cardWidth / 2),
-        }
-      : { top: 0, left: 0 };
-  const carried =
-    spot === null
-      ? { x: 0, y: 0 }
-      : {
-          x: Math.min(
-            Math.max(16, spot.x - 12),
-            Math.max(16, width - cardWidth - 16),
-          ),
-          y: below ? spot.y + spot.height + 26 : Math.max(16, spot.y - 210),
-        };
-
-  const counter = t("step", {
-    shown: String(index + 1).padStart(2, "0"),
-    total: String(guideSteps.length).padStart(2, "0"),
-  });
+  const measured = view !== null;
+  const spot = view?.spot ?? null;
+  const place = view?.place ?? null;
 
   return (
     <>
@@ -273,7 +280,13 @@ export function GuideWalk({
         closeOnGround={false}
         label={t("dialog")}
       >
-        <div ref={wrap} className="absolute inset-0">
+        {/* The padding is never seen: it is how the loop learns the height of
+            the phone's home indicator strip, which only CSS can read. */}
+        <div
+          ref={wrap}
+          className="absolute inset-0"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        >
           {/* The dim is this element's own shadow, so the hole in it is the real
             control, sharp and in its own place on the page. */}
           <motion.div
@@ -305,7 +318,7 @@ export function GuideWalk({
           />
 
           {/* The hairline from the light down to the words, so the two read as one thing. */}
-          {spot !== null && below ? (
+          {spot !== null && place !== null && place.below ? (
             <motion.span
               aria-hidden
               initial={{ opacity: 0 }}
@@ -314,110 +327,169 @@ export function GuideWalk({
               style={{
                 left: spot.x + 16,
                 top: spot.y + spot.height,
-                height: 26,
+                height: HANG,
               }}
             />
           ) : null}
 
+          {/* The placement is carried as a transform rather than as top and
+              left. The card follows the light, and the light follows a bottom
+              bar that slides up from its own height as it arrives, so a card
+              placed with top moved with it and the browser counted every frame
+              of that as the page shifting under the reader: 0.015 on a phone.
+              A transform moves nothing as far as layout is concerned.
+
+              Until it has a place the card is drawn hidden, only so it can be
+              measured. Once placed it is drawn afresh, already where it
+              belongs. A motion element with no starting point of its own
+              starts at nought, the top left corner of the screen, which is
+              where the card used to be seen for a frame before it slid across
+              the window to its anchor. */}
           <motion.div
-            className="pointer-events-auto absolute"
-            style={{ ...anchored, width: cardWidth }}
-            animate={carried}
+            key={place === null ? "measuring" : "placed"}
+            ref={holder}
+            data-guide-card={place === null ? "measuring" : "placed"}
+            className="pointer-events-auto absolute left-0 top-0"
+            style={{
+              width: place?.width ?? cardWidth(view?.room.width ?? 0),
+              visibility: place === null ? "hidden" : undefined,
+            }}
+            initial={false}
+            animate={place === null ? { x: 0, y: 0 } : { x: place.x, y: place.y }}
             transition={
               reduced
                 ? { duration: 0.2 }
                 : { type: "spring", stiffness: 260, damping: 32 }
             }
           >
-            <motion.div
+            <GuideCard
               key={step.id}
-              initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: reduced ? 0.2 : 0.5,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="rounded-[8px] border border-line bg-[color:var(--bg-raised)] p-5 shadow-[0_24px_60px_rgb(0_0_0/0.5)]"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
-                    {counter}
-                  </p>
-                  <h3 className="mt-2 max-w-[16ch] font-display text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]">
-                    {t(`steps.${step.id}.title`)}
-                  </h3>
-                </div>
-                <GuideMarkDrawing mark={step.mark} reduced={reduced} />
-              </div>
-
-              <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
-                {t(`steps.${step.id}.line`)}
-              </p>
-
-              {spot === null ? (
-                <p className="mt-3 border-t border-line pt-3 text-[12px] leading-relaxed text-text-faint">
-                  {t(`steps.${step.id}.elsewhere`)}
-                </p>
-              ) : null}
-
-              {/* Somebody sold on this step should not have to remember it and find
-              it afterwards, so the step carries its own way there. The mark is
-              written on the way out, like every other close. */}
-              <Link
-                href={step.href}
-                prefetch={false}
-                onClick={() => onClose("go")}
-                className="group mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:text-text focus-visible:text-text"
-              >
-                {t(`steps.${step.id}.action`)}
-                <span
-                  aria-hidden
-                  className="transition-transform duration-200 group-hover:translate-x-1"
-                >
-                  &rarr;
-                </span>
-              </Link>
-
-              <div className="mt-5 flex items-center justify-between gap-4">
-                <span aria-hidden className="flex items-center gap-1.5">
-                  {guideSteps.map((dot, at) => (
-                    <span
-                      key={dot.id}
-                      className={`h-[6px] w-[6px] transition-colors duration-300 ${
-                        at === index ? "bg-accent" : "bg-line-strong"
-                      }`}
-                    />
-                  ))}
-                </span>
-
-                <span className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onClose("skip")}
-                    className="tap rounded-[8px] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-faint transition-colors duration-200 hover:text-accent focus-visible:text-accent"
-                  >
-                    {t("skip")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={forward}
-                    className="tap group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:scale-[1.04] focus-visible:scale-[1.04]"
-                  >
-                    {nextStep(index) === null ? t("done") : t("next")}
-                    <span
-                      aria-hidden
-                      className="transition-transform duration-200 group-hover:translate-x-1"
-                    >
-                      &rarr;
-                    </span>
-                  </button>
-                </span>
-              </div>
-            </motion.div>
+              index={index}
+              lit={spot !== null}
+              reduced={reduced}
+              onClose={onClose}
+              onForward={forward}
+            />
           </motion.div>
         </div>
       </GuideGround>
     </>
+  );
+}
+
+/**
+ * One step's card: what it is called, what it is for, the way there and the
+ * ways on.
+ *
+ * Drawn on its own so it can be rendered without the walk around it, which is
+ * how its ink is checked against both themes in a real browser.
+ */
+export function GuideCard({
+  index,
+  lit,
+  reduced,
+  onClose,
+  onForward,
+}: {
+  index: number;
+  /** False when the step's thing is not on this screen, which the card then says. */
+  lit: boolean;
+  reduced: boolean;
+  onClose: (reason: GuideClose) => void;
+  onForward: () => void;
+}) {
+  const t = useTranslations("guide");
+  const step = guideSteps[index];
+  const counter = t("step", {
+    shown: String(index + 1).padStart(2, "0"),
+    total: String(guideSteps.length).padStart(2, "0"),
+  });
+
+  return (
+    <motion.div
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: reduced ? 0.2 : 0.5,
+        ease: [0.16, 1, 0.3, 1],
+      }}
+      className="rounded-[8px] border border-line bg-[color:var(--bg-raised)] p-5 shadow-[0_24px_60px_rgb(0_0_0/0.5)]"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+            {counter}
+          </p>
+          <h3 className="mt-2 max-w-[16ch] font-display text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]">
+            {t(`steps.${step.id}.title`)}
+          </h3>
+        </div>
+        <GuideMarkDrawing mark={step.mark} reduced={reduced} />
+      </div>
+
+      <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
+        {t(`steps.${step.id}.line`)}
+      </p>
+
+      {!lit ? (
+        <p className="mt-3 border-t border-line pt-3 text-[12px] leading-relaxed text-text-faint">
+          {t(`steps.${step.id}.elsewhere`)}
+        </p>
+      ) : null}
+
+      {/* Somebody sold on this step should not have to remember it and find
+          it afterwards, so the step carries its own way there. The mark is
+          written on the way out, like every other close. */}
+      <Link
+        href={step.href}
+        prefetch={false}
+        onClick={() => onClose("go")}
+        className="group mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:text-text focus-visible:text-text"
+      >
+        {t(`steps.${step.id}.action`)}
+        <span
+          aria-hidden
+          className="transition-transform duration-200 group-hover:translate-x-1"
+        >
+          &rarr;
+        </span>
+      </Link>
+
+      <div className="mt-5 flex items-center justify-between gap-4">
+        <span aria-hidden className="flex items-center gap-1.5">
+          {guideSteps.map((dot, at) => (
+            <span
+              key={dot.id}
+              className={`h-[6px] w-[6px] transition-colors duration-300 ${
+                at === index ? "bg-accent" : "bg-line-strong"
+              }`}
+            />
+          ))}
+        </span>
+
+        <span className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onClose("skip")}
+            className="tap rounded-[8px] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-text-faint transition-colors duration-200 hover:text-accent focus-visible:text-accent"
+          >
+            {t("skip")}
+          </button>
+          <button
+            type="button"
+            onClick={onForward}
+            className="tap group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:scale-[1.04] focus-visible:scale-[1.04]"
+          >
+            {nextStep(index) === null ? t("done") : t("next")}
+            <span
+              aria-hidden
+              className="transition-transform duration-200 group-hover:translate-x-1"
+            >
+              &rarr;
+            </span>
+          </button>
+        </span>
+      </div>
+    </motion.div>
   );
 }
