@@ -7,6 +7,7 @@ import { Link } from "@/lib/i18n/routing";
 import type { CreatorPassports } from "@/lib/studio/useCreatorPassports";
 import { useWide, wideOnly } from "./layout";
 import { useHeadingLeading } from "./leading";
+import { hasPassportEnd, passportEnd, passportEndClasses } from "./passportsEnd";
 
 /**
  * Everything this account has registered, read from the index rather than from
@@ -18,7 +19,8 @@ import { useHeadingLeading } from "./leading";
  * subject it already is, so the two want different words over the same grid.
  *
  * Under the wide studio the grid runs four across on a wide laptop and carries
- * its own Load more, the same press /mine puts under its copy of this grid.
+ * its own Load more, the same press /mine puts under its copy of this grid, and
+ * a short last row is closed by one quiet cell rather than grey gaps.
  */
 export function YourPassports({ passports, heading }: { passports: CreatorPassports; heading?: string }) {
   const t = useTranslations("studio");
@@ -95,11 +97,40 @@ export function YourPassports({ passports, heading }: { passports: CreatorPasspo
               </Link>
             </motion.li>
           ))}
+          {wide ? <PassportsEnd count={passports.passports.length} /> : null}
         </ul>
       )}
 
       {wide ? <LoadMore passports={passports} /> : null}
     </section>
+  );
+}
+
+/**
+ * The cells a short last row leaves empty, taken by one plain raised cell with
+ * the grain and the mark, so the grid always closes as a clean rectangle. It
+ * spans exactly the empty cells at each column count and is not drawn where the
+ * row is full. It says nothing: there is nothing true to put there.
+ */
+function PassportsEnd({ count }: { count: number }) {
+  const end = passportEnd(count);
+  if (!hasPassportEnd(end)) {
+    return null;
+  }
+
+  return (
+    <motion.li
+      aria-hidden
+      data-passports-end
+      initial={{ opacity: 0 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true, amount: 0.2 }}
+      transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
+      className={`${passportEndClasses(end)} relative min-h-[4rem] overflow-hidden bg-bg-raised`}
+    >
+      <span className="grain pointer-events-none absolute inset-0" />
+      <span className="motif absolute start-5 top-5 h-[7px] w-[7px] opacity-40" />
+    </motion.li>
   );
 }
 

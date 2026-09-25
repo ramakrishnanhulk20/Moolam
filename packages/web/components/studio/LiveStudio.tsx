@@ -9,7 +9,7 @@ import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
 import { useUnsavedFileWarning } from "@/lib/sealed/save";
 import { warmAfterPress } from "./afterPress";
-import { WIDE_REACH, useWide } from "./layout";
+import { useWide } from "./layout";
 import { EmptyReceipt } from "./ReceiptFrame";
 import { SignedOut } from "./SignedOut";
 import { Notice, StudioBox, StudioWaiting } from "./StudioFrame";
@@ -57,7 +57,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
   // the page brings the box's top under the bar, so the whole run is in view
   // without a scroll. The same move runs in reverse for Make another.
   const folded = hasStarted(studio.register);
-  const { pressing, press } = useStudioPress(box, folded, reduced, wide ? WIDE_REACH : undefined);
+  const { pressing, press } = useStudioPress(box, folded, reduced, wide);
 
   // The only copy of a sealed picture lives in this tab until it is saved.
   useUnsavedFileWarning(holdsUnsavedFile(studio.register));
@@ -165,17 +165,19 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
             />
           ) : (
             <>
-              {/* The wide layout keeps the choice where it was through the run, quiet,
-                  so nothing above the two columns moves when the form folds. */}
+              {/* The wide layout keeps the laptop switch where it was through the run,
+                  quiet, so nothing above the two columns moves when the form folds.
+                  The phone's fork still steps aside, as it always has. */}
               {folded && !wide ? null : (
                 <PathChoice
                   mode={studio.register.mode}
                   busy={folded || isBusy(studio.register)}
+                  running={folded}
                   onMode={studio.actions.setMode}
                 />
               )}
 
-              <div className={folded && !wide ? "" : wide ? "mt-6 lg:mt-0" : "mt-6"}>
+              <div className={folded ? "" : wide ? "mt-6 lg:mt-0" : "mt-6"}>
                 {studio.register.mode === "generate" ? (
                   <GeneratePanel
                     state={studio.register}

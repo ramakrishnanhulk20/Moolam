@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { GENERATE_STEPS, STEPS, type RegisterState } from "@/lib/studio/flow";
+import { LAPTOP, WIDE_REACH } from "./layout";
 
 /** The room left between the bar at the top of the page and the box's top after a press. */
 const GAP = 16;
@@ -125,12 +126,15 @@ export function hasStarted(state: RegisterState): boolean {
  *
  * The same move runs when the form comes back, so Make another lands on a clean
  * form rather than wherever the receipt left the page.
+ *
+ * `wide` gives the move the wide layout's reach, but only on a laptop: under lg
+ * the wide studio is the one column it always was, and keeps its third.
  */
 export function useStudioPress(
   box: RefObject<HTMLElement | null>,
   folded: boolean,
   reduced: boolean,
-  reach?: number,
+  wide = false,
 ): { pressing: boolean; press: (run: () => void) => void } {
   const [pressing, setPressing] = useState(false);
   const timer = useRef(0);
@@ -141,9 +145,9 @@ export function useStudioPress(
   useLayoutEffect(() => {
     if (was.current !== folded) {
       was.current = folded;
-      bringIntoView(box.current, reduced, reach);
+      bringIntoView(box.current, reduced, wide && window.matchMedia(LAPTOP).matches ? WIDE_REACH : undefined);
     }
-  }, [box, folded, reduced, reach]);
+  }, [box, folded, reduced, wide]);
 
   const press = useCallback((run: () => void) => {
     window.clearTimeout(timer.current);

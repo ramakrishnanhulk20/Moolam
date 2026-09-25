@@ -1,15 +1,16 @@
 import type { ReactNode } from "react";
 
+/** The opening's one line, wherever a page seats it. */
+export const OPENING_LINE = "rise max-w-[56ch] text-sm leading-relaxed text-text-muted sm:text-base";
+
 /**
  * The compact opening a tool page gets: the kicker, the page's name at a size
  * that leaves the first screen to the tool, and one line.
  *
  * On a laptop the line stands beside the title rather than under it, so the
  * whole opening is one band about a fifth of the screen tall. `aside` takes
- * that right-hand place instead where a page has something better to put there.
- * `lineUnder` keeps the line under the title and leaves the right-hand place
- * empty, for a page whose own screen draws a control there, such as the wide
- * studio's path switch.
+ * that right-hand place instead where a page has something better to put there,
+ * and `under` is drawn under the title, inside the title's own block.
  *
  * Plain markup with the CSS rise, so it paints from the server's HTML.
  */
@@ -19,14 +20,14 @@ export function ToolOpening({
   line,
   locale,
   aside,
-  lineUnder = false,
+  under,
 }: {
   kicker: string;
   title: string;
   line?: string;
   locale: string;
   aside?: ReactNode;
-  lineUnder?: boolean;
+  under?: ReactNode;
 }) {
   // Tamil letters carry marks above and below the line, so the tight leading
   // the display face wants in Latin makes two lines touch.
@@ -34,12 +35,7 @@ export function ToolOpening({
 
   const said =
     line === undefined ? null : (
-      <p
-        className={`rise max-w-[56ch] text-sm leading-relaxed text-text-muted sm:text-base ${
-          lineUnder ? "mt-4" : "lg:justify-self-end"
-        }`}
-        style={{ animationDelay: "120ms" }}
-      >
+      <p className={`${OPENING_LINE} lg:justify-self-end`} style={{ animationDelay: "120ms" }}>
         {line}
       </p>
     );
@@ -60,10 +56,10 @@ export function ToolOpening({
         >
           {title}
         </h1>
-        {lineUnder ? said : null}
+        {under}
       </div>
 
-      {lineUnder ? null : (aside ?? said)}
+      {aside ?? said}
     </header>
   );
 }

@@ -147,7 +147,7 @@ describe("the studio's first words are in the server's HTML", () => {
     expect(lead).toContain(html(t("title")));
     expect(lead).toContain(html(t("lede")));
     expect(lead).not.toMatch(HIDDEN);
-    expect(markup).toContain("data-studio-intro");
+    expect(markup).toContain('data-opening="compact"');
     // The waiting card is the one a visitor reads next, and the stub under it.
     expect(markup).toContain(html(t("signedOut.button")));
     expect(markup).toContain(html(t("receipt.heading")));
@@ -156,8 +156,8 @@ describe("the studio's first words are in the server's HTML", () => {
   it("gives Tamil the looser leading on the title, and Latin the tight one", async () => {
     const tamil = await serve(StudioPage({ params: Promise.resolve({ locale: "ta" }) }), "ta");
     const latin = await serve(StudioPage({ params: Promise.resolve({ locale: "en" }) }), "en");
-    expect(tamil).toMatch(/<h1[^>]*leading-\[1\.12\]/);
-    expect(latin).toMatch(/<h1[^>]*leading-\[0\.86\]/);
+    expect(tamil).toMatch(/<h1[^>]*leading-\[1\.2\]/);
+    expect(latin).toMatch(/<h1[^>]*leading-\[0\.92\]/);
   });
 });
 

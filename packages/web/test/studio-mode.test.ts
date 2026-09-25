@@ -26,6 +26,11 @@ vi.mock("@/components/studio/StudioScreen", () => ({
   StudioScreen: () => null,
 }));
 
+// The passport beside the sign-in card is a registry read and a drawing, and
+// neither is under test.
+vi.mock("@/components/studio/showcasePassport", () => ({ showcasePassport: async () => null }));
+vi.mock("@/components/studio/Showcase", () => ({ Showcase: () => null }));
+
 const { default: StudioPage } = await import("@/app/[locale]/studio/page");
 const { StudioScreen } = await import("@/components/studio/StudioScreen");
 

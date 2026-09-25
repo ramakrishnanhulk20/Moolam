@@ -3,27 +3,25 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 /**
- * How the signed in studio sits on a laptop. "stacked" is today's one column
- * under the title. "wide" puts the picture on the left and the details and the
- * button on the right, which is on /lab/studio-wide until Ram says yes.
+ * How the signed in studio sits on a laptop: the picture on the left, the
+ * details and the button on the right. StudioScreen always sets it, so on
+ * /studio it is simply how the studio lays out from lg.
  *
- * Every class the wide layout adds is an lg: class, so below lg the two are the
- * same screen and a phone or a tablet never sees a difference.
+ * Every class it adds is an lg: class, so below lg the screen is the one
+ * column it always was and a phone or a tablet never sees a difference.
  *
- * A context rather than a prop for the same reason the opening is one: the
- * panels it changes sit under the dynamic loaders in LiveStudio, and the real
- * route passes nothing at all.
+ * A context rather than a prop because the panels it changes sit under the
+ * dynamic loaders in LiveStudio. Drawn outside the studio (the account's grid
+ * on /mine, the lab benches) the same parts keep their one column.
  */
-export type StudioLayout = "stacked" | "wide";
+const Wide = createContext(false);
 
-const Chosen = createContext<StudioLayout>("stacked");
-
-export function StudioLayoutProvider({ layout, children }: { layout: StudioLayout; children: ReactNode }) {
-  return <Chosen.Provider value={layout}>{children}</Chosen.Provider>;
+export function WideLayout({ children }: { children: ReactNode }) {
+  return <Wide.Provider value>{children}</Wide.Provider>;
 }
 
 export function useWide(): boolean {
-  return useContext(Chosen) === "wide";
+  return useContext(Wide);
 }
 
 /**
@@ -40,18 +38,11 @@ export const WIDE_COLUMNS =
  */
 export const WIDE_STAGE = "lg:sticky lg:top-[calc(var(--studio-top,var(--header-h))+1.25rem)]";
 
-/**
- * Where the compact path switch sits on a laptop: on the opening's row, in the
- * right-hand place the opening leaves empty, bottom-aligned with the title
- * block. It is drawn inside the studio box so it is in the first render with
- * the studio's own state, and seated upwards by exactly the room between the
- * two: the lab page's 2rem above the box, the opening's 1.75rem of padding and
- * its 1px rule. Half the opening's width, less half its 3rem gap.
- */
-export const WIDE_SWITCH_SEAT = "lg:absolute lg:end-0 lg:bottom-[calc(100%+3.75rem+1px)] lg:w-[calc(50%-1.5rem)]";
-
-/** How far down the screen the box may start before a press moves the page, under the wide layout. */
+/** How far down the screen the box may start before a press moves the page, under the wide layout on a laptop. */
 export const WIDE_REACH = 1 / 2;
+
+/** The width the wide layout starts at: Tailwind's lg. */
+export const LAPTOP = "(min-width: 64rem)";
 
 /**
  * The height the picture is drawn at on a laptop, the same before a file, with

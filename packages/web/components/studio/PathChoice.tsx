@@ -2,8 +2,10 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import type { Mode } from "@/lib/studio/flow";
-import { WIDE_SWITCH_SEAT, useWide, wideOnly } from "./layout";
+import { useWide, wideOnly } from "./layout";
 
 /**
  * The fork at the top of the studio: bring a picture, or have the agent make
@@ -13,11 +15,14 @@ import { WIDE_SWITCH_SEAT, useWide, wideOnly } from "./layout";
 export function PathChoice({
   mode,
   busy,
+  running = false,
   onMode,
 }: {
   mode: Mode;
   /** A run that is under way owns the screen: switching sides mid flight would throw it away. */
   busy: boolean;
+  /** The form has folded into the run: the phone's fork steps aside, the laptop's switch stays, quiet. */
+  running?: boolean;
   onMode: (mode: Mode) => void;
 }) {
   const t = useTranslations("studio.choice");
@@ -25,6 +30,7 @@ export function PathChoice({
   // Under the wide layout the fork is one slim row on a laptop, label and note
   // side by side, so the first screen goes to the picture and the form.
   const wide = useWide();
+  const slot = useSwitchSlot(wide);
 
   const choice = (
     <motion.div
@@ -88,19 +94,45 @@ export function PathChoice({
     return choice;
   }
 
-  // Both are drawn from the first render and the width picks one, so nothing
-  // moves in after load: the full fork on a phone, and on a laptop a compact
-  // switch seated on the opening's row, beside the page's name.
+  // With no opening to sit in, the full fork is drawn at every width.
+  if (slot === null) {
+    return running ? null : choice;
+  }
+
+  // The width picks one: the full fork on a phone, and on a laptop the compact
+  // switch in the place the opening leaves beside the page's name. The slot is
+  // read in the first render, so neither is ever seen moving in.
   return (
     <>
-      <div className="lg:hidden">{choice}</div>
-      <Segmented mode={mode} busy={busy} onMode={onMode} />
+      {running ? null : <div className="lg:hidden">{choice}</div>}
+      {createPortal(<CompactSwitch mode={mode} busy={busy} onMode={onMode} />, slot)}
     </>
   );
 }
 
+/**
+ * The empty place the studio's opening keeps beside its title for the switch.
+ * It is only shown on a laptop once the sign-in card has gone, so the switch
+ * drawn into it needs no breakpoint of its own.
+ *
+ * The opening is drawn on the server before this screen exists and never moves,
+ * so there is nothing to subscribe to: the store is read, not watched. A server
+ * render has no document and gets the full fork.
+ */
+function useSwitchSlot(wide: boolean): HTMLElement | null {
+  return useSyncExternalStore(
+    unwatched,
+    () => (wide ? document.querySelector<HTMLElement>("[data-studio-switch-slot]") : null),
+    () => null,
+  );
+}
+
+function unwatched(): () => void {
+  return () => undefined;
+}
+
 /** The same fork, same words, a size down: two segments side by side on the opening's row. */
-function Segmented({ mode, busy, onMode }: { mode: Mode; busy: boolean; onMode: (mode: Mode) => void }) {
+export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolean; onMode: (mode: Mode) => void }) {
   const t = useTranslations("studio.choice");
   const modes: Mode[] = ["upload", "generate"];
 
@@ -110,7 +142,6 @@ function Segmented({ mode, busy, onMode }: { mode: Mode; busy: boolean; onMode: 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className={`hidden lg:block ${WIDE_SWITCH_SEAT}`}
     >
       <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">
         <span className="h-px w-6 bg-line-strong" />

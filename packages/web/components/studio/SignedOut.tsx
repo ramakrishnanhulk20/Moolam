@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { useHeadingLeading } from "./leading";
-import { useOpening } from "./opening";
 
 const POINTS = ["wallet", "passkey", "gas"] as const;
 
@@ -17,9 +16,7 @@ const POINTS = ["wallet", "passkey", "gas"] as const;
  */
 export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
   const t = useTranslations("studio");
-  const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
-  const cardLeading = useHeadingLeading("leading-[1.15]", "leading-[1.35]");
-  const compact = useOpening() === "compact";
+  const leading = useHeadingLeading("leading-[1.15]", "leading-[1.35]");
 
   return (
     <section data-signed-out className="rise relative border border-line bg-bg-raised p-7 sm:p-10">
@@ -28,16 +25,12 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
         {t("signedOut.kicker")}
       </p>
 
-      {/* Under the compact opening the page's own title is the one heading
-          that shouts, so the card's is a card's: the same words, in sentence
-          case, at a size that holds them to two lines. */}
+      {/* The page's own title above is the one heading that shouts, so the
+          card's is a card's: the same words, in sentence case, at a size that
+          holds them to two lines. */}
       <h2
-        data-card-heading={compact ? "card" : "display"}
-        className={
-          compact
-            ? `mt-4 max-w-[30ch] font-display text-[clamp(1.25rem,2vw,1.6rem)] font-semibold tracking-[-0.02em] ${cardLeading}`
-            : `mt-5 max-w-[18ch] font-display text-[clamp(1.9rem,4vw,3.2rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`
-        }
+        data-card-heading="card"
+        className={`mt-4 max-w-[30ch] font-display text-[clamp(1.25rem,2vw,1.6rem)] font-semibold tracking-[-0.02em] ${leading}`}
       >
         {t("signedOut.heading")}
       </h2>

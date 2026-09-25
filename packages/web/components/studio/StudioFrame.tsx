@@ -3,7 +3,6 @@
 import { useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useWide } from "./layout";
-import { useOpening } from "./opening";
 import { SignedOut } from "./SignedOut";
 import { WaitLabel } from "./WaitLabel";
 
@@ -39,9 +38,6 @@ export function StudioBox({
   /** True when the register or generate panel is on screen, the one card the wide layout spreads out. */
   fill?: boolean;
 }) {
-  // Under the compact opening the box starts where its column starts: the
-  // opening above it already ends on a rule.
-  const compact = useOpening() === "compact";
   const wide = useWide() && fill;
 
   return (
@@ -49,7 +45,7 @@ export function StudioBox({
       ref={hold}
       data-studio-box
       data-studio-layout={wide ? "wide" : undefined}
-      className={`${compact ? "mt-0" : "mt-14"} w-full max-w-[48rem]${wide ? " lg:relative lg:max-w-none" : ""} [overflow-anchor:none]`}
+      className={`w-full max-w-[48rem]${wide ? " lg:max-w-none" : ""} [overflow-anchor:none]`}
       style={top === null || top === undefined ? undefined : ({ "--studio-top": `${top}px` } as CSSProperties)}
     >
       {children}

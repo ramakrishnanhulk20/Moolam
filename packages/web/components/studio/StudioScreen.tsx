@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import { isPrivyConfigured } from "@/lib/env";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import type { Mode } from "@/lib/studio/flow";
-import { StudioLayoutProvider, type StudioLayout } from "./layout";
+import { WideLayout } from "./layout";
 import { EmptyReceipt } from "./ReceiptFrame";
 import { Notice, StudioBox, StudioWaiting } from "./StudioFrame";
 
@@ -34,10 +34,10 @@ const LiveStudio = dynamic(loadLive, { loading: () => <Waiting /> });
  * The hook, Privy's hooks and every card a signed in creator walks through live
  * in LiveStudio.tsx, fetched beside the wallet SDK once the page has painted.
  *
- * The real route passes no layout and gets today's one column. The lab page
- * passes "wide" to draw the same live studio across a laptop's width.
+ * On a laptop a signed in creator gets the wide layout: the picture on the
+ * left, the details and the button on the right.
  */
-export function StudioScreen({ initialMode, layout = "stacked" }: { initialMode?: Mode; layout?: StudioLayout }) {
+export function StudioScreen({ initialMode }: { initialMode?: Mode }) {
   const mounted = useWalletMounted();
 
   // Asked for beside the wallet SDK rather than after it, so the two arrive
@@ -53,9 +53,7 @@ export function StudioScreen({ initialMode, layout = "stacked" }: { initialMode?
   }
 
   return (
-    <StudioLayoutProvider layout={layout}>
-      {mounted ? <LiveStudio initialMode={initialMode} /> : <Waiting />}
-    </StudioLayoutProvider>
+    <WideLayout>{mounted ? <LiveStudio initialMode={initialMode} /> : <Waiting />}</WideLayout>
   );
 }
 

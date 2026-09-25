@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { WalletProvider } from "@/components/providers/WalletProvider";
-import { StudioIntro } from "@/components/studio/StudioIntro";
+import { Showcase } from "@/components/studio/Showcase";
+import { showcasePassport } from "@/components/studio/showcasePassport";
+import { SignInSplit } from "@/components/studio/SignInSplit";
+import { OPENING_SEATS, StudioIntro } from "@/components/studio/StudioIntro";
 import { StudioScreen } from "@/components/studio/StudioScreen";
 import { initialRegisterState, type Mode } from "@/lib/studio/flow";
 
@@ -24,6 +27,8 @@ export async function generateMetadata({
  * and the words at the top are in the first byte, painted before any script.
  * The screen under them is the browser's, because every step of it needs a
  * wallet, and this is one of the three routes that asks for the wallet at all.
+ * A visitor who is not signed in gets the sign-in card beside one real
+ * passport, read from the registry here.
  */
 export default async function StudioPage({
   params,
@@ -35,15 +40,17 @@ export default async function StudioPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const asked = searchParams === undefined ? undefined : (await searchParams).mode;
+  const t = await getTranslations("studio");
+  const passport = await showcasePassport();
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
+    <div className={`relative mx-auto w-full max-w-[1400px] px-5 pb-16 pt-7 sm:px-8 sm:pb-24 sm:pt-9 ${OPENING_SEATS}`}>
       <StudioIntro locale={locale} />
-      <div className="mt-14">
+      <SignInSplit showcase={<Showcase passport={passport} caption={t("showcaseCaption")} />}>
         <WalletProvider>
           <StudioScreen initialMode={modeFrom(asked)} />
         </WalletProvider>
-      </div>
+      </SignInSplit>
     </div>
   );
 }

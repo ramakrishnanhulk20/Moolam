@@ -16,17 +16,17 @@ import { initialBindState } from "@/lib/studio/binding";
 import { isBusy, type RegisterState } from "@/lib/studio/flow";
 import type { CreatorPassport, CreatorPassports } from "@/lib/studio/useCreatorPassports";
 import type { Studio } from "@/lib/studio/useStudio";
-import { GeneratePanel } from "./GeneratePanel";
-import { IdentityStrip } from "./IdentityStrip";
-import { StudioLayoutProvider, WIDE_REACH } from "./layout";
-import { PathChoice } from "./PathChoice";
-import { Receipt } from "./Receipt";
-import { RegisterPanel } from "./RegisterPanel";
-import { StudioBox } from "./StudioFrame";
-import { YourPassports } from "./YourPassports";
-import { hasStarted, useStickyTop, useStudioPress } from "./press";
+import { GeneratePanel } from "@/components/studio/GeneratePanel";
+import { IdentityStrip } from "@/components/studio/IdentityStrip";
+import { WideLayout } from "@/components/studio/layout";
+import { PathChoice } from "@/components/studio/PathChoice";
+import { Receipt } from "@/components/studio/Receipt";
+import { RegisterPanel } from "@/components/studio/RegisterPanel";
+import { StudioBox } from "@/components/studio/StudioFrame";
+import { YourPassports } from "@/components/studio/YourPassports";
+import { hasStarted, useStickyTop, useStudioPress } from "@/components/studio/press";
 
-/** The three poses the lab page can draw without a wallet. */
+/** The three poses the fixture can draw without a wallet. */
 export type WideFixtureName = "upload" | "generate" | "done";
 
 const CREATOR = "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c" as Hex;
@@ -34,15 +34,14 @@ const NOTHING = () => undefined;
 const NOTHING_LATER = async () => undefined;
 
 /**
- * The wide studio drawn from stubbed state, for measuring and screenshots on a
- * machine that cannot sign in. Nothing here reaches a wallet, the verify
- * service or Monad: every pose comes from the studio bench's own fixtures, and
- * a press plays the bench's timed run on this screen alone.
+ * The signed in studio drawn from stubbed state, for tests and for measuring on
+ * a machine that cannot sign in. Nothing here reaches a wallet, the verify
+ * service or Monad: every pose comes from the studio bench's own fixtures.
  *
- * It only ever renders under the lab flag, and only /lab/studio-wide imports
- * it, so the real studio route cannot reach it.
+ * It lives under test/ so no route can reach it; test/studio-wide.test.ts
+ * holds that. The markup is LiveStudio's signed in branch, part for part.
  */
-export function WideFixture({ name }: { name: WideFixtureName }) {
+export function WideFixture({ name, cards = PICTURES_MADE.length }: { name: WideFixtureName; cards?: number }) {
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<RegisterState>(() => opening(name));
   const [more, setMore] = useState({ hasMore: true, loadingMore: false });
@@ -51,10 +50,8 @@ export function WideFixture({ name }: { name: WideFixtureName }) {
   const reduced = useIsReducedMotion();
   const top = useStickyTop(box);
   const folded = hasStarted(state);
-  const { pressing, press } = useStudioPress(box, folded, reduced, WIDE_REACH);
+  const { pressing, press } = useStudioPress(box, folded, reduced, true);
 
-  // The creator's own upload is one of the site's own pictures, read from this
-  // server, so the preview is a real file without a gateway or a wallet.
   useEffect(() => {
     let live = true;
     void fetch(PICTURE)
@@ -70,10 +67,6 @@ export function WideFixture({ name }: { name: WideFixtureName }) {
   }, []);
 
   useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
-
-  if (process.env.NEXT_PUBLIC_LAB_PAGES !== "1") {
-    return null;
-  }
 
   const path: Path = state.mode === "generate" ? "generate" : "upload";
   const shown: RegisterState = { ...state, file: state.mode === "upload" ? file : null };
@@ -99,7 +92,7 @@ export function WideFixture({ name }: { name: WideFixtureName }) {
 
   const passports: CreatorPassports = {
     status: "ready",
-    passports: CARDS,
+    passports: cardsOf(cards),
     error: null,
     refresh: NOTHING,
     hasMore: more.hasMore,
@@ -112,7 +105,7 @@ export function WideFixture({ name }: { name: WideFixtureName }) {
   };
 
   return (
-    <StudioLayoutProvider layout="wide">
+    <WideLayout>
       <MotionConfig reducedMotion="user">
         <div data-wide-fixture={name}>
           <div className="lg:hidden">{identity}</div>
@@ -121,9 +114,10 @@ export function WideFixture({ name }: { name: WideFixtureName }) {
             <PathChoice
               mode={state.mode}
               busy={folded || isBusy(state)}
+              running={folded}
               onMode={(mode) => setState((held) => keep(held, fixtureState(mode, "idle")))}
             />
-            <div className="mt-6 lg:mt-0">
+            <div className={folded ? "" : "mt-6 lg:mt-0"}>
               {state.mode === "generate" ? (
                 <GeneratePanel
                   state={shown}
@@ -171,7 +165,7 @@ export function WideFixture({ name }: { name: WideFixtureName }) {
           <YourPassports passports={passports} />
         </div>
       </MotionConfig>
-    </StudioLayoutProvider>
+    </WideLayout>
   );
 }
 
@@ -187,16 +181,26 @@ function keep(held: RegisterState, pose: RegisterState): RegisterState {
   return { ...pose, title: held.title, consent: held.consent };
 }
 
-/** The bench's four pictures as the index would list them, newest first. */
-const CARDS: CreatorPassport[] = PICTURES_MADE.map((picture, index) => ({
-  id: picture.id,
-  kind: picture.kind === "Agent drawing" ? 0 : 1,
-  registeredAt: BigInt(Math.floor(REGISTERED_AT / 1000) - index * 172_800),
-  registeredBlock: 103_059_393n - BigInt(index * 400_000),
-  metadataURI: "ipfs://bafkreigmeta",
-  title: picture.title,
-  imageUrl: picture.image ?? undefined,
-}));
+/**
+ * The bench's pictures as the index would list them, newest first, as many as
+ * asked for. Past the bench's four they repeat with ids of their own, so a
+ * short last row can be drawn at any count.
+ */
+export function cardsOf(count: number): CreatorPassport[] {
+  return Array.from({ length: count }, (_, index) => {
+    const picture = PICTURES_MADE[index % PICTURES_MADE.length];
+    const round = Math.floor(index / PICTURES_MADE.length);
+    return {
+      id: (round === 0 ? picture.id : `${picture.id.slice(0, -2)}${String(round).padStart(2, "0")}`) as Hex,
+      kind: picture.kind === "Agent drawing" ? 0 : 1,
+      registeredAt: BigInt(Math.floor(REGISTERED_AT / 1000) - index * 172_800),
+      registeredBlock: 103_059_393n - BigInt(index * 400_000),
+      metadataURI: "ipfs://bafkreigmeta",
+      title: picture.title,
+      imageUrl: picture.image ?? undefined,
+    };
+  });
+}
 
 /** Just enough of the live hook's answer for the receipt and the strip to draw from. */
 function stubStudio(register: RegisterState, onSaved: () => void): Studio {

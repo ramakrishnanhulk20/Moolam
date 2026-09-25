@@ -121,12 +121,12 @@ const { Row } = await import("@/components/agents/Row");
 const { ResolveConsole } = await import("@/components/resolve/ResolveConsole");
 const { Masthead: DocsMasthead } = await import("@/components/docs/Masthead");
 const { ThemeProvider, themeScriptType } = await import("@/components/providers/ThemeProvider");
-const { OpeningProvider } = await import("@/components/studio/opening");
 const { StudioScreen } = await import("@/components/studio/StudioScreen");
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
 const { Board } = await import("@/components/agents/Board");
 const { default: VerifyPage } = await import("@/app/[locale]/verify/page");
 const { default: MinePage } = await import("@/app/[locale]/mine/page");
+const { default: StudioPage } = await import("@/app/[locale]/studio/page");
 const { default: ResolvePage } = await import("@/app/[locale]/resolve/page");
 
 await Promise.all(chunks.pending);
@@ -387,24 +387,15 @@ describe("the theme script", () => {
   });
 });
 
-describe("the studio's sign-in card under the compact opening", () => {
-  it("is a card's heading, same words, no capitals", () => {
-    const markup = render(
-      createElement(
-        WalletMounted.Provider,
-        { value: false },
-        createElement(OpeningProvider, { opening: "compact" }, createElement(StudioScreen)),
-      ),
-    );
+describe("the studio's sign-in card", () => {
+  it("is a card's heading, same words, no capitals, under the page's own title", () => {
+    const markup = render(createElement(WalletMounted.Provider, { value: false }, createElement(StudioScreen)));
     const heading = tagOf(markup, "data-card-heading");
     expect(heading).toContain('data-card-heading="card"');
     expect(heading).not.toContain("uppercase");
     expect(markup).toContain(en.studio.signedOut.heading);
-  });
-
-  it("leaves today's studio card as it is until the studio's own order", () => {
-    const markup = render(createElement(WalletMounted.Provider, { value: false }, createElement(StudioScreen)));
-    expect(tagOf(markup, "data-card-heading")).toContain("uppercase");
+    // The box starts where its column starts: the opening above ends on a rule.
+    expect(tagOf(markup, "data-studio-box")).not.toContain("mt-14");
   });
 });
 
@@ -473,6 +464,60 @@ describe("the compact openings on the real routes", () => {
       } finally {
         reads.showcase = null;
       }
+    });
+
+    it(`the studio signed out opens short, with the sign-in card beside a real passport (${locale})`, async () => {
+      reads.showcase = {
+        id: `0x${"c4".repeat(32)}`,
+        title: "Monsoon fishing nets drying",
+        picture: "ipfs://picture-1",
+        creator: `0x${"12".repeat(20)}`,
+        agentId: "10249",
+        agentName: "Moolam generator",
+        statement: "closed",
+        recheck: null,
+      };
+      try {
+        const markup = await serve(StudioPage({ params: Promise.resolve({ locale }) }), locale);
+        expect(markup).toContain('<header data-opening="compact"');
+        expect(markup).toContain(html(words.studio.title));
+        // The poster-sized title and the vertical rail are gone from the route.
+        expect(markup).not.toContain("clamp(2.6rem,8.5vw,6.5rem)");
+        expect(markup).not.toContain("vertical-rl");
+
+        // The line stands beside the title while the card is on the page, and
+        // the slot the signed in switch is drawn into is empty and hidden.
+        expect(tagOf(markup, 'data-opening-line="beside"')).toContain("lg:justify-self-end");
+        expect(tagOf(markup, 'data-opening-line="under"')).toMatch(/\bhidden\b/);
+        expect(tagOf(markup, "data-studio-switch-slot")).toMatch(/\bhidden\b/);
+        expect(markup).toMatch(/<div data-studio-switch-slot="true" class="hidden min-w-0"><\/div>/);
+        expect(markup.indexOf("data-studio-switch-slot")).toBeLessThan(markup.indexOf("</header>"));
+
+        const split = tagOf(markup, "data-sign-in-split");
+        expect(split).toContain("lg:[&amp;:has([data-signed-out])]:grid-cols-[minmax(0,44rem)_minmax(0,1fr)]");
+        expect(split).toContain("[&amp;:not(:has([data-signed-out]))&gt;[data-showcase-slot]]:hidden");
+
+        const heading = tagOf(markup, "data-card-heading");
+        expect(heading).toContain('data-card-heading="card"');
+        expect(heading).not.toContain("uppercase");
+
+        expect(markup).toContain("data-showcase");
+        expect(markup).toContain(html(words.studio.showcaseCaption));
+        expect(markup).toContain("Monsoon fishing nets drying");
+        expect(markup.indexOf("data-signed-out")).toBeLessThan(markup.indexOf("data-showcase-slot"));
+      } finally {
+        reads.showcase = null;
+      }
+    });
+
+    it(`the studio moves its line under the title and shows the switch's slot once the card has gone (${locale})`, async () => {
+      const markup = await serve(StudioPage({ params: Promise.resolve({ locale }) }), locale);
+      const frame = markup.slice(markup.indexOf("<div"), markup.indexOf(">", markup.indexOf("<div")) + 1);
+      expect(frame).toContain("lg:[&amp;:not(:has([data-signed-out]))_[data-opening-line=beside]]:hidden");
+      expect(frame).toContain("lg:[&amp;:not(:has([data-signed-out]))_[data-opening-line=under]]:block");
+      expect(frame).toContain("lg:[&amp;:not(:has([data-signed-out]))_[data-studio-switch-slot]]:block");
+      // Both seats say the same line, so either one is the page's own words.
+      expect(markup.split(html(words.studio.lede)).length - 1).toBe(2);
     });
 
     it(`My pictures stands the card alone when no passport could be read (${locale})`, async () => {
