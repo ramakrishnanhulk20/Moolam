@@ -21,6 +21,20 @@ import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
 import { hasStarted } from "./press";
+import {
+  ACROSS,
+  AT_LEFT,
+  AT_RIGHT,
+  UNDER_RIGHT,
+  WIDE_CARD_HEADING,
+  WIDE_COLUMNS,
+  WIDE_FACE,
+  WIDE_PICTURE,
+  WIDE_STAGE,
+  WideColumn,
+  useWide,
+  wideOnly,
+} from "./layout";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -71,6 +85,7 @@ export function RegisterPanel({
   const [rejected, setRejected] = useState<Failure | null>(null);
   const busy = isBusy(state);
   const done = isRegistered(state);
+  const wide = useWide();
 
   // The chosen picture is shown from the file itself, so nothing is uploaded to
   // preview it. The URL is handed back to the browser when the file changes.
@@ -100,6 +115,64 @@ export function RegisterPanel({
 
   const folded = hasStarted(state);
 
+  const sealedChoice = (
+    <SealedChoice
+      on={state.sealed.on}
+      onChange={(on) => onSealed(on)}
+      bits={sketchOf(state.prepared?.passport.blockhash256)}
+      privateRecheck={state.sealed.privateRecheck === true}
+      onPrivateRecheck={(keep) => onSealed(true, keep)}
+      disabled={busy}
+    />
+  );
+
+  // On a laptop the picture keeps the left column through the run and the done
+  // screen, and the band lands in the right one, where the button was pressed.
+  if ((done || folded) && wide) {
+    return (
+      <div data-studio-panel="upload" data-face={done ? "receipt" : "run"} data-studio-layout="wide" className={WIDE_FACE}>
+        <div data-studio-column="picture" className={`hidden lg:block ${AT_LEFT} ${WIDE_STAGE}`}>
+          {done ? (
+            <Registered state={state} onSaved={onSaved} media="only" />
+          ) : (
+            <div className="grain relative overflow-hidden border border-line-strong">
+              {preview === null ? null : (
+                <img src={preview} alt="" className={`w-full object-cover ${WIDE_PICTURE}`} />
+              )}
+              <div className="scrim pointer-events-none absolute inset-0" />
+              <p className="absolute inset-x-0 bottom-0 max-w-[28ch] break-all p-5 font-mono text-[11px] text-text">
+                {state.file?.name} <span className="text-text-faint">{megabytes(state.file)}</span>
+              </p>
+            </div>
+          )}
+        </div>
+        <div data-studio-column="details" className={AT_RIGHT}>
+          <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
+            <StatusBand state={state} />
+          </div>
+          {done ? (
+            <Registered state={state} onSaved={onSaved} media="not-at-lg" />
+          ) : (
+            <Run
+              state={state}
+              onRegister={onRegister}
+              onBind={onBind}
+              onUnsponsored={onUnsponsored}
+              onRecheck={onRecheck}
+              onSaved={onSaved}
+            />
+          )}
+        </div>
+        <div className={ACROSS}>{receipt}</div>
+        {done ? (
+          <div className={UNDER_RIGHT}>
+            <DoneActions state={state} wallet={wallet} onReset={onReset} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   if (done || folded) {
     return (
       <div data-studio-panel="upload" data-face={done ? "receipt" : "run"}>
@@ -125,21 +198,27 @@ export function RegisterPanel({
   }
 
   return (
-    <div data-studio-panel="upload" data-face="form">
+    <div data-studio-panel="upload" data-face="form" data-studio-layout={wide ? "wide" : undefined}>
     <motion.section
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="border border-line bg-bg-raised p-6 sm:p-9"
+      className={`border border-line bg-bg-raised p-6 sm:p-9${wideOnly(wide, `${WIDE_COLUMNS} lg:p-7 xl:p-8`)}`}
     >
+      <WideColumn wide={wide} name="picture" className={WIDE_STAGE}>
       <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
         <span className="motif h-[9px] w-[9px]" />
         {t("register.kicker")}
       </p>
-      <h2 className={`mt-5 max-w-[22ch] font-display text-[clamp(1.7rem,3.4vw,2.7rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}>
+      <h2
+        className={`mt-5 max-w-[22ch] font-display text-[clamp(1.7rem,3.4vw,2.7rem)] font-semibold uppercase tracking-[-0.02em] ${leading}${wideOnly(
+          wide,
+          WIDE_CARD_HEADING,
+        )}`}
+      >
         {t("register.heading")}
       </h2>
-      <p className="mt-4 max-w-[56ch] text-sm leading-relaxed text-text-muted">{t("register.body")}</p>
+      <p className={`mt-4 max-w-[56ch] text-sm leading-relaxed text-text-muted${wideOnly(wide, "lg:mt-2")}`}>{t("register.body")}</p>
 
       <input
         ref={input}
@@ -150,18 +229,19 @@ export function RegisterPanel({
       />
 
       <div
+        data-studio-picture
         onDragOver={(event) => {
           event.preventDefault();
           setOver(true);
         }}
         onDragLeave={() => setOver(false)}
         onDrop={onDrop}
-        className={`grain relative mt-8 overflow-hidden border border-dashed transition-colors duration-200 ${
+        className={`grain relative mt-8 overflow-hidden border border-dashed${wideOnly(wide, "lg:mt-6")} transition-colors duration-200 ${
           over ? "border-accent bg-accent-soft" : "border-line-strong"
-        }`}
+        }${wideOnly(wide, WIDE_PICTURE)}`}
       >
         {preview === null ? (
-          <div className="flex flex-col items-start gap-4 p-8 sm:p-12">
+          <div className={`flex flex-col items-start gap-4 p-8 sm:p-12${wideOnly(wide, "lg:h-full lg:justify-end")}`}>
             <p className="max-w-[40ch] font-display text-[clamp(1.2rem,2.2vw,1.7rem)] leading-[1.2] tracking-[-0.02em]">
               {t("register.drop")}
             </p>
@@ -176,9 +256,9 @@ export function RegisterPanel({
             <p className="max-w-[46ch] text-xs leading-relaxed text-text-faint">{t("register.hint")}</p>
           </div>
         ) : (
-          <div className="relative">
+          <div className={`relative${wideOnly(wide, "lg:h-full")}`}>
             {/* The creator's own upload, shown before it is signed. */}
-            <img src={preview} alt="" className="max-h-[22rem] w-full object-cover" />
+            <img src={preview} alt="" className={`max-h-[22rem] w-full object-cover${wideOnly(wide, "lg:h-full lg:max-h-none")}`} />
             <div className="scrim pointer-events-none absolute inset-0" />
             <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-5">
               <p className="max-w-[28ch] break-all font-mono text-[11px] text-text">
@@ -203,7 +283,7 @@ export function RegisterPanel({
         </div>
       )}
 
-      <label className="mt-8 block">
+      <label className={`mt-8 block${wideOnly(wide, "lg:mt-6")}`}>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("register.title")}</span>
         <input
           type="text"
@@ -215,18 +295,16 @@ export function RegisterPanel({
           className="mt-2 w-full border border-line bg-bg px-4 py-3 text-base text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-accent"
         />
       </label>
-      <p className="mt-2 text-xs text-text-faint">{t("register.titleHint")}</p>
+      <p data-title-hint className="mt-2 text-xs text-text-faint">{t("register.titleHint")}</p>
+      {/* On a laptop the picture, its name and whether it is published are one
+          column, so the right one is the AI-use choice and the press. */}
+      {wide ? <div className="hidden lg:block">{sealedChoice}</div> : null}
+      </WideColumn>
 
+      <WideColumn wide={wide} name="details">
       <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
 
-      <SealedChoice
-        on={state.sealed.on}
-        onChange={(on) => onSealed(on)}
-        bits={sketchOf(state.prepared?.passport.blockhash256)}
-        privateRecheck={state.sealed.privateRecheck === true}
-        onPrivateRecheck={(keep) => onSealed(true, keep)}
-        disabled={busy}
-      />
+      {wide ? <div className="lg:hidden">{sealedChoice}</div> : sealedChoice}
 
       {/* The press is answered here before anything else moves: the label turns
           into the first line of the run and the button goes quiet. The room for
@@ -239,7 +317,7 @@ export function RegisterPanel({
         data-press
         className={`mt-8 flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
           pressing ? "normal-case" : "uppercase tracking-[0.14em]"
-        }`}
+        }${wideOnly(wide, "lg:mt-6 lg:flex lg:w-full")}`}
       >
         {pressing ? t("register.steps.prepare.running") : t("register.submit")}
       </button>
@@ -265,6 +343,7 @@ export function RegisterPanel({
           />
         </div>
       )}
+      </WideColumn>
     </motion.section>
     {receipt}
     </div>
@@ -403,7 +482,20 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
   );
 }
 
-function Registered({ state, onSaved }: { state: RegisterState; onSaved: () => void }) {
+/**
+ * The done screen. On a laptop under the wide layout it is drawn twice: once
+ * as the picture alone in the left column, and once whole on the right with the
+ * picture hidden from lg, so a phone still reads the one card it always did.
+ */
+function Registered({
+  state,
+  onSaved,
+  media,
+}: {
+  state: RegisterState;
+  onSaved: () => void;
+  media?: "only" | "not-at-lg";
+}) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const format = useFormatter();
@@ -412,6 +504,44 @@ function Registered({ state, onSaved }: { state: RegisterState; onSaved: () => v
   // The answer decides, not the switch: what was registered is what came back.
   const sealed = prepared !== null && prepared.sealed === true;
 
+  const picture = sealed ? (
+    <SealedDoneBand
+      file={state.sealed.file}
+      bits={sketchOf(prepared?.passport.blockhash256)}
+      title={state.title}
+      registeredAt={state.registeredAt}
+      saved={state.sealed.saved}
+      onSaved={onSaved}
+      privateCopy={state.prepared?.privateRecheck === true}
+    />
+  ) : prepared === null || prepared.sealed === true ? null : (
+    <div className="relative">
+      {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
+      <img
+        src={prepared.image.gatewayUrl}
+        alt=""
+        className={`max-h-[24rem] w-full object-cover${wideOnly(media === "only", `lg:max-h-none ${WIDE_PICTURE}`)}`}
+      />
+      <div className="scrim pointer-events-none absolute inset-0" />
+      <p className="absolute bottom-5 start-6 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
+        {t("register.doneLabel")}
+      </p>
+    </div>
+  );
+
+  if (media === "only") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 1.02 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        className="grain relative overflow-hidden border border-line bg-bg-raised"
+      >
+        {picture}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 24 }}
@@ -419,30 +549,7 @@ function Registered({ state, onSaved }: { state: RegisterState; onSaved: () => v
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       className="grain relative overflow-hidden border border-line bg-bg-raised"
     >
-      {sealed ? (
-        <SealedDoneBand
-          file={state.sealed.file}
-          bits={sketchOf(prepared?.passport.blockhash256)}
-          title={state.title}
-          registeredAt={state.registeredAt}
-          saved={state.sealed.saved}
-          onSaved={onSaved}
-          privateCopy={state.prepared?.privateRecheck === true}
-        />
-      ) : prepared === null || prepared.sealed === true ? null : (
-        <div className="relative">
-          {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
-          <img
-            src={prepared.image.gatewayUrl}
-            alt=""
-            className="max-h-[24rem] w-full object-cover"
-          />
-          <div className="scrim pointer-events-none absolute inset-0" />
-          <p className="absolute bottom-5 start-6 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
-            {t("register.doneLabel")}
-          </p>
-        </div>
-      )}
+      {media === "not-at-lg" ? <div className="lg:hidden">{picture}</div> : picture}
 
       <div className="p-6 sm:p-9">
         <h2 className={`max-w-[20ch] font-display text-[clamp(1.8rem,3.6vw,2.9rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}>

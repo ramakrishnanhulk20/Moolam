@@ -298,6 +298,7 @@ describe("what the studio and /mine load before they paint", () => {
     for (const file of [
       "components/studio/StudioScreen.tsx",
       "components/studio/StudioFrame.tsx",
+      "components/studio/layout.tsx",
       "components/studio/SignedOut.tsx",
       "components/studio/ReceiptFrame.tsx",
     ]) {

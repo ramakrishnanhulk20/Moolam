@@ -11,11 +11,20 @@ import { ToolOpening } from "./ToolOpening";
  * first byte, in every language, and the reduced-motion rule in globals.css
  * turns the rise off.
  */
-export async function StudioIntro({ locale, opening = "full" }: { locale: string; opening?: Opening }) {
+export async function StudioIntro({
+  locale,
+  opening = "full",
+  lineUnder = false,
+}: {
+  locale: string;
+  opening?: Opening;
+  /** The compact opening with its line under the title, leaving the right-hand place to the wide studio's path switch. */
+  lineUnder?: boolean;
+}) {
   const t = await getTranslations({ locale, namespace: "studio" });
 
   if (opening === "compact") {
-    return <ToolOpening kicker={t("kicker")} title={t("title")} line={t("lede")} locale={locale} />;
+    return <ToolOpening kicker={t("kicker")} title={t("title")} line={t("lede")} locale={locale} lineUnder={lineUnder} />;
   }
 
   // Tamil letters carry marks above and below the line, so the tight leading

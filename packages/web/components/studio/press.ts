@@ -19,9 +19,19 @@ const ACKNOWLEDGED = 220;
  * first screen of progress is already readable.
  *
  * Proved on the bench in WO-124b at 1920x1080, 1440x900 and 375x812.
+ *
+ * `reach` is how far down the screen the top may sit. The wide layout passes
+ * a half: its band lands beside the picture at the top of the right column, so
+ * a box that starts in the upper half already shows the run, and moving the
+ * page there would be a jump with nothing gained.
  */
-export function scrollTarget(boxTop: number, stickyBottom: number, viewportHeight: number): number | null {
-  if (boxTop >= stickyBottom && boxTop <= viewportHeight / 3) {
+export function scrollTarget(
+  boxTop: number,
+  stickyBottom: number,
+  viewportHeight: number,
+  reach = 1 / 3,
+): number | null {
+  if (boxTop >= stickyBottom && boxTop <= viewportHeight * reach) {
     return null;
   }
   return boxTop - stickyBottom - GAP;
@@ -59,12 +69,12 @@ export function stickyAbove(box: HTMLElement): number {
  * next and the screen turns the browser's own scroll anchoring off, which was
  * the thing that used to undo this half a second later.
  */
-export function bringIntoView(box: HTMLElement | null, reduced: boolean): void {
+export function bringIntoView(box: HTMLElement | null, reduced: boolean, reach?: number): void {
   if (box === null) {
     return;
   }
 
-  const move = scrollTarget(box.getBoundingClientRect().top, stickyAbove(box), window.innerHeight);
+  const move = scrollTarget(box.getBoundingClientRect().top, stickyAbove(box), window.innerHeight, reach);
   if (move === null) {
     return;
   }
@@ -120,6 +130,7 @@ export function useStudioPress(
   box: RefObject<HTMLElement | null>,
   folded: boolean,
   reduced: boolean,
+  reach?: number,
 ): { pressing: boolean; press: (run: () => void) => void } {
   const [pressing, setPressing] = useState(false);
   const timer = useRef(0);
@@ -130,9 +141,9 @@ export function useStudioPress(
   useLayoutEffect(() => {
     if (was.current !== folded) {
       was.current = folded;
-      bringIntoView(box.current, reduced);
+      bringIntoView(box.current, reduced, reach);
     }
-  }, [box, folded, reduced]);
+  }, [box, folded, reduced, reach]);
 
   const press = useCallback((run: () => void) => {
     window.clearTimeout(timer.current);

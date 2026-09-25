@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { ConsentChoice } from "@/components/consent/ConsentChoice";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
+import { useWide, wideOnly } from "./layout";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -31,6 +32,10 @@ export function ConsentField({
   const t = useTranslations("studio.consent");
   const leading = useHeadingLeading("leading-[1.02]", "leading-[1.22]");
   const problem = draftProblem(draft);
+  // Under the wide layout the field sits in the right column beside the
+  // picture, where every line of height decides whether the button is on the
+  // first screen, so its spacing and heading tighten from lg. Same words.
+  const wide = useWide();
 
   return (
     <motion.div
@@ -38,7 +43,7 @@ export function ConsentField({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.25 }}
       transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-      className="relative mt-10 border-t border-line pt-8"
+      className={`relative mt-10 border-t border-line pt-8${wideOnly(wide, "lg:mt-0 lg:pt-6")}`}
     >
       <span aria-hidden className="pointer-events-none absolute -top-px start-0 h-px w-20 bg-accent" />
 
@@ -47,15 +52,18 @@ export function ConsentField({
         {t("kicker")}
       </p>
       <h3
-        className={`mt-4 max-w-[18ch] font-display text-[clamp(1.3rem,2.6vw,1.9rem)] font-semibold uppercase tracking-[-0.025em] ${leading}`}
+        className={`mt-4 max-w-[18ch] font-display text-[clamp(1.3rem,2.6vw,1.9rem)] font-semibold uppercase tracking-[-0.025em] ${leading}${wideOnly(
+          wide,
+          "lg:mt-3 lg:max-w-none lg:text-[1.35rem]",
+        )}`}
       >
         {t("heading")}
       </h3>
       <p className="mt-3 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
 
-      <ConsentChoice draft={draft} onChange={onChange} disabled={disabled} size="compact" className="mt-6" />
+      <ConsentChoice draft={draft} onChange={onChange} disabled={disabled} size="compact" className={`mt-6${wideOnly(wide, "lg:mt-4")}`} />
 
-      <p className="mt-5 max-w-[56ch] text-xs leading-relaxed text-text-faint">{t("hint")}</p>
+      <p className={`mt-5 max-w-[56ch] text-xs leading-relaxed text-text-faint${wideOnly(wide, "lg:mt-3")}`}>{t("hint")}</p>
 
       {problem === "conditionsRequired" ? (
         <p role="status" className="mt-3 max-w-[56ch] text-xs leading-relaxed text-failed">

@@ -7,6 +7,9 @@ import type { ReactNode } from "react";
  * On a laptop the line stands beside the title rather than under it, so the
  * whole opening is one band about a fifth of the screen tall. `aside` takes
  * that right-hand place instead where a page has something better to put there.
+ * `lineUnder` keeps the line under the title and leaves the right-hand place
+ * empty, for a page whose own screen draws a control there, such as the wide
+ * studio's path switch.
  *
  * Plain markup with the CSS rise, so it paints from the server's HTML.
  */
@@ -16,16 +19,30 @@ export function ToolOpening({
   line,
   locale,
   aside,
+  lineUnder = false,
 }: {
   kicker: string;
   title: string;
   line?: string;
   locale: string;
   aside?: ReactNode;
+  lineUnder?: boolean;
 }) {
   // Tamil letters carry marks above and below the line, so the tight leading
   // the display face wants in Latin makes two lines touch.
   const leading = locale === "ta" ? "leading-[1.2]" : "leading-[0.92]";
+
+  const said =
+    line === undefined ? null : (
+      <p
+        className={`rise max-w-[56ch] text-sm leading-relaxed text-text-muted sm:text-base ${
+          lineUnder ? "mt-4" : "lg:justify-self-end"
+        }`}
+        style={{ animationDelay: "120ms" }}
+      >
+        {line}
+      </p>
+    );
 
   return (
     <header
@@ -43,17 +60,10 @@ export function ToolOpening({
         >
           {title}
         </h1>
+        {lineUnder ? said : null}
       </div>
 
-      {aside ??
-        (line === undefined ? null : (
-          <p
-            className="rise max-w-[56ch] text-sm leading-relaxed text-text-muted sm:text-base lg:justify-self-end"
-            style={{ animationDelay: "120ms" }}
-          >
-            {line}
-          </p>
-        ))}
+      {lineUnder ? null : (aside ?? said)}
     </header>
   );
 }

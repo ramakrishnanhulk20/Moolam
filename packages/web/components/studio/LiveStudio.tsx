@@ -9,6 +9,7 @@ import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
 import { useUnsavedFileWarning } from "@/lib/sealed/save";
 import { warmAfterPress } from "./afterPress";
+import { WIDE_REACH, useWide } from "./layout";
 import { EmptyReceipt } from "./ReceiptFrame";
 import { SignedOut } from "./SignedOut";
 import { Notice, StudioBox, StudioWaiting } from "./StudioFrame";
@@ -50,12 +51,13 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
   const box = useRef<HTMLDivElement>(null);
   const reduced = useIsReducedMotion();
   const top = useStickyTop(box);
+  const wide = useWide();
 
   // The press is answered on the button, then the form folds into the band and
   // the page brings the box's top under the bar, so the whole run is in view
   // without a scroll. The same move runs in reverse for Make another.
   const folded = hasStarted(studio.register);
-  const { pressing, press } = useStudioPress(box, folded, reduced);
+  const { pressing, press } = useStudioPress(box, folded, reduced, wide ? WIDE_REACH : undefined);
 
   // The only copy of a sealed picture lives in this tab until it is saved.
   useUnsavedFileWarning(holdsUnsavedFile(studio.register));
@@ -101,19 +103,22 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
   };
   const bindRoute = rebinding && studio.bind.stage !== "bound";
 
+  const identity =
+    studio.authenticated && studio.wallet !== undefined ? (
+      <IdentityStrip
+        account={studio.account}
+        wallet={studio.wallet}
+        sponsorship={studio.sponsorship}
+        passkey={studio.binding.status === "bound"}
+        onSignOut={studio.logout}
+      />
+    ) : null;
+
   return (
     <MotionConfig reducedMotion="user">
-      {studio.authenticated && studio.wallet !== undefined ? (
-        <IdentityStrip
-          account={studio.account}
-          wallet={studio.wallet}
-          sponsorship={studio.sponsorship}
-          passkey={studio.binding.status === "bound"}
-          onSignOut={studio.logout}
-        />
-      ) : null}
+      {identity === null ? null : wide ? <div className="lg:hidden">{identity}</div> : identity}
 
-      <StudioBox hold={box} top={top}>
+      <StudioBox hold={box} top={top} fill={onPanel(studio, bindRoute)}>
         <>
           {!studio.ready ? (
             <StudioWaiting />
@@ -160,15 +165,17 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
             />
           ) : (
             <>
-              {folded ? null : (
+              {/* The wide layout keeps the choice where it was through the run, quiet,
+                  so nothing above the two columns moves when the form folds. */}
+              {folded && !wide ? null : (
                 <PathChoice
                   mode={studio.register.mode}
-                  busy={isBusy(studio.register)}
+                  busy={folded || isBusy(studio.register)}
                   onMode={studio.actions.setMode}
                 />
               )}
 
-              <div className={folded ? "" : "mt-6"}>
+              <div className={folded && !wide ? "" : wide ? "mt-6 lg:mt-0" : "mt-6"}>
                 {studio.register.mode === "generate" ? (
                   <GeneratePanel
                     state={studio.register}
@@ -222,6 +229,10 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
             this screen still gets it, in the same column, under its card. */}
         {onPanel(studio, bindRoute) ? null : receipt}
       </StudioBox>
+
+      {/* On a laptop the wide layout gives the first screen to the picture and
+          the form, so who is signed in moves down to head their own passports. */}
+      {identity !== null && wide ? <div className="mt-24 hidden lg:block">{identity}</div> : null}
 
       {studio.authenticated && studio.wallet !== undefined ? <YourPassports passports={studio.passports} /> : null}
     </MotionConfig>

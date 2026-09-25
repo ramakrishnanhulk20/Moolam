@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import type { CSSProperties, ReactNode, RefObject } from "react";
+import { useWide } from "./layout";
 import { useOpening } from "./opening";
 import { SignedOut } from "./SignedOut";
 import { WaitLabel } from "./WaitLabel";
@@ -21,25 +22,34 @@ const NOTHING = () => undefined;
  * browser answers that by putting the scroll back where the folded content used
  * to hold it, which undoes the one scroll that brings the run into view. Proved
  * on the bench in WO-124b.
+ *
+ * Under the wide layout the box lets go of its cap at lg, but only once the
+ * panel is the card on screen: the sign in, the bind and the recovery cards are
+ * single cards and read best at today's width.
  */
 export function StudioBox({
   children,
   hold,
   top,
+  fill = false,
 }: {
   children: ReactNode;
   hold?: RefObject<HTMLDivElement | null>;
   top?: number | null;
+  /** True when the register or generate panel is on screen, the one card the wide layout spreads out. */
+  fill?: boolean;
 }) {
   // Under the compact opening the box starts where its column starts: the
   // opening above it already ends on a rule.
   const compact = useOpening() === "compact";
+  const wide = useWide() && fill;
 
   return (
     <div
       ref={hold}
       data-studio-box
-      className={`${compact ? "mt-0" : "mt-14"} w-full max-w-[48rem] [overflow-anchor:none]`}
+      data-studio-layout={wide ? "wide" : undefined}
+      className={`${compact ? "mt-0" : "mt-14"} w-full max-w-[48rem]${wide ? " lg:relative lg:max-w-none" : ""} [overflow-anchor:none]`}
       style={top === null || top === undefined ? undefined : ({ "--studio-top": `${top}px` } as CSSProperties)}
     >
       {children}

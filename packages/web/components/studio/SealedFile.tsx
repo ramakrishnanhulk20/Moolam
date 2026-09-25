@@ -8,6 +8,7 @@ import { SealSwitch, type SealedFieldWords } from "@/components/sealed/SealSwitc
 import { SealedPlate } from "@/components/sealed/SealedPlate";
 import { SealedSketch } from "@/components/sealed/Sketch";
 import { useSealedSave } from "@/lib/sealed/save";
+import { useWide, wideOnly } from "./layout";
 import type { SealedHandback } from "@/lib/sealed/handback";
 
 /**
@@ -57,6 +58,7 @@ export function SealedChoice({
 }) {
   const t = useTranslations("studio.sealed.switch");
   const rows = useTranslations("studio.sealed.fields");
+  const wide = useWide();
 
   const fieldWords: SealedFieldWords = Object.fromEntries(
     SEALED_PUBLIC_FIELDS.map((field) => [
@@ -76,7 +78,7 @@ export function SealedChoice({
       privateRecheck={privateRecheck}
       onPrivateRecheck={onPrivateRecheck}
       disabled={disabled}
-      className="mt-10"
+      className={`mt-10${wideOnly(wide, "lg:mt-7 lg:pt-6")}`}
       words={{
         label: t("label"),
         note: t("note"),

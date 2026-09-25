@@ -22,6 +22,20 @@ import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
 import { hasStarted } from "./press";
+import {
+  ACROSS,
+  AT_LEFT,
+  AT_RIGHT,
+  UNDER_RIGHT,
+  WIDE_CARD_HEADING,
+  WIDE_COLUMNS,
+  WIDE_FACE,
+  WIDE_PICTURE,
+  WIDE_STAGE,
+  WideColumn,
+  useWide,
+  wideOnly,
+} from "./layout";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -77,8 +91,60 @@ export function GeneratePanel({
   const done = isRegistered(state);
   const spent = atLimit(state.quota);
   const characters = state.prompt.trim().length;
+  const wide = useWide();
 
   const folded = hasStarted(state);
+
+  const sealedChoice = (
+    <SealedChoice
+      on={state.sealed.on}
+      onChange={(on) => onSealed(on)}
+      bits={sketchOf(state.generated?.passport.blockhash256)}
+      generated
+      includePrompt={state.sealed.includePrompt}
+      onIncludePrompt={onIncludePrompt}
+      privateRecheck={state.sealed.privateRecheck === true}
+      onPrivateRecheck={(keep) => onSealed(true, keep)}
+      disabled={busy}
+    />
+  );
+
+  // On a laptop the plate keeps the left column through the run and the done
+  // screen, so the drawing lands where the eye already is, and the band lands
+  // in the right column, where the button was pressed.
+  if ((done || folded) && wide) {
+    return (
+      <div data-studio-panel="generate" data-face={done ? "receipt" : "run"} data-studio-layout="wide" className={WIDE_FACE}>
+        <div data-studio-column="picture" className={`hidden lg:block ${AT_LEFT} ${WIDE_STAGE}`}>
+          {done ? <Generated state={state} onSaved={onSaved} media="only" /> : <Plate state={state} wide />}
+        </div>
+        <div data-studio-column="details" className={AT_RIGHT}>
+          <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
+            <StatusBand state={state} />
+          </div>
+          {done ? (
+            <Generated state={state} onSaved={onSaved} media="not-at-lg" />
+          ) : (
+            <Run
+              state={state}
+              onGenerate={onGenerate}
+              onBind={onBind}
+              onUnsponsored={onUnsponsored}
+              onRecheck={onRecheck}
+              onSaved={onSaved}
+              plateAtLg={false}
+            />
+          )}
+        </div>
+        <div className={ACROSS}>{receipt}</div>
+        {done ? (
+          <div className={UNDER_RIGHT}>
+            <DoneActions state={state} wallet={wallet} onReset={onReset} />
+          </div>
+        ) : null}
+      </div>
+    );
+  }
 
   if (done || folded) {
     return (
@@ -105,27 +171,34 @@ export function GeneratePanel({
   }
 
   return (
-    <div data-studio-panel="generate" data-face="form">
+    <div data-studio-panel="generate" data-face="form" data-studio-layout={wide ? "wide" : undefined}>
     <motion.section
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="border border-line bg-bg-raised p-6 sm:p-9"
+      className={`border border-line bg-bg-raised p-6 sm:p-9${wideOnly(wide, `${WIDE_COLUMNS} lg:p-7 xl:p-8`)}`}
     >
+      {/* On a laptop the prompt and the title are lifted above the plate, so
+          everything to type is in the first screen with the plate's top in view.
+          A phone keeps today's order. */}
+      <WideColumn wide={wide} name="picture" className={`${WIDE_STAGE} lg:flex lg:flex-col`}>
       <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
         <span className="motif h-[9px] w-[9px]" />
         {t("kicker")}
       </p>
       <h2
-        className={`mt-5 max-w-[20ch] font-display text-[clamp(1.7rem,3.4vw,2.7rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}
+        className={`mt-5 max-w-[20ch] font-display text-[clamp(1.7rem,3.4vw,2.7rem)] font-semibold uppercase tracking-[-0.02em] ${leading}${wideOnly(
+          wide,
+          WIDE_CARD_HEADING,
+        )}`}
       >
         {t("heading")}
       </h2>
-      <p className="mt-4 max-w-[56ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className={`mt-4 max-w-[56ch] text-sm leading-relaxed text-text-muted${wideOnly(wide, "lg:mt-2")}`}>{t("body")}</p>
 
-      <Plate state={state} />
+      <Plate state={state} wide={wide} />
 
-      <label className="mt-8 block">
+      <label className={`mt-8 block${wideOnly(wide, "lg:order-1 lg:mt-6")}`}>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("prompt")}</span>
         <textarea
           value={state.prompt}
@@ -137,7 +210,7 @@ export function GeneratePanel({
           className="mt-2 w-full resize-y border border-line bg-bg px-4 py-3 text-base leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-accent"
         />
       </label>
-      <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
+      <div className={`mt-2 flex flex-wrap items-baseline justify-between gap-3${wideOnly(wide, "lg:order-1")}`}>
         <p className="max-w-[52ch] text-xs leading-relaxed text-text-faint">{t("promptHint")}</p>
         <p
           className={`font-mono text-[11px] tabular-nums ${
@@ -148,8 +221,10 @@ export function GeneratePanel({
         </p>
       </div>
 
-      <p className="mt-7 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("examplesLabel")}</p>
-      <div className="mt-3 flex flex-col gap-2">
+      <p className={`mt-7 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint${wideOnly(wide, "lg:order-5")}`}>
+        {t("examplesLabel")}
+      </p>
+      <div className={`mt-3 flex flex-col gap-2${wideOnly(wide, "lg:order-5")}`}>
         {EXAMPLE_PROMPTS.map((example) => (
           <button
             key={example}
@@ -166,7 +241,11 @@ export function GeneratePanel({
         ))}
       </div>
 
-      <label className="mt-8 block">
+      {/* On a laptop the name sits under the prompt, above the plate, so what to
+          type and what to call it are both in the first screen; whether it is
+          published sits under the plate, and the right column is the AI-use
+          choice and the press. */}
+      <label className={`mt-8 block${wideOnly(wide, "lg:order-2 lg:mt-5")}`}>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("title")}</span>
         <input
           type="text"
@@ -178,27 +257,20 @@ export function GeneratePanel({
           className="mt-2 w-full border border-line bg-bg px-4 py-3 text-base text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-accent"
         />
       </label>
-      <p className="mt-2 text-xs text-text-faint">{t("titleHint")}</p>
+      <p data-title-hint className={`mt-2 text-xs text-text-faint${wideOnly(wide, "lg:order-2")}`}>{t("titleHint")}</p>
+      {wide ? <div className="hidden lg:order-4 lg:block">{sealedChoice}</div> : null}
+      </WideColumn>
 
+      <WideColumn wide={wide} name="details">
       <ConsentField draft={state.consent} onChange={onConsent} disabled={busy} />
 
-      <SealedChoice
-        on={state.sealed.on}
-        onChange={(on) => onSealed(on)}
-        bits={sketchOf(state.generated?.passport.blockhash256)}
-        generated
-        includePrompt={state.sealed.includePrompt}
-        onIncludePrompt={onIncludePrompt}
-        privateRecheck={state.sealed.privateRecheck === true}
-        onPrivateRecheck={(keep) => onSealed(true, keep)}
-        disabled={busy}
-      />
+      {wide ? <div className="lg:hidden">{sealedChoice}</div> : sealedChoice}
 
       {/* The press is answered here before anything else moves: the label turns
           into the first line of the run and the button goes quiet. The room for
           two lines is held from the start, because a button that grows under the
           thumb moves the whole page with it. */}
-      <div className="mt-8 flex flex-wrap items-center gap-5">
+      <div className={`mt-8 flex flex-wrap items-center gap-5${wideOnly(wide, "lg:mt-6")}`}>
         <button
           type="button"
           onClick={onGenerate}
@@ -206,7 +278,7 @@ export function GeneratePanel({
           data-press
           className={`flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
             pressing ? "normal-case" : "uppercase tracking-[0.14em]"
-          }`}
+          }${wideOnly(wide, "lg:flex lg:flex-1")}`}
         >
           {pressing ? t("steps.draw.running") : t("submit")}
         </button>
@@ -237,6 +309,7 @@ export function GeneratePanel({
           />
         </div>
       )}
+      </WideColumn>
     </motion.section>
     {receipt}
     </div>
@@ -259,6 +332,7 @@ function Run({
   onUnsponsored,
   onRecheck,
   onSaved,
+  plateAtLg = true,
 }: {
   state: RegisterState;
   onGenerate: () => void;
@@ -266,6 +340,8 @@ function Run({
   onUnsponsored: () => void;
   onRecheck?: () => void;
   onSaved: () => void;
+  /** False under the wide layout, where the plate has the left column to itself from lg. */
+  plateAtLg?: boolean;
 }) {
   return (
     <motion.section
@@ -274,9 +350,15 @@ function Run({
       transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
       className="border border-line bg-bg-raised p-6 sm:p-9"
     >
-      <Plate state={state} />
+      {plateAtLg ? (
+        <Plate state={state} />
+      ) : (
+        <div className="lg:hidden">
+          <Plate state={state} />
+        </div>
+      )}
 
-      <ol className="mt-8 space-y-px">
+      <ol className={`mt-8 space-y-px${wideOnly(!plateAtLg, "lg:mt-0")}`}>
         {GENERATE_STEPS.map((step, index) => (
           <StepRow key={step} step={step} index={index} state={state} />
         ))}
@@ -342,7 +424,7 @@ function Quota({ state }: { state: RegisterState }) {
  * the agent draws, a light sweeps across it under an honest label, because a
  * minute of nothing looks like a hang.
  */
-function Plate({ state }: { state: RegisterState }) {
+function Plate({ state, wide = false }: { state: RegisterState; wide?: boolean }) {
   const t = useTranslations("studio.generate");
   const reduced = useIsReducedMotion();
   const drawing = state.steps.draw === "running";
@@ -353,7 +435,12 @@ function Plate({ state }: { state: RegisterState }) {
   const sealed = drawn?.sealed === true ? sketchOf(drawn.passport.blockhash256) : null;
 
   return (
-    <div className="grain relative mt-8 min-h-[14rem] overflow-hidden border border-line-strong bg-bg-sunken">
+    <div
+      className={`grain relative mt-8 min-h-[14rem] overflow-hidden border border-line-strong bg-bg-sunken${wideOnly(
+        wide,
+        `lg:order-3 lg:mt-6 lg:flex lg:flex-col lg:[&>*]:flex-1 ${WIDE_PICTURE}`,
+      )}`}
+    >
       <AnimatePresence mode="wait" initial={false}>
         {drawn?.sealed === true ? (
           <motion.div
@@ -371,7 +458,7 @@ function Plate({ state }: { state: RegisterState }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="relative flex min-h-[14rem] flex-col justify-end gap-3 p-8 sm:p-10"
+            className={`relative flex min-h-[14rem] flex-col justify-end gap-3 p-8 sm:p-10${wideOnly(wide, "lg:h-full")}`}
           >
             {drawing && !reduced ? (
               <motion.span
@@ -398,10 +485,14 @@ function Plate({ state }: { state: RegisterState }) {
             initial={{ opacity: 0, scale: 1.04 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-            className="relative"
+            className={`relative${wideOnly(wide, "lg:h-full")}`}
           >
             {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
-            <img src={image.gatewayUrl} alt="" className="max-h-[26rem] w-full object-cover" />
+            <img
+              src={image.gatewayUrl}
+              alt=""
+              className={`max-h-[26rem] w-full object-cover${wideOnly(wide, "lg:h-full lg:max-h-none")}`}
+            />
             <div className="scrim pointer-events-none absolute inset-0" />
             <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-5">
               <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-accent">{t("plateLabel")}</p>
@@ -598,7 +689,16 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
 }
 
 /** The same stub the upload path ends on, with the agent named on it. */
-function Generated({ state, onSaved }: { state: RegisterState; onSaved: () => void }) {
+/** Drawn twice under the wide layout on a laptop, the way the upload path's done screen is. */
+function Generated({
+  state,
+  onSaved,
+  media,
+}: {
+  state: RegisterState;
+  onSaved: () => void;
+  media?: "only" | "not-at-lg";
+}) {
   const t = useTranslations("studio.generate");
   const shared = useTranslations("studio");
   const kinds = useTranslations("kind");
@@ -607,6 +707,45 @@ function Generated({ state, onSaved }: { state: RegisterState; onSaved: () => vo
   const id = passportId(state);
   const generated = state.generated;
 
+  const picture =
+    generated !== null && generated.sealed === true ? (
+      <SealedDoneBand
+        file={state.sealed.file}
+        bits={sketchOf(generated.passport.blockhash256)}
+        title={state.title}
+        registeredAt={state.registeredAt}
+        saved={state.sealed.saved}
+        onSaved={onSaved}
+        privateCopy={state.prepared?.privateRecheck === true}
+      />
+    ) : generated === null ? null : (
+      <div className="relative">
+        {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
+        <img
+          src={generated.image.gatewayUrl}
+          alt=""
+          className={`max-h-[24rem] w-full object-cover${wideOnly(media === "only", `lg:max-h-none ${WIDE_PICTURE}`)}`}
+        />
+        <div className="scrim pointer-events-none absolute inset-0" />
+        <p className="absolute bottom-5 start-6 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
+          {t("doneLabel")}
+        </p>
+      </div>
+    );
+
+  if (media === "only") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 1.02 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        className="grain relative overflow-hidden border border-line bg-bg-raised"
+      >
+        {picture}
+      </motion.div>
+    );
+  }
+
   return (
     <motion.section
       initial={{ opacity: 0, y: 24 }}
@@ -614,26 +753,7 @@ function Generated({ state, onSaved }: { state: RegisterState; onSaved: () => vo
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       className="grain relative overflow-hidden border border-line bg-bg-raised"
     >
-      {generated !== null && generated.sealed === true ? (
-        <SealedDoneBand
-          file={state.sealed.file}
-          bits={sketchOf(generated.passport.blockhash256)}
-          title={state.title}
-          registeredAt={state.registeredAt}
-          saved={state.sealed.saved}
-          onSaved={onSaved}
-          privateCopy={state.prepared?.privateRecheck === true}
-        />
-      ) : generated === null ? null : (
-        <div className="relative">
-          {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
-          <img src={generated.image.gatewayUrl} alt="" className="max-h-[24rem] w-full object-cover" />
-          <div className="scrim pointer-events-none absolute inset-0" />
-          <p className="absolute bottom-5 start-6 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
-            {t("doneLabel")}
-          </p>
-        </div>
-      )}
+      {media === "not-at-lg" ? <div className="lg:hidden">{picture}</div> : picture}
 
       <div className="p-6 sm:p-9">
         <h2

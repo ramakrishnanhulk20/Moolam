@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
 import type { CreatorPassports } from "@/lib/studio/useCreatorPassports";
+import { useWide, wideOnly } from "./layout";
 import { useHeadingLeading } from "./leading";
 
 /**
@@ -15,6 +16,9 @@ import { useHeadingLeading } from "./leading";
  * The heading is the caller's to choose: the studio wears it as a section at
  * the foot of a working screen, and /mine wears it under a page whose whole
  * subject it already is, so the two want different words over the same grid.
+ *
+ * Under the wide studio the grid runs four across on a wide laptop and carries
+ * its own Load more, the same press /mine puts under its copy of this grid.
  */
 export function YourPassports({ passports, heading }: { passports: CreatorPassports; heading?: string }) {
   const t = useTranslations("studio");
@@ -22,9 +26,13 @@ export function YourPassports({ passports, heading }: { passports: CreatorPasspo
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const kinds = useTranslations("kind");
   const format = useFormatter();
+  const wide = useWide();
 
   return (
-    <section className="mt-24 border-t border-line pt-10 sm:mt-32">
+    <section
+      data-studio-passports={wide ? "wide" : undefined}
+      className={`mt-24 border-t border-line pt-10 sm:mt-32${wideOnly(wide, "lg:mt-14 lg:border-t-0 lg:pt-0")}`}
+    >
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h2 className={`font-display text-[clamp(1.6rem,3.2vw,2.6rem)] uppercase tracking-[-0.02em] ${leading}`}>
           {heading ?? t("passports.heading")}
@@ -41,7 +49,9 @@ export function YourPassports({ passports, heading }: { passports: CreatorPasspo
       ) : passports.passports.length === 0 ? (
         <p className="mt-8 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("passports.empty")}</p>
       ) : (
-        <ul className="mt-10 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
+        <ul
+          className={`mt-10 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3${wideOnly(wide, "xl:grid-cols-4")}`}
+        >
           {passports.passports.map((passport, index) => (
             <motion.li
               key={passport.id}
@@ -87,6 +97,43 @@ export function YourPassports({ passports, heading }: { passports: CreatorPasspo
           ))}
         </ul>
       )}
+
+      {wide ? <LoadMore passports={passports} /> : null}
     </section>
+  );
+}
+
+/**
+ * The next page of this account's passports, under the wide studio's grid.
+ *
+ * It says it is working on its own face, and a page that would not come back is
+ * reported on the same line with the cards already read left where they are.
+ * The words are the Explore grid's, as they are on /mine.
+ */
+function LoadMore({ passports }: { passports: CreatorPassports }) {
+  const t = useTranslations("explore");
+
+  if (passports.status !== "ready" || !passports.hasMore) {
+    return null;
+  }
+
+  return (
+    <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
+      <button
+        type="button"
+        onClick={passports.more}
+        disabled={passports.loadingMore}
+        aria-busy={passports.loadingMore}
+        data-load-more
+        className="rounded-[8px] border border-line-strong px-6 py-3 font-mono text-[11px] uppercase tracking-[0.2em] text-text transition-colors duration-200 hover:border-accent hover:text-accent disabled:cursor-wait disabled:text-text-faint"
+      >
+        {passports.loadingMore ? t("loading") : t("loadMore")}
+      </button>
+      {passports.moreError === null ? null : (
+        <p role="alert" className="max-w-[54ch] text-sm leading-relaxed text-failed">
+          {t("error", { reason: passports.moreError })}
+        </p>
+      )}
+    </div>
   );
 }

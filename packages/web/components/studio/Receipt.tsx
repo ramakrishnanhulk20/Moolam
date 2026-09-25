@@ -12,6 +12,7 @@ import type { SealedHandback } from "@/lib/sealed/handback";
 import { useSealedSave } from "@/lib/sealed/save";
 import { passportId } from "@/lib/studio/flow";
 import type { Studio } from "@/lib/studio/useStudio";
+import { useWide, wideOnly } from "./layout";
 import { EmptyStamps, ReceiptFrame } from "./ReceiptFrame";
 
 interface Mark {
@@ -42,6 +43,9 @@ export function Receipt({ studio }: { studio: Studio }) {
   const words = useTranslations("passport.consent");
   const format = useFormatter();
   const reduced = useIsReducedMotion();
+  // Under the wide layout the stub runs across both columns, so its stamps sit
+  // two to a row rather than stretching one card over the whole laptop.
+  const wide = useWide();
   const file = studio.register.sealed.file;
   // Reached through the studio rather than taken off it, the way the statement's
   // own button is: a screen that has not mounted the hook yet has no actions.
@@ -70,7 +74,7 @@ export function Receipt({ studio }: { studio: Studio }) {
       {marks.length === 0 ? (
         <EmptyStamps />
       ) : (
-        <ol className="mt-8 space-y-3">
+        <ol className={`mt-8 space-y-3${wideOnly(wide, "lg:grid lg:grid-cols-2 lg:items-start lg:gap-3 lg:space-y-0")}`}>
           <AnimatePresence initial={false}>
             {marks.map((mark, index) => (
               <motion.li
