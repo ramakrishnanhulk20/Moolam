@@ -84,7 +84,7 @@ export function ConsentSection({
             rel="noreferrer"
             className="tap font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint transition-colors duration-200 hover:text-accent"
           >
-            {standard}
+            {standardName(standard, t)}
           </a>
         </div>
 
@@ -200,4 +200,15 @@ function Field({ label, value, href }: { label: string; value: string; href?: st
       </dd>
     </div>
   );
+}
+
+/**
+ * The register names its vocabulary in the standard's own spelling. The CAWG
+ * one is said in words with the version the contract gave; anything else is
+ * printed as the contract wrote it, rather than given a name this page cannot
+ * back up.
+ */
+function standardName(standard: string, t: (key: "standardName", values: { version: string }) => string): string {
+  const cawg = /^cawg\.training-mining\/(.+)$/i.exec(standard.trim());
+  return cawg === null ? standard : t("standardName", { version: cawg[1] });
 }

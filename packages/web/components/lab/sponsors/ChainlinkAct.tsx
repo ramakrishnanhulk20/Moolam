@@ -45,7 +45,7 @@ function QuietRow({ recheck }: { recheck: ChainlinkRecheck }) {
           {recheck.matched ? "matched" : "did not match"}
         </p>
         <p className="mt-4 max-w-[22ch] font-display text-[clamp(1.1rem,2.2vw,1.5rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-          {recheck.chainlink ? "Verified independently by Chainlink" : "Written by an allowed receiver"}
+          {recheck.chainlink ? "Verified independently by Chainlink" : "Written on Monad by another approved checker"}
         </p>
         <dl className="mt-6 grid gap-x-6 gap-y-4 border-t border-line pt-4 sm:grid-cols-2">
           <Field label="Distance" value={`${count(recheck.distance)} of 64 bits`} />
@@ -110,7 +110,7 @@ function VisibleCard({ recheck }: { recheck: ChainlinkRecheck }) {
         <Field label="Written by" value={shortHex(recheck.receiver)} href={addressLink(recheck.receiver)} />
         <Field label="At" value={when(recheck.at)} wrap />
         <Field label="Passport" value={shortHex(recheck.passportId, 10, 8)} />
-        <Field label="As the receiver wrote it" value={`${count(recheck.distance)} of 64 bits`} />
+        <Field label="What Chainlink reported" value={`${count(recheck.distance)} of 64 bits`} />
       </dl>
 
       <Footnote>

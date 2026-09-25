@@ -82,7 +82,9 @@ describe("the statement a passport page draws", () => {
     expect(markup).toContain(copy.heading);
     expect(markup).toContain(copy.summary.closed);
     expect(markup).toContain(copy.line.closed);
-    expect(markup).toContain("cawg.training-mining/1.1");
+    // The contract's spelling of the standard is said in words, with the version it gave.
+    expect(markup).toContain(copy.standardName.replace("{version}", "1.1"));
+    expect(markup).not.toContain("cawg.training-mining/1.1");
 
     // The four uses, each with its own word, and the standing statement's writer.
     for (const use of Object.values(copy.uses)) {

@@ -94,7 +94,7 @@ describe("the second opinion, drawn", () => {
   it("draws both fingerprints as 64 cells each and says how far apart they are", async () => {
     const markup = await attestations([attestation()]);
     expect(markup).toContain("Registered fingerprint");
-    expect(markup).toContain(en.passport.attestations.recomputedGrid);
+    expect(markup).toContain(en.passport.attestations.recomputedGrid.replace(/'/g, "&#x27;"));
     expect(markup).toContain("0 of 64 bits apart");
     // Two grids, sixty four cells each, and nothing marked as disagreeing.
     expect(markup.match(/grid-cols-8/g)).toHaveLength(2);
@@ -106,7 +106,7 @@ describe("the second opinion, drawn", () => {
     // claims zero. The sentence follows the two values, not the claim.
     const markup = await attestations([attestation()], REGISTERED ^ 0b11111n);
     expect(markup).toContain("5 of 64 bits apart");
-    expect(markup).toContain("As the receiver wrote it");
+    expect(markup).toContain(en.passport.attestations.distanceLabel);
     expect(markup).toContain("0 of 64 bits");
     expect(markup.match(/bg-failed/g)?.length).toBe(5);
   });

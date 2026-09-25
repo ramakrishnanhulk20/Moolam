@@ -1,11 +1,10 @@
 import { notFound } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { OpeningProvider } from "@/components/studio/opening";
 import { StudioIntro } from "@/components/studio/StudioIntro";
 import { StudioScreen } from "@/components/studio/StudioScreen";
 import { WideFixture, type WideFixtureName } from "@/components/studio/WideFixture";
-import { WIDE_WORDS } from "@/components/studio/wideWords";
 import { initialRegisterState, type Mode } from "@/lib/studio/flow";
 import { Link } from "@/lib/i18n/routing";
 
@@ -82,15 +81,16 @@ function modeFrom(asked: string | string[] | undefined): Mode {
  * The strip along the foot of the bench: the live drawing, the three fixtures
  * and today's studio. Laptop only, so it never sits over the phone's tab bar.
  */
-function Bench({ fixture }: { fixture: WideFixtureName | null }) {
+async function Bench({ fixture }: { fixture: WideFixtureName | null }) {
+  const t = await getTranslations("studio.wide");
   const links: { label: string; href: string; on: boolean }[] = [
-    { label: WIDE_WORDS.live, href: "/lab/studio-wide", on: fixture === null },
-    ...FIXTURES.map((name) => ({ label: WIDE_WORDS[name], href: `/lab/studio-wide?fixture=${name}`, on: fixture === name })),
+    { label: t("live"), href: "/lab/studio-wide", on: fixture === null },
+    ...FIXTURES.map((name) => ({ label: t(name), href: `/lab/studio-wide?fixture=${name}`, on: fixture === name })),
   ];
 
   return (
     <nav
-      aria-label={WIDE_WORDS.bench}
+      aria-label={t("bench")}
       className="fixed bottom-4 left-4 z-50 hidden items-center gap-1 rounded-[8px] border border-line-strong bg-bg/90 p-1.5 font-mono text-[10px] uppercase tracking-[0.18em] backdrop-blur lg:flex"
     >
       {links.map((link) => (
@@ -106,10 +106,10 @@ function Bench({ fixture }: { fixture: WideFixtureName | null }) {
       ))}
       <span aria-hidden className="mx-1 h-4 w-px bg-line-strong" />
       <Link href="/studio" className="rounded-[6px] px-2.5 py-1.5 text-text-faint transition-colors duration-200 hover:text-accent">
-        {WIDE_WORDS.today}
+        {t("today")}
       </Link>
       {fixture === null ? null : (
-        <span className="px-2.5 normal-case tracking-normal text-text-faint">{WIDE_WORDS.fixtureNote}</span>
+        <span className="px-2.5 normal-case tracking-normal text-text-faint">{t("fixtureNote")}</span>
       )}
     </nav>
   );

@@ -9,7 +9,6 @@ import { MineScreen } from "@/components/mine/MineScreen";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { ResolveConsole } from "@/components/resolve/ResolveConsole";
 import { OpeningProvider } from "@/components/studio/opening";
-import { OPENING_WORDS } from "@/components/studio/openingWords";
 import { Showcase } from "@/components/studio/Showcase";
 import { showcasePassport } from "@/components/studio/showcasePassport";
 import { StudioIntro } from "@/components/studio/StudioIntro";
@@ -117,12 +116,13 @@ async function VerifyDrawing({ locale }: { locale: string }) {
  * the studio route asks for it.
  */
 async function StudioDrawing({ locale }: { locale: string }) {
+  const t = await getTranslations("studio");
   const passport = await showcasePassport();
 
   return (
     <Frame>
       <StudioIntro locale={locale} opening="compact" />
-      <SignInSplit showcase={<Showcase passport={passport} caption={OPENING_WORDS.studioCaption} />}>
+      <SignInSplit showcase={<Showcase passport={passport} caption={t("showcaseCaption")} />}>
         <OpeningProvider opening="compact">
           <WalletProvider>
             <StudioScreen />
@@ -140,7 +140,7 @@ async function MineDrawing({ locale }: { locale: string }) {
   return (
     <Frame>
       <ToolOpening kicker={t("kicker")} title={t("heading")} line={t("lede")} locale={locale} />
-      <SignInSplit showcase={<Showcase passport={passport} caption={OPENING_WORDS.mineCaption} />}>
+      <SignInSplit showcase={<Showcase passport={passport} caption={t("showcaseCaption")} />}>
         <WalletProvider>
           <MineScreen opening="compact" />
         </WalletProvider>

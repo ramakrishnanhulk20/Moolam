@@ -25,8 +25,8 @@
   "header": {
     "brand": "Moolam",
     "tagline": "생성 이미지를 위한 여권",
-    "themeDark": "다크 테마",
-    "themeLight": "라이트 테마",
+    "themeDark": "테마: 다크",
+    "themeLight": "테마: 라이트",
     "language": "언어",
     "nav": {
       "home": "홈",
@@ -40,8 +40,8 @@
     "themeToDark": "다크 테마로 바꾸기",
     "languageChange": "언어 바꾸기",
     "languageIs": "{language}, 언어 바꾸기",
-    "themeDarkAction": "다크 테마, 라이트 테마로 바꾸기",
-    "themeLightAction": "라이트 테마, 다크 테마로 바꾸기"
+    "themeDarkAction": "테마: 다크, 라이트 테마로 바꾸기",
+    "themeLightAction": "테마: 라이트, 다크 테마로 바꾸기"
   },
   "shell": {
     "label": "섹션",
@@ -75,7 +75,7 @@
       },
       "find": {
         "title": "내 이미지 찾기",
-        "line": "이 기기에서 등록한 모든 이미지가 여권과 기록과 함께 한자리에 모입니다.",
+        "line": "등록한 모든 이미지가, 로그인하는 어느 기기에서든, 여권과 기록과 함께 모입니다.",
         "action": "내 이미지",
         "elsewhere": "위쪽 바에서 다른 항목 옆에, 휴대폰에서는 마지막 탭에 있습니다."
       }
@@ -169,13 +169,13 @@
     "agentFilter": "에이전트 {id}",
     "clearAgent": "에이전트 필터 지우기",
     "marks": {
-      "manifest": "이미지와 함께 C2PA manifest 고정",
+      "manifest": "Content Credentials 있음",
       "rechecked": "체인에서 재확인됨",
       "chainlink": "Chainlink 워크플로가 재확인",
       "disputed": "이의 있음"
     },
     "legend": {
-      "manifest": "C2PA manifest 고정됨",
+      "manifest": "Content Credentials 있음",
       "rechecked": "체인에서 재확인됨",
       "disputed": "이의 있음",
       "consent": "AI 사용 선언, 네 가지 용도에 네 개의 표시"
@@ -199,7 +199,8 @@
       "mark": "봉인됨: 이 사진은 공개된 적이 없습니다",
       "legend": "봉인됨, 공개된 사진 없음",
       "word": "봉인됨"
-    }
+    },
+    "marksToggle": "표시의 뜻"
   },
   "agents": {
     "kicker": "에이전트",
@@ -220,7 +221,8 @@
     "upheld": "받아들여진 이의",
     "seeWorks": "이 에이전트의 여권 보기",
     "empty": "여권에 서명한 에이전트를 인덱스가 아직 보지 못했습니다.",
-    "error": "인덱스를 읽지 못했습니다: {reason}."
+    "error": "인덱스를 읽지 못했습니다: {reason}.",
+    "formulaPlain": "일치한 재확인은 점수를 올리고 빗나간 재확인은 내립니다. 받아들여진 이의는 빗나감 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다."
   },
   "home": {
     "hero": {
@@ -411,19 +413,19 @@
     "idleHeading": "아직 답이 없습니다",
     "idleBody": "파일을 놓아 보세요. 답은 이 카드에 나타납니다.",
     "steps": {
-      "fingerprint": "파일 지문을 세 가지로 뜹니다. 정확한 바이트, 지각 해시, 블록 해시.",
+      "fingerprint": "파일 지문을 세 가지로 뜹니다. 정확한 바이트, 겉모습, 그리고 배치.",
       "rotate": "그림이 돌아가거나 뒤집힐 수 있는 여덟 가지를 모두 시도합니다.",
       "search": "등록된 모든 여권을 뒤져 가장 가까운 것으로 답합니다."
     },
     "noMatchLabel": "등록되지 않음",
     "registerCta": "이 이미지 등록하기",
     "untitled": "제목 없음",
-    "noPicture": "지금은 IPFS에서 이미지를 가져올 수 없습니다",
+    "noPicture": "지금은 그림을 보관한 곳이 응답하지 않습니다",
     "measured": "무엇을 쟀는지",
     "queriedSize": "크기",
-    "queriedPhash": "pHash",
-    "queriedSha": "정확한 바이트",
-    "queriedBlockhash": "Blockhash",
+    "queriedPhash": "겉모습 지문 (pHash)",
+    "queriedSha": "파일 그대로의 지문 (SHA-256)",
+    "queriedBlockhash": "배치 지문 (블록 해시)",
     "bits": "{of}비트 중 {count}비트 차이",
     "others": "{count, plural, other {다른 여권 #건이 범위 안에 있었고}}, 그중 이것이 가장 가까웠습니다.",
     "openAgent": "에이전트 {id}",
@@ -505,9 +507,9 @@
     "agent": "생성 에이전트",
     "registered": "등록 시각",
     "kind": "종류",
-    "phash": "pHash",
-    "blockhash": "Blockhash",
-    "manifestHash": "매니페스트 해시",
+    "phash": "겉모습 지문 (pHash)",
+    "blockhash": "배치 지문 (블록 해시)",
+    "manifestHash": "Content Credentials 지문",
     "metadata": "메타데이터",
     "parent": "편집 원본",
     "lineageDisputed": "여기 또는 그 위에서 이의 제기됨",
@@ -518,29 +520,29 @@
       "matched": "일치함",
       "notMatched": "일치하지 않음",
       "distance": "64비트 중 {distance}비트",
-      "receiver": "기록한 곳",
+      "receiver": "Moolam의 Chainlink 수신 컨트랙트가 Monad에 기록",
       "at": "시각",
       "kicker": "두 번째 의견",
-      "body": "그림이 자기 것이라고는 누구나 말할 수 있습니다. 이 부분은 다릅니다. Chainlink CRE 워크플로가 이미지를 가져와 해시를 다시 구하고, 답을 Monad에 기록했습니다.",
-      "distanceLabel": "수신자가 기록한 값",
-      "byChainlink": "Chainlink CRE 워크플로가 재확인",
+      "body": "그림이 자기 것이라고는 누구나 말할 수 있습니다. 이 부분은 다릅니다. Chainlink의 CRE 워크플로가 그림을 직접 내려받아 지문을 다시 뜨고, 결과를 Monad에 기록했습니다.",
+      "distanceLabel": "Chainlink가 보고한 값",
+      "byChainlink": "Chainlink CRE 워크플로가 한 번 더 확인",
       "delivery": {
-        "simulation": "CRE 시뮬레이션 포워더를 거쳐 들어왔습니다. 노드 하나가 워크플로를 실행했고 네트워크 합의는 없습니다.",
-        "network": "Chainlink 네트워크 포워더를 거쳐 들어왔습니다. 정족수의 노드가 이 답에 합의했습니다."
+        "simulation": "이 확인은 Chainlink의 CRE 시뮬레이터가 기기 한 대에서 실행했으며, Chainlink 네트워크 전체에서 실행한 것이 아닙니다.",
+        "network": "서로 독립된 여러 Chainlink 기기가 이 확인을 실행했고 답에 합의했습니다."
       },
-      "byReceiver": "허용된 수신자가 기록",
+      "byReceiver": "승인된 다른 확인자가 Monad에 기록",
       "openTx": "트랜잭션 {hash}",
-      "noTransaction": "인덱스에 이 건의 트랜잭션이 없습니다.",
+      "noTransaction": "이 항목의 거래 링크는 아직 없습니다.",
       "registeredGrid": "등록된 지문",
-      "recomputedGrid": "워크플로가 다시 구한 지문",
+      "recomputedGrid": "Chainlink의 지문",
       "verdict": "Chainlink CRE 워크플로가 이 그림을 다시 가져와 지문을 다시 계산했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
       "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 워크플로가 직접 가져온 파일에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다.",
-      "whatIsRecheck": "다시 확인한다는 것은, Chainlink CRE 워크플로가 이 파일을 직접 가져와 지문을 다시 구하고 그 답을 리시버 컨트랙트를 통해 Monad에 기록하는 일입니다. 자기 그림에 대해서는 누구도 기록할 수 없습니다.",
+      "whatIsRecheck": "다시 확인한다는 것은, Chainlink CRE 워크플로가 이 파일을 직접 가져와 지문을 다시 구하고 그 답을 Monad에 기록하는 일입니다. 자기 그림에 대해서는 누구도 기록할 수 없습니다.",
       "private": {
         "badge": "비공개 재확인",
         "lead": "Chainlink 기밀 워크플로가 Moolam이 두고 있는 작은 사본으로 비공개 재확인했습니다.",
         "leadEarlier": "Chainlink 기밀 워크플로가 Moolam이 당시 두고 있던 작은 사본으로 비공개 재확인했습니다.",
-        "limit": "기기 한 대의 Chainlink 시뮬레이터에서 실행되었으며, 이 시뮬레이터는 실제 엔클레이브가 아닙니다.",
+        "limit": "Chainlink 시뮬레이터에서 기기 한 대로 실행했으며, Chainlink의 보안 하드웨어 안에서 실행한 것이 아닙니다.",
         "verdict": "Chainlink 기밀 워크플로가 Moolam이 두고 있던 이 사진의 작은 비공개 사본을 열어 지문을 비교했습니다: <apart>64비트 중 {bits}비트 차이</apart>.",
         "gridNote": "첫 번째 격자는 등록 당시 레지스트리가 저장한 지문입니다. 두 번째는 워크플로가 Moolam의 작은 비공개 사본에서 계산한 지문입니다. 어긋나는 칸은 표시됩니다."
       },
@@ -558,7 +560,7 @@
       "notConfigured": "이 배포에는 서명자가 설정되어 있지 않아, 아직 여기서 편집본을 추가할 수 없습니다.",
       "signer": {
         "what": "서명자는 이 앱이 당신의 여권에 편집본을 추가하도록 주는 권한이며, Privy가 집행하는 정책이 그 한 가지 동작으로만 묶어 둡니다.",
-        "policy": "정책은 Moolam 등록부의 appendEdit만 허용하고, 그 외에는 아무것도 허용하지 않습니다.",
+        "policy": "이 권한으로는 당신의 여권에 편집을 추가하는 일만 할 수 있습니다.",
         "grant": "이 앱이 편집본을 추가하도록 허용",
         "granting": "Privy가 허락을 요청하고 있습니다",
         "granted": "이 앱은 당신의 지갑에서 편집본을 추가할 수 있습니다",
@@ -568,7 +570,7 @@
       "form": {
         "drop": "편집한 사진을 여기에 놓으세요",
         "choose": "사진 고르기",
-        "hint": "JPEG, PNG 또는 WebP, 20MB까지. 고정하기 전에 새 C2PA 매니페스트를 파일에 씁니다.",
+        "hint": "JPEG, PNG 또는 WebP, 20MB까지. 저장하기 전에 Moolam이 새 Content Credentials를 붙입니다.",
         "replace": "바꾸기",
         "title": "제목",
         "titlePlaceholder": "새벽의 바다, 조금 따뜻하게",
@@ -588,7 +590,7 @@
         },
         "send": {
           "waiting": "당신의 계정에서 보내야 합니다",
-          "running": "당신의 계정에서 보내는 중, 편집 정책 아래 앱의 키가 서명, 네트워크 수수료 대납",
+          "running": "Privy를 통해 당신의 계정에서 보내는 중. 수수료는 Moolam이 냅니다.",
           "watching": "당신의 계정에서 보냈고 앱의 키가 서명했습니다. Monad에 보이기를 기다리는 중.",
           "pending": "보냈고, Monad에는 아직 보이지 않습니다",
           "done": "기록되었습니다",
@@ -645,13 +647,13 @@
         "openPassport": "그 여권 열기",
         "signIn": "로그인"
       },
-      "lineageNote": "편집본은 appendEdit만 허용하는 정책이 붙은 Privy 서명자를 통해 소유자가 추가합니다."
+      "lineageNote": "편집은 소유자만 추가할 수 있습니다. 앱의 Privy 권한은 편집 추가만 할 수 있고 그 밖에는 아무것도 못 합니다."
     },
     "untitled": "제목 없음",
-    "noPicture": "지금은 IPFS에서 이미지를 가져올 수 없습니다",
-    "fingerprintVersion": "지문 v{version}",
+    "noPicture": "지금은 그림을 보관한 곳이 응답하지 않습니다",
+    "fingerprintVersion": "지문 방식 {version}",
     "record": "이 기록",
-    "passkeyBound": "이 제작자의 계정에는 체인 위에 패스키가 묶여 있습니다.",
+    "passkeyBound": "이 제작자는 자기 계정에 묶인 패스키로 서명합니다.",
     "passkeyNone": "이 제작자의 계정에 묶인 패스키가 없습니다.",
     "noAgent": "생성 에이전트 없음. 이 한 장은 창작자가 올린 파일로 등록되었습니다.",
     "agentNumber": "에이전트 {id}",
@@ -659,9 +661,9 @@
     "prompt": "프롬프트",
     "fingerprints": "지문",
     "fingerprintsBody": "검증 서비스는 이미지를 가져와 해시를 다시 구하고 이것들과 견줍니다. 여기 어느 것도 파일 이름이나 메타데이터의 주장에 기대지 않습니다.",
-    "exactHash": "정확한 바이트",
+    "exactHash": "파일 그대로의 지문 (SHA-256)",
     "passportId": "여권 id",
-    "tokenId": "여권 id는 그대로 ERC-721 토큰 id이기도 합니다",
+    "tokenId": "이 여권은 같은 id를 가진 Monad 위의 NFT이기도 합니다",
     "standing": {
       "verified": "체인 위의 검증자가 확인함",
       "mismatched": "재확인이 일치하지 않았음",
@@ -699,10 +701,10 @@
       },
       "reason": "주장 내용",
       "evidenceElsewhere": "이 이의 제기의 증거는 다른 곳을 가리킵니다:",
-      "waiting": "정책이 지정한 중재자를 기다리는 중입니다.",
+      "waiting": "분쟁 중재자의 결정을 기다리는 중입니다.",
       "console": "중재자 콘솔",
       "outcome": {
-        "open": "정책이 지정한 중재자를 기다리는 중입니다.",
+        "open": "분쟁 중재자의 결정을 기다리는 중입니다.",
         "upheld": "중재자가 이의를 받아들였습니다. 보증금은 제기자에게 돌아갔고, 이 기록은 영구히 분쟁으로 표시됩니다.",
         "rejected": "중재자가 받아들이지 않았습니다. 보증금은 재무 계정으로 갔고, 기록은 그대로 유지됩니다."
       },
@@ -763,7 +765,7 @@
           "notResolver": "분쟁은 정책이 지정한 중재자만 처리할 수 있습니다.",
           "noOpenDispute": "이 여권에는 진행 중인 분쟁이 없습니다.",
           "nothingOwed": "레지스트리가 이 계정에 갚을 것이 없습니다.",
-          "reverted": "Monad가 이것을 블록에 넣었지만 실패해서 아무것도 기록되지 않았습니다",
+          "reverted": "Monad가 이것을 거부해서 아무것도 기록되지 않았습니다",
           "unknown": "이의가 나가지 않았습니다."
         },
         "actions": {
@@ -777,9 +779,9 @@
     "elsewhere": "이 기록이 있는 다른 곳",
     "openTransaction": "등록 트랜잭션",
     "openToken": "MonadVision의 토큰",
-    "openImage": "이미지 열기",
-    "noManifest": "이 파일에는 C2PA 매니페스트가 들어 있지 않습니다.",
-    "ipfsCid": "IPFS {cid}",
+    "openImage": "등록된 파일 열기",
+    "noManifest": "이 파일에는 Content Credentials가 없었습니다.",
+    "ipfsCid": "IPFS에 저장된 기록 열기",
     "consent": {
       "kicker": "체인에 기록됨",
       "heading": "AI가 이 사진을 어떻게 쓸 수 있는가",
@@ -857,7 +859,7 @@
         "conditionsRequired": "조건이 있는 선언은 그 조건을 적어야 합니다. 적은 뒤 다시 보내세요.",
         "conditionsNotAllowed": "조건은 조건을 요구하는 선언의 것입니다. 글을 지우거나 먼저 물어보라를 고르세요.",
         "conditionsTooLong": "조건이 등록부가 보관하는 256바이트보다 깁니다. 줄인 뒤 다시 보내세요.",
-        "conditionsNotPrintable": "등록부는 일반 ASCII만 받습니다. 줄바꿈이나 악센트가 붙은 글자를 빼고 다시 보내세요.",
+        "conditionsNotPrintable": "A부터 Z까지의 영문자, 숫자, 흔한 문장 부호만 쓰세요. 줄바꿈이나 악센트가 붙은 글자를 빼고 다시 보내세요.",
         "reverted": "Monad가 이 거래를 처리했지만 아무 일도 일어나지 않았습니다. 기록된 것이 없으니 다시 시도해도 안전합니다.",
         "declined": "창을 닫았으므로 아무것도 보내지 않았습니다.",
         "confirmPending": "선언은 나갔고 Monad는 아직 보여 주지 않았습니다. 여전히 기록될 수 있으니 다시 보내지 마세요. 잠시 뒤에 다시 확인하세요.",
@@ -887,7 +889,7 @@
         "conditionsLabel": "조건, 당신의 말로",
         "conditionsPlaceholder": "라이선스, 읽어야 할 페이지, 또는 물어볼 주소.",
         "bytes": "{max}바이트 중 {bytes}",
-        "notPrintable": "등록부는 일반 ASCII만 받습니다. {at}번째 글자는 체인이 받지 않으므로, 줄바꿈이나 악센트가 붙은 글자를 빼야 쓸 수 있습니다.",
+        "notPrintable": "A부터 Z까지의 영문자, 숫자, 흔한 문장 부호만 쓰세요. {at}번째 글자는 체인이 받지 않으므로, 줄바꿈이나 악센트가 붙은 글자를 빼야 쓸 수 있습니다.",
         "submit": "Monad에 기록하기",
         "steps": {
           "checking": "등록부에 묻는 중",
@@ -905,7 +907,8 @@
           "recheck": "다시 확인",
           "signIn": "로그인"
         }
-      }
+      },
+      "standardName": "AI 학습과 데이터 마이닝을 위한 CAWG 표준으로 작성, v{version}"
     },
     "sealed": {
       "label": "봉인됨",
@@ -913,7 +916,7 @@
       "posterLinePrivate": "{date}에 등록. 사진은 공개되지 않습니다. Moolam은 비공개 재확인을 위해 작은 비공개 사본 하나만 둡니다.",
       "standing": "봉인되어 공개된 사본이 없음",
       "commitmentLabel": "체인의 약속",
-      "commitmentAlgorithm": "{algorithm}으로 해시",
+      "commitmentAlgorithm": "{algorithm}로 지문을 떴습니다. 파일 지문의 표준 방식입니다",
       "commitmentLine": "파일을 가진 사람은 해시를 계산해 패스포트 아이디와 맞춰 볼 수 있습니다.",
       "recheck": "재확인할 공개 사본이 없습니다. 재확인하려면 사진을 공개해야 합니다.",
       "privateCopy": {
@@ -1019,6 +1022,17 @@
       "poster": "{date}에 공개",
       "label": "처음에는 봉인",
       "line": "사진을 공개하지 않은 채 등록되었고, {date}에 보유자가 공개했습니다. 파일의 해시가 곧 여권 아이디입니다."
+    },
+    "facts": {
+      "madeBy": "만든 사람",
+      "drawnBy": "그린 곳",
+      "aiUse": "AI 사용",
+      "rechecked": "재확인",
+      "nothingStated": "선언 없음",
+      "notYet": "아직 없음",
+      "unread": "읽지 못함",
+      "noAgent": "지정된 에이전트 없음",
+      "chainlink": "Chainlink"
     }
   },
   "agent": {
@@ -1031,7 +1045,7 @@
       "heading": "ERC-8004 레지스트리의 피드백",
       "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 검증 서비스는 확인할 때마다 한 건씩 남깁니다.",
       "error": "평판 레지스트리를 읽지 못했습니다: {reason}.",
-      "body": "피드백은 남기는 쪽이 직접 표준 ERC-8004 평판 레지스트리에 moolam과 verification 태그로 기록합니다. 이 페이지는 그 요약을 읽어 몇 건이 쌓녕는지와 레지스트리가 알려 주는 최신 값을, 알려 주는 소수 자리로 보여 줍니다. 옆의 신뢰 점수는 인덱스의 재확인에서 나오므로 둘을 합치지 않습니다.",
+      "body": "피드백은 Monad의 공개 에이전트 평가판(ERC-8004 평판 레지스트리)에 Moolam의 확인 항목으로 올라 있습니다. 이 페이지는 그 요약을 읽습니다. 옆의 신뢰 점수는 인덱스 자체의 재확인에서 나오므로, 둘을 더하는 일은 없습니다.",
       "registry": "레지스트리 {address}",
       "secondary": "검증자가 체인에 쓴 기록이며 재확인 점수가 아닙니다",
       "entries": "{count, plural, other {#건}}",
@@ -1052,29 +1066,30 @@
       "empty": "인덱스는 이 에이전트가 여권에 서명하는 것을 아직 보지 못했습니다.",
       "error": "인덱스를 읽지 못했습니다: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-      "formulaLink": "점수를 구하는 방법"
+      "formulaLink": "점수를 구하는 방법",
+      "formulaPlain": "일치한 재확인은 점수를 올리고 빗나간 재확인은 내립니다. 받아들여진 이의는 빗나감 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다."
     },
     "signs": {
       "heading": "이 에이전트가 서명하는 방식",
-      "body": "에이전트 id의 값어치는 그것을 가진 계정의 값어치와 같습니다. 레지스트리는 등록할 때마다, 무엇을 쓰기 전에 그 연결을 스스로 확인합니다.",
+      "body": "에이전트의 이름은 그 뒤에 있는 계정만큼만 믿을 수 있습니다. 레지스트리는 등록할 때마다, 무엇을 쓰기 전에 그 연결을 스스로 확인합니다.",
       "sign": {
         "title": "에이전트가 지문에 서명합니다",
-        "body": "에이전트 {id}를 가진 계정이 EIP-712 여권 다이제스트에 서명합니다. 해시들, 제작자, 에이전트 id, 그리고 기한입니다. 이미지 자체는 지문 밖으로 나가지 않습니다."
+        "body": "에이전트 {id}를 가진 계정이 그림의 짧은 요약에 서명합니다. 지문, 만든 사람, 그린 에이전트, 그리고 기한입니다. 그림 자체는 지문 밖으로 나가지 않습니다."
       },
       "recover": {
         "title": "레지스트리가 서명자를 복원합니다",
-        "body": "컨트랙트가 그 서명에서 주소를 직접 복원합니다. 트랜잭션을 보낸 쪽의 말은 하나도 그대로 믿지 않습니다."
+        "body": "누가 서명했는지는 레지스트리가 서명 자체에서 알아냅니다. 거래를 보낸 쪽의 말을 그대로 믿는 것은 없습니다."
       },
       "own": {
         "title": "소유자여야 합니다",
-        "body": "복원한 주소를 ERC-8004 신원 레지스트리의 ownerOf와 견줍니다. 다르면 등록은 InvalidGeneratorSignature로 되돌아가고, 여권은 아예 생기지 않습니다."
+        "body": "그 서명자를 공개 에이전트 레지스트리(ERC-8004)에 올라 있는 소유자와 대조합니다. 다르면 Monad가 등록을 거부하고 여권은 만들어지지 않습니다."
       },
       "registry": "레지스트리 {address}",
       "identity": "신원 {address}",
       "privy": "키가 있는 곳",
       "privyBody": "이 값들은 에이전트 자신의 카드에서 온 것이지, 이 앱에서 온 것이 아닙니다.",
       "privyWallet": "Privy 계정 id",
-      "privyPolicy": "정책"
+      "privyPolicy": "이 계정이 서명할 수 있는 것"
     },
     "works": {
       "heading": "서명해 온 것들",
@@ -1540,7 +1555,18 @@
       "recheck": "Monad에 다시 묻기",
       "openAddress": "MonadVision에서 {wallet} 열기",
       "generateAgain": "다시 만들기"
-    }
+    },
+    "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다.",
+    "wide": {
+      "bench": "넓은 스튜디오 작업대",
+      "fixtureNote": "견본: 스튜디오 상태를 흉내 낸 것. 계정 없음, 아무것도 보내지 않습니다.",
+      "upload": "올리기",
+      "generate": "생성",
+      "done": "완료",
+      "live": "실시간",
+      "today": "오늘"
+    },
+    "ledeSignedIn": "여기서 등록하는 이미지마다 Monad 위에 제 기록을 갖습니다. 지문이 떠지고, 당신이 서명하고, 어떤 사본에서든 찾을 수 있습니다."
   },
   "docs": {
     "home": "문서",
@@ -1613,7 +1639,7 @@
       "notEnough": "이 거래를 감당하기에 계정이 모자랐습니다.",
       "declined": "트랜잭션이 나가기 전에 창이 닫혔습니다. 아무것도 보내지 않았습니다.",
       "confirmPending": "접수됐고 Monad가 아직 보여 주지 않았습니다. 아직 기록될 수 있으므로 다시 보내면 안 됩니다.",
-      "reverted": "Monad가 이것을 블록에 넣었지만 실패해서 아무것도 기록되지 않았습니다",
+      "reverted": "Monad가 이것을 거부해서 아무것도 기록되지 않았습니다",
       "unknown": "처리되지 않았습니다."
     },
     "actions": {
@@ -1690,9 +1716,10 @@
     "opening": "계정을 여는 중",
     "signedOut": {
       "kicker": "로그인하지 않았습니다",
-      "heading": "이 기기에서 등록한 이미지를 보려면 로그인하세요",
+      "heading": "등록한 모든 이미지를 보려면 로그인하세요",
       "button": "로그인하고 보기",
       "body": "이 목록은 계정 주소로 인덱스에서 읽습니다. 로그인만 하면 어느 기기에서나 같은 이미지가 나옵니다."
-    }
+    },
+    "showcaseCaption": "Monad 위의 실제 여권. 내 여권도 여기 이렇게 놓입니다."
   }
 }

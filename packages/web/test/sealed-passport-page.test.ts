@@ -180,7 +180,7 @@ describe("the record on a sealed passport", () => {
     const markup = await facts(sealedArt);
 
     expect(markup).toContain(en.passport.sealed.commitmentLabel);
-    expect(markup).toContain("Hashed with sha-256");
+    expect(markup).toContain(en.passport.sealed.commitmentAlgorithm.replace("{algorithm}", "sha-256"));
     expect(markup).toContain(en.passport.sealed.commitmentLine);
     expect(markup).not.toContain(en.passport.openImage);
   });

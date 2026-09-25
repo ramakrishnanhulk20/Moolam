@@ -274,7 +274,7 @@ function Row({
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
         <Field label={t("distanceLabel")} value={t("distance", { distance: attestation.distance })} />
         <Field label={t("at")} value={when} />
-        <Field label={t("receiver")} value={shortHex(attestation.receiver)} href={`${MONAD_EXPLORER}/address/${attestation.receiver}`} />
+        <Field label={source === "chainlink" ? t("receiver") : t("byReceiver")} value={shortHex(attestation.receiver)} href={`${MONAD_EXPLORER}/address/${attestation.receiver}`} />
       </dl>
 
       {/* When this row wraps, which it does on a phone, the two links need

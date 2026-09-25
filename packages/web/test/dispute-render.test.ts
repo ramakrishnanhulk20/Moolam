@@ -230,7 +230,7 @@ describe("every failure the panel can print", () => {
 
   it("says a mined revert wrote nothing, in its own sentence", () => {
     const markup = panel(flag({}, { failure: { key: "reverted", reason: "AlreadyDisputed()", next: "again" } }));
-    expect(markup).toContain("Monad mined this and it reverted, so nothing was written");
+    expect(markup).toContain(en.passport.dispute.flag.failure.reverted);
     expect(markup).toContain("AlreadyDisputed()");
     expect(markup).not.toContain("The challenge did not go out");
   });
@@ -367,7 +367,7 @@ describe("a settle that is out and has not been shown", () => {
   it("says a settle that reverted wrote nothing", () => {
     const markup = console_(desk({ failure: { key: "reverted", reason: "NoOpenDispute()", next: "again" } }), [row()]);
 
-    expect(markup).toContain("Monad mined this and it reverted, so nothing was written");
+    expect(markup).toContain(en.resolve.failure.reverted);
     expect(markup).not.toContain("That did not go through");
   });
 

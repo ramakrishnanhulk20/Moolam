@@ -71,7 +71,7 @@ const { Attestations } = await import("@/components/passport/Attestations");
 const { Facts } = await import("@/components/passport/Facts");
 const { TUCKED_ROOM } = await import("@/components/passport/RecheckRequest");
 const { TopFacts, FactStrip } = await import("@/components/passport/TopFacts");
-const { topFacts, FACT_ANCHORS, TOP_FACT_WORDS } = await import("@/components/passport/top-facts");
+const { topFacts, FACT_ANCHORS } = await import("@/components/passport/top-facts");
 const { addresses } = await import("@/lib/chain/client");
 
 const ID = `0x${"7c".repeat(32)}` as Hex;
@@ -128,6 +128,7 @@ const say = {
   sealed: en.passport.sealed.label,
   date: (seconds: bigint) =>
     new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(Number(seconds) * 1000)),
+  words: en.passport.facts,
 };
 
 const input = {
@@ -196,7 +197,7 @@ describe("the credit line under the title", () => {
     const line = markup.slice(markup.indexOf("data-meta-line"));
     expect(line).not.toMatch(/<span aria-hidden="true" class="h-\[10px\] w-px/);
     expect(line).toContain(en.kind["0"]);
-    expect(line).toContain("Fingerprint v1");
+    expect(line).toContain(en.passport.fingerprintVersion.replace("{version}", "1"));
   });
 });
 
@@ -269,10 +270,10 @@ describe("the facts strip", () => {
   it("reads each fact off the page's own reads", () => {
     const facts = topFacts(input, say);
     expect(facts.map((fact) => fact.label)).toEqual([
-      TOP_FACT_WORDS.madeBy,
-      TOP_FACT_WORDS.drawnBy,
-      TOP_FACT_WORDS.aiUse,
-      TOP_FACT_WORDS.rechecked,
+      en.passport.facts.madeBy,
+      en.passport.facts.drawnBy,
+      en.passport.facts.aiUse,
+      en.passport.facts.rechecked,
     ]);
     const [made, drawn, use, checked] = facts;
     expect(made.value).toBe("0x85a88C…39a6");
@@ -311,9 +312,9 @@ describe("the facts strip", () => {
     );
     expect(drawn.value).toBe("Agent 10249");
     expect(drawn.detail).toBeUndefined();
-    expect(use.value).toBe(TOP_FACT_WORDS.unread);
+    expect(use.value).toBe(en.passport.facts.unread);
     expect(use.unread).toBe(true);
-    expect(checked.value).toBe(TOP_FACT_WORDS.notYet);
+    expect(checked.value).toBe(en.passport.facts.notYet);
 
     const [, captured, unstated] = topFacts(
       { ...input, agentId: 0n, agentName: null, kind: 1, consent: { stated: false, entry: null } },
@@ -321,7 +322,7 @@ describe("the facts strip", () => {
     );
     expect(captured.value).toBe(en.kind["1"]);
     expect(captured.href).toBe(`#${FACT_ANCHORS.drawnBy}`);
-    expect(unstated.value).toBe(TOP_FACT_WORDS.nothingStated);
+    expect(unstated.value).toBe(en.passport.facts.nothingStated);
 
     const [, , , plainSealed] = topFacts({ ...input, sealed: true, attestations: [] }, say);
     expect(plainSealed.value).toBe(en.passport.sealed.label);
@@ -359,7 +360,7 @@ describe("the facts strip", () => {
       await TopFacts({ passport, art, consent: null, attestations: [], locale: "en" }),
     );
     expect(markup).toContain("Agent 10249");
-    expect(markup).toContain(TOP_FACT_WORDS.unread);
+    expect(markup).toContain(en.passport.facts.unread);
 
     agent.read.mockResolvedValueOnce({ owner: CREATOR, uri: "data:,", card: { name: "Moolam generator" } });
     const named = render(await TopFacts({ passport, art, consent: null, attestations: [], locale: "en" }));
@@ -385,8 +386,14 @@ describe("the facts strip", () => {
     expect(route).toContain('variant === "facts"');
   });
 
-  it("keeps its new words in one English object and writes no long dash", () => {
-    expect(source("components/passport/top-facts.ts")).toContain("TOP_FACT_WORDS");
+  it("reads its words from the message files and writes no long dash", () => {
+    const logic = source("components/passport/top-facts.ts");
+    for (const [key, words] of Object.entries(en.passport.facts)) {
+      if (key !== "chainlink") {
+        expect(logic, key).not.toContain(`: "${words}"`);
+      }
+    }
+    expect(source("components/passport/TopFacts.tsx")).toContain("t(`facts.${key}`)");
     for (const path of [
       "components/passport/top-facts.ts",
       "components/passport/TopFacts.tsx",

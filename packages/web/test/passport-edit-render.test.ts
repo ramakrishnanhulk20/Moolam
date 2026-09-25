@@ -130,7 +130,7 @@ describe("state one, before a signer is granted", () => {
   it("explains what a signer is, what the policy allows, and offers the one button", () => {
     const markup = panel(edit());
     expect(markup).toContain("A signer is a permission you give this app");
-    expect(markup).toContain("appendEdit on the Moolam registry");
+    expect(markup).toContain(en.passport.edit.signer.policy);
     expect(markup).toContain("Allow edits from this app");
     expect(markup).not.toContain("Drop the edited picture here");
   });

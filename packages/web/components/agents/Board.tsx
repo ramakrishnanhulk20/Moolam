@@ -47,6 +47,7 @@ export async function Board({
       </summary>
 
       <div className="mt-5 flex flex-col items-start gap-4 border-s border-line ps-5">
+        <p className="text-sm leading-relaxed text-text-muted">{t("formulaPlain")}</p>
         <code className="block font-mono text-[12px] leading-relaxed text-text">{t("formula")}</code>
         <Link
           href={TRUST_DOC}

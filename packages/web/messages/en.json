@@ -23,8 +23,8 @@
   "header": {
     "brand": "Moolam",
     "tagline": "Passports for generated images",
-    "themeDark": "Dark theme",
-    "themeLight": "Light theme",
+    "themeDark": "Theme: dark",
+    "themeLight": "Theme: light",
     "language": "Language",
     "nav": {
       "home": "Home",
@@ -38,8 +38,8 @@
     "themeToDark": "Switch to the dark theme",
     "languageChange": "Change the language",
     "languageIs": "{language}, change the language",
-    "themeDarkAction": "Dark theme, switch to the light theme",
-    "themeLightAction": "Light theme, switch to the dark theme"
+    "themeDarkAction": "Theme: dark, switch to the light theme",
+    "themeLightAction": "Theme: light, switch to the dark theme"
   },
   "shell": {
     "label": "Sections",
@@ -73,7 +73,7 @@
       },
       "find": {
         "title": "Find yours",
-        "line": "Every picture you registered on this device, in one place, each with its passport and its history.",
+        "line": "Every picture you registered, on any device you sign in from, each with its passport and its history.",
         "action": "My pictures",
         "elsewhere": "It sits beside the others in the bar at the top, and on the last tab on a phone."
       }
@@ -167,13 +167,13 @@
     "agentFilter": "Agent {id}",
     "clearAgent": "Clear the agent filter",
     "marks": {
-      "manifest": "C2PA manifest pinned with the picture",
+      "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
       "chainlink": "Re-checked by a Chainlink workflow",
       "disputed": "Disputed"
     },
     "legend": {
-      "manifest": "C2PA manifest pinned",
+      "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
       "disputed": "Under dispute",
       "consent": "Statement on AI use, four marks for the four uses"
@@ -197,7 +197,8 @@
       "mark": "Sealed: this picture was never published",
       "legend": "Sealed, no picture published",
       "word": "Sealed"
-    }
+    },
+    "marksToggle": "What the marks mean"
   },
   "agents": {
     "kicker": "Agents",
@@ -218,7 +219,8 @@
     "upheld": "Disputes upheld",
     "seeWorks": "See its passports",
     "empty": "The index has not seen an agent sign a passport yet.",
-    "error": "The index could not be read: {reason}."
+    "error": "The index could not be read: {reason}.",
+    "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
   },
   "home": {
     "hero": {
@@ -409,19 +411,19 @@
     "idleHeading": "No answer yet",
     "idleBody": "Drop a file in. The answer lands on this card.",
     "steps": {
-      "fingerprint": "Fingerprint the file three ways: the exact bytes, a perceptual hash, a block hash.",
+      "fingerprint": "Fingerprint the file three ways: the exact bytes, how it looks, and its layout.",
       "rotate": "Try all eight ways the picture could be turned or mirrored.",
       "search": "Search every registered passport and answer with the closest one."
     },
     "noMatchLabel": "Not registered",
     "registerCta": "Register this image",
     "untitled": "Untitled",
-    "noPicture": "Image unavailable from IPFS right now",
+    "noPicture": "The picture's storage is not answering right now",
     "measured": "What was measured",
     "queriedSize": "Size",
-    "queriedPhash": "pHash",
-    "queriedSha": "Exact bytes",
-    "queriedBlockhash": "Blockhash",
+    "queriedPhash": "Look fingerprint (pHash)",
+    "queriedSha": "Exact file fingerprint (SHA-256)",
+    "queriedBlockhash": "Layout fingerprint (block hash)",
     "bits": "{count} of {of} bits apart",
     "others": "{count, plural, =1 {# other passport was in range} other {# other passports were in range}}, and this one was closest.",
     "openAgent": "Agent {id}",
@@ -474,7 +476,7 @@
       "count": "{count, plural, =1 {# re-check} other {# re-checks}}",
       "none": "Not re-checked yet.",
       "noneNote": "No independent workflow has fetched this picture and recomputed its fingerprint.",
-      "matched": "Re-checked by a Chainlink CRE workflow on {at}: it re-fetched the picture, recomputed the fingerprint and matched, {count} of 64 bits apart.",
+      "matched": "Checked again by a Chainlink CRE workflow on {at}: it re-fetched the picture, recomputed the fingerprint and matched, {count} of 64 bits apart.",
       "mismatched": "A Chainlink CRE workflow re-fetched this picture on {at}, recomputed the fingerprint and did not match: {count} of 64 bits apart.",
       "link": "See the second opinion"
     },
@@ -503,9 +505,9 @@
     "agent": "Generator agent",
     "registered": "Registered",
     "kind": "Kind",
-    "phash": "pHash",
-    "blockhash": "Blockhash",
-    "manifestHash": "Manifest hash",
+    "phash": "Look fingerprint (pHash)",
+    "blockhash": "Layout fingerprint (block hash)",
+    "manifestHash": "Content Credentials fingerprint",
     "metadata": "Metadata",
     "parent": "Edited from",
     "lineageDisputed": "Disputed, here or above",
@@ -516,29 +518,29 @@
       "matched": "matched",
       "notMatched": "did not match",
       "distance": "{distance} of 64 bits",
-      "receiver": "Written by",
+      "receiver": "Written on Monad by Moolam's Chainlink receiver",
       "at": "At",
       "kicker": "The second opinion",
-      "body": "Anyone can say a picture is theirs. This part is different: a Chainlink CRE workflow fetched the image, hashed it again and wrote the answer back on Monad.",
-      "distanceLabel": "As the receiver wrote it",
-      "byChainlink": "Re-checked by a Chainlink CRE workflow",
+      "body": "Anyone can say a picture is theirs. This part is different: Chainlink's CRE workflow downloaded the picture itself, took its fingerprint again and wrote the result on Monad.",
+      "distanceLabel": "What Chainlink reported",
+      "byChainlink": "Checked again by a Chainlink CRE workflow",
       "delivery": {
-        "simulation": "Delivered through the CRE simulation forwarder: one node ran the workflow, no network consensus.",
-        "network": "Delivered through the Chainlink network forwarder: a quorum of nodes reached consensus on this answer."
+        "simulation": "Chainlink's CRE simulator ran this check on one machine, not across Chainlink's network.",
+        "network": "Several independent Chainlink machines ran this check and agreed on the answer."
       },
-      "byReceiver": "Written by an allowed receiver",
+      "byReceiver": "Written on Monad by another approved checker",
       "openTx": "Transaction {hash}",
-      "noTransaction": "The index does not carry the transaction for this one.",
+      "noTransaction": "The transaction link is not available for this one yet.",
       "registeredGrid": "Registered fingerprint",
-      "recomputedGrid": "Recomputed by the workflow",
+      "recomputedGrid": "Chainlink's fingerprint",
       "verdict": "A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
       "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from the file it fetched itself. Every cell that disagrees is marked.",
-      "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad through the receiver contract. Nobody can write one about their own picture.",
+      "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad. Nobody can write one about their own picture.",
       "private": {
         "badge": "Private re-check",
         "lead": "Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.",
         "leadEarlier": "Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam kept at the time.",
-        "limit": "It ran in Chainlink's simulator on one machine, which is not a real enclave.",
+        "limit": "It ran in Chainlink's simulator on one machine, not inside Chainlink's secure hardware.",
         "verdict": "A Chainlink confidential workflow opened the small private copy Moolam kept of this picture and compared its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
         "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from Moolam's small private copy. Every cell that disagrees is marked."
       },
@@ -556,7 +558,7 @@
       "notConfigured": "No signer is set up on this deployment, so an edit cannot be added from here yet.",
       "signer": {
         "what": "A signer is a permission you give this app to add edits to your passports, limited to that one action by a policy Privy enforces.",
-        "policy": "The policy allows appendEdit on the Moolam registry and nothing else.",
+        "policy": "This permission can only add edits to your passports.",
         "grant": "Allow edits from this app",
         "granting": "Privy is asking for your permission",
         "granted": "This app can add edits from your wallet",
@@ -566,7 +568,7 @@
       "form": {
         "drop": "Drop the edited picture here",
         "choose": "Choose a picture",
-        "hint": "JPEG, PNG or WebP, up to 20 MB. A fresh C2PA manifest is written into it before it is pinned.",
+        "hint": "JPEG, PNG or WebP, up to 20 MB. Moolam adds fresh Content Credentials to it before storing it.",
         "replace": "Replace",
         "title": "Title",
         "titlePlaceholder": "Kadal at dawn, warmer",
@@ -586,7 +588,7 @@
         },
         "send": {
           "waiting": "Send it from your account",
-          "running": "Sending from your account, signed by the app's key under the edit policy, gas sponsored",
+          "running": "Sending from your account through Privy. Moolam pays the fee.",
           "watching": "Sent from your account, signed by the app's key under the edit policy. Waiting for Monad to show it.",
           "pending": "Sent, and Monad has not shown it yet",
           "done": "Recorded",
@@ -643,13 +645,13 @@
         "openPassport": "Open that passport",
         "signIn": "Sign in"
       },
-      "lineageNote": "Edits are added by the owner through a Privy signer with a policy that allows only appendEdit."
+      "lineageNote": "Only the owner can add edits. The app's Privy permission can add edits and nothing else."
     },
     "untitled": "Untitled",
-    "noPicture": "Image unavailable from IPFS right now",
-    "fingerprintVersion": "Fingerprint v{version}",
+    "noPicture": "The picture's storage is not answering right now",
+    "fingerprintVersion": "Fingerprint method {version}",
     "record": "The record",
-    "passkeyBound": "This creator's wallet has a passkey bound on chain.",
+    "passkeyBound": "This creator signs with a passkey tied to their account.",
     "passkeyNone": "No passkey is bound to this creator's wallet.",
     "noAgent": "No generating agent. This one was registered from a file the creator uploaded.",
     "agentNumber": "Agent {id}",
@@ -657,9 +659,9 @@
     "prompt": "Prompt",
     "fingerprints": "The fingerprints",
     "fingerprintsBody": "A verifier fetches the picture, hashes it again and compares it with these. Nothing here depends on the file name or on anything the metadata claims.",
-    "exactHash": "Exact bytes",
+    "exactHash": "Exact file fingerprint (SHA-256)",
     "passportId": "Passport id",
-    "tokenId": "The passport id is also its ERC-721 token id",
+    "tokenId": "This passport is also an NFT on Monad, with the same id",
     "standing": {
       "verified": "Checked by a verifier on chain",
       "mismatched": "A re-check did not match",
@@ -697,10 +699,10 @@
       },
       "reason": "The claim",
       "evidenceElsewhere": "The evidence for this challenge points somewhere else:",
-      "waiting": "Waiting for the resolver named by the policy.",
+      "waiting": "Waiting for the dispute judge to decide.",
       "console": "Resolver console",
       "outcome": {
-        "open": "Waiting for the resolver named by the policy.",
+        "open": "Waiting for the dispute judge to decide.",
         "upheld": "The resolver agreed with the challenge. The bond went back to the challenger, and this record is marked disputed for good.",
         "rejected": "The resolver did not agree. The bond went to the treasury, and the record stands."
       },
@@ -761,7 +763,7 @@
           "notResolver": "Only the resolver named by the policy can settle a dispute.",
           "noOpenDispute": "There is no open dispute on this passport.",
           "nothingOwed": "The registry owes this account nothing.",
-          "reverted": "Monad mined this and it reverted, so nothing was written",
+          "reverted": "Monad rejected this, so nothing was written",
           "unknown": "The challenge did not go out."
         },
         "actions": {
@@ -775,9 +777,9 @@
     "elsewhere": "Where else this record lives",
     "openTransaction": "Registration transaction",
     "openToken": "Token on MonadVision",
-    "openImage": "Open the image",
-    "noManifest": "No C2PA manifest was embedded in this file.",
-    "ipfsCid": "IPFS {cid}",
+    "openImage": "Open the registered file",
+    "noManifest": "This file carried no Content Credentials.",
+    "ipfsCid": "Open the stored record on IPFS",
     "consent": {
       "kicker": "Stated on chain",
       "heading": "How AI may use this picture",
@@ -855,7 +857,7 @@
         "conditionsRequired": "A statement with conditions has to say what they are. Write them, and send it again.",
         "conditionsNotAllowed": "Conditions belong to a statement that asks for them. Clear the text, or choose ask me first.",
         "conditionsTooLong": "The conditions are longer than the 256 bytes the register keeps. Shorten them and send it again.",
-        "conditionsNotPrintable": "The register takes plain ASCII only. Take out the line break or the accented letter and send it again.",
+        "conditionsNotPrintable": "Use only the letters A to Z, numbers and common punctuation. Take out the line break or the accented letter and send it again.",
         "reverted": "Monad mined this statement and it did nothing. Nothing was written, so it is safe to try once more.",
         "declined": "You closed the prompt, so nothing was sent.",
         "confirmPending": "The statement went out and Monad has not shown it yet. It may still land, so it must not be sent again: look again in a moment.",
@@ -885,7 +887,7 @@
         "conditionsLabel": "Conditions, in your words",
         "conditionsPlaceholder": "A licence, a page to read, or an address to ask at.",
         "bytes": "{bytes} of {max} bytes",
-        "notPrintable": "The register takes plain ASCII only. Character {at} is not one the chain will accept, so a line break or an accented letter has to go before this can be written.",
+        "notPrintable": "Use only the letters A to Z, numbers and common punctuation. Character {at} is not one the chain will accept, so a line break or an accented letter has to go before this can be written.",
         "submit": "Write this to Monad",
         "steps": {
           "checking": "Asking the register",
@@ -903,7 +905,8 @@
           "recheck": "Look again",
           "signIn": "Sign in"
         }
-      }
+      },
+      "standardName": "Written in the CAWG standard for AI training and data mining, v{version}"
     },
     "sealed": {
       "label": "Sealed",
@@ -911,7 +914,7 @@
       "posterLinePrivate": "Registered on {date}. The picture is not published. Moolam keeps only a small private copy, for the private re-check.",
       "standing": "Sealed, so there is no public copy",
       "commitmentLabel": "The commitment",
-      "commitmentAlgorithm": "Hashed with {algorithm}",
+      "commitmentAlgorithm": "Fingerprinted with {algorithm}, a standard file fingerprint",
       "commitmentLine": "Anyone holding the file can hash it and compare it with the passport id.",
       "recheck": "No public copy to re-check. A re-check needs the picture to be published.",
       "privateCopy": {
@@ -1017,6 +1020,17 @@
       "poster": "Published {date}",
       "label": "Sealed at first",
       "line": "Registered with no picture published, and published by its holder on {date}. The file's hash is the passport id."
+    },
+    "facts": {
+      "madeBy": "Made by",
+      "drawnBy": "Drawn by",
+      "aiUse": "AI use",
+      "rechecked": "Re-checked",
+      "nothingStated": "Nothing stated",
+      "notYet": "Not yet",
+      "unread": "Could not be read",
+      "noAgent": "No agent named",
+      "chainlink": "Chainlink"
     }
   },
   "agent": {
@@ -1029,7 +1043,7 @@
       "heading": "Reputation feedback on the ERC-8004 registry",
       "empty": "No feedback recorded for this agent yet. The verifier writes one after every check it runs.",
       "error": "The reputation registry could not be read: {reason}.",
-      "body": "Feedback is written to the canonical ERC-8004 reputation registry by whoever left it, under the tags moolam and verification. This page reads that summary: how many entries it counts and the latest value it reports, with the decimals the registry gives. The trust score beside it is worked out from the index's own re-checks, so the two are never added together.",
+      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), filed under Moolam's checks. This page reads its summary. The trust score beside it comes from the index's own re-checks, so the two are never added together.",
       "registry": "Registry {address}",
       "secondary": "Feedback the verifier wrote on chain, not the re-check score",
       "entries": "{count, plural, =1 {# entry} other {# entries}}",
@@ -1050,29 +1064,30 @@
       "empty": "The index has not seen this agent sign a passport yet.",
       "error": "The index could not be read: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
-      "formulaLink": "How the score is worked out"
+      "formulaLink": "How the score is worked out",
+      "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
     },
     "signs": {
       "heading": "How this agent signs",
-      "body": "An agent id is worth exactly as much as the wallet that owns it. The registry checks that link itself, on every registration, before it writes anything.",
+      "body": "An agent's name is only as good as the account behind it. The registry checks that link itself, on every registration, before it writes anything.",
       "sign": {
         "title": "The agent signs the fingerprint",
-        "body": "The wallet that owns agent {id} signs the EIP-712 Passport digest: the hashes, the creator, the agent id and a deadline. The picture never leaves the fingerprint."
+        "body": "The wallet that owns agent {id} signs a short summary of the picture: its fingerprints, who made it, which agent drew it, and a time limit. The picture never leaves the fingerprint."
       },
       "recover": {
         "title": "The registry recovers the signer",
-        "body": "The contract recovers the address from that signature itself. Nothing is taken on trust from whoever sent the transaction."
+        "body": "The registry works out from the signature itself who signed. Nothing is taken on trust from whoever sent the transaction."
       },
       "own": {
         "title": "It has to be the owner",
-        "body": "The recovered address is compared with ownerOf on the ERC-8004 identity registry. If they differ, the registration reverts with InvalidGeneratorSignature and no passport exists."
+        "body": "That signer is checked against the owner listed in the public agent registry (ERC-8004). If they differ, Monad refuses the registration and no passport is made."
       },
       "registry": "Registry {address}",
       "identity": "Identity {address}",
       "privy": "Where the key lives",
       "privyBody": "These values come from the agent's own card, not from this app.",
       "privyWallet": "Privy wallet id",
-      "privyPolicy": "Policy"
+      "privyPolicy": "What this wallet may sign"
     },
     "works": {
       "heading": "What it has signed",
@@ -1538,7 +1553,18 @@
       "recheck": "Ask Monad again",
       "openAddress": "Open {wallet} on MonadVision",
       "generateAgain": "Make it again"
-    }
+    },
+    "showcaseCaption": "A real passport on Monad. This is what you get.",
+    "wide": {
+      "bench": "Studio wide bench",
+      "fixtureNote": "Fixture: stubbed studio state. No wallet, nothing is sent.",
+      "upload": "upload",
+      "generate": "generate",
+      "done": "done",
+      "live": "live",
+      "today": "today"
+    },
+    "ledeSignedIn": "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy."
   },
   "docs": {
     "home": "Documentation",
@@ -1611,7 +1637,7 @@
       "notEnough": "The account could not cover this transaction.",
       "declined": "The window was closed before the transaction went out. Nothing was sent.",
       "confirmPending": "It was accepted and Monad has not shown it yet. It may still land, so it must not be sent again.",
-      "reverted": "Monad mined this and it reverted, so nothing was written",
+      "reverted": "Monad rejected this, so nothing was written",
       "unknown": "That did not go through."
     },
     "actions": {
@@ -1688,9 +1714,10 @@
     "opening": "Opening your account",
     "signedOut": {
       "kicker": "You are not signed in",
-      "heading": "Sign in to see the pictures you registered on this device",
+      "heading": "Sign in to see every picture you registered",
       "button": "Sign in and show them",
       "body": "The list is read from the index against your account's address, so the same pictures come back on any device you sign in on."
-    }
+    },
+    "showcaseCaption": "A real passport on Monad. Yours will sit here like this one."
   }
 }

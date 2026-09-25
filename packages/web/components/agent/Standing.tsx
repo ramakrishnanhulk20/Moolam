@@ -72,7 +72,8 @@ export async function Standing({
                 <Count label={t("index.disputesUpheld")} value={record.disputesUpheld} tone="failed" />
               </dl>
 
-              <p className="mt-8 flex flex-wrap items-center gap-3">
+              <p className="mt-8 max-w-[58ch] text-sm leading-relaxed text-text-muted">{t("index.formulaPlain")}</p>
+              <p className="mt-3 flex flex-wrap items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-line-strong" />
                 <code className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-faint">
                   {t("index.formula")}

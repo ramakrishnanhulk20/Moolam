@@ -5,7 +5,7 @@ import { heldAgent } from "@/lib/chain/registry";
 import type { Attestation, Passport } from "@/lib/chain/registry";
 import { Link } from "@/lib/i18n/routing";
 import type { Art } from "./art";
-import { topFacts, type TopFact, type TopFactTone } from "./top-facts";
+import { TOP_FACT_WORD_KEYS, topFacts, type TopFact, type TopFactTone, type TopFactWords } from "./top-facts";
 
 const TONES: Record<TopFactTone, string> = {
   text: "text-text",
@@ -63,6 +63,7 @@ export async function TopFacts({
       privateRecheck: t("attestations.private.badge"),
       sealed: t("sealed.label"),
       date: (seconds) => format.dateTime(new Date(Number(seconds) * 1000), { dateStyle: "medium" }),
+      words: Object.fromEntries(TOP_FACT_WORD_KEYS.map((key) => [key, t(`facts.${key}`)])) as TopFactWords,
     },
   );
 

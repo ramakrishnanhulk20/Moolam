@@ -16,7 +16,7 @@ import type { ShowcasePassport } from "./showcasePassport";
  * read there is nothing to show, and the card stands alone.
  *
  * The labels are the passport page's and the home page's own words, so the
- * only new line is the caption, which the lab carries in English until roll-in.
+ * only new line is the caption, which each page hands in from its own words.
  */
 export async function Showcase({ passport, caption }: { passport: ShowcasePassport | null; caption: string }) {
   if (passport === null) {

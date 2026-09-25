@@ -96,7 +96,6 @@ const { ResolveConsole } = await import("@/components/resolve/ResolveConsole");
 const { Masthead: DocsMasthead } = await import("@/components/docs/Masthead");
 const { ThemeProvider, themeScriptType } = await import("@/components/providers/ThemeProvider");
 const { OpeningProvider } = await import("@/components/studio/opening");
-const { OPENING_WORDS } = await import("@/components/studio/openingWords");
 const { StudioScreen } = await import("@/components/studio/StudioScreen");
 const { MineScreen } = await import("@/components/mine/MineScreen");
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
@@ -350,7 +349,7 @@ describe("the compact openings on the lab page", () => {
     const search = { view: "pictures" as const, search: "", agent: null, ai: null };
     const compact = render(createElement(Filters, { search, opening: "compact" }));
     expect(tagOf(compact, "data-marks-toggle")).toContain("sm:hidden");
-    expect(compact).toContain(OPENING_WORDS.marksToggle);
+    expect(compact).toContain(en.explore.marksToggle);
     expect(tagOf(compact, "data-marks-key")).toContain("hidden");
     expect(tagOf(compact, "data-marks-key")).toContain("sm:flex");
 
@@ -374,9 +373,11 @@ describe("the compact openings on the lab page", () => {
     expect(today).not.toContain("data-counts-line");
   });
 
-  it("keep the new English words free of the long dash", () => {
-    for (const words of Object.values(OPENING_WORDS)) {
-      expect(words).not.toContain(LONG_DASH);
+  it("keep the openings' words free of the long dash in every language they ship in", () => {
+    for (const messages of [en, ta]) {
+      for (const words of [messages.explore.marksToggle, messages.studio.showcaseCaption, messages.mine.showcaseCaption]) {
+        expect(words).not.toContain(LONG_DASH);
+      }
     }
   });
 

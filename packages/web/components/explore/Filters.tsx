@@ -8,7 +8,6 @@ import { SUMMARY_TONES } from "@/components/consent/tones";
 import type { Consent } from "@/lib/chain/consent";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import type { Opening } from "@/components/studio/opening";
-import { OPENING_WORDS } from "@/components/studio/openingWords";
 import { useReading } from "./Reading";
 import {
   AI_VIEWS,
@@ -181,7 +180,7 @@ export function Filters({ search, opening = "full" }: { search: ExploreSearch; o
               <span className="h-[9px] w-[9px] rounded-[2px] border border-accent" />
               <span className="h-[9px] w-[9px] rounded-[2px] border border-verified" />
             </span>
-            {OPENING_WORDS.marksToggle}
+            {t("marksToggle")}
             <span
               aria-hidden
               className={`inline-block transition-transform duration-200 ${keyShown ? "rotate-90" : ""}`}

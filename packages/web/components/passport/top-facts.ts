@@ -6,23 +6,20 @@ import { bitsApart, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
 import { attestationSource } from "./labels";
 
-/**
- * The words the facts strip adds to the page. English only while the strip is
- * on the lab page: they move into the ten message files at roll-in, in the one
- * words order that follows the labs, and this object goes.
- */
-export const TOP_FACT_WORDS = {
-  madeBy: "Made by",
-  drawnBy: "Drawn by",
-  aiUse: "AI use",
-  rechecked: "Re-checked",
-  nothingStated: "Nothing stated",
-  notYet: "Not yet",
-  unread: "Could not be read",
-  noAgent: "No agent named",
-  // A name, not a word, but kept here so the strip's only literal is in one place.
-  chainlink: "Chainlink",
-} as const;
+/** The strip's own words, read from passport.facts in the reader's language. */
+export const TOP_FACT_WORD_KEYS = [
+  "madeBy",
+  "drawnBy",
+  "aiUse",
+  "rechecked",
+  "nothingStated",
+  "notYet",
+  "unread",
+  "noAgent",
+  "chainlink",
+] as const;
+
+export type TopFactWords = Record<(typeof TOP_FACT_WORD_KEYS)[number], string>;
 
 /**
  * Where each fact lands on the page. The re-check already had its anchor, the
@@ -84,6 +81,7 @@ export interface TopFactsSay {
   privateRecheck: string;
   sealed: string;
   date: (seconds: bigint) => string;
+  words: TopFactWords;
 }
 
 const STATEMENT_TONES: Record<Statement, TopFactTone> = {
@@ -102,13 +100,13 @@ const anchor = (key: TopFactKey): string => `#${FACT_ANCHORS[key]}`;
  * drew it, what the holder allows, and whether anybody checked.
  */
 export function topFacts(input: TopFactsInput, say: TopFactsSay): TopFact[] {
-  return [madeBy(input), drawnBy(input, say), aiUse(input, say), rechecked(input, say)];
+  return [madeBy(input, say), drawnBy(input, say), aiUse(input, say), rechecked(input, say)];
 }
 
-function madeBy({ creator }: TopFactsInput): TopFact {
+function madeBy({ creator }: TopFactsInput, say: TopFactsSay): TopFact {
   return {
     key: "madeBy",
-    label: TOP_FACT_WORDS.madeBy,
+    label: say.words.madeBy,
     value: shortHex(creator),
     href: anchor("madeBy"),
     tone: "text",
@@ -122,8 +120,8 @@ function drawnBy({ agentId, agentName, kind }: TopFactsInput, say: TopFactsSay):
     // says so. Anything else registered without an agent says there is none.
     return {
       key: "drawnBy",
-      label: TOP_FACT_WORDS.drawnBy,
-      value: kind === 1 ? say.kind(1) : TOP_FACT_WORDS.noAgent,
+      label: say.words.drawnBy,
+      value: kind === 1 ? say.kind(1) : say.words.noAgent,
       href: anchor("drawnBy"),
       tone: "faint",
     };
@@ -133,7 +131,7 @@ function drawnBy({ agentId, agentName, kind }: TopFactsInput, say: TopFactsSay):
   const name = agentName?.trim();
   return {
     key: "drawnBy",
-    label: TOP_FACT_WORDS.drawnBy,
+    label: say.words.drawnBy,
     value: name === undefined || name === "" ? number : name,
     detail: name === undefined || name === "" ? undefined : number,
     href: `/agent/${agentId.toString()}`,
@@ -142,13 +140,13 @@ function drawnBy({ agentId, agentName, kind }: TopFactsInput, say: TopFactsSay):
 }
 
 function aiUse({ consent }: TopFactsInput, say: TopFactsSay): TopFact {
-  const base = { key: "aiUse" as const, label: TOP_FACT_WORDS.aiUse, href: anchor("aiUse") };
+  const base = { key: "aiUse" as const, label: say.words.aiUse, href: anchor("aiUse") };
   if (consent === null) {
-    return { ...base, value: TOP_FACT_WORDS.unread, tone: "faint", unread: true };
+    return { ...base, value: say.words.unread, tone: "faint", unread: true };
   }
   const statement: Statement = consent.stated && consent.entry !== null ? plainStatement(consent.entry.consent) : "none";
   return statement === "none"
-    ? { ...base, value: TOP_FACT_WORDS.nothingStated, tone: "faint" }
+    ? { ...base, value: say.words.nothingStated, tone: "faint" }
     : { ...base, value: say.statement(statement), tone: STATEMENT_TONES[statement] };
 }
 
@@ -156,7 +154,7 @@ function rechecked(
   { attestations, phash, sealed, privateRecheck }: TopFactsInput,
   say: TopFactsSay,
 ): TopFact {
-  const base = { key: "rechecked" as const, label: TOP_FACT_WORDS.rechecked, href: anchor("rechecked") };
+  const base = { key: "rechecked" as const, label: say.words.rechecked, href: anchor("rechecked") };
   const latest = attestations.reduce<Attestation | null>(
     (newest, attestation) => (newest === null || attestation.at > newest.at ? attestation : newest),
     null,
@@ -167,14 +165,14 @@ function rechecked(
     // so "Not yet" would promise something. It gets the page's own word.
     return sealed && !privateRecheck
       ? { ...base, value: say.sealed, tone: "faint" }
-      : { ...base, value: TOP_FACT_WORDS.notYet, tone: "faint" };
+      : { ...base, value: say.words.notYet, tone: "faint" };
   }
 
   const isPrivate = latest.receiver.toLowerCase() === addresses.sealedReceiver.toLowerCase();
   const who = isPrivate
     ? say.privateRecheck
     : attestationSource(latest.receiver) === "chainlink"
-      ? TOP_FACT_WORDS.chainlink
+      ? say.words.chainlink
       : shortHex(latest.receiver);
   // Counted off the chain's own two fingerprints, the same count the section
   // below prints, rather than the receiver's word for it.

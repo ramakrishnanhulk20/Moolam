@@ -281,7 +281,7 @@ describe("a public re-check row", () => {
   it("keeps today's words", async () => {
     const markup = await card({ rows: [publicRow], sealed: false });
 
-    expect(markup).toContain(words.body);
+    expect(markup).toContain(words.body.replace(/'/g, "&#x27;"));
     expect(markup).toContain("A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint");
     expect(markup).toContain(words.gridNote);
     expect(markup).toContain(en.recheck.note.replace(/'/g, "&#x27;"));
@@ -299,7 +299,7 @@ describe("the private re-check line", () => {
     const row = rowOf(await card({ rows: [privateRow], privateCopy: "kept" }));
 
     expect(lead).toBe("Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.");
-    expect(words.private.limit).toBe("It ran in Chainlink's simulator on one machine, which is not a real enclave.");
+    expect(words.private.limit).toBe("It ran in Chainlink's simulator on one machine, not inside Chainlink's secure hardware.");
     expect(row.indexOf(lead)).toBeGreaterThan(-1);
     expect(row.indexOf(limit)).toBeGreaterThan(row.indexOf(lead));
   });
@@ -309,9 +309,11 @@ describe("the private re-check line", () => {
     const row = rowOf(await card({ rows: [privateRow], privateCopy: "kept" }));
 
     expect(row.split(limit).length - 1).toBe(1);
-    expect(row.split("simulator").length - 1).toBe(1);
-    expect(row).toContain(words.delivery.simulation);
-    expect(row.indexOf(words.delivery.simulation)).toBeGreaterThan(row.indexOf(limit));
+    // The limit and the forwarder line each name the simulator once, in their own words.
+    expect(row.split("simulator").length - 1).toBe(2);
+    const forwarder = words.delivery.simulation.replace(/'/g, "&#x27;");
+    expect(row).toContain(forwarder);
+    expect(row.indexOf(forwarder)).toBeGreaterThan(row.indexOf(limit));
   });
 
   it("never says Moolam keeps a copy that has since been deleted", async () => {
