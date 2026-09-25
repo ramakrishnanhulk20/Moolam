@@ -145,7 +145,7 @@ true and distance 0.
 
 ## What is on chain today
 
-The seventeen re-checks on the seventeen real pictures (seven on 2026-09-14, seven on 2026-09-17, two on 2026-09-23, one of those on a picture registered sealed and published later by its holder, and one on 2026-09-25 by the private workflow through its own receiver, described below) were all written this way: `cre workflow simulate
+The eighteen re-checks on the eighteen real pictures (seven on 2026-09-14, seven on 2026-09-17, two on 2026-09-23, one of those on a picture registered sealed and published later by its holder, and two on 2026-09-25 by the private workflow through its own receiver, described below) were all written this way: `cre workflow simulate
 --broadcast`, the receiver pointed at the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`
 for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
 by the four steps above. They are real transactions with real gas, and they prove the workflow code and
@@ -310,6 +310,12 @@ Afterwards the receiver read back on the production forwarder, pinned to the wor
 `moolam-sealed-verifier`. The records are in [sealed-passports.txt](../../proofs/sealed-passports.txt)
 and [rechecks.txt](../../proofs/rechecks.txt), and attack pass 4 reads the row back from the chain in
 [pass-4.txt](../../proofs/attacks/pass-4.txt), attack 8d.
+
+The second run, the same afternoon, was on
+[Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4), a picture agent 10249
+drew and its creator registered sealed with the private re-check: the 35,599 byte private copy
+recomputed to `0x85c0d272787e6e77`, the stored fingerprint exactly, distance 0, matched, report
+[`0xa38fd971...`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613.
 
 ### What the private re-check does not prove
 

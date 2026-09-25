@@ -286,7 +286,9 @@ block 107,817,793, delivered by the simulation forwarder, and the attestation it
 sealed receiver
 [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A)
 (attack 8d reads it back). The receiver was put back on the production forwarder and pinned again
-afterwards. The details are in [sealed-passports.txt](../../proofs/sealed-passports.txt).
+afterwards. The details are in [sealed-passports.txt](../../proofs/sealed-passports.txt). A second
+private re-check the same afternoon, on [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4),
+matched at distance 0 ([0xa38fd971...](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613).
 
 ## Weaknesses we did not fix, stated plainly
 

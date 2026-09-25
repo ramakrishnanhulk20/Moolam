@@ -152,7 +152,7 @@ diff the result. The twelve attack transcripts are the exception: they stay unde
 | [consent-contract.txt](../../proofs/consent-contract.txt) | The consent register's tests, coverage, invariant run, deploy dry run, fork tests and the live reads back | `forge test -n monad` in `packages/contracts` |
 | [consent-statements.txt](../../proofs/consent-statements.txt) | The thirteen real pictures that carry a statement, with the transaction and the read back for each | `npm run consent:state -- --send` in `packages/agents` |
 | [consent-attacks.txt](../../proofs/consent-attacks.txt) | Eight refusals from the live consent register, decoded, plus the control that passes | read only, `cast call`, run on 2026-09-21 |
-| [rechecks.txt](../../proofs/rechecks.txt) | The Chainlink re-check on each of the seventeen real pictures, read back from the registry, with the receiver restored and read back | read only, written on 2026-09-14 |
+| [rechecks.txt](../../proofs/rechecks.txt) | The Chainlink re-check on each of the eighteen real pictures, read back from the registry, with the receiver restored and read back | read only, written on 2026-09-14 |
 | [attacks/pass-2.txt](../../proofs/attacks/pass-2.txt) | Eight attacks on the paths hardened after the review, run against a fork of Monad mainnet and the browser libraries | `npm run attack:pass2` in packages/agents |
 | [perf.txt](../../proofs/perf.txt) | Lighthouse on every judge-facing page, what the JavaScript is made of, and the film measured frame by frame | `node packages/web/scripts/perf/lighthouse.mjs` |
 | [privy.txt](../../proofs/privy.txt) | The Privy wallet features, live on Monad mainnet | `npm run prove:privy` |

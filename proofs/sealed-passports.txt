@@ -77,3 +77,21 @@ fingerprint and wrote only the verdict:
 
 The link, the service's address and the tokens appear in no log of the run; the receiver was put back on
 the production forwarder and pinned to its workflow afterwards, read back from the chain.
+
+THE SHOWCASE PRIVATE RE-CHECK (2026-09-25)
+
+A picture drawn by the demo generator agent (10249) from its creator's prompt and registered sealed with
+the private re-check. The prompt was not published, and the pinned document says in its own words that
+Moolam keeps only a small private copy for this re-check, which the holder can delete.
+
+  passport        0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4
+  title           Kanchipuram Silk Loom at First Light
+  registered      2026-09-25 07:20:34 UTC, block 107,831,859, tx 0xcf4a9a66d5d439979db8e9805209ff1b0867ace41b335d6cb7ed2df57ea8e207
+  document        ipfs://bafkreiaekkzygi2c7wgjpurmaeigtvjgkjlv75cblqgrd6favqeeeiwehy (sealed, privateRecheck,
+                  generator 10249, no link of any kind, no prompt)
+  private copy    35,599 bytes, opened through one link minted under the queue claim
+  recomputed      0x85c0d272787e6e77, the stored fingerprint exactly: distance 0, matched
+  report tx       0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954, block 107,834,613, status 1
+  delivered by    the simulation forwarder 0x9eF6468C5f37b976E57d52054c693269479A784d: one machine, no
+                  network consensus, not a real enclave
+  written by      the sealed receiver 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, closed and pinned again afterwards
