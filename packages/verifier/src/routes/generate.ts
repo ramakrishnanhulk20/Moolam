@@ -20,6 +20,7 @@ import {
   FINGERPRINT_VERSION,
   GENERATED_DESCRIPTION,
   SEALED_GENERATED_DESCRIPTION,
+  SEALED_PRIVATE_GENERATED_DESCRIPTION,
   fileSlug,
   passportMetadata,
 } from "../metadata.js";
@@ -357,7 +358,7 @@ export async function generateRoutes(
       try {
         document = sealedMetadata({
           title: parsed.data.title,
-          description: SEALED_GENERATED_DESCRIPTION,
+          description: privateRecheck ? SEALED_PRIVATE_GENERATED_DESCRIPTION : SEALED_GENERATED_DESCRIPTION,
           passportId: drawn.print.sha256,
           fingerprint: drawn.print,
           agentId: env.GENERATOR_AGENT_ID,

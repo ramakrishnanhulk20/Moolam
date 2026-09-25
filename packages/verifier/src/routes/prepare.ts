@@ -13,6 +13,7 @@ import {
   CAPTURE_SOURCE_TYPE,
   FINGERPRINT_VERSION,
   SEALED_CAPTURED_DESCRIPTION,
+  SEALED_PRIVATE_CAPTURED_DESCRIPTION,
   fileSlug,
   passportMetadata,
 } from "../metadata.js";
@@ -306,7 +307,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           try {
             document = sealedMetadata({
               title: upload.title,
-              description: SEALED_CAPTURED_DESCRIPTION,
+              description: upload.privateRecheck ? SEALED_PRIVATE_CAPTURED_DESCRIPTION : SEALED_CAPTURED_DESCRIPTION,
               passportId,
               fingerprint: studio.print,
               training: upload.training,

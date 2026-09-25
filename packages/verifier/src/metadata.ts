@@ -35,6 +35,18 @@ export const SEALED_CAPTURED_DESCRIPTION =
 export const SEALED_GENERATED_DESCRIPTION =
   "An image made by the Moolam demo generator agent and registered sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.";
 
+/**
+ * The sealed sentences for a creator who asked for a private re-check.
+ *
+ * That creator's passport has a small private copy behind it, so "Moolam kept no copy" would be
+ * false on the day it was pinned. Everything after the first sentence matches the sibling above.
+ */
+export const SEALED_PRIVATE_CAPTURED_DESCRIPTION =
+  "A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published. Moolam keeps only a small private copy, 512 pixels on its longest side, for a private Chainlink re-check, and the passport's holder can delete it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.";
+
+export const SEALED_PRIVATE_GENERATED_DESCRIPTION =
+  "An image made by the Moolam demo generator agent and registered sealed, so the picture itself was never published. Moolam keeps only a small private copy, 512 pixels on its longest side, for a private Chainlink re-check, and the passport's holder can delete it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.";
+
 export interface PassportMetadata {
   name: string;
   description: string;

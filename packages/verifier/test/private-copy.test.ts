@@ -4,7 +4,9 @@
 // /generate keeps when the creator asks for a private re-check: made by the public path's own
 // makeThumbnail from the signed bytes and close enough for the workflow's hash (B14), made only
 // after the chain said "not registered" (B2), kept only when Pinata says it is private under its
-// name (B16), deleted again when the document pin fails, and refused without sealed. Pinata is a
+// name (B16), deleted again when the document pin fails, and refused without sealed, and the
+// sentence each sealed document pins: the private copy one when a copy is kept, the old one
+// otherwise. Pinata is a
 // recording stub at the fetch layer; the chain read, the image model, the caller's wallets and the
 // agent's signer are stubbed.
 // Does NOT cover any route that reads the private copy back (/sealed/link, /sealed/status and
@@ -25,6 +27,12 @@ import { decodeJpeg } from "../../workflow/moolam-verifier/decode.js";
 import { perceptualHash } from "../../workflow/moolam-verifier/phash.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { hamming64 } from "../src/fingerprint.js";
+import {
+  SEALED_CAPTURED_DESCRIPTION,
+  SEALED_GENERATED_DESCRIPTION,
+  SEALED_PRIVATE_CAPTURED_DESCRIPTION,
+  SEALED_PRIVATE_GENERATED_DESCRIPTION,
+} from "../src/metadata.js";
 import {
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
   THUMBNAIL_MAX_BYTES,
@@ -243,6 +251,13 @@ const fixtures = JSON.parse(
 ) as { cases: FixtureCase[] };
 
 const PASSPORT = `0x${"ab".repeat(32)}` as Hex;
+
+// The plain sealed sentences as they were pinned before the private re-check existed, copied here
+// so a change to the constants cannot quietly change what every plain sealed passport says.
+const PLAIN_SEALED_CAPTURED =
+  "A picture registered with Moolam from a file its creator uploaded and chose to keep sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The creator signed this fingerprint with a passkey before the registry would write the record.";
+const PLAIN_SEALED_GENERATED =
+  "An image made by the Moolam demo generator agent and registered sealed, so the picture itself was never published and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.";
 
 function aSealedInput(privateRecheck?: boolean): Parameters<typeof sealedMetadata>[0] {
   return {
@@ -703,6 +718,45 @@ describe("a sealed registration with a private re-check", () => {
     expect(response.statusCode).toBe(502);
     expect(response.json()).toEqual({ error: "pin-failed" });
     expect(since(mark).map((call) => call.kind)).toEqual(["private", "public", "delete"]);
+  }, 60_000);
+
+  it("pins the private copy sentence for a private re-check prepare and the old sentence, byte for byte, for a plain sealed one", async () => {
+    const privateMark = calls.length;
+    const kept = await prepare("did:privy:private-words", {
+      title: "Words that are true",
+      kind: "human",
+      sealed: "true",
+      privateRecheck: "true",
+    });
+    expect(kept.statusCode).toBe(200);
+    const said = documentOf(since(privateMark)).description as string;
+    expect(said).toBe(SEALED_PRIVATE_CAPTURED_DESCRIPTION);
+    expect(said).not.toContain("kept no copy");
+    expect(said).toContain("512 pixels");
+    expect(said).toContain("holder can delete it");
+
+    const plainMark = calls.length;
+    const plain = await prepare("did:privy:private-words-plain", { title: "Words unchanged", kind: "human", sealed: "true" });
+    expect(plain.statusCode).toBe(200);
+    expect(SEALED_CAPTURED_DESCRIPTION).toBe(PLAIN_SEALED_CAPTURED);
+    expect(documentOf(since(plainMark)).description).toBe(PLAIN_SEALED_CAPTURED);
+  }, 60_000);
+
+  it("pins the private copy sentence for a private re-check drawing and the old sentence, byte for byte, for a plain sealed one", async () => {
+    const privateMark = calls.length;
+    const kept = await generate("did:privy:private-draw-words", { sealed: true, privateRecheck: true });
+    expect(kept.statusCode).toBe(200);
+    const said = documentOf(since(privateMark)).description as string;
+    expect(said).toBe(SEALED_PRIVATE_GENERATED_DESCRIPTION);
+    expect(said).not.toContain("kept no copy");
+    expect(said).toContain("512 pixels");
+    expect(said).toContain("holder can delete it");
+
+    const plainMark = calls.length;
+    const plain = await generate("did:privy:private-draw-words-plain", { sealed: true });
+    expect(plain.statusCode).toBe(200);
+    expect(SEALED_GENERATED_DESCRIPTION).toBe(PLAIN_SEALED_GENERATED);
+    expect(documentOf(since(plainMark)).description).toBe(PLAIN_SEALED_GENERATED);
   }, 60_000);
 
   it("B14 on /generate: refuses a drawing whose thumbnail is over the budget with 422 and uploads nothing", async () => {
