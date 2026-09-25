@@ -13,13 +13,12 @@ import type { ConsentDraft } from "@/lib/consent/call";
 import type { GenerateResponse, PrepareResponse } from "@/lib/verifier/client";
 
 /**
- * The studio's states, written out by hand so every one of them can be looked
- * at on the bench.
+ * The studio's states, written out by hand so the tests can draw every one of
+ * them without a wallet.
  *
- * Nothing in this file is read from Monad or from the verify service. It is a
- * set of poses for two drawings of the same screen, and the bench says so above
- * them. The shapes are the real ones from lib/studio/flow, so a pose the
- * running screen could never hold would not compile.
+ * Nothing in this file is read from Monad or from the verify service. The
+ * shapes are the real ones from lib/studio/flow, so a pose the running screen
+ * could never hold would not compile.
  */
 
 /** Which way the picture is being made, which is what the real panel calls mode. */

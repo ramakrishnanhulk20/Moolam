@@ -121,15 +121,9 @@ describe("the order the bar is drawn and walked in", () => {
     }
   });
 
-  it("sends Make to the studio, and does not fetch it until it is pressed", async () => {
+  it("sends Make to the studio", async () => {
     const markup = await render("flat", WORDS, "/");
     expect(markup).toMatch(/href="\/studio"[^>]*data-tab="make"/);
-
-    // The studio carries the wallet. A bar on every page that prefetched it
-    // would pull half a megabyte of it behind every reading of the site.
-    const { TABS } = await import("@/components/lab/phone/words");
-    expect(TABS.find((tab) => tab.key === "make")?.prefetch).toBe(false);
-    expect(TABS.filter((tab) => tab.prefetch === false)).toHaveLength(1);
   });
 });
 

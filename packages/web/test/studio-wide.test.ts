@@ -75,7 +75,7 @@ const { WideLayout } = await import("@/components/studio/layout");
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
 const { PathChoice } = await import("@/components/studio/PathChoice");
 const { passportEnd, passportEndClasses } = await import("@/components/studio/passportsEnd");
-const { fixtureState } = await import("@/components/lab/studio/fixtures");
+const { fixtureState } = await import("./studio-fixtures");
 const { WideFixture, cardsOf } = await import("./wide-fixture");
 const { default: StudioPage } = await import("@/app/[locale]/studio/page");
 

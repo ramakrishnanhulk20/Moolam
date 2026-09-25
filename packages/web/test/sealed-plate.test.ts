@@ -8,7 +8,6 @@ import { SKETCH_BITS, SKETCH_SIDE, sketchBits } from "@/components/sealed/bits";
 import { SEALED_DOCUMENT_KEYS, SEALED_PUBLIC_FIELDS, sealedFieldsFor } from "@/components/sealed/fields";
 import { SealSwitch } from "@/components/sealed/SealSwitch";
 import { POSTER_HEIGHT, SealedPlate } from "@/components/sealed/SealedPlate";
-import { SealedShareCard } from "@/components/sealed/SealedShareCard";
 import { repoRoot } from "@/lib/docs/paths";
 
 /**
@@ -107,22 +106,6 @@ describe("the sealed plate", () => {
   it("names a passport that pinned no title rather than leaving a gap", () => {
     const html = render(createElement(SealedPlate, { bits, title: "   ", words: WORDS }));
     expect(html).toContain("Untitled");
-  });
-
-  it("draws the link preview at the size a crawler asks for", () => {
-    const html = render(
-      createElement(SealedShareCard, {
-        bits,
-        title: "Monsoon Fishing Nets Drying",
-        shortId: "0xcdb25d37...d771638",
-        words: { sealed: "Sealed", untitled: "Untitled", line: "Sealed on Monad, 14 Sep 2026." },
-      }),
-    );
-
-    expect(html).toContain("width:1200px");
-    expect(html).toContain("height:630px");
-    expect(html).toContain("Sealed on Monad, 14 Sep 2026.");
-    expect(html).not.toContain("<img");
   });
 });
 
@@ -250,16 +233,6 @@ describe("what the studio says becomes public", () => {
   });
 });
 
-describe("who can reach the bench", () => {
-  it("is a 404 anywhere the lab flag is not set, which is everywhere but this machine", async () => {
-    const page = await import("@/app/[locale]/lab/sealed/page");
-    delete process.env.NEXT_PUBLIC_LAB_PAGES;
-
-    const thrown = await page.default({ params: Promise.resolve({ locale: "en" }) }).catch((error: unknown) => error);
-    expect((thrown as { digest?: string }).digest).toBe("NEXT_HTTP_ERROR_FALLBACK;404");
-  });
-});
-
 describe("what the bench pulls into the browser", () => {
   /** The packages only a screen that signs has any use for. */
   const WALLET = ["@privy-io/react-auth", "@privy-io/wagmi", "wagmi", "@tanstack/react-query"];
@@ -269,11 +242,7 @@ describe("what the bench pulls into the browser", () => {
     "components/sealed/fields.ts",
     "components/sealed/Sketch.tsx",
     "components/sealed/SealedPlate.tsx",
-    "components/sealed/SealedShareCard.tsx",
     "components/sealed/SealSwitch.tsx",
-    "components/lab/sealed/CardFrame.tsx",
-    "components/lab/sealed/SealedBench.tsx",
-    "app/[locale]/lab/sealed/page.tsx",
   ];
 
   it("imports no wallet package in any file this bench added", () => {

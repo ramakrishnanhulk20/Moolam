@@ -10,7 +10,7 @@ import {
   RUN,
   fixtureState,
   type Path,
-} from "@/components/lab/studio/fixtures";
+} from "./studio-fixtures";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { initialBindState } from "@/lib/studio/binding";
 import { isBusy, type RegisterState } from "@/lib/studio/flow";
