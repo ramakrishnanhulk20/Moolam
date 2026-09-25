@@ -44,3 +44,8 @@ packages/indexer/package-lock.json
 .env*
 BACKLOG.md
 recheck-queue.json
+/CLAUDE.md
+/AGENT-RETROS.md
+/SPEC.md
+/docs/RD-BRIEF.md
+scratchpad/
