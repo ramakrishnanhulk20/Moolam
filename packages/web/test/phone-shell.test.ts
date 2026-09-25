@@ -134,50 +134,84 @@ describe("the order the bar is drawn and walked in", () => {
 });
 
 describe("whether the bar is seen, and whether it can be reached", () => {
+  // The film standing in the window, which is what "the film plays" means here.
+  const IN = { filmPlaying: true, filmShown: 1 };
+
   it("is simply there on every page that is not the film", async () => {
     const { barLook } = await import("@/components/shell/BottomBar");
-    expect(barLook({ guideOpen: false, filmPlaying: false, close: 0 })).toEqual({ opacity: 1, inert: false });
+    expect(barLook({ guideOpen: false, filmPlaying: false, filmShown: 0, close: 0 })).toEqual({ opacity: 1, inert: false });
+  });
+
+  it("is awake on the first screen, with the film mounted under it and not yet in view", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    // The first scroll mounts the film a screen below. The bar used to read
+    // "mounted" as "playing" and fade out over the first screen.
+    expect(barLook({ guideOpen: false, filmPlaying: true, filmShown: 0, close: 0 })).toEqual({ opacity: 1, inert: false });
+    expect(barLook({ guideOpen: false, filmPlaying: true, filmShown: 0.3, close: 0 })).toEqual({ opacity: 0.7, inert: false });
+  });
+
+  it("gives way as the film climbs into the window, and is gone and inert once it fills it", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    expect(barLook({ guideOpen: false, filmPlaying: true, filmShown: 0.6, close: 0 }).inert).toBe(true);
+    expect(barLook({ guideOpen: false, ...IN, close: 0 })).toEqual({ opacity: 0, inert: true });
   });
 
   it("keeps out of the film until the closing card comes in", async () => {
     const { barLook } = await import("@/components/shell/BottomBar");
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0 })).toEqual({ opacity: 0, inert: true });
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0.25 })).toEqual({ opacity: 0.25, inert: true });
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: 1 })).toEqual({ opacity: 1, inert: false });
+    expect(barLook({ guideOpen: false, ...IN, close: 0.25 })).toEqual({ opacity: 0.25, inert: true });
+    expect(barLook({ guideOpen: false, ...IN, close: 1 })).toEqual({ opacity: 1, inert: false });
+  });
+
+  it("stays with the reader below the closing card, where the film is leaving the window", async () => {
+    const { barLook } = await import("@/components/shell/BottomBar");
+    expect(barLook({ guideOpen: false, filmPlaying: true, filmShown: 0.4, close: 1 })).toEqual({ opacity: 1, inert: false });
   });
 
   it("takes itself out of the tab order for exactly as long as it cannot be seen", async () => {
     const { barLook } = await import("@/components/shell/BottomBar");
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0.5 }).inert).toBe(true);
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: 0.51 }).inert).toBe(false);
+    expect(barLook({ guideOpen: false, ...IN, close: 0.5 }).inert).toBe(true);
+    expect(barLook({ guideOpen: false, ...IN, close: 0.51 }).inert).toBe(false);
   });
 
   it("is awake while the guide is open, whatever the film is doing", async () => {
     const { barLook } = await import("@/components/shell/BottomBar");
     // Two of the guide's three steps point at tabs. A bar that is invisible and
     // inert on the film's first screen would leave the walk pointing at nothing.
-    expect(barLook({ guideOpen: true, filmPlaying: true, close: 0 })).toEqual({ opacity: 1, inert: false });
-    expect(barLook({ guideOpen: true, filmPlaying: false, close: 0 })).toEqual({ opacity: 1, inert: false });
+    expect(barLook({ guideOpen: true, ...IN, close: 0 })).toEqual({ opacity: 1, inert: false });
+    expect(barLook({ guideOpen: true, filmPlaying: false, filmShown: 0, close: 0 })).toEqual({ opacity: 1, inert: false });
   });
 
   it("goes back to the film's own rule the moment the guide closes", async () => {
     const { barLook } = await import("@/components/shell/BottomBar");
-    const open = barLook({ guideOpen: true, filmPlaying: true, close: 0.1 });
-    const shut = barLook({ guideOpen: false, filmPlaying: true, close: 0.1 });
+    const open = barLook({ guideOpen: true, ...IN, close: 0.1 });
+    const shut = barLook({ guideOpen: false, ...IN, close: 0.1 });
     expect(open).toEqual({ opacity: 1, inert: false });
     expect(shut).toEqual({ opacity: 0.1, inert: true });
   });
 
   it("never asks for an opacity outside nothing and all of it", async () => {
     const { barLook } = await import("@/components/shell/BottomBar");
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: -3 }).opacity).toBe(0);
-    expect(barLook({ guideOpen: false, filmPlaying: true, close: 4 }).opacity).toBe(1);
+    expect(barLook({ guideOpen: false, ...IN, close: -3 }).opacity).toBe(0);
+    expect(barLook({ guideOpen: false, ...IN, close: 4 }).opacity).toBe(1);
+    expect(barLook({ guideOpen: false, filmPlaying: true, filmShown: -2, close: 0 }).opacity).toBe(1);
   });
 
-  it("reads the two facts off the page and nothing else", () => {
+  it("measures the film's share of the window from its two edges", async () => {
+    const { filmShare } = await import("@/components/shell/BottomBar");
+    // Under the first screen, touching the foot, part way up, filling it, and scrolled past.
+    expect(filmShare(812, 1624, 812)).toBe(0);
+    expect(filmShare(900, 1712, 812)).toBe(0);
+    expect(filmShare(406, 1218, 812)).toBe(0.5);
+    expect(filmShare(0, 812, 812)).toBe(1);
+    expect(filmShare(-609, 203, 812)).toBe(0.25);
+    expect(filmShare(0, 812, 0)).toBe(0);
+  });
+
+  it("reads its facts off the page and nothing else", () => {
     const source = readFileSync("components/shell/BottomBar.tsx", "utf8");
     expect(source).toContain('document.querySelector("[data-guide-open]")');
     expect(source).toContain("document.querySelector('[data-story=\"film\"]')");
+    expect(source).toContain("filmShare(box.top, box.bottom, window.innerHeight)");
     expect(source).toContain("close: progress.close");
   });
 });

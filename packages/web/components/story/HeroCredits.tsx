@@ -2,14 +2,14 @@
 
 import { useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useState, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { Link } from "@/lib/i18n/routing";
 
 /** How far the buttons trail the label, in milliseconds. The film's own stagger. */
 const TRAIL = 100;
 
 /**
- * The first screen's credits: one line, then the two calls under it.
+ * The film's opening credits: one line, then the two calls under it.
  *
  * The buttons carry the closing card's classes, so the film opens and closes on
  * the same pair rather than on two that nearly match. The block holds its full
@@ -20,13 +20,6 @@ const TRAIL = 100;
 export function HeroCredits({ entered }: { entered: boolean }) {
   const t = useTranslations("home.hero");
   const reduced = useReducedMotion();
-  const [risen, setRisen] = useState(false);
-
-  // The first screen has painted its words once the title has settled and the
-  // two calls under it have finished rising, and this is the one place that
-  // knows both. The first-visit guide waits for the mark: on a slow phone it
-  // used to arrive seconds before the hero it introduces, over a black page.
-  const painted = entered && (reduced === true || risen);
 
   // Someone who has asked for less motion is simply given the block. Everyone
   // else gets the film's own rise, started the moment the title has settled.
@@ -46,7 +39,7 @@ export function HeroCredits({ entered }: { entered: boolean }) {
   const row = enter(TRAIL);
 
   return (
-    <div className="pointer-events-none w-fit" data-hero-shown={painted ? "true" : undefined}>
+    <div className="pointer-events-none w-fit">
       <p
         className={`font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint ${label.className}`}
         style={label.style}
@@ -56,19 +49,15 @@ export function HeroCredits({ entered }: { entered: boolean }) {
       <div
         className={`mt-4 flex flex-wrap items-center gap-2 sm:gap-3 ${row.className}`}
         style={row.style}
-        onAnimationEnd={(event) => {
-          if (event.target === event.currentTarget) {
-            setRisen(true);
-          }
-        }}
       >
         {/* The studio carries the wallet SDK. Left to prefetch, it would pull
             about 130 kB of it behind every reading of the film, so it loads on
             the tap. The query opens the studio on the generate panel.
 
             data-hero-call is what the first-visit guide reads to keep its card
-            off these two: a visitor it has just told what the site does must
-            still be able to press the button that does it. */}
+            off these two, as it does off the first screen's own calls: a
+            visitor it has just told what the site does must still be able to
+            press the button that does it. */}
         <Link
           href={{ pathname: "/studio", query: { mode: "generate" } }}
           prefetch={false}

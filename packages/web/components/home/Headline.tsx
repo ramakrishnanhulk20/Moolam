@@ -94,6 +94,7 @@ export function MakeOne({ className = "" }: { className?: string }) {
       <Link
         href="/studio"
         prefetch={false}
+        data-hero-call="make"
         className="group inline-flex h-11 items-center gap-3 rounded-[8px] border border-line-strong px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
       >
         {t("make")}

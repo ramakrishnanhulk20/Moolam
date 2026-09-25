@@ -46,8 +46,12 @@ vi.mock("sharp", () => {
 });
 
 vi.mock("@/lib/i18n/routing", () => ({
-  Link: (props: { href: string; children?: unknown; className?: string }) =>
-    createElement("a", { href: props.href, className: props.className }, props.children as never),
+  Link: (props: { href: string; children?: unknown; className?: string; "data-hero-call"?: string }) =>
+    createElement(
+      "a",
+      { href: props.href, className: props.className, "data-hero-call": props["data-hero-call"] },
+      props.children as never,
+    ),
 }));
 vi.mock("@/components/passport/Picture", () => ({
   Picture: (props: { alt?: string }) => createElement("span", { "data-picture": props.alt ?? "" }),
@@ -306,5 +310,46 @@ describe("what the first screen shows of the finding", () => {
 
     expect(text(html)).not.toContain("Exhibit");
     expect(html).toContain("data-first-billing");
+  });
+});
+
+describe("what the first-visit walk reads off the first screen", () => {
+  it("carries the walk's mark in the server's markup, on the column with the headline", () => {
+    const html = board({});
+    const column = html.slice(html.indexOf("data-hero-shown"));
+    expect(html.match(/data-hero-shown="true"/g)?.length).toBe(1);
+    expect(column.indexOf("<h1")).toBeGreaterThan(-1);
+    expect(column.indexOf("<h1")).toBeLessThan(column.indexOf("data-first-drop"));
+  });
+
+  it("marks its two calls, the drop with Choose an image in it and Make one", () => {
+    const html = board({});
+    expect(html).toMatch(/data-hero-call="choose"[^>]*>(?:(?!data-hero-call).)*data-first-drop/s);
+    expect(html).toMatch(/<a[^>]*data-hero-call="make"[^>]*>Make one/);
+    expect(html.match(/data-hero-call=/g)?.length).toBe(2);
+  });
+});
+
+describe("the home page's headings", () => {
+  it("has exactly one h1 in the server's markup, and it is the first screen's headline", async () => {
+    const { FilmGate } = await import("@/components/home/FilmGate");
+    const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
+      locale: string;
+      messages: unknown;
+      timeZone: string;
+      children: ReactNode;
+    }>;
+    // The page as app/[locale]/page.tsx draws it on the server: the board, then
+    // the film's held box. The film itself is browser only.
+    const html = renderToString(
+      createElement(
+        Provider,
+        { locale: "en", messages: en, timeZone: "UTC" },
+        createElement(Board, { finding: { read: FINDING }, copy: { read: COPY }, samples: [], loose: null }),
+        createElement(FilmGate, null, createElement("div", null, "film")),
+      ),
+    );
+    expect(html.match(/<h1[\s>]/g)?.length).toBe(1);
+    expect(html).toMatch(/<h1[^>]*data-first-line/);
   });
 });

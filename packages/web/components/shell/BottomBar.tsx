@@ -17,18 +17,37 @@ export interface BarView {
   guideOpen: boolean;
   /** True while the pinned film is on the page, which is the home route alone. */
   filmPlaying: boolean;
+  /** How much of the window the film covers, 0 to 1. See filmShare. */
+  filmShown: number;
   /** How far the film's closing card has come in, 0 to 1. */
   close: number;
 }
 
 /**
+ * How much of the window a box covers, 0 to 1, from its top and bottom edges.
+ *
+ * The home page opens on its first screen with the film under it, and the film
+ * is mounted on the first scroll, long before it reaches the window. Being on
+ * the page is not the same as being in view.
+ */
+export function filmShare(top: number, bottom: number, room: number): number {
+  if (room <= 0) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, (Math.min(bottom, room) - Math.max(top, 0)) / room));
+}
+
+/**
  * Whether the bar is seen and whether it can be reached, decided from those
- * three facts and nothing else.
+ * four facts and nothing else.
  *
  * The film owns the whole window: it is pinned, it takes the wheel, and a bar
- * across the bottom of it would sit over the captions and the drop panel. So on
- * that one route the bar rides the story's own closing signal and arrives with
- * the closing card and the footer.
+ * across the bottom of it would sit over the captions and the drop panel. So
+ * while the film is in view the bar rides the story's own closing signal and
+ * arrives with the closing card and the footer. The first screen above the film
+ * is the page a phone visitor lands on, so there the bar is simply awake: it
+ * gives way as the film climbs into the window and comes back if the reader
+ * scrolls back up to the first screen.
  *
  * The guide overrules it. A first visitor is being walked through the three
  * things they can do here, and two of those steps point at tabs; a bar that is
@@ -44,7 +63,7 @@ export function barLook(view: BarView): { opacity: number; inert: boolean } {
   if (view.guideOpen || !view.filmPlaying) {
     return { opacity: 1, inert: false };
   }
-  const opacity = Math.min(1, Math.max(0, view.close));
+  const opacity = Math.min(1, Math.max(0, 1 - view.filmShown, view.close));
   return { opacity, inert: opacity <= 0.5 };
 }
 
@@ -96,9 +115,12 @@ export function BottomBar({
     const loop = () => {
       const node = shell.current;
       if (node !== null) {
+        const film = document.querySelector('[data-story="film"]');
+        const box = film?.getBoundingClientRect();
         const look = barLook({
           guideOpen: document.querySelector("[data-guide-open]") !== null,
-          filmPlaying: document.querySelector('[data-story="film"]') !== null,
+          filmPlaying: film !== null,
+          filmShown: box === undefined ? 0 : filmShare(box.top, box.bottom, window.innerHeight),
           close: progress.close,
         });
         // The opacity is written on every frame, not only when it changes: the

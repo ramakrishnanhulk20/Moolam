@@ -275,7 +275,7 @@
       "readoutNoAgent": "Sin agente generador en este pasaporte"
     },
     "sealed": {
-      "kicker": "Sellada",
+      "kicker": "Firmada",
       "title": "La clave de acceso del creador la firmó.",
       "body": "Monad la anotó en el bloque {block}. Dos firmas, un registro, alrededor de un segundo.",
       "bodyNoBlock": "Monad la anotó. Dos firmas, un registro, alrededor de un segundo.",

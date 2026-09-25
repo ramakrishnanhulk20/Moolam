@@ -277,7 +277,7 @@
       "readoutNoAgent": "这份护照上没有生成智能体"
     },
     "sealed": {
-      "kicker": "封存",
+      "kicker": "签名",
       "title": "创作者的通行密钥为它签了名。",
       "body": "Monad 把它记进了区块 {block}。两个签名，一条记录，大约一秒。",
       "bodyNoBlock": "Monad 把它记了下来。两个签名，一条记录，大约一秒。",

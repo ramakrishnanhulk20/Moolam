@@ -64,9 +64,10 @@ export function StillStory({
             <span className="motif h-[9px] w-[9px]" />
             {t("kicker")}
           </p>
-          <h1 className="mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]">
+          {/* An h2: the page's one h1 is the first screen's headline above. */}
+          <h2 className="mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]">
             {t("title")}
-          </h1>
+          </h2>
           <p className="mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted">
             {t("line")}
           </p>

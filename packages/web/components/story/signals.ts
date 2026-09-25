@@ -108,6 +108,25 @@ export function filmPlace(top: number, scrollY: number, room: number): "coming" 
   return "coming";
 }
 
+/**
+ * The share of the window the film has to cover before its opening plays.
+ *
+ * The film is mounted on the first scroll, while it is still a screen below the
+ * first screen, so an entrance started on mount had played out before anybody
+ * could see it. The opening words sit in the middle of the film on a laptop and
+ * under the shot on a phone, so they are on the screen once most of the film is.
+ */
+export const OPENING_AT = 0.6;
+
+/**
+ * Whether the film has come into view far enough for its opening to play, from
+ * its top edge against the window's height. A film scrolled past its top has
+ * arrived too: a reader who lands below it has already come through it.
+ */
+export function filmArrived(top: number, room: number): boolean {
+  return room > 0 && top <= room * (1 - OPENING_AT);
+}
+
 /** How far into its own scroller the film has been wound, and what is around it. */
 export interface StoryView {
   top: number;

@@ -275,7 +275,7 @@
       "readoutNoAgent": "No generating agent on this passport"
     },
     "sealed": {
-      "kicker": "Sealed",
+      "kicker": "Signed",
       "title": "The creator's passkey signed it.",
       "body": "Monad recorded it in block {block}. Two signatures, one record, about a second.",
       "bodyNoBlock": "Monad recorded it. Two signatures, one record, about a second.",

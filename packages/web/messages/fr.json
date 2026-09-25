@@ -275,7 +275,7 @@
       "readoutNoAgent": "Aucun agent générateur sur ce passeport"
     },
     "sealed": {
-      "kicker": "Scellée",
+      "kicker": "Signée",
       "title": "La clé d’accès du créateur l’a signée.",
       "body": "Monad l’a inscrite dans le bloc {block}. Deux signatures, un enregistrement, une seconde environ.",
       "bodyNoBlock": "Monad l’a inscrite. Deux signatures, un enregistrement, une seconde environ.",

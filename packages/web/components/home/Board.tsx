@@ -70,10 +70,18 @@ export function Board({
         {MOMENT}
       </style>
       <div className="mx-auto grid min-h-[calc(100svh-var(--header-h))] w-full max-w-[100rem] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.04fr)]">
-        <div className="flex flex-col justify-between gap-8 px-5 pb-10 pt-12 sm:px-8 lg:gap-5 lg:px-14 lg:pb-6 lg:pt-[3.5svh]">
+        {/* data-hero-shown is the mark the first-visit walk waits for. These
+            words are in the server's markup and in the first paint, so the
+            mark is here from the start and the walk only waits for the rises
+            under it to finish. data-hero-call on the drop and on Make one is
+            what the walk keeps its card off. */}
+        <div
+          data-hero-shown="true"
+          className="flex flex-col justify-between gap-8 px-5 pb-10 pt-12 sm:px-8 lg:gap-5 lg:px-14 lg:pb-6 lg:pt-[3.5svh]"
+        >
           <div>
             <Headline size="board" />
-            <div className="rise mt-7 lg:mt-6" style={{ animationDelay: "240ms" }}>
+            <div data-hero-call="choose" className="rise mt-7 lg:mt-6" style={{ animationDelay: "240ms" }}>
               <Drop samples={samples} look="board" />
             </div>
           </div>

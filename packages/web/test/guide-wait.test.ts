@@ -7,13 +7,15 @@ import en from "@/messages/en.json";
 import { GUIDE_SEEN_KEY, RETURNING_KEY } from "@/components/guide/seen";
 
 /**
- * The walk waits for the hero it introduces.
+ * The walk waits for the first screen it introduces, and for nothing else.
  *
  * On slow 4G the audit watched it open 3.7 seconds before the hero, over a
- * black page: the walk only waited for React, and the hero is drawn by the
- * film's own scripts, which take far longer to arrive. The hero's credit block
- * now raises a mark once its words are on the screen, and the walk opens only
- * after that, still once per device and never for one that has signed in.
+ * black page, so the walk learned to wait for a mark. The mark used to be the
+ * film's, and the film is now below the first screen and only mounted on the
+ * first scroll, so a first visitor got no walk until they scrolled and then got
+ * it over the first screen a second later. The first screen carries the mark
+ * now, in its server markup, and the walk waits only for the rises under it to
+ * settle. Still once per device and never for one that has signed in.
  */
 
 const reduce = { on: false };
@@ -42,13 +44,6 @@ const roots: Root[] = [];
 // framer asks once per page whether the reader wants less motion and then
 // listens for a change, as a browser would announce one. These are its ears.
 const heard = new Set<() => void>();
-
-function askForLessMotion() {
-  reduce.on = true;
-  for (const listener of heard) {
-    listener();
-  }
-}
 
 beforeEach(() => {
   window.localStorage.clear();
@@ -112,11 +107,18 @@ async function opensWithin(ms: number): Promise<boolean> {
   return walking();
 }
 
-/** What the hero's credit block raises once its words are on the screen. */
-function paintHero() {
+/** The first screen's column, as the server draws it: the mark and the two calls, and no film anywhere. */
+function paintHero(): HTMLElement {
   const hero = document.createElement("div");
   hero.setAttribute("data-hero-shown", "true");
+  hero.innerHTML = '<div data-hero-call="choose"></div><a data-hero-call="make">Make one</a>';
   document.body.append(hero);
+  return hero;
+}
+
+/** An animation as the browser lists it: running or finished, once or for ever. */
+function animation(playState: AnimationPlayState, endTime: number): Animation {
+  return { playState, effect: { getComputedTiming: () => ({ endTime }) } } as unknown as Animation;
 }
 
 describe("when the walk opens on a first visit", () => {
@@ -151,43 +153,40 @@ describe("when the walk opens on a first visit", () => {
   });
 });
 
-describe("the hero's own mark", () => {
-  function shown(): boolean {
-    return document.querySelector("[data-hero-shown]") !== null;
-  }
+describe("the first screen's own mark", () => {
+  it("opens the walk on the first screen's paint with no film on the page at all", async () => {
+    paintHero();
+    await mount(createElement(FirstVisitGuide));
+    expect(document.querySelector("[data-story]")).toBeNull();
+    expect(await opensWithin(2000)).toBe(true);
+  });
 
-  function endRise() {
+  it("waits while a rise under the mark is still running, and opens once it has finished", async () => {
+    const hero = paintHero();
+    let running = true;
+    hero.getAnimations = () => [animation(running ? "running" : "finished", 890), animation("running", Infinity)];
+    await mount(createElement(FirstVisitGuide));
+    expect(await opensWithin(800)).toBe(false);
+
+    running = false;
+    expect(await opensWithin(2000)).toBe(true);
+  });
+
+  it("never waits on a pulse that runs for ever", async () => {
+    const { heroSettled } = await import("@/components/guide/FirstVisitGuide");
+    const node = document.createElement("div");
+    node.getAnimations = () => [animation("running", Infinity), animation("finished", 650)];
+    expect(heroSettled(node)).toBe(true);
+    node.getAnimations = () => [animation("running", 650)];
+    expect(heroSettled(node)).toBe(false);
+  });
+
+  it("is no longer raised by the film's credits, entered or not", async () => {
+    await mount(createElement(HeroCredits, { entered: true }));
     const row = document.querySelector("[data-hero-call]")?.parentElement;
-    if (row === null || row === undefined) {
-      throw new Error("no row of calls");
-    }
-    // React listens for whichever name this browser gives the event.
-    for (const name of ["animationend", "webkitAnimationEnd"]) {
-      row.dispatchEvent(new Event(name, { bubbles: true }));
-    }
-  }
-
-  it("is not up before the credits have entered", async () => {
-    await mount(createElement(HeroCredits, { entered: false }));
-    await wait(50);
-    endRise();
-    await wait(50);
-    expect(shown()).toBe(false);
-  });
-
-  it("goes up once the two calls have finished rising, not when they start", async () => {
-    await mount(createElement(HeroCredits, { entered: true }));
-    await wait(50);
-    expect(shown()).toBe(false);
-
-    await act(async () => endRise());
-    expect(shown()).toBe(true);
-  });
-
-  it("goes up at once for a reader who asked for less motion, since nothing rises", async () => {
-    askForLessMotion();
-    await mount(createElement(HeroCredits, { entered: true }));
-    await wait(50);
-    expect(shown()).toBe(true);
+    await act(async () => {
+      row?.dispatchEvent(new Event("animationend", { bubbles: true }));
+    });
+    expect(document.querySelector("[data-hero-shown]")).toBeNull();
   });
 });

@@ -118,6 +118,66 @@ describe("the card and the hero's two calls, on measured screens", () => {
   });
 });
 
+/**
+ * The same rule on the first screen, which is where the walk opens now.
+ *
+ * Measured in headless Chromium against the dev server on 2026-09-25, a fresh
+ * context on /en with the walk at step one and no film mounted: the drop that
+ * holds Choose an image, Make one, the Verify anchor and the card as drawn.
+ */
+const FIRST_SCREEN = [
+  {
+    screen: "375x812",
+    stage: { width: 375, height: 812 },
+    calls: [
+      { x: 20, y: 446, width: 335, height: 405 },
+      { x: 20, y: 883, width: 149, height: 44 },
+    ],
+    choose: { x: 45, y: 572, width: 187, height: 44 },
+    anchor: { x: 225, y: 756, width: 75, height: 56 },
+    card: 245,
+    drawn: { x: 39, y: 189 },
+  },
+  {
+    screen: "1440x900",
+    stage: { width: 1440, height: 900 },
+    calls: [
+      { x: 56, y: 478, width: 594, height: 325 },
+      { x: 56, y: 832, width: 149, height: 44 },
+    ],
+    choose: { x: 369, y: 511, width: 187, height: 44 },
+    anchor: { x: 821, y: 21, width: 103, height: 20 },
+    card: 257,
+    drawn: { x: 801, y: 75 },
+  },
+];
+
+describe("the card and the first screen's two calls, on measured screens", () => {
+  for (const one of FIRST_SCREEN) {
+    it(`leaves the drop, Choose an image and Make one clear at ${one.screen}`, () => {
+      const spot = lit(one.anchor);
+      const place = placeCard({ stage: one.stage, spot, height: one.card, keepClear: one.calls });
+      const card = { x: place.x, y: place.y, width: place.width, height: one.card };
+
+      // Where the browser drew it is where the rule puts it.
+      expect({ x: place.x, y: place.y }).toEqual(one.drawn);
+      for (const call of [...one.calls, one.choose]) {
+        expect(overlaps(card, call), `card ${JSON.stringify(card)} on call ${JSON.stringify(call)}`).toBe(false);
+      }
+      expect(overlaps(card, spot)).toBe(false);
+      expect(card.y).toBeGreaterThanOrEqual(16);
+      expect(card.y + card.height).toBeLessThanOrEqual(one.stage.height - 16);
+    });
+  }
+
+  it("would have lain on the drop on a phone without the calls marked", () => {
+    const phone = FIRST_SCREEN[0];
+    const place = placeCard({ stage: phone.stage, spot: lit(phone.anchor), height: phone.card });
+    const card = { x: place.x, y: place.y, width: place.width, height: phone.card };
+    expect(overlaps(card, phone.choose)).toBe(true);
+  });
+});
+
 describe("where the walk learns the calls are", () => {
   function onScreen(node: Element, rect: Box) {
     const box = {

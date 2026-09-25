@@ -100,7 +100,9 @@ export function spotFor(
 }
 
 /**
- * The hero's two calls, where a reader can see them, measured against the stage.
+ * The calls the card keeps off, where a reader can see them, measured against
+ * the stage: the first screen's drop and its Make one, and the film's own two
+ * once the film is showing.
  *
  * A call the film has faded out while being scrolled is left out: the card
  * only has to stay off what a visitor could actually press. Opacity is asked

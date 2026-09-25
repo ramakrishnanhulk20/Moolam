@@ -28,16 +28,32 @@ function marksChanged(): void {
 }
 
 /**
+ * Whether the words under the mark have finished arriving: every rise and fade
+ * that runs once has run. A pulse or a ping that runs for ever is not waited
+ * for, and a browser that cannot list its animations is taken as settled.
+ */
+export function heroSettled(node: Element): boolean {
+  if (typeof node.getAnimations !== "function") {
+    return true;
+  }
+  return node.getAnimations({ subtree: true }).every((animation) => {
+    const end = Number(animation.effect?.getComputedTiming().endTime ?? 0);
+    return animation.playState !== "running" || !Number.isFinite(end);
+  });
+}
+
+/**
  * Whether the home page's first screen has painted its words.
  *
- * The hero's credit block raises the mark once its title has settled and its
- * two calls have finished rising. The walk introduces that screen, so it waits
- * for it: on a slow phone the walk used to open 3.7 seconds before the hero,
- * over a black page, and dim the hero's arrival when it came.
+ * The first screen carries the mark in the server's markup, because its words
+ * are in the first paint. What is still moving is the rise of the drop and the
+ * second call under the headline, so the walk waits for those to settle before
+ * it dims the screen and points at things. It never waits for the film below:
+ * the film is only mounted once the reader moves toward it, and a walk that
+ * waited for it opened over the first screen a second after the first scroll.
  *
- * Read the way the bottom bar reads the film, by looking at the page on each
- * animation frame, and only while the walk is waiting to open. Once the mark
- * has been seen the looking stops for good.
+ * Read on each animation frame, and only while the walk is waiting to open.
+ * Once the words have been seen settled the looking stops for good.
  */
 function useHeroPainted(wanted: boolean): boolean {
   const [painted, setPainted] = useState(false);
@@ -48,7 +64,8 @@ function useHeroPainted(wanted: boolean): boolean {
     }
     let frame = 0;
     const look = () => {
-      if (document.querySelector("[data-hero-shown]") !== null) {
+      const hero = document.querySelector("[data-hero-shown]");
+      if (hero !== null && heroSettled(hero)) {
         setPainted(true);
         return;
       }

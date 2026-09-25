@@ -275,7 +275,7 @@
       "readoutNoAgent": "Kein Generator-Agent auf diesem Pass"
     },
     "sealed": {
-      "kicker": "Versiegelt",
+      "kicker": "Signiert",
       "title": "Der Passkey des Urhebers hat es signiert.",
       "body": "Monad hat es in Block {block} notiert. Zwei Signaturen, ein Eintrag, etwa eine Sekunde.",
       "bodyNoBlock": "Monad hat es notiert. Zwei Signaturen, ein Eintrag, etwa eine Sekunde.",

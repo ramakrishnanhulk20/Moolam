@@ -26,6 +26,7 @@ import { TryPanel } from "@/components/story/TryPanel";
 import { pickSamples } from "@/lib/data/samples";
 import {
   film,
+  filmArrived,
   filmPlace,
   forwardTouchMove,
   forwardTouchStart,
@@ -697,6 +698,8 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   // and leaves the reader standing on it. The wait is the point: the footer is
   // held back until the last beat has been read, which is decided a frame or
   // two after the scroller reaches its end.
+  const arrived = useFilmArrived(stage, !still);
+
   const skip = useCallback(() => {
     if (scroller.el !== null) {
       moveStory(scroller.el, { to: "end" });
@@ -830,17 +833,17 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
             it belongs to, and the travel between two beats carries no words at all. */}
         <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
           <Caption cue={table.beat.opening} fade={table.fade}>
-            <Opening kicker={t("kicker")} title={t("title")} line={t("line")} />
+            <Opening kicker={t("kicker")} title={t("title")} line={t("line")} arrived={arrived} />
             {/* A phone has no foot to hang credits from: the shot ends at 45
                 percent of the window and the words own everything below it. So
                 on a phone the block follows the tagline with a poster's gap
                 instead of sitting on the floor of the frame. */}
             <div className="mt-8 sm:hidden">
-              <Credits />
+              <Credits arrived={arrived} />
             </div>
           </Caption>
           <Caption cue={table.beat.opening} fade={table.fade} place="foot">
-            <Credits />
+            <Credits arrived={arrived} />
           </Caption>
           {beats.map((entry) => {
             const cue = table.beat[entry.key];
@@ -1047,42 +1050,102 @@ function Caption({
 }
 
 /**
+ * Whether the film has come into view, latched: once its opening has played it
+ * is never taken back. Read from the film's own box on each animation frame
+ * until then, the way FilmEnd reads it, and not at all on the still page.
+ */
+export function useFilmArrived(stage: RefObject<HTMLElement | null>, watching: boolean): boolean {
+  const [arrived, setArrived] = useState(false);
+
+  useEffect(() => {
+    if (!watching || arrived) {
+      return;
+    }
+    let frame = 0;
+    const look = () => {
+      const node = stage.current;
+      if (node !== null && filmArrived(node.getBoundingClientRect().top, window.innerHeight)) {
+        setArrived(true);
+        return;
+      }
+      frame = requestAnimationFrame(look);
+    };
+    frame = requestAnimationFrame(look);
+    return () => cancelAnimationFrame(frame);
+  }, [stage, watching, arrived]);
+
+  return arrived;
+}
+
+/**
  * The credits wait for the title.
  *
  * The title carries 90 ms of delay and 900 ms of rise, so this is the frame it
  * has settled on: the name is read first and the two calls arrive under it.
  * The wait is held in here rather than in the film so the scene never shares a
- * render with it.
+ * render with it, and it only starts once the film has come into view.
  */
 const TITLE_SETTLED = 980;
 
-function Credits() {
+function Credits({ arrived }: { arrived: boolean }) {
   const [entered, setEntered] = useState(false);
 
   useEffect(() => {
+    if (!arrived) {
+      return;
+    }
     const timer = window.setTimeout(() => setEntered(true), TITLE_SETTLED);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [arrived]);
 
   return <HeroCredits entered={entered} />;
 }
 
-function Opening({ kicker, title, line }: { kicker: string; title: string; line: string }) {
+/** Before the film is in view each line waits on the first frame of its rise, so nothing moves when it starts. */
+const WAITING = { opacity: 0, transform: "translateY(28px)" } as const;
+
+/**
+ * The film's title card. The page's one h1 is the first screen's headline
+ * above, so the film's name is an h2 dressed the same as it always was.
+ */
+export function Opening({
+  kicker,
+  title,
+  line,
+  arrived,
+}: {
+  kicker: string;
+  title: string;
+  line: string;
+  arrived: boolean;
+}) {
+  const enter = (delay: number) =>
+    arrived
+      ? { className: "story-enter", style: delay === 0 ? undefined : { animationDelay: `${delay}ms` } }
+      : { className: "", style: WAITING };
+  const kick = enter(0);
+  const name = enter(90);
+  const said = enter(180);
+
   return (
     <>
-      <p className="story-enter flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+      <p
+        data-film-opening={arrived ? "entered" : "waiting"}
+        className={`${kick.className} flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent`}
+        style={kick.style}
+      >
         <span className="motif h-[9px] w-[9px]" />
         {kicker}
       </p>
-      <h1
-        className="story-enter mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]"
-        style={{ animationDelay: "90ms" }}
+      <h2
+        className={`${name.className} mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]`}
+        style={name.style}
       >
         {title}
-      </h1>
+      </h2>
       <p
-        className="story-enter mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted"
-        style={{ animationDelay: "180ms" }}
+        className={`${said.className} mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted`}
+        style={said.style}
       >
         {line}
       </p>

@@ -276,7 +276,7 @@
       "readoutNoAgent": "Sem agente gerador neste passaporte"
     },
     "sealed": {
-      "kicker": "Selada",
+      "kicker": "Assinada",
       "title": "A chave de acesso do criador assinou.",
       "body": "A Monad anotou no bloco {block}. Duas assinaturas, um registro, cerca de um segundo.",
       "bodyNoBlock": "A Monad anotou. Duas assinaturas, um registro, cerca de um segundo.",

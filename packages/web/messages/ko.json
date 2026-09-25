@@ -277,7 +277,7 @@
       "readoutNoAgent": "이 여권에는 생성 에이전트가 없습니다"
     },
     "sealed": {
-      "kicker": "봉인",
+      "kicker": "서명",
       "title": "제작자의 패스키가 서명했습니다.",
       "body": "Monad가 블록 {block}에 기록했습니다. 서명 두 개, 기록 하나, 약 1초.",
       "bodyNoBlock": "Monad가 기록했습니다. 서명 두 개, 기록 하나, 약 1초.",
