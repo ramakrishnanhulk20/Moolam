@@ -18,6 +18,8 @@ import {
 import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
 import { fieldPictures } from "@/components/story/scene/order";
+import { ChapterOpening } from "@/components/story/ChapterOpening";
+import { CHAPTER_WORDS } from "@/components/story/chapter";
 import { CloseCard } from "@/components/story/CloseCard";
 import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
@@ -642,6 +644,10 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   // A cut with a beat about a statement nobody wrote is not a cut of this film:
   // the same rule the bench prints its line from decides it, in one place.
   const table = beatTable(storyCut(variant, data));
+  // The chapter cut is told under a first screen that has already named the
+  // product and offered both actions, so it opens on a chapter title and ends
+  // on the page's one final call. Its beats are the stated cut's.
+  const chapter = variant === "chapter";
   const ledger = useLedgerView(data);
   const beats = useBeats(data, table, ledger, still);
   const dpr = useMemo(() => [1, level.dpr] as [number, number], [level.dpr]);
@@ -719,6 +725,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
           beats={beats}
           samples={samples}
           noWebgl={!webgl && reduced !== true}
+          chapter={chapter}
         />
       </div>
     );
@@ -726,7 +733,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
 
   return (
     <SceneBoundary
-      fallback={<StillStory data={data} table={table} beats={beats} samples={samples} noWebgl />}
+      fallback={<StillStory data={data} table={table} beats={beats} samples={samples} noWebgl chapter={chapter} />}
     >
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
           to the scene, so the wheel is handed straight to it. The three handlers
@@ -736,10 +743,16 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
       <style href="moolam-film-in-place" precedence="default">
         {IN_PLACE}
       </style>
+      {chapter && (
+        <style href="moolam-film-chapter" precedence="default">
+          {CHAPTER_LOOK}
+        </style>
+      )}
       <div
         ref={stage}
         className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
         data-story="film"
+        data-story-cut={chapter ? "chapter" : undefined}
         data-story-tier={tier}
         data-story-short={short ? "true" : undefined}
         data-lenis-prevent
@@ -797,7 +810,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
                 credential={credential}
                 dropped={dropped}
                 start={start}
-                label={`${t("title")}: ${t("line")}`}
+                label={chapter ? CHAPTER_WORDS.title : `${t("title")}: ${t("line")}`}
                 onTier={onTier}
               />
             </ScrollControls>
@@ -832,19 +845,27 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
             still sits behind the words. Each one is on screen for exactly the beat
             it belongs to, and the travel between two beats carries no words at all. */}
         <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-          <Caption cue={table.beat.opening} fade={table.fade}>
-            <Opening kicker={t("kicker")} title={t("title")} line={t("line")} arrived={arrived} />
-            {/* A phone has no foot to hang credits from: the shot ends at 45
-                percent of the window and the words own everything below it. So
-                on a phone the block follows the tagline with a poster's gap
-                instead of sitting on the floor of the frame. */}
-            <div className="mt-8 sm:hidden">
-              <Credits arrived={arrived} />
-            </div>
-          </Caption>
-          <Caption cue={table.beat.opening} fade={table.fade} place="foot">
-            <Credits arrived={arrived} />
-          </Caption>
+          {chapter ? (
+            <Caption cue={table.beat.opening} fade={table.fade}>
+              <ChapterOpening arrived={arrived} />
+            </Caption>
+          ) : (
+            <>
+              <Caption cue={table.beat.opening} fade={table.fade}>
+                <Opening kicker={t("kicker")} title={t("title")} line={t("line")} arrived={arrived} />
+                {/* A phone has no foot to hang credits from: the shot ends at 45
+                    percent of the window and the words own everything below it. So
+                    on a phone the block follows the tagline with a poster's gap
+                    instead of sitting on the floor of the frame. */}
+                <div className="mt-8 sm:hidden">
+                  <Credits arrived={arrived} />
+                </div>
+              </Caption>
+              <Caption cue={table.beat.opening} fade={table.fade} place="foot">
+                <Credits arrived={arrived} />
+              </Caption>
+            </>
+          )}
           {beats.map((entry) => {
             const cue = table.beat[entry.key];
             return cue === undefined ? null : (
@@ -863,7 +884,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
         )}
 
         <TryPanel onPreview={setDropped} samples={samples} />
-        <CloseCard data={data} />
+        <CloseCard data={data} chapter={chapter} />
         <ScrollCue />
         <FilmEnd stage={stage} />
       </div>
@@ -898,6 +919,53 @@ body[data-story-start] [data-story="film"],
 body[data-story-start] [data-story-scroller],
 body[data-story-past] [data-story="film"] {
   overscroll-behavior-y: auto;
+}
+`;
+
+/**
+ * The chapter cut's header under the light theme.
+ *
+ * Under the dark theme the bar already floats on the shot in the film's own
+ * ink. Under the light theme it used to keep the page's cream ground over the
+ * film, a light strip across the top of a black frame. In the chapter cut it
+ * takes the film's look for as long as the film stands in the window, and
+ * gives it back once the closing card, which carries the page's own ground,
+ * has arrived (data-chapter-close, written from CloseCard's frame).
+ */
+const CHAPTER_LOOK = `
+html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header {
+  --story-pullup: var(--header-h);
+  --bg: #0b0b0c;
+  --bg-raised: #121214;
+  --bg-sunken: #08080a;
+  --line: rgb(255 255 255 / 0.16);
+  --line-strong: rgb(255 255 255 / 0.26);
+  --text: #f5f3ef;
+  --text-muted: rgb(245 243 239 / 0.72);
+  --text-faint: rgb(245 243 239 / 0.5);
+  --accent: #ffb7c5;
+  --accent-ink: #0b0b0c;
+  --accent-soft: rgb(255 183 197 / 0.12);
+  color-scheme: dark;
+  color: var(--text);
+  background: transparent;
+  border-color: transparent;
+  backdrop-filter: none;
+}
+html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header::before {
+  content: "";
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: max(0px, 100% + 1px - var(--story-pullup));
+  background: #0b0b0c;
+  z-index: -1;
+}
+html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header [data-lockup="dark"] {
+  display: block;
+}
+html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header [data-lockup="light"] {
+  display: none;
 }
 `;
 

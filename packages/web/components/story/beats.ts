@@ -17,7 +17,16 @@
  * side on one machine without either one reaching for the other's numbers.
  */
 
-export type StoryVariant = "classic" | "stated";
+/** The two tables the film can be timed by. */
+export type BeatCut = "classic" | "stated";
+
+/**
+ * What a screen asks the film to play. "chapter" is the stated cut's own table
+ * told as a chapter under the home page's first screen: it opens on a chapter
+ * title rather than the film's poster, and its last card is the page's one
+ * final call. The beats, their offsets and the camera are the stated cut's.
+ */
+export type StoryVariant = BeatCut | "chapter";
 
 /** Every beat the film can carry. "stated" belongs to the stated cut alone. */
 export type BeatName =
@@ -231,7 +240,7 @@ function statedBeats(): Beat[] {
 
 /** One cut of the film: its pages, its beats, and the camera path they make. */
 export interface BeatTable {
-  variant: StoryVariant;
+  variant: BeatCut;
   pages: number;
   /** A caption's fade, in this cut's own fractions, so it is the same scroll distance in both. */
   fade: number;
@@ -247,7 +256,7 @@ export interface BeatTable {
   cameraKeys: { at: number; pose: Pose }[];
 }
 
-function tableOf(variant: StoryVariant): BeatTable {
+function tableOf(variant: BeatCut): BeatTable {
   const beats = variant === "stated" ? statedBeats() : CLASSIC_BEATS;
   const pages = variant === "stated" ? CLASSIC_PAGES + STATED_SCREENS : CLASSIC_PAGES;
 
@@ -265,13 +274,13 @@ function tableOf(variant: StoryVariant): BeatTable {
 }
 
 /** Both cuts, built once: a screen holding one of these holds the same object all the way through. */
-const TABLES: Record<StoryVariant, BeatTable> = {
+const TABLES: Record<BeatCut, BeatTable> = {
   classic: tableOf("classic"),
   stated: tableOf("stated"),
 };
 
 export function beatTable(variant: StoryVariant): BeatTable {
-  return TABLES[variant];
+  return TABLES[variant === "chapter" ? "stated" : variant];
 }
 
 export function clamp01(value: number): number {

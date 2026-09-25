@@ -1,5 +1,5 @@
 import type { StoryData } from "@/components/story/data";
-import type { StoryVariant } from "@/components/story/beats";
+import type { BeatCut, StoryVariant } from "@/components/story/beats";
 
 /**
  * Whether the film may tell the beat about the holder's word on AI use.
@@ -33,7 +33,9 @@ export function statedBlock(data: StoryData): StatedBlock | null {
  *
  * The home page and the bench both go through here, so a day with nothing
  * stated on the focal passport cannot put a different film on the two of them.
+ * The chapter cut is timed by the stated table and falls back the same way:
+ * what changes in it is how the film opens and closes, never its beats.
  */
-export function storyCut(wanted: StoryVariant, data: StoryData): StoryVariant {
-  return wanted === "stated" && statedBlock(data) === null ? "stated" : "classic";
+export function storyCut(wanted: StoryVariant, data: StoryData): BeatCut {
+  return wanted !== "classic" && statedBlock(data) === null ? "stated" : "classic";
 }
