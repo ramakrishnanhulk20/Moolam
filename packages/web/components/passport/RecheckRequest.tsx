@@ -13,6 +13,10 @@ import { useRecheckRequest, type RecheckControl } from "@/lib/recheck/useRecheck
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const EASE = [0.16, 1, 0.3, 1] as const;
 
+// The pull that hands the status room back. The phone's room is taller than
+// the section's 3.5rem padding there, so only that much is handed back.
+export const TUCKED_ROOM = "-mb-[3.5rem] sm:-mb-[3rem]";
+
 /**
  * Ask for a second opinion, from either screen that shows one.
  *
@@ -33,6 +37,7 @@ export function RecheckRequest({
   className = "",
   sealed = false,
   recheckedOn,
+  tuck = false,
 }: {
   /**
    * The passport to ask about. The verify card knows it from the answer it is
@@ -53,6 +58,13 @@ export function RecheckRequest({
    * not read the rows, which keeps the queue's own word for a finished request.
    */
   recheckedOn?: string | null;
+  /**
+   * True where the control is the last thing in a section. The room kept for
+   * the status sentence then sits inside the section's own bottom padding
+   * instead of in front of it, so an idle control leaves no empty band under
+   * it and a sentence that arrives still moves nothing below.
+   */
+  tuck?: boolean;
 }) {
   const params = useParams();
   const fromRoute = typeof params?.id === "string" && ID_PATTERN.test(params.id) ? (params.id as Hex) : undefined;
@@ -65,7 +77,7 @@ export function RecheckRequest({
   // Keyed by the passport, so a card that answers about a second picture draws
   // a control with a state of its own rather than one still showing where the
   // last passport sat in the queue.
-  return <Control key={id} passportId={id} className={className} sealed={sealed} recheckedOn={recheckedOn} />;
+  return <Control key={id} passportId={id} className={className} sealed={sealed} recheckedOn={recheckedOn} tuck={tuck} />;
 }
 
 /**
@@ -92,11 +104,13 @@ function Control({
   className,
   sealed,
   recheckedOn,
+  tuck,
 }: {
   passportId: Hex;
   className: string;
   sealed: boolean;
   recheckedOn?: string | null;
+  tuck: boolean;
 }) {
   const t = useTranslations("recheck");
   const calm = useReducedMotion() === true;
@@ -155,8 +169,12 @@ function Control({
       <p className="mt-3 text-xs leading-relaxed text-text-faint">{t(sealed ? "notePrivate" : "note")}</p>
 
       {/* Room for the longest sentence any state has, kept whether one is
-          showing or not. */}
-      <div className="mt-3 min-h-[4.25rem] sm:min-h-[3rem]">
+          showing or not. Tucked, the same room is handed back below by an
+          equal pull, so it lies in the padding of the section it ends. */}
+      <div
+        data-recheck-room={tuck ? "tucked" : "kept"}
+        className={`mt-3 min-h-[4.25rem] sm:min-h-[3rem] ${tuck ? TUCKED_ROOM : ""}`}
+      >
         <AnimatePresence mode="wait" initial={false}>
           <Sentence key={state.kind} state={state} spent={recheck.spent} calm={calm} sealed={sealed} />
         </AnimatePresence>

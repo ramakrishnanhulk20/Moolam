@@ -146,7 +146,12 @@ export async function Attestations({
             )}
 
             {offerRecheck ? (
-              <RecheckRequest className="mt-8 border-t border-line pt-7" sealed={sealed} recheckedOn={recheckedOn} />
+              <RecheckRequest
+                className="mt-8 border-t border-line pt-7"
+                sealed={sealed}
+                recheckedOn={recheckedOn}
+                tuck
+              />
             ) : attestations.length > 0 && copyLine !== null ? (
               // Under earlier verdicts the control's place says why there is
               // no control now, so a deleted copy reads as a choice, not a fault.
@@ -241,8 +246,11 @@ function Row({
 
       {/* Two equal columns rather than a flex row: the captions are different
           lengths, and a pair of fingerprints drawn at different sizes reads as
-          two unrelated things. They stack on a phone. */}
-      <div className="mt-8 grid max-w-[30rem] items-start gap-x-10 gap-y-8 sm:grid-cols-2">
+          two unrelated things. They stay side by side on a phone too, so the
+          pair is read as one comparison rather than a screen and a half of
+          cells. The feet line up, so captions that wrap differently never
+          set one grid lower than the other. */}
+      <div data-grid-pair className="mt-8 grid max-w-[30rem] grid-cols-2 items-end gap-x-5 sm:gap-x-10">
         <BitGrid bits={registeredBits} label={t("registeredGrid")} tone="original" />
         <BitGrid bits={recomputedBits} against={registeredBits} label={t("recomputedGrid")} tone="recomputed" />
       </div>

@@ -9,6 +9,7 @@ import { aboutLine } from "./about";
 import { cidOf, type Art } from "./art";
 import { Mono } from "./Mono";
 import { standingClass, type Standing } from "./labels";
+import { ANCHOR_MARGIN, FACT_ANCHORS } from "./top-facts";
 
 /** A manifest hash of nothing but zeroes means no C2PA manifest was embedded. */
 function hasManifest(manifestHash: string): boolean {
@@ -70,7 +71,7 @@ export async function Facts({
         </div>
 
         <dl className="mt-8 space-y-8">
-          <div>
+          <div id={FACT_ANCHORS.madeBy} style={ANCHOR_MARGIN}>
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("creator")}</dt>
             <dd className="mt-2">
               <span className="tap-row flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -111,7 +112,7 @@ export async function Facts({
             </dd>
           </div>
 
-          <div>
+          <div id={FACT_ANCHORS.drawnBy} style={ANCHOR_MARGIN}>
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("agent")}</dt>
             <dd className="mt-2">
               {passport.generatorAgentId === 0n ? (

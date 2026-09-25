@@ -17,6 +17,7 @@ import { heldIndexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
 import { Poster } from "@/components/passport/Poster";
+import { ANCHOR_MARGIN, FACT_ANCHORS } from "@/components/passport/top-facts";
 import { PrivateCopyPanel } from "@/components/passport/PrivateCopyPanel";
 import { UnsealPanel } from "@/components/passport/UnsealPanel";
 import { WalletProvider } from "@/components/providers/WalletProvider";
@@ -116,11 +117,16 @@ export async function generateMetadata({
  * The picture and the words come from the metadata that was pinned when it was
  * registered. The two panels at the foot of the page read live in the browser,
  * because what they show depends on who is looking.
+ *
+ * `variant` is set only by the lab page, which draws this same page with the
+ * facts strip along the poster's foot. The route itself never passes it.
  */
 export default async function PassportPage({
   params,
+  variant,
 }: {
   params: Promise<{ locale: string; id: string }>;
+  variant?: "facts";
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
@@ -171,10 +177,21 @@ export default async function PassportPage({
   // every other passport page costs the verify service nothing.
   const privateCopy =
     art.sealed === true && art.privateRecheck === true ? await privateCopyOf(passport.id) : undefined;
+  // The lab's strip is loaded only when the lab asks for it, so the real
+  // route never carries its code.
+  const strip =
+    variant === "facts"
+      ? await import("@/components/passport/TopFacts").then(({ TopFacts }) => (
+          <TopFacts passport={passport} art={art} consent={consent} attestations={attestations} locale={locale} />
+        ))
+      : undefined;
+  const statement = (
+    <ConsentSection id={passport.id} owner={owner} registeredAt={Number(passport.registeredAt)} record={consent} />
+  );
 
   return (
     <article>
-      <Poster passport={passport} art={art} locale={locale} />
+      <Poster passport={passport} art={art} locale={locale} strip={strip} />
 
       {/* The second opinion leads, straight under the poster: it is the one
           fact on this page nobody could have written about themselves. */}
@@ -195,12 +212,13 @@ export default async function PassportPage({
         {/* Everything above this line is what the picture is. This is what its
             holder says may be done with it, which is the question anyone
             training a model has to answer before they use it. */}
-        <ConsentSection
-          id={passport.id}
-          owner={owner}
-          registeredAt={Number(passport.registeredAt)}
-          record={consent}
-        />
+        {variant === "facts" ? (
+          <div id={FACT_ANCHORS.aiUse} style={ANCHOR_MARGIN}>
+            {statement}
+          </div>
+        ) : (
+          statement
+        )}
 
         <Facts
           passport={passport}
