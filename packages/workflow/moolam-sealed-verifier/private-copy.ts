@@ -152,6 +152,31 @@ export const privateFileRefusal = (status: number, length: number, passportId: s
   return null;
 };
 
+/**
+ * How many times a GET that does not answer is tried. Pinata's private gateway answered the first
+ * fetch through a fresh link in 6 to 12 seconds on 2026-09-25, past the capability's 10 second
+ * ceiling, and every repeat on the same link in about one second. Three tries of one link stay well
+ * inside its 120 second life and the run's 15 call budget.
+ */
+export const FETCH_TRIES = 3;
+
+/**
+ * The first answer from up to `tries` calls. Only a call that throws, which is how the capability
+ * reports a timeout or a dropped connection, is tried again; any status the server answers with is
+ * returned as it came, so a refusal is never retried into a different answer.
+ */
+export const firstAnswer = <T>(tries: number, call: () => T): T => {
+  let miss: unknown = new Error("no attempt was made");
+  for (let attempt = 0; attempt < tries; attempt++) {
+    try {
+      return call();
+    } catch (thrown) {
+      miss = thrown;
+    }
+  }
+  throw miss;
+};
+
 /** The verdict line, in the shape the public workflow prints and the runner's parser reads. */
 export const verdictLine = (recomputed: string, distance: number, matched: boolean): string =>
   `recomputed ${recomputed} distance ${distance} matched ${matched}`;

@@ -32,8 +32,10 @@ import { z } from "zod";
 import { decodeJpeg, type DecodedImage } from "../moolam-verifier/decode";
 import { hamming64, perceptualHash, toBytes32, toHex64 } from "../moolam-verifier/phash";
 import {
+	FETCH_TRIES,
 	GATEWAY_HOST,
 	MAX_DOCUMENT_BYTES,
+	firstAnswer,
 	metadataFetchUrl,
 	passportKey,
 	privateFileRefusal,
@@ -125,7 +127,9 @@ const readMetadata = (runtime: TeeRuntime<Config>, metadataURI: string, passport
 	}
 
 	const response = answered("the metadata fetch", passportId, () =>
-		httpClient.sendRequest(runtime, { url, method: "GET", timeout: HTTP_TIMEOUT }).result(),
+		firstAnswer(FETCH_TRIES, () =>
+			httpClient.sendRequest(runtime, { url, method: "GET", timeout: HTTP_TIMEOUT }).result(),
+		),
 	);
 	if (response.statusCode !== 200) {
 		throw new Error(refusal.metadataStatus(passportId, response.statusCode));
@@ -180,10 +184,15 @@ const requestLink = (runtime: TeeRuntime<Config>, token: string, passportId: str
 	return answer.url;
 };
 
-/** One GET on the link. The status and the size are checked before a byte reaches the decoder. */
+/**
+ * One link, fetched up to FETCH_TRIES times while it does not answer. The status and the size are
+ * checked before a byte reaches the decoder.
+ */
 const fetchPrivateCopy = (runtime: TeeRuntime<Config>, link: string, passportId: string): Uint8Array => {
 	const response = answered("the private copy fetch", passportId, () =>
-		httpClient.sendRequest(runtime, { url: link, method: "GET", timeout: HTTP_TIMEOUT }).result(),
+		firstAnswer(FETCH_TRIES, () =>
+			httpClient.sendRequest(runtime, { url: link, method: "GET", timeout: HTTP_TIMEOUT }).result(),
+		),
 	);
 	const refused = privateFileRefusal(response.statusCode, response.body.length, passportId);
 	if (refused !== null) {

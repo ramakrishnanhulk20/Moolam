@@ -21,6 +21,8 @@ interface PrivateCopyModule {
   privateFileRefusal: (status: number, length: number, passportId: string) => string | null;
   verdictLine: (recomputed: string, distance: number, matched: boolean) => string;
   reportLine: (txHash: string) => string;
+  FETCH_TRIES: number;
+  firstAnswer: <T>(tries: number, call: () => T) => T;
   refusal: Record<string, (...args: never[]) => string>;
 }
 
@@ -225,5 +227,45 @@ describe("the error lines (B5, D7)", () => {
     const parsed = parseSimulation(output);
     expect(parsed).toMatchObject({ reportTx: null, recomputed: "0x1f1bc103fbef6f47", distance: 2, matched: true });
     expect(parseSimulation(copy.reportLine(`0x${"ab".repeat(32)}`)).reportTx).toBe(`0x${"ab".repeat(32)}`);
+  });
+});
+
+describe("a fetch that does not answer is tried again, a bounded number of times", () => {
+  it("tries three times, because the first fetch through a fresh private link can outlast the ten second ceiling", () => {
+    expect(copy.FETCH_TRIES).toBe(3);
+  });
+
+  it("returns the first answer and makes no further call", () => {
+    let calls = 0;
+    expect(copy.firstAnswer(3, () => ++calls)).toBe(1);
+    expect(calls).toBe(1);
+  });
+
+  it("tries again after a call that throws, and returns the answer that follows", () => {
+    let calls = 0;
+    const answer = copy.firstAnswer(3, () => {
+      calls++;
+      if (calls < 3) throw new Error("timed out");
+      return { statusCode: 200 };
+    });
+    expect(answer).toEqual({ statusCode: 200 });
+    expect(calls).toBe(3);
+  });
+
+  it("gives up after the last try and throws what the last try threw", () => {
+    let calls = 0;
+    expect(() =>
+      copy.firstAnswer(3, () => {
+        calls++;
+        throw new Error(`miss ${calls}`);
+      }),
+    ).toThrow("miss 3");
+    expect(calls).toBe(3);
+  });
+
+  it("never retries an answer the server gave, a refusal included", () => {
+    let calls = 0;
+    expect(copy.firstAnswer(3, () => ({ statusCode: 404, call: ++calls }))).toEqual({ statusCode: 404, call: 1 });
+    expect(calls).toBe(1);
   });
 });
