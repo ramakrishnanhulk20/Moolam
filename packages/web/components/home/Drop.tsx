@@ -2,17 +2,19 @@
 
 import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
-import { AnswerCard, type Stage } from "@/components/verify/AnswerCard";
-import { chosenProblem, readAnswer, verifyProblem } from "@/components/verify/answer";
-import { matchedPassport } from "@/components/verify/lookup";
-import { fileFromSample } from "@/components/verify/sample";
+import type { Stage } from "@/components/verify/AnswerCard";
 import { Picture } from "@/components/passport/Picture";
-import { shortHex } from "@/lib/chain/client";
 import { pictureSources } from "@/lib/images";
 import type { TrySample } from "@/lib/data/samples";
-import { verify } from "@/lib/verifier/client";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
+
+type Check = typeof import("./check");
+
+/** A passport id as the verify page shortens it, without bringing the chain client along. */
+function shortId(id: string): string {
+  return id.length <= 12 ? id : `${id.slice(0, 8)}…${id.slice(-4)}`;
+}
 
 /**
  * The action on the first screen: drop a copy, or press a real passport, and
@@ -27,6 +29,12 @@ const ACCEPT = "image/jpeg,image/png,image/webp";
  * Nothing in here is hidden until the script runs. The frame, the words and the
  * three pictures are in the server's markup and enter on a CSS rise, so a slow
  * phone reads them before it can press them.
+ *
+ * The check itself is not. The card, the verify client and the chain reads
+ * behind them are fetched on the first press or drop (check.ts), because most
+ * visitors never start one and a phone paid for them on every load: the page
+ * scored 79 on Lighthouse with them and 91 before the drop was here. Until
+ * that code has arrived the pressed control says it is working.
  */
 export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" | "board" }) {
   const t = useTranslations("home.first");
@@ -35,6 +43,9 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
   const [over, setOver] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
   const [pressed, setPressed] = useState<string | null>(null);
+  const [Card, setCard] = useState<Check["AnswerCard"] | null>(null);
+  const [unstarted, setUnstarted] = useState(false);
+  const code = useRef<Promise<Check> | null>(null);
   const busy = stage.kind === "checking";
   const landed = stage.kind === "answer" || stage.kind === "problem";
 
@@ -52,13 +63,45 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
     node.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [landed]);
 
+  // Asked for once, on the first press, and shared by every check after it. A
+  // fetch that failed is forgotten so the next press asks again.
+  function load(): Promise<Check> {
+    if (code.current === null) {
+      code.current = import("./check").then(
+        (loaded) => {
+          setCard(() => loaded.AnswerCard);
+          return loaded;
+        },
+        (error: unknown) => {
+          code.current = null;
+          throw error;
+        },
+      );
+    }
+    return code.current;
+  }
+
+  // Started as the pointer goes down, so the code is on its way before the
+  // click, the file picker or the drop has finished.
+  function warm() {
+    load().catch(() => undefined);
+  }
+
+  // Without the code there is no card to say anything on, so the frame goes
+  // back to how it was, says the check did not run, and the next press tries
+  // again.
+  async function loaded(): Promise<Check | null> {
+    try {
+      return await load();
+    } catch {
+      reset();
+      setUnstarted(true);
+      return null;
+    }
+  }
+
   function take(chosen: File | undefined) {
     if (chosen === undefined) {
-      return;
-    }
-    const problem = chosenProblem(chosen);
-    if (problem !== null) {
-      setStage({ kind: "problem", problem: { ...problem, reason: chosen.name } });
       return;
     }
     void check(chosen);
@@ -66,26 +109,29 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
 
   async function pick(sample: TrySample) {
     setPressed(sample.id);
+    setUnstarted(false);
     setStage({ kind: "checking", name: sample.title ?? sample.id });
-    let file: File;
-    try {
-      file = await fileFromSample(sample);
-    } catch {
+    const run = await loaded();
+    if (run === null) {
+      return;
+    }
+    const file = await run.sampleFile(sample);
+    if (file === null) {
       setStage({ kind: "problem", problem: { key: "sampleFailed" } });
       return;
     }
-    take(file);
+    setStage({ kind: "checking", name: file.name });
+    setStage(await run.answerFor(file));
   }
 
   async function check(chosen: File) {
     setStage({ kind: "checking", name: chosen.name });
-    try {
-      const answer = readAnswer(await verify({ file: chosen }));
-      const passport = answer.kind === "miss" ? null : await matchedPassport(answer.id);
-      setStage({ kind: "answer", answer, passport });
-    } catch (error) {
-      setStage({ kind: "problem", problem: verifyProblem(error) });
+    setUnstarted(false);
+    const run = await loaded();
+    if (run === null) {
+      return;
     }
+    setStage(await run.answerFor(chosen));
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -116,6 +162,7 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
 
       <div
         ref={frame}
+        onDragEnter={warm}
         onDragOver={(event) => {
           event.preventDefault();
           setOver(true);
@@ -124,8 +171,15 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
         onDrop={onDrop}
         className="scroll-mt-24"
       >
-        {stage.kind === "idle" ? (
-          <Still over={over} look={look} onChoose={() => input.current?.click()} />
+        {stage.kind === "idle" || Card === null ? (
+          <Still
+            over={over}
+            look={look}
+            waiting={busy && pressed === null}
+            unstarted={unstarted}
+            onWarm={warm}
+            onChoose={() => input.current?.click()}
+          />
         ) : (
           // On a wide screen the card turns over inside the frame the press was in
           // and scrolls within it, so the headline beside it never moves. A phone
@@ -135,12 +189,12 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
             className="rise lg:max-h-[min(58svh,34rem)] lg:overflow-y-auto lg:overscroll-contain"
             data-lenis-prevent
           >
-            <AnswerCard stage={stage} />
+            <Card stage={stage} />
           </div>
         )}
       </div>
 
-      {stage.kind === "idle" ? null : (
+      {stage.kind === "idle" || Card === null ? null : (
         <button
           type="button"
           onClick={reset}
@@ -151,13 +205,40 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
         </button>
       )}
 
-      <Strip samples={samples} look={look} busy={busy} pressed={pressed} onPick={(sample) => void pick(sample)} />
+      <Strip
+        samples={samples}
+        look={look}
+        busy={busy}
+        pressed={pressed}
+        onWarm={warm}
+        onPick={(sample) => void pick(sample)}
+      />
     </div>
   );
 }
 
-/** The drop target, framed as a film still: four corner marks, a slate line, the one sentence. */
-function Still({ over, look, onChoose }: { over: boolean; look: "poster" | "board"; onChoose: () => void }) {
+/**
+ * The drop target, framed as a film still: four corner marks, a slate line, the one sentence.
+ *
+ * waiting is a chosen or dropped file whose check code is still on its way,
+ * and the button says so in the verify page's own word for it.
+ */
+function Still({
+  over,
+  look,
+  waiting,
+  unstarted,
+  onWarm,
+  onChoose,
+}: {
+  over: boolean;
+  look: "poster" | "board";
+  waiting: boolean;
+  /** The check's own code would not load, so the last press did nothing. */
+  unstarted: boolean;
+  onWarm: () => void;
+  onChoose: () => void;
+}) {
   const t = useTranslations("home.first");
   const verify = useTranslations("verify");
   // Tamil letters carry marks above and below the line, so the display face's
@@ -196,12 +277,23 @@ function Still({ over, look, onChoose }: { over: boolean; look: "poster" | "boar
         <div className="flex flex-col items-start gap-3">
           <button
             type="button"
+            onPointerDown={onWarm}
             onClick={onChoose}
-            className="inline-flex h-11 items-center rounded-[8px] bg-accent px-6 text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+            disabled={waiting}
+            aria-busy={waiting}
+            data-hero-call="choose"
+            className="inline-flex h-11 items-center gap-2 rounded-[8px] bg-accent px-6 text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-wait disabled:hover:translate-y-0"
           >
-            {verify("choose")}
+            {waiting ? <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent-ink" /> : null}
+            {waiting ? verify("busy") : verify("choose")}
           </button>
-          <p className="max-w-[34ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
+          {unstarted ? (
+            <p role="alert" data-first-unstarted className="max-w-[34ch] text-xs font-semibold leading-relaxed text-failed">
+              {verify("problemLabel")}
+            </p>
+          ) : (
+            <p className="max-w-[34ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
+          )}
         </div>
       </div>
     </div>
@@ -231,12 +323,14 @@ function Strip({
   look,
   busy,
   pressed,
+  onWarm,
   onPick,
 }: {
   samples: TrySample[];
   look: "poster" | "board";
   busy: boolean;
   pressed: string | null;
+  onWarm: () => void;
   onPick: (sample: TrySample) => void;
 }) {
   const t = useTranslations("home.first");
@@ -258,14 +352,16 @@ function Strip({
         }`}
       >
         {samples.map((sample, index) => {
-          const name = sample.title ?? shortHex(sample.id, 6, 4);
+          const name = sample.title ?? shortId(sample.id);
           const checking = busy && pressed === sample.id;
           return (
             <li key={sample.id} className="rise min-w-0" style={{ animationDelay: `${420 + index * 70}ms` }}>
               <button
                 type="button"
+                onPointerDown={onWarm}
                 onClick={() => onPick(sample)}
                 disabled={busy}
+                aria-busy={checking}
                 title={name}
                 className="group block min-h-11 w-full text-start disabled:cursor-wait"
               >

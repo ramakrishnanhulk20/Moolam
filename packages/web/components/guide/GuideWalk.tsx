@@ -7,7 +7,7 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { GuideGround, type GuideClose, type GuideStage } from "./GuideGround";
 import { GuideMarkDrawing } from "./marks";
-import { HANG, cardWidth, placeCard, type Box, type Placement } from "./place";
+import { HANG, cardWidth, keepClearOn, placeCard, type Box, type Placement } from "./place";
 import { guideSteps, nextStep } from "./steps";
 
 /** The box the guide is drawn in: the window, or a bench's mock window. */
@@ -100,17 +100,17 @@ export function spotFor(
 }
 
 /**
- * The calls the card keeps off, where a reader can see them, measured against
- * the stage: the first screen's drop and its Make one, and the film's own two
- * once the film is showing.
+ * What the card keeps off, where a reader can see it, measured against the
+ * stage: the first screen's Choose an image and Make one, and its headline and
+ * line, less the line on a phone (see keepClearOn).
  *
- * A call the film has faded out while being scrolled is left out: the card
- * only has to stay off what a visitor could actually press. Opacity is asked
+ * A mark that has faded out is left out: the card only has to stay off what a
+ * visitor could actually read or press. Opacity is asked
  * of the browser where it can answer, and a browser that cannot is taken at
  * its word that the call is there.
  */
 export function heroCalls(root: ParentNode, origin: Stage): Box[] {
-  return [...root.querySelectorAll<HTMLElement>("[data-hero-call]")]
+  return [...root.querySelectorAll<HTMLElement>(keepClearOn(origin.width))]
     .filter(onScreen)
     .filter((node) => typeof node.checkVisibility !== "function" || node.checkVisibility({ opacityProperty: true }))
     .map((node) => {
@@ -415,14 +415,14 @@ export function GuideCard({
         duration: reduced ? 0.2 : 0.5,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className="rounded-[8px] border border-line bg-[color:var(--bg-raised)] p-5 shadow-[0_24px_60px_rgb(0_0_0/0.5)]"
+      className="rounded-[8px] border border-line bg-[color:var(--bg-raised)] p-4 shadow-[0_24px_60px_rgb(0_0_0/0.5)] lg:p-5"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
             {counter}
           </p>
-          <h3 className="mt-2 max-w-[16ch] font-display text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]">
+          <h3 className="mt-2 font-display lg:max-w-[16ch] text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]">
             {t(`steps.${step.id}.title`)}
           </h3>
         </div>

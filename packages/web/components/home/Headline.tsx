@@ -42,8 +42,12 @@ export function Headline({ size, className = "" }: { size: "poster" | "board"; c
         <span className="motif h-[10px] w-[10px]" />
         {brand("brand")}
       </p>
+      {/* data-hero-words: the words that say what this is. The first-visit
+          walk keeps its card off them as it does off the two calls; on a
+          phone it may lie on the line (components/guide/place.ts). */}
       <h1
         data-first-line
+        data-hero-words="headline"
         style={{ animationDelay: "70ms" }}
         className={`first-lift mt-5 font-display font-semibold uppercase tracking-[-0.045em] lg:mt-4 ${
           tamil ? "leading-[1.16]" : "leading-[0.9]"
@@ -53,6 +57,7 @@ export function Headline({ size, className = "" }: { size: "poster" | "board"; c
       </h1>
       <p
         data-first-why
+        data-hero-words="line"
         className="rise mt-6 max-w-[52ch] text-base leading-relaxed text-text-muted sm:text-[1.075rem] lg:mt-5"
         style={{ animationDelay: "160ms" }}
       >

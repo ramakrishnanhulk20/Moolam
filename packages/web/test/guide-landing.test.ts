@@ -142,11 +142,12 @@ describe("the card on open", () => {
 
     // The light on the tab: 150 - 8, 756 - 8, padded 8 all round. The card is
     // 244 high, with no room under the tab, so it sits 16 above the light and
-    // as far left as the tab allows on a 375 screen with a 320 card.
+    // at the left gutter, because below a laptop the card is the screen less
+    // its two 16 px gutters: 343 wide on a 375 screen.
     const final = seen[seen.length - 1];
     expect(final.state).toBe("placed");
     expect(final.hidden).toBe(false);
-    expect(moved(final.transform)).toEqual([39, 748 - 16 - CARD_HEIGHT]);
+    expect(moved(final.transform)).toEqual([16, 748 - 16 - CARD_HEIGHT]);
 
     // It was measured before it was placed, unseen.
     expect(seen.some((one) => one.state === "measuring")).toBe(true);
@@ -157,7 +158,7 @@ describe("the card on open", () => {
     // Every frame a reader could have seen has the card where it ends up: it
     // never shows at the corner and never slides in from it.
     for (const one of seen.filter((entry) => !entry.hidden)) {
-      expect(moved(one.transform)).toEqual([39, 748 - 16 - CARD_HEIGHT]);
+      expect(moved(one.transform)).toEqual([16, 748 - 16 - CARD_HEIGHT]);
     }
   });
 });

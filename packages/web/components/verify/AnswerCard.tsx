@@ -138,7 +138,7 @@ function Checking({ name }: { name: string }) {
           {t("checkingHeading")}
         </p>
         <p className="mt-5 max-w-[42ch] text-sm leading-relaxed text-text-muted">{t("checkingDetail")}</p>
-        <p className="mt-8 break-all font-mono text-[11px] text-text-faint">{name}</p>
+        <p className="mt-8 break-words font-mono text-[11px] text-text-faint">{name}</p>
       </div>
     </Plate>
   );
@@ -353,9 +353,9 @@ function Measured({ answer }: { answer: Answer }) {
       <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("measured")}</p>
       <dl className="mt-5 grid grid-cols-2 gap-x-8 gap-y-5">
         <Readout label={t("queriedSize")} value={`${queried.width} x ${queried.height} ${queried.format}`} />
-        <Readout label={t("queriedPhash")} value={queried.phash} />
-        <Readout label={t("queriedSha")} value={shortHex(queried.sha256, 10, 8)} />
-        <Readout label={t("queriedBlockhash")} value={shortHex(queried.blockhash, 10, 8)} />
+        <Readout label={t("queriedPhash")} value={queried.phash} hex />
+        <Readout label={t("queriedSha")} value={shortHex(queried.sha256, 10, 8)} hex />
+        <Readout label={t("queriedBlockhash")} value={shortHex(queried.blockhash, 10, 8)} hex />
       </dl>
     </div>
   );
@@ -381,12 +381,18 @@ function Refused({ problem }: { problem: Problem }) {
   );
 }
 
-function Readout({ label, value }: { label: string; value: string }) {
+/**
+ * One measured fact. A hex value may break anywhere, in groups, so it never
+ * pushes the card wider than its column; everything else is words, and words
+ * wrap at their spaces. Before the split "0 of 64 bits apart" was set as a
+ * hash and broke as "a / part" on a phone.
+ */
+function Readout({ label, value, hex = false }: { label: string; value: string; hex?: boolean }) {
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
       <dd className="mt-1.5 text-sm text-text">
-        <Mono value={value} />
+        {hex ? <Mono value={value} /> : <span data-readout-words className="font-mono break-words">{value}</span>}
       </dd>
     </div>
   );

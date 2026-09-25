@@ -11,6 +11,30 @@ import { matchedPassport } from "./lookup";
 import { fileFromSample } from "./sample";
 import { Samples } from "./Samples";
 
+/** Stands in for the host while the sentence is translated, so the host can be set as one piece. */
+const HOST_MARK = "\u0000host\u0000";
+
+/**
+ * The privacy line with the service's host kept whole: it moves to the next
+ * line as one piece rather than breaking at a hyphen, and only a host wider
+ * than the whole column breaks inside itself.
+ */
+export function Privacy({ line, host }: { line: string; host: string }) {
+  const at = line.indexOf(HOST_MARK);
+  if (at < 0) {
+    return <>{line}</>;
+  }
+  return (
+    <>
+      {line.slice(0, at)}
+      <span data-privacy-host className="inline-block max-w-full [overflow-wrap:anywhere]">
+        {host}
+      </span>
+      {line.slice(at + HOST_MARK.length)}
+    </>
+  );
+}
+
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
 /**
@@ -169,7 +193,10 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
                 <img src={preview} alt="" className="max-h-[30rem] w-full object-cover" />
                 <div className="scrim pointer-events-none absolute inset-0" />
                 <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-5">
-                  <p className="max-w-[30ch] break-all font-mono text-[11px] text-text">
+                  {/* A file name wraps at its hyphens and dots like words do,
+                      and breaks inside a word only if one piece is wider than
+                      the caption. */}
+                  <p className="max-w-[30ch] font-mono text-[11px] text-text [overflow-wrap:anywhere]">
                     {file?.name} <span className="text-text-muted">{fileSize(file)}</span>
                   </p>
                   <button
@@ -221,7 +248,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
               </button>
             )}
             <p className="max-w-[38ch] text-xs leading-relaxed text-text-muted">
-              {t("privacy", { host: verifierHost() })}
+              <Privacy line={t("privacy", { host: HOST_MARK })} host={verifierHost()} />
             </p>
           </div>
         </motion.section>

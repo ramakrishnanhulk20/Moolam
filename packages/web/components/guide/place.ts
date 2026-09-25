@@ -25,6 +25,9 @@ export interface Placement {
 /** The widest the card is drawn, on a screen with room for it. */
 export const CARD = 320;
 
+/** The widest the card is drawn below a laptop, so a tablet does not get a banner. */
+export const PHONE_CARD = 400;
+
 /** The gap between the light and the card, which the hairline spans. */
 export const HANG = 26;
 
@@ -34,9 +37,36 @@ const EDGE = 16;
 /** The nearest the card comes to anything it has been told to leave clear. */
 const CLEAR = 12;
 
-/** How wide the card is on a stage this wide: its own width, or the screen less its margins. */
+/** The width from which the guide treats a screen as a laptop, Tailwind's lg. */
+export const LAPTOP = 1024;
+
+/**
+ * The marks on the page the card keeps clear of, with the same air round each:
+ * a call a visitor has to be able to press, and the words that say what the
+ * site is. The marks are on the page itself, so a screen that moves its
+ * headline moves what the card avoids with it.
+ *
+ * On a phone the line under the headline is the one mark the card may lie on.
+ * A phone is too short for the headline, its line, the card, Choose an image
+ * and the lit tab all at once, and of those the line is the one a visitor can
+ * read a moment later with nothing lost.
+ */
+export const KEEP_CLEAR = "[data-hero-call], [data-hero-words]";
+const KEEP_CLEAR_PHONE = '[data-hero-call], [data-hero-words]:not([data-hero-words="line"])';
+
+/** What the card keeps clear of on a stage this wide. */
+export function keepClearOn(stageWidth: number): string {
+  return stageWidth >= LAPTOP ? KEEP_CLEAR : KEEP_CLEAR_PHONE;
+}
+
+/**
+ * How wide the card is on a stage this wide: its own width on a laptop, and
+ * the screen less its margins below one. A phone card that uses the whole
+ * width wraps its words into fewer rows, which is what lets it fit between the
+ * headline and Choose an image.
+ */
 export function cardWidth(stageWidth: number): number {
-  return Math.min(CARD, Math.max(240, stageWidth - EDGE * 2));
+  return stageWidth >= LAPTOP ? CARD : Math.min(PHONE_CARD, Math.max(240, stageWidth - EDGE * 2));
 }
 
 export function overlaps(a: Box, b: Box): boolean {
@@ -56,12 +86,14 @@ function grown(box: Box, by: number): Box {
  * bottom of the screen and never lies over the top of the thing it is lighting.
  *
  * Then one rule over all of those: the card never lies on anything it has been
- * told to keep clear, which on the home page is the hero's two calls. A first
- * visitor who is shown what the site does and then cannot press the button
- * that does it has been guided away from the thing. When the first choice
+ * told to keep clear, which on the home page is the two calls and the headline
+ * with its line. A first visitor who is shown what the site does and then
+ * cannot press the button that does it, or read what it is, has been guided
+ * away from the thing. When the first choice
  * would cover them, the card goes to whichever side of them is nearest to
  * where it wanted to be, still on the screen and still off the light. The
- * light itself never moves: it stays on the step's own anchor.
+ * light itself never moves: it stays on the step's own anchor. When no side
+ * clears every mark the card stays where it first wanted to be.
  */
 export function placeCard({
   stage,

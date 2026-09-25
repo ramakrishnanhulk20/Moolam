@@ -52,16 +52,10 @@ export function HeroCredits({ entered }: { entered: boolean }) {
       >
         {/* The studio carries the wallet SDK. Left to prefetch, it would pull
             about 130 kB of it behind every reading of the film, so it loads on
-            the tap. The query opens the studio on the generate panel.
-
-            data-hero-call is what the first-visit guide reads to keep its card
-            off these two, as it does off the first screen's own calls: a
-            visitor it has just told what the site does must still be able to
-            press the button that does it. */}
+            the tap. The query opens the studio on the generate panel. */}
         <Link
           href={{ pathname: "/studio", query: { mode: "generate" } }}
           prefetch={false}
-          data-hero-call="generate"
           className="group pointer-events-auto inline-flex items-center gap-2 rounded-[8px] bg-accent px-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
         >
           {t("generate")}
@@ -71,7 +65,6 @@ export function HeroCredits({ entered }: { entered: boolean }) {
         </Link>
         <Link
           href="/verify"
-          data-hero-call="verify"
           className="pointer-events-auto rounded-[8px] border border-line px-2 py-2.5 text-[10px] uppercase tracking-[0.06em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
         >
           {t("verify")}

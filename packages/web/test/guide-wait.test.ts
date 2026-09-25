@@ -107,11 +107,11 @@ async function opensWithin(ms: number): Promise<boolean> {
   return walking();
 }
 
-/** The first screen's column, as the server draws it: the mark and the two calls, and no film anywhere. */
+/** The first screen's column, as the server draws it: the mark, the headline, the two calls, and no film anywhere. */
 function paintHero(): HTMLElement {
   const hero = document.createElement("div");
   hero.setAttribute("data-hero-shown", "true");
-  hero.innerHTML = '<div data-hero-call="choose"></div><a data-hero-call="make">Make one</a>';
+  hero.innerHTML = '<h1 data-hero-words>Headline</h1><button data-hero-call="choose">Choose</button><a data-hero-call="make">Make one</a>';
   document.body.append(hero);
   return hero;
 }
@@ -183,7 +183,8 @@ describe("the first screen's own mark", () => {
 
   it("is no longer raised by the film's credits, entered or not", async () => {
     await mount(createElement(HeroCredits, { entered: true }));
-    const row = document.querySelector("[data-hero-call]")?.parentElement;
+    const row = document.querySelector("a")?.parentElement;
+    expect(row).not.toBeUndefined();
     await act(async () => {
       row?.dispatchEvent(new Event("animationend", { bubbles: true }));
     });

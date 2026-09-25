@@ -73,15 +73,16 @@ export function Board({
         {/* data-hero-shown is the mark the first-visit walk waits for. These
             words are in the server's markup and in the first paint, so the
             mark is here from the start and the walk only waits for the rises
-            under it to finish. data-hero-call on the drop and on Make one is
-            what the walk keeps its card off. */}
+            under it to finish. What the walk keeps its card off is marked
+            where it is drawn: the two calls in Drop and Headline, and the
+            headline and its line. */}
         <div
           data-hero-shown="true"
           className="flex flex-col justify-between gap-8 px-5 pb-10 pt-12 sm:px-8 lg:gap-5 lg:px-14 lg:pb-6 lg:pt-[3.5svh]"
         >
           <div>
             <Headline size="board" />
-            <div data-hero-call="choose" className="rise mt-7 lg:mt-6" style={{ animationDelay: "240ms" }}>
+            <div className="rise mt-7 lg:mt-6" style={{ animationDelay: "240ms" }}>
               <Drop samples={samples} look="board" />
             </div>
           </div>
@@ -144,10 +145,10 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
   const lines: Line[] = [rechecked, ...(finding.statementError === null ? [stated(finding.statement)] : [])];
 
   return (
-    <Play className="relative">
+    <Play className="relative lg:flex lg:grow lg:flex-col lg:justify-between">
       <LiveMark />
 
-      <div className={`mt-6 grid gap-4 sm:gap-8 ${isRead(copy) ? "grid-cols-2" : "max-w-[15rem] grid-cols-1"}`}>
+      <div className={`mt-6 grid gap-4 sm:gap-8 lg:mt-3 ${isRead(copy) ? "grid-cols-2" : "max-w-[15rem] grid-cols-1"}`}>
         <Exhibit
           mark="A"
           label={t("registered", { date: day(finding.registeredAt) })}
@@ -249,7 +250,7 @@ function Lines({ lines }: { lines: Line[] }) {
     return null;
   }
   return (
-    <ul className="mt-6 space-y-2 border-t border-line pt-5 lg:mt-5 lg:space-y-1.5 lg:pt-4">
+    <ul className="mt-6 space-y-2 border-t border-line pt-5 lg:mt-3 lg:space-y-1 lg:pt-3">
       {lines.map((line) => (
         <li key={line.lead} className="max-w-[60ch] text-sm leading-relaxed text-text-muted">
           {line.lead}{" "}
@@ -270,7 +271,7 @@ function OpenPassport({ id, title }: { id: string; title: string | null }) {
   return (
     <Link
       href={`/passport/${id}`}
-      className="mt-4 inline-flex h-11 items-center text-xs uppercase lg:mt-2 tracking-[0.16em] text-text underline decoration-line-strong underline-offset-4 transition-colors duration-200 hover:text-accent hover:decoration-accent"
+      className="mt-4 inline-flex h-11 items-center text-xs uppercase lg:mt-1 lg:self-start tracking-[0.16em] text-text underline decoration-line-strong underline-offset-4 transition-colors duration-200 hover:text-accent hover:decoration-accent"
     >
       {t("openPassport", { title: title ?? verify("untitled") })}
     </Link>
@@ -280,14 +281,14 @@ function OpenPassport({ id, title }: { id: string; title: string | null }) {
 /** The right half, with the sponsor line along its foot whatever was read above it. */
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grain relative flex flex-col justify-between gap-6 overflow-hidden border-t border-line bg-bg-sunken px-5 py-10 sm:px-8 lg:gap-4 lg:border-l lg:border-t-0 lg:px-12 lg:py-[3svh]">
+    <div className="grain relative flex flex-col justify-between gap-6 overflow-hidden border-t border-line bg-bg-sunken px-5 py-10 sm:px-8 lg:gap-3 lg:border-l lg:border-t-0 lg:px-12 lg:py-[2.5svh]">
       {/* A faint rule grid, the board the exhibits are pinned to. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(var(--line)_1px,transparent_1px),linear-gradient(90deg,var(--line)_1px,transparent_1px)] [background-size:48px_48px]"
       />
-      <div className="relative">{children}</div>
-      <Billing className="relative border-t border-line pt-5 lg:pt-4" />
+      <div className="relative lg:flex lg:grow lg:flex-col">{children}</div>
+      <Billing className="relative border-t border-line pt-5 lg:pt-3" />
     </div>
   );
 }
@@ -309,7 +310,7 @@ function Exhibit({
 
   return (
     <figure className="min-w-0">
-      <div className={`group relative mx-auto w-full max-w-[13.5rem] transition-transform duration-500 hover:rotate-0 lg:max-w-[12rem] ${tilt}`}>
+      <div className={`group relative mx-auto w-full max-w-[13.5rem] transition-transform duration-500 hover:rotate-0 lg:max-w-[11.5rem] ${tilt}`}>
         <span className="absolute -top-2.5 left-1/2 z-10 h-5 w-16 -translate-x-1/2 rotate-[-3deg] bg-accent/25 backdrop-blur-sm" aria-hidden />
         <div className="grain relative aspect-square overflow-hidden border border-line-strong bg-bg shadow-[0_24px_60px_rgb(0_0_0/0.45)]">
           {still}
@@ -319,9 +320,9 @@ function Exhibit({
           </span>
         </div>
       </div>
-      <figcaption className="mx-auto mt-3 max-w-[13.5rem] text-[11px] leading-snug text-text-muted lg:max-w-[12rem]">{label}</figcaption>
+      <figcaption className="mx-auto mt-3 max-w-[13.5rem] lg:mt-2 text-[11px] leading-snug text-text-muted lg:max-w-[11.5rem]">{label}</figcaption>
       {print === undefined ? null : (
-        <div className="mx-auto mt-4 max-w-[13.5rem] lg:mt-3 lg:max-w-[12rem]">
+        <div className="mx-auto mt-4 max-w-[13.5rem] lg:mt-2 lg:max-w-[11.5rem]">
           <p className="min-h-[2.6em] font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint sm:text-[10px]">
             {print.caption}
           </p>
@@ -335,7 +336,7 @@ function Exhibit({
 /** 64 bits, eight by eight, highest first. A bit the other reading disagrees on keeps a ring round it. */
 function Grid({ bits, against }: { bits: boolean[]; against: boolean[] | null }) {
   return (
-    <div className="relative mt-2 w-full max-w-[9.5rem] overflow-hidden">
+    <div className="relative mt-2 w-full max-w-[9.5rem] overflow-hidden lg:mt-1.5 lg:max-w-[8.5rem]">
       <div className="grid aspect-square grid-cols-8 gap-[3px]">
         {bits.map((bit, at) => {
           const apart = against !== null && against[at] !== bit;
@@ -365,7 +366,7 @@ function Verdict({ copy }: { copy: CopyReading }) {
   const tamil = useLocale() === "ta";
   const { distance, found } = copy;
   return (
-    <p data-first-verdict className="fs-say mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:mt-5">
+    <p data-first-verdict className="fs-say mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:mt-3">
       <span
         className={`font-display text-[clamp(2.4rem,4.6vw,4.4rem)] font-semibold tracking-[-0.045em] tabular-nums text-accent ${
           tamil ? "leading-[1.15]" : "leading-[0.9]"

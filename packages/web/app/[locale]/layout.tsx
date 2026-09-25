@@ -216,8 +216,18 @@ export default async function LocaleLayout({
                         className="block dark:hidden [body:has([data-story])_&]:hidden"
                       />
                     </Link>
-                    <span className="hidden text-xs uppercase tracking-[0.24em] text-text-faint md:inline">
-                      {t("tagline")}
+                    {/* The tagline takes only the room the links leave, and
+                        steps out of the way when that is too little, rather
+                        than pushing the links and chips to a second row. In
+                        French, Spanish, Portuguese and Tamil the second row
+                        made the bar 102 px at 1440, which pushed the home
+                        page's Make one and its sponsor line below the fold.
+                        The empty first item is what lets it drop: a tagline
+                        wider than its box wraps to the second line of this
+                        one-line box, which is clipped. */}
+                    <span className="hidden h-[1lh] min-w-0 grow basis-0 flex-wrap overflow-hidden text-xs uppercase tracking-[0.24em] text-text-faint md:flex">
+                      <span aria-hidden className="h-[1lh] w-0" />
+                      <span className="whitespace-nowrap">{t("tagline")}</span>
                     </span>
                     {/* gap-4 rather than gap-5: the seventh link needs 98 px the
                         bar did not have, and at 20 px between links the language

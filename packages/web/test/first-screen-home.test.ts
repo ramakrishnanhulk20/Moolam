@@ -322,11 +322,18 @@ describe("what the first-visit walk reads off the first screen", () => {
     expect(column.indexOf("<h1")).toBeLessThan(column.indexOf("data-first-drop"));
   });
 
-  it("marks its two calls, the drop with Choose an image in it and Make one", () => {
+  it("marks its two calls and nothing else as calls: the Choose an image button and Make one", () => {
     const html = board({});
-    expect(html).toMatch(/data-hero-call="choose"[^>]*>(?:(?!data-hero-call).)*data-first-drop/s);
+    expect(html).toMatch(/<button[^>]*data-hero-call="choose"[^>]*>Choose an image<\/button>/);
     expect(html).toMatch(/<a[^>]*data-hero-call="make"[^>]*>Make one/);
     expect(html.match(/data-hero-call=/g)?.length).toBe(2);
+  });
+
+  it("marks the headline and its line as words the walk keeps clear of", () => {
+    const html = board({});
+    expect(html).toMatch(/<h1[^>]*data-hero-words[^>]*>/);
+    expect(html).toMatch(/<p[^>]*data-first-why[^>]*data-hero-words[^>]*>/);
+    expect(html.match(/data-hero-words/g)?.length).toBe(2);
   });
 });
 

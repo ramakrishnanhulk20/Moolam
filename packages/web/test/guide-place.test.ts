@@ -4,7 +4,7 @@ import { createElement, type FunctionComponent, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
-import { overlaps, placeCard, type Box } from "@/components/guide/place";
+import { KEEP_CLEAR, LAPTOP, cardWidth, keepClearOn, overlaps, placeCard, type Box } from "@/components/guide/place";
 
 /**
  * The walk's card never covers the hero's two calls.
@@ -96,9 +96,9 @@ describe("the card and the hero's two calls, on measured screens", () => {
     const top = (one: (typeof MEASURED)[number]) =>
       placeCard({ stage: one.stage, spot: lit(one.anchor), height: one.card, keepClear: one.calls });
 
-    // 12 px of air above the higher call, and the same x as before.
-    expect(top(phone)).toMatchObject({ x: 39, y: 586 - 12 - 245, below: false });
-    expect(top(small)).toMatchObject({ x: 24, y: 554 - 12 - 245, below: false });
+    // 12 px of air above the higher call, and the whole width less the gutters.
+    expect(top(phone)).toMatchObject({ x: 16, y: 586 - 12 - 245, below: false });
+    expect(top(small)).toMatchObject({ x: 16, y: 554 - 12 - 245, below: false });
   });
 
   it("changes nothing where the calls were never in the way", () => {
@@ -122,47 +122,109 @@ describe("the card and the hero's two calls, on measured screens", () => {
  * The same rule on the first screen, which is where the walk opens now.
  *
  * Measured in headless Chromium against the dev server on 2026-09-25, a fresh
- * context on /en with the walk at step one and no film mounted: the drop that
- * holds Choose an image, Make one, the Verify anchor and the card as drawn.
+ * context with the walk at step one and no film mounted. The calls are the
+ * Choose an image button and Make one; the words are the headline and its
+ * line. "drawn" is where the browser put the card, and card is its measured
+ * height, which is taller in Tamil. Below a laptop the card is the screen's
+ * width less 16 px each side, up to 400, with 16 px of padding inside and
+ * its title free of the laptop's 16ch cap.
  */
 const FIRST_SCREEN = [
   {
-    screen: "375x812",
-    stage: { width: 375, height: 812 },
-    calls: [
-      { x: 20, y: 446, width: 335, height: 405 },
-      { x: 20, y: 883, width: 149, height: 44 },
-    ],
-    choose: { x: 45, y: 572, width: 187, height: 44 },
-    anchor: { x: 225, y: 756, width: 75, height: 56 },
-    card: 245,
-    drawn: { x: 39, y: 189 },
-  },
-  {
-    screen: "1440x900",
+    screen: "en 1440x900",
     stage: { width: 1440, height: 900 },
     calls: [
-      { x: 56, y: 478, width: 594, height: 325 },
+      { x: 369, y: 511, width: 187, height: 44 },
       { x: 56, y: 832, width: 149, height: 44 },
     ],
-    choose: { x: 369, y: 511, width: 187, height: 44 },
+    headline: { x: 56, y: 127, width: 534, height: 223 },
+    line: { x: 56, y: 370, width: 564, height: 84 },
     anchor: { x: 821, y: 21, width: 103, height: 20 },
     card: 257,
     drawn: { x: 801, y: 75 },
   },
+  {
+    screen: "en 375x812",
+    stage: { width: 375, height: 812 },
+    calls: [
+      { x: 45, y: 572, width: 187, height: 44 },
+      { x: 20, y: 883, width: 149, height: 44 },
+    ],
+    headline: { x: 20, y: 141, width: 335, height: 150 },
+    line: { x: 20, y: 314, width: 335, height: 104 },
+    anchor: { x: 225, y: 756, width: 75, height: 56 },
+    card: 237,
+    drawn: { x: 16, y: 323 },
+  },
+  {
+    screen: "en 360x740",
+    stage: { width: 360, height: 740 },
+    calls: [
+      { x: 45, y: 609, width: 187, height: 44 },
+      { x: 20, y: 916, width: 149, height: 44 },
+    ],
+    headline: { x: 20, y: 141, width: 320, height: 187 },
+    line: { x: 20, y: 352, width: 320, height: 104 },
+    anchor: { x: 216, y: 684, width: 72, height: 56 },
+    card: 237,
+    drawn: { x: 16, y: 360 },
+  },
+  {
+    screen: "ta 360x740",
+    stage: { width: 360, height: 740 },
+    calls: [
+      { x: 45, y: 679, width: 242, height: 44 },
+      { x: 20, y: 1020, width: 210, height: 44 },
+    ],
+    headline: { x: 20, y: 141, width: 320, height: 204 },
+    line: { x: 20, y: 369, width: 320, height: 156 },
+    anchor: { x: 216, y: 684, width: 72, height: 56 },
+    card: 278,
+    drawn: { x: 16, y: 382 },
+  },
+  {
+    screen: "ta 375x812",
+    stage: { width: 375, height: 812 },
+    calls: [
+      { x: 45, y: 653, width: 242, height: 44 },
+      { x: 20, y: 998, width: 210, height: 44 },
+    ],
+    headline: { x: 20, y: 141, width: 335, height: 204 },
+    line: { x: 20, y: 369, width: 335, height: 130 },
+    anchor: { x: 225, y: 756, width: 75, height: 56 },
+    card: 258,
+    drawn: { x: 16, y: 383 },
+  },
 ];
 
-describe("the card and the first screen's two calls, on measured screens", () => {
-  for (const one of FIRST_SCREEN) {
-    it(`leaves the drop, Choose an image and Make one clear at ${one.screen}`, () => {
+/** What the walk hands placeCard on this screen: the line only on a laptop. */
+function marksOn(one: (typeof FIRST_SCREEN)[number]): Box[] {
+  return one.stage.width >= LAPTOP ? [...one.calls, one.headline, one.line] : [...one.calls, one.headline];
+}
+
+describe("how wide the card is drawn", () => {
+  it("uses the phone's whole width less the gutters, and its own width on a laptop", () => {
+    expect(cardWidth(375)).toBe(343);
+    expect(cardWidth(360)).toBe(328);
+    expect(cardWidth(767)).toBe(400);
+    expect(cardWidth(1023)).toBe(400);
+    expect(cardWidth(1024)).toBe(320);
+    expect(cardWidth(1440)).toBe(320);
+  });
+});
+
+describe("the card, the first screen's two calls and its words, on measured screens", () => {
+  const [desk, phone, small, tamilSmall, tamilPhone] = FIRST_SCREEN;
+
+  for (const one of [desk, phone, small, tamilSmall, tamilPhone]) {
+    it(`leaves the headline, Choose an image, Make one and the lit tab clear in ${one.screen}, where the browser drew it`, () => {
       const spot = lit(one.anchor);
-      const place = placeCard({ stage: one.stage, spot, height: one.card, keepClear: one.calls });
+      const place = placeCard({ stage: one.stage, spot, height: one.card, keepClear: marksOn(one) });
       const card = { x: place.x, y: place.y, width: place.width, height: one.card };
 
-      // Where the browser drew it is where the rule puts it.
       expect({ x: place.x, y: place.y }).toEqual(one.drawn);
-      for (const call of [...one.calls, one.choose]) {
-        expect(overlaps(card, call), `card ${JSON.stringify(card)} on call ${JSON.stringify(call)}`).toBe(false);
+      for (const box of [...one.calls, one.headline]) {
+        expect(overlaps(card, box), `card ${JSON.stringify(card)} on ${JSON.stringify(box)}`).toBe(false);
       }
       expect(overlaps(card, spot)).toBe(false);
       expect(card.y).toBeGreaterThanOrEqual(16);
@@ -170,11 +232,37 @@ describe("the card and the first screen's two calls, on measured screens", () =>
     });
   }
 
-  it("would have lain on the drop on a phone without the calls marked", () => {
-    const phone = FIRST_SCREEN[0];
-    const place = placeCard({ stage: phone.stage, spot: lit(phone.anchor), height: phone.card });
-    const card = { x: place.x, y: place.y, width: place.width, height: phone.card };
-    expect(overlaps(card, phone.choose)).toBe(true);
+  it("keeps the line clear on a laptop too", () => {
+    const place = placeCard({ stage: desk.stage, spot: lit(desk.anchor), height: desk.card, keepClear: marksOn(desk) });
+    expect(overlaps({ x: place.x, y: place.y, width: place.width, height: desk.card }, desk.line)).toBe(false);
+  });
+
+  it("lies on the line on a phone, the one mark it may cover there", () => {
+    for (const one of [phone, small, tamilSmall, tamilPhone]) {
+      const place = placeCard({ stage: one.stage, spot: lit(one.anchor), height: one.card, keepClear: marksOn(one) });
+      expect(overlaps({ x: place.x, y: place.y, width: place.width, height: one.card }, one.line)).toBe(true);
+    }
+  });
+
+  it("moves a card that would lie on the words to the nearest clear side of them", () => {
+    // A light up among the words asks for a card hanging over the headline's
+    // line; the words are marked, so the card goes clear of them instead.
+    const spot = { x: 300, y: 250, width: 100, height: 40 };
+    const place = placeCard({ stage: desk.stage, spot, height: desk.card, keepClear: marksOn(desk) });
+    const card = { x: place.x, y: place.y, width: place.width, height: desk.card };
+    expect(overlaps(card, desk.line)).toBe(false);
+    expect(overlaps(card, desk.headline)).toBe(false);
+    expect(overlaps(card, spot)).toBe(false);
+    // With nothing marked it would have hung over the line.
+    const blind = placeCard({ stage: desk.stage, spot, height: desk.card });
+    expect(overlaps({ x: blind.x, y: blind.y, width: blind.width, height: desk.card }, desk.line)).toBe(true);
+  });
+
+  it("leaves at least 8 px to spare on every measured phone, for fonts that render a little taller", () => {
+    for (const one of [phone, small, tamilSmall, tamilPhone]) {
+      const room = one.calls[0].y - 12 - (one.headline.y + one.headline.height + 12);
+      expect(room - one.card, one.screen).toBeGreaterThanOrEqual(8);
+    }
   });
 });
 
@@ -195,7 +283,7 @@ describe("where the walk learns the calls are", () => {
     node.getClientRects = () => [box] as unknown as DOMRectList;
   }
 
-  it("is the hero's own mark on both links, not a rectangle written into the guide", () => {
+  it("is no longer on the film's credits: the first screen carries the marks", () => {
     const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
       locale: string;
       messages: unknown;
@@ -209,8 +297,32 @@ describe("where the walk learns the calls are", () => {
         createElement(HeroCredits, { entered: true }),
       ),
     );
-    expect(markup).toMatch(/<a[^>]*data-hero-call="generate"[^>]*>Generate an image/);
-    expect(markup).toMatch(/<a[^>]*data-hero-call="verify"[^>]*>Verify a copy/);
+    expect(markup).toMatch(/<a[^>]*>Generate an image/);
+    expect(markup).not.toContain("data-hero-call");
+  });
+
+  it("reads the words' mark with the calls', and leaves the line out on a phone", () => {
+    expect(KEEP_CLEAR).toBe("[data-hero-call], [data-hero-words]");
+    expect(keepClearOn(1440)).toBe(KEEP_CLEAR);
+    const root = document.createElement("div");
+    root.innerHTML =
+      '<h1 data-hero-words="headline">Every image</h1><p data-hero-words="line">line</p>' +
+      '<button data-hero-call="choose">c</button><p>helper</p>';
+    document.body.append(root);
+    const [head, line, choose, helper] = [...root.children];
+    onScreen(head, { x: 20, y: 141, width: 335, height: 150 });
+    onScreen(line, { x: 20, y: 314, width: 335, height: 104 });
+    onScreen(choose, { x: 45, y: 572, width: 187, height: 44 });
+    onScreen(helper, { x: 45, y: 628, width: 257, height: 39 });
+    expect(heroCalls(root, { left: 0, top: 0, width: 1440, height: 900 })).toEqual([
+      { x: 20, y: 141, width: 335, height: 150 },
+      { x: 20, y: 314, width: 335, height: 104 },
+      { x: 45, y: 572, width: 187, height: 44 },
+    ]);
+    expect(heroCalls(root, { left: 0, top: 0, width: 375, height: 812 })).toEqual([
+      { x: 20, y: 141, width: 335, height: 150 },
+      { x: 45, y: 572, width: 187, height: 44 },
+    ]);
   });
 
   it("reads only the marked calls that are on the screen, against the stage", () => {
