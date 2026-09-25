@@ -28,6 +28,7 @@ Chain 143. The first three were deployed in block 103054771 and MoolamConsent in
 | MoolamRegistry | [`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0) | 103054771 | Sourcify match |
 | VerifierPolicy | [`0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821`](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 | Sourcify match |
 | MoolamReceiver | [`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 | Sourcify match |
+| MoolamReceiver, private re-checks | [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) | 107265126 | Sourcify match |
 | MoolamConsent | [`0x1151E69a82947920546e779c4C8c785b2a3C1277`](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 | Sourcify match |
 | Verify service | [https://verifier-production-d76f.up.railway.app/health](https://verifier-production-d76f.up.railway.app/health) | Railway, from packages/verifier/Dockerfile | live |
 
@@ -140,6 +141,13 @@ sets out what happens once the product has to pay for itself.
   to produce the identical verdict before it is signed into a report and written back through
   `MoolamReceiver` as an attestation. That is the network path; the re-checks on chain today came
   from simulation runs of the same workflow, one machine each.
+- A sealed picture can be re-checked without being published. The creator switches on "Let
+  Chainlink re-check this privately", Moolam keeps one 512 pixel copy on Pinata's private storage,
+  and a Chainlink confidential workflow, `moolam-sealed-verifier`, opens it through a two minute link
+  the verify service mints only under a queue claim, recomputes the fingerprint and writes only the
+  verdict, through a second receiver so the chain says which workflow wrote it. Nobody can open the
+  copy from the web; Moolam's operator and Pinata can. Today it runs in Chainlink's simulator, which
+  is one machine and not a real enclave.
 - Envio HyperIndex turns the events into rows: passports, edit trees, verification tallies,
   disputes, and a per-generator trust score of
   `round(100 * (matched + 1) / (matched + mismatched + 2 * disputesUpheld + 2))`, so a new agent
@@ -198,7 +206,7 @@ addresses.
 Two generator agents live on the ERC-8004 Identity Registry. Agent **10248**, owned by the deployer
 `0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c`, signed the first seed passports; agent **10249**, owned by the
 app's Privy server wallet, is the one that draws in the studio, signs the generator half of every agent-made
-passport and now leads the Agents page. Every real picture on the registry, sixteen as of 2026-09-23, carries a CRE re-check
+passport and now leads the Agents page. Every real picture on the registry, seventeen as of 2026-09-25, carries a CRE re-check
 ([proofs/rechecks.txt](proofs/rechecks.txt)). Every one of those re-checks was written through the CRE
 simulation forwarder with `cre workflow simulate --broadcast`: a real transaction paying real gas, with the
 workflow running on one machine, so there is no network consensus behind it. A run on Chainlink's node
@@ -207,6 +215,18 @@ on 2026-09-08, recomputed `0x233ccc7872442123` at distance 0 and wrote its repor
 [`0x3a814ab2...88796a0`](https://monadvision.com/tx/0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0),
 which left that passport with an `attestationCount` of 1, `matched` true and distance 0. Each passport page
 reads the report transaction and says which forwarder delivered it, so a simulated run says so on the card.
+
+The first private re-check landed on 2026-09-25. Passport
+`0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09` was registered sealed and has
+never been published; the `moolam-sealed-verifier` confidential workflow opened Moolam's 25,349 byte
+private copy of it, recomputed the fingerprint at distance 1, matched, and wrote the verdict in
+[`0xdc1834ea...9b790bef`](https://monadvision.com/tx/0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef)
+through the second receiver,
+[`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A),
+deployed in block 107265126 and pinned to that workflow's name. It ran in Chainlink's simulator with
+`--broadcast` like every other re-check: one machine, no network consensus, and no real enclave. The
+record is in [proofs/sealed-passports.txt](proofs/sealed-passports.txt) and the workflow in
+[the Chainlink workflow page](docs/developers/chainlink-workflow.md).
 
 ---
 
@@ -345,7 +365,7 @@ Open the live app at https://moolam.vercel.app (on this machine, http://localhos
 3. Open "Register an image". Press "Sign in and create my account" and sign in with an email code. Privy creates the account on Monad in the background. The identity strip shows the account address, the network, and "Network fee" reading "Paid by Moolam through Privy".
 4. Press "Use this device's unlock". The device's fingerprint, face or PIN prompt appears twice (once to make the key, once to sign) and one sponsored transaction binds it to the account. The card reads "Bound" with a MonadVision link.
 5. Press "Choose a file", pick a JPEG, give it a title and press "Register this image". Three honest steps run: pinning to IPFS (about ten seconds), the device prompt, then sending. The receipt shows the passport id, the block and links to the passport page, MonadVision and the pinned image. Register the same file again and the screen says it is already registered and links to the passport that holds it.
-6. Open the passport page from the receipt: the poster, the facts, the attestations (the Chainlink line: every real picture, sixteen as of 2026-09-23, carries a CRE re-check, read back in [proofs/rechecks.txt](proofs/rechecks.txt)), the lineage and a "Check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
+6. Open the passport page from the receipt: the poster, the facts, the attestations (the Chainlink line: every real picture, seventeen as of 2026-09-25, carries a CRE re-check, read back in [proofs/rechecks.txt](proofs/rechecks.txt)), the lineage and a "Check a copy" drop that answers yes or no against this passport alone. From there, the agent page shows any generator agent's ERC-8004 identity, its reputation and its works.
 7. Open the Monsoon passport at [/en/passport/0xcdb25d37...d771638](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and scroll to "How AI may use this picture". Drag the day scrubber back past 2026-09-18 and the page asks the chain what was in force on the day under the thumb: "Nothing stated yet" for any day before the statement, "Not for AI training" from the moment it was written. That is one `consentAt` call per day you land on, not today's answer with an old date printed over it. Thirteen real pictures carry a statement, and the passport's own holder is the only address that can write one.
 8. Back in "Register an image", press "Make one with the agent". Type a prompt or press one of the three examples, give it a title, and press "Make and register". The plate lights while the agent draws, the picture lands, and under "Two signatures, one transaction" the agent's seal fills with "Signed by the agent" before your device's unlock fills yours. One sponsored transaction carries both. The receipt names the model, agent 10249 and the new passport.
 9. Open a passport you own and scroll to its lineage. Press "Allow edits from this app": Privy asks once, and the signer it adds is held to a policy that allows `appendEdit` on the registry and nothing else. Drop an edited copy, add a title and a line on what changed, then press "Add this edit". It pins, sends from your own account with the fee sponsored, and the tree above redraws with the child. No passkey prompt on this one, and "Revoke" takes the permission back.
@@ -840,6 +860,12 @@ A second pass of eight attacks, on a fork of Monad mainnet and on the browser co
 [proofs/attacks/pass-2.txt](proofs/attacks/pass-2.txt): `npm run attack:pass2` and `npx vitest run test/attacks`.
 A third pass, on sealed pictures, is saved in [proofs/attacks/pass-3.txt](proofs/attacks/pass-3.txt):
 `npm run attack:pass3` in `packages/agents` and `npx vitest run test/attacks-sealed.test.ts` in
+`packages/verifier`.
+A fourth pass, on the private re-check, is saved in [proofs/attacks/pass-4.txt](proofs/attacks/pass-4.txt):
+28 attacks on the verify service's private copy routes and sweep, and 12 checks against the live
+service and the sealed receiver that send no transaction. None got through where it should have
+been refused.
+`npm run attack:pass4` in `packages/agents` and `npx vitest run test/attacks-private.test.ts` in
 `packages/verifier`.
 
 ### What Moolam does not defend against

@@ -26,6 +26,17 @@ Fourteen attacks run on the verify service's routes (`npx vitest run test/attack
 `packages/agents`), which sends no transaction. The claims they back are in the threat model's
 "Sealed pictures" section.
 
+The private re-check, where Moolam keeps one small private copy of a sealed picture for Chainlink's
+confidential workflow to open, has pass 4, saved whole in
+[proofs/attacks/pass-4.txt](../../../proofs/attacks/pass-4.txt). Twenty-eight attacks run on the verify
+service's routes, its Pinata client, its queue and its sweep
+(`npx vitest run test/attacks-private.test.ts` in `packages/verifier`), and twelve checks run against the live
+service, the gateway and the sealed receiver on Monad mainnet (`npm run attack:pass4` in
+`packages/agents`), with HTTP requests and `eth_call`s only, so nothing is sent or spent. None got
+through where it should have been refused; one, a 49 hour old copy with no passport deleted by the
+sweep, landed as designed. The claims they back are in the threat model's "The private re-check"
+section.
+
 | File | What it tries | What refuses it |
 | --- | --- | --- |
 | `passkey-replay.txt` | Take the creator's WebAuthn assertion off a real passport and use it on a second passport with a different image hash | InvalidPasskeySignature. The assertion signs the digest, and the digest covers every field |

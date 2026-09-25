@@ -13,7 +13,9 @@ the identical verdict before a report is signed. Every re-check on chain today c
 simulator with `--broadcast`, which is one machine and no consensus, and the passport page labels
 each one by the forwarder that delivered it. "What is on chain today" below has the transactions.
 
-The workflow lives in `packages/workflow/moolam-verifier/`.
+The workflow lives in `packages/workflow/moolam-verifier/`. A second workflow,
+`moolam-sealed-verifier`, re-checks sealed pictures from a private copy through a second receiver.
+It has its own section at the end of this page.
 
 ## What runs, in order
 
@@ -143,7 +145,7 @@ true and distance 0.
 
 ## What is on chain today
 
-The sixteen re-checks on the sixteen real pictures (seven on 2026-09-14, seven on 2026-09-17, two on 2026-09-23, one of those on a picture registered sealed and published later by its holder) were all written this way: `cre workflow simulate
+The seventeen re-checks on the seventeen real pictures (seven on 2026-09-14, seven on 2026-09-17, two on 2026-09-23, one of those on a picture registered sealed and published later by its holder, and one on 2026-09-25 by the private workflow through its own receiver, described below) were all written this way: `cre workflow simulate
 --broadcast`, the receiver pointed at the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`
 for the run and put back on the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` after it,
 by the four steps above. They are real transactions with real gas, and they prove the workflow code and
@@ -177,3 +179,151 @@ capped at 1,000,000 in `workflow.ts`. The workflow's own compute, one JPEG decod
 DCT, took about 550 ms in the simulator when the DCT still summed over both axes, so that figure is
 now an upper bound. Either way it is well inside the five minute execution budget, and the three
 retry attempts on the registry read can add at most four seconds to it.
+
+## Private re-checks: `moolam-sealed-verifier`
+
+A sealed picture is never published, so the workflow above has nothing to download. A creator who
+seals a picture can ask for a private re-check instead. The verify service then keeps one 512 pixel
+copy on Pinata's private storage, where no public gateway serves it, and a second workflow opens it.
+The second workflow uses Chainlink's Confidential Workflows: its handler is registered with
+`handlerInTee(trigger, handler, {})`, which on Chainlink's network would run it inside an enclave so
+that only the verdict leaves. Today it runs only in Chainlink's simulator, which says of itself
+"The simulator is not a real TEE". So every private re-check on chain so far ran on one machine, with
+no enclave and no network consensus.
+
+The workflow lives in `packages/workflow/moolam-sealed-verifier/`. What it defends and how it was
+attacked is in the [Threat model](../security/threat-model), section "The private re-check".
+
+### What it reads and writes
+
+1. **Trigger.** The same `PassportRegistered` log trigger as the public workflow.
+2. **Read.** `getPassport` at the log's block, through `runtime.usingTheDons()`, with the same
+   retries. Chain reads never run inside the enclave, and the only thing sent out is the passport
+   id, which is public.
+3. **Document.** The passport's public document, read through the configured gateway from an
+   `ipfs://` address and nothing else. An http(s) address or a data URI ends the run with no report.
+4. **The rule.** `privatelyRecheckable` in `private-copy.ts`: sealed, asks for the private re-check,
+   names no picture. It is the verify service's rule byte for byte. False ends the run.
+5. **The link.** The secret `SEALED_LINK_TOKEN` is read from the runtime and sent in one POST to the
+   verify service's `/sealed/link` with the passport id. The link that comes back is opened only if
+   it is `https://` on the configured private gateway host.
+6. **The bytes.** One GET on the link. A status other than 200, an empty body, or a body over 60,000
+   bytes is refused before the decoder sees it. Its errors name the passport and a status, never the
+   link or the token.
+7. **Fingerprint.** The public workflow's `decode.ts` and `phash.ts`, imported rather than copied.
+   Ten bits or fewer from the stored fingerprint is a match.
+8. **Write.** One report over the same six fields, through `usingTheDons()`, to the second receiver,
+   with a gas limit of 1,000,000.
+
+On chain it writes nothing else: the same six fields the public workflow writes, and no part of the
+picture.
+
+### The second receiver
+
+| What | Value |
+| --- | --- |
+| Address | [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) |
+| Deployed | block 107,265,126, the same `MoolamReceiver` code as the first |
+| Forwarder | Chainlink's production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` |
+| Pinned author | the CRE wallet `0xC79620AF233a4434b03f6B57239F8A9E71B3C178` |
+| Pinned workflow name | `moolam-sealed-verifier`, stored as `0x64323036636163326334`, which is how Chainlink's template keeps a name: the first ten hex characters of its SHA-256, as text |
+| Listed by the policy | on 2026-09-25, after the policy's public 24 hour wait, transaction [`0x79d34b81...`](https://monadvision.com/tx/0x79d34b81ce94d4a21b10277a70d656b4588360e232839e0e25a16edf91687380) |
+
+Why a second receiver rather than a second name on the first: the registry stores the receiver with
+every attestation. With one receiver per workflow, the chain itself says which workflow wrote each
+verdict, and neither receiver's pin has to be widened. The passport page reads that field to label a
+private verdict. The deploy record is `packages/contracts/deployments/sealed-receiver-monad-mainnet.json`.
+
+`moolam-sealed-verifier/config.json`:
+
+| Key | Value |
+| --- | --- |
+| `receiver` | `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` |
+| `gateway` | `https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/` |
+| `privateGatewayHost` | `lavender-personal-grasshopper-978.mypinata.cloud` |
+| `verifierUrl` | `https://verifier-production-d76f.up.railway.app` |
+| `secretId` | `SEALED_LINK_TOKEN` |
+| `matchThreshold` | `10` |
+
+The token's value is never in the package. `secrets.yaml` names `CRE_SEALED_LINK_TOKEN`, and the
+simulator reads it from the env file it is handed.
+
+### The three HTTP calls and their limits
+
+| Call | Limits on the workflow's side | Limits on the other side |
+| --- | --- | --- |
+| GET the public document | `ipfs://` only, through the gateway; 10 seconds; at most 32,000 bytes; up to three tries | none beyond the gateway's own |
+| POST `/sealed/link` | 10 seconds; one try; the answer must be a link on the private gateway host | the token, compared in constant time; a claim on this passport less than ten minutes old; five links per passport an hour; a daily ceiling for the whole service, 100 by default, where 0 turns links off; the link lives 120 seconds and the caller cannot change that |
+| GET the private copy | 10 seconds; up to three tries of the same link; status 200 and 1 to 60,000 bytes | the link's own 120 second life |
+
+That is three calls a run, and at most seven with every retry, against CRE's limit of 15. The
+retries are there because Pinata's private gateway answered the first request on a fresh link in 6
+to 12 seconds on 2026-09-25, past the 10 second limit per call, and every repeat in about one second.
+A retry is made only when a call does not answer at all; a status the server sends back is never
+retried into a different answer.
+
+### How a run is driven today
+
+Every private re-check is a `cre workflow simulate ... --broadcast` run on an operator's machine, in
+four steps:
+
+1. **Claim.** The passport is asked for in the re-check queue (`POST /recheck/request`) and claimed
+   with the runner's token (`POST /recheck/claim`). The verify service mints a link only under that
+   claim.
+2. **Open.** The receiver's owner clears the sealed receiver's pin and points it at the simulation
+   forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`, because a simulated report arrives
+   through that mock forwarder rather than Chainlink's production one.
+3. **Simulate.**
+
+   ```bash
+   cre workflow simulate moolam-sealed-verifier --target monad-mainnet --non-interactive \
+     --trigger-index 0 --evm-tx-hash <registration tx> --evm-event-index <n> -e <env file> --broadcast
+   ```
+
+   The env file carries `CRE_SEALED_LINK_TOKEN` beside the CRE wallet's key. The run is stopped
+   after ten minutes, the same window the claim allows.
+4. **Close.** The production forwarder goes back, the author and the name are pinned again and read
+   back from the chain, and the claim is answered with `POST /recheck/done`.
+
+The re-check runner in `packages/recheck-runner` does the claim, the simulation and the answer for a
+queued passport whose document asks for a private re-check, after reading `GET /sealed/status` to
+make sure the copy is still kept. The receiver's owner opens and closes the receiver around it. A
+launch script on the operator's machine does all four steps in one command, closes the receiver and
+answers the claim whatever happens, and it is what ran the first one.
+
+### The first run
+
+On 2026-09-25, for the sealed passport
+`0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09`, which has never been
+published:
+
+| What | Value |
+| --- | --- |
+| Private copy | 25,349 bytes, opened through one link minted under the queue claim |
+| Recomputed | `0x2ac1e07e3e80c4e6` against the stored `0x2ac1e07e3ea0c4e6` |
+| Verdict | distance 1, matched |
+| Report | [`0xdc1834ea...`](https://monadvision.com/tx/0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef), block 107,817,793, status 1 |
+| Delivered by | the simulation forwarder: one machine, no network consensus, not a real enclave |
+| Written by | the sealed receiver, which the attestation names |
+
+Afterwards the receiver read back on the production forwarder, pinned to the workflow author and
+`moolam-sealed-verifier`. The records are in [sealed-passports.txt](../../proofs/sealed-passports.txt)
+and [rechecks.txt](../../proofs/rechecks.txt), and attack pass 4 reads the row back from the chain in
+[pass-4.txt](../../proofs/attacks/pass-4.txt), attack 8d.
+
+### What the private re-check does not prove
+
+- **No enclave, no consensus.** The simulator is one machine and not a real TEE. A run proves the
+  code's shape, that the confidential capability accepts it, and every check the receiver makes. It
+  does not prove hardware isolation.
+- **Deploying it needs access Moolam does not have.** Nothing here has run on Chainlink's network.
+- **The logic is public, only the data is private.** The workflow's code is in this repository. What
+  an enclave would keep from its operator is the token, the link, the bytes and the values made from
+  them.
+- **The handler logs.** It logs the stored fingerprint, the size of the copy and the verdict, which
+  the runner reads in simulation. A deployed confidential handler should log nothing, because a log
+  leaves the enclave.
+- **Who can see the copy.** Moolam's operator, Pinata as the storage provider and the machine
+  running the simulator can all see the 512 pixel copy.
+- **The open window.** While a run is in progress the sealed receiver listens to the simulation
+  forwarder, which any simulator user could drive in that window.

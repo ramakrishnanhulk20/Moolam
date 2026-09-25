@@ -63,8 +63,8 @@ not fix are listed last, on purpose.
 | VerifierPolicy | Add a receiver instantly after bootstrap | 24-hour queue; only removal is instant | refused, `VerifierPolicy.t.sol` test_queueAddReceiverWaitsTheFullDelay and test_finalizeBootstrapClosesTheWindowForGood |
 | Verifier API | Oversized or non-image upload | 20 MB cap, schema validation, 400 | refused live, 413 and 400, `attacks/verifier-api-limits.txt` |
 | Verifier API | Request floods | 60 per minute per caller, read from the hop named in `TRUST_PROXY` rather than the socket, 429 | refused live, 429 on the 61st request, `attacks/verifier-api-limits.txt` |
-| Image itself | Re-encode, resize, re-upload, strip metadata | perceptual fingerprints, measured: 0 bits moved | measured in WO-0a |
-| Image itself | Rotate or mirror | eight dihedral fingerprints at query time | measured in WO-2 |
+| Image itself | Re-encode, resize, re-upload, strip metadata | perceptual fingerprints, which describe the picture rather than the bytes | matched on mainnet: six mangled copies at 0 to 2 bits of 64 and the stripped copy at 0, sections 2 and 3 of [prove-it.txt](../../proofs/prove-it.txt); 360 copies of 24 pictures, 0 false positives, in [robustness.txt](../../proofs/robustness.txt) |
+| Image itself | Rotate or mirror | eight dihedral fingerprints at query time | matched on mainnet: the rotated and the mirrored copy at 0 bits of 64, section 2 of [prove-it.txt](../../proofs/prove-it.txt); rotate-90, rotate-180 and mirror 0% direct and 100% through the eight variants, in [robustness.txt](../../proofs/robustness.txt) |
 | `setConsent` | Speak for a passport you do not hold | `ownerOf` is read from the registry inside the same call and compared with `msg.sender`; approvals and operators are refused, and a passport nobody minted is refused too | refused live, `NotPassportHolder`, `attacks/consent-from-stranger.txt` |
 | `setConsent` | Say conditions apply without saying what they are | the text is required exactly when a use is `Constrained`, and refused otherwise | refused live, `ConstraintInfoRequired`, `attacks/consent-text-rules.txt` |
 | `setConsent` | Poison a reader's parser through the conditions text | one predicate over every byte: printable ASCII, 0x20 to 0x7E, capped at 256 bytes | refused live, `ConstraintInfoNotPrintable` and `ConstraintInfoTooLong`, `attacks/consent-text-rules.txt` |
@@ -202,6 +202,92 @@ a simulation run on one machine like every re-check on chain today. The addresse
 [sealed-passports.txt](../../proofs/sealed-passports.txt) and the row in
 [rechecks.txt](../../proofs/rechecks.txt).
 
+## The private re-check
+
+A creator who seals a picture may also ask for a private Chainlink re-check. Moolam then keeps one
+512 pixel copy of the picture on Pinata's private storage. Nobody can open it from the web; Moolam's
+operator and the storage provider can. A Chainlink CRE confidential workflow, `moolam-sealed-verifier`,
+whose handler is registered with `handlerInTee`, opens that copy through a read link the verify
+service mints only while the re-check runner holds a claim on that passport. It recomputes the
+fingerprint, compares it with the one on chain and writes only the verdict, through a second
+receiver, so the registry's own record says which workflow wrote it. Today it runs in Chainlink's
+simulator with `--broadcast`: one machine, no network consensus, and the simulator is not a real
+enclave. The workflow is described in [Chainlink CRE workflow](../developers/chainlink-workflow) and
+the routes in [Verifier endpoints](../api/verifier-endpoints).
+
+"Nobody can open it from the web" rests on Pinata not serving a private file through any public
+gateway. That is Pinata's promise, and no attack here can test it.
+
+### What the private re-check promises
+
+The ids are the ones attack pass 4 uses, so every promise can be followed into
+[pass-4.txt](../../proofs/attacks/pass-4.txt). Where an attack cannot reach the code that keeps a
+promise, the test that holds it is named instead.
+
+| Promise | What holds it |
+|---|---|
+| **B1. The chain names the file.** The private file's name is built from the passport id the caller sent, after the registry says that passport exists, and the public document's commitment must name that same id. No field of any document chooses which file is listed, linked or deleted | 1e, 1f, 1g (the other passport's file is never even listed), 7a (the live commitment equals the id) |
+| **B2. A private file is only the thumbnail of the bytes its name commits to.** Only the prepare route writes one, from the signed file whose SHA-256 is the passport id, after the duplicate check. If that check cannot reach the chain, no copy is made | 4b, 4e; `private-copy.test.ts` "B2: a second prepare of the same bytes uploads nothing once the chain holds the passport" |
+| **B3. A lookup matches the whole name.** A name with anything added is not the file. A listing that fails is "cannot tell", never "none" | 1h, 1i, 2a, 3b, 3c |
+| **B4. A link only for a passport that asked and still has its copy.** The chain holds the passport, its document asks for the private re-check and names no picture, and exactly one file carries its name. Anything else is a refusal with no link. The token is compared in constant time | 1a to 1i, and 6a to 6c on the live service |
+| **B5. The link is a secret until it expires.** No answer, error or log line carries the link or the token | 1j (no link and no host in the refusal), 1m (the whole log scanned, 0 of 12 secrets); the workflow's own error lines: `sealed-private-copy.test.ts` "name the passport and never a URL, a host or the token" |
+| **B6. The workflow opens only what the service named.** A link is opened only if it is `https://` on the configured private gateway, and a body over 60,000 bytes is refused before it is decoded. The public document is read only from an `ipfs://` address through the gateway | 1j on the service's side; the workflow's side: `sealed-private-copy.test.ts`, "the link host check", "the metadata address" and "the private file's size cap" |
+| **B7. One rule says "privately re-checkable".** Sealed, asks for the private re-check, names no picture. The verify service, the runner and the workflow run the same rule, byte for byte | 1f, 2b, 4e; `sealed-private-copy.test.ts` "is the service's predicate byte for byte, in the workflow and in the runner" |
+| **B8. The public document stays strict.** It gains one field, `privateRecheck`, and never the file's id, its content id or a link | 4e (0 of 6 leaks), 7a (the live document: 10 keys, 0 links) |
+| **B9. Nothing is deleted on a doubt, and a delete takes everything under the name.** For a registered passport, only the wallet the registry names as holder, read at that moment, can have the copy deleted. The sweep deletes only when the chain answers that the passport was never registered | 3a, 3b, 3c, 5a to 5e |
+| **B10. "Gone" is said only from a fresh listing.** The status has three answers, kept, gone and unknown, and unknown is never shown as either of the others | 2a, 2b, 6f, 6g |
+| **B11. No spend without a file.** The queue takes a private re-check only while the copy reads kept, and the runner reads it again before it spends | 6f; `sealed-routes.test.ts` "B11: refuses a passport whose copy is gone"; the runner: `runner.test.ts` "treats a copy that is gone exactly as a plain sealed passport: refused, nothing spent" |
+| **B12. A private verdict says what it is.** The passport page calls it a private re-check run in Chainlink's simulator, which is not a real enclave, and it reads that from the receiver that wrote the row | 8d shows the fact the page reads; the words: `private-recheck-card.test.ts` "wears the private re-check badge and says where the workflow really ran" |
+| **B13. The receiver is never left open by accident.** Every step that opens it for a run has a step that closes it, and the pin is read back afterwards | 8a, 8b, 8c |
+| **B14. The private path makes the thumbnail the public path would.** A picture the public path refuses is refused here too, and the workflow's fingerprint of the copy lands within 10 bits of the chain's | 4d, 8d (the live run: distance 1); `private-copy.test.ts` "B14" |
+| **B15. Everything is bounded.** A link lives 120 seconds and the caller cannot choose that. Five links per passport an hour, a daily ceiling for the whole service with 0 as the off switch, a 10 second timeout on every Pinata call, and at most 200 rows read by the sweep | 1k, 1l; the rest in `sealed-routes.test.ts`, `pinata.test.ts` and `sweep.test.ts` |
+| **B16. The private copy is private or it does not exist.** If Pinata answers an upload with a public file it already held, the registration is refused and nothing is pinned | 4c, 4e |
+| **D3. A link only under a claim less than ten minutes old, and only for the claimed passport** | 1c, 1d (9 minutes mints, 11 refuses), 1e, 6c (the real token alone opens nothing on mainnet) |
+| **D5. The sweep waits 48 hours, counts before it deletes, and never runs at boot** | 5a, 5b, 5d; `sweep.test.ts` "D5: does not run at boot" |
+
+### Entry points and what stops each attack
+
+Attack pass 4 ran on 2026-09-25 in two halves, both saved in
+[pass-4.txt](../../proofs/attacks/pass-4.txt). The route half runs the real routes, the real Pinata
+client, the real queue and the real sweep, 28 attacks. Pinata is a recording stub whose listing
+matches on prefix, which is looser than any real filter; Privy tokens are signed by a key the test
+makes; the chain and the gateway are stubbed; the claim window and the sweep's clock are moved with
+fake timers. The live half sends single requests and `eth_call`s to the hosted service, the gateway
+and the sealed receiver at block 107,820,614. It sends no transaction and spends nothing, and before
+it sent the real link token it asked the queue whether a runner held the passport. Neither half
+reaches the runner's or the workflow's own code, which their own suites cover.
+
+No attack got through where it should have been refused. One landed as designed: 5b, the sweep
+deleting a 49 hour old copy whose passport the chain says was never registered.
+
+| Entry point | Attack | What stops it | Proof |
+|---|---|---|---|
+| `/sealed/link` | No token, or a wrong token of the right length | The token is checked first, in constant time, before the chain or Pinata is asked | 1a and 1b: 401, 0 chain reads, 0 Pinata calls; live, 6a and 6b: 401 and no-store. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/link` | The real token without a claim, with a claim 11 minutes old, or while the claim is on another passport | A link is minted only for a passport the runner claimed less than ten minutes ago | 1c, 1d and 1e: 409 `not-claimed`, 0 Pinata calls; the same claim at 9 minutes minted, so the window is what refused; live, 6c: the real token alone answered 409 on mainnet. Not covered: the claimed passport itself, which a stolen token can read for up to ten minutes and five links. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/link` | Point at another passport's copy through a document whose commitment names it, or ask for a passport whose document never asked | The file name comes from the id the chain holds, the commitment must equal it, and the rule in B7 runs before Pinata is asked | 1g: 409 `commitment-mismatch`, the other passport's file never listed; 1f: 404 `nothing-kept` for a plain sealed document and for one that also names a picture. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/link` | A file whose name only starts right, or two files under the exact name | Our code compares the whole name, and more than one match is refused rather than guessed | 1h: 404 `gone` for `.jpg.old`; 1i: 409 `ambiguous`; no link asked of Pinata in either. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/link` | Pinata answering with a link on another host | The link is parsed and its host compared before it is returned; a refusal carries no link and no host | 1j: 502 `link-unavailable`; 1m: every log line from 1a to 1l scanned, 6 minted links and 0 of 12 secrets found in 12,748 characters. Not covered: the host's own request log. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/link` | Ask again and again | Five links per passport an hour, and a daily ceiling for the whole service | 1k: five answered 200 and the sixth 429 `link-cap`, each from a different address; 1l: 429 `global-limit` with the ceiling at 0. Not covered: a redeploy, which resets the hourly count. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/status` | Read "kept" or "gone" while Pinata is failing, or spend Pinata's rate limit through passports that never asked | Unknown is its own answer and is not remembered; a document that never asked is answered from the document alone | 2a: `unknown` twice, no-store, Pinata asked both times; 2b: `gone` with 0 Pinata calls, even with a stray file under the name. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/sealed/forget` | A stranger deletes the copy; the holder deletes on a failed lookup; a lookalike file is deleted with the real one | `ownerOf` read at that moment must be one of the caller's wallets; no delete without a definite listing; the whole name must match | 3a: 403 `not-holder`, the file still kept; 3b: 503 `lookup-unavailable`, 0 deletes; 3c: both files under the exact name deleted, the `.old` file untouched. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| `/prepare` with the private re-check | Ask without sealing; make a copy when the chain cannot be reached; get Pinata's public duplicate kept as the private copy; send a picture whose thumbnail is too large; find the private file in the public document | Private re-check needs sealed; no copy without the duplicate check; the upload's answer must say private; the thumbnail budget of 60,000 bytes; the strict schema | 4a: 400 `private-recheck-needs-sealed`; 4b: 503 `chain-unreachable`, 0 Pinata calls; 4c: 409 `private-copy-not-private`, no document pinned; 4d: 422 `thumbnail-too-large`; 4e: 0 of 6 leaks in the document or the answer. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| The sweep | Delete a copy whose passport is only late, delete on a chain read that failed, delete in the dry pass, delete a lookalike name | 48 hours before anything is deleted, one failed read stops the run, the dry pass only counts, the whole name must match | 5a: 47 hours, kept; 5b: 49 hours and never registered, deleted as designed; 5c: stopped, 0 deletes; 5d: counted 1, deleted 0; 5e: counted as an odd name, 0 deletes. Not covered: a creator who signs more than 48 hours after preparing. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| The live service, from outside | Take a link or delete a copy on mainnet without the right token; find the private copy in the live document | The same checks as above, on the hosted build | 6a to 6e: 401 or 409 and no-store; 6f: `kept` for the private passport; 6g: `gone` for a public one; 7a: the live document passes the service's own strict schema, 10 keys, 0 links, commitment equals the passport id. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| The receivers on chain | A stranger calls the sealed receiver with a false verdict and the pinned name and author; a stranger calls `attest` directly | The receiver accepts only its forwarder; the registry accepts only receivers the policy lists | 8a: reverted `InvalidSender`; 8b: forwarder, author and name read back pinned to Chainlink's production forwarder, the workflow author and `moolam-sealed-verifier`; 8c: reverted `NotReceiver`. Not covered: the window during an operator run, see the weaknesses below. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+
+### The first private re-check on mainnet
+
+Passport `0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09` was registered sealed
+with the private re-check on 2026-09-23 and has never been published. On 2026-09-25 the workflow
+opened its 25,349 byte private copy through one link minted under a queue claim, recomputed the
+fingerprint and landed 1 bit of 64 from the chain's: matched. The report transaction is
+[0xdc1834ea...](https://monadvision.com/tx/0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef),
+block 107,817,793, delivered by the simulation forwarder, and the attestation it wrote names the
+sealed receiver
+[`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A)
+(attack 8d reads it back). The receiver was put back on the production forwarder and pinned again
+afterwards. The details are in [sealed-passports.txt](../../proofs/sealed-passports.txt).
+
 ## Weaknesses we did not fix, stated plainly
 
 - **First registered wins.** A passport proves who registered first, not who
@@ -268,5 +354,22 @@ a simulation run on one machine like every re-check on chain today. The addresse
 - **The picture passes through the service's memory.** To fingerprint and sign it, the verify service
   holds the picture in memory for the length of one request, about 100 MB at the peak for a 20 MB
   file, and Node does not wipe freed memory. Nothing is written to disk (attack 1d).
+- **The private copy is private from the web, not from us.** Moolam's operator and Pinata, the
+  storage provider, can both open the 512 pixel copy a creator asked Moolam to keep. The studio says
+  so beside the switch, before the creator signs.
+- **One shared token plus a live claim reads a copy.** Whoever holds the link token while the runner
+  holds a claim can read that one passport's copy. The ten minute claim window and five links an
+  hour bound it (attacks 1c to 1e and 1k), but the hourly count is held in memory, so a redeploy
+  resets it.
+- **The simulator is not an enclave.** Every private re-check so far ran in Chainlink's simulator on
+  one machine, which says of itself that it is not a real TEE. That machine sees the token, the link
+  and the picture, and no quorum of nodes stands behind the verdict.
+- **The receiver listens to the simulator during a run.** While an operator run is in progress, the
+  sealed receiver is pointed at Chainlink's simulation forwarder with its pin cleared, and any
+  simulator user could send it a report in that window. Outside a run it is closed, and attack 8b
+  reads that back.
+- **The first fetch through a fresh private link is slow.** Pinata's private gateway took 6 to 12
+  seconds to answer the first request on a new link, past the workflow's 10 second limit per call,
+  so the workflow tries the same link up to three times inside its 120 second life.
 - **Self-audited.** No third party has audited these contracts. The attack
   scripts and their outputs are the evidence, and they are in this repo.
