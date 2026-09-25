@@ -589,7 +589,7 @@
         "send": {
           "waiting": "Aus deinem Konto schicken",
           "running": "Wird über Privy aus deinem Konto geschickt. Moolam zahlt die Gebühr.",
-          "watching": "Aus deinem Konto geschickt und vom Schlüssel der App signiert. Warten, bis Monad sie zeigt.",
+          "watching": "Warten, bis deine bearbeitete Fassung auf Monad ankommt.",
           "pending": "Geschickt, und Monad zeigt sie noch nicht",
           "done": "Eingetragen",
           "failed": "Die Bearbeitung hat das Register nicht erreicht"
@@ -1100,12 +1100,12 @@
     "cardLabel": "Agentenkarte",
     "cardInline": "Diese Karte steckt in der Token-URI selbst, es gibt also nichts zu öffnen.",
     "cardShow": "Das JSON der Karte ansehen",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "Gespeicherten Eintrag auf IPFS öffnen"
   },
   "studio": {
     "kicker": "Studio",
     "title": "Bild eintragen",
-    "lede": "Melde dich an, entsperre einmal mit diesem Gerät, und jedes Bild das du machst bekommt seinen eigenen Eintrag auf Monad: abgetastet und von dir signiert.",
+    "lede": "Jedes Bild, das du hier einträgst, bekommt seinen eigenen Eintrag auf Monad: abgetastet, von dir signiert, von jeder Kopie aus auffindbar.",
     "rail": "Moolam Studio",
     "opening": "Dein Konto wird geöffnet",
     "noWallet": "Du bist angemeldet, aber auf Monad wurde noch kein Konto angelegt. Lade die Seite neu, oder melde dich ab und wieder an.",
@@ -1364,7 +1364,7 @@
         "promptNote": "Der Prompt bleibt privat, solange du ihn nicht dazunimmst.",
         "privateLabel": "Chainlink das Bild privat nachprüfen lassen",
         "privateNote": "Moolam behält eine kleine Kopie, 512 Pixel an der längsten Seite, auf privatem Speicher. Ein vertraulicher Chainlink-Workflow öffnet sie, prüft den Fingerabdruck nach und schreibt nur das Urteil auf Monad.",
-        "privateWho": "Aus dem Web kann niemand sie öffnen. Der Betreiber von Moolam und der Speicheranbieter können es. Derzeit läuft der Workflow in Chainlinks Simulator, der keine echte Enklave ist. Du kannst die Kopie jederzeit auf der Passseite löschen."
+        "privateWho": "Aus dem Web kann niemand sie öffnen. Der Betreiber von Moolam und der Speicheranbieter können es. Derzeit läuft der Workflow in Chainlinks Simulator, nicht in der gesicherten Hardware von Chainlink. Du kannst die Kopie jederzeit auf der Passseite löschen."
       },
       "fields": {
         "commitment": {
@@ -1563,8 +1563,7 @@
       "done": "fertig",
       "live": "live",
       "today": "heute"
-    },
-    "ledeSignedIn": "Jedes Bild, das du hier einträgst, bekommt seinen eigenen Eintrag auf Monad: abgetastet, von dir signiert, von jeder Kopie aus auffindbar."
+    }
   },
   "docs": {
     "home": "Dokumentation",

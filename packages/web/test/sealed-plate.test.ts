@@ -7,7 +7,7 @@ import type { Hex } from "viem";
 import { SKETCH_BITS, SKETCH_SIDE, sketchBits } from "@/components/sealed/bits";
 import { SEALED_DOCUMENT_KEYS, SEALED_PUBLIC_FIELDS, sealedFieldsFor } from "@/components/sealed/fields";
 import { SealSwitch } from "@/components/sealed/SealSwitch";
-import { SealedPlate } from "@/components/sealed/SealedPlate";
+import { POSTER_HEIGHT, SealedPlate } from "@/components/sealed/SealedPlate";
 import { SealedShareCard } from "@/components/sealed/SealedShareCard";
 import { repoRoot } from "@/lib/docs/paths";
 
@@ -141,6 +141,47 @@ function schemaKeys(): string[] {
   const body = source.slice(opened, source.indexOf("\n});", opened));
   return [...body.matchAll(/^ {2}([a-zA-Z]+):/gm)].map((hit) => hit[1]);
 }
+
+describe("the sealed poster's height on a phone", () => {
+  // Measured on the dev server at 375 by 812 on Kanchipuram, the sealed
+  // showcase with a private re-check, whose facts strip is the tallest: the
+  // site header, the strip's own height, how far its band rises into the
+  // plate, and the tab bar along the foot.
+  const PHONE = { width: 375, height: 812 };
+  const HEADER = 56;
+  const STRIP = 231;
+  const RISE = 24;
+  const BAR = 56;
+  const CLEAR = 12;
+  const REM = 16;
+
+  const classes = POSTER_HEIGHT.split(/\s+/);
+  const phoneShare = Number(/^h-\[(\d+)vh\]$/.exec(classes.find((name) => /^h-\[\d+vh\]$/.test(name)) ?? "")?.[1]);
+  const phoneFloor = Number(/^min-h-\[(\d+)rem\]$/.exec(classes.find((name) => name.startsWith("min-h-")) ?? "")?.[1]);
+
+  it("is the height the poster is drawn at", () => {
+    const html = renderToStaticMarkup(
+      createElement(SealedPlate, { bits: sketchBits(MONSOON), title: "Kanchipuram", words: WORDS, size: "poster" as const }),
+    );
+    for (const name of classes) {
+      expect(html).toContain(name);
+    }
+  });
+
+  it("leaves the strip's last line clear of the tab bar at 375 by 812", () => {
+    expect(Number.isFinite(phoneShare)).toBe(true);
+    const plate = Math.max((PHONE.height * phoneShare) / 100, phoneFloor * REM);
+    const stripEnds = HEADER + plate - RISE + STRIP;
+    expect(stripEnds).toBeLessThanOrEqual(PHONE.height - BAR - CLEAR);
+  });
+
+  it("matches the picture's poster from 640 px up", () => {
+    const poster = readFileSync(path.join(repoRoot, "packages", "web", "components", "passport", "Poster.tsx"), "utf8");
+    const laptop = classes.find((name) => name.startsWith("sm:h-"));
+    expect(laptop).toBeDefined();
+    expect(poster).toContain(laptop as string);
+  });
+});
 
 describe("what the studio says becomes public", () => {
   it("lists every key of the sealed document the verify service pins, and no others", () => {

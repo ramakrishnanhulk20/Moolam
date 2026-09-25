@@ -264,8 +264,10 @@ function Row({
 
       {/* The chain's own answer on how this report arrived. An address the app
           does not recognise says nothing at all, because a wrong label here
-          would be worse than no label. */}
-      {delivery === "unknown" ? null : (
+          would be worse than no label. A private re-check in the simulator
+          already said so in its limit line, in plainer words, so it is not
+          told twice. */}
+      {delivery === "unknown" || (isPrivate && delivery === "simulation") ? null : (
         <p className="mt-5 max-w-[52ch] border-s-2 border-line ps-4 text-xs leading-relaxed text-text-faint">
           {delivery === "simulation" ? t("delivery.simulation") : t("delivery.network")}
         </p>

@@ -19,6 +19,14 @@ export interface SealedPlateWords {
 }
 
 /**
+ * The poster's height. On a phone it is a little shorter than a picture's
+ * poster, because the passport page hangs the facts strip under the plate
+ * rather than on it, and at 375 by 812 the strip's last line has to end clear
+ * of the tab bar. From 640 px up it matches the picture's poster exactly.
+ */
+export const POSTER_HEIGHT = "h-[57vh] min-h-[26rem] sm:h-[min(78vh,46rem)]";
+
+/**
  * A passport whose picture was never published, drawn as the thing it is.
  *
  * What is on it is the block hash, which is public, and the title, the date and
@@ -26,8 +34,9 @@ export interface SealedPlateWords {
  * load: a sealed passport has no image to fail, and invariant 7 of the threat
  * model is that it never reads as a fault.
  *
- * Two sizes. "poster" is the header a passport page opens with, the same height
- * and the same type as the poster that carries a real picture. "plate" is the
+ * Two sizes. "poster" is the header a passport page opens with, in the same
+ * type as the poster that carries a real picture and, from 640 px up, the same
+ * height. "plate" is the
  * four by five tile Explore lays out in its sheet.
  */
 export function SealedPlate({
@@ -62,7 +71,7 @@ export function SealedPlate({
 
   if (size === "poster") {
     return (
-      <div className="group grain relative h-[62vh] min-h-[26rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
+      <div className={`group grain relative w-full overflow-hidden border-b border-line bg-bg-sunken ${POSTER_HEIGHT}`}>
         {/* The one light in the frame sits behind the sketch, off centre, so the
             plate has a direction to it rather than a subject in the middle. */}
         <span

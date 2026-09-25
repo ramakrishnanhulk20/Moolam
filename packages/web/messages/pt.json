@@ -590,7 +590,7 @@
         "send": {
           "waiting": "Enviar da sua conta",
           "running": "Enviando da sua conta pela Privy. A Moolam paga a taxa.",
-          "watching": "Enviada da sua conta e assinada pela chave do app. Esperando a Monad mostrar.",
+          "watching": "Esperando sua versão editada chegar à Monad.",
           "pending": "Enviada, e a Monad ainda não mostrou",
           "done": "Registrada",
           "failed": "A edição não chegou ao registro"
@@ -1101,12 +1101,12 @@
     "cardLabel": "Cartão do agente",
     "cardInline": "Este cartão vai dentro do próprio token URI, então não há nada para abrir.",
     "cardShow": "Ver o JSON do cartão",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "Abrir o registro guardado no IPFS"
   },
   "studio": {
     "kicker": "Estúdio",
     "title": "Registrar uma imagem",
-    "lede": "Entre, desbloqueie uma vez com este aparelho, e cada imagem que você fizer ganha o próprio registro na Monad: com impressão digital e assinada por você.",
+    "lede": "Cada imagem que você registrar aqui ganha o próprio registro na Monad: com impressão digital, assinada por você e encontrável a partir de qualquer cópia.",
     "rail": "Estúdio Moolam",
     "opening": "Abrindo sua conta",
     "noWallet": "Você entrou, mas nenhuma conta foi criada na Monad ainda. Recarregue a página, ou saia e entre de novo.",
@@ -1365,7 +1365,7 @@
         "promptNote": "O prompt fica privado enquanto você não o incluir.",
         "privateLabel": "Deixar a Chainlink reconferir esta imagem em privado",
         "privateNote": "A Moolam guarda uma cópia pequena, com 512 pixels no lado maior, em armazenamento privado. Um fluxo confidencial da Chainlink a abre para reconferir a impressão digital e grava só o veredito na Monad.",
-        "privateWho": "Ninguém consegue abri-la pela web. O operador da Moolam e o provedor de armazenamento conseguem. Por enquanto o fluxo roda no simulador da Chainlink, que não é um enclave de verdade. Você pode apagar a cópia pela página do passaporte quando quiser."
+        "privateWho": "Ninguém consegue abri-la pela web. O operador da Moolam e o provedor de armazenamento conseguem. Por enquanto o fluxo roda no simulador da Chainlink, não dentro do hardware seguro da Chainlink. Você pode apagar a cópia pela página do passaporte quando quiser."
       },
       "fields": {
         "commitment": {
@@ -1564,8 +1564,7 @@
       "done": "pronto",
       "live": "ao vivo",
       "today": "hoje"
-    },
-    "ledeSignedIn": "Cada imagem que você registrar aqui ganha o próprio registro na Monad: com impressão digital, assinada por você e encontrável a partir de qualquer cópia."
+    }
   },
   "docs": {
     "home": "Documentação",

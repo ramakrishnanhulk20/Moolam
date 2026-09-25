@@ -589,7 +589,7 @@
         "send": {
           "waiting": "Send it from your account",
           "running": "Sending from your account through Privy. Moolam pays the fee.",
-          "watching": "Sent from your account, signed by the app's key under the edit policy. Waiting for Monad to show it.",
+          "watching": "Watching for your edit to land on Monad.",
           "pending": "Sent, and Monad has not shown it yet",
           "done": "Recorded",
           "failed": "The edit did not reach the registry"
@@ -1100,12 +1100,12 @@
     "cardLabel": "Agent card",
     "cardInline": "This card is carried inside the token URI itself, so there is nothing to open.",
     "cardShow": "View the card JSON",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "Open the stored record on IPFS"
   },
   "studio": {
     "kicker": "Studio",
     "title": "Register an image",
-    "lede": "Sign in, unlock once with this device, and every image you make gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
+    "lede": "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
     "rail": "Moolam studio",
     "opening": "Opening your account",
     "noWallet": "You are signed in, but no account was created on Monad yet. Reload the page, or sign out and sign in again.",
@@ -1364,7 +1364,7 @@
         "promptNote": "The prompt stays private unless you include it.",
         "privateLabel": "Let Chainlink re-check this privately",
         "privateNote": "Moolam keeps one small copy, 512 pixels on its longest side, on private storage. A Chainlink confidential workflow opens it to re-check the fingerprint and writes only the verdict to Monad.",
-        "privateWho": "Nobody can open it from the web. Moolam's operator and the storage provider can. Today the workflow runs in Chainlink's simulator, which is not a real enclave. You can delete the copy from the passport page at any time."
+        "privateWho": "Nobody can open it from the web. Moolam's operator and the storage provider can. Today the workflow runs in Chainlink's simulator, not inside Chainlink's secure hardware. You can delete the copy from the passport page at any time."
       },
       "fields": {
         "commitment": {
@@ -1563,8 +1563,7 @@
       "done": "done",
       "live": "live",
       "today": "today"
-    },
-    "ledeSignedIn": "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy."
+    }
   },
   "docs": {
     "home": "Documentation",

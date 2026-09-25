@@ -591,7 +591,7 @@
         "send": {
           "waiting": "从你的账户发出",
           "running": "正在通过 Privy 从你的账户发出。费用由 Moolam 支付。",
-          "watching": "已从你的账户发出，应用的密钥完成了签名。等待 Monad 显示。",
+          "watching": "等待你的编辑版本写入 Monad。",
           "pending": "已发出，Monad 还没有显示",
           "done": "已登记",
           "failed": "这次编辑没有送达登记表"
@@ -1102,12 +1102,12 @@
     "cardLabel": "代理卡片",
     "cardInline": "这张卡片就装在代币 URI 里面，没有另外的地址可打开。",
     "cardShow": "查看卡片 JSON",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "打开 IPFS 上存放的记录"
   },
   "studio": {
     "kicker": "工作室",
     "title": "登记图片",
-    "lede": "登录，用这台设备解锁一次，之后你做的每一张图都会在 Monad 上有自己的记录：取过指纹，由你签名，能从任何副本追回。",
+    "lede": "你在这里登记的每一张图，都会在 Monad 上有自己的记录：取过指纹，由你签名，能从任何副本追回。",
     "rail": "Moolam 工作室",
     "opening": "正在打开你的账户",
     "noWallet": "你已经登录，但 Monad 上还没有为你建好账户。刷新页面，或者退出后重新登录。",
@@ -1366,7 +1366,7 @@
         "promptNote": "只要你不加进去，提示词就一直是私密的。",
         "privateLabel": "让 Chainlink 私下复核这张图片",
         "privateNote": "Moolam 在私有存储上保留一份长边 512 像素的小副本。一个 Chainlink 机密工作流打开它，复核指纹，只把结论写到 Monad。",
-        "privateWho": "没有人能从网上打开它。Moolam 的运营者和存储服务商可以。目前工作流运行在 Chainlink 的模拟器里，那不是真正的安全飞地。你随时可以在护照页删除这份副本。"
+        "privateWho": "没有人能从网上打开它。Moolam 的运营者和存储服务商可以。目前工作流运行在 Chainlink 的模拟器里，不在 Chainlink 的安全硬件里。你随时可以在护照页删除这份副本。"
       },
       "fields": {
         "commitment": {
@@ -1565,8 +1565,7 @@
       "done": "完成",
       "live": "实时",
       "today": "今天"
-    },
-    "ledeSignedIn": "你在这里登记的每一张图，都会在 Monad 上有自己的记录：取过指纹，由你签名，能从任何副本追回。"
+    }
   },
   "docs": {
     "home": "文档",

@@ -225,7 +225,8 @@ describe("the private re-check copy, counted", () => {
   it("names who can open the copy, rather than saying nobody", () => {
     const who = String(at("en", "studio.sealed.switch.privateWho"));
     expect(who).toContain("Moolam's operator and the storage provider can.");
-    expect(who).toContain("not a real enclave");
+    expect(who).toContain("not inside Chainlink's secure hardware");
+    expect(who).not.toContain("enclave");
     // Every language keeps the simulator sentence, which is the one a loose translation drops.
     for (const locale of locales) {
       expect(String(at(locale, "studio.sealed.switch.privateWho")), locale).toContain("Chainlink");

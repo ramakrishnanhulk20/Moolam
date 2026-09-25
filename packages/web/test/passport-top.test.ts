@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
@@ -14,7 +14,8 @@ import type { RecheckControl } from "@/lib/recheck/useRecheck";
 /**
  * The top of a passport page: the credit line under the title, the band that
  * used to sit empty above "Stated on chain", the two fingerprint grids on a
- * phone, and the facts strip the lab page tries along the poster's foot.
+ * phone, the facts strip along the poster's foot, and the seal a poster
+ * draws when its picture is missing.
  */
 
 vi.mock("next-intl/server", () => ({
@@ -39,8 +40,12 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/passport/refresh", () => ({ refreshPassport: async () => undefined }));
 vi.mock("@/lib/chain/reports", () => ({ heldReportDelivery: async () => "simulation" }));
+const picture = vi.hoisted(() => ({ fallback: undefined as unknown }));
 vi.mock("@/components/passport/Picture", () => ({
-  Picture: () => createElement("span", { "data-picture": "true" }),
+  Picture: (props: { fallback?: unknown }) => {
+    picture.fallback = props.fallback;
+    return createElement("span", { "data-picture": "true" });
+  },
 }));
 
 const agent = vi.hoisted(() => ({ read: vi.fn() }));
@@ -54,16 +59,6 @@ vi.mock("@/lib/recheck/useRecheck", async (importOriginal) => ({
     checking: false,
     actions: { request: () => undefined, check: () => undefined },
   }),
-}));
-
-// The lab page draws the real passport page, which is a whole chain of reads.
-// Here it only has to prove it was asked for the right passport and variant.
-const page = vi.hoisted(() => ({ calls: [] as unknown[] }));
-vi.mock("@/app/[locale]/passport/[id]/page", () => ({
-  default: (props: unknown) => {
-    page.calls.push(props);
-    return null;
-  },
 }));
 
 const { Poster } = await import("@/components/passport/Poster");
@@ -173,7 +168,7 @@ const LONG_DASH = String.fromCharCode(0x2014);
 afterEach(() => {
   vi.unstubAllEnvs();
   agent.read.mockReset();
-  page.calls = [];
+  picture.fallback = undefined;
 });
 
 describe("the credit line under the title", () => {
@@ -367,9 +362,12 @@ describe("the facts strip", () => {
     expect(named).toContain("Moolam generator");
   });
 
-  it("goes onto the poster only when the lab asks, and the real route never does", async () => {
-    const plain = render(await Poster({ passport, art, locale: "en" }));
-    expect(plain).not.toContain("data-top-facts");
+  it("is on every passport page: the route hands it to the poster, and the sealed plate carries it under", async () => {
+    const route = source("app/[locale]/passport/[id]/page.tsx");
+    expect(route).toContain("strip={<TopFacts");
+    expect(route).not.toContain("variant");
+    expect(route).not.toContain('import("@/components/passport/TopFacts")');
+
     const withStrip = render(
       await Poster({ passport, art, locale: "en", strip: FactStrip({ facts: topFacts(input, say) }) }),
     );
@@ -381,9 +379,6 @@ describe("the facts strip", () => {
     );
     expect(sealed).toContain("data-strip-under-plate");
     expect(sealed).toContain("data-top-facts");
-
-    const route = source("app/[locale]/passport/[id]/page.tsx");
-    expect(route).toContain('variant === "facts"');
   });
 
   it("reads its words from the message files and writes no long dash", () => {
@@ -398,37 +393,49 @@ describe("the facts strip", () => {
       "components/passport/top-facts.ts",
       "components/passport/TopFacts.tsx",
       "components/passport/Poster.tsx",
-      "app/[locale]/lab/passport-top/page.tsx",
+      "components/sealed/SealedPlate.tsx",
+      "app/[locale]/passport/[id]/page.tsx",
     ]) {
       expect(source(path), path).not.toContain(LONG_DASH);
     }
   });
 });
 
-describe("the lab route", () => {
-  it("is a 404 without the lab flag", async () => {
-    vi.stubEnv("NEXT_PUBLIC_LAB_PAGES", "");
-    const { default: Lab } = await import("@/app/[locale]/lab/passport-top/page");
-    await expect(Lab({ params: Promise.resolve({ locale: "en" }) })).rejects.toThrow("NEXT_NOT_FOUND");
+describe("the lab page", () => {
+  it("is gone now the strip is on the real route", () => {
+    expect(existsSync(fileURLToPath(new URL("../app/[locale]/lab/passport-top/page.tsx", import.meta.url)))).toBe(false);
+  });
+});
+
+describe("the seal on a poster whose picture is missing", () => {
+  const long: Art = {
+    title: "Moolam prove-it forgery attempt 2026-09-24, the second pass over the same frame",
+    missing: false,
+  };
+
+  it("sits in the room above the title block, never laid over it", async () => {
+    const markup = render(await Poster({ passport, art: long, locale: "en" }));
+    expect(markup).toContain("data-no-picture");
+    expect(unescape(/<header class="([^"]*)"/.exec(markup)?.[1] ?? "")).toContain("group/poster");
+
+    const seal = classOf(markup, "data-missing-seal").split(/\s+/);
+    // In the same column as the title, taking only the room left over.
+    expect(seal).not.toContain("absolute");
+    expect(seal).toContain("flex-1");
+    expect(seal).toContain("min-h-0");
+    // Too little room wraps the seal into a clipped second column, so it hides
+    // rather than spilling onto the title.
+    expect(seal).toContain("flex-wrap");
+    expect(seal).toContain("overflow-hidden");
+    // Shown only beside the mark a missing picture leaves.
+    expect(seal).toContain("hidden");
+    expect(seal).toContain("group-has-[[data-no-picture]]/poster:flex");
+    expect(markup.indexOf("data-missing-seal")).toBeLessThan(markup.indexOf("<h1"));
+    expect(markup).toContain(en.passport.noPicture.replace(/'/g, "&#x27;"));
   });
 
-  it("draws the real passport page with the strip, on Monsoon unless another id is asked for", async () => {
-    vi.stubEnv("NEXT_PUBLIC_LAB_PAGES", "1");
-    const { default: Lab } = await import("@/app/[locale]/lab/passport-top/page");
-    const drawn = render(await Lab({ params: Promise.resolve({ locale: "en" }) }));
-    expect(drawn).toContain("Lab: passport top");
-    const [first] = page.calls as Array<{ params: Promise<{ id: string }>; variant: string }>;
-    expect(first.variant).toBe("facts");
-    expect((await first.params).id).toBe("0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638");
-
-    page.calls = [];
-    render(await Lab({ params: Promise.resolve({ locale: "en" }), searchParams: Promise.resolve({ id: ID }) }));
-    const [second] = page.calls as Array<{ params: Promise<{ id: string }> }>;
-    expect((await second.params).id).toBe(ID);
-
-    page.calls = [];
-    render(await Lab({ params: Promise.resolve({ locale: "en" }), searchParams: Promise.resolve({ id: "nope" }) }));
-    const [third] = page.calls as Array<{ params: Promise<{ id: string }> }>;
-    expect((await third.params).id).toBe("0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638");
+  it("is handed to the picture too, for the day every gateway refuses it", async () => {
+    render(await Poster({ passport, art, locale: "en" }));
+    expect(render(picture.fallback as ReactElement)).toContain("data-no-picture");
   });
 });

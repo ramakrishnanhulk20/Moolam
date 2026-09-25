@@ -166,12 +166,12 @@ describe("state two, with the signer granted", () => {
     expect(markup).toContain("Pinning the edited picture");
   });
 
-  it("says the send went out from the owner's account under the policy", () => {
+  it("says it is watching for the edit to land on Monad, without naming the policy", () => {
     const markup = panel(
       edit({ granted: true }, { steps: { pin: "done", send: "running" }, confirming: true }),
     );
-    expect(markup).toContain("signed by the app&#x27;s key under the edit policy");
-    expect(markup).toContain("Waiting for Monad to show it");
+    expect(markup).toContain("Watching for your edit to land on Monad.");
+    expect(markup).not.toContain("under the edit policy");
   });
 
   it("closes the send while an edit may already be on the network, file and title and all", () => {

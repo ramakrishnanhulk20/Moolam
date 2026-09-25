@@ -115,9 +115,11 @@ describe("a verdict written by the sealed receiver", () => {
     expect(markup).not.toContain(words.byReceiver);
   });
 
-  it("keeps the delivery line read off the forwarder", async () => {
+  it("keeps the network's delivery line, and says the simulator once, in the limit line", async () => {
     delivery.current = "simulation";
-    expect(await card({ rows: [privateRow], privateCopy: "kept" })).toContain(asRendered(words.delivery.simulation));
+    const simulated = await card({ rows: [privateRow], privateCopy: "kept" });
+    expect(simulated).toContain(asRendered(words.private.limit));
+    expect(simulated).not.toContain(asRendered(words.delivery.simulation));
 
     delivery.current = "network";
     expect(await card({ rows: [privateRow], privateCopy: "kept" })).toContain(asRendered(words.delivery.network));

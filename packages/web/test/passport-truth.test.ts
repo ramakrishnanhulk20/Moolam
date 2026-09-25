@@ -304,16 +304,13 @@ describe("the private re-check line", () => {
     expect(row.indexOf(limit)).toBeGreaterThan(row.indexOf(lead));
   });
 
-  it("says the limit once, and keeps the forwarder line as it is", async () => {
+  it("names the simulator once, in the limit's plainer words, and drops the forwarder line", async () => {
     delivery.current = "simulation";
     const row = rowOf(await card({ rows: [privateRow], privateCopy: "kept" }));
 
     expect(row.split(limit).length - 1).toBe(1);
-    // The limit and the forwarder line each name the simulator once, in their own words.
-    expect(row.split("simulator").length - 1).toBe(2);
-    const forwarder = words.delivery.simulation.replace(/'/g, "&#x27;");
-    expect(row).toContain(forwarder);
-    expect(row.indexOf(forwarder)).toBeGreaterThan(row.indexOf(limit));
+    expect(row.split("simulator").length - 1).toBe(1);
+    expect(row).not.toContain(words.delivery.simulation.replace(/'/g, "&#x27;"));
   });
 
   it("never says Moolam keeps a copy that has since been deleted", async () => {

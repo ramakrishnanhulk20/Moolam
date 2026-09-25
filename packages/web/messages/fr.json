@@ -589,7 +589,7 @@
         "send": {
           "waiting": "L'envoyer depuis votre compte",
           "running": "Envoi depuis votre compte via Privy. Moolam paie les frais.",
-          "watching": "Envoyée depuis votre compte et signée par la clé de l'app. En attente de son apparition sur Monad.",
+          "watching": "En attente de l'arrivée de votre version retouchée sur Monad.",
           "pending": "Envoyée, et Monad ne l'a pas encore affichée",
           "done": "Enregistrée",
           "failed": "La retouche n'a pas atteint le registre"
@@ -1100,12 +1100,12 @@
     "cardLabel": "Carte de l'agent",
     "cardInline": "Cette carte est portée par l'URI du jeton lui-même, il n'y a donc rien à ouvrir.",
     "cardShow": "Voir le JSON de la carte",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "Ouvrir l’enregistrement stocké sur IPFS"
   },
   "studio": {
     "kicker": "Studio",
     "title": "Enregistrer une image",
-    "lede": "Connectez-vous, déverrouillez une fois avec cet appareil, et chaque image que vous créez reçoit son propre enregistrement sur Monad, empreintée et signée.",
+    "lede": "Chaque image que vous enregistrez ici reçoit son propre enregistrement sur Monad : empreintée, signée par vous, retrouvable depuis n’importe quelle copie.",
     "rail": "Studio Moolam",
     "opening": "Ouverture de votre compte",
     "noWallet": "Vous êtes connecté, mais aucun compte n’a encore été créé sur Monad. Rechargez la page, ou déconnectez-vous et reconnectez-vous.",
@@ -1364,7 +1364,7 @@
         "promptNote": "Le prompt reste privé tant que tu ne l'inclus pas.",
         "privateLabel": "Laisser Chainlink la revérifier en privé",
         "privateNote": "Moolam garde une petite copie, de 512 pixels sur son plus grand côté, sur un stockage privé. Un workflow confidentiel Chainlink l'ouvre pour revérifier l'empreinte et n'inscrit que le verdict sur Monad.",
-        "privateWho": "Personne ne peut l'ouvrir depuis le web. L'opérateur de Moolam et le fournisseur de stockage le peuvent. Pour l'instant, le workflow s'exécute dans le simulateur de Chainlink, qui n'est pas une vraie enclave. Tu peux supprimer la copie depuis la page du passeport à tout moment."
+        "privateWho": "Personne ne peut l'ouvrir depuis le web. L'opérateur de Moolam et le fournisseur de stockage le peuvent. Pour l'instant, le workflow s'exécute dans le simulateur de Chainlink, pas dans le matériel sécurisé de Chainlink. Tu peux supprimer la copie depuis la page du passeport à tout moment."
       },
       "fields": {
         "commitment": {
@@ -1563,8 +1563,7 @@
       "done": "terminé",
       "live": "en direct",
       "today": "aujourd’hui"
-    },
-    "ledeSignedIn": "Chaque image que vous enregistrez ici reçoit son propre enregistrement sur Monad : empreintée, signée par vous, retrouvable depuis n’importe quelle copie."
+    }
   },
   "docs": {
     "home": "Documentation",

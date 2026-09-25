@@ -53,7 +53,6 @@ const NEW_KEYS = [
   "passport.consent.standardName",
   "agents.formulaPlain",
   "agent.index.formulaPlain",
-  "studio.ledeSignedIn",
 ];
 
 /** Whole values that are gone. Short labels are matched whole so a longer sentence that happens to contain them is not caught. */
@@ -103,7 +102,24 @@ const OLD_PHRASES = [
   "a perceptual hash, a block hash",
   "Sign in to see the pictures you registered on this device",
   "Every picture you registered on this device",
+  "signed by the app's key under the edit policy",
+  "which is not a real enclave",
+  "Sign in, unlock once with this device",
 ];
+
+/** Each language's own word for an enclave, which the studio's sealed switch no longer uses. */
+const ENCLAVE: Record<(typeof LANGS)[number], string> = {
+  en: "enclave",
+  de: "Enklave",
+  es: "enclave",
+  fr: "enclave",
+  hi: "एन्क्लेव",
+  ja: "エンクレーブ",
+  ko: "엔클레이브",
+  pt: "enclave",
+  ta: "enclave",
+  zh: "飞地",
+};
 
 describe("the plain words", () => {
   it("put every new key in all ten message files, with the English placeholders", () => {
@@ -141,5 +157,44 @@ describe("the plain words", () => {
     expect(existsSync(`${root}components/studio/openingWords.ts`)).toBe(false);
     expect(existsSync(`${root}components/studio/wideWords.ts`)).toBe(false);
     expect(readFileSync(`${root}components/passport/top-facts.ts`, "utf8")).not.toContain("TOP_FACT_WORDS");
+  });
+});
+
+describe("the last words of the passport roll-in", () => {
+  it("watch for the edit on Monad, in every language, without the edit policy", () => {
+    expect(at(messages.en, "passport.edit.steps.send.watching")).toBe("Watching for your edit to land on Monad.");
+    for (const lang of LANGS) {
+      const words = String(at(messages[lang], "passport.edit.steps.send.watching"));
+      expect(words.trim(), lang).not.toBe("");
+      expect(words, lang).toContain("Monad");
+    }
+  });
+
+  it("say the sealed switch's workflow is not inside Chainlink's secure hardware, and never call it an enclave", () => {
+    expect(String(at(messages.en, "studio.sealed.switch.privateWho"))).toContain(
+      "Today the workflow runs in Chainlink's simulator, not inside Chainlink's secure hardware.",
+    );
+    for (const lang of LANGS) {
+      const words = String(at(messages[lang], "studio.sealed.switch.privateWho"));
+      expect(words, lang).not.toContain(ENCLAVE[lang]);
+      expect(words, lang).toContain("Chainlink");
+    }
+  });
+
+  it("give the studio one lede for everyone, and no signed-in variant", () => {
+    expect(at(messages.en, "studio.lede")).toBe(
+      "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
+    );
+    for (const lang of LANGS) {
+      expect(String(at(messages[lang], "studio.lede")).trim(), lang).not.toBe("");
+      expect(at(messages[lang], "studio.ledeSignedIn"), lang).toBeUndefined();
+    }
+  });
+
+  it("open the agent's stored record with the passport page's own words", () => {
+    for (const lang of LANGS) {
+      expect(at(messages[lang], "agent.ipfsCid"), lang).toBe(at(messages[lang], "passport.ipfsCid"));
+      expect(String(at(messages[lang], "agent.ipfsCid")), lang).not.toContain("{cid}");
+    }
   });
 });

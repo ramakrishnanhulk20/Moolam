@@ -589,7 +589,7 @@
         "send": {
           "waiting": "Enviarla desde tu cuenta",
           "running": "Enviando desde tu cuenta a través de Privy. Moolam paga la comisión.",
-          "watching": "Enviada desde tu cuenta y firmada por la clave de la app. Esperando a que Monad la muestre.",
+          "watching": "Esperando a que tu versión editada llegue a Monad.",
           "pending": "Enviada, y Monad todavía no la muestra",
           "done": "Registrada",
           "failed": "La edición no llegó al registro"
@@ -1100,12 +1100,12 @@
     "cardLabel": "Tarjeta del agente",
     "cardInline": "Esta tarjeta va dentro del propio token URI, así que no hay nada que abrir.",
     "cardShow": "Ver el JSON de la tarjeta",
-    "ipfsCid": "IPFS {cid}"
+    "ipfsCid": "Abrir el registro guardado en IPFS"
   },
   "studio": {
     "kicker": "Estudio",
     "title": "Registrar una imagen",
-    "lede": "Entra, desbloquea una vez con este dispositivo y cada imagen que hagas tendrá su propio registro en Monad: con huella, firmada por ti y localizable.",
+    "lede": "Cada imagen que registres aquí tendrá su propio registro en Monad: con huella, firmada por ti y localizable desde cualquier copia.",
     "rail": "Estudio Moolam",
     "opening": "Abriendo tu cuenta",
     "noWallet": "Has entrado, pero todavía no se ha creado ninguna cuenta en Monad. Recarga la página, o sal y vuelve a entrar.",
@@ -1364,7 +1364,7 @@
         "promptNote": "El prompt queda en privado mientras no lo incluyas.",
         "privateLabel": "Dejar que Chainlink la vuelva a comprobar en privado",
         "privateNote": "Moolam guarda una copia pequeña, de 512 píxeles en su lado más largo, en almacenamiento privado. Un flujo confidencial de Chainlink la abre para volver a comprobar la huella y solo escribe el veredicto en Monad.",
-        "privateWho": "Nadie puede abrirla desde la web. El operador de Moolam y el proveedor de almacenamiento sí pueden. Por ahora el flujo se ejecuta en el simulador de Chainlink, que no es un enclave real. Puedes borrar la copia desde la página del pasaporte cuando quieras."
+        "privateWho": "Nadie puede abrirla desde la web. El operador de Moolam y el proveedor de almacenamiento sí pueden. Por ahora el flujo se ejecuta en el simulador de Chainlink, no dentro del hardware seguro de Chainlink. Puedes borrar la copia desde la página del pasaporte cuando quieras."
       },
       "fields": {
         "commitment": {
@@ -1563,8 +1563,7 @@
       "done": "hecho",
       "live": "en vivo",
       "today": "hoy"
-    },
-    "ledeSignedIn": "Cada imagen que registres aquí tendrá su propio registro en Monad: con huella, firmada por ti y localizable desde cualquier copia."
+    }
   },
   "docs": {
     "home": "Documentación",

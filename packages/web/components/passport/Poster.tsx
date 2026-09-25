@@ -23,8 +23,8 @@ import { sealedBits } from "./sealed";
  * label belongs and read as the label for the date, which said the wrong thing
  * about a generated image.
  *
- * `strip` is the facts strip the lab page tries along the poster's foot. The
- * real route leaves it out and draws exactly what it drew before.
+ * `strip` is the facts strip along the poster's foot. The page always hands it
+ * over; a test that leaves it out gets the same poster with nothing there.
  */
 export async function Poster({
   passport,
@@ -68,45 +68,26 @@ export async function Poster({
         {/* The plate is drawn by a component three screens share, so the strip
             hangs off its foot rather than inside it, on the ground the
             plate's scrim ends on, so the two read as one. */}
-        {strip === undefined ? null : (
-          <div
-            data-strip-under-plate
-            // The band rises into the plate's own bottom padding, which
-            // holds nothing, so the strip starts closer to the first screen.
-            className="relative -mt-6 border-b border-line bg-bg px-5 pb-6 sm:-mt-8 sm:px-8 sm:pb-8"
-          >
-            <div className="mx-auto w-full max-w-[1400px]">{strip}</div>
-          </div>
-        )}
+        <div
+          data-strip-under-plate
+          // The band rises into the plate's own bottom padding, which holds
+          // nothing, so the strip starts closer to the first screen.
+          className="relative -mt-6 border-b border-line bg-bg px-5 pb-6 sm:-mt-8 sm:px-8 sm:pb-8"
+        >
+          <div className="mx-auto w-full max-w-[1400px]">{strip}</div>
+        </div>
       </header>
     );
   }
 
-  const seal = (
-    // With the strip the title rides higher, so the seal keeps to the top
-    // part rather than sitting under the words.
-    <div
-      className={`absolute inset-x-0 top-0 flex flex-col items-center justify-center gap-5 ${
-        strip === undefined ? "bottom-0" : "h-[40%]"
-      }`}
-    >
-      <span className="motif h-8 w-8" />
-      <p className="max-w-[34ch] px-6 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-        {t("noPicture")}
-      </p>
-    </div>
-  );
+  // A picture that is missing, or that every gateway refused, leaves this mark
+  // where it would have been. The seal further down only shows beside it.
+  const missing = <span data-no-picture hidden />;
 
   return (
-    <header
-      className={`grain relative w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)] ${
-        // The strip makes a phone's poster a hand's width deeper, so the
-        // picture keeps its share and the strip still ends above the tab bar.
-        strip === undefined ? "h-[62vh] min-h-[26rem]" : "h-[74svh] min-h-[34rem]"
-      }`}
-    >
+    <header className="group/poster grain relative h-[74svh] min-h-[34rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
       {art.imageUrl === undefined ? (
-        seal
+        missing
       ) : (
         // The full pinned image, the same file a verifier fetches when it
         // re-checks this record. This is the one screen that draws it at full
@@ -117,7 +98,7 @@ export async function Poster({
           sizes="100vw"
           priority
           className="object-cover"
-          fallback={seal}
+          fallback={missing}
         />
       )}
       {/* Dark keeps the full poster gradient and the band along the top. In
@@ -134,9 +115,7 @@ export async function Poster({
       <div
         aria-hidden
         data-scrim="light"
-        className={`pointer-events-none absolute inset-x-0 bottom-0 hidden [.light_&]:block ${
-          strip === undefined ? "h-[46%]" : "h-[64%]"
-        }`}
+        className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[64%] [.light_&]:block"
         style={{
           background: "linear-gradient(to top, var(--scrim-from) 0%, rgb(242 239 233 / 0.8) 45%, var(--scrim-to) 100%)",
         }}
@@ -156,8 +135,24 @@ export async function Poster({
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 px-5 pb-8 sm:px-8 sm:pb-12">
-        <div className="mx-auto w-full max-w-[1400px]">
+      {/* The seal takes only the room between the label and the title block.
+          The box wraps its one child into a second column, off the side and
+          clipped, whenever that room is too short to hold it, so a long title
+          hides the seal rather than lying over it. */}
+      <div className="pointer-events-none absolute inset-0 flex flex-col px-5 pb-8 sm:px-8 sm:pb-12">
+        <div
+          data-missing-seal
+          className="hidden min-h-0 flex-1 flex-col flex-wrap justify-center overflow-hidden pt-16 group-has-[[data-no-picture]]/poster:flex"
+        >
+          <span aria-hidden className="block h-0 w-full" />
+          <div className="flex w-full flex-col items-center justify-center gap-5 py-4">
+            <span className="motif h-8 w-8 shrink-0" />
+            <p className="max-w-[34ch] text-center font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
+              {t("noPicture")}
+            </p>
+          </div>
+        </div>
+        <div className="pointer-events-auto mx-auto mt-auto w-full max-w-[1400px]">
           <h1
             className="rise max-w-[16ch] font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]"
             style={{ animationDelay: "60ms" }}
@@ -186,7 +181,7 @@ export async function Poster({
               </span>
             )}
           </MetaLine>
-          {strip === undefined ? null : <div className="mt-6 sm:mt-8">{strip}</div>}
+          <div className="mt-6 sm:mt-8">{strip}</div>
         </div>
       </div>
     </header>
