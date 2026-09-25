@@ -23,9 +23,34 @@ ROOT=/srv/moolam
 SERVICE_USER=moolam
 STATE_DIR=/var/lib/moolam-recheck-runner
 ENV_FILE=/etc/moolam/runner.env
-CRE_VERSION="${CRE_VERSION:-v1.35.0}"
+
+# Both tools run as the service user, which can read every secret on this machine, so each one is
+# a fixed release checked against the sha256 its publisher lists. A new version means editing the
+# version and its hash together; neither can be changed from the environment.
+#
+# The CRE CLI: the line for cre_v1.35.0_linux_amd64.tar.gz in the release's own checksums.txt,
+# https://github.com/smartcontractkit/cre-cli/releases/download/v1.35.0/checksums.txt, which
+# GitHub's own digest for the asset matches.
+CRE_VERSION=v1.35.0
+CRE_SHA256=11e6d2ecf3292505268442fd55a48c44da2e0b3b1b647a6cee25a67e8965f844
+# bun: the lines for bun-linux-x64.zip and bun-linux-x64-baseline.zip in the release's own
+# SHASUMS256.txt, https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/SHASUMS256.txt.
+# The plain build needs AVX2; the baseline build is bun's own choice for a processor without it.
+BUN_VERSION=1.4.2
+BUN_SHA256_X64=36368faef7527875d5ffa52e53cd48021741f2a83eb6208a8dd64068d422a913
+BUN_SHA256_X64_BASELINE=c678040f14fe0440eb839d37cbd0ce4c051a32da72806ac97de6a6aab6bf728f
 
 say() { printf '\n== %s\n' "$*"; }
+
+# Downloads over https only and stops the whole install unless the file has exactly this sha256.
+fetch_pinned() {
+  local url="$1" sha256="$2" file="$3"
+  curl -fsSL --proto '=https' --tlsv1.2 -o "$file" "$url"
+  if ! printf '%s  %s\n' "$sha256" "$file" | sha256sum --check --strict; then
+    echo "the download from $url does not match its pinned sha256, stopping" >&2
+    exit 1
+  fi
+}
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "run this with sudo" >&2
@@ -50,28 +75,43 @@ install -d -m 0755 /etc/moolam
 if [ ! -f "$ENV_FILE" ]; then
   touch "$ENV_FILE"
 fi
-chmod 0600 "$ENV_FILE"
+# The runner reads this file as CRE_ENV_FILE and the CRE CLI reads it with -e, both as the service
+# user, so the service's group may read it. Root keeps ownership, so that user cannot rewrite its
+# own secrets, and nobody else can read it at all.
+chown "root:$SERVICE_USER" "$ENV_FILE"
+chmod 0640 "$ENV_FILE"
+stat -c '%U:%G %a %n' "$ENV_FILE"
 
-say "bun, for the workflow's own dependencies"
-# The workflow folder carries bun.lock, so its dependencies are installed the way they were pinned.
-if ! command -v bun >/dev/null 2>&1; then
-  su -s /bin/bash "$SERVICE_USER" -c 'curl -fsSL https://bun.sh/install | bash'
+say "bun $BUN_VERSION, from its pinned release archive"
+# The workflow folders carry bun.lock, so their dependencies are installed the way they were pinned.
+# bun goes in /usr/local/bin, owned by root, which is on the service's PATH and which the service
+# user cannot replace. The CRE CLI finds it there when it compiles a workflow.
+if grep -qw avx2 /proc/cpuinfo; then
+  BUN_BUILD=bun-linux-x64
+  BUN_SHA256="$BUN_SHA256_X64"
+else
+  BUN_BUILD=bun-linux-x64-baseline
+  BUN_SHA256="$BUN_SHA256_X64_BASELINE"
 fi
-BUN="$STATE_DIR/.bun/bin/bun"
+TMP="$(mktemp -d)"
+fetch_pinned "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/${BUN_BUILD}.zip" \
+  "$BUN_SHA256" "$TMP/bun.zip"
+unzip -q "$TMP/bun.zip" -d "$TMP"
+install -m 0755 -o root -g root "$TMP/$BUN_BUILD/bun" /usr/local/bin/bun
+ln -sf /usr/local/bin/bun /usr/local/bin/bunx
+rm -rf "$TMP"
+BUN=/usr/local/bin/bun
+"$BUN" --version
 
-say "the CRE CLI $CRE_VERSION"
-# Ubuntu 24.04 takes the plain archive; 22.04 and older need cre_linux_amd64_ldd2-35.tar.gz.
-if ! command -v cre >/dev/null 2>&1; then
-  TMP="$(mktemp -d)"
-  curl -fsSL -o "$TMP/cre.tar.gz" \
-    "https://github.com/smartcontractkit/cre-cli/releases/download/${CRE_VERSION}/cre_linux_amd64.tar.gz"
-  tar -xzf "$TMP/cre.tar.gz" -C "$TMP"
-  find "$TMP" -maxdepth 2 -type f -name 'cre*linux_amd64' -exec mv {} "$TMP/cre" \;
-  [ -f "$TMP/cre" ] || mv "$TMP"/cre_*_linux_amd64 "$TMP/cre"
-  chmod +x "$TMP/cre"
-  mv "$TMP/cre" /usr/local/bin/cre
-  rm -rf "$TMP"
-fi
+say "the CRE CLI $CRE_VERSION, from its pinned release archive"
+# Ubuntu 24.04 takes the plain archive; 22.04 and older need cre_linux_amd64_ldd2-35.tar.gz, which
+# has its own line in the same checksums.txt.
+TMP="$(mktemp -d)"
+fetch_pinned "https://github.com/smartcontractkit/cre-cli/releases/download/${CRE_VERSION}/cre_linux_amd64.tar.gz" \
+  "$CRE_SHA256" "$TMP/cre.tar.gz"
+tar -xzf "$TMP/cre.tar.gz" -C "$TMP" "cre_${CRE_VERSION}_linux_amd64"
+install -m 0755 -o root -g root "$TMP/cre_${CRE_VERSION}_linux_amd64" /usr/local/bin/cre
+rm -rf "$TMP"
 cre version || true
 
 say "the repository at $ROOT"
@@ -129,8 +169,7 @@ cat <<INSTRUCTIONS
 Three things are the operator's, and only the operator's:
 
 1. The secrets. Copy the template and fill in the five values marked PASTE:
-     sudo cp $ROOT/packages/recheck-runner/deploy/runner.env.example $ENV_FILE
-     sudo chmod 0600 $ENV_FILE
+     sudo install -m 0640 -o root -g $SERVICE_USER $ROOT/packages/recheck-runner/deploy/runner.env.example $ENV_FILE
      sudo nano $ENV_FILE
    Leave RUNNER_DRY_RUN=1 until the checks below have run.
 

@@ -150,7 +150,15 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
 3. For each passport in turn, one at a time:
    - a request is claimed first, `POST /recheck/claim`. A claim somebody else holds means skip.
    - the index row gives the registration transaction, which is the only place it is written down.
-   - the pinned document decides whether to go on: a seed test card is swept past, though it still
+     A hash that is not `0x` and 64 hex digits, the queue's own predicate for an id, is refused
+     before anything is read or counted, because it would end up on the CLI's command line.
+   - the pinned document is fetched only from `ipfs://<cid>`, through the configured gateway, with
+     redirects refused and the body cut off at 32,000 bytes. An http(s) address a registrant wrote
+     is refused before any request, with that reason, and nothing is spent on it: the workflows
+     apply the same rule, `pinnedContentId` in `packages/workflow/moolam-verifier/pinned.ts`, held
+     byte for byte to the runner's copy by `test/workflow-picture.test.ts`. An inline
+     `data:application/json,` document makes no request and is read as before.
+   - the document decides whether to go on: a seed test card is swept past, though it still
      runs if somebody asked for it by hand. A sealed document sends one more question to the verify
      service, `GET /unseal/<id>` with a ten second timeout, because the document on chain says
      sealed for ever and only the unseal record beside it says the holder has published the picture
@@ -176,20 +184,32 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
      own transaction, 0 for a plain register and 1 for one sent through the ERC-4337 entry point.
    - `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive
      --trigger-index 0 --evm-tx-hash <tx> --evm-event-index <n> -e <env file> --broadcast`.
-   - the report transaction and the recomputed fingerprint are read out of the output, and
-     `POST /recheck/done` carries them back. A failure carries the CLI's own last complaint.
+   - the report transaction and the recomputed fingerprint are read out of the output. The run is
+     done only when that transaction's receipt carries the registry's own `VerificationAttested`
+     log for this passport, whichever receiver wrote it: Chainlink's mock forwarder mines a report
+     its receiver refused with status 1, so the status alone proves nothing. Then
+     `POST /recheck/done` carries them back. A refused report, or one whose receipt cannot be read,
+     is a failure like any other: it is counted, it counts towards the backoff, and it goes back
+     with a reason and no transaction. A failure carries the CLI's own last complaint. Every report
+     is sent with the workflows' explicit gas limit of 1,000,000, which nothing on the command line
+     changes, because an estimated limit starves the receiver inside the mock.
    - one log line, and the state file is written.
 
 Only lines matching one of three known patterns are ever taken out of the simulator's output, so
-nothing the CLI happens to print can reach a log by accident. Every reason is then stripped of
-addresses, bearer values, the parameters of a signed download link, the verify service's host and
-the sealed link token before it is logged or posted, because the queue serves it on a public route.
+nothing the CLI happens to print can reach a log by accident. Every reason, and every line the
+runner logs, is then stripped of addresses, bearer values, the parameters of a signed download
+link, the verify service's host, and every value of eight characters or more in the env file and
+in the runner's own token and addresses, with each address's host and key-bearing path segments,
+before it is logged or posted, because the queue serves reasons on a public route. Every value
+handed to the CLI is checked for its shape first: the tx hash as above, the event index a whole
+number from 0 to 1,000, and the target, the env file and the workflow folder never starting with a
+dash or holding a control character. A request that fails any of them is not run.
 
 ### The guards
 
 | Guard | Default | What it does |
 | --- | --- | --- |
-| `RUNNER_MAX_REPORTS_PER_DAY` | 40 | Counted in the state file, per UTC day, and counted before the run rather than after, so a machine that dies mid-run comes back having already paid for it |
+| `RUNNER_MAX_REPORTS_PER_DAY` | 40 | Counted in the state file, per UTC day, and counted before the run rather than after, so a machine that dies mid-run comes back having already paid for it. A count read back that is not a whole number from zero up reads as the day used up |
 | `RUNNER_MIN_MON` | 1.5 | The pass stops when the CRE wallet is under this, read again before every passport |
 | `RUNNER_MAX_PER_PASS` | 5 | One passport at a time, and no more than this in one pass |
 | `RUNNER_SIMULATE_TIMEOUT_SECONDS` | 600 | A hung compile or a silent gateway is killed rather than held |
@@ -200,7 +220,8 @@ the sealed link token before it is logged or posted, because the queue serves it
 ## Configuration
 
 Environment only, and no value is ever logged. The one file the runner opens is the CLI's env
-file, and only to find `CRE_SEALED_LINK_TOKEN` in it before a sealed run.
+file: to find `CRE_SEALED_LINK_TOKEN` in it before a sealed run, and to strip every value in it
+out of what it logs and posts.
 
 | Name | What it is |
 | --- | --- |
@@ -210,7 +231,7 @@ file, and only to find `CRE_SEALED_LINK_TOKEN` in it before a sealed run.
 | `MONAD_RPC_URL` | A public endpoint is enough: balances and receipts only |
 | `CRE_WORKFLOW_DIR` | The folder holding `workflow.yaml` |
 | `CRE_SEALED_WORKFLOW_DIR` | Optional. The sealed workflow's folder, by default `moolam-sealed-verifier` beside `CRE_WORKFLOW_DIR` |
-| `CRE_ENV_FILE` | The file the CRE CLI reads for itself, holding `CRE_ETH_PRIVATE_KEY`, `MONAD_MAINNET_RPC_URL` and, for private re-checks, `CRE_SEALED_LINK_TOKEN`. The runner reads that last name only, to refuse a sealed run without it and to strip its value from reasons |
+| `CRE_ENV_FILE` | The file the CRE CLI reads for itself, holding `CRE_ETH_PRIVATE_KEY`, `MONAD_MAINNET_RPC_URL` and, for private re-checks, `CRE_SEALED_LINK_TOKEN`. The runner reads it to refuse a sealed run without that last name and to strip every value in it from what it logs and posts |
 | `CRE_WALLET_ADDRESS` | The wallet watched against the floor |
 | `RUNNER_STATE_PATH` | Where the day's count and the recent list are kept |
 | `PINATA_GATEWAY_URL` | Optional. Defaults to the gateway the workflow's own `config.json` names |
@@ -259,15 +280,17 @@ ssh root@<vm> 'REPO_URL=/root/moolam.bundle bash /root/install.sh'
 The bundle is cloned whole and becomes the clone's origin, so an update is a new bundle copied over
 the old one and the same command run again.
 
-It installs Node 22 from NodeSource, bun (each workflow folder is pinned with `bun.lock`), the CRE
-CLI for Linux, clones the repository to `/srv/moolam`, installs the dependencies of both workflows,
+It installs Node 22 from NodeSource, bun 1.4.2 (each workflow folder is pinned with `bun.lock`) and
+the CRE CLI v1.35.0, each from its release archive checked against the sha256 in its publisher's
+own checksum file and put in `/usr/local/bin`, owned by root and on the unit's `PATH`, clones the repository to `/srv/moolam`, installs the dependencies of both workflows,
 `moolam-verifier` and `moolam-sealed-verifier`, builds this package, and installs the systemd unit.
 It leaves the service stopped, on purpose.
 
 Three things are left to the operator, because nothing on that machine can do them.
 
 **1. Paste the secrets into the env file.** Copy `deploy/runner.env.example` to
-`/etc/moolam/runner.env`, `chmod 0600`, and fill in the five values marked PASTE: the CRE wallet's
+`/etc/moolam/runner.env`, owned by `root:moolam`, mode 0640, so the service user can read it and
+cannot rewrite it, and fill in the five values marked PASTE: the CRE wallet's
 private key, the Monad RPC URL the workflow uses, the runner token, the sealed link token, and the
 index address. That
 file is read by the CRE CLI as well as by the runner, which is why the wallet key and

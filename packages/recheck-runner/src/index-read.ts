@@ -1,4 +1,5 @@
 import { postJson, type Fetcher } from "./net.js";
+import { isPassportId } from "./queue.js";
 
 /** One passport as the Envio index holds it, reduced to what a re-check run needs. */
 export interface PassportRow {
@@ -86,7 +87,9 @@ export function rowsOf(data: unknown): PassportRow[] {
     const row = entry as Record<string, unknown>;
     const id = typeof row.id === "string" ? row.id.toLowerCase() : "";
     const txHash = typeof row.txHash === "string" ? row.txHash : "";
-    if (id === "" || txHash === "") {
+    // A malformed id is dropped here as the queue drops one. A malformed txHash is kept, so the
+    // runner can refuse that passport by name rather than say it is missing from the index.
+    if (!isPassportId(id) || txHash === "") {
       continue;
     }
     rows.push({

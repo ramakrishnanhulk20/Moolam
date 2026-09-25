@@ -3,9 +3,9 @@ import type { Document, RecordLookup } from "./document.js";
 import { isRealPicture, isTestCard, readUnsealRecord, withRecord } from "./document.js";
 import type { IndexClient, PassportRow } from "./index-read.js";
 import { cut } from "./net.js";
-import type { QueueClient } from "./queue.js";
-import { SEALED_TOKEN_NAME, envFileValue, readSealedStatus, serviceHost, type CopyState } from "./sealed.js";
-import { redact, type SimulateRequest, type SimulateResult } from "./simulate.js";
+import { isTxHash, type QueueClient } from "./queue.js";
+import { SEALED_TOKEN_NAME, envFileValue, envFileValues, readSealedStatus, serviceHost, type CopyState } from "./sealed.js";
+import { redact, scrubList, type SimulateRequest, type SimulateResult } from "./simulate.js";
 import { inCooldown, noteRecent, rollDay, type RunnerState } from "./state.js";
 
 export type Log = (message: string) => void;
@@ -30,7 +30,17 @@ export interface Deps {
    * Left out, config.envFile is read. The value is used only to strip it out of reasons.
    */
   sealedToken?: () => string | null;
+  /**
+   * Every value that must never reach a log line or a posted reason (R11). Left out, the config's
+   * own token and addresses and every value in config.envFile, read once a pass.
+   */
+  secrets?: () => string[];
   eventIndex: (txHash: string, passportId: string) => Promise<number>;
+  /**
+   * Whether a broadcast report put its verdict into the registry for this passport. Its receipt,
+   * not the CLI's word or the transaction's status, is what makes a run done.
+   */
+  reportLanded: (reportTx: string, passportId: string) => Promise<boolean>;
   balanceWei: () => Promise<bigint>;
   simulate: (request: SimulateRequest) => Promise<SimulateResult>;
   readState: () => RunnerState;
@@ -79,7 +89,10 @@ interface Outcome {
  * immediately before each run rather than once at the top: a pass can take minutes, and the wallet
  * it spends from is the same one the passport before it just drew on.
  */
-export async function onePass(deps: Deps): Promise<PassSummary> {
+export async function onePass(given: Deps): Promise<PassSummary> {
+  const secrets = (given.secrets ?? (() => secretValues(given.config)))();
+  // Every line this pass writes goes through the same filter as a posted reason (R11).
+  const deps: Deps = { ...given, secrets: () => secrets, log: (line) => given.log(redact(line, secrets)) };
   const { config, log } = deps;
   const nowMs = deps.now();
   let state = rollDay(deps.readState(), nowMs);
@@ -88,7 +101,7 @@ export async function onePass(deps: Deps): Promise<PassSummary> {
     const left = state.backoffUntil - seconds(nowMs);
     return halt(`backing off for another ${Math.ceil(left / 60)} minutes after ${state.failures} failures in a row`);
   }
-  if (state.reports >= config.maxReportsPerDay) {
+  if (capUsed(state, config.maxReportsPerDay)) {
     return halt(`the daily cap of ${config.maxReportsPerDay} reports is used up for ${state.day}`);
   }
 
@@ -96,7 +109,7 @@ export async function onePass(deps: Deps): Promise<PassSummary> {
   const summary: PassSummary = { considered: candidates.length, ran: 0, done: 0, failed: 0 };
 
   for (const candidate of candidates) {
-    if (state.reports >= config.maxReportsPerDay) {
+    if (capUsed(state, config.maxReportsPerDay)) {
       summary.stopped = `the daily cap of ${config.maxReportsPerDay} reports is used up`;
       log(summary.stopped);
       break;
@@ -145,7 +158,7 @@ export async function onePass(deps: Deps): Promise<PassSummary> {
 }
 
 async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): Promise<Outcome> {
-  const { config, log } = deps;
+  const { config } = deps;
   const short = candidate.passportId.slice(0, 12);
   let state = entering;
 
@@ -156,9 +169,10 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
   // A sealed run's claim is what lets the verify service mint its link, so that claim is handed
   // back through /recheck/done whatever happens, in a dry run too.
   let release = false;
-  // Stripped from every reason before it is logged or posted: the service's host here, and the
-  // sealed link token once a sealed run has read it.
-  const scrub: string[] = [];
+  // Stripped from every reason and every line before it is logged or posted: the pass's secrets,
+  // the service's host here, and the sealed link token once a sealed run has read it.
+  const scrub: string[] = [...(deps.secrets?.() ?? [])];
+  const log: Log = (line) => deps.log(redact(line, scrub));
   const host = serviceHost(config.verifyServiceUrl);
   if (host !== null) {
     scrub.push(host);
@@ -176,11 +190,20 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
   if (row === null || row.txHash === "") {
     return await refuse(`passport ${short} is not in the index yet, so its registration cannot be found`);
   }
+  if (!isTxHash(row.txHash)) {
+    // The hash goes to the node and then onto the CLI's argv, so a malformed one stops here, before
+    // anything is read or counted, and the reason never repeats it.
+    return await refuse(`passport ${short} has a registration transaction in the index that is not 0x and 64 hex digits, so it is not run`);
+  }
   if (row.attestationCount > 0) {
     return await refuse(`passport ${short} already carries ${row.attestationCount} re-check(s)`);
   }
 
   let document = await deps.readDocument(row.metadataURI);
+  if (document.refused !== undefined) {
+    // The workflow applies the same rule and would refuse it too, so nothing is spent on a run.
+    return await refuse(`passport ${short} is not re-checked: ${document.refused}`);
+  }
   if (document.sealed && !document.privateRecheck) {
     const stopped = await plainSealed();
     if (stopped !== null) {
@@ -302,6 +325,16 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     throw error;
   }
 
+  // Transaction status is not the verdict: Chainlink's mock forwarder mines a report its receiver
+  // refused with status 1. Only the registry's own attestation in that receipt makes the run done,
+  // so anything short of it is a failure: counted, backed off, and never reported as done.
+  if (result.ok && result.reportTx !== undefined) {
+    const refused = await unlanded(result.reportTx);
+    if (refused !== null) {
+      result = { ok: false, reason: refused, printed: result.printed };
+    }
+  }
+
   if (result.ok) {
     state = { ...state, failures: 0 };
     const wrote = result.reportTx === undefined ? "nothing written, this was a dry run" : `report ${result.reportTx}`;
@@ -336,6 +369,20 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
 
   function skip(): Outcome {
     return { state, ran: false, succeeded: false, settled: false };
+  }
+
+  /** Null when the report's verdict is in the registry, and the reason it does not count otherwise. */
+  async function unlanded(reportTx: string): Promise<string | null> {
+    const short = reportTx.slice(0, 12);
+    try {
+      if (await deps.reportLanded(reportTx, candidate.passportId)) {
+        return null;
+      }
+      return `report ${short} was mined but the registry recorded no attestation for this passport, so the receiver refused it`;
+    } catch (error) {
+      log(`the receipt of report ${short} could not be read: ${message(error)}`);
+      return `report ${short} was sent but its receipt could not be read, so it is not counted as done`;
+    }
   }
 
   function settle(): Outcome {
@@ -430,6 +477,28 @@ async function gather(deps: Deps, state: RunnerState, nowMs: number): Promise<Ca
   }
 
   return candidates.slice(0, config.maxPerPass);
+}
+
+/**
+ * Fails closed: a count that is not a whole number from zero up reads as the cap used up, since NaN
+ * compares false against any cap and a negative count would add to it (R9).
+ */
+function capUsed(state: RunnerState, cap: number): boolean {
+  return !Number.isSafeInteger(state.reports) || state.reports < 0 || state.reports >= cap;
+}
+
+/**
+ * The values no log line or reason may carry: the runner's own token and addresses, and every
+ * value in the env file handed to the CRE CLI, the wallet key and the sealed link token among them.
+ */
+export function secretValues(config: Config): string[] {
+  return scrubList([
+    config.runnerToken,
+    config.rpcUrl,
+    config.envioUrl,
+    config.verifyServiceUrl,
+    ...envFileValues(config.envFile),
+  ]);
 }
 
 function seconds(nowMs: number): number {

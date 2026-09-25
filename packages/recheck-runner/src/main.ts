@@ -1,11 +1,11 @@
 import { ConfigError, formatMon, readConfig, type Config } from "./config.js";
-import { balanceWei, eventIndex, rpcCall } from "./chain.js";
+import { attestationLanded, balanceWei, eventIndex, rpcCall } from "./chain.js";
 import { readDocument } from "./document.js";
 import { indexClient } from "./index-read.js";
 import { queueClient } from "./queue.js";
-import { runSimulation } from "./simulate.js";
+import { redact, runSimulation } from "./simulate.js";
 import { loadState, saveState, type RunnerState } from "./state.js";
-import { message, onePass, type Deps } from "./runner.js";
+import { message, onePass, secretValues, type Deps } from "./runner.js";
 
 function log(line: string): void {
   process.stdout.write(`${new Date().toISOString()} ${line}\n`);
@@ -43,6 +43,7 @@ function build(config: Config): Deps {
     index: indexClient(config.envioUrl),
     readDocument: (metadataURI) => readDocument(metadataURI, config.gatewayUrl),
     eventIndex: (txHash, passportId) => eventIndex(call, txHash, passportId, config.registry),
+    reportLanded: (reportTx, passportId) => attestationLanded(call, reportTx, passportId, config.registry),
     balanceWei: () => balanceWei(call, config.creWallet),
     simulate: (request) => runSimulation(request),
     readState: () => state,
@@ -87,7 +88,7 @@ async function main(): Promise<void> {
         `pass finished: ${summary.considered} considered, ${summary.ran} run, ${summary.done} done, ${summary.failed} failed`,
       );
     } catch (error) {
-      log(`the pass failed outright: ${message(error)}`);
+      log(`the pass failed outright: ${redact(message(error), secretValues(config))}`);
     }
     if (once || stopping) {
       break;

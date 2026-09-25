@@ -44,6 +44,15 @@ Inside node mode, each node reads the passport's metadata document, either an `i
 through the gateway or an inline `data:application/json,` document, then downloads the thumbnail it
 names. Two HTTP requests per run, against a limit of five.
 
+Only pinned content is fetched. The document and the picture must each be `ipfs://` followed by a
+content id and nothing else, and the URL is always built on the configured gateway, so an http(s)
+address a registrant wrote on chain ends the run before any request is made. Only a 200 is read:
+the HTTP capability fails on a redirect by itself and any other status is refused, so no redirect
+is followed. The document is refused over 32,000 bytes and the picture over 60,000, the verify
+service's own ceiling for a thumbnail. The rule is one function, `pinnedContentId` in
+`moolam-verifier/pinned.ts`, shared by both workflows and copied byte for byte into the re-check
+runner.
+
 ### 4. Fingerprint
 
 `decode.ts` decodes the JPEG with `jpeg-js`, pure JavaScript because the sandbox is QuickJS on
@@ -97,6 +106,7 @@ The private key and the RPC URL come from the repository root `.env` (`CRE_ETH_P
 | File | What it holds |
 | --- | --- |
 | `moolam-verifier/workflow.ts` | The trigger, the read, the fetch, the consensus wrapper and the write |
+| `moolam-verifier/pinned.ts` | The fetch rule both workflows share: `ipfs://<cid>` only, through the gateway, under a byte cap |
 | `moolam-verifier/phash.ts` | The pure TypeScript fingerprint, matched to the verifier's |
 | `moolam-verifier/decode.ts` | JPEG decoding inside the sandbox |
 | `moolam-verifier/config.json` | Chain name, registry, receiver, IPFS gateway, match threshold |

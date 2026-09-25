@@ -67,6 +67,19 @@ export async function readSealedStatus(
  * is never printed, and nothing else in the file is kept.
  */
 export function envFileValue(file: string, name: string): string | null {
+  const found = readEnvFile(file)?.get(name) ?? null;
+  return found === null || found === "" ? null : found;
+}
+
+/**
+ * Every value assigned in an env file, or an empty list when the file cannot be read. Used only to
+ * strip those values out of every reason and log line (R11); nothing here is ever printed.
+ */
+export function envFileValues(file: string): string[] {
+  return [...(readEnvFile(file)?.values() ?? [])].filter((value) => value !== "");
+}
+
+function readEnvFile(file: string): Map<string, string> | null {
   let text: string;
   try {
     text = fs.readFileSync(file, "utf8");
@@ -74,17 +87,17 @@ export function envFileValue(file: string, name: string): string | null {
     return null;
   }
 
-  let found: string | null = null;
+  const values = new Map<string, string>();
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim().replace(/^export\s+/, "");
     const equals = line.indexOf("=");
-    if (line.startsWith("#") || equals === -1 || line.slice(0, equals).trim() !== name) {
+    if (line.startsWith("#") || equals === -1) {
       continue;
     }
     // The last assignment wins, as it does for the dotenv reader the CLI uses.
-    found = unquote(line.slice(equals + 1).trim());
+    values.set(line.slice(0, equals).trim(), unquote(line.slice(equals + 1).trim()));
   }
-  return found === null || found === "" ? null : found;
+  return values;
 }
 
 function unquote(value: string): string {

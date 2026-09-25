@@ -10,10 +10,14 @@ User=moolam
 Group=moolam
 WorkingDirectory=/srv/moolam/packages/recheck-runner
 
-# The only file holding a secret. Root writes it at 0600 and the service user reads it.
+# The only file holding a secret, root:moolam 0640. systemd reads it as root for the environment,
+# and the runner and the CRE CLI read it again as this user, through CRE_ENV_FILE and -e.
 EnvironmentFile=/etc/moolam/runner.env
 Environment=NODE_ENV=production
 Environment=HOME=/var/lib/moolam-recheck-runner
+# Named rather than inherited: the runner spawns cre from here and cre spawns bun to compile the
+# workflow. install.sh puts both, pinned by sha256 and owned by root, in /usr/local/bin.
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
 
 ExecStart=/usr/bin/node dist/main.js
 Restart=always

@@ -30,7 +30,13 @@ import {
 import { z } from "zod";
 import { decodeJpeg } from "./decode";
 import { hamming64, perceptualHash, toBytes32, toHex64 } from "./phash";
-import { choosePicture, toFetchUrl, type RecordReply } from "./picture";
+import { choosePicture, type RecordReply } from "./picture";
+import {
+	MAX_DOCUMENT_BYTES,
+	MAX_PICTURE_BYTES,
+	pinnedBodyRefusal,
+	pinnedFetchUrl,
+} from "./pinned";
 
 export const configSchema = z.object({
 	chain: z.string(),
@@ -94,13 +100,24 @@ const referenceId = (reference: string): string => {
 	return withoutScheme.split("/")[0] ?? withoutScheme;
 };
 
-const fetchBytes = (nodeRuntime: NodeRuntime<Config>, url: string, what: string): Uint8Array => {
+/**
+ * One GET of pinned content. The capability has no switch for redirects: it fails on a 3xx by
+ * itself, and pinnedBodyRefusal refuses any status but 200, so a redirect is never followed. The
+ * byte cap is checked before the body is parsed or decoded.
+ */
+const fetchBytes = (
+	nodeRuntime: NodeRuntime<Config>,
+	url: string,
+	what: string,
+	cap: number,
+): Uint8Array => {
 	const response = httpClient
 		.sendRequest(nodeRuntime, { url, method: "GET", timeout: "10s" })
 		.result();
 
-	if (response.statusCode !== 200) {
-		throw new Error(`${what} fetch returned status ${response.statusCode} from ${url}`);
+	const refused = pinnedBodyRefusal(`${what} fetch`, response.statusCode, response.body.length, cap);
+	if (refused !== null) {
+		throw new Error(`${refused} from ${url}`);
 	}
 	return response.body;
 };
@@ -108,18 +125,26 @@ const fetchBytes = (nodeRuntime: NodeRuntime<Config>, url: string, what: string)
 /**
  * The passport's metadata document. A passport either points at a JSON file on IPFS or carries the
  * document inline as a data URI, and both are read here, because the workflow has to work with
- * whatever the creator's app wrote on chain rather than a shape we would prefer.
+ * whatever the creator's app wrote on chain rather than a shape we would prefer. The inline one
+ * makes no request. A fetched one must be `ipfs://<cid>`, read through the configured gateway: an
+ * http(s) address a registrant wrote ends the run before any request is made.
  */
 const readMetadata = (
 	nodeRuntime: NodeRuntime<Config>,
 	metadataURI: string,
+	passportId: string,
 ): Record<string, unknown> => {
 	let text: string;
 	if (metadataURI.startsWith(JSON_DATA_URI)) {
 		text = decodeURIComponent(metadataURI.slice(JSON_DATA_URI.length));
 	} else {
-		const url = toFetchUrl(nodeRuntime.config.gateway, metadataURI);
-		text = new TextDecoder().decode(fetchBytes(nodeRuntime, url, "metadata"));
+		const url = pinnedFetchUrl(nodeRuntime.config.gateway, metadataURI);
+		if (url === null) {
+			throw new Error(
+				`passport ${passportId} names metadata that is not an IPFS content id, so it is not read`,
+			);
+		}
+		text = new TextDecoder().decode(fetchBytes(nodeRuntime, url, "metadata", MAX_DOCUMENT_BYTES));
 	}
 
 	const parsed: unknown = JSON.parse(text);
@@ -174,7 +199,7 @@ const verifyThumbnail = (
 	passportId: string,
 ): Verification => {
 	const { gateway } = nodeRuntime.config;
-	const metadata = readMetadata(nodeRuntime, metadataURI);
+	const metadata = readMetadata(nodeRuntime, metadataURI, passportId);
 
 	let choice = choosePicture(metadata, passportId, gateway);
 	if (choice.kind === "ask-record") {
@@ -192,7 +217,7 @@ const verifyThumbnail = (
 		);
 	}
 
-	const bytes = fetchBytes(nodeRuntime, choice.url, "thumbnail");
+	const bytes = fetchBytes(nodeRuntime, choice.url, "thumbnail", MAX_PICTURE_BYTES);
 	nodeRuntime.log(`thumbnail ${referenceId(choice.reference)} ${bytes.length} bytes`);
 
 	const image = decodeJpeg(bytes);

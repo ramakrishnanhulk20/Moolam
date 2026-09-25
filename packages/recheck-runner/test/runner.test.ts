@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { attestationLanded } from "../src/chain.js";
 import { readConfig, type Config } from "../src/config.js";
 import type { Document, RecordLookup } from "../src/document.js";
 import type { PassportRow } from "../src/index-read.js";
@@ -81,6 +84,7 @@ function standIns(input: {
   copy?: CopyState;
   placed?: Placed;
   token?: string | null;
+  landed?: boolean;
 }): StandIns {
   const config: Config = readConfig({ ...ENV, ...input.env });
   const lines: string[] = [];
@@ -135,6 +139,7 @@ function standIns(input: {
     },
     sealedToken: () => (input.token === undefined ? SEALED_TOKEN : input.token),
     eventIndex: async (txHash) => (txHash.startsWith("0xdddd") ? 1 : 0),
+    reportLanded: async () => input.landed ?? true,
     balanceWei: async () => input.balance ?? 28_266_000_000_000_000_000n,
     simulate: async (request) => {
       calls.push(`simulate ${path.basename(request.workflowDir)}`);
@@ -284,6 +289,25 @@ describe("one pass of the runner", () => {
     expect(kit.state().recent[PICTURE]).toBeUndefined();
   });
 
+  it.each([["a flag", "--broadcast"], ["a short hash", "0x40ae6d62"], ["a hash with a flag after it", `0x${"e".repeat(64)} --broadcast`]])(
+    "refuses a registration transaction from the index that is %s, before any spend (R8)",
+    async (_name, txHash) => {
+      const kit = standIns({ pending: [ASKED], rows: [row(ASKED, { txHash })] });
+      let asked = false;
+      kit.deps.eventIndex = async () => {
+        asked = true;
+        return 0;
+      };
+      await onePass(kit.deps);
+
+      expect(asked).toBe(false);
+      expect(kit.runs).toHaveLength(0);
+      expect(kit.state().reports).toBe(0);
+      expect(kit.reports[0]?.reason).toContain("not 0x and 64 hex digits");
+      expect(kit.reports[0]?.reason).not.toContain("--broadcast");
+    },
+  );
+
   it("carries on with the sweep when the queue itself is unreachable", async () => {
     const kit = standIns({ queueFails: true, sweep: [row(PICTURE)] });
     const summary = await onePass(kit.deps);
@@ -424,6 +448,58 @@ describe("the guards", () => {
     const kit = standIns({ sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.runs[0]?.timeoutMs).toBe(600_000);
+  });
+
+  it("writes the spend down before the simulator starts, for a queued request and a new passport alike (R9)", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)], sweep: [row(PICTURE)] });
+    const countedAtStart: number[] = [];
+    const simulate = kit.deps.simulate;
+    kit.deps.simulate = async (request) => {
+      countedAtStart.push(kit.state().reports);
+      return simulate(request);
+    };
+    await onePass(kit.deps);
+    expect(countedAtStart).toEqual([1, 2]);
+  });
+
+  it("holds one daily cap across queued requests and new passports together (R9)", async () => {
+    const kit = standIns({
+      pending: [ASKED],
+      rows: [row(ASKED)],
+      sweep: [row(PICTURE)],
+      state: { ...emptyState("2026-09-22"), reports: 39 },
+    });
+    const summary = await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(1);
+    expect(kit.runs[0]?.txHash).toBe(row(ASKED).txHash);
+    expect(kit.state().reports).toBe(40);
+    expect(summary.stopped).toContain("daily cap");
+  });
+
+  it("holds the per-pass cap on queued requests too, claiming no more than it will run (R9)", async () => {
+    const asked = ["1", "2", "3", "4", "5", "6", "7"].map((letter) => id(letter));
+    const kit = standIns({ pending: asked, rows: asked.map((one) => row(one)), env: { RUNNER_MAX_PER_PASS: "2" } });
+    const summary = await onePass(kit.deps);
+    expect(summary.considered).toBe(2);
+    expect(kit.claims).toHaveLength(2);
+    expect(kit.runs).toHaveLength(2);
+  });
+
+  it("stops a queued request at the balance floor before anything is counted or run (R9)", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)], balance: 1_499_999_999_999_999_999n });
+    const summary = await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.state().reports).toBe(0);
+    expect(summary.stopped).toContain("under the floor");
+  });
+
+  it("spends nothing when the ledger read back from disk holds a count that is not a whole number (R9)", async () => {
+    for (const reports of [Number.NaN, -5, 1.5]) {
+      const kit = standIns({ sweep: [row(PICTURE)], state: { ...emptyState("2026-09-22"), reports } });
+      const summary = await onePass(kit.deps);
+      expect(kit.runs).toHaveLength(0);
+      expect(summary.stopped).toContain("daily cap");
+    }
   });
 
   it("never asks for more than one pass worth of passports", async () => {
@@ -593,5 +669,131 @@ describe("a passport asking for a private re-check", () => {
       expect(kit.lines.join("\n")).not.toContain(leaked);
     }
     expect(kit.runs).toHaveLength(0);
+  });
+});
+
+describe("a report the forwarder refused", () => {
+  const REFUSED_RECEIPT = (
+    JSON.parse(fs.readFileSync(path.join(import.meta.dirname, "fixtures", "receipt-085d8500-refused.json"), "utf8")) as {
+      result: unknown;
+    }
+  ).result;
+
+  it("is a failure, never done, when the receipt says status 1 and ReportProcessed false", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
+    const checked: string[] = [];
+    kit.deps.reportLanded = async (reportTx, passportId) => {
+      checked.push(reportTx);
+      return attestationLanded(async () => REFUSED_RECEIPT, reportTx, passportId, kit.deps.config.registry);
+    };
+    const summary = await onePass(kit.deps);
+
+    expect(checked).toEqual([`0x${"f".repeat(64)}`]);
+    expect(summary).toMatchObject({ ran: 1, done: 0, failed: 1 });
+    expect(kit.reports).toHaveLength(1);
+    expect(kit.reports[0]?.reportTx).toBeUndefined();
+    expect(kit.reports[0]?.reason).toContain("no attestation");
+    expect(kit.state().reports).toBe(1);
+    expect(kit.state().failures).toBe(1);
+  });
+
+  it("goes into the backoff like any other failure", async () => {
+    const kit = standIns({
+      sweep: [row(PICTURE), row(ASKED)],
+      state: { ...emptyState("2026-09-22"), failures: 2 },
+      landed: false,
+    });
+    const summary = await onePass(kit.deps);
+    expect(summary.stopped).toContain("backing off for 30 minutes");
+    expect(kit.runs).toHaveLength(1);
+  });
+
+  it("is a failure, spending nothing more, when the receipt cannot be read at all", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
+    kit.deps.reportLanded = async () => {
+      throw new Error("the node has no receipt");
+    };
+    const summary = await onePass(kit.deps);
+    expect(summary).toMatchObject({ ran: 1, done: 0, failed: 1 });
+    expect(kit.reports[0]?.reportTx).toBeUndefined();
+    expect(kit.state().recent[ASKED]).toBeDefined();
+  });
+
+  it("is never asked about in a dry run, which writes nothing", async () => {
+    const kit = standIns({
+      env: { RUNNER_DRY_RUN: "1" },
+      sweep: [row(PICTURE)],
+      simulate: () => ({ ok: true, recomputed: "0x63779c989c7f3121", distance: 0, matched: true, printed: "cre ..." }),
+    });
+    let asked = false;
+    kit.deps.reportLanded = async () => {
+      asked = true;
+      return false;
+    };
+    const summary = await onePass(kit.deps);
+    expect(asked).toBe(false);
+    expect(summary.done).toBe(1);
+  });
+});
+
+describe("nothing from the env file leaves the process (R11)", () => {
+  it("logs and posts no env value, fed every one of them through a failing pass (R11)", async () => {
+    const PRIVATE_KEY = `0x${"5eed".repeat(16)}`;
+    const RUNNER_TOKEN = "runner-token-9d8c7b6a5f4e";
+    const CLI_RPC = "https://example-name.monad-mainnet.quiknode.pro/5ecre7k3yvalue/";
+    const RUNNER_RPC = "https://rpc.example/key-0f1e2d3c4b5a";
+    const ENVIO = "https://indexer.example/abcd1234efgh/v1/graphql";
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), "moolam-runner-env-"));
+    const envFile = path.join(folder, "runner.env");
+    fs.writeFileSync(
+      envFile,
+      [
+        `CRE_ETH_PRIVATE_KEY=${PRIVATE_KEY}`,
+        `MONAD_MAINNET_RPC_URL="${CLI_RPC}"`,
+        `export CRE_SEALED_LINK_TOKEN=${SEALED_TOKEN}`,
+        `RUNNER_TOKEN=${RUNNER_TOKEN}`,
+        "RUNNER_DRY_RUN=0",
+      ].join("\n"),
+      "utf8",
+    );
+
+    try {
+      const kit = standIns({
+        env: { CRE_ENV_FILE: envFile, RUNNER_TOKEN, MONAD_RPC_URL: RUNNER_RPC, ENVIO_GRAPHQL_URL: ENVIO },
+        pending: [ASKED, PICTURE],
+        rows: [row(ASKED), row(PICTURE)],
+      });
+      const everything = `key ${PRIVATE_KEY} token ${RUNNER_TOKEN} Bearer ${RUNNER_TOKEN} rpc example-name.monad-mainnet.quiknode.pro/5ecre7k3yvalue/ path 5ecre7k3yvalue runner rpc.example/key-0f1e2d3c4b5a index indexer.example/abcd1234efgh sealed ${SEALED_TOKEN}`;
+      kit.deps.index.unrechecked = async () => {
+        throw new Error(`the index at ${ENVIO} refused: ${everything}`);
+      };
+      kit.deps.eventIndex = async (txHash) => {
+        if (txHash === row(ASKED).txHash) {
+          throw new Error(`the node refused: ${everything}`);
+        }
+        return 0;
+      };
+      kit.deps.simulate = (request) =>
+        runSimulation(request, async () => ({ output: `✗ failed: ${everything}`, code: 1, timedOut: false }));
+      const done = kit.deps.queue.done;
+      kit.deps.queue.done = async (report) => {
+        await done(report);
+        throw new Error(`the done route said: ${everything}`);
+      };
+
+      await onePass(kit.deps);
+
+      const logged = kit.lines.join("\n");
+      const posted = kit.reports.map((one) => one.reason ?? "").join("\n");
+      expect(logged).toContain("could not read the index");
+      expect(logged).toContain("could not report back to the queue");
+      expect(kit.reports).toHaveLength(2);
+      for (const leaked of [PRIVATE_KEY, RUNNER_TOKEN, "5ecre7k3yvalue", "quiknode", "key-0f1e2d3c4b5a", "abcd1234efgh", SEALED_TOKEN]) {
+        expect(logged).not.toContain(leaked);
+        expect(posted).not.toContain(leaked);
+      }
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
   });
 });

@@ -119,6 +119,8 @@ const utf8 = (bytes: Uint8Array): string | null => {
 /**
  * The passport's public metadata document, read through the configured gateway from an ipfs://
  * address and from nothing else. An http(s) or data address ends the run before any request (D8).
+ * The capability has no switch for redirects: it fails on a 3xx by itself, and any status but 200
+ * is refused below, so a redirect is never followed.
  */
 const readMetadata = (runtime: TeeRuntime<Config>, metadataURI: string, passportId: string): unknown => {
 	const url = metadataFetchUrl(runtime.config.gateway, metadataURI);

@@ -1,5 +1,8 @@
+import http from "node:http";
+import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
 import {
+  MAX_DOCUMENT_BYTES,
   describe as describeDocument,
   isRealPicture,
   isTestCard,
@@ -107,6 +110,95 @@ describe("reading the pinned document", () => {
 
   it("does not take a picture reference that is a sentence rather than an address", () => {
     expect(describeDocument({ name: "Odd record", sealed: true, image: "the picture was lost" }).sealed).toBe(true);
+  });
+});
+
+describe("fetching only pinned content (R7)", () => {
+  function counting(body: unknown): { fetcher: typeof fetch; calls: { url: string; init: RequestInit | undefined }[] } {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const fetcher = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify(body), { status: 200 });
+    }) as unknown as typeof fetch;
+    return { fetcher, calls };
+  }
+
+  it.each([
+    ["an http address", "http://example.com/metadata.json"],
+    ["an https address", "https://evil.example/metadata.json"],
+    ["a link-local address", "http://169.254.169.254/latest/meta-data"],
+    ["a loopback address", "https://127.0.0.1:8545/"],
+    ["an ipfs address with a path on it", "ipfs://bafkreimetadata/../../x"],
+  ])("refuses %s before any request is made, with a plain reason", async (_name, uri) => {
+    const { fetcher, calls } = counting({ name: "never read" });
+    const document = await readDocument(uri, GATEWAY, fetcher);
+    expect(calls).toHaveLength(0);
+    expect(document.readable).toBe(false);
+    expect(document.refused).toContain("not an IPFS content id");
+    expect(document.refused).not.toContain("://");
+  });
+
+  it("reads a good content id through the configured gateway, with redirects refused", async () => {
+    const { fetcher, calls } = counting({ name: "A lighthouse in fog" });
+    const document = await readDocument("ipfs://bafkreigood", GATEWAY, fetcher);
+    expect(document.readable).toBe(true);
+    expect(calls.map((one) => one.url)).toEqual([`${GATEWAY}bafkreigood`]);
+    expect(calls[0]?.init?.redirect).toBe("error");
+  });
+
+  it("does not follow a gateway that answers with a redirect", async () => {
+    const seen: string[] = [];
+    const server = http.createServer((request, response) => {
+      seen.push(request.url ?? "");
+      if (request.url === "/ipfs/bafkreiredirect") {
+        response.writeHead(302, { location: "/ipfs/bafkreitarget" }).end();
+        return;
+      }
+      response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ name: "followed" }));
+    });
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const document = await readDocument("ipfs://bafkreiredirect", `http://127.0.0.1:${port}/ipfs/`);
+      expect(document.readable).toBe(false);
+      expect(document.title).toBeNull();
+      expect(seen).toEqual(["/ipfs/bafkreiredirect"]);
+    } finally {
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
+  });
+
+  it("stops reading a body at the byte cap rather than holding all of it", async () => {
+    let pulled = 0;
+    const chunk = new TextEncoder().encode(`{"name":"huge","pad":"${"x".repeat(4_000)}`);
+    const endless = (async () =>
+      new Response(
+        new ReadableStream<Uint8Array>({
+          pull(controller) {
+            pulled += chunk.length;
+            controller.enqueue(chunk);
+            if (pulled > 10_000_000) {
+              controller.enqueue(new TextEncoder().encode('"}'));
+              controller.close();
+            }
+          },
+        }),
+        { status: 200 },
+      )) as unknown as typeof fetch;
+
+    const document = await readDocument("ipfs://bafkreihuge", GATEWAY, endless);
+    expect(document.readable).toBe(false);
+    expect(document.refused).toContain("byte cap");
+    expect(pulled).toBeLessThan(MAX_DOCUMENT_BYTES + 3 * chunk.length);
+  });
+
+  it("refuses a body the gateway declares too large without reading it", async () => {
+    const big = JSON.stringify({ name: "declared", pad: "x".repeat(MAX_DOCUMENT_BYTES) });
+    const declared = (async () =>
+      new Response(big, { status: 200, headers: { "content-length": String(big.length) } })) as unknown as typeof fetch;
+    const document = await readDocument("ipfs://bafkreideclared", GATEWAY, declared);
+    expect(document.readable).toBe(false);
+    expect(document.refused).toContain("byte cap");
   });
 });
 

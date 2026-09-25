@@ -71,6 +71,64 @@ export async function eventIndex(
   return at;
 }
 
+/**
+ * keccak256("VerificationAttested(bytes32,address,bool,uint16,bytes32)"), the registry's own event
+ * for a verdict it stored. Checked against the real report receipts in test/fixtures,
+ * receipt-085d8500.json (the public receiver) and receipt-dc1834ea.json (the private one).
+ */
+export const VERIFICATION_ATTESTED_TOPIC =
+  "0x6e190a7c871dff7b9619ca66f174bed2406fc12d04890052b2c4bb1e4f61fd5e";
+
+/** How often a report receipt the node has not served yet is asked for, and the wait between. */
+const RECEIPT_TRIES = 5;
+const RECEIPT_WAIT_MS = 3_000;
+
+/**
+ * Whether a report transaction put a verdict about this passport into the registry.
+ *
+ * Transaction status is not enough: Chainlink's MockKeystoneForwarder never reverts on a report its
+ * receiver refused, so that transaction succeeds and only its ReportProcessed log says false. The
+ * one thing true exactly when the verdict landed, whichever receiver and whichever forwarder
+ * carried it, is the registry's VerificationAttested log for this passport in that same receipt.
+ * A reverted transaction is false. A receipt the node never serves throws, and the caller treats
+ * that as not landed.
+ */
+export async function attestationLanded(
+  call: RpcCall,
+  txHash: string,
+  passportId: string,
+  registry: string,
+  wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+): Promise<boolean> {
+  let result: unknown = null;
+  for (let attempt = 1; attempt <= RECEIPT_TRIES; attempt++) {
+    result = await call("eth_getTransactionReceipt", [txHash]);
+    if (result !== null && typeof result === "object") {
+      break;
+    }
+    if (attempt < RECEIPT_TRIES) {
+      await wait(RECEIPT_WAIT_MS);
+    }
+  }
+  if (result === null || typeof result !== "object") {
+    throw new Error(`the node has no receipt for the report transaction ${txHash}`);
+  }
+
+  const receipt = result as { status?: string; logs?: unknown };
+  if (receipt.status === undefined || BigInt(receipt.status) !== 1n) {
+    return false;
+  }
+  const logs = Array.isArray(receipt.logs) ? (receipt.logs as ReceiptLog[]) : [];
+  return logs.some(
+    (log) =>
+      typeof log.address === "string" &&
+      log.address.toLowerCase() === registry.toLowerCase() &&
+      Array.isArray(log.topics) &&
+      (log.topics[0] ?? "").toLowerCase() === VERIFICATION_ATTESTED_TOPIC &&
+      (log.topics[1] ?? "").toLowerCase() === passportId.toLowerCase(),
+  );
+}
+
 function matches(log: ReceiptLog, passportId: string, registry: string): boolean {
   return (
     typeof log.address === "string" &&

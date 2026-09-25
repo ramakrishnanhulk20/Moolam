@@ -157,3 +157,12 @@ function idOf(row: unknown): string | null {
 export function isPassportId(value: string): boolean {
   return /^0x[0-9a-fA-F]{64}$/.test(value);
 }
+
+/**
+ * A transaction hash is 32 bytes as well, so it is held to the passport id's own predicate rather
+ * than a second pattern that could drift from it. Anything else, a flag included, never reaches
+ * the CRE CLI's argv.
+ */
+export function isTxHash(value: string): boolean {
+  return isPassportId(value);
+}

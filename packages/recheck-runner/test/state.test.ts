@@ -33,6 +33,24 @@ describe("the spend ledger on disk", () => {
     expect(loadState(file, NOON).reports).toBe(0);
   });
 
+  it("reads a day's count that is not a whole number as the cap used up, never as room to spend (R9)", () => {
+    for (const reports of ['"abc"', "-5", "1.5", "null", '"12"', "1e400"]) {
+      const file = scratch();
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      fs.writeFileSync(file, `{ "day": "2026-09-22", "reports": ${reports} }`, "utf8");
+      const state = loadState(file, NOON);
+      expect(state.reports).toBe(Number.MAX_SAFE_INTEGER);
+      expect(state.reports >= 40).toBe(true);
+    }
+  });
+
+  it("still gives the cap back on the next UTC day after a bad count", () => {
+    const file = scratch();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, '{ "day": "2026-09-21", "reports": "abc" }', "utf8");
+    expect(loadState(file, NOON).reports).toBe(0);
+  });
+
   it("writes through a temporary name, so a crash mid-write leaves the old file whole", () => {
     const file = scratch();
     saveState(file, { ...emptyState("2026-09-22"), reports: 7 });

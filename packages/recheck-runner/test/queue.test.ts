@@ -144,6 +144,12 @@ describe("the index read", () => {
     );
   });
 
+  it("drops a row whose id is not a passport id, by the queue's own predicate (R8)", () => {
+    for (const bad of ["--broadcast", "0xnope", `${ID} --broadcast`, `0x${"a".repeat(63)}`]) {
+      expect(rowsOf({ Passport: [{ id: bad, metadataURI: "ipfs://a", registeredAt: 1, txHash: `0x${"e".repeat(64)}`, attestationCount: 0 }] })).toEqual([]);
+    }
+  });
+
   it("says so when the index refuses the query instead of reading it as an empty registry", async () => {
     const { fetcher } = recorder(() => json({ errors: [{ message: "field registeredAt not found" }] }));
     await expect(indexClient("https://index.example/v1/graphql", fetcher).unrechecked(1, 5)).rejects.toThrowError(

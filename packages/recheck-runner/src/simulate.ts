@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { cut } from "./net.js";
+import { isTxHash } from "./queue.js";
 
 export interface SimulateRequest {
   /** The folder holding workflow.yaml. Its parent is the working directory the CLI is run from. */
@@ -68,12 +69,98 @@ export function redact(line: string, scrub: readonly string[] = []): string {
     .replace(ADDRESS, "[address removed]")
     .replace(BEARER, "Bearer [removed]")
     .replace(SIGNED_QUERY, "[signature removed]");
-  for (const value of scrub) {
+  // Longest first, so a value is removed whole before a shorter one inside it can split it.
+  for (const value of [...scrub].sort((left, right) => right.length - left.length)) {
     if (value !== "") {
       clean = clean.split(value).join("[removed]");
     }
   }
   return clean;
+}
+
+/**
+ * A value shorter than this is a number, a switch or a short word, never a key or a token, and
+ * scrubbing it would eat ordinary words and numbers out of every reason.
+ */
+const SHORTEST_SECRET = 8;
+
+/**
+ * Every form in which one of these values could turn up in a line, for redact to remove (R11).
+ *
+ * The value itself, and for an address also the address without its scheme, its host, and every
+ * path segment, query value, user and password of eight characters or more, which is where RPC
+ * providers put their keys. It does not cover a value shorter than eight characters, or a value
+ * printed in another encoding, such as base64 or split across two lines.
+ */
+export function scrubList(values: readonly string[]): string[] {
+  const forms = new Set<string>();
+  for (const raw of values) {
+    const value = raw.trim();
+    forms.add(value);
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) {
+      continue;
+    }
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      continue;
+    }
+    forms.add(value.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/\/+$/, ""));
+    forms.add(url.host);
+    for (const part of [...url.pathname.split("/"), ...url.searchParams.values(), url.username, url.password]) {
+      forms.add(decodeSafely(part));
+    }
+  }
+  return [...forms].filter((form) => form.length >= SHORTEST_SECRET);
+}
+
+function decodeSafely(part: string): string {
+  try {
+    return decodeURIComponent(part);
+  } catch {
+    return part;
+  }
+}
+
+/**
+ * The highest event index handed to the CLI. A registration's log sits at 0, or at 1 when it went
+ * through the ERC-4337 entry point (chain.ts), so a thousand is far past any real registration and
+ * still keeps the value a small whole number.
+ */
+export const MAX_EVENT_INDEX = 1_000;
+
+/**
+ * No leading dash, so the CLI's flag parser cannot read the value as a flag of its own, and no
+ * control character, so a line break cannot smuggle a second value into a log or a reason. Spaces
+ * are allowed: the argv goes to spawn with no shell, and a path may hold one.
+ */
+const PLAIN_ARGUMENT = /^[^-\x00-\x1f\x7f][^\x00-\x1f\x7f]*$/;
+
+/**
+ * Why this request must not reach the CLI, or null when every argv value has its shape (R8). The
+ * tx hash goes through the queue's own predicate, the event index must be a small whole number,
+ * and the target, the env file and the workflow folder's name must be plain arguments. The reason
+ * names which value failed and never repeats it.
+ */
+export function argvProblem(request: SimulateRequest): string | null {
+  if (!isTxHash(request.txHash)) {
+    return "the transaction hash is not 0x and 64 hex digits";
+  }
+  if (!Number.isSafeInteger(request.eventIndex) || request.eventIndex < 0 || request.eventIndex > MAX_EVENT_INDEX) {
+    return `the event index is not a whole number from 0 to ${MAX_EVENT_INDEX}`;
+  }
+  const plain: [string, string][] = [
+    ["target", request.target],
+    ["env file", request.envFile],
+    ["workflow folder", path.basename(path.resolve(request.workflowDir))],
+  ];
+  for (const [name, value] of plain) {
+    if (!PLAIN_ARGUMENT.test(value)) {
+      return `the ${name} is empty, starts with a dash or holds a control character`;
+    }
+  }
+  return null;
 }
 
 /**
@@ -156,6 +243,10 @@ export async function runSimulation(
   request: SimulateRequest,
   exec: Exec = spawnExec,
 ): Promise<SimulateResult> {
+  const problem = argvProblem(request);
+  if (problem !== null) {
+    return { ok: false, reason: `the simulation was not run: ${problem}`, printed: "" };
+  }
   const command = simulateCommand(request);
   const result = await exec(command, request.timeoutMs);
   const parsed = parseSimulation(result.output, request.scrub);

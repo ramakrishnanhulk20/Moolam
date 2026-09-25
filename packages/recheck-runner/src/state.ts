@@ -39,7 +39,7 @@ export function loadState(file: string, nowMs: number): RunnerState {
     return rollDay(
       {
         day: typeof parsed.day === "string" ? parsed.day : utcDay(nowMs),
-        reports: Number(parsed.reports ?? 0),
+        reports: spentCount(parsed.reports),
         failures: Number(parsed.failures ?? 0),
         backoffUntil: Number(parsed.backoffUntil ?? 0),
         recent: typeof parsed.recent === "object" && parsed.recent !== null ? { ...parsed.recent } : {},
@@ -49,6 +49,18 @@ export function loadState(file: string, nowMs: number): RunnerState {
   } catch {
     return emptyState(utcDay(nowMs));
   }
+}
+
+/**
+ * The day's count as read back from disk. Missing is a new ledger, zero. Anything else that is not
+ * a whole number from zero up reads as the cap used up until the next UTC day (R9): NaN would
+ * compare false against the cap all day, and a negative would add to it.
+ */
+function spentCount(value: unknown): number {
+  if (value === undefined) {
+    return 0;
+  }
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : Number.MAX_SAFE_INTEGER;
 }
 
 export function saveState(file: string, state: RunnerState): void {

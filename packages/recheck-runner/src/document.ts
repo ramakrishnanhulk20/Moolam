@@ -20,6 +20,12 @@ export interface Document {
    * kept. The document never changes, so this says nothing about whether the copy still exists.
    */
   privateRecheck: boolean;
+  /**
+   * Why the document was not fetched or not read, when that was the runner's own rule (R7): an
+   * address that is not pinned content, or a body over the byte cap. Names no address. Absent when
+   * the gateway simply did not answer, which may change by the next pass.
+   */
+  refused?: string;
 }
 
 /**
@@ -30,10 +36,16 @@ export interface Document {
  */
 const TEST_TITLE = /^moolam (seed|prove-it|privy proof)\b/i;
 
-const IPFS_SCHEME = "ipfs://";
 const JSON_DATA_URI = "data:application/json,";
 const TIMEOUT_MS = 10_000;
 const PASSPORT_ID = /^0x[0-9a-f]{64}$/;
+
+/**
+ * The same cap as packages/workflow/moolam-verifier/pinned.ts. A Moolam metadata document is under
+ * 2 KB (the prove-it passport's is 875 bytes), so this only stops a document registered outside
+ * Moolam from making the runner hold something large.
+ */
+export const MAX_DOCUMENT_BYTES = 32_000;
 
 /**
  * What the verify service's GET /unseal/{passportId} said. "failed" is kept apart from "none" on
@@ -66,8 +78,11 @@ export function isRealPicture(document: Document): boolean {
  * One passport's pinned document.
  *
  * A passport either names a JSON file on IPFS or carries the document inline as a data URI, and
- * both are read, because this has to work with whatever the creator's app wrote on chain. A
- * gateway that says nothing leaves `readable` false, which keeps the passport out of the sweep
+ * both are read, because this has to work with whatever the creator's app wrote on chain. The
+ * inline one makes no request at all. A fetched one is `ipfs://<cid>` through the configured
+ * gateway and nothing else: an http(s) address a registrant wrote is refused before any request,
+ * a redirect is an error rather than followed, and the body is read no further than the byte cap.
+ * A gateway that says nothing leaves `readable` false, which keeps the passport out of the sweep
  * this pass instead of spending a report on a record nobody can check.
  */
 export async function readDocument(
@@ -87,14 +102,18 @@ export async function readDocument(
   } else {
     const url = fetchUrl(gateway, metadataURI);
     if (url === null) {
-      return unreadable;
+      return { ...unreadable, refused: "its metadata address is not an IPFS content id, so the runner does not fetch it" };
     }
     try {
-      const response = await fetcher(url, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+      const response = await fetcher(url, { redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!response.ok) {
         return unreadable;
       }
-      text = await response.text();
+      const body = await cappedText(response, MAX_DOCUMENT_BYTES);
+      if (body === null) {
+        return { ...unreadable, refused: `its metadata document is over the ${MAX_DOCUMENT_BYTES} byte cap` };
+      }
+      text = body;
     } catch {
       return unreadable;
     }
@@ -223,16 +242,76 @@ export async function readUnsealRecord(
   return passportKey(named) === id ? { kind: "found" } : { kind: "mismatch" };
 }
 
+/**
+ * Whether the document names a picture at all. Deliberately wider than pinnedContentId: this only
+ * decides sealed or published, as the passport page reads it, and fetches nothing. Whether the
+ * picture is pinned content is the workflow's rule, applied before it fetches.
+ */
 function uriOf(value: unknown): string | null {
   return typeof value === "string" && /^(ipfs:\/\/|https?:\/\/)/.test(value) ? value : null;
 }
 
+/**
+ * The content id in `ipfs://<cid>`, or null for anything else.
+ *
+ * A byte for byte copy of the workflows' predicate in packages/workflow/moolam-verifier/pinned.ts,
+ * held to it by test/workflow-picture.test.ts, so the runner and both workflows refuse exactly the
+ * same addresses. It is copied rather than imported because that file lives outside this package's
+ * build. What it covers and what it does not is written beside the original.
+ */
+export function pinnedContentId(reference: unknown): string | null {
+  if (typeof reference !== "string" || !reference.startsWith("ipfs://")) {
+    return null;
+  }
+  const cid = reference.slice("ipfs://".length);
+  return /^[A-Za-z0-9]+$/.test(cid) ? cid : null;
+}
+
+/** The gateway URL for `ipfs://<cid>`, or null for every other address, http(s) included. */
 export function fetchUrl(gateway: string, reference: string): string | null {
-  if (reference.startsWith("https://") || reference.startsWith("http://")) {
-    return reference;
+  const cid = pinnedContentId(reference);
+  if (cid === null) {
+    return null;
   }
-  if (reference.startsWith(IPFS_SCHEME)) {
-    return `${gateway}${reference.slice(IPFS_SCHEME.length)}`;
+  return `${gateway.endsWith("/") ? gateway : `${gateway}/`}${cid}`;
+}
+
+/**
+ * The body as text, or null when it is longer than `cap` bytes. A declared length over the cap is
+ * refused without reading, and otherwise reading stops at the first chunk past the cap, so a body
+ * that lies about its length or never ends is never held whole.
+ */
+export async function cappedText(response: Response, cap: number): Promise<string | null> {
+  const declared = Number(response.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > cap) {
+    await response.body?.cancel();
+    return null;
   }
-  return null;
+  if (response.body === null) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    length += value.byteLength;
+    if (length > cap) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(length);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
 }

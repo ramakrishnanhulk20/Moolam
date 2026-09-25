@@ -1,14 +1,18 @@
 /**
  * What the sealed workflow accepts, decided without any network so it can be tested outside the
- * sandbox. No imports on purpose: packages/recheck-runner/test/sealed-private-copy.test.ts loads
- * this file directly under Node, where the CRE SDK does not load.
+ * sandbox. Its only import is the public workflow's pinned.ts, which imports nothing, so
+ * packages/recheck-runner/test/sealed-private-copy.test.ts can still load this file under Node,
+ * where the CRE SDK does not load.
  *
  * Every refusal here names a status, a size or the passport id, and never a URL or a token. The
  * CLI prints a thrown error, the runner copies it into a reason, and the verify service serves that
  * reason on a public route, so a link or a token in one of these strings would be published.
  */
 
-const IPFS_SCHEME = "ipfs://";
+import { MAX_DOCUMENT_BYTES, pinnedFetchUrl } from "../moolam-verifier/pinned";
+
+export { MAX_DOCUMENT_BYTES };
+
 const HTTPS_SCHEME = "https://";
 
 /**
@@ -17,17 +21,8 @@ const HTTPS_SCHEME = "https://";
  */
 export const MAX_PRIVATE_FILE_BYTES = 60_000;
 
-/**
- * A Moolam metadata document is under 2 KB. The cap only stops a document registered outside
- * Moolam from making the enclave parse something large.
- */
-export const MAX_DOCUMENT_BYTES = 32_000;
-
 /** Longer than any signed link Pinata writes, and short enough that a pasted page is refused. */
 const MAX_LINK_LENGTH = 2_048;
-
-/** A content id and nothing else, the rule picture.ts applies to an unseal record's thumbnail. */
-const CONTENT_ID = /^[A-Za-z0-9]+$/;
 
 /**
  * A host name in lower case with at least one dot: letters, digits and hyphens between the dots.
@@ -68,17 +63,14 @@ export function privatelyRecheckable(document: unknown): boolean {
 /**
  * Where the passport's metadata document is read from, or null when it is not read at all.
  *
- * Only `ipfs://` followed by a content id and nothing else is accepted, and the address is always
- * built on the configured gateway. An http(s) address, a data URI, a path or a query after the
- * content id, or anything else a creator could write on chain is refused, so the enclave never
- * fetches an address somebody else chose.
+ * The one rule both workflows and the runner share, pinnedFetchUrl in
+ * packages/workflow/moolam-verifier/pinned.ts: only `ipfs://` followed by a content id and nothing
+ * else, always built on the configured gateway. An http(s) address, a data URI, a path or a query
+ * after the content id, or anything else a creator could write on chain is refused, so the enclave
+ * never fetches an address somebody else chose.
  */
-export const metadataFetchUrl = (gateway: string, metadataURI: string): string | null => {
-  if (!metadataURI.startsWith(IPFS_SCHEME)) return null;
-  const cid = metadataURI.slice(IPFS_SCHEME.length);
-  if (!CONTENT_ID.test(cid)) return null;
-  return `${gateway.endsWith("/") ? gateway : `${gateway}/`}${cid}`;
-};
+export const metadataFetchUrl = (gateway: string, metadataURI: string): string | null =>
+  pinnedFetchUrl(gateway, metadataURI);
 
 /**
  * The link, when it is https on exactly the configured private gateway host, or null.

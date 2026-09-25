@@ -73,6 +73,63 @@ describe("the command the runner builds", () => {
   });
 });
 
+describe("the shape of every value handed to the CLI (R8)", () => {
+  const malformed: [string, Partial<SimulateRequest>][] = [
+    ["a flag in place of the tx hash", { txHash: "--broadcast" }],
+    ["a short tx hash", { txHash: "0x40ae6d62" }],
+    ["a tx hash with a flag after it", { txHash: `${request.txHash} --broadcast` }],
+    ["a tx hash with no 0x", { txHash: request.txHash.slice(2) }],
+    ["a negative event index", { eventIndex: -1 }],
+    ["a fractional event index", { eventIndex: 1.5 }],
+    ["an event index that is not a number", { eventIndex: Number.NaN }],
+    ["an event index no transaction has", { eventIndex: 1_000_000 }],
+    ["a flag as the target", { target: "--broadcast" }],
+    ["a flag as the env file", { envFile: "--broadcast" }],
+    ["a line break in the env file", { envFile: "/etc/moolam/runner.env\n--broadcast" }],
+    ["a workflow folder named like a flag", { workflowDir: "/srv/moolam/packages/workflow/--broadcast" }],
+  ];
+
+  it.each(malformed)("refuses %s without starting the CLI", async (_name, change) => {
+    let started = false;
+    const result = await runSimulation({ ...request, broadcast: false, ...change }, async () => {
+      started = true;
+      return { output: DRY_RUN, code: 0, timedOut: false };
+    });
+    expect(started).toBe(false);
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("was not run");
+  });
+
+  it("still starts the CLI for well formed values", async () => {
+    let started = false;
+    const result = await runSimulation({ ...request, broadcast: false, eventIndex: 1 }, async () => {
+      started = true;
+      return { output: DRY_RUN, code: 0, timedOut: false };
+    });
+    expect(started).toBe(true);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe("the gas limit every report is sent with", () => {
+  // The mock forwarder calls the receiver with whatever gas is left, so a limit estimated by the
+  // node starves the receiver and the report is refused inside a transaction that still succeeds.
+  // The real reports 0x085d8500... and 0xdc1834ea... were both sent with a limit of exactly
+  // 1,000,000. The CLI's simulate command has no flag that changes it, and the runner adds none.
+  it.each(["moolam-verifier", "moolam-sealed-verifier"])("is written into %s as an explicit 1,000,000 on every write", (folder) => {
+    const source = fs.readFileSync(path.resolve(HERE, "../../workflow", folder, "workflow.ts"), "utf8");
+    expect(source).toContain('const GAS_LIMIT = "1000000";');
+    const writes = source.split(".writeReport(").length - 1;
+    expect(writes).toBeGreaterThan(0);
+    expect(source.split("gasConfig: { gasLimit: GAS_LIMIT }").length - 1).toBe(writes);
+  });
+
+  it("is never replaced by anything on the command line the runner builds", () => {
+    const command = simulateCommand(request);
+    expect(command.args.join(" ")).not.toMatch(/gas|estimate/i);
+  });
+});
+
 describe("reading what the simulator printed", () => {
   it("takes the report transaction and the verdict out of a broadcast run", () => {
     const parsed = parseSimulation(BROADCAST);

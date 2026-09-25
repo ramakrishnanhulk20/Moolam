@@ -1,8 +1,11 @@
 // Holds the CRE workflow's picture choice, packages/workflow/moolam-verifier/picture.ts, to the
-// unseal record's real shape. Does NOT cover the HTTP call that fetches the record, the sandbox's
+// unseal record's real shape, and both workflows' fetch rule, pinned.ts, to R7. Does NOT cover the
+// HTTP capability refusing a redirect by itself (Chainlink's documented behaviour, not ours), the
+// HTTP call that fetches the record, the sandbox's
 // own limits, or the fingerprint of the picture fetched: those run only inside the simulator, and
 // the Old but strong run against the live passport in proofs/rechecks.txt is their proof.
 
+import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -25,11 +28,22 @@ interface PictureModule {
 // project outside this one's rootDir, so this project's compiler must not follow it, while vitest
 // runs the file as it is.
 const PICTURE_FILE = path.resolve(import.meta.dirname, "../../workflow/moolam-verifier/picture.ts");
+const PINNED_FILE = path.resolve(import.meta.dirname, "../../workflow/moolam-verifier/pinned.ts");
+const RUNNER_DOCUMENT_FILE = path.resolve(import.meta.dirname, "../src/document.ts");
+
+interface PinnedModule {
+  MAX_DOCUMENT_BYTES: number;
+  MAX_PICTURE_BYTES: number;
+  pinnedFetchUrl: (gateway: string, reference: unknown) => string | null;
+  pinnedBodyRefusal: (what: string, status: number, length: number, cap: number) => string | null;
+}
 
 let choosePicture: PictureModule["choosePicture"];
+let pinned: PinnedModule;
 
 beforeAll(async () => {
   ({ choosePicture } = (await import(pathToFileURL(PICTURE_FILE).href)) as PictureModule);
+  pinned = (await import(pathToFileURL(PINNED_FILE).href)) as PinnedModule;
 });
 
 const GATEWAY = "https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/";
@@ -57,6 +71,68 @@ function recordBody(extra: Record<string, unknown> = {}): string {
 function reasonOf(choice: PictureChoice): string {
   return choice.kind === "refused" ? choice.reason : "";
 }
+
+describe("the workflows fetch only pinned content (R7)", () => {
+  const PUBLIC = { name: "Public" };
+
+  it.each([
+    ["an http thumbnail", { thumbnail: "http://example.com/thumb.jpg" }],
+    ["an https thumbnail", { thumbnail: "https://evil.example/thumb.jpg" }],
+    ["a link-local image", { image: "http://169.254.169.254/latest/meta-data" }],
+    ["a thumbnail with a path after the id", { thumbnail: `ipfs://${THUMB}/../x` }],
+    ["a bare id with no scheme", { thumbnail: THUMB }],
+  ])("refuses %s named by the document, naming no address", (_name, picture) => {
+    const choice = choosePicture({ ...PUBLIC, ...picture }, PASSPORT, GATEWAY);
+    expect(choice.kind).toBe("refused");
+    expect(reasonOf(choice)).toContain("not an IPFS content id");
+    expect(reasonOf(choice)).toContain(PASSPORT);
+    expect(reasonOf(choice)).not.toContain("://");
+  });
+
+  it("fetches a document's ipfs:// thumbnail through the configured gateway", () => {
+    expect(choosePicture({ ...PUBLIC, thumbnail: `ipfs://${THUMB}` }, PASSPORT, GATEWAY)).toEqual({
+      kind: "fetch",
+      url: `${GATEWAY}${THUMB}`,
+      reference: `ipfs://${THUMB}`,
+      source: "document",
+    });
+  });
+
+  it("builds a gateway URL for ipfs://<cid> and for nothing else", () => {
+    expect(pinned.pinnedFetchUrl(GATEWAY, `ipfs://${THUMB}`)).toBe(`${GATEWAY}${THUMB}`);
+    expect(pinned.pinnedFetchUrl(GATEWAY.slice(0, -1), `ipfs://${THUMB}`)).toBe(`${GATEWAY}${THUMB}`);
+    for (const reference of [
+      "https://evil.example/metadata.json",
+      "http://169.254.169.254/latest",
+      `data:application/json,${encodeURIComponent("{}")}`,
+      `ipfs://${THUMB}?x=1`,
+      `ipfs://${THUMB}@evil.example`,
+      "IPFS://bafkrei",
+      "ipfs://",
+      "",
+      42,
+    ]) {
+      expect(pinned.pinnedFetchUrl(GATEWAY, reference)).toBeNull();
+    }
+  });
+
+  it("refuses a redirect status and an over-cap body before a byte is parsed", () => {
+    expect(pinned.pinnedBodyRefusal("thumbnail", 302, 0, pinned.MAX_PICTURE_BYTES)).toContain("status 302");
+    expect(pinned.pinnedBodyRefusal("thumbnail", 200, 60_001, pinned.MAX_PICTURE_BYTES)).toContain("over the 60000 byte cap");
+    expect(pinned.pinnedBodyRefusal("metadata", 200, 32_001, pinned.MAX_DOCUMENT_BYTES)).toContain("over the 32000 byte cap");
+    expect(pinned.pinnedBodyRefusal("thumbnail", 200, 23_800, pinned.MAX_PICTURE_BYTES)).toBeNull();
+  });
+
+  it("is one predicate: the runner's copy is the workflow's text byte for byte", () => {
+    const text = (file: string): string => {
+      const source = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+      const start = source.indexOf("export function pinnedContentId(");
+      expect(start).toBeGreaterThan(-1);
+      return source.slice(start, source.indexOf("\n}\n", start) + 2);
+    };
+    expect(text(RUNNER_DOCUMENT_FILE)).toBe(text(PINNED_FILE));
+  });
+});
 
 describe("the workflow's picture for an unsealed passport", () => {
   it("asks for the record only when the document is sealed and names no picture", () => {
