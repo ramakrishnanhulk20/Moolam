@@ -1,8 +1,8 @@
 import { Link } from "@/lib/i18n/routing";
-import { Board } from "./Board";
+import { Board } from "@/components/home/Board";
 import { Poster } from "./Poster";
-import type { Drawing } from "./finding";
-import type { FirstScreenData } from "./read";
+import type { Drawing } from "./drawing";
+import type { FirstScreenData } from "@/components/home/read";
 import { WORDS } from "./words";
 
 const NAMES: Record<Drawing, string> = { a: "The poster", b: "The evidence board" };

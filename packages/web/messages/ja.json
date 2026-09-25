@@ -20,7 +20,7 @@
     "title": "Moolam",
     "description": "AI が作ったすべての画像にパスポートを。生まれたその瞬間に Monad へ登録され、再エンコードされたどのコピーからでも検証できます。",
     "titleTemplate": "%s | Moolam",
-    "home": "AI が作った画像は、生まれたその瞬間に Monad 上でパスポートを受け取ります。縮小されても再エンコードされても、どのコピーからでも元の記録にたどり着けます。"
+    "home": "Monad 上のパスポートは、誰が画像を作り、どのエージェントが描き、AI がどう使ってよいかを示します。メタデータを消しても、縮小しても、スクリーンショットにしても、パスポートは見つけ出します。"
   },
   "header": {
     "brand": "Moolam",
@@ -222,6 +222,43 @@
       "credit": "作るか、確かめるか",
       "generate": "画像を生成",
       "verify": "コピーを検証"
+    },
+    "first": {
+      "headline": "AI 画像の出どころを、",
+      "headlineTail": "どのコピーからでも証明する。",
+      "line": "Monad 上のパスポートは、誰が画像を作り、どのエージェントが描き、AI がどう使ってよいかを示します。メタデータを消しても、縮小しても、スクリーンショットにしても、パスポートは見つけ出します。",
+      "drop": "どんなコピーでもドロップ",
+      "dropping": "離すと確認します",
+      "hint": "JPEG、PNG、WebP。手元に画像がなければ、下の本物のパスポートを押してください。",
+      "samples": "Monad 上の本物のパスポート",
+      "again": "別の画像を確認",
+      "make": "自分で作る",
+      "makeNote": "自分の画像を登録。無料、パスキーで。",
+      "live": "ライブの検証結果、このページを描いた時点で読み取り",
+      "exhibit": "証拠 {mark}",
+      "registered": "Monad に登録、{date}",
+      "copied": "{date} にトリミング、色変更、再エンコード：{size} KB",
+      "copyAlt": "登録画像をトリミング、色変更、再エンコードしたコピー",
+      "pictureAlt": "登録された画像",
+      "printRegistry": "レジストリにある指紋",
+      "printCopy": "検証サービスがコピーから読んだ指紋",
+      "verdictFigure": "64 ビット中 {count}",
+      "verdictSame": "ビットの差：同じ画像です。",
+      "verdictMissed": "ビットの差。検証サービスは見つけられませんでした。",
+      "recheckOn": "{date} に Chainlink が再検証：",
+      "recheckMissed": "一致せず、{bits}",
+      "chainlink": "Chainlink：",
+      "recheckNone": "このパスポートにはまだ再検証が書かれていません",
+      "statedOn": "AI 利用についての保有者の表明、{date}：",
+      "aiUse": "AI 利用：",
+      "openPassport": "パスポートを開く：{title}",
+      "stop": "。",
+      "billing": {
+        "monad": "Monad メインネット上",
+        "privy": "Privy のパスキー",
+        "chainlink": "Chainlink が再検証",
+        "envio": "Envio がインデックス"
+      }
     }
   },
   "story": {

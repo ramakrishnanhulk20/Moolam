@@ -1,5 +1,6 @@
-import { createElement } from "react";
+import { createElement, type FunctionComponent, type ReactNode } from "react";
 import { renderToString } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
@@ -17,7 +18,7 @@ import en from "@/messages/en.json";
 
 const stub = vi.hoisted(() => ({ data: vi.fn() }));
 
-vi.mock("@/components/lab/first-screen/read", () => ({ firstScreenData: stub.data }));
+vi.mock("@/components/home/read", () => ({ firstScreenData: stub.data }));
 
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: unknown; className?: string }) =>
@@ -40,8 +41,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
 
 const { default: FirstScreenLabPage } = await import("@/app/[locale]/lab/first-screen/page");
-const { WORDS, SUMMARIES, BILLING } = await import("@/components/lab/first-screen/words");
-const { chainlinkRecheck, copyVerdict, drawingAsked, FINDING_ID } = await import("@/components/lab/first-screen/finding");
+const { WORDS, SUMMARIES } = await import("@/components/lab/first-screen/words");
+const { chainlinkRecheck, copyVerdict, FINDING_ID } = await import("@/components/home/finding");
+const { drawingAsked } = await import("@/components/lab/first-screen/drawing");
 const { copyLine, recheckLine, statementLine } = await import("@/components/lab/first-screen/lines");
 
 const RECEIVER = "0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04" as Hex;
@@ -80,8 +82,18 @@ async function drawn(search: Record<string, string> = {}): Promise<string> {
     params: Promise.resolve({ locale: "en" }),
     searchParams: Promise.resolve(search),
   });
-  return renderToString(page);
+  const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
+    locale: string;
+    messages: unknown;
+    timeZone: string;
+    children: ReactNode;
+  }>;
+  return renderToString(createElement(Provider, { locale: "en", messages: en, timeZone: "UTC" }, page));
 }
+
+/** The first screen's own words, which both drawings share with the home page. */
+const FIRST = en.home.first;
+const BILLING = Object.values(FIRST.billing);
 
 /** The text of the markup with the tags taken out, so a sentence split across elements still reads whole. */
 function text(html: string): string {
@@ -107,11 +119,11 @@ describe("the words a stranger reads before any script", () => {
     it(`are in drawing ${drawing}'s server markup: the headline, the line and the action`, async () => {
       const words = text(await drawn({ d: drawing }));
 
-      expect(words).toContain(`${WORDS.headline} ${WORDS.headlineTail}`);
-      expect(words).toContain(WORDS.line);
-      expect(words).toContain(WORDS.drop);
+      expect(words).toContain(`${FIRST.headline} ${FIRST.headlineTail}`);
+      expect(words).toContain(FIRST.line);
+      expect(words).toContain(FIRST.drop);
       expect(words).toContain("Ant and Elephants");
-      expect(words).toContain(WORDS.make);
+      expect(words).toContain(FIRST.make);
       for (const credit of BILLING) {
         expect(words).toContain(credit);
       }
@@ -223,7 +235,7 @@ describe("the rules every figure is read by", () => {
   });
 
   it("keeps the line under thirty words and every word on the bench free of long dashes", () => {
-    expect(WORDS.line.split(/\s+/).length).toBeLessThan(30);
-    expect(JSON.stringify([WORDS, SUMMARIES, BILLING])).not.toContain(LONG_DASH);
+    expect(FIRST.line.split(/\s+/).length).toBeLessThan(30);
+    expect(JSON.stringify([WORDS, SUMMARIES, FIRST])).not.toContain(LONG_DASH);
   });
 });

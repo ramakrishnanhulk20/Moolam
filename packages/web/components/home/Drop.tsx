@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
 import { AnswerCard, type Stage } from "@/components/verify/AnswerCard";
 import { chosenProblem, readAnswer, verifyProblem } from "@/components/verify/answer";
@@ -10,7 +11,6 @@ import { shortHex } from "@/lib/chain/client";
 import { pictureSources } from "@/lib/images";
 import type { TrySample } from "@/lib/data/samples";
 import { verify } from "@/lib/verifier/client";
-import { WORDS } from "./words";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -29,6 +29,7 @@ const ACCEPT = "image/jpeg,image/png,image/webp";
  * phone reads them before it can press them.
  */
 export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" | "board" }) {
+  const t = useTranslations("home.first");
   const input = useRef<HTMLInputElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const [over, setOver] = useState(false);
@@ -146,7 +147,7 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
           disabled={busy}
           className="mt-3 inline-flex h-11 items-center rounded-[8px] border border-line-strong px-5 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
         >
-          {WORDS.again}
+          {t("again")}
         </button>
       )}
 
@@ -157,6 +158,17 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
 
 /** The drop target, framed as a film still: four corner marks, a slate line, the one sentence. */
 function Still({ over, look, onChoose }: { over: boolean; look: "poster" | "board"; onChoose: () => void }) {
+  const t = useTranslations("home.first");
+  const verify = useTranslations("verify");
+  // Tamil letters carry marks above and below the line, so the display face's
+  // tight Latin leading makes two lines of them touch.
+  // Tamil's words are also two or three Latin zeros wide, so it takes a wider
+  // measure at a smaller size.
+  const tamil = useLocale() === "ta";
+  const type = tamil
+    ? "max-w-[18ch] text-[clamp(1.3rem,1.9vw,1.75rem)] leading-[1.2]"
+    : "max-w-[13ch] text-[clamp(1.55rem,2.5vw,2.3rem)] leading-[1]";
+
   return (
     <div
       className={`grain group/still relative overflow-hidden border transition-colors duration-300 ${
@@ -165,7 +177,7 @@ function Still({ over, look, onChoose }: { over: boolean; look: "poster" | "boar
     >
       <Corners />
       <div
-        className={`relative flex gap-5 p-6 sm:p-7 ${
+        className={`relative flex gap-5 p-6 sm:p-7 lg:p-6 ${
           look === "board" ? "flex-col sm:flex-row sm:items-end sm:justify-between" : "flex-col"
         }`}
       >
@@ -173,12 +185,12 @@ function Still({ over, look, onChoose }: { over: boolean; look: "poster" | "boar
           <p className="flex items-center justify-between gap-6 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
             <span className="flex items-center gap-2">
               <span aria-hidden className={`h-1.5 w-1.5 bg-accent ${over ? "" : "animate-pulse"}`} />
-              Verify
+              {verify("rail")}
             </span>
             {look === "poster" ? <span>Still 01</span> : null}
           </p>
-          <p className="mt-4 max-w-[13ch] font-display text-[clamp(1.55rem,2.5vw,2.3rem)] font-semibold leading-[1] tracking-[-0.035em]">
-            {over ? WORDS.dropping : WORDS.drop}
+          <p className={`mt-4 font-display font-semibold tracking-[-0.035em] ${type}`}>
+            {over ? t("dropping") : t("drop")}
           </p>
         </div>
         <div className="flex flex-col items-start gap-3">
@@ -187,9 +199,9 @@ function Still({ over, look, onChoose }: { over: boolean; look: "poster" | "boar
             onClick={onChoose}
             className="inline-flex h-11 items-center rounded-[8px] bg-accent px-6 text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
           >
-            {WORDS.choose}
+            {verify("choose")}
           </button>
-          <p className="max-w-[34ch] text-xs leading-relaxed text-text-muted">{WORDS.hint}</p>
+          <p className="max-w-[34ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
         </div>
       </div>
     </div>
@@ -227,6 +239,9 @@ function Strip({
   pressed: string | null;
   onPick: (sample: TrySample) => void;
 }) {
+  const t = useTranslations("home.first");
+  const verify = useTranslations("verify");
+
   if (samples.length === 0) {
     return null;
   }
@@ -235,11 +250,11 @@ function Strip({
     <div data-first-samples className="mt-4">
       <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
         <span className="motif h-[8px] w-[8px]" />
-        {WORDS.samples}
+        {t("samples")}
       </p>
       <ul
         className={`mt-3 grid grid-cols-3 gap-2 ${
-          look === "poster" ? "border-y border-line-strong bg-bg/55 px-2 py-2 backdrop-blur-md" : "max-w-[27rem] sm:gap-3"
+          look === "poster" ? "border-y border-line-strong bg-bg/55 px-2 py-2 backdrop-blur-md" : "max-w-[27rem] sm:gap-3 lg:max-w-[24rem]"
         }`}
       >
         {samples.map((sample, index) => {
@@ -265,11 +280,11 @@ function Strip({
                   {checking ? (
                     <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-bg/80 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.2em] text-accent">
                       <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent" />
-                      Checking
+                      {verify("busy")}
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-1.5 line-clamp-2 block text-[11px] leading-snug text-text-muted transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent sm:text-xs">
+                <span className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-text-muted transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent sm:text-xs">
                   {name}
                 </span>
               </button>

@@ -3,16 +3,13 @@ import type { Statement } from "@/lib/chain/consent";
 import { bitsApart } from "@/lib/chain/fingerprint";
 
 /**
- * The shapes the first screen bench draws, and the few rules it reads them by.
+ * The shapes the home page's first screen draws, and the few rules it reads them by.
  *
  * Nothing here talks to a network, so the tests can hold every rule without a
  * chain, an index or the verify service. The reads themselves are in read.ts.
  */
 
-/** Which of the two drawings is on the bench. */
-export type Drawing = "a" | "b";
-
-/** The film's own passport. Its page, its re-check and its statement are what both drawings quote. */
+/** The film's own passport. Its page, its re-check and its statement are what the first screen quotes. */
 export const FINDING_ID = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex;
 
 /**
@@ -33,7 +30,7 @@ export const COPY_RECIPE = {
   quality: 16,
 } as const;
 
-/** The passport both drawings are about, as the registry, the index and the register answered. */
+/** The passport the first screen is about, as the registry, the index and the register answered. */
 export interface Finding {
   id: Hex;
   title: string | null;
@@ -58,6 +55,19 @@ export interface FindingRecheck {
   distance: number;
   /** Whole seconds, from the attestation itself. */
   at: number;
+}
+
+/**
+ * What can still be shown about the passport when its registry record could
+ * not be read: the picture and its name, through the index's copy of the
+ * document address and the gateway, and the holder's statement, which lives in
+ * a separate register. Any of the three can be missing on its own.
+ */
+export interface LooseFinding {
+  id: Hex;
+  title: string | null;
+  thumbnail: string | null;
+  statement: Finding["statement"];
 }
 
 /** The mangled copy and what the verify service said about it. */
@@ -85,12 +95,7 @@ export function isRead<T>(value: Read<T>): value is { read: T } {
   return "read" in value;
 }
 
-/** The drawing asked for in the address. Anything but b opens the poster. */
-export function drawingAsked(value: string | string[] | undefined): Drawing {
-  return value === "b" ? "b" : "a";
-}
-
-/** One attestation as the registry returns it, with the fields this bench reads. */
+/** One attestation as the registry returns it, with the fields the first screen reads. */
 export interface AttestationRow {
   receiver: Hex;
   matched: boolean;
@@ -119,7 +124,7 @@ export function chainlinkRecheck(rows: readonly AttestationRow[], receivers: rea
   return newest === null ? null : { matched: newest.matched, distance: newest.distance, at: Number(newest.at) };
 }
 
-/** What the verify service said about the copy, with the fields this bench reads. */
+/** What the verify service said about the copy, with the fields the first screen reads. */
 export interface CopyAnswer {
   exact: string | null;
   best: { id: string; phashDistance: number } | null;

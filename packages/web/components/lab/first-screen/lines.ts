@@ -1,4 +1,4 @@
-import { isRead, type CopyReading, type Finding, type Read } from "./finding";
+import { isRead, type CopyReading, type Finding, type Read } from "@/components/home/finding";
 
 /** One sentence of the finding: the lead in quiet ink and the fact in bright. */
 export interface Line {

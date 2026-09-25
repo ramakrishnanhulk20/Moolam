@@ -18,7 +18,7 @@
     "title": "Moolam",
     "description": "Ein Pass für jedes KI-Bild, im Moment seiner Entstehung auf Monad eingetragen und aus jeder neu kodierten Kopie prüfbar.",
     "titleTemplate": "%s | Moolam",
-    "home": "Jedes KI-Bild bekommt im Moment seiner Entstehung einen Pass auf Monad, sodass auch jede verkleinerte oder neu kodierte Kopie dorthin zurückführt."
+    "home": "Ein Pass auf Monad sagt, wer ein Bild machte, welcher Agent es zeichnete, wie KI es nutzen darf. Ohne Metadaten, verkleinert, als Screenshot: Er findet es."
   },
   "header": {
     "brand": "Moolam",
@@ -220,6 +220,43 @@
       "credit": "Eine erzeugen, oder eine prüfen",
       "generate": "Bild erzeugen",
       "verify": "Kopie prüfen"
+    },
+    "first": {
+      "headline": "Beweise, woher ein KI-Bild stammt,",
+      "headlineTail": "aus jeder Kopie.",
+      "line": "Ein Pass auf Monad sagt, wer ein Bild machte, welcher Agent es zeichnete, wie KI es nutzen darf. Ohne Metadaten, verkleinert, als Screenshot: Er findet es.",
+      "drop": "Beliebige Kopie ablegen",
+      "dropping": "Loslassen zum Prüfen",
+      "hint": "JPEG, PNG oder WebP. Kein Bild zur Hand? Drück auf einen dieser echten Pässe.",
+      "samples": "Echte Pässe auf Monad",
+      "again": "Noch eins prüfen",
+      "make": "Einen erstellen",
+      "makeNote": "Registriere dein eigenes Bild. Kostenlos, mit einem Passkey.",
+      "live": "Live-Befund, gelesen, als diese Seite gezeichnet wurde",
+      "exhibit": "Beweisstück {mark}",
+      "registered": "Auf Monad registriert, {date}",
+      "copied": "Am {date} beschnitten, umgefärbt, neu kodiert: {size} KB",
+      "copyAlt": "Eine beschnittene, umgefärbte, neu kodierte Kopie des registrierten Bildes",
+      "pictureAlt": "Das registrierte Bild",
+      "printRegistry": "Fingerabdruck im Register",
+      "printCopy": "Fingerabdruck aus der Kopie",
+      "verdictFigure": "{count} von 64",
+      "verdictSame": "Bit Unterschied: dasselbe Bild.",
+      "verdictMissed": "Bit Unterschied, und der Prüfdienst hat es nicht gefunden.",
+      "recheckOn": "Von Chainlink nachgeprüft am {date}:",
+      "recheckMissed": "kein Treffer, {bits}",
+      "chainlink": "Chainlink:",
+      "recheckNone": "für diesen Pass noch keine Nachprüfung geschrieben",
+      "statedOn": "Die Erklärung des Halters zur KI-Nutzung, {date}:",
+      "aiUse": "KI-Nutzung:",
+      "openPassport": "Pass öffnen: {title}",
+      "stop": ".",
+      "billing": {
+        "monad": "Auf Monad Mainnet",
+        "privy": "Passkeys von Privy",
+        "chainlink": "Nachgeprüft von Chainlink",
+        "envio": "Indexiert von Envio"
+      }
     }
   },
   "story": {

@@ -4,7 +4,17 @@ import { AdaptiveDpr, Preload, ScrollControls, useScroll } from "@react-three/dr
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { Component, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import {
+  Component,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
 import { fieldPictures } from "@/components/story/scene/order";
@@ -16,6 +26,7 @@ import { TryPanel } from "@/components/story/TryPanel";
 import { pickSamples } from "@/lib/data/samples";
 import {
   film,
+  filmPlace,
   forwardTouchMove,
   forwardTouchStart,
   forwardWheel,
@@ -160,7 +171,9 @@ function World({
           top: el.scrollTop,
           max: el.scrollHeight - el.clientHeight,
           height: window.innerHeight,
-          pageTop: window.scrollY,
+          pageTop: Math.max(0, -film.top),
+          above: film.past && film.top > 1 ? film.top : 0,
+          lead: film.lead,
         },
         // One press is one beat of the cut being played, not of some other one.
         table.pages,
@@ -649,9 +662,13 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
       return;
     }
     carried.current = null;
+    // The still page starts under the home page's first screen, so the point in
+    // the story is measured from its own top rather than from the page's.
     const frame = requestAnimationFrame(() => {
+      const page = document.querySelector<HTMLElement>('[data-story="still"]');
+      const lead = page === null ? 0 : page.getBoundingClientRect().top + window.scrollY;
       const room = document.documentElement.scrollHeight - window.innerHeight;
-      window.scrollTo({ top: Math.max(0, room * at), behavior: "auto" });
+      window.scrollTo({ top: Math.max(0, lead + (room - lead) * at), behavior: "auto" });
     });
     return () => cancelAnimationFrame(frame);
   }, [still]);
@@ -673,6 +690,8 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   const samples = useMemo(() => pickSamples(data.plates), [data.plates]);
 
   const credential = data.focal === null ? "c2pa manifest" : `c2pa ${shortHex(data.focal.creator, 6, 4)}`;
+
+  const stage = useRef<HTMLDivElement>(null);
 
   // Runs the story to its last beat, waits for the footer that arrives with it,
   // and leaves the reader standing on it. The wait is the point: the footer is
@@ -711,7 +730,11 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
           are on this wrapper rather than on each pinned panel: the scene's own
           scroll element is only as big as the shot, so a gesture anywhere else
           on the screen has to be carried to it from here. */}
+      <style href="moolam-film-in-place" precedence="default">
+        {IN_PLACE}
+      </style>
       <div
+        ref={stage}
         className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
         data-story="film"
         data-story-tier={tier}
@@ -839,30 +862,69 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
         <TryPanel onPreview={setDropped} samples={samples} />
         <CloseCard data={data} />
         <ScrollCue />
-        <FilmEnd />
+        <FilmEnd stage={stage} />
       </div>
     </SceneBoundary>
   );
 }
 
 /**
- * Tells the page when the film is over, and when the reader has gone past it.
+ * The rules that follow the film down the page.
  *
- * While the story is pinned the document is exactly one window tall, so the
- * first wheel turn cannot move the page instead of the story. The footer is
- * held back by the rule in globals.css that watches the first attribute, and
- * comes back once the last beat has been read, where the same rule hands the
- * scroll chain back so a gesture reaches it.
- *
- * The second attribute is the page scrolled below the film. From there a
- * gesture over what is left of the film belongs to the page: without it a thumb
- * coming back up rewinds the story, which takes the footer away under it.
+ * The film used to start at the top of the page, so the rules in globals.css
+ * could treat "the film is on this page" as "the film fills the window". The
+ * home page now opens on its first screen with the film under it, so these
+ * narrow two of them to the film actually standing in the window. The bar only
+ * floats bare on the shot while the shot is behind it: over the first screen
+ * it keeps its own ground, handed back from the utility classes it was drawn
+ * with. At the film's first frame a gesture back up the page is let out of
+ * the story, so the first screen above can be scrolled back to. And while the
+ * film is only part way up the window, a wheel over the part that shows
+ * carries the page on rather than stopping dead at the film's edge.
  */
-function FilmEnd() {
+const IN_PLACE = `
+html:not(.light) body:has([data-story="film"]):not([data-story-here]) .app-header {
+  background: revert-layer;
+  border-color: revert-layer;
+  backdrop-filter: revert-layer;
+}
+html:not(.light) body:has([data-story="film"]):not([data-story-here]) .app-header::before {
+  content: none;
+}
+body[data-story-start] [data-story="film"],
+body[data-story-start] [data-story-scroller],
+body[data-story-past] [data-story="film"] {
+  overscroll-behavior-y: auto;
+}
+`;
+
+/**
+ * Tells the page when the film is over, where it stands in the window, and when
+ * a gesture over it belongs to the page.
+ *
+ * While the story is pinned the document ends at the film's foot, so once the
+ * film fills the window the next wheel turn cannot move the page instead of the
+ * story. The footer is held back by the rule in globals.css that watches the
+ * first attribute, and comes back once the last beat has been read, where the
+ * same rule hands the scroll chain back so a gesture reaches it.
+ *
+ * The second attribute is the film not standing in the window: the first
+ * screen above it still showing, or the page scrolled below it. Either way a
+ * gesture over what can be seen of the film belongs to the page: without it a
+ * wheel over the film's top edge would start the story before the reader had
+ * reached it, and a thumb coming back up from the footer would rewind the story
+ * and take the footer away under it.
+ *
+ * The third is the film standing in the window, and the fourth is the film at
+ * its first frame with page above it to go back to (see IN_PLACE).
+ */
+function FilmEnd({ stage }: { stage: RefObject<HTMLDivElement | null> }) {
   useEffect(() => {
     let frame = 0;
     let ended: boolean | null = null;
     let past: boolean | null = null;
+    let here: boolean | null = null;
+    let start: boolean | null = null;
 
     const flag = (name: string, on: boolean) => {
       if (on) {
@@ -879,11 +941,25 @@ function FilmEnd() {
         film.ended = done;
         flag("data-story-end", done);
       }
-      const away = window.scrollY > 0;
+      const top = stage.current?.getBoundingClientRect().top ?? 0;
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      film.top = top;
+      film.lead = Math.max(0, window.scrollY + top);
+      const away = filmPlace(top, window.scrollY, room) !== "here";
       if (away !== past) {
         past = away;
         film.past = away;
         flag("data-story-past", away);
+      }
+      if (!away !== here) {
+        here = !away;
+        flag("data-story-here", here);
+      }
+      // drei parks its scroller one pixel down, so one pixel is the first frame.
+      const first = film.lead > 0 && (scroller.el?.scrollTop ?? 0) <= 1;
+      if (first !== start) {
+        start = first;
+        flag("data-story-start", first);
       }
       frame = requestAnimationFrame(loop);
     };
@@ -893,10 +969,14 @@ function FilmEnd() {
       cancelAnimationFrame(frame);
       film.ended = false;
       film.past = false;
+      film.lead = 0;
+      film.top = 0;
       document.body.removeAttribute("data-story-end");
       document.body.removeAttribute("data-story-past");
+      document.body.removeAttribute("data-story-here");
+      document.body.removeAttribute("data-story-start");
     };
-  }, []);
+  }, [stage]);
 
   return null;
 }

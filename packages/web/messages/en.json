@@ -18,7 +18,7 @@
     "title": "Moolam",
     "description": "A passport for every AI generated image, registered on Monad the moment it is made and verifiable from any re-encoded copy.",
     "titleTemplate": "%s | Moolam",
-    "home": "Every AI generated image gets a passport on Monad the moment it is made, so any copy of it, resized or re-encoded, still leads back to its record."
+    "home": "A passport on Monad says who made a picture, which agent drew it, how AI may use it. Strip it, shrink it, screenshot it: the passport still finds it."
   },
   "header": {
     "brand": "Moolam",
@@ -220,6 +220,43 @@
       "credit": "Make one, or check one",
       "generate": "Generate an image",
       "verify": "Verify a copy"
+    },
+    "first": {
+      "headline": "Prove where an AI image came from,",
+      "headlineTail": "from any copy.",
+      "line": "A passport on Monad says who made a picture, which agent drew it, how AI may use it. Strip it, shrink it, screenshot it: the passport still finds it.",
+      "drop": "Drop any copy of any image",
+      "dropping": "Let go to check it",
+      "hint": "JPEG, PNG or WebP. No picture to hand? Press one of these real passports.",
+      "samples": "Real passports on Monad",
+      "again": "Check another",
+      "make": "Make one",
+      "makeNote": "Register your own picture. Free, with a passkey.",
+      "live": "Live finding, read while this page was drawn",
+      "exhibit": "Exhibit {mark}",
+      "registered": "Registered on Monad, {date}",
+      "copied": "Trimmed, recoloured, re-encoded on {date}: {size} KB",
+      "copyAlt": "A trimmed, recoloured, re-encoded copy of the registered picture",
+      "pictureAlt": "The registered picture",
+      "printRegistry": "Fingerprint in the registry",
+      "printCopy": "Fingerprint the verifier read off the copy",
+      "verdictFigure": "{count} of 64",
+      "verdictSame": "bits apart: the same picture.",
+      "verdictMissed": "bits apart, and the verify service did not find it.",
+      "recheckOn": "Re-checked by Chainlink on {date}:",
+      "recheckMissed": "did not match, {bits}",
+      "chainlink": "Chainlink:",
+      "recheckNone": "no re-check written for this passport yet",
+      "statedOn": "Its holder's word on AI use, {date}:",
+      "aiUse": "AI use:",
+      "openPassport": "Open the passport: {title}",
+      "stop": ".",
+      "billing": {
+        "monad": "On Monad mainnet",
+        "privy": "Passkeys by Privy",
+        "chainlink": "Re-checked by Chainlink",
+        "envio": "Indexed by Envio"
+      }
     }
   },
   "story": {

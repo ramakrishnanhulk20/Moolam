@@ -19,7 +19,7 @@
     "title": "Moolam",
     "description": "Um passaporte para cada imagem gerada por IA, registrado na Monad no instante em que ela nasce e verificável a partir de qualquer cópia recodificada.",
     "titleTemplate": "%s | Moolam",
-    "home": "Cada imagem gerada por IA ganha um passaporte na Monad no instante em que nasce, e qualquer cópia, redimensionada ou recodificada, leva ao registro dela."
+    "home": "Um passaporte na Monad diz quem fez a imagem, qual agente a desenhou, como a IA pode usá-la. Sem metadados, reduzida, em captura: o passaporte a encontra."
   },
   "header": {
     "brand": "Moolam",
@@ -221,6 +221,43 @@
       "credit": "Crie uma, ou verifique uma",
       "generate": "Gerar uma imagem",
       "verify": "Verificar uma cópia"
+    },
+    "first": {
+      "headline": "Prove de onde veio uma imagem de IA,",
+      "headlineTail": "com qualquer cópia.",
+      "line": "Um passaporte na Monad diz quem fez a imagem, qual agente a desenhou, como a IA pode usá-la. Sem metadados, reduzida, em captura: o passaporte a encontra.",
+      "drop": "Solte qualquer cópia",
+      "dropping": "Solte para verificar",
+      "hint": "JPEG, PNG ou WebP. Sem imagem à mão? Toque em um destes passaportes reais.",
+      "samples": "Passaportes reais na Monad",
+      "again": "Verificar outra",
+      "make": "Crie um",
+      "makeNote": "Registre sua própria imagem. Grátis, com uma chave de acesso.",
+      "live": "Achado ao vivo, lido quando esta página foi desenhada",
+      "exhibit": "Prova {mark}",
+      "registered": "Registrada na Monad, {date}",
+      "copied": "Recortada, recolorida e recodificada em {date}: {size} KB",
+      "copyAlt": "Uma cópia recortada, recolorida e recodificada da imagem registrada",
+      "pictureAlt": "A imagem registrada",
+      "printRegistry": "Impressão no registro",
+      "printCopy": "Impressão lida da cópia",
+      "verdictFigure": "{count} de 64",
+      "verdictSame": "bits de diferença: a mesma imagem.",
+      "verdictMissed": "bits de diferença, e o serviço de verificação não a encontrou.",
+      "recheckOn": "Reconferida pela Chainlink em {date}:",
+      "recheckMissed": "não bateu, {bits}",
+      "chainlink": "Chainlink:",
+      "recheckNone": "ainda não há reconferência gravada para este passaporte",
+      "statedOn": "Uso por IA segundo quem a detém, {date}:",
+      "aiUse": "Uso por IA:",
+      "openPassport": "Abrir o passaporte: {title}",
+      "stop": ".",
+      "billing": {
+        "monad": "Na Monad mainnet",
+        "privy": "Chaves de acesso da Privy",
+        "chainlink": "Reconferido pela Chainlink",
+        "envio": "Indexado pela Envio"
+      }
     }
   },
   "story": {

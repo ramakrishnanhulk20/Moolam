@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { FirstVisitGuide } from "@/components/guide/FirstVisitGuide";
+import { Board } from "@/components/home/Board";
+import { FilmGate } from "@/components/home/FilmGate";
+import { firstScreenData, holdFirstScreen } from "@/components/home/read";
 import { StoryStage } from "@/components/story/StoryStage";
 import { heldStory } from "@/components/story/data";
+import { routing } from "@/lib/i18n/routing";
 
 // Every plate, every figure and both counts are read from the registry, and the
 // page is rebuilt from that read a minute at a time rather than on every
@@ -10,6 +14,19 @@ import { heldStory } from "@/components/story/data";
 // shown a figure older than the index could have given them, and nobody waits
 // behind twenty six upstream calls to see the first frame.
 export const revalidate = 60;
+
+/**
+ * The ten home pages are drawn when the site is built, and rebuilt a minute at
+ * a time after that. Without the list the route was drawn on every request,
+ * which is not what the minute above says.
+ *
+ * The first screen's copy is made here, once, before any of the ten are drawn:
+ * see holdFirstScreen. A visitor's request never makes it.
+ */
+export async function generateStaticParams(): Promise<{ locale: string }[]> {
+  await holdFirstScreen();
+  return routing.locales.map((locale) => ({ locale }));
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
   const { locale } = await params;
@@ -28,8 +45,10 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 /**
- * The first thing anybody sees: nine beats of one image getting a passport,
- * flown as a camera move through the live registry.
+ * The first thing anybody sees: what Moolam is and why it matters, the check
+ * itself, and one live finding, all on the first screen and all in the
+ * server's markup. Under it, nine beats of one image getting a passport, flown
+ * as a camera move through the live registry.
  *
  * One of the nine is the holder's own word on AI use, read from the consent
  * register on Monad for the passport the film is told on. Nobody invents it: a
@@ -39,25 +58,27 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
  * A reader who has asked for less motion, or a browser that cannot open a 3D
  * context, gets the same beats stacked down a still page with the same live
  * figures. The story decides which of the two in the browser, so this page
- * renders neither on the server.
+ * renders neither on the server: only the first screen, and the film's box.
  */
 export default async function HomePage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const data = await heldStory();
+  const [data, first] = await Promise.all([heldStory(), firstScreenData()]);
 
-  // The story owns the whole window. The app header floats over its first
-  // screen rather than pushing it down, which is what makes the opening frame
-  // read as a shot rather than as a section under a navigation bar.
   return (
-    <div className="-mt-[73px]">
-      <StoryStage data={data} variant="stated" />
+    <>
+      <Board finding={first.finding} copy={first.copy} samples={first.samples} loose={first.loose} />
+      {/* The film's code and its first pictures wait for the reader to move
+          toward it, so nothing of it competes with the screen above. */}
+      <FilmGate>
+        <StoryStage data={data} variant="stated" />
+      </FilmGate>
       {/* The one screen a first visitor always lands on, so the one place the
           guide is offered from. It draws nothing on the server and nothing for
           a device that has already been here, and it is the ear for the
           footer's "show the guide again". */}
       <FirstVisitGuide />
-    </div>
+    </>
   );
 }

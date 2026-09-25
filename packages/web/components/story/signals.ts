@@ -80,12 +80,35 @@ export const scroller: { el: HTMLElement | null } = { el: null };
  * own frame in LandingStory.tsx.
  *
  * `ended` is the last beat read, which is when the footer exists at all.
- * `past` is the page scrolled down below the film, which is when a gesture over
- * what is left of it belongs to the page rather than to the story.
+ * `past` is the film not standing in the window: the page above it still
+ * showing, or the page scrolled down below it. Either way a gesture over what
+ * can be seen of the film belongs to the page rather than to the story.
+ * `lead` is how much page there is above the film, in pixels. The home page's
+ * first screen sits there, so the film no longer starts at the top of the page.
+ * `top` is the film's own top edge against the window's, read every frame.
  */
-export const film = { ended: false, past: false };
+export const film = { ended: false, past: false, lead: 0, top: 0 };
 
-/** How far into its own scroller the film has been wound, and what is under it. */
+/**
+ * Where the film stands against the window.
+ *
+ * "coming" is the page above it still on screen, "here" is the film filling the
+ * window, "gone" is the page scrolled below it. `top` is the film's own top edge
+ * against the window's. A page whose document ends at the film's foot counts as
+ * here too: a phone that has folded its address bar away has a window a little
+ * taller than the film, so the film can never climb all the way to the top.
+ */
+export function filmPlace(top: number, scrollY: number, room: number): "coming" | "here" | "gone" {
+  if (top < -1) {
+    return "gone";
+  }
+  if (top <= 1 || scrollY >= room - 1) {
+    return "here";
+  }
+  return "coming";
+}
+
+/** How far into its own scroller the film has been wound, and what is around it. */
 export interface StoryView {
   top: number;
   /** The furthest that scroller goes. */
@@ -94,6 +117,10 @@ export interface StoryView {
   height: number;
   /** How far the page has been scrolled below the film, 0 while the film fills the window. */
   pageTop: number;
+  /** How far the film's top still is below the window's top while the page above it shows, 0 once it is here. */
+  above: number;
+  /** How much page there is above the film. */
+  lead: number;
 }
 
 /** Where a key wants something to go: a distance, or one of the two ends. */
@@ -114,8 +141,10 @@ const NUDGES = 6;
  *
  * Page and Space move a beat, the arrows a nudge, Home and End the two ends.
  * Once the film has been read to its end the same keys move the page under it,
- * which is the only way a reader on a keyboard reaches the footer. Anything
- * else returns null and is left to the browser, Tab above all.
+ * which is the only way a reader on a keyboard reaches the footer. Before the
+ * film has reached the window, and at its first frame going back, they move
+ * the page above it instead. Anything else returns null and is left to the
+ * browser, Tab above all.
  *
  * `pages` is the cut's own page count, handed in by whoever is playing it: a
  * step is one screen of travel, and a cut with a beat more in it has a screen
@@ -146,17 +175,25 @@ export function keyReach(key: string, shift: boolean, view: StoryView, pages: nu
 }
 
 /**
- * One step of the story, or one of the page under it.
+ * One step of the story, or one of the page around it.
  *
- * The page only moves once the film has run out of story to give, and on the
+ * The page only moves on once the film has run out of story to give, and on the
  * way back it moves first: a reader who has gone past the film and turns round
- * gets the last beat back before the story rewinds a frame of it.
+ * gets the last beat back before the story rewinds a frame of it. While the
+ * film is still on its way up the window the page carries it there and stops at
+ * its top edge, and a reader back at the first frame goes on up the page.
  */
 function along(forward: boolean, story: number, page: number, view: StoryView): Reach {
+  if (view.above > 0) {
+    return { story: null, page: { by: forward ? Math.min(page, view.above) : -page } };
+  }
   if (forward) {
     return view.top < view.max - 1 ? { story: { by: story }, page: null } : { story: null, page: { by: page } };
   }
-  return view.pageTop > 0 ? { story: null, page: { by: -page } } : { story: { by: -story }, page: null };
+  if (view.pageTop > 0 || (view.top <= 0 && view.lead > 0)) {
+    return { story: null, page: { by: -page } };
+  }
+  return { story: { by: -story }, page: null };
 }
 
 /** Winds the film's own scroller, which is the one place the story's progress comes from. */
@@ -167,8 +204,8 @@ export function moveStory(el: HTMLElement, move: Move) {
 let pageFrame = 0;
 
 /**
- * Runs an action once the page has somewhere to scroll to, and drops it if it
- * never does.
+ * Runs an action once the page has somewhere to scroll to below the film, and
+ * drops it if it never does.
  *
  * The footer is held back until the last beat has been read, and the story's
  * own damping takes about eight tenths of a second to arrive there after the
@@ -183,7 +220,7 @@ export function whenRoom(action: (room: number) => void, within = 3000) {
   const deadline = performance.now() + within;
   const step = () => {
     const room = document.documentElement.scrollHeight - window.innerHeight;
-    if (room > 0) {
+    if (room > film.lead + 1) {
       action(room);
       return;
     }
@@ -194,10 +231,22 @@ export function whenRoom(action: (room: number) => void, within = 3000) {
   step();
 }
 
-/** Moves the page under the film, smoothly, once there is a page to move. */
+/**
+ * Moves the page around the film, smoothly. Going back, or up to the film from
+ * the page above it, there is nothing to wait for. Going on below it waits for
+ * the footer to exist.
+ */
 export function movePage(move: Move) {
   const back = "by" in move ? move.by < 0 : move.to === "start";
-  if (back && window.scrollY <= 0) {
+  if (back) {
+    cancelAnimationFrame(pageFrame);
+    if (window.scrollY > 0) {
+      window.scrollTo({ top: "by" in move ? Math.max(0, window.scrollY + move.by) : 0, behavior: "smooth" });
+    }
+    return;
+  }
+  if ("by" in move && window.scrollY + move.by <= film.lead + 1) {
+    window.scrollTo({ top: window.scrollY + move.by, behavior: "smooth" });
     return;
   }
   whenRoom((room) => {

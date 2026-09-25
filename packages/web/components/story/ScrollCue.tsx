@@ -2,6 +2,14 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef } from "react";
+import { filmPlace } from "@/components/story/signals";
+
+/**
+ * How long after the film has reached the window a gesture starts to count.
+ * The scroll that carried the reader down from the first screen above is still
+ * landing for about this long, and it is not a reader who has read the cue.
+ */
+const SETTLE_MS = 700;
 
 /**
  * The one instruction the first screen needs.
@@ -10,6 +18,10 @@ import { useEffect, useRef } from "react";
  * does not scroll sees the first frame of a film and leaves. It goes the moment
  * anybody scrolls and never comes back, and the fade is written straight to the
  * node so this never re-renders while the scene is drawing.
+ *
+ * The film now sits under the home page's first screen, so the cue only starts
+ * listening once the film has reached the window: the scroll that brought the
+ * reader down to it would otherwise take it away before it was seen.
  */
 export function ScrollCue() {
   const t = useTranslations("story");
@@ -22,6 +34,9 @@ export function ScrollCue() {
     }
 
     let gone = false;
+    let arrived: number | null = null;
+    let timer = 0;
+    let frame = 0;
 
     const remove = () => {
       window.removeEventListener("wheel", dismiss);
@@ -31,7 +46,7 @@ export function ScrollCue() {
     };
 
     function dismiss() {
-      if (gone || el === null) {
+      if (gone || el === null || arrived === null || performance.now() - arrived < SETTLE_MS) {
         return;
       }
       gone = true;
@@ -52,11 +67,22 @@ export function ScrollCue() {
 
     // The scroll belongs to the canvas, so the window may never report one.
     // Twelve seconds of reading the title is long enough for a hint to have
-    // done its job either way.
-    const timer = window.setTimeout(dismiss, 12_000);
+    // done its job either way, counted from the film reaching the window.
+    const watch = () => {
+      const box = el.closest<HTMLElement>('[data-story="film"]')?.getBoundingClientRect();
+      const room = document.documentElement.scrollHeight - window.innerHeight;
+      if (box === undefined || filmPlace(box.top, window.scrollY, room) === "here") {
+        arrived = performance.now();
+        timer = window.setTimeout(dismiss, 12_000);
+        return;
+      }
+      frame = requestAnimationFrame(watch);
+    };
+    frame = requestAnimationFrame(watch);
 
     return () => {
       remove();
+      cancelAnimationFrame(frame);
       window.clearTimeout(timer);
     };
   }, []);

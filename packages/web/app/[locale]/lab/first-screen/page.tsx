@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { setRequestLocale } from "next-intl/server";
 import { Bench } from "@/components/lab/first-screen/Bench";
-import { drawingAsked } from "@/components/lab/first-screen/finding";
-import { firstScreenData } from "@/components/lab/first-screen/read";
+import { drawingAsked } from "@/components/lab/first-screen/drawing";
+import { firstScreenData } from "@/components/home/read";
 
 // The finding is read on the request, through the same one minute holds the
 // passport and verify pages use, so the bench always shows today's numbers.

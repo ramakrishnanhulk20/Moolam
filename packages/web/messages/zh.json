@@ -20,7 +20,7 @@
     "title": "Moolam",
     "description": "为每一张 AI 生成的图片配一本护照，成图的那一刻就登记到 Monad 上，任何重新编码过的副本都能验证。",
     "titleTemplate": "%s | Moolam",
-    "home": "每一张 AI 生成的图片，在成图的那一刻就在 Monad 上拿到一本护照，所以缩放过或重新编码过的任何副本，依然能找回它自己的记录。"
+    "home": "Monad 上的一本护照写明谁做了这张图、哪个智能体画的、AI 可以怎样使用它。去掉元数据、缩小、截图，护照照样能找到它。"
   },
   "header": {
     "brand": "Moolam",
@@ -222,6 +222,43 @@
       "credit": "生成一张，或验证一张",
       "generate": "生成图片",
       "verify": "验证副本"
+    },
+    "first": {
+      "headline": "证明一张 AI 图片从哪里来，",
+      "headlineTail": "凭任何一份副本。",
+      "line": "Monad 上的一本护照写明谁做了这张图、哪个智能体画的、AI 可以怎样使用它。去掉元数据、缩小、截图，护照照样能找到它。",
+      "drop": "拖入任何图片的任何副本",
+      "dropping": "松手即开始检查",
+      "hint": "JPEG、PNG 或 WebP。手边没有图片？点一本下面的真实护照。",
+      "samples": "Monad 上的真实护照",
+      "again": "再查一张",
+      "make": "自己做一本",
+      "makeNote": "登记你自己的图片。免费，用通行密钥。",
+      "live": "实时结果，在本页生成时读取",
+      "exhibit": "证物 {mark}",
+      "registered": "登记于 Monad，{date}",
+      "copied": "{date} 裁切、调色、重新编码：{size} KB",
+      "copyAlt": "登记图片经过裁切、调色、重新编码的副本",
+      "pictureAlt": "登记的图片",
+      "printRegistry": "登记处里的指纹",
+      "printCopy": "验证服务从副本读出的指纹",
+      "verdictFigure": "64 位中 {count} 位",
+      "verdictSame": "不同：是同一张图。",
+      "verdictMissed": "不同，验证服务没有找到它。",
+      "recheckOn": "Chainlink 于 {date} 复核：",
+      "recheckMissed": "不匹配，{bits}",
+      "chainlink": "Chainlink：",
+      "recheckNone": "这本护照还没有写入复核",
+      "statedOn": "持有者关于 AI 使用的声明，{date}：",
+      "aiUse": "AI 使用：",
+      "openPassport": "打开护照：{title}",
+      "stop": "。",
+      "billing": {
+        "monad": "运行于 Monad 主网",
+        "privy": "Privy 通行密钥",
+        "chainlink": "Chainlink 复核",
+        "envio": "Envio 索引"
+      }
     }
   },
   "story": {

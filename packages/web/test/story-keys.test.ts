@@ -1,7 +1,17 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
-import { film, forwardTouchMove, forwardTouchStart, forwardWheel, keyReach, moveStory, scroller, type StoryView } from "@/components/story/signals";
+import {
+  film,
+  filmPlace,
+  forwardTouchMove,
+  forwardTouchStart,
+  forwardWheel,
+  keyReach,
+  moveStory,
+  scroller,
+  type StoryView,
+} from "@/components/story/signals";
 import { beatTable } from "@/components/story/beats";
 
 /**
@@ -20,6 +30,8 @@ const opening = (over: Partial<StoryView> = {}): StoryView => ({
   max: 8000,
   height: 900,
   pageTop: 0,
+  above: 0,
+  lead: 0,
   ...over,
 });
 
@@ -105,6 +117,54 @@ describe("the keys that drive the film", () => {
 });
 
 /**
+ * The home page's first screen sits above the film, so the film no longer
+ * starts at the top of the page. These are the keys and the place rule that
+ * had to learn that: the page carries the reader down to the film and back up
+ * off its first frame, and the story only moves while the film fills the window.
+ */
+describe("the film under the home page's first screen", () => {
+  it("is coming while the page above it shows, here once it fills the window, gone once the page is below it", () => {
+    expect(filmPlace(973, 0, 973)).toBe("coming");
+    expect(filmPlace(223, 750, 973)).toBe("coming");
+    expect(filmPlace(0, 973, 973)).toBe("here");
+    expect(filmPlace(-400, 1373, 1800)).toBe("gone");
+  });
+
+  it("counts the film as here at the foot of the page, where a phone with its address bar folded away cannot lift it higher", () => {
+    // The window is 56 px taller than the film once the bar folds, so the
+    // film's top stops 56 px down with the page at its end.
+    expect(filmPlace(56, 1892, 1892)).toBe("here");
+  });
+
+  it("moves the page toward the film and stops at its top edge, never the story", () => {
+    expect(keyReach("PageDown", false, opening({ above: 400, lead: 973 }), PAGES)).toEqual({
+      story: null,
+      page: { by: 400 },
+    });
+    expect(keyReach("ArrowDown", false, opening({ above: 973, lead: 973 }), PAGES)).toEqual({
+      story: null,
+      page: { by: 150 },
+    });
+    expect(keyReach("PageUp", false, opening({ above: 400, lead: 973 }), PAGES)).toEqual({
+      story: null,
+      page: { by: -900 },
+    });
+  });
+
+  it("goes on up the page from the film's first frame, and rewinds the story from anywhere after it", () => {
+    expect(keyReach("PageUp", false, opening({ lead: 973 }), PAGES)).toEqual({ story: null, page: { by: -900 } });
+    expect(keyReach("PageUp", false, opening({ top: 3000, lead: 973 }), PAGES)).toEqual({
+      story: { by: -BEAT },
+      page: null,
+    });
+  });
+
+  it("still plays the story on the way down once the film is here", () => {
+    expect(keyReach("PageDown", false, opening({ lead: 973 }), PAGES)).toEqual({ story: { by: BEAT }, page: null });
+  });
+});
+
+/**
  * A drag or a wheel over what is left of the film, once the page has scrolled
  * below it. The story must not take any of it: the reader is on their way back
  * to the last beat, and a story that rewinds here takes the footer away with it.
@@ -173,6 +233,22 @@ describe("the film's two attributes and the rules they switch", () => {
     expect(story).toContain('flag("data-story-past", away)');
     expect(story).toContain('document.body.removeAttribute("data-story-end")');
     expect(story).toContain('document.body.removeAttribute("data-story-past")');
+  });
+
+  it("keeps the bar on its own ground over the first screen, and floats it on the shot only while the film is here", () => {
+    expect(story).toContain('flag("data-story-here", here)');
+    expect(story).toContain('document.body.removeAttribute("data-story-here")');
+    expect(story).toMatch(
+      /body:has\(\[data-story="film"\]\):not\(\[data-story-here\]\) \.app-header \{\s*background: revert-layer;/,
+    );
+  });
+
+  it("lets a gesture out of the story at its first frame and over a film only part way up the window", () => {
+    expect(story).toContain('flag("data-story-start", first)');
+    expect(story).toContain('document.body.removeAttribute("data-story-start")');
+    expect(story).toMatch(
+      /body\[data-story-start\] \[data-story-scroller\],\s*body\[data-story-past\] \[data-story="film"\] \{\s*overscroll-behavior-y: auto;/,
+    );
   });
 
   it("names the scroller and lets a keyboard land on it", () => {

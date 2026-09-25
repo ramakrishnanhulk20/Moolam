@@ -1,11 +1,11 @@
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
-import { Billing } from "./Billing";
+import { Billing } from "@/components/home/Billing";
 import { Credit } from "./Credit";
 import { Drift } from "./Drift";
-import { Drop } from "./Drop";
-import { Headline, MakeOne } from "./Headline";
-import { isRead, type CopyReading, type Finding, type Read } from "./finding";
+import { Drop } from "@/components/home/Drop";
+import { Headline, MakeOne } from "@/components/home/Headline";
+import { isRead, type CopyReading, type Finding, type Read } from "@/components/home/finding";
 import { copyLine, day, recheckLine, statementLine } from "./lines";
 import { SUMMARIES } from "./words";
 import type { TrySample } from "@/lib/data/samples";

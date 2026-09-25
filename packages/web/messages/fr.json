@@ -18,7 +18,7 @@
     "title": "Moolam",
     "description": "Un passeport pour chaque image générée par IA, inscrit sur Monad à l’instant où elle est créée et vérifiable depuis n’importe quelle copie ré-encodée.",
     "titleTemplate": "%s | Moolam",
-    "home": "Chaque image générée par IA reçoit un passeport sur Monad à l'instant où elle est créée, si bien que toute copie redimensionnée ou ré-encodée y ramène."
+    "home": "Un passeport Monad dit qui a fait une image, quel agent l’a dessinée, comment l’IA peut l’utiliser. Sans métadonnées, réduite, capturée : il la retrouve."
   },
   "header": {
     "brand": "Moolam",
@@ -220,6 +220,43 @@
       "credit": "Créez-en une, ou vérifiez-en une",
       "generate": "Générer une image",
       "verify": "Vérifier une copie"
+    },
+    "first": {
+      "headline": "Prouvez d’où vient une image d’IA,",
+      "headlineTail": "depuis toute copie.",
+      "line": "Un passeport Monad dit qui a fait une image, quel agent l’a dessinée, comment l’IA peut l’utiliser. Sans métadonnées, réduite, capturée : il la retrouve.",
+      "drop": "Déposez n’importe quelle copie",
+      "dropping": "Relâchez pour la vérifier",
+      "hint": "JPEG, PNG ou WebP. Pas d’image sous la main ? Appuyez sur l’un de ces vrais passeports.",
+      "samples": "De vrais passeports sur Monad",
+      "again": "En vérifier une autre",
+      "make": "Créez-en un",
+      "makeNote": "Enregistrez votre propre image. Gratuit, avec une clé d’accès.",
+      "live": "Constat en direct, lu quand cette page a été dessinée",
+      "exhibit": "Pièce {mark}",
+      "registered": "Enregistrée sur Monad, {date}",
+      "copied": "Recadrée, recolorée, ré-encodée le {date} : {size} Ko",
+      "copyAlt": "Une copie recadrée, recolorée et ré-encodée de l’image enregistrée",
+      "pictureAlt": "L’image enregistrée",
+      "printRegistry": "Empreinte dans le registre",
+      "printCopy": "Empreinte lue sur la copie",
+      "verdictFigure": "{count} sur 64",
+      "verdictSame": "bits d’écart : la même image.",
+      "verdictMissed": "bits d’écart, et le service de vérification ne l’a pas trouvée.",
+      "recheckOn": "Revérifiée par Chainlink le {date} :",
+      "recheckMissed": "pas de correspondance, {bits}",
+      "chainlink": "Chainlink :",
+      "recheckNone": "aucune revérification inscrite pour ce passeport pour l’instant",
+      "statedOn": "Usage par l’IA selon le détenteur, {date} :",
+      "aiUse": "Usage par l’IA :",
+      "openPassport": "Ouvrir le passeport : {title}",
+      "stop": ".",
+      "billing": {
+        "monad": "Sur Monad mainnet",
+        "privy": "Clés d’accès par Privy",
+        "chainlink": "Revérifié par Chainlink",
+        "envio": "Indexé par Envio"
+      }
     }
   },
   "story": {
