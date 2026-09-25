@@ -1,5 +1,5 @@
+import { useTranslations } from "next-intl";
 import type { CSSProperties } from "react";
-import { CHAPTER_WORDS } from "@/components/story/chapter";
 
 /** Before the film is in view each line waits on the first frame of its rise, so nothing moves when it starts. */
 const WAITING = { opacity: 0, transform: "translateY(28px)" } as const;
@@ -14,6 +14,7 @@ const WAITING = { opacity: 0, transform: "translateY(28px)" } as const;
  * move. The page's one h1 is the first screen's headline, so this is an h2.
  */
 export function ChapterOpening({ arrived }: { arrived: boolean }) {
+  const t = useTranslations("story.chapter");
   const enter = (delay: number): { className: string; style?: CSSProperties } =>
     arrived
       ? { className: "story-enter", style: delay === 0 ? undefined : { animationDelay: `${delay}ms` } }
@@ -29,14 +30,14 @@ export function ChapterOpening({ arrived }: { arrived: boolean }) {
         style={kick.style}
       >
         <span className="motif h-[9px] w-[9px]" />
-        {CHAPTER_WORDS.kicker}
+        {t("kicker")}
       </p>
       <h2
         data-story-line="title"
         className={`${name.className} mt-5 max-w-[12ch] font-display text-[clamp(2rem,5.4vw,4.4rem)] font-semibold leading-[0.98] tracking-[-0.04em]`}
         style={name.style}
       >
-        {CHAPTER_WORDS.title}
+        {t("title")}
       </h2>
       <span
         aria-hidden

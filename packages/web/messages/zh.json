@@ -269,6 +269,10 @@
     "kicker": "在 Monad 主网上实时运行",
     "title": "Moolam",
     "line": "每张图片都有一本护照。",
+    "chapter": {
+      "kicker": "影片",
+      "title": "护照如何运作"
+    },
     "scrollCue": "向下滚动",
     "noWebgl": "这个浏览器打不开 3D 画面，所以故事在这里以页面呈现。上面的每个数字都来自同一次实时读取。",
     "made": {

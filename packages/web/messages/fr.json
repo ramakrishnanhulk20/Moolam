@@ -267,6 +267,10 @@
     "kicker": "En direct sur Monad mainnet",
     "title": "Moolam",
     "line": "Chaque image reçoit un passeport.",
+    "chapter": {
+      "kicker": "Le film",
+      "title": "Comment fonctionne un passeport"
+    },
     "scrollCue": "Faites défiler",
     "noWebgl": "Ce navigateur n’a pas pu ouvrir de contexte 3D, l’histoire est donc ici sous forme de page. Chaque chiffre qu’elle affiche vient de la même lecture en direct.",
     "made": {

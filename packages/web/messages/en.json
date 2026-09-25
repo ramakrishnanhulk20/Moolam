@@ -267,6 +267,10 @@
     "kicker": "Live on Monad mainnet",
     "title": "Moolam",
     "line": "Every image gets a passport.",
+    "chapter": {
+      "kicker": "The film",
+      "title": "How a passport works"
+    },
     "scrollCue": "Scroll",
     "noWebgl": "This browser could not open a 3D context, so the story is here as a page. Every figure on it is the same live read.",
     "made": {

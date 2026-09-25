@@ -2,19 +2,21 @@ import { readFileSync } from "node:fs";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
+import ta from "@/messages/ta.json";
 import type { StoryData } from "@/components/story/data";
 
 /**
- * The film told as a chapter under the home page's first screen, on the lab
- * page before it goes anywhere else.
+ * The film told as a chapter under the home page's first screen. Ram approved
+ * it on the lab page on 2026-09-25 and it is now what the home page plays.
  *
  * What is held here: the chapter cut opens on a chapter title with no poster
  * and no buttons, its last card's first call is named as on the first screen,
- * the stated cut the home page plays still opens and closes exactly as it did,
- * and the lab route is closed without the lab flag.
+ * its words are in all ten languages, the home page draws it in English and
+ * Tamil, and the stated cut the lab bench still plays opens and closes exactly
+ * as it did.
  */
 
 type Target = { pathname: string; query?: Record<string, string> } | string;
@@ -42,16 +44,11 @@ vi.mock("@/lib/i18n/routing", () => ({
   usePathname: () => "/",
 }));
 
-vi.mock("next/navigation", () => ({
-  notFound: () => {
-    throw new Error("NEXT_NOT_FOUND");
-  },
-}));
-
 vi.mock("next-intl/server", () => ({ setRequestLocale: () => undefined }));
 
-// The lab page's reads and heavy parts, answered here. What the page is held
-// to is which cut it asks for and that it asks for nothing without the flag.
+// The home page's reads and heavy parts, answered here. The film itself is the
+// real one: the stage's browser-only loader is swapped for the film it loads,
+// so the page draws on the server what a browser would be handed.
 vi.mock("@/components/story/data", () => ({ heldStory: reads.story }));
 vi.mock("@/components/home/read", () => ({ firstScreenData: reads.first }));
 vi.mock("@/components/home/Board", () => ({ Board: () => createElement("section", { "data-board": true }) }));
@@ -59,25 +56,30 @@ vi.mock("@/components/guide/FirstVisitGuide", () => ({ FirstVisitGuide: () => nu
 vi.mock("@/components/home/FilmGate", () => ({
   FilmGate: (props: { children?: unknown }) => createElement("div", { "data-gate": true }, props.children as never),
 }));
-vi.mock("@/components/story/StoryStage", () => ({
-  StoryStage: (props: { variant?: string }) => createElement("div", { "data-stage": props.variant }),
-}));
+vi.mock("@/components/story/StoryStage", async () => {
+  const { LandingStory: Film } = await import("@/components/story/LandingStory");
+  return {
+    StoryStage: (props: { data: StoryData; variant?: "classic" | "stated" | "chapter" }) =>
+      createElement("div", { "data-stage": props.variant }, createElement(Film, props)),
+  };
+});
 
 const { LandingStory } = await import("@/components/story/LandingStory");
 const { CloseCard } = await import("@/components/story/CloseCard");
 const { ChapterOpening } = await import("@/components/story/ChapterOpening");
-const { CHAPTER_WORDS } = await import("@/components/story/chapter");
 const { beatTable } = await import("@/components/story/beats");
 const { storyCut } = await import("@/components/story/stated");
-const { default: HomeChapterLabPage } = await import("@/app/[locale]/lab/home-chapter/page");
+const { default: HomePage } = await import("@/app/[locale]/page");
 
-function render(node: ReactElement): string {
+const LOCALES = ["en", "de", "es", "fr", "hi", "ja", "ko", "pt", "ta", "zh"] as const;
+
+function render(node: ReactElement, locale = "en", messages: unknown = en): string {
   const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
     locale: string;
     messages: unknown;
     timeZone: string;
   }>;
-  return renderToStaticMarkup(createElement(Provider, { locale: "en", messages: en, timeZone: "UTC" }, node));
+  return renderToStaticMarkup(createElement(Provider, { locale, messages, timeZone: "UTC" }, node));
 }
 
 const WRITER = "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6" as Hex;
@@ -144,7 +146,7 @@ describe("the chapter cut's opening", () => {
   const first = opening(film);
 
   it("opens on the chapter title, with no poster and no buttons", () => {
-    expect(text(first)).toBe(`${CHAPTER_WORDS.kicker} ${CHAPTER_WORDS.title}`);
+    expect(text(first)).toBe(`${en.story.chapter.kicker} ${en.story.chapter.title}`);
     expect(first).not.toContain("<a ");
     expect(film).not.toContain(`>${en.story.title}</h2>`);
     expect(film).not.toContain(en.story.line);
@@ -155,13 +157,13 @@ describe("the chapter cut's opening", () => {
   });
 
   it("is a chapter heading at the size of the beats after it, not a hero", () => {
-    const entered = renderToStaticMarkup(createElement(ChapterOpening, { arrived: true }));
+    const entered = render(createElement(ChapterOpening, { arrived: true }));
     expect(entered).toMatch(/<h2 data-story-line="title" class="story-enter [^"]*text-\[clamp\(2rem,5\.4vw,4\.4rem\)\]/);
     expect(entered).not.toMatch(/<h1[\s>]/);
   });
 
   it("waits on the first frame of its rise until the film is in view", () => {
-    const waiting = renderToStaticMarkup(createElement(ChapterOpening, { arrived: false }));
+    const waiting = render(createElement(ChapterOpening, { arrived: false }));
     expect(waiting).toContain('data-film-chapter="waiting"');
     expect(waiting).not.toContain("story-enter");
     expect(waiting.match(/opacity:0;transform:translateY\(28px\)/g)).toHaveLength(2);
@@ -223,7 +225,7 @@ describe("the chapter cut's closing card", () => {
   });
 });
 
-describe("the stated cut the home page plays", () => {
+describe("the stated cut the lab bench still plays", () => {
   it("opens on the poster and its two calls, as it did", () => {
     const film = render(createElement(LandingStory, { data, variant: "stated" as const }));
     expect(markers(opening(film))).toEqual({
@@ -233,7 +235,7 @@ describe("the stated cut the home page plays", () => {
     expect(text(opening(film))).toContain(en.story.kicker);
     expect(text(opening(film))).toContain(en.story.line);
     expect(film).not.toContain("data-film-chapter");
-    expect(film).not.toContain(CHAPTER_WORDS.title);
+    expect(film).not.toContain(en.story.chapter.title);
   });
 
   it("closes on the card it always had", () => {
@@ -258,40 +260,83 @@ describe("the stated cut the home page plays", () => {
     }
     expect(source).toContain('data-story-cut={chapter ? "chapter" : undefined}');
   });
+});
 
-  it("is still what the home page asks for", () => {
-    const page = readFileSync("app/[locale]/page.tsx", "utf8");
-    expect(page).toContain('variant="stated"');
-    expect(page).not.toContain("chapter");
+describe("the chapter's words", () => {
+  it("are in all ten message files, under the same keys as English", () => {
+    const english = Object.keys(en.story.chapter).sort();
+    expect(english).toEqual(["kicker", "title"]);
+    for (const locale of LOCALES) {
+      const messages = JSON.parse(readFileSync(`messages/${locale}.json`, "utf8")) as {
+        story: { chapter?: Record<string, unknown> };
+      };
+      const chapter = messages.story.chapter;
+      expect(chapter, locale).toBeDefined();
+      expect(Object.keys(chapter ?? {}).sort(), locale).toEqual(english);
+      for (const key of english) {
+        const said = chapter?.[key];
+        expect(typeof said === "string" && said.trim().length > 0, `${locale} story.chapter.${key}`).toBe(true);
+        if (locale !== "en") {
+          expect(said, `${locale} story.chapter.${key} is still English`).not.toBe(
+            en.story.chapter[key as keyof typeof en.story.chapter],
+          );
+        }
+      }
+    }
+  });
+
+  it("left the English-only file behind", () => {
+    expect(() => readFileSync("components/story/chapter.ts", "utf8")).toThrow();
   });
 });
 
-describe("the lab page", () => {
+describe("the home page", () => {
   beforeEach(() => {
     reads.story.mockReset().mockResolvedValue(data);
     reads.first.mockReset().mockResolvedValue({ finding: null, copy: null, samples: [], loose: null });
   });
 
-  afterEach(() => {
-    vi.unstubAllEnvs();
+  const page = async (locale: string, messages: unknown) =>
+    render(await HomePage({ params: Promise.resolve({ locale }) }), locale, messages);
+
+  /** The film's own markup, from the stage down: the board above it is a stand-in here. */
+  const stage = (html: string) => html.slice(html.indexOf('data-stage="chapter"'));
+
+  it("asks for the chapter cut, under the first screen", async () => {
+    const markup = await page("en", en);
+    expect(markup).toContain('<section data-board="true"></section><div data-gate="true"><div data-stage="chapter">');
+    expect(readFileSync("app/[locale]/page.tsx", "utf8")).toContain('variant="chapter"');
   });
 
-  const page = () => HomeChapterLabPage({ params: Promise.resolve({ locale: "en" }) });
-
-  it("is a 404 without the lab flag, before anything is read", async () => {
-    vi.stubEnv("NEXT_PUBLIC_LAB_PAGES", "");
-    await expect(page()).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(reads.story).not.toHaveBeenCalled();
-    expect(reads.first).not.toHaveBeenCalled();
+  it("renders the chapter opening on /en, with no MOOLAM title and no opening buttons", async () => {
+    const markup = await page("en", en);
+    expect(markup).toContain('data-film-chapter="entered"');
+    expect(text(opening(stage(markup)))).toBe(`${en.story.chapter.kicker} ${en.story.chapter.title}`);
+    const headings = markers(markup).headings;
+    expect(headings[0]).toBe(en.story.chapter.title);
+    expect(headings).not.toContain(en.story.title);
+    expect(markup).not.toContain(en.story.line);
+    expect(markup).not.toContain(en.home.hero.credit);
+    expect(markup).not.toContain(en.home.hero.generate);
+    expect(markup).not.toContain(en.home.hero.verify);
+    expect(markup).not.toContain("mode=generate");
+    expect(markup).not.toContain("data-film-opening");
+    // The page's one h1 is the first screen's, which the board draws.
+    expect(markup).not.toMatch(/<h1[\s>]/);
   });
 
-  it("draws the first screen, then the film as a chapter under it", async () => {
-    vi.stubEnv("NEXT_PUBLIC_LAB_PAGES", "1");
-    const markup = renderToStaticMarkup(await page());
-    expect(markup).toMatch(/<section data-board="true"><\/section><div data-gate="true"><div data-stage="chapter"><\/div><\/div>/);
+  it("ends on the page's one final call", async () => {
+    const markup = await page("en", en);
+    expect(markup).toContain('data-close-card="chapter"');
+    expect(asked.filter((link) => link.href === "/studio")).toEqual([
+      { href: "/studio", prefetch: false, words: en.home.first.make },
+    ]);
   });
 
-  it("is linked from the lab index", () => {
-    expect(readFileSync("app/[locale]/lab/page.tsx", "utf8")).toContain('href="/lab/home-chapter"');
+  it("says the chapter in Tamil on /ta", async () => {
+    const markup = await page("ta", ta);
+    expect(text(opening(stage(markup)))).toBe(`${ta.story.chapter.kicker} ${ta.story.chapter.title}`);
+    expect(markers(markup).headings).not.toContain(ta.story.title);
+    expect(markup).not.toContain(ta.home.hero.generate);
   });
 });

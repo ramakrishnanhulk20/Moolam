@@ -124,28 +124,32 @@ describe("when the beat cannot be told", () => {
 });
 
 /**
- * The home page asks for the stated cut on every visit. What it gets on a day
- * with nothing to draw is the film Ram approved, unchanged, and that fallback
- * is this. The page itself is read from disk, because a page that quietly went
- * back to the classic cut would pass every other test in this file.
+ * The home page asks for the chapter cut on every visit, which is timed by the
+ * stated table. What it gets on a day with nothing to draw is the classic
+ * table, and that fallback is this. The page itself is read from disk, because
+ * a page that quietly went back to another cut would pass every other test in
+ * this file.
  */
 describe("the cut the home page really plays", () => {
-  it("asks for the stated cut", () => {
+  it("asks for the chapter cut", () => {
     const page = readFileSync("app/[locale]/page.tsx", "utf8");
-    expect(page).toContain('variant="stated"');
+    expect(page).toContain('variant="chapter"');
   });
 
-  it("plays it when the register answered for this passport", () => {
+  it("plays the stated table when the register answered for this passport", () => {
+    expect(storyCut("chapter", story())).toBe("stated");
     expect(storyCut("stated", story())).toBe("stated");
   });
 
-  it("falls back to the approved film when there is no statement to draw", () => {
-    expect(storyCut("stated", story({ statement: null }))).toBe("classic");
-    expect(storyCut("stated", story({ statement: null, statementError: "the endpoint answered 503" }))).toBe("classic");
-    expect(storyCut("stated", story({ focal: null, statement: null }))).toBe("classic");
-    expect(storyCut("stated", story({ statement: { ...statement, summary: "none", consent: NOTHING } }))).toBe(
-      "classic",
-    );
+  it("falls back to the classic table when there is no statement to draw", () => {
+    for (const wanted of ["chapter", "stated"] as const) {
+      expect(storyCut(wanted, story({ statement: null }))).toBe("classic");
+      expect(storyCut(wanted, story({ statement: null, statementError: "the endpoint answered 503" }))).toBe("classic");
+      expect(storyCut(wanted, story({ focal: null, statement: null }))).toBe("classic");
+      expect(storyCut(wanted, story({ statement: { ...statement, summary: "none", consent: NOTHING } }))).toBe(
+        "classic",
+      );
+    }
   });
 
   it("never reaches the new beat from the classic cut, whatever the day holds", () => {

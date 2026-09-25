@@ -19,7 +19,6 @@ import * as THREE from "three";
 import { Copies, FocalPlate, PlateField, useField } from "@/components/story/scene/field";
 import { fieldPictures } from "@/components/story/scene/order";
 import { ChapterOpening } from "@/components/story/ChapterOpening";
-import { CHAPTER_WORDS } from "@/components/story/chapter";
 import { CloseCard } from "@/components/story/CloseCard";
 import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
@@ -810,7 +809,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
                 credential={credential}
                 dropped={dropped}
                 start={start}
-                label={chapter ? CHAPTER_WORDS.title : `${t("title")}: ${t("line")}`}
+                label={chapter ? t("chapter.title") : `${t("title")}: ${t("line")}`}
                 onTier={onTier}
               />
             </ScrollControls>

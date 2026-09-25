@@ -267,6 +267,10 @@
     "kicker": "Live auf Monad Mainnet",
     "title": "Moolam",
     "line": "Jedes Bild bekommt einen Pass.",
+    "chapter": {
+      "kicker": "Der Film",
+      "title": "Wie ein Pass funktioniert"
+    },
     "scrollCue": "Scrollen",
     "noWebgl": "Dieser Browser konnte keinen 3D-Kontext öffnen, deshalb steht die Geschichte hier als Seite. Jede Zahl darin ist dieselbe Live-Lesung.",
     "made": {

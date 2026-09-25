@@ -267,6 +267,10 @@
     "kicker": "En vivo en Monad mainnet",
     "title": "Moolam",
     "line": "Cada imagen recibe un pasaporte.",
+    "chapter": {
+      "kicker": "La película",
+      "title": "Cómo funciona un pasaporte"
+    },
     "scrollCue": "Desliza",
     "noWebgl": "Este navegador no pudo abrir un contexto 3D, así que la historia está aquí como página. Cada cifra que ves es la misma lectura en vivo.",
     "made": {

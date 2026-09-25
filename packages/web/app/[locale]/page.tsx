@@ -47,13 +47,17 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 /**
  * The first thing anybody sees: what Moolam is and why it matters, the check
  * itself, and one live finding, all on the first screen and all in the
- * server's markup. Under it, nine beats of one image getting a passport, flown
- * as a camera move through the live registry.
+ * server's markup. Under it, the film told as a chapter: one image getting a
+ * passport, flown as a camera move through the live registry. It opens on a
+ * chapter title rather than a poster, because the screen above has already
+ * named the product and offered both actions, and it ends on the page's one
+ * final call.
  *
- * One of the nine is the holder's own word on AI use, read from the consent
+ * One of its beats is the holder's own word on AI use, read from the consent
  * register on Monad for the passport the film is told on. Nobody invents it: a
  * passport with no statement, or a register that would not answer this minute,
- * plays the eight beat film instead, which is what the stated cut means here.
+ * plays the chapter without that beat. The chapter is timed by the stated cut's
+ * table and falls back the way the stated cut does.
  *
  * A reader who has asked for less motion, or a browser that cannot open a 3D
  * context, gets the same beats stacked down a still page with the same live
@@ -72,7 +76,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
       {/* The film's code and its first pictures wait for the reader to move
           toward it, so nothing of it competes with the screen above. */}
       <FilmGate>
-        <StoryStage data={data} variant="stated" />
+        <StoryStage data={data} variant="chapter" />
       </FilmGate>
       {/* The one screen a first visitor always lands on, so the one place the
           guide is offered from. It draws nothing on the server and nothing for
