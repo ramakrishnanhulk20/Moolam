@@ -135,8 +135,10 @@ export default async function LocaleLayout({
   // The last two carry the name the first visit guide points at, the same names
   // the phone's tabs carry below. Only one of the two is ever on the screen, so
   // the guide can look for the name and take whichever answers.
+  //
+  // There is no Home link: the logo is the way home on a laptop. The phone's
+  // bar keeps its Home tab, because it has no logo under the thumb.
   const nav = [
-    { href: "/", label: t("nav.home"), prefetch: undefined, anchor: undefined },
     { href: "/explore", label: t("nav.explore"), prefetch: "intent", anchor: undefined },
     { href: "/agents", label: t("nav.agents"), prefetch: undefined, anchor: undefined },
     { href: "/docs", label: t("nav.docs"), prefetch: undefined, anchor: undefined },
@@ -234,9 +236,8 @@ export default async function LocaleLayout({
                       <span aria-hidden className="h-[1lh] w-0" />
                       <span className="whitespace-nowrap">{t("tagline")}</span>
                     </span>
-                    {/* gap-4 rather than gap-5: the seventh link needs 98 px the
-                        bar did not have, and at 20 px between links the language
-                        and theme chips dropped to a second row. */}
+                    {/* gap-4 rather than gap-5: at 20 px between links the
+                        language and theme chips dropped to a second row. */}
                     <nav className="ml-auto hidden items-center gap-4 text-sm md:flex">
                       {nav.map((item) =>
                         item.prefetch === "intent" ? (

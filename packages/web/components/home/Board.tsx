@@ -8,6 +8,7 @@ import { Billing } from "./Billing";
 import { Drop } from "./Drop";
 import { Headline, MakeOne } from "./Headline";
 import { Play } from "./Play";
+import { ToProof } from "./ToProof";
 import { isRead, type CopyReading, type Finding, type LooseFinding, type Read } from "./finding";
 
 /**
@@ -84,6 +85,11 @@ export function Board({
             <Headline size="board" />
             <div className="rise mt-7 lg:mt-6" style={{ animationDelay: "240ms" }}>
               <Drop samples={samples} look="board" />
+              {/* A phone reaches the evidence a scroll below, so it gets one
+                  line pointing at it, carrying the copy's own measured
+                  distance. With no copy measured there is no number to quote
+                  and no line. */}
+              {isRead(finding) && isRead(copy) ? <ToProof count={copy.read.distance} /> : null}
             </div>
           </div>
           <MakeOne className="rise" />
@@ -124,7 +130,6 @@ function useStatementLine(): (statement: Finding["statement"]) => Line {
 
 function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading> }) {
   const t = useTranslations("home.first");
-  const verify = useTranslations("verify");
   const day = useDay();
   const stated = useStatementLine();
   const original = bitsOf(BigInt(finding.phash));
@@ -133,7 +138,7 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
   // Only a re-check written through one of the Chainlink receivers is named
   // here: read.ts keeps every other writer out of it.
   const { recheck } = finding;
-  const apart = recheck === null ? "" : verify("bits", { count: recheck.distance, of: 64 });
+  const apart = recheck === null ? "" : t("recheckBits", { count: recheck.distance });
   const rechecked: Line =
     recheck === null
       ? { lead: t("chainlink"), fact: t("recheckNone"), tone: "plain" }
@@ -145,7 +150,7 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
   const lines: Line[] = [rechecked, ...(finding.statementError === null ? [stated(finding.statement)] : [])];
 
   return (
-    <Play className="relative lg:flex lg:grow lg:flex-col lg:justify-between">
+    <Play id="finding" className="relative scroll-mt-24 lg:flex lg:grow lg:flex-col lg:justify-between">
       <LiveMark />
 
       <div className={`mt-6 grid gap-4 sm:gap-8 lg:mt-3 ${isRead(copy) ? "grid-cols-2" : "max-w-[15rem] grid-cols-1"}`}>
@@ -366,21 +371,26 @@ function Verdict({ copy }: { copy: CopyReading }) {
   const tamil = useLocale() === "ta";
   const { distance, found } = copy;
   return (
-    <p data-first-verdict className="fs-say mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:mt-3">
-      <span
-        className={`font-display text-[clamp(2.4rem,4.6vw,4.4rem)] font-semibold tracking-[-0.045em] tabular-nums text-accent ${
-          tamil ? "leading-[1.15]" : "leading-[0.9]"
-        }`}
-      >
-        {t("verdictFigure", { count: distance })}
-      </span>
-      <span
-        className={`font-display text-[clamp(1.2rem,2vw,1.8rem)] font-semibold tracking-[-0.03em] ${
-          tamil ? "leading-[1.3]" : "leading-[1.05]"
-        }`}
-      >
-        {found ? t("verdictSame") : t("verdictMissed")}
-      </span>
-    </p>
+    <div data-first-verdict className="fs-say mt-6 lg:mt-3">
+      {/* Two distances sit on this board. This label says which one the big
+          figure is, so it is not read as Chainlink's. */}
+      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("compare")}</p>
+      <p className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:mt-1.5">
+        <span
+          className={`font-display text-[clamp(2.4rem,4.6vw,4.4rem)] font-semibold tracking-[-0.045em] tabular-nums text-accent ${
+            tamil ? "leading-[1.15]" : "leading-[0.9]"
+          }`}
+        >
+          {t("verdictFigure", { count: distance })}
+        </span>
+        <span
+          className={`font-display text-[clamp(1.2rem,2vw,1.8rem)] font-semibold tracking-[-0.03em] ${
+            tamil ? "leading-[1.3]" : "leading-[1.05]"
+          }`}
+        >
+          {found ? t("verdictSame") : t("verdictMissed")}
+        </span>
+      </p>
+    </div>
   );
 }

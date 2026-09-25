@@ -270,8 +270,22 @@ function Still({
             </span>
             {look === "poster" ? <span>Still 01</span> : null}
           </p>
+          {/* A phone cannot drop a file, so below the laptop width the box
+              asks for a check instead. Both are in the server's markup and
+              CSS picks one, so neither flashes in after the script runs. */}
           <p className={`mt-4 font-display font-semibold tracking-[-0.035em] ${type}`}>
-            {over ? t("dropping") : t("drop")}
+            {over ? (
+              t("dropping")
+            ) : (
+              <>
+                <span data-first-title="phone" className="lg:hidden">
+                  {t("check")}
+                </span>
+                <span data-first-title="laptop" className="hidden lg:inline">
+                  {t("drop")}
+                </span>
+              </>
+            )}
           </p>
         </div>
         <div className="flex flex-col items-start gap-3">
@@ -380,7 +394,9 @@ function Strip({
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-1.5 line-clamp-2 text-[11px] leading-snug text-text-muted transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent sm:text-xs">
+                {/* A name is a title somebody chose, so it is shown whole: it
+                    wraps at its spaces to as many lines as it needs. */}
+                <span className="mt-1.5 block hyphens-none text-[11px] leading-snug text-text-muted [overflow-wrap:normal] [word-break:normal] transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent sm:text-xs">
                   {name}
                 </span>
               </button>

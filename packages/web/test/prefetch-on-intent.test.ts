@@ -144,14 +144,13 @@ describe("the phone bar in view", () => {
 describe("the header's links", () => {
   const layout = readFileSync("app/[locale]/layout.tsx", "utf8");
 
-  it("marks Verify and Explore for intent and leaves Home, Agents and Docs as they were", () => {
+  it("marks Verify and Explore for intent and leaves Agents and Docs as they were", () => {
     const flag = (href: string) => {
       const line = layout.split("\n").find((one) => one.includes(`{ href: "${href}", label:`));
       return line?.match(/prefetch: ([^,]+),/)?.[1];
     };
     expect(flag("/verify")).toBe('"intent"');
     expect(flag("/explore")).toBe('"intent"');
-    expect(flag("/")).toBe("undefined");
     expect(flag("/agents")).toBe("undefined");
     expect(flag("/docs")).toBe("undefined");
     expect(flag("/studio")).toBe("false");

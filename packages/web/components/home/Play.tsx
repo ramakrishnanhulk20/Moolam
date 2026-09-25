@@ -12,7 +12,7 @@ import { useEffect, useRef, type ReactNode } from "react";
  * screen is ever hidden by this: the board is only reset while it is out of
  * sight.
  */
-export function Play({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Play({ children, className = "", id }: { children: ReactNode; className?: string; id?: string }) {
   const node = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function Play({ children, className = "" }: { children: ReactNode; classN
   }, []);
 
   return (
-    <div ref={node} data-play="go" className={className}>
+    <div ref={node} id={id} data-play="go" className={className}>
       {children}
     </div>
   );

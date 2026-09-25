@@ -90,7 +90,13 @@ function boardType(length: number, tamil: boolean): string {
   return `${measure} ${size}`;
 }
 
-/** The small second call: make a passport of your own. */
+/**
+ * The second call: make a passport of your own.
+ *
+ * Solid, in the page's own two colours turned round, so it reads as a real
+ * button beside Choose an image without taking the accent, which stays the
+ * mark of the one lead action.
+ */
 export function MakeOne({ className = "" }: { className?: string }) {
   const t = useTranslations("home.first");
 
@@ -100,7 +106,7 @@ export function MakeOne({ className = "" }: { className?: string }) {
         href="/studio"
         prefetch={false}
         data-hero-call="make"
-        className="group inline-flex h-11 items-center gap-3 rounded-[8px] border border-line-strong px-5 text-[11px] font-semibold uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+        className="group inline-flex h-11 items-center gap-3 rounded-[8px] bg-text px-6 text-xs font-semibold uppercase tracking-[0.14em] text-bg transition duration-200 hover:-translate-y-0.5 hover:opacity-90 active:translate-y-0"
       >
         {t("make")}
         <span aria-hidden className="block h-px w-5 bg-current transition-all duration-300 group-hover:w-8" />

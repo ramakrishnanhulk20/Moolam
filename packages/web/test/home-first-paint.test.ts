@@ -129,10 +129,12 @@ describe("screen one, as the server sends it", () => {
   }
 
   it("quotes the live finding in the reader's language, with every figure read", async () => {
-    expect(text(await served("en"))).toContain("Re-checked by Chainlink on Sep 14, 2026: 0 of 64 bits apart.");
+    expect(text(await served("en"))).toContain(
+      "Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits from its record.",
+    );
     const tamil = text(await served("ta"));
     expect(tamil).toContain(ta.passport.consent.summary.closed);
-    expect(tamil).toContain("64-இல் 0 பிட்கள் வேறுபாடு");
+    expect(tamil).toContain("அதன் பதிவிலிருந்து 64-இல் 0 பிட்கள் வேறுபாடு");
   });
 
   it("hides none of it behind an opacity only a script would lift", async () => {
