@@ -122,7 +122,10 @@ describe("what a passport page carries before its reader signs in", () => {
     expect(browserPackages(PASSPORT)).toContain("@privy-io/react-auth");
   });
 
-  it.each(SIGNING)("%s reaches the wallet statically, so the static walk is not the pass", (entry) => {
-    expect(browserPackages(entry, STATIC_ONLY)).toContain("@privy-io/react-auth");
+  // The studio and /mine used to be the control here. Since WO-147a they fetch
+  // their Privy hooks beside the SDK, one dynamic import away, so the resolve
+  // console is the route that still names the wallet statically.
+  it("reaches the wallet statically from the resolve console, so the static walk is not the pass", () => {
+    expect(browserPackages("@/app/[locale]/resolve/page.tsx", STATIC_ONLY)).toContain("@privy-io/react-auth");
   });
 });

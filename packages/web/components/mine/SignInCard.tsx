@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useHeadingLeading } from "@/components/studio/leading";
 
@@ -11,6 +10,10 @@ import { useHeadingLeading } from "@/components/studio/leading";
  * nothing to show and nothing to guess at until someone signs in. The card says
  * that in one line and offers the only control that changes it, with the same
  * sign in the studio uses.
+ *
+ * Its heading was the page's largest paint and waited 16 s on a phone for
+ * script, because a motion component served it at opacity 0. It enters with the
+ * CSS rise now, so the HTML carries it visible.
  */
 export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
   const t = useTranslations("mine");
@@ -18,12 +21,7 @@ export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="relative mt-16 max-w-[62ch] border border-line bg-bg-raised p-7 sm:mt-24 sm:p-10"
-    >
+    <section className="rise relative mt-16 max-w-[62ch] border border-line bg-bg-raised p-7 sm:mt-24 sm:p-10">
       {/* The motif, oversized, hung off the card's own corner. The mark itself
           is wrapped rather than positioned: the .motif rule in globals.css sets
           position relative and it is written outside Tailwind's layers, so it
@@ -43,12 +41,7 @@ export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
         {t("signedOut.heading")}
       </h2>
 
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3"
-      >
+      <div className="rise mt-7 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ animationDelay: "120ms" }}>
         <button
           type="button"
           onClick={onSignIn}
@@ -57,9 +50,9 @@ export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
           {t("signedOut.button")}
         </button>
         <p className="max-w-[26ch] text-xs text-text-faint">{studio("signedOut.methods")}</p>
-      </motion.div>
+      </div>
 
       <p className="mt-7 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("signedOut.body")}</p>
-    </motion.section>
+    </section>
   );
 }

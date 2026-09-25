@@ -15,8 +15,9 @@ vi.mock("next-intl/server", () => ({
   getTranslations: async () => (key: string) => key,
 }));
 
-// The page's two children are the wallet SDK and the studio itself. Neither is
-// under test here: what is under test is the prop the page hands over.
+// The page's children are its server drawn intro, the wallet SDK and the studio
+// itself. None of them is under test here: what is under test is the prop the
+// page hands over.
 vi.mock("@/components/providers/WalletProvider", () => ({
   WalletProvider: (props: { children?: unknown }) => createElement("div", null, props.children as never),
 }));
@@ -26,14 +27,29 @@ vi.mock("@/components/studio/StudioScreen", () => ({
 }));
 
 const { default: StudioPage } = await import("@/app/[locale]/studio/page");
+const { StudioScreen } = await import("@/components/studio/StudioScreen");
+
+/** The studio screen's element, wherever the page's frame puts it. */
+function screenIn(node: unknown): ReactElement<{ initialMode?: string }> | undefined {
+  if (Array.isArray(node)) {
+    return node.map(screenIn).find((found) => found !== undefined);
+  }
+  if (node === null || typeof node !== "object" || !("props" in node)) {
+    return undefined;
+  }
+  const element = node as ReactElement<{ children?: unknown; initialMode?: string }>;
+  return element.type === StudioScreen ? element : screenIn(element.props.children);
+}
 
 async function openedOn(asked?: string | string[]): Promise<string | undefined> {
-  const tree = (await StudioPage({
+  const tree = await StudioPage({
     params: Promise.resolve({ locale: "en" }),
     searchParams: asked === undefined ? undefined : Promise.resolve({ mode: asked }),
-  })) as ReactElement<{ children: ReactElement<{ initialMode?: string }> }>;
+  });
 
-  return tree.props.children.props.initialMode;
+  const screen = screenIn(tree);
+  expect(screen, "the page should hand the studio screen over").toBeDefined();
+  return screen?.props.initialMode;
 }
 
 describe("which panel the studio opens on", () => {

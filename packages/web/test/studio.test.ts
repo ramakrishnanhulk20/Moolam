@@ -524,7 +524,7 @@ describe("where a failure happened, not what its name looks like", () => {
 
 describe("what the studio does before it asks for an unlock", () => {
   const source = readFileSync(fileURLToPath(new URL("../lib/studio/useStudio.ts", import.meta.url)), "utf8");
-  const screen = readFileSync(fileURLToPath(new URL("../components/studio/StudioScreen.tsx", import.meta.url)), "utf8");
+  const screen = readFileSync(fileURLToPath(new URL("../components/studio/LiveStudio.tsx", import.meta.url)), "utf8");
 
   /** Where a call first appears inside one function of the hook. */
   function order(fn: string, ...calls: string[]): number[] {

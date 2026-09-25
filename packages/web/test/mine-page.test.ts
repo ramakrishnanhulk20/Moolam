@@ -62,11 +62,38 @@ vi.mock("@/lib/i18n/routing", () => ({
     createElement("a", { href: props.href, className: props.className }, props.children as never),
 }));
 
+// The signed in half of the page and its grid reach the screen through
+// next/dynamic, which hands a component back only once its chunk has arrived.
+// Every loader is started here and awaited below, so the cases render the grid
+// and not the waiting card that stands in while it loads.
+const chunks = vi.hoisted(() => ({ pending: [] as Promise<unknown>[] }));
+
+vi.mock("next/dynamic", async () => {
+  const { createElement: make } = await import("react");
+  return {
+    default: (load: () => Promise<FunctionComponent<never>>, options?: { loading?: FunctionComponent }) => {
+      let Loaded: FunctionComponent<never> | null = null;
+      chunks.pending.push(
+        load().then((component) => {
+          Loaded = component;
+        }),
+      );
+      return (props: never) =>
+        Loaded === null ? (options?.loading === undefined ? null : make(options.loading)) : make(Loaded, props);
+    },
+  };
+});
+
 const { MineScreen } = await import("@/components/mine/MineScreen");
 const { Receipt } = await import("@/components/studio/Receipt");
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
 const { default: robots } = await import("@/app/robots");
 const { pagePaths } = await import("@/app/sitemap");
+
+for (let seen = -1; seen !== chunks.pending.length; ) {
+  seen = chunks.pending.length;
+  await Promise.all(chunks.pending);
+}
 
 /** A file in this package, read from the directory vitest runs in. */
 function read(path: string): string {

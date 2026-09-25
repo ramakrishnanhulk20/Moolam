@@ -17,8 +17,7 @@ import {
 import type { Failure } from "@/lib/studio/problems";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
-import { DoneActions } from "./DoneActions";
-import { FailureNote } from "./FailureNote";
+import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
 import { hasStarted } from "./press";

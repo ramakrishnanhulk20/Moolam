@@ -12,6 +12,7 @@ import type { SealedHandback } from "@/lib/sealed/handback";
 import { useSealedSave } from "@/lib/sealed/save";
 import { passportId } from "@/lib/studio/flow";
 import type { Studio } from "@/lib/studio/useStudio";
+import { EmptyStamps, ReceiptFrame } from "./ReceiptFrame";
 
 interface Mark {
   key: string;
@@ -65,24 +66,9 @@ export function Receipt({ studio }: { studio: Studio }) {
   const marks = collect(studio, t, words, format, file, save, privateDetail);
 
   return (
-    /* The stub is part of the one box now, so its tear is a horizontal line
-       across the top of it with a notch punched at each end, rather than the
-       vertical rule it used to hang off beside a second column. */
-    <aside data-studio-receipt className="relative mt-10 border-t border-dashed border-line-strong pt-10">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-3 -start-3 h-6 w-6 rounded-full border border-line bg-bg"
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -top-3 -end-3 h-6 w-6 rounded-full border border-line bg-bg"
-      />
-
-      <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">{t("receipt.heading")}</p>
-      <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-text-muted">{t("receipt.body")}</p>
-
+    <ReceiptFrame>
       {marks.length === 0 ? (
-        <p className="mt-8 max-w-[32ch] text-sm leading-relaxed text-text-faint">{t("receipt.empty")}</p>
+        <EmptyStamps />
       ) : (
         <ol className="mt-8 space-y-3">
           <AnimatePresence initial={false}>
@@ -174,7 +160,7 @@ export function Receipt({ studio }: { studio: Studio }) {
           </Link>
         </motion.div>
       )}
-    </aside>
+    </ReceiptFrame>
   );
 }
 

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useHeadingLeading } from "./leading";
 
@@ -10,18 +9,17 @@ const POINTS = ["wallet", "passkey", "gas"] as const;
  * The first screen anyone lands on. It says what signing in actually does,
  * because "connect wallet" is the step most people bounce off, and here there
  * is no wallet to connect: an account is made for them.
+ *
+ * It is also the card the page paints while the wallet is on its way, so it
+ * enters with the CSS rise rather than a motion component: the served HTML then
+ * carries it visible, and a phone paints it before any script has run.
  */
 export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
 
   return (
-    <motion.section
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="relative border border-line bg-bg-raised p-7 sm:p-10"
-    >
+    <section className="rise relative border border-line bg-bg-raised p-7 sm:p-10">
       <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
         <span className="motif h-[9px] w-[9px]" />
         {t("signedOut.kicker")}
@@ -36,12 +34,7 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
           whole job is to get a sign in. It follows the headline, the sentence
           under it says what pressing it costs, and the rest of the card is what
           a creator gets once they have. */}
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.12, ease: [0.16, 1, 0.3, 1] }}
-        className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-3"
-      >
+      <div className="rise mt-7 flex flex-wrap items-center gap-x-6 gap-y-3" style={{ animationDelay: "120ms" }}>
         <button
           type="button"
           onClick={onSignIn}
@@ -50,18 +43,16 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
           {t("signedOut.button")}
         </button>
         <p className="max-w-[26ch] text-xs text-text-faint">{t("signedOut.methods")}</p>
-      </motion.div>
+      </div>
 
       <p className="mt-7 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("signedOut.body")}</p>
 
       <ul className="mt-10 grid gap-y-7 border-t border-line pt-7 sm:grid-cols-3">
         {POINTS.map((point, index) => (
-          <motion.li
+          <li
             key={point}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15 + index * 0.08, ease: [0.16, 1, 0.3, 1] }}
-            className={`sm:px-6 sm:first:ps-0 ${index === POINTS.length - 1 ? "sm:pe-0" : ""} ${
+            style={{ animationDelay: `${150 + index * 80}ms` }}
+            className={`rise sm:px-6 sm:first:ps-0 ${index === POINTS.length - 1 ? "sm:pe-0" : ""} ${
               index === 0 ? "" : "sm:border-s sm:border-line"
             }`}
           >
@@ -69,24 +60,22 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
               {t(`signedOut.points.${point}.label`)}
             </p>
             <p className="mt-2 text-sm leading-relaxed text-text">{t(`signedOut.points.${point}.body`)}</p>
-          </motion.li>
+          </li>
         ))}
 
         {/* The fourth thing a creator gets is the one nothing else on the web
             offers them, and it is a sentence rather than a phrase, so it takes
             the full width under the other three instead of squeezing them. */}
-        <motion.li
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.39, ease: [0.16, 1, 0.3, 1] }}
-          className="sm:col-span-3 sm:border-t sm:border-line sm:pt-7"
+        <li
+          style={{ animationDelay: "390ms" }}
+          className="rise sm:col-span-3 sm:border-t sm:border-line sm:pt-7"
         >
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
             {t("signedOut.points.consent.label")}
           </p>
           <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-text">{t("signedOut.points.consent.body")}</p>
-        </motion.li>
+        </li>
       </ul>
-    </motion.section>
+    </section>
   );
 }

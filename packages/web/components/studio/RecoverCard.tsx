@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import type { Failure } from "@/lib/studio/problems";
-import { FailureNote } from "./FailureNote";
+import { FailureNote } from "./afterPress";
 import { WaitLabel } from "./WaitLabel";
 import { useHeadingLeading } from "./leading";
 

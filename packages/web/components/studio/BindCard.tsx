@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { BindState } from "@/lib/studio/binding";
-import { FailureNote } from "./FailureNote";
+import { FailureNote } from "./afterPress";
 import { WaitLabel } from "./WaitLabel";
 import { useHeadingLeading } from "./leading";
 

@@ -13,6 +13,33 @@ import { initialRegisterState, registerReducer, type RegisterState } from "@/lib
 import type { PrepareResponse } from "@/lib/verifier/client";
 import type { Studio } from "@/lib/studio/useStudio";
 
+// The failure note and the done screen's actions reach the panels through
+// next/dynamic, which hands a component back only once its chunk has arrived.
+// Every loader is started here and awaited once below, so the cases render the
+// note itself and not its empty loading state.
+const chunks = vi.hoisted(() => ({ pending: [] as Promise<unknown>[] }));
+
+vi.mock("next/dynamic", async () => {
+  const { createElement: make } = await import("react");
+  return {
+    default: (load: () => Promise<FunctionComponent<never>>, options?: { loading?: FunctionComponent }) => {
+      let Loaded: FunctionComponent<never> | null = null;
+      chunks.pending.push(
+        load().then((component) => {
+          Loaded = component;
+        }),
+      );
+      return (props: never) =>
+        Loaded === null ? (options?.loading === undefined ? null : make(options.loading)) : make(Loaded, props);
+    },
+  };
+});
+
+for (let seen = -1; seen !== chunks.pending.length; ) {
+  seen = chunks.pending.length;
+  await Promise.all(chunks.pending);
+}
+
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: unknown }) =>
     createElement("a", { href: props.href }, props.children as never),

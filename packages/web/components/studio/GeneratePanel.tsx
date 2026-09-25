@@ -18,8 +18,7 @@ import {
 import { EXAMPLE_PROMPTS, PROMPT_MAX, PROMPT_MIN, atLimit } from "@/lib/studio/generate";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { ConsentField } from "./ConsentField";
-import { DoneActions } from "./DoneActions";
-import { FailureNote } from "./FailureNote";
+import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
 import { hasStarted } from "./press";
