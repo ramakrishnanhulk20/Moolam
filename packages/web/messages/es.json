@@ -482,8 +482,13 @@
       "whatIsRecheck": "Una recomprobación es un flujo CRE de Chainlink que descarga este archivo por su cuenta, vuelve a calcular la huella y escribe esa respuesta en Monad a través del contrato receptor. Nadie puede escribir una sobre su propia imagen.",
       "private": {
         "badge": "Revisión privada",
-        "line": "Recomprobada en privado por un flujo confidencial de Chainlink. Se ejecutó en una sola máquina, en el simulador de Chainlink, que no es un enclave real."
-      }
+        "lead": "Recomprobada en privado por un flujo confidencial de Chainlink, a partir de la copia pequeña que guarda Moolam.",
+        "leadEarlier": "Recomprobada en privado por un flujo confidencial de Chainlink, a partir de la copia pequeña que Moolam guardaba entonces.",
+        "limit": "Se ejecutó en una sola máquina, en el simulador de Chainlink, que no es un enclave real.",
+        "verdict": "Un flujo confidencial de Chainlink abrió la copia privada pequeña que Moolam guardaba de esta imagen y comparó su huella: <apart>{bits} de 64 bits de diferencia</apart>.",
+        "gridNote": "La primera cuadrícula es la huella que el registro guardó cuando se registró la imagen. La segunda es la que el flujo calculó a partir de la copia privada pequeña de Moolam. Cada celda que no coincide queda marcada."
+      },
+      "sealedBody": "Cualquiera puede decir que una imagen es suya. Esta parte es distinta: un tercero comprueba la huella y escribe la respuesta en Monad. Una imagen sellada no tiene archivo público, así que su revisión es privada: si su autor la pidió, un flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam y compara la huella."
     },
     "children": {
       "heading": "Ediciones",
@@ -860,7 +865,14 @@
         "gone": "La copia privada de Moolam se borró, así que ya no se puede hacer ninguna revisión privada.",
         "unknown": "Moolam no pudo leer ahora mismo el estado de la copia privada."
       },
-      "edit": "Este pasaporte está sellado, así que no se puede editar hasta que la imagen se publique."
+      "edit": "Este pasaporte está sellado, así que no se puede editar hasta que la imagen se publique.",
+      "about": {
+        "noCopy": "Registrado sellado: la imagen nunca se publicó y Moolam no guardó ninguna copia. El identificador del pasaporte es el sha256 del archivo firmado, así que este registro queda atado a los bytes exactos sin mostrarlos.",
+        "kept": "Registrado sellado: la imagen nunca se publicó. A petición de su autor, Moolam guarda una copia privada pequeña, solo para una revisión privada con un flujo de Chainlink. El identificador del pasaporte es el sha256 del archivo firmado, así que este registro queda atado a los bytes exactos sin mostrarlos.",
+        "deleted": "Registrado sellado: la imagen nunca se publicó. Moolam guardó una copia privada pequeña para una revisión privada con un flujo de Chainlink, y esa copia ya se borró. El identificador del pasaporte es el sha256 del archivo firmado, así que este registro queda atado a los bytes exactos sin mostrarlos.",
+        "asked": "Registrado sellado: la imagen nunca se publicó. Su autor pidió a Moolam que guardara una copia privada pequeña para una revisión privada con un flujo de Chainlink. El identificador del pasaporte es el sha256 del archivo firmado, así que este registro queda atado a los bytes exactos sin mostrarlos.",
+        "published": "Registrado sellado, sin publicar la imagen, y publicada por quien lo tiene el {date}. El identificador del pasaporte es el sha256 del archivo, así que cualquiera puede calcular el hash de la imagen publicada y compararlo."
+      }
     },
     "unseal": {
       "kicker": "Te toca publicar",
@@ -1604,7 +1616,10 @@
       "rateLimited": "Demasiadas peticiones desde aquí, espera un minuto.",
       "notAnswering": "El servicio de verificación no responde ahora mismo.",
       "unknown": "La petición no llegó a entrar."
-    }
+    },
+    "notePrivate": "Gratis. El flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam, compara la huella y escribe su veredicto en Monad. Las peticiones se atienden por tandas, normalmente el mismo día.",
+    "runningPrivate": "En marcha: el flujo está abriendo la copia privada y comparando la huella.",
+    "recheckedOn": "Recomprobada el {date}"
   },
   "mine": {
     "title": "Tus imágenes",

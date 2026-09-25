@@ -209,6 +209,7 @@ export default async function PassportPage({
           hasPasskey={hasPasskey}
           standing={standing}
           txHash={registration}
+          privateCopy={privateCopy}
         />
 
         <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">

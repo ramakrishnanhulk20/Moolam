@@ -4,6 +4,8 @@ import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/cli
 import type { Passport } from "@/lib/chain/registry";
 import { CopyButton } from "@/components/studio/CopyButton";
 import { Link } from "@/lib/i18n/routing";
+import type { SealedCopyLookup } from "@/lib/verifier/client";
+import { aboutLine } from "./about";
 import { cidOf, type Art } from "./art";
 import { Mono } from "./Mono";
 import { standingClass, type Standing } from "./labels";
@@ -30,6 +32,7 @@ export async function Facts({
   hasPasskey,
   standing,
   txHash,
+  privateCopy,
 }: {
   passport: Passport;
   art: Art;
@@ -37,6 +40,8 @@ export async function Facts({
   hasPasskey: boolean;
   standing: Standing;
   txHash: Hex | null;
+  /** Whether Moolam still keeps a sealed picture's private copy, when the page asked. */
+  privateCopy?: SealedCopyLookup["state"];
 }) {
   const t = await getTranslations("passport");
   const common = await getTranslations("common");
@@ -44,6 +49,7 @@ export async function Facts({
   const tokenId = BigInt(passport.id).toString();
   const metadataCid = cidOf(passport.metadataURI);
   const imageCid = art.imageUrl === undefined ? null : cidOf(art.imageUrl);
+  const about = aboutLine(art, privateCopy);
 
   return (
     <div className="mx-auto grid w-full max-w-[1400px] gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-20">
@@ -121,10 +127,21 @@ export async function Facts({
             </dd>
           </div>
 
-          {art.description === undefined ? null : (
+          {about === null ? null : (
             <div>
               <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("about")}</dt>
-              <dd className="mt-2 max-w-[64ch] text-base leading-relaxed text-text-muted">{art.description}</dd>
+              <dd
+                data-about={about.kind === "sealed" ? about.key : "pinned"}
+                className="mt-2 max-w-[64ch] text-base leading-relaxed text-text-muted"
+              >
+                {about.kind === "pinned"
+                  ? about.text
+                  : about.key === "published"
+                    ? t("sealed.about.published", {
+                        date: format.dateTime(new Date(about.at), { dateStyle: "medium" }),
+                      })
+                    : t(`sealed.about.${about.key}`)}
+              </dd>
             </div>
           )}
 

@@ -7,7 +7,7 @@ import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { useRouter } from "@/lib/i18n/routing";
 import { refreshPassport } from "@/lib/passport/refresh";
-import type { RecheckState } from "@/lib/recheck/state";
+import { idleRecheck, type RecheckState } from "@/lib/recheck/state";
 import { useRecheckRequest, type RecheckControl } from "@/lib/recheck/useRecheck";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -31,6 +31,8 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 export function RecheckRequest({
   passportId,
   className = "",
+  sealed = false,
+  recheckedOn,
 }: {
   /**
    * The passport to ask about. The verify card knows it from the answer it is
@@ -40,6 +42,17 @@ export function RecheckRequest({
    */
   passportId?: Hex;
   className?: string;
+  /**
+   * True on a sealed passport, where the workflow opens Moolam's small private
+   * copy rather than fetching a published picture, and the words say so.
+   */
+  sealed?: boolean;
+  /**
+   * What the chain holds, from the passport page: the newest re-check's date,
+   * or null when there is no re-check on chain. Left out by a screen that does
+   * not read the rows, which keeps the queue's own word for a finished request.
+   */
+  recheckedOn?: string | null;
 }) {
   const params = useParams();
   const fromRoute = typeof params?.id === "string" && ID_PATTERN.test(params.id) ? (params.id as Hex) : undefined;
@@ -52,10 +65,39 @@ export function RecheckRequest({
   // Keyed by the passport, so a card that answers about a second picture draws
   // a control with a state of its own rather than one still showing where the
   // last passport sat in the queue.
-  return <Control key={id} passportId={id} className={className} />;
+  return <Control key={id} passportId={id} className={className} sealed={sealed} recheckedOn={recheckedOn} />;
 }
 
-function Control({ passportId, className }: { passportId: Hex; className: string }) {
+/**
+ * What the control's place shows, once the chain has had its say.
+ *
+ * The queue remembers a finished request for ever, so without this every
+ * later visitor read "Done" as if they had just asked. On the passport page a
+ * finished request is told by the chain instead: the date of the newest
+ * re-check when there is one, and when there is none, nothing at all and the
+ * button again, because a request that left no verdict is not a re-check.
+ */
+export function seatOf(
+  state: RecheckState,
+  recheckedOn: string | null | undefined,
+): { state: RecheckState; rechecked?: string } {
+  if (state.kind !== "done" || recheckedOn === undefined) {
+    return { state };
+  }
+  return recheckedOn === null ? { state: idleRecheck } : { state: idleRecheck, rechecked: recheckedOn };
+}
+
+function Control({
+  passportId,
+  className,
+  sealed,
+  recheckedOn,
+}: {
+  passportId: Hex;
+  className: string;
+  sealed: boolean;
+  recheckedOn?: string | null;
+}) {
   const t = useTranslations("recheck");
   const calm = useReducedMotion() === true;
   const router = useRouter();
@@ -72,8 +114,9 @@ function Control({ passportId, className }: { passportId: Hex; className: string
     },
   });
 
-  const { state } = recheck;
-  const press = pressFor(recheck);
+  const seat = seatOf(recheck.state, recheckedOn);
+  const { state } = seat;
+  const press = seat.rechecked === undefined ? pressFor({ ...recheck, state }) : null;
 
   return (
     <motion.div
@@ -81,14 +124,21 @@ function Control({ passportId, className }: { passportId: Hex; className: string
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: EASE }}
       data-recheck
-      data-recheck-state={state.kind}
+      data-recheck-state={seat.rechecked === undefined ? state.kind : "rechecked"}
       className={`max-w-[54ch] ${className}`}
     >
       {/* The row keeps its height whether it holds a button, a stamp, or both,
           so a request that lands while the reader is looking does not lift the
           page under their eyes. */}
       <div className="flex min-h-[2.75rem] flex-wrap items-center gap-x-5 gap-y-3">
-        <Stamp state={state} calm={calm} />
+        {seat.rechecked === undefined ? (
+          <Stamp state={state} calm={calm} />
+        ) : (
+          <p className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-verified">
+            <span aria-hidden className="h-[7px] w-[7px] bg-verified" />
+            {t("recheckedOn", { date: seat.rechecked })}
+          </p>
+        )}
 
         {press === null ? null : (
           <button
@@ -102,13 +152,13 @@ function Control({ passportId, className }: { passportId: Hex; className: string
         )}
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-text-faint">{t("note")}</p>
+      <p className="mt-3 text-xs leading-relaxed text-text-faint">{t(sealed ? "notePrivate" : "note")}</p>
 
       {/* Room for the longest sentence any state has, kept whether one is
           showing or not. */}
       <div className="mt-3 min-h-[4.25rem] sm:min-h-[3rem]">
         <AnimatePresence mode="wait" initial={false}>
-          <Sentence key={state.kind} state={state} spent={recheck.spent} calm={calm} />
+          <Sentence key={state.kind} state={state} spent={recheck.spent} calm={calm} sealed={sealed} />
         </AnimatePresence>
       </div>
     </motion.div>
@@ -134,7 +184,17 @@ function Stamp({ state, calm }: { state: RecheckState; calm: boolean }) {
   );
 }
 
-function Sentence({ state, spent, calm }: { state: RecheckState; spent: boolean; calm: boolean }) {
+function Sentence({
+  state,
+  spent,
+  calm,
+  sealed,
+}: {
+  state: RecheckState;
+  spent: boolean;
+  calm: boolean;
+  sealed: boolean;
+}) {
   const t = useTranslations("recheck");
   const format = useFormatter();
 
@@ -155,7 +215,7 @@ function Sentence({ state, spent, calm }: { state: RecheckState; spent: boolean;
         return t(state.already ? "already" : "queued", { at, position: state.position });
       }
       case "running":
-        return t("running");
+        return t(sealed ? "runningPrivate" : "running");
       case "done":
         return (
           <>

@@ -482,8 +482,13 @@
       "whatIsRecheck": "Une revérification, c’est un workflow CRE de Chainlink qui récupère ce fichier lui-même, recalcule l’empreinte et inscrit cette réponse sur Monad via le contrat récepteur. Personne ne peut en écrire une sur sa propre image.",
       "private": {
         "badge": "Revérification privée",
-        "line": "Revérifiée en privé par un workflow confidentiel Chainlink. Il s'est exécuté sur une seule machine, dans le simulateur de Chainlink, qui n'est pas une vraie enclave."
-      }
+        "lead": "Revérifiée en privé par un workflow confidentiel Chainlink, à partir de la petite copie que garde Moolam.",
+        "leadEarlier": "Revérifiée en privé par un workflow confidentiel Chainlink, à partir de la petite copie que Moolam gardait alors.",
+        "limit": "Il s'est exécuté sur une seule machine, dans le simulateur de Chainlink, qui n'est pas une vraie enclave.",
+        "verdict": "Un workflow confidentiel Chainlink a ouvert la petite copie privée que Moolam gardait de cette image et comparé son empreinte : <apart>{bits} bits d'écart sur 64</apart>.",
+        "gridNote": "La première grille est l'empreinte inscrite au registre lors de l'enregistrement. La seconde est celle que le workflow a calculée à partir de la petite copie privée de Moolam. Chaque case qui diffère est marquée."
+      },
+      "sealedBody": "N'importe qui peut dire qu'une image est la sienne. Ici c'est différent : un tiers vérifie l'empreinte et inscrit la réponse sur Monad. Une image scellée n'a pas de fichier public, donc sa vérification est privée : si son auteur l'a demandée, un workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam et compare l'empreinte."
     },
     "children": {
       "heading": "Retouches",
@@ -860,7 +865,14 @@
         "gone": "La copie privée de Moolam a été supprimée, donc aucune revérification privée n'est possible.",
         "unknown": "Moolam n'a pas pu lire l'état de la copie privée pour l'instant."
       },
-      "edit": "Ce passeport est scellé : il ne peut pas être modifié tant que l'image n'est pas publiée."
+      "edit": "Ce passeport est scellé : il ne peut pas être modifié tant que l'image n'est pas publiée.",
+      "about": {
+        "noCopy": "Enregistré scellé : l'image n'a jamais été publiée, et Moolam n'en a gardé aucune copie. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "kept": "Enregistré scellé : l'image n'a jamais été publiée. À la demande de son auteur, Moolam garde une petite copie privée, utilisée seulement pour une revérification privée par un workflow Chainlink. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "deleted": "Enregistré scellé : l'image n'a jamais été publiée. Moolam a gardé une petite copie privée pour une revérification privée par un workflow Chainlink, et cette copie a depuis été supprimée. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "asked": "Enregistré scellé : l'image n'a jamais été publiée. Son auteur a demandé à Moolam de garder une petite copie privée pour une revérification privée par un workflow Chainlink. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "published": "Enregistré scellé, sans image publiée, puis publiée par son détenteur le {date}. L'identifiant du passeport est le sha256 du fichier, donc chacun peut hacher l'image publiée et comparer."
+      }
     },
     "unseal": {
       "kicker": "À vous de publier",
@@ -1604,7 +1616,10 @@
       "rateLimited": "Trop de demandes depuis ici, attendez une minute.",
       "notAnswering": "Le service de vérification ne répond pas pour le moment.",
       "unknown": "La demande n'est pas passée."
-    }
+    },
+    "notePrivate": "Gratuit. Le workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam, compare l'empreinte et inscrit son verdict sur Monad. Les demandes sont traitées par lots, en général dans la journée.",
+    "runningPrivate": "En cours : le workflow ouvre la copie privée et compare l'empreinte.",
+    "recheckedOn": "Revérifiée le {date}"
   },
   "mine": {
     "title": "Vos images",

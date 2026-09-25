@@ -482,8 +482,13 @@
       "whatIsRecheck": "A re-check is a Chainlink CRE workflow fetching this file for itself, computing the fingerprint again and writing that answer on Monad through the receiver contract. Nobody can write one about their own picture.",
       "private": {
         "badge": "Private re-check",
-        "line": "Re-checked privately by a Chainlink confidential workflow. It ran in Chainlink's simulator on one machine, which is not a real enclave."
-      }
+        "lead": "Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam keeps.",
+        "leadEarlier": "Re-checked privately by a Chainlink confidential workflow, from the small copy Moolam kept at the time.",
+        "limit": "It ran in Chainlink's simulator on one machine, which is not a real enclave.",
+        "verdict": "A Chainlink confidential workflow opened the small private copy Moolam kept of this picture and compared its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
+        "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from Moolam's small private copy. Every cell that disagrees is marked."
+      },
+      "sealedBody": "Anyone can say a picture is theirs. This part is different: a second party checks the fingerprint and writes the answer on Monad. A sealed picture has no public file, so its check is private: when its creator asked for one, a Chainlink confidential workflow opens the small private copy Moolam keeps and compares the fingerprint."
     },
     "children": {
       "heading": "Edits",
@@ -860,7 +865,14 @@
         "gone": "Moolam's private copy was deleted, so no private re-check can run.",
         "unknown": "Moolam could not read the private copy's state just now."
       },
-      "edit": "This passport is sealed, so it cannot be edited until the picture is published."
+      "edit": "This passport is sealed, so it cannot be edited until the picture is published.",
+      "about": {
+        "noCopy": "Registered sealed: the picture was never published, and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "kept": "Registered sealed: the picture was never published. At its creator's request, Moolam keeps one small private copy, used only for a private re-check by a Chainlink workflow. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "deleted": "Registered sealed: the picture was never published. Moolam kept one small private copy for a private re-check by a Chainlink workflow, and that copy has since been deleted. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "asked": "Registered sealed: the picture was never published. Its creator asked Moolam to keep one small private copy for a private re-check by a Chainlink workflow. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "published": "Registered sealed, with no picture published, and published by its holder on {date}. The passport id is the sha256 of the file, so anyone can hash the published picture and compare."
+      }
     },
     "unseal": {
       "kicker": "Yours to publish",
@@ -1604,7 +1616,10 @@
       "rateLimited": "Too many requests from here, wait a minute.",
       "notAnswering": "The verify service is not answering just now.",
       "unknown": "The request did not go through."
-    }
+    },
+    "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. Requests are run in batches, usually within the day.",
+    "runningPrivate": "Running now: the workflow is opening the private copy and comparing the fingerprint.",
+    "recheckedOn": "Re-checked on {date}"
   },
   "mine": {
     "title": "Your pictures",

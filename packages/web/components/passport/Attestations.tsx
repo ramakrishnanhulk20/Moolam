@@ -58,6 +58,11 @@ export async function Attestations({
   // control is offered on one while that copy is kept and never otherwise.
   const offerRecheck = !sealed || privateCopy === "kept";
   const copyLine = sealed && privateCopy !== undefined ? sealedWords(`privateCopy.${privateCopy}`) : null;
+  const newest = attestations.reduce<bigint | null>(
+    (latest, attestation) => (latest === null || attestation.at > latest ? attestation.at : latest),
+    null,
+  );
+  const recheckedOn = newest === null ? null : format.dateTime(new Date(Number(newest) * 1000), { dateStyle: "medium" });
 
   // Which forwarder carried each report is a chain read, so it is done here,
   // once per row, rather than inside a row that the list has already resolved.
@@ -88,7 +93,11 @@ export async function Attestations({
             <h2 className="mt-5 max-w-[15ch] font-display text-[clamp(1.8rem,4vw,3.2rem)] font-semibold uppercase leading-[0.95] tracking-[-0.03em]">
               {t("heading")}
             </h2>
-            <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+            {/* A sealed picture has no public file for anyone to fetch, so its
+                intro says what the private check really does. */}
+            <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-text-muted">
+              {sealed ? t("sealedBody") : t("body")}
+            </p>
           </div>
 
           <div className="rise" style={{ animationDelay: "90ms" }}>
@@ -126,6 +135,7 @@ export async function Attestations({
                     common={common}
                     txHash={txHash}
                     delivery={delivery}
+                    privateCopy={privateCopy}
                     when={format.dateTime(new Date(Number(attestation.at) * 1000), {
                       dateStyle: "medium",
                       timeStyle: "short",
@@ -136,7 +146,7 @@ export async function Attestations({
             )}
 
             {offerRecheck ? (
-              <RecheckRequest className="mt-8 border-t border-line pt-7" />
+              <RecheckRequest className="mt-8 border-t border-line pt-7" sealed={sealed} recheckedOn={recheckedOn} />
             ) : attestations.length > 0 && copyLine !== null ? (
               // Under earlier verdicts the control's place says why there is
               // no control now, so a deleted copy reads as a choice, not a fault.
@@ -161,6 +171,7 @@ function Row({
   phash,
   txHash,
   delivery,
+  privateCopy,
   when,
   t,
   common,
@@ -170,6 +181,8 @@ function Row({
   txHash?: `0x${string}`;
   /** Which forwarder the report came through, read off its transaction. */
   delivery: ReportDelivery;
+  /** Whether Moolam still keeps the private copy a private verdict was read from. */
+  privateCopy?: SealedCopyLookup["state"];
   when: string;
   t: Translate;
   common: Translate;
@@ -202,10 +215,24 @@ function Row({
         ) : null}
       </div>
 
+      {/* What happened leads and the limit follows it, once. "Keeps" is said
+          only while the copy is known to be kept: a verdict outlives the copy
+          it was read from. A report the network forwarder delivered did not run
+          in the simulator, so it is not told that it did. */}
       {isPrivate ? (
-        <p className="mt-5 max-w-[40ch] font-display text-[clamp(1.1rem,2.1vw,1.55rem)] font-semibold leading-[1.15] tracking-[-0.02em]">
-          {t("private.line")}
-        </p>
+        <>
+          <p
+            data-private-lead
+            className="mt-5 max-w-[40ch] font-display text-[clamp(1.1rem,2.1vw,1.55rem)] font-semibold leading-[1.15] tracking-[-0.02em]"
+          >
+            {privateCopy === "kept" ? t("private.lead") : t("private.leadEarlier")}
+          </p>
+          {delivery === "network" ? null : (
+            <p data-private-limit className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">
+              {t("private.limit")}
+            </p>
+          )}
+        </>
       ) : (
         <p className="mt-5 max-w-[24ch] font-display text-[clamp(1.3rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
           {source === "chainlink" ? t("byChainlink") : t("byReceiver")}
@@ -221,7 +248,7 @@ function Row({
       </div>
 
       <p className="mt-8 max-w-[44ch] font-display text-[clamp(1.1rem,2.4vw,1.7rem)] font-semibold leading-[1.15] tracking-[-0.03em]">
-        {t.rich("verdict", {
+        {t.rich(isPrivate ? "private.verdict" : "verdict", {
           bits: counted,
           apart: (chunks) => <span className={counted === 0 ? "text-verified" : "text-failed"}>{chunks}</span>,
         })}
@@ -271,7 +298,7 @@ function Row({
       </div>
 
       <p className="mt-5 max-w-[56ch] border-t border-line pt-5 text-xs leading-relaxed text-text-faint">
-        {t("gridNote")}
+        {isPrivate ? t("private.gridNote") : t("gridNote")}
       </p>
     </li>
   );

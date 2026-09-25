@@ -328,7 +328,7 @@ describe("every language carries the private re-check words", () => {
 
   it("is ten languages, and English has every word the screens ask for", () => {
     expect(locales.length).toBe(10);
-    expect(english.size).toBe(27);
+    expect(english.size).toBe(31);
   });
 
   for (const locale of locales) {
@@ -342,7 +342,7 @@ describe("every language carries the private re-check words", () => {
       }
       expect(words.get("passport.sealed.posterLinePrivate")).toContain("{date}");
       // The one fact every line about a private verdict exists to keep honest.
-      expect(words.get("passport.attestations.private.line")).toContain("Chainlink");
+      expect(words.get("passport.attestations.private.lead")).toContain("Chainlink");
     });
   }
 });

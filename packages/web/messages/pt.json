@@ -483,8 +483,13 @@
       "whatIsRecheck": "Uma reconferência é um fluxo CRE da Chainlink baixando este arquivo por conta própria, calculando a impressão de novo e gravando essa resposta na Monad pelo contrato receptor. Ninguém pode gravar uma sobre a própria imagem.",
       "private": {
         "badge": "Reconferência privada",
-        "line": "Reconferida em privado por um fluxo confidencial da Chainlink. Rodou em uma única máquina, no simulador da Chainlink, que não é um enclave de verdade."
-      }
+        "lead": "Reconferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guarda.",
+        "leadEarlier": "Reconferida em privado por um fluxo confidencial da Chainlink, a partir da cópia pequena que a Moolam guardava na época.",
+        "limit": "Rodou em uma única máquina, no simulador da Chainlink, que não é um enclave de verdade.",
+        "verdict": "Um fluxo confidencial da Chainlink abriu a cópia privada pequena que a Moolam guardava desta imagem e comparou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
+        "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou da cópia privada pequena da Moolam. Cada célula diferente fica marcada."
+      },
+      "sealedBody": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um terceiro confere a impressão e grava a resposta na Monad. Uma imagem lacrada não tem arquivo público, então a conferência dela é privada: se quem a criou pediu, um fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda e compara a impressão."
     },
     "children": {
       "heading": "Edições",
@@ -861,7 +866,14 @@
         "gone": "A cópia privada da Moolam foi apagada, então nenhuma reconferência privada pode rodar.",
         "unknown": "A Moolam não conseguiu ler agora o estado da cópia privada."
       },
-      "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada."
+      "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada.",
+      "about": {
+        "noCopy": "Registrado lacrado: a imagem nunca foi publicada, e a Moolam não guardou nenhuma cópia dela. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "kept": "Registrado lacrado: a imagem nunca foi publicada. A pedido de quem a criou, a Moolam guarda uma cópia privada pequena, usada só para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "deleted": "Registrado lacrado: a imagem nunca foi publicada. A Moolam guardou uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink, e essa cópia já foi apagada. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "asked": "Registrado lacrado: a imagem nunca foi publicada. Quem a criou pediu à Moolam que guardasse uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "published": "Registrado lacrado, sem imagem publicada, e publicada por quem o tem em {date}. O identificador do passaporte é o sha256 do arquivo, então qualquer um pode calcular o hash da imagem publicada e comparar."
+      }
     },
     "unseal": {
       "kicker": "Publicar é com você",
@@ -1605,7 +1617,10 @@
       "rateLimited": "Pedidos demais daqui, espere um minuto.",
       "notAnswering": "O serviço de verificação não está respondendo agora.",
       "unknown": "O pedido não entrou."
-    }
+    },
+    "notePrivate": "Gratuito. O fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda, compara a impressão e grava o veredito dele na Monad. Os pedidos são atendidos em lotes, em geral no mesmo dia.",
+    "runningPrivate": "Rodando agora: o fluxo está abrindo a cópia privada e comparando a impressão.",
+    "recheckedOn": "Reconferida em {date}"
   },
   "mine": {
     "title": "Suas imagens",

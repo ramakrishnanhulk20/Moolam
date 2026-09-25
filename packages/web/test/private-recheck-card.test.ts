@@ -111,7 +111,7 @@ describe("a verdict written by the sealed receiver", () => {
     const markup = await card({ rows: [privateRow], privateCopy: "kept" });
 
     expect(markup).toContain(words.private.badge);
-    expect(markup).toContain(asRendered(words.private.line));
+    expect(markup).toContain(asRendered(words.private.lead));
     expect(markup).not.toContain(words.byReceiver);
   });
 
@@ -129,7 +129,7 @@ describe("a verdict written by the sealed receiver", () => {
 
     expect(markup).toContain(words.byChainlink);
     expect(markup).not.toContain(words.private.badge);
-    expect(markup).not.toContain(asRendered(words.private.line));
+    expect(markup).not.toContain(asRendered(words.private.lead));
   });
 
   it("names the sealed receiver on the chain client", () => {

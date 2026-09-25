@@ -482,8 +482,13 @@
       "whatIsRecheck": "Eine Nachprüfung heißt: ein Chainlink-CRE-Workflow holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort über den Receiver-Vertrag auf Monad. Über das eigene Bild kann niemand eine schreiben.",
       "private": {
         "badge": "Private Nachprüfung",
-        "line": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow. Er lief auf einem einzigen Rechner in Chainlinks Simulator, der keine echte Enklave ist."
-      }
+        "lead": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow, anhand der kleinen Kopie, die Moolam behält.",
+        "leadEarlier": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow, anhand der kleinen Kopie, die Moolam damals behielt.",
+        "limit": "Er lief auf einem einzigen Rechner in Chainlinks Simulator, der keine echte Enklave ist.",
+        "verdict": "Ein vertraulicher Chainlink-Workflow hat die kleine private Kopie geöffnet, die Moolam von diesem Bild behielt, und seinen Fingerabdruck verglichen: <apart>{bits} von 64 Bit auseinander</apart>.",
+        "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den der Workflow aus der kleinen privaten Kopie von Moolam berechnet hat. Jede Zelle, die abweicht, ist markiert."
+      },
+      "sealedBody": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: eine zweite Stelle prüft den Fingerabdruck und schreibt die Antwort auf Monad. Ein versiegeltes Bild hat keine öffentliche Datei, also ist seine Prüfung privat: wenn sein Urheber darum gebeten hat, öffnet ein vertraulicher Chainlink-Workflow die kleine private Kopie, die Moolam behält, und vergleicht den Fingerabdruck."
     },
     "children": {
       "heading": "Bearbeitungen",
@@ -860,7 +865,14 @@
         "gone": "Die private Kopie von Moolam wurde gelöscht, also kann keine private Nachprüfung mehr laufen.",
         "unknown": "Moolam konnte den Stand der privaten Kopie gerade nicht lesen."
       },
-      "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist."
+      "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist.",
+      "about": {
+        "noCopy": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht, und Moolam hat keine Kopie davon behalten. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "kept": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht. Auf Wunsch seines Urhebers behält Moolam eine kleine private Kopie, nur für eine private Nachprüfung durch einen Chainlink-Workflow. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "deleted": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht. Moolam hat eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow behalten, und diese Kopie wurde inzwischen gelöscht. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "asked": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht. Sein Urheber hat Moolam gebeten, eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow zu behalten. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "published": "Versiegelt eingetragen, ohne veröffentlichtes Bild, und am {date} von der haltenden Wallet veröffentlicht. Die Pass-Kennung ist der sha256 der Datei, also kann jeder das veröffentlichte Bild hashen und vergleichen."
+      }
     },
     "unseal": {
       "kicker": "Ihre Veröffentlichung",
@@ -1604,7 +1616,10 @@
       "rateLimited": "Zu viele Anfragen von hier, bitte eine Minute warten.",
       "notAnswering": "Der Prüfdienst antwortet gerade nicht.",
       "unknown": "Die Anfrage ist nicht durchgegangen."
-    }
+    },
+    "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Anfragen werden gebündelt abgearbeitet, meist noch am selben Tag.",
+    "runningPrivate": "Läuft gerade: der Workflow öffnet die private Kopie und vergleicht den Fingerabdruck.",
+    "recheckedOn": "Nachgeprüft am {date}"
   },
   "mine": {
     "title": "Deine Bilder",
