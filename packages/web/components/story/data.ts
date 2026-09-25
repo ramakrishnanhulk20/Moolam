@@ -203,7 +203,7 @@ export async function storyData(): Promise<StoryData> {
     .map((row, index) => ({ row, picture: pictures[index] }))
     .filter(
       (entry): entry is { row: IndexRow; picture: Picture } =>
-        entry.picture !== null && !isTestCard(entry.picture.title),
+        entry.picture !== null && !isTestCard(entry.picture.title, entry.row.id),
     )
     .map(({ row, picture }) => ({
       id: row.id,
@@ -520,7 +520,7 @@ export function chooseFocal(
       if (hasPicture[index] !== true || !fits(rows[index], rung.reason)) {
         continue;
       }
-      if (rung.realOnly && isTestCard(titles[index] ?? null)) {
+      if (rung.realOnly && isTestCard(titles[index] ?? null, rows[index].id)) {
         continue;
       }
       if (best === -1 || Number(rows[index].registeredAt) > Number(rows[best].registeredAt)) {

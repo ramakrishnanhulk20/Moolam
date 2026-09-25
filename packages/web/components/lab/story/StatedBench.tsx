@@ -9,7 +9,7 @@ import { statedBlock, storyCut } from "@/components/story/stated";
 /**
  * The film with the stated beat in it, and the film without, on one machine.
  *
- * The bench opens on the stated cut, which is what the home page plays now. The
+ * The bench opens on the stated cut, which the home page's chapter cut is built on. The
  * control swaps the whole film, which is why it carries a key: the two cuts are
  * nine and ten pages of scroll, and the scroller has to be built again for the
  * new length rather than reinterpreting the old one. Nothing links to this page
