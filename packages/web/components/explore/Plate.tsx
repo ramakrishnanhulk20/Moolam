@@ -43,6 +43,14 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     </span>
   );
 
+  // In light the picture has no band across its top, so each group of words
+  // up here stands on a small tag of the page's own ground instead. The tag
+  // reaches out past the words by its own padding, so the words sit exactly
+  // where they sit in dark. A sealed plate has no picture under its marks.
+  const ground = sealed
+    ? ""
+    : "[.light_&]:-mx-1.5 [.light_&]:-my-0.5 [.light_&]:w-fit [.light_&]:rounded-[4px] [.light_&]:bg-bg-raised [.light_&]:px-1.5 [.light_&]:py-0.5";
+
   // A grid rather than a row with the two ends pushed apart: the kind and the
   // letters can never be drawn over each other, whatever the language or the
   // plate's width. On a plate narrower than 17rem, which is every plate on a
@@ -61,12 +69,15 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
         data-plate-kind
         className={`min-w-0 items-center gap-2 font-mono text-[9px] uppercase tracking-[0.2em] text-text-muted [overflow-wrap:anywhere] ${
           sealed ? "hidden @[17rem]:flex" : "flex"
-        }`}
+        } ${ground}`}
       >
         <span className="motif h-[7px] w-[7px] shrink-0 opacity-60 transition-opacity duration-500 group-hover:opacity-100" />
         <span className="min-w-0">{kinds(String(plate.kind))}</span>
       </span>
-      <span data-plate-marks className="flex shrink-0 items-center gap-1 @[17rem]:row-span-2 @[17rem]:justify-end">
+      <span
+        data-plate-marks
+        className={`flex shrink-0 items-center gap-1 @[17rem]:row-span-2 @[17rem]:justify-end ${ground}`}
+      >
         <Mark on={plate.manifest} letter="M" label={t("marks.manifest")} tone="accent" />
         <Mark
           on={plate.rechecked}
@@ -88,7 +99,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       {/* Truthiness rather than a null test: a sheet held from the minute
           before this shipped has plates with no such field at all. */}
       {plate.consent ? (
-        <span className="mt-0.5 flex">
+        <span className={`mt-0.5 flex ${ground}`}>
           <Statement statement={plate.consent} />
         </span>
       ) : null}
@@ -154,7 +165,13 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       )}
 
       <span className="grain pointer-events-none absolute inset-0" />
-      {sealed ? null : <span className="scrim pointer-events-none absolute inset-0" />}
+      {/* Dark keeps the poster gradient over the whole plate. In light both
+          scrims are cream, and over most of the still they read as a pale
+          haze, so light draws neither: the foot carries its own ground behind
+          the words, and the top has its tags. */}
+      {sealed ? null : (
+        <span data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />
+      )}
       {/* The same scrim turned over, so the kind, the letters and the AI-use
           marks keep their ground on a bright sky or a white shirt the way the
           title does at the foot. Quieter than the foot's: there is less to
@@ -163,7 +180,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
         <span
           aria-hidden
           data-plate-top-scrim
-          className="pointer-events-none absolute inset-x-0 top-0 h-[34%] bg-[linear-gradient(to_bottom,var(--scrim-from),var(--scrim-to))] opacity-80"
+          className="pointer-events-none absolute inset-x-0 top-0 h-[34%] bg-[linear-gradient(to_bottom,var(--scrim-from),var(--scrim-to))] opacity-80 [.light_&]:hidden"
         />
       )}
       <span
@@ -176,7 +193,14 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
       <span
         data-plate-foot
         className={`pointer-events-none p-3 sm:p-4 ${
-          sealed ? "relative border-t border-line bg-bg-raised" : "absolute inset-x-0 bottom-0 pt-8"
+          // In light the foot is its own scrim: clear through its empty top
+          // padding, thick enough under the title, then the full scrim under
+          // the id and the date, which are the smaller and paler words. The
+          // padding is pinned at 2rem there because sm:p-4 otherwise wins over
+          // pt-8 on a wide screen and the title would start inside the fade.
+          sealed
+            ? "relative border-t border-line bg-bg-raised"
+            : "absolute inset-x-0 bottom-0 pt-8 [.light_&]:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))]"
         }`}
       >
         {/* Two lines, not one with a tail of dots. At 375 px a plate is 166 px
