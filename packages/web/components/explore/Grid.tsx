@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 import { IndexRetry } from "@/components/IndexRetry";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { PassportCursor } from "@/lib/data/passports";
+import { EndCard } from "./EndCard";
 import { morePlates } from "./load";
 import { Plate } from "./Plate";
 import type { ExploreSearch } from "./query";
@@ -121,6 +122,7 @@ export function Grid({
             </motion.li>
           ),
         )}
+        <EndCard count={plates.length} />
       </ul>
 
       <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">

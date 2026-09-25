@@ -186,6 +186,11 @@
     "reading": "Reading",
     "end": "That is every passport that matches.",
     "shown": "{count, number} shown",
+    "invite": {
+      "line": "Yours could be next.",
+      "body": "Register a picture and it gets its own passport on Monad, findable from any copy.",
+      "make": "Make one"
+    },
     "empty": "No passport matches this filter yet.",
     "error": "The index could not be read: {reason}.",
     "sealed": {

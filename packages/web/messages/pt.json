@@ -187,6 +187,11 @@
     "reading": "Lendo",
     "end": "Esses são todos os passaportes que combinam.",
     "shown": "{count, number} à vista",
+    "invite": {
+      "line": "A sua pode ser a próxima.",
+      "body": "Registre uma imagem e ela ganha o próprio passaporte na Monad, encontrável a partir de qualquer cópia.",
+      "make": "Crie um"
+    },
     "empty": "Nenhum passaporte combina com este filtro ainda.",
     "error": "Não foi possível ler o índice: {reason}.",
     "sealed": {

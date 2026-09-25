@@ -186,6 +186,11 @@
     "reading": "Leyendo",
     "end": "Esos son todos los pasaportes que coinciden.",
     "shown": "{count, number} a la vista",
+    "invite": {
+      "line": "La tuya podría ser la siguiente.",
+      "body": "Registra una imagen y tendrá su propio pasaporte en Monad, localizable desde cualquier copia.",
+      "make": "Crea uno"
+    },
     "empty": "Ningún pasaporte coincide con este filtro todavía.",
     "error": "No se pudo leer el índice: {reason}.",
     "sealed": {

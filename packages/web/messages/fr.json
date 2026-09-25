@@ -186,6 +186,11 @@
     "reading": "Lecture",
     "end": "Voilà tous les passeports qui correspondent.",
     "shown": "{count, number} affichés",
+    "invite": {
+      "line": "La vôtre pourrait être la prochaine.",
+      "body": "Enregistrez une image : elle reçoit son propre passeport sur Monad, retrouvable depuis n'importe quelle copie.",
+      "make": "Créez-en un"
+    },
     "empty": "Aucun passeport ne correspond encore à ce filtre.",
     "error": "L'index n'a pas pu être lu : {reason}.",
     "sealed": {

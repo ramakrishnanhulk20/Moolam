@@ -20,6 +20,9 @@ vi.mock("@/components/explore/Plate", () => ({
   Plate: ({ plate, first }: { plate: { id: string }; first?: boolean }) =>
     createElement("span", { "data-plate": plate.id, "data-first": String(first === true) }),
 }));
+// The card after the last plate has its own tests in explore-end-card; here
+// every <li> in the markup has to be a plate.
+vi.mock("@/components/explore/EndCard", () => ({ EndCard: () => null }));
 
 const { Grid } = await import("@/components/explore/Grid");
 

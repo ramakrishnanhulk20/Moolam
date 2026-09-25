@@ -186,6 +186,11 @@
     "reading": "Wird gelesen",
     "end": "Das sind alle Pässe, die passen.",
     "shown": "{count, number} zu sehen",
+    "invite": {
+      "line": "Deins könnte das nächste sein.",
+      "body": "Trag ein Bild ein, und es bekommt einen eigenen Pass auf Monad, auffindbar aus jeder Kopie.",
+      "make": "Einen erstellen"
+    },
     "empty": "Noch passt kein Pass zu diesem Filter.",
     "error": "Der Index konnte nicht gelesen werden: {reason}.",
     "sealed": {
