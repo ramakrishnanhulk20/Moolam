@@ -210,7 +210,7 @@ describe("state two, with the signer granted", () => {
 
 describe("every failure the panel can print", () => {
   const cases: [string, string][] = [
-    ["noSigner", "does not hold a signer on your wallet"],
+    ["noSigner", "does not have your permission to add edits"],
     ["notOwner", "does not hold this passport"],
     ["noParent", "no passport with this id"],
     ["pinFailed", "could not be pinned to IPFS"],

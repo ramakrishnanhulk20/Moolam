@@ -16,7 +16,7 @@ const locales = readdirSync(MESSAGES)
   .filter((name) => name.endsWith(".json"))
   .map((name) => name.replace(".json", ""));
 
-const PAGE = ["title", "description", "kicker", "heading", "lede", "rail", "grid", "opening"];
+const PAGE = ["title", "description", "kicker", "heading", "lede", "grid", "opening"];
 
 /** The two places the page is reached from: the bar on every page and the receipt in the studio. */
 const WAYS_IN = ["entry", "receiptLink"];

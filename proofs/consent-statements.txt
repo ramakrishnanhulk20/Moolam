@@ -48,3 +48,23 @@ so the send was sponsored and the creator paid nothing.
    so the file, the metadata and the chain say one thing.
 
 Thirteen pictures now carry a statement: the eleven above and these two.
+
+THE TWO STATEMENTS OF 2026-09-25 (read back from the chain on 2026-09-26)
+Each transaction went to the ERC-4337 EntryPoint 0x0000000071727De22E5E9d8BAf0edAc6f37da032 and was sent by the
+same bundler (0xca1ef33a9522ef11265858592f0209b45473c846), so the bundler, not the writer, paid the gas on chain.
+Every value below was read from Monad mainnet at
+https://rpc.monad.xyz: the statement with consentOf and historyLength, the transaction and block from the contract's
+own ConsentSet log for the passport, and the time from that block.
+passport | statement | transaction | block | written | writer
+
+0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4  open  0x4b078f37b41682622e65ec5ddf5b6ae8921716947f81f4cb116c6ed9533f220b  block 107831882  written 2026-09-25T07:20:41.000Z  by 0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a
+0x7619decf83f69031adeca259909f9c0b7049ddfa9d98b12c637b65573852067d  closed  0x1e15dcc179f589e80016b3783bd5b6e88814c8166d06c3324153c35a808ccb11  block 107847962  written 2026-09-25T08:41:37.000Z  by 0xc3714B31A5F300D7A79f72C7AEC61240D2f384E7
+
+1. Kanchipuram Silk Loom at First Light, all four uses allowed:
+   consentOf -> true, (1790320841, 0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a, (1, 1, 1, 1), ""), history length 1
+   ConsentSet index 0, transaction status success, gas used 321,405
+2. Chettinad Courtyard Before the Monsoon, all four uses not allowed:
+   consentOf -> true, (1790325697, 0xc3714B31A5F300D7A79f72C7AEC61240D2f384E7, (2, 2, 2, 2), ""), history length 1
+   ConsentSet index 0, transaction status success, gas used 321,405
+
+Fifteen pictures now carry a statement: the thirteen above and these two.

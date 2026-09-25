@@ -27,7 +27,6 @@
     "themeLight": "Thema: hell",
     "language": "Sprache",
     "nav": {
-      "home": "Start",
       "explore": "Entdecken",
       "agents": "Agenten",
       "docs": "Dokumentation",
@@ -110,7 +109,6 @@
     "unknown": "unbekannt",
     "yes": "Ja",
     "no": "Nein",
-    "swapNotice": "Platzhalterbild. Das echte kommt mit dem Hero.",
     "registeredPicture": "Eingetragenes Bild"
   },
   "kind": {
@@ -203,7 +201,6 @@
   "agents": {
     "kicker": "Agenten",
     "title": "Agenten",
-    "rail": "ERC-8004-Generatoren",
     "lede": "Jeder erzeugende Agent, den der Index einen Pass hat unterschreiben sehen, mit allem, was er für ihn zählt. Die fleißigsten zuerst.",
     "scoreMeaning": "Ein Vertrauenswert von 0 bis 100: wie oft die Nachprüfungen von Chainlink mit dem übereinstimmten, was dieser Agent unterschrieben hat. Bestätigte Einsprüche zählen doppelt gegen ihn.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -611,7 +608,7 @@
         "another": "Noch eine Bearbeitung hinzufügen"
       },
       "failure": {
-        "noSigner": "Diese App hat unter der Bearbeitungsrichtlinie keinen Unterzeichner auf deiner Wallet. Erteile ihn erneut, dann kann die Bearbeitung raus.",
+        "noSigner": "Diese App hat nicht deine Erlaubnis, Bearbeitungen hinzuzufügen. Erlaube Bearbeitungen aus dieser App, dann kann die Bearbeitung raus.",
         "notOwner": "Dieses Konto hält diesen Pass nicht, es kann ihm also keine Bearbeitung hinzufügen.",
         "noParent": "Das Register hat keinen Pass mit dieser Id, es gibt also nichts, wozu eine Bearbeitung passt.",
         "quota": "Das sind {used} von {limit} Bearbeitungen für heute. Das Kontingent kommt um {at} zurück.",
@@ -1106,7 +1103,6 @@
     "kicker": "Studio",
     "title": "Bild eintragen",
     "lede": "Jedes Bild, das du hier einträgst, bekommt seinen eigenen Eintrag auf Monad: abgetastet, von dir signiert, von jeder Kopie aus auffindbar.",
-    "rail": "Moolam Studio",
     "opening": "Dein Konto wird geöffnet",
     "noWallet": "Du bist angemeldet, aber auf Monad wurde noch kein Konto angelegt. Lade die Seite neu, oder melde dich ab und wieder an.",
     "notConfigured": "Privy ist nicht eingerichtet, deshalb kann sich hier niemand anmelden. Trag NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local ein und starte den Entwicklungsserver neu.",
@@ -1172,8 +1168,7 @@
       "doneLabel": "Angebunden",
       "doneBody": "Dieses Gerät signiert jetzt für dein Konto. Trag ein Bild ein, und es fragt einmal nach deiner Entsperrung.",
       "txLink": "Transaktion {hash}",
-      "walletLink": "Dein Konto {wallet} auf MonadVision",
-      "rebind": "Ein anderes Gerät anbinden"
+      "walletLink": "Dein Konto {wallet} auf MonadVision"
     },
     "recover": {
       "kicker": "Ein anderes Gerät hat hier signiert",
@@ -1554,16 +1549,7 @@
       "openAddress": "{wallet} auf MonadVision öffnen",
       "generateAgain": "Noch einmal machen"
     },
-    "showcaseCaption": "Ein echter Pass auf Monad. So etwas bekommst du.",
-    "wide": {
-      "bench": "Werkbank breites Studio",
-      "fixtureNote": "Vorlage: nachgestellter Zustand des Studios. Kein Konto, nichts wird gesendet.",
-      "upload": "hochladen",
-      "generate": "generieren",
-      "done": "fertig",
-      "live": "live",
-      "today": "heute"
-    }
+    "showcaseCaption": "Ein echter Pass auf Monad. So etwas bekommst du."
   },
   "docs": {
     "home": "Dokumentation",
@@ -1594,7 +1580,6 @@
     "title": "Streitfälle entscheiden",
     "heading": "Offene Einsprüche entscheiden",
     "kicker": "Schlichtungskonsole",
-    "rail": "STREITFÄLLE",
     "lede": "Jeder Einspruch, den die Registry noch offen hat, mit Bild, Vorwurf und Kaution. Lesen darf jede Person; entscheiden darf nur die benannte Adresse.",
     "resolverLabel": "Die Schlichterin",
     "policyNote": "Der Policy-Vertrag benennt genau eine Adresse, und eine Änderung wartet 24 Stunden öffentlich, damit alle Zuschauenden vor dem Wirksamwerden reagieren können.",
@@ -1706,7 +1691,6 @@
     "kicker": "Dein Konto",
     "heading": "Von dir gemacht",
     "lede": "Jedes Bild das dein Konto eingetragen hat, aus dem Index gelesen.",
-    "rail": "Von dir eingetragen",
     "grid": "Deine Bilder",
     "entry": "Meine Bilder",
     "receiptLink": "Alle deine Bilder ansehen",

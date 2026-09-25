@@ -28,7 +28,6 @@
     "themeLight": "Tema: claro",
     "language": "Idioma",
     "nav": {
-      "home": "Início",
       "explore": "Explorar",
       "agents": "Agentes",
       "docs": "Documentação",
@@ -111,7 +110,6 @@
     "unknown": "desconhecido",
     "yes": "Sim",
     "no": "Não",
-    "swapNotice": "Imagem provisória. A definitiva chega com o hero.",
     "registeredPicture": "Imagem registrada"
   },
   "kind": {
@@ -204,7 +202,6 @@
   "agents": {
     "kicker": "Agentes",
     "title": "Agentes",
-    "rail": "Geradores ERC-8004",
     "lede": "Cada agente gerador que o índice viu assinar um passaporte, com tudo o que já contou para cada um. Os que mais assinam vêm primeiro.",
     "scoreMeaning": "Uma nota de confiança de 0 a 100: quantas vezes as reconferências da Chainlink bateram com o que este agente assinou. As contestações aceitas pesam em dobro contra ele.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -612,7 +609,7 @@
         "another": "Adicionar outra edição"
       },
       "failure": {
-        "noSigner": "Este app não tem um assinante na sua carteira sob a política de edição. Conceda de novo e a edição poderá sair.",
+        "noSigner": "Este app não tem a sua permissão para adicionar edições. Permita edições a partir deste app e a edição poderá sair.",
         "notOwner": "Esta conta não tem este passaporte, então não pode adicionar uma edição a ele.",
         "noParent": "O registro não tem nenhum passaporte com esse id, então não há a que adicionar uma edição.",
         "quota": "Já são {used} de {limit} edições de hoje. A cota volta às {at}.",
@@ -1107,7 +1104,6 @@
     "kicker": "Estúdio",
     "title": "Registrar uma imagem",
     "lede": "Cada imagem que você registrar aqui ganha o próprio registro na Monad: com impressão digital, assinada por você e encontrável a partir de qualquer cópia.",
-    "rail": "Estúdio Moolam",
     "opening": "Abrindo sua conta",
     "noWallet": "Você entrou, mas nenhuma conta foi criada na Monad ainda. Recarregue a página, ou saia e entre de novo.",
     "notConfigured": "A Privy não está configurada, então ninguém consegue entrar aqui. Coloque NEXT_PUBLIC_PRIVY_APP_ID em packages/web/.env.local e reinicie o servidor de desenvolvimento.",
@@ -1173,8 +1169,7 @@
       "doneLabel": "Ligada",
       "doneBody": "Este aparelho agora assina pela sua conta. Registre uma imagem e ele vai pedir seu desbloqueio uma vez.",
       "txLink": "Transação {hash}",
-      "walletLink": "Sua conta {wallet} no MonadVision",
-      "rebind": "Ligar outro aparelho"
+      "walletLink": "Sua conta {wallet} no MonadVision"
     },
     "recover": {
       "kicker": "Outro aparelho assinou aqui",
@@ -1555,16 +1550,7 @@
       "openAddress": "Abrir {wallet} no MonadVision",
       "generateAgain": "Gerar de novo"
     },
-    "showcaseCaption": "Um passaporte real na Monad. É isto que você recebe.",
-    "wide": {
-      "bench": "Bancada do estúdio largo",
-      "fixtureNote": "Modelo: estado do estúdio simulado. Sem conta, nada é enviado.",
-      "upload": "enviar",
-      "generate": "gerar",
-      "done": "pronto",
-      "live": "ao vivo",
-      "today": "hoje"
-    }
+    "showcaseCaption": "Um passaporte real na Monad. É isto que você recebe."
   },
   "docs": {
     "home": "Documentação",
@@ -1595,7 +1581,6 @@
     "title": "Resolver disputas",
     "heading": "Resolva as contestações abertas",
     "kicker": "Consola do árbitro",
-    "rail": "DISPUTAS",
     "lede": "Todas as contestações que o registo ainda tem abertas, com a imagem, a acusação e a caução. Qualquer pessoa lê; só o endereço da política resolve.",
     "resolverLabel": "O árbitro",
     "policyNote": "O contrato de política indica um único endereço, e mudá-lo espera 24 horas à vista de todos, por isso quem estiver a acompanhar pode reagir antes de produzir efeito.",
@@ -1707,7 +1692,6 @@
     "kicker": "Sua conta",
     "heading": "Feito por você",
     "lede": "Cada imagem que a sua conta registrou, lida do índice.",
-    "rail": "Registrado por você",
     "grid": "Suas imagens",
     "entry": "Minhas imagens",
     "receiptLink": "Ver todas as suas imagens",

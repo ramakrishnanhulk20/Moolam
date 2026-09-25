@@ -29,7 +29,6 @@
     "themeLight": "主题：浅色",
     "language": "语言",
     "nav": {
-      "home": "首页",
       "explore": "浏览",
       "agents": "智能体",
       "docs": "文档",
@@ -112,7 +111,6 @@
     "unknown": "未知",
     "yes": "是",
     "no": "否",
-    "swapNotice": "临时图片。正式的那张随主视觉一起到位。",
     "registeredPicture": "已登记的图片"
   },
   "kind": {
@@ -205,7 +203,6 @@
   "agents": {
     "kicker": "智能体",
     "title": "智能体",
-    "rail": "ERC-8004 生成方",
     "lede": "索引见过在护照上签名的每一个生成智能体，以及为它记下的全部数字。签得最多的排在前面。",
     "scoreMeaning": "0 到 100 的信任分：Chainlink 的复核有多少次与这个智能体签下的内容一致。成立的争议按两倍扣。",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -613,7 +610,7 @@
         "another": "再添加一个编辑版本"
       },
       "failure": {
-        "noSigner": "在编辑策略下，这个应用还不是你钱包上的签名者。再授权一次，编辑就能发出去。",
+        "noSigner": "这个应用还没有你的许可，不能添加编辑版本。允许这个应用添加编辑版本，编辑就能发出去。",
         "notOwner": "这个账户不持有这本护照，所以不能给它添加编辑版本。",
         "noParent": "登记表里没有这个 id 的护照，所以没有可以添加编辑版本的对象。",
         "quota": "今天的 {limit} 次里已经用掉 {used} 次。额度在 {at} 恢复。",
@@ -1108,7 +1105,6 @@
     "kicker": "工作室",
     "title": "登记图片",
     "lede": "你在这里登记的每一张图，都会在 Monad 上有自己的记录：取过指纹，由你签名，能从任何副本追回。",
-    "rail": "Moolam 工作室",
     "opening": "正在打开你的账户",
     "noWallet": "你已经登录，但 Monad 上还没有为你建好账户。刷新页面，或者退出后重新登录。",
     "notConfigured": "Privy 没有配置好，所以这里没人能登录。把 NEXT_PUBLIC_PRIVY_APP_ID 写进 packages/web/.env.local，然后重启开发服务器。",
@@ -1174,8 +1170,7 @@
       "doneLabel": "已绑定",
       "doneBody": "这台设备现在可以为你的账户签名了。登记一张图，它会请你解锁一次。",
       "txLink": "交易 {hash}",
-      "walletLink": "在 MonadVision 上查看你的账户 {wallet}",
-      "rebind": "绑定另一台设备"
+      "walletLink": "在 MonadVision 上查看你的账户 {wallet}"
     },
     "recover": {
       "kicker": "另一台设备在这里签过名",
@@ -1556,16 +1551,7 @@
       "openAddress": "在 MonadVision 上打开 {wallet}",
       "generateAgain": "再生成一张"
     },
-    "showcaseCaption": "Monad 上一本真实的护照。你得到的就是这个。",
-    "wide": {
-      "bench": "宽版工作室试验台",
-      "fixtureNote": "样板：模拟的工作室状态。没有账户，不会发送任何东西。",
-      "upload": "上传",
-      "generate": "生成",
-      "done": "完成",
-      "live": "实时",
-      "today": "今天"
-    }
+    "showcaseCaption": "Monad 上一本真实的护照。你得到的就是这个。"
   },
   "docs": {
     "home": "文档",
@@ -1596,7 +1582,6 @@
     "title": "裁决争议",
     "heading": "处理未决的质疑",
     "kicker": "仲裁者控制台",
-    "rail": "争议",
     "lede": "注册表上所有仍未了结的质疑，连同图片、指控和背后的保证金。任何人都可以阅读，但只有政策指定的地址才能裁决。",
     "resolverLabel": "仲裁者",
     "policyNote": "政策合约只指定一个地址，更换它需要公开等待 24 小时，任何关注者都能在生效前作出反应。",
@@ -1708,7 +1693,6 @@
     "kicker": "你的账户",
     "heading": "你做的",
     "lede": "你的账户登记过的每一张图片，从索引读出。",
-    "rail": "由你登记",
     "grid": "你的图片",
     "entry": "我的图片",
     "receiptLink": "查看你的全部图片",

@@ -34,13 +34,6 @@ const NEW_KEYS = [
   "studio.showcaseCaption",
   "mine.showcaseCaption",
   "explore.marksToggle",
-  "studio.wide.bench",
-  "studio.wide.fixtureNote",
-  "studio.wide.upload",
-  "studio.wide.generate",
-  "studio.wide.done",
-  "studio.wide.live",
-  "studio.wide.today",
   "passport.facts.madeBy",
   "passport.facts.drawnBy",
   "passport.facts.aiUse",
@@ -167,6 +160,30 @@ describe("the last words of the passport roll-in", () => {
       const words = String(at(messages[lang], "passport.edit.steps.send.watching"));
       expect(words.trim(), lang).not.toBe("");
       expect(words, lang).toContain("Monad");
+    }
+  });
+
+  it("ask for the edit permission again in every language, without the edit policy", () => {
+    // Each language's own word for the policy the old sentence named.
+    const policy: Record<(typeof LANGS)[number], string> = {
+      en: "policy",
+      de: "Richtlinie",
+      es: "política",
+      fr: "politique",
+      hi: "नीति",
+      ja: "ポリシー",
+      ko: "정책",
+      pt: "política",
+      ta: "கொள்கை",
+      zh: "策略",
+    };
+    expect(at(messages.en, "passport.edit.failure.noSigner")).toBe(
+      "This app does not have your permission to add edits. Allow edits from this app and the edit can go out.",
+    );
+    for (const lang of LANGS) {
+      const words = String(at(messages[lang], "passport.edit.failure.noSigner"));
+      expect(words.trim(), lang).not.toBe("");
+      expect(words, lang).not.toContain(policy[lang]);
     }
   });
 

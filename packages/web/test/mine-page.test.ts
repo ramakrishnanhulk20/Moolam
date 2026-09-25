@@ -85,6 +85,7 @@ vi.mock("next/dynamic", async () => {
 });
 
 const { MineScreen } = await import("@/components/mine/MineScreen");
+const { hasPassportEnd, passportEnd, passportEndClasses } = await import("@/components/studio/passportsEnd");
 const { Receipt } = await import("@/components/studio/Receipt");
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
 const { default: robots } = await import("@/app/robots");
@@ -231,6 +232,44 @@ describe("every picture, not only the newest twelve", () => {
 
     list.current = { ...EMPTY, status: "unreadable", error: "down", hasMore: true };
     expect(render("en", createElement(MineScreen))).not.toContain(en.explore.loadMore);
+  });
+});
+
+describe("the grid is the studio's, closed the same way", () => {
+  beforeEach(() => {
+    privy.session = { ready: true, authenticated: true, login: () => undefined };
+    privy.wallets = [{ walletClientType: "privy", address: `0x${"11".repeat(20)}` }];
+  });
+
+  const cards = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({ ...PASSPORT, id: `0x${String(index).padStart(64, "0")}` as const }));
+
+  it.each([1, 2, 3, 4, 5])("closes a short last row with %i cards at two, three and four columns", (count) => {
+    list.current = { ...EMPTY, passports: cards(count) };
+    const markup = render("en", createElement(MineScreen));
+    const end = passportEnd(count);
+
+    expect(markup).toContain("sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4");
+    expect(markup.match(/<li/g)?.length).toBe(hasPassportEnd(end) ? count + 1 : count);
+    if (hasPassportEnd(end)) {
+      const cell = /<li[^>]*data-passports-end[^>]*>/.exec(markup)?.[0] ?? "";
+      expect(cell).toContain(passportEndClasses(end));
+      expect(cell).toContain('aria-hidden="true"');
+    } else {
+      expect(markup).not.toContain("data-passports-end");
+    }
+  });
+
+  it("offers one Load more, not the grid's and a copy of its own", () => {
+    list.current = { ...EMPTY, passports: cards(5), hasMore: true };
+    const markup = render("en", createElement(MineScreen));
+    expect(markup.split(`>${en.explore.loadMore}</button>`)).toHaveLength(2);
+  });
+
+  it("draws the sign-in split from the studio's own file", () => {
+    const page = read("app/[locale]/mine/page.tsx");
+    expect(page).toContain('import { SignInSplit } from "@/components/studio/SignInSplit"');
+    expect(page).not.toContain("function SignInSplit");
   });
 });
 

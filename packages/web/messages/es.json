@@ -27,7 +27,6 @@
     "themeLight": "Tema: claro",
     "language": "Idioma",
     "nav": {
-      "home": "Inicio",
       "explore": "Explorar",
       "agents": "Agentes",
       "docs": "Documentación",
@@ -110,7 +109,6 @@
     "unknown": "desconocido",
     "yes": "Sí",
     "no": "No",
-    "swapNotice": "Imagen provisional. La definitiva llega con el hero.",
     "registeredPicture": "Imagen registrada"
   },
   "kind": {
@@ -203,7 +201,6 @@
   "agents": {
     "kicker": "Agentes",
     "title": "Agentes",
-    "rail": "Generadores ERC-8004",
     "lede": "Cada agente generador que el índice ha visto firmar un pasaporte, con todo lo que lleva contado de cada uno. Primero los que más firman.",
     "scoreMeaning": "Un nivel de confianza de 0 a 100: cuántas veces las recomprobaciones de Chainlink coincidieron con lo que firmó este agente. Las disputas aceptadas restan el doble.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -611,7 +608,7 @@
         "another": "Añadir otra edición"
       },
       "failure": {
-        "noSigner": "Esta app no tiene un firmante en tu cartera bajo la política de edición. Concédelo otra vez y la edición podrá salir.",
+        "noSigner": "Esta app no tiene tu permiso para añadir ediciones. Permite ediciones desde esta app y la edición podrá salir.",
         "notOwner": "Esta cuenta no tiene este pasaporte, así que no puede añadirle una edición.",
         "noParent": "El registro no tiene ningún pasaporte con este id, así que no hay a qué añadir una edición.",
         "quota": "Van {used} de {limit} ediciones de hoy. El cupo vuelve a las {at}.",
@@ -1106,7 +1103,6 @@
     "kicker": "Estudio",
     "title": "Registrar una imagen",
     "lede": "Cada imagen que registres aquí tendrá su propio registro en Monad: con huella, firmada por ti y localizable desde cualquier copia.",
-    "rail": "Estudio Moolam",
     "opening": "Abriendo tu cuenta",
     "noWallet": "Has entrado, pero todavía no se ha creado ninguna cuenta en Monad. Recarga la página, o sal y vuelve a entrar.",
     "notConfigured": "Privy no está configurado, así que aquí no puede entrar nadie. Pon NEXT_PUBLIC_PRIVY_APP_ID en packages/web/.env.local y reinicia el servidor de desarrollo.",
@@ -1172,8 +1168,7 @@
       "doneLabel": "Vinculada",
       "doneBody": "Este dispositivo ya firma por tu cuenta. Registra una imagen y te pedirá el desbloqueo una vez.",
       "txLink": "Transacción {hash}",
-      "walletLink": "Tu cuenta {wallet} en MonadVision",
-      "rebind": "Vincular otro dispositivo"
+      "walletLink": "Tu cuenta {wallet} en MonadVision"
     },
     "recover": {
       "kicker": "Otro dispositivo firmó aquí",
@@ -1554,16 +1549,7 @@
       "openAddress": "Abrir {wallet} en MonadVision",
       "generateAgain": "Generar otra vez"
     },
-    "showcaseCaption": "Un pasaporte real en Monad. Esto es lo que obtienes.",
-    "wide": {
-      "bench": "Banco del estudio ancho",
-      "fixtureNote": "Maqueta: estado del estudio simulado. Sin cuenta, no se envía nada.",
-      "upload": "subir",
-      "generate": "generar",
-      "done": "hecho",
-      "live": "en vivo",
-      "today": "hoy"
-    }
+    "showcaseCaption": "Un pasaporte real en Monad. Esto es lo que obtienes."
   },
   "docs": {
     "home": "Documentación",
@@ -1594,7 +1580,6 @@
     "title": "Resolver disputas",
     "heading": "Resuelve las impugnaciones abiertas",
     "kicker": "Consola del árbitro",
-    "rail": "DISPUTAS",
     "lede": "Todas las impugnaciones que el registro sigue teniendo abiertas, con la imagen, la acusación y la fianza. Cualquiera las lee; solo el resolutor decide.",
     "resolverLabel": "El árbitro",
     "policyNote": "El contrato de política nombra una sola dirección, y cambiarla espera 24 horas a la vista de todos, así que quien esté mirando puede reaccionar antes de que surta efecto.",
@@ -1706,7 +1691,6 @@
     "kicker": "Tu cuenta",
     "heading": "Hecho por ti",
     "lede": "Cada imagen que registró tu cuenta, leída del índice.",
-    "rail": "Registrado por ti",
     "grid": "Tus imágenes",
     "entry": "Mis imágenes",
     "receiptLink": "Ver todas tus imágenes",

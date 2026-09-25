@@ -27,7 +27,6 @@
     "themeLight": "Thème : clair",
     "language": "Langue",
     "nav": {
-      "home": "Accueil",
       "explore": "Explorer",
       "agents": "Agents",
       "docs": "Documentation",
@@ -110,7 +109,6 @@
     "unknown": "inconnu",
     "yes": "Oui",
     "no": "Non",
-    "swapNotice": "Visuel provisoire. L’image définitive arrive avec le hero.",
     "registeredPicture": "Image enregistrée"
   },
   "kind": {
@@ -203,7 +201,6 @@
   "agents": {
     "kicker": "Agents",
     "title": "Agents",
-    "rail": "Générateurs ERC-8004",
     "lede": "Chaque agent générateur que l'index a vu signer un passeport, avec tout ce qu'il compte pour lui. Les plus actifs en premier.",
     "scoreMeaning": "Un indice de confiance de 0 à 100 : combien de fois les vérifications de Chainlink ont concordé avec ce que cet agent a signé. Les contestations retenues comptent double contre lui.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -611,7 +608,7 @@
         "another": "Ajouter une autre retouche"
       },
       "failure": {
-        "noSigner": "Cette app n'a pas de signataire sur votre portefeuille sous la politique de retouche. Accordez-le à nouveau et la retouche pourra partir.",
+        "noSigner": "Cette app n'a pas votre autorisation pour ajouter des retouches. Autorisez les retouches depuis cette app et la retouche pourra partir.",
         "notOwner": "Ce compte ne détient pas ce passeport, il ne peut donc pas y ajouter de retouche.",
         "noParent": "Le registre n'a aucun passeport avec cet id, il n'y a donc rien à retoucher.",
         "quota": "Cela fait {used} retouches sur {limit} pour aujourd'hui. Le quota revient à {at}.",
@@ -1106,7 +1103,6 @@
     "kicker": "Studio",
     "title": "Enregistrer une image",
     "lede": "Chaque image que vous enregistrez ici reçoit son propre enregistrement sur Monad : empreintée, signée par vous, retrouvable depuis n’importe quelle copie.",
-    "rail": "Studio Moolam",
     "opening": "Ouverture de votre compte",
     "noWallet": "Vous êtes connecté, mais aucun compte n’a encore été créé sur Monad. Rechargez la page, ou déconnectez-vous et reconnectez-vous.",
     "notConfigured": "Privy n’est pas configuré, personne ne peut donc se connecter ici. Mettez NEXT_PUBLIC_PRIVY_APP_ID dans packages/web/.env.local et redémarrez le serveur de développement.",
@@ -1172,8 +1168,7 @@
       "doneLabel": "Liée",
       "doneBody": "Cet appareil signe désormais pour votre compte. Enregistrez une image et il demandera votre déverrouillage une fois.",
       "txLink": "Transaction {hash}",
-      "walletLink": "Votre compte {wallet} sur MonadVision",
-      "rebind": "Lier un autre appareil"
+      "walletLink": "Votre compte {wallet} sur MonadVision"
     },
     "recover": {
       "kicker": "Un autre appareil a signé ici",
@@ -1554,16 +1549,7 @@
       "openAddress": "Ouvrir {wallet} sur MonadVision",
       "generateAgain": "En refaire une"
     },
-    "showcaseCaption": "Un vrai passeport sur Monad. Voilà ce que vous obtenez.",
-    "wide": {
-      "bench": "Banc du studio large",
-      "fixtureNote": "Maquette : état du studio simulé. Aucun compte, rien n’est envoyé.",
-      "upload": "téléverser",
-      "generate": "générer",
-      "done": "terminé",
-      "live": "en direct",
-      "today": "aujourd’hui"
-    }
+    "showcaseCaption": "Un vrai passeport sur Monad. Voilà ce que vous obtenez."
   },
   "docs": {
     "home": "Documentation",
@@ -1594,7 +1580,6 @@
     "title": "Trancher les litiges",
     "heading": "Réglez les contestations ouvertes",
     "kicker": "Console de l'arbitre",
-    "rail": "LITIGES",
     "lede": "Toutes les contestations encore ouvertes dans le registre, avec l'image, l'accusation et la caution. La page se lit librement ; seul le résolveur tranche.",
     "resolverLabel": "L'arbitre",
     "policyNote": "Le contrat de politique désigne une seule adresse, et la changer demande 24 heures au vu de tous, de sorte que quiconque surveille peut réagir avant l'effet.",
@@ -1706,7 +1691,6 @@
     "kicker": "Votre compte",
     "heading": "Fait par vous",
     "lede": "Chaque image enregistrée par votre compte, lue dans l’index.",
-    "rail": "Enregistré par vous",
     "grid": "Vos images",
     "entry": "Mes images",
     "receiptLink": "Voir toutes vos images",

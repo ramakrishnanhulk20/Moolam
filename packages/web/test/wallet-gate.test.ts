@@ -64,7 +64,13 @@ const { DisputePanel } = await import("@/components/passport/DisputePanel");
 const { EditPanel } = await import("@/components/passport/EditPanel");
 const { ConsentPanel } = await import("@/components/passport/ConsentPanel");
 
-await Promise.all(chunks.pending);
+// A chunk that arrives can start loaders of its own (the studio's panels pull
+// in the sealed file card), so this waits until a round adds none. Left to
+// finish after the last test, those loads end the run with a teardown error.
+for (let seen = -1; seen !== chunks.pending.length; ) {
+  seen = chunks.pending.length;
+  await Promise.all(chunks.pending);
+}
 
 const PASSPORT = `0x${"5c".repeat(32)}` as Hex;
 const OWNER = "0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a" as Hex;

@@ -27,7 +27,6 @@
     "themeLight": "Theme: light",
     "language": "Language",
     "nav": {
-      "home": "Home",
       "explore": "Explore",
       "agents": "Agents",
       "docs": "Docs",
@@ -110,7 +109,6 @@
     "unknown": "unknown",
     "yes": "Yes",
     "no": "No",
-    "swapNotice": "Placeholder art. The real still lands with the hero build.",
     "registeredPicture": "Registered picture"
   },
   "kind": {
@@ -203,7 +201,6 @@
   "agents": {
     "kicker": "Agents",
     "title": "Agents",
-    "rail": "ERC-8004 generators",
     "lede": "Every generating agent the index has seen sign a passport, with everything it has counted for each one. The busiest first.",
     "scoreMeaning": "A trust score from 0 to 100: how often Chainlink's re-checks agreed with what this agent signed, with upheld disputes counted against it twice.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -611,7 +608,7 @@
         "another": "Add another edit"
       },
       "failure": {
-        "noSigner": "This app does not hold a signer on your wallet under the edit policy. Grant it again and the edit can go out.",
+        "noSigner": "This app does not have your permission to add edits. Allow edits from this app and the edit can go out.",
         "notOwner": "This account does not hold this passport, so it cannot add an edit to it.",
         "noParent": "The registry has no passport with this id, so there is nothing to add an edit to.",
         "quota": "That is {used} of {limit} edits for today. The allowance comes back at {at}.",
@@ -1106,7 +1103,6 @@
     "kicker": "Studio",
     "title": "Register an image",
     "lede": "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
-    "rail": "Moolam studio",
     "opening": "Opening your account",
     "noWallet": "You are signed in, but no account was created on Monad yet. Reload the page, or sign out and sign in again.",
     "notConfigured": "Privy is not configured, so nobody can sign in here. Put NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local and restart the dev server.",
@@ -1172,8 +1168,7 @@
       "doneLabel": "Bound",
       "doneBody": "This device now signs for your account. Register an image and it will ask for your unlock once.",
       "txLink": "Transaction {hash}",
-      "walletLink": "Your account {wallet} on MonadVision",
-      "rebind": "Bind a different device"
+      "walletLink": "Your account {wallet} on MonadVision"
     },
     "recover": {
       "kicker": "Another device signed here",
@@ -1554,16 +1549,7 @@
       "openAddress": "Open {wallet} on MonadVision",
       "generateAgain": "Make it again"
     },
-    "showcaseCaption": "A real passport on Monad. This is what you get.",
-    "wide": {
-      "bench": "Studio wide bench",
-      "fixtureNote": "Fixture: stubbed studio state. No wallet, nothing is sent.",
-      "upload": "upload",
-      "generate": "generate",
-      "done": "done",
-      "live": "live",
-      "today": "today"
-    }
+    "showcaseCaption": "A real passport on Monad. This is what you get."
   },
   "docs": {
     "home": "Documentation",
@@ -1594,7 +1580,6 @@
     "title": "Resolve disputes",
     "heading": "Settle the open challenges",
     "kicker": "Resolver console",
-    "rail": "DISPUTES",
     "lede": "Every challenge the registry still has open, with the picture, the claim and the bond behind it. Anyone can read it; only the named resolver settles it.",
     "resolverLabel": "The resolver",
     "policyNote": "The policy contract names one address, and changing it waits 24 hours in the open, so anyone watching can react before it takes effect.",
@@ -1706,7 +1691,6 @@
     "kicker": "Your account",
     "heading": "Made by you",
     "lede": "Every picture your account registered, read from the index.",
-    "rail": "Registered by you",
     "grid": "Your pictures",
     "entry": "My pictures",
     "receiptLink": "See all your pictures",

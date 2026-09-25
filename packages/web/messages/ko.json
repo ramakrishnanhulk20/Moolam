@@ -29,7 +29,6 @@
     "themeLight": "테마: 라이트",
     "language": "언어",
     "nav": {
-      "home": "홈",
       "explore": "둘러보기",
       "agents": "에이전트",
       "docs": "문서",
@@ -112,7 +111,6 @@
     "unknown": "알 수 없음",
     "yes": "예",
     "no": "아니오",
-    "swapNotice": "임시 이미지입니다. 진짜 컷은 히어로 작업과 함께 들어옵니다.",
     "registeredPicture": "등록된 이미지"
   },
   "kind": {
@@ -205,7 +203,6 @@
   "agents": {
     "kicker": "에이전트",
     "title": "에이전트",
-    "rail": "ERC-8004 생성자",
     "lede": "여권에 서명한 것을 인덱스가 본 모든 생성 에이전트와, 각각에 대해 센 모든 숫자입니다. 많이 서명한 순서입니다.",
     "scoreMeaning": "0에서 100까지의 신뢰 점수. Chainlink의 재확인이 이 에이전트가 서명한 내용과 얼마나 자주 일치했는지입니다. 받아들여진 이의는 두 배로 깎입니다.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
@@ -613,7 +610,7 @@
         "another": "편집본 하나 더 추가"
       },
       "failure": {
-        "noSigner": "편집 정책 아래의 서명자가 당신의 지갑에 없습니다. 다시 허용하면 편집본을 보낼 수 있습니다.",
+        "noSigner": "이 앱에는 편집본을 추가할 권한이 없습니다. 이 앱이 편집본을 추가하도록 허용하면 편집본을 보낼 수 있습니다.",
         "notOwner": "이 계정은 이 여권을 가지고 있지 않아 편집본을 추가할 수 없습니다.",
         "noParent": "이 id의 여권이 등록부에 없어, 편집본을 붙일 대상이 없습니다.",
         "quota": "오늘 {limit}건 중 {used}건을 썼습니다. 한도는 {at}에 돌아옵니다.",
@@ -1108,7 +1105,6 @@
     "kicker": "스튜디오",
     "title": "이미지 등록",
     "lede": "여기서 등록하는 이미지마다 Monad 위에 제 기록을 갖습니다. 지문이 떠지고, 당신이 서명하고, 어떤 사본에서든 찾을 수 있습니다.",
-    "rail": "Moolam 스튜디오",
     "opening": "계정을 여는 중",
     "noWallet": "로그인은 되었지만 Monad에 계정이 아직 만들어지지 않았습니다. 페이지를 새로 고치거나, 로그아웃한 뒤 다시 로그인해 주세요.",
     "notConfigured": "Privy가 설정되지 않아 여기서는 아무도 로그인할 수 없습니다. packages/web/.env.local에 NEXT_PUBLIC_PRIVY_APP_ID를 넣고 개발 서버를 다시 시작하세요.",
@@ -1174,8 +1170,7 @@
       "doneLabel": "연결됨",
       "doneBody": "이제 이 기기가 당신의 계정을 위해 서명합니다. 이미지를 등록하면 잠금 해제를 한 번 물어봅니다.",
       "txLink": "트랜잭션 {hash}",
-      "walletLink": "MonadVision의 내 계정 {wallet}",
-      "rebind": "다른 기기 연결하기"
+      "walletLink": "MonadVision의 내 계정 {wallet}"
     },
     "recover": {
       "kicker": "다른 기기가 여기에 서명했습니다",
@@ -1556,16 +1551,7 @@
       "openAddress": "MonadVision에서 {wallet} 열기",
       "generateAgain": "다시 만들기"
     },
-    "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다.",
-    "wide": {
-      "bench": "넓은 스튜디오 작업대",
-      "fixtureNote": "견본: 스튜디오 상태를 흉내 낸 것. 계정 없음, 아무것도 보내지 않습니다.",
-      "upload": "올리기",
-      "generate": "생성",
-      "done": "완료",
-      "live": "실시간",
-      "today": "오늘"
-    }
+    "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다."
   },
   "docs": {
     "home": "문서",
@@ -1596,7 +1582,6 @@
     "title": "분쟁 처리",
     "heading": "열려 있는 이의를 매듭짓기",
     "kicker": "중재자 콘솔",
-    "rail": "분쟁",
     "lede": "레지스트리에 아직 열려 있는 모든 이의를 사진, 주장, 보증금과 함께 봅니다. 누구나 읽을 수 있지만, 처리는 정책이 지정한 주소만 할 수 있습니다.",
     "resolverLabel": "중재자",
     "policyNote": "정책 계약은 주소 하나만 지정하며, 그 주소를 바꾸려면 공개된 상태로 24시간을 기다려야 합니다. 지켜보는 사람이 효력 전에 대응할 수 있습니다.",
@@ -1708,7 +1693,6 @@
     "kicker": "내 계정",
     "heading": "당신이 만든 것",
     "lede": "내 계정이 등록한 모든 이미지, 인덱스에서 읽었습니다.",
-    "rail": "내가 등록한 것",
     "grid": "내 이미지",
     "entry": "내 이미지",
     "receiptLink": "내 이미지 전부 보기",
