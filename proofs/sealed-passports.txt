@@ -51,3 +51,29 @@ Moolam's own gateway, and recomputed 0x1f1bc103fbef6f47 against the stored 0x1f1
 distance 2, matched. Report transaction 0x48aa75431f6f564ad8dd53806d7723ec397adca25ddb21f5e8e3eb0888f96ce0,
 block 107,264,854, through the simulation forwarder: one machine, no network consensus. The full row is
 in proofs/rechecks.txt.
+
+THE FIRST PRIVATE CHAINLINK RE-CHECK (2026-09-25)
+
+A picture registered sealed with the private re-check asked for, so it has never been published: Moolam
+keeps one 512 pixel copy on private storage, and nothing of the picture is in the public document.
+
+  passport        0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09
+  registered      2026-09-23 08:56:16 UTC, block 107,279,096, tx 0x2638f75034e20bc625deb82c04e38a7f5b2cdbaf86b2172ead4d137f1bc9cc5e
+  document        ipfs://bafkreigicd2yhmc4x7a72hgmpzafzxajrxejyckx6s7lx4crkkxvhs3lwy (sealed, privateRecheck,
+                  no link of any kind in it)
+
+The moolam-sealed-verifier workflow, registered with handlerInTee, ran in Chainlink's simulator with
+--broadcast. The queue held a claim on the passport; under that claim the verify service minted one read
+link that lived 120 seconds; the workflow opened the 25,349 byte private copy through it, recomputed the
+fingerprint and wrote only the verdict:
+
+  recomputed      0x2ac1e07e3e80c4e6 against the stored 0x2ac1e07e3ea0c4e6, distance 1, matched
+  report tx       0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef, block 107,817,793, status 1
+  delivered by    the simulation forwarder 0x9eF6468C5f37b976E57d52054c693269479A784d: one machine, no
+                  network consensus, and Chainlink's simulator is not a real enclave
+  written by      the sealed receiver 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, listed in the policy on
+                  2026-09-25 (tx 0x79d34b81ce94d4a21b10277a70d656b4588360e232839e0e25a16edf91687380) after its
+                  24 hour wait, so the registry's own record says which workflow wrote this verdict
+
+The link, the service's address and the tokens appear in no log of the run; the receiver was put back on
+the production forwarder and pinned to its workflow afterwards, read back from the chain.

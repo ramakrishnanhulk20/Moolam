@@ -61,3 +61,13 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 before, 1 after
 With these, every one of the sixteen real pictures on the registry carries a re-check; the seed and proof cards carry none by design, apart from one seed card re-checked on 2026-09-08 before this file existed.
+
+The first private Chainlink re-check, written 2026-09-25
+A sealed picture whose creator asked for the private re-check, read by the moolam-sealed-verifier confidential workflow (handlerInTee) from the small private copy Moolam keeps, through a read link the verify service minted under a queue claim; run by Ram with kitchen/launch/recheck-private.sh in Chainlink's simulator with --broadcast, one machine, no network consensus. Written through the second receiver, so the registry's attestation names it. Details in proofs/sealed-passports.txt.
+recomputed fingerprint and distance from the run: 0x2ac1e07e3e80c4e6 (1), matched
+
+passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
+0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09 | 0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef | 1 | 1000000 | [(0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, true, 1, 0x0000000000000000000000000000000000000000000000002ac1e07e3e80c4e6, 1790316586 [1.79e9])]
+
+sealed receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x64323036636163326334
+attestation counts: 0 before, 1 after
