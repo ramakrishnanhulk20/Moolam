@@ -7,7 +7,6 @@ import { UseBlock } from "@/components/consent/Marks";
 import { SUMMARY_TONES } from "@/components/consent/tones";
 import type { Consent } from "@/lib/chain/consent";
 import { Link, useRouter } from "@/lib/i18n/routing";
-import type { Opening } from "@/components/studio/opening";
 import { useReading } from "./Reading";
 import {
   AI_VIEWS,
@@ -45,12 +44,10 @@ const LEGEND_USES: Consent = {
   dataMining: "unspecified",
 };
 
-export function Filters({ search, opening = "full" }: { search: ExploreSearch; opening?: Opening }) {
+export function Filters({ search }: { search: ExploreSearch }) {
   const t = useTranslations("explore");
-  // Under the compact opening a phone keeps the key to the letters behind one
-  // small press, so the first pictures reach the first screen. From 640 px up
-  // the key is always shown, as it is today.
-  const compact = opening === "compact";
+  // A phone keeps the key to the letters behind one small press, so the first
+  // pictures reach the first screen. From 640 px up the key is always shown.
   const [keyShown, setKeyShown] = useState(false);
   const router = useRouter();
   const { reading, hold } = useReading();
@@ -61,7 +58,7 @@ export function Filters({ search, opening = "full" }: { search: ExploreSearch; o
   useEffect(() => (searching ? hold() : undefined), [searching, hold]);
 
   return (
-    <div className={`border-y border-line sm:mt-10 sm:py-5 ${compact ? "mt-4 py-3" : "mt-6 py-4"}`}>
+    <div className="mt-4 border-y border-line py-3 sm:mt-10 sm:py-5">
       <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
         {/* Nine chips wrapped onto four rows at 375 px and took a third of the
             first screen, which is the screen the pictures are meant to be on. On a
@@ -143,7 +140,7 @@ export function Filters({ search, opening = "full" }: { search: ExploreSearch; o
           record says, and a reader narrowing by it should be able to see that
           they have. The row scrolls sideways on a phone, like the one above it,
           and the label stays put while it does. */}
-      <div className={`flex items-center gap-3 sm:mt-5 ${compact ? "mt-2" : "mt-4"}`}>
+      <div className="mt-2 flex items-center gap-3 sm:mt-5">
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
           {t("ai.label")}
         </span>
@@ -162,39 +159,31 @@ export function Filters({ search, opening = "full" }: { search: ExploreSearch; o
           a thumb, so on a phone they were three unexplained letters. The row
           keeps its height whether or not the sheet is being read, so nothing on
           the page moves when the mark lights. */}
-      <div
-        className={`flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 ${
-          compact ? "mt-2" : "mt-4"
-        }`}
-      >
-        {compact ? (
-          <button
-            type="button"
-            data-marks-toggle
-            aria-expanded={keyShown}
-            aria-controls="explore-marks-key"
-            onClick={() => setKeyShown((shown) => !shown)}
-            className="tap flex min-h-[32px] items-center gap-2 uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent sm:hidden"
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5">
+        <button
+          type="button"
+          data-marks-toggle
+          aria-expanded={keyShown}
+          aria-controls="explore-marks-key"
+          onClick={() => setKeyShown((shown) => !shown)}
+          className="tap flex min-h-[32px] items-center gap-2 uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent sm:hidden"
+        >
+          <span aria-hidden className="flex gap-[3px]">
+            <span className="h-[9px] w-[9px] rounded-[2px] border border-accent" />
+            <span className="h-[9px] w-[9px] rounded-[2px] border border-verified" />
+          </span>
+          {t("marksToggle")}
+          <span
+            aria-hidden
+            className={`inline-block transition-transform duration-200 ${keyShown ? "rotate-90" : ""}`}
           >
-            <span aria-hidden className="flex gap-[3px]">
-              <span className="h-[9px] w-[9px] rounded-[2px] border border-accent" />
-              <span className="h-[9px] w-[9px] rounded-[2px] border border-verified" />
-            </span>
-            {t("marksToggle")}
-            <span
-              aria-hidden
-              className={`inline-block transition-transform duration-200 ${keyShown ? "rotate-90" : ""}`}
-            >
-              &rsaquo;
-            </span>
-          </button>
-        ) : null}
+            &rsaquo;
+          </span>
+        </button>
         <p
           id="explore-marks-key"
           data-marks-key
-          className={`flex-wrap items-center gap-x-2 gap-y-1.5 sm:flex ${
-            compact && !keyShown ? "hidden" : "flex"
-          }`}
+          className={`flex-wrap items-center gap-x-2 gap-y-1.5 sm:flex ${keyShown ? "flex" : "hidden"}`}
         >
           <span>
             <span className="text-accent">M</span> {t("legend.manifest")}

@@ -10,7 +10,6 @@ import { chosenProblem, readAnswer, verifyProblem } from "./answer";
 import { matchedPassport } from "./lookup";
 import { fileFromSample } from "./sample";
 import { Samples } from "./Samples";
-import type { Opening } from "@/components/studio/opening";
 
 /** Stands in for the host while the sentence is translated, so the host can be set as one piece. */
 const HOST_MARK = "\u0000host\u0000";
@@ -53,11 +52,7 @@ const ACCEPT = "image/jpeg,image/png,image/webp";
  * passport behind the answer is read from Monad by this browser too, so the
  * app's own server is not in the middle of a check at any point.
  */
-export function VerifyScreen({ samples = [], opening = "full" }: { samples?: TrySample[]; opening?: Opening }) {
-  // Under the compact opening the drop box and the answer card start just
-  // under a short title, so both are in the first screen of a laptop with the
-  // samples right under the box.
-  const compact = opening === "compact";
+export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
   const t = useTranslations("verify");
   const input = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -152,7 +147,7 @@ export function VerifyScreen({ samples = [], opening = "full" }: { samples?: Try
     <MotionConfig reducedMotion="user">
       <div
         data-verify-tool
-        className={`grid gap-12 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16 ${compact ? "mt-7 sm:mt-8" : "mt-16"}`}
+        className="mt-7 grid gap-12 sm:mt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16"
       >
         <motion.section
           initial={{ opacity: 0, y: 24 }}
@@ -179,7 +174,7 @@ export function VerifyScreen({ samples = [], opening = "full" }: { samples?: Try
             }`}
           >
             {preview === null ? (
-              <div className={`flex flex-col items-start gap-5 ${compact ? "p-6 sm:p-9" : "p-8 sm:p-14"}`}>
+              <div className="flex flex-col items-start gap-5 p-6 sm:p-9">
                 <p className="max-w-[18ch] font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
                   {t("dropTitle")}
                 </p>
@@ -220,7 +215,7 @@ export function VerifyScreen({ samples = [], opening = "full" }: { samples?: Try
             )}
           </div>
 
-          <Samples samples={samples} onPick={(sample) => void pick(sample)} busy={busy} compact={compact} />
+          <Samples samples={samples} onPick={(sample) => void pick(sample)} busy={busy} />
 
           {/* The verdict, under the picture it is about. The card below carries
               the working: the confidence, the two distances and what was

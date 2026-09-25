@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ToolOpening } from "@/components/studio/ToolOpening";
 import { VerifyScreen } from "@/components/verify/VerifyScreen";
 import { offeredSamples } from "@/lib/data/offeredSamples";
 
@@ -47,41 +48,11 @@ export default async function VerifyPage({ params }: { params: Promise<{ locale:
     await connection();
   }
 
-  // Tamil letters carry marks above and below the line, so the tight leading the
-  // display face wants in Latin makes two lines touch.
-  const leading = locale === "ta" ? "leading-[1.12]" : "leading-[0.86]";
-
+  // A short opening, so the drop box and the answer card both start inside the
+  // first screen of a laptop.
   return (
-    <div className="relative mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute right-5 top-20 hidden select-none font-mono text-[11px] uppercase tracking-[0.4em] text-text-faint lg:block"
-        style={{ writingMode: "vertical-rl" }}
-      >
-        {t("rail")}
-      </span>
-
-      <header className="relative max-w-[54ch]">
-        <p className="rise flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
-          <span className="motif h-[10px] w-[10px]" />
-          {t("kicker")}
-        </p>
-
-        <h1
-          className={`rise mt-6 max-w-[13ch] font-display text-[clamp(2.6rem,8.5vw,6.5rem)] font-semibold uppercase tracking-[-0.035em] ${leading}`}
-          style={{ animationDelay: "60ms" }}
-        >
-          {t("title")}
-        </h1>
-
-        <p
-          className="rise mt-7 max-w-[52ch] text-base leading-relaxed text-text-muted sm:text-lg"
-          style={{ animationDelay: "120ms" }}
-        >
-          {t("lede")}
-        </p>
-      </header>
-
+    <div className="relative mx-auto w-full max-w-[1400px] px-5 pb-16 pt-7 sm:px-8 sm:pb-24 sm:pt-9">
+      <ToolOpening kicker={t("kicker")} title={t("title")} line={t("lede")} locale={locale} />
       <VerifyScreen samples={samples} />
     </div>
   );

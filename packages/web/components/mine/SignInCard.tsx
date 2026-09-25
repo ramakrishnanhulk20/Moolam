@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { useHeadingLeading } from "@/components/studio/leading";
-import { useOpening } from "@/components/studio/opening";
 
 /**
  * What a signed out visitor sees on /mine.
@@ -19,16 +18,12 @@ import { useOpening } from "@/components/studio/opening";
 export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
   const t = useTranslations("mine");
   const studio = useTranslations("studio");
-  const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
-  const cardLeading = useHeadingLeading("leading-[1.15]", "leading-[1.35]");
-  const compact = useOpening() === "compact";
+  const leading = useHeadingLeading("leading-[1.15]", "leading-[1.35]");
 
   return (
     <section
       data-signed-out
-      className={`rise relative max-w-[62ch] border border-line bg-bg-raised p-7 sm:p-10 ${
-        compact ? "mt-0" : "mt-16 sm:mt-24"
-      }`}
+      className="rise relative max-w-[62ch] border border-line bg-bg-raised p-7 sm:p-10"
     >
       {/* The motif, oversized, hung off the card's own corner. The mark itself
           is wrapped rather than positioned: the .motif rule in globals.css sets
@@ -43,15 +38,11 @@ export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
         {t("signedOut.kicker")}
       </p>
 
-      {/* Under the compact opening the card's heading is a card's: the same
-          words in sentence case, two lines at most. */}
+      {/* The page's title is the only display heading on the page, so the
+          card's is a card's: the same words in sentence case, two lines at most. */}
       <h2
-        data-card-heading={compact ? "card" : "display"}
-        className={
-          compact
-            ? `mt-4 max-w-[30ch] font-display text-[clamp(1.25rem,2vw,1.6rem)] font-semibold tracking-[-0.02em] ${cardLeading}`
-            : `mt-5 max-w-[22ch] font-display text-[clamp(1.7rem,3.6vw,2.8rem)] font-semibold uppercase tracking-[-0.025em] ${leading}`
-        }
+        data-card-heading="card"
+        className={`mt-4 max-w-[30ch] font-display text-[clamp(1.25rem,2vw,1.6rem)] font-semibold tracking-[-0.02em] ${leading}`}
       >
         {t("signedOut.heading")}
       </h2>

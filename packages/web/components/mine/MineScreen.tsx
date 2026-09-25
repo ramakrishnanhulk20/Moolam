@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
-import { OpeningProvider, type Opening } from "@/components/studio/opening";
 import { isPrivyConfigured } from "@/lib/env";
 import { MineNotice, MineWaiting } from "./MineFrame";
 
@@ -28,7 +27,7 @@ const MinePictures = dynamic(loadPictures, { loading: () => <MineWaiting /> });
  * MinePictures.tsx and OwnPictures.tsx, fetched beside the wallet SDK once the
  * page has painted.
  */
-export function MineScreen({ opening = "full" }: { opening?: Opening }) {
+export function MineScreen() {
   const mounted = useWalletMounted();
   const studio = useTranslations("studio");
 
@@ -41,16 +40,14 @@ export function MineScreen({ opening = "full" }: { opening?: Opening }) {
   }, []);
 
   return (
-    <OpeningProvider opening={opening}>
-      <MotionConfig reducedMotion="user">
-        {!isPrivyConfigured ? (
-          <MineNotice text={studio("notConfigured")} tone="failed" />
-        ) : mounted ? (
-          <MinePictures />
-        ) : (
-          <MineWaiting />
-        )}
-      </MotionConfig>
-    </OpeningProvider>
+    <MotionConfig reducedMotion="user">
+      {!isPrivyConfigured ? (
+        <MineNotice text={studio("notConfigured")} tone="failed" />
+      ) : mounted ? (
+        <MinePictures />
+      ) : (
+        <MineWaiting />
+      )}
+    </MotionConfig>
   );
 }

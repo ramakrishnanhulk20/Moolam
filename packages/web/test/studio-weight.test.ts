@@ -74,6 +74,13 @@ vi.mock("next/dynamic", async () => {
   };
 });
 
+// /mine sets one real passport beside its sign-in card, read from the chain.
+// That read and its drawing come after the words held here, so they are stood
+// down: no network in a unit test, and the import graph below is read from the
+// files themselves, not from these stand-ins.
+vi.mock("@/components/studio/showcasePassport", () => ({ showcasePassport: async () => null }));
+vi.mock("@/components/studio/Showcase", () => ({ Showcase: () => null }));
+
 const { default: StudioPage } = await import("@/app/[locale]/studio/page");
 const { default: MinePage } = await import("@/app/[locale]/mine/page");
 

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createElement, type FunctionComponent, type ReactElement } from "react";
+import { createElement, isValidElement, type FunctionComponent, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
@@ -7,12 +7,12 @@ import ta from "@/messages/ta.json";
 
 /**
  * The tool pages after the design read of 25 September: the fixes that went
- * straight onto the real pages, and the compact openings that wait on the lab
- * page for Ram's yes.
+ * straight onto the real pages, and the compact openings Ram said yes to, now
+ * drawn on Verify, My pictures, Agents, the dispute page and Explore.
  *
  * Layout is held here by the classes that make it, since a node test has no
  * boxes to measure. The boxes themselves were measured on the dev server, and
- * the numbers are in kitchen/reports/WO-155.txt.
+ * the numbers are in kitchen/reports/WO-155.txt and WO-162.txt.
  */
 
 process.env.NEXT_PUBLIC_PRIVY_APP_ID = "test-app-id";
@@ -51,10 +51,13 @@ vi.mock("next/navigation", () => ({
 }));
 
 // The server halves read their words through next-intl/server, which only
-// resolves inside a request. Here they read the English file directly.
+// resolves inside a request. Here they read the language file the page asked
+// for directly.
+const request = vi.hoisted(() => ({ locale: "en" }));
+
 function lookup(namespace: string | undefined, key: string, values?: Record<string, unknown>): string {
   const path = [...(namespace === undefined ? [] : namespace.split(".")), ...key.split(".")];
-  let at: unknown = en;
+  let at: unknown = request.locale === "ta" ? ta : en;
   for (const part of path) {
     at = (at as Record<string, unknown> | undefined)?.[part];
   }
@@ -70,8 +73,31 @@ vi.mock("next-intl/server", () => ({
     return (key: string, values?: Record<string, unknown>) => lookup(namespace, key, values);
   },
   getFormatter: async () => ({ dateTime: (date: Date) => date.toISOString().slice(0, 10) }),
-  setRequestLocale: () => undefined,
+  setRequestLocale: (locale: string) => {
+    request.locale = locale;
+  },
 }));
+
+// The reads each route makes on the server, handed fixed answers so the pages
+// can be drawn here without a network.
+const reads = vi.hoisted(() => ({
+  showcase: null as unknown,
+}));
+
+vi.mock("next/server", () => ({ connection: async () => undefined }));
+
+vi.mock("@/lib/data/offeredSamples", () => ({
+  offeredSamples: async () => ({ samples: [{ id: `0x${"1a".repeat(32)}`, url: "ipfs://one", title: "Monsoon" }], error: null }),
+}));
+
+vi.mock("@/lib/chain/registry", async (original) => ({
+  ...(await original<Record<string, unknown>>()),
+  resolver: async () => `0x${"55".repeat(20)}`,
+}));
+
+vi.mock("@/lib/disputes/queue", () => ({ openDisputeQueue: async () => [] }));
+
+vi.mock("@/components/studio/showcasePassport", () => ({ showcasePassport: async () => reads.showcase }));
 
 const chunks = vi.hoisted(() => ({ pending: [] as Promise<unknown>[] }));
 
@@ -97,9 +123,11 @@ const { Masthead: DocsMasthead } = await import("@/components/docs/Masthead");
 const { ThemeProvider, themeScriptType } = await import("@/components/providers/ThemeProvider");
 const { OpeningProvider } = await import("@/components/studio/opening");
 const { StudioScreen } = await import("@/components/studio/StudioScreen");
-const { MineScreen } = await import("@/components/mine/MineScreen");
 const { WalletMounted } = await import("@/components/providers/WalletProvider");
-const { default: OpeningsLabPage } = await import("@/app/[locale]/lab/openings/page");
+const { Board } = await import("@/components/agents/Board");
+const { default: VerifyPage } = await import("@/app/[locale]/verify/page");
+const { default: MinePage } = await import("@/app/[locale]/mine/page");
+const { default: ResolvePage } = await import("@/app/[locale]/resolve/page");
 
 await Promise.all(chunks.pending);
 
@@ -115,6 +143,50 @@ function render(node: ReactElement, locale: "en" | "ta" = "en"): string {
   return renderToStaticMarkup(
     createElement(Provider, { locale, messages: locale === "en" ? en : ta, timeZone: "Asia/Kolkata" }, node),
   );
+}
+
+/**
+ * A route's server component, with every async server component under it
+ * awaited, so the string renderer can draw the client parts the way the server
+ * would.
+ */
+async function settle(node: unknown): Promise<ReactNode> {
+  if (Array.isArray(node)) {
+    return Promise.all(node.map(settle));
+  }
+  if (!isValidElement(node)) {
+    return node as ReactNode;
+  }
+  const element = node as { type: unknown; props: Record<string, unknown> };
+  if (typeof element.type === "function" && element.type.constructor.name === "AsyncFunction") {
+    return settle(await (element.type as (props: unknown) => Promise<unknown>)(element.props));
+  }
+  // A drawing handed in as a prop, like the passport beside the sign-in card,
+  // is awaited the same way the children are.
+  const props: Record<string, unknown> = { ...element.props, key: (node as { key?: string }).key };
+  for (const [name, value] of Object.entries(element.props)) {
+    if (name !== "children" && isValidElement(value)) {
+      props[name] = await settle(value);
+    }
+  }
+  if (element.props.children === undefined) {
+    return createElement(element.type as string, props);
+  }
+  const children = await settle(element.props.children);
+  return createElement(element.type as string, props, children);
+}
+
+/** The same text as it appears in HTML, with the characters React escapes. */
+function html(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
+}
+
+async function serve(page: Promise<ReactNode> | ReactNode, locale: "en" | "ta" = "en"): Promise<string> {
+  try {
+    return render((await settle(await page)) as ReactElement, locale);
+  } finally {
+    request.locale = "en";
+  }
 }
 
 /** The opening tag of the first element carrying this data attribute. */
@@ -315,8 +387,8 @@ describe("the theme script", () => {
   });
 });
 
-describe("the compact openings on the lab page", () => {
-  it("give the studio's sign-in card a card's heading, same words, no capitals", () => {
+describe("the studio's sign-in card under the compact opening", () => {
+  it("is a card's heading, same words, no capitals", () => {
     const markup = render(
       createElement(
         WalletMounted.Provider,
@@ -330,68 +402,189 @@ describe("the compact openings on the lab page", () => {
     expect(markup).toContain(en.studio.signedOut.heading);
   });
 
-  it("leave today's studio card as it is", () => {
+  it("leaves today's studio card as it is until the studio's own order", () => {
     const markup = render(createElement(WalletMounted.Provider, { value: false }, createElement(StudioScreen)));
     expect(tagOf(markup, "data-card-heading")).toContain("uppercase");
   });
+});
 
-  it("give My pictures the same card heading", () => {
-    const markup = render(
-      createElement(WalletMounted.Provider, { value: false }, createElement(MineScreen, { opening: "compact" })),
-    );
-    const heading = tagOf(markup, "data-card-heading");
-    expect(heading).toContain('data-card-heading="card"');
-    expect(heading).not.toContain("uppercase");
-    expect(markup).toContain(en.mine.signedOut.heading);
-  });
+/** The first element in the markup whose class list starts with this. */
+function classAt(markup: string, pattern: RegExp): string[] {
+  const found = markup.match(pattern);
+  expect(found, `${String(pattern)} is on the page`).not.toBeNull();
+  return (found as RegExpMatchArray)[1].split(/\s+/);
+}
 
-  it("put Explore's letter key behind one press on a phone, and nowhere else", () => {
+/** The classes that only apply from 640 px up: what a laptop draws. */
+function wide(classes: string[]): string[] {
+  return classes.filter((name) => name.startsWith("sm:") || name.startsWith("lg:") || name.startsWith("xl:")).sort();
+}
+
+describe("the compact openings on the real routes", () => {
+  for (const locale of ["en", "ta"] as const) {
+    const words = locale === "en" ? en : ta;
+
+    it(`Verify opens short, with the drop box right under it (${locale})`, async () => {
+      const markup = await serve(VerifyPage({ params: Promise.resolve({ locale }) }), locale);
+      const opening = tagOf(markup, "data-opening");
+      expect(opening).toContain('data-opening="compact"');
+      expect(markup).toContain(html(words.verify.title));
+      expect(markup).toContain(html(words.verify.lede));
+      expect(tagOf(markup, "data-verify-tool")).toContain("mt-7");
+      expect(tagOf(markup, "data-verify-tool")).not.toContain("mt-16");
+      expect(markup.indexOf("data-opening")).toBeLessThan(markup.indexOf("data-verify-tool"));
+      // The poster-sized title and the vertical rail are gone from the route.
+      expect(markup).not.toContain("clamp(2.6rem,8.5vw,6.5rem)");
+      expect(markup).not.toContain("vertical-rl");
+      expect(markup).toContain('data-verify-samples');
+      expect(tagOf(markup, "data-verify-samples")).toContain("mt-5");
+    });
+
+    it(`My pictures signed out puts the sign-in card beside a real passport (${locale})`, async () => {
+      reads.showcase = {
+        id: `0x${"c4".repeat(32)}`,
+        title: "Monsoon fishing nets drying",
+        picture: "ipfs://picture-1",
+        creator: `0x${"12".repeat(20)}`,
+        agentId: "10249",
+        agentName: "Moolam generator",
+        statement: "closed",
+        recheck: null,
+      };
+      try {
+        const markup = await serve(MinePage({ params: Promise.resolve({ locale }) }), locale);
+        expect(tagOf(markup, "data-opening")).toContain('data-opening="compact"');
+        expect(markup).toContain(html(words.mine.heading));
+
+        const split = tagOf(markup, "data-sign-in-split");
+        expect(split).toContain("lg:[&amp;:has([data-signed-out])]:grid-cols-[minmax(0,44rem)_minmax(0,1fr)]");
+        expect(split).toContain("[&amp;:not(:has([data-signed-out]))&gt;[data-showcase-slot]]:hidden");
+
+        const heading = tagOf(markup, "data-card-heading");
+        expect(heading).toContain('data-card-heading="card"');
+        expect(heading).not.toContain("uppercase");
+        expect(tagOf(markup, "data-signed-out")).not.toContain("mt-16");
+
+        expect(markup).toContain("data-showcase");
+        expect(markup).toContain(html(words.mine.showcaseCaption));
+        expect(markup).toContain("Monsoon fishing nets drying");
+        // The card comes first, the passport beside it.
+        expect(markup.indexOf("data-signed-out")).toBeLessThan(markup.indexOf("data-showcase-slot"));
+      } finally {
+        reads.showcase = null;
+      }
+    });
+
+    it(`My pictures stands the card alone when no passport could be read (${locale})`, async () => {
+      const markup = await serve(MinePage({ params: Promise.resolve({ locale }) }), locale);
+      expect(markup).toContain("data-signed-out");
+      expect(markup).not.toContain("data-showcase=");
+    });
+
+    it(`Agents puts the explainer beside the title and the ledger right under it (${locale})`, async () => {
+      const agent = {
+        id: "10249",
+        name: "Moolam generator on a Privy server wallet",
+        firstSeenAt: 1_788_876_082,
+        trustScore: 95,
+        passportCount: 24,
+        matchedCount: 18,
+        mismatchedCount: 0,
+        disputesUpheld: 0,
+      };
+      // The board is not a route, so nothing sets the request's language for it.
+      request.locale = locale;
+      const markup = await serve(Board({ agents: [agent as never], error: null, locale }), locale);
+      expect(tagOf(markup, "data-opening")).toContain('data-opening="compact"');
+      const explainer = tagOf(markup, "data-agents-explainer");
+      expect(explainer).toContain("lg:justify-self-end");
+      expect(markup).toContain(html(words.agents.scoreMeaning));
+      expect(markup).toContain(html(words.agents.formulaHow));
+      // The explainer sits inside the opening, and the first agent follows it.
+      expect(markup.indexOf("data-agents-explainer")).toBeLessThan(markup.indexOf("</header>"));
+      expect(markup.indexOf("</header>")).toBeLessThan(markup.indexOf("data-agent-name"));
+      expect(markup).toMatch(/<\/header><ul>/);
+      expect(markup).not.toContain("vertical-rl");
+    });
+
+    it(`the dispute page opens short, with both cards right under it (${locale})`, async () => {
+      const markup = await serve(ResolvePage({ params: Promise.resolve({ locale }) }), locale);
+      expect(tagOf(markup, "data-opening")).toContain('data-opening="compact"');
+      expect(markup).toContain(html(words.resolve.heading));
+      const desk = tagOf(markup, "data-resolve-desk");
+      expect(desk).toContain("mt-7");
+      expect(desk).not.toContain("mt-14");
+      expect(markup).not.toContain("vertical-rl");
+    });
+  }
+
+  it("put Explore's letter key behind one press on a phone, and keep it open from 640 px up", () => {
     const search = { view: "pictures" as const, search: "", agent: null, ai: null };
-    const compact = render(createElement(Filters, { search, opening: "compact" }));
-    expect(tagOf(compact, "data-marks-toggle")).toContain("sm:hidden");
-    expect(compact).toContain(en.explore.marksToggle);
-    expect(tagOf(compact, "data-marks-key")).toContain("hidden");
-    expect(tagOf(compact, "data-marks-key")).toContain("sm:flex");
-
-    const today = render(createElement(Filters, { search }));
-    expect(today).not.toContain("data-marks-toggle");
-    expect(tagOf(today, "data-marks-key")).not.toMatch(/\bhidden\b/);
+    const markup = render(createElement(Filters, { search }));
+    expect(tagOf(markup, "data-marks-toggle")).toContain("sm:hidden");
+    expect(markup).toContain(en.explore.marksToggle);
+    expect(tagOf(markup, "data-marks-key")).toMatch(/\bhidden\b/);
+    expect(tagOf(markup, "data-marks-key")).toContain("sm:flex");
+    // The chips and the AI row keep their sm values, so a laptop's bar is today's.
+    expect(wide(classAt(markup, /<div class="([^"]*border-y border-line[^"]*)"/))).toEqual(["sm:mt-10", "sm:py-5"]);
   });
 
   it("fold Explore's four counts into one line on a phone", async () => {
     const counts = { total: 41, generated: 32, rechecked: 20, stated: 17, capped: false };
     const split = { real: 17, test: 24, scanned: 41, capped: false };
     const markup = renderToStaticMarkup(
-      await ExploreMasthead({ locale: "en", counts, countsError: null, split, view: "pictures", opening: "compact" }),
+      await ExploreMasthead({ locale: "en", counts, countsError: null, split, view: "pictures" }),
     );
     expect(tagOf(markup, "data-counts-line")).toContain("sm:hidden");
     expect(markup).toContain(en.explore.counts.stated);
+    const grid = tagOf(markup, "data-counts-grid");
+    expect(grid).toMatch(/\bhidden\b/);
+    expect(grid).not.toContain("grid-cols-2 sm:");
+  });
 
-    const today = renderToStaticMarkup(
+  it("leave Explore's laptop masthead exactly as it was", async () => {
+    const counts = { total: 41, generated: 32, rechecked: 20, stated: 17, capped: false };
+    const split = { real: 17, test: 24, scanned: 41, capped: false };
+    const markup = renderToStaticMarkup(
       await ExploreMasthead({ locale: "en", counts, countsError: null, split, view: "pictures" }),
     );
-    expect(today).not.toContain("data-counts-line");
+
+    // The classes from 640 px up, as they were before the phone opening came in.
+    expect(wide(classAt(markup, /<div class="(grid gap-x-16[^"]*)"/))).toEqual(
+      ["lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]", "lg:items-end", "sm:gap-y-10"].sort(),
+    );
+    expect(wide(classAt(markup, /<h1 class="([^"]*)"/))).toEqual(["sm:mt-6", "sm:text-[clamp(2.4rem,8.5vw,6.5rem)]"]);
+    expect(wide(classAt(markup, new RegExp(`<p class="([^"]*)"[^>]*>${en.explore.lede.slice(0, 20)}`)))).toEqual([
+      "sm:mt-7",
+      "sm:text-lg",
+    ]);
+    expect(wide(classAt(markup, /<div class="(rise sm:border-t[^"]*)"/))).toEqual(
+      [
+        "sm:border-t",
+        "sm:border-line",
+        "sm:pt-6",
+        "lg:border-t-0",
+        "lg:border-s",
+        "lg:border-line",
+        "lg:pt-0",
+        "lg:ps-12",
+      ].sort(),
+    );
+    expect(wide(tagOf(markup, "data-counts-grid").match(/class="([^"]*)"/)?.[1].split(" ") ?? [])).toEqual(
+      ["sm:grid", "sm:grid-cols-4", "lg:grid-cols-2"].sort(),
+    );
+    expect(wide(classAt(markup, /<p class="([^"]*tracking-\[0\.2em\][^"]*)"/))).toEqual(["sm:mt-10"]);
+
+    // Every phone value that changed has a laptop value beside it that wins from 640 px.
+    const title = classAt(markup, /<h1 class="([^"]*)"/);
+    expect(title).toContain("mt-2.5");
+    expect(title).toContain("text-[clamp(1.75rem,8vw,2.25rem)]");
   });
 
   it("keep the openings' words free of the long dash in every language they ship in", () => {
     for (const messages of [en, ta]) {
       for (const words of [messages.explore.marksToggle, messages.studio.showcaseCaption, messages.mine.showcaseCaption]) {
         expect(words).not.toContain(LONG_DASH);
-      }
-    }
-  });
-
-  it("are a 404 anywhere the lab flag is not set", async () => {
-    const held = process.env.NEXT_PUBLIC_LAB_PAGES;
-    delete process.env.NEXT_PUBLIC_LAB_PAGES;
-    try {
-      const thrown = await OpeningsLabPage({ params: Promise.resolve({ locale: "en" }) }).catch(
-        (error: unknown) => error,
-      );
-      expect((thrown as { digest?: string }).digest).toBe("NEXT_HTTP_ERROR_FALLBACK;404");
-    } finally {
-      if (held !== undefined) {
-        process.env.NEXT_PUBLIC_LAB_PAGES = held;
       }
     }
   });

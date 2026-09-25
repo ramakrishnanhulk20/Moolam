@@ -125,7 +125,15 @@ describe("what a screen does before the wallet provider is mounted", () => {
     expect(markup).toContain(en.resolve.resolverLabel);
     expect(markup).toContain(en.resolve.creditUnread);
     expect(markup).toContain(en.resolve.empty);
-    expect(markup).not.toContain(en.resolve.signIn);
+    // The sign-in block only holds its place: unseen, out of the reading
+    // order, and a button nobody can press before the wallet is up.
+    const held = markup.slice(markup.indexOf("data-sign-in-held"));
+    const button = `>${en.resolve.signIn}</button>`;
+    expect(markup.split(button).length - 1).toBe(1);
+    expect(markup.indexOf(button)).toBeGreaterThan(markup.indexOf("data-sign-in-held"));
+    expect(held.slice(0, held.indexOf(">"))).toContain('aria-hidden="true"');
+    expect(held.slice(0, held.indexOf(">"))).toContain("invisible");
+    expect(held).toMatch(/<button[^>]*disabled=""[^>]*tabindex="-1"/);
   });
 
   it("paints nothing at all for the three passport panels", () => {

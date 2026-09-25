@@ -11,7 +11,7 @@ import { useResolveDisputes, type ResolveDisputes } from "@/lib/disputes/useReso
 import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
-import type { Opening } from "@/components/studio/opening";
+import { isPrivyConfigured } from "@/lib/env";
 
 const NOTHING = () => undefined;
 const NOTHING_YET = async () => undefined;
@@ -45,25 +45,17 @@ const WAITING: ResolveDisputes = {
  * console on every render that happens without it, so until it is up the queue
  * is drawn from the same standing the hook would report: nothing read yet.
  */
-export function ResolveConsole({
-  resolver,
-  disputes,
-  opening = "full",
-}: {
-  resolver: Hex;
-  disputes: OpenDispute[];
-  opening?: Opening;
-}) {
+export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
   const mounted = useWalletMounted();
 
   return mounted ? (
-    <Console resolver={resolver} disputes={disputes} opening={opening} />
+    <Console resolver={resolver} disputes={disputes} />
   ) : (
-    <Desk desk={WAITING} resolver={resolver} disputes={disputes} opening={opening} />
+    <Desk desk={WAITING} resolver={resolver} disputes={disputes} />
   );
 }
 
-function Console({ resolver, disputes, opening }: { resolver: Hex; disputes: OpenDispute[]; opening: Opening }) {
+function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
   const router = useRouter();
   // Which passport the settle that is out belongs to. The hook reports the busy
   // one and sets it before the wallet is even asked, so by the time a settle
@@ -89,26 +81,16 @@ function Console({ resolver, disputes, opening }: { resolver: Hex; disputes: Ope
     }
   }, [desk.busy]);
 
-  return <Desk desk={desk} resolver={resolver} disputes={disputes} opening={opening} />;
+  return <Desk desk={desk} resolver={resolver} disputes={disputes} />;
 }
 
-function Desk({
-  desk,
-  resolver,
-  disputes,
-  opening,
-}: {
-  desk: ResolveDisputes;
-  resolver: Hex;
-  disputes: OpenDispute[];
-  opening: Opening;
-}) {
+function Desk({ desk, resolver, disputes }: { desk: ResolveDisputes; resolver: Hex; disputes: OpenDispute[] }) {
   const t = useTranslations("resolve");
 
-  // Under the compact opening the two cards start just under the short
-  // title, inside the first screen of a laptop.
+  // The two cards start just under the page's short opening, inside the first
+  // screen of a laptop.
   return (
-    <div data-resolve-desk className={opening === "compact" ? "mt-7 sm:mt-8" : "mt-14"}>
+    <div data-resolve-desk className="mt-7 sm:mt-8">
       <Standing desk={desk} resolver={resolver} />
 
       {disputes.length === 0 ? (
@@ -207,7 +189,19 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
         </a>
         <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("policyNote")}</p>
 
-        {!desk.ready ? null : desk.isResolver ? (
+        {!desk.ready ? (
+          // The sign-in block holds its place, unseen and inert, until the
+          // wallet says who is here. The desk sits in the first screen, and
+          // most readers are signed out, so for them nothing under it moves.
+          isPrivyConfigured ? (
+            <div data-sign-in-held aria-hidden className="invisible mt-5">
+              <p className="max-w-[46ch] text-sm leading-relaxed">{t("signedOut")}</p>
+              <button type="button" disabled tabIndex={-1} className="mt-4 rounded-[8px] border px-5 py-3 text-[11px] uppercase tracking-[0.18em]">
+                {t("signIn")}
+              </button>
+            </div>
+          ) : null
+        ) : desk.isResolver ? (
           <p className="mt-5 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-verified">
             <span aria-hidden className="h-2 w-2 bg-verified" />
             {t("youAre")}
