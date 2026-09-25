@@ -9,6 +9,7 @@
     "proof": "tsx scripts/anvil-proof.ts",
     "attack:pass2": "tsx scripts/attack-pass-2.ts",
     "attack:pass3": "tsx scripts/attack-pass-3.ts",
+    "attack:pass4": "tsx scripts/attack-pass-4.ts",
     "seed": "tsx scripts/seed.ts",
     "prove:privy": "tsx scripts/prove-privy.ts",
     "edit:quorum": "tsx scripts/edit-quorum.ts",

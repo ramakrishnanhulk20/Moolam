@@ -1,0 +1,245 @@
+MOOLAM ATTACK PASS 4: THE PRIVATE RE-CHECK
+==========================================
+
+What this is: the private re-check (a sealed picture's small private copy on Pinata, read by the
+confidential workflow only while the runner holds a claim on it in the queue) attacked on purpose,
+against the private re-check's threat model: its invariants B1 to B16 and two design rulings, D3
+(the ten minute claim window) and D5 (the 48 hour sweep). The model is published with this pass in the
+threat model page, docs/security/threat-model.md. Two halves, both executed,
+both saved here as they printed.
+
+date          2026-09-25
+commit        184526dfdd1b276201361b12d71961af69fad499 (HEAD when both halves ran; the two new
+              attack files are not committed yet)
+chain block   107,820,614 on Monad mainnet, chain 143 (the live half's reads)
+
+The route half runs the real routes, the real Pinata client, the real queue and the real sweep.
+Pinata is a recording stub at the fetch layer whose listing matches on prefix (looser than any real
+filter), Privy tokens are signed by a key the test makes, the chain and gateway reads are stubbed,
+and the claim window and the sweep's clock are moved with fake timers. It does not cover the runner
+or the sealed workflow's own code, which live in packages/recheck-runner and packages/workflow.
+
+The live half makes single HTTP requests and eth_calls only, against the hosted verify service,
+the gateway and the sealed receiver. It sends no transaction and spends nothing, and it prints no
+value from .env. Before sending the real SEALED_LINK_TOKEN it asks the queue whether a runner holds
+the passport, and would have skipped that attack rather than mint a live link.
+
+No attack landed where it should have been refused. One attack landed as the design intends: 5b,
+the sweep deleting a 49 hour old private copy whose passport the chain says was never registered.
+
+
+THE ROUTE HALF: npx vitest run test/attacks-private.test.ts --reporter=verbose, in packages/verifier
+====================================================================================================
+(the service's own JSON log lines are left out here; attack 1m scanned them)
+
+
+ RUN  v5.0.0 D:/Projects/Monad/packages/verifier
+
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1a refuses a request with no token before reading anything 167ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1b refuses a wrong token of the right length, compared in constant time 167ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1c refuses the right token for a passport whose request is queued but not claimed 153ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1d refuses a claim 11 minutes old, after minting for the same claim at 9 minutes 336ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1e refuses the right token for a passport while the live claim is on another passport 153ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1f refuses a passport whose document is not privately re-checkable, a kept file under its name or not 307ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1g refuses a document whose commitment names another passport, and never lists that passport's file 154ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1h refuses a passport whose only private file is its name with a suffix 168ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1i refuses two files under the exact name, minting nothing 155ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1j refuses a link Pinata answers on another host, with no URL and no host in the answer 154ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1k gives one passport five links in an hour and refuses the sixth 962ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1l refuses every link while GLOBAL_LINKS_PER_DAY is 0, the kill switch 167ms
+ ✓ test/attacks-private.test.ts > attack 1: the link (B1, B3, B4, B5, B15, D3) > 1m no log line from any attack above carries a link, its signature or the token 0ms
+ ✓ test/attacks-private.test.ts > attack 2: the status (B10) > 2a reads unknown, never kept or gone, while Pinata fails, and remembers nothing 4ms
+ ✓ test/attacks-private.test.ts > attack 2: the status (B10) > 2b reads gone for a document that never asked, with no Pinata call, even with a file under its name 1ms
+ ✓ test/attacks-private.test.ts > attack 3: the delete (B9) > 3a refuses a stranger's valid Privy token and deletes nothing 7ms
+ ✓ test/attacks-private.test.ts > attack 3: the delete (B9) > 3b deletes nothing for the holder when the lookup fails 2ms
+ ✓ test/attacks-private.test.ts > attack 3: the delete (B9) > 3c deletes both files under the exact name for the holder, and leaves the lookalike 3ms
+ ✓ test/attacks-private.test.ts > attack 4: the private copy at prepare (B2, B8, B14, B16) > 4a refuses privateRecheck without sealed before anything is made or pinned 9ms
+ ✓ test/attacks-private.test.ts > attack 4: the private copy at prepare (B2, B8, B14, B16) > 4b refuses the private copy when the duplicate check cannot reach the chain 68ms
+ ✓ test/attacks-private.test.ts > attack 4: the private copy at prepare (B2, B8, B14, B16) > 4c refuses the whole prepare when Pinata answers with the de-duplicated public file 55ms
+stdout | test/attacks-private.test.ts
+Moolam attack pass 4, the route half: the private re-check, executed with vitest.
+date        2026-09-25T06:24:30.478Z
+pinata      a recording stub at the fetch layer; tokens signed by a key made in this file; chain and gateway reads stubbed; clocks moved with fake timers
+
+  1a  POST /sealed/link with no token, for a passport that is claimed and kept
+      REFUSED, 401 {"error":"unauthorized"}, 0 chain reads, 0 Pinata calls, no URL; not covered: a stolen real token, which the claim window (1c to 1e) and the caps (1k, 1l) bound
+  1b  POST /sealed/link with a wrong token of the right length (43 characters, last two differ)
+      REFUSED, 401 {"error":"unauthorized"}, 0 chain reads, 0 Pinata calls, no URL; not covered: a timing measurement of the comparison, which is sameToken's timingSafeEqual and is not timed here
+  1c  POST /sealed/link with the right token, the passport kept and asked for, its request pending and never claimed
+      REFUSED, 409 {"error":"not-claimed","passportId":"0x2121212121212121212121212121212121212121212121212121212121212121"}, 0 Pinata calls, no URL; not covered: a runner that claims a passport it was not asked to run, which the runner's token (RUNNER_TOKEN) guards and is out of this file
+  1d  POST /sealed/link with the right token for a claim the queue stamped 11 minutes ago (fake clock)
+      REFUSED, 409 {"error":"not-claimed","passportId":"0x2222222222222222222222222222222222222222222222222222222222222222"}, 0 Pinata calls, no URL; the same claim at 9 minutes minted (200), so the window is what refused; not covered: a host clock that jumps back, which claimedWithin refuses as a future claim and is not moved here
+        claimed at 2026-09-25T09:00:00.000Z, asked at +9 min (200) and +11 min (409)
+  1e  POST /sealed/link for 0x2323232323... (kept, asked for) while the runner's claim is on 0x2020202020...
+      REFUSED, 409 {"error":"not-claimed","passportId":"0x2323232323232323232323232323232323232323232323232323232323232323"}, 0 Pinata calls, no URL: a claim opens its own passport only; not covered: the passport under claim itself, which a stolen token can read for up to ten minutes and five links (1k), by design
+  1f  POST /sealed/link, claimed, for a plain sealed document and for one that asks but also carries an image key, each with a file under its name
+      REFUSED, both 404 nothing-kept, 0 Pinata calls, no URL: the document predicate (B7) decides before Pinata is asked; not covered: the workflow's own copy of the predicate, which is packages/workflow's and is run against the shared fixtures there
+        plain sealed      404 {"error":"nothing-kept","passportId":"0x2424242424242424242424242424242424242424242424242424242424242424"}
+        asks + image key  404 {"error":"nothing-kept","passportId":"0x2525252525252525252525252525252525252525252525252525252525252525"}
+  1g  POST /sealed/link, claimed, for 0x2626262626... whose document's commitment.value is 0x2727272727... (a kept passport)
+      REFUSED, 409 {"error":"commitment-mismatch","passportId":"0x2626262626262626262626262626262626262626262626262626262626262626"}, 0 Pinata calls: the victim's name was never listed, no URL; not covered: a registry that let one metadataURI serve two ids, which the registry's own exactHash check forbids and is not attacked here
+  1h  POST /sealed/link, claimed, the only file sealed-thumb-0x282828282...jpg.old, listed by a stub that matches on prefix
+      REFUSED, 404 {"error":"gone","passportId":"0x2828282828282828282828282828282828282828282828282828282828282828"}, 1 list, no link asked of Pinata: the whole name must be equal; not covered: Pinata's real name filter, whose matching rule is undocumented; our equality check runs whatever it answers
+  1i  POST /sealed/link, claimed, two private files under the exact name
+      REFUSED, 409 {"error":"ambiguous","passportId":"0x2929292929292929292929292929292929292929292929292929292929292929"}, 1 list, no link asked of Pinata, no URL; not covered: which of the two is the true thumbnail, which the service does not guess; the holder's delete (3c) removes both
+  1j  POST /sealed/link, claimed and kept, Pinata answering a signed link on https://evil.example
+      REFUSED, 502 {"error":"link-unavailable","passportId":"0x2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a2a"}, 1 list, 1 link, no URL and no host in the answer; not covered: a link on the right host that Pinata signed for another file, which privateDownloadLink refuses on its path check and test/pinata.test.ts covers
+  1k  POST /sealed/link six times in an hour for one claimed, kept passport, each from a different address
+      REFUSED on the sixth, 429 {"error":"link-cap","passportId":"0x2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b"}, no link asked of Pinata; the first five answered 200, 200, 200, 200, 200; not covered: the cap surviving a redeploy, which it does not: it is held in memory and resets with the process
+  1l  POST /sealed/link, claimed and kept, on a host started with GLOBAL_LINKS_PER_DAY=0
+      REFUSED, 429 global-limit, retry-after 63331, no link asked of Pinata, no URL; not covered: Railway's variable itself, which the live /health shows and the live half does not read
+  1m  the whole log the servers in 1a to 1l wrote, scanned for every minted link, the signature, both tokens, X-Signature, download_link and evil.example
+      PASS, 12748 characters over 63 lines, 6 minted links, 0 of 12 secrets found; not covered: Railway's own request log and the runner's captured workflow output, which are outside this process
+  2a  GET /sealed/status twice for a kept passport while Pinata's listing answers 500
+      PASS, both 200 {"passportId":"0x4040404040404040404040404040404040404040404040404040404040404040","state":"unknown","privateRecheck":true}, cache-control no-store, 2 list: asked again, not held, never kept or gone; not covered: the web's copy of the three words, which is the studio's and is not rendered here
+  2b  GET /sealed/status for a plain sealed passport whose document never asked, a stray file sitting under its name
+      PASS, 200 {"passportId":"0x4141414141414141414141414141414141414141414141414141414141414141","state":"gone","privateRecheck":false}, 0 Pinata calls: a stranger cannot spend the Pinata minute through a passport that never asked; not covered: a stranger spending it through passports that did ask, which the 30 a minute limit and the one minute memory bound (test/sealed-routes.test.ts)
+  3a  POST /sealed/forget with a valid Privy token whose wallets do not include ownerOf
+      REFUSED, 403 {"error":"not-holder","passportId":"0x5050505050505050505050505050505050505050505050505050505050505050"}, 0 Pinata calls, the file still kept; not covered: Privy's own mapping from a user to their wallets, which is stubbed here and read live in production
+        caller wallets [0x1111111111111111111111111111111111111111], ownerOf 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6
+  3b  POST /sealed/forget from the holder while Pinata's listing answers 500
+      REFUSED, 503 {"error":"lookup-unavailable","passportId":"0x5151515151515151515151515151515151515151515151515151515151515151"}, 1 list, 0 deletes, the file still kept: no deletion on an uncertain read; not covered: a listing that answers 200 and silently omits a file, which only Pinata can do and no check here can see
+  3c  POST /sealed/forget from the holder, two files under the exact name and one with a .old suffix
+      PASS, 200 {"passportId":"0x5252525252525252525252525252525252525252525252525252525252525252","deleted":2}, 1 list, 2 delete, no file id in the answer, the .old file untouched; not covered: a file Pinata lists after the delete, which the next /sealed/status would read as kept again
+  4a  POST /prepare with privateRecheck=true and sealed left out, then with sealed=false
+      REFUSED, both 400 {"error":"private-recheck-needs-sealed"}, 0 chain reads, 0 Pinata calls; not covered: /generate's copy of the same refusal, which test/private-copy.test.ts covers
+  4b  POST /prepare sealed with privateRecheck while the registry read throws
+      REFUSED, 503 {"error":"chain-unreachable"}, 0 Pinata calls: no thumbnail kept under a name the chain could not vouch for; not covered: an RPC that answers wrongly rather than failing, which the registry's own duplicate check catches at registration
+  4c  POST /prepare sealed with privateRecheck, Pinata answering is_duplicate true, network public, another name
+      REFUSED, 409 {"error":"private-copy-not-private"}, 1 private-upload: no document pinned, nothing deleted (the id may be someone's public pin); not covered: Pinata's real de-duplication, which the live account gave once on 2026-09-18 and is fed here as that answer
+  4d  POST /prepare sealed with privateRecheck for 367716 bytes of full-quality noise
+      REFUSED, 422 thumbnail-too-large, limit 60000, the private re-check words, 0 Pinata calls; not covered: the workflow's decoder on a thumbnail that does fit, which B14's fixture test in test/private-copy.test.ts covers
+  4e  POST /prepare sealed with privateRecheck, the pinned document read back byte for byte
+      PASS, 200, strict schema accepts it, predicate says recheckable, 0 of 6 leaks (file id, content id, name, gateway, ipfs://, https://) in the document or the answer; not covered: the live document on IPFS, which the live half's attack 7 reads
+        keys name, description, sealed, commitment, fingerprint, createdAt, privateRecheck
+  5a  the sweep in delete mode, one exact name uploaded 47 hours ago, the chain saying registeredAt 0
+      PASS, kept: {"listed":1,"oddNames":0,"undated":0,"young":1,"registered":0,"marked":0,"deleted":0,"failed":0}, 0 deletes; not covered: a Pinata created_at that is wrong, which the sweep trusts as the upload time
+  5b  the sweep in delete mode, one exact name uploaded 49 hours ago, the chain saying registeredAt 0
+      LANDED AS EXPECTED, marked and deleted: {"listed":1,"oddNames":0,"undated":0,"young":0,"registered":0,"marked":1,"deleted":1,"failed":0}; an abandoned prepare is what the sweep exists for; not covered: a creator who signs more than 48 hours after /prepare, whose copy is gone by then; the studio registers minutes after prepare
+  5c  the sweep in delete mode, two orphans 60 hours old, the chain answering one and throwing on the other
+      REFUSED to delete, outcome stopped, marked 0, 0 deletes: one doubt stops the run; not covered: an RPC that answers registeredAt 0 for a passport it lags behind on, which the 48 hour wait is there for
+  5d  the sweep in dry mode, one orphan 72 hours old
+      PASS, marked 1, deleted 0, 1 list, the file still kept; not covered: which mode Railway runs, which /health shows and the live half does not read
+  5e  the sweep in delete mode, sealed-thumb-<orphan id>.jpg.old uploaded 72 hours ago
+      REFUSED to delete, counted as an odd name: {"listed":1,"oddNames":1,"undated":0,"young":0,"registered":0,"marked":0,"deleted":0,"failed":0}; not covered: files outside the sealed-thumb- prefix, which the sweep never lists
+
+ ✓ test/attacks-private.test.ts > attack 4: the private copy at prepare (B2, B8, B14, B16) > 4d refuses a picture whose thumbnail cannot fit the fetch budget, uploading nothing 178ms
+ ✓ test/attacks-private.test.ts > attack 4: the private copy at prepare (B2, B8, B14, B16) > 4e pins a document that names nothing of the private file: no file id, content id or name 92ms
+ ✓ test/attacks-private.test.ts > attack 5: the sweep (B9, D5) > 5a keeps a 47 hour old file whose passport never registered 3ms
+ ✓ test/attacks-private.test.ts > attack 5: the sweep (B9, D5) > 5b marks and deletes a 49 hour old file whose passport the chain says does not exist 1ms
+ ✓ test/attacks-private.test.ts > attack 5: the sweep (B9, D5) > 5c marks nothing when the chain read errors, even for a file the chain already answered for 1ms
+ ✓ test/attacks-private.test.ts > attack 5: the sweep (B9, D5) > 5d deletes nothing in dry mode, only counts what it would 1ms
+ ✓ test/attacks-private.test.ts > attack 5: the sweep (B9, D5) > 5e skips a name with a suffix, whatever its age and whatever the chain says 1ms
+
+ Test Files  1 passed (1)
+      Tests  28 passed (28)
+   Start at  11:54:25
+   Duration  4.67s (tests 78%, import 16%, transform 6%)
+
+The full verify service suite after this file was added: npx vitest run in packages/verifier
+  Test Files  43 passed (43)
+       Tests  529 passed (529)
+
+THE LIVE HALF: npm run attack:pass4, in packages/agents (exit code 0)
+=====================================================================
+
+> @moolam/agents@0.1.0 attack:pass4
+> tsx scripts/attack-pass-4.ts
+
+Moolam attack pass 4, the live half: the private re-check, attacked from outside.
+HTTP and eth_call only. No transaction is sent and nothing is spent.
+
+date        2026-09-25T06:23:58.991Z
+commit      184526dfdd1b276201361b12d71961af69fad499
+chain       Monad mainnet, chain 143, read at block 107,820,614
+registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+receiver    0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A (the sealed receiver)
+passport    0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09 (privately re-checkable)
+            registered at unix 1790153776, metadata ipfs://bafkreigicd2yhmc4x7a72hgmpzafzxajrxejyckx6s7lx4crkkxvhs3lwy
+monsoon     0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638 (public)
+verifier    https://verifier-production-d76f.up.railway.app
+
+queue       GET /recheck/status/<private id>: 200, status done, cache-control public, max-age=30
+
+6a  POST /sealed/link for the private passport with no token
+      401, cache-control no-store, {"error":"unauthorized"}
+6b  POST /sealed/link for the private passport with a random 48 character token
+      401, cache-control no-store, {"error":"unauthorized"}
+6c  POST /sealed/link for the private passport with the real SEALED_LINK_TOKEN, nothing claimed
+      409, cache-control no-store, {"error":"not-claimed","passportId":"0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09"}
+6d  POST /sealed/forget for the private passport with no token
+      401, cache-control no-store, {"error":"unauthorized"}
+6e  POST /sealed/forget for the private passport with an ES256 token signed by a key made on the spot, right issuer and audience
+      401, cache-control no-store, {"error":"unauthorized"}
+6f  GET /sealed/status for the private passport
+      200, cache-control public, max-age=60, {"passportId":"0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09","state":"kept","privateRecheck":true}
+6g  GET /sealed/status for the public Monsoon passport
+      200, cache-control public, max-age=60, {"passportId":"0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638","state":"gone","privateRecheck":false}
+7a  the private passport's document on IPFS, through the gateway named in .env
+      200, strict schema accepts it
+      keys name, description, sealed, commitment, fingerprint, generator, training, createdAt, model, privateRecheck
+      privateRecheck true
+      string values scanned 15, http, https or ipfs links none
+      commitment equals the passport id
+8a  eth_call onReport on the sealed receiver from a stranger, the pinned name and author in the metadata, a false verdict in the report
+      reverted InvalidSender(0x4e61A24de3327c44b5f56b128203499ac066c9bb, 0x76c9cf548b4179F8901cda1f8623568b58215E62)
+8b  the sealed receiver's pin, read back
+      forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62 (Chainlink's production forwarder)
+      author    0xC79620AF233a4434b03f6B57239F8A9E71B3C178 (the workflow author)
+      name      0x64323036636163326334 (moolam-sealed-verifier, encoded)
+8c  eth_call attest on the registry from a stranger, a false verdict for the private passport
+      reverted NotReceiver(0x4e61A24de3327c44b5f56b128203499ac066c9bb)
+8d  the private passport's attestation list
+      attestationCount 1
+      receiver 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, matched true, distance 1, recomputed 0x0000000000000000000000000000000000000000000000002ac1e07e3e80c4e6, at 1790316586
+      report tx 0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef: success, block 107,817,793, block time 1790316586 (equals the row's at)
+
+Summary, one line per live attack: what it found | what it did not cover | verdict
+====================================================================================
+  6a  POST /sealed/link with no token: 401 {"error":"unauthorized"}, cache-control no-store | not covered: the real token, which 6c sends | REFUSED
+  6b  POST /sealed/link with a random 48 character token: 401 {"error":"unauthorized"}, cache-control no-store | not covered: the real token, which 6c sends | REFUSED
+  6c  POST /sealed/link with the real SEALED_LINK_TOKEN while nothing is claimed: 409 {"error":"not-claimed","passportId":"0x864c33c6806185d4dc7acd65f465fc4c3cb6b8faaa157c32880cbef9dd93fc09"}, cache-control no-store: the real token alone opens nothing | not covered: the token together with a live claim, which mints by design and is bounded by 1k and 1l | REFUSED
+  6d  POST /sealed/forget with no token: 401 {"error":"unauthorized"}, cache-control no-store | not covered: a token Privy itself issued to someone who is not the holder, which the route attack 3a covers | REFUSED
+  6e  POST /sealed/forget with an ES256 token signed by a key made on the spot, right issuer and audience: 401 {"error":"unauthorized"}, cache-control no-store | not covered: a token Privy itself issued to someone who is not the holder, which the route attack 3a covers | REFUSED
+  6f  GET /sealed/status for the private passport, expecting kept and privateRecheck true: 200 state kept, privateRecheck true, cache-control public, max-age=60 | not covered: the unknown answer, which only a failing Pinata produces and the route attack 2a shows | PASS
+  6g  GET /sealed/status for the public Monsoon passport, expecting gone and privateRecheck false: 200 state gone, privateRecheck false, cache-control public, max-age=60 | not covered: the unknown answer, which only a failing Pinata produces and the route attack 2a shows | PASS
+  7a  the private passport's live document, validated with the verify service's own strict schema: 200, schema accepts, 10 keys, privateRecheck true, 0 links, commitment matches | not covered: copies of the document on other gateways, which are the same bytes by content address | PASS
+  8a  onReport on the sealed receiver from a stranger's address, eth_call: reverted InvalidSender | not covered: the simulation forwarder during an operator run, when the pin is open by design (ruling D10) | REFUSED
+  8b  the sealed receiver's forwarder, author and workflow name, read back: production forwarder, workflow author and moolam-sealed-verifier, all pinned | not covered: the window during an operator run when the pin is cleared, which the runbook closes and the run report reads back | PASS
+  8c  attest on the registry from a stranger's address, eth_call: reverted NotReceiver | not covered: a receiver the policy lists later, which takes the policy's 24 hour queue and is an owner action | REFUSED
+  8d  the private passport's attestations, against the report tx of 2026-09-25: 1 row, receiver the sealed receiver yes, matched true, distance 1, written in the report tx's block | not covered: which machine ran the workflow, which the chain does not record; the receiver says which workflow name wrote it | PASS
+
+finished 2026-09-25T06:24:07.467Z, chain block 107,820,614
+
+
+INVARIANTS B1 TO B16, EACH MAPPED TO THE ATTACKS THAT HOLD IT
+=============================================================
+B1   the name comes from the chain, never the document     1e, 1f, 1g (the victim's name never listed), 7a (live commitment equals the id)
+B2   one file is only the thumbnail its name commits to    4b (no copy without the duplicate check), 4e (named after the signed bytes' hash); a second prepare of
+                                                           the same bytes uploading nothing is test/private-copy.test.ts "B2: a second prepare"
+B3   lookups match the whole name; errors are "cannot tell" 1h, 1i, 2a, 3b, 3c
+B4   a link only for a passport opted in and still kept   1a, 1b (constant time compare), 1c, 1d, 1e, 1f, 1g, 1h, 1i, 6a, 6b, 6c
+B5   the link is a secret until it expires                 1j (no URL or host in the answer), 1m (whole log scanned, 0 of 12 secrets); the workflow's captured output
+                                                           and the runner's reason: not attackable from here, they are packages/workflow and packages/recheck-runner
+B6   the enclave opens only what the service named         the service's side is 1j (a link on another host is refused before it is sent); the workflow's own host
+                                                           check, size cap and ipfs-only document read: not attackable from here, packages/workflow's code
+B7   one predicate says "privately re-checkable"           1f (plain sealed, and asks plus an image key), 2b, 4e; the workflow's copy: not attackable from here,
+                                                           it runs against the shared fixtures in packages/workflow
+B8   the public document stays strict                      4e (0 of 6 leaks, strict schema accepts), 7a (live document, 10 keys, 0 links)
+B9   deletion only on a definite answer, all under the name 3a, 3b, 3c, 5a, 5b, 5c, 5d, 5e
+B10  "gone" only from a fresh list                         2a (unknown twice, no-store, asked again), 2b, 6f, 6g
+B11  no spend without a file                               6f shows the live copy the queue took reads kept; the queue's refusal of a gone copy is test/sealed-routes.test.ts
+                                                           "B11"; the runner's re-read before it counts: not attackable from here, packages/recheck-runner
+B12  a sealed verdict is labelled honestly                 not attackable from here: the label is packages/web; 8d shows the fact it reads (the row's receiver is
+                                                           the sealed receiver, written in the report tx's block)
+B13  the receiver pin is never left open by accident       8a (a stranger's onReport reverts InvalidSender), 8b (forwarder, author and name read back pinned), 8c
+                                                           (the registry refuses a stranger's attest with NotReceiver)
+B14  the private path makes the public path's thumbnail    4d (too large refused with the private re-check words), 8d (the live run's distance is 1); the within 10
+                                                           proof on the workflow's fixture is test/private-copy.test.ts "B14"
+B15  bounds everywhere                                     1k (five links a passport an hour), 1l (the kill switch at 0); the 120 second expiry, the 10 second Pinata
+                                                           timeout, the page caps and the sweep's 200 row cap are test/sealed-routes.test.ts, test/pinata.test.ts and
+                                                           test/sweep.test.ts
+B16  the private copy is private or it does not exist      4c (the de-duplicated public answer refuses the prepare, pins no document, deletes nothing), 4e
+
+D3   a link only under a claim under ten minutes old       1c, 1d (9 minutes mints, 11 refuses, fake clock), 1e, 6c (the real token alone opens nothing on mainnet)
+D5   48 hours, dry first, never at boot                    5a (47 hours kept), 5b (49 hours deleted), 5d (dry deletes nothing); never at boot is test/sweep.test.ts "D5"
