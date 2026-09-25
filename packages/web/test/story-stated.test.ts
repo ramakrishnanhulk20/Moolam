@@ -137,23 +137,14 @@ describe("the cut the home page really plays", () => {
   });
 
   it("plays the stated table when the register answered for this passport", () => {
-    expect(storyCut("chapter", story())).toBe("stated");
-    expect(storyCut("stated", story())).toBe("stated");
+    expect(storyCut(story())).toBe("stated");
   });
 
   it("falls back to the classic table when there is no statement to draw", () => {
-    for (const wanted of ["chapter", "stated"] as const) {
-      expect(storyCut(wanted, story({ statement: null }))).toBe("classic");
-      expect(storyCut(wanted, story({ statement: null, statementError: "the endpoint answered 503" }))).toBe("classic");
-      expect(storyCut(wanted, story({ focal: null, statement: null }))).toBe("classic");
-      expect(storyCut(wanted, story({ statement: { ...statement, summary: "none", consent: NOTHING } }))).toBe(
-        "classic",
-      );
-    }
-  });
-
-  it("never reaches the new beat from the classic cut, whatever the day holds", () => {
-    expect(storyCut("classic", story())).toBe("classic");
+    expect(storyCut(story({ statement: null }))).toBe("classic");
+    expect(storyCut(story({ statement: null, statementError: "the endpoint answered 503" }))).toBe("classic");
+    expect(storyCut(story({ focal: null, statement: null }))).toBe("classic");
+    expect(storyCut(story({ statement: { ...statement, summary: "none", consent: NOTHING } }))).toBe("classic");
   });
 });
 
@@ -354,7 +345,7 @@ describe("the notch, wherever the statement falls", () => {
  */
 describe("the chapter a server renders", () => {
   const film = (over: Partial<StoryData> = {}) =>
-    render(createElement(LandingStory, { data: story(over), variant: "stated" as const }));
+    render(createElement(LandingStory, { data: story(over), variant: "chapter" as const }));
 
   it("carries the chapter's own title, written from the chain's answer", () => {
     const markup = film();

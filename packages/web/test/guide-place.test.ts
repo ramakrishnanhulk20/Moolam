@@ -1,9 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
-import { createElement, type FunctionComponent, type ReactNode } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
-import { NextIntlClientProvider } from "next-intl";
-import en from "@/messages/en.json";
+import { createElement, type ReactNode } from "react";
 import { KEEP_CLEAR, LAPTOP, cardWidth, keepClearOn, overlaps, placeCard, type Box } from "@/components/guide/place";
 
 /**
@@ -21,7 +18,6 @@ vi.mock("@/lib/i18n/routing", () => ({
 }));
 
 const { heroCalls, spotFor } = await import("@/components/guide/GuideWalk");
-const { HeroCredits } = await import("@/components/story/HeroCredits");
 
 /** The light the walk draws round an anchor: the anchor, padded 8 on every side. */
 function lit(anchor: Box): Box {
@@ -282,24 +278,6 @@ describe("where the walk learns the calls are", () => {
     node.getBoundingClientRect = () => box;
     node.getClientRects = () => [box] as unknown as DOMRectList;
   }
-
-  it("is no longer on the film's credits: the first screen carries the marks", () => {
-    const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
-      locale: string;
-      messages: unknown;
-      timeZone: string;
-      children: ReactNode;
-    }>;
-    const markup = renderToStaticMarkup(
-      createElement(
-        Provider,
-        { locale: "en", messages: en, timeZone: "Asia/Kolkata" },
-        createElement(HeroCredits, { entered: true }),
-      ),
-    );
-    expect(markup).toMatch(/<a[^>]*>Generate an image/);
-    expect(markup).not.toContain("data-hero-call");
-  });
 
   it("reads the words' mark with the calls', and leaves the line out on a phone", () => {
     expect(KEEP_CLEAR).toBe("[data-hero-call], [data-hero-words]");

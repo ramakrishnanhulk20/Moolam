@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { BAR_HEIGHT, BAR_ROOM, activeTab, barShown, type Tab } from "@/components/shell/tabs";
+import { BAR_HEIGHT, BAR_ROOM, activeTab, type Tab } from "@/components/shell/tabs";
 
 /**
  * The bar under the thumb: which tab a route lights, and the order a Tab key
@@ -65,7 +65,6 @@ describe("which tab a route lights", () => {
   it("lights nothing on the docs, which still keep the bar", () => {
     expect(activeTab("/docs")).toBeNull();
     expect(activeTab("/docs/proof")).toBeNull();
-    expect(barShown("/docs/proof")).toBe(true);
   });
 
   it("reads a route with a trailing slash as the same route", () => {
@@ -78,10 +77,12 @@ describe("which tab a route lights", () => {
     expect(activeTab("/studios")).toBeNull();
   });
 
-  it("draws no bar on a bench, which draws its own", () => {
-    expect(barShown("/lab")).toBe(false);
-    expect(barShown("/lab/phone")).toBe(false);
-    expect(barShown("/")).toBe(true);
+  it("keeps no route of its own that goes without the bar", () => {
+    for (const file of ["components/shell/tabs.ts", "components/shell/BottomBar.tsx"]) {
+      const source = readFileSync(file, "utf8");
+      expect(source, file).not.toContain("/lab");
+      expect(source, file).not.toContain("barShown");
+    }
   });
 });
 

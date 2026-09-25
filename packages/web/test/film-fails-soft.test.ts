@@ -109,7 +109,7 @@ async function home() {
           "main",
           null,
           createElement(Board, { finding: { failed: "down" }, copy: { failed: "down" }, samples: [], loose: null }),
-          createElement(FilmGate, null, createElement(StoryStage, { data: DATA, variant: "stated" })),
+          createElement(FilmGate, null, createElement(StoryStage, { data: DATA, variant: "chapter" })),
         ),
         createElement("footer", { "data-the-footer": true }, "footer"),
       ),

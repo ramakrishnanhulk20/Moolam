@@ -21,6 +21,17 @@ describe("the headers every page and every route answers with", () => {
     expect(config.poweredByHeader).toBe(false);
   });
 
+  it("frames no route, not even on a dev server", async () => {
+    const env = process.env as Record<string, string | undefined>;
+    const was = env.NODE_ENV;
+    env.NODE_ENV = "development";
+    try {
+      expect((await headers())["x-frame-options"]).toBe("DENY");
+    } finally {
+      env.NODE_ENV = was;
+    }
+  });
+
   it("pins the three plain ones", async () => {
     const sent = await headers();
     expect(sent["x-content-type-options"]).toBe("nosniff");

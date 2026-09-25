@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { act, createElement, useRef, type ReactNode } from "react";
+import { act, createElement, useRef, type FunctionComponent, type ReactElement, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
+import en from "@/messages/en.json";
 import { OPENING_AT, filmArrived } from "@/components/story/signals";
 
 /**
@@ -19,7 +21,17 @@ vi.mock("@/lib/i18n/routing", () => ({
   usePathname: () => "/",
 }));
 
-const { Opening, useFilmArrived } = await import("@/components/story/LandingStory");
+const { useFilmArrived } = await import("@/components/story/LandingStory");
+const { ChapterOpening } = await import("@/components/story/ChapterOpening");
+
+function render(node: ReactElement): string {
+  const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
+    locale: string;
+    messages: unknown;
+    timeZone: string;
+  }>;
+  return renderToStaticMarkup(createElement(Provider, { locale: "en", messages: en, timeZone: "UTC" }, node));
+}
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -45,10 +57,11 @@ async function frames(count = 3) {
 }
 
 describe("the film's title", () => {
-  it("is an h2 in the film and on the still page, dressed as the poster title it was", () => {
-    const markup = renderToStaticMarkup(createElement(Opening, { kicker: "k", title: "The film", line: "l", arrived: true }));
+  it("is an h2 in the film and on the still page, at the size of the beats after it", () => {
+    const markup = render(createElement(ChapterOpening, { arrived: true }));
     expect(markup).not.toMatch(/<h1[\s>]/);
-    expect(markup).toMatch(/<h2 class="story-enter mt-6 font-display text-\[clamp\(3rem,9vw,8rem\)\][^"]*"[^>]*>The film<\/h2>/);
+    expect(markup).toMatch(/<h2 data-story-line="title" class="story-enter mt-5 [^"]*text-\[clamp\(2rem,5\.4vw,4\.4rem\)\][^"]*"[^>]*>/);
+    expect(markup).toContain(`>${en.story.chapter.title}</h2>`);
     for (const file of ["components/story/LandingStory.tsx", "components/story/StillStory.tsx"]) {
       expect(readFileSync(file, "utf8"), file).not.toMatch(/<h1[\s>]/);
     }
@@ -57,12 +70,12 @@ describe("the film's title", () => {
 
 describe("the film's opening entrance", () => {
   it("waits on its first frame until the film is in view, then rises", () => {
-    const waiting = renderToStaticMarkup(createElement(Opening, { kicker: "k", title: "t", line: "l", arrived: false }));
+    const waiting = render(createElement(ChapterOpening, { arrived: false }));
     expect(waiting).not.toContain("story-enter");
-    expect(waiting.match(/opacity:0;transform:translateY\(28px\)/g)?.length).toBe(3);
+    expect(waiting.match(/opacity:0;transform:translateY\(28px\)/g)?.length).toBe(2);
 
-    const entered = renderToStaticMarkup(createElement(Opening, { kicker: "k", title: "t", line: "l", arrived: true }));
-    expect(entered.match(/class="story-enter /g)?.length).toBe(3);
+    const entered = render(createElement(ChapterOpening, { arrived: true }));
+    expect(entered.match(/class="story-enter /g)?.length).toBe(2);
     expect(entered).not.toContain("opacity:0");
   });
 

@@ -296,7 +296,7 @@ describe("the controls a screen reader and a voice can reach", () => {
     expect(story).toContain('gl.domElement.setAttribute("aria-hidden", "true")');
     // The beats are real text in the document whether or not their beat is the
     // one on screen, which is what a screen reader reads instead of the shot.
-    expect(story).toContain("data-beat={place === \"band\" ? cue.name : undefined}");
+    expect(story).toContain("data-beat={cue.name}");
   });
 });
 

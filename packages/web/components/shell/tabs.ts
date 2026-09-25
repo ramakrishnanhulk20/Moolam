@@ -61,18 +61,6 @@ export function activeTab(here: string): TabKey | null {
   return (Object.keys(OWNED) as TabKey[]).find((key) => owns(key, path)) ?? null;
 }
 
-/**
- * Whether the bar is drawn on this route at all.
- *
- * The benches are the one exception: they are a working surface, often drawing
- * the bar themselves, and a second one over the top would be measuring the
- * wrong thing.
- */
-export function barShown(here: string): boolean {
-  const path = tidy(here);
-  return path !== "/lab" && !path.startsWith("/lab/");
-}
-
 /** The bar's own height, without the safe area under it. The page reads it to keep clear. */
 export const BAR_HEIGHT = 56;
 

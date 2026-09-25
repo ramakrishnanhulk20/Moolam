@@ -1,5 +1,5 @@
 /**
- * The stated beat on the bench, measured from outside the page.
+ * The stated beat in the home page's film, measured from outside the page.
  *
  * It opens the film in a headless Chrome with a GPU, winds the story's own
  * scroller to the offsets you ask about, and prints what is really on screen at
@@ -12,8 +12,8 @@
  * here belong to the dev build and are only worth reading against another
  * number taken the same way in the same run.
  *
- *   node packages/web/scripts/perf/stated-beat.mjs --url http://localhost:3210/en/lab --at 0.34,0.37,0.40
- *   node packages/web/scripts/perf/stated-beat.mjs --url http://localhost:3210/en/lab --frames 0.334,0.445 --seconds 8
+ *   node packages/web/scripts/perf/stated-beat.mjs --url http://localhost:3210/en --at 0.34,0.37,0.40
+ *   node packages/web/scripts/perf/stated-beat.mjs --url http://localhost:3210/en --frames 0.334,0.445 --seconds 8
  *
  * Options: --url, --at, --frames from,to, --seconds, --width, --height,
  * --shot (a png path), --reduced, --port, --browser, --gpu (on by default).
@@ -29,7 +29,7 @@ let nextId = 1;
 const waiting = new Map();
 
 const args = readArgs(process.argv.slice(2));
-const url = args.url ?? "http://localhost:3210/en/lab";
+const url = args.url ?? "http://localhost:3210/en";
 const width = Number(args.width ?? 1440);
 const height = Number(args.height ?? 900);
 const port = Number(args.port ?? 9366);

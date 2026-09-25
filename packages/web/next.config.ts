@@ -89,8 +89,8 @@ const nextConfig: NextConfig = {
   // The framework's name and version is a free hint to anyone looking for a
   // version with a known hole in it.
   poweredByHeader: false,
-  // The dev badge sat over the Home tab of the phone bar at the bottom left,
-  // which is the thing under review on the bench. Dev only.
+  // The dev badge sat over the Home tab of the phone bar at the bottom left.
+  // Dev only.
   devIndicators: { position: "top-right" },
 
   async headers() {
@@ -111,13 +111,6 @@ const nextConfig: NextConfig = {
           { key: "content-security-policy-report-only", value: contentSecurityPolicy },
         ],
       },
-      // The phone bench frames the real pages in same-origin iframes so each
-      // frame gets a viewport of its own and the page inside it reflows the way
-      // a phone would draw it. Every other route stays DENY, and so does this
-      // one outside development, where the bench is not served at all.
-      ...(process.env.NODE_ENV === "development"
-        ? [{ source: "/:locale/lab/:path*", headers: [{ key: "x-frame-options", value: "SAMEORIGIN" }] }]
-        : []),
     ];
   },
 

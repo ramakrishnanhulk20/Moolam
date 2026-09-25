@@ -222,11 +222,6 @@
     "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。"
   },
   "home": {
-    "hero": {
-      "credit": "生成一张，或验证一张",
-      "generate": "生成图片",
-      "verify": "验证副本"
-    },
     "first": {
       "headline": "证明一张 AI 图片从哪里来，",
       "headlineTail": "哪怕只有一份副本。",
@@ -270,9 +265,7 @@
     }
   },
   "story": {
-    "kicker": "在 Monad 主网上实时运行",
     "title": "Moolam",
-    "line": "每张图片都有一本护照。",
     "chapter": {
       "kicker": "影片",
       "title": "护照如何运作"
@@ -364,7 +357,6 @@
       "kicker": "Moolam",
       "title": "登记一次，处处认得。",
       "body": "为每一张生成图片配一本护照，成图的那一刻就写进 Monad，由 Chainlink 工作流复核，并且能从任何在互联网上活下来的副本追回。",
-      "register": "登记图片",
       "verify": "验证图片",
       "proof": "查看证据",
       "passports": "护照",

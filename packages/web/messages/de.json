@@ -220,11 +220,6 @@
     "formulaPlain": "Jede passende Nachprüfung hebt den Wert, jede verfehlte senkt ihn; ein bestätigter Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50."
   },
   "home": {
-    "hero": {
-      "credit": "Eine erzeugen, oder eine prüfen",
-      "generate": "Bild erzeugen",
-      "verify": "Kopie prüfen"
-    },
     "first": {
       "headline": "Beweise, woher ein KI-Bild stammt,",
       "headlineTail": "sogar aus einer Kopie.",
@@ -268,9 +263,7 @@
     }
   },
   "story": {
-    "kicker": "Live auf Monad Mainnet",
     "title": "Moolam",
-    "line": "Jedes Bild bekommt einen Pass.",
     "chapter": {
       "kicker": "Der Film",
       "title": "Wie ein Pass funktioniert"
@@ -362,7 +355,6 @@
       "kicker": "Moolam",
       "title": "Einmal eintragen. Überall erkannt.",
       "body": "Ein Pass für jedes erzeugte Bild, im Moment seiner Entstehung auf Monad geschrieben, von einem Chainlink-Workflow nachgeprüft und aus jeder Kopie auffindbar, die das Internet übersteht.",
-      "register": "Bild eintragen",
       "verify": "Bild prüfen",
       "proof": "Die Belege ansehen",
       "passports": "Pässe",

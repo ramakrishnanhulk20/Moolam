@@ -73,24 +73,14 @@ export interface GuideReading {
   seen: boolean;
   /** The device has signed in to Moolam before, so it is nobody's first visit. */
   returning: boolean;
-  /** The path being read, locale and all. The bench and the rest of /lab never get the guide. */
-  path: string;
 }
 
-/** True only on a bench page, which is where this guide is being drawn while it is still a draft. */
-export function onLabPage(path: string): boolean {
-  return /(^|\/)lab(\/|$)/.test(path);
-}
-
-/**
- * The whole rule in one line: a first visit, on a device that has never signed
- * in, on a real page.
- */
+/** The whole rule in one line: a first visit, on a device that has never signed in. */
 export function guideShouldShow(reading: GuideReading): boolean {
-  return !reading.seen && !reading.returning && !onLabPage(reading.path);
+  return !reading.seen && !reading.returning;
 }
 
 /** The same question asked of the browser this code is running in. */
-export function guideShouldShowHere(path: string): boolean {
-  return guideShouldShow({ seen: guideSeen(), returning: signedInBefore(), path });
+export function guideShouldShowHere(): boolean {
+  return guideShouldShow({ seen: guideSeen(), returning: signedInBefore() });
 }

@@ -16,19 +16,11 @@ import { Link } from "@/lib/i18n/routing";
  * the light theme the story-close rule in globals.css gives this card the app's
  * own palette and ground, so the film ends by handing the page back.
  *
- * In the chapter cut this is the page's one final call, so its first button is
- * named exactly as the first screen's, and on a laptop the two counts leave the
- * foot of the text for the card's empty right half, at display size.
+ * This is the page's one final call, so its first button is named exactly as
+ * the first screen's, and on a laptop the two counts leave the foot of the text
+ * for the card's empty right half, at display size.
  */
-export function CloseCard({
-  data,
-  pinned = true,
-  chapter = false,
-}: {
-  data: StoryData;
-  pinned?: boolean;
-  chapter?: boolean;
-}) {
+export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: boolean }) {
   const t = useTranslations("story.close");
   const first = useTranslations("home.first");
   const shell = useRef<HTMLDivElement>(null);
@@ -58,23 +50,19 @@ export function CloseCard({
       const node = shell.current;
       if (node !== null) {
         node.style.opacity = String(progress.close);
-        if (chapter) {
-          // The counts rise into place on the same curve the card fades in on.
-          node.style.setProperty("--close", String(progress.close));
-        }
+        // The counts rise into place on the same curve the card fades in on.
+        node.style.setProperty("--close", String(progress.close));
         const next = progress.close <= 0.5;
         if (next !== hidden) {
           hidden = next;
           node.inert = next;
-          if (chapter) {
-            // The chapter cut's header wears the film's dark look while the
-            // film is in view and hands it back here, where the page's own
-            // ground has arrived. The rule is CHAPTER_LOOK in LandingStory.tsx.
-            if (next) {
-              document.body.removeAttribute("data-chapter-close");
-            } else {
-              document.body.setAttribute("data-chapter-close", "true");
-            }
+          // The header wears the film's dark look while the film is in view and
+          // hands it back here, where the page's own ground has arrived. The
+          // rule is CHAPTER_LOOK in LandingStory.tsx.
+          if (next) {
+            document.body.removeAttribute("data-chapter-close");
+          } else {
+            document.body.setAttribute("data-chapter-close", "true");
           }
           if (next) {
             node.setAttribute("aria-hidden", "true");
@@ -91,7 +79,7 @@ export function CloseCard({
       cancelAnimationFrame(frame);
       document.body.removeAttribute("data-chapter-close");
     };
-  }, [pinned, chapter]);
+  }, [pinned]);
 
   const figures = [
     {
@@ -128,10 +116,10 @@ export function CloseCard({
       {/* On a phone the card takes the lower half of the window and the shot
           keeps the top, and the shot's foot is the fog's plain black. Against
           the light page's ground that read as a black band sitting on the card.
-          In the chapter cut the ground reaches up into the shot instead, so the
+          Here the ground reaches up into the shot instead, so the
           film's tail dissolves into the page. Under the dark theme the ground
           is the film's own black and this draws nothing anyone can see. */}
-      {chapter && pinned && (
+      {pinned && (
         <div
           aria-hidden
           data-close-fade
@@ -145,17 +133,17 @@ export function CloseCard({
       {/* The film wrapper carries every gesture over the pinned screen back to
           the story's scroller, this card included. */}
       <div
-        data-close-card={chapter ? "chapter" : undefined}
-        className={`mx-auto w-full max-w-[100rem] ${pinned ? "pointer-events-auto" : ""}${chapter ? " lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-center lg:gap-16" : ""}`}
+        data-close-card="chapter"
+        className={`mx-auto w-full max-w-[100rem] ${pinned ? "pointer-events-auto" : ""} lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-center lg:gap-16`}
       >
-        <Half split={chapter}>
+        <Half>
           <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
             <span className="motif h-[9px] w-[9px]" />
             {t("kicker")}
           </p>
 
           <h2
-            className={`mt-2 max-w-[20ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5 sm:max-w-[14ch]${chapter ? " lg:text-[clamp(3rem,5.2vw,5.6rem)]" : ""}`}
+            className={`mt-2 max-w-[20ch] font-display text-[clamp(2rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.05em] sm:mt-5 sm:max-w-[14ch] lg:text-[clamp(3rem,5.2vw,5.6rem)]`}
           >
             {t("title")}
           </h2>
@@ -177,7 +165,7 @@ export function CloseCard({
               prefetch={false}
               className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
             >
-              {chapter ? first("make") : t("register")}
+              {first("make")}
               <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
                 &rarr;
               </span>
@@ -191,28 +179,26 @@ export function CloseCard({
           </div>
         </Half>
 
-        <Half split={chapter} figures>
+        <Half figures>
           {/* A phone has the lower half of the window for the whole card, so the
               room the third figure used to take is given back to the line under
               the row rather than added to it. */}
           <dl
-            className={`mt-1.5 grid grid-cols-2 gap-x-4 border-t border-line pt-1.5 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6${chapter ? " lg:mt-0 lg:flex-col lg:flex-nowrap lg:gap-y-10 lg:border-t-0 lg:pt-0" : ""}`}
+            className={`mt-1.5 grid grid-cols-2 gap-x-4 border-t border-line pt-1.5 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-12 sm:gap-y-6 sm:pt-6 lg:mt-0 lg:flex-col lg:flex-nowrap lg:gap-y-10 lg:border-t-0 lg:pt-0`}
           >
             {figures.map((figure) => (
               <div key={figure.key}>
                 <dt
-                  className={`font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em]${chapter ? " lg:flex lg:items-center lg:gap-3 lg:text-[12px] lg:tracking-[0.2em]" : ""}`}
+                  className={`font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em] lg:flex lg:items-center lg:gap-3 lg:text-[12px] lg:tracking-[0.2em]`}
                 >
-                  {chapter && (
-                    // .motif sets its own display, so the phone's hiding is on a wrapper.
-                    <span aria-hidden className="hidden lg:inline-flex">
-                      <span className="motif h-[9px] w-[9px]" />
-                    </span>
-                  )}
+                  {/* .motif sets its own display, so the phone's hiding is on a wrapper. */}
+                  <span aria-hidden className="hidden lg:inline-flex">
+                    <span className="motif h-[9px] w-[9px]" />
+                  </span>
                   {figure.label}
                 </dt>
                 <dd
-                  className={`mt-1 font-display text-[clamp(1.4rem,3.4vw,2.8rem)] font-semibold leading-[0.9] tracking-[-0.045em] tabular-nums${chapter ? " lg:mt-3 lg:text-[clamp(5rem,9.5vw,10rem)] lg:leading-[0.82] lg:tracking-[-0.06em]" : ""}`}
+                  className={`mt-1 font-display text-[clamp(1.4rem,3.4vw,2.8rem)] font-semibold leading-[0.9] tracking-[-0.045em] tabular-nums lg:mt-3 lg:text-[clamp(5rem,9.5vw,10rem)] lg:leading-[0.82] lg:tracking-[-0.06em]`}
                 >
                   {figure.value}
                 </dd>
@@ -230,7 +216,7 @@ export function CloseCard({
               line is 141 px of 335 in the longest language, so the link fits
               beside it and every box above stays where it was. */}
           <p
-            className={`mt-1 font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:mt-4 sm:text-[11px] sm:tracking-[0.16em]${chapter ? " lg:mt-10 lg:border-t lg:border-line lg:pt-5" : ""}`}
+            className={`mt-1 font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:mt-4 sm:text-[11px] sm:tracking-[0.16em] lg:mt-10 lg:border-t lg:border-line lg:pt-5`}
           >
             {t("chain", { chainId: CHAIN_ID })}
             <span aria-hidden className="px-2 opacity-50">
@@ -249,17 +235,13 @@ export function CloseCard({
 }
 
 /**
- * One half of the chapter cut's card on a laptop, and nothing at all otherwise:
- * the stated cut's card keeps exactly the markup it has always had.
+ * One half of the card on a laptop.
  *
  * The figures half stands against a hairline of its own and rises the last
  * few pixels into place as the card fades in, read from the --close variable
  * the card's frame loop writes, so React never renders for it.
  */
-function Half({ split, figures = false, children }: { split: boolean; figures?: boolean; children: ReactNode }) {
-  if (!split) {
-    return <>{children}</>;
-  }
+function Half({ figures = false, children }: { figures?: boolean; children: ReactNode }) {
   if (!figures) {
     return <div data-close-half="text">{children}</div>;
   }

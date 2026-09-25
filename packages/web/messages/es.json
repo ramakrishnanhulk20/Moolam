@@ -220,11 +220,6 @@
     "formulaPlain": "Cada recomprobación que coincide sube la puntuación y cada fallo la baja; una disputa aceptada cuenta como dos fallos. Un agente nuevo empieza en 50."
   },
   "home": {
-    "hero": {
-      "credit": "Crea una, o comprueba una",
-      "generate": "Generar una imagen",
-      "verify": "Verificar una copia"
-    },
     "first": {
       "headline": "Prueba el origen de una imagen de IA,",
       "headlineTail": "incluso con una copia.",
@@ -268,9 +263,7 @@
     }
   },
   "story": {
-    "kicker": "En vivo en Monad mainnet",
     "title": "Moolam",
-    "line": "Cada imagen recibe un pasaporte.",
     "chapter": {
       "kicker": "La película",
       "title": "Cómo funciona un pasaporte"
@@ -362,7 +355,6 @@
       "kicker": "Moolam",
       "title": "Regístrala una vez. Reconocida en todas partes.",
       "body": "Un pasaporte para cada imagen generada, escrito en Monad en el momento en que se crea, revisado por un flujo de Chainlink y localizable desde cualquier copia que sobreviva a internet.",
-      "register": "Registrar una imagen",
       "verify": "Verificar una imagen",
       "proof": "Ver las pruebas",
       "passports": "Pasaportes",

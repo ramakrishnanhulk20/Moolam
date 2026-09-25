@@ -207,19 +207,3 @@ describe("a press anywhere else", () => {
     expect(await opened(arrival, 900)).toBe(false);
   });
 });
-
-describe("a press on a lab page", () => {
-  it("neither opens the walk nor goes anywhere", async () => {
-    window.localStorage.setItem(GUIDE_SEEN_KEY, "1");
-    here.path = "/lab/studio";
-    const host = await mount(
-      createElement(Fragment, null, createElement(FirstVisitGuide), createElement(ShowGuideAgain)),
-    );
-
-    await press(host);
-
-    expect(await opened(host, 900)).toBe(false);
-    expect(push).not.toHaveBeenCalled();
-    expect(window.sessionStorage.getItem(GUIDE_ASKED_KEY)).toBeNull();
-  });
-});

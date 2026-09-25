@@ -9,7 +9,6 @@ import {
   guideShouldShow,
   guideShouldShowHere,
   markGuideSeen,
-  onLabPage,
   signedInBefore,
 } from "@/components/guide/seen";
 import { guideKeys, guideSteps, nextStep } from "@/components/guide/steps";
@@ -18,7 +17,7 @@ import { guideKeys, guideSteps, nextStep } from "@/components/guide/steps";
  * The first-visit guide is the one thing on the site that is allowed to
  * interrupt somebody, so the rule that decides whether it appears is worth more
  * tests than the drawing it opens: once per device, never for a returning
- * wallet, never on a bench page, and never a loop on a browser that keeps
+ * wallet, and never a loop on a browser that keeps
  * nothing.
  */
 
@@ -60,7 +59,7 @@ describe("the mark a device carries once the guide has been shown", () => {
     expect(() => markGuideSeen()).not.toThrow();
     expect(() => forgetGuideSeen()).not.toThrow();
     expect(signedInBefore()).toBe(false);
-    expect(guideShouldShowHere("/en")).toBe(false);
+    expect(guideShouldShowHere()).toBe(false);
   });
 });
 
@@ -73,31 +72,23 @@ describe("the returning wallet rule", () => {
   it("holds a device back once it has signed in here", () => {
     window.localStorage.setItem(RETURNING_KEY, "1");
     expect(signedInBefore()).toBe(true);
-    expect(guideShouldShowHere("/en")).toBe(false);
+    expect(guideShouldShowHere()).toBe(false);
   });
 
   it("lets a device that has never signed in through", () => {
-    expect(guideShouldShowHere("/en")).toBe(true);
+    expect(guideShouldShowHere()).toBe(true);
   });
 });
 
 describe("where the guide may appear", () => {
-  const fresh = { seen: false, returning: false, path: "/en" };
+  const fresh = { seen: false, returning: false };
 
-  it("appears on a real page for a new device", () => {
+  it("appears for a new device", () => {
     expect(guideShouldShow(fresh)).toBe(true);
-    expect(guideShouldShow({ ...fresh, path: "/ta/explore" })).toBe(true);
   });
 
   it("never appears twice", () => {
     expect(guideShouldShow({ ...fresh, seen: true })).toBe(false);
-  });
-
-  it("never appears on a bench page", () => {
-    expect(onLabPage("/en/lab")).toBe(true);
-    expect(onLabPage("/en/lab/studio")).toBe(true);
-    expect(onLabPage("/en/collaborate")).toBe(false);
-    expect(guideShouldShow({ ...fresh, path: "/en/lab/studio" })).toBe(false);
   });
 });
 

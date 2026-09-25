@@ -13,7 +13,7 @@ import { guideKeys } from "@/components/guide/steps";
  *
  * The guide is the one thing on this site allowed to interrupt a reader, so
  * every gate on it is worth a case: the mark on the device, the mark the wallet
- * leaves, the bench pages, and the server pass, which must render nothing at
+ * leaves, and the server pass, which must render nothing at
  * all or React would throw away the tree it is hydrating.
  */
 
@@ -205,11 +205,6 @@ describe("who is shown the walk", () => {
     expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
   });
 
-  it("stays shut on a bench page", async () => {
-    here.path = "/lab/studio";
-    expect(await opened(await mount(createElement(FirstVisitGuide)), 900)).toBe(false);
-  });
-
   it("renders nothing on the server, whatever this browser holds", () => {
     expect(renderToStaticMarkup(wrap(createElement(FirstVisitGuide)))).toBe("");
   });
@@ -266,14 +261,5 @@ describe("asking for it back from the footer", () => {
       window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));
     });
     expect(await opened(host)).toBe(true);
-  });
-
-  it("is quiet on a lab page, where it would be laid over a bench of the product", async () => {
-    here.path = "/lab/studio";
-    const host = await mount(createElement(FirstVisitGuide));
-    await act(async () => {
-      window.dispatchEvent(new Event(GUIDE_OPEN_EVENT));
-    });
-    expect(await opened(host, 900)).toBe(false);
   });
 });

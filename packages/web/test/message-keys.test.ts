@@ -114,6 +114,12 @@ describe("the message files", () => {
       "header.nav.home",
       "common.swapNotice",
       "studio.bind.rebind",
+      "home.hero.credit",
+      "home.hero.generate",
+      "home.hero.verify",
+      "story.kicker",
+      "story.line",
+      "story.close.register",
     ];
     for (const lang of LANGS) {
       const said = new Set(leaves(messages[lang]));

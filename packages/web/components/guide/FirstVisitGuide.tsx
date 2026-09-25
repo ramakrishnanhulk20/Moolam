@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { usePathname } from "@/lib/i18n/routing";
 import { GuideWalk } from "./GuideWalk";
-import { guideShouldShowHere, markGuideSeen, onLabPage } from "./seen";
+import { guideShouldShowHere, markGuideSeen } from "./seen";
 import { GUIDE_OPEN_EVENT, takeGuideRequest } from "./signal";
 
 const watchers = new Set<() => void>();
@@ -97,12 +96,11 @@ function useHeroPainted(wanted: boolean): boolean {
  * way in that ignores the mark entirely.
  */
 export function FirstVisitGuide() {
-  const path = usePathname();
   const [asked, setAsked] = useState(false);
 
   const first = useSyncExternalStore(
     watchMarks,
-    () => (guideShouldShowHere(path) ? "yes" : "no"),
+    () => (guideShouldShowHere() ? "yes" : "no"),
     () => "no",
   );
 
@@ -124,9 +122,7 @@ export function FirstVisitGuide() {
     marksChanged();
   }, []);
 
-  // A lab page is a bench for the product itself, and a guide laid over one
-  // helps nobody. It is the one place the footer entry is deliberately quiet.
-  const wanted = !onLabPage(path) && (asked || first === "yes");
+  const wanted = asked || first === "yes";
   const open = useHeroPainted(wanted) && wanted;
 
   return <GuideWalk open={open} onClose={close} />;

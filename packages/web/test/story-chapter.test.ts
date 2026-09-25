@@ -14,9 +14,8 @@ import type { StoryData } from "@/components/story/data";
  *
  * What is held here: the chapter cut opens on a chapter title with no poster
  * and no buttons, its last card's first call is named as on the first screen,
- * its words are in all ten languages, the home page draws it in English and
- * Tamil, and the stated cut the lab bench still plays opens and closes exactly
- * as it did.
+ * its words are in all ten languages, and the home page draws it in English
+ * and Tamil.
  */
 
 type Target = { pathname: string; query?: Record<string, string> } | string;
@@ -59,7 +58,7 @@ vi.mock("@/components/home/FilmGate", () => ({
 vi.mock("@/components/story/StoryStage", async () => {
   const { LandingStory: Film } = await import("@/components/story/LandingStory");
   return {
-    StoryStage: (props: { data: StoryData; variant?: "classic" | "stated" | "chapter" }) =>
+    StoryStage: (props: { data: StoryData; variant: "chapter" }) =>
       createElement("div", { "data-stage": props.variant }, createElement(Film, props)),
   };
 });
@@ -67,11 +66,25 @@ vi.mock("@/components/story/StoryStage", async () => {
 const { LandingStory } = await import("@/components/story/LandingStory");
 const { CloseCard } = await import("@/components/story/CloseCard");
 const { ChapterOpening } = await import("@/components/story/ChapterOpening");
-const { beatTable } = await import("@/components/story/beats");
 const { storyCut } = await import("@/components/story/stated");
 const { default: HomePage } = await import("@/app/[locale]/page");
 
 const LOCALES = ["en", "de", "es", "fr", "hi", "ja", "ko", "pt", "ta", "zh"] as const;
+
+/**
+ * The old poster opening's words and its closing card's first call. They left
+ * the message files with the lab benches, the last screens that said them, and
+ * the film must never say them again.
+ */
+const RETIRED = {
+  line: "Every image gets a passport.",
+  kicker: "Live on Monad mainnet",
+  credit: "Make one, or check one",
+  generate: "Generate an image",
+  verify: "Verify a copy",
+  register: "Register an image",
+  generateTa: "ஒரு படத்தை உருவாக்கு",
+};
 
 function render(node: ReactElement, locale = "en", messages: unknown = en): string {
   const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
@@ -149,10 +162,10 @@ describe("the chapter cut's opening", () => {
     expect(text(first)).toBe(`${en.story.chapter.kicker} ${en.story.chapter.title}`);
     expect(first).not.toContain("<a ");
     expect(film).not.toContain(`>${en.story.title}</h2>`);
-    expect(film).not.toContain(en.story.line);
-    expect(film).not.toContain(en.story.kicker);
-    expect(film).not.toContain(en.home.hero.credit);
-    expect(film).not.toContain(en.home.hero.generate);
+    expect(film).not.toContain(RETIRED.line);
+    expect(film).not.toContain(RETIRED.kicker);
+    expect(film).not.toContain(RETIRED.credit);
+    expect(film).not.toContain(RETIRED.generate);
     expect(film).not.toContain("mode=generate");
   });
 
@@ -172,21 +185,19 @@ describe("the chapter cut's opening", () => {
 
   it("is what the film draws too, in place of the poster and both credit blocks", () => {
     const source = readFileSync("components/story/LandingStory.tsx", "utf8");
-    expect(source).toMatch(/chapter \? \(\s*<Caption cue=\{table\.beat\.opening\} fade=\{table\.fade\}>\s*<ChapterOpening arrived=\{arrived\} \/>\s*<\/Caption>/);
+    expect(source).toMatch(/<Caption cue=\{table\.beat\.opening\} fade=\{table\.fade\}>\s*<ChapterOpening arrived=\{arrived\} \/>\s*<\/Caption>/);
+    expect(source).not.toContain("HeroCredits");
   });
 
-  it("plays the stated cut's beats, and falls back with it", () => {
-    expect(beatTable("chapter")).toBe(beatTable("stated"));
-    expect(storyCut("chapter", data)).toBe("stated");
-    expect(storyCut("chapter", { ...data, statement: null })).toBe("classic");
-    expect(storyCut("stated", data)).toBe("stated");
-    expect(storyCut("classic", data)).toBe("classic");
+  it("plays the stated cut's beats, and falls back to the classic cut's", () => {
+    expect(storyCut(data)).toBe("stated");
+    expect(storyCut({ ...data, statement: null })).toBe("classic");
   });
 });
 
 describe("the chapter cut's closing card", () => {
   it("offers Make one to the studio first, with no prefetch, and Verify an image second", () => {
-    const markup = render(createElement(CloseCard, { data, chapter: true }));
+    const markup = render(createElement(CloseCard, { data }));
     const calls = asked.filter((link) => link.href !== "/docs/proof");
     expect(calls).toEqual([
       { href: "/studio", prefetch: false, words: en.home.first.make },
@@ -194,13 +205,13 @@ describe("the chapter cut's closing card", () => {
     ]);
     expect(en.home.first.make).toBe("Make one");
     expect(en.story.close.verify).toBe("Verify an image");
-    expect(markup).not.toContain(en.story.close.register);
+    expect(markup).not.toContain(RETIRED.register);
     expect(text(markup)).toContain(en.story.close.title);
     expect(text(markup)).toContain(en.story.close.body);
   });
 
   it("splits into the words and the counts on a laptop, and stacks them on a phone", () => {
-    const markup = render(createElement(CloseCard, { data, chapter: true }));
+    const markup = render(createElement(CloseCard, { data }));
     expect(markup).toContain('data-close-card="chapter"');
     expect(markup).toMatch(/data-close-card="chapter" class="[^"]* lg:grid lg:grid-cols-/);
     const text0 = markup.indexOf('data-close-half="text"');
@@ -215,41 +226,17 @@ describe("the chapter cut's closing card", () => {
   });
 
   it("says unread rather than inventing a count", () => {
-    const markup = render(createElement(CloseCard, { data: { ...data, passportCount: null }, chapter: true }));
+    const markup = render(createElement(CloseCard, { data: { ...data, passportCount: null } }));
     expect(markup).toContain(`>${en.story.close.unread}</dd>`);
   });
 
   it("fades the film's tail into the page on a phone, only while pinned", () => {
-    expect(render(createElement(CloseCard, { data, chapter: true }))).toContain("data-close-fade");
-    expect(render(createElement(CloseCard, { data, chapter: true, pinned: false }))).not.toContain("data-close-fade");
+    expect(render(createElement(CloseCard, { data }))).toContain("data-close-fade");
+    expect(render(createElement(CloseCard, { data, pinned: false }))).not.toContain("data-close-fade");
   });
 });
 
-describe("the stated cut the lab bench still plays", () => {
-  it("opens on the poster and its two calls, as it did", () => {
-    const film = render(createElement(LandingStory, { data, variant: "stated" as const }));
-    expect(markers(opening(film))).toEqual({
-      headings: [en.story.title],
-      links: [`/studio?mode=generate ${en.home.hero.generate} →`, `/verify ${en.home.hero.verify}`],
-    });
-    expect(text(opening(film))).toContain(en.story.kicker);
-    expect(text(opening(film))).toContain(en.story.line);
-    expect(film).not.toContain("data-film-chapter");
-    expect(film).not.toContain(en.story.chapter.title);
-  });
-
-  it("closes on the card it always had", () => {
-    const card = render(createElement(CloseCard, { data }));
-    expect(markers(card)).toEqual({
-      headings: [en.story.close.title],
-      links: [`/studio ${en.story.close.register} →`, `/verify ${en.story.close.verify}`, `/docs/proof ${en.story.close.proof}`],
-    });
-    expect(card).not.toContain("data-close-card");
-    expect(card).not.toContain("data-close-half");
-    expect(card).not.toContain("data-close-fade");
-    expect(card).not.toContain("lg:grid");
-  });
-
+describe("the chapter cut's light header", () => {
   it("keeps the light header rule to the chapter cut alone", () => {
     const source = readFileSync("components/story/LandingStory.tsx", "utf8");
     const look = source.slice(source.indexOf("const CHAPTER_LOOK"), source.indexOf("`;", source.indexOf("const CHAPTER_LOOK")));
@@ -258,7 +245,7 @@ describe("the stated cut the lab bench still plays", () => {
     for (const selector of selectors) {
       expect(selector).toContain(':has([data-story-cut="chapter"])');
     }
-    expect(source).toContain('data-story-cut={chapter ? "chapter" : undefined}');
+    expect(source).toContain("data-story-cut={variant}");
   });
 });
 
@@ -315,10 +302,10 @@ describe("the home page", () => {
     const headings = markers(markup).headings;
     expect(headings[0]).toBe(en.story.chapter.title);
     expect(headings).not.toContain(en.story.title);
-    expect(markup).not.toContain(en.story.line);
-    expect(markup).not.toContain(en.home.hero.credit);
-    expect(markup).not.toContain(en.home.hero.generate);
-    expect(markup).not.toContain(en.home.hero.verify);
+    expect(markup).not.toContain(RETIRED.line);
+    expect(markup).not.toContain(RETIRED.credit);
+    expect(markup).not.toContain(RETIRED.generate);
+    expect(markup).not.toContain(RETIRED.verify);
     expect(markup).not.toContain("mode=generate");
     expect(markup).not.toContain("data-film-opening");
     // The page's one h1 is the first screen's, which the board draws.
@@ -337,6 +324,6 @@ describe("the home page", () => {
     const markup = await page("ta", ta);
     expect(text(opening(stage(markup)))).toBe(`${ta.story.chapter.kicker} ${ta.story.chapter.title}`);
     expect(markers(markup).headings).not.toContain(ta.story.title);
-    expect(markup).not.toContain(ta.home.hero.generate);
+    expect(markup).not.toContain(RETIRED.generateTa);
   });
 });

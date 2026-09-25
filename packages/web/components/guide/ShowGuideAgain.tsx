@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "@/lib/i18n/routing";
-import { forgetGuideSeen, onLabPage } from "./seen";
+import { forgetGuideSeen } from "./seen";
 import { askGuideAfterNavigation, tellGuideToOpen } from "./signal";
 
 /**
@@ -13,10 +13,6 @@ import { askGuideAfterNavigation, tellGuideToOpen } from "./signal";
  * the mark and shouts, and the walk opens in place. Anywhere else a shout would
  * reach nobody, so the entry leaves a one-use note for the home page and takes
  * the reader there, locale and all, and the walk opens on arrival.
- *
- * A lab page keeps the old quiet behaviour: it shouts into a page that ignores
- * it and stays put, because a bench is where the product is being drawn, not
- * read.
  *
  * The label is handed in, like the bottom bar's, because the caller is the one
  * that knows which language the footer is being read in.
@@ -36,7 +32,7 @@ export function ShowGuideAgain({
       type="button"
       onClick={() => {
         forgetGuideSeen();
-        if (path === "/" || onLabPage(path)) {
+        if (path === "/") {
           tellGuideToOpen();
           return;
         }

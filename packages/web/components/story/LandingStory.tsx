@@ -20,7 +20,6 @@ import { Copies, FocalPlate, PlateField, useField } from "@/components/story/sce
 import { fieldPictures } from "@/components/story/scene/order";
 import { ChapterOpening } from "@/components/story/ChapterOpening";
 import { CloseCard } from "@/components/story/CloseCard";
-import { HeroCredits } from "@/components/story/HeroCredits";
 import { ScrollCue } from "@/components/story/ScrollCue";
 import { StillStory } from "@/components/story/StillStory";
 import { TryPanel } from "@/components/story/TryPanel";
@@ -601,7 +600,7 @@ function useLedgerView(data: StoryData): LedgerView | null {
   }, [data.focal, data.statement, format, now]);
 }
 
-export function LandingStory({ data, variant = "classic" }: { data: StoryData; variant?: StoryVariant }) {
+export function LandingStory({ data, variant }: { data: StoryData; variant: StoryVariant }) {
   const t = useTranslations("story");
   const reduced = useReducedMotion();
   const [webgl] = useState(canDrawWebGL);
@@ -640,13 +639,9 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
 
   const level = tierLevel(tier);
   const still = filmStill || level.still;
-  // A cut with a beat about a statement nobody wrote is not a cut of this film:
-  // the same rule the bench prints its line from decides it, in one place.
-  const table = beatTable(storyCut(variant, data));
-  // The chapter cut is told under a first screen that has already named the
-  // product and offered both actions, so it opens on a chapter title and ends
-  // on the page's one final call. Its beats are the stated cut's.
-  const chapter = variant === "chapter";
+  // A cut with a beat about a statement nobody wrote is not a cut of this film,
+  // so the day's data picks the table, in one place.
+  const table = beatTable(storyCut(data));
   const ledger = useLedgerView(data);
   const beats = useBeats(data, table, ledger, still);
   const dpr = useMemo(() => [1, level.dpr] as [number, number], [level.dpr]);
@@ -718,22 +713,13 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
   if (still) {
     return (
       <div data-story-tier={tier}>
-        <StillStory
-          data={data}
-          table={table}
-          beats={beats}
-          samples={samples}
-          noWebgl={!webgl && reduced !== true}
-          chapter={chapter}
-        />
+        <StillStory data={data} table={table} beats={beats} samples={samples} noWebgl={!webgl && reduced !== true} />
       </div>
     );
   }
 
   return (
-    <SceneBoundary
-      fallback={<StillStory data={data} table={table} beats={beats} samples={samples} noWebgl chapter={chapter} />}
-    >
+    <SceneBoundary fallback={<StillStory data={data} table={table} beats={beats} samples={samples} noWebgl />}>
       {/* Lenis smooth scroll runs on every other page. Here the scroll belongs
           to the scene, so the wheel is handed straight to it. The three handlers
           are on this wrapper rather than on each pinned panel: the scene's own
@@ -742,16 +728,14 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
       <style href="moolam-film-in-place" precedence="default">
         {IN_PLACE}
       </style>
-      {chapter && (
-        <style href="moolam-film-chapter" precedence="default">
-          {CHAPTER_LOOK}
-        </style>
-      )}
+      <style href="moolam-film-chapter" precedence="default">
+        {CHAPTER_LOOK}
+      </style>
       <div
         ref={stage}
         className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
         data-story="film"
-        data-story-cut={chapter ? "chapter" : undefined}
+        data-story-cut={variant}
         data-story-tier={tier}
         data-story-short={short ? "true" : undefined}
         data-lenis-prevent
@@ -809,7 +793,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
                 credential={credential}
                 dropped={dropped}
                 start={start}
-                label={chapter ? t("chapter.title") : `${t("title")}: ${t("line")}`}
+                label={t("chapter.title")}
                 onTier={onTier}
               />
             </ScrollControls>
@@ -844,27 +828,9 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
             still sits behind the words. Each one is on screen for exactly the beat
             it belongs to, and the travel between two beats carries no words at all. */}
         <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
-          {chapter ? (
-            <Caption cue={table.beat.opening} fade={table.fade}>
-              <ChapterOpening arrived={arrived} />
-            </Caption>
-          ) : (
-            <>
-              <Caption cue={table.beat.opening} fade={table.fade}>
-                <Opening kicker={t("kicker")} title={t("title")} line={t("line")} arrived={arrived} />
-                {/* A phone has no foot to hang credits from: the shot ends at 45
-                    percent of the window and the words own everything below it. So
-                    on a phone the block follows the tagline with a poster's gap
-                    instead of sitting on the floor of the frame. */}
-                <div className="mt-8 sm:hidden">
-                  <Credits arrived={arrived} />
-                </div>
-              </Caption>
-              <Caption cue={table.beat.opening} fade={table.fade} place="foot">
-                <Credits arrived={arrived} />
-              </Caption>
-            </>
-          )}
+          <Caption cue={table.beat.opening} fade={table.fade}>
+            <ChapterOpening arrived={arrived} />
+          </Caption>
           {beats.map((entry) => {
             const cue = table.beat[entry.key];
             return cue === undefined ? null : (
@@ -883,7 +849,7 @@ export function LandingStory({ data, variant = "classic" }: { data: StoryData; v
         )}
 
         <TryPanel onPreview={setDropped} samples={samples} />
-        <CloseCard data={data} chapter={chapter} />
+        <CloseCard data={data} />
         <ScrollCue />
         <FilmEnd stage={stage} />
       </div>
@@ -1057,22 +1023,16 @@ function FilmEnd({ stage }: { stage: RefObject<HTMLDivElement | null> }) {
  * The opacity and the small rise are written straight to the node from an
  * animation frame. The story is already spending its frame budget on the camera,
  * and none of this needs React to render again.
- *
- * "foot" hangs the block off the floor of the shot instead of the reading band,
- * which is where the poster credits go on anything wider than a phone. It leaves
- * the scroll hint its own strip at the very bottom.
  */
 function Caption({
   cue,
   fade,
   children,
-  place = "band",
 }: {
   cue: Beat;
   /** The cut's own fade, so a caption takes the same scroll distance in both. */
   fade: number;
   children: ReactNode;
-  place?: "band" | "foot";
 }) {
   const node = useRef<HTMLDivElement>(null);
 
@@ -1100,16 +1060,11 @@ function Caption({
   return (
     <div
       ref={node}
-      data-beat={place === "band" ? cue.name : undefined}
-      data-hero-credit={place === "foot" ? "true" : undefined}
-      className={
-        place === "band"
-          ? "story-lower pointer-events-none px-5 sm:px-8 lg:px-14"
-          : "pointer-events-none absolute inset-x-0 bottom-0 hidden px-5 pb-20 sm:block sm:px-8 lg:px-14"
-      }
+      data-beat={cue.name}
+      className="story-lower pointer-events-none px-5 sm:px-8 lg:px-14"
       style={{ opacity: cue.captionStart <= 0 ? 1 : 0, willChange: "transform, opacity" }}
     >
-      <div className={`mx-auto w-full max-w-[100rem] ${place === "band" && cue.align === "end" ? "sm:text-end" : ""}`}>
+      <div className={`mx-auto w-full max-w-[100rem] ${cue.align === "end" ? "sm:text-end" : ""}`}>
         {children}
       </div>
     </div>
@@ -1144,83 +1099,7 @@ export function useFilmArrived(stage: RefObject<HTMLElement | null>, watching: b
   return arrived;
 }
 
-/**
- * The credits wait for the title.
- *
- * The title carries 90 ms of delay and 900 ms of rise, so this is the frame it
- * has settled on: the name is read first and the two calls arrive under it.
- * The wait is held in here rather than in the film so the scene never shares a
- * render with it, and it only starts once the film has come into view.
- */
-const TITLE_SETTLED = 980;
-
-function Credits({ arrived }: { arrived: boolean }) {
-  const [entered, setEntered] = useState(false);
-
-  useEffect(() => {
-    if (!arrived) {
-      return;
-    }
-    const timer = window.setTimeout(() => setEntered(true), TITLE_SETTLED);
-    return () => window.clearTimeout(timer);
-  }, [arrived]);
-
-  return <HeroCredits entered={entered} />;
-}
-
-/** Before the film is in view each line waits on the first frame of its rise, so nothing moves when it starts. */
-const WAITING = { opacity: 0, transform: "translateY(28px)" } as const;
-
-/**
- * The film's title card. The page's one h1 is the first screen's headline
- * above, so the film's name is an h2 dressed the same as it always was.
- */
-export function Opening({
-  kicker,
-  title,
-  line,
-  arrived,
-}: {
-  kicker: string;
-  title: string;
-  line: string;
-  arrived: boolean;
-}) {
-  const enter = (delay: number) =>
-    arrived
-      ? { className: "story-enter", style: delay === 0 ? undefined : { animationDelay: `${delay}ms` } }
-      : { className: "", style: WAITING };
-  const kick = enter(0);
-  const name = enter(90);
-  const said = enter(180);
-
-  return (
-    <>
-      <p
-        data-film-opening={arrived ? "entered" : "waiting"}
-        className={`${kick.className} flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent`}
-        style={kick.style}
-      >
-        <span className="motif h-[9px] w-[9px]" />
-        {kicker}
-      </p>
-      <h2
-        className={`${name.className} mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]`}
-        style={name.style}
-      >
-        {title}
-      </h2>
-      <p
-        className={`${said.className} mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted`}
-        style={said.style}
-      >
-        {line}
-      </p>
-    </>
-  );
-}
-
-export function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
+function Eyebrow({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <p
       data-story-line="kicker"
@@ -1232,7 +1111,7 @@ export function Eyebrow({ children, className = "" }: { children: ReactNode; cla
   );
 }
 
-export function Title({ children, className = "" }: { children: ReactNode; className?: string }) {
+function Title({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <h2
       data-story-line="title"
@@ -1243,7 +1122,7 @@ export function Title({ children, className = "" }: { children: ReactNode; class
   );
 }
 
-export function Body({ children, className = "" }: { children: ReactNode; className?: string }) {
+function Body({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <p data-story-line="body" className={`mt-4 max-w-[38ch] text-base leading-relaxed text-text-muted ${className}`}>
       {children}
@@ -1251,7 +1130,7 @@ export function Body({ children, className = "" }: { children: ReactNode; classN
   );
 }
 
-export function Readout({ children, className = "" }: { children: ReactNode; className?: string }) {
+function Readout({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
     <p
       data-story-line="readout"
@@ -1274,7 +1153,7 @@ export function Readout({ children, className = "" }: { children: ReactNode; cla
  * "0.91 REENCODE-Q30 / MATCH", which is the verifier's vocabulary and nobody
  * else's.
  */
-export function Ladder({ label }: { label: string }) {
+function Ladder({ label }: { label: string }) {
   const t = useTranslations("story.verified");
   const name = useRef<HTMLSpanElement>(null);
   const value = useRef<HTMLSpanElement>(null);

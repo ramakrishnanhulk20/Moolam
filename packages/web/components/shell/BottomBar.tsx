@@ -6,7 +6,7 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { progress } from "@/components/story/signals";
 import { Link, usePathname } from "@/lib/i18n/routing";
 import { TabMark } from "./TabMark";
-import { BAR_HEIGHT, activeTab, barShown, type Tab, type TabKey } from "./tabs";
+import { BAR_HEIGHT, activeTab, type Tab, type TabKey } from "./tabs";
 
 /**
  * The tabs whose page is fetched when a thumb or a pointer reaches for it,
@@ -150,7 +150,6 @@ export function BottomBar({
   const here = usePathname();
   const route = at ?? here;
   const active = activeTab(route);
-  const drawn = barShown(route);
   const reduced = useIsReducedMotion();
   const shell = useRef<HTMLElement>(null);
   const overFilm = film ?? route === "/";
@@ -162,7 +161,7 @@ export function BottomBar({
   // also what a reader who asked for less motion gets, because the still cut
   // carries no film element.
   useEffect(() => {
-    if (!overFilm || !drawn) {
+    if (!overFilm) {
       return;
     }
     let frame = 0;
@@ -194,13 +193,7 @@ export function BottomBar({
 
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [overFilm, drawn]);
-
-  // A bench draws its own bar, often two of them, and a third across the page
-  // would be measuring the wrong thing.
-  if (!drawn) {
-    return null;
-  }
+  }, [overFilm]);
 
   const raised = shape === "raised" ? "make" : null;
 

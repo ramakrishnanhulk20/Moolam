@@ -116,10 +116,10 @@ export default async function LocaleLayout({
   const source = activeSource();
 
   // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
-  // in a test or on any other host. The bench pages only exist where the lab
-  // flag is on, and a page Ram is looking at on his own dev server is not a
-  // visit, so the two conditions are one line. Neither package sets a cookie
-  // and neither is given one.
+  // in a test or on any other host. A page Ram is looking at on his own dev
+  // server, where the lab flag is on, is not a visit either, so the two
+  // conditions are one line. Neither package sets a cookie and neither is
+  // given one.
   const counted = process.env.VERCEL === "1" && !labPagesOn();
 
   // The studio is the one route in this bar that carries the wallet. Left to
@@ -361,10 +361,9 @@ export default async function LocaleLayout({
                   </div>
                 </footer>
 
-                {/* The phone's navigation, under the thumb, on every page but a
-                    bench. It draws itself out of the way while the film on the
-                    home page is being scrolled and arrives with the closing
-                    card. */}
+                {/* The phone's navigation, under the thumb, on every page. It
+                    draws itself out of the way while the film on the home page
+                    is being scrolled and arrives with the closing card. */}
                 <div className="md:hidden">
                   <BottomBar tabs={tabs} label={bar("label")} shape="raised" />
                 </div>

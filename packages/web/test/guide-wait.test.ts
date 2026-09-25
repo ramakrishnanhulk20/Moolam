@@ -28,7 +28,6 @@ vi.mock("@/lib/i18n/routing", () => ({
 }));
 
 const { FirstVisitGuide } = await import("@/components/guide/FirstVisitGuide");
-const { HeroCredits } = await import("@/components/story/HeroCredits");
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -179,15 +178,5 @@ describe("the first screen's own mark", () => {
     expect(heroSettled(node)).toBe(true);
     node.getAnimations = () => [animation("running", 650)];
     expect(heroSettled(node)).toBe(false);
-  });
-
-  it("is no longer raised by the film's credits, entered or not", async () => {
-    await mount(createElement(HeroCredits, { entered: true }));
-    const row = document.querySelector("a")?.parentElement;
-    expect(row).not.toBeUndefined();
-    await act(async () => {
-      row?.dispatchEvent(new Event("animationend", { bubbles: true }));
-    });
-    expect(document.querySelector("[data-hero-shown]")).toBeNull();
   });
 });

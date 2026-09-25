@@ -220,11 +220,6 @@
     "formulaPlain": "Chaque vérification concordante fait monter l’indice et chaque échec le fait baisser ; une contestation retenue compte comme deux échecs. Un nouvel agent part de 50."
   },
   "home": {
-    "hero": {
-      "credit": "Créez-en une, ou vérifiez-en une",
-      "generate": "Générer une image",
-      "verify": "Vérifier une copie"
-    },
     "first": {
       "headline": "Prouvez d’où vient une image d’IA,",
       "headlineTail": "même depuis une copie.",
@@ -268,9 +263,7 @@
     }
   },
   "story": {
-    "kicker": "En direct sur Monad mainnet",
     "title": "Moolam",
-    "line": "Chaque image reçoit un passeport.",
     "chapter": {
       "kicker": "Le film",
       "title": "Comment fonctionne un passeport"
@@ -362,7 +355,6 @@
       "kicker": "Moolam",
       "title": "Enregistrée une fois. Reconnue partout.",
       "body": "Un passeport pour chaque image générée, inscrit sur Monad à l’instant où elle est créée, revérifié par un workflow Chainlink, et retrouvable depuis n’importe quelle copie qui survit à internet.",
-      "register": "Enregistrer une image",
       "verify": "Vérifier une image",
       "proof": "Voir les preuves",
       "passports": "Passeports",

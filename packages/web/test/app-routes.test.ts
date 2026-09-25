@@ -32,7 +32,7 @@ describe("what robots.txt says", () => {
 
   it("opens the site and closes the routes that are not pages for a crawler", () => {
     expect(rule().allow).toBe("/");
-    expect(rule().disallow).toEqual(["/lab", "/*/lab", "/docs-search", "/*/explore/view", "/*/mine"]);
+    expect(rule().disallow).toEqual(["/docs-search", "/*/explore/view", "/*/mine"]);
   });
 
   it("names the sitemap on the public domain", () => {
@@ -86,7 +86,7 @@ describe("what the sitemap lists", () => {
     });
   });
 
-  it("never offers the hidden bench", () => {
+  it("offers no /lab address", () => {
     expect(urls.some((url) => url.includes("/lab"))).toBe(false);
   });
 });

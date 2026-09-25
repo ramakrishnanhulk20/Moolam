@@ -220,11 +220,6 @@
     "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
   },
   "home": {
-    "hero": {
-      "credit": "Make one, or check one",
-      "generate": "Generate an image",
-      "verify": "Verify a copy"
-    },
     "first": {
       "headline": "Prove where an AI image came from,",
       "headlineTail": "even from a copy.",
@@ -268,9 +263,7 @@
     }
   },
   "story": {
-    "kicker": "Live on Monad mainnet",
     "title": "Moolam",
-    "line": "Every image gets a passport.",
     "chapter": {
       "kicker": "The film",
       "title": "How a passport works"
@@ -362,7 +355,6 @@
       "kicker": "Moolam",
       "title": "Register once. Recognised anywhere.",
       "body": "A passport for every generated image, written on Monad the moment it is made, re-checked by a Chainlink workflow, and findable from any copy that survives the internet.",
-      "register": "Register an image",
       "verify": "Verify an image",
       "proof": "See the proof",
       "passports": "Passports",

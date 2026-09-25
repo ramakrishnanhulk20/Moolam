@@ -11,22 +11,21 @@
  *
  * The classic cut is the film Ram approved, to the last offset. The stated cut
  * is the same film with one more beat in it, the holder's word on AI use. The
- * home page plays the stated cut and falls back to the classic one on a day
- * with no statement to draw. Nothing reads a table out of this module any
- * more: a screen is handed the cut it is playing, so the two can run side by
- * side on one machine without either one reaching for the other's numbers.
+ * home page's chapter plays the stated cut and falls back to the classic one
+ * on a day with no statement to draw, so both tables stay. The film is handed
+ * the cut it is playing rather than reading a table out of this module.
  */
 
 /** The two tables the film can be timed by. */
 export type BeatCut = "classic" | "stated";
 
 /**
- * What a screen asks the film to play. "chapter" is the stated cut's own table
- * told as a chapter under the home page's first screen: it opens on a chapter
- * title rather than the film's poster, and its last card is the page's one
- * final call. The beats, their offsets and the camera are the stated cut's.
+ * What the home page asks the film to play: the film told as a chapter under
+ * the first screen. It opens on a chapter title and its last card is the
+ * page's one final call. Its beats, offsets and camera are the stated cut's,
+ * or the classic cut's on a day with no statement to draw.
  */
-export type StoryVariant = BeatCut | "chapter";
+export type StoryVariant = "chapter";
 
 /** Every beat the film can carry. "stated" belongs to the stated cut alone. */
 export type BeatName =
@@ -279,8 +278,8 @@ const TABLES: Record<BeatCut, BeatTable> = {
   stated: tableOf("stated"),
 };
 
-export function beatTable(variant: StoryVariant): BeatTable {
-  return TABLES[variant === "chapter" ? "stated" : variant];
+export function beatTable(cut: BeatCut): BeatTable {
+  return TABLES[cut];
 }
 
 export function clamp01(value: number): number {

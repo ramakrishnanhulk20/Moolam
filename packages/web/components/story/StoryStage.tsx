@@ -52,7 +52,7 @@ function freshStory() {
   );
 }
 
-export function StoryStage({ data, variant = "classic" }: { data: StoryData; variant?: StoryVariant }) {
+export function StoryStage({ data, variant }: { data: StoryData; variant: StoryVariant }) {
   // The first pictures of the field, asked for by the document rather than by
   // the scene. The film's code is two thirds of a megabyte of React, three.js
   // and the scene itself; on a phone the plates used to wait for all of it and

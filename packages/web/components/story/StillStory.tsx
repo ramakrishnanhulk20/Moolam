@@ -1,13 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import type { StoryBeat } from "@/components/story/LandingStory";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
 import { ChapterOpening } from "@/components/story/ChapterOpening";
 import { CloseCard } from "@/components/story/CloseCard";
-import { HeroCredits } from "@/components/story/HeroCredits";
 import { TryPanel, type TrySample } from "@/components/story/TryPanel";
 import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
@@ -21,6 +20,8 @@ import type { BeatTable } from "@/components/story/beats";
  * This is what a reader who has asked for less motion sees, and what anyone
  * whose browser cannot open a WebGL context sees. Every caption, every live
  * figure and the working drop panel are here: only the flight is missing.
+ * It opens on the same chapter title the film does and ends on the page's one
+ * final call.
  */
 export function StillStory({
   data,
@@ -28,7 +29,6 @@ export function StillStory({
   beats,
   samples = [],
   noWebgl = false,
-  chapter = false,
 }: {
   data: StoryData;
   /** The cut being told, which is where each chapter's side comes from. */
@@ -37,8 +37,6 @@ export function StillStory({
   samples?: TrySample[];
   /** True only when a context could not be opened, never for reduced motion. */
   noWebgl?: boolean;
-  /** The chapter cut: a chapter title in place of the poster, and the page's one final call at the end. */
-  chapter?: boolean;
 }) {
   const t = useTranslations("story");
   const steps = degradeSteps();
@@ -63,28 +61,9 @@ export function StillStory({
           </p>
         )}
 
-        {chapter ? (
-          <section>
-            <ChapterOpening arrived />
-          </section>
-        ) : (
-          <section>
-            <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
-              <span className="motif h-[9px] w-[9px]" />
-              {t("kicker")}
-            </p>
-            {/* An h2: the page's one h1 is the first screen's headline above. */}
-            <h2 className="mt-6 font-display text-[clamp(3rem,9vw,8rem)] font-semibold uppercase leading-[0.95] tracking-[-0.045em]">
-              {t("title")}
-            </h2>
-            <p className="mt-6 max-w-[34ch] text-[clamp(1rem,1.5vw,1.35rem)] leading-relaxed text-text-muted">
-              {t("line")}
-            </p>
-            <div className="mt-10">
-              <Credits />
-            </div>
-          </section>
-        )}
+        <section>
+          <ChapterOpening arrived />
+        </section>
 
         {beats.map((entry) => (
           <section key={entry.key} className={table.beat[entry.key]?.align === "end" ? "text-end" : ""}>
@@ -109,29 +88,11 @@ export function StillStory({
         </section>
 
         <section className="border-t border-line pt-16">
-          <CloseCard data={data} pinned={false} chapter={chapter} />
+          <CloseCard data={data} pinned={false} />
         </section>
       </div>
     </div>
   );
-}
-
-/**
- * The same credits the film carries, entered on the first frame this page has.
- *
- * There is no title entrance to wait for here, so the block only has to start
- * from its own first frame: rendering it entered would mean the server markup
- * and the first client render disagree.
- */
-function Credits() {
-  const [entered, setEntered] = useState(false);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
-  return <HeroCredits entered={entered} />;
 }
 
 /**
