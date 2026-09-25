@@ -54,9 +54,9 @@ not fix are listed last, on purpose.
 | `appendEdit` | Append an edit to someone else's passport | caller must own the parent; approvals and operators are refused | refused on mainnet, NotParentOwner, `attacks/edit-by-non-owner.txt` |
 | `appendEdit` | Use a revoked session signer | Privy refuses the signature server-side; the chain sees no transaction. Proof shows the refusal | refused by Privy, no transaction, `attacks/revoked-session-signer.txt` |
 | `attest` | Attest from a random address | policy.isReceiver check | refused on mainnet, NotReceiver, `attacks/attest-from-stranger.txt` |
-| `attest` | Attest through the receiver from a fake forwarder | ReceiverTemplate checks msg.sender is the forwarder | refused on mainnet, InvalidSender, `attacks/report-from-fake-forwarder.txt` |
+| `attest` | Attest through the receiver from a fake forwarder | ReceiverTemplate checks msg.sender is the forwarder. The simulation receivers trust Chainlink's public mock forwarder, which anyone can call, so they also require the transaction to be signed by Moolam's CRE wallet (see "Simulator-fed receivers" below) | refused on mainnet, InvalidSender, `attacks/report-from-fake-forwarder.txt`; through the mock from any other wallet, WrongSendingWallet, `SimulationReceiver.t.sol` and `SimulationReceiver.fork.t.sol` |
 | `attest` | Spam attestations | 64 per passport cap | refused at 64, `MoolamRegistry.t.sol` test_attestStopsAtTheCap |
-| Receiver `onReport` | Replay a report whose first transmission reverted, or replay it on another chain | the report carries the chain id and a per-passport monotonic timestamp; the receiver rejects a repeat, an older one, or a foreign chain | refused, StaleReport and WrongChain, `attacks/receiver-replay-and-wrong-chain.txt`, proved by `MoolamReceiver.t.sol` because only Chainlink's forwarder can reach the check |
+| Receiver `onReport` | Replay a report whose first transmission reverted, or replay it on another chain | the report carries the chain id and a per-passport monotonic timestamp; the receiver rejects a repeat, an older one, or a foreign chain. The simulation receivers also refuse a timestamp more than an hour ahead of the block, and refuse every replay not signed by the CRE wallet before reading it | refused, StaleReport and WrongChain, `attacks/receiver-replay-and-wrong-chain.txt`, proved by `MoolamReceiver.t.sol` and `SimulationReceiver.t.sol`, because on mainnet only the forwarder (production receivers) or the CRE wallet (simulation receivers) can reach the check |
 | `flag` / `resolve` | Take the bond without resolving | resolver-only, pull payments, balance invariant | refused on mainnet, InvalidBond and NotResolver, `attacks/dispute-money-rules.txt` |
 | `withdraw` | Reentrancy | ReentrancyGuard and checks-effects-interactions | no reentrancy path found: testFuzz_withdrawNeverPaysTwice and invariant_balanceCoversEveryLiability; the live refusal with nothing owed is NothingToWithdraw in `attacks/dispute-money-rules.txt` |
 | `rescueNative` | Owner drains bonds | rescue amount excludes totalBonds and totalOwed | refused, `MoolamRegistry.t.sol` test_rescueNativeCannotTouchBondsOrCredits |
@@ -273,7 +273,7 @@ deleting a 49 hour old copy whose passport the chain says was never registered.
 | `/prepare` with the private re-check | Ask without sealing; make a copy when the chain cannot be reached; get Pinata's public duplicate kept as the private copy; send a picture whose thumbnail is too large; find the private file in the public document | Private re-check needs sealed; no copy without the duplicate check; the upload's answer must say private; the thumbnail budget of 60,000 bytes; the strict schema | 4a: 400 `private-recheck-needs-sealed`; 4b: 503 `chain-unreachable`, 0 Pinata calls; 4c: 409 `private-copy-not-private`, no document pinned; 4d: 422 `thumbnail-too-large`; 4e: 0 of 6 leaks in the document or the answer. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
 | The sweep | Delete a copy whose passport is only late, delete on a chain read that failed, delete in the dry pass, delete a lookalike name | 48 hours before anything is deleted, one failed read stops the run, the dry pass only counts, the whole name must match | 5a: 47 hours, kept; 5b: 49 hours and never registered, deleted as designed; 5c: stopped, 0 deletes; 5d: counted 1, deleted 0; 5e: counted as an odd name, 0 deletes. Not covered: a creator who signs more than 48 hours after preparing. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
 | The live service, from outside | Take a link or delete a copy on mainnet without the right token; find the private copy in the live document | The same checks as above, on the hosted build | 6a to 6e: 401 or 409 and no-store; 6f: `kept` for the private passport; 6g: `gone` for a public one; 7a: the live document passes the service's own strict schema, 10 keys, 0 links, commitment equals the passport id. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
-| The receivers on chain | A stranger calls the sealed receiver with a false verdict and the pinned name and author; a stranger calls `attest` directly | The receiver accepts only its forwarder; the registry accepts only receivers the policy lists | 8a: reverted `InvalidSender`; 8b: forwarder, author and name read back pinned to Chainlink's production forwarder, the workflow author and `moolam-sealed-verifier`; 8c: reverted `NotReceiver`. Not covered: the window during an operator run, see the weaknesses below. [pass-4.txt](../../proofs/attacks/pass-4.txt) |
+| The receivers on chain | A stranger calls the sealed receiver with a false verdict and the pinned name and author; a stranger calls `attest` directly | Attack pass 4 ran against the old sealed receiver, which accepted only the production forwarder. That receiver and the old public one come off the policy list when the simulation receivers are deployed. A simulation receiver accepts a report only through Chainlink's mock forwarder and only in a transaction signed by the CRE wallet. The registry accepts only receivers the policy lists | 8a: reverted `InvalidSender`; 8b: forwarder, author and name read back pinned to Chainlink's production forwarder, the workflow author and `moolam-sealed-verifier`; 8c: reverted `NotReceiver`. [pass-4.txt](../../proofs/attacks/pass-4.txt). For the simulation receivers: real report calldata replayed through the real mock on a fork lands only from the CRE wallet, and an old receiver reverts `NotReceiver` once removed, `SimulationReceiver.fork.t.sol` |
 
 ### The first private re-check on mainnet
 
@@ -289,6 +289,106 @@ sealed receiver
 afterwards. The details are in [sealed-passports.txt](../../proofs/sealed-passports.txt). A second
 private re-check the same afternoon, on [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4),
 matched at distance 0 ([0xa38fd971...](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613).
+
+## Simulator-fed receivers and the re-check runner
+
+Every re-check runs in Chainlink's CRE simulator with `--broadcast`, and a small machine, the
+re-check runner, starts one within minutes of each new picture. A simulated report reaches Monad
+through Chainlink's MockKeystoneForwarder, which checks no signature. So the verdicts land through
+two receivers built for that path, `SimulationReceiver` (one for the public workflow, one for the
+sealed one). Each accepts a report only when the transaction was signed by Moolam's CRE wallet, fixed
+when the contract was deployed. The two receivers that came before are removed from the policy in the
+same run that deploys these, and every verdict they already wrote keeps their address.
+
+### A) What kind of system this is
+
+Three systems in one: a privileged on-chain writer gated by who is calling, fed by a forwarder that
+verifies nothing; an unattended bot that fetches addresses strangers wrote and spends money; and a
+host holding credentials that outrank every user.
+
+- **Writer authentication.** The mock forwarder calls `onReport` with metadata built from bytes the
+  caller supplied. The simulator's stamps (workflow id `0x11..11`, owner `0xaAaA..`, a public workflow
+  name) can be reproduced by anyone who reads this repo, so on chain the only value a stranger cannot
+  forge is the wallet that signed the transaction. Applies to every report.
+- **Replay and floors.** A report's calldata is public. Each receiver keeps its own per-passport
+  timestamp floor starting at zero, so a new receiver would accept every old report once, and the
+  floor is set from a value inside the report. Applies to both new receivers.
+- **Configuration drift.** The forwarder and the pins are owner setters on a hot wallet, and one
+  transaction could reopen the door. Applies.
+- **Fetching what strangers name.** The runner follows the document address written into a passport,
+  from inside the machine, and the simulator does the same for the picture. Applies.
+- **Spend griefing.** Anyone may register passports and anyone may ask for a re-check, and each costs
+  the CRE wallet about 0.1 MON. Applies, bounded by the caps.
+- **Credential blast radius.** One file holds the CRE key, the runner token and the sealed link
+  token, and the machine holds the Chainlink login. Applies.
+- **Not applicable:** rendering user content (the runner draws nothing), storage shared between users
+  (nothing per user on the machine), shell injection (the CLI is started with an argument list and no
+  shell).
+
+### B) Threat model
+
+**Trust boundaries.** Any wallet to the mock forwarder to `onReport`, the one unsigned crossing on
+chain; the receiver to `attest`, trusted because the policy lists it; the owner wallet to the receiver
+setters and the policy; a registrant's document to the runner's and the simulator's fetch; the Envio
+index to the runner; the public request route to the queue to the runner's spend; the runner's result
+to the verify service's public status; IPFS and Pinata to the simulator; the public RPC to the runner;
+the machine's disk to everything.
+
+**What an attacker controls.** The raw report and its 109 byte header, through the mock; the chain
+id, `executedAt`, passport id, match, distance and fingerprint, for whoever runs the CLI with the key;
+the document address and every document field, the picture bytes and any redirect behind them, for
+any registrant; the queued passport ids, through the public route; index rows and RPC answers; the
+runner's saved counts after a restart; the CLI's output text, which becomes a published reason.
+
+**What the privileged position holds.** The CRE key writes any verdict on any passport through both
+new receivers and holds the wallet's MON. The policy list is the only thing the registry trusts. The
+owner key re-points, unpins and unlists. The Chainlink login is Moolam's account. The runner token
+claims and closes any request, and with the sealed link token and a claim it reads a private copy.
+
+**What an attacker wants.** A false verdict on a passport or an agent's record; a passport frozen by
+an `executedAt` of 2^64-1; the machine's secrets, taken by SSH, a poisoned install or a fetch pivot,
+then used quietly; the wallet burned by junk registrations or request spam; the machine made to fetch
+an internal address or an enormous body.
+
+### C) The standards, and where each is held
+
+These are the definition of done. R1 to R6 are the contracts and their launch; R7 to R11 are the
+runner's.
+
+| Invariant | Held by | What proves it |
+|---|---|---|
+| **R1 Sender-bound writes.** No attestation reaches the registry through a simulation receiver unless the transaction's signing wallet is that receiver's sending wallet, whatever the forwarder, metadata or payload say | `SimulationReceiver._processReport`, its first check, `tx.origin == SENDING_WALLET` | `SimulationReceiver.t.sol` test_aReportFromAnyOtherOriginIsRefused; `SimulationReceiver.fuzz.t.sol` testFuzz_anyOriginOtherThanTheSendingWalletIsRefused, 512 runs over every origin and caller; `SimulationReceiver.fork.t.sol`, where real report calldata sent through the real mock lands from the CRE wallet and writes nothing from any other wallet, the deployer included |
+| **R2 Never open.** No state exists in which a report is accepted on the forwarder or pins alone: the sending wallet is fixed at construction, never zero, with no setter | `SENDING_WALLET`, an immutable set in the constructor, which refuses zero | test_noFunctionChangesTheSendingWallet reads every selector the deployed code answers against a reviewed list, then runs every owner setter to its widest and ownership away, and a stranger is still refused; test_constructorRefusesZeroAddresses |
+| **R3 Listed only when locked.** The policy lists a receiver only after its forwarder, pins and sending wallet are read back from the chain and match the plan, and the workflow configs and runner point at it only after it is listed | `DeploySimulationReceivers.s.sol` reads every field back and stops before the queue on any mismatch; `FinalizeSimulationReceivers.s.sol` reads them again before the execute; the launch scripts read them from the chain after each broadcast | the fork rehearsal of both launch scripts, every field read back from the fork and matched |
+| **R4 Monotonic and bounded time.** `executedAt` must be above the floor and at most the block time plus one hour, so no report can set a floor the honest workflow cannot pass | `SimulationReceiver._processReport` and `MAX_FUTURE_SKEW` | test_executedAtAtTheLargestUint64IsRefused; the edge test (one hour accepted, one hour and a second refused); test_theFloorIsStrictlyMonotonic; two fuzz tests over the whole range and around the edge |
+| **R5 Replay is sender-bound.** Replaying old calldata to a new receiver needs the sending wallet too, so floors that differ between receivers are an insider matter | R1 | the fork replay from another wallet writes nothing |
+| **R6 Kill switch.** `removeReceiver` is immediate, its command is in the runbook, and the owner key is never on the re-check machine | `VerifierPolicy.removeReceiver`; the deploy removes the two old receivers | `SimulationReceiver.fork.t.sol` test_theOldReceiversAreRefusedByTheRegistryAfterRemoval |
+| **R7 Fetch only pinned content.** The runner and the simulator fetch a document or picture only as a bare IPFS id through the configured gateway, never an http(s) address, never following a redirect, never past a fixed byte cap, with the one predicate the sealed workflow already has | the re-check runner and the workflows | their own suites |
+| **R8 Shape before spawn.** Every value handed to the CLI matches its shape by the predicate the queue uses for ids: a transaction hash is 0x and 64 hex characters, an event index a small integer | the re-check runner | its own suite |
+| **R9 Bounded spend.** A daily cap, a per-pass cap and a balance floor are counted before the spend and cover queued requests too, so a stranger can cost at most the cap times one report's gas a day | the re-check runner | its own suite |
+| **R10 One blast radius per secret.** The wallet holds a few days of reports, not the treasury; every token rotates without a contract change; a result never decides what a screen shows unless its report transaction is on chain from the sending wallet | the runner, the verify service and operations | the runbook |
+| **R11 Outputs validated like inputs.** Every reason is redacted before it leaves the process; no log line carries an env value; an attestation from a receiver the web does not know is labelled unknown, never dropped and never given a named label; both sides of every address comparison go through one normaliser | the runner and the web | their own suites |
+
+Four general rules hold across all of it:
+
+- **One rule, not a list.** The sender check is one equality on the signing wallet. It covers every
+  caller path and does not cover the key holder. The web's list of receiver addresses is labels only;
+  the trust rule is the registry's `isReceiver` at the moment of writing.
+- **Compare after the same parser.** The workflow name pins and the simulator's stamps are both the
+  first ten hex characters of a sha256, and a mismatch reverts. Passport ids are lowercased by one
+  function on both sides; addresses in the web are compared after one checksum function.
+- **Fail closed.** A parse error, a wrong shape, an unknown copy state, an unreadable record, a missing
+  token, a timeout or a cap: no report, no claim used up where that can be avoided, nothing written.
+- **What this does not defend against.** The holder of the CRE key or the owner key. A verdict is one
+  machine's word, with no consensus behind it. Smart-account and relayed senders are excluded on
+  purpose, since only a plain wallet can sign a transaction. The CRE wallet must sign nothing but
+  reports, because a contract it called would inherit its authority. A stolen machine means forgery
+  until `removeReceiver` runs. The mock forwarder is Chainlink's contract and may change. How exposed
+  the fetches are depends on where the machine sits on its network.
+
+One behaviour of the mock matters to anyone reading the chain: when a receiver refuses a report, the
+mock does not revert. The transaction succeeds and its `ReportProcessed` event carries `false`, and
+nothing is written to the registry. A report transaction's status alone does not say a verdict landed.
 
 ## What the screens promise
 
@@ -376,10 +476,13 @@ every visitor, whatever a registrant wrote into their document.
 - **The simulator is not an enclave.** Every private re-check so far ran in Chainlink's simulator on
   one machine, which says of itself that it is not a real TEE. That machine sees the token, the link
   and the picture, and no quorum of nodes stands behind the verdict.
-- **The receiver listens to the simulator during a run.** While an operator run is in progress, the
-  sealed receiver is pointed at Chainlink's simulation forwarder with its pin cleared, and any
-  simulator user could send it a report in that window. Outside a run it is closed, and attack 8b
-  reads that back.
+- **The simulation receivers trust one wallet.** Re-checks run in Chainlink's simulator, so their
+  reports come through Chainlink's mock forwarder, which checks no signature. The two simulation
+  receivers accept such a report only when Moolam's CRE wallet signed the transaction. Whoever holds
+  that key, which lives on the re-check machine, can write any verdict until the owner removes the
+  receivers from the policy, which takes effect at once. Before this change the old receivers were
+  opened to the mock for each operator run, and anyone with the simulator could write during that
+  window.
 - **The first fetch through a fresh private link is slow.** Pinata's private gateway took 6 to 12
   seconds to answer the first request on a new link, past the workflow's 10 second limit per call,
   so the workflow tries the same link up to three times inside its 120 second life.
