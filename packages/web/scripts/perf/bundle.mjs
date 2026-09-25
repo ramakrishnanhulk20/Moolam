@@ -53,7 +53,7 @@ let socket;
 
 const args = readArgs(process.argv.slice(2));
 const base = (args.base ?? "http://localhost:3311").replace(/\/$/, "");
-const dist = args.dist ?? ".next-wo66";
+const dist = args.dist ?? ".next-perf";
 const top = Number(args.top ?? 10);
 const port = Number(args.port ?? 9444);
 const paths = args.paths === undefined || args.paths === "" ? DEFAULT_PATHS : args.paths.split(",");

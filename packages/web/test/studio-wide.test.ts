@@ -483,3 +483,38 @@ function shipped(entry: string, later = false): { files: Set<string>; packages: 
   walk(fileFor(entry, join(web, "x.ts")) as string, false);
   return { files, packages };
 }
+
+describe("the done screen's picture under the wide layout", () => {
+  const count = (markup: string, needle: string) => markup.split(needle).length - 1;
+
+  it("mounts a sealed passport's band once, so its only file has one save link", () => {
+    const markup = render(wide(upload("doneSealed")));
+    expect(count(markup, en.studio.sealed.done.label)).toBe(1);
+    expect(count(markup, "data-save-sealed")).toBe(1);
+    expect(columnsAround(markup, "data-save-sealed")).toEqual(["picture"]);
+    // Not hidden at any width: CSS places it, it is never drawn and hidden.
+    expect(markup).not.toContain(`<div class="lg:hidden">`);
+    expect(markup).not.toMatch(/data-studio-column="picture" class="hidden/);
+  });
+
+  it("mounts a published passport's picture once as well", () => {
+    const markup = render(wide(upload("donePublic")));
+    // "Registered" is a common word on this screen, so the label is counted in its own tag.
+    expect(count(markup, `text-verified">${en.studio.register.doneLabel}</p>`)).toBe(1);
+  });
+
+  it("stacks band, picture and card in that order below lg, and keeps the two columns from lg", () => {
+    const markup = render(wide(upload("doneSealed")));
+    const face = /<div data-studio-panel="upload"[^>]*>/.exec(markup)?.[0] ?? "";
+    expect(face).toContain("max-lg:flex max-lg:flex-col");
+    expect(face).toContain("lg:grid");
+    expect(markup).toMatch(/data-studio-column="details" class="[^"]*max-lg:contents/);
+    expect(markup).toMatch(/class="sticky [^"]*max-lg:order-first/);
+  });
+
+  it("is still drawn whole, picture inside the card, outside the studio", () => {
+    const markup = render(upload("doneSealed"));
+    expect(count(markup, en.studio.sealed.done.label)).toBe(1);
+    expect(markup).not.toContain("max-lg:");
+  });
+});

@@ -236,6 +236,7 @@
       "make": "自己做一本",
       "makeNote": "登记你自己的图片。免费，用通行密钥。",
       "live": "一本真实的护照，和一份我们改动过的副本",
+      "unread": "Moolam 刚才无法从 Monad 读出这本护照。",
       "exhibit": "证物 {mark}",
       "compare": "这份副本对比登记的图片",
       "registered": "登记于 Monad，{date}",

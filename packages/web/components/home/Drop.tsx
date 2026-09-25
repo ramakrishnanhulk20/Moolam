@@ -46,6 +46,10 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
   const [Card, setCard] = useState<Check["AnswerCard"] | null>(null);
   const [unstarted, setUnstarted] = useState(false);
   const code = useRef<Promise<Check> | null>(null);
+  // Bumped by every press, choice, drop and reset. A check only writes to the
+  // frame while its number is still the newest, so the frame always ends on
+  // the answer to the last thing the reader did, never on a slower earlier one.
+  const run = useRef(0);
   const busy = stage.kind === "checking";
   const landed = stage.kind === "answer" || stage.kind === "problem";
 
@@ -87,15 +91,39 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
     load().catch(() => undefined);
   }
 
+  /** Starts a new run, which every earlier one gives way to. pressed names the sample it is for, if any. */
+  function begin(sample: string | null): number {
+    run.current += 1;
+    setPressed(sample);
+    setUnstarted(false);
+    return run.current;
+  }
+
+  function owns(mine: number): boolean {
+    return run.current === mine;
+  }
+
+  /** The run's last word, written only if nothing has started since. */
+  function end(mine: number, last: Stage) {
+    if (!owns(mine)) {
+      return;
+    }
+    setStage(last);
+    setPressed(null);
+  }
+
   // Without the code there is no card to say anything on, so the frame goes
   // back to how it was, says the check did not run, and the next press tries
   // again.
-  async function loaded(): Promise<Check | null> {
+  async function loaded(mine: number): Promise<Check | null> {
     try {
-      return await load();
+      const check = await load();
+      return owns(mine) ? check : null;
     } catch {
-      reset();
-      setUnstarted(true);
+      if (owns(mine)) {
+        end(mine, { kind: "idle" });
+        setUnstarted(true);
+      }
       return null;
     }
   }
@@ -108,42 +136,42 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
   }
 
   async function pick(sample: TrySample) {
-    setPressed(sample.id);
-    setUnstarted(false);
+    const mine = begin(sample.id);
     setStage({ kind: "checking", name: sample.title ?? sample.id });
-    const run = await loaded();
-    if (run === null) {
+    const steps = await loaded(mine);
+    if (steps === null) {
       return;
     }
-    const file = await run.sampleFile(sample);
+    const file = await steps.sampleFile(sample);
+    if (!owns(mine)) {
+      return;
+    }
     if (file === null) {
-      setStage({ kind: "problem", problem: { key: "sampleFailed" } });
+      end(mine, { kind: "problem", problem: { key: "sampleFailed" } });
       return;
     }
     setStage({ kind: "checking", name: file.name });
-    setStage(await run.answerFor(file));
+    end(mine, await steps.answerFor(file));
   }
 
   async function check(chosen: File) {
+    const mine = begin(null);
     setStage({ kind: "checking", name: chosen.name });
-    setUnstarted(false);
-    const run = await loaded();
-    if (run === null) {
+    const steps = await loaded(mine);
+    if (steps === null) {
       return;
     }
-    setStage(await run.answerFor(chosen));
+    end(mine, await steps.answerFor(chosen));
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setOver(false);
-    setPressed(null);
     take(event.dataTransfer.files?.[0]);
   }
 
   function reset() {
-    setStage({ kind: "idle" });
-    setPressed(null);
+    end(begin(null), { kind: "idle" });
   }
 
   return (
@@ -154,7 +182,6 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
         accept={ACCEPT}
         className="hidden"
         onChange={(event) => {
-          setPressed(null);
           take(event.target.files?.[0]);
           event.target.value = "";
         }}
@@ -175,7 +202,7 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
           <Still
             over={over}
             look={look}
-            waiting={busy && pressed === null}
+            waiting={busy}
             unstarted={unstarted}
             onWarm={warm}
             onChoose={() => input.current?.click()}
@@ -220,8 +247,9 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
 /**
  * The drop target, framed as a film still: four corner marks, a slate line, the one sentence.
  *
- * waiting is a chosen or dropped file whose check code is still on its way,
- * and the button says so in the verify page's own word for it.
+ * waiting is any check in flight whose card is not up yet, a pressed sample's
+ * as well as a chosen or dropped file's, and the button says so in the verify
+ * page's own word for it.
  */
 function Still({
   over,

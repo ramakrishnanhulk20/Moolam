@@ -234,6 +234,7 @@
       "make": "Crea uno",
       "makeNote": "Registra tu propia imagen. Gratis, con una clave de acceso.",
       "live": "Un pasaporte real y una copia que alteramos",
+      "unread": "Moolam no pudo leer este pasaporte de Monad en este momento.",
       "exhibit": "Prueba {mark}",
       "compare": "Esta copia frente a la imagen registrada",
       "registered": "Registrada en Monad, {date}",

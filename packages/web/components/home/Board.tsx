@@ -51,8 +51,9 @@ const MOMENT = `
  * the copy.
  *
  * Every figure on the right is shown only if it was read. A copy that could not
- * be measured takes its exhibit and its verdict with it and leaves the chain's
- * own facts; a registry that would not answer leaves the picture and its name.
+ * be measured takes its exhibit, its verdict and the live mark with it and
+ * leaves the chain's own facts; a registry that would not answer is said in
+ * words at the top, above whatever picture and name are left.
  */
 export function Board({
   finding,
@@ -96,7 +97,11 @@ export function Board({
         </div>
 
         <Panel>
-          {isRead(finding) ? <Evidence finding={finding.read} copy={copy} /> : <Loose loose={loose} />}
+          {isRead(finding) ? (
+            <Evidence finding={finding.read} copy={copy} />
+          ) : (
+            <Loose loose={loose} failed={finding.failed} />
+          )}
         </Panel>
       </div>
     </section>
@@ -151,7 +156,9 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
 
   return (
     <Play id="finding" className="relative scroll-mt-24 lg:flex lg:grow lg:flex-col lg:justify-between">
-      <LiveMark />
+      {/* The mark names a real passport and a copy, so it stands only when both
+          were read in this render. */}
+      {isRead(copy) ? <LiveMark /> : null}
 
       <div className={`mt-6 grid gap-4 sm:gap-8 lg:mt-3 ${isRead(copy) ? "grid-cols-2" : "max-w-[15rem] grid-cols-1"}`}>
         <Exhibit
@@ -192,19 +199,24 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
   );
 }
 
-/** What is left without the registry: the picture, its name and, if the register answered, the holder's word. */
-function Loose({ loose }: { loose: LooseFinding | null }) {
+/**
+ * What is left without the registry: the line saying the record was not read,
+ * then the picture, its name and, if the register answered, the holder's word.
+ * No live mark: the read it would stand for is the one that failed.
+ */
+function Loose({ loose, failed }: { loose: LooseFinding | null; failed: string }) {
+  const t = useTranslations("home.first");
   const verify = useTranslations("verify");
   const stated = useStatementLine();
-  if (loose === null) {
-    return null;
-  }
-  const shown = loose.title !== null || loose.thumbnail !== null;
-  const lines: Line[] = loose.statement === null ? [] : [stated(loose.statement)];
+  const shown = loose !== null && (loose.title !== null || loose.thumbnail !== null);
+  const lines: Line[] = loose === null || loose.statement === null ? [] : [stated(loose.statement)];
 
   return (
     <div data-first-loose className="relative">
-      <LiveMark />
+      <p role="status" data-first-unread data-reason={failed} className="flex max-w-[44ch] items-start gap-3 text-sm leading-relaxed text-text">
+        <span aria-hidden className="mt-[0.45em] h-2 w-2 shrink-0 bg-failed" />
+        {t("unread")}
+      </p>
       {shown ? (
         <div className="mt-6 grid max-w-[15rem] grid-cols-1">
           <Exhibit
@@ -216,7 +228,7 @@ function Loose({ loose }: { loose: LooseFinding | null }) {
         </div>
       ) : null}
       <Lines lines={lines} />
-      <OpenPassport id={loose.id} title={loose.title} />
+      {loose === null ? null : <OpenPassport id={loose.id} title={loose.title} />}
     </div>
   );
 }

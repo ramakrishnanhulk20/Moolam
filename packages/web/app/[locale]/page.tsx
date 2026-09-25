@@ -21,7 +21,8 @@ export const revalidate = 60;
  * which is not what the minute above says.
  *
  * The first screen's copy is made here, once, before any of the ten are drawn:
- * see holdFirstScreen. A visitor's request never makes it.
+ * see holdFirstScreen. A visitor never waits for it: if the hold is empty
+ * after a deploy, the background rebuild makes it once (components/home/read.ts).
  */
 export async function generateStaticParams(): Promise<{ locale: string }[]> {
   await holdFirstScreen();

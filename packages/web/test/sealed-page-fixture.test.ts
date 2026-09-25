@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { NextIntlClientProvider, createTranslator } from "next-intl";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
@@ -12,6 +11,7 @@ import type { MatchedPassport } from "@/components/verify/lookup";
 import type { Stage } from "@/components/verify/AnswerCard";
 import type { Passport } from "@/lib/chain/registry";
 import { verifyResponseSchema } from "@/lib/verifier/client";
+import { fixtureOut } from "./fixture-out";
 
 /**
  * The four sealed screens, rendered to markup a browser can be pointed at.
@@ -186,7 +186,7 @@ describe("the sealed screens as a browser will lay them out", () => {
         )
         .join("\n");
       writeFileSync(
-        fileURLToPath(new URL("../../../kitchen/reports/WO-117-fixture.html", import.meta.url)),
+        fixtureOut("sealed-page-fixture.html"),
         body,
         "utf8",
       );

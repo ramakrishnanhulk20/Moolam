@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { NextIntlClientProvider, createTranslator } from "next-intl";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
@@ -13,6 +12,7 @@ import type { Stage } from "@/components/verify/AnswerCard";
 import type { Passport } from "@/lib/chain/registry";
 import { initialUnsealState, type PassportUnseal, type UnsealState } from "@/lib/passport/unseal";
 import { verifyResponseSchema } from "@/lib/verifier/client";
+import { fixtureOut } from "./fixture-out";
 
 /**
  * Everything this order draws, rendered to markup a browser can be pointed at.
@@ -232,7 +232,7 @@ describe("the publish control and the published screens as a browser lays them o
             `<section class="fixture-scene"><p class="fixture-caption">${caption}</p>${markup}</section>`,
         )
         .join("\n");
-      writeFileSync(fileURLToPath(new URL("../../../kitchen/reports/WO-120-fixture.html", import.meta.url)), body, "utf8");
+      writeFileSync(fixtureOut("unseal-fixture.html"), body, "utf8");
     }
   });
 });

@@ -234,6 +234,7 @@
       "make": "Einen erstellen",
       "makeNote": "Registriere dein eigenes Bild. Kostenlos, mit einem Passkey.",
       "live": "Ein echter Pass und eine Kopie, die wir verändert haben",
+      "unread": "Moolam konnte diesen Pass gerade nicht von Monad lesen.",
       "exhibit": "Beweisstück {mark}",
       "compare": "Diese Kopie gegen das registrierte Bild",
       "registered": "Auf Monad registriert, {date}",

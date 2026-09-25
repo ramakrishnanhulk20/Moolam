@@ -290,6 +290,16 @@ afterwards. The details are in [sealed-passports.txt](../../proofs/sealed-passpo
 private re-check the same afternoon, on [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4),
 matched at distance 0 ([0xa38fd971...](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954), block 107,834,613).
 
+## What the screens promise
+
+Two rules for what the web app draws, added after the code review of 2026-09-26. Both hold for
+every visitor, whatever a registrant wrote into their document.
+
+| Invariant | Held by | What proves it |
+| --- | --- | --- |
+| **Pictures are pinned.** Every picture address a screen draws is accepted only as `ipfs://<cid>`, or as the same file named on Moolam's own gateway, and is resolved through Moolam's gateway. A document address is held to the same rule before it is fetched. Anything else gets the seal plate, so a passport registered straight on chain cannot send a visitor's browser to a host its registrant chose | `packages/web/components/passport/art.ts`, `pinnedUri`, called by `readArt` for the document and by `pictureUri` for the image and thumbnail. The film reads its own pictures through `pictureFor` in `components/story/data.ts`, which takes `ipfs://` only | `test/pinned-pictures.test.ts`: other hosts, plain http, a query string, a look-alike host, dot segments, `data:` and `javascript:` refused; an https picture drawn as the seal plate; a document off IPFS never fetched. The census of 2026-09-26 read all 41 passports: every picture is `ipfs://<cid>`, and the 3 documents stored as `data:` name none. Not covered: an unsealed picture's address comes from Moolam's own unseal record (`lib/data/unseal.ts`), which this rule does not check |
+| **Status is read.** Every status word on a screen is bound to a read that succeeded in that render, and a failed read is said in words on the same screen | `packages/web/components/home/Board.tsx`: `Evidence` draws the live mark only when the record and the copy were both read, and `Loose` draws no mark and says the passport could not be read. The reads come from `firstScreenData` in `components/home/read.ts`, where every one is either a reading or the reason it failed | `test/first-screen-dead-rpc.test.ts`, with the app's chain client pointed at a port nothing answers on: the line shows, the mark does not, the reason is kept. `test/first-screen-home.test.ts` for a copy or a statement that could not be read. Not covered: the rule is tested on the home page's first screen only |
+
 ## Weaknesses we did not fix, stated plainly
 
 - **First registered wins.** A passport proves who registered first, not who

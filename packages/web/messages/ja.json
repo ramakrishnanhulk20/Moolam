@@ -236,6 +236,7 @@
       "make": "自分で作る",
       "makeNote": "自分の画像を登録。無料、パスキーで。",
       "live": "本物のパスポートと、私たちが加工したコピー",
+      "unread": "Moolam は今、このパスポートを Monad から読み取れませんでした。",
       "exhibit": "証拠 {mark}",
       "compare": "このコピーと登録された画像の比較",
       "registered": "Monad に登録、{date}",

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import type { Hex } from "viem";
+import { fixtureOut } from "./fixture-out";
 
 /**
  * The link preview for a sealed passport, drawn by the real route.
@@ -110,7 +110,7 @@ describe("the share card for a sealed passport", () => {
 
     // Run with SEALED_CARD=1 to put the drawn card where a person can look at it.
     if (process.env.SEALED_CARD === "1") {
-      writeFileSync(fileURLToPath(new URL("../../../kitchen/reports/WO-117-card.jpg", import.meta.url)), bytes);
+      writeFileSync(fixtureOut("sealed-card.jpg"), bytes);
     }
   }, 60_000);
 });

@@ -59,6 +59,11 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
   const [file, setFile] = useState<File | null>(null);
   const [over, setOver] = useState(false);
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
+  // Bumped by every plate pressed and every file chosen or dropped. A check
+  // only writes to the card while its number is still the newest, so the card
+  // ends on the answer to the last thing the reader did, never on a slower
+  // earlier one.
+  const run = useRef(0);
   const busy = stage.kind === "checking";
   const landed = stage.kind === "answer" || stage.kind === "problem";
 
@@ -89,10 +94,16 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
     [preview],
   );
 
-  function take(chosen: File | undefined) {
+  function owns(mine: number): boolean {
+    return run.current === mine;
+  }
+
+  /** A file from the input, the drop target or a plate. A plate hands over the run it already started. */
+  function take(chosen: File | undefined, started?: number) {
     if (chosen === undefined) {
       return;
     }
+    const mine = started ?? ++run.current;
     // A file the service would refuse is refused here instead, so the answer is
     // instant and nothing is uploaded to earn it.
     const problem = chosenProblem(chosen);
@@ -102,7 +113,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
       return;
     }
     setFile(chosen);
-    void check(chosen);
+    void check(chosen, mine);
   }
 
   /**
@@ -111,19 +122,24 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
    * the check that follows knows where the bytes came from.
    */
   async function pick(sample: TrySample) {
+    const mine = ++run.current;
     setStage({ kind: "checking", name: sample.title ?? sample.id });
     let file: File;
     try {
       file = await fileFromSample(sample);
     } catch {
-      setFile(null);
-      setStage({ kind: "problem", problem: { key: "sampleFailed" } });
+      if (owns(mine)) {
+        setFile(null);
+        setStage({ kind: "problem", problem: { key: "sampleFailed" } });
+      }
       return;
     }
-    take(file);
+    if (owns(mine)) {
+      take(file, mine);
+    }
   }
 
-  async function check(chosen: File) {
+  async function check(chosen: File, mine: number) {
     setStage({ kind: "checking", name: chosen.name });
 
     try {
@@ -131,9 +147,13 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
       // The service answers with an id and nothing else, so the passport behind
       // it is read from the chain while the card is still turning.
       const passport = answer.kind === "miss" ? null : await matchedPassport(answer.id);
-      setStage({ kind: "answer", answer, passport });
+      if (owns(mine)) {
+        setStage({ kind: "answer", answer, passport });
+      }
     } catch (error) {
-      setStage({ kind: "problem", problem: verifyProblem(error) });
+      if (owns(mine)) {
+        setStage({ kind: "problem", problem: verifyProblem(error) });
+      }
     }
   }
 

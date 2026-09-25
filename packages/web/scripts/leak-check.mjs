@@ -34,7 +34,7 @@ function options(argv) {
     if (argv[at] === "--needle") needles.push(argv[at + 1]);
   }
   return {
-    dist: dist[0] ?? ".next-wo84",
+    dist: dist[0] ?? ".next-perf",
     base: base[0] ?? "http://localhost:3419",
     needles: needles.length > 0 ? needles : ["TOKEN-CANARY-7f3a", "leak-canary"],
   };

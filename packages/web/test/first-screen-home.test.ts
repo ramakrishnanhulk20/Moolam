@@ -9,10 +9,10 @@ import en from "@/messages/en.json";
  * The home page's first screen: the live finding it is built from, and what it
  * shows when any part of that finding could not be read.
  *
- * The rule under test is the one the order set: the copy and the call to the
- * verify service happen when the site is built and never because somebody
- * opened the page, and a read that failed takes its facts off the screen
- * rather than leaving a number behind that nobody read.
+ * The rule under test: the copy and the call to the verify service happen on
+ * the server, when the site is built or when a background rebuild finds the
+ * hold empty, and a read that failed takes its facts off the screen rather
+ * than leaving a number behind that nobody read.
  */
 
 const stub = vi.hoisted(() => ({
@@ -122,16 +122,20 @@ describe("the live finding, read when the page is built", () => {
     }
   });
 
-  it("never makes the copy or asks the verify service because somebody opened the page", async () => {
+  it("makes the copy in a rebuild after launch when the hold is empty, rather than losing it", async () => {
     vi.stubEnv("NEXT_PHASE", "");
     vi.stubEnv("NODE_ENV", "production");
+    // A thumbnail of its own, so the making the test above shared inside this
+    // process is not what answers.
+    stub.art.mockResolvedValue({ title: TITLE, thumbnailUrl: "https://gateway.example/ipfs/runtime-thumb" });
 
     const data = await firstScreenData();
 
-    expect(stub.verify).not.toHaveBeenCalled();
-    expect(gatewayAsked).toBe(0);
-    expect(data.copy).toEqual({ failed: "the copy is only made while the site is built" });
-    // The chain's own facts are still read on the minute, as the rest of the page is.
+    // The hold is stood in for by a plain call in this file, so every read is
+    // an empty hold. first-screen-runtime-copy.test.ts holds the once-then-read rule.
+    expect(stub.verify).toHaveBeenCalledTimes(1);
+    expect(gatewayAsked).toBe(1);
+    expect(data.copy).toMatchObject({ read: { found: true, distance: 5 } });
     expect(data.finding).toMatchObject({ read: { recheck: { distance: 0 }, statement: { summary: "closed" } } });
   });
 

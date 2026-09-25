@@ -234,6 +234,7 @@
       "make": "Make one",
       "makeNote": "Register your own picture. Free, with a passkey.",
       "live": "A real passport, and a copy we altered",
+      "unread": "Moolam could not read this passport from Monad just now.",
       "exhibit": "Exhibit {mark}",
       "compare": "This copy against the registered picture",
       "registered": "Registered on Monad, {date}",

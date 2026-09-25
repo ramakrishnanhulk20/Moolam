@@ -140,17 +140,6 @@ try {
     }
   }
 
-  if (args.toggle !== undefined) {
-    console.log(`\nbench control`);
-    console.log(`  before   ${await cut()}`);
-    await evaluate("document.querySelector('[data-bench-cut]')?.click()");
-    await wait(4000);
-    console.log(`  after    ${await cut()}`);
-    await evaluate("document.querySelector('[data-bench-cut]')?.click()");
-    await wait(4000);
-    console.log(`  again    ${await cut()}`);
-  }
-
   if (window.length === 2) {
     const frames = await sampleFrames(window[0], window[1], seconds);
     console.log(`\nframes in ${window[0]} to ${window[1]}: ${frames.kept} kept of ${frames.total} over ${seconds}s`);
@@ -337,16 +326,6 @@ async function sampleFrames(from, to, forSeconds) {
     worst: kept[kept.length - 1],
     tier,
   };
-}
-
-/** Which cut is on screen right now, and how long its film is. */
-async function cut() {
-  return await evaluate(`(() => {
-    const el = document.querySelector('[data-story-scroller]');
-    const screens = el === null ? 'no scroller' : (el.scrollHeight / el.clientHeight).toFixed(2) + ' screens';
-    const ledger = document.querySelector('[data-stated-ledger]') === null ? 'no ledger' : 'ledger drawn';
-    return (document.querySelector('[data-bench-cut]')?.getAttribute('data-bench-cut') ?? 'no control') + ', ' + screens + ', ' + ledger;
-  })()`);
 }
 
 function onPath(name) {

@@ -1,5 +1,4 @@
 import { unstable_cache } from "next/cache";
-import { PHASE_PRODUCTION_BUILD } from "next/constants";
 import sharp from "sharp";
 import { CACHE_TAGS, HOLD_SECONDS, addresses, reason } from "@/lib/chain/client";
 import { heldConsent, plainStatement } from "@/lib/chain/consent";
@@ -44,7 +43,8 @@ export interface FirstScreenData {
  * on any of them.
  *
  * The copy is different. It is made once, when the site is built, and kept
- * until the next build: see heldCopy.
+ * until the next build. If that hold is ever found empty after launch, the
+ * next background rebuild makes it again, once: see heldCopy.
  */
 export async function firstScreenData(): Promise<FirstScreenData> {
   const [record, said, offered] = await Promise.all([readRecord(), readStatement(), offeredSamples()]);
@@ -65,12 +65,13 @@ export async function firstScreenData(): Promise<FirstScreenData> {
 /**
  * The first screen's reads, made before the build draws the ten home pages.
  *
- * This is the one moment the copy may be made: the server trims the registered
+ * This is where the copy is meant to be made: the server trims the registered
  * thumbnail, hands it to the verify service, and keeps the answer until the
  * next build. Every page the build then draws, and every rebuild after launch,
  * reads that answer from the hold. A build that could not make the copy still
  * ships, loudly: the first screen then shows the chain's own facts and no copy,
- * which is the one failure a visitor can never be shown a made up number for.
+ * which is the one failure a visitor can never be shown a made up number for,
+ * until a rebuild after launch makes it.
  *
  * True when the copy was made and held, false when the build went without it.
  */
@@ -181,27 +182,36 @@ async function readLoose(statement: Finding["statement"]): Promise<LooseFinding 
 /**
  * Whether this process may make the copy and ask the verify service about it.
  *
- * Only while the site is being built, and on the dev server on this machine.
- * The copy is a picture this server mangles and a call to somebody else's
- * service; a visitor's page view must never be what pays for either. The page
- * is rebuilt a minute at a time after launch, and every one of those rebuilds
- * reads the copy the build made or goes without it.
+ * On the server, whenever the hold is empty: while the site is built, and in a
+ * rebuild of the home page after launch. A hold kept only by the build is not
+ * promised to survive into the running site (the host's data cache can start
+ * empty), and refusing there cost the live first screen its copy and its
+ * verdict a minute after every deploy.
+ *
+ * This is safe for a visitor because of where the one caller runs. The home
+ * page is prerendered and revalidates on a minute, so a rebuild happens in the
+ * background after the stale page has already been sent: nobody waits on the
+ * gateway, sharp or the verify service. The page is the only thing that
+ * imports this file (a test holds that), so no route handler a visitor calls
+ * can reach it. The hold never expires, so the copy is made once per empty
+ * hold and read after that. A failed making is not kept, and the page shows
+ * the chain's own facts without the copy until a later rebuild succeeds.
  */
 function mayMakeCopy(): boolean {
-  return process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD || process.env.NODE_ENV === "development";
+  return typeof window === "undefined";
 }
 
 class CopyNotMadeHere extends Error {
   constructor() {
-    super("the copy is only made while the site is built");
+    super("the copy is only made on the server");
     this.name = "CopyNotMadeHere";
   }
 }
 
 /**
- * The ten languages are built side by side and each one asks for the same
- * copy before the first has been kept, so the build shares one making of it
- * rather than handing the verify service ten identical files.
+ * The ten languages are built, and rebuilt, side by side and each one asks for
+ * the same copy before the first has been kept, so the process shares one
+ * making of it rather than handing the verify service ten identical files.
  */
 const making = new Map<string, Promise<CopyReading>>();
 
@@ -224,7 +234,7 @@ function shared(thumbnail: string, id: string, phash: string): Promise<CopyReadi
  * recipe is in the name, so the same file comes out every time, and the only
  * thing that would change the verify service's answer is a new build of it.
  * Anything that fails throws inside the hold, so a bad minute on the gateway or
- * the service is never kept. Outside a build the hold is only ever read.
+ * the service is never kept. Once kept, it is only ever read.
  */
 const heldCopy = unstable_cache(
   async (thumbnail: string, id: string, phash: string) => {

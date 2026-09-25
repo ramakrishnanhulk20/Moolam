@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { NextIntlClientProvider, createTranslator } from "next-intl";
 import type { Hex } from "viem";
 import en from "@/messages/en.json";
@@ -11,6 +10,7 @@ import type { Stage } from "@/components/verify/AnswerCard";
 import type { RecheckState } from "@/lib/recheck/state";
 import type { RecheckControl } from "@/lib/recheck/useRecheck";
 import { verifyResponseSchema } from "@/lib/verifier/client";
+import { fixtureOut } from "./fixture-out";
 
 /**
  * The button on the two screens that carry it, and in every state it has.
@@ -238,7 +238,7 @@ describe("every state the reader can meet", () => {
             `<section class="fixture-scene"><p class="fixture-caption">${caption}</p>${markup}</section>`,
         )
         .join("\n");
-      writeFileSync(fileURLToPath(new URL("../../../kitchen/reports/WO-121c-fixture.html", import.meta.url)), body, "utf8");
+      writeFileSync(fixtureOut("recheck-fixture.html"), body, "utf8");
     }
   });
 

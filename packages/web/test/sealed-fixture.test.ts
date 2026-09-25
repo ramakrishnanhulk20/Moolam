@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement, type FunctionComponent, type ReactElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { NextIntlClientProvider } from "next-intl";
 import en from "@/messages/en.json";
 import { RegisterPanel } from "@/components/studio/RegisterPanel";
@@ -10,6 +9,7 @@ import { GeneratePanel } from "@/components/studio/GeneratePanel";
 import { initialRegisterState, type RegisterState } from "@/lib/studio/flow";
 import type { SealedHandback } from "@/lib/sealed/handback";
 import type { GenerateResponse, PrepareResponse } from "@/lib/verifier/client";
+import { fixtureOut } from "./fixture-out";
 
 vi.mock("@/lib/i18n/routing", () => ({
   Link: (props: { href: string; children?: unknown }) =>
@@ -173,7 +173,7 @@ describe("the sealed panels as a browser will lay them out", () => {
         )
         .join("\n");
       writeFileSync(
-        fileURLToPath(new URL("../../../kitchen/reports/WO-116-fixture.html", import.meta.url)),
+        fixtureOut("sealed-fixture.html"),
         body,
         "utf8",
       );

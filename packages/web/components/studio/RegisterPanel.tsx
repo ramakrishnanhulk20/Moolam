@@ -128,10 +128,21 @@ export function RegisterPanel({
 
   // On a laptop the picture keeps the left column through the run and the done
   // screen, and the band lands in the right one, where the button was pressed.
+  //
+  // The done picture is mounted once and placed by CSS. A sealed one holds the
+  // only copy of the file and the save link made from it, so a second hidden
+  // copy was a second link to the same bytes. Below lg the face becomes one
+  // column: the details column steps aside (contents) so the status band can
+  // go first, then this picture, then the card it sits on top of.
   if ((done || folded) && wide) {
     return (
-      <div data-studio-panel="upload" data-face={done ? "receipt" : "run"} data-studio-layout="wide" className={WIDE_FACE}>
-        <div data-studio-column="picture" className={`hidden lg:block ${AT_LEFT} ${WIDE_STAGE}`}>
+      <div
+        data-studio-panel="upload"
+        data-face={done ? "receipt" : "run"}
+        data-studio-layout="wide"
+        className={done ? `${WIDE_FACE} max-lg:flex max-lg:flex-col` : WIDE_FACE}
+      >
+        <div data-studio-column="picture" className={`${done ? "" : "hidden lg:block "}${AT_LEFT} ${WIDE_STAGE}`}>
           {done ? (
             <Registered state={state} onSaved={onSaved} media="only" />
           ) : (
@@ -146,12 +157,12 @@ export function RegisterPanel({
             </div>
           )}
         </div>
-        <div data-studio-column="details" className={AT_RIGHT}>
-          <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
+        <div data-studio-column="details" className={done ? `${AT_RIGHT} max-lg:contents` : AT_RIGHT}>
+          <div className={`sticky top-[var(--studio-top,var(--header-h))] z-30${done ? " max-lg:order-first" : ""}`}>
             <StatusBand state={state} />
           </div>
           {done ? (
-            <Registered state={state} onSaved={onSaved} media="not-at-lg" />
+            <Registered state={state} onSaved={onSaved} media="none" />
           ) : (
             <Run
               state={state}
@@ -483,9 +494,9 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
 }
 
 /**
- * The done screen. On a laptop under the wide layout it is drawn twice: once
- * as the picture alone in the left column, and once whole on the right with the
- * picture hidden from lg, so a phone still reads the one card it always did.
+ * The done screen. Under the wide layout it is drawn in two parts: the picture
+ * alone in the left column, and the words without it on the right. Below lg the
+ * two stack and join into the one card a phone always read.
  */
 function Registered({
   state,
@@ -494,7 +505,7 @@ function Registered({
 }: {
   state: RegisterState;
   onSaved: () => void;
-  media?: "only" | "not-at-lg";
+  media?: "only" | "none";
 }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
@@ -547,9 +558,9 @@ function Registered({
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="grain relative overflow-hidden border border-line bg-bg-raised"
+      className={`grain relative overflow-hidden border border-line bg-bg-raised${wideOnly(media === "none", "max-lg:border-t-0")}`}
     >
-      {media === "not-at-lg" ? <div className="lg:hidden">{picture}</div> : picture}
+      {media === "none" ? null : picture}
 
       <div className="p-6 sm:p-9">
         <h2 className={`max-w-[20ch] font-display text-[clamp(1.8rem,3.6vw,2.9rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}>

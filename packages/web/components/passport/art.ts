@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { gatewayUrl } from "@/lib/chain/client";
-import { pictureSources } from "@/lib/images";
+import { PICTURE_HOSTS, pictureSources } from "@/lib/images";
 
 // The content id reader moved next to the gateway list it belongs with. The
 // screens that name a link after what it points at still ask for it here.
@@ -101,9 +101,17 @@ function noteContradiction(url: string): void {
  * A gateway that is slow, rate limited or missing the document costs the
  * picture, never the page: the last resort is the seal on a dark plate and a
  * sentence rather than a broken image icon on the screen.
+ *
+ * Only a pinned document is read. The registry takes any string as the
+ * document address, so one written straight to the chain could name a host
+ * of the registrant's choosing, and this server would fetch from it.
  */
 export async function readArt(metadataURI: string): Promise<Art> {
-  for (const url of pictureSources(metadataURI)) {
+  const pinned = pinnedUri(metadataURI);
+  if (pinned === undefined) {
+    return { missing: true };
+  }
+  for (const url of pictureSources(pinned)) {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       continue;
     }
@@ -130,8 +138,7 @@ async function readFrom(url: string): Promise<Art | null> {
     }
 
     const { name, description, prompt } = parsed.data;
-    // A few early records carry a sentence where a picture URI belongs. Only a
-    // real address becomes an img src; anything else gets the seal plate.
+    // Only a pinned address becomes an img src; anything else gets the seal plate.
     const image = pictureUri(parsed.data.image);
     const small = pictureUri(parsed.data.thumbnail) ?? image;
 
@@ -185,7 +192,46 @@ function asksPrivateRecheck(document: unknown): boolean {
   );
 }
 
+/**
+ * A picture address the screens may draw, as ipfs://<cid>, or nothing.
+ *
+ * Only IPFS is accepted, and it is always read back through Moolam's own
+ * gateway. A document registered straight on chain can name any address it
+ * likes; drawn as it stands, an https one would send every visitor's browser
+ * to a host the registrant chose, which could log them and swap the picture
+ * after the fact. Anything else gets the seal plate, as the film already does
+ * (components/story/data.ts).
+ *
+ * A few early records carry a sentence where a picture address belongs, and
+ * those get the seal plate too.
+ */
 function pictureUri(value: string | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  return /^(ipfs:\/\/|https?:\/\/)/.test(value) ? value : undefined;
+  return value === undefined ? undefined : pinnedUri(value);
+}
+
+const PINNED = /^ipfs:\/\/([A-Za-z0-9]+)((?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$/;
+const ON_GATEWAY = /^\/ipfs\/([A-Za-z0-9]+)((?:\/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)\/?$/;
+
+/**
+ * ipfs://<cid>, or the same file named on Moolam's own gateway, which is the
+ * one https form Moolam itself writes. Both come back as ipfs://<cid>, so the
+ * caller resolves them through the gateway this deploy is set to. Any other
+ * host, scheme or shape is undefined.
+ */
+export function pinnedUri(value: string): string | undefined {
+  const direct = PINNED.exec(value);
+  if (direct !== null) {
+    return value;
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "https:" || !PICTURE_HOSTS.includes(url.hostname) || url.search !== "" || url.hash !== "") {
+    return undefined;
+  }
+  const onGateway = ON_GATEWAY.exec(url.pathname);
+  return onGateway === null ? undefined : `ipfs://${onGateway[1]}${onGateway[2]}`;
 }

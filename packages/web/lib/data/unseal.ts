@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import type { Art } from "@/components/passport/art";
+import { pinnedUri, type Art } from "@/components/passport/art";
 import { HOLD_SECONDS, gatewayUrl } from "@/lib/chain/client";
 import { passportTag } from "@/lib/chain/registry";
 import { readUnsealRecord, type UnsealLookup, type UnsealRecord } from "@/lib/verifier/client";
@@ -105,12 +105,19 @@ export async function withUnseal(art: Art, id?: string): Promise<Art> {
  * picture on the site and gets the same fallbacks when a gateway is slow.
  */
 function publishedArt(art: Art, record: UnsealRecord): Art {
+  // The same rule as every other picture on the site: only a pinned address is
+  // drawn, so a record naming anything else leaves the picture sealed.
+  const image = pinnedUri(record.image.uri);
+  const thumbnail = pinnedUri(record.thumbnail.uri);
+  if (image === undefined || thumbnail === undefined) {
+    return art;
+  }
   return {
     title: art.title,
     description: art.description,
     prompt: art.prompt,
-    imageUrl: gatewayUrl(record.image.uri),
-    thumbnailUrl: gatewayUrl(record.thumbnail.uri),
+    imageUrl: gatewayUrl(image),
+    thumbnailUrl: gatewayUrl(thumbnail),
     unsealed: {
       at: record.unsealedAt,
       by: record.unsealedBy,

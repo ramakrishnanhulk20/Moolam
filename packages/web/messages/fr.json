@@ -234,6 +234,7 @@
       "make": "Créez-en un",
       "makeNote": "Enregistrez votre propre image. Gratuit, avec une clé d’accès.",
       "live": "Un vrai passeport, et une copie que nous avons modifiée",
+      "unread": "Moolam n’a pas pu lire ce passeport sur Monad pour l’instant.",
       "exhibit": "Pièce {mark}",
       "compare": "Cette copie face à l’image enregistrée",
       "registered": "Enregistrée sur Monad, {date}",

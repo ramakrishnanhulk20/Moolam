@@ -236,6 +236,7 @@
       "make": "직접 만들기",
       "makeNote": "내 이미지를 등록하세요. 무료, 패스키로.",
       "live": "실제 여권 하나, 그리고 우리가 바꾼 사본",
+      "unread": "Moolam이 지금 Monad에서 이 여권을 읽지 못했습니다.",
       "exhibit": "증거 {mark}",
       "compare": "이 사본과 등록된 이미지 비교",
       "registered": "Monad에 등록, {date}",

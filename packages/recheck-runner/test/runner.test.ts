@@ -52,7 +52,7 @@ const DOCUMENTS: Record<string, Document> = {
 
 const UNREADABLE: Document = { title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false };
 
-interface Kitchen {
+interface StandIns {
   deps: Deps;
   lines: string[];
   runs: SimulateRequest[];
@@ -66,7 +66,8 @@ interface Kitchen {
 
 const SEALED_TOKEN = "sealed-link-token-4f1b9c0e77d2a6";
 
-function kitchen(input: {
+/** One pass's dependencies, each a stand-in that records what the runner asked of it. */
+function standIns(input: {
   env?: NodeJS.ProcessEnv;
   pending?: string[];
   sweep?: PassportRow[];
@@ -80,7 +81,7 @@ function kitchen(input: {
   copy?: CopyState;
   placed?: Placed;
   token?: string | null;
-}): Kitchen {
+}): StandIns {
   const config: Config = readConfig({ ...ENV, ...input.env });
   const lines: string[] = [];
   const runs: SimulateRequest[] = [];
@@ -162,7 +163,7 @@ function kitchen(input: {
 
 describe("one pass of the runner", () => {
   it("runs a request before the sweep", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       pending: [ASKED],
       rows: [row(ASKED)],
       sweep: [row(PICTURE)],
@@ -175,28 +176,28 @@ describe("one pass of the runner", () => {
   });
 
   it("claims a requested passport before it runs anything", async () => {
-    const kit = kitchen({ pending: [ASKED], rows: [row(ASKED)] });
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
     await onePass(kit.deps);
     expect(kit.claims).toEqual([ASKED]);
     expect(kit.runs).toHaveLength(1);
   });
 
   it("leaves a request on the queue when the claim is refused, and runs nothing", async () => {
-    const kit = kitchen({ pending: [ASKED], rows: [row(ASKED)], claim: () => "taken" });
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)], claim: () => "taken" });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.lines.join(" ")).toContain("could not be claimed");
   });
 
   it("skips a sealed passport and tells the person who asked why", async () => {
-    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)] });
+    const kit = standIns({ pending: [SEALED], rows: [row(SEALED)] });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.reports[0]?.reason).toContain("sealed");
   });
 
   it("sweeps past a seed test card without spending a report on it", async () => {
-    const kit = kitchen({ sweep: [row(SEED), row(PICTURE)] });
+    const kit = standIns({ sweep: [row(SEED), row(PICTURE)] });
     const summary = await onePass(kit.deps);
     expect(summary.ran).toBe(1);
     expect(kit.runs[0]?.txHash).toBe(row(PICTURE).txHash);
@@ -204,19 +205,19 @@ describe("one pass of the runner", () => {
   });
 
   it("runs a seed card anyway when somebody asked for it by hand", async () => {
-    const kit = kitchen({ pending: [SEED], rows: [row(SEED)] });
+    const kit = standIns({ pending: [SEED], rows: [row(SEED)] });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(1);
   });
 
   it("uses the event index the receipt gave rather than always zero", async () => {
-    const kit = kitchen({ sweep: [row(ASKED)] });
+    const kit = standIns({ sweep: [row(ASKED)] });
     await onePass(kit.deps);
     expect(kit.runs[0]?.eventIndex).toBe(1);
   });
 
   it("reports the transaction back to the queue when a run wrote one", async () => {
-    const kit = kitchen({ pending: [ASKED], rows: [row(ASKED)] });
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
     await onePass(kit.deps);
     expect(kit.reports[0]).toEqual({
       passportId: ASKED,
@@ -227,7 +228,7 @@ describe("one pass of the runner", () => {
   });
 
   it("reports a failure with the reason, and counts it", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       pending: [ASKED],
       rows: [row(ASKED)],
       simulate: () => ({ ok: false, reason: "the gateway answered 504", printed: "cre ..." }),
@@ -239,21 +240,21 @@ describe("one pass of the runner", () => {
   });
 
   it("leaves a passport that already carries a re-check alone", async () => {
-    const kit = kitchen({ pending: [ASKED], rows: [row(ASKED, { attestationCount: 1 })] });
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED, { attestationCount: 1 })] });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.reports[0]?.reason).toContain("already carries 1");
   });
 
   it("says so when the index has never seen the passport somebody asked about", async () => {
-    const kit = kitchen({ pending: [id("9")] });
+    const kit = standIns({ pending: [id("9")] });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.reports[0]?.reason).toContain("not in the index");
   });
 
   it("carries on with the next passport when one of them throws", async () => {
-    const kit = kitchen({ sweep: [row(PICTURE), row(ASKED)] });
+    const kit = standIns({ sweep: [row(PICTURE), row(ASKED)] });
     let first = true;
     kit.deps.readDocument = async (metadataURI) => {
       if (first) {
@@ -270,7 +271,7 @@ describe("one pass of the runner", () => {
   });
 
   it("does not silence a passport that threw, and backs off after three of them", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       sweep: [row(PICTURE), row(ASKED), row(SEED)],
       state: { ...emptyState("2026-09-22"), failures: 2 },
     });
@@ -284,7 +285,7 @@ describe("one pass of the runner", () => {
   });
 
   it("carries on with the sweep when the queue itself is unreachable", async () => {
-    const kit = kitchen({ queueFails: true, sweep: [row(PICTURE)] });
+    const kit = standIns({ queueFails: true, sweep: [row(PICTURE)] });
     const summary = await onePass(kit.deps);
     expect(summary.ran).toBe(1);
     expect(kit.lines.join(" ")).toContain("could not read the request queue");
@@ -293,7 +294,7 @@ describe("one pass of the runner", () => {
 
 describe("a passport registered sealed and published since", () => {
   it("is re-checked with the same command as a public one once its unseal record exists", async () => {
-    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "found" }) });
+    const kit = standIns({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "found" }) });
     const summary = await onePass(kit.deps);
 
     expect(kit.lookups).toEqual([SEALED]);
@@ -303,13 +304,13 @@ describe("a passport registered sealed and published since", () => {
   });
 
   it("is picked up by the sweep too", async () => {
-    const kit = kitchen({ sweep: [row(SEALED)], record: () => ({ kind: "found" }) });
+    const kit = standIns({ sweep: [row(SEALED)], record: () => ({ kind: "found" }) });
     const summary = await onePass(kit.deps);
     expect(summary.ran).toBe(1);
   });
 
   it("is refused as sealed when the service has no record for it", async () => {
-    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "none" }) });
+    const kit = standIns({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "none" }) });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.reports[0]?.reason).toContain("is sealed, so there is no published picture");
@@ -317,7 +318,7 @@ describe("a passport registered sealed and published since", () => {
   });
 
   it("is refused when the record served for it names another passport", async () => {
-    const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "mismatch" }) });
+    const kit = standIns({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "mismatch" }) });
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.reports[0]?.reason).toContain("names another passport");
@@ -325,7 +326,7 @@ describe("a passport registered sealed and published since", () => {
 
   it("is tried again later, spending nothing, when the lookup timed out or answered 500", async () => {
     for (const reason of ["the unseal record lookup did not answer within 10 seconds", "the unseal record lookup answered status 500"]) {
-      const kit = kitchen({ pending: [SEALED], rows: [row(SEALED)], sweep: [row(SEALED)], record: () => ({ kind: "failed", reason }) });
+      const kit = standIns({ pending: [SEALED], rows: [row(SEALED)], sweep: [row(SEALED)], record: () => ({ kind: "failed", reason }) });
       const summary = await onePass(kit.deps);
 
       expect(kit.runs).toHaveLength(0);
@@ -340,7 +341,7 @@ describe("a passport registered sealed and published since", () => {
   });
 
   it("never asks for a record when the document is public", async () => {
-    const kit = kitchen({ sweep: [row(PICTURE)] });
+    const kit = standIns({ sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.lookups).toHaveLength(0);
   });
@@ -348,7 +349,7 @@ describe("a passport registered sealed and published since", () => {
 
 describe("the guards", () => {
   it("stops before the first run when the day's cap is used up", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       sweep: [row(PICTURE)],
       state: { ...emptyState("2026-09-22"), reports: 40 },
     });
@@ -358,13 +359,13 @@ describe("the guards", () => {
   });
 
   it("counts a broadcast run against the cap before it happens", async () => {
-    const kit = kitchen({ sweep: [row(PICTURE)] });
+    const kit = standIns({ sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.state().reports).toBe(1);
   });
 
   it("stops halfway through a pass when the cap runs out mid-way", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       env: { RUNNER_MAX_REPORTS_PER_DAY: "1" },
       sweep: [row(PICTURE), row(ASKED)],
     });
@@ -374,7 +375,7 @@ describe("the guards", () => {
   });
 
   it("stops when the CRE wallet is under the floor, and does not mark the passport handled", async () => {
-    const kit = kitchen({ sweep: [row(PICTURE)], balance: 1_400_000_000_000_000_000n });
+    const kit = standIns({ sweep: [row(PICTURE)], balance: 1_400_000_000_000_000_000n });
     const summary = await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(summary.stopped).toContain("under the floor");
@@ -382,7 +383,7 @@ describe("the guards", () => {
   });
 
   it("backs off after three failures in a row", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       sweep: [row(PICTURE), row(ASKED), row(SEED)],
       state: { ...emptyState("2026-09-22"), failures: 2 },
       simulate: () => ({ ok: false, reason: "the CLI exited 1", printed: "cre ..." }),
@@ -394,7 +395,7 @@ describe("the guards", () => {
   });
 
   it("does nothing at all while the backoff is still on", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       sweep: [row(PICTURE)],
       state: { ...emptyState("2026-09-22"), failures: 3, backoffUntil: Math.floor(NOW / 1000) + 600 },
     });
@@ -404,13 +405,13 @@ describe("the guards", () => {
   });
 
   it("clears the failure count as soon as a run succeeds", async () => {
-    const kit = kitchen({ sweep: [row(PICTURE)], state: { ...emptyState("2026-09-22"), failures: 2 } });
+    const kit = standIns({ sweep: [row(PICTURE)], state: { ...emptyState("2026-09-22"), failures: 2 } });
     await onePass(kit.deps);
     expect(kit.state().failures).toBe(0);
   });
 
   it("leaves a passport it has just handled alone for the cooldown", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       sweep: [row(PICTURE)],
       state: noteRecent(emptyState("2026-09-22"), PICTURE, NOW - 60_000),
     });
@@ -420,14 +421,14 @@ describe("the guards", () => {
   });
 
   it("carries the ten minute timeout into every run", async () => {
-    const kit = kitchen({ sweep: [row(PICTURE)] });
+    const kit = standIns({ sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.runs[0]?.timeoutMs).toBe(600_000);
   });
 
   it("never asks for more than one pass worth of passports", async () => {
     const many = ["1", "2", "3", "4", "5", "6", "7"].map((letter) => row(id(letter)));
-    const kit = kitchen({ sweep: many, env: { RUNNER_MAX_PER_PASS: "2" } });
+    const kit = standIns({ sweep: many, env: { RUNNER_MAX_PER_PASS: "2" } });
     const summary = await onePass(kit.deps);
     expect(summary.considered).toBe(2);
   });
@@ -435,7 +436,7 @@ describe("the guards", () => {
 
 describe("dry-run mode", () => {
   it("runs the simulator with the broadcast flag off and reports nothing back", async () => {
-    const kit = kitchen({ env: { RUNNER_DRY_RUN: "1" }, pending: [ASKED], rows: [row(ASKED)] });
+    const kit = standIns({ env: { RUNNER_DRY_RUN: "1" }, pending: [ASKED], rows: [row(ASKED)] });
     const summary = await onePass(kit.deps);
 
     expect(kit.runs[0]?.broadcast).toBe(false);
@@ -444,13 +445,13 @@ describe("dry-run mode", () => {
   });
 
   it("spends nothing from the day's cap", async () => {
-    const kit = kitchen({ env: { RUNNER_DRY_RUN: "1" }, sweep: [row(PICTURE)] });
+    const kit = standIns({ env: { RUNNER_DRY_RUN: "1" }, sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.state().reports).toBe(0);
   });
 
   it("says what it would have done, one passport at a time", async () => {
-    const kit = kitchen({ env: { RUNNER_DRY_RUN: "1" }, sweep: [row(PICTURE)] });
+    const kit = standIns({ env: { RUNNER_DRY_RUN: "1" }, sweep: [row(PICTURE)] });
     await onePass(kit.deps);
     expect(kit.lines.join("\n")).toContain("dry run: passport 0xaaaaaaaaaa would be re-checked");
   });
@@ -460,7 +461,7 @@ describe("a passport asking for a private re-check", () => {
   const SEALED_DIR = "moolam-sealed-verifier";
 
   it("is routed to the sealed workflow folder, and a public passport is not", async () => {
-    const kit = kitchen({ sweep: [row(PRIVATE), row(PICTURE)] });
+    const kit = standIns({ sweep: [row(PRIVATE), row(PICTURE)] });
     const summary = await onePass(kit.deps);
 
     expect(summary.ran).toBe(2);
@@ -470,7 +471,7 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("goes on when the copy is kept: a request, then a claim, then the simulator, then the release", async () => {
-    const kit = kitchen({ sweep: [row(PRIVATE)], copy: "kept" });
+    const kit = standIns({ sweep: [row(PRIVATE)], copy: "kept" });
     await onePass(kit.deps);
 
     expect(kit.calls).toEqual([
@@ -484,13 +485,13 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("does not ask for a second request when the passport came off the queue already claimed", async () => {
-    const kit = kitchen({ pending: [PRIVATE], rows: [row(PRIVATE)] });
+    const kit = standIns({ pending: [PRIVATE], rows: [row(PRIVATE)] });
     await onePass(kit.deps);
     expect(kit.calls).toEqual([`claim ${PRIVATE}`, `status ${PRIVATE}`, `simulate ${SEALED_DIR}`, `done ${PRIVATE}`]);
   });
 
   it("treats a copy that is gone exactly as a plain sealed passport: refused, nothing spent", async () => {
-    const kit = kitchen({ pending: [PRIVATE], rows: [row(PRIVATE)], copy: "gone" });
+    const kit = standIns({ pending: [PRIVATE], rows: [row(PRIVATE)], copy: "gone" });
     const summary = await onePass(kit.deps);
 
     expect(kit.runs).toHaveLength(0);
@@ -502,14 +503,14 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("re-checks a gone copy's passport publicly when its holder has published the picture since", async () => {
-    const kit = kitchen({ sweep: [row(PRIVATE)], copy: "gone", record: () => ({ kind: "found" }) });
+    const kit = standIns({ sweep: [row(PRIVATE)], copy: "gone", record: () => ({ kind: "found" }) });
     await onePass(kit.deps);
     expect(path.basename(kit.runs[0]?.workflowDir ?? "")).toBe("moolam-verifier");
     expect(kit.calls).not.toContain(`request ${PRIVATE}`);
   });
 
   it("tries again later when the copy's state is unknown, spending nothing and claiming nothing", async () => {
-    const kit = kitchen({ sweep: [row(PRIVATE)], copy: "unknown" });
+    const kit = standIns({ sweep: [row(PRIVATE)], copy: "unknown" });
     const summary = await onePass(kit.deps);
 
     expect(kit.runs).toHaveLength(0);
@@ -522,7 +523,7 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("refuses with a named reason when the env file carries no CRE_SEALED_LINK_TOKEN, before any request", async () => {
-    const kit = kitchen({ pending: [PRIVATE], rows: [row(PRIVATE)], token: null });
+    const kit = standIns({ pending: [PRIVATE], rows: [row(PRIVATE)], token: null });
     await onePass(kit.deps);
 
     expect(kit.runs).toHaveLength(0);
@@ -532,13 +533,13 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("refuses when the queue reads the copy as gone, and runs nothing when the claim is taken", async () => {
-    const sealed = kitchen({ sweep: [row(PRIVATE)], placed: "sealed" });
+    const sealed = standIns({ sweep: [row(PRIVATE)], placed: "sealed" });
     await onePass(sealed.deps);
     expect(sealed.runs).toHaveLength(0);
     expect(sealed.calls).not.toContain(`claim ${PRIVATE}`);
     expect(sealed.lines.join(" ")).toContain("reads its private copy as gone");
 
-    const taken = kitchen({ sweep: [row(PRIVATE)], claim: () => "taken" });
+    const taken = standIns({ sweep: [row(PRIVATE)], claim: () => "taken" });
     await onePass(taken.deps);
     expect(taken.runs).toHaveLength(0);
     expect(taken.reports).toHaveLength(0);
@@ -546,7 +547,7 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("releases the claim through /recheck/done when the run fails", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       sweep: [row(PRIVATE)],
       simulate: () => ({ ok: false, reason: "the private copy fetch returned status 403", printed: "cre ..." }),
     });
@@ -555,7 +556,7 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("releases the claim when the simulator cannot even be started", async () => {
-    const kit = kitchen({ sweep: [row(PRIVATE)] });
+    const kit = standIns({ sweep: [row(PRIVATE)] });
     kit.deps.simulate = async () => {
       throw new Error("spawn cre ENOENT");
     };
@@ -565,7 +566,7 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("releases the claim in a dry run too, and spends nothing", async () => {
-    const kit = kitchen({
+    const kit = standIns({
       env: { RUNNER_DRY_RUN: "1" },
       sweep: [row(PRIVATE)],
       simulate: () => ({ ok: true, recomputed: "0x1f1bc103fbef6f47", distance: 2, matched: true, printed: "cre ..." }),
@@ -581,7 +582,7 @@ describe("a passport asking for a private re-check", () => {
     const link =
       "https://lavender-personal-grasshopper-978.mypinata.cloud/files/bafkreigwx2?X-Algorithm=PINATA1&X-Date=1790000000&X-Expires=120&X-Method=GET&X-Signature=9c1f0a";
     const line = `✗ failed: GET ${link} errored after verify.example/sealed/link answered with token ${SEALED_TOKEN}; retry X-Signature=9c1f0a against https://verify.example/sealed/link`;
-    const kit = kitchen({ sweep: [row(PRIVATE)] });
+    const kit = standIns({ sweep: [row(PRIVATE)] });
     kit.deps.simulate = (request) => runSimulation(request, async () => ({ output: line, code: 1, timedOut: false }));
     await onePass(kit.deps);
 
