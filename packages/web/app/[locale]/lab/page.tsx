@@ -49,6 +49,11 @@ export default async function LabPage({ params }: { params: Promise<{ locale: st
           Passport facts strip
         </Link>
       </p>
+      <p className="px-5 pb-6 font-mono text-[11px] uppercase tracking-[0.2em] sm:px-8 lg:px-14">
+        <Link href="/lab/studio-wide" className="inline-flex h-11 items-center text-accent underline underline-offset-4 hover:opacity-70">
+          Wide studio, signed in
+        </Link>
+      </p>
     </>
   );
 }
