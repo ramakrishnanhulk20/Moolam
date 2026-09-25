@@ -6,6 +6,12 @@
 #
 # or, from a checkout:  sudo bash packages/recheck-runner/deploy/install.sh
 #
+# or, while the repository is private, from a git bundle copied to the machine:
+#   git bundle create moolam.bundle master && scp moolam.bundle root@<vm>:/root/moolam.bundle
+#   sudo REPO_URL=/root/moolam.bundle bash install.sh
+# The bundle becomes the clone's origin, so an update is a new bundle copied over the old one and
+# this script run again.
+#
 # What it does NOT do, because only the operator can: write the secrets into /etc/moolam/runner.env, put
 # the CRE session in place, and send the one receiver transaction. The last section prints those
 # three steps and the service is left stopped until they are done.
@@ -69,23 +75,46 @@ fi
 cre version || true
 
 say "the repository at $ROOT"
-if [ -d "$ROOT/.git" ]; then
-  git -C "$ROOT" fetch --depth 1 origin "$REPO_REF"
-  git -C "$ROOT" checkout -f "origin/$REPO_REF"
+# A bundle is a file on this machine, and a local clone ignores --depth, so it is cloned whole.
+# The clone is owned by the service user and git refuses to work in a repository another user owns,
+# so root names this one as safe for each command rather than for every repository on the machine.
+GIT=(git -c "safe.directory=$ROOT" -C "$ROOT")
+if [ -f "$REPO_URL" ]; then
+  # verify needs a repository to run in; list-heads does not, and the clone checks the pack itself.
+  git bundle list-heads "$REPO_URL" | grep -q " refs/heads/$REPO_REF\$" || {
+    echo "$REPO_URL is not a git bundle holding $REPO_REF" >&2
+    exit 1
+  }
+  if [ -d "$ROOT/.git" ]; then
+    "${GIT[@]}" remote set-url origin "$REPO_URL"
+    "${GIT[@]}" fetch origin "$REPO_REF"
+    "${GIT[@]}" checkout -f "origin/$REPO_REF"
+  else
+    git clone --branch "$REPO_REF" "$REPO_URL" "$ROOT"
+  fi
+elif [ -d "$ROOT/.git" ]; then
+  "${GIT[@]}" fetch --depth 1 origin "$REPO_REF"
+  "${GIT[@]}" checkout -f "origin/$REPO_REF"
 else
   git clone --depth 1 --branch "$REPO_REF" "$REPO_URL" "$ROOT"
 fi
+"${GIT[@]}" log -1 --format='commit %h, %cs, %s'
 chown -R "$SERVICE_USER:$SERVICE_USER" "$ROOT"
 
-say "the workflow's dependencies"
-su -s /bin/bash "$SERVICE_USER" -c "cd $ROOT/packages/workflow/moolam-verifier && $BUN install --frozen-lockfile"
+say "the workflows' dependencies"
+# Both folders, because the runner sends a privately re-checkable passport to the sealed workflow.
+for workflow in moolam-verifier moolam-sealed-verifier; do
+  su -s /bin/bash "$SERVICE_USER" -c "cd $ROOT/packages/workflow/$workflow && $BUN install --frozen-lockfile"
+done
 
 say "building the runner"
-# --workspaces=false keeps npm out of the rest of the monorepo, which this machine has no use for,
-# and --no-save leaves the committed lockfile alone. The runner itself has no runtime dependencies:
+# npm ci from the root, scoped to this one workspace, installs exactly what the root lockfile pins
+# for it and nothing for the rest of the monorepo, which this machine has no use for. The earlier
+# npm install --workspaces=false inside the package folder crashed npm 10 on 2026-09-26 ("Cannot
+# read properties of null (reading 'edgesOut')"). The runner itself has no runtime dependencies:
 # everything installed here is the compiler and the test runner.
 su -s /bin/bash "$SERVICE_USER" -c \
-  "cd $ROOT/packages/recheck-runner && npm install --workspaces=false --no-save --omit=optional --no-audit --no-fund && npm run build"
+  "cd $ROOT && npm ci --workspace @moolam/recheck-runner --include-workspace-root=false --omit=optional --no-audit --no-fund && cd packages/recheck-runner && npm run build"
 
 say "the systemd unit"
 install -m 0644 "$ROOT/packages/recheck-runner/deploy/moolam-recheck-runner.service" \
@@ -99,7 +128,7 @@ cat <<INSTRUCTIONS
 
 Three things are the operator's, and only the operator's:
 
-1. The secrets. Copy the template and fill in the four values marked PASTE:
+1. The secrets. Copy the template and fill in the five values marked PASTE:
      sudo cp $ROOT/packages/recheck-runner/deploy/runner.env.example $ENV_FILE
      sudo chmod 0600 $ENV_FILE
      sudo nano $ENV_FILE

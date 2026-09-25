@@ -248,15 +248,28 @@ Ubuntu 24.04, the smallest instance a provider sells. From a root shell:
 curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/master/packages/recheck-runner/deploy/install.sh | sudo bash
 ```
 
-It installs Node 22 from NodeSource, bun (the workflow folder is pinned with `bun.lock`), the CRE
-CLI for Linux, clones the repository to `/srv/moolam`, installs the workflow's dependencies, builds
-this package, and installs the systemd unit. It leaves the service stopped, on purpose.
+While the repository is private there is no URL to clone, so the code travels as a git bundle:
+
+```bash
+git bundle create moolam.bundle master
+scp moolam.bundle packages/recheck-runner/deploy/install.sh root@<vm>:/root/
+ssh root@<vm> 'REPO_URL=/root/moolam.bundle bash /root/install.sh'
+```
+
+The bundle is cloned whole and becomes the clone's origin, so an update is a new bundle copied over
+the old one and the same command run again.
+
+It installs Node 22 from NodeSource, bun (each workflow folder is pinned with `bun.lock`), the CRE
+CLI for Linux, clones the repository to `/srv/moolam`, installs the dependencies of both workflows,
+`moolam-verifier` and `moolam-sealed-verifier`, builds this package, and installs the systemd unit.
+It leaves the service stopped, on purpose.
 
 Three things are left to the operator, because nothing on that machine can do them.
 
 **1. Paste the secrets into the env file.** Copy `deploy/runner.env.example` to
-`/etc/moolam/runner.env`, `chmod 0600`, and fill in the four values marked PASTE: the CRE wallet's
-private key, the Monad RPC URL the workflow uses, the runner token, and the index address. That
+`/etc/moolam/runner.env`, `chmod 0600`, and fill in the five values marked PASTE: the CRE wallet's
+private key, the Monad RPC URL the workflow uses, the runner token, the sealed link token, and the
+index address. That
 file is read by the CRE CLI as well as by the runner, which is why the wallet key and
 `MONAD_MAINNET_RPC_URL` live in it.
 
