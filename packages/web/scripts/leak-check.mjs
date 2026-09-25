@@ -6,7 +6,7 @@
 // clean run cannot be a run against six empty pages.
 //
 // Usage:
-//   node scripts/leak-check.mjs --dist .next-wo84 --base http://localhost:3419 \
+//   node scripts/leak-check.mjs --dist .next-check --base http://localhost:3419 \
 //     --needle TOKEN-CANARY-7f3a --needle leak-canary
 //
 // This checks the text a browser receives. It does not check what the server writes to its own

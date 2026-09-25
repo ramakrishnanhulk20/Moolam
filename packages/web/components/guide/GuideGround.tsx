@@ -26,7 +26,7 @@ export type GuideClose = "skip" | "ground" | "escape" | "done" | "go";
  * While it is open the page under it does not scroll and does not move, Escape
  * closes it, and a keyboard cannot walk out of it into the page it is covering.
  * The stage decides where it lives: "window" is the real thing, fixed over
- * everything, and "frame" is the bench, where it sits inside a mock window so
+ * everything, and "frame" sits inside a mock window, as the tests draw it, so
  * the page around it can still be read.
  */
 export function GuideGround({

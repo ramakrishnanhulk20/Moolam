@@ -7,12 +7,11 @@ import ta from "@/messages/ta.json";
 
 /**
  * The tool pages after the design read of 25 September: the fixes that went
- * straight onto the real pages, and the compact openings Ram said yes to, now
+ * straight onto the real pages, and the compact openings chosen in that read, now
  * drawn on Verify, My pictures, Agents, the dispute page and Explore.
  *
  * Layout is held here by the classes that make it, since a node test has no
- * boxes to measure. The boxes themselves were measured on the dev server, and
- * the numbers are in kitchen/reports/WO-155.txt and WO-162.txt.
+ * boxes to measure. The boxes themselves were measured on the dev server.
  */
 
 process.env.NEXT_PUBLIC_PRIVY_APP_ID = "test-app-id";
@@ -289,7 +288,7 @@ describe("a sealed plate", () => {
   });
 });
 
-describe("Ram's two uploads", () => {
+describe("the maintainer's two test uploads", () => {
   it("are test cards by id, whatever their titles say", () => {
     expect(isTestCard("Iphone 18 pro max", IPHONE)).toBe(true);
     expect(isTestCard("Old but strong", OLD_BUT_STRONG)).toBe(true);

@@ -1,5 +1,5 @@
-The four lines a broadcast run prints, copied from the run Ram recorded on 2026-09-17 in
-kitchen/reports/recheck-run-20260917-0713.txt (passport 0x0c45b008db, report transaction
+The four lines a broadcast run prints, copied from the run the maintainer recorded on
+2026-09-17, listed in proofs/rechecks.txt (passport 0x0c45b008db, report transaction
 0x085d8500ab86dc1f9028d8375b92e5b4b569d83d5f3c96c32e38679e5b6a3602, confirmed on chain). The
 surrounding lines are the ones the same CLI prints on every run and are in simulate-dry-run.txt.
 

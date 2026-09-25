@@ -1,5 +1,5 @@
-WO-80 and WO-80b MoolamConsent, proof pack, 2026-09-18.
-Updated in place after WO-80b added the batch call, the STANDARD name and the MAX_BATCH cap, so
+MoolamConsent, proof pack, 2026-09-18.
+Updated in place after the batch call, the STANDARD name and the MAX_BATCH cap were added, so
 every number here is for the contract as it now stands.
 Sections 1 to 5 were written before the deploy: nothing in them was broadcast, no transaction was
 sent, no private key was read or printed by hand, and no deployed contract was changed. The register
@@ -36,7 +36,7 @@ Suite result: ok. 5 passed; 0 failed; 0 skipped
 
 Ran 11 test suites in 4.84s (20.39s CPU time): 182 tests passed, 0 failed, 0 skipped (182 total tests)
 
-122 before this work order, 60 new: 45 unit, 8 fuzz at 512 runs each, 1 invariant suite of 6
+122 before MoolamConsent, 60 new: 45 unit, 8 fuzz at 512 runs each, 1 invariant suite of 6
 invariants over 256 runs and 8,192 calls, 6 fork tests against Monad mainnet state.
 
 The invariant run in full, with the batch now driven beside the single write:

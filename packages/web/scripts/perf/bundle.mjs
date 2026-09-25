@@ -10,9 +10,9 @@
  *
  * The maps are only written when the build asks for them:
  *
- *   ANALYZE=1 NEXT_DIST_DIR=.next-wo66 npx next build
- *   NEXT_DIST_DIR=.next-wo66 npx next start -p 3311
- *   node packages/web/scripts/perf/bundle.mjs --base http://localhost:3311 --dist .next-wo66
+ *   ANALYZE=1 NEXT_DIST_DIR=.next-check npx next build
+ *   NEXT_DIST_DIR=.next-check npx next start -p 3311
+ *   node packages/web/scripts/perf/bundle.mjs --base http://localhost:3311 --dist .next-check
  *
  * Options: --base, --dist, --paths, --out, --top, --browser, --port.
  */

@@ -48,7 +48,7 @@ const CLAIM_GENERATOR = "moolam-studio/0.1.0";
 /**
  * How many images one signed-in creator may prepare an hour.
  *
- * Every prepare spends about a second of CPU and up to four pins on Ram's Pinata account, one of
+ * Every prepare spends about a second of CPU and up to four pins on the operator's Pinata account, one of
  * them for a sealed registration, so the cap is what stops one account draining the plan. It is
  * counted on the verified Privy user id, which a caller cannot choose, and falls back to the
  * socket address for a caller with no valid token. A sealed registration is counted the same as

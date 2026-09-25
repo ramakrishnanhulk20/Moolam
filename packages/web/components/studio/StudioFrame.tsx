@@ -20,7 +20,7 @@ const NOTHING = () => undefined;
  * Scroll anchoring is off inside it: a press folds a long form away, and the
  * browser answers that by putting the scroll back where the folded content used
  * to hold it, which undoes the one scroll that brings the run into view. Proved
- * on the bench in WO-124b.
+ * in a real browser.
  *
  * Under the wide layout the box lets go of its cap at lg, but only once the
  * panel is the card on screen: the sign in, the bind and the recovery cards are

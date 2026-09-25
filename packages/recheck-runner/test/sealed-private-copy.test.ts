@@ -1,7 +1,8 @@
 // Holds the sealed workflow's pure rules, packages/workflow/moolam-sealed-verifier/private-copy.ts,
 // to the verify service's predicate, the shared fixture set and the refusal rules of the threat
 // model (B5, B6, B7, D7, D8). Does NOT cover the HTTP calls themselves, the enclave, the decoder or
-// the chain: those run only inside the simulator, and the work order's dry run is their proof.
+// the chain: those run only inside the simulator, and the private run in proofs/rechecks.txt is
+// their proof.
 
 import fs from "node:fs";
 import path from "node:path";

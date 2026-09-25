@@ -116,7 +116,7 @@ export default async function LocaleLayout({
   const source = activeSource();
 
   // Vercel sets VERCEL on its own machines, so nothing is counted on a laptop,
-  // in a test or on any other host. A page Ram is looking at on his own dev
+  // in a test or on any other host. A page viewed on the maintainer's own dev
   // server, where the lab flag is on, is not a visit either, so the two
   // conditions are one line. Neither package sets a cookie and neither is
   // given one.
@@ -147,7 +147,7 @@ export default async function LocaleLayout({
   ] as const;
 
   // The phone's whole navigation, in the order a thumb reads it: the raised
-  // Make sits in the middle, which is the drawing Ram picked on 23 September.
+  // Make sits in the middle.
   // Two of the five are never prefetched because both pages carry the wallet.
   // The last three carry the name the first-visit guide points at.
   const tabs: Tab[] = [

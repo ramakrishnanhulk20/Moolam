@@ -339,7 +339,7 @@ async function sampleFrames(from, to, forSeconds) {
   };
 }
 
-/** Which cut is on the bench right now, and how long its film is. */
+/** Which cut is on screen right now, and how long its film is. */
 async function cut() {
   return await evaluate(`(() => {
     const el = document.querySelector('[data-story-scroller]');

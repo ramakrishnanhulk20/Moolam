@@ -135,11 +135,11 @@ const nextConfig: NextConfig = {
   // is no way to say what is inside one. scripts/perf/bundle.mjs reads these to
   // name the ten heaviest modules on a route. Maps cost build time and a public
   // copy of the source, so they are only written when a measurement asks:
-  // ANALYZE=1 NEXT_DIST_DIR=.next-wo66 npx next build.
+  // ANALYZE=1 NEXT_DIST_DIR=.next-check npx next build.
   productionBrowserSourceMaps: process.env.ANALYZE === "1",
 
-  // Next writes its own AGENTS.md and CLAUDE.md next to the app. This repo keeps
-  // its rules for agents in one place, so those files are not wanted here.
+  // Next writes its own AGENTS.md and CLAUDE.md next to the app for coding
+  // assistants. They are not part of the product, so they are not wanted here.
   agentRules: false,
 
   // The dev server refuses its hot reload socket to an origin it was not told

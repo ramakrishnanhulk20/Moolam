@@ -10,7 +10,7 @@ import { GuideMarkDrawing } from "./marks";
 import { HANG, cardWidth, keepClearOn, placeCard, type Box, type Placement } from "./place";
 import { guideSteps, nextStep } from "./steps";
 
-/** The box the guide is drawn in: the window, or a bench's mock window. */
+/** The box the guide is drawn in: the window, or a mock window. */
 export interface Stage {
   left: number;
   top: number;
@@ -141,7 +141,7 @@ export function GuideWalk({
   open: boolean;
   onClose: (reason: GuideClose) => void;
   stage?: GuideStage;
-  /** Where to look for the anchors. A bench passes its own mock window. */
+  /** Where to look for the anchors. A "frame" stage passes its own mock window. */
   scope?: RefObject<HTMLElement | null>;
 }) {
   const t = useTranslations("guide");
@@ -189,7 +189,7 @@ export function GuideWalk({
     const from = performance.now();
 
     const look = () => {
-      // The window itself, or the bench's frame when one was handed in.
+      // The window itself, or the mock window's frame when one was handed in.
       // Measured from a box rather than from the guide's own wrapper, so the
       // looking can start before a single pixel of the guide is drawn.
       const frameNode = stage === "frame" ? (scope?.current ?? null) : null;

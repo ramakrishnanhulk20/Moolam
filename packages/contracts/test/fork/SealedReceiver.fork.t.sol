@@ -6,7 +6,7 @@ pragma solidity 0.8.30;
 // production forwarder's address, so the forwarder's own check of the Chainlink nodes' signatures
 // is not exercised here; that is Chainlink's code and is proven by a live workflow run. The deploy
 // script is driven through deployAs, which shares every step with run except reading the key and
-// writing the deployment file; the file writing is proven by the Anvil dry run and Ram's mainnet run.
+// writing the deployment file; the file writing is proven by the Anvil dry run and the mainnet deploy.
 
 import {Test, console2} from "forge-std/Test.sol";
 

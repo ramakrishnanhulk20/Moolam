@@ -59,7 +59,7 @@ export const BENCH_STATES: readonly BenchState[] = [
   "statementFailed",
 ];
 
-/** What the dial calls each state. Bench chrome, so it is English and lives here. */
+/** What the dial calls each state. Test chrome, so it is English and lives here. */
 export const STATE_WORDS: Record<BenchState, string> = {
   idle: "Idle",
   preparing: "Preparing",
@@ -96,7 +96,7 @@ const AGENT_WALLET = "0xa37418c4047Fb6A42150D6E9Ddab77580Ddb9AFb" as Hex;
 
 /**
  * A picture that already ships with the site, standing in for the pinned copy a
- * real run reads back through the gateway. Local on purpose: the bench should
+ * real run reads back through the gateway. Local on purpose: a fixture should
  * not wait on a gateway to draw a receipt.
  */
 export const PICTURE = "/hero/frame-social-chain.jpg";
@@ -357,8 +357,8 @@ export interface BenchPicture {
 }
 
 /**
- * Four rows for the strip, newest first. The newest is the picture the run on
- * this bench just made, which is how a creator finds it a second after the
+ * Four rows for the strip, newest first. The newest is the picture the run in
+ * these fixtures just made, which is how a creator finds it a second after the
  * press instead of hunting for it.
  */
 export const PICTURES_MADE: BenchPicture[] = [

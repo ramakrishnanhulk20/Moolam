@@ -19,7 +19,7 @@ const ACKNOWLEDGED = 220;
  * the bar and no lower than a third of the way down, which is where the whole
  * first screen of progress is already readable.
  *
- * Proved on the bench in WO-124b at 1920x1080, 1440x900 and 375x812.
+ * Proved in a real browser at 1920x1080, 1440x900 and 375x812.
  *
  * `reach` is how far down the screen the top may sit. The wide layout passes
  * a half: its band lands beside the picture at the top of the right column, so

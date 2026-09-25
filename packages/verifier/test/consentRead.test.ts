@@ -4,8 +4,8 @@
 // The chain is a fake transport that answers the eth_call viem makes, so the encoding and the
 // decoding are real and the network is not.
 // Does NOT cover the deployed contract's own rules, which are the contract's tests, and does not
-// cover a live RPC: the live read against MoolamConsent on Monad mainnet is quoted in
-// kitchen/reports/WO-86.txt.
+// cover a live RPC: live /verify answers carrying the consent read on Monad mainnet are quoted in
+// proofs/consent-statements.txt.
 
 import { describe, expect, it, vi } from "vitest";
 import { custom, decodeFunctionData, encodeAbiParameters, toHex } from "viem";

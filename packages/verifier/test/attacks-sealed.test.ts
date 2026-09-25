@@ -1,6 +1,5 @@
 // Attack pass 3, the route half: the sealed-picture feature attacked on purpose, one attack per
-// invariant in kitchen/design/sealed-passports-threat-model.md section C and its "Added after the
-// first build" list. Every attack here runs through the real routes with the real signer, the real
+// promise and per entry point under "Sealed pictures" in docs/security/threat-model.md. Every attack here runs through the real routes with the real signer, the real
 // sealed pipeline and the real strict schema. Pinata is answered by a recording client at the fetch
 // layer, Privy tokens are signed by a key made in this file, and the registry reads are stubbed.
 // Each attack pushes one line saying what it found and what it did not cover, and the lines are

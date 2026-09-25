@@ -44,7 +44,7 @@ tab_width = 4
 [rpc_endpoints]
 monad_mainnet = "${MONAD_MAINNET_RPC_URL}"
 
-# Monadscan is Etherscan style and needs an API key Ram has not created yet, so the key may be
+# Monadscan is Etherscan style and needs an API key the project has not created yet, so the key may be
 # empty here. Sourcify verification through MonadVision needs no key and is the default path.
 [etherscan]
 monad = { key = "${MONADSCAN_API_KEY}", chain = 143, url = "https://api.monadscan.com/api" }

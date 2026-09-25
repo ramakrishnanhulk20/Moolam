@@ -4,7 +4,7 @@
 // Every case that needs different settings re-imports the server with the environment stubbed,
 // because src/env.ts validates once when it is first loaded.
 // Does NOT cover the real registry read in src/boot/registryChecks.ts, which talks to Monad: the
-// check is passed in as a stub here, and the live run in the work order proves the real one.
+// check is passed in as a stub here.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";

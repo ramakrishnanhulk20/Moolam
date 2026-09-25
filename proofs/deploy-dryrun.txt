@@ -1,4 +1,4 @@
-WO-10a deploy dry run, packages/contracts, 2026-09-08. No broadcast: nothing was sent.
+Deploy dry run, packages/contracts, 2026-09-08. No broadcast: nothing was sent.
 Command: forge script script/Deploy.s.sol --rpc-url monad_mainnet -n monad
 The RPC URL is redacted below. The receiver is pinned to the workflow in the same batch as the deploy.
 

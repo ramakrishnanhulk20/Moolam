@@ -13,7 +13,7 @@ import en from "@/messages/en.json";
  * what a screen reader hears when it reaches a registered picture, what a thumb
  * can hit, and whether the words exist in all ten languages. The numbers that
  * need a real browser, tap sizes, the fold and the film's caption band, are
- * measured outside this file and quoted in kitchen/reports/WO-104b.txt.
+ * measured outside this file, in a real browser.
  */
 
 /** Where the mocked router says the reader is. Each test sets it before rendering. */

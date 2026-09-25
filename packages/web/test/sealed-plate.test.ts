@@ -21,7 +21,7 @@ import { repoRoot } from "@/lib/docs/paths";
  * a field added there and not here cannot ship.
  */
 
-/** A real block hash from mainnet: the Monsoon passport this bench draws. */
+/** A real block hash from mainnet: the Monsoon passport this file draws. */
 const BLOCKHASH = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 const MONSOON = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex;
@@ -233,7 +233,7 @@ describe("what the studio says becomes public", () => {
   });
 });
 
-describe("what the bench pulls into the browser", () => {
+describe("what the sealed plate pulls into the browser", () => {
   /** The packages only a screen that signs has any use for. */
   const WALLET = ["@privy-io/react-auth", "@privy-io/wagmi", "wagmi", "@tanstack/react-query"];
 
@@ -245,7 +245,7 @@ describe("what the bench pulls into the browser", () => {
     "components/sealed/SealSwitch.tsx",
   ];
 
-  it("imports no wallet package in any file this bench added", () => {
+  it("imports no wallet package in any of the sealed plate's files", () => {
     // One level, not the whole walk: the route test does the transitive one for
     // the pages a visitor can reach, and nothing here reaches beyond the app.
     for (const file of FILES) {

@@ -16,8 +16,8 @@ import type { SealedHandback } from "@/lib/sealed/handback";
  * that hands the file back before the passkey prompt, and the band the done
  * screen shows where a published picture would be.
  *
- * The drawing and the list itself live in components/sealed, which the lab
- * bench also mounts. What is here is only the ten languages and the one control
+ * The drawing and the list itself live in components/sealed, which the
+ * passport page and Explore also mount. What is here is only the ten languages and the one control
  * that writes a file to the creator's disk.
  */
 

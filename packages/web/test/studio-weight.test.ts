@@ -17,7 +17,7 @@ import ta from "@/messages/ta.json";
 import zh from "@/messages/zh.json";
 
 /**
- * WO-147a. The studio and /mine were 2.2 MB of script on a phone, and the words
+ * The studio and /mine were 2.2 MB of script on a phone, and the words
  * a visitor reads first on each page waited 11.5 s and 16.1 s for it, because
  * they were drawn by motion components that the HTML served at opacity 0.
  *

@@ -433,7 +433,7 @@ const schema = z
 /**
  * A day's ceiling for everyone, where zero closes the action rather than meaning "no limit".
  *
- * Zero is the kill switch Ram can flip on Railway without a deploy, so it has to be a legal value
+ * Zero is the kill switch the operator can flip on Railway without a deploy, so it has to be a legal value
  * here. The message never repeats what was set: a variable can hold something a log should not.
  */
 function dayCeiling(name: string, fallback: string): z.ZodType<number> {
@@ -511,7 +511,7 @@ function optionalPattern(pattern: RegExp, message: string): z.ZodType<string | u
 /**
  * True for an origin the browser would send in an Origin header: scheme, host, optional port, and
  * nothing else. A wildcard, a path or a trailing slash is refused, because CORS here is the list
- * of sites allowed to spend Ram's Pinata account.
+ * of sites allowed to spend the operator's Pinata account.
  */
 function isExactOrigin(value: string): boolean {
   if (!isHttpUrl(value)) {

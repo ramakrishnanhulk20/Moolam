@@ -401,7 +401,7 @@ describe("the facts strip", () => {
   });
 });
 
-describe("the lab page", () => {
+describe("the preview route", () => {
   it("is gone now the strip is on the real route", () => {
     expect(existsSync(fileURLToPath(new URL("../app/[locale]/lab/passport-top/page.tsx", import.meta.url)))).toBe(false);
   });

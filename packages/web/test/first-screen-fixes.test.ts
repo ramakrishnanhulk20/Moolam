@@ -16,7 +16,7 @@ import ta from "@/messages/ta.json";
 import zh from "@/messages/zh.json";
 
 /**
- * The first screen's reading fixes Ram approved on 25 September: each distance
+ * The first screen's reading fixes of 25 September: each distance
  * says what it compares, the phone's box never asks for a drop, a phone gets
  * one line pointing at the evidence, sample names are shown whole, and the
  * laptop header leaves home to the logo.

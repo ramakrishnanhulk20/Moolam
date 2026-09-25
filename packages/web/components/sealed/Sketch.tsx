@@ -8,7 +8,7 @@ import { SKETCH_SIDE } from "./bits";
  * The two ways the same 256 bits are drawn.
  *
  * "grid" is the registry's own language: the bits as bits, the way the passport
- * page and the sponsor bench already draw the 64 bit fingerprint. "relief" is
+ * page already draws the 64 bit fingerprint. "relief" is
  * the same cells out of focus, which is what the measurement actually is: a
  * picture resolved down to sixteen squares of light and dark. Neither adds a
  * thing the chain does not hold.

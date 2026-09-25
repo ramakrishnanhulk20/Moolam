@@ -1,15 +1,15 @@
 // Covers opt-in B's second step, the three routes that touch a kept private copy and the queue's
-// use of them, against section C of kitchen/design/sealed-opt-in-b-threat-model.md. GET
+// use of them, against the promises of "The private re-check" in docs/security/threat-model.md. GET
 // /sealed/status says kept, gone or unknown and never shows unknown as either of the others, with
-// its memory and cache rules and its own rate limit (B10). POST /sealed/link refuses in the order
-// the work order writes, each refusal without a URL or a file id (B1, B3, B4), mints only for a
+// its memory and cache rules and its own rate limit (B10). POST /sealed/link refuses in one fixed
+// order, each refusal without a URL or a file id (B1, B3, B4), mints only for a
 // claim under ten minutes old (D3), for a fixed 120 seconds and under both caps (B15), and never
 // logs the link or the token (B5). POST /sealed/forget deletes only for the holder and only on a
 // listing that finished, every file under the name (B9). The queue takes a privately re-checkable
 // passport while its copy is kept or unknown and refuses it once gone (B11). Each test names the
 // invariant it holds.
-// Does NOT cover the runner or the sealed workflow (WO-137 and later), the sweep of copies whose
-// passport never registered (WO-136c), or a real call to Pinata, Privy, the chain or the gateway:
+// Does NOT cover the runner or the sealed workflow, the sweep of copies whose passport never
+// registered (sweep.test.ts), or a real call to Pinata, Privy, the chain or the gateway:
 // the chain read, the document read and the holder's wallets are stubbed, and Pinata is a
 // recording stub at the fetch layer, so the Pinata client's own checks run for real.
 

@@ -1,5 +1,5 @@
 // Covers the hourly sweep of private copies whose passport never reached the chain, against B9,
-// B15 and ruling D5 in kitchen/design/sealed-opt-in-b-threat-model.md: off does nothing, dry only
+// B15 and D5 in docs/security/threat-model.md: off does nothing, dry only
 // logs, delete deletes; only exact thumbnail names older than 48 hours by Pinata's created_at are
 // considered, and a file is marked only when the chain answered that its passport does not exist;
 // an RPC error, a listing that could not finish, and an answer in an unknown shape mark nothing;

@@ -65,7 +65,6 @@ p95; at 820 by 560, 16.7 ms with the field holding tier 0 for the whole run.
 | `/[locale]/passport/[id]` | One passport: the record, its verifications and its edits. |
 | `/[locale]/agent/[id]` | One generator agent: its card and its ERC-8004 reputation. |
 | `/[locale]/studio` | Sign in with Privy, bind the passkey on this device once, register an image with the network fee paid by Moolam. |
-| `/[locale]/lab` | The hidden bench for visual work. Nothing links to it. |
 | `/api/passports` | The newest passports as JSON. |
 
 Ten languages exist today: `/en`, `/ta`, `/hi`, `/zh`, `/ja`, `/ko`, `/es`,

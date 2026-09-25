@@ -135,7 +135,7 @@ describe("the film's opening entrance", () => {
 });
 
 describe("the film's signing beat", () => {
-  /** What each language called the beat before Ram renamed it on 2026-09-25. */
+  /** What each language called the beat before it was renamed on 2026-09-25. */
   const WAS: Record<(typeof LOCALES)[number], string> = {
     en: "Sealed",
     ta: "முத்திரையானது",

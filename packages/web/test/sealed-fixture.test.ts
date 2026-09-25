@@ -21,11 +21,11 @@ vi.mock("@/lib/i18n/routing", () => ({
  * be pointed at.
  *
  * The studio itself is behind a sign in, so these screens cannot be reached on
- * the dev server without Ram's passkey. What can be done instead is to put the
+ * the dev server without a creator's own passkey. What can be done instead is to put the
  * real markup, with the real stylesheet, in front of a real browser and measure
  * it: the width it takes at 375 px and what the panels do in both themes.
  *
- * Run with SEALED_FIXTURE=1 to write the fragment to kitchen/reports.
+ * Run with SEALED_FIXTURE=1 to write the fragment to the file named below.
  */
 function render(node: ReactElement): string {
   const Provider = NextIntlClientProvider as unknown as FunctionComponent<{

@@ -2,8 +2,8 @@
 // wallet does not hold, skipping a picture whose newest entry already says what the plan says,
 // grouping what is left into batches of at most 32, and the bytes of the call itself, decoded
 // back with the deployed contract's own ABI.
-// Does NOT cover the reads that feed it or the send. Those need the live chain, and the dry run
-// saved in kitchen/reports/WO-88-dry-run.txt is where they are proven.
+// Does NOT cover the reads that feed it or the send. Those need the live chain, and the live run
+// recorded in proofs/consent-statements.txt is where they are proven.
 
 import { describe, expect, it } from "vitest";
 import { decodeFunctionData, type Hex } from "viem";

@@ -17,9 +17,9 @@ function valueOf(name: string): string | undefined {
 }
 
 /**
- * Whether this is Ram's own dev server, where NEXT_PUBLIC_LAB_PAGES is 1. Two
- * things hang on it: draft docs pages are shown, and his visits are not
- * counted. It is false everywhere else, including the deployed site, and false
+ * Whether this is the maintainer's own dev server, where NEXT_PUBLIC_LAB_PAGES
+ * is 1. Two things hang on it: draft docs pages are shown, and visits there are
+ * not counted. It is false everywhere else, including the deployed site, and false
  * in the browser, where process.env carries nothing this was not compiled with.
  */
 export function labPagesOn(): boolean {

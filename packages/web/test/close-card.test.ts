@@ -44,8 +44,7 @@ const data: StoryData = {
  * The two calls are buttons. The third is the evidence, and it rides on the
  * line that names the chain rather than in the row above it: at 375 px that
  * row is already 330 of 335 px wide in Portuguese, so a third item there wraps
- * and drags the card's last line towards the fold. The boxes either side of
- * this change are in the work order's report.
+ * and drags the card's last line towards the fold.
  */
 describe("the film's last screen", () => {
   const markup = render("en", createElement(CloseCard, { data, pinned: false }));

@@ -30,7 +30,7 @@ describe("the runner's configuration", () => {
     expect(() => readConfig({ ...complete, RUNNER_TOKEN: "   " })).toThrowError(/RUNNER_TOKEN/);
   });
 
-  it("carries the defaults the work order names", () => {
+  it("carries its documented defaults", () => {
     const config = readConfig(complete);
     expect(config.intervalSeconds).toBe(120);
     expect(config.maxReportsPerDay).toBe(40);

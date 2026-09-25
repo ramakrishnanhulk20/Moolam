@@ -27,7 +27,7 @@ import { STUDIO_KEYS, countsBySaying } from "./studio-keys.mjs";
  * actions, in the order useStudio dispatches them, because a hand-written state
  * can hold a pose the flow can never be in. Nothing in this file talks to Monad
  * or to the verify service: the two answers those give back are fixtures, and a
- * signed-in run cannot be driven on a dev server without Ram's own passkey.
+ * signed-in run cannot be driven on a dev server without a creator's own passkey.
  */
 
 // The failure note and the done screen's actions reach the panels through

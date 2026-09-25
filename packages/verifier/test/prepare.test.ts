@@ -7,7 +7,7 @@
 // while a malformed one is refused, a missing token, a bad title and a text file are each
 // refused, a real picture whose thumbnail cannot fit the Chainlink budget is told so with 422
 // rather than 415, while a file whose pixels do not decode keeps 415.
-// Does NOT cover a real pin to Pinata (the live check in the work order does that), a real read
+// Does NOT cover a real pin to Pinata, a real read
 // of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
 // hour.
 

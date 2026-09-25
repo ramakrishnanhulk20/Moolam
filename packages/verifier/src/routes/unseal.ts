@@ -72,7 +72,7 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * the passport commits to, and pins it publicly. Nothing about the passport on chain changes,
  * because nothing about it can: the registry writes metadataURI once and has no setter.
  *
- * Two invariants from kitchen/design/sealed-passports-threat-model.md live here.
+ * Two of the sealed promises in docs/security/threat-model.md live here.
  *
  * Invariant 5, only the holder unseals: the caller's Privy token resolves to a user id, the user
  * record names their embedded wallets, and `ownerOf` on the registry has to be one of them at the

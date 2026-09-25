@@ -3,7 +3,7 @@
 Every real picture on the Moolam registry gets a Chainlink second opinion within minutes of being
 registered, and a re-check somebody asks for runs the same way, without anyone pressing anything.
 
-Today that only happens when Ram runs `kitchen/launch/recheck-run-*.sh` by hand: each run opens the
+Today that only happens when the maintainer runs a local launch script by hand: each run opens the
 receiver with the deployer's key, broadcasts one simulated report per passport, and closes the
 receiver again. Fourteen pictures have a verdict that way and nothing has run since 2026-09-17. A
 picture registered on a judging day would sit there with an empty verdict card under it.
@@ -252,7 +252,7 @@ It installs Node 22 from NodeSource, bun (the workflow folder is pinned with `bu
 CLI for Linux, clones the repository to `/srv/moolam`, installs the workflow's dependencies, builds
 this package, and installs the systemd unit. It leaves the service stopped, on purpose.
 
-Three things are Ram's, because nothing on that machine can do them.
+Three things are left to the operator, because nothing on that machine can do them.
 
 **1. Paste the secrets into the env file.** Copy `deploy/runner.env.example` to
 `/etc/moolam/runner.env`, `chmod 0600`, and fill in the four values marked PASTE: the CRE wallet's
@@ -297,7 +297,7 @@ index, the live chain and a stub queue holding one request, with `RUNNER_DRY_RUN
 ```
 moolam re-check runner starting: interval 120s, at most 3 a pass, daily cap 40, MON floor 1.500,
   workflow D:/Projects/Monad/packages/workflow/moolam-verifier, env file D:/Projects/Monad/.env,
-  target monad-mainnet, state ...WO-121b-dryrun-state.json, DRY RUN, nothing will be broadcast
+  target monad-mainnet, state ...dryrun-state.json, DRY RUN, nothing will be broadcast
 dry run: passport 0xbcdb2f0f06 would be re-checked from tx 0x04d286385e event 1, asked for by the queue
 passport 0xbcdb2f0f06 tx 0x04d286385e event 1 -> nothing written, this was a dry run,
   recomputed 0x198df3e566199e99 distance 0 matched true

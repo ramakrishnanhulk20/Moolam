@@ -21,8 +21,8 @@ import { verifyResponseSchema } from "@/lib/verifier/client";
  * every state fits in the room the control already reserved, which is what
  * keeps the page still under a reader while a request moves along the queue.
  *
- * Run with RECHECK_FIXTURE=1 to write the markup to kitchen/reports, where a
- * real browser measures it.
+ * Run with RECHECK_FIXTURE=1 to write the markup to the file named at the end
+ * of this test, where a real browser measures it.
  */
 
 vi.mock("next-intl/server", () => ({

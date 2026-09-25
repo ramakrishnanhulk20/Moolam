@@ -1,4 +1,4 @@
-WO-6a step 3, blocked. Evidence read live from Monad mainnet (chain 143) on
+ERC-8004 feedback, blocked. Evidence read live from Monad mainnet (chain 143) on
 2026-09-08. No transaction was sent, every call below is a read or a simulation.
 
 Reputation Registry proxy 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63
@@ -7,7 +7,7 @@ Not verified on Sourcify for chain 143, and Monadscan needs an API key we do not
 have, so the ABI was confirmed by matching selectors against the implementation
 bytecode and then by calling the functions.
 
-1. The read functions the work order asked me to confirm
+1. The read functions to confirm
    getVersion()                 -> "2.0.0"
    getIdentityRegistry()        -> 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
    getClients(10248)            -> []
@@ -16,7 +16,7 @@ bytecode and then by calling the functions.
                                    non-empty client list, so there is no all-clients view)
 
 2. giveFeedback has no feedbackAuth on this deployment
-   The work order and WO-6 both say giveFeedback takes a feedbackAuth signed by
+   The integration plan said giveFeedback takes a feedbackAuth signed by
    the agent owner. It does not. The deployed function is exactly the one quoted
    in the ERC-8004 specification (https://eips.ethereum.org/EIPS/eip-8004), eight arguments and
    no signature:
@@ -51,7 +51,7 @@ bytecode and then by calling the functions.
    Simulated from a non-owner address (0x...dEaD), same arguments:
      succeeds, returns 0x
 
-   So the fallback in the work order, "VERIFIER_PRIVATE_KEY if set, else the
+   So the planned fallback, "VERIFIER_PRIVATE_KEY if set, else the
    deployer key", cannot work: VERIFIER_PRIVATE_KEY is not in the root .env, and
    the deployer key is the one address the registry refuses. A real feedback
    transaction needs a second funded wallet that is not the agent owner.

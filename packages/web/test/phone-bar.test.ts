@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { GONE_KEYS, SHELL_KEYS, countsBySaying, valueAt } from "./shell-keys.mjs";
 
 /**
- * The bar Ram picked on 23 September, where it now lives: under every real page
+ * The phone bar, where it now lives: under every real page
  * on a phone, with the menu button gone.
  *
  * What is pinned down here is the shape of the roll-in rather than the bar

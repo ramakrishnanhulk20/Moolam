@@ -320,7 +320,7 @@ describe("where the walk learns the calls are", () => {
       { x: 20, y: 587, width: 151, height: 35 },
       { x: 179, y: 586, width: 101, height: 37 },
     ]);
-    // A bench's frame sits somewhere on the page; its calls are measured from it.
+    // A mock window sits somewhere on the page; its calls are measured from it.
     expect(heroCalls(root, { left: 10, top: 100, width: 375, height: 812 })[0]).toEqual({
       x: 10,
       y: 487,

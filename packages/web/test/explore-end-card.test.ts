@@ -29,8 +29,8 @@ function render(node: ReactElement): string {
  *
  * The grid shows its line colour through every empty cell, so the card has to
  * cover exactly the cells the last row leaves, at two, three and four columns,
- * and must not exist where the row is full. Ram's screenshot was 17 pictures
- * at four columns: one plate and three grey cells.
+ * and must not exist where the row is full. The case that showed it was 17
+ * pictures at four columns: one plate and three grey cells.
  */
 describe("the end card's span", () => {
   it("covers what 17 plates leave: one at two columns, one at three, three at four", () => {

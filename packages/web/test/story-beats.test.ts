@@ -4,10 +4,10 @@ import { beatTable, type Beat } from "@/components/story/beats";
 /**
  * The film's own table, pinned down.
  *
- * Ram approved the pacing of the nine pages below beat by beat, so the numbers
+ * The pacing of the nine pages below was tuned beat by beat, so the numbers
  * are written out here in full rather than derived from the table they are
- * checking. Any cut of the film that changes one of them changes the thing he
- * signed off, and this is the test that says so out loud.
+ * checking. Any cut of the film that changes one of them changes that pacing,
+ * and this is the test that says so out loud.
  */
 
 /** Screens of scroll the approved film runs on: nine pages, eight screens of travel. */
@@ -99,7 +99,7 @@ const APPROVED: Beat[] = [
 describe("the approved film", () => {
   const classic = beatTable("classic");
 
-  it("runs on the nine pages and the eight beats Ram signed off, to the last offset", () => {
+  it("runs on the nine pages and the eight beats as they were tuned, to the last offset", () => {
     expect(classic.pages).toBe(APPROVED_PAGES);
     expect(classic.beats).toEqual(APPROVED);
   });
@@ -129,7 +129,7 @@ describe("the approved film", () => {
 });
 
 /**
- * The cut with the holder's word in it. The pacing Ram approved is measured in
+ * The cut with the holder's word in it. The tuned pacing is measured in
  * screens of scroll, not in fractions, so that is what is checked here: every
  * old beat is the same length of thumb travel it is today, and the film is one
  * screen longer for the one new beat.

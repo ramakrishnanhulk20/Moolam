@@ -4,8 +4,8 @@ import type { Hex } from "viem";
  * The 64 bit perceptual fingerprint, read the three ways the screens need it:
  * out of the word a re-check wrote, as bits, and as a distance.
  *
- * It lives here rather than beside one screen because the passport page and the
- * lab bench both draw the same grids off the same numbers, and a second copy of
+ * It lives here rather than beside one screen because more than one screen
+ * draws the same grids off the same numbers, and a second copy of
  * this arithmetic is how the two would quietly start disagreeing.
  */
 

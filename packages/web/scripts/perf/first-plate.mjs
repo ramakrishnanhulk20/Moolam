@@ -15,8 +15,8 @@
  * Run it against a production build. The dev server parses unminified React and
  * optimizes every picture on demand, so its numbers belong to the dev server.
  *
- *   NEXT_DIST_DIR=.next-wo78 npx next build
- *   NEXT_DIST_DIR=.next-wo78 npx next start -p 3389
+ *   NEXT_DIST_DIR=.next-check npx next build
+ *   NEXT_DIST_DIR=.next-check npx next start -p 3389
  *   node packages/web/scripts/perf/first-plate.mjs --url http://localhost:3389/en
  *
  * Two profiles: desktop is unthrottled at 1440x900, mobile is 375x667 with the

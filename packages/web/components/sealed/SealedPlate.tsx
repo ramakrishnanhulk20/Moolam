@@ -6,8 +6,8 @@ import { SealedSketch, type SketchDrawing } from "./Sketch";
 
 /**
  * The words a sealed plate says. They are props rather than message keys so the
- * one component can be the passport page's poster, Explore's plate and this
- * bench, each handing it the language its reader asked for.
+ * one component can be the passport page's poster, Explore's plate and the
+ * studio's sealed band, each handing it the language its reader asked for.
  */
 export interface SealedPlateWords {
   /** The label, drawn in the mono style the app uses for a kicker. */

@@ -12,7 +12,7 @@ import { createContext, useContext, type ReactNode } from "react";
  *
  * A context rather than a prop because the panels it changes sit under the
  * dynamic loaders in LiveStudio. Drawn outside the studio (the account's grid
- * on /mine, the lab benches) the same parts keep their one column.
+ * on /mine) the same parts keep their one column.
  */
 const Wide = createContext(false);
 

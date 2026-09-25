@@ -167,7 +167,7 @@ describe("the chapter in ten languages", () => {
 
   const keys = Object.keys(en.story.stated);
 
-  /** The long dash Ram's house rules ban, built from its code point. */
+  /** The long dash the house style bans, built from its code point. */
   const LONG_DASH = String.fromCodePoint(0x2014);
 
   it("is ten message files", () => {

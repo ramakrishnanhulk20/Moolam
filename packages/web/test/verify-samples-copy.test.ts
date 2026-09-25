@@ -16,7 +16,7 @@ const locales = readdirSync("messages")
 
 type Tree = Record<string, unknown>;
 
-/** The long dash Ram's house rules ban, built from its code point so this file does not carry one. */
+/** The long dash the house style bans, built from its code point so this file does not carry one. */
 const LONG_DASH = String.fromCodePoint(0x2014);
 
 function read(locale: string): Tree {

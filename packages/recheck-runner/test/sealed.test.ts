@@ -1,6 +1,6 @@
 // The runner's reads for a sealed passport: GET /sealed/status and the env file's token, by name.
 // Does NOT cover the verify service's own answers (packages/verifier tests them) or what the CRE
-// CLI does with the env file; the work order's dry run covers the CLI.
+// CLI does with the env file; the dry pass quoted in the README covers the CLI.
 
 import fs from "node:fs";
 import os from "node:os";

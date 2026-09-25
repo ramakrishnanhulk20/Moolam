@@ -403,7 +403,7 @@ html:not(.light) body:has([data-story="still"]) .app-header {
    bottom, so a caption, the drop panel and the close card can never sit over the
    picture. That was the one thing a judge could not use at 375 px. From 640 px
    up the shot goes full bleed again and the words sit in the side columns the
-   scrim darkens, which is the frame Ram approved.
+   scrim darkens.
 
    The canvas fills the whole pinned screen in both framings. The scroller the
    scene builds is the size of the canvas, and it has to reach under the words

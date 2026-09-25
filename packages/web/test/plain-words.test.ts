@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 /**
  * The words a first-time visitor meets, said plainly, in all ten languages.
  *
- * The lab pages used to carry their words in English-only objects until roll-in.
+ * Some screens used to carry their words in English-only objects.
  * Those words now live in the message files like every other screen's, and the
  * engineering phrases the passport, agent and tool pages printed have been
  * rewritten. This holds both: every key the change added is in every file, and
@@ -146,7 +146,7 @@ describe("the plain words", () => {
     }
   });
 
-  it("leave no English-only word object for the lab pages", () => {
+  it("leave no English-only word object behind", () => {
     expect(existsSync(`${root}components/studio/openingWords.ts`)).toBe(false);
     expect(existsSync(`${root}components/studio/wideWords.ts`)).toBe(false);
     expect(readFileSync(`${root}components/passport/top-facts.ts`, "utf8")).not.toContain("TOP_FACT_WORDS");

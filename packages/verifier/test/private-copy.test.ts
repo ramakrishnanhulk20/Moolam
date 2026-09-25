@@ -277,7 +277,7 @@ function aSealedInput(privateRecheck?: boolean): Parameters<typeof sealedMetadat
 }
 
 describe("B7: the one predicate for privately re-checkable", () => {
-  it("covers every case the work order names in the shared fixture set", () => {
+  it("covers every case the rule needs in the shared fixture set", () => {
     const names = fixtures.cases.map((one) => one.name);
     for (const required of [
       "public",

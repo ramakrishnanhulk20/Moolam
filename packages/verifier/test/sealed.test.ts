@@ -1,7 +1,7 @@
 // Covers the sealed path on POST /prepare and POST /generate, with Pinata answered by a recording
 // stub at the fetch layer and the image model, the caller's wallets, the Privy signer and the
-// registry read all stubbed. It is written against sections A to C of
-// kitchen/design/sealed-passports-threat-model.md, and each test names the invariant it holds up:
+// registry read all stubbed. It is written against the sealed promises in
+// docs/security/threat-model.md, and each test names the invariant it holds up:
 // (1) nothing of the picture is stored, so zero file pins and no new file anywhere this process
 // can write, (2) nothing of the picture is published, so the one pinned document is validated by
 // a strict schema that has no room for an image, a thumbnail, a manifest or an unasked-for
@@ -10,7 +10,7 @@
 // gets to the passport id that commits to it, and checks that the public path did not move.
 // Does NOT cover invariant 3 (the studio refuses the passkey prompt until the browser holds the
 // bytes), 5 and 6 (unsealing), 7 (how sealed reads on every screen) or 8 (what the creator sees
-// before signing): those are the browser's half and later orders. It does not cover a real pin, a
+// before signing): those are the browser's half and other files. It does not cover a real pin, a
 // real image model call, or the per-hour prepare limit reaching 20.
 
 import fs, { mkdirSync, readdirSync } from "node:fs";

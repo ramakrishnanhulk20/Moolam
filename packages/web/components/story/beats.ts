@@ -9,7 +9,7 @@
  * one caption ending and the next beat starting is the travel, and nothing is
  * being read during it.
  *
- * The classic cut is the film Ram approved, to the last offset. The stated cut
+ * The classic cut is the original film, to the last offset. The stated cut
  * is the same film with one more beat in it, the holder's word on AI use. The
  * home page's chapter plays the stated cut and falls back to the classic one
  * on a day with no statement to draw, so both tables stay. The film is handed

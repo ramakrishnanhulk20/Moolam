@@ -43,7 +43,7 @@ export interface ExplorePlate {
 const TEST_TITLE = /^moolam (seed|prove-it|privy proof)\b/i;
 
 /**
- * Pictures Ram registered while trying the studio, named by id rather than by
+ * Pictures the maintainer registered while trying the studio, named by id rather than by
  * title because their titles read like real work: "Iphone 18 pro max" and "Old
  * but strong". Their passports stay where they are and still open; they only
  * sort and count with the test cards. Ids are kept lower case.

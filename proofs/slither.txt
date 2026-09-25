@@ -1,7 +1,7 @@
-TRIAGE (Fable, 2026-09-08, after the code-review changes): 0 high, 6 medium, all six checked by hand.
-The four carried over from WO-1a are unchanged (uninitialized-state on _attestations, the two
-incorrect-equality hits, unused-return on tryRecover) and remain false positives for the reasons in
-that report. The two new ones, reentrancy-benign and reentrancy-events in VerifierPolicy.queueSetTreasury,
+TRIAGE (2026-09-08, after the code-review changes): 0 high, 6 medium, all six checked by hand.
+The four carried over from the first run are unchanged (uninitialized-state on _attestations, the two
+incorrect-equality hits, unused-return on tryRecover) and remain false positives, as they were
+triaged in that run. The two new ones, reentrancy-benign and reentrancy-events in VerifierPolicy.queueSetTreasury,
 both point at the treasury liveness probe added by the review fix: an empty zero-value call to the
 candidate treasury before the change is queued. The function is onlyOwner, the call carries no value,
 the only state written afterwards is the owner's own queued change, and a candidate that calls back
@@ -469,7 +469,7 @@ INFO:Slither:. analyzed (41 contracts with 102 detectors), 123 result(s) found
 
 
 ================================================================================
-WO-80 and WO-80b MoolamConsent, 2026-09-18 (updated in place after the batch landed)
+MoolamConsent, 2026-09-18 (updated in place after the batch landed)
 Command: slither . --filter-paths "lib/|test/|script/"
 Result for the new file: 0 high, 0 medium that stand. Four findings name MoolamConsent or
 IMoolamConsent and all four are checked by hand below. The rest of the run is the same set already

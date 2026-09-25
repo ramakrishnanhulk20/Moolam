@@ -1,5 +1,5 @@
-// Covers POST /unseal and GET /unseal/:passportId, written against sections B and C of
-// kitchen/design/sealed-passports-threat-model.md. Each test names the invariant it holds up:
+// Covers POST /unseal and GET /unseal/:passportId, written against the sealed promises in
+// docs/security/threat-model.md. Each test names the invariant it holds up:
 // (5) only the holder unseals, so the wallets come from the Privy user record and ownerOf is read
 // at the moment of the request, and neither a stranger nor a caller naming an address gets past
 // it; (6) unsealing publishes exactly what was registered, so the sha-256 of the upload must be
@@ -7,7 +7,7 @@
 // pinned when either fails. It also holds the model's two added notes: a passport whose document
 // is already public cannot be unsealed again, and a picture whose thumbnail will not fit the
 // Chainlink budget is refused rather than published as a passport that can never be re-checked.
-// From opt-in B (WO-136c): once the picture is public, a private copy kept for a private re-check
+// From the private re-check: once the picture is public, a private copy kept for a private re-check
 // is deleted by its exact name, /sealed/status reads gone at once, and a lookup or delete that
 // fails changes nothing about the answer.
 // The picture in the happy path is made by the real sealed pipeline, so the bytes under test are

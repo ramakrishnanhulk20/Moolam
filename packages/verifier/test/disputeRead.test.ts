@@ -3,8 +3,7 @@
 // and the field itself in each of its shapes on both routes. The chain is a fake transport that
 // answers the eth_call viem makes, so the encoding and the decoding are real and the network is not.
 // Does NOT cover the registry's own dispute rules, which are the contract's tests, and does not
-// cover a live RPC: the live read of getDispute on Monad mainnet is quoted in
-// kitchen/reports/WO-84b.txt.
+// cover a live RPC.
 
 import { describe, expect, it, vi } from "vitest";
 import { custom, decodeFunctionData, encodeFunctionResult, toHex } from "viem";

@@ -9,8 +9,8 @@ import ta from "@/messages/ta.json";
 import type { StoryData } from "@/components/story/data";
 
 /**
- * The film told as a chapter under the home page's first screen. Ram approved
- * it on the lab page on 2026-09-25 and it is now what the home page plays.
+ * The film told as a chapter under the home page's first screen. It is what
+ * the home page plays.
  *
  * What is held here: the chapter cut opens on a chapter title with no poster
  * and no buttons, its last card's first call is named as on the first screen,
@@ -73,7 +73,7 @@ const LOCALES = ["en", "de", "es", "fr", "hi", "ja", "ko", "pt", "ta", "zh"] as 
 
 /**
  * The old poster opening's words and its closing card's first call. They left
- * the message files with the lab benches, the last screens that said them, and
+ * the message files with the preview screens, the last screens that said them, and
  * the film must never say them again.
  */
 const RETIRED = {

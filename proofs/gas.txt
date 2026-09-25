@@ -413,7 +413,7 @@ Ran 5 test suites in 4.56s (5.24s CPU time): 114 tests passed, 0 failed, 0 skipp
 
 
 ================================================================================
-WO-80 and WO-80b MoolamConsent, gas, 2026-09-18 (updated in place after the batch landed)
+MoolamConsent, gas, 2026-09-18 (updated in place after the batch landed)
 Command: forge test --gas-report --match-path "test/MoolamConsent.t.sol" -n monad
 and forge test --match-test test_gasOfTheMainActions -vv -n monad
 

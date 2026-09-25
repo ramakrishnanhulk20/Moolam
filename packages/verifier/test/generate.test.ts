@@ -6,7 +6,7 @@
 // that does not parse, a training statement travelling into the pinned metadata that the agent's
 // signature covers, and the waiting gate giving up.
 // Does NOT cover the real image model, a real pin, or Privy actually signing or listing wallets:
-// the live check in the work order does all of those against the hosted services. It also does
+// those need the hosted services. It also does
 // not cover the browser side, which adds the passkey signature and sends the transaction.
 
 import { SignJWT, generateKeyPair } from "jose";

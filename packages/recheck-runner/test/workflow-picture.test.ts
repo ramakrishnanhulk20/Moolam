@@ -1,7 +1,7 @@
 // Holds the CRE workflow's picture choice, packages/workflow/moolam-verifier/picture.ts, to the
 // unseal record's real shape. Does NOT cover the HTTP call that fetches the record, the sandbox's
 // own limits, or the fingerprint of the picture fetched: those run only inside the simulator, and
-// the work order's dry run against the live passport is their proof.
+// the Old but strong run against the live passport in proofs/rechecks.txt is their proof.
 
 import path from "node:path";
 import { pathToFileURL } from "node:url";

@@ -3,7 +3,7 @@
 // limits or never answers being followed by a good read from the second, the boot refusing a
 // malformed variable, and every address being taken out of the line pages print.
 // Does NOT cover the endpoints themselves. No socket is opened here, so nothing in this file says
-// the address Ram sets is reachable, fast, or still paid for. That is the live check in the README.
+// the address the operator sets is reachable, fast, or still paid for. That is the live check in the README.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 

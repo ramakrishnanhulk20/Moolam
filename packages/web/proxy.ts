@@ -28,7 +28,7 @@ export default function proxy(request: NextRequest): NextResponse {
   // The router prefetches every chip a reader can see, fourteen of them on one
   // page view, and each prefetch reaches this rule like a press would. Counted,
   // four page views spent a reader's whole minute before they pressed anything,
-  // and the press itself was refused; that is what Ram met on 22 September. A
+  // and the press itself was refused; that is what happened on 22 September. A
   // prefetch is not a press, so it is let through uncounted, and the chips no
   // longer ask for one in any case.
   const prefetch =

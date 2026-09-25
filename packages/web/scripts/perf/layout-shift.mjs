@@ -9,7 +9,7 @@
  *
  * Run it against a production build.
  *
- *   NEXT_DIST_DIR=.next-wo78 npx next start -p 3389
+ *   NEXT_DIST_DIR=.next-check npx next start -p 3389
  *   node packages/web/scripts/perf/layout-shift.mjs --url http://localhost:3389/en
  *
  * Options: --url, --runs, --seconds, --sizes (WxH,WxH), --port, --browser, --gpu.

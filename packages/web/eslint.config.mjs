@@ -9,7 +9,7 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
-    // Any directory a verification build writes to, whatever a cook named it.
+    // Any directory a verification build writes to, whatever it was named.
     // They hold bundled output, not source, and linting them says nothing
     // about this code.
     ".next-*/**",

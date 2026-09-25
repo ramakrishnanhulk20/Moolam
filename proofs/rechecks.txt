@@ -16,7 +16,7 @@ attestation counts: 1 1 1 1 1 1 1
 owner transactions (clear pin, set forwarder, restore forwarder, re-pin) are recorded in packages/contracts/broadcast/ConfigureReceiver.s.sol/143/run-latest.json and the cast sends of the same minutes.
 
 Chainlink CRE re-checks on the five real pictures registered on 2026-09-17, Monad mainnet (chain 143), written 2026-09-17
-Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-2.sh, one machine, no network consensus (the passport card says so under each verdict).
+Same registry, receiver, workflow and simulation forwarder as above; run from the maintainer's machine, one machine, no network consensus (the passport card says so under each verdict).
 recomputed fingerprints and distances from the run: 0x63779c989c7f3121 (0), 0x2c256435d4d993c9 (2), 0x6c6d1494a7685a32 (1), 0x6d7a5e9681a17e78 (0), 0xc9761e8d26852736 (0), all matched
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
@@ -29,8 +29,8 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 0 0 0 0
 
-Chainlink CRE re-checks on the two pictures Ram registered through the studio (2026-09-14 and 2026-09-17), written 2026-09-17
-Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-3.sh; a studio registration carries its PassportRegistered log at position 1 of the transaction, so the trigger was pointed at event index 1.
+Chainlink CRE re-checks on the two pictures the maintainer registered through the studio (2026-09-14 and 2026-09-17), written 2026-09-17
+Same registry, receiver, workflow and simulation forwarder as above; run from the maintainer's machine; a studio registration carries its PassportRegistered log at position 1 of the transaction, so the trigger was pointed at event index 1.
 recomputed fingerprints and distances from the run: 0x3f8480cfc0307fc2 (1), 0x7f7969fdcf0f0030 (0), both matched
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
@@ -42,7 +42,7 @@ attestation counts: 0 0
 With these, every one of the fourteen real pictures on the registry carries a re-check; the seed test cards carry none by design.
 
 Chainlink CRE re-check on the first picture that was registered sealed and later published by its holder, written 2026-09-23
-Old but strong was registered sealed on 2026-09-22 at 12:23:50 UTC and unsealed by its holder four minutes later (proofs/sealed-passports.txt). Its document on chain still says sealed, so the workflow read the verify service's public unseal record for the thumbnail (commit 9ae539c), fetched it through Moolam's own gateway and recomputed the fingerprint. Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-4.sh, one machine, no network consensus; the studio registration's PassportRegistered log is event index 1.
+Old but strong was registered sealed on 2026-09-22 at 12:23:50 UTC and unsealed by its holder four minutes later (proofs/sealed-passports.txt). Its document on chain still says sealed, so the workflow read the verify service's public unseal record for the thumbnail (commit 9ae539c), fetched it through Moolam's own gateway and recomputed the fingerprint. Same registry, receiver, workflow and simulation forwarder as above; run from the maintainer's machine, one machine, no network consensus; the studio registration's PassportRegistered log is event index 1.
 recomputed fingerprint and distance from the run: 0x1f1bc103fbef6f47 (2), matched; the chain stores 0x1f1fc003fbef6f47
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
@@ -51,8 +51,8 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 before, 1 after
 
-Chainlink CRE re-check on Ant and Elephants, the picture Ram registered through the studio on 2026-09-20, written 2026-09-23
-It was the one real picture on the registry without a re-check (a census of all 38 passports on 2026-09-23: 16 real pictures, 15 re-checked). Same registry, receiver, workflow and simulation forwarder as above; run by Ram with kitchen/launch/recheck-run-5.sh; event index 1 of the studio registration.
+Chainlink CRE re-check on Ant and Elephants, the picture the maintainer registered through the studio on 2026-09-20, written 2026-09-23
+It was the one real picture on the registry without a re-check (a census of all 38 passports on 2026-09-23: 16 real pictures, 15 re-checked). Same registry, receiver, workflow and simulation forwarder as above; run from the maintainer's machine; event index 1 of the studio registration.
 recomputed fingerprint and distance from the run: 0x198df3e566199e99 (0), matched
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
@@ -63,7 +63,7 @@ attestation counts: 0 before, 1 after
 With these, every one of the sixteen real pictures on the registry carries a re-check; the seed and proof cards carry none by design, apart from one seed card re-checked on 2026-09-08 before this file existed.
 
 The first private Chainlink re-check, written 2026-09-25
-A sealed picture whose creator asked for the private re-check, read by the moolam-sealed-verifier confidential workflow (handlerInTee) from the small private copy Moolam keeps, through a read link the verify service minted under a queue claim; run by Ram with kitchen/launch/recheck-private.sh in Chainlink's simulator with --broadcast, one machine, no network consensus. Written through the second receiver, so the registry's attestation names it. Details in proofs/sealed-passports.txt.
+A sealed picture whose creator asked for the private re-check, read by the moolam-sealed-verifier confidential workflow (handlerInTee) from the small private copy Moolam keeps, through a read link the verify service minted under a queue claim; run from the maintainer's machine in Chainlink's simulator with --broadcast, one machine, no network consensus. Written through the second receiver, so the registry's attestation names it. Details in proofs/sealed-passports.txt.
 recomputed fingerprint and distance from the run: 0x2ac1e07e3e80c4e6 (1), matched
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
@@ -74,7 +74,7 @@ attestation counts: 0 before, 1 after
 With this, every one of the seventeen real pictures on the registry carries a re-check, one of them written by the private workflow through the sealed receiver.
 
 The showcase private Chainlink re-check, written 2026-09-25
-Kanchipuram Silk Loom at First Light, drawn by agent 10249 and registered sealed with the private re-check; same workflow, receiver and simulation forwarder as the private run above; run by Ram with kitchen/launch/recheck-private.sh.
+Kanchipuram Silk Loom at First Light, drawn by agent 10249 and registered sealed with the private re-check; same workflow, receiver and simulation forwarder as the private run above; run from the maintainer's machine.
 recomputed fingerprint and distance from the run: 0x85c0d272787e6e77 (0), matched
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
@@ -85,7 +85,7 @@ attestation counts: 0 before, 1 after
 With this, every one of the eighteen real pictures on the registry carries a re-check, two of them written by the private workflow through the sealed receiver.
 
 Chainlink CRE re-check on Chettinad Courtyard Before the Monsoon, drawn by agent 10249 and registered through the studio on 2026-09-25, written 2026-09-25
-Same registry, receiver, workflow and simulation forwarder as the public runs above; run by Ram with kitchen/launch/recheck-run-6.sh; event index 1 of the studio registration.
+Same registry, receiver, workflow and simulation forwarder as the public runs above; run from the maintainer's machine; event index 1 of the studio registration.
 recomputed fingerprint and distance from the run: 0xbf3e80077738f0f5 (4), matched
 
 passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)

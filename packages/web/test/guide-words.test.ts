@@ -13,7 +13,7 @@ import { GUIDE_KEYS, countsBySaying, untranslated, valueAt } from "./guide-keys.
 
 const LOCALES = ["en", "ta", "hi", "zh", "ja", "ko", "es", "fr", "de", "pt"];
 
-/** The long dash Ram's house rules ban, built from its code point so this file carries none. */
+/** The long dash the house style bans, built from its code point so this file carries none. */
 const LONG_DASH = String.fromCodePoint(0x2014);
 
 describe("the guide's words", () => {

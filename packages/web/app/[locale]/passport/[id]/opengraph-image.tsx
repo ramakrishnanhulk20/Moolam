@@ -362,7 +362,7 @@ async function readCard(params: Promise<{ locale: string; id: string }>): Promis
 /**
  * The block hash drawn in the renderer's own language.
  *
- * The component the lab bench uses is written in Tailwind classes, which satori
+ * The component the pages use is written in Tailwind classes, which satori
  * cannot read, so the same 16 by 16 grid is laid out here in plain boxes. The
  * cell and the gap are whole pixels: the picture is drawn once at a fixed size,
  * and a fractional cell is where a grid picks up a seam.

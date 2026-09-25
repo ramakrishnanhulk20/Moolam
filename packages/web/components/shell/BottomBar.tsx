@@ -207,7 +207,7 @@ export function BottomBar({
       transition={{ duration: reduced ? 0.2 : 0.5, ease: [0.16, 1, 0.3, 1] }}
       style={{
         // The phone's own home indicator strip, so the last word is never under
-        // a thumb rail. A bench frame asks for the strip with --bar-safe.
+        // a thumb rail. A frame pretending to be a phone asks for the strip with --bar-safe.
         paddingBottom: "max(env(safe-area-inset-bottom), var(--bar-safe, 0px))",
       }}
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg"

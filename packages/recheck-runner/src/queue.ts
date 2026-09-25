@@ -112,7 +112,7 @@ export function queueClient(baseUrl: string, token: string, fetcher: Fetcher = f
 /**
  * The passport ids out of whatever shape the queue route returned.
  *
- * WO-121a fixes the record, `{ passportId, requestedAt, requestedBy }`, but not the envelope the
+ * The record's shape is fixed, `{ passportId, requestedAt, requestedBy }`, but not the envelope the
  * list arrives in, so a bare array and the three obvious wrappers are all read. Anything without
  * a passport id that looks like one is dropped rather than guessed at, because a malformed id
  * would be handed straight to the CRE CLI.

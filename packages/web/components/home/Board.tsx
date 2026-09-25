@@ -41,7 +41,7 @@ const MOMENT = `
 `;
 
 /**
- * The home page's first screen: the evidence board, drawing B on the bench.
+ * The home page's first screen: the evidence board.
  *
  * Split down the middle on a wide screen and stacked on a phone. The left half
  * is the product: the why, the drop and the three real passports. The right

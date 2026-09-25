@@ -6,7 +6,7 @@
 #
 # or, from a checkout:  sudo bash packages/recheck-runner/deploy/install.sh
 #
-# What it does NOT do, because only Ram can: write the secrets into /etc/moolam/runner.env, put
+# What it does NOT do, because only the operator can: write the secrets into /etc/moolam/runner.env, put
 # the CRE session in place, and send the one receiver transaction. The last section prints those
 # three steps and the service is left stopped until they are done.
 set -euo pipefail
@@ -97,7 +97,7 @@ cat <<INSTRUCTIONS
 
 == Installed, and deliberately not started.
 
-Three things are Ram's, and only Ram's:
+Three things are the operator's, and only the operator's:
 
 1. The secrets. Copy the template and fill in the four values marked PASTE:
      sudo cp $ROOT/packages/recheck-runner/deploy/runner.env.example $ENV_FILE

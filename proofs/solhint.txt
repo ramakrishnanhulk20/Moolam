@@ -1,5 +1,5 @@
 solhint 6.2.4 via: npx --yes solhint@latest "src/**/*.sol"
-Re-run on 2026-09-06 after the WO-1b changes to the registry and the receiver. Result: no errors,
+Re-run on 2026-09-06 after the second round of changes to the registry and the receiver. Result: no errors,
 no warnings. The empty section below is the whole output.
 
 Config notes (.solhint.json):
@@ -17,7 +17,7 @@ Config notes (.solhint.json):
 
 
 ================================================================================
-WO-80 and WO-80b, 2026-09-18. Re-run after MoolamConsent.sol and IMoolamConsent.sol were added
+MoolamConsent, 2026-09-18. Re-run after MoolamConsent.sol and IMoolamConsent.sol were added
 and again after the batch call, the STANDARD name and the MAX_BATCH cap were added to them.
 Command: npx solhint@6.2.4 "src/**/*.sol"
 Result: no errors, no warnings. The empty section below is the whole output.

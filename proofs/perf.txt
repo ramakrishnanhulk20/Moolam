@@ -246,7 +246,7 @@ page                 score   LCP     TBT    CLS     score   LCP     TBT   CLS
 /en/docs                92  3437ms    40ms  0.000     100   708ms    0ms 0.000
 
 The same seven mobile scores before this change were 60, 67, 49, 67, 66, 67, 59.
-Four pages are at or above the 85 the work order asked for, three are not, and
+Four pages are at or above the target of 85, three are not, and
 the misses are named below rather than rounded up.
 
 JavaScript from this app's own build, by page, before and after:
@@ -694,7 +694,7 @@ EXPLORE AS A BUILT PAGE, LOCAL NUMBERS
 Measured 2026-09-21 on this machine against a production build of packages/web
 (NEXT_DIST_DIR=.next-verify) served by `next start` on port 3399. These are local
 production-build numbers. What the first visitor to the live site waits is
-measured by Fable after the deploy, because the last change to this route was
+measured after the deploy, because the last change to this route was
 worth 3.3 seconds locally and nothing at all on Vercel.
 
 WHAT CHANGED
@@ -797,7 +797,7 @@ What this does not cover: a visitor far from the host's region, a phone on a slo
 pictures themselves take to arrive. The 1.3 s first hit includes the cold start of the one rewrite rule in
 front of this route; every later request is served from the host's cache.
 
-THE AGENTS BOARD BECAME A BUILT PAGE, AND EVERY FAILED READ GOT A WAY BACK (2026-09-21, WO-98)
+THE AGENTS BOARD BECAME A BUILT PAGE, AND EVERY FAILED READ GOT A WAY BACK (2026-09-21)
 
 Measured on this machine against one production build, NEXT_DIST_DIR=.next-verify,
 served with next start on port 3399. The dev server on 3210 was never touched.
@@ -857,7 +857,7 @@ server answers /en/agents from the page it made, with no query at all.
 THE STATED CHAPTER ON THE HOME PAGE, 2026-09-21
 ================================================================================
 
-The beat Ram approved on the bench joined the real film. Measured on the dev
+The stated beat joined the real film. Measured on the dev
 server on port 3210 in headless Chrome with a GPU (tier 0 held in every run).
 No production build was made in this order.
 
@@ -919,7 +919,7 @@ LAYOUT SHIFT AND THE FIRST PICTURE
     after   2.29 s (cold optimizer), 1.81 s, 1.67 s;  median 1.81 s
   The optimizer's own cache warmed during the session, so the honest reading is
   that the chapter costs the first picture nothing: the page's server work is
-  unchanged, the one consent read behind it was already there for the bench.
+  unchanged, the one consent read behind it was already there.
 
 REDUCED MOTION AND NO WEBGL
 
@@ -946,7 +946,7 @@ WHAT THIS DOES NOT COVER
 
 
 ================================================================================
-WO-85b  CONSENT ON EXPLORE, 2026-09-21
+CONSENT ON EXPLORE, 2026-09-21
 ================================================================================
 
 MEASURED WITH

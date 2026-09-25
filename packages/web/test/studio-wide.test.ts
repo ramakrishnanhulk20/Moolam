@@ -221,7 +221,7 @@ describe("the real studio is wide on a laptop", () => {
     }
   });
 
-  it("leaves the same parts in one column outside the studio, as /mine and the lab benches draw them", () => {
+  it("leaves the same parts in one column outside the studio, as /mine draws them", () => {
     const faces = [
       upload("idle"),
       upload("preparing"),
@@ -293,7 +293,7 @@ describe("where a press is answered in the wide layout", () => {
     const { scrollTarget } = await import("@/components/studio/press");
     const { WIDE_REACH } = await import("@/components/studio/layout");
     // The real /studio at 1440x900, signed in, puts the box top at 301 px under a 63 px bar
-    // (kitchen/reports/WO-163-look/look.txt).
+    // (measured in a real browser).
     expect(scrollTarget(301, 63, 900, WIDE_REACH)).toBeNull();
     expect(scrollTarget(301, 63, 900)).toBe(301 - 63 - 16);
     expect(scrollTarget(600, 63, 900, WIDE_REACH)).toBe(600 - 63 - 16);
@@ -375,7 +375,7 @@ describe("the stubbed fixture", () => {
     }
   });
 
-  it("is gone from the studio's own components, and so are the lab page and the opening option", () => {
+  it("is gone from the studio's own components, and so are the preview route and the opening option", () => {
     expect(existsSync(join(web, "components/studio/WideFixture.tsx"))).toBe(false);
     expect(existsSync(join(web, "components/studio/opening.tsx"))).toBe(false);
     expect(existsSync(join(web, "app/[locale]/lab/studio-wide"))).toBe(false);

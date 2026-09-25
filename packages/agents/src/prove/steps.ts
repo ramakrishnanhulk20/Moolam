@@ -55,7 +55,7 @@ const SOURCE_QUALITY = 92;
 const GATEWAY_ATTEMPTS = 5;
 const GATEWAY_PAUSE_MS = 3000;
 
-/** The six honest journeys a picture takes after it is published, from the WO-2 robustness table. */
+/** The six honest journeys a picture takes after it is published, from the robustness table in proofs/robustness.txt. */
 export const SURVIVAL_TRANSFORMS: TransformName[] = [
   "reencode-q60",
   "resize-25",

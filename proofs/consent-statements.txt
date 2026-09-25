@@ -1,6 +1,6 @@
 Moolam's own statements on AI use for the eleven real pictures its demo agent's creator wallet holds,
 written to MoolamConsent 0x1151E69a82947920546e779c4C8c785b2a3C1277 on Monad mainnet on 2026-09-18 through Privy from
-0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6 (three sponsored transactions; run by Ram with kitchen/launch/state-consent.sh).
+0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6 (three sponsored transactions, run from the maintainer's machine).
 Each line below was written only after the contract read the statement back. Plan: packages/agents/consent-plan.json.
 passport | statement | transaction | block | written | writer
 
@@ -26,7 +26,7 @@ The question a label in a file cannot answer, asked of the contract with cast (c
   after it                       -> true, (1789717128, 0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6, (2, 2, 2, 2), ""), history length 1
 
 THE TWO PATHS A PERSON USES, ON MAINNET WITH A REAL PASSKEY (2026-09-20, read back from the chain on 2026-09-21)
-Both statements below were made by Ram from the live site, signed in with his passkey wallet
+Both statements below were made by the maintainer from the live site, signed in with a passkey wallet
 0xBB4Eb7bF3e4E4960EE0c2f535bd31c84dF35b6b2. Each transaction went to the ERC-4337 EntryPoint
 0x0000000071727De22E5E9d8BAf0edAc6f37da032 through a bundler (0xca1ef33a9522ef11265858592f0209b45473c846),
 so the send was sponsored and the creator paid nothing.

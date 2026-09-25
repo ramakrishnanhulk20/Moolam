@@ -36,7 +36,7 @@ const NOTHING_LATER = async () => undefined;
 /**
  * The signed in studio drawn from stubbed state, for tests and for measuring on
  * a machine that cannot sign in. Nothing here reaches a wallet, the verify
- * service or Monad: every pose comes from the studio bench's own fixtures.
+ * service or Monad: every pose comes from test/studio-fixtures.ts.
  *
  * It lives under test/ so no route can reach it; test/studio-wide.test.ts
  * holds that. The markup is LiveStudio's signed in branch, part for part.
@@ -182,8 +182,8 @@ function keep(held: RegisterState, pose: RegisterState): RegisterState {
 }
 
 /**
- * The bench's pictures as the index would list them, newest first, as many as
- * asked for. Past the bench's four they repeat with ids of their own, so a
+ * The fixture pictures as the index would list them, newest first, as many as
+ * asked for. Past the fixtures' four they repeat with ids of their own, so a
  * short last row can be drawn at any count.
  */
 export function cardsOf(count: number): CreatorPassport[] {

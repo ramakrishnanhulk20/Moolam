@@ -23,7 +23,7 @@ import { verifyResponseSchema } from "@/lib/verifier/client";
  * browser and measure it: the width it takes at 375 px, both grounds, and
  * whether anything moves on the way in.
  *
- * Run with UNSEAL_FIXTURE=1 to write the fragment to kitchen/reports.
+ * Run with UNSEAL_FIXTURE=1 to write the fragment to the file named below.
  */
 
 vi.mock("next-intl/server", () => ({

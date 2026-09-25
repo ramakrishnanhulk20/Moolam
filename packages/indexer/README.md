@@ -163,8 +163,8 @@ verifier's hash missing by a few bits.
 
 ## Deploying on Envio Cloud
 
-Ram's part, once the contract addresses are in `config.yaml` and the repo is
-pushed:
+The operator's part, once the contract addresses are in `config.yaml` and the
+repo is pushed:
 
 1. Log in at https://envio.dev/app/login with GitHub and pick the organisation.
 2. Install the Envio Deployments GitHub App on the Moolam repo.
