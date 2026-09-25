@@ -14,22 +14,43 @@ import { isOptimizable, optimizedUrl } from "@/lib/images";
  * React to hydrate against. Loading it this way means the two answers never
  * disagree.
  */
-const LandingStory = dynamic(() => import("@/components/story/LandingStory").then((module) => module.LandingStory), {
-  ssr: false,
-  /**
-   * The film's own box, held open before the film arrives, and carrying the
-   * attribute the page's story rules hang on.
-   *
-   * The home page pulls the story up under the floating bar. The markup asks
-   * for 73 px and the rule in globals.css hands it the bar's real height, but
-   * only once a [data-story] element exists, which used to be the moment the
-   * film mounted. So the first screen sat 10 px too high (17 px on a phone) and
-   * dropped into place a third of a second in: the whole of this page's layout
-   * shift. With the attribute here the pull-up is right on the first paint and
-   * the film replaces a box of exactly its own size.
-   */
-  loading: () => <div className="h-[100svh] w-full bg-bg" data-story="loading" />,
-});
+let LandingStory = freshStory();
+
+/**
+ * A film whose code has not been asked for yet.
+ *
+ * A failed import is remembered by the component it was made for, and that
+ * component throws the same failure on every mount after it without asking
+ * again. So the moment one fails, the next mount is handed a new one, and the
+ * Try again on the film's box is a real second request for the code.
+ */
+function freshStory() {
+  return dynamic(
+    () =>
+      import("@/components/story/LandingStory")
+        .then((module) => module.LandingStory)
+        .catch((error: unknown) => {
+          LandingStory = freshStory();
+          throw error;
+        }),
+    {
+      ssr: false,
+      /**
+       * The film's own box, held open before the film arrives, and carrying the
+       * attribute the page's story rules hang on.
+       *
+       * The home page pulls the story up under the floating bar. The markup asks
+       * for 73 px and the rule in globals.css hands it the bar's real height, but
+       * only once a [data-story] element exists, which used to be the moment the
+       * film mounted. So the first screen sat 10 px too high (17 px on a phone) and
+       * dropped into place a third of a second in: the whole of this page's layout
+       * shift. With the attribute here the pull-up is right on the first paint and
+       * the film replaces a box of exactly its own size.
+       */
+      loading: () => <div className="h-[100svh] w-full bg-bg" data-story="loading" />,
+    },
+  );
+}
 
 export function StoryStage({ data, variant = "classic" }: { data: StoryData; variant?: StoryVariant }) {
   // The first pictures of the field, asked for by the document rather than by

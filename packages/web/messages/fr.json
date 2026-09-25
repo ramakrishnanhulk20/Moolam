@@ -359,7 +359,11 @@
       "unread": "non lu",
       "error": "L’index n’a pas pu être lu : {reason}"
     },
-    "skip": "Passer le film"
+    "skip": "Passer le film",
+    "failed": {
+      "line": "Le film ne s’est pas chargé.",
+      "retry": "Réessayer"
+    }
   },
   "verify": {
     "title": "Vérifier une image",

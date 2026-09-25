@@ -359,7 +359,11 @@
       "unread": "unread",
       "error": "The index could not be read: {reason}"
     },
-    "skip": "Skip the film"
+    "skip": "Skip the film",
+    "failed": {
+      "line": "The film did not load.",
+      "retry": "Try again"
+    }
   },
   "verify": {
     "title": "Verify an image",

@@ -360,7 +360,11 @@
       "unread": "não lido",
       "error": "O índice não pôde ser lido: {reason}"
     },
-    "skip": "Pular o filme"
+    "skip": "Pular o filme",
+    "failed": {
+      "line": "O filme não carregou.",
+      "retry": "Tentar de novo"
+    }
   },
   "verify": {
     "title": "Verificar uma imagem",

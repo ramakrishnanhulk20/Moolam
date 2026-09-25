@@ -359,7 +359,11 @@
       "unread": "ungelesen",
       "error": "Der Index konnte nicht gelesen werden: {reason}"
     },
-    "skip": "Film überspringen"
+    "skip": "Film überspringen",
+    "failed": {
+      "line": "Der Film wurde nicht geladen.",
+      "retry": "Erneut versuchen"
+    }
   },
   "verify": {
     "title": "Bild prüfen",

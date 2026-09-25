@@ -361,7 +361,11 @@
       "unread": "未读到",
       "error": "索引无法读取：{reason}"
     },
-    "skip": "跳过影片"
+    "skip": "跳过影片",
+    "failed": {
+      "line": "影片没有加载出来。",
+      "retry": "再试一次"
+    }
   },
   "verify": {
     "title": "验证图片",

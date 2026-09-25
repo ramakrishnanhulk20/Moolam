@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Component, Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { FilmFailed } from "@/components/home/FilmFailed";
 
 /** The moves that say a reader is on their way down the page. */
 const MOVES = ["wheel", "touchmove", "scroll", "keydown"] as const;
@@ -53,7 +54,7 @@ export function FilmGate({ children }: { children: ReactNode }) {
   }, [open]);
 
   if (open) {
-    return <>{children}</>;
+    return <FilmCatch>{children}</FilmCatch>;
   }
 
   return (
@@ -61,4 +62,36 @@ export function FilmGate({ children }: { children: ReactNode }) {
       <div className="h-[100svh] w-full bg-bg" data-story="loading" />
     </div>
   );
+}
+
+/**
+ * Keeps a film that would not load, or broke on its first frame, inside its
+ * own box.
+ *
+ * In this version of Next a dynamic import that fails never reaches the
+ * import's loading box: that box is only ever handed a null error. The failure
+ * is thrown where the film would render, and without a catch here it climbs to
+ * the page's error screen and takes the first screen and the footer with it.
+ *
+ * Try again mounts the film under a new key, and the story's own import hands
+ * out a fresh attempt after a failure, so the press really asks for the code
+ * again. Nothing retries by itself: a second failure lands on the same box.
+ */
+class FilmCatch extends Component<{ children: ReactNode }, { failed: boolean; attempt: number }> {
+  state = { failed: false, attempt: 0 };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  retry = () => {
+    this.setState(({ attempt }) => ({ failed: false, attempt: attempt + 1 }));
+  };
+
+  render() {
+    if (this.state.failed) {
+      return <FilmFailed onRetry={this.retry} />;
+    }
+    return <Fragment key={this.state.attempt}>{this.props.children}</Fragment>;
+  }
 }

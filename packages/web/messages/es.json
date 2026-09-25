@@ -359,7 +359,11 @@
       "unread": "sin leer",
       "error": "No se pudo leer el índice: {reason}"
     },
-    "skip": "Saltar la película"
+    "skip": "Saltar la película",
+    "failed": {
+      "line": "La película no se cargó.",
+      "retry": "Probar otra vez"
+    }
   },
   "verify": {
     "title": "Verificar una imagen",
