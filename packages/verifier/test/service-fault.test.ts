@@ -3,10 +3,12 @@
 // decode keeps its 400. The blockhash worker is replaced by a stand-in that hashes on this thread
 // with the same library, or stops with code 1 when told to, so a dying worker can be shown without
 // killing a real one.
+// /verify answers that fault as {"error":"service-fault"} with the same sentence, and a full match
+// gate keeps its own {"error":"busy"}.
 // Does NOT execute a worker running past its 30 second limit, a hash of the wrong length or a
 // decoder out of memory: fingerprint.ts raises the same FingerprintFault for each, which is read
-// there and not driven here. Nor /verify/paid, which calls the same verifyBytes, or /verify's own
-// body for a 503, which routes/verify.ts writes as "busy".
+// there and not driven here. Nor /verify/paid, which calls the same verifyBytes. /edit and
+// /generate are in test/fingerprint-fault-routes.test.ts.
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
@@ -49,6 +51,7 @@ vi.mock("node:worker_threads", async (importOriginal) => {
 const { buildServer } = await import("../src/server.js");
 const { verifyBytes, SERVICE_FAULT_REASON } = await import("../src/routes/shared.js");
 const { FingerprintFault, fingerprint } = await import("../src/fingerprint.js");
+const { Busy } = await import("../src/generate/gate.js");
 
 let app: FastifyInstance;
 let picture: Buffer;
@@ -81,11 +84,20 @@ describe("V49: who a failure during matching is blamed on", () => {
     const response = await verify(picture);
 
     expect(response.statusCode).toBe(503);
-    expect(response.body).not.toContain("not an image we can read");
+    expect(response.json()).toEqual({ error: "service-fault", reason: SERVICE_FAULT_REASON });
     await expect(verifyBytes(app, picture)).rejects.toMatchObject({ statusCode: 503, message: SERVICE_FAULT_REASON });
     expect(SERVICE_FAULT_REASON).toBe("the service could not read this picture right now, try again");
     expect(logged).toHaveBeenCalled();
     expect(JSON.stringify(logged.mock.calls[0])).toContain("the blockhash worker stopped with code 1");
+  }, 30_000);
+
+  it("keeps the one word busy on /verify for a full match gate", async () => {
+    vi.spyOn(app.verifier, "runMatch").mockRejectedValueOnce(new Busy(60_000));
+
+    const response = await verify(picture);
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ error: "busy" });
   }, 30_000);
 
   it("raises FingerprintFault from fingerprint() when the worker stops", async () => {

@@ -23,7 +23,9 @@
 // status reads gone right after the unseal deleted the copy (V51), the thumbnail is pinned first
 // and a private answer stops the unseal with nothing public (V52), a resend after the unseal is
 // answered from memory with no Privy or Pinata call (V54), and two unseals sent together pin one
-// record (V55).
+// record (V55). The private answer is read from PinNotConfirmed's network field whatever its
+// message says, and a thumbnail pin that may have landed keeps the day's slot spent while Pinata's
+// own 4xx hands it back.
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -78,6 +80,26 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
   privy: () => ({}),
 }));
 
+/** While set, a PinNotConfirmed leaves pinFile with other words, so the route cannot lean on them. */
+const pinWording = vi.hoisted(() => ({ reworded: false }));
+
+vi.mock("../src/ipfs/pinata.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/ipfs/pinata.js")>();
+  return {
+    ...real,
+    pinFile: async (...args: Parameters<typeof real.pinFile>) => {
+      try {
+        return await real.pinFile(...args);
+      } catch (error) {
+        if (pinWording.reworded && error instanceof real.PinNotConfirmed) {
+          error.message = "Pinata kept this file somewhere other than where it was asked to";
+        }
+        throw error;
+      }
+    },
+  };
+});
+
 const { FINGERPRINT_UNSTABLE_REASON, THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } = await import(
   "../src/prepare.js"
 );
@@ -107,6 +129,8 @@ const pins: Pin[] = [];
 let refusePin: (name: string) => boolean = () => false;
 /** Lets a test answer one pin with Pinata's own fields bent, for the V11 checks. */
 let bendPin: (name: string) => { cid?: string; network?: string } = () => ({});
+/** Lets a test answer one pin with an error status on every attempt, for the day's slot rule. */
+let failPin: (name: string) => number | undefined = () => undefined;
 
 /** The private files on the stub account, and what the private half of Pinata was asked. */
 const privateFiles: { id: string; name: string; cid: string }[] = [];
@@ -313,6 +337,10 @@ describe("unsealing a sealed passport", () => {
       await pinGate;
       const form = init?.body as FormData;
       const name = String(form.get("name"));
+      const failed = failPin(name);
+      if (failed !== undefined) {
+        return new Response("pinata failed", { status: failed });
+      }
       if (refusePin(name)) {
         return new Response("pinata said no", { status: 400 });
       }
@@ -343,6 +371,8 @@ describe("unsealing a sealed passport", () => {
     pins.length = 0;
     refusePin = () => false;
     bendPin = () => ({});
+    failPin = () => undefined;
+    pinWording.reworded = false;
     privateFiles.length = 0;
     privateDeleted.length = 0;
     privatePinata.listFails = false;
@@ -939,7 +969,41 @@ describe("unsealing a sealed passport", () => {
     expect(response.json()).toMatchObject({ error: "thumbnail-held-privately", passportId: sealedFile.passportId });
     expect(response.json().reason).toMatch(/nothing was published/i);
     expect(pins.map((pin) => pin.name.endsWith("-thumb.jpg"))).toEqual([true]);
-    expect((await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used).toBe(before);
+    // The bytes went out and Pinata answered, so the day's slot stays spent, as /prepare and /edit
+    // keep theirs for an answer on another network (review pass 6, intake 4).
+    expect((await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used).toBe(before + 1);
+  }, 60_000);
+
+  // PinNotConfirmed carries the network it was answered on, and heldPrivately reads that field.
+  it("stops with 409 thumbnail-held-privately however the private answer is worded", async () => {
+    const thumbnail = await unseal.unsealThumbnail(sealedFile.bytes);
+    if (!thumbnail.ok) throw new Error("the test picture should make a thumbnail");
+    keepPrivate(`sealed-thumb-0x${"4f".repeat(32)}.jpg`, contentIdOf(thumbnail.thumbnail));
+    pinWording.reworded = true;
+
+    const response = await ask("did:privy:unseal-reworded");
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: "thumbnail-held-privately", passportId: sealedFile.passportId });
+    expect(pins.map((pin) => pin.name.endsWith("-thumb.jpg"))).toEqual([true]);
+  }, 60_000);
+
+  // The rule /prepare and /edit follow since c325ef3: only Pinata's own refusal hands the slot back.
+  it.each([
+    [502, true],
+    [401, false],
+  ])("keeps the day's slot spent after a thumbnail pin answered %s on every attempt: %s", async (status, kept) => {
+    const before = (await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used as number;
+    failPin = (name) => (name.endsWith("-thumb.jpg") ? status : undefined);
+
+    const response = await ask(`did:privy:unseal-thumb-${status}`);
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({ error: "pin-failed", published: {}, failed: ["thumbnail"] });
+    expect(pins).toHaveLength(0);
+    expect((await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used).toBe(
+      kept ? before + 1 : before,
+    );
   }, 60_000);
 
   // Review pass 6, sealed #5 (V54): a resend of a finished unseal spent a Privy read and a Pinata

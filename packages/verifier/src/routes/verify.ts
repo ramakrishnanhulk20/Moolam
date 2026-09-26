@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { withPassportFacts } from "../disputeRead.js";
-import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
+import { SERVICE_FAULT_REASON, ServiceFault, readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
 
 /**
  * POST /verify: takes an image, returns the passport it belongs to.
@@ -18,7 +18,8 @@ import { readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
  * through one timeout and then another. A read that fails leaves that field as
  * { source: "unavailable" } and the match stands.
  *
- * Answers 503 `busy` when no matching slot came free in time.
+ * Answers 503 `busy` when no matching slot came free in time, and 503 `service-fault` with
+ * SERVICE_FAULT_REASON when this service, not the picture, failed while matching.
  */
 export async function verifyRoutes(app: FastifyInstance): Promise<void> {
   app.post("/verify", async (request: FastifyRequest, reply: FastifyReply) => {
@@ -38,8 +39,12 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       const status = statusOf(error);
       const reason = error instanceof Error ? error.message : String(error);
       request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /verify");
-      // A full gate is the one failure the caller can do nothing about but retry, so it goes out
-      // as the same one word the other busy routes use rather than an internal wait time.
+      // A fault of this service says so in words, so the caller knows their picture is fine.
+      if (error instanceof ServiceFault) {
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      }
+      // A full gate is the one other failure the caller can do nothing about but retry, so it goes
+      // out as the same one word the other busy routes use rather than an internal wait time.
       return reply.code(status).send({ error: status === 503 ? "busy" : reason });
     }
   });

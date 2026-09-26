@@ -22,7 +22,7 @@ import {
 } from "../edit/send.js";
 import { delegatedWallets, signerIds, walletSigners, type OwnerWallet, type WalletSigner } from "../edit/signers.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
-import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
+import { FingerprintFault, ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Kind, type PassportInput } from "../generate/eip712.js";
 import { Busy } from "../generate/gate.js";
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
@@ -42,7 +42,7 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
-import { BadRequest, statusOf } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -108,8 +108,9 @@ interface EditContext {
  * 502 `pin-failed`, `sign-failed`, `send-failed`, `send-pending`, `privy-unavailable` or
  * `chain-unavailable`, 422 `thumbnail-too-large` for a picture too detailed for the Chainlink
  * fetch budget, 422 `fingerprint-unstable` when the picture's own thumbnail is further from its
- * pHash than the match threshold, and 503 `busy`. The two 413s and both 422s pin nothing and send
- * nothing, so both allowances come back.
+ * pHash than the match threshold, 503 `busy`, and 503 `service-fault` with the sentence /verify
+ * uses when this service, not the picture, failed while fingerprinting it. The two 413s, both 422s
+ * and the service fault pin nothing and send nothing, so both allowances come back.
  */
 export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   const quota = dailyQuota(env.EDITS_PER_DAY);
@@ -148,6 +149,13 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
     try {
       await readImageHeader(upload.bytes);
     } catch (error) {
+      if (error instanceof FingerprintFault) {
+        request.log.error(
+          { url: request.url, reason: error.message },
+          "rejected: /edit the service failed reading the image",
+        );
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      }
       const tooBig = error instanceof ImageTooLarge;
       const reason = error instanceof Error ? error.message : String(error);
       request.log.warn({ ip: request.ip, url: request.url, reason }, "rejected: /edit image");
@@ -318,6 +326,15 @@ async function append(
       if (error instanceof Busy) {
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit busy");
         return reply.code(503).send({ error: "busy" });
+      }
+      // This service failed to fingerprint a picture it could read, so the file is not to blame
+      // (review pass 6, answers 7). Nothing was pinned or sent, so both slots come back.
+      if (error instanceof FingerprintFault) {
+        request.log.error(
+          { url: request.url, reason: error.message },
+          "rejected: /edit the service failed fingerprinting",
+        );
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
       if (error instanceof SignerUnavailable) {
         request.log.error({ url: request.url, reason: error.message }, "rejected: /edit the signer is down");

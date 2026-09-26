@@ -1,7 +1,7 @@
 // Covers the four re-check routes: the public request and status, and the three the runner holds a
 // token for. It holds up what the queue promises from outside: an id that is not a passport, a
 // passport the index does not know, a sealed passport whose picture was never published, one whose
-// holder published it later (queued like a public one, including after a minute-old sealed answer),
+// holder published it later (queued like a public one, including 11 seconds after a sealed answer),
 // one whose record lookup failed (queued, the runner decides), the same request twice, ten a minute from one address, a queue with no room left, a host with no runner
 // token at all, a wrong token, a claim another runner is already on, a claim abandoned for half an
 // hour, a report with a transaction and one without, and the two counts /health carries.
@@ -33,6 +33,7 @@ const UNKNOWN = "0x4444444444444444444444444444444444444444444444444444444444444
 const UNSEALED = "0x5555555555555555555555555555555555555555555555555555555555555555" as Hex;
 const LOOKUP_DOWN = "0x6666666666666666666666666666666666666666666666666666666666666666" as Hex;
 const SEALED_LATER = "0x7777777777777777777777777777777777777777777777777777777777777777" as Hex;
+const SEALED_BRIEFLY = "0x8888888888888888888888888888888888888888888888888888888888888888" as Hex;
 const TX = "0xabababababababababababababababababababababababababababababababab";
 
 const HALF_HOUR = 30 * 60 * 1000;
@@ -57,6 +58,7 @@ const source = {
     record(UNSEALED, "ipfs://sealed"),
     record(LOOKUP_DOWN, "ipfs://sealed"),
     record(SEALED_LATER, "ipfs://sealed"),
+    record(SEALED_BRIEFLY, "ipfs://sealed"),
   ],
 };
 
@@ -237,7 +239,23 @@ describe("POST /recheck/request", () => {
     expect(response.json()).toMatchObject({ passportId: LOOKUP_DOWN, status: "pending" });
   });
 
-  it("holds a sealed answer for a minute, then queues the passport once its holder has unsealed it", async () => {
+  // The rule the verify answer's picture fact follows since fa2efd0: "sealed" is at most 10 s old.
+  it("queues a passport its holder unsealed 11 seconds after a read that said sealed", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      expect((await ask(SEALED_BRIEFLY, "198.51.100.14")).statusCode).toBe(409);
+      published.add(SEALED_BRIEFLY);
+
+      vi.setSystemTime(Date.now() + 11_000);
+      const later = await ask(SEALED_BRIEFLY, "198.51.100.14");
+      expect(later.statusCode).toBe(200);
+      expect(later.json()).toMatchObject({ passportId: SEALED_BRIEFLY, status: "pending", already: false });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("holds a sealed answer for a while, then queues the passport once its holder has unsealed it", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     try {
       expect((await ask(SEALED_LATER, "198.51.100.13")).statusCode).toBe(409);

@@ -6,7 +6,7 @@ import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type P
 import { embeddedWallets } from "../auth/wallet.js";
 import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { env } from "../env.js";
-import type { Hex } from "../fingerprint.js";
+import { FingerprintFault, type Hex } from "../fingerprint.js";
 import { Busy, waitingGate } from "../generate/gate.js";
 import { generatorDomain, generatorWallet, signPassportAsGenerator } from "../generate/generatorSigner.js";
 import { Kind, type PassportInput } from "../generate/eip712.js";
@@ -53,6 +53,7 @@ import {
   type SealedMetadata,
   type SignedFile,
 } from "../sealed.js";
+import { SERVICE_FAULT_REASON } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-agent/0.1.0";
@@ -211,7 +212,9 @@ const SEALED_FILE_REFUSED = {
  * budget, 422 `fingerprint-unstable` when a drawing's own thumbnail is further from its pHash than
  * the match threshold, which pins nothing and keeps both slots spent, 502 `model-failed`,
  * `pin-failed` or `sign-failed` when one of
- * the three outside services will not play, and 503 `busy` when no drawing slot came free.
+ * the three outside services will not play, 503 `busy` when no drawing slot came free, and 503
+ * `service-fault` with the sentence /verify uses when this service failed while fingerprinting a
+ * drawing, which keeps both slots spent because the drawing was made and paid for.
  *
  * A picture the provider never drew gives the daily slot back. A call that timed out or died in
  * the middle of drawing may have been billed, so that one keeps its slot.
@@ -323,6 +326,15 @@ export async function generateRoutes(
           distance: error.distance,
           reason: FINGERPRINT_UNSTABLE_REASON,
         });
+      }
+      // This service failed to fingerprint a drawing it could read. The drawing was made and paid
+      // for, so both slots stay spent, and the answer says the fault is ours, not the model's.
+      if (error instanceof FingerprintFault) {
+        request.log.error(
+          { url: request.url, reason: error.message },
+          "rejected: /generate the service failed fingerprinting",
+        );
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);

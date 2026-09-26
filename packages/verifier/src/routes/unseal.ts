@@ -28,7 +28,7 @@ import {
   type PreparedImage,
 } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
-import { privateRecheckFor, privateThumbnailName } from "../sealed.js";
+import { privateRecheckFor, privateThumbnailName, refusedByPinata } from "../sealed.js";
 import {
   findUnsealRecord,
   fingerprintMatches,
@@ -342,8 +342,11 @@ interface UnsealContext {
  * Pinata or chain call (review pass 6, V54), and only one unseal of a passport runs at a time on
  * this server (V55).
  *
- * Both allowances go back whenever nothing was pinned, because an unseal sends no transaction: a
- * request that pinned nothing has cost the world nothing to give back.
+ * Both allowances go back whenever no pin can have landed, because an unseal sends no transaction:
+ * a request that stored nothing has cost the world nothing to give back. A pin that failed after
+ * its bytes left this process may still have been stored, so only Pinata's own refusal, or a
+ * request never sent, counts as nothing landed, the rule /prepare and /edit follow (review pass 6,
+ * intake 4).
  */
 async function open(
   app: FastifyInstance,
@@ -629,11 +632,12 @@ async function unsealHeld(
     // under another passport's name, kept before V12, makes Pinata answer the public pin with that
     // private file, and clearPreV12Copy only looks under this passport's name. Pinned in parallel,
     // the full image would already be public by then; pinned first, the unseal stops with nothing
-    // public and the day's slot handed back.
+    // public.
     let thumb: Awaited<ReturnType<typeof pinFile>>;
     try {
       thumb = await pinFile(thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
     } catch (error) {
+      pinned = !refusedByPinata(error);
       const privately = heldPrivately(error);
       request.log.error(
         { url: request.url, passportId: upload.passportId, reason: reasonOf(error), privately },
@@ -776,7 +780,7 @@ async function unsealHeld(
     });
   } finally {
     // The holder's own allowance comes back for any unseal that did not finish, so a partial one
-    // can be finished; the day's ceiling for everyone comes back only when nothing was pinned.
+    // can be finished; the day's ceiling for everyone comes back only when no pin can have landed.
     if (!completed) {
       context.quota.release(identity.userId, ticket);
     }
@@ -1016,10 +1020,9 @@ function reasonOf(error: unknown): string {
 
 /**
  * Whether a public pin failed because Pinata answered with a file it keeps on its private network,
- * which is what it does for bytes it already holds privately. PinNotConfirmed carries only its
- * message, so this reads the network pinFile writes into it; a message in any other form reads as
- * a plain pin failure, which also publishes nothing.
+ * which is what it does for bytes it already holds privately. It reads the network field Pinata's
+ * answer filled, never the message, so rewording the message cannot change the answer.
  */
 function heldPrivately(error: unknown): boolean {
-  return error instanceof PinNotConfirmed && / on network private[ ,]/.test(error.message);
+  return error instanceof PinNotConfirmed && error.network === "private";
 }

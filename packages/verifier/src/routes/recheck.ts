@@ -5,7 +5,7 @@ import { bearerToken } from "../auth/privy.js";
 import type { RecheckItem, RecheckQueue } from "../recheck/queue.js";
 import { privatelyRecheckable } from "../sealed.js";
 import type { Hex, PassportRecord } from "../types.js";
-import { pictureStateOf, type DocumentReader, type UnsealRecordFinder } from "../unseal.js";
+import { PICTURE_SEALED_TTL_MS, pictureStateOf, type DocumentReader, type UnsealRecordFinder } from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
 
 export type { DocumentReader } from "../unseal.js";
@@ -13,8 +13,10 @@ export type { DocumentReader } from "../unseal.js";
 /**
  * How long a "sealed" answer is held before the unseal record is looked for again. A holder can
  * publish the picture at any moment, so this is the longest a fresh unseal waits to be re-checked.
+ * It is the verify answer's own limit for its picture fact, so the two never disagree for longer
+ * than ten seconds.
  */
-const SEALED_TTL_MS = 60_000;
+const SEALED_TTL_MS = PICTURE_SEALED_TTL_MS;
 
 /** How many waiting requests one read of the queue hands over. The runner works through one page. */
 const QUEUE_PAGE = 50;
@@ -288,16 +290,17 @@ type SealedAnswer = "sealed" | "sealed-private" | "public" | "unsealed" | "unkno
  * passport points at, and for a document that says sealed, from the record its holder pins on
  * unsealing. The document is written once, so "public" can never go stale, and a record is never
  * taken back, so neither can "unsealed": both are remembered for the life of the process. "sealed"
- * is the one answer that changes, the moment the holder publishes, so it is held for a minute and
- * then asked again. A caller cannot turn this route into a gateway read per request: a repeat is
- * answered from memory, and only passports the index already knows ever get this far.
+ * is the one answer that changes, the moment the holder publishes, so it is held for ten seconds at
+ * most and then asked again. A caller cannot turn this route into a gateway read per request: a
+ * repeat inside those ten seconds is answered from memory, and only passports the index already
+ * knows ever get this far.
  *
  * A read that fails answers "unknown" and is not remembered, and an unknown request is queued. A
  * sealed passport slipping through costs the runner one refusal; a gateway or Pinata being slow
  * must never cost a real picture its second opinion.
  *
  * A sealed document that also passes the privately re-checkable predicate answers "sealed-private"
- * and is held the same minute, and whether its copy is still kept is the route's next question.
+ * and is held the same ten seconds, and whether its copy is still kept is the route's next question.
  */
 function sealedChecker(
   read: DocumentReader | undefined,

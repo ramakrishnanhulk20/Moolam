@@ -79,6 +79,7 @@ export async function pinFile(
   if (data.network !== "public" || data.cid !== expected) {
     throw new PinNotConfirmed(
       `Pinata answered the public pin of ${name} with content id ${data.cid} on network ${String(data.network)}, and these bytes are ${expected} on public`,
+      { network: data.network ?? undefined, cid: data.cid },
     );
   }
   return { cid: data.cid, uri: `${IPFS_SCHEME}${data.cid}`, size: data.size ?? bytes.length };
@@ -105,11 +106,18 @@ export async function pinJson(value: unknown, name: string): Promise<{ cid: stri
 /**
  * Pinata answered a public pin with a file that is not the bytes sent, or not on the public
  * network. The pin is not believed: nothing downstream may name it or delete anything because of it.
+ *
+ * `network` and `cid` are what Pinata answered with, carried as fields so a caller decides on them
+ * and never on the message's wording. `network` is undefined when the answer named none.
  */
 export class PinNotConfirmed extends Error {
-  constructor(message: string) {
+  readonly network: string | undefined;
+  readonly cid: string;
+  constructor(message: string, answered: { network: string | undefined; cid: string }) {
     super(message);
     this.name = "PinNotConfirmed";
+    this.network = answered.network;
+    this.cid = answered.cid;
   }
 }
 
