@@ -81,11 +81,20 @@ bits. Measured on a 1200 by 900 sky with plus or minus 4 of grain, its own 512 p
 landed 31 to 39 bits away, far past the threshold of 10. Such a passport would fail its Chainlink
 re-check and no copy of it could ever be matched.
 
-So `/prepare` measures every picture the way the re-check will, before anything is pinned or
-handed back: the pHash of the prepared picture against the pHash of its own thumbnail, made by the
-same code the workflow and a private copy use. Past 10 bits the picture is refused with 422
-`fingerprint-unstable` and the distance, and nothing is pinned. A sealed picture keeps no public
-thumbnail, so it is judged by the one an unseal would publish.
+So every route that registers or publishes a picture measures it the way the re-check will, before
+anything is pinned or handed back: the pHash of the picture against the pHash of its own thumbnail,
+made by the same code the workflow and a private copy use. Past 10 bits the picture is refused with
+422 `fingerprint-unstable` and the distance, and nothing is pinned. The refusal applies on four
+routes:
+
+- `/prepare`, for an upload. A sealed picture keeps no public thumbnail, so it is judged by its
+  private copy when it keeps one, and otherwise by the thumbnail an unseal would publish.
+- `/edit`, for the edited file, judged by the thumbnail it is about to pin. Nothing is pinned or
+  sent, and both allowances come back.
+- `/generate`, for a drawing, judged the same way as an upload. The drawing was made and paid for,
+  so the allowance stays spent.
+- `/unseal`, judged by the thumbnail the unseal would publish, which catches a picture registered
+  sealed before this check existed. Nothing is published and the passport stays sealed.
 
 ## What survives and what does not
 

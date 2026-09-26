@@ -82,8 +82,9 @@ one of four lines:
   these bytes. The service's answer carries the validator's failure codes, such as
   `assertion.dataHash.mismatch`, for anyone reading the JSON.
 - Unreadable: "This file carries Content Credentials we could not read, so we cannot say whether
-  they hold." There is C2PA data in the file and it could not be parsed, so the card makes no claim
-  either way.
+  they hold." There is C2PA data in the file that could not be read here: it would not parse, it
+  only names a record stored elsewhere, which the service never fetches, or reading it took more
+  than five seconds. The card makes no claim either way.
 - Stripped: "The signed C2PA record has been stripped from this file." This is the interesting case,
   and the whole reason the fingerprints are on chain. A platform that stripped the manifest did not
   strip the picture.

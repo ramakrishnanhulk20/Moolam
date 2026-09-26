@@ -103,7 +103,7 @@ curl -s -X POST http://localhost:4000/verify \
     present: boolean,
     validation?: "valid" | "invalid" | "unreadable", // see below
     failures?: string[],            // only with validation "invalid"
-    manifestHash?: `0x${string}`,
+    manifestHash?: `0x${string}`,   // sha256 of the C2PA store's own box, see below
     title?: string,
     claimGenerator?: string,
     actions?: string[],
@@ -135,10 +135,20 @@ made of the file, and it is one of three words, or absent:
   `assertion.dataHash.mismatch`. Only short dotted codes of letters, digits, dots, underscores and
   hyphens, at most 64 characters each, are kept, duplicates are dropped, and the list stops at eight,
   so a crafted manifest cannot use the field to put text of its own into the answer.
-- `unreadable`: the file carries C2PA data the library could not parse, or the library could not
-  read the file at all. `present` is `false`, and no other manifest field is set. A damaged
-  manifest costs the caller the manifest and never the match.
+- `unreadable`: the file carries C2PA data the library could not parse, the library could not
+  read the file at all, the file names a manifest stored elsewhere instead of carrying one, or the
+  read was still running after five seconds. `present` is `false`, and no other manifest field is
+  set. A damaged manifest costs the caller the manifest and never the match.
 - Absent: the file carries no manifest, and `present` is `false`.
+
+A remote manifest is never fetched. A file can name one by address in its XMP, and the C2PA library
+would request it, from this host and to wherever the uploader pointed it; every read here, and every
+signing that reads an upload's own store, runs with that fetch switched off. A read given up on at
+five seconds keeps running inside the library until it ends, and its answer is dropped.
+
+`manifestHash` is the sha256 of the C2PA manifest store's own JUMBF box, reassembled from its APP11
+segments: the first box labelled `c2pa`, and nothing beside it. Another JUMBF box in the same file,
+a 360 degree description or another tool's data, does not move the hash. It is set only for a JPEG.
 
 A match must clear both thresholds: pHash at most 10 of 64, blockhash at most 40 of 256. Past
 either one, nothing is returned and `confidence` is 0.
@@ -182,8 +192,9 @@ type Consent =
       aiTraining: Use, aiGenerativeTraining: Use, aiInference: Use, dataMining: Use,
       constraintInfo?: string,      // at most 256 printable ASCII bytes, absent when there are none
       at: number,                   // unix seconds, the block timestamp of the statement
-      writer: `0x${string}` }       // the address that held the passport when it was written
-  | { source: "chain", stated: false }
+      writer: `0x${string}`,        // the address that held the passport when it was written
+      readAt: number }              // unix seconds, when this service read it, see below
+  | { source: "chain", stated: false, readAt: number }
   | { source: "unavailable" }
 ```
 
@@ -200,23 +211,30 @@ not permission either: the creator has said nothing about that use.
 
 At most three passports are read per verification, the exact match, the best match and the first
 registration, each once however many of those it is. The other near misses in `matches` carry no
-facts, so twenty candidates never mean twenty chain reads. Each answer is held in the service's memory for 60 seconds. `constraintInfo` is
-returned exactly as the chain holds it, and is dropped if it is not within the 256 printable ASCII
-bytes the contract promises, because this answer is input to other people's parsers.
+facts, so twenty candidates never mean twenty chain reads. Each answer is held in the service's
+memory for at most 10 seconds, because a new holder, or the same holder through a second wallet,
+can restate within seconds. `readAt` says when the answer was read, so a caller can see how old a
+remembered one is. `constraintInfo` is returned exactly as the chain holds it, and is dropped if it
+is not within the 256 printable ASCII bytes the contract promises, because this answer is input to
+other people's parsers.
 
 **Whether the passport is under dispute.** The same matches carry `dispute`, read live from the
 registry's own dispute view at `MOOLAM_REGISTRY_ADDRESS`
 (`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`), under the same limits: at most three passports, a five
-second cap, 60 seconds in memory, and a failed read that never fails the verification.
+second cap, and a failed read that never fails the verification. `upheld` is the ruling's last word
+and is held in memory for 60 seconds; `none`, `open` and `rejected` can change with the next block
+and are held for at most 10 seconds.
 
 ```ts
 type Dispute =
-  | { source: "chain", status: "none" }      // nobody has challenged this passport
-  | { source: "chain", status: "open" }      // a challenge is open, with a bond behind it
-  | { source: "chain", status: "upheld" }    // the challenge stood: the record is marked disputed
-  | { source: "chain", status: "rejected" }  // the challenge was settled against the challenger
-  | { source: "unavailable" }                // this service could not find out
+  | { source: "chain", status: "none", readAt: number }      // nobody has challenged this passport
+  | { source: "chain", status: "open", readAt: number }      // a challenge is open, with a bond behind it
+  | { source: "chain", status: "upheld", readAt: number }    // the challenge stood: the record is marked disputed
+  | { source: "chain", status: "rejected", readAt: number }  // the challenge was settled against the challenger
+  | { source: "unavailable" }                                // this service could not find out
 ```
+
+`readAt` is the unix second the registry was read, as on `consent`.
 
 The four words are the registry's own `DisputeStatus` enum, mapped one for one. A status the enum
 has no room for comes back `unavailable` rather than as a guess at the nearest word.
@@ -230,17 +248,24 @@ reader must not miss.
 
 **Whether an earlier version lost a challenge.** The registry marks only the passport a challenge
 named, and an edit of a disputed passport is still allowed, so an edit reads `none` in its own
-`dispute`. The same matches carry `inheritedDispute` beside it, read from the chain for up to eight
-passports above the match, under the same memory and timeout.
+`dispute`. The same matches carry `inheritedDispute` beside it. The eight nearest passports above
+the match are read on chain, whatever lies beyond them, through the same reader, memory and timeout
+as `dispute`.
 
 ```ts
 type InheritedDispute =
-  | { source: "chain", status: "upheld", ancestor: `0x${string}` } // the nearest ancestor whose challenge stood
-  | { source: "chain", status: "none" }                             // every ancestor read, none upheld
-  | { source: "unavailable" }                                       // a read failed or the chain is deeper than eight
+  | { source: "chain", status: "upheld", ancestor: `0x${string}`, readAt: number } // the nearest ancestor whose challenge stood
+  | { source: "chain", status: "none", readAt: number }                             // every ancestor read, none upheld
+  | { source: "unavailable" }                                                       // see below
 ```
 
-An open or rejected challenge above does not carry down. The web app shows the upheld case as one
+`upheld` is the answer whenever any of those eight reads upheld, even when a read of another failed
+or the chain goes deeper than eight, and it names the nearest such ancestor. `none` is said only
+when every ancestor was read, which means a chain of eight or fewer that the index could follow to
+the original. Anything else is `unavailable`: a failed read with nothing upheld, a chain deeper than
+eight with nothing upheld among the eight, a parent the index does not hold, or a loop. `readAt` is
+the upheld ancestor's read, or the oldest of the reads behind a `none`. An open or rejected
+challenge above does not carry down. The web app shows the upheld case as one
 line under the dispute line, linked to the ancestor's passport, and says nothing new for the others.
 
 **What has re-checked the picture.** The same matches carry `recheck`: what the Chainlink CRE
@@ -277,13 +302,14 @@ learns it without opening the metadata document themselves.
 
 ```ts
 type Picture =
-  | { state: "public" }                    // registered in the open
-  | { state: "sealed" }                    // registered without the picture, which was never published
-  | { state: "unsealed", at: string }      // registered sealed, published later by its holder
-  | { source: "unavailable" }              // this service could not find out
+  | { state: "public", readAt: number }                // registered in the open
+  | { state: "sealed", readAt: number }                // registered without the picture, which was never published
+  | { state: "unsealed", at: string, readAt: number }  // registered sealed, published later by its holder
+  | { source: "unavailable" }                          // this service could not find out
 ```
 
-`at` is the ISO 8601 time from the unseal record, the moment the holder published the picture. The
+`at` is the ISO 8601 time from the unseal record, the moment the holder published the picture.
+`readAt` is the unix second the state was read, as on `consent`. The
 state is read from the passport's metadata document and, only for a document that says sealed, from
 the unseal record pinned under the passport's id, which is believed only when it names this
 passport. A document that cannot be read, a record lookup that fails, and anything slower than the
@@ -291,8 +317,13 @@ same five second cap the other reads get come back `unavailable`, never as `seal
 never fail the verification.
 
 `public` and `unsealed` are held in memory for good, because a document is written once and an
-unseal record is never taken back. `sealed` is held for 60 seconds, since it is the one answer the
-holder can change. Nothing in the field says where the picture lives: a sealed match carries no
+unseal record is never taken back. `sealed` is held for at most 10 seconds, since it is the one
+answer the holder can change.
+
+In short, the answers that are final are remembered as before: `public` and `unsealed` for the life
+of the process, and an `upheld` dispute for 60 seconds. Every answer that can still change, the
+holder's statement, a dispute that is `none`, `open` or `rejected`, and `sealed`, is at most 10
+seconds old, and each says when it was read in `readAt`. Nothing in the field says where the picture lives: a sealed match carries no
 address to try, and an unsealed one is found through [`GET /unseal/:passportId`](#get-unsealpassportid).
 
 **Status codes.**
@@ -303,11 +334,17 @@ address to try, and an unsealed one is found through [`GET /unseal/:passportId`]
 | `400` | No multipart `file` field and no `{ "url": "..." }` body, a part named something other than `file`, an empty file, or an upload that is not a JPEG, PNG or WebP the service can decode |
 | `403` | The URL resolves to a loopback, private, link-local, unique-local, carrier-grade NAT, multicast, reserved or cloud metadata address, before or after any redirect |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once decoded |
-| `429` | Over 60 requests in a minute from that caller. The address is read from the hop named in `TRUST_PROXY`, so a service behind a proxy counts callers rather than the proxy |
+| `429` | Over 60 requests in a minute from that caller. The address is read from the hop named in `TRUST_PROXY`, so a service behind a proxy counts callers rather than the proxy. An IPv6 caller is counted by its /64, because every IPv6 host is handed at least that many addresses and could otherwise take a fresh count for each request; an IPv4 address written inside IPv6 counts as the plain IPv4 address, and an address that cannot be read shares one count with every other such address. A host holding more than a /64 still has one count per /64 |
 | `502` | The remote host did not answer, or answered with a non-2xx status |
+| `503` | `{ "error": "busy" }`. No matching slot came free in time. Nothing is wrong with the picture; send it again |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while matching: a blockhash worker that crashed, stopped or ran out of time, a hash of the wrong length, a decoder out of memory, or a failure nobody named. It is logged, and the picture is fine to send again. A file that is not one of the three formats, or whose pixels the decoders refuse, is still a `400` |
 
 Errors are `{ "error": "<reason>" }`. A 500 answers with a fixed message rather than the internal
 one.
+
+The five routes that read a picture, `/verify`, `/prepare`, `/generate`, `/edit` and `/unseal`,
+answer a fault of this service with the same `503 service-fault` and the same sentence, beside
+`503 busy`. Each says under its own status codes what it hands back.
 
 ## POST /verify/paid
 
@@ -336,17 +373,19 @@ and the paid verification still comes back `200`.
 | Code | When |
 | --- | --- |
 | `200` | Paid and matched. The settlement receipt rides in the `PAYMENT-RESPONSE` header |
-| `402` | No payment, or the facilitator refused this one. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next |
+| `402` | No payment, or the facilitator refused this one when it checked it, before anything was matched. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next. At settlement a refusal answers `402` only on the second ask, and only when the chain shows the payment was not spent, see below |
 | `400`, `403`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
 | `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
-| `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, see below. Nothing was cancelled and the answer is held against the payment |
+| `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, or the first settle was refused with no transaction and the chain did not show the payment spent, see below. Nothing was cancelled and the answer is held against the payment |
 
 A settlement the facilitator has broadcast but not yet confirmed also answers `200`, with a pending
 receipt, and a repeat of the same payment inside ten minutes is answered from this process's memory
-without settling again.
+without settling again. That memory is keyed on the payer and the nonce together, because an
+EIP-3009 nonce is unique per payer and not across payers, and it hands an answer over only to a
+request carrying the same signed payment, every field and the signature, and the same file.
 
 Payment is settled only after the match succeeds, so a failed verification never charges. When the
 match itself fails after a payment was verified, before anything is settled, the authorisation is
@@ -355,14 +394,33 @@ been asked for: a settle that throws or answers in words is never read as a refu
 
 **When nobody can say whether it settled.** A settle call that throws, times out or answers with a
 reason in words rather than a facilitator code says nothing about whether the transfer happened.
-The route asks the chain (USDC's own `authorizationState` for the payer and nonce), then the
-facilitator once more. A payment the chain shows spent is answered `200`. A second refusal counts
-only when the chain says the payment was not spent. Anything else answers `502 settlement-unknown`,
-and the verification is kept against that payment and file. Sending the same payment with the same
-file again hands it over once the chain shows the payment spent. The held answer is dropped only
-when that same file comes back and the chain says the payment was not spent; the same payment with
+Neither does a first settle refused with a code and no transaction: the reference facilitator
+answers that way whenever its own transfer call throws, including an RPC that took the transfer and
+then timed out. For a first refusal the route asks the chain; a payment the chain shows spent is
+answered `200`, and anything else answers `502 settlement-unknown` with the verification held. For
+the other cases it asks the chain, then the facilitator once more. A payment the chain shows spent
+is answered `200`. A second refusal counts, as a `402`, only when the chain says the payment was not
+spent. Anything else answers `502 settlement-unknown`, and the verification is kept against that
+payment and file. Sending the same payment with the same file again hands it over once the chain
+shows the payment spent, and that check runs before the facilitator is asked about the repeat,
+because the facilitator refuses a nonce already spent. A held answer is never released on a "not
+spent" read, which is also what a first transfer still pending looks like; the same payment with
 another file, or a retry while the chain cannot be read, leaves it in place for the retry that can
-prove the payment.
+prove the payment, until its ten minutes run out.
+
+**How the chain proves a payment.** Spent is proven from the pay asset itself, never from one
+flag. USDC's `authorizationState` for the payer and nonce is read first: `false` means the
+authorisation was never used, so nothing was charged. `true` is not enough on its own, because it
+is equally true after the payer cancelled the authorisation or another request spent it. So the
+transaction that used it is found and read: first any the facilitator named, then the asset's own
+`AuthorizationUsed` log for this payer and this nonce, searched from five blocks before the block
+read when the payment was first held, in chunks of 100 blocks, at most 50 of them, up to the block
+whose time passes the authorisation's `validBefore`, since EIP-3009 refuses the transfer after
+that. A transaction counts only when its receipt is a success and carries both events from the
+asset contract: `AuthorizationUsed` for this payer and nonce, and a `Transfer` of at least the
+price from the payer to the payee. Not spent is `authorizationState` false, or a search that
+reached `validBefore` with no such transaction. A read that fails, or a search that ran out of
+chunks first, is "cannot tell".
 
 **When settlement is broadcast but not yet confirmed.** The facilitator can answer a settle call
 with `settlement_pending`: the transfer is on chain but its receipt has not been seen in time. The
@@ -480,7 +538,7 @@ the caller already has them, and the answer has to sit in a browser's memory nex
     generatorAgentId: string,      // "0" as a decimal string: no agent made this one
     phash: string,                 // decimal, for the reason given under /verify
     blockhash256: `0x${string}`,
-    manifestHash: `0x${string}`,   // 32 zero bytes when nothing was embedded
+    manifestHash: `0x${string}`,   // the C2PA store's own box, as under /verify; 32 zero bytes when nothing was embedded
     kind: number,                  // 1, Captured
     fingerprintVersion: number,    // 1
     metadataURI: string            // ipfs://...
@@ -495,7 +553,8 @@ the caller already has them, and the answer has to sit in a browser's memory nex
   },
   thumbnail: { cid: string, uri: string, gatewayUrl: string },
   metadata: { cid: string, uri: string },
-  manifest: { embedded: true } | { embedded: false, reason: string },
+  manifest: ({ embedded: true } | { embedded: false, reason: string })
+    & { cameraRecord?: "kept" | "dropped" },   // only for an upload that arrived with its camera's own record, see below
   training?: {                     // absent when the creator said nothing
     aiTraining?: "allowed" | "notAllowed" | "constrained",
     aiGenerativeTraining?: "allowed" | "notAllowed" | "constrained",
@@ -525,6 +584,44 @@ it says `c2pa.created` with `trainedAlgorithmicMedia`.
 missing certificate. The upload still stands: `manifestHash` is 32 zero bytes, the fingerprint and
 the on-chain record work without a manifest, and `reason` says what happened, cut to 200 characters.
 
+**What the pinned file keeps.** Every upload becomes one upright baseline JPEG before it is signed.
+A JPEG that is already upright and baseline is not re-encoded: it is rebuilt, byte for byte, from
+the segments that decide its pixels and nothing else, which are the JFIF header, the ICC colour
+profile, the Adobe colour transform marker, the quantisation and Huffman tables, the restart
+interval, the one frame and the one scan up to its end marker. Every other application segment and
+every comment is left out, whatever it says: EXIF, XMP, IPTC, GPS blocks, maker notes and serial
+numbers live there, and none of them changes a decoded pixel. Every APP11 segment goes too, the
+upload's own C2PA store included, so the signed file holds one store, Moolam's. Nothing after the
+scan's end marker is kept: a second image, a gain map, a motion clip or a trailer. A file this
+rebuild does not recognise, a progressive or rotated JPEG, a PNG and a WebP are re-encoded at
+quality 95 instead, which drops all of it as well.
+
+**A camera's own record.** A photo that arrives with its camera's own C2PA record keeps that signed
+record inside Moolam's manifest, with its location and serial redacted. The upload exactly as it
+arrived becomes the manifest's one `parentOf` ingredient, so the camera's own hard binding is
+checked against the bytes the camera signed. In every manifest of the camera's store, these are
+redacted, each recorded with the reason `c2pa.PII.present`: the capture metadata assertions
+(`stds.exif`, `stds.iptc`, `c2pa.metadata`, `cawg.metadata`), any assertion with a key whose name
+says a place or a unit (GPS, geo, location, latitude, longitude, altitude, serial, city, country,
+province, region, address, state), any assertion whose data cannot be looked into, and any
+thumbnail that carries EXIF, XMP or IPTC or will not decode. The actions, the hard bindings and the
+ingredients are never redacted, because the standard does not allow it.
+
+The signed file is read back before it goes anywhere. It keeps the record only when Moolam's
+manifest validates, names that one parent, the parent reports nothing mismatched or missing, no
+text value the record held under a place or serial key appears anywhere in the signed bytes, and no
+thumbnail left in the store carries EXIF, XMP or IPTC. Otherwise, and for a store that cannot be
+read, one past the caps (16 manifests, 64 redactions, 32 thumbnails) or one the library will not
+take, the record is dropped and the file is signed as a plain upload, and the reason goes to the
+log. `manifest.cameraRecord` then says `kept` or `dropped`, on a public and a sealed answer alike,
+and is absent when the upload carried no record. An upload that ends up unsigned has lost its record
+too and reads `dropped`.
+
+What this does not remove. A kept record still carries the camera's own signature, and a camera
+that signs with a certificate of its own can be named by that certificate. The redaction rule reads
+key names, so a place or a serial stored under a key whose name says neither stays in the record,
+and the byte check after signing looks only for text values held under place or serial keys.
+
 **Status codes.**
 
 | Code | When |
@@ -537,12 +634,15 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
 | `409` | `{ "error": "private-copy-not-private" }`. Pinata answered the private upload with a file that is not on its private network or not under the name sent, as it does for bytes the account already holds publicly. No document is pinned, nothing is registered, and the file id Pinata gave back goes to the log for an operator |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
+| `413` | `{ "error": "signed-file-too-large", "limit": 20971520, "reason": "..." }`. Signing re-encodes at quality 95 and adds the manifest store, so an upload under the cap can come out over it, and a registered file over it could never come back through `/verify` or `/unseal`. Refused before anything is pinned or handed back, and the day's slot is given back |
 | `415` | The file is not a JPEG, PNG or WebP, or is one the service cannot decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not. Any other format, an SVG above all, is refused by its file signature before anything renders it or takes a place at the shared decode gate |
+| `422` | `{ "error": "fingerprint-unstable", "limit": 10, "distance": n, "reason": "..." }`. The picture's own thumbnail lands more than 10 of 64 pHash bits from the picture, so its Chainlink re-check would read a mismatch and no copy of it could be matched. See [Fingerprints](../concepts/fingerprints). Nothing is pinned and the day's slot is given back |
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. The `reason` says so and adds that registering the picture sealed still works, because a sealed prepare makes no thumbnail. Nothing is pinned and the day's slot is given back. A plain sealed prepare makes no thumbnail and never answers this; one with `privateRecheck` does, and its `reason` says a private re-check could never open the thumbnail and a plain sealed registration still works |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
-| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither. With `privateRecheck`, a refused or timed out private upload answers this with no document pinned, and a document pin that fails after the private copy was kept answers this after the copy is deleted |
+| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither. With `privateRecheck`, a refused or timed out private upload answers this with no document pinned, and a document pin that fails after the private copy was kept answers this after the copy is deleted. The day's slot is given back only when no pin can have stored anything: Pinata answered with a 4xx, or the request never left the service. A 5xx, a timeout or a dropped connection may come after Pinata kept the file, so those keep it spent |
 | `503` | `busy`. The two-slot decode gate stayed full for thirty seconds. Nothing was pinned, so the call can be made again |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while fingerprinting it: a blockhash worker that crashed, stopped or ran out of time, a hash of the wrong length, or a decoder out of memory. The signed path never falls back to an unsigned file for this. Nothing is pinned, and the day's slot is given back |
 | `503` | `{ "error": "chain-unreachable" }`. `privateRecheck` was asked for and the check for an existing passport could not reach the chain, so no private copy was made and nothing was pinned. A public or plain sealed prepare goes on in that case, as it always has |
 
 **CORS.** A browser may call this service only from an origin listed in `CORS_ORIGINS`, and those
@@ -632,16 +732,19 @@ what the passport id is computed from. The browser must send these fields unchan
 | `403` | `{ "error": "creator-mismatch" }`. The `creator` address is not one of the caller's own Privy wallets, read from their user record rather than taken from the request. A Privy user id this app does not know answers the same way |
 | `409` | With `privateRecheck`: `{ "error": "already-registered", "passportId": "0x..." }` when the registry already holds the drawn picture, or `{ "error": "private-copy-not-private" }` as under `/prepare`. No document is pinned; the picture was drawn, so the allowance stays spent |
 | `422` | With `privateRecheck`: `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }` when the drawing's thumbnail cannot fit the Chainlink budget. Nothing is pinned and the allowance stays spent |
+| `422` | `{ "error": "fingerprint-unstable", "limit": 10, "distance": n, "reason": "..." }`. The drawing's own thumbnail lands more than 10 of 64 pHash bits from it: the pinned thumbnail for a public drawing, the private copy with `privateRecheck`, and the thumbnail an unseal would publish for a plain sealed one. Nothing is pinned. The drawing was made and paid for, so the caller's allowance and the day's ceiling both stay spent |
 | `429` | Past `GENERATE_PER_DAY` in a rolling 24 hours, counted on the Privy user id. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_GENERATIONS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is drawn and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `502` | `model-failed`, `pin-failed` or `sign-failed`: the image model, Pinata or Privy's enclave would not play |
 | `503` | `busy`. Two pictures were already being drawn and no slot came free inside 90 seconds. The allowance is given back |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while fingerprinting the drawing, as under `/prepare`. Nothing is pinned; the drawing was made and paid for, so the allowance and the day's ceiling stay spent |
 | `503` | With `privateRecheck`: `{ "error": "chain-unreachable" }` when the check for an existing passport could not reach the chain. No private copy is made and nothing is pinned; the picture was drawn, so the allowance stays spent |
 
 **The allowance.** `GENERATE_PER_DAY`, three by default, per verified Privy user id over a rolling 24
 hours. A refused prompt and a request that never got a drawing slot hand the slot back. A model that
 failed part way keeps it, because it may have drawn and been billed before it failed, and so do a
-failed pin and a failed signature, which both happen after the picture exists. The count lives in the
+failed pin, a failed signature, a drawing whose fingerprint does not survive its own thumbnail and
+a fault of the service while fingerprinting it, which all happen after the picture exists. The count lives in the
 service's memory, so a redeploy resets it and two copies of the service would count separately. The
 global 60 requests a minute applies to this path as well.
 
@@ -702,7 +805,8 @@ curl -s -X POST http://localhost:4000/edit \
   image: { cid, uri, gatewayUrl, bytes, width, height },
   thumbnail: { cid, uri, gatewayUrl },
   metadata: { cid, uri },
-  manifest: { embedded: true } | { embedded: false, reason: string },
+  manifest: ({ embedded: true } | { embedded: false, reason: string })
+    & { cameraRecord?: "kept" | "dropped" },   // as under /prepare
   quota: { used: number, limit: number, resetsAt: number }
 }
 ```
@@ -712,7 +816,8 @@ from the chain before anything is spent. The manifest written into an edit recor
 opened and then `c2pa.edited`, with the upload as its parent ingredient and no `digitalSourceType`,
 which is the one place inside the file that says this picture is a change to another one. Moolam
 did not watch the edit being made, so it states no source type for it, the same rule as
-[`/prepare`](#post-prepare).
+[`/prepare`](#post-prepare). The edited file goes through the same byte path, and an edit that
+arrives with a camera's own record gets the same redaction, read back and `cameraRecord` answer.
 
 **Status codes.**
 
@@ -727,15 +832,19 @@ did not watch the edit being made, so it states no source type for it, the same 
 | `409` | `no-signer`. This app is not a signer on that wallet, or its signer does not carry the edit policy. A Privy user id this app does not know answers the same way |
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact edited picture. The check runs on the fingerprint of the bytes about to be pinned, so nothing is pinned, nothing is sent and the day's allowance is given back |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
+| `413` | `{ "error": "signed-file-too-large", "limit": 20971520, "reason": "..." }`. Signing grew the edit past the 20 MB cap, as under `/prepare`. Refused before the duplicate check and before anything is pinned or sent, and both allowances are given back |
 | `415` | `not-an-image`: not a JPEG, PNG or WebP, refused before anything decodes it, or with `reason` when the header parsed and the pixels behind it did not decode |
+| `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. The edit is too detailed for a thumbnail under the Chainlink fetch budget. Nothing is pinned or sent, and both allowances are given back |
+| `422` | `{ "error": "fingerprint-unstable", "limit": 10, "distance": n, "reason": "..." }`. The edit's own pinned thumbnail would land more than 10 of 64 pHash bits from it, as under `/prepare`. Nothing is pinned or sent, and both allowances are given back |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_EDITS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned, nothing is sent, and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
 | `499` | `{ "error": "client-gone" }`. The caller really left: the connection closed before the answer was written, or its socket is gone. It is checked twice, before the allowance is taken and again just before the send, so a creator who closed the tab while waiting at the decode gate is never sent a transaction. Their own allowance goes back; the day's budget goes back only if nothing was pinned yet. A request whose body was simply read to the end is not read as gone |
-| `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused |
+| `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused. After `pin-failed` the day's ceiling comes back only when no pin can have stored anything, the rule under `/prepare` |
 | `502` | `{ "error": "send-failed", "reason": "the user operation reverted: ...", "passportId": "0x...", "hash": "0x..." }`. The transaction landed and its receipt carries no `PassportRegistered` event from the registry for this child. A sponsored send is a user operation inside a bundle, and the bundle succeeds even when the `appendEdit` inside it reverted, so the registry's own event is the only proof the edit was written. `send-failed` with the receipt's own `reason` is also the answer when the receipt says the transaction reverted |
 | `502` | `{ "error": "send-pending", "transactionId": "...", "passportId": "0x...", "hash": "0x..." }`, the hash only when Privy reported one. Privy took the transaction and the chain did not show it inside the wait. It may still land, so a caller must check the chain and must never send it again. `passportId` is the child's own id, which is why the check is a read of that one passport rather than a guess at which edit under the parent belongs to this caller |
 | `502` | `privy-unavailable` or `chain-unavailable`: Privy or the Monad RPC did not answer while the parent, the owner and the signer were being checked. That all happens before the allowance is taken, so nothing was sent and nothing was spent |
 | `503` | `busy`. The shared decode gate, which matching, prepares and edits all queue on, stayed full for thirty seconds |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while reading or fingerprinting the edit, as under `/prepare`. Nothing is pinned or sent, and both allowances are given back |
 
 The parent is checked first, because it is the one claim in the request that costs nothing to settle.
 Then the signer, then the ownership, then the creator's own allowance, then today's budget for
@@ -787,6 +896,22 @@ refused for its 60 KB budget can be registered sealed. Publishing it would leave
 Chainlink workflow can never fetch and so can never re-check, which reads as a fault for ever, so
 the unseal is refused with `422` instead.
 
+The fingerprint must survive that thumbnail. The thumbnail about to be published is held to the
+check `/prepare` makes: a picture registered sealed before that check existed, or drawn by
+`/generate`, can have a fingerprint its own thumbnail does not keep, and publishing it would leave a
+passport the re-check reads as mismatched for good. It is refused with `422 fingerprint-unstable`.
+
+One unseal of a passport at a time. The first request that passes the hash check holds the
+passport on this server until it has answered, and a second one meanwhile is refused with `409
+unseal-in-progress` rather than reading "no record yet" while the first pins. A passport this
+server has already seen unsealed is answered `409 already-unsealed` from memory, before any Privy,
+Pinata or chain call, so a resend costs nothing.
+
+The thumbnail is pinned first, and alone. If Pinata answers it with a private file, which happens
+when a private copy of these same bytes is kept for another passport, the unseal stops with `409
+thumbnail-held-privately` and nothing public. Only once the thumbnail is public are the picture and
+its manifest document pinned, then the record.
+
 **Response.** `200` with the four things now on IPFS.
 
 ```ts
@@ -828,16 +953,21 @@ compare with the passport id on Monad.
 | `403` | `not-holder`. The registry says another wallet holds this passport. A Privy user id this app does not know answers the same way |
 | `404` | `no-passport`. The registry has no passport with that id |
 | `409` | `not-sealed`. The passport's metadata document is already public, so there is nothing to unseal |
-| `409` | `{ "error": "already-unsealed", "passportId": "0x...", "record": {...} }`. A record is pinned for this passport already |
+| `409` | `{ "error": "already-unsealed", "passportId": "0x...", "record": {...} }`. A record is pinned for this passport already. A passport this server has seen unsealed is answered from memory, right after the hash check |
+| `409` | `{ "error": "unseal-in-progress", "passportId": "0x..." }`. Another unseal of this passport is running on this server. Nothing was read or spent |
+| `409` | `{ "error": "thumbnail-held-privately", "passportId": "0x...", "reason": "..." }`. Pinata answered the public thumbnail pin with a private file it already keeps for these bytes. Nothing is public and the passport still reads sealed. The holder's allowance comes back; the day's ceiling stays spent, because the pin reached Pinata |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
 | `415` | `not-an-image`: not a JPEG, PNG or WebP, refused before anything decodes it, or with `reason` when the header parsed and the pixels behind it did not decode |
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. Nothing was pinned |
+| `422` | `{ "error": "fingerprint-unstable", "limit": 10, "distance": n, "reason": "..." }`. The thumbnail that would be published lands more than 10 of 64 pHash bits from the registered fingerprint. Nothing was pinned |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours, which is the allowance unsealing shares. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", ... }` once `GLOBAL_UNSEALS_PER_DAY` is spent by everyone together. See [Today's budget for everyone](#todays-budget-for-everyone) |
-| `502` | `{ "error": "pin-failed", "passportId": "0x...", "published": {...}, "failed": [...], "reason": "..." }`. One of the three pins before the record failed. `failed` names the pieces that did not land, out of `image`, `thumbnail` and `manifest`, and `published` holds the address of each piece that did, which is public now and cannot be taken back. The passport still reads sealed, no record is written and nothing private is touched. Sending the same file again lands on the same content ids and finishes the unseal |
+| `429` | Thirty a minute per address, the limit `GET /unseal/:passportId` has, because even a refused resend costs a Privy read and a chain read |
+| `502` | `{ "error": "pin-failed", "passportId": "0x...", "published": {...}, "failed": [...], "reason": "..." }`. One of the three pins before the record failed. `failed` names the pieces that did not land, out of `image`, `thumbnail` and `manifest`, and `published` holds the address of each piece that did, which is public now and cannot be taken back. The thumbnail goes first and alone, so a failed thumbnail pin answers `failed: ["thumbnail"]` with nothing published. The passport still reads sealed, no record is written and nothing private is touched. Sending the same file again lands on the same content ids and finishes the unseal |
 | `502` | `{ "error": "record-pin-failed", "passportId": "0x...", "image": {...}, "thumbnail": {...}, "reason": "..." }`. The picture is public and the record that points at it is not. This is the one half-done state the route can end in, and the answer says so rather than failing silently, because the caller has to know their picture is already out there. Sending the same file again lands on the same three addresses, because every pin is content addressed, and finishes the record |
 | `502` | `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`: the Monad RPC, the gateway or Privy did not answer. All of that happens before the allowance is taken, so nothing was spent |
 | `503` | `busy`. The shared decode gate, which matching, prepares, edits and unseals all queue on, stayed full for thirty seconds |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while fingerprinting the upload, as under `/prepare`, which is never read as a file that is not an image. Nothing is pinned, and both allowances are given back |
 
 A public pin counts only when Pinata answers with the content id this service computed for the
 bytes it sent, on the public network. Pinata stores one copy of any content, across its networks
@@ -846,7 +976,9 @@ as failed, and nothing is recorded or deleted on the strength of it.
 
 The two allowances go back on different terms. The holder's own comes back for any unseal that did
 not finish, so a partial one can be finished without spending a second slot. Today's ceiling for
-everyone comes back only when nothing was pinned, because a pin that landed is money spent.
+everyone comes back only when no pin can have landed, because a pin that landed is money spent: a
+thumbnail pin Pinata refused with a 4xx, or one that never left the service, gives it back, and a
+5xx, a timeout or an answer naming a private file keeps it.
 
 The private copy is deleted only after the record is pinned, and never a private file whose content
 id is one of the four this unseal just published.
@@ -940,7 +1072,10 @@ itself could not be read, `privateRecheck` is `false` because the service does n
 `kept` and `gone` are held in memory for 60 seconds per passport and carry
 `Cache-Control: public, max-age=60`. `unknown` and every refusal carry `no-store` and are never
 held, because they are the answers that must be asked again. A delete through
-[`/sealed/forget`](#post-sealedforget) drops the memory for that passport at once.
+[`/sealed/forget`](#post-sealedforget), or by an unseal, that removed every file under the name
+makes the status read `gone` at once and holds it for the next 60 seconds, even while Pinata's
+listing still shows the deleted file. A delete that failed part way, or one made while the
+passport's document could not be read, drops the memory instead, so the next read asks again.
 
 ## POST /sealed/link
 
@@ -1011,21 +1146,26 @@ curl -s -X POST http://localhost:4000/sealed/forget \
 Only the holder deletes, checked the way `/unseal` checks it: the Privy token names a user, the
 Privy user record names their embedded wallets, and `ownerOf` on the registry, read at that moment,
 has to be one of them. Then every private file whose name is exactly the passport's is deleted, two
-included, and `deleted` says how many. The status memory for the passport is dropped at once, so
-neither `/sealed/status` nor the re-check queue goes on saying `kept`. The answer and the log line
-carry the count and never a file id.
+included, and `deleted` says how many. The name alone decides what is deleted, never the passport's
+document: a copy kept for one prepare of a picture can sit under a passport registered with another
+prepare's document that never asked for a private re-check, and it is still the holder's to delete.
+The document is read only to say what `/sealed/status` should hold afterwards, and a document that
+cannot be read no longer stops the delete. When every file under the name was deleted, the status
+reads `gone` at once and holds it, so neither `/sealed/status` nor the re-check queue goes on saying
+`kept`. The answer and the log line carry the count and never a file id.
 
 | Code | When |
 | --- | --- |
-| `200` | Deleted, with the count. `0` when the copy was already gone |
+| `200` | Deleted, with the count. `0` when the copy was already gone and the document asks for a private re-check |
 | `400` | The body is not `{ "passportId": "0x..." }` with 64 hex characters |
 | `401` | The Privy token is missing or fails a check. `{ "error": "unauthorized" }` |
 | `403` | `not-holder`. The registry says another wallet holds this passport. A Privy user id this app does not know answers the same way |
 | `404` | `no-passport`. The registry holds no such passport |
-| `404` | `nothing-kept`. The passport's document did not ask for a private re-check |
+| `404` | `nothing-kept`. No private file has the passport's name, and its document does not say it asked for a private re-check |
+| `429` | Thirty a minute per address, like `/sealed/status`, because every call spends a Privy read and a Pinata listing |
 | `502` | `privy-unavailable`. Privy did not answer the wallet lookup |
 | `502` | `{ "error": "delete-failed", "passportId": "0x...", "deleted": n }`. Pinata refused at least one delete. Send the same request again to finish |
-| `503` | `chain-unavailable`, `metadata-unavailable` or `lookup-unavailable`. Nothing was deleted: a listing that did not finish is never read as "nothing there" |
+| `503` | `chain-unavailable` or `lookup-unavailable`. Nothing was deleted: a listing that did not finish is never read as "nothing there" |
 
 A deleted copy cannot be put back by any route. The passport, its sealed document and its verdicts
 on chain are untouched; what goes is the private re-check, which needs the copy.
@@ -1075,8 +1215,8 @@ Whether a passport is sealed is read from its metadata document, and for a docum
 sealed, from the unseal record its holder pins on publishing the picture. The registry writes
 `metadataURI` at registration and has no setter, so the document says sealed for ever; the record is
 what says the picture is out since. A public or unsealed answer is remembered for the life of the
-process, because neither can change back, and a sealed one for 60 seconds, so a holder who unseals
-waits at most a minute to be re-checked. Only passports the index already holds get that far, so a
+process, because neither can change back, and a sealed one for 10 seconds, so a holder who unseals
+waits at most ten seconds before a re-check can be asked for. Only passports the index already holds get that far, so a
 caller cannot turn this route into a gateway or Pinata read per request. A gateway or a record
 lookup that does not answer inside five seconds lets the request through; the runner refuses it
 later, which is the right way round for a request that spends nothing.
@@ -1248,10 +1388,13 @@ the host without a deploy, and the route answers the same 429 to every caller un
 All four routes hand a slot back whenever the request that took it spent nothing. The rule is the
 same everywhere: the slot goes back on any exit before the first pin, which covers a signer that is
 down, a queue that stayed full, a picture the registry already holds, a file that will not decode
-and a record the service refused to publish. From the first pin onwards it stays taken, because the
-ceiling bounds what is spent and a pin is money. `/generate` counts the drawing as the spend, so a
-picture the provider drew keeps its slot however the request ends, and a prompt the model turned
-down hands it back.
+and a record the service refused to publish. From the first pin that may have stored something it
+stays taken, because the ceiling bounds what is spent and a pin is money. A failed pin counts as
+nothing stored only when Pinata answered it with a 4xx or the request never left the service; a
+5xx, a timeout, a dropped connection or an answer naming another file can each come after Pinata
+kept the file, so they keep the slot. `/generate` counts the drawing as the spend, so a picture the
+provider drew keeps its slot however the request ends, and a prompt the model turned down hands it
+back.
 
 What this does not do. The counts live in one process's memory, exactly like the per-user
 allowances, so a redeploy resets them and a second copy of the service would keep its own. They
@@ -1331,16 +1474,18 @@ no per-caller data on this route. A host that mounts the unseal and sealed famil
 `recheck` is how many second opinions are waiting and how many a runner has in hand, which is where
 a runner that has died shows up from outside: `pending` climbs and `running` stays at zero.
 
-`sweep` is the hourly sweep of private copies whose passport never reached the chain, set by
+`sweep` is the hourly sweep of private copies no route will use again, set by
 `PRIVATE_SWEEP`. It first runs an hour after boot and never at boot. Each run reads two pages of
 100 from the account's private listing, asking Pinata for no name filter, and starts where the last
 run stopped, going back to the first page once the listing ends. That place is kept in
 `private-sweep-cursor.json` beside `RECHECK_QUEUE_PATH`, so a redeploy with the queue on a volume
 goes on from there rather than reading the first pages again; a file that is missing or not one it
 wrote means the first page. The run keeps only exact thumbnail names Pinata says were uploaded more
-than 48 hours ago, and marks a file only when the registry answered that its passport does not
-exist. A chain read that failed, a listing it could not finish or an answer in an unknown shape
-stops the run with nothing marked. In `dry`, the default, the host's log names each file it would
+than 48 hours ago, and marks a file when the registry answered that its passport does not exist, or
+when the passport is registered under a document that does not ask for a private re-check of it,
+which leaves a copy no route would ever use. A registered passport's document that cannot be read
+keeps its file. A chain read that failed, a listing it could not finish or an answer in an unknown
+shape stops the run with nothing marked. In `dry`, the default, the host's log names each file it would
 delete and its age in hours; in `delete` it deletes them. `off` is also what a host with no Pinata
 token reports. No file name, file id or reason appears here: they stay in the host's log.
 
