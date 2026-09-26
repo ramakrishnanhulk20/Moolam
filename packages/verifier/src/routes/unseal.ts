@@ -9,7 +9,7 @@ import { ImageTooLarge, fingerprint, readImageHeader, type Fingerprint, type Hex
 import { Busy } from "../generate/gate.js";
 import { privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
-import { deletePrivateFile, findPrivateByName, pinFile, pinJson, type PrivateListing } from "../ipfs/pinata.js";
+import { contentIdOf, deletePrivateFile, findPrivateByName, pinFile, pinJson, type PrivateListing } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { fileSlug, manifestDocument } from "../metadata.js";
 import { UNSEAL_THUMBNAIL_TOO_LARGE_REASON, type PreparedImage } from "../prepare.js";
@@ -143,7 +143,10 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * A public pin counts only when Pinata answers with the content id of the bytes sent, on the
  * public network (V11). When one of the three pins fails, the answer names which pieces are public
  * and which are not, nothing private is touched, the holder's allowance comes back, and sending the
- * same file again lands on the same content ids and finishes the unseal (V9).
+ * same file again lands on the same content ids and finishes the unseal (V9). A private copy kept
+ * before V12 is the public thumbnail byte for byte, so it is deleted before the pins, or nothing is
+ * pinned (review pass 5). When the check for an earlier record could not answer, the record cached
+ * for GET is the oldest one a fresh lookup names, or none.
  *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
  * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed` or `already-unsealed`, 413 and
@@ -515,6 +518,21 @@ async function open(
           } satisfies PreparedImage)
         : undefined;
 
+    // A private copy kept before V12 is this very thumbnail, byte for byte, and Pinata answers the
+    // public pin of bytes it already holds privately with the private file. It goes first, so the
+    // three pins below can all land. Nothing is pinned when it is there and cannot be removed.
+    const cleared = await clearPreV12Copy(upload.passportId, thumbnail, request.log, context.copies);
+    if (!cleared) {
+      return reply.code(502).send({
+        error: "pin-failed",
+        passportId: upload.passportId,
+        published: {},
+        failed: ["thumbnail"],
+        reason:
+          "nothing was published and the passport still reads sealed: an old private copy of the thumbnail could not be cleared first. Send the same file again to try once more.",
+      });
+    }
+
     const slug = fileSlug(titleOf(document), upload.passportId);
     const [imagePin, thumbnailPin, manifestPin] = await Promise.allSettled([
       pinFile(upload.bytes, `${slug}.jpg`, "image/jpeg"),
@@ -603,7 +621,16 @@ async function open(
     }
 
     const pinnedAt: PinnedRecord = { cid: pinnedRecord.cid, uri: pinnedRecord.uri };
-    context.known.set(upload.passportId, { record, pinned: pinnedAt });
+    if (existing.state === "unavailable") {
+      // The check before the pins could not see an older record, so this one may be a second.
+      // Every other reader shows the oldest, so this server caches the oldest or nothing.
+      const oldest = await oldestRecord(upload.passportId, pinnedAt, record, request.log);
+      if (oldest !== undefined) {
+        context.known.set(upload.passportId, oldest);
+      }
+    } else {
+      context.known.set(upload.passportId, { record, pinned: pinnedAt });
+    }
     context.misses.forget(upload.passportId);
 
     completed = true;
@@ -682,6 +709,82 @@ async function forgetPrivateCopy(
     }
   } finally {
     copies?.drop(passportId);
+  }
+}
+
+/**
+ * Deletes a private copy kept before V12 (commit ddf35fa), before the public pins.
+ *
+ * Such a copy is the raw makeThumbnail of the signed file, which is exactly the public thumbnail
+ * built here, so it has the same content id, and Pinata answers the public pin of those bytes with
+ * the private file: the thumbnail pin is refused on every retry while the picture itself goes out.
+ * Only a file under this passport's exact name whose content id is the thumbnail's is touched, so a
+ * copy made since V12, which carries the passport comment and so other bytes, stays until the
+ * picture is public and forgetPrivateCopy runs.
+ *
+ * Answers false only when such a copy is there and could not be deleted, so the caller pins
+ * nothing. A listing that fails answers true: the copy made then is far more often the new kind,
+ * and refusing every unseal while Pinata's listing is down would lock every holder out. A pin that
+ * then meets an old copy fails as it did before this check, and says so.
+ */
+async function clearPreV12Copy(
+  passportId: Hex,
+  thumbnail: Buffer,
+  log: FastifyBaseLogger,
+  copies: PrivateCopyStatus | undefined,
+): Promise<boolean> {
+  const name = privateThumbnailName(passportId);
+  const cid = contentIdOf(thumbnail);
+  let old: PrivateListing[];
+  try {
+    old = (await findPrivateByName(name)).filter((file) => file.name === name && file.cid === cid);
+  } catch (error) {
+    log.warn({ passportId, reason: reasonOf(error) }, "unseal: could not look for an old private copy, going on");
+    return true;
+  }
+  if (old.length === 0) {
+    return true;
+  }
+
+  try {
+    for (const file of old) {
+      await deletePrivateFile(file.id);
+    }
+  } catch (error) {
+    log.error({ passportId, reason: reasonOf(error) }, "unseal: an old private copy could not be cleared, nothing pinned");
+    return false;
+  } finally {
+    copies?.drop(passportId);
+  }
+  log.info({ passportId, deleted: old.length }, "unseal: old private copy cleared before the public pins");
+  return true;
+}
+
+/**
+ * The record GET /unseal may cache after a pin whose pre-check could not look: the oldest record
+ * under this passport's name, as every other reader picks it. Undefined when the lookup still
+ * cannot tell, including a listing that does not show the record just pinned yet, or when the
+ * oldest cannot be read back; then nothing is cached and GET asks Pinata itself.
+ */
+async function oldestRecord(
+  passportId: Hex,
+  mine: PinnedRecord,
+  record: UnsealRecord,
+  log: FastifyBaseLogger,
+): Promise<{ record: UnsealRecord; pinned: PinnedRecord } | undefined> {
+  const found = await findUnsealRecord(passportId);
+  if (found.state !== "found") {
+    log.warn({ passportId, state: found.state }, "unseal: could not confirm the oldest record, caching none");
+    return undefined;
+  }
+  if (found.record.cid === mine.cid) {
+    return { record, pinned: mine };
+  }
+  try {
+    return { record: await readUnsealRecord(found.record.uri, passportId), pinned: found.record };
+  } catch (error) {
+    log.warn({ passportId, cid: found.record.cid, reason: reasonOf(error) }, "unseal: the oldest record could not be read, caching none");
+    return undefined;
   }
 }
 

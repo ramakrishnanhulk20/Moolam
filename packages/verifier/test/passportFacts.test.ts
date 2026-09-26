@@ -207,7 +207,7 @@ describe("withPassportFacts", () => {
       expect(best.dispute, what).toEqual({ source: "unavailable" });
       expect(best.consent, what).toMatchObject({ source: "chain", stated: true, aiTraining: "notAllowed" });
       expect(best.recheck, what).toMatchObject({ source: "index", attestations: 1, matched: 1 });
-      expect(Object.keys(best), what).toEqual(["id", "score", "consent", "dispute", "recheck", "picture"]);
+      expect(Object.keys(best), what).toEqual(["id", "score", "consent", "dispute", "inheritedDispute", "recheck", "picture"]);
     }
   });
 });

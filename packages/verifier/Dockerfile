@@ -28,8 +28,11 @@ RUN npm ci --workspace packages/verifier --include-workspace-root=false --omit=d
  && mkdir -p /app/packages/verifier/node_modules
 
 FROM node:26-bookworm-slim AS runtime
+# sharp decodes every picture on libuv's thread pool, which holds four threads by
+# default and is shared with file writes. Eight gives the decodes a margin.
 ENV NODE_ENV=production \
-    VERIFIER_PORT=4010
+    VERIFIER_PORT=4010 \
+    UV_THREADPOOL_SIZE=8
 WORKDIR /app
 # The C2PA signer makes its development certificate with openssl at first use,
 # and a host without it now refuses to mount /prepare rather than answering

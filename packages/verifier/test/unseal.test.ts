@@ -16,7 +16,9 @@
 // passport, remembers a miss for a minute and has its own route limit; a public pin counts only
 // when Pinata answers with the content id computed here for the bytes sent, on the public network;
 // an unseal that published part of the picture says which parts, keeps the private copy, and
-// finishes on a retry.
+// finishes on a retry. From review pass 5: a private copy kept before V12, which is the public
+// thumbnail byte for byte, is cleared before the pins so the unseal finishes, and an unseal that
+// could not check for an earlier record caches the oldest record or nothing.
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -104,12 +106,12 @@ const privateDeleted: string[] = [];
 const privatePinata = { listFails: false, deleteFails: false };
 let privateCounter = 0;
 
-function keepPrivate(name: string): { id: string; name: string; cid: string } {
+function keepPrivate(name: string, cid?: string): { id: string; name: string; cid: string } {
   privateCounter += 1;
   const file = {
     id: `0199a3c2-5d7e-7f10-9a1b-${privateCounter.toString(16).padStart(12, "0")}`,
     name,
-    cid: `bafkreiprivate${privateCounter.toString().padStart(30, "0")}`,
+    cid: cid ?? `bafkreiprivate${privateCounter.toString().padStart(30, "0")}`,
   };
   privateFiles.push(file);
   return file;
@@ -289,7 +291,11 @@ describe("unsealing a sealed passport", () => {
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
       pins.push({ name, type: file.type, bytes });
-      const answer = { cid: contentIdOf(bytes), size: bytes.length, network: "public", ...bendPin(name) };
+      const cid = contentIdOf(bytes);
+      // Pinata de-duplicates across networks: bytes the account already holds privately come back
+      // as that private file, which is what a private copy made before V12 does to the thumbnail.
+      const duplicate = privateFiles.some((kept) => kept.cid === cid) ? { network: "private" } : {};
+      const answer = { cid, size: bytes.length, network: "public", ...duplicate, ...bendPin(name) };
       return new Response(JSON.stringify({ data: answer }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -733,6 +739,95 @@ describe("unsealing a sealed passport", () => {
       expect(notLooked).toContain(id);
     } finally {
       await loud.close();
+    }
+  }, 120_000);
+
+  // Review pass 5, sealed #1: a private copy kept before V12 is the public thumbnail byte for byte,
+  // and Pinata answers the public pin of those bytes with the private file.
+  it("clears a private copy made before V12 before the public pins, so the unseal finishes", async () => {
+    const id = sealedFile.passportId;
+    const thumbnail = await unseal.unsealThumbnail(sealedFile.bytes);
+    if (!thumbnail.ok) throw new Error("the test picture should make a thumbnail");
+    const old = keepPrivate(`sealed-thumb-${id}.jpg`, contentIdOf(thumbnail.thumbnail));
+
+    const response = await ask("did:privy:unseal-old-copy");
+
+    expect(response.statusCode).toBe(200);
+    expect(pins).toHaveLength(4);
+    expect(privateDeleted).toEqual([old.id]);
+    expect(privateFiles).toEqual([]);
+  }, 60_000);
+
+  it("leaves a private copy made since V12 alone until the picture is public", async () => {
+    const id = sealedFile.passportId;
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    refusePin = (name) => name.endsWith("-thumb.jpg");
+
+    const response = await ask("did:privy:unseal-new-copy");
+
+    expect(response.statusCode).toBe(502);
+    expect(privateDeleted).toEqual([]);
+    expect(privateFiles).toEqual([kept]);
+  }, 60_000);
+
+  it("pins nothing when a private copy made before V12 cannot be cleared", async () => {
+    const id = sealedFile.passportId;
+    const thumbnail = await unseal.unsealThumbnail(sealedFile.bytes);
+    if (!thumbnail.ok) throw new Error("the test picture should make a thumbnail");
+    const old = keepPrivate(`sealed-thumb-${id}.jpg`, contentIdOf(thumbnail.thumbnail));
+    privatePinata.deleteFails = true;
+
+    const response = await ask("did:privy:unseal-old-copy-stuck");
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({ error: "pin-failed", published: {} });
+    expect(pins).toHaveLength(0);
+    expect(privateFiles).toEqual([old]);
+  }, 60_000);
+
+  // Review pass 5, sealed #2: every other reader shows the oldest record, so this server must too.
+  it("caches the oldest record after an unseal that could not check first, and nothing when it still cannot tell", async () => {
+    const id = sealedFile.passportId;
+    const first = unseal.unsealRecord({
+      passportId: id,
+      image: "ipfs://bafyfirstimage",
+      thumbnail: "ipfs://bafyfirstthumb",
+      unsealedBy: STRANGER,
+    });
+    const reader = async (on: FastifyInstance): Promise<LightMyRequestResponse> =>
+      await on.inject({ method: "GET", url: `/unseal/${id}`, remoteAddress: "198.51.100.46" });
+
+    const earlier = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await earlier.ready();
+    try {
+      stubs.findUnsealRecord
+        .mockResolvedValueOnce({ state: "unavailable", reason: "pinata is down" })
+        .mockResolvedValue({ state: "found", record: { cid: "bafyfirstrecord", uri: "ipfs://bafyfirstrecord" } });
+      stubs.readUnsealRecord.mockResolvedValue(first);
+
+      expect((await ask("did:privy:unseal-second-record", { on: earlier })).statusCode).toBe(200);
+      const asked = stubs.findUnsealRecord.mock.calls.length;
+      const shown = (await reader(earlier)).json();
+
+      expect(shown.record.cid).toBe("bafyfirstrecord");
+      expect(shown.unsealedBy).toBe(STRANGER);
+      expect(stubs.findUnsealRecord.mock.calls.length).toBe(asked);
+    } finally {
+      await earlier.close();
+    }
+
+    const blind = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await blind.ready();
+    try {
+      stubs.findUnsealRecord.mockReset().mockResolvedValue({ state: "unavailable", reason: "pinata is down" });
+
+      expect((await ask("did:privy:unseal-blind-record", { on: blind })).statusCode).toBe(200);
+      const shown = await reader(blind);
+
+      expect(shown.statusCode).toBe(503);
+      expect(shown.json()).toEqual({ error: "lookup-unavailable" });
+    } finally {
+      await blind.close();
     }
   }, 120_000);
 });

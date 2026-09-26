@@ -10,9 +10,11 @@
 // the very payment that bought it and the same file (V7), and a settlement whose
 // outcome is unknown is asked again, then read from the chain, and reported as
 // unknown rather than refused, so a payer who was charged is never served nothing
-// (V15). The chain read is a stub here. An answer held that way is forgotten only when the same
-// file comes back and the chain says the payment was not spent, never on another file or a failed
-// chain read (pass 4, V21).
+// (V15). The chain read is a stub here. An answer held that way is never let go on a "not spent"
+// read, which a first transfer still pending also gives, and a retry whose first settle is refused
+// serves it once the chain shows the first transfer (pass 4, V21; pass 5, answers #6). The chain
+// check proves a payment only by a transaction the facilitator named for it, read against fake
+// receipts, never by authorizationState alone (pass 5, answers #4).
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -30,14 +32,19 @@ import type { FacilitatorClient, HTTPRequestContext, x402HTTPResourceServer } fr
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
-import { verifyTypedData } from "viem";
+import { encodeAbiParameters, encodeEventTopics, parseAbi, verifyTypedData, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { fingerprint } from "../src/fingerprint.js";
 import { parseEnv } from "../src/env.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
-import { verifyPaidRoutes } from "../src/routes/verifyPaid.js";
+import { chainCharged, verifyPaidRoutes } from "../src/routes/verifyPaid.js";
+
+const USDC_EVENTS = parseAbi([
+  "event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+]);
 import { buildPaymentServer, X402_NETWORK } from "../src/x402/plugin.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
 
@@ -593,17 +600,155 @@ describe("an answer held as settlement-unknown (pass 4, V21)", () => {
     }
   });
 
-  it("forgets the held answer only when the file matches and the chain says the payment was not spent", async () => {
+  // Review pass 5, answers #6: "not spent" can be read while the first transfer is still pending.
+  it("keeps the held answer through a not-spent read, and serves it once the first transfer lands", async () => {
     let spent: boolean | undefined = false;
-    const { app, send } = await onceOnlyApp(async () => spent);
+    const { app, record, send } = await onceOnlyApp(async () => spent);
     const header = paymentHeaderFor(`0x${"f3".repeat(32)}`);
 
     try {
       expect((await send(header)).json().error).toBe("settlement-unknown");
-      // Not spent: the entry goes, and the payment is handed to the facilitator as new.
+      // Not spent yet: the payment goes to the facilitator as new, and the held answer stays.
       expect((await send(header)).json()).toEqual({ error: "invalid_exact_evm_nonce_already_used" });
       spent = true;
-      expect((await send(header)).statusCode).toBe(402);
+      const later = await send(header);
+      expect(later.statusCode).toBe(200);
+      expect(later.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("serves the held answer when the retry's first settle is refused because the first transfer landed meanwhile", async () => {
+    const nonceUsed = {
+      success: false,
+      errorReason: "invalid_exact_evm_nonce_already_used",
+      errorMessage: "nonce used",
+      transaction: "",
+      network: X402_NETWORK,
+      headers: {},
+      response: { status: 402, headers: {}, body: { error: "invalid_exact_evm_nonce_already_used" } },
+    };
+    const settle = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("socket hang up"))
+      .mockRejectedValueOnce(new Error("socket hang up"))
+      .mockResolvedValue(nonceUsed);
+    let spent: boolean | undefined;
+    const reads: (boolean | undefined)[] = [undefined, undefined, false, true];
+    const charged = vi.fn(async () => (reads.length > 0 ? reads.shift() : spent));
+    const image = await makeImage(64);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments: paymentsThatSettleWith(settle, vi.fn(async () => undefined)),
+      settlementRetryDelayMs: 0,
+      charged,
+    });
+    await app.ready();
+    const header = paymentHeaderFor(`0x${"f4".repeat(32)}`);
+    const send = async () => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+
+    try {
+      expect((await send()).json().error).toBe("settlement-unknown");
+      spent = true;
+      const retry = await send();
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+// Review pass 5, answers #4: authorizationState is true for a spent, a cancelled, and somebody
+// else's spend of the same authorisation, so it can never prove this request's payment on its own.
+describe("proving a payment by its transfer", () => {
+  const USDC = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603" as Hex;
+  const FROM = "0x3333333333333333333333333333333333333333" as Hex;
+  const NONCE = `0x${"9a".repeat(32)}` as Hex;
+  const HASH = `0x${"7e".repeat(32)}` as Hex;
+  const payment = {
+    payload: { authorization: { from: FROM, to: PAY_TO, value: "50000", nonce: NONCE } },
+  } as unknown as PaymentPayload;
+  const requirements = { asset: USDC, payTo: PAY_TO, amount: "50000" } as unknown as PaymentRequirements;
+
+  const used = {
+    address: USDC,
+    topics: encodeEventTopics({ abi: USDC_EVENTS, eventName: "AuthorizationUsed", args: { authorizer: FROM, nonce: NONCE } }),
+    data: "0x",
+  };
+  const moved = {
+    address: USDC,
+    topics: encodeEventTopics({ abi: USDC_EVENTS, eventName: "Transfer", args: { from: FROM, to: PAY_TO } }),
+    data: encodeAbiParameters([{ type: "uint256" }], [50_000n]),
+  };
+
+  function chainWith(options: { state: boolean; receipt?: { status: string; logs: unknown[] } | "pending" }) {
+    return {
+      readContract: vi.fn(async () => options.state),
+      getTransactionReceipt: vi.fn(async (): Promise<{ status: string; logs: unknown[] }> => {
+        if (options.receipt === undefined || options.receipt === "pending") {
+          throw new Error("Transaction receipt with hash could not be found");
+        }
+        return options.receipt;
+      }),
+    };
+  }
+
+  it("does not count a used authorisation whose transfer from this request reverted", async () => {
+    const chain = chainWith({ state: true, receipt: { status: "reverted", logs: [] } });
+
+    expect(await chainCharged(chain)(payment, requirements, [HASH])).not.toBe(true);
+  });
+
+  it("counts the transfer when this request's transaction carries it to the payee for this nonce", async () => {
+    const chain = chainWith({ state: true, receipt: { status: "success", logs: [used, moved] } });
+
+    expect(await chainCharged(chain)(payment, requirements, [HASH])).toBe(true);
+  });
+
+  it("cannot tell from a used authorisation with no transaction of its own, or one still pending", async () => {
+    expect(await chainCharged(chainWith({ state: true }))(payment, requirements, [])).toBeUndefined();
+    expect(await chainCharged(chainWith({ state: true, receipt: "pending" }))(payment, requirements, [HASH])).toBeUndefined();
+    expect(await chainCharged(chainWith({ state: false }))(payment, requirements, [])).toBe(false);
+  });
+
+  it("hands the chain check the transaction the facilitator named for this request", async () => {
+    const failed = {
+      success: false,
+      errorReason: "invalid_exact_evm_transaction_failed",
+      errorMessage: "reverted",
+      transaction: HASH,
+      network: X402_NETWORK,
+      headers: {},
+      response: { status: 402, headers: {}, body: { error: "payment failed" } },
+    };
+    const settle = vi.fn().mockResolvedValue(failed);
+    const charged = vi.fn(async (_payment: unknown, _requirements: unknown, _transactions: readonly string[]) => undefined);
+    const image = await makeImage(65);
+    const app = await buildServer({ source: sourceOf([recordFor(await fingerprint(image))]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments: paymentsThatSettleWith(settle, vi.fn(async () => undefined)),
+      settlementRetryDelayMs: 0,
+      charged,
+    });
+    await app.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const response = await app.inject({
+        method: "POST",
+        url: "/verify/paid",
+        payload,
+        headers: { ...headers, "payment-signature": paymentHeaderFor(`0x${"f5".repeat(32)}`) },
+      });
+
+      expect(response.statusCode).toBe(502);
+      expect(charged.mock.calls.at(-1)?.[2]).toEqual([HASH]);
     } finally {
       await app.close();
     }

@@ -76,7 +76,7 @@ export async function readUpload(request: FastifyRequest): Promise<Buffer> {
  *
  * Throws BadRequest: 400 for a body that is not { "url": "..." }, 403 for a URL
  * that points inside our own network, 413 over the byte limit, 502 when the
- * remote host does not answer.
+ * remote host does not answer or fails part way through the body.
  */
 export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
   const parsed = urlBodySchema.safeParse(request.body);
@@ -101,12 +101,22 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
 
   const chunks: Buffer[] = [];
   let total = 0;
-  for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
-    total += chunk.byteLength;
-    if (total > MAX_UPLOAD_BYTES) {
-      throw new BadRequest(`the image at ${parsed.data.url} is larger than the ${MAX_UPLOAD_BYTES} byte limit`, 413);
+  try {
+    for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+      total += chunk.byteLength;
+      if (total > MAX_UPLOAD_BYTES) {
+        throw new BadRequest(`the image at ${parsed.data.url} is larger than the ${MAX_UPLOAD_BYTES} byte limit`, 413);
+      }
+      chunks.push(Buffer.from(chunk));
     }
-    chunks.push(Buffer.from(chunk));
+  } catch (error) {
+    if (error instanceof BadRequest) {
+      throw error;
+    }
+    // A body that stalls past the timeout or a connection the remote drops mid-body is the remote
+    // host failing, not the caller, so a client that retries a 5xx gets to retry it.
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new BadRequest(`fetching ${parsed.data.url} failed part way through: ${reason}`, 502);
   }
 
   if (total === 0) {

@@ -3,7 +3,7 @@ import { decodePaymentSignatureHeader } from "@x402/core/http";
 import type { HTTPRequestContext, ProcessSettleResultResponse, x402HTTPResourceServer } from "@x402/core/server";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { isAddress, type Hex } from "viem";
+import { isAddress, isAddressEqual, parseAbi, parseEventLogs, type Hex } from "viem";
 import { withPassportFacts } from "../disputeRead.js";
 import { env } from "../env.js";
 import { readClient } from "../reputation/registry.js";
@@ -47,10 +47,41 @@ const AUTHORIZATION_STATE_ABI = [
 ] as const;
 
 /**
- * Whether the chain shows this payment's authorisation as used, which is the payer having been
- * charged. Undefined means the chain could not be asked or could not say.
+ * The two USDC events that together are one EIP-3009 payment landing: the authorisation for this
+ * payer and nonce used (a cancellation emits AuthorizationCanceled instead), and the value moving
+ * from the payer to the payee.
  */
-export type ChargedCheck = (payment: PaymentPayload, requirements: PaymentRequirements) => Promise<boolean | undefined>;
+const TRANSFER_EVENTS_ABI = parseAbi([
+  "event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce)",
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+]);
+
+const TRANSACTION_HASH = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * Whether this request's payment landed. True only when a transaction the facilitator named for
+ * this payment is mined, succeeded, and carries this payer's authorisation used for this nonce and
+ * the transfer to the payee. False when no transaction proves it and the chain says the
+ * authorisation was never used. Undefined when nobody can tell: a named transaction still pending,
+ * a failed read, or an authorisation used by something this request did not send (a cancellation,
+ * or another request spending the same authorisation).
+ */
+export type ChargedCheck = (
+  payment: PaymentPayload,
+  requirements: PaymentRequirements,
+  transactions: readonly string[],
+) => Promise<boolean | undefined>;
+
+/** The two reads the live check makes. A viem public client has both. */
+export interface ChargeReader {
+  readContract: (args: {
+    address: Hex;
+    abi: typeof AUTHORIZATION_STATE_ABI;
+    functionName: "authorizationState";
+    args: readonly [Hex, Hex];
+  }) => Promise<unknown>;
+  getTransactionReceipt: (args: { hash: Hex }) => Promise<{ status: string; logs: readonly unknown[] }>;
+}
 
 /** The request fields every log line here carries. */
 interface Where {
@@ -69,17 +100,17 @@ interface Where {
 type Settlement =
   | { state: "settled" | "broadcast"; headers: Record<string, string> }
   | { state: "refused"; status: number; headers: Record<string, string>; body: unknown }
-  | { state: "unknown"; reason: string };
+  | { state: "unknown"; reason: string; transactions: string[] };
 
 /** A settle answer that is not a success, which is the one that carries a response to send. */
 type SettleFailure = Extract<ProcessSettleResultResponse, { success: false }>;
 
-/** One ask of the facilitator, sorted. */
+/** One ask of the facilitator, sorted. An unknown answer keeps any transaction it named. */
 type Attempt =
   | { kind: "settled"; headers: Record<string, string> }
   | { kind: "broadcast"; result: SettleFailure }
   | { kind: "refused"; result: SettleFailure }
-  | { kind: "unknown"; reason: string };
+  | { kind: "unknown"; reason: string; transaction?: string };
 
 /** A transfer the facilitator has put on chain: pending, and carrying the hash that proves it. */
 function isBroadcast(settled: ProcessSettleResultResponse): boolean {
@@ -106,7 +137,18 @@ async function attempt(settle: () => Promise<ProcessSettleResultResponse>): Prom
   if (result.success) return { kind: "settled", headers: result.headers };
   if (isBroadcast(result)) return { kind: "broadcast", result };
   if (isRefusal(result)) return { kind: "refused", result };
-  return { kind: "unknown", reason: result.errorReason ?? "the facilitator gave no reason" };
+  return {
+    kind: "unknown",
+    reason: result.errorReason ?? "the facilitator gave no reason",
+    ...(result.transaction.length > 0 ? { transaction: result.transaction } : {}),
+  };
+}
+
+/** The transaction an attempt named, which is what the chain check proves a payment by. */
+function transactionOf(attempted: Attempt): string | undefined {
+  if (attempted.kind === "broadcast") return attempted.result.transaction;
+  if (attempted.kind === "unknown") return attempted.transaction;
+  return undefined;
 }
 
 const pause = (ms: number): Promise<void> =>
@@ -165,34 +207,104 @@ function sha256Hex(bytes: Buffer): string {
 }
 
 /**
- * The live check: USDC's own authorizationState for the payer and nonce, on the asset the payment
- * names. Anything malformed, or a read that fails, is undefined.
+ * The live check, proven by the transfer itself (review pass 5, answers #4).
+ *
+ * Each transaction the facilitator named for this payment is read back. One that is mined,
+ * succeeded, and carries, from the asset contract, AuthorizationUsed for this payer and nonce and a
+ * Transfer of the signed value from the payer to the payee, is this payment landing: true. A named
+ * transaction with no receipt yet, or a read that failed, means the transfer has not resolved:
+ * undefined, never false.
+ *
+ * With no transaction to prove it, USDC's authorizationState can only say no. False there is the
+ * authorisation never used, so nothing was charged. True is not taken as payment, because it is
+ * equally true after the payer cancelled the authorisation and after another request spent it.
+ *
+ * Anything malformed in the payment or the terms is undefined.
  */
-function chainCharged(): ChargedCheck {
-  const chain = readClient();
-  return async (payment, requirements) => {
-    const authorization = (payment.payload as { authorization?: { from?: unknown; nonce?: unknown } } | undefined)
-      ?.authorization;
+export function chainCharged(chain: ChargeReader = readClient() as unknown as ChargeReader): ChargedCheck {
+  return async (payment, requirements, transactions) => {
+    const authorization = (
+      payment.payload as { authorization?: { from?: unknown; nonce?: unknown; value?: unknown } } | undefined
+    )?.authorization;
     const from = authorization?.from;
     const nonce = authorization?.nonce;
+    const value = authorization?.value;
     const asset = requirements.asset;
+    const payTo = requirements.payTo;
     if (typeof from !== "string" || !isAddress(from) || typeof nonce !== "string" || !NONCE.test(nonce)) {
       return undefined;
     }
-    if (typeof asset !== "string" || !isAddress(asset)) {
+    if (typeof asset !== "string" || !isAddress(asset) || typeof payTo !== "string" || !isAddress(payTo)) {
       return undefined;
     }
+    if (typeof value !== "string" || !/^[0-9]+$/.test(value)) {
+      return undefined;
+    }
+
+    let pending = false;
+    for (const hash of new Set(transactions)) {
+      if (!TRANSACTION_HASH.test(hash)) {
+        continue;
+      }
+      let receipt: { status: string; logs: readonly unknown[] };
+      try {
+        receipt = await chain.getTransactionReceipt({ hash: hash as Hex });
+      } catch {
+        pending = true;
+        continue;
+      }
+      if (receipt.status === "success" && carriesPayment(receipt.logs, { asset, from, payTo, nonce, value: BigInt(value) })) {
+        return true;
+      }
+    }
+    if (pending) {
+      return undefined;
+    }
+
     try {
-      return (await chain.readContract({
+      const used = await chain.readContract({
         address: asset,
         abi: AUTHORIZATION_STATE_ABI,
         functionName: "authorizationState",
         args: [from, nonce as Hex],
-      })) as boolean;
+      });
+      return used === false ? false : undefined;
     } catch {
       return undefined;
     }
   };
+}
+
+/** Whether a receipt's logs hold this payment: both events, emitted by the asset contract itself. */
+function carriesPayment(
+  logs: readonly unknown[],
+  expected: { asset: Hex; from: Hex; payTo: Hex; nonce: string; value: bigint },
+): boolean {
+  let events;
+  try {
+    events = parseEventLogs({
+      abi: TRANSFER_EVENTS_ABI,
+      logs: (logs as { address?: unknown }[]).filter(
+        (log) => typeof log.address === "string" && isAddress(log.address) && isAddressEqual(log.address, expected.asset),
+      ) as never,
+    });
+  } catch {
+    return false;
+  }
+  const used = events.some(
+    (event) =>
+      event.eventName === "AuthorizationUsed" &&
+      isAddressEqual(event.args.authorizer, expected.from) &&
+      event.args.nonce.toLowerCase() === expected.nonce.toLowerCase(),
+  );
+  const moved = events.some(
+    (event) =>
+      event.eventName === "Transfer" &&
+      isAddressEqual(event.args.from, expected.from) &&
+      isAddressEqual(event.args.to, expected.payTo) &&
+      event.args.value === expected.value,
+  );
+  return used && moved;
 }
 
 /**
@@ -211,20 +323,47 @@ function chainCharged(): ChargedCheck {
  *   ask counts only when the chain says the payment was not spent, because a
  *   first call that did land makes the second one fail too. Otherwise "unknown":
  *   never "refused", because the payer may have been charged.
+ *
+ * Every transaction the facilitator names on the way is collected and handed to the chain check,
+ * which proves a payment only by one of them (review pass 5, answers #4). `held` is a payment whose
+ * answer this service already holds as unknown, sent again with the same file: its first transfer
+ * may land between the facilitator's verify and this settle, so a refusal on the first ask is final
+ * only when the chain still says the payment was not spent (answers #6).
  */
 async function settleSequence(
   settle: () => Promise<ProcessSettleResultResponse>,
-  charged: () => Promise<boolean | undefined>,
+  charged: (transactions: readonly string[]) => Promise<boolean | undefined>,
   retryDelayMs: number,
   log: FastifyBaseLogger,
   where: Where,
+  held: { transactions: readonly string[] } | undefined,
 ): Promise<Settlement> {
-  const first = await attempt(settle);
+  const transactions: string[] = [...(held?.transactions ?? [])];
+  const note = (attempted: Attempt): Attempt => {
+    const hash = transactionOf(attempted);
+    if (hash !== undefined && hash.length > 0 && !transactions.includes(hash)) {
+      transactions.push(hash);
+    }
+    return attempted;
+  };
+
+  const first = note(await attempt(settle));
 
   if (first.kind === "settled") {
     return { state: "settled", headers: first.headers };
   }
   if (first.kind === "refused") {
+    if (held !== undefined) {
+      const spent = await charged(transactions);
+      if (spent === true) {
+        log.warn({ ...where, reason: first.result.errorReason }, "the held payment landed before this settle: serving its answer");
+        return { state: "broadcast", headers: {} };
+      }
+      if (spent === undefined) {
+        log.error({ ...where, reason: first.result.errorReason }, "settlement outcome unknown: the held answer stays held");
+        return { state: "unknown", reason: first.result.errorReason ?? "refused", transactions };
+      }
+    }
     log.error({ ...where, reason: first.result.errorReason }, "payment did not settle");
     return {
       state: "refused",
@@ -255,18 +394,18 @@ async function settleSequence(
   }
 
   log.warn({ ...where, reason: first.reason }, "settlement outcome unknown: asking the chain, then the facilitator once more");
-  if ((await charged()) === true) {
+  if ((await charged(transactions)) === true) {
     return { state: "broadcast", headers: {} };
   }
   await pause(retryDelayMs);
-  const second = await attempt(settle);
+  const second = note(await attempt(settle));
   if (second.kind === "settled") {
     return { state: "settled", headers: second.headers };
   }
   if (second.kind === "broadcast") {
     return { state: "broadcast", headers: second.result.headers };
   }
-  const spent = await charged();
+  const spent = await charged(transactions);
   if (spent === true) {
     return { state: "broadcast", headers: {} };
   }
@@ -281,7 +420,7 @@ async function settleSequence(
   }
   const reason = second.kind === "unknown" ? second.reason : (second.result.errorReason ?? "refused");
   log.error({ ...where, first: first.reason, second: reason }, "settlement outcome unknown: the answer is held against this payment");
-  return { state: "unknown", reason };
+  return { state: "unknown", reason, transactions };
 }
 
 /**
@@ -340,6 +479,7 @@ export async function verifyPaidRoutes(
     // Read only for a repeat of a payment this service remembers, and handed on below so the
     // upload is never read twice.
     let bytes: Buffer | undefined;
+    let held: { transactions: readonly string[] } | undefined;
     if (offered !== undefined) {
       const seen = ledger.get(offered.nonce);
       if (seen !== undefined && seen.payment === offered.identity) {
@@ -357,11 +497,12 @@ export async function verifyPaidRoutes(
           }
           return reply.headers(replay.entry.headers).send(replay.entry.payload);
         }
-        // Only the chain saying "not spent" about this very file lets the held answer go, so the
-        // payment can go through as new. Another file, or a chain read that failed, keeps it for
-        // the retry that can prove the payment (review pass 4, V21).
-        if (replay.kind === "not-spent") {
-          ledger.forget(offered.nonce);
+        // The payment goes through as new, and the held answer is never let go on a "not spent"
+        // read: that read is also what a first transfer still pending looks like, so the answer
+        // stays held until a new settle replaces it or its ten minutes run out (review pass 5,
+        // answers #6). Another file is a different answer and settles on its own.
+        if (replay.kind === "not-spent" || replay.kind === "cannot-tell") {
+          held = { transactions: proofOf(seen)?.transactions ?? [] };
         }
       }
     }
@@ -432,10 +573,11 @@ export async function verifyPaidRoutes(
           verified.declaredExtensions,
           { request: context, responseBody: Buffer.from(JSON.stringify(payload)) },
         ),
-      async () => await charged(verified.paymentPayload, verified.paymentRequirements),
+      async (transactions) => await charged(verified.paymentPayload, verified.paymentRequirements, transactions),
       retryDelayMs,
       request.log,
       where,
+      held,
     );
 
     if (settlement.state === "refused") {
@@ -454,7 +596,11 @@ export async function verifyPaidRoutes(
           headers: {},
           payment: paid.identity,
           upload,
-          proof: { payment: verified.paymentPayload, requirements: verified.paymentRequirements },
+          proof: {
+            payment: verified.paymentPayload,
+            requirements: verified.paymentRequirements,
+            transactions: settlement.transactions,
+          } satisfies HeldProof,
         });
       }
       return reply.code(502).send({
@@ -485,14 +631,27 @@ export async function verifyPaidRoutes(
  * "serve" hands the entry over: the file is the one the answer is about, and the payment is known
  * to be spent, which for an answer held back as unknown means the chain shows it now; that entry
  * comes back marked settled so the chain is not asked again. "other-file" is the right payment
- * with the wrong file. "not-spent" is the chain answering that the payment was never spent, and
- * "cannot-tell" is a chain read that failed or a held entry with no proof to ask about.
+ * with the wrong file. "not-spent" is the chain answering that the payment is not spent yet, which
+ * a first transfer still pending also reads as, and "cannot-tell" is a chain read that failed or a
+ * held entry with no proof to ask about. Neither lets the held answer go.
  */
 type Replay =
   | { kind: "serve"; entry: LedgerEntry }
   | { kind: "other-file" }
   | { kind: "not-spent" }
   | { kind: "cannot-tell" };
+
+/** What an answer held as unknown keeps so the chain can be asked about it later. */
+interface HeldProof {
+  payment: PaymentPayload;
+  requirements: PaymentRequirements;
+  /** Every transaction the facilitator named for this payment, which is what proves it landed. */
+  transactions: string[];
+}
+
+function proofOf(entry: LedgerEntry): HeldProof | undefined {
+  return entry.proof as HeldProof | undefined;
+}
 
 async function replayFor(seen: LedgerEntry, bytes: Buffer, charged: ChargedCheck): Promise<Replay> {
   if (sha256Hex(bytes) !== seen.upload) {
@@ -501,11 +660,11 @@ async function replayFor(seen: LedgerEntry, bytes: Buffer, charged: ChargedCheck
   if (seen.state !== "unknown") {
     return { kind: "serve", entry: seen };
   }
-  const proof = seen.proof as { payment: PaymentPayload; requirements: PaymentRequirements } | undefined;
+  const proof = proofOf(seen);
   if (proof === undefined) {
     return { kind: "cannot-tell" };
   }
-  const spent = await charged(proof.payment, proof.requirements);
+  const spent = await charged(proof.payment, proof.requirements, proof.transactions ?? []);
   if (spent === true) {
     return { kind: "serve", entry: { ...seen, state: "settled" } };
   }

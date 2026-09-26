@@ -1,4 +1,4 @@
-import { lookup as systemLookup, type LookupAddress } from "node:dns";
+import { promises as dnsPromises } from "node:dns";
 import { isIP, type LookupFunction } from "node:net";
 import ipaddr from "ipaddr.js";
 import { Agent, fetch as undiciFetch, type Response } from "undici";
@@ -29,6 +29,16 @@ const MAX_REDIRECTS = 3;
 /** How long the socket may take to open before the attempt is abandoned. */
 const CONNECT_TIMEOUT_MS = 5_000;
 
+/**
+ * The hard limit on one hop's name lookup, whatever the resolver does. A caller chooses the host,
+ * so a host whose name server answers slowly on purpose must cost a few seconds and no more.
+ */
+export const LOOKUP_TIMEOUT_MS = 3_000;
+
+/** c-ares's own limits for one query, inside the hard limit above: one second a try, two tries. */
+const RESOLVER_QUERY_TIMEOUT_MS = 1_000;
+const RESOLVER_TRIES = 2;
+
 export class BlockedTarget extends Error {
   readonly statusCode = 403;
 }
@@ -40,13 +50,31 @@ export class UnreachableTarget extends Error {
 /** Resolves a host name to every address it points at. */
 export type ResolveAll = (hostname: string) => Promise<string[]>;
 
+/** The two queries a name is resolved with: the shape of node's dns.promises.Resolver. */
+export interface RecordResolver {
+  resolve4: (hostname: string) => Promise<string[]>;
+  resolve6: (hostname: string) => Promise<string[]>;
+}
+
+/**
+ * What one hop hands the transport. `addresses` are the ones the guard already checked for this
+ * hop's host, and the live transport dials only those, so the name is never looked up twice.
+ */
+export interface HopInit {
+  signal: AbortSignal;
+  redirect: "manual";
+  addresses: string[];
+}
+
 export interface SafeFetchOptions {
   timeoutMs?: number;
   maxRedirects?: number;
+  /** The hard limit on each hop's lookup. Tests pass a short one. */
+  lookupTimeoutMs?: number;
   /** Swapped in tests so a name can be pointed at a chosen address without touching DNS. */
   resolve?: ResolveAll;
   /** Swapped in tests so a redirect chain can be replayed without a network. */
-  transport?: (url: string, init: { signal: AbortSignal; redirect: "manual" }) => Promise<Response>;
+  transport?: (url: string, init: HopInit) => Promise<Response>;
 }
 
 /**
@@ -76,21 +104,35 @@ export function hostOf(url: URL): string {
   return url.hostname.replace(/^\[|\]$/g, "");
 }
 
-/** Resolves a name through the system resolver, and an address literal to itself. */
-export const resolveThroughDns: ResolveAll = async (hostname) => {
-  if (isIP(hostname) !== 0) {
-    return [hostname];
-  }
-  return await new Promise<string[]>((resolve, reject) => {
-    systemLookup(hostname, { all: true, verbatim: true }, (error, addresses: LookupAddress[]) => {
-      if (error !== null) {
-        reject(error);
-        return;
-      }
-      resolve(addresses.map((entry) => entry.address));
-    });
-  });
-};
+/**
+ * Resolves a name with an A and an AAAA query, and an address literal to itself.
+ *
+ * The queries go through c-ares (dns.promises.Resolver), which runs on the event loop, and never
+ * through dns.lookup, which is getaddrinfo on libuv's small thread pool: that pool is where sharp
+ * decodes every picture, so a slow name server must not be able to hold it. The cost is that
+ * /etc/hosts is not read, which a service fetching public URLs has no use for.
+ *
+ * Either family may be missing. Only when both queries fail does the lookup fail, with the A
+ * query's error. The addresses kept are the only ones the connection may dial, so a family that
+ * failed is simply not dialled.
+ */
+export function resolveWith(resolver: RecordResolver): ResolveAll {
+  return async (hostname) => {
+    if (isIP(hostname) !== 0) {
+      return [hostname];
+    }
+    const [v4, v6] = await Promise.allSettled([resolver.resolve4(hostname), resolver.resolve6(hostname)]);
+    if (v4.status === "rejected" && v6.status === "rejected") {
+      throw v4.reason instanceof Error ? v4.reason : new Error(String(v4.reason));
+    }
+    return [...(v4.status === "fulfilled" ? v4.value : []), ...(v6.status === "fulfilled" ? v6.value : [])];
+  };
+}
+
+/** The live resolver: c-ares with its own per-query limits, under the hard limit in safeFetch. */
+export const resolveThroughDns: ResolveAll = resolveWith(
+  new dnsPromises.Resolver({ timeout: RESOLVER_QUERY_TIMEOUT_MS, tries: RESOLVER_TRIES }),
+);
 
 /**
  * The socket-level guard: the lookup the connection itself uses.
@@ -143,17 +185,19 @@ export async function safeFetch(url: URL, options: SafeFetchOptions = {}): Promi
   const resolve = options.resolve ?? resolveThroughDns;
   const maxRedirects = options.maxRedirects ?? MAX_REDIRECTS;
   const timeoutMs = options.timeoutMs ?? FETCH_TIMEOUT_MS;
-  const transport = options.transport ?? pinnedTransport(resolve, timeoutMs);
+  const lookupTimeoutMs = options.lookupTimeoutMs ?? LOOKUP_TIMEOUT_MS;
+  const transport = options.transport ?? pinnedTransport(timeoutMs);
 
   let target = url;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
-    await assertPublicHost(target, resolve);
+    const addresses = await assertPublicHost(target, resolve, lookupTimeoutMs);
 
     let response: Response;
     try {
       response = await transport(target.toString(), {
         signal: AbortSignal.timeout(timeoutMs),
         redirect: "manual",
+        addresses,
       });
     } catch (error) {
       if (error instanceof BlockedTarget) {
@@ -169,7 +213,11 @@ export async function safeFetch(url: URL, options: SafeFetchOptions = {}): Promi
     // The redirect's own body is never read, and until it is released this hop's agent cannot
     // finish closing.
     await response.body?.cancel().catch(() => undefined);
-    target = new URL(location, target);
+    try {
+      target = new URL(location, target);
+    } catch {
+      throw new UnreachableTarget(`${target.toString()} redirected to a location that is not a URL`);
+    }
   }
 
   throw new UnreachableTarget(`fetching ${url.toString()} redirected more than ${maxRedirects} times`);
@@ -180,9 +228,11 @@ export async function safeFetch(url: URL, options: SafeFetchOptions = {}): Promi
  * with a reason a caller can read rather than as a failed connection.
  *
  * Throws BlockedTarget when the name is localhost, resolves to nothing, or
- * resolves to any address we refuse.
+ * resolves to any address we refuse, and UnreachableTarget when the lookup fails
+ * or runs past `lookupTimeoutMs`. Returns the addresses it approved, which are
+ * the only ones this hop may dial.
  */
-async function assertPublicHost(url: URL, resolve: ResolveAll): Promise<void> {
+async function assertPublicHost(url: URL, resolve: ResolveAll, lookupTimeoutMs: number): Promise<string[]> {
   const host = hostOf(url);
   if (host === "localhost" || host.endsWith(".localhost")) {
     throw new BlockedTarget(`refusing to fetch ${host}: not a public address`);
@@ -190,7 +240,7 @@ async function assertPublicHost(url: URL, resolve: ResolveAll): Promise<void> {
 
   let addresses: string[];
   try {
-    addresses = await resolve(host);
+    addresses = await withLookupTimeout(resolve(host), lookupTimeoutMs);
   } catch (error) {
     throw new UnreachableTarget(`could not resolve ${host}: ${reasonOf(error)}`);
   }
@@ -198,17 +248,27 @@ async function assertPublicHost(url: URL, resolve: ResolveAll): Promise<void> {
   if (addresses.length === 0 || addresses.some((address) => !isPublicAddress(address))) {
     throw new BlockedTarget(`refusing to fetch ${host}: not a public address`);
   }
+  return addresses;
 }
 
-function pinnedTransport(
-  resolve: ResolveAll,
-  timeoutMs: number,
-): (url: string, init: { signal: AbortSignal; redirect: "manual" }) => Promise<Response> {
-  return async (url, init) => {
+function withLookupTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const limit = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => reject(new Error(`the lookup took longer than ${ms} ms`)), ms);
+  });
+  return Promise.race([work, limit]).finally(() => {
+    clearTimeout(timer);
+  });
+}
+
+function pinnedTransport(timeoutMs: number): (url: string, init: HopInit) => Promise<Response> {
+  return async (url, { addresses, ...init }) => {
     // A fresh agent for every hop. Each one is closed once its answer is back, and a closed agent
     // refuses any further request, so sharing one across a redirect chain failed every second hop.
+    // Its lookup hands back the addresses this hop already approved, checked once more, and never
+    // asks a resolver again.
     const dispatcher = new Agent({
-      connect: { lookup: guardedLookup(resolve), timeout: CONNECT_TIMEOUT_MS },
+      connect: { lookup: guardedLookup(async () => addresses), timeout: CONNECT_TIMEOUT_MS },
       headersTimeout: timeoutMs,
       bodyTimeout: timeoutMs,
     });

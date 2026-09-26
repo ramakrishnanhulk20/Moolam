@@ -71,6 +71,30 @@ export type DisputeAnswer = { source: "chain"; status: DisputeStatus } | { sourc
 const UNAVAILABLE: DisputeAnswer = { source: "unavailable" };
 
 /**
+ * Whether a challenge against a passport above this one in the edit chain was upheld. The registry
+ * marks only the passport a challenge named, and appendEdit does not refuse a disputed parent, so
+ * an edit of a picture proven wrong reads "none" in its own dispute fact. This is the fact beside it
+ * that says so, with the nearest ancestor whose challenge was upheld.
+ *
+ * "none" means every ancestor was read on chain and none was upheld. An open or rejected challenge
+ * above does not carry down, the same rule the index uses for inheritedDisputed.
+ */
+export type InheritedDisputeAnswer =
+  | { source: "chain"; status: "upheld"; ancestor: Hex }
+  | { source: "chain"; status: "none" }
+  | { source: "unavailable" };
+
+const INHERITED_UNAVAILABLE: InheritedDisputeAnswer = { source: "unavailable" };
+
+/**
+ * How many passports above a match are read. Each one is a getDispute read behind the same sixty
+ * second memory and five second timeout, started together, so a verify answer naming three
+ * passports costs at most three times this many reads more. An edit chain deeper than this answers
+ * "unavailable" rather than a "none" nobody checked.
+ */
+export const INHERITED_DISPUTE_MAX_DEPTH = 8;
+
+/**
  * What the other three facts say when their own reader could not answer.
  *
  * They live here rather than being imported because each of those modules keeps its own word for
@@ -194,10 +218,11 @@ export function offlineDisputeReader(): DisputeReader {
 }
 
 /**
- * Attaches the four facts a verify answer carries, for the exact match, the best match and the
+ * Attaches the facts a verify answer carries, for the exact match, the best match and the
  * first registration when the answer names one (review pass 4, V18): the
  * holder's statement on AI use, the dispute status that says how much weight that statement should
- * carry, what has re-checked the picture since it was registered, and whether the picture itself
+ * carry, and beside it whether a picture this one was edited from was proven wrong (review pass 5),
+ * what has re-checked the picture since it was registered, and whether the picture itself
  * is public, sealed, or sealed and published later by its holder. Both verify routes call this
  * one function rather than one walk per fact, so for each passport the two chain reads start at the
  * same moment and are awaited together. Each reader keeps its own sixty second cache and its own
@@ -230,14 +255,68 @@ export async function withPassportFacts<T extends { result: unknown }>(
   return await withMatchFacts(payload, async (id) => {
     // One index lookup feeds both facts that need the record, so they describe the same copy of it.
     const record = await orUnavailable(async () => recordFor(id), undefined);
-    const [consentAnswer, disputeAnswer, recheckAnswer, pictureAnswer] = await Promise.all([
+    const [consentAnswer, disputeAnswer, inheritedAnswer, recheckAnswer, pictureAnswer] = await Promise.all([
       orUnavailable(async () => await consent.answerFor(id), CONSENT_UNAVAILABLE),
       orUnavailable(async () => await dispute.answerFor(id), UNAVAILABLE),
+      orUnavailable(async () => await inheritedDispute(record, dispute, recordFor), INHERITED_UNAVAILABLE),
       orUnavailable(async () => recheckFor(record), RECHECK_UNAVAILABLE),
       orUnavailable(async () => await picture.answerFor(record), PICTURE_UNAVAILABLE),
     ]);
-    return { consent: consentAnswer, dispute: disputeAnswer, recheck: recheckAnswer, picture: pictureAnswer };
+    return {
+      consent: consentAnswer,
+      dispute: disputeAnswer,
+      inheritedDispute: inheritedAnswer,
+      recheck: recheckAnswer,
+      picture: pictureAnswer,
+    };
   });
+}
+
+/**
+ * Walks the parent links up from a passport and reads each ancestor's dispute on chain.
+ *
+ * The links come from this service's own index, because a passport's parent is written once at
+ * registration and never changes, so an index row cannot be stale about it. The dispute status can
+ * change at any moment, so that is read from the chain, through the same reader and memory as the
+ * direct fact. Any link the index cannot follow, a loop, a chain past the cap, or one ancestor whose
+ * read failed makes the whole answer "unavailable": "none" is said only when every ancestor was read.
+ */
+async function inheritedDispute(
+  record: PassportRecord | undefined,
+  dispute: DisputeReader,
+  recordFor: (passportId: Hex) => PassportRecord | undefined,
+): Promise<InheritedDisputeAnswer> {
+  if (record === undefined) {
+    return INHERITED_UNAVAILABLE;
+  }
+
+  const ancestors: Hex[] = [];
+  const seen = new Set<string>([record.id.toLowerCase()]);
+  let parentId = record.parentId;
+  while (parentId !== null) {
+    const key = parentId.toLowerCase();
+    if (ancestors.length >= INHERITED_DISPUTE_MAX_DEPTH || seen.has(key)) {
+      return INHERITED_UNAVAILABLE;
+    }
+    const parent = recordFor(parentId);
+    if (parent === undefined) {
+      return INHERITED_UNAVAILABLE;
+    }
+    seen.add(key);
+    ancestors.push(parentId);
+    parentId = parent.parentId;
+  }
+
+  const answers = await Promise.all(ancestors.map(async (id) => await dispute.answerFor(id)));
+  // Nearest first, so the ancestor named is the closest picture proven wrong.
+  const upheld = answers.findIndex((answer) => answer.source === "chain" && answer.status === "upheld");
+  if (upheld !== -1) {
+    return { source: "chain", status: "upheld", ancestor: (ancestors[upheld] as Hex).toLowerCase() as Hex };
+  }
+  if (answers.some((answer) => answer.source !== "chain")) {
+    return INHERITED_UNAVAILABLE;
+  }
+  return { source: "chain", status: "none" };
 }
 
 /**

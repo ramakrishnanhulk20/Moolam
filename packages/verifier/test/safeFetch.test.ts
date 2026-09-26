@@ -1,6 +1,8 @@
 // Covers the guard on server-side fetches: which addresses are refused, that
 // every redirect hop is checked, and that the lookup the socket uses hands over
-// only approved addresses.
+// only approved addresses. From review pass 5: names are resolved once per hop
+// through the c-ares resolver with a hard timeout, and a remote that fails after
+// its headers, or redirects to a Location that does not parse, is a 502.
 // Does NOT cover a real connection to a real host. The redirect test opens real
 // sockets through the live transport, but to a stub on this machine: the address
 // guard approves a public address and the dial is then pointed at the stub, so no
@@ -9,15 +11,18 @@
 import { createServer, type Server } from "node:http";
 import net from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { FastifyRequest } from "fastify";
 import { Response } from "undici";
 import {
   BlockedTarget,
   UnreachableTarget,
   guardedLookup,
   isPublicAddress,
+  resolveWith,
   safeFetch,
   type ResolveAll,
 } from "../src/net/safeFetch.js";
+import { BadRequest, readFromUrl } from "../src/routes/shared.js";
 
 const PUBLIC_ADDRESS = "93.184.216.34";
 
@@ -215,6 +220,82 @@ describe("safeFetch through the live transport", () => {
       `cdn.example.test:${port}/image.jpg`,
     ]);
     expect(resolved).toContain("cdn.example.test");
+    // Review pass 5, answers #3: one lookup per hop, and the socket dials what that lookup found.
+    expect(resolved).toEqual(["images.example.test", "images.example.test", "cdn.example.test"]);
+  });
+
+  // Review pass 5, answers #5: a remote that fails after its headers is a remote failure.
+  it("answers 502 when the remote drops the connection in the middle of the body", async () => {
+    stub = createServer((_request, reply) => {
+      reply.writeHead(200, { "content-type": "image/jpeg", "content-length": "100000" });
+      reply.write(Buffer.alloc(1_000, 7));
+      setTimeout(() => reply.socket?.destroy(), 20);
+    });
+    await new Promise<void>((resolve) => stub?.listen(0, "127.0.0.1", resolve));
+    const port = (stub.address() as { port: number }).port;
+
+    // The URL names a public address literal, so the guard passes it without a lookup, and only the
+    // dial is pointed at the stub on this machine.
+    const realConnect = net.connect;
+    vi.spyOn(net, "connect").mockImplementation(((options: net.NetConnectOpts) =>
+      realConnect({ ...options, host: "127.0.0.1" } as net.NetConnectOpts)) as typeof net.connect);
+
+    const request = { body: { url: `http://${PUBLIC_ADDRESS}:${port}/half.jpg` } } as unknown as FastifyRequest;
+    const failure = await readFromUrl(request).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(BadRequest);
+    expect((failure as BadRequest).statusCode).toBe(502);
+  });
+});
+
+describe("the name lookup", () => {
+  it("resolves through the c-ares resolver, both families, and keeps what either found", async () => {
+    const asked: string[] = [];
+    const resolver = {
+      resolve4: async (host: string) => {
+        asked.push(`4:${host}`);
+        return [PUBLIC_ADDRESS];
+      },
+      resolve6: async (host: string) => {
+        asked.push(`6:${host}`);
+        throw Object.assign(new Error("no AAAA record"), { code: "ENODATA" });
+      },
+    };
+
+    expect(await resolveWith(resolver)("images.example.test")).toEqual([PUBLIC_ADDRESS]);
+    expect(asked.sort()).toEqual(["4:images.example.test", "6:images.example.test"]);
+    expect(await resolveWith(resolver)("93.184.216.34")).toEqual(["93.184.216.34"]);
+  });
+
+  it("still refuses a name the resolver points at a private address", async () => {
+    const resolver = { resolve4: async () => ["10.1.2.3"], resolve6: async () => ["fd00::1"] };
+    const attempt = safeFetch(new URL("http://images.example.test/x.jpg"), {
+      resolve: resolveWith(resolver),
+      transport: neverCalled(),
+    });
+
+    await expect(attempt).rejects.toBeInstanceOf(BlockedTarget);
+  });
+
+  it("gives up on a lookup that never answers, as an unreachable host", async () => {
+    const started = Date.now();
+    const attempt = safeFetch(new URL("http://slow.example.test/x.jpg"), {
+      resolve: () => new Promise<string[]>(() => undefined),
+      lookupTimeoutMs: 50,
+      transport: neverCalled(),
+    });
+
+    await expect(attempt).rejects.toBeInstanceOf(UnreachableTarget);
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
+  it("answers a redirect whose Location does not parse as an unreachable host", async () => {
+    const attempt = safeFetch(new URL("http://images.example.test/x.jpg"), {
+      resolve: async () => [PUBLIC_ADDRESS],
+      transport: async () => new Response(null, { status: 302, headers: { location: "http://[not an address/" } }),
+    });
+
+    await expect(attempt).rejects.toBeInstanceOf(UnreachableTarget);
   });
 });
 

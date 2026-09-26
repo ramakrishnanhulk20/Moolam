@@ -1,6 +1,7 @@
 // Covers the dispute read behind /verify and /verify/paid: the status enum mapping, the two answer
 // shapes, the sixty second memory and its cap, the five second timeout, which passports are read,
-// and the field itself in each of its shapes on both routes. The chain is a fake transport that
+// and the field itself in each of its shapes on both routes, and the inherited fact beside it: an
+// edit of a passport whose challenge was upheld says so (review pass 5). The chain is a fake transport that
 // answers the eth_call viem makes, so the encoding and the decoding are real and the network is not.
 // Does NOT cover the registry's own dispute rules, which are the contract's tests, and does not
 // cover a live RPC.
@@ -11,6 +12,7 @@ import {
   DISPUTE_CACHE_MAX,
   DISPUTE_READ_TIMEOUT_MS,
   DISPUTE_TTL_MS,
+  INHERITED_DISPUTE_MAX_DEPTH,
   disputeAbi,
   disputeReader,
   withPassportFacts,
@@ -192,6 +194,93 @@ describe("dispute reader", () => {
     expect(result.best.dispute).toEqual({ source: "chain", status: "open" });
     expect(result.matches[0]?.dispute).toEqual({ source: "chain", status: "open" });
     expect(result.matches[1]).not.toHaveProperty("dispute");
+  });
+});
+
+// Review pass 5, answers #2: the registry marks only the passport a challenge named, so an edit of a
+// picture proven wrong reads clean on chain. The inherited fact walks the parent links and says so.
+describe("the inherited dispute fact", () => {
+  const ROOT = `0x${"a1".repeat(32)}` as Hex;
+  const MIDDLE = `0x${"b2".repeat(32)}` as Hex;
+  const EDIT = `0x${"c3".repeat(32)}` as Hex;
+
+  function chainOf(...ids: Hex[]): (id: Hex) => PassportRecord | undefined {
+    const byId = new Map<Hex, PassportRecord>();
+    ids.forEach((id, at) => {
+      byId.set(id, { id, phash: 1n, blockhash: ZERO_HASH, creator: CHALLENGER, parentId: ids[at - 1] ?? null, registeredAt: 1, metadataURI: "ipfs://x" });
+    });
+    return (id) => byId.get(id.toLowerCase() as Hex);
+  }
+
+  async function factsFor(
+    best: Hex,
+    records: (id: Hex) => PassportRecord | undefined,
+    read: ReturnType<typeof disputeReader>,
+  ): Promise<{ dispute: unknown; inheritedDispute: unknown }> {
+    const payload = await withPassportFacts(
+      { result: { exact: null, best: { id: best, score: 0.9 }, matches: [{ id: best, score: 0.9 }] }, manifest: {} },
+      offlineConsentReader(),
+      read,
+      records,
+      offlinePictureReader(),
+    );
+    return (payload.result as unknown as { best: { dispute: unknown; inheritedDispute: unknown } }).best;
+  }
+
+  it("says an edit of an upheld parent inherits the ruling, and leaves the edit's own status as it is", async () => {
+    const { read } = readerFor({ [ROOT]: 2 });
+
+    const facts = await factsFor(EDIT, chainOf(ROOT, MIDDLE, EDIT), read);
+
+    expect(facts.dispute).toEqual({ source: "chain", status: "none" });
+    expect(facts.inheritedDispute).toEqual({ source: "chain", status: "upheld", ancestor: ROOT });
+  });
+
+  it("says none when every passport above it reads clean, and none for an original", async () => {
+    const { read } = readerFor({ [ROOT]: 3, [MIDDLE]: 1 });
+
+    expect((await factsFor(EDIT, chainOf(ROOT, MIDDLE, EDIT), read)).inheritedDispute).toEqual({ source: "chain", status: "none" });
+    expect((await factsFor(ROOT, chainOf(ROOT), read)).inheritedDispute).toEqual({ source: "chain", status: "none" });
+  });
+
+  it("says unavailable when an ancestor cannot be read, its record is missing, or the chain runs past the cap", async () => {
+    const failing = disputeReader({
+      call: async (id) => {
+        if (id === ROOT) throw new Error("the RPC refused the call");
+        return record(0);
+      },
+    });
+    expect((await factsFor(EDIT, chainOf(ROOT, MIDDLE, EDIT), failing)).inheritedDispute).toEqual({ source: "unavailable" });
+
+    const { read } = readerFor({});
+    const gap = chainOf(ROOT, MIDDLE, EDIT);
+    const missingParent = (id: Hex) => (id.toLowerCase() === MIDDLE ? undefined : gap(id));
+    expect((await factsFor(EDIT, missingParent, read)).inheritedDispute).toEqual({ source: "unavailable" });
+
+    const deep = Array.from({ length: INHERITED_DISPUTE_MAX_DEPTH + 2 }, (_, at) => `0x${(at + 1).toString(16).padStart(64, "0")}` as Hex);
+    const { read: clean, asked } = readerFor({});
+    expect((await factsFor(deep.at(-1) as Hex, chainOf(...deep), clean)).inheritedDispute).toEqual({ source: "unavailable" });
+    expect(asked.length).toBeLessThanOrEqual(INHERITED_DISPUTE_MAX_DEPTH + 1);
+  });
+
+  it("reaches the verify route beside the direct fact", async () => {
+    const image = await makeImage(85);
+    const parent = recordFor(await fingerprint(await makeImage(86)));
+    const child = recordFor(await fingerprint(image), { parentId: parent.id });
+    const { read } = readerFor({ [parent.id]: 2 });
+    const app = await buildServer({ source: sourceOf([parent, child]), logger: false, dispute: read });
+    await app.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const body = (await app.inject({ method: "POST", url: "/verify", payload, headers })).json();
+
+      expect(body.result.exact).toBe(child.id);
+      expect(body.result.best.dispute).toEqual({ source: "chain", status: "none" });
+      expect(body.result.best.inheritedDispute).toEqual({ source: "chain", status: "upheld", ancestor: parent.id });
+    } finally {
+      await app.close();
+    }
   });
 });
 
