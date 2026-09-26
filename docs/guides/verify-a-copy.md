@@ -71,9 +71,25 @@ everything in range, however many closer copies there are, and when that is not 
 card, the card says an earlier registration matches and links it. A passport proves who registered
 first, so that is the record to open when the question is whose picture this is.
 
-Under that it says whether a C2PA manifest survived: "C2PA manifest still attached", or "No C2PA
-manifest left in this file". The second one is the interesting case, and the whole reason the
-fingerprints are on chain. A platform that stripped the manifest did not strip the picture.
+Under that it says what became of the C2PA manifest, the signed record Moolam embeds in the file, in
+one of four lines:
+
+- Valid: "The signed C2PA record is still inside this file." The record's signature and its binding
+  to these exact bytes check out. That says the file is the one that was signed. It does not look
+  the signer up on a trust list, so it does not say who signed it.
+- Invalid: "The Content Credentials inside this file fail validation: the file was changed after
+  signing, or the record was copied in from another file." A record is there and does not hold for
+  these bytes. The service's answer carries the validator's failure codes, such as
+  `assertion.dataHash.mismatch`, for anyone reading the JSON.
+- Unreadable: "This file carries Content Credentials we could not read, so we cannot say whether
+  they hold." There is C2PA data in the file and it could not be parsed, so the card makes no claim
+  either way.
+- Stripped: "The signed C2PA record has been stripped from this file." This is the interesting case,
+  and the whole reason the fingerprints are on chain. A platform that stripped the manifest did not
+  strip the picture.
+
+The last three all end "The fingerprints matched anyway.", because none of them touches the match: a
+record that fails, cannot be read or is gone costs the file its manifest and never its passport.
 
 ### Matches a sealed passport
 

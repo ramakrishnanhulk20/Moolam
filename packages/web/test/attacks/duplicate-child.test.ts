@@ -9,7 +9,7 @@
 // The registry's own refusal is proven on chain by packages/agents/scripts/attack-pass-2.ts.
 
 import { SignJWT, generateKeyPair } from "jose";
-import { getAddress, type Hex } from "viem";
+import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 
@@ -77,12 +77,31 @@ vi.mock("@moolam/verifier/src/c2pa.js", async (importOriginal) => {
 
 const { buildServer } = await import("@moolam/verifier/src/server.js");
 const { makeImage } = await import("@moolam/verifier/test/helpers.js");
+const { registryEditAbi } = await import("@moolam/verifier/src/edit/registry.js");
+const { contentIdOf } = await import("@moolam/verifier/src/ipfs/pinata.js");
+const { env } = await import("@moolam/verifier/src/env.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const OWNER = getAddress("0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6");
 const PARENT = `0x${"ab".repeat(32)}` as Hex;
 const HASH = `0x${"11".repeat(32)}` as Hex;
 const USER = "did:privy:attack-pass-2-duplicate";
+const PASSPORT_REGISTERED = toEventSelector(
+  "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
+);
+
+/**
+ * The receipt of a send whose appendEdit ran: the route believes an edit only when the registry's
+ * own event for the child it sent is in the logs, so the event names the child from the calldata.
+ */
+async function landedReceipt(): Promise<{ status: "success"; logs: { address: Hex; topics: Hex[] }[] }> {
+  const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
+  const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
+  return {
+    status: "success",
+    logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [PASSPORT_REGISTERED, input.exactHash] }],
+  };
+}
 
 let signing: CryptoKey;
 let verifying: CryptoKey;
@@ -148,7 +167,8 @@ describe("the same fallback bytes posted twice", () => {
       pins += 1;
       const file = (init?.body as FormData).get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
-      return new Response(JSON.stringify({ data: { cid: `bafyedit${bytes.length}`, size: bytes.length } }), {
+      // The route believes a pin only when it is public and names the content id of the bytes sent.
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -175,7 +195,7 @@ describe("the same fallback bytes posted twice", () => {
     stubs.parentOwner.mockReset().mockResolvedValue(OWNER);
     stubs.estimateEditGas.mockReset().mockResolvedValue(420_000n);
     stubs.send.mockReset().mockResolvedValue({ hash: HASH, sponsored: true, transactionId: "privy-tx-1" });
-    stubs.receipt.mockReset().mockResolvedValue({ status: "success" });
+    stubs.receipt.mockReset().mockImplementation(landedReceipt);
   });
 
   it("answers 409 already-registered on the second, before a single byte is pinned", async () => {

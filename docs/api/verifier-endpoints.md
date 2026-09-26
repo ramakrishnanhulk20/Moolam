@@ -13,6 +13,37 @@ routes and the three `/sealed` routes need exactly what `/prepare` needs. An unm
 and the three of them the runner uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link`
 answers `503` until `SEALED_LINK_TOKEN` is set.
 
+**Two routes that also need the Privy app secret.** `POST /unseal` and `POST /sealed/forget` decide
+who holds a passport by reading the caller's embedded wallets from Privy, and that read needs
+`PRIVY_APP_SECRET` as well as `PRIVY_APP_ID`. A host that has what `/prepare` needs and no app secret
+leaves those two off and mounts the rest of the family: `GET /unseal/:passportId`,
+`GET /sealed/status/:passportId` and `POST /sealed/link` stay on, because none of them reads a
+wallet. The boot log names each route left off and why, and [`/health`](#get-health) lists `unseal`
+in `routes` only when `POST /unseal` is on, while `sealed` is listed whenever the family is mounted.
+
+## How a passport's metadata document is read
+
+Several answers depend on a passport's metadata document: the `picture` fact on
+[`/verify`](#post-verify), the sealed check behind [`/recheck/request`](#post-recheckrequest), both
+[`/unseal`](#post-unseal) routes, the three `/sealed` routes, and the unseal record itself. The
+address comes off the chain, where a registrant can write anything, so every one of those reads
+follows the same rule:
+
+- Only a bare pinned content id is read: `ipfs://` followed by letters and digits and nothing else.
+  An `http` or `https` address, or an `ipfs://` address with a path, is refused before any request is
+  made. The test is a byte for byte copy of the one the Chainlink workflows use, so this service, the
+  runner and both workflows refuse exactly the same addresses.
+- It is read through the configured `PINATA_GATEWAY_URL` and no redirect is followed. Any status but
+  `200` is a failed read.
+- The body may weigh at most 64 KB, counted after decompression. A declared length over that is
+  refused unread, and otherwise reading stops at the first chunk past the cap, so a small body that
+  inflates to gigabytes stops there too. A Moolam document is under 2 KB.
+- A body that is not JSON is a failed read.
+
+A failed read is never an answer in either direction. Each route turns it into its own "could not
+tell": `unavailable` on `/verify`, `metadata-unavailable` or `lookup-unavailable` on the unseal and
+sealed routes, and a request let through on `/recheck/request`.
+
 ## POST /verify
 
 Takes an image and returns the passport it belongs to.
@@ -51,7 +82,8 @@ curl -s -X POST http://localhost:4000/verify \
       recheck: Recheck,             // what has re-checked the picture since, see below
       picture: Picture              // whether the picture is public or sealed, see below
     } | null,
-    matches: Match[],               // best first, at most 20
+    matches: Match[],               // best first, at most 20. A match may carry
+                                    // firstRegistered: true, see below
     confidence: number,             // 1 for an exact hit, 0 when nothing matched
     queried: {
       sha256: `0x${string}`,
@@ -60,10 +92,14 @@ curl -s -X POST http://localhost:4000/verify \
       width: number,
       height: number,
       format: string
-    }
+    },
+    laterSameFingerprint?: number,  // absent when nothing matched, see below
+    firstRegisteredId?: `0x${string}` // absent unless the first registration is not best
   },
   manifest: {
     present: boolean,
+    validation?: "valid" | "invalid" | "unreadable", // see below
+    failures?: string[],            // only with validation "invalid"
     manifestHash?: `0x${string}`,
     title?: string,
     claimGenerator?: string,
@@ -84,8 +120,44 @@ it. That applies to `result.queried.phash` and to `manifest.softBinding.phash`.
 `queried` is always the identity fingerprint, which is what a caller would register or display,
 even when the best match came from a rotated variant. `variant` names which of the eight found it.
 
+**Whether the manifest checks out.** `manifest.validation` is what the C2PA library's own validation
+made of the file, and it is one of three words, or absent:
+
+- `valid`: a manifest is present, and its signature and its bindings to these bytes check out. The
+  signing certificate is not looked up on any trust list, so `valid` says the file is the one that
+  was signed, not who signed it.
+- `invalid`: a manifest is present and anything short of a clean pass came back, which usually means
+  the file was altered after signing or the manifest was moved here from another file. `failures`
+  carries the library's failure codes for the active manifest, such as
+  `assertion.dataHash.mismatch`. Only short dotted codes of letters, digits, dots, underscores and
+  hyphens, at most 64 characters each, are kept, duplicates are dropped, and the list stops at eight,
+  so a crafted manifest cannot use the field to put text of its own into the answer.
+- `unreadable`: the file carries C2PA data the library could not parse, or the library could not
+  read the file at all. `present` is `false`, and no other manifest field is set. A damaged
+  manifest costs the caller the manifest and never the match.
+- Absent: the file carries no manifest, and `present` is `false`.
+
 A match must clear both thresholds: pHash at most 10 of 64, blockhash at most 40 of 256. Past
 either one, nothing is returned and `confidence` is 0.
+
+**The first registration.** The closest match leads, but anyone can register a re-encoded copy of
+someone else's picture, and a copy a bit or two closer to the query would beat the original on
+distance alone. So the passport registered first among everything inside the thresholds is always
+in `matches`, whatever the cap of 20: when it would have been crowded out, it takes the last place.
+
+- `firstRegisteredId` is that passport's id. It is present only when it is not `best`, which is the
+  case a caller has to look at: the headline match is not the earliest claim on the picture.
+- `firstRegistered: true` marks that passport's entry in `matches`. It is set only when the answer
+  names more than one passport, so a one-passport answer keeps the shape it always had.
+- On the exact path, where the bytes are a registered file, an earlier registration is looked for
+  with the identity fingerprint only, so an exact hit still costs one decode. An earlier passport
+  that matches only a rotated or mirrored copy is not surfaced there.
+
+**Later copies of the same fingerprint.** Passports that carry exactly the same fingerprint are
+folded into the one registered first, so every place in `matches` is a distinct fingerprint and a
+pile of copies cannot fill the list. `laterSameFingerprint` says how many passports registered
+after `best` carry exactly its fingerprint: `0` when there are none. It rides along only when
+something matched, so an answer with `best: null` has the shape it always had.
 
 **What the holder said about AI use.** Every match the answer names carries `consent`, read live from
 the MoolamConsent contract on Monad mainnet at `CONSENT_ADDRESS`
@@ -338,7 +410,8 @@ so a statement made here can be written on chain unchanged.
 
 **The private re-check.** With `sealed=true` and `privateRecheck=true` the service keeps one more
 thing: a thumbnail of the signed file, 512 pixels on its longest side and made exactly as a public
-prepare makes one, uploaded to Pinata's private network under the name
+prepare makes one plus one JPEG comment naming the passport id, so no two passports' copies share a
+content id and the pixels are unchanged, uploaded to Pinata's private network under the name
 `sealed-thumb-<passport id in lower case>.jpg` with the passport id as the `passportId` key-value.
 Private files are not served on the public IPFS network; Moolam's operator and the Pinata account
 holder can still open it. The order is fixed: the registry is asked whether the picture is already
@@ -624,8 +697,10 @@ The holder of a sealed passport publishes the picture it committed to. A sealed 
 on chain with no picture behind it; unsealing is the creator handing that picture over, and from
 then on it is an ordinary passport the Chainlink workflow can re-check.
 
-Mounted on the same terms as `/prepare`: a Pinata token to pin with and a Privy app id to check
-tokens against. Nothing here signs on a wallet or sends a transaction.
+Mounted on the same terms as `/prepare`, a Pinata token to pin with and a Privy app id to check
+tokens against, plus `PRIVY_APP_SECRET`, because the holder's wallets are read from Privy. Without
+the secret this route is off and answers `404`, and `GET /unseal/:passportId` stays on. Nothing here
+signs on a wallet or sends a transaction.
 
 **Request.** A multipart body with one file and one text part, in any order, and the holder's Privy
 access token in an `Authorization: Bearer` header.
@@ -709,13 +784,22 @@ compare with the passport id on Monad.
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. Nothing was pinned |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours, which is the allowance unsealing shares. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", ... }` once `GLOBAL_UNSEALS_PER_DAY` is spent by everyone together. See [Today's budget for everyone](#todays-budget-for-everyone) |
-| `502` | `pin-failed`. Nothing reached IPFS |
+| `502` | `{ "error": "pin-failed", "passportId": "0x...", "published": {...}, "failed": [...], "reason": "..." }`. One of the three pins before the record failed. `failed` names the pieces that did not land, out of `image`, `thumbnail` and `manifest`, and `published` holds the address of each piece that did, which is public now and cannot be taken back. The passport still reads sealed, no record is written and nothing private is touched. Sending the same file again lands on the same content ids and finishes the unseal |
 | `502` | `{ "error": "record-pin-failed", "passportId": "0x...", "image": {...}, "thumbnail": {...}, "reason": "..." }`. The picture is public and the record that points at it is not. This is the one half-done state the route can end in, and the answer says so rather than failing silently, because the caller has to know their picture is already out there. Sending the same file again lands on the same three addresses, because every pin is content addressed, and finishes the record |
 | `502` | `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`: the Monad RPC, the gateway or Privy did not answer. All of that happens before the allowance is taken, so nothing was spent |
 | `503` | `busy`. The shared decode gate, which matching, prepares, edits and unseals all queue on, stayed full for thirty seconds |
 
-Both allowances go back whenever the request pinned nothing, because an unseal sends no
-transaction: a request that pinned nothing has cost the world nothing to keep.
+A public pin counts only when Pinata answers with the content id this service computed for the
+bytes it sent, on the public network. Pinata stores one copy of any content, across its networks
+too, so an answer naming another file or the private network is not believed: that pin is treated
+as failed, and nothing is recorded or deleted on the strength of it.
+
+The two allowances go back on different terms. The holder's own comes back for any unseal that did
+not finish, so a partial one can be finished without spending a second slot. Today's ceiling for
+everyone comes back only when nothing was pinned, because a pin that landed is money spent.
+
+The private copy is deleted only after the record is pinned, and never a private file whose content
+id is one of the four this unseal just published.
 
 ## GET /unseal/:passportId
 
@@ -746,12 +830,22 @@ themselves.
 | --- | --- |
 | `200` | A record was found and read |
 | `400` | The id is not `0x` and 64 hex characters |
-| `404` | `{ "error": "not-unsealed", "passportId": "0x..." }`. No record is pinned for this passport |
-| `503` | `lookup-unavailable`. This service could not find out, which is not the same as "not unsealed" and must never be shown as one |
+| `404` | `{ "error": "no-passport", "passportId": "0x..." }`. Neither the index nor the registry holds this passport |
+| `404` | `{ "error": "not-sealed", "passportId": "0x..." }`. The passport's metadata document is public, so it was never sealed and has no record to find |
+| `404` | `{ "error": "not-unsealed", "passportId": "0x..." }`. The passport is sealed and no record is pinned for it |
+| `429` | Thirty a minute per address, the limit `/sealed/status` has, rather than the sixty everything else gets |
+| `503` | `lookup-unavailable`. The chain, the metadata document or Pinata could not say, which is not the same as "not unsealed" and must never be shown as one |
 
-A record is pinned once and never changes, so a hit is remembered for the life of the process and a
-miss never is. That keeps a passport page, which is read far more often than a passport is
-unsealed, from spending a Pinata request every time somebody opens it.
+Every miss costs one request out of the Pinata account's shared minute, so Pinata is asked only
+about a passport that exists and whose document says sealed, the only kind that can have a record.
+The passport is looked up in the index first and on the registry only when the index does not hold
+it, so a made-up id costs a chain read at most and never a Pinata request. The document is read by
+the rule in [How a passport's metadata document is read](#how-a-passports-metadata-document-is-read).
+
+A record is pinned once and never changes, so a hit is remembered for the life of the process. A
+miss of any of the three kinds is remembered for 60 seconds, and at most 2,000 misses are held
+before the oldest is forgotten. An unseal on this server clears its own miss at once, so a minute is
+the longest another server's answer can lag behind. `lookup-unavailable` is never remembered.
 
 ## GET /sealed/status/:passportId
 
@@ -844,6 +938,10 @@ asked of Pinata they stay spent, because a request that timed out may still have
 ## POST /sealed/forget
 
 The holder deletes Moolam's private copy of their passport.
+
+Mounted with the other `/sealed` routes, and only on a host that also has `PRIVY_APP_SECRET`,
+because the holder's wallets are read from Privy. Without it this route answers `404` while
+`/sealed/status` and `/sealed/link` stay on.
 
 ```bash
 curl -s -X POST http://localhost:4000/sealed/forget \
@@ -1160,7 +1258,8 @@ key becomes visible from outside: a host without `PINATA_JWT` still boots and st
 `limits` is how much of [today's budget for everyone](#todays-budget-for-everyone) is gone, so a
 daily check can see a ceiling coming before creators meet it. `links` is the private read links
 minted today against `GLOBAL_LINKS_PER_DAY`. It counts the whole world and names nobody: there is
-no per-caller data on this route. A host that mounts the unseal routes lists `sealed` in `routes` too.
+no per-caller data on this route. A host that mounts the unseal and sealed family lists `sealed` in
+`routes`, and lists `unseal` only when `POST /unseal` is on, which needs `PRIVY_APP_SECRET` as well.
 
 `recheck` is how many second opinions are waiting and how many a runner has in hand, which is where
 a runner that has died shows up from outside: `pending` climbs and `running` stays at zero.
