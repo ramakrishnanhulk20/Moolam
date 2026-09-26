@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
-import { readManifest, type ManifestSummary } from "../c2pa.js";
+import { manifestUnreadable, readManifest, type ManifestSummary } from "../c2pa.js";
 import { FETCH_TIMEOUT_MS, MAX_UPLOAD_BYTES } from "../env.js";
 import { ImageTooLarge } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
@@ -134,7 +134,12 @@ export async function verifyBytes(
   let result: MatchResult;
   let manifest: ManifestSummary;
   try {
-    [result, manifest] = await Promise.all([app.verifier.runMatch(bytes), readManifest(bytes)]);
+    // readManifest promises never to throw. The catch is for the day it breaks that promise: a
+    // manifest problem may cost the answer its manifest, never the match.
+    [result, manifest] = await Promise.all([
+      app.verifier.runMatch(bytes),
+      readManifest(bytes).catch(() => manifestUnreadable()),
+    ]);
   } catch (error) {
     if (error instanceof Busy) {
       throw error;
@@ -149,7 +154,11 @@ export async function verifyBytes(
   return { result: renderResult(result), manifest: renderManifest(manifest) };
 }
 
-/** Renders the match for JSON: the 64-bit pHash goes out as a decimal string, never a double. */
+/**
+ * Renders the match for JSON: the 64-bit pHash goes out as a decimal string, never a double.
+ * `laterSameFingerprint` is newer than the rest of the shape and only rides along when something
+ * matched, so a client that predates it reads the same answer it always did.
+ */
 export function renderResult(result: MatchResult): unknown {
   return {
     exact: result.exact,
@@ -157,6 +166,7 @@ export function renderResult(result: MatchResult): unknown {
     matches: result.matches,
     confidence: result.confidence,
     queried: { ...result.queried, phash: result.queried.phash.toString() },
+    ...(result.laterSameFingerprint === undefined ? {} : { laterSameFingerprint: result.laterSameFingerprint }),
   };
 }
 

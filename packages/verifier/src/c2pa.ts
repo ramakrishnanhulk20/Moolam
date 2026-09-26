@@ -16,6 +16,16 @@ export interface SoftBinding {
 
 export interface ManifestSummary {
   present: boolean;
+  /**
+   * What the C2PA library's own validation made of the manifest. "valid" means the signature and
+   * the bindings to these bytes check out; the signer is not looked up on any trust list. "invalid"
+   * means the file was altered after signing or the manifest was moved here from another file.
+   * "unreadable" means the file carries a manifest that could not be parsed at all. Left off when
+   * the file carries no manifest.
+   */
+  validation?: "valid" | "invalid" | "unreadable";
+  /** The library's failure codes for an invalid manifest, such as "assertion.dataHash.mismatch". */
+  failures?: string[];
   manifestHash?: Hex;
   title?: string;
   claimGenerator?: string;
@@ -66,34 +76,48 @@ const AI_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAl
 const packageRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const devCertDir = path.join(packageRoot, "test-assets", "certs");
 
+/** The answer for a file whose manifest, or whose container, the reader could not parse. */
+export function manifestUnreadable(): ManifestSummary {
+  return { present: false, validation: "unreadable" };
+}
+
+const MAX_FAILURE_CODES = 8;
+
 /**
- * Reads any C2PA manifest embedded in an image.
+ * Reads any C2PA manifest embedded in an image, and whether it validates.
  *
- * Returns present false rather than throwing when the image carries no
- * manifest, when the bytes are empty, or when the container is one the C2PA
- * library cannot open. Checking the signing certificate against a trust list is
- * deliberately not done here: the spike signs with a throwaway certificate, so
- * every manifest it reads back is reported as untrusted.
+ * Never throws. A file with no manifest, or empty bytes, is present false. A
+ * file the library cannot parse, or a JPEG that still carries C2PA segments the
+ * library could not read, is present false with validation "unreadable", so a
+ * damaged manifest costs the caller the manifest and never the match. A manifest
+ * that parses is present, with the library's own validation state: anything but
+ * a clean pass reads as invalid. Checking the signing certificate against a
+ * trust list is deliberately not done here: the spike signs with a throwaway
+ * certificate, so every manifest it reads back is reported as untrusted.
  */
 export async function readManifest(bytes: Buffer): Promise<ManifestSummary> {
   if (bytes.length === 0) {
     return { present: false };
   }
-
-  let reader: Reader | null = null;
   try {
-    reader = await Reader.fromAsset({ buffer: bytes, mimeType: sniffMimeType(bytes) });
+    return await summarise(bytes);
   } catch {
-    return { present: false };
+    return manifestUnreadable();
   }
-  if (reader === null) {
-    return { present: false };
+}
+
+async function summarise(bytes: Buffer): Promise<ManifestSummary> {
+  const reader = await Reader.fromAsset({ buffer: bytes, mimeType: sniffMimeType(bytes) });
+  const active = reader?.getActive();
+  if (reader === null || active === undefined) {
+    // The library answers "nothing here" for a store whose boxes it cannot parse, so the segments
+    // themselves are what tell a broken manifest apart from a file that never had one.
+    return extractManifestStore(bytes) === null ? { present: false } : manifestUnreadable();
   }
 
-  const active = reader.getActive();
-  if (active === undefined) {
-    return { present: false };
-  }
+  const store = reader.json();
+  const state = store.validation_state;
+  const validation = state === "Valid" || state === "Trusted" ? "valid" : "invalid";
 
   const actions = (active.assertions ?? [])
     .filter((assertion) => assertion.label?.startsWith("c2pa.actions"))
@@ -108,6 +132,8 @@ export async function readManifest(bytes: Buffer): Promise<ManifestSummary> {
 
   return {
     present: true,
+    validation,
+    ...(validation === "invalid" ? { failures: failureCodes(store) } : {}),
     manifestHash:
       manifestStore === null ? undefined : `0x${createHash("sha256").update(manifestStore).digest("hex")}`,
     title: active.title ?? undefined,
@@ -152,6 +178,19 @@ function parseSoftBinding(assertions: { label?: string; data?: unknown }[]): Sof
     };
   }
   return undefined;
+}
+
+/**
+ * The failure codes the library reported for the active manifest, falling back to its flat status
+ * list. Each code is passed on to callers, so only short dotted names are kept and the list is
+ * capped: a crafted manifest cannot use this field to smuggle text into the answer.
+ */
+function failureCodes(store: ReturnType<Reader["json"]>): string[] {
+  const entries = store.validation_results?.activeManifest?.failure ?? store.validation_status ?? [];
+  const codes = entries
+    .map((entry) => entry.code)
+    .filter((code): code is string => typeof code === "string" && /^[A-Za-z0-9._-]{1,64}$/.test(code));
+  return [...new Set(codes)].slice(0, MAX_FAILURE_CODES);
 }
 
 function decodeAssertionBytes(raw: unknown): Buffer | null {
@@ -268,6 +307,11 @@ function softBindingAssertion(binding: { phash: bigint; blockhash: Hex }): unkno
  * Pulls the raw C2PA manifest store out of a JPEG by reassembling its APP11
  * segments, so the store can be hashed exactly as it sits in the file. Returns
  * null for any other container, which is all the spike needs.
+ *
+ * The file is the caller's, so every length in it is checked against the
+ * buffer before it is used. A segment that runs past the end stops the walk,
+ * and a JP segment too short to hold its packet header is skipped, which is
+ * what the C2PA library itself does with one.
  */
 function extractManifestStore(bytes: Buffer): Buffer | null {
   if (sniffMimeType(bytes) !== "image/jpeg") {
@@ -286,21 +330,28 @@ function extractManifestStore(bytes: Buffer): Buffer | null {
       offset += 2;
       continue;
     }
-    if (marker === 0xda) {
+    if (marker === 0xda || offset + 4 > bytes.length) {
       break;
     }
     const length = bytes.readUInt16BE(offset + 2);
+    const end = offset + 2 + length;
+    if (length < 2 || end > bytes.length) {
+      break;
+    }
     if (marker === 0xeb) {
-      const segment = bytes.subarray(offset + 4, offset + 2 + length);
+      const segment = bytes.subarray(offset + 4, end);
       // Layout for JUMBF inside JPEG: a two byte JP tag, the box instance, the
       // packet number, then the box itself. Only packet one carries the box
       // header, so later packets contribute their payload alone.
-      if (segment.subarray(0, 2).toString("latin1") === "JP") {
+      if (segment.length >= 8 && segment.subarray(0, 2).toString("latin1") === "JP") {
         const packet = segment.readUInt32BE(4);
-        chunks.push(packet === 1 ? segment.subarray(8) : segment.subarray(16));
+        const header = packet === 1 ? 8 : 16;
+        if (segment.length >= header) {
+          chunks.push(segment.subarray(header));
+        }
       }
     }
-    offset += 2 + length;
+    offset = end;
   }
 
   return chunks.length === 0 ? null : Buffer.concat(chunks);

@@ -5,7 +5,7 @@ import {
   fingerprint,
   type Fingerprint,
 } from "./fingerprint.js";
-import { HammingIndex, compareMatches } from "./index.js";
+import { HammingIndex, compareMatches, type RankedMatch } from "./index.js";
 import type { DihedralName, Hex, Match, PassportRecord } from "./types.js";
 
 export interface MatchResult {
@@ -14,6 +14,8 @@ export interface MatchResult {
   matches: Match[];
   confidence: number;
   queried: Fingerprint;
+  /** How many passports registered after `best` carry exactly its fingerprint. Absent when nothing matched. */
+  laterSameFingerprint?: number;
 }
 
 /** The thresholds a query is run at, taken from the spike's measurements. */
@@ -58,17 +60,26 @@ export async function matchImage(
       variant: "identity",
       score: 1,
     };
-    return { exact: exactRecord.id, best: exactMatch, matches: [exactMatch], confidence: 1, queried };
+    return {
+      exact: exactRecord.id,
+      best: exactMatch,
+      matches: [exactMatch],
+      confidence: 1,
+      queried,
+      laterSameFingerprint: index.laterSameFingerprint(exactRecord.id),
+    };
   }
 
   const rotated = await dihedralFingerprints(bytes);
   const variants: Record<DihedralName, Fingerprint> = { ...rotated, identity: queried };
 
-  const bestByRecord = new Map<Hex, Match>();
+  // The index has already folded copies of one fingerprint into their first registration, so every
+  // cap below counts distinct fingerprints and a pile of copies cannot crowd the first one out.
+  const bestByRecord = new Map<Hex, RankedMatch>();
   for (const name of Object.keys(variants) as DihedralName[]) {
     const print = variants[name] as Fingerprint;
     for (const hit of index.query(print.phash, print.blockhash, MATCH_LIMITS, MAX_MATCHES)) {
-      const labelled: Match = { ...hit, variant: name };
+      const labelled: RankedMatch = { ...hit, variant: name };
       const current = bestByRecord.get(labelled.id);
       if (current === undefined || compareMatches(labelled, current) < 0) {
         bestByRecord.set(labelled.id, labelled);
@@ -76,7 +87,8 @@ export async function matchImage(
     }
   }
 
-  const matches = [...bestByRecord.values()].sort(compareMatches).slice(0, MAX_MATCHES);
+  const ranked = [...bestByRecord.values()].sort(compareMatches).slice(0, MAX_MATCHES);
+  const matches = ranked.map(toMatch);
   const best = matches[0] ?? null;
 
   return {
@@ -85,6 +97,18 @@ export async function matchImage(
     matches,
     confidence: best === null ? 0 : confidenceOf(best),
     queried,
+    ...(best === null ? {} : { laterSameFingerprint: index.laterSameFingerprint(best.id) }),
+  };
+}
+
+/** Drops the registration order, which only settled ties, so the answer keeps its published shape. */
+function toMatch(ranked: RankedMatch): Match {
+  return {
+    id: ranked.id,
+    phashDistance: ranked.phashDistance,
+    blockhashDistance: ranked.blockhashDistance,
+    variant: ranked.variant,
+    score: ranked.score,
   };
 }
 

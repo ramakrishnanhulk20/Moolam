@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { FETCH_TIMEOUT_MS } from "../env.js";
 import { rechecksFrom } from "../recheck.js";
-import type { PassportRecord } from "../types.js";
+import type { IndexedRecord } from "../index.js";
 import { hex } from "./hex.js";
 import type { PassportSource } from "./PassportSource.js";
 
@@ -19,6 +19,7 @@ const PASSPORT_QUERY = `query MoolamPassports($limit: Int!, $after: String!) {
     creator { id }
     parent { id }
     registeredAt
+    registeredBlock
     metadataURI
     attestationCount
     matchedCount
@@ -66,6 +67,12 @@ const rowSchema = z.object({
   creator: z.object({ id: hex(20) }),
   parent: z.object({ id: hex(32) }).nullish(),
   registeredAt: bigintish.refine((value) => value <= BigInt(Number.MAX_SAFE_INTEGER), "registeredAt is out of range"),
+  // Only settles which of two passports with one fingerprint came first, so a row recorded before
+  // the index served it still loads and falls back to its timestamp. A value that is there but
+  // wrong still throws, like every other field.
+  registeredBlock: bigintish
+    .refine((value) => value <= BigInt(Number.MAX_SAFE_INTEGER), "registeredBlock is out of range")
+    .optional(),
   metadataURI: z.string(),
   // Taken as they arrive and checked in src/recheck.ts. A re-check field the index stops serving,
   // or serves badly, must not stop this page loading: a picture nobody can match is a far worse
@@ -115,8 +122,8 @@ export class EnvioSource implements PassportSource {
    * the cursor forward, because indexing nothing and reporting success would
    * tell every caller their image is unregistered.
    */
-  async load(): Promise<PassportRecord[]> {
-    const records: PassportRecord[] = [];
+  async load(): Promise<IndexedRecord[]> {
+    const records: IndexedRecord[] = [];
     let after = "";
 
     for (let page = 0; page < MAX_PAGES; page += 1) {
@@ -129,6 +136,7 @@ export class EnvioSource implements PassportSource {
           creator: row.creator.id,
           parentId: row.parent?.id ?? null,
           registeredAt: Number(row.registeredAt),
+          ...(row.registeredBlock === undefined ? {} : { registeredBlock: Number(row.registeredBlock) }),
           metadataURI: row.metadataURI,
           rechecks: rechecksFrom(row),
         });

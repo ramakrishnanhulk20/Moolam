@@ -1,11 +1,14 @@
 // Covers the guard on server-side fetches: which addresses are refused, that
 // every redirect hop is checked, and that the lookup the socket uses hands over
 // only approved addresses.
-// Does NOT cover a real connection to a real host. The pinned agent is exercised
-// through guardedLookup rather than by opening a socket, and no test here leaves
-// the machine.
+// Does NOT cover a real connection to a real host. The redirect test opens real
+// sockets through the live transport, but to a stub on this machine: the address
+// guard approves a public address and the dial is then pointed at the stub, so no
+// test here leaves the machine.
 
-import { describe, expect, it } from "vitest";
+import { createServer, type Server } from "node:http";
+import net from "node:net";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Response } from "undici";
 import {
   BlockedTarget,
@@ -143,6 +146,75 @@ describe("safeFetch", () => {
 
     await expect(attempt).rejects.toBeInstanceOf(UnreachableTarget);
     await expect(attempt).rejects.toThrow(/redirected more than 2 times/);
+  });
+});
+
+describe("safeFetch through the live transport", () => {
+  let stub: Server | undefined;
+
+  afterEach(async () => {
+    vi.restoreAllMocks();
+    if (stub !== undefined) {
+      await new Promise<void>((resolve) => stub?.close(() => resolve()));
+      stub = undefined;
+    }
+  });
+
+  it("follows a two-hop redirect to a public host, checking every hop", async () => {
+    const seen: string[] = [];
+    stub = createServer((request, reply) => {
+      seen.push(`${request.headers.host}${request.url}`);
+      if (request.url === "/start") {
+        reply.writeHead(301, { location: "/middle" }).end();
+      } else if (request.url === "/middle") {
+        reply.writeHead(302, { location: `http://cdn.example.test:${port}/image.jpg` }).end();
+      } else {
+        reply.writeHead(200, { "content-type": "image/jpeg" }).end("bytes");
+      }
+    });
+    await new Promise<void>((resolve) => stub?.listen(0, "127.0.0.1", resolve));
+    const port = (stub.address() as { port: number }).port;
+
+    // The guard's own lookup still runs and still has to approve the public address. Only the
+    // dial that follows is sent to the stub, which is the one thing a test cannot reach for real.
+    const realConnect = net.connect;
+    vi.spyOn(net, "connect").mockImplementation(((options: net.NetConnectOpts) => {
+      const guarded = (options as { lookup?: net.LookupFunction }).lookup;
+      return realConnect({
+        ...options,
+        lookup: (hostname, lookupOptions, callback) => {
+          if (guarded === undefined) {
+            callback(new Error("the live transport dialled without the guarded lookup"), "", 0);
+            return;
+          }
+          guarded(hostname, lookupOptions, (error, address, family) => {
+            if (error !== null) {
+              callback(error, "", 0);
+            } else if (Array.isArray(address)) {
+              callback(null, [{ address: "127.0.0.1", family: 4 }] as never);
+            } else {
+              callback(null, "127.0.0.1", family ?? 4);
+            }
+          });
+        },
+      } as net.NetConnectOpts);
+    }) as typeof net.connect);
+
+    const resolved: string[] = [];
+    const resolve: ResolveAll = async (hostname) => {
+      resolved.push(hostname);
+      return [PUBLIC_ADDRESS];
+    };
+    const response = await safeFetch(new URL(`http://images.example.test:${port}/start`), { resolve });
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("bytes");
+    expect(seen).toEqual([
+      `images.example.test:${port}/start`,
+      `images.example.test:${port}/middle`,
+      `cdn.example.test:${port}/image.jpg`,
+    ]);
+    expect(resolved).toContain("cdn.example.test");
   });
 });
 

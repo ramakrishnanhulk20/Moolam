@@ -4,6 +4,28 @@ import type { Hex, Match, PassportRecord } from "./types.js";
 const BLOCKHASH_BYTES = 32;
 
 /**
+ * Where a registration sits in chain order, as far as its source can say. The Envio source
+ * carries the block each passport landed in. A source that does not leaves it off, and the
+ * registration timestamp decides instead.
+ */
+export interface RegistrationOrder {
+  registeredBlock?: number;
+}
+
+/** A passport record plus whatever its source knows about its place in chain order. */
+export type IndexedRecord = PassportRecord & RegistrationOrder;
+
+/** A match that still knows when the passport it names was registered, so a tie can be settled. */
+export interface RankedMatch extends Match, RegistrationOrder {
+  registeredAt: number;
+}
+
+interface Registration extends RegistrationOrder {
+  id: Hex;
+  registeredAt: number;
+}
+
+/**
  * An in-memory nearest-neighbour index over the registered fingerprints.
  *
  * It is a brute-force scan on purpose. A 64-bit XOR plus popcount and a 32-byte
@@ -17,26 +39,38 @@ const BLOCKHASH_BYTES = 32;
  * table, and use the pigeonhole rule that a match within d bits must agree
  * exactly on at least one chunk when r > d.
  *
+ * The registry cannot check that a passport's fingerprint belongs to its bytes,
+ * so anyone can register copies of someone else's fingerprint. Each distinct
+ * fingerprint is therefore one row, and every passport carrying it sits in that
+ * row's list in chain order. A query answers with the earliest registration of
+ * each row, so a pile of later copies can neither outrank the first passport nor
+ * push it out of a capped result.
+ *
  * Hashes are held in flat typed arrays rather than in the record objects so the
  * scan walks contiguous memory instead of chasing pointers per candidate.
  */
 export class HammingIndex {
-  private ids: Hex[] = [];
   private phashes = new BigUint64Array(0);
   private blockhashes = new Uint8Array(0);
-  private count = 0;
-  private readonly positionById = new Map<Hex, number>();
+  private groups: Registration[][] = [];
+  private keys: string[] = [];
+  private rows = 0;
+  private records = 0;
+  private readonly rowByKey = new Map<string, number>();
+  private readonly keyById = new Map<Hex, string>();
 
-  constructor(records: PassportRecord[] = []) {
-    this.reserve(records.length);
-    for (const record of records) {
+  constructor(records: IndexedRecord[] = []) {
+    // Loading in chain order means every copy is appended to the end of its row's list.
+    const ordered = [...records].sort(compareRegistrations);
+    this.reserve(ordered.length);
+    for (const record of ordered) {
       this.add(record);
     }
   }
 
-  /** How many records the index currently holds. */
+  /** How many records the index currently holds, copies included. */
   get size(): number {
-    return this.count;
+    return this.records;
   }
 
   /**
@@ -46,72 +80,111 @@ export class HammingIndex {
    * in 64 bits, because a malformed record would silently poison every later
    * distance.
    */
-  add(record: PassportRecord): void {
+  add(record: IndexedRecord): void {
     const blockhash = decodeBlockhash(record.blockhash);
     if (record.phash < 0n || record.phash > 0xffffffffffffffffn) {
       throw new Error(`phash for ${record.id} does not fit in 64 bits`);
     }
 
-    const existing = this.positionById.get(record.id);
-    const position = existing ?? this.count;
-    if (existing === undefined) {
-      this.reserve(this.count + 1);
-      this.count += 1;
-      this.positionById.set(record.id, position);
+    this.remove(record.id);
+
+    const key = fingerprintKey(record.phash, blockhash);
+    let row = this.rowByKey.get(key);
+    if (row === undefined) {
+      row = this.rows;
+      this.reserve(row + 1);
+      this.rows += 1;
+      this.phashes[row] = record.phash;
+      this.blockhashes.set(blockhash, row * BLOCKHASH_BYTES);
+      this.groups[row] = [];
+      this.keys[row] = key;
+      this.rowByKey.set(key, row);
     }
 
-    this.ids[position] = record.id;
-    this.phashes[position] = record.phash;
-    this.blockhashes.set(blockhash, position * BLOCKHASH_BYTES);
+    insertInOrder(this.groups[row] as Registration[], {
+      id: record.id,
+      registeredAt: record.registeredAt,
+      ...(record.registeredBlock === undefined ? {} : { registeredBlock: record.registeredBlock }),
+    });
+    this.keyById.set(record.id, key);
+    this.records += 1;
   }
 
   /**
    * Removes a record by id. Unknown ids are ignored.
    *
-   * The last row is moved into the freed slot so the scan never has to skip
-   * holes. That reorders the array, which is fine: query results are sorted by
-   * score, never by insertion order.
+   * When the record was the last one carrying its fingerprint, the last row is
+   * moved into the freed slot so the scan never has to skip holes. That reorders
+   * the rows, which is fine: query results are sorted, never read in row order.
    */
   remove(id: Hex): void {
-    const position = this.positionById.get(id);
-    if (position === undefined) {
+    const key = this.keyById.get(id);
+    if (key === undefined) {
+      return;
+    }
+    const row = this.rowByKey.get(key) as number;
+    const group = this.groups[row] as Registration[];
+    group.splice(
+      group.findIndex((entry) => entry.id === id),
+      1,
+    );
+    this.keyById.delete(id);
+    this.records -= 1;
+    if (group.length > 0) {
       return;
     }
 
-    const last = this.count - 1;
-    if (position !== last) {
-      const movedId = this.ids[last] as Hex;
-      this.ids[position] = movedId;
-      this.phashes[position] = this.phashes[last] as bigint;
-      this.blockhashes.copyWithin(position * BLOCKHASH_BYTES, last * BLOCKHASH_BYTES, (last + 1) * BLOCKHASH_BYTES);
-      this.positionById.set(movedId, position);
+    const last = this.rows - 1;
+    if (row !== last) {
+      const movedKey = this.keys[last] as string;
+      this.phashes[row] = this.phashes[last] as bigint;
+      this.blockhashes.copyWithin(row * BLOCKHASH_BYTES, last * BLOCKHASH_BYTES, (last + 1) * BLOCKHASH_BYTES);
+      this.groups[row] = this.groups[last] as Registration[];
+      this.keys[row] = movedKey;
+      this.rowByKey.set(movedKey, row);
     }
 
-    this.ids.length = last;
-    this.positionById.delete(id);
-    this.count = last;
+    this.groups.length = last;
+    this.keys.length = last;
+    this.rowByKey.delete(key);
+    this.rows = last;
   }
 
   /**
-   * Returns every record whose pHash and blockhash are both within the given
-   * limits, best first. A candidate must clear both thresholds: requiring the
-   * two independent hashes to agree is what keeps false positives near zero.
+   * How many passports registered after this one carry exactly its fingerprint.
+   * Zero for an id the index does not hold.
+   */
+  laterSameFingerprint(id: Hex): number {
+    const key = this.keyById.get(id);
+    if (key === undefined) {
+      return 0;
+    }
+    const group = this.groups[this.rowByKey.get(key) as number] as Registration[];
+    return group.length - 1 - group.findIndex((entry) => entry.id === id);
+  }
+
+  /**
+   * Returns every fingerprint whose pHash and blockhash are both within the
+   * given limits, best first, each named by the earliest passport carrying it.
+   * A candidate must clear both thresholds: requiring the two independent
+   * hashes to agree is what keeps false positives near zero.
    *
-   * `limit` caps the returned list, not the scan.
+   * `limit` caps the returned list, not the scan. It counts fingerprints, so
+   * later copies of one never take a place in it.
    */
   query(
     phash: bigint,
     blockhash: Hex,
     limits: { phashMax: number; blockhashMax: number },
     limit = 20,
-  ): Match[] {
+  ): RankedMatch[] {
     if (limit <= 0) {
       return [];
     }
     const target = decodeBlockhash(blockhash);
-    const hits: Match[] = [];
+    const hits: RankedMatch[] = [];
 
-    for (let position = 0; position < this.count; position += 1) {
+    for (let position = 0; position < this.rows; position += 1) {
       const phashDistance = hamming64(this.phashes[position] as bigint, phash);
       if (phashDistance > limits.phashMax) {
         continue;
@@ -120,8 +193,9 @@ export class HammingIndex {
       if (blockhashDistance > limits.blockhashMax) {
         continue;
       }
+      const first = (this.groups[position] as Registration[])[0] as Registration;
       hits.push({
-        id: this.ids[position] as Hex,
+        ...first,
         phashDistance,
         blockhashDistance,
         variant: "identity",
@@ -177,15 +251,52 @@ export function score(
   return 0.6 * phashPart + 0.4 * blockhashPart;
 }
 
-/** Orders matches best first: higher score, then the closer pHash as a tiebreak. */
-export function compareMatches(a: Match, b: Match): number {
+/**
+ * Orders matches best first: higher score, then the closer pHash, then the closer blockhash, and
+ * on a full tie the passport registered first. This is the one place the tie order is decided.
+ */
+export function compareMatches(a: RankedMatch, b: RankedMatch): number {
   if (b.score !== a.score) {
     return b.score - a.score;
   }
   if (a.phashDistance !== b.phashDistance) {
     return a.phashDistance - b.phashDistance;
   }
-  return a.blockhashDistance - b.blockhashDistance;
+  if (a.blockhashDistance !== b.blockhashDistance) {
+    return a.blockhashDistance - b.blockhashDistance;
+  }
+  return compareRegistrations(a, b);
+}
+
+/**
+ * Chain order: the earlier block, then the earlier timestamp, then the lower id. The index carries
+ * no log index, so two registrations in one block fall to the id, which keeps the order stable but
+ * is not necessarily the order they were mined in.
+ */
+function compareRegistrations(a: Registration, b: Registration): number {
+  if (a.registeredBlock !== undefined && b.registeredBlock !== undefined && a.registeredBlock !== b.registeredBlock) {
+    return a.registeredBlock - b.registeredBlock;
+  }
+  if (a.registeredAt !== b.registeredAt) {
+    return a.registeredAt - b.registeredAt;
+  }
+  const left = a.id.toLowerCase();
+  const right = b.id.toLowerCase();
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
+/** Keeps a row's list in chain order. Loading in order makes this an append. */
+function insertInOrder(group: Registration[], entry: Registration): void {
+  let at = group.length;
+  while (at > 0 && compareRegistrations(group[at - 1] as Registration, entry) > 0) {
+    at -= 1;
+  }
+  group.splice(at, 0, entry);
+}
+
+/** One spelling per fingerprint, built from the decoded bytes so case and prefix cannot split a row. */
+function fingerprintKey(phash: bigint, blockhash: Uint8Array): string {
+  return `${phash.toString(16)}:${Buffer.from(blockhash).toString("hex")}`;
 }
 
 function decodeBlockhash(value: Hex): Uint8Array {

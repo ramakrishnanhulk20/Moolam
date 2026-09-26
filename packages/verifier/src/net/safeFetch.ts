@@ -166,6 +166,9 @@ export async function safeFetch(url: URL, options: SafeFetchOptions = {}): Promi
     if (response.status < 300 || response.status >= 400 || location === null) {
       return response;
     }
+    // The redirect's own body is never read, and until it is released this hop's agent cannot
+    // finish closing.
+    await response.body?.cancel().catch(() => undefined);
     target = new URL(location, target);
   }
 
@@ -201,13 +204,14 @@ function pinnedTransport(
   resolve: ResolveAll,
   timeoutMs: number,
 ): (url: string, init: { signal: AbortSignal; redirect: "manual" }) => Promise<Response> {
-  const dispatcher = new Agent({
-    connect: { lookup: guardedLookup(resolve), timeout: CONNECT_TIMEOUT_MS },
-    headersTimeout: timeoutMs,
-    bodyTimeout: timeoutMs,
-  });
-
   return async (url, init) => {
+    // A fresh agent for every hop. Each one is closed once its answer is back, and a closed agent
+    // refuses any further request, so sharing one across a redirect chain failed every second hop.
+    const dispatcher = new Agent({
+      connect: { lookup: guardedLookup(resolve), timeout: CONNECT_TIMEOUT_MS },
+      headersTimeout: timeoutMs,
+      bodyTimeout: timeoutMs,
+    });
     try {
       return await undiciFetch(url, { ...init, dispatcher });
     } finally {
