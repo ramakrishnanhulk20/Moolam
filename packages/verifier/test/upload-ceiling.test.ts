@@ -1,10 +1,12 @@
-// Covers review pass 7, V62: the upload bytes /verify holds at once have a ceiling. A request takes
-// its share before its body is read (the Content-Length when it gives one, the upload cap when it
-// does not), and past the ceiling it answers 503 busy at once, with its body never read. The share
-// comes back when the response is sent, whether it was a 200, a refusal, a thrown error or a caller
-// who hung up, and a caller who hangs up while their picture is being matched keeps its share
-// counted until the match lets go of the bytes. The URL form is held to the same ceiling before the
-// remote body is read. readManifest waits for a match slot instead of running beside the queue.
+// Covers review pass 7, V62: the upload bytes /verify holds at once have a ceiling. A request's
+// body counts against it chunk by chunk as it arrives, whatever length it declares (review pass 9,
+// V78), and the moment a chunk would pass the ceiling it answers 503 busy and the rest of the body
+// is dropped. The share comes back when the handler has finished, whether it answered a 200, a
+// refusal, a thrown error or a caller who hung up, so a caller who hangs up while their picture is
+// being matched keeps it counted until the match lets go of the bytes. The URL form counts the
+// remote body the same way, and a caller who hangs up stops the fetch at once while the bytes read
+// so far stay counted until the handler ends (V79). readManifest waits for a match slot instead of
+// running beside the queue.
 // Over a real connection on this machine, because only a real socket can withhold a body or hang up.
 // Does NOT cover /verify/paid, which reads its upload through the same function and is tested in
 // test/x402.test.ts, nor /prepare, /edit and /unseal, which need a token and read their multipart
@@ -114,10 +116,10 @@ describe("V62: the ceiling on upload bytes held at once", () => {
     expect(heldUploads.limit).toBe(UPLOAD_CEILING_BYTES);
   });
 
-  it("answers 503 busy at once past the ceiling, before a byte of the body is read", async () => {
+  it("answers 503 busy the moment the body would pass the ceiling, and keeps none of it counted", async () => {
     heldUploads.limit = 1_000;
     const { payload, headers } = multipartBody("file", "big.jpg", "image/jpeg", Buffer.alloc(5_000, 1));
-    const { request, answer } = open({ ...headers, "content-length": payload.length });
+    const { request, answer } = open({ ...headers, "content-length": payload.length }, payload.subarray(0, 2_000));
 
     const refused = await within(answer, 3_000);
     request.destroy();
@@ -127,19 +129,15 @@ describe("V62: the ceiling on upload bytes held at once", () => {
     expect(heldUploads.held).toBe(0);
   });
 
-  it("holds a body with no Content-Length at the upload cap", async () => {
-    heldUploads.limit = MAX_UPLOAD_BYTES - 1;
-    const { headers } = multipartBody("file", "chunked.jpg", "image/jpeg", Buffer.alloc(0));
-    const { request, answer } = open({ ...headers, "transfer-encoding": "chunked" }, Buffer.from("--"));
+  it("counts a body with no Content-Length by the bytes that arrive", async () => {
+    const { payload, headers } = multipartBody("file", "chunked.jpg", "image/jpeg", Buffer.alloc(1_000, 1));
+    const { request } = open({ ...headers, "transfer-encoding": "chunked" }, payload.subarray(0, 300));
 
-    const refused = await within(answer, 3_000);
+    await until(() => heldUploads.held === 300);
     request.destroy();
-
-    expect(refused.status).toBe(503);
-    expect(JSON.parse(refused.body)).toEqual({ error: "busy" });
   });
 
-  it("holds a body by the Content-Length it gives, so a small upload fits under a small ceiling", async () => {
+  it("counts a body by the bytes that arrive, so an upload fits under a ceiling of its own size", async () => {
     const { payload } = multipartBody("file", "harbour.jpg", "image/jpeg", picture);
     heldUploads.limit = payload.length;
 
@@ -151,13 +149,14 @@ describe("V62: the ceiling on upload bytes held at once", () => {
   it("refuses a second upload while the first holds the ceiling, and takes it once the first is answered", async () => {
     const { payload, headers } = multipartBody("file", "harbour.jpg", "image/jpeg", picture);
     heldUploads.limit = payload.length + 100;
-    const first = open({ ...headers, "content-length": payload.length }, payload.subarray(0, 100));
-    await until(() => heldUploads.held === payload.length);
+    const sent = payload.length - 10;
+    const first = open({ ...headers, "content-length": payload.length }, payload.subarray(0, sent));
+    await until(() => heldUploads.held === sent);
 
     const second = await within(upload(picture), 3_000);
     expect(second.status).toBe(503);
 
-    first.request.end(payload.subarray(100));
+    first.request.end(payload.subarray(sent));
     expect((await within(first.answer, 30_000)).status).toBe(200);
     await until(() => heldUploads.held === 0);
     expect((await within(upload(picture), 30_000)).status).toBe(200);
@@ -181,14 +180,14 @@ describe("V62: the ceiling on upload bytes held at once", () => {
   it("gives the share back when the caller hangs up half way through the body", async () => {
     const { payload, headers } = multipartBody("file", "harbour.jpg", "image/jpeg", picture);
     const { request } = open({ ...headers, "content-length": payload.length }, payload.subarray(0, 200));
-    await until(() => heldUploads.held === payload.length);
+    await until(() => heldUploads.held === 200);
 
     request.destroy();
 
     await until(() => heldUploads.held === 0);
   });
 
-  it("keeps a hung-up caller's share counted until the match lets go of the bytes", async () => {
+  it("keeps a hung-up caller's share counted until the match lets go of the bytes and the handler ends", async () => {
     let entered: () => void = () => undefined;
     const matching = new Promise<void>((resolve) => {
       entered = resolve;
@@ -245,17 +244,53 @@ describe("V62: the URL form under the same ceiling", () => {
     return await within(answer, 30_000);
   }
 
-  it("answers 503 busy before reading a remote body past the ceiling, declared or not", async () => {
+  it("answers 503 busy the moment a remote body would pass the ceiling, declared or not", async () => {
     for (const declared of [true, false]) {
-      heldUploads.limit = declared ? picture.length - 1 : MAX_UPLOAD_BYTES - 1;
+      heldUploads.limit = picture.length - 1;
       const body = remotePicture(picture, declared);
 
       const refused = await verifyUrl();
 
       expect(refused.status, `declared ${String(declared)}`).toBe(503);
       expect(JSON.parse(refused.body)).toEqual({ error: "busy" });
-      expect(body.pulls(), `declared ${String(declared)}`).toBe(0);
+      expect(body.pulls(), `declared ${String(declared)}`).toBe(1);
+      expect(heldUploads.held).toBe(0);
     }
+  }, 30_000);
+
+  it("V79: aborts the fetch when the caller hangs up, and counts the bytes read so far until the handler ends", async () => {
+    const first = picture.subarray(0, 4_000);
+    let cancelled = false;
+    let heldAtCancel = -1;
+    remote.answer = () =>
+      new Response(
+        new ReadableStream<Uint8Array>(
+          {
+            start(controller) {
+              controller.enqueue(new Uint8Array(first));
+            },
+            // The rest of the body never comes, as from a host that stalls.
+            pull: () => new Promise<void>(() => undefined),
+            cancel() {
+              cancelled = true;
+              heldAtCancel = heldUploads.held;
+            },
+          },
+          { highWaterMark: 0 },
+        ),
+        { status: 200, headers: { "content-length": String(10 * first.length) } },
+      );
+    const body = JSON.stringify({ url: "https://pictures.example/stalls.jpg" });
+    const { request } = open({ "content-type": "application/json", "content-length": Buffer.byteLength(body) });
+    request.end(body);
+    await until(() => heldUploads.held > 0);
+    expect(heldUploads.held).toBe(first.length);
+
+    request.destroy();
+
+    await until(() => cancelled, 2_000);
+    expect(heldAtCancel).toBe(first.length);
+    await until(() => heldUploads.held === 0);
   }, 30_000);
 
   it("reads a remote picture that fits and gives the share back once answered", async () => {

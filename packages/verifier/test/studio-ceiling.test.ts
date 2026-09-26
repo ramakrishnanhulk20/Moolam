@@ -1,7 +1,7 @@
-// Covers review pass 8, V69: /prepare, /edit and /unseal take their share of the upload ceiling
-// before their multipart body is read, as /verify does. Past the ceiling each answers 503 busy
-// with its body never read, and a share taken while the body arrives comes back once the route has
-// answered. Over real connections on this machine, because only a real socket can withhold a body.
+// Covers review pass 8, V69: /prepare, /edit and /unseal count their multipart body against the
+// upload ceiling as it arrives, as /verify does. The moment a body would pass the ceiling each
+// answers 503 busy, and what a body counted while it arrived comes back once the route's handler
+// has finished. Over real connections on this machine, because only a real socket can withhold a body.
 // Also the studio's turn at the gate (WO-185a follow-ups): one caller holds one studio turn at a
 // time while another caller's /prepare runs, and a caller who hangs up while its /prepare waits
 // for a turn keeps its share counted until that work lets go of the bytes.
@@ -158,10 +158,10 @@ afterAll(async () => {
 });
 
 describe("V69: the studio routes under the upload ceiling", () => {
-  it.each(ROUTES)("%s answers 503 busy past the ceiling before a byte of its body is read", async (path) => {
+  it.each(ROUTES)("%s answers 503 busy the moment its body would pass the ceiling", async (path) => {
     heldUploads.limit = 1_000;
     const { payload, headers } = multipartBody("file", "big.jpg", "image/jpeg", Buffer.alloc(5_000, 1));
-    const { request, answer } = open(path, { ...headers, "content-length": payload.length }, payload.subarray(0, 60));
+    const { request, answer } = open(path, { ...headers, "content-length": payload.length }, payload.subarray(0, 2_000));
 
     const refused = await within(answer, 3_000);
     request.destroy();
@@ -175,7 +175,7 @@ describe("V69: the studio routes under the upload ceiling", () => {
     // No title and no passport id, so each route answers 400 once the whole body is read.
     const { payload, headers } = multipartBody("file", "harbour.jpg", "image/jpeg", picture);
     const { request, answer } = open(path, { ...headers, "content-length": payload.length }, payload.subarray(0, 100));
-    await until(() => heldUploads.held === payload.length);
+    await until(() => heldUploads.held === 100);
 
     request.end(payload.subarray(100));
 

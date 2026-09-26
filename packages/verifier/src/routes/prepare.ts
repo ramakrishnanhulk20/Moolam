@@ -48,7 +48,16 @@ import {
   type SignedFile,
 } from "../sealed.js";
 import { rateLimitKey } from "../limits/addressKey.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, studioTurn, textField, underUploadCeiling } from "./shared.js";
+import {
+  BadRequest,
+  CallerGone,
+  SERVICE_FAULT_REASON,
+  givesUploadsBack,
+  statusOf,
+  studioTurn,
+  textField,
+  underUploadCeiling,
+} from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -191,7 +200,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         },
       },
     },
-    async (request: FastifyRequest, reply: FastifyReply) => {
+    givesUploadsBack(async (request: FastifyRequest, reply: FastifyReply) => {
       const identity = await identify(request, options.keys);
       if (identity === undefined) {
         request.log.warn({ ip: request.ip, url: request.url }, "rejected: /prepare unauthorized");
@@ -280,6 +289,10 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           }
         } catch (error) {
           const reason = safeReason(error);
+          if (error instanceof CallerGone) {
+            request.log.warn({ url: request.url }, "/prepare: the caller left before the work began");
+            return reply.code(499).send({ error: "client-gone" });
+          }
           if (error instanceof Busy) {
             request.log.warn({ url: request.url, reason }, "rejected: /prepare busy");
             return reply.code(503).send({ error: "busy" });
@@ -522,7 +535,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           today.slot.giveBack();
         }
       }
-    },
+    }),
   );
 }
 
@@ -567,7 +580,7 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
  * name, a text field that did not arrive as plain text (named in the answer, never skipped), a title
  * outside 1 to 120 characters, or any kind other than "human". The body is read under the upload
- * ceiling, so past it this throws UploadsBusy (503) before a byte is read.
+ * ceiling, so this throws UploadsBusy (503) the moment the body would pass it.
  */
 async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {

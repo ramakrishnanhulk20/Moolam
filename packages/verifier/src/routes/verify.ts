@@ -1,7 +1,15 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { withPassportFacts } from "../disputeRead.js";
 import { safeReason } from "../net/errorText.js";
-import { SERVICE_FAULT_REASON, ServiceFault, readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
+import {
+  SERVICE_FAULT_REASON,
+  ServiceFault,
+  giveBackUploads,
+  readFromUrl,
+  readUpload,
+  statusOf,
+  verifyBytes,
+} from "./shared.js";
 
 /**
  * POST /verify: takes an image, returns the passport it belongs to.
@@ -47,6 +55,10 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       // A full gate is the one other failure the caller can do nothing about but retry, so it goes
       // out as the same one word the other busy routes use rather than an internal wait time.
       return reply.code(status).send({ error: status === 503 ? "busy" : reason });
+    } finally {
+      // Only here, with the answer written, has this route let go of the upload: counting it back
+      // when the response closed let a caller who hung up leave it in memory uncounted.
+      giveBackUploads(request);
     }
   });
 }

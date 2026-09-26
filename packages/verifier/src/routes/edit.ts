@@ -43,7 +43,16 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, studioTurn, textField, underUploadCeiling } from "./shared.js";
+import {
+  BadRequest,
+  CallerGone,
+  SERVICE_FAULT_REASON,
+  givesUploadsBack,
+  statusOf,
+  studioTurn,
+  textField,
+  underUploadCeiling,
+} from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -119,7 +128,7 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
-  app.post("/edit", async (request: FastifyRequest, reply: FastifyReply) => {
+  app.post("/edit", givesUploadsBack(async (request: FastifyRequest, reply: FastifyReply) => {
     // The one long wait in this route is the prepare gate, and a creator who closed the tab while
     // waiting must not be charged a slot or have a transaction sent on their behalf. The request
     // stream is no guide: Node closes it as soon as its body has been read, with the caller still
@@ -165,7 +174,7 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
     }
 
     return await append(app, request, reply, identity, upload, { quota, chain, registry }, gone);
-  });
+  }));
 }
 
 /**
@@ -316,6 +325,10 @@ async function append(
         return prepared;
       });
     } catch (error) {
+      if (error instanceof CallerGone) {
+        request.log.warn({ url: request.url, user: identity.userId }, "/edit: the caller left before the work began");
+        return reply.code(499).send({ error: "client-gone" });
+      }
       if (error instanceof FingerprintUnstable) {
         request.log.warn({ url: request.url, distance: error.distance }, "rejected: /edit fingerprint unstable");
         return reply.code(422).send({
@@ -631,8 +644,8 @@ function childRegistered(logs: readonly ReceiptLog[] | undefined, registry: Hex,
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
  * name, a text field that did not arrive as plain text (named in the answer, never skipped), a
  * title outside 1 to 120 characters, a parent id that is not 32 bytes of hex, or a note longer than
- * 280 characters. The body is read under the upload ceiling, so past it this throws UploadsBusy
- * (503) before a byte is read.
+ * 280 characters. The body is read under the upload ceiling, so this throws UploadsBusy (503) the
+ * moment the body would pass it.
  */
 async function readEditUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {

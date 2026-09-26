@@ -58,7 +58,16 @@ import {
   type UnsealRecord,
 } from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, studioTurn, textField, underUploadCeiling } from "./shared.js";
+import {
+  BadRequest,
+  CallerGone,
+  SERVICE_FAULT_REASON,
+  givesUploadsBack,
+  statusOf,
+  studioTurn,
+  textField,
+  underUploadCeiling,
+} from "./shared.js";
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
@@ -269,7 +278,11 @@ export async function unsealRoutes(
   if (options.holder !== false) {
     // The GET route's limit, because a refused resend still costs a Privy read and a chain read
     // (review pass 6, V54).
-    app.post("/unseal", { config: { rateLimit: { max: LOOKUPS_PER_MINUTE, timeWindow: "1 minute" } } }, publish);
+    app.post(
+      "/unseal",
+      { config: { rateLimit: { max: LOOKUPS_PER_MINUTE, timeWindow: "1 minute" } } },
+      givesUploadsBack(publish),
+    );
   }
 
   /**
@@ -623,6 +636,10 @@ async function unsealHeld(
         return { print, thumbnail };
       });
     } catch (error) {
+      if (error instanceof CallerGone) {
+        request.log.warn({ url: request.url, passportId: upload.passportId }, "/unseal: the caller left before the work began");
+        return reply.code(499).send({ error: "client-gone" });
+      }
       if (error instanceof Busy) {
         request.log.warn({ url: request.url }, "rejected: /unseal busy");
         return reply.code(503).send({ error: "busy" });
@@ -1046,8 +1063,8 @@ function titleOf(document: unknown): string {
  *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
  * name, a field that is not sent as plain text, or a passport id that is not 32 bytes of hex. The
- * body is read under the upload ceiling, so past it this throws UploadsBusy (503) before a byte is
- * read.
+ * body is read under the upload ceiling, so this throws UploadsBusy (503) the moment the body would
+ * pass it.
  */
 async function readUnsealUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {

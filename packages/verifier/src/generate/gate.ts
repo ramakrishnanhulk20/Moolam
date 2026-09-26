@@ -87,11 +87,16 @@ interface Turn {
  * of them, so `studioSlots` stay free for /prepare, /edit and /unseal however many verifies queue;
  * studio work may take any free slot. One caller, named by its rate-limit key, runs one task at a
  * time: its other requests wait behind its own while other callers go ahead of them. A task that
- * names no caller is held to the slot counts only. Among the waiters allowed to run, the one that
- * came first goes first, and every waiter gives up with Busy after `maxWaitMs`, as waitingGate does.
+ * names no caller is held to the slot counts only. Among the waiters allowed to run, callers take
+ * turns: the one whose last turn started longest ago goes first, and a caller with no turn yet goes
+ * before all of them, oldest waiter first. Serving the oldest waiter instead let two callers with a
+ * standing backlog hold both verify slots, since their own queued turns were always older than a
+ * newcomer's, and everyone else waited out most of `maxWaitMs` or was turned away (review pass 9,
+ * V77). Every waiter gives up with Busy after `maxWaitMs`, as waitingGate does.
  *
- * The queue is walked once each time a task ends. Its length is bounded by the rate limit times
- * the wait limit, since no waiter stays longer than `maxWaitMs`.
+ * The queue is walked once for each turn started when a task ends. Its length is bounded by the
+ * rate limit times the wait limit, since no waiter stays longer than `maxWaitMs`, and a caller's
+ * last start is kept only while it has a turn running or waiting.
  */
 export function fairGate(options: {
   verifySlots: number;
@@ -103,6 +108,10 @@ export function fairGate(options: {
   let verifying = 0;
   const callers = new Set<string>();
   const queue: Turn[] = [];
+  // When each caller's last turn started, counted in turns rather than read off a clock, so two
+  // starts in the same millisecond still have an order.
+  const lastStart = new Map<string, number>();
+  let starts = 0;
 
   const mayRun = (lane: GateLane, caller: string | undefined): boolean =>
     running < total &&
@@ -112,28 +121,48 @@ export function fairGate(options: {
   const take = (lane: GateLane, caller: string | undefined): void => {
     running += 1;
     if (lane === "verify") verifying += 1;
-    if (caller !== undefined) callers.add(caller);
+    starts += 1;
+    if (caller !== undefined) {
+      callers.add(caller);
+      lastStart.set(caller, starts);
+    }
   };
 
   const leave = (lane: GateLane, caller: string | undefined): void => {
     running -= 1;
     if (lane === "verify") verifying -= 1;
-    if (caller !== undefined) callers.delete(caller);
+    if (caller !== undefined) {
+      callers.delete(caller);
+      if (!queue.some((turn) => turn.caller === caller)) lastStart.delete(caller);
+    }
+  };
+
+  /** Where in the queue the next turn to start is, or -1 when no waiter may run. */
+  const next = (): number => {
+    let best = -1;
+    let bestStart = Number.POSITIVE_INFINITY;
+    for (let at = 0; at < queue.length; at += 1) {
+      const turn = queue[at] as Turn;
+      if (!mayRun(turn.lane, turn.caller)) continue;
+      // A caller with no turn yet, or a task that names none, counts as never having started.
+      const started = turn.caller === undefined ? 0 : (lastStart.get(turn.caller) ?? 0);
+      if (started < bestStart) {
+        best = at;
+        bestStart = started;
+      }
+    }
+    return best;
   };
 
   // A turn becomes able to run only when a task ends, so every waiter that could run has been
   // started by the time this returns, and a new arrival that may run jumps nobody who could.
   const serve = (): void => {
-    let at = 0;
-    while (at < queue.length && running < total) {
-      const turn = queue[at] as Turn;
-      if (mayRun(turn.lane, turn.caller)) {
-        queue.splice(at, 1);
-        take(turn.lane, turn.caller);
-        turn.start();
-      } else {
-        at += 1;
-      }
+    while (running < total) {
+      const at = next();
+      if (at === -1) return;
+      const [turn] = queue.splice(at, 1) as [Turn];
+      take(turn.lane, turn.caller);
+      turn.start();
     }
   };
 
@@ -146,6 +175,9 @@ export function fairGate(options: {
         const timer = setTimeout(() => {
           const at = queue.indexOf(turn);
           if (at !== -1) queue.splice(at, 1);
+          if (caller !== undefined && !callers.has(caller) && !queue.some((one) => one.caller === caller)) {
+            lastStart.delete(caller);
+          }
           reject(new Busy(options.maxWaitMs));
         }, options.maxWaitMs);
         // A queued caller must not be the reason the process cannot shut down.

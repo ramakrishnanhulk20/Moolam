@@ -1,9 +1,10 @@
 // Covers review pass 8, V70 and V74: no single caller can shut /verify for everyone else. One
-// rate-limit key may hold two uploads' worth of the ceiling at once, so idle uploads from one
-// address cannot starve another. A share shrinks to the bytes actually read once the body is in,
-// for a URL fetch and for an upload. A socket whose body stops arriving is closed after the idle
-// limit and gives its share back, while a request whose body is in stays open past that limit as
-// it waits on a match. At the match gate one key holds one slot at a time, and /prepare keeps a
+// rate-limit key may hold two uploads' worth of the ceiling at once, so uploads from one address
+// cannot starve another. A body counts only the bytes that have arrived, so bodies trickling in
+// from several addresses hold what they sent and not what they declared (review pass 9, V78), and
+// once the body is in only the file stays counted, for a URL fetch and for an upload. A socket
+// whose body stops arriving is closed after the idle limit and gives its share back, while a
+// request whose body is in stays open past that limit as it waits on a match. At the match gate one key holds one slot at a time, and /prepare keeps a
 // slot of its own that verifies can never take. A caller turned away hears a busy service in
 // general words (WO-185a follow-up).
 // Callers are told apart by X-Forwarded-For, believed here because TRUST_PROXY names loopback.
@@ -112,10 +113,19 @@ function open(from: string, headers: Record<string, string | number>, first?: Bu
   return { request: sent, answer, closed };
 }
 
-/** An upload that declares a whole upload's worth and sends only its multipart head. */
+/** How much of its body an idle upload sends: the start of its multipart head. */
+const IDLE_HEAD = 60;
+
+/** An upload that declares a whole upload's worth and sends only the start of its multipart head. */
 function idle(from: string, at = port): Opened {
   const { payload, headers } = multipartBody("file", "idle.jpg", "image/jpeg", Buffer.alloc(0));
-  return open(from, { ...headers, "content-length": MAX_UPLOAD_BYTES }, payload.subarray(0, 60), at);
+  return open(from, { ...headers, "content-length": MAX_UPLOAD_BYTES }, payload.subarray(0, IDLE_HEAD), at);
+}
+
+/** An upload that declares a whole upload's worth, sends `bytes` of it and then stops. */
+function stalled(from: string, bytes: number): Opened {
+  const { payload, headers } = multipartBody("file", "stalled.jpg", "image/jpeg", Buffer.alloc(bytes, 1));
+  return open(from, { ...headers, "content-length": MAX_UPLOAD_BYTES }, payload.subarray(0, bytes));
 }
 
 async function upload(from: string, content: Buffer): Promise<Answer> {
@@ -183,6 +193,7 @@ afterEach(async () => {
     socket.destroy();
   }
   heldUploads.limit = UPLOAD_CEILING_BYTES;
+  heldUploads.perCaller = CALLER_CEILING_BYTES;
   remote.answer = undefined;
   matching.stall = undefined;
   releaseMatches();
@@ -202,13 +213,16 @@ describe("V70: one caller cannot hold the upload ceiling", () => {
     expect(heldUploads.perCaller).toBe(CALLER_CEILING_BYTES);
   });
 
-  it("lets three idle uploads from one key take two uploads' worth, and another key is still served", async () => {
-    // The ceiling the review attacked: three full uploads.
-    heldUploads.limit = 3 * MAX_UPLOAD_BYTES;
-    idle(FIRST);
-    idle(FIRST);
-    await until(() => heldUploads.held === 2 * MAX_UPLOAD_BYTES);
-    const third = idle(FIRST);
+  it("lets three stalled uploads from one key take two uploads' worth, and another key is still served", async () => {
+    // The shape the review attacked, three full uploads to a ceiling of three, scaled down to
+    // uploads of `part` bytes so real bodies can fill it.
+    const part = multipartBody("file", "harbour.jpg", "image/jpeg", picture).payload.length + 1_000;
+    heldUploads.limit = 3 * part;
+    heldUploads.perCaller = 2 * part;
+    stalled(FIRST, part);
+    stalled(FIRST, part);
+    await until(() => heldUploads.held === 2 * part);
+    const third = stalled(FIRST, part);
 
     const refused = await within(third.answer, 3_000);
     const served = await within(upload(SECOND, picture), 30_000);
@@ -219,9 +233,11 @@ describe("V70: one caller cannot hold the upload ceiling", () => {
   }, 60_000);
 
   it("answers busy to a key past two uploads' worth while another key is served", async () => {
-    idle(FIRST);
-    idle(FIRST);
-    await until(() => heldUploads.held === 2 * MAX_UPLOAD_BYTES);
+    const part = multipartBody("file", "harbour.jpg", "image/jpeg", picture).payload.length + 1_000;
+    heldUploads.perCaller = 2 * part;
+    stalled(FIRST, part);
+    stalled(FIRST, part);
+    await until(() => heldUploads.held === 2 * part);
 
     const refused = await within(upload(FIRST, picture), 3_000);
     const served = await within(upload(SECOND, picture), 30_000);
@@ -252,6 +268,22 @@ describe("V70: one caller cannot hold the upload ceiling", () => {
   }, 60_000);
 });
 
+describe("V78: a body counts only the bytes that have arrived", () => {
+  it("lets five addresses trickling two declared full uploads each hold what they sent, and another caller is served", async () => {
+    const trickling = ["203.0.113.11", "203.0.113.12", "203.0.113.13", "203.0.113.14", "203.0.113.15"];
+    for (const from of trickling) {
+      idle(from);
+      idle(from);
+    }
+    await until(() => heldUploads.held === 10 * IDLE_HEAD || heldUploads.held === 10 * MAX_UPLOAD_BYTES);
+
+    const served = await within(upload(SECOND, picture), 30_000);
+
+    expect(served.status, served.body).toBe(200);
+    expect(heldUploads.held).toBe(10 * IDLE_HEAD);
+  }, 60_000);
+});
+
 describe("V70: a body that stops arriving gives its share back", () => {
   let quick: FastifyInstance;
   let quickPort: number;
@@ -268,7 +300,7 @@ describe("V70: a body that stops arriving gives its share back", () => {
 
   it("closes an idle upload socket after the idle limit and gives its share back", async () => {
     const stalled = idle(FIRST, quickPort);
-    await until(() => heldUploads.held === MAX_UPLOAD_BYTES);
+    await until(() => heldUploads.held === IDLE_HEAD);
 
     await within(stalled.closed, 3_000);
     await until(() => heldUploads.held === 0, 1_000);

@@ -487,11 +487,13 @@ export async function buildServer(
   // Node's idle timeout counts silence in both directions, so on its own it would also close a
   // caller whose body is in and who is waiting on the match gate or an image model for longer than
   // the idle limit. Node closes a timed-out socket itself only when nobody listens for the timeout,
-  // so listening here leaves the choice to this hook: a body still arriving is closed, a request
-  // already read is left to finish.
+  // so listening here leaves the choice to this hook: only a request still being worked on is left
+  // to finish. A body still arriving is closed, and so is an answer the handler has ended that the
+  // client is not reading, which otherwise held the socket and the answer for good (review pass 9,
+  // V80).
   app.addHook("onRequest", async (request, reply) => {
     reply.raw.on("timeout", (socket: Socket) => {
-      if (!request.raw.complete) {
+      if (!request.raw.complete || reply.raw.writableEnded) {
         socket.destroy();
       }
     });
