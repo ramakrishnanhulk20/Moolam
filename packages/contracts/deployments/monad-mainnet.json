@@ -9,6 +9,54 @@
   "forwarder": "0x76c9cf548b4179F8901cda1f8623568b58215E62",
   "policy": "0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821",
   "receiver": "0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04",
+  "receivers": {
+    "public": {
+      "address": "0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95",
+      "block": 108102667,
+      "changeId": "0x4a6589bbfe8f5fa2957f2af550bfbd2be0f9dd227eaf72cad106b34562f0480d",
+      "contract": "SimulationReceiver",
+      "executeAfter": 1790489029,
+      "forwarder": "0x9eF6468C5f37b976E57d52054c693269479A784d",
+      "queueBlock": 108102716,
+      "queueTx": "0x92e91eb81093dfc29abef25e1f36f63ec86d6189eadb5ac5e5f7b1a34c263fe5",
+      "txHash": "0x85c1b5866ed5c6a86cee597bfce12650bd46b8f1feb35e033f193a161650a50d",
+      "workflowName": "moolam-verifier"
+    },
+    "sealed": {
+      "address": "0x52b8fE549B432920eeB061c26cAc5c2D527657f6",
+      "block": 108102676,
+      "changeId": "0x018889ea4917dceb5f7d660f8c3e1f841a29495f48996a865678f3e3fdd65139",
+      "contract": "SimulationReceiver",
+      "executeAfter": 1790489031,
+      "forwarder": "0x9eF6468C5f37b976E57d52054c693269479A784d",
+      "queueBlock": 108102722,
+      "queueTx": "0x14d02fed42be834b37d4605b30228eb37cb74e76a8926d6614f5a3c3d3fa2aa1",
+      "txHash": "0xb27bee3fd4e401c10c5012b85db8afe8a40ed944b14736fcd0e49896e764221a",
+      "workflowName": "moolam-sealed-verifier"
+    },
+    "retired": [
+      {
+        "address": "0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04",
+        "block": 103054780,
+        "contract": "MoolamReceiver",
+        "forwarder": "0x76c9cf548b4179F8901cda1f8623568b58215E62",
+        "retiredBlock": 108102728,
+        "retiredTx": "0xf0d63ff4dec3211a552bcc0b4d63cd2aead9d0c5e59e965f5b17a995746bc31a",
+        "txHash": "0xf224ff6e7b2c49f0dfbe1928fd3526ec32e450b98e7f58b815d11727a33727dc",
+        "workflowName": "moolam-verifier"
+      },
+      {
+        "address": "0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A",
+        "block": 107265126,
+        "contract": "MoolamReceiver",
+        "forwarder": "0x76c9cf548b4179F8901cda1f8623568b58215E62",
+        "retiredBlock": 108102734,
+        "retiredTx": "0xad29012339a471ddbb7c3e12e5480615e772bec5f2931ec8ab9d89d7d035ae88",
+        "txHash": "0xefcf5016acddecc2f330c73c229a1a7807783641c133478da24fa43df62043b5",
+        "workflowName": "moolam-sealed-verifier"
+      }
+    ]
+  },
   "registry": "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
   "timestamp": 1788875133,
   "txHashes": {

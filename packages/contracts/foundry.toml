@@ -25,6 +25,7 @@ ignore = [
     "src/vendor/chainlink/IReceiver.sol",
     "src/vendor/chainlink/IERC165.sol",
     "test/*.sol",
+    "test/fork/*.sol",
     "test/mocks/*.sol",
     "test/utils/*.sol",
 ]

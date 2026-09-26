@@ -594,12 +594,33 @@ function manifestDocument(prepared: PreparedImage): unknown {
   };
 }
 
-/** An agent card carried inline in a data: URI, or undefined when the URI points elsewhere. */
-function decodeCard(uri: string): unknown {
-  const marker = "data:application/json,";
-  if (!uri.startsWith(marker)) return undefined;
+const BASE64_PAYLOAD = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/**
+ * An agent card carried inline in a data: URI, or undefined when the URI points elsewhere or the
+ * card does not decode.
+ *
+ * Reads both forms seen on the ERC-8004 registry: the JSON written straight after
+ * "data:application/json," and the base64 form "data:application/json;base64,", which ERC-8004
+ * names as the way to store a whole card on chain. Anything that is not clean base64 or valid
+ * UTF-8 is refused rather than half decoded, because Buffer's own decoder skips bad characters.
+ */
+export function decodeCard(uri: string): unknown {
+  if (!uri.startsWith("data:")) return undefined;
+  const comma = uri.indexOf(",");
+  if (comma === -1) return undefined;
+
+  const params = uri.slice(5, comma).split(";");
+  if (params[0]?.toLowerCase() !== "application/json") return undefined;
+  const payload = uri.slice(comma + 1);
+
   try {
-    return JSON.parse(decodeURIComponent(uri.slice(marker.length)));
+    if (params.at(-1)?.toLowerCase() === "base64") {
+      if (payload.length % 4 !== 0 || !BASE64_PAYLOAD.test(payload)) return undefined;
+      const text = new TextDecoder("utf-8", { fatal: true }).decode(Buffer.from(payload, "base64"));
+      return JSON.parse(text);
+    }
+    return JSON.parse(decodeURIComponent(payload));
   } catch {
     return undefined;
   }

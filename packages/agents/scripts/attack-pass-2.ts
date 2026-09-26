@@ -23,10 +23,15 @@ import { RegistryClient } from "../src/chain/registry.js";
 /**
  * The second attack pass, executed against a local fork of Monad mainnet.
  *
- * Every contract here is the one that is live: the registry, the policy and the receiver are the
+ * Every contract here is a deployed one: the registry, the policy and the receiver are the
  * deployed addresses with their real bytecode and their real state, forked. Nothing in this file
  * can reach mainnet, because every write goes to the anvil fork started below, and mainnet is only
  * ever read from.
+ *
+ * The receiver is the first MoolamReceiver, the deployment file's "receiver", and it is attacked
+ * on purpose although the policy retired it at block 108,102,728. The replay gap in attack 5
+ * belongs to its design and this pass is the record of it. The SimulationReceivers that replaced
+ * it are attacked by npm run prove and by SimulationReceiver.fork.t.sol.
  *
  * Two of the attacks are known gaps rather than refusals. They print LANDED AS EXPECTED and name
  * the remedy, because a proof that hides the holes is worth nothing.
@@ -209,7 +214,7 @@ async function main(): Promise<void> {
     say(`commit      ${commitHash()}`);
     say(`registry    ${addresses.registry} (deployed, forked)`);
     say(`policy      ${addresses.policy} (deployed, forked)`);
-    say(`receiver    ${addresses.receiver} (deployed, forked)`);
+    say(`receiver    ${addresses.receiver} (deployed, forked, retired at block 108,102,728)`);
     say(`creator     ${creatorAccount.address} (a fresh key, funded on the fork)`);
     say(`challenger  ${challengerAccount.address}`);
     say(`stranger    ${strangerAccount.address}`);
@@ -300,6 +305,50 @@ async function main(): Promise<void> {
     // 5. The same signed report, delivered twice.
     say("5. Replayed re-check: one signed report delivered twice, then to a second receiver");
     say("    ------------------------------------------------------------------------------------");
+    const policyOwner = (await read(addresses.policy, policy, "owner")) as Hex;
+    const asPolicyOwner = await impersonate(policyOwner);
+
+    /** Lists a receiver the way the owner would on mainnet: queued, 24 hours waited, executed. */
+    const listThroughPolicy = async (who: Hex): Promise<{ queueHash: Hex; executeHash: Hex }> => {
+      const queueHash = await asPolicyOwner.writeContract({
+        address: addresses.policy,
+        abi: policy,
+        functionName: "queueAddReceiver",
+        args: [who],
+        chain,
+        account: policyOwner,
+        gas: CALL_GAS,
+      });
+      const queued = await publicClient.waitForTransactionReceipt({ hash: queueHash });
+
+      // The change id comes from the policy's own ChangeQueued event rather than being rebuilt
+      // here, so the id executed below is the one the contract actually wrote.
+      const [queuedLog] = parseEventLogs({ abi: policy, eventName: "ChangeQueued", logs: queued.logs });
+      const changeId = (queuedLog as unknown as { args: { id: Hex } }).args.id;
+
+      await rpc("evm_increaseTime", [24 * 60 * 60]);
+      await rpc("evm_mine", []);
+
+      const executeHash = await asPolicyOwner.writeContract({
+        address: addresses.policy,
+        abi: policy,
+        functionName: "execute",
+        args: [changeId],
+        chain,
+        account: policyOwner,
+        gas: CALL_GAS,
+      });
+      await publicClient.waitForTransactionReceipt({ hash: executeHash });
+      return { queueHash, executeHash };
+    };
+
+    if (!((await read(addresses.policy, policy, "isReceiver", [addresses.receiver])) as boolean)) {
+      const relisted = await listThroughPolicy(addresses.receiver);
+      say(`    relisted on fork   ${addresses.receiver}, queued in ${relisted.queueHash}, executed in ${relisted.executeHash}`);
+      say("                       It is off the policy on mainnet since block 108,102,728. Listing it");
+      say("                       again on the fork only lets the attack below reach its replay floor.");
+    }
+
     const replay = await passportBase({ exactHash: ID.replay });
     await registerWith(replay, passkey);
 
@@ -353,8 +402,6 @@ async function main(): Promise<void> {
       notCovered: "the Chainlink forwarder's own signature checks, which happen before this contract is called",
     });
 
-    const policyOwner = (await read(addresses.policy, policy, "owner")) as Hex;
-    const asPolicyOwner = await impersonate(policyOwner);
     const fresh = loadArtifact("MoolamReceiver");
     const deployHash = await asPolicyOwner.deployContract({
       abi: fresh.abi,
@@ -365,35 +412,7 @@ async function main(): Promise<void> {
     });
     const freshAddress = (await publicClient.waitForTransactionReceipt({ hash: deployHash })).contractAddress as Hex;
 
-    const queueHash = await asPolicyOwner.writeContract({
-      address: addresses.policy,
-      abi: policy,
-      functionName: "queueAddReceiver",
-      args: [freshAddress],
-      chain,
-      account: policyOwner,
-      gas: CALL_GAS,
-    });
-    const queued = await publicClient.waitForTransactionReceipt({ hash: queueHash });
-
-    // The change id comes from the policy's own ChangeQueued event rather than being rebuilt
-    // here, so the id executed below is the one the contract actually wrote.
-    const [queuedLog] = parseEventLogs({ abi: policy, eventName: "ChangeQueued", logs: queued.logs });
-    const changeId = (queuedLog as unknown as { args: { id: Hex } }).args.id;
-
-    await rpc("evm_increaseTime", [24 * 60 * 60]);
-    await rpc("evm_mine", []);
-
-    const executeHash = await asPolicyOwner.writeContract({
-      address: addresses.policy,
-      abi: policy,
-      functionName: "execute",
-      args: [changeId],
-      chain,
-      account: policyOwner,
-      gas: CALL_GAS,
-    });
-    await publicClient.waitForTransactionReceipt({ hash: executeHash });
+    const { queueHash, executeHash } = await listThroughPolicy(freshAddress);
 
     const secondDelivery = await asForwarder.writeContract({
       address: freshAddress,

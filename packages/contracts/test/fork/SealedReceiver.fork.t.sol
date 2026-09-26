@@ -20,9 +20,13 @@ import {FinalizeSealedReceiver} from "../../script/FinalizeSealedReceiver.s.sol"
 
 contract SealedReceiverForkTest is Test {
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
+    /// @dev The fork is pinned to a block while the old public receiver was still listed. It was
+    ///      removed at block 108,102,728, so a fork of the latest block no longer matches what this
+    ///      file proves. The state after that removal is checked in ReceiverSwap.fork.t.sol.
+    uint256 internal constant FORK_BLOCK = 108_102_500;
     address internal constant POLICY = 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821;
     address internal constant REGISTRY = 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0;
-    /// @dev The live receiver the public workflow writes through.
+    /// @dev The public workflow's receiver at FORK_BLOCK. Off the policy since block 108,102,728.
     address internal constant PUBLIC_RECEIVER = 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04;
     address internal constant PRODUCTION_FORWARDER = 0x76c9cf548b4179F8901cda1f8623568b58215E62;
     address internal constant WORKFLOW_AUTHOR = 0xC79620AF233a4434b03f6B57239F8A9E71B3C178;
@@ -53,7 +57,7 @@ contract SealedReceiverForkTest is Test {
         }
 
         // forge-lint: disable-next-line(unused-return)
-        vm.createSelectFork(rpc);
+        vm.createSelectFork(rpc, FORK_BLOCK);
         assertEq(block.chainid, MONAD_MAINNET_CHAIN_ID, "the RPC is not Monad mainnet");
 
         policyOwner = policy.owner();

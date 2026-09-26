@@ -23,6 +23,11 @@ interface IMockForwarder {
 
 contract SimulationReceiverForkTest is Test {
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
+    /// @dev The fork is pinned to a block before the live deploy, so setUp replays that deploy
+    ///      against the chain it was sent to: the old receivers still listed, the new ones not yet
+    ///      created. The live run removed the old receivers at block 108,102,728. The state after
+    ///      it is checked in ReceiverSwap.fork.t.sol.
+    uint256 internal constant FORK_BLOCK = 108_102_500;
     address internal constant POLICY = 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821;
     address internal constant REGISTRY = 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0;
     address internal constant MOCK_FORWARDER = 0x9eF6468C5f37b976E57d52054c693269479A784d;
@@ -73,7 +78,7 @@ contract SimulationReceiverForkTest is Test {
             return;
         }
         // forge-lint: disable-next-line(unused-return)
-        vm.createSelectFork(rpc);
+        vm.createSelectFork(rpc, FORK_BLOCK);
         assertEq(block.chainid, MONAD_MAINNET_CHAIN_ID, "the RPC is not Monad mainnet");
         policyOwner = policy.owner();
 

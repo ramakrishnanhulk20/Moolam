@@ -1,5 +1,15 @@
-import { encodeAbiParameters, encodeFunctionData, parseEther, sha256, type Hex } from "viem";
+import { readFileSync } from "node:fs";
+import {
+  encodeAbiParameters,
+  encodeFunctionData,
+  getAddress,
+  isAddress,
+  parseEther,
+  sha256,
+  type Hex,
+} from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+import { DEFAULT_DEPLOYMENT_FILE } from "../chain/addresses.js";
 import { policyAbi, receiverAbi } from "../chain/artifacts.js";
 import { Kind, PASSPORT_TYPES, passportDigest, type PassportInput } from "../chain/eip712.js";
 import { isPolicyViolation, ownerContext, privyErrorText } from "../privy/client.js";
@@ -46,6 +56,42 @@ const REFUSED_CALL_GAS = 400_000n;
 
 const FINGERPRINT_VERSION = 1;
 const DEADLINE_WINDOW = 3600n;
+
+/** SimulationReceiver's own read that MoolamReceiver's ABI does not carry. */
+const sendingWalletAbi = [
+  {
+    type: "function",
+    name: "SENDING_WALLET",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+] as const;
+
+/**
+ * The SimulationReceiver the public workflow writes through, from the receivers section of the
+ * deployment file.
+ *
+ * The file's top level "receiver" still names the first MoolamReceiver, because the deploy
+ * script's record step matches that key against its own broadcast. The policy retired that
+ * receiver at block 108,102,728, so an attack aimed at it would prove nothing about the live
+ * write path. The SimulationReceiver keeps MoolamReceiver's onReport, getForwarderAddress and
+ * lastExecutedAt signatures and Chainlink's InvalidSender error, so MoolamReceiver's ABI encodes
+ * and decodes every call made to it here.
+ *
+ * Throws when the section is missing or the address is malformed, so the attacks never run
+ * against the zero address or a stale guess.
+ */
+export function publicReceiver(file: string = DEFAULT_DEPLOYMENT_FILE): Hex {
+  const parsed = JSON.parse(readFileSync(file, "utf8")) as {
+    receivers?: { public?: { address?: unknown } };
+  };
+  const value = parsed.receivers?.public?.address;
+  if (typeof value !== "string" || !isAddress(value)) {
+    throw new Error(`The deployment file at ${file} has no valid receivers.public.address.`);
+  }
+  return getAddress(value);
+}
 
 function result(name: string, refused: boolean, summary: string, lines: string[]): AttackResult {
   return { name, refused, evidence: [summary, ...lines].join("\n") };
@@ -277,6 +323,14 @@ export async function editByStranger(a: AttackContext): Promise<AttackResult> {
  * not list.
  */
 export async function attestFromStranger(a: AttackContext): Promise<AttackResult> {
+  const receiver = publicReceiver();
+  const listed = (await a.ctx.publicClient.readContract({
+    address: a.ctx.addresses.policy,
+    abi: policyAbi(),
+    functionName: "isReceiver",
+    args: [receiver],
+  })) as boolean;
+
   const refusal = await refuseOnChain(a.ctx, {
     what: "write a verification result without being a listed receiver",
     from: a.outsider,
@@ -295,7 +349,7 @@ export async function attestFromStranger(a: AttackContext): Promise<AttackResult
     [
       "",
       `policy              ${a.ctx.addresses.policy}`,
-      `listed receiver     ${a.ctx.addresses.receiver}`,
+      `public receiver     ${receiver}, listed on the policy: ${listed ? "yes" : "no"}`,
       `caller              ${a.outsider.account.address}`,
       "the policy is the only list the registry reads, and adding to it waits 24 hours in the open.",
       "",
@@ -305,12 +359,14 @@ export async function attestFromStranger(a: AttackContext): Promise<AttackResult
 }
 
 /**
- * Attack g. A Chainlink report delivered to the receiver by something that is not the Chainlink
- * forwarder.
+ * Attack g. A Chainlink report delivered to the public SimulationReceiver by something that is
+ * not its Chainlink forwarder.
  *
- * The check is Chainlink's own, in the ReceiverTemplate that is vendored word for word.
+ * The check is Chainlink's own, in the ReceiverTemplate that is vendored word for word. For this
+ * receiver the forwarder is Chainlink's MockKeystoneForwarder.
  */
 export async function reportFromFakeForwarder(a: AttackContext): Promise<AttackResult> {
+  const receiver = publicReceiver();
   const report = encodeAbiParameters(
     [
       { type: "uint256" },
@@ -333,7 +389,7 @@ export async function reportFromFakeForwarder(a: AttackContext): Promise<AttackR
   const refusal = await refuseOnChain(a.ctx, {
     what: "deliver a verification report without being the Chainlink forwarder",
     from: a.outsider,
-    address: a.ctx.addresses.receiver,
+    address: receiver,
     abi: receiverAbi(),
     functionName: "onReport",
     args: ["0x", report],
@@ -347,7 +403,7 @@ export async function reportFromFakeForwarder(a: AttackContext): Promise<AttackR
     summarise("a hand written report from the wrong sender", refusal),
     [
       "",
-      `receiver            ${a.ctx.addresses.receiver}`,
+      `receiver            ${receiver}, the public SimulationReceiver`,
       `caller              ${a.outsider.account.address}`,
       "the report itself is well formed: the right chain id, a current timestamp and a real",
       "passport id. Only the sender is wrong, and that is enough.",
@@ -358,53 +414,68 @@ export async function reportFromFakeForwarder(a: AttackContext): Promise<AttackR
 }
 
 /**
- * Attack h. A report replayed, and a report built for another chain.
+ * Attack h. A report replayed, and a report built for another chain, at the public
+ * SimulationReceiver.
  *
- * Both checks live inside _processReport, which is only reachable through the Chainlink
- * forwarder, and on mainnet that address belongs to Chainlink. So this one is proved by the
- * Foundry tests that stand in the forwarder's shoes, not by a transaction, and the run says so
- * rather than dressing something else up as the same thing.
+ * Both checks live inside _processReport, behind two doors: the call must come from Chainlink's
+ * MockKeystoneForwarder, which anyone may call, and the transaction must be signed by Moolam's CRE
+ * wallet, which only the holder of that key can do. An outsider is stopped at the second door
+ * before a byte of the report is read, so the replay and chain checks are only reachable with the
+ * CRE key. They are proved by the Foundry tests that act as that wallet, not by a transaction,
+ * and the run says so rather than dressing something else up as the same thing.
  */
 export async function receiverReplayAndWrongChain(a: AttackContext): Promise<AttackResult> {
+  const receiver = publicReceiver();
   const forwarder = (await a.ctx.publicClient.readContract({
-    address: a.ctx.addresses.receiver,
+    address: receiver,
     abi: receiverAbi(),
     functionName: "getForwarderAddress",
   })) as Hex;
+  const sendingWallet = (await a.ctx.publicClient.readContract({
+    address: receiver,
+    abi: sendingWalletAbi,
+    functionName: "SENDING_WALLET",
+  })) as Hex;
   const lastSeen = (await a.ctx.publicClient.readContract({
-    address: a.ctx.addresses.receiver,
+    address: receiver,
     abi: receiverAbi(),
     functionName: "lastExecutedAt",
     args: [a.original.passportId],
   })) as bigint;
 
   const named = [
-    "test_theSameReportSentTwiceIsRefused          StaleReport",
-    "test_anOlderReportAfterANewerOneIsRefused     StaleReport",
+    "test_theFloorIsStrictlyMonotonic              StaleReport",
     "test_aReportBuiltForAnotherChainIsRefused     WrongChain",
+    "test_aReportFromAnyOtherOriginIsRefused       WrongSendingWallet",
   ];
 
   return result(
     "receiver-replay-and-wrong-chain",
     true,
-    "covered by three Foundry tests, not by a mainnet transaction: only Chainlink's forwarder can reach the check",
+    "covered by Foundry tests, not by a mainnet transaction: only the CRE wallet's key can reach the check",
     [
       "",
-      `receiver            ${a.ctx.addresses.receiver}`,
-      `forwarder on chain  ${forwarder}`,
+      `receiver            ${receiver}, the public SimulationReceiver`,
+      `forwarder on chain  ${forwarder}, Chainlink's MockKeystoneForwarder`,
+      `sending wallet      ${sendingWallet}, fixed in the constructor with no setter`,
       `last report seen    ${lastSeen} for passport ${a.original.passportId}`,
       "",
       "onReport refuses anything that is not the forwarder before it decodes a byte, which is the",
-      "attack in report-from-fake-forwarder.txt and it is executed live. The replay and wrong chain",
-      "checks sit behind that door, inside _processReport, so reaching them on mainnet would mean",
-      "sending from Chainlink's own forwarder address. Nobody can, and that is the point.",
+      "attack in report-from-fake-forwarder.txt and it is executed live. The mock forwarder itself",
+      "checks no signature and anyone may call it, so the door that matters here is the next one:",
+      "_processReport refuses first any transaction the sending wallet did not sign. The replay and",
+      "wrong chain checks sit behind it, so reaching them on mainnet would mean holding the CRE",
+      "wallet's key. An outsider cannot, and that is the point. The holder of that key can write",
+      "any verdict through this receiver, and the threat model names that as a non-goal.",
       "",
-      "packages/contracts/test/MoolamReceiver.t.sol, run with npm test in packages/contracts:",
+      "packages/contracts/test/SimulationReceiver.t.sol, run with npm test in packages/contracts:",
       ...named.map((line) => `  ${line}`),
       "",
-      "Each of those deploys the same receiver, pranks the forwarder address, delivers a report,",
-      "and expects the named custom error on the second delivery, on the older one, and on the one",
-      "built for chain 1.",
+      "The first two act as the sending wallet and expect the named error on the same report sent",
+      "twice, on an older one, and on one built for another chain. The third sends as a stranger",
+      "and expects nothing written. packages/contracts/test/fork/SimulationReceiver.fork.t.sol",
+      "replays real mainnet report calldata through the real mock from a stranger and from the",
+      "policy owner, and nothing is written either time.",
     ],
   );
 }

@@ -16,6 +16,7 @@ import {
   forgedGeneratorSignature,
   passkeyReplay,
   privyPolicyRefusals,
+  publicReceiver,
   receiverReplayAndWrongChain,
   reportFromFakeForwarder,
   revokedSessionSigner,
@@ -93,7 +94,7 @@ async function main(): Promise<void> {
   say(`network     Monad mainnet, chain ${ctx.addresses.chainId}, block ${block}`);
   say(`registry    ${ctx.addresses.registry}`);
   say(`policy      ${ctx.addresses.policy}`);
-  say(`receiver    ${ctx.addresses.receiver}`);
+  say(`receiver    ${publicReceiver()}, the public SimulationReceiver`);
   say(`ERC-8004    ${ctx.addresses.agentIdentity}, demo agent ${demoAgentId}`);
   say(`creator     ${ctx.deployerAddress}, ${Number(formatEther(balance)).toFixed(3)} MON`);
   say(`outsider    ${outsider.account.address}, ${Number(formatEther(outsiderBalance)).toFixed(3)} MON`);
