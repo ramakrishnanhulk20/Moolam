@@ -166,3 +166,27 @@ describe("re-marking private copies kept before V12", () => {
     expect(account).toEqual([unmarked]);
   });
 });
+
+describe("the delete guard", () => {
+  it("never deletes the file Pinata answered with as the marked copy", async () => {
+    const passportId = idOf(0x5a);
+    const unmarked = { id: "0199a3c2-5d7e-7f10-9a1b-00000000aaaa", name: `sealed-thumb-${passportId}.jpg`, cid: "bafkreiunmarked", network: "private" as const };
+    const removed: string[] = [];
+    const lines: string[] = [];
+    const summary = await remarkPrivateCopies({
+      live: true,
+      say: (line) => lines.push(line),
+      deps: {
+        list: async () => ({ files: [unmarked], next: undefined }),
+        download: async () => await thumbnail(90),
+        keep: async () => ({ kept: { ...unmarked } }),
+        remove: async (fileId) => {
+          removed.push(fileId);
+        },
+      },
+    });
+    expect(removed).toEqual([]);
+    expect(summary.remarked).toEqual([]);
+    expect(summary.failed).toEqual([{ passportId, reason: "Pinata answered with the unmarked file itself, so it is left in place" }]);
+  });
+});

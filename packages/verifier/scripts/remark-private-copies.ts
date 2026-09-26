@@ -170,6 +170,11 @@ export async function remarkPrivateCopies(options: {
         summary.failed.push({ passportId, reason: `the marked copy was refused: ${kept.refused.status} ${kept.refused.body.error}` });
         continue;
       }
+      // Deleting the file just kept would leave no copy at all, whatever Pinata answered.
+      if (kept.kept.id === file.id || kept.kept.cid === file.cid) {
+        summary.failed.push({ passportId, reason: "Pinata answered with the unmarked file itself, so it is left in place" });
+        continue;
+      }
       // Deleted only after the marked copy is confirmed private under the same name, so a failure
       // on the way never leaves the passport with no copy at all.
       try {
