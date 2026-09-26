@@ -10,6 +10,9 @@
 // packages/web/public/hero/degrade.json) and against a one-block file.
 // Also covers review pass 4, V20: files null reads as an empty list and a missing files key as
 // "cannot tell", in the public unseal lookup and in both private listing parsers alike.
+// From review pass 7 (V67): a private upload says whether Pinata answered with a file it already
+// held, read from its duplicate flag, and a missing flag counts as held, since nothing then shows
+// this request made the file.
 // Does NOT cover a real pin to Pinata (the live check in the README and
 // scripts/pinata-private-smoke.ts do that), the gateway URL helper, or the JSON shape check on the
 // public upload, which the prepare and generate route tests exercise.
@@ -207,7 +210,7 @@ describe("the private network calls", () => {
 
     const file = await pinPrivateFile(BYTES, NAME, { passportId });
 
-    expect(file).toEqual({ id: FILE_ID, name: NAME, cid: CID, network: "private" });
+    expect(file).toEqual({ id: FILE_ID, name: NAME, cid: CID, network: "private", heldBefore: false });
     const call = sent[0] as Sent;
     expect(call.url).toBe("https://uploads.pinata.cloud/v3/files");
     expect(call.method).toBe("POST");
@@ -232,6 +235,22 @@ describe("the private network calls", () => {
 
       expect(refusal, label).toBeInstanceOf(PrivateCopyNotPrivate);
       expect((refusal as InstanceType<typeof PrivateCopyNotPrivate>).fileId, label).toBe(FILE_ID);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("V67: says the file was held before when Pinata flags a duplicate or leaves the flag out", async () => {
+    for (const [label, answer, held] of [
+      ["a duplicate", { is_duplicate: true }, true],
+      ["no flag", { is_duplicate: undefined }, true],
+      ["a null flag", { is_duplicate: null }, true],
+      ["a new file", { is_duplicate: false }, false],
+    ] as const) {
+      recording(() => privateAnswer(answer));
+
+      const file = await pinPrivateFile(BYTES, NAME, { passportId: "0x1" });
+
+      expect(file.heldBefore, label).toBe(held);
       vi.unstubAllGlobals();
     }
   });

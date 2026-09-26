@@ -3,7 +3,10 @@
 // renders it (pass 4, V17). From review pass 5: a picture with transparency matches the passport
 // registered from it (intake 3), a picture without it hashes exactly as the two libraries do on
 // their own, and the blockhash, now worked out on a worker thread, is the same bits as before on
-// every fixture (answers 1).
+// every fixture (answers 1). From review pass 7 (V56): a blockhash worker is retired after a job
+// whose JPEG decoder threw, as the WebAssembly decoder does on a CMYK file and leaks when it does,
+// and once the bytes it was handed pass 64 MB, so the reviewer's padded file cannot pile up inside
+// one long-lived worker; the hash that comes back is the one imghash gives on its own.
 // Does NOT cover how the hashes behave under real transforms, which is what
 // scripts/robustness.ts measures, nor AVIF, HEIF or JPEG XL files, which are refused by the same
 // rule and are not built here.
@@ -22,6 +25,7 @@ import {
   ImageTooLarge,
   MAX_IMAGE_PIXELS,
   UnsupportedImageFormat,
+  blockhashWorkersRetired,
   fingerprint,
   hamming64,
   hammingHex,
@@ -180,6 +184,66 @@ describe("intake 3: transparency", () => {
       expect(print.blockhash, picture.name).toBe(`0x${await imghash.hash(picture.bytes, 16, "hex")}`);
     }
   }, 120_000);
+});
+
+/** A 64 x 64 JPEG stored as CMYK, which the WebAssembly JPEG decoder refuses after its header. */
+async function cmykJpeg(): Promise<Buffer> {
+  return await sharp({ create: { width: 64, height: 64, channels: 3, background: "#806040" } })
+    .toColourspace("cmyk")
+    .jpeg({ quality: 90 })
+    .toBuffer();
+}
+
+/** A JPEG padded with APP15 segments to about `megabytes` MB, the way the reviewer built theirs. */
+function padded(jpeg: Buffer, megabytes: number): Buffer {
+  const payload = Buffer.alloc(65_000, 0x41);
+  const segment = Buffer.concat([Buffer.from([0xff, 0xef, (payload.length + 2) >> 8, (payload.length + 2) & 0xff]), payload]);
+  const count = Math.ceil((megabytes * 1_000_000) / segment.length);
+  return Buffer.concat([jpeg.subarray(0, 2), ...Array.from({ length: count }, () => segment), jpeg.subarray(2)]);
+}
+
+describe("V56: a blockhash worker is replaced before a leaking decoder can fill it", () => {
+  it("retires the worker after a job whose JPEG decoder threw, and still answers imghash's own hash", async () => {
+    const cmyk = await cmykJpeg();
+    expect((await sharp(cmyk).metadata()).space).toBe("cmyk");
+    const before = blockhashWorkersRetired();
+
+    const print = await fingerprint(cmyk);
+
+    expect(print.blockhash).toBe(`0x${await imghash.hash(cmyk, 16, "hex")}`);
+    expect(blockhashWorkersRetired()).toBe(before + 1);
+    await fingerprint(await makeImage(3));
+    expect(blockhashWorkersRetired()).toBe(before + 1);
+  }, 30_000);
+
+  it("retires a worker once the bytes it was handed pass 64 MB, however small the pictures", async () => {
+    const heavy = padded(await makeImage(9), 15);
+    expect((await readImageHeader(heavy)).width * (await readImageHeader(heavy)).height).toBeLessThan(1_000_000);
+    const before = blockhashWorkersRetired();
+
+    for (let call = 0; call < 10; call += 1) {
+      await fingerprint(heavy);
+    }
+
+    // 150 MB in 15 MB jobs: a worker is let go on the job that takes it past 64 MB, so two or three.
+    const retired = blockhashWorkersRetired() - before;
+    expect(retired).toBeGreaterThanOrEqual(2);
+    expect(retired).toBeLessThanOrEqual(3);
+  }, 120_000);
+
+  it("gives the reviewer's padded CMYK file the same hash every time, one fresh worker per call", async () => {
+    const reviewers = padded(await cmykJpeg(), 19.5);
+    expect(reviewers.length).toBeGreaterThan(19_000_000);
+    const before = blockhashWorkersRetired();
+
+    const prints = [];
+    for (let call = 0; call < 3; call += 1) {
+      prints.push((await fingerprint(reviewers)).blockhash);
+    }
+
+    expect(new Set(prints).size).toBe(1);
+    expect(blockhashWorkersRetired() - before).toBe(3);
+  }, 60_000);
 });
 
 describe("hamming64", () => {

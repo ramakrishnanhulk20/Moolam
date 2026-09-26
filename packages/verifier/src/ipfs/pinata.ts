@@ -314,6 +314,12 @@ export interface PrivateFile {
   name: string;
   cid: string;
   network: "private";
+  /**
+   * True when Pinata answered with a file it already held rather than one this upload made: its
+   * duplicate flag said so, or the answer carried no flag, which proves nothing either way. Such a
+   * file may be another request's copy, so nothing done for this request may delete it (V67).
+   */
+  heldBefore: boolean;
 }
 
 /** One row of a private listing whose name is exactly the one asked for. */
@@ -347,6 +353,7 @@ const privateUploadSchema = z.object({
     name: z.string().nullish(),
     cid: z.string().min(1),
     network: z.string().nullish(),
+    is_duplicate: z.boolean().nullish(),
   }),
 });
 
@@ -376,6 +383,9 @@ const downloadLinkSchema = z.object({ data: z.string().min(1) });
 /**
  * Uploads bytes to Pinata's private network under an exact name, with key-values beside it, and
  * hands back the file only when Pinata says it is private and named as asked.
+ *
+ * Pinata answers bytes it already holds with the file it already has, so the answer says whether
+ * this upload made the file: `heldBefore` is false only when Pinata's `is_duplicate` flag is false.
  *
  * There is one attempt and no retry: a retry after a stalled upload could leave a second file under
  * the same name, and the caller would rather refuse than guess.
@@ -426,7 +436,7 @@ export async function pinPrivateFile(
       file.id,
     );
   }
-  return { id: file.id, name: file.name, cid: file.cid, network: "private" };
+  return { id: file.id, name: file.name, cid: file.cid, network: "private", heldBefore: file.is_duplicate !== false };
 }
 
 /**

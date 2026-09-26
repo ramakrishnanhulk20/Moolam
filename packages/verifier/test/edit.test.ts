@@ -7,6 +7,8 @@
 // From review pass 4: the review's SVG is refused before the gate (V17), and an edit's manifest
 // records opened then edited with no source type Moolam cannot see (V22). From review pass 5: a
 // real picture too detailed for the thumbnail budget is told so with 422, not 415 (intake 4).
+// From review pass 7 (V58): the creator's own allowance comes back only when nothing was pinned
+// and nothing was sent, so an edit whose pins may have landed keeps it spent.
 // An edit made from a camera's signed photo answers cameraRecord as /prepare does, and the route
 // hands its request logger to prepareOrFallback so a dropped record is logged.
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
@@ -128,6 +130,8 @@ let app: FastifyInstance;
 let picture: Buffer;
 /** How many of the next uploads to Pinata are answered with a failure instead of a cid. */
 let pinFailures = 0;
+/** How many of the next uploads Pinata refuses with a 4xx, the one answer after which nothing landed. */
+let pinRefusals = 0;
 /** How many files this request pinned, so a refusal before any pin can be proven. */
 let pins = 0;
 /** Every file the stub pinned, by the name the route gave it, so a signed edit can be read back. */
@@ -211,6 +215,10 @@ describe("POST /edit", () => {
         pinFailures -= 1;
         return new Response("gateway said no", { status: 500 });
       }
+      if (pinRefusals > 0) {
+        pinRefusals -= 1;
+        return new Response("over the plan", { status: 403 });
+      }
       pins += 1;
       const form = init?.body as FormData;
       const file = form.get("file") as File;
@@ -236,6 +244,7 @@ describe("POST /edit", () => {
 
   beforeEach(() => {
     pinFailures = 0;
+    pinRefusals = 0;
     pins = 0;
     prepareGate.mockClear();
     // The route reads the registry twice: the parent must be there, and the child must not.
@@ -370,11 +379,10 @@ describe("POST /edit", () => {
     expect(prepareGate).toHaveBeenCalledTimes(1);
   }, 60_000);
 
-  it("gives the daily slot back when the picture could not be pinned", async () => {
-    const user = "did:privy:pin-fail-user";
-    // The picture, the thumbnail and the manifest go up at once and pinFile retries a 500 once, so
-    // six refusals is what it takes for none of the three to land.
-    pinFailures = 6;
+  it("gives the daily slot back when Pinata refused every pin, so nothing landed", async () => {
+    const user = "did:privy:pin-refused-user";
+    // The picture, the thumbnail and the manifest go up at once, and a 4xx is never retried.
+    pinRefusals = 3;
 
     const refused = await ask(user, goodFields());
 
@@ -384,7 +392,20 @@ describe("POST /edit", () => {
     expect(await usedAfter(user)).toBe(1);
   }, 60_000);
 
-  it("gives the daily slot back when the registry refuses the edit before anything is sent", async () => {
+  it("V58: keeps the daily slot when the pins failed after their bytes left, since they may have landed", async () => {
+    const user = "did:privy:pin-fail-user";
+    // pinFile retries a 500 once, so six failures is what it takes for none of the three to answer.
+    pinFailures = 6;
+
+    const refused = await ask(user, goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json()).toEqual({ error: "pin-failed" });
+    expect(stubs.send).not.toHaveBeenCalled();
+    expect(await usedAfter(user)).toBe(2);
+  }, 60_000);
+
+  it("V58: keeps the daily slot when the registry refuses the edit after the pins landed", async () => {
     const user = "did:privy:estimate-fail-user";
     stubs.estimateEditGas.mockRejectedValueOnce(new Error("execution reverted"));
 
@@ -393,7 +414,8 @@ describe("POST /edit", () => {
     expect(refused.statusCode).toBe(502);
     expect(refused.json().error).toBe("send-failed");
     expect(stubs.send).not.toHaveBeenCalled();
-    expect(await usedAfter(user)).toBe(1);
+    expect(pins).toBeGreaterThanOrEqual(3);
+    expect(await usedAfter(user)).toBe(2);
   }, 60_000);
 
   it("answers 415 rather than 500 for a picture whose header reads but whose pixels do not, and gives the slot back", async () => {

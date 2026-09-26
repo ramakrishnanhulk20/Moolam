@@ -440,8 +440,21 @@ export function refusedByPinata(error: unknown): boolean {
  * Deletes a private copy the registration it was made for will never use, after the document pin
  * failed. Best effort: a failure is logged with the file id for an operator and never changes the
  * answer the caller is about to get.
+ *
+ * A file Pinata already held when this request uploaded it is never deleted. Two prepares of one
+ * picture the signer refused give the same passport id and so the same marked thumbnail, and
+ * Pinata answers the second with the first one's file; deleting it for the second request's failed
+ * pin left the first request's passport with no private copy (review pass 7, V67). The file is left
+ * in place, and the sweep can remove it later if no registered passport asks for it.
  */
 export async function dropPrivateCopy(file: PrivateFile, log: FastifyBaseLogger): Promise<void> {
+  if (file.heldBefore) {
+    log.warn(
+      { fileId: file.id, name: file.name },
+      "prepare: private copy left in place after the document pin failed, Pinata held it before this request",
+    );
+    return;
+  }
   try {
     await deletePrivateFile(file.id);
     log.warn({ fileId: file.id, name: file.name }, "prepare: private copy deleted after the document pin failed");

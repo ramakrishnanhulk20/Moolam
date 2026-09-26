@@ -8,7 +8,7 @@
 // guard approves a public address and the dial is then pointed at the stub, so no
 // test here leaves the machine.
 
-import { createServer, type Server } from "node:http";
+import { IncomingMessage, ServerResponse, createServer, type Server } from "node:http";
 import net from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyRequest } from "fastify";
@@ -240,7 +240,11 @@ describe("safeFetch through the live transport", () => {
     vi.spyOn(net, "connect").mockImplementation(((options: net.NetConnectOpts) =>
       realConnect({ ...options, host: "127.0.0.1" } as net.NetConnectOpts)) as typeof net.connect);
 
-    const request = { body: { url: `http://${PUBLIC_ADDRESS}:${port}/half.jpg` } } as unknown as FastifyRequest;
+    // readFromUrl holds the body against the upload ceiling until this request's response closes,
+    // so the request it is handed needs a response Node has made for it.
+    const raw = new IncomingMessage(new net.Socket());
+    new ServerResponse(raw);
+    const request = { body: { url: `http://${PUBLIC_ADDRESS}:${port}/half.jpg` }, raw } as unknown as FastifyRequest;
     const failure = await readFromUrl(request).catch((error: unknown) => error);
 
     expect(failure).toBeInstanceOf(BadRequest);

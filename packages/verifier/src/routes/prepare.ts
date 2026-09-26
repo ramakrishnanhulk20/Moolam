@@ -47,7 +47,7 @@ import {
   type SignedFile,
 } from "../sealed.js";
 import { rateLimitKey } from "../limits/addressKey.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -566,7 +566,8 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
  * browser sent them.
  *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
- * name, a title outside 1 to 120 characters, or any kind other than "human".
+ * name, a text field that did not arrive as plain text (named in the answer, never skipped), a title
+ * outside 1 to 120 characters, or any kind other than "human".
  */
 async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {
@@ -583,8 +584,8 @@ async function readStudioUpload(request: FastifyRequest): Promise<Upload> {
           throw new BadRequest(`expected a multipart field named "file", got "${part.fieldname}"`);
         }
         bytes = await part.toBuffer();
-      } else if (typeof part.value === "string") {
-        fields.set(part.fieldname, part.value);
+      } else {
+        fields.set(part.fieldname, textField(part));
       }
     }
   } catch (error) {

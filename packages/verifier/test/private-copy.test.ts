@@ -10,7 +10,9 @@
 // same picture again keeps a copy of its own instead of being handed the first one back. From
 // review pass 5: a copy the comment would push over the budget steps down a quality instead of
 // being refused (intake 5), and an upload that left the process counts as landed unless Pinata
-// itself refused it (sealed 3). Pinata is a
+// itself refused it (sealed 3). From review pass 7 (V67): a clean-up never deletes a private copy
+// Pinata answered with because it already held it, so request B's failed document pin cannot take
+// away the copy request A kept for the same picture. Pinata is a
 // recording stub at the fetch layer; the chain read, the image model, the caller's wallets and the
 // agent's signer are stubbed.
 // Does NOT cover any route that reads the private copy back (/sealed/link, /sealed/status and
@@ -43,6 +45,7 @@ import {
   makeThumbnail,
 } from "../src/prepare.js";
 import {
+  dropPrivateCopy,
   keepPrivateCopy,
   markedPrivateCopy,
   privateThumbnailName,
@@ -633,6 +636,31 @@ describe("a sealed registration with a private re-check", () => {
     const line = lines.find((one) => one.level === "error");
     expect(line?.fields).toMatchObject({ fileId: PRIVATE_ID, passportId: passportId.toLowerCase() });
     expect(privateThumbnailName(passportId)).toBe(`sealed-thumb-0x${"cd".repeat(32)}.jpg`);
+  });
+
+  it("V67: request B, answered with the copy request A kept, fails its document pin and leaves A's copy alone", async () => {
+    pinata.privateAnswer = "by-content";
+    const thumbnail = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#406020" } }).jpeg().toBuffer();
+    const { log, lines } = keepingLogger();
+    const mark = calls.length;
+
+    const kept = await keepPrivateCopy(thumbnail, PASSPORT, log);
+    const again = await keepPrivateCopy(thumbnail, PASSPORT, log);
+    if (!("kept" in kept) || !("kept" in again)) {
+      throw new Error("both requests should have been answered with a private file");
+    }
+    expect(again.kept.id).toBe(kept.kept.id);
+    expect(kept.kept.heldBefore).toBe(false);
+    expect(again.kept.heldBefore).toBe(true);
+
+    await dropPrivateCopy(again.kept, log);
+    expect(since(mark).filter((call) => call.kind === "delete")).toEqual([]);
+    expect(lines.some((line) => line.level === "warn" && JSON.stringify(line.fields).includes(kept.kept.id))).toBe(true);
+
+    await dropPrivateCopy(kept.kept, log);
+    expect(since(mark).filter((call) => call.kind === "delete").map((call) => call.url)).toEqual([
+      `${PRIVATE_FILES_URL}/${kept.kept.id}`,
+    ]);
   });
 
   it("V12: refuses with 422 and uploads nothing when the passport's comment would push the copy past the budget", async () => {

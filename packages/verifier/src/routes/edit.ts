@@ -42,7 +42,7 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -92,9 +92,9 @@ interface EditContext {
  *
  * The wallet comes from the Privy user record, never from the request, and the ownership check is
  * read from the chain before anything is spent. A creator with two embedded wallets gets the one
- * that holds the parent. The creator's own daily allowance is taken once the request is known to
- * be worth serving and given back whenever the edit fails before Privy was asked to send; the
- * day's ceiling for everyone goes back only when the request pinned nothing and sent nothing.
+ * that holds the parent. The creator's own daily allowance and the day's ceiling for everyone are
+ * taken once the request is known to be worth serving, and both go back only when the request
+ * pinned nothing and sent nothing, a caller who hung up included.
  *
  * Every answer that leaves a transaction out on the network carries `passportId`, the child's own
  * id, so the browser can watch the registry for that one passport instead of guessing which edit
@@ -289,11 +289,10 @@ async function append(
     return today.refused;
   }
 
-  // Two flags, because the two allowances answer different questions. The creator's own is about
-  // what they got: it goes back unless Privy was asked to send, because until then no edit of
-  // theirs can be on chain. The day's ceiling is about what the world spent: it goes back only
-  // when this request spent nothing at all, and a pin that landed is money spent whether or not
-  // the edit ever reached the chain.
+  // Both allowances go back only when this request spent nothing: no pin that may have landed and
+  // no send. A pin is money spent whether or not the edit reached the chain, and handing the
+  // creator's own slot back after one let a caller who hung up after the pins drain the day's
+  // edits for everyone at no cost to their own count (review pass 7, V58).
   let submitted = false;
   let pinned = false;
   try {
@@ -590,13 +589,11 @@ async function append(
       quota: context.quota.state(identity.userId),
     });
   } finally {
-    if (!submitted) {
-      context.quota.release(identity.userId, ticket);
-    }
     // An edit that pinned and then failed on the gas estimate or the send still spent four files
-    // of somebody's Pinata plan. Handing the day's slot back there would let one bad afternoon at
-    // a provider spend the whole budget twice over while /health reported nothing used.
+    // of somebody's Pinata plan. Handing the slots back there would let one bad afternoon at a
+    // provider spend the whole budget twice over while /health reported nothing used.
     if (!submitted && !pinned) {
+      context.quota.release(identity.userId, ticket);
       today.slot.giveBack();
     }
   }
@@ -631,8 +628,9 @@ function childRegistered(logs: readonly ReceiptLog[] | undefined, registry: Hex,
  * browser sent them.
  *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
- * name, a title outside 1 to 120 characters, a parent id that is not 32 bytes of hex, or a note
- * longer than 280 characters.
+ * name, a text field that did not arrive as plain text (named in the answer, never skipped), a
+ * title outside 1 to 120 characters, a parent id that is not 32 bytes of hex, or a note longer than
+ * 280 characters.
  */
 async function readEditUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {
@@ -649,8 +647,8 @@ async function readEditUpload(request: FastifyRequest): Promise<Upload> {
           throw new BadRequest(`expected a multipart field named "file", got "${part.fieldname}"`);
         }
         bytes = await part.toBuffer();
-      } else if (typeof part.value === "string") {
-        fields.set(part.fieldname, part.value);
+      } else {
+        fields.set(part.fieldname, textField(part));
       }
     }
   } catch (error) {

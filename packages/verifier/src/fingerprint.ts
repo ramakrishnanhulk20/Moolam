@@ -350,6 +350,15 @@ const BLOCKHASH_WORKERS = 2;
  */
 const RECYCLE_AFTER_PIXELS = 8_000_000;
 
+/**
+ * A worker is also replaced once the files it has been handed pass this many bytes in total. The
+ * JPEG decoder leaks its copy of a file whenever it throws, about 20 MB for the reviewer's padded
+ * CMYK upload, and a small picture never trips the pixel rule above (review pass 7, V56). The
+ * worker is retired after any throw it reports; this budget covers a leak nothing reports, so no
+ * worker can pile up more than a few uploads' worth before it goes.
+ */
+const RECYCLE_AFTER_BYTES = 64 * 1024 * 1024;
+
 /** Far past the 1 to 1.5 seconds a 40 megapixel decode measured, so only a stuck worker meets it. */
 const BLOCKHASH_TIMEOUT_MS = 30_000;
 
@@ -369,6 +378,18 @@ interface BlockhashRequest {
 const waiting: BlockhashRequest[] = [];
 const idleWorkers: Worker[] = [];
 let runningWorkers = 0;
+/** The bytes each live worker has been handed, the count RECYCLE_AFTER_BYTES is measured on. */
+const handedBytes = new WeakMap<Worker, number>();
+let retiredWorkers = 0;
+
+/**
+ * How many blockhash workers this process has thrown away so far, for any reason: a crash, a
+ * timeout, a decoder that threw, or one of the two recycling limits. The tests read it to prove a
+ * worker is replaced when the rules above say it must be.
+ */
+export function blockhashWorkersRetired(): number {
+  return retiredWorkers;
+}
 
 /**
  * The imghash blockhash of an encoded picture, worked out on a worker thread so the thread that
@@ -376,7 +397,9 @@ let runningWorkers = 0;
  *
  * Rejects with UndecodableImage carrying imghash's own message for a file it cannot decode, and
  * with FingerprintFault when a worker crashes, stops or runs past BLOCKHASH_TIMEOUT_MS; that worker
- * is thrown away and the next request gets a fresh one.
+ * is thrown away and the next request gets a fresh one. A worker is also thrown away, after it has
+ * answered, when its decoder threw on the way, when the picture was over RECYCLE_AFTER_PIXELS, or
+ * once the bytes it was handed pass RECYCLE_AFTER_BYTES.
  */
 function blockhashOffThread(bytes: Buffer, pixels: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -395,6 +418,8 @@ function startWaiting(): void {
 
 function runOn(worker: Worker, request: BlockhashRequest): void {
   let settled = false;
+  const handed = (handedBytes.get(worker) ?? 0) + request.bytes.length;
+  handedBytes.set(worker, handed);
   const finish = (outcome: { hex: string } | { error: Error }, broken: boolean): void => {
     if (settled) {
       return;
@@ -405,7 +430,8 @@ function runOn(worker: Worker, request: BlockhashRequest): void {
     worker.off("error", onError);
     worker.off("exit", onExit);
     runningWorkers -= 1;
-    if (broken || request.pixels > RECYCLE_AFTER_PIXELS) {
+    if (broken || request.pixels > RECYCLE_AFTER_PIXELS || handed > RECYCLE_AFTER_BYTES) {
+      retiredWorkers += 1;
       void worker.terminate();
     } else {
       // An idle worker must not keep a script or a test process alive on its own.
@@ -419,8 +445,10 @@ function runOn(worker: Worker, request: BlockhashRequest): void {
     }
     startWaiting();
   };
+  // A decoder that threw may have left memory behind in the worker even when the fallback answered,
+  // so that worker is treated like a broken one and never handed another picture.
   const onMessage = (answer: BlockhashAnswer): void => {
-    finish("hex" in answer ? { hex: answer.hex } : { error: decodeFailure(answer.error) }, false);
+    finish("hex" in answer ? { hex: answer.hex } : { error: decodeFailure(answer.error) }, answer.decoderThrew);
   };
   const onError = (error: Error): void =>
     finish({ error: new FingerprintFault(`the blockhash worker crashed: ${error.message}`, { cause: error }) }, true);

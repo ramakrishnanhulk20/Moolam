@@ -179,7 +179,7 @@ describe("the delete guard", () => {
       deps: {
         list: async () => ({ files: [unmarked], next: undefined }),
         download: async () => await thumbnail(90),
-        keep: async () => ({ kept: { ...unmarked } }),
+        keep: async () => ({ kept: { ...unmarked, heldBefore: true } }),
         remove: async (fileId) => {
           removed.push(fileId);
         },

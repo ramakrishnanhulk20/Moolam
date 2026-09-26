@@ -2,7 +2,9 @@
 // HTTP connection on this machine. inject() cannot show this: its request stream never closes on
 // its own, while a real server request closes as soon as its body has been read, with the caller
 // still waiting for the answer. A caller who waits gets the edit; a caller who closes the socket
-// while the picture is being prepared is not sent for.
+// while the picture is being prepared is not sent for. From review pass 7 (V58): a caller who
+// hangs up after the pins keeps their EDITS_PER_DAY slot spent, and an edit refused before any pin
+// hands it back.
 // Does NOT cover Privy, the chain or Pinata: all three are stubbed exactly as test/edit.test.ts
 // stubs them, and the edit's own rules are tested there.
 
@@ -232,5 +234,56 @@ describe("POST /edit over a real connection (V2)", () => {
 
     expect(stubs.estimateEditGas).toHaveBeenCalledTimes(1);
     expect(stubs.send).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it("V58: keeps the creator's slot spent when they hang up after the pins", async () => {
+    const user = "did:privy:live-v58-hangs-up";
+    let reached: () => void = () => undefined;
+    const atEstimate = new Promise<void>((resolve) => {
+      reached = resolve;
+    });
+    let letGo: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => {
+      letGo = resolve;
+    });
+    let answered: () => void = () => undefined;
+    const done = new Promise<void>((resolve) => {
+      answered = resolve;
+    });
+    stubs.estimateEditGas.mockImplementation(async () => {
+      reached();
+      await held;
+      setTimeout(answered, 200);
+      return 420_000n;
+    });
+
+    const { request, answer } = await post(user);
+    answer.catch(() => undefined);
+    await atEstimate;
+    request.destroy();
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    letGo();
+    await done;
+    expect(stubs.send).not.toHaveBeenCalled();
+
+    stubs.estimateEditGas.mockReset().mockResolvedValue(420_000n);
+    const next = await (await post(user)).answer;
+    expect(next.status, next.body).toBe(200);
+    expect(JSON.parse(next.body).quota.used).toBe(2);
+  }, 60_000);
+
+  it("V58: hands the creator's slot back to an edit refused before any pin", async () => {
+    const user = "did:privy:live-v58-refused";
+    // Every id reads as registered, so the child is a duplicate and the route stops before a pin.
+    stubs.passportExists.mockImplementation(async () => true);
+
+    const refused = await (await post(user)).answer;
+    expect(refused.status, refused.body).toBe(409);
+    expect(JSON.parse(refused.body).error).toBe("already-registered");
+
+    stubs.passportExists.mockImplementation(async (_chain, _registry, id: Hex) => id === PARENT);
+    const next = await (await post(user)).answer;
+    expect(next.status, next.body).toBe(200);
+    expect(JSON.parse(next.body).quota.used).toBe(1);
   }, 60_000);
 });

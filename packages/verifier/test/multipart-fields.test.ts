@@ -4,6 +4,10 @@
 // where it used to answer "Premature close", and nothing is pinned. A body at the limit of five
 // still parses. /generate takes a JSON body only and never parses a
 // multipart one, so the same body there is refused as "not JSON" and never reaches the limit.
+// From review pass 7 (V57): a text part typed application/json, which the multipart plugin hands
+// over as a boolean or an object, is refused with 400 naming the field instead of being skipped,
+// so sealed=true can never quietly become a public prepare and a training statement is never
+// dropped; /edit's note is held to the same rule.
 // Pinata is answered by a stub at the fetch layer that only counts; nothing leaves the process.
 // Does NOT cover a caller who hangs up in the middle of an upload, which is the other way a file
 // read closes early and keeps its old answer, nor /verify, which reads its one file part through
@@ -59,6 +63,43 @@ function multipart(fields: Record<string, string>, fileFirst: boolean): { payloa
   const chunks = fileFirst ? [file, ...text] : [...text, file];
   chunks.push(Buffer.from(`--${boundary}--\r\n`));
   return { payload: Buffer.concat(chunks), headers: { "content-type": `multipart/form-data; boundary=${boundary}` } };
+}
+
+/** A multipart body whose text parts may each carry their own Content-Type, as curl's ;type= does. */
+function typedMultipart(fields: { name: string; value: string; type?: string }[]): {
+  payload: Buffer;
+  headers: Record<string, string>;
+} {
+  const boundary = "----moolamtyped";
+  const chunks: Buffer[] = fields.map(({ name, value, type }) =>
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n` +
+        `${type === undefined ? "" : `Content-Type: ${type}\r\n`}\r\n${value}\r\n`,
+    ),
+  );
+  chunks.push(
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="upload.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`,
+    ),
+    image,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  );
+  return { payload: Buffer.concat(chunks), headers: { "content-type": `multipart/form-data; boundary=${boundary}` } };
+}
+
+async function sendTyped(
+  url: string,
+  fields: { name: string; value: string; type?: string }[],
+  subject: string,
+): Promise<LightMyRequestResponse> {
+  const { payload, headers } = typedMultipart(fields);
+  return await app.inject({
+    method: "POST",
+    url,
+    payload,
+    headers: { ...headers, authorization: `Bearer ${await token(subject)}` },
+    remoteAddress: "198.51.100.61",
+  });
 }
 
 async function send(
@@ -160,5 +201,72 @@ describe("a multipart body with more text fields than the limit", () => {
     expect(response.statusCode).toBe(400);
     expect(response.body).not.toContain("Premature close");
     expect(response.json().error).not.toBe("too-many-fields");
+  });
+});
+
+describe("V57: a text field the plugin did not hand over as text", () => {
+  it("refuses the reviewer's sealed=true typed application/json on /prepare with 400 naming it, and pins nothing", async () => {
+    const before = uploads;
+    const response = await sendTyped(
+      "/prepare",
+      [
+        { name: "title", value: "Harbour" },
+        { name: "kind", value: "human" },
+        { name: "sealed", value: "true", type: "application/json" },
+      ],
+      "did:privy:v57-sealed",
+    );
+
+    expect(response.statusCode, response.body).toBe(400);
+    expect(response.json().error).toContain('"sealed"');
+    expect(response.body).not.toContain("gatewayUrl");
+    expect(uploads).toBe(before);
+  });
+
+  it("refuses a training statement typed application/json on /prepare with 400 naming it", async () => {
+    const before = uploads;
+    const response = await sendTyped(
+      "/prepare",
+      [
+        { name: "title", value: "Harbour" },
+        { name: "kind", value: "human" },
+        { name: "training", value: '{"aiTraining":"notAllowed"}', type: "application/json" },
+      ],
+      "did:privy:v57-training",
+    );
+
+    expect(response.statusCode, response.body).toBe(400);
+    expect(response.json().error).toContain('"training"');
+    expect(uploads).toBe(before);
+  });
+
+  it("refuses a note typed application/json on /edit with 400 naming it", async () => {
+    const response = await sendTyped(
+      "/edit",
+      [
+        { name: "title", value: "Harbour, brighter" },
+        { name: "parentId", value: PASSPORT },
+        { name: "note", value: '{"changed":"the sky"}', type: "application/json" },
+      ],
+      "did:privy:v57-note",
+    );
+
+    expect(response.statusCode, response.body).toBe(400);
+    expect(response.json().error).toContain('"note"');
+  });
+
+  it("still takes a text part typed text/plain, which the plugin hands over as a string", async () => {
+    const response = await sendTyped(
+      "/prepare",
+      [
+        { name: "title", value: "Harbour" },
+        { name: "kind", value: "human", type: "text/plain" },
+        { name: "sealed", value: "maybe", type: "text/plain" },
+      ],
+      "did:privy:v57-plain",
+    );
+
+    expect(response.statusCode, response.body).toBe(400);
+    expect(response.json().error).toBe('sealed must be "true" or "false"');
   });
 });
