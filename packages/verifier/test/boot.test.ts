@@ -2,14 +2,24 @@
 // hops it will believe, the routes EXPECT_ROUTES insists on, the paid route without a base URL,
 // the registry check, the match gate answering 503 when no slot comes free, and (V10) the two
 // routes that read a holder's wallets from Privy staying off, with the reason, on a host without
-// PRIVY_APP_SECRET, while the sealed reads stay on.
+// PRIVY_APP_SECRET, while the sealed reads stay on. From review pass 8: a signer that cannot load
+// turns /prepare, /generate and /edit off with the reason on /health and leaves /verify serving
+// (V73), and a registry read that fails boots with /generate answering 503 until a re-check reads
+// the chain and agrees, while a chain that answers and disagrees still stops boot (V76).
 // Every case that needs different settings re-imports the server with the environment stubbed,
 // because src/env.ts validates once when it is first loaded.
-// Does NOT cover the real registry read in src/boot/registryChecks.ts, which talks to Monad: the
-// check is passed in as a stub here.
+// Does NOT cover the real registry read against Monad: the V76 cases point the real check at a
+// local stand-in on 127.0.0.1 that hangs up or answers one eth_call, and the rest pass a stub. The
+// 5 minute re-check interval is shortened for the test, not waited out.
 
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
+import path from "node:path";
+import { encodeFunctionResult, parseAbi, type Hex } from "viem";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
+import { RegistryUnreadable } from "../src/boot/registryChecks.js";
+import { PACKAGE_ROOT } from "../src/env.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import { makeImage, multipartBody } from "./helpers.js";
@@ -109,6 +119,188 @@ describe("boot refusals", () => {
     expect(app.verifier.routes).toContain("generate");
     await app.close();
   });
+});
+
+/** A local stand-in for the chain's RPC: it hangs up on every call, or answers eth_call with `answer`. */
+async function localRpc(answer?: Hex): Promise<{ url: string; close: () => Promise<void> }> {
+  const server = createServer((request, response) => {
+    if (answer === undefined) {
+      request.socket.destroy();
+      return;
+    }
+    let body = "";
+    request.on("data", (chunk: Buffer) => {
+      body += chunk.toString("utf8");
+    });
+    request.on("end", () => {
+      const call = JSON.parse(body) as { id: number };
+      response.setHeader("content-type", "application/json");
+      response.end(JSON.stringify({ jsonrpc: "2.0", id: call.id, result: answer }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    close: async () => await new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
+/**
+ * Builds a server whose registry check is the real one, reading the chain through `rpc`, from a
+ * fresh module graph so the check reads the stubbed environment.
+ */
+async function serverCheckingRegistryAt(rpc: string, options: BuildOptions = {}): Promise<FastifyInstance> {
+  for (const [name, value] of Object.entries({
+    GENERATOR_WALLET_ID: "",
+    GENERATOR_WALLET_ADDRESS: "",
+    MONAD_MAINNET_RPC_URL: rpc,
+    MONAD_RPC_FALLBACK_URL: rpc,
+    X402_ENABLED: "false",
+    EXPECT_ROUTES: "",
+  })) {
+    vi.stubEnv(name, value);
+  }
+  vi.resetModules();
+  const fresh = await import("../src/server.js");
+  const checks = await import("../src/boot/registryChecks.js");
+  const { env } = await import("../src/env.js");
+  return await fresh.buildServer({
+    source: emptySource,
+    logger: false,
+    generate: {},
+    ...options,
+    checks: { registry: async () => await checks.checkRegistry(env), ...options.checks },
+  });
+}
+
+async function verifiesAPicture(app: FastifyInstance): Promise<number> {
+  const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", await makeImage(82));
+  return (await app.inject({ method: "POST", url: "/verify", payload, headers })).statusCode;
+}
+
+describe("V73: a signer that cannot load turns the signing routes off, not the service", () => {
+  const missing = path.join(PACKAGE_ROOT, "test-assets", "certs", "not-here.pem");
+  const brokenSigner = {
+    PINATA_JWT: "test-token-not-a-real-pinata-jwt",
+    PRIVY_APP_ID: "moolamtestapp0000009",
+    PRIVY_APP_SECRET: "test-app-secret-not-a-real-one",
+    MOOLAM_C2PA_CERT_PATH: missing,
+    MOOLAM_C2PA_KEY_PATH: missing,
+    X402_ENABLED: "false",
+    EXPECT_ROUTES: "",
+  };
+
+  it("boots with /verify and the re-check queue serving, and /prepare, /generate and /edit off with the reason", async () => {
+    const app = await serverWith(brokenSigner, { generate: {}, edit: {}, checks: { registry: async () => undefined } });
+    await app.ready();
+
+    try {
+      expect(await verifiesAPicture(app)).toBe(200);
+      expect((await app.inject({ method: "GET", url: `/recheck/status/0x${"ab".repeat(32)}` })).statusCode).not.toBe(404);
+      for (const url of ["/prepare", "/generate", "/edit"]) {
+        expect((await app.inject({ method: "POST", url, payload: {} })).statusCode).toBe(404);
+      }
+      // Unsealing does not sign, so it stays on.
+      expect((await app.inject({ method: "POST", url: "/unseal" })).statusCode).toBe(401);
+
+      const health = (await app.inject({ method: "GET", url: "/health" })).json() as {
+        routes: string[];
+        off: { route: string; reason: string }[];
+      };
+      expect(health.routes).toEqual(["verify", "unseal", "sealed", "health"]);
+      expect(health.off.map((off) => off.route)).toEqual(["POST /prepare", "POST /generate", "POST /edit"]);
+      expect(health.off.every((off) => /signing certificate/.test(off.reason))).toBe(true);
+      expect(JSON.stringify(health)).not.toContain("not-here.pem");
+    } finally {
+      await app.close();
+    }
+  }, 60_000);
+
+  it("still stops boot when EXPECT_ROUTES names a signing route, and names the signer", async () => {
+    await expect(serverWith({ ...brokenSigner, EXPECT_ROUTES: "prepare" })).rejects.toThrow(/prepare needs .*sign/);
+  }, 60_000);
+});
+
+describe("V76: a registry read that fails means not checked yet, not a dead service", () => {
+  it("boots with /verify serving and /generate answering 503 generator-unchecked when the chain cannot be read", async () => {
+    const rpc = await localRpc();
+    const app = await serverCheckingRegistryAt(rpc.url);
+    await app.ready();
+
+    try {
+      expect(await verifiesAPicture(app)).toBe(200);
+      const generate = await app.inject({ method: "POST", url: "/generate", payload: {} });
+      expect(generate.statusCode).toBe(503);
+      expect(generate.json().error).toBe("generator-unchecked");
+      expect(generate.json().reason).toMatch(/registry/);
+      expect(generate.body).not.toContain("127.0.0.1");
+
+      const health = (await app.inject({ method: "GET", url: "/health" })).json() as {
+        routes: string[];
+        off: { route: string; reason: string }[];
+      };
+      expect(health.routes).not.toContain("generate");
+      expect(health.off.map((off) => off.route)).toContain("POST /generate");
+    } finally {
+      await app.close();
+      await rpc.close();
+    }
+  }, 60_000);
+
+  it("opens /generate on the next re-check that reads the chain and agrees", async () => {
+    let chainUp = false;
+    let reads = 0;
+    const app = await buildServer({
+      source: emptySource,
+      logger: false,
+      generate: {},
+      checks: {
+        registry: async () => {
+          reads += 1;
+          if (!chainUp) {
+            throw new RegistryUnreadable("could not read the registry's signing domain: fetch failed");
+          }
+        },
+        retryMs: 20,
+      },
+    });
+    await app.ready();
+
+    try {
+      // Re-checks that still cannot read the chain keep it closed.
+      await vi.waitFor(() => {
+        expect(reads).toBeGreaterThanOrEqual(3);
+      });
+      expect((await app.inject({ method: "POST", url: "/generate", payload: {} })).statusCode).toBe(503);
+
+      chainUp = true;
+      // Open again: the route now runs its own checks, and a caller with no token is a 401.
+      await vi.waitFor(async () => {
+        expect((await app.inject({ method: "POST", url: "/generate", payload: {} })).statusCode).toBe(401);
+      });
+      expect(app.verifier.routes).toContain("generate");
+      expect(app.verifier.routesOff).toEqual([]);
+    } finally {
+      await app.close();
+    }
+  }, 30_000);
+
+  it("still stops boot when the chain answers and disagrees", async () => {
+    const wrongName = encodeFunctionResult({
+      abi: parseAbi([
+        "function eip712Domain() view returns (bytes1, string, string, uint256, address, bytes32, uint256[])",
+      ]),
+      functionName: "eip712Domain",
+      result: ["0x0f", "SomeoneElse", "1", 143n, "0x0000000000000000000000000000000000000001", `0x${"00".repeat(32)}`, []],
+    });
+    const rpc = await localRpc(wrongName);
+    try {
+      await expect(serverCheckingRegistryAt(rpc.url)).rejects.toThrow(/the chain does not match/);
+    } finally {
+      await rpc.close();
+    }
+  }, 60_000);
 });
 
 describe("routes that read a holder's wallets from Privy (V10)", () => {

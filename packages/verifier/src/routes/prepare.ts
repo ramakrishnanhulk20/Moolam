@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
-import { SignerUnavailable, ensureSigner } from "../c2pa.js";
+import { SignerUnavailable } from "../c2pa.js";
 import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { FingerprintFault, ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
@@ -48,7 +48,7 @@ import {
   type SignedFile,
 } from "../sealed.js";
 import { rateLimitKey } from "../limits/addressKey.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField, underUploadCeiling } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, studioTurn, textField, underUploadCeiling } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -167,13 +167,10 @@ const SEALED_FILE_REFUSED = {
  * 502 when Pinata refuses a pin, and 503 `chain-unreachable` when a private re-check was asked for
  * and the duplicate check could not reach the chain, or `service-fault` when this service failed
  * to read or fingerprint the picture. The route is not mounted at all on a host that cannot sign
- * a manifest.
+ * a manifest: buildServer loads the signer before registering it, because a host with no signing
+ * identity would otherwise answer 200 with an unsigned picture for every upload.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
-  // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
-  // upload, so it fails to mount instead and says why in the boot log.
-  await ensureSigner();
-
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
@@ -263,7 +260,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         // keeps no thumbnail, so it is judged by the one an unseal would publish.
         try {
           if (upload.sealed) {
-            const made = await app.verifier.runPrepare(async () => {
+            const made = await studioTurn(app, request, upload.bytes, async () => {
               const sealed = await prepareSealed(upload.bytes, settings);
               const thumbnail = upload.privateRecheck
                 ? await makeThumbnail(sealed.bytes, PRIVATE_THUMBNAIL_MAX_BYTES)
@@ -274,7 +271,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             studio = made.sealed;
             privateThumbnail = made.thumbnail;
           } else {
-            published = await app.verifier.runPrepare(async () => {
+            published = await studioTurn(app, request, upload.bytes, async () => {
               const prepared = await prepareOrFallback(upload.bytes, settings);
               await assertStableFingerprint(prepared.print.phash, prepared.thumbnail);
               return prepared;
@@ -298,15 +295,16 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
           }
           // A real picture with too much detail to fit the Chainlink fetch budget. Calling it
-          // "not an image" sent creators looking for a fault in a file that has none. A plain
-          // sealed prepare makes no thumbnail and never lands here; a privately re-checked one
-          // does, and is told a plain sealed registration still works.
+          // "not an image" sent creators looking for a fault in a file that has none. Every path
+          // can land here: a public prepare and a plain sealed one by the thumbnail a re-check or
+          // an unseal would publish, and both hear that sentence; a privately re-checked one by its
+          // private copy, and hears that a private re-check could never open it.
           if (error instanceof ThumbnailTooLarge) {
             request.log.warn({ url: request.url, reason }, "rejected: /prepare thumbnail too large");
             return reply.code(422).send({
               error: "thumbnail-too-large",
               limit: error.limit,
-              reason: upload.sealed ? PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON : THUMBNAIL_TOO_LARGE_REASON,
+              reason: upload.privateRecheck ? PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON : THUMBNAIL_TOO_LARGE_REASON,
             });
           }
           if (error instanceof FingerprintUnstable) {

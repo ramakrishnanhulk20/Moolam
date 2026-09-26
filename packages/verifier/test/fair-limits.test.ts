@@ -4,7 +4,8 @@
 // for a URL fetch and for an upload. A socket whose body stops arriving is closed after the idle
 // limit and gives its share back, while a request whose body is in stays open past that limit as
 // it waits on a match. At the match gate one key holds one slot at a time, and /prepare keeps a
-// slot of its own that verifies can never take.
+// slot of its own that verifies can never take. A caller turned away hears a busy service in
+// general words (WO-185a follow-up).
 // Callers are told apart by X-Forwarded-For, believed here because TRUST_PROXY names loopback.
 // Does NOT cover /prepare, /edit and /unseal taking a share (test/studio-ceiling.test.ts), the
 // ceiling's plain rules (test/upload-ceiling.test.ts), or the 180 second whole-request limit, which
@@ -57,6 +58,7 @@ vi.mock("../src/match.js", async (importOriginal) => {
 const { MAX_UPLOAD_BYTES } = await import("../src/env.js");
 const { CALLER_CEILING_BYTES, UPLOAD_CEILING_BYTES, heldUploads } = await import("../src/routes/shared.js");
 const { buildServer } = await import("../src/server.js");
+const { Busy } = await import("../src/generate/gate.js");
 const { makeImage, multipartBody } = await import("./helpers.js");
 
 const FIRST = "203.0.113.1";
@@ -326,4 +328,11 @@ describe("V74: fair turns at the match gate", () => {
     }
     expect((await inject(FOURTH, third)).status).toBe(200);
   }, 60_000);
+
+  it("says busy in general words when no turn comes free, naming no generation slot", () => {
+    // The fair gate throws it for verifies, prepares, edits and unseals, none of which draw anything.
+    const message = new Busy(30_000).message;
+    expect(message).toMatch(/busy/);
+    expect(message).not.toMatch(/generation/);
+  });
 });

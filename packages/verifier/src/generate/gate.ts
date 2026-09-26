@@ -1,10 +1,13 @@
-/** Too many generations were already in flight for this caller's wait to be worth serving. */
+/**
+ * The service was too busy for this caller's wait to be worth serving. Both gates throw it: the
+ * one in front of every picture decode and the one in front of drawing.
+ */
 export class Busy extends Error {
   /** A queue this long is the service being unavailable for a moment, not the caller's mistake. */
   readonly statusCode = 503;
 
   constructor(waitedMs: number) {
-    super(`no generation slot came free within ${Math.round(waitedMs / 1000)} seconds`);
+    super(`the service was busy and nothing came free for this request within ${Math.round(waitedMs / 1000)} seconds`);
     this.name = "Busy";
   }
 }

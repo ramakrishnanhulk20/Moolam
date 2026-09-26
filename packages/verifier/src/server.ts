@@ -9,7 +9,8 @@ import type { x402HTTPResourceServer } from "@x402/core/server";
 import Fastify, { type FastifyError, type FastifyInstance, type FastifyRequest } from "fastify";
 import type { PrivyKeys } from "./auth/privy.js";
 import { rateLimitKey } from "./limits/addressKey.js";
-import { checkRegistry } from "./boot/registryChecks.js";
+import { REGISTRY_RETRY_MS, checkRegistry, watchRegistry, type GeneratorCheck } from "./boot/registryChecks.js";
+import { ensureSigner } from "./c2pa.js";
 import { consentReader, offlineConsentReader, type ConsentReader } from "./consentRead.js";
 import { disputeReader, offlineDisputeReader, type DisputeReader } from "./disputeRead.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSweepMode } from "./env.js";
@@ -136,6 +137,25 @@ const liveRecord: UnsealRecordFinder = async (passportId) =>
     lookup: { timeoutMs: SEALED_LOOKUP_MS },
     read: { timeoutMs: SEALED_LOOKUP_MS },
   });
+
+/** The three routes that sign a picture's C2PA manifest, and so need a signer that loads. */
+const SIGNING_ROUTES = ["prepare", "generate", "edit"] as const;
+
+/**
+ * Why a signing route is off on a host whose signer did not load, as /health says it. The paths and
+ * the loader's own words stay in the boot log: a path on this host is nothing a caller should read.
+ */
+const SIGNER_OFF_REASON = "this host could not load its C2PA signing certificate and key, so it cannot sign a picture";
+
+/** Why the signer cannot load, in words safe for the boot log, or undefined when it loads. */
+async function signerProblemNow(): Promise<string | undefined> {
+  try {
+    await ensureSigner();
+    return undefined;
+  } catch (error) {
+    return safeReason(error);
+  }
+}
 
 /** The multipart parser's code for a body with more text fields than the limit below allows. */
 const FIELDS_LIMIT = "FST_FIELDS_LIMIT";
@@ -393,6 +413,10 @@ export function sourceFromEnv(): PassportSource {
  * signer the creator granted, so it is mounted on the same terms and says once at boot when it is
  * off. It does not need an image model key: nothing is drawn.
  *
+ * All three of those sign a C2PA manifest, so the signing certificate and key are loaded once here
+ * before any of them is registered. A host whose signer does not load leaves the three off, says
+ * why in the boot log, and lists them under `routesOff`, exactly as it would for a missing key.
+ *
  * The unseal and sealed routes are mounted on the same condition as prepare, so a
  * host that can run the studio can read what the studio registered. The two that
  * read a holder's wallets from Privy, POST /unseal and POST /sealed/forget, also
@@ -416,8 +440,9 @@ export function sourceFromEnv(): PassportSource {
  * by its own timeout and answers "unavailable" when its source does not.
  *
  * Throws when the source cannot be read or holds malformed records, when x402 is on without a
- * base URL to quote, when EXPECT_ROUTES names a route this host cannot mount, and when the
- * registry check finds the chain disagreeing with what this host would sign.
+ * base URL to quote, when EXPECT_ROUTES names a route this host cannot mount, a signing route whose
+ * signer did not load among them, and when the registry check finds the chain disagreeing with what
+ * this host would sign.
  */
 export async function buildServer(
   options: {
@@ -434,7 +459,8 @@ export async function buildServer(
     consent?: ConsentReader;
     dispute?: DisputeReader;
     picture?: PictureReader;
-    checks?: { registry?: () => Promise<void> };
+    /** Replaces the registry check, and how long a check that could not read the chain waits to try again. */
+    checks?: { registry?: () => Promise<void>; retryMs?: number };
     /** Replaces the idle and whole-request limits on a body that is arriving, for tests. */
     timeouts?: { idleMs?: number; requestMs?: number };
     recheck?: {
@@ -550,18 +576,36 @@ export async function buildServer(
   }
 
   const payments = options.payments ?? (env.X402_ENABLED ? paymentServerFromEnv() : undefined);
-  const mounts: Record<ExpectedRoute, boolean> = {
+  const configured: Record<ExpectedRoute, boolean> = {
     prepare: options.prepare !== undefined || canPrepare,
     generate: options.generate !== undefined || canGenerate,
     edit: options.edit !== undefined || canEdit,
     "verify/paid": payments !== undefined,
   };
 
+  // The signer is checked once, here, and only on a host that would mount a route that signs. A
+  // signer that cannot load turns those three routes off the way a missing PINATA_JWT does, so
+  // /verify and the re-check queue, which sign nothing, still serve (review pass 8, V73).
+  const signerProblem =
+    configured.prepare || configured.generate || configured.edit ? await signerProblemNow() : undefined;
+  const signs = signerProblem === undefined;
+  const mounts: Record<ExpectedRoute, boolean> = {
+    prepare: configured.prepare && signs,
+    generate: configured.generate && signs,
+    edit: configured.edit && signs,
+    "verify/paid": configured["verify/paid"],
+  };
+  const signingOff = SIGNING_ROUTES.filter((route) => configured[route] && !signs).map((route) => ({
+    route: `POST /${route}`,
+    reason: SIGNER_OFF_REASON,
+  }));
+
   // Unsealing needs what a prepare needs, a token to pin with and an app id to check creators
   // against, so it rides on the same condition rather than on a name of its own in EXPECT_ROUTES.
-  // The two routes that read the holder's wallets from Privy also need the app secret (V10): a
-  // caller that hands in its own keys is trusted to have stubbed that read.
-  const canUnseal = options.unseal !== undefined || mounts.prepare;
+  // It signs nothing, so a signer that cannot load leaves it on. The two routes that read the
+  // holder's wallets from Privy also need the app secret (V10): a caller that hands in its own keys
+  // is trusted to have stubbed that read.
+  const canUnseal = options.unseal !== undefined || configured.prepare;
   const canReadHolders =
     options.unseal !== undefined || options.sealed !== undefined || env.PRIVY_APP_SECRET !== undefined;
   const routesOff =
@@ -573,6 +617,9 @@ export async function buildServer(
       : [];
 
   const refusals = env.EXPECT_ROUTES.filter((route) => !mounts[route]).map((route) => {
+    if (configured[route] && signerProblem !== undefined) {
+      return `${route} needs a signing certificate and key that load, and this host's did not: ${signerProblem}`;
+    }
     const missing = missingVariablesFor(route);
     return `${route} needs ${missing.length === 0 ? "settings this host does not have" : missing.join(", ")}`;
   });
@@ -584,13 +631,23 @@ export async function buildServer(
   // this host's settings produces signatures the chain rejects one image at a time. Read it once
   // here instead. The default reads the chain, so it is only used for a route the environment
   // itself mounts, and never under a test runner: a caller that wires the route with its own keys
-  // passes its own check.
+  // passes its own check. A chain that cannot be read closes /generate until a re-check can,
+  // rather than stopping a service whose free verify route needs no chain at all (V76).
   const defaultCheck =
     canGenerate && env.NODE_ENV !== "test" ? async (): Promise<void> => await checkRegistry(env) : undefined;
   const registryCheck = options.checks?.registry ?? defaultCheck;
+  let generator: GeneratorCheck | undefined;
   if (mounts.generate && registryCheck !== undefined) {
-    await registryCheck();
+    const watching = await watchRegistry(registryCheck, {
+      retryMs: options.checks?.retryMs ?? REGISTRY_RETRY_MS,
+      log: app.log,
+    });
+    generator = watching;
+    app.addHook("onClose", async () => {
+      watching.stop();
+    });
   }
+  const generatorClosed = (): string | undefined => generator?.closed();
 
   // One counter per server, not per module, so two servers in one test file never share a budget.
   app.decorate(
@@ -633,17 +690,28 @@ export async function buildServer(
     consent,
     dispute,
     picture,
-    routes: [
-      "verify",
-      ...(mounts["verify/paid"] ? ["verify/paid"] : []),
-      ...(mounts.prepare ? ["prepare"] : []),
-      ...(mounts.generate ? ["generate"] : []),
-      ...(mounts.edit ? ["edit"] : []),
-      ...(canUnseal && canReadHolders ? ["unseal"] : []),
-      ...(canUnseal ? ["sealed"] : []),
-      "health",
-    ],
-    routesOff,
+    // Read on every call, because /generate opens once a registry re-check reads the chain.
+    get routes(): string[] {
+      const generating = mounts.generate && generatorClosed() === undefined;
+      return [
+        "verify",
+        ...(mounts["verify/paid"] ? ["verify/paid"] : []),
+        ...(mounts.prepare ? ["prepare"] : []),
+        ...(generating ? ["generate"] : []),
+        ...(mounts.edit ? ["edit"] : []),
+        ...(canUnseal && canReadHolders ? ["unseal"] : []),
+        ...(canUnseal ? ["sealed"] : []),
+        "health",
+      ];
+    },
+    get routesOff(): { route: string; reason: string }[] {
+      const unchecked = generatorClosed();
+      return [
+        ...signingOff,
+        ...(unchecked === undefined ? [] : [{ route: "POST /generate", reason: unchecked }]),
+        ...routesOff,
+      ];
+    },
   });
 
   // The studio uploads straight from the browser, so the app's own origin has to
@@ -694,8 +762,14 @@ export async function buildServer(
     privateCopy: copies,
   });
 
+  if (signerProblem !== undefined) {
+    app.log.warn({ reason: signerProblem }, "signer did not load: every route that signs is off");
+  }
+
   if (mounts.prepare) {
     await app.register(prepareRoutes, options.prepare ?? {});
+  } else if (configured.prepare) {
+    app.log.warn(`prepare route off: ${SIGNER_OFF_REASON}`);
   } else {
     app.log.info(
       "prepare route off: it needs PINATA_JWT to pin and PRIVY_APP_ID to check creators, and this host has neither or only one",
@@ -703,7 +777,9 @@ export async function buildServer(
   }
 
   if (mounts.generate) {
-    await app.register(generateRoutes, options.generate ?? {});
+    await app.register(generateRoutes, { ...(options.generate ?? {}), closed: generatorClosed });
+  } else if (configured.generate) {
+    app.log.warn(`generate route off: ${SIGNER_OFF_REASON}`);
   } else {
     app.log.info(
       "generate route off: on top of what /prepare needs it wants an image model key, PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY and GENERATOR_WALLET_ID, and this host is missing at least one",
@@ -712,6 +788,8 @@ export async function buildServer(
 
   if (mounts.edit) {
     await app.register(editRoutes, options.edit ?? {});
+  } else if (configured.edit) {
+    app.log.warn(`edit route off: ${SIGNER_OFF_REASON}`);
   } else {
     app.log.info(
       "edit route off: on top of what /prepare needs it wants PRIVY_APP_SECRET, PRIVY_AUTHORIZATION_KEY, PRIVY_EDIT_SIGNER_ID and PRIVY_EDIT_POLICY_ID, and this host is missing at least one",

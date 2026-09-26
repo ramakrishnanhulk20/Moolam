@@ -58,7 +58,7 @@ import {
   type UnsealRecord,
 } from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField, underUploadCeiling } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, studioTurn, textField, underUploadCeiling } from "./shared.js";
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
@@ -603,7 +603,7 @@ async function unsealHeld(
     // (review pass 6, V50).
     let work: { print: Fingerprint; thumbnail?: ThumbnailAttempt; unstable?: FingerprintUnstable };
     try {
-      work = await app.verifier.runPrepare(async () => {
+      work = await studioTurn(app, request, upload.bytes, async () => {
         const print = await fingerprint(upload.bytes);
         if (!fingerprintMatches(print, passport)) {
           return { print };

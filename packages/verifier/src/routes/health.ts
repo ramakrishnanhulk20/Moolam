@@ -4,8 +4,12 @@ import type { FastifyInstance } from "fastify";
  * Liveness, how much the index is holding, which routes this host mounted, and how much of
  * today's budget for everyone is gone.
  *
- * The route list is what makes a misconfigured deploy visible from outside: a host missing a key
- * still boots and still verifies, and `routes` is where that shows up.
+ * The route list is what makes a misconfigured deploy visible from outside: a host missing a key,
+ * or one whose signer did not load, still boots and still verifies, and `routes` is where that
+ * shows up. `routes` names only what is on right now, and `off` names each route of a mounted
+ * family that is not, with a plain reason: a signing route whose signer did not load, /generate
+ * while the registry on chain has not yet been read, and the two holder routes without
+ * PRIVY_APP_SECRET. A reason never carries a path, an address or a key.
  *
  * `limits` is how the daily check sees a ceiling coming before creators do, and `limits.links` is how
  * many read links to private copies were minted today against GLOBAL_LINKS_PER_DAY (B15). It counts
@@ -27,6 +31,7 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
     records: app.verifier.index.size,
     version: app.verifier.version,
     routes: app.verifier.routes,
+    off: app.verifier.routesOff,
     limits: app.globalDay.counts(),
     recheck: app.recheck.counts(),
     sweep: app.privateSweep.state(),

@@ -43,7 +43,7 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField, underUploadCeiling } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, studioTurn, textField, underUploadCeiling } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -305,7 +305,7 @@ async function append(
       // The edit is judged by the thumbnail the runner's re-check will hash, exactly as /prepare
       // judges an upload, because this route pins and sends the edit itself (review pass 6,
       // intake 2).
-      edited = await app.verifier.runPrepare(async () => {
+      edited = await studioTurn(app, request, upload.bytes, async () => {
         const prepared = await prepareOrFallback(upload.bytes, {
           title: upload.title,
           claimGenerator: CLAIM_GENERATOR,

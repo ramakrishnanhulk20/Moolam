@@ -91,7 +91,7 @@ subscribe("http.server.response.created", (message) => {
   responses.set(request, response);
 });
 
-/** The hold covering each body readUpload or readFromUrl handed back, found again by verifyBytes. */
+/** The hold covering each body readUpload, readFromUrl or underUploadCeiling handed back, found again by verifyBytes and studioTurn. */
 const holds = new WeakMap<Buffer, UploadHold>();
 
 /** The share a body takes: the length it declares when that is a whole number, capped at the upload cap, or the cap. */
@@ -254,8 +254,9 @@ export async function readUpload(request: FastifyRequest): Promise<Buffer> {
  *
  * The share is taken before `read` touches the body, at the Content-Length or at the upload cap
  * when there is none, shrinks to the file once it is in, and comes back when the response closes,
- * or at once when `read` throws. /prepare, /edit and /unseal used to buffer whole uploads outside
- * the ceiling while they waited on the gate (review pass 8, V69).
+ * or at once when `read` throws. A caller who hangs up while studioTurn still has the bytes keeps
+ * the share counted until that work lets go of them. /prepare, /edit and /unseal used to buffer
+ * whole uploads outside the ceiling while they waited on the gate (review pass 8, V69).
  *
  * Throws UploadsBusy (503) past either ceiling without calling `read`, and whatever `read` throws.
  */
@@ -267,10 +268,50 @@ export async function underUploadCeiling<T extends { bytes: Buffer }>(
   try {
     const upload = await read();
     trim(hold, upload.bytes.length);
+    holds.set(upload.bytes, hold);
     return upload;
   } catch (error) {
     giveBack(hold);
     throw error;
+  }
+}
+
+/** Counts one more piece of work using a held body, so a hang-up cannot give its share back yet. */
+function using(bytes: Buffer): () => void {
+  const hold = holds.get(bytes);
+  if (hold === undefined) {
+    return () => undefined;
+  }
+  hold.matching += 1;
+  return () => {
+    hold.matching -= 1;
+    if (hold.answered && hold.matching === 0) {
+      giveBack(hold);
+    }
+  };
+}
+
+/**
+ * Runs a studio route's picture work, from /prepare, /edit or /unseal, in the gate's studio lane.
+ *
+ * The turn is taken under the caller's rate-limit key, so one caller holds one studio turn at a
+ * time while other callers go ahead of its second request, as verifyBytes does for verifies. The
+ * upload stays counted against the ceiling for as long as the work waits or runs, even when the
+ * caller has hung up, because the bytes are still in memory until the work lets go of them.
+ *
+ * Throws Busy when no turn came free in time, and whatever `task` throws.
+ */
+export async function studioTurn<T>(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  bytes: Buffer,
+  task: () => Promise<T>,
+): Promise<T> {
+  const done = using(bytes);
+  try {
+    return await app.verifier.runPrepare(task, rateLimitKey(request.ip));
+  } finally {
+    done();
   }
 }
 
@@ -391,9 +432,7 @@ export async function verifyBytes(
   bytes: Buffer,
 ): Promise<{ result: unknown; manifest: unknown }> {
   const hold = holds.get(bytes);
-  if (hold !== undefined) {
-    hold.matching += 1;
-  }
+  const done = using(bytes);
   let result: MatchResult;
   let manifest: ManifestSummary;
   try {
@@ -421,12 +460,7 @@ export async function verifyBytes(
     );
     throw new ServiceFault(SERVICE_FAULT_REASON, { cause: error });
   } finally {
-    if (hold !== undefined) {
-      hold.matching -= 1;
-      if (hold.answered && hold.matching === 0) {
-        giveBack(hold);
-      }
-    }
+    done();
   }
 
   return { result: renderResult(result), manifest: renderManifest(manifest) };

@@ -42,6 +42,7 @@ import {
 import {
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
   THUMBNAIL_MAX_BYTES,
+  THUMBNAIL_TOO_LARGE_REASON,
   makeThumbnail,
 } from "../src/prepare.js";
 import {
@@ -516,10 +517,15 @@ describe("a sealed registration with a private re-check", () => {
     expect(since(mark)).toHaveLength(0);
 
     // Sealed without the re-check it is refused too, since an unseal could never publish it
-    // (review pass 8, intake 5, V72), and nothing is pinned either way.
+    // (review pass 8, intake 5, V72), and nothing is pinned either way. It hears the plain
+    // sentence, never the private re-check one, which would tell it plain sealing still works.
     const plain = await prepare("did:privy:private-noise-plain", { title: "Static", kind: "human", sealed: "true" }, NOISE);
     expect(plain.statusCode).toBe(422);
-    expect(plain.json()).toMatchObject({ error: "thumbnail-too-large", limit: THUMBNAIL_MAX_BYTES });
+    expect(plain.json()).toEqual({
+      error: "thumbnail-too-large",
+      limit: THUMBNAIL_MAX_BYTES,
+      reason: THUMBNAIL_TOO_LARGE_REASON,
+    });
     expect(since(mark)).toHaveLength(0);
   }, 120_000);
 

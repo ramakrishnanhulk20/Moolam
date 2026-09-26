@@ -707,13 +707,19 @@ describe("POST /prepare", () => {
     expect(response.body).not.toContain(".pem");
   }, 60_000);
 
-  it("does not mount at all on a host that cannot sign, rather than answering 200 unsigned", async () => {
+  it("does not mount at all on a host that cannot sign, rather than answering 200 unsigned, and the host still boots", async () => {
     const message = "no signing certificate or key found at /srv/moolam/chain.cert.pem and /srv/moolam/signer.key.pem";
     stubs.ensureSigner.mockRejectedValueOnce(new SignerUnavailable(message));
 
-    await expect(
-      buildServer({ source: emptySource, logger: false, prepare: { keys: verifying } }),
-    ).rejects.toThrow(SignerUnavailable);
+    const unsigned = await buildServer({ source: emptySource, logger: false, prepare: { keys: verifying } });
+    try {
+      expect((await unsigned.inject({ method: "POST", url: "/prepare" })).statusCode).toBe(404);
+      expect(unsigned.verifier.routes).not.toContain("prepare");
+      expect(unsigned.verifier.routesOff.map((off) => off.route)).toContain("POST /prepare");
+      expect(JSON.stringify(unsigned.verifier.routesOff)).not.toContain("/srv/moolam");
+    } finally {
+      await unsigned.close();
+    }
   });
 
   it("refuses an empty title, an over-long title and a kind the studio does not take", async () => {

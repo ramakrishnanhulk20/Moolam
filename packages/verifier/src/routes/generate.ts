@@ -213,16 +213,22 @@ const SEALED_FILE_REFUSED = {
  * budget, 422 `fingerprint-unstable` when a drawing's own thumbnail is further from its pHash than
  * the match threshold, which pins nothing and keeps both slots spent, 502 `model-failed`,
  * `pin-failed` or `sign-failed` when one of
- * the three outside services will not play, 503 `busy` when no drawing slot came free, and 503
+ * the three outside services will not play, 503 `busy` when no drawing slot came free, 503
  * `service-fault` with the sentence /verify uses when this service failed while fingerprinting a
- * drawing, which keeps both slots spent because the drawing was made and paid for.
+ * drawing, which keeps both slots spent because the drawing was made and paid for, and 503
+ * `generator-unchecked` with a plain reason, before anything else is looked at, while this host
+ * has not read the registry on chain to confirm the agent's settings.
  *
  * A picture the provider never drew gives the daily slot back. A call that timed out or died in
  * the middle of drawing may have been billed, so that one keeps its slot.
  */
 export async function generateRoutes(
   app: FastifyInstance,
-  options: { keys?: PrivyKeys } = {},
+  options: {
+    keys?: PrivyKeys;
+    /** Why the generator may not draw right now, or undefined when it may: see watchRegistry. */
+    closed?: () => string | undefined;
+  } = {},
 ): Promise<void> {
   const gate = waitingGate(MAX_CONCURRENT_GENERATIONS, MAX_GATE_WAIT_MS);
   const quota = dailyQuota(env.GENERATE_PER_DAY);
@@ -230,6 +236,14 @@ export async function generateRoutes(
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
   app.post("/generate", async (request: FastifyRequest, reply: FastifyReply) => {
+    // Asked before the token, so a host that cannot vouch for its own signatures spends nothing,
+    // not even a Privy key lookup, on a request it will not serve.
+    const closed = options.closed?.();
+    if (closed !== undefined) {
+      request.log.warn({ url: request.url }, "rejected: /generate the registry is not checked yet");
+      return reply.code(503).send({ error: "generator-unchecked", reason: closed });
+    }
+
     const identity = await identify(request, options.keys);
     if (identity === undefined) {
       request.log.warn({ ip: request.ip, url: request.url }, "rejected: /generate unauthorized");
@@ -306,7 +320,9 @@ export async function generateRoutes(
       // A drawing too detailed for the thumbnail budget was drawn and paid for, so the day's
       // ceiling for everyone stays spent. The creator's own slot comes back: the same prompt would
       // likely hit the same wall, and they should not pay a second slot to learn that (review
-      // pass 5, intake 4). Only a private re-check makes a thumbnail of a sealed drawing.
+      // pass 5, intake 4). A plain sealed drawing lands here too, judged by the thumbnail an
+      // unseal would publish, and hears the same sentence as a public one; only a private re-check
+      // hears its own.
       if (error instanceof ThumbnailTooLarge) {
         quota.release(identity.userId, ticket);
         request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /generate thumbnail too large");
