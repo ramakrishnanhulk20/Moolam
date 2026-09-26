@@ -1,0 +1,67 @@
+Simulation receivers on Monad mainnet (chain 143), deployed 2026-09-26
+Two SimulationReceiver contracts, one for the public workflow (moolam-verifier) and one for the confidential workflow (moolam-sealed-verifier). Each accepts a report only in a transaction signed by Moolam's CRE wallet, fixed in the constructor with no setter. Source: packages/contracts/src/SimulationReceiver.sol at commit b73a0fd; deploy script packages/contracts/script/DeploySimulationReceivers.s.sol, sent by the deployer wallet 0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c, which owns the policy. The run was rehearsed on a local Anvil fork of Monad mainnet first (fork at block 108102573, rehearsal passed), then sent live at 2026-09-26 06:02:59 UTC.
+Honest note: these receivers serve reports sent from Chainlink's CRE simulator (cre workflow simulate --broadcast) through Chainlink's MockKeystoneForwarder. A verdict written through them is one machine's word, with no network consensus. They stop strangers, not the holder of the CRE key.
+
+addresses
+public SimulationReceiver   0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95   block 108102667   tx 0x85c1b5866ed5c6a86cee597bfce12650bd46b8f1feb35e033f193a161650a50d
+sealed SimulationReceiver   0x52b8fE549B432920eeB061c26cAc5c2D527657f6   block 108102676   tx 0xb27bee3fd4e401c10c5012b85db8afe8a40ed944b14736fcd0e49896e764221a
+registry                    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+policy                      0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821
+forwarder (both)            0x9eF6468C5f37b976E57d52054c693269479A784d   Chainlink's MockKeystoneForwarder, which reads back "MockKeystoneForwarder 1.0.0"
+sending wallet (both)       0xC79620AF233a4434b03f6B57239F8A9E71B3C178   the CRE wallet
+
+read back from Monad mainnet after the live run
+                            public receiver                                sealed receiver
+owner()                     0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c     0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c
+getForwarderAddress()       0x9eF6468C5f37b976E57d52054c693269479A784d     0x9eF6468C5f37b976E57d52054c693269479A784d
+SENDING_WALLET()            0xC79620AF233a4434b03f6B57239F8A9E71B3C178     0xC79620AF233a4434b03f6B57239F8A9E71B3C178
+REGISTRY()                  0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0     0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
+getExpectedAuthor()         0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa     0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa
+getExpectedWorkflowName()   0x34623863303364663034 (moolam-verifier)       0x64323036636163326334 (moolam-sealed-verifier)
+getExpectedWorkflowId()     0x1111111111111111111111111111111111111111111111111111111111111111 on both
+MAX_FUTURE_SKEW()           3600                                           3600
+listed in the policy yet    false                                          false
+a report not sent by the CRE wallet: reverts WrongSendingWallet on both
+Read again on 2026-09-26 at block 108,104,923 from the public RPC: SENDING_WALLET, getForwarderAddress and MAX_FUTURE_SKEW as above on both.
+
+verified through Sourcify (status read on 2026-09-26 from https://sourcify-api-monad.blockvision.org/v2/verify/<job id>)
+public   job b8f67553-91f5-4c7b-bea8-147e1a822968   match, creationMatch match, runtimeMatch match, verified 2026-09-26T06:04:28Z
+sealed   job 8aaaad60-b0fb-4eae-8bd4-16c7d2820c34   match, creationMatch match, runtimeMatch match, verified 2026-09-26T06:04:29Z
+
+the two old receivers, off the policy in the same run
+old public MoolamReceiver   0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04   removeReceiver tx 0xf0d63ff4dec3211a552bcc0b4d63cd2aead9d0c5e59e965f5b17a995746bc31a, block 108102728
+old sealed MoolamReceiver   0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A   removeReceiver tx 0xad29012339a471ddbb7c3e12e5480615e772bec5f2931ec8ab9d89d7d035ae88, block 108102734
+isReceiver before the run: true, true. After it: false, false (read back by the script, and again at block 108,104,923).
+Every attestation they wrote stays on chain under their address; the registry stores the receiver with each one. The passport pages keep their names for that history.
+
+the queue
+public receiver   queueAddReceiver tx 0x92e91eb81093dfc29abef25e1f36f63ec86d6189eadb5ac5e5f7b1a34c263fe5, block 108102716, change id 0x4a6589bbfe8f5fa2957f2af550bfbd2be0f9dd227eaf72cad106b34562f0480d, executeAfter 1790489029 (2026-09-27 06:03:49 UTC)
+sealed receiver   queueAddReceiver tx 0x14d02fed42be834b37d4605b30228eb37cb74e76a8926d6614f5a3c3d3fa2aa1, block 108102722, change id 0x018889ea4917dceb5f7d660f8c3e1f841a29495f48996a865678f3e3fdd65139, executeAfter 1790489031 (2026-09-27 06:03:51 UTC)
+The listing can run from 2026-09-27 06:03:51 UTC, after the policy's public 24 hour wait. Until then none of the four receivers is listed and no new re-check can be written. The workflow configs and the re-check runner switch to the new addresses only after the listing has run.
+
+the pins, set by the owner after deployment (all status 1)
+public: setExpectedAuthor 0xb7c242190a8b582be9ad02fdca71f926ba2517b7dcdf7fc399cbbc72ebd024ce, setExpectedWorkflowName 0x631810cf44c8e6dad3fb55acd7887f0b415694dc79fb12f1b42ef21734c47695, setExpectedWorkflowId 0x73908a81fe7a67ad06f53d91628a14da55887a8338624a9035915e1ade55ac8f
+sealed: setExpectedAuthor 0xf034084dab67e8fdf1a24ef99f43412b5ada3acfb6a166e27b0f8430b1fc163f, setExpectedWorkflowName 0x490a2191f54d890602f69da979d8a0516b9d65aab3c323f1bac6c1bf2f9f7041, setExpectedWorkflowId 0x8a94a6afb3706c942f2daf5178dbb804dd466f39860a17fb73f62ecb3fa0e5fe
+
+the fork proof, before the deploy (packages/contracts/test/fork/SimulationReceiver.fork.t.sol and a rehearsed Anvil fork of Monad mainnet)
+The Monsoon passport's real report calldata, re-aimed at the new public receiver and sent through Chainlink's real MockKeystoneForwarder on the fork, with the 1,000,000 gas limit the CLI sets:
+CRE wallet:                        status 1, gasUsed 214,105, ReportProcessed result 1, attestation count 1 -> 2, floor 1789368638
+stranger 0x...dEaD:                status 1, gasUsed 70,785, ReportProcessed result 0, attestation count unchanged
+CRE wallet again, same calldata:   status 1, gasUsed 79,404, ReportProcessed result 0, unchanged (the replay is refused by the floor)
+The mock never reverts: a refused report is a successful transaction whose ReportProcessed event says false. A verdict landed only when the registry's VerificationAttested log is in the receipt.
+forge test -n monad with the fork tests on: 212 passed, 0 failed, 0 skipped. New: SimulationReceiverTest 13, SimulationReceiverFuzzTest 3 (512 runs each), SimulationReceiverForkTest 7.
+
+gas
+report call through the real mock, fork test (excludes base and calldata cost): public 243,102, sealed 243,126
+whole report transaction on the fork: 214,105 from the CRE wallet; Monad bills the gas limit, and the real report receipts read gasUsed 1,000,000
+the live deploy, 12 transactions at 102.2 gwei, all status 1:
+  2 x create SimulationReceiver     1,110,887 each
+  2 x setExpectedAuthor             57,059 each
+  setExpectedWorkflowName           73,086 (public), 73,179 (sealed)
+  2 x setExpectedWorkflowId         57,178 each
+  2 x queueAddReceiver              147,352 each
+  2 x removeReceiver                47,104 each
+  total                             2,985,425 gas, 0.305110435 MON (the deployer read 34.105980814931409695 MON before and 33.800870379931409695 MON after)
+
+the kill switch, immediate, one per receiver, sent by the policy owner
+cast send 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 'removeReceiver(address)' <receiver> --rpc-url "$MONAD_MAINNET_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY"

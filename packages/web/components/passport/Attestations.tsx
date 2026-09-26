@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { BitGrid } from "@/components/BitGrid";
-import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
+import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { isPrivateRecheck } from "@/lib/chain/receivers";
 import { bitsApart, bitsOf, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
 import { heldReportDelivery, type ReportDelivery } from "@/lib/chain/reports";
@@ -195,7 +196,10 @@ function Row({
   const source = attestationSource(attestation.receiver);
   // Written only by the confidential workflow that reads Moolam's private copy
   // of a sealed picture, so it is named for that and for where it really ran.
-  const isPrivate = attestation.receiver.toLowerCase() === addresses.sealedReceiver.toLowerCase();
+  const isPrivate = isPrivateRecheck(attestation.receiver);
+  // A writer this app cannot name keeps its row and its numbers, in words that
+  // claim nothing about who ran it or how.
+  const unknown = source === "other";
 
   const recomputed = phashWord(attestation.recomputed);
   const registeredBits = bitsOf(phash);
@@ -240,7 +244,7 @@ function Row({
         </>
       ) : (
         <p className="mt-5 max-w-[24ch] font-display text-[clamp(1.3rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-          {source === "chainlink" ? t("byChainlink") : t("byReceiver")}
+          {unknown ? t("unknown.lead") : t("byChainlink")}
         </p>
       )}
 
@@ -252,11 +256,11 @@ function Row({
           set one grid lower than the other. */}
       <div data-grid-pair className="mt-8 grid max-w-[30rem] grid-cols-2 items-end gap-x-5 sm:gap-x-10">
         <BitGrid bits={registeredBits} label={t("registeredGrid")} tone="original" />
-        <BitGrid bits={recomputedBits} against={registeredBits} label={t("recomputedGrid")} tone="recomputed" />
+        <BitGrid bits={recomputedBits} against={registeredBits} label={unknown ? t("unknown.recomputedGrid") : t("recomputedGrid")} tone="recomputed" />
       </div>
 
       <p className="mt-8 max-w-[44ch] font-display text-[clamp(1.1rem,2.4vw,1.7rem)] font-semibold leading-[1.15] tracking-[-0.03em]">
-        {t.rich(isPrivate ? "private.verdict" : "verdict", {
+        {t.rich(isPrivate ? "private.verdict" : unknown ? "unknown.verdict" : "verdict", {
           bits: counted,
           apart: (chunks) => <span className={counted === 0 ? "text-verified" : "text-failed"}>{chunks}</span>,
         })}
@@ -266,17 +270,19 @@ function Row({
           does not recognise says nothing at all, because a wrong label here
           would be worse than no label. A private re-check in the simulator
           already said so in its limit line, in plainer words, so it is not
-          told twice. */}
-      {delivery === "unknown" || (isPrivate && delivery === "simulation") ? null : (
+          told twice. Anyone can send a report through the simulation
+          forwarder, so for a writer the app cannot name, which forwarder
+          carried it says nothing about Chainlink and is left out. */}
+      {unknown || delivery === "unknown" || (isPrivate && delivery === "simulation") ? null : (
         <p className="mt-5 max-w-[52ch] border-s-2 border-line ps-4 text-xs leading-relaxed text-text-faint">
           {delivery === "simulation" ? t("delivery.simulation") : t("delivery.network")}
         </p>
       )}
 
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
-        <Field label={t("distanceLabel")} value={t("distance", { distance: attestation.distance })} />
+        <Field label={unknown ? t("unknown.distanceLabel") : t("distanceLabel")} value={t("distance", { distance: attestation.distance })} />
         <Field label={t("at")} value={when} />
-        <Field label={source === "chainlink" ? t("receiver") : t("byReceiver")} value={shortHex(attestation.receiver)} href={`${MONAD_EXPLORER}/address/${attestation.receiver}`} />
+        <Field label={unknown ? t("unknown.field") : t("receiver")} value={shortHex(attestation.receiver)} href={`${MONAD_EXPLORER}/address/${attestation.receiver}`} />
       </dl>
 
       {/* When this row wraps, which it does on a phone, the two links need
@@ -308,7 +314,7 @@ function Row({
       </div>
 
       <p className="mt-5 max-w-[56ch] border-t border-line pt-5 text-xs leading-relaxed text-text-faint">
-        {isPrivate ? t("private.gridNote") : t("gridNote")}
+        {isPrivate ? t("private.gridNote") : unknown ? t("unknown.gridNote") : t("gridNote")}
       </p>
     </li>
   );

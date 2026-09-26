@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import sharp from "sharp";
-import { CACHE_TAGS, HOLD_SECONDS, addresses, reason } from "@/lib/chain/client";
+import { CACHE_TAGS, HOLD_SECONDS, reason } from "@/lib/chain/client";
+import { chainlinkReceivers } from "@/lib/chain/receivers";
 import { heldConsent, plainStatement } from "@/lib/chain/consent";
 import { heldPassportRecord } from "@/lib/chain/registry";
 import { offeredSamples } from "@/lib/data/offeredSamples";
@@ -131,7 +132,7 @@ async function readRecord(): Promise<Read<Omit<Finding, keyof Said>>> {
         thumbnail: art.thumbnailUrl ?? null,
         registeredAt: Number(passport.registeredAt),
         phash: passport.phash.toString(),
-        recheck: chainlinkRecheck(attestations, [addresses.receiver, addresses.sealedReceiver]),
+        recheck: chainlinkRecheck(attestations, chainlinkReceivers()),
       },
     };
   } catch (error) {

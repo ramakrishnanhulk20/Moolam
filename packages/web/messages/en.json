@@ -518,7 +518,6 @@
         "simulation": "Chainlink's CRE simulator ran this check on one machine, not across Chainlink's network.",
         "network": "Several independent Chainlink machines ran this check and agreed on the answer."
       },
-      "byReceiver": "Written on Monad by another approved checker",
       "openTx": "Transaction {hash}",
       "noTransaction": "The transaction link is not available for this one yet.",
       "registeredGrid": "Registered fingerprint",
@@ -534,7 +533,15 @@
         "verdict": "A Chainlink confidential workflow opened the small private copy Moolam kept of this picture and compared its fingerprint: <apart>{bits} of 64 bits apart</apart>.",
         "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is what the workflow computed from Moolam's small private copy. Every cell that disagrees is marked."
       },
-      "sealedBody": "Anyone can say a picture is theirs. This part is different: a second party checks the fingerprint and writes the answer on Monad. A sealed picture has no public file, so its check is private: when its creator asked for one, a Chainlink confidential workflow opens the small private copy Moolam keeps and compares the fingerprint."
+      "sealedBody": "Anyone can say a picture is theirs. This part is different: a second party checks the fingerprint and writes the answer on Monad. A sealed picture has no public file, so its check is private: when its creator asked for one, a Chainlink confidential workflow opens the small private copy Moolam keeps and compares the fingerprint.",
+      "unknown": {
+        "lead": "Written on Monad by an unknown writer",
+        "field": "Unknown writer",
+        "distanceLabel": "What the writer reported",
+        "recomputedGrid": "The writer's fingerprint",
+        "verdict": "An unknown writer reported this fingerprint for the picture: <apart>{bits} of 64 bits apart</apart>.",
+        "gridNote": "The first grid is the fingerprint the registry stored when this picture was registered. The second is the one this writer reported. Moolam does not know who runs this writer, so this page does not say how the picture was checked."
+      }
     },
     "children": {
       "heading": "Edits",
@@ -1020,7 +1027,8 @@
       "notYet": "Not yet",
       "unread": "Could not be read",
       "noAgent": "No agent named",
-      "chainlink": "Chainlink"
+      "chainlink": "Chainlink",
+      "unknownWriter": "Unknown writer"
     }
   },
   "agent": {
@@ -1655,7 +1663,6 @@
     "running": "Running now: the workflow is fetching the picture and hashing it again.",
     "done": "Done: re-checked {at}.",
     "doneNoTime": "Done: this picture has been re-checked.",
-    "openTx": "Transaction {hash}",
     "failed": "Could not run: {reason}",
     "failedNoReason": "Could not run. The runner did not say why.",
     "stopped": "This page stopped checking after half an hour. Press to look again.",
@@ -1664,7 +1671,8 @@
       "queued": "In the queue",
       "running": "Running",
       "done": "Done",
-      "failed": "Could not run"
+      "failed": "Could not run",
+      "pending": "Pending"
     },
     "failure": {
       "noPassport": "The verify service does not know this passport, so there is nothing for it to re-check.",
@@ -1676,7 +1684,9 @@
     },
     "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. Requests are run in batches, usually within the day.",
     "runningPrivate": "Running now: the workflow is opening the private copy and comparing the fingerprint.",
-    "recheckedOn": "Re-checked on {date}"
+    "recheckedOn": "Re-checked on {date}",
+    "claimedTx": "Claimed transaction {hash}",
+    "confirming": "The queue says this run finished. It shows as done once its verdict can be read on Monad."
   },
   "mine": {
     "title": "Your pictures",

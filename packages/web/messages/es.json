@@ -518,7 +518,6 @@
         "simulation": "El simulador CRE de Chainlink hizo esta comprobación en una sola máquina, no en la red de Chainlink.",
         "network": "Varias máquinas independientes de Chainlink hicieron esta comprobación y coincidieron en la respuesta."
       },
-      "byReceiver": "Escrita en Monad por otro verificador aprobado",
       "openTx": "Transacción {hash}",
       "noTransaction": "El enlace a la transacción todavía no está disponible para esta.",
       "registeredGrid": "Huella registrada",
@@ -534,7 +533,15 @@
         "verdict": "Un flujo confidencial de Chainlink abrió la copia privada pequeña que Moolam guardaba de esta imagen y comparó su huella: <apart>{bits} de 64 bits de diferencia</apart>.",
         "gridNote": "La primera cuadrícula es la huella que el registro guardó cuando se registró la imagen. La segunda es la que el flujo calculó a partir de la copia privada pequeña de Moolam. Cada celda que no coincide queda marcada."
       },
-      "sealedBody": "Cualquiera puede decir que una imagen es suya. Esta parte es distinta: un tercero comprueba la huella y escribe la respuesta en Monad. Una imagen sellada no tiene archivo público, así que su revisión es privada: si su autor la pidió, un flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam y compara la huella."
+      "sealedBody": "Cualquiera puede decir que una imagen es suya. Esta parte es distinta: un tercero comprueba la huella y escribe la respuesta en Monad. Una imagen sellada no tiene archivo público, así que su revisión es privada: si su autor la pidió, un flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam y compara la huella.",
+      "unknown": {
+        "lead": "Escrita en Monad por un autor desconocido",
+        "field": "Autor desconocido",
+        "distanceLabel": "Lo que informó el autor",
+        "recomputedGrid": "Huella del autor",
+        "verdict": "Un autor desconocido informó esta huella para la imagen: <apart>{bits} de 64 bits de diferencia</apart>.",
+        "gridNote": "La primera cuadrícula es la huella que el registro guardó al registrar esta imagen. La segunda es la que informó este autor. Moolam no sabe quién opera este autor, así que esta página no dice cómo se revisó la imagen."
+      }
     },
     "children": {
       "heading": "Ediciones",
@@ -1020,7 +1027,8 @@
       "notYet": "Todavía no",
       "unread": "No se pudo leer",
       "noAgent": "Ningún agente indicado",
-      "chainlink": "Chainlink"
+      "chainlink": "Chainlink",
+      "unknownWriter": "Autor desconocido"
     }
   },
   "agent": {
@@ -1655,7 +1663,6 @@
     "running": "En marcha: el flujo está trayendo la imagen y calculando la huella otra vez.",
     "done": "Hecho: revisada el {at}.",
     "doneNoTime": "Hecho: esta imagen ya fue revisada.",
-    "openTx": "Transacción {hash}",
     "failed": "No se pudo ejecutar: {reason}",
     "failedNoReason": "No se pudo ejecutar. No se dio ningún motivo.",
     "stopped": "Esta página dejó de mirar al cabo de media hora. Pulsa para mirar otra vez.",
@@ -1664,7 +1671,8 @@
       "queued": "En la cola",
       "running": "En marcha",
       "done": "Hecho",
-      "failed": "No se pudo"
+      "failed": "No se pudo",
+      "pending": "Pendiente"
     },
     "failure": {
       "noPassport": "El servicio de verificación no conoce este pasaporte, así que no hay nada que revisar.",
@@ -1676,7 +1684,9 @@
     },
     "notePrivate": "Gratis. El flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam, compara la huella y escribe su veredicto en Monad. Las peticiones se atienden por tandas, normalmente el mismo día.",
     "runningPrivate": "En marcha: el flujo está abriendo la copia privada y comparando la huella.",
-    "recheckedOn": "Recomprobada el {date}"
+    "recheckedOn": "Recomprobada el {date}",
+    "claimedTx": "Transacción declarada {hash}",
+    "confirming": "La cola dice que esta revisión terminó. Aparecerá como hecha cuando su veredicto se pueda leer en Monad."
   },
   "mine": {
     "title": "Tus imágenes",

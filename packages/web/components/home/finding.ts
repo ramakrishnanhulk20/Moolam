@@ -1,6 +1,7 @@
 import type { Hex } from "viem";
 import type { Statement } from "@/lib/chain/consent";
 import { bitsApart } from "@/lib/chain/fingerprint";
+import { addressKey } from "@/lib/chain/receivers";
 
 /**
  * The shapes the home page's first screen draws, and the few rules it reads them by.
@@ -107,14 +108,14 @@ export interface AttestationRow {
  * The newest re-check a Chainlink workflow wrote.
  *
  * Any receiver the policy allows can write an attestation, so the list is not
- * all Chainlink. Only a row written through one of the two receivers the CRE
+ * all Chainlink. Only a row written through one of the receivers the CRE
  * workflows report into may carry that name on the screen.
  */
 export function chainlinkRecheck(rows: readonly AttestationRow[], receivers: readonly Hex[]): FindingRecheck | null {
-  const allowed = new Set(receivers.map((receiver) => receiver.toLowerCase()));
+  const allowed = new Set(receivers.map(addressKey));
   let newest: AttestationRow | null = null;
   for (const row of rows) {
-    if (!allowed.has(row.receiver.toLowerCase())) {
+    if (!allowed.has(addressKey(row.receiver))) {
       continue;
     }
     if (newest === null || row.at >= newest.at) {

@@ -125,28 +125,75 @@ cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive \
 Add `--broadcast` to send the attestation for real. The transaction is paid for by the CRE wallet
 `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`.
 
-### The receiver pin, and what a simulation needs
+### The receiver, and what a simulation needs
 
-`MoolamReceiver` accepts a report only when the call comes from the forwarder it is pointed at and
-the report metadata carries the workflow author and workflow name it is pinned to. Simulation signs
-reports with a local mock forwarder and stamps a placeholder author, so a pinned receiver refuses
-every simulated report.
+Chainlink's simulator does not deliver a report the way Chainlink's network does. A
+`cre workflow simulate --broadcast` run sends it through Chainlink's `MockKeystoneForwarder` at
+`0x9eF6468C5f37b976E57d52054c693269479A784d`, which checks no signature and builds the workflow
+metadata (id, owner, name) from bytes the caller supplied. The id and owner the simulator stamps are
+the same for everyone who runs this public workflow. A receiver that trusted the forwarder and the
+metadata alone would trust anyone with the CLI.
 
-The sequence that works for a broadcast run, all four steps sent by the deployer wallet, which owns
-the receiver:
+Since 2026-09-26 simulated reports have their own receivers, one per workflow, both
+`SimulationReceiver`:
 
-1. Clear the pin with `script/ConfigureReceiver.s.sol`, passing an empty workflow name and the zero
-   address as the author.
-2. Point the receiver at the simulation forwarder
-   `0x9eF6468C5f37b976E57d52054c693269479A784d` with `setForwarderAddress`.
-3. Run `cre workflow simulate ... --broadcast`.
-4. Put the production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` back, then re-pin the
-   author and the workflow name.
+| Workflow | Receiver |
+| --- | --- |
+| `moolam-verifier` | [`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) |
+| `moolam-sealed-verifier` | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) |
 
-Step 4 is not optional. Leaving the receiver on the simulation forwarder would let anyone holding
-that mock forwarder push an attestation. `VerifierPolicy` is the second lock: the registry only
-accepts `attest` from receivers on its list, so even a forwarder mistake cannot forge a passport
-record.
+Both listen to the mock forwarder, both carry the simulator's own stamps as their pins (author
+`0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa`, workflow id `0x11..11` and the workflow's name), which
+keep the other workflow out and nothing else, and both are bound to one sending wallet.
+
+**The sending-wallet rule.** Each receiver holds `SENDING_WALLET`, the CRE wallet
+`0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, set in the constructor with no setter. The first check
+in `_processReport` is `tx.origin == SENDING_WALLET`, and anything else reverts `WrongSendingWallet`
+before a byte of the report is read. It reads `tx.origin`, the wallet that signed the transaction,
+because the mock adds a hop: `msg.sender` at the receiver is always Chainlink's public mock
+contract, and the metadata is whatever the caller typed. The signing wallet is the one value on
+that path an outsider cannot produce, so a copy of this workflow run from someone else's machine
+cannot write a verdict. The CRE wallet signs nothing but reports, because a contract it called could
+reach the receiver inside the same transaction and borrow that authority.
+
+**The mock never reverts.** When a receiver refuses a report, the mock catches the refusal: the
+transaction succeeds with status 1 and its `ReportProcessed` event carries `false`. A report
+transaction's status therefore says nothing about whether a verdict landed. Success is judged by the
+registry's `VerificationAttested` log for that passport in the same receipt. The re-check runner
+checks for that log before it tells the queue a run is done, and the website shows a finished
+request as done only when the registry holds a re-check written at or after the request.
+
+**The one hour bound.** A report's `executedAt` must be newer than the last one the receiver
+accepted for that passport, and at most one hour past the block's time (`MAX_FUTURE_SKEW`, 3,600
+seconds). Without the upper bound, one report stamped far in the future would set a floor the honest
+workflow could never pass again. With it, the most any accepted report can do is hold a passport for
+an hour.
+
+**The kill switch.** Taking a receiver off `VerifierPolicy` takes effect at once, with no wait:
+
+```bash
+cast send 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 'removeReceiver(address)' <receiver>   --rpc-url "$MONAD_MAINNET_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY"
+```
+
+Only the policy's owner, the deployer wallet, can send it, and that key is never on the re-check
+machine. The registry refuses the removed receiver as soon as that transaction lands. Listing one
+again goes through the policy's public 24 hour queue.
+
+**Where it stands.** Both were deployed on 2026-09-26 in blocks 108,102,667 and 108,102,676,
+verified through Sourcify, and queued in the policy, where the listing can run from 2026-09-27
+06:03:51 UTC. The two older receivers came off the policy in the same run. The workflow configs still
+name the older receivers and switch to these only after the listing has run. A receiver for a real Chainlink network
+deployment would be a separate contract, listed through the same queue: this one has no switch that
+turns the sending-wallet rule off. The deploy record is
+[simulation-receivers.txt](../../proofs/simulation-receivers.txt).
+
+**Before 2026-09-26.** The first two receivers, both `MoolamReceiver`, listened to Chainlink's
+production forwarder and were pinned to the workflow author and name. A simulated report cannot pass
+that pin, so every broadcast run took four steps from the deployer wallet: clear the pin, point the
+receiver at the mock forwarder, run the simulation, then put the production forwarder
+`0x76c9cf548b4179F8901cda1f8623568b58215E62` back and pin again. While a run was open, anyone with the
+simulator could have driven the receiver. Every verdict written that way stays on chain under the old
+receiver's address, and the passport page still names it.
 
 A broadcast run on 2026-09-08 recomputed `0x233ccc7872442123` at distance 0 and wrote the report in
 transaction `0x3a814ab20ac8c2e1c8d46c944c612722c6878a80cd823235afd2434de88796a0`. Reading the

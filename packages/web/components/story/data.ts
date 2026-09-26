@@ -11,6 +11,7 @@ import {
 } from "@/lib/chain/client";
 import type { Consent, Statement } from "@/lib/chain/consent";
 import { heldConsent, plainStatement } from "@/lib/chain/consent";
+import { isChainlinkReceiver } from "@/lib/chain/receivers";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
 import { generatorRecord, latestPassports } from "@/lib/data/passports";
 import { activeSource, envioUrl } from "@/lib/data/source";
@@ -560,7 +561,9 @@ export function focalFrom(row: IndexRow, picture: string, reason: FocalReason): 
 
 /**
  * This passport's own re-check, held for a minute. Two chain reads, and a new
- * one lands minutes apart at best, so a minute costs the story nothing.
+ * one lands minutes apart at best, so a minute costs the story nothing. The
+ * story calls it a Chainlink CRE workflow's, so a row from a writer the app
+ * cannot name is passed over rather than given that name.
  */
 const heldAttestation = unstable_cache(async (id: string) => await focalAttestation(id as Hex), ["moolam-story-recheck"], {
   revalidate: HOLD_SECONDS,
@@ -569,7 +572,7 @@ const heldAttestation = unstable_cache(async (id: string) => await focalAttestat
 
 async function focalAttestation(id: Hex): Promise<StoryAttestation | null> {
   const written = await getAttestations(id).catch(() => []);
-  const newest = written.at(-1);
+  const newest = written.filter((row) => isChainlinkReceiver(row.receiver)).at(-1);
   if (newest === undefined) {
     return null;
   }

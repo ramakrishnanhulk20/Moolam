@@ -29,13 +29,14 @@ const CONTROL = [
   "running",
   "done",
   "doneNoTime",
-  "openTx",
+  "claimedTx",
+  "confirming",
   "failed",
   "failedNoReason",
   "stopped",
 ];
 
-const STAMP = ["sending", "queued", "running", "done", "failed"];
+const STAMP = ["sending", "queued", "running", "pending", "done", "failed"];
 
 const FAILURE = ["noPassport", "sealed", "queueFull", "rateLimited", "notAnswering", "unknown"];
 
@@ -52,7 +53,7 @@ export const RECHECK_PLACEHOLDERS = {
   "recheck.already": ["{at}", "{position}"],
   "recheck.alreadyWaiting": ["{at}"],
   "recheck.done": ["{at}"],
-  "recheck.openTx": ["{hash}"],
+  "recheck.claimedTx": ["{hash}"],
   "recheck.failed": ["{reason}"],
 };
 

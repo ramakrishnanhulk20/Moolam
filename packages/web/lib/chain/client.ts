@@ -32,6 +32,14 @@ export const addresses = {
    * from it is a private re-check and is labelled as one.
    */
   sealedReceiver: "0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A" as Hex,
+  /**
+   * The two receivers deployed on 2026-09-26 for reports sent from Chainlink's
+   * simulator. Each accepts a report only in a transaction signed by Moolam's
+   * CRE wallet. The two above were taken off the policy the same day and keep
+   * every verdict they wrote; the record is proofs/simulation-receivers.txt.
+   */
+  simulationReceiver: "0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95" as Hex,
+  sealedSimulationReceiver: "0x52b8fE549B432920eeB061c26cAc5c2D527657f6" as Hex,
 } as const;
 
 /** The block the registry was deployed in: nothing it emitted exists before it. */

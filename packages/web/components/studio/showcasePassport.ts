@@ -1,7 +1,7 @@
 import type { Hex } from "viem";
 import { readCard } from "@/components/agent/card";
 import { FINDING_ID, chainlinkRecheck, type FindingRecheck } from "@/components/home/finding";
-import { addresses } from "@/lib/chain/client";
+import { chainlinkReceivers } from "@/lib/chain/receivers";
 import { heldConsent, plainStatement, type Statement } from "@/lib/chain/consent";
 import { heldAgent, heldPassportRecord } from "@/lib/chain/registry";
 import { heldArt } from "@/lib/data/passports";
@@ -60,7 +60,7 @@ export async function showcasePassport(id: Hex = FINDING_ID): Promise<ShowcasePa
       agentName: name === "" ? null : name,
       statement:
         said === null ? null : said.stated && said.entry !== null ? plainStatement(said.entry.consent) : "none",
-      recheck: chainlinkRecheck(attestations, [addresses.receiver, addresses.sealedReceiver]),
+      recheck: chainlinkRecheck(attestations, chainlinkReceivers()),
     };
   } catch {
     return null;

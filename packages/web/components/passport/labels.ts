@@ -1,4 +1,4 @@
-import { addresses } from "@/lib/chain/client";
+import { chainlinkReceivers as namedChainlinkReceivers, sameAddress } from "@/lib/chain/receivers";
 
 /** Who wrote a re-check back to the registry. */
 export type AttestationSource = "chainlink" | "other";
@@ -6,18 +6,17 @@ export type AttestationSource = "chainlink" | "other";
 /**
  * Names the writer of an attestation.
  *
- * Moolam's two receivers are the only addresses its Chainlink CRE workflows
- * write through: the public workflow's, and the one the confidential workflow
- * uses for a sealed picture's private re-check. An attestation from either is a
- * Chainlink re-check and is labelled as one. Any other allowed receiver is shown
- * by its address instead of being given a name this app cannot prove.
+ * Moolam's Chainlink CRE workflows write only through the receivers in
+ * lib/chain/receivers.ts: today's two, bound to the CRE wallet, and the two they
+ * replaced, whose verdicts stay on chain. An attestation from any of them is a
+ * Chainlink re-check and is labelled as one. Any other writer is shown as an
+ * unknown writer, by its address, and never given a name this app cannot prove.
  */
 export function attestationSource(
   receiver: string,
-  chainlinkReceivers: readonly string[] = [addresses.receiver, addresses.sealedReceiver],
+  chainlinkReceivers: readonly string[] = namedChainlinkReceivers(),
 ): AttestationSource {
-  const writer = receiver.toLowerCase();
-  return chainlinkReceivers.some((known) => known.toLowerCase() === writer) ? "chainlink" : "other";
+  return chainlinkReceivers.some((known) => sameAddress(known, receiver)) ? "chainlink" : "other";
 }
 
 /** Where a passport stands, in the cold status family: never the brand accent. */

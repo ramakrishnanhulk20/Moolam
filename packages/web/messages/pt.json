@@ -519,7 +519,6 @@
         "simulation": "O simulador CRE da Chainlink fez esta checagem em uma única máquina, não na rede da Chainlink.",
         "network": "Várias máquinas independentes da Chainlink fizeram esta checagem e concordaram na resposta."
       },
-      "byReceiver": "Gravada na Monad por outro verificador aprovado",
       "openTx": "Transação {hash}",
       "noTransaction": "O link da transação ainda não está disponível para esta.",
       "registeredGrid": "Impressão registrada",
@@ -535,7 +534,15 @@
         "verdict": "Um fluxo confidencial da Chainlink abriu a cópia privada pequena que a Moolam guardava desta imagem e comparou a impressão: <apart>{bits} de 64 bits de diferença</apart>.",
         "gridNote": "A primeira grade é a impressão que o registro guardou quando a imagem foi registrada. A segunda é a que o fluxo calculou da cópia privada pequena da Moolam. Cada célula diferente fica marcada."
       },
-      "sealedBody": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um terceiro confere a impressão e grava a resposta na Monad. Uma imagem lacrada não tem arquivo público, então a conferência dela é privada: se quem a criou pediu, um fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda e compara a impressão."
+      "sealedBody": "Qualquer um pode dizer que uma imagem é sua. Esta parte é diferente: um terceiro confere a impressão e grava a resposta na Monad. Uma imagem lacrada não tem arquivo público, então a conferência dela é privada: se quem a criou pediu, um fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda e compara a impressão.",
+      "unknown": {
+        "lead": "Gravada na Monad por um autor desconhecido",
+        "field": "Autor desconhecido",
+        "distanceLabel": "O que o autor informou",
+        "recomputedGrid": "Impressão do autor",
+        "verdict": "Um autor desconhecido informou esta impressão para a imagem: <apart>{bits} de 64 bits de diferença</apart>.",
+        "gridNote": "A primeira grade é a impressão que o registro guardou quando esta imagem foi registrada. A segunda é a que este autor informou. A Moolam não sabe quem opera este autor, então esta página não diz como a imagem foi conferida."
+      }
     },
     "children": {
       "heading": "Edições",
@@ -1021,7 +1028,8 @@
       "notYet": "Ainda não",
       "unread": "Não foi possível ler",
       "noAgent": "Nenhum agente indicado",
-      "chainlink": "Chainlink"
+      "chainlink": "Chainlink",
+      "unknownWriter": "Autor desconhecido"
     }
   },
   "agent": {
@@ -1656,7 +1664,6 @@
     "running": "Rodando agora: o fluxo está buscando a imagem e calculando a impressão de novo.",
     "done": "Pronto: reconferida em {at}.",
     "doneNoTime": "Pronto: esta imagem já foi reconferida.",
-    "openTx": "Transação {hash}",
     "failed": "Não deu para rodar: {reason}",
     "failedNoReason": "Não deu para rodar. Ninguém disse por quê.",
     "stopped": "Esta página parou de olhar depois de meia hora. Toque para olhar de novo.",
@@ -1665,7 +1672,8 @@
       "queued": "Na fila",
       "running": "Rodando",
       "done": "Pronto",
-      "failed": "Não rodou"
+      "failed": "Não rodou",
+      "pending": "Pendente"
     },
     "failure": {
       "noPassport": "O serviço de verificação não conhece este passaporte, então não há o que reconferir.",
@@ -1677,7 +1685,9 @@
     },
     "notePrivate": "Gratuito. O fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda, compara a impressão e grava o veredito dele na Monad. Os pedidos são atendidos em lotes, em geral no mesmo dia.",
     "runningPrivate": "Rodando agora: o fluxo está abrindo a cópia privada e comparando a impressão.",
-    "recheckedOn": "Reconferida em {date}"
+    "recheckedOn": "Reconferida em {date}",
+    "claimedTx": "Transação informada {hash}",
+    "confirming": "A fila diz que esta conferência terminou. Ela aparece como pronta quando o veredito puder ser lido na Monad."
   },
   "mine": {
     "title": "Suas imagens",

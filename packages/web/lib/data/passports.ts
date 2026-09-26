@@ -11,6 +11,7 @@ import {
   registryAbi,
 } from "@/lib/chain/client";
 import { USE_FIELDS, asUseWord, type Consent, type Statement, type UseField } from "@/lib/chain/consent";
+import { isChainlinkReceiver } from "@/lib/chain/receivers";
 import { passportTag } from "@/lib/chain/registry";
 import { reaches, type DisputedReach } from "./lineage";
 import { withUnseal } from "./unseal";
@@ -672,7 +673,7 @@ export interface ExplorePassport {
   metadataURI: string;
   manifest: boolean;
   rechecked: boolean;
-  /** True when one of those re-checks was written through the Chainlink receiver. */
+  /** True when one of those re-checks was written through one of the Chainlink receivers. */
   chainlink: boolean;
   /** The mark the registry itself wrote, which names one passport and nothing under it. */
   disputed: boolean;
@@ -797,9 +798,7 @@ async function readPage(
     metadataURI: row.metadataURI,
     manifest: row.manifestHash.toLowerCase() !== NO_MANIFEST,
     rechecked: row.attestationCount > 0,
-    chainlink: row.attestations.some((one) =>
-      [addresses.receiver, addresses.sealedReceiver].some((known) => known.toLowerCase() === one.receiver.toLowerCase()),
-    ),
+    chainlink: row.attestations.some((one) => isChainlinkReceiver(one.receiver)),
     disputed: row.disputed,
     inheritedDisputed: row.disputed || reaches(filter.disputedReach, row),
     generatorId: row.generator?.id ?? null,

@@ -518,7 +518,6 @@
         "simulation": "Der CRE-Simulator von Chainlink hat diese Prüfung auf einem einzigen Rechner ausgeführt, nicht im Netz von Chainlink.",
         "network": "Mehrere unabhängige Rechner von Chainlink haben diese Prüfung ausgeführt und sich auf die Antwort geeinigt."
       },
-      "byReceiver": "Auf Monad von einer anderen zugelassenen Prüfstelle geschrieben",
       "openTx": "Transaktion {hash}",
       "noTransaction": "Der Link zur Transaktion ist für diesen Eintrag noch nicht verfügbar.",
       "registeredGrid": "Registrierter Fingerabdruck",
@@ -534,7 +533,15 @@
         "verdict": "Ein vertraulicher Chainlink-Workflow hat die kleine private Kopie geöffnet, die Moolam von diesem Bild behielt, und seinen Fingerabdruck verglichen: <apart>{bits} von 64 Bit auseinander</apart>.",
         "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den der Workflow aus der kleinen privaten Kopie von Moolam berechnet hat. Jede Zelle, die abweicht, ist markiert."
       },
-      "sealedBody": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: eine zweite Stelle prüft den Fingerabdruck und schreibt die Antwort auf Monad. Ein versiegeltes Bild hat keine öffentliche Datei, also ist seine Prüfung privat: wenn sein Urheber darum gebeten hat, öffnet ein vertraulicher Chainlink-Workflow die kleine private Kopie, die Moolam behält, und vergleicht den Fingerabdruck."
+      "sealedBody": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: eine zweite Stelle prüft den Fingerabdruck und schreibt die Antwort auf Monad. Ein versiegeltes Bild hat keine öffentliche Datei, also ist seine Prüfung privat: wenn sein Urheber darum gebeten hat, öffnet ein vertraulicher Chainlink-Workflow die kleine private Kopie, die Moolam behält, und vergleicht den Fingerabdruck.",
+      "unknown": {
+        "lead": "Auf Monad von einem unbekannten Absender geschrieben",
+        "field": "Unbekannter Absender",
+        "distanceLabel": "Was der Absender gemeldet hat",
+        "recomputedGrid": "Fingerabdruck des Absenders",
+        "verdict": "Ein unbekannter Absender hat diesen Fingerabdruck für das Bild gemeldet: <apart>{bits} von 64 Bit auseinander</apart>.",
+        "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung dieses Bildes gespeichert hat. Das zweite ist der, den dieser Absender gemeldet hat. Moolam weiß nicht, wer diesen Absender betreibt, deshalb sagt diese Seite nicht, wie das Bild geprüft wurde."
+      }
     },
     "children": {
       "heading": "Bearbeitungen",
@@ -1020,7 +1027,8 @@
       "notYet": "Noch nicht",
       "unread": "Nicht lesbar",
       "noAgent": "Kein Agent genannt",
-      "chainlink": "Chainlink"
+      "chainlink": "Chainlink",
+      "unknownWriter": "Unbekannter Absender"
     }
   },
   "agent": {
@@ -1655,7 +1663,6 @@
     "running": "Läuft gerade: der Workflow holt das Bild und berechnet den Fingerabdruck neu.",
     "done": "Fertig: am {at} nachgeprüft.",
     "doneNoTime": "Fertig: dieses Bild wurde nachgeprüft.",
-    "openTx": "Transaktion {hash}",
     "failed": "Konnte nicht laufen: {reason}",
     "failedNoReason": "Konnte nicht laufen. Es wurde kein Grund genannt.",
     "stopped": "Diese Seite hat nach einer halben Stunde aufgehört nachzusehen. Zum erneuten Nachsehen drücken.",
@@ -1664,7 +1671,8 @@
       "queued": "In der Warteschlange",
       "running": "Läuft",
       "done": "Fertig",
-      "failed": "Nicht gelaufen"
+      "failed": "Nicht gelaufen",
+      "pending": "Ausstehend"
     },
     "failure": {
       "noPassport": "Der Prüfdienst kennt diesen Pass nicht, es gibt also nichts nachzuprüfen.",
@@ -1676,7 +1684,9 @@
     },
     "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Anfragen werden gebündelt abgearbeitet, meist noch am selben Tag.",
     "runningPrivate": "Läuft gerade: der Workflow öffnet die private Kopie und vergleicht den Fingerabdruck.",
-    "recheckedOn": "Nachgeprüft am {date}"
+    "recheckedOn": "Nachgeprüft am {date}",
+    "claimedTx": "Gemeldete Transaktion {hash}",
+    "confirming": "Die Warteschlange meldet diesen Lauf als fertig. Als fertig erscheint er erst, wenn sein Ergebnis auf Monad lesbar ist."
   },
   "mine": {
     "title": "Deine Bilder",

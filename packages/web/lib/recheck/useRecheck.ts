@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { readRecheckStatus, requestRecheck } from "@/lib/verifier/client";
+import { newestChainlinkRecheck } from "./chain";
 import {
+  confirmOnChain,
   describeRecheckFailure,
   idleRecheck,
   nextPollDelay,
@@ -38,6 +40,18 @@ export interface RecheckControl {
     request: () => void;
     check: () => void;
   };
+}
+
+/**
+ * The queue's answer, with "done" held back until the registry agrees (R10).
+ * A chain read that fails reads as not yet, never as done.
+ */
+async function checkedOnChain(passportId: Hex, state: RecheckState): Promise<RecheckState> {
+  if (state.kind !== "done") {
+    return state;
+  }
+  const newest = await newestChainlinkRecheck(passportId).catch(() => undefined);
+  return confirmOnChain(state, newest);
 }
 
 export function useRecheckRequest({
@@ -83,6 +97,7 @@ export function useRecheckRequest({
     stop.current = controller;
 
     const lookup = await readRecheckStatus(passportId, { signal: controller.signal });
+    const next = lookup.state === "known" ? await checkedOnChain(passportId, stateFromStatus(lookup.status)) : idleRecheck;
 
     // An answer to a call that has since been dropped belongs to nobody: the
     // call that replaced it owns the flag and will clear it itself.
@@ -99,7 +114,7 @@ export function useRecheckRequest({
     if (lookup.state === "unknown") {
       return;
     }
-    settle(lookup.state === "none" ? idleRecheck : stateFromStatus(lookup.status));
+    settle(next);
   }, [passportId, settle]);
 
   const request = useCallback(() => {
@@ -114,8 +129,9 @@ export function useRecheckRequest({
     void (async () => {
       try {
         const answer = await requestRecheck(passportId, { signal: controller.signal });
+        const next = await checkedOnChain(passportId, stateFromRequest(answer));
         if (live.current && stop.current === controller) {
-          settle(stateFromRequest(answer));
+          settle(next);
           // The minute timer starts again from this press rather than from
           // whatever the page was doing before it.
           setAsked(0);

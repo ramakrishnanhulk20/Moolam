@@ -47,6 +47,22 @@ vi.mock("@/lib/verifier/client", async (importOriginal) => ({
   },
 }));
 
+/**
+ * The registry's answer to "when was the newest Chainlink re-check written",
+ * in unix seconds. Null is none on chain; "throw" is a read that failed.
+ */
+const registry = vi.hoisted(() => ({ newest: null as number | null | "throw", reads: 0 }));
+
+vi.mock("@/lib/recheck/chain", () => ({
+  newestChainlinkRecheck: async () => {
+    registry.reads += 1;
+    if (registry.newest === "throw") {
+      throw new Error("the RPC endpoint did not answer");
+    }
+    return registry.newest;
+  },
+}));
+
 const { VerifierError } = await import("@/lib/verifier/client");
 const { useRecheckRequest } = await import("@/lib/recheck/useRecheck");
 
@@ -126,6 +142,8 @@ beforeEach(() => {
   service.nextLookup = { state: "none" };
   service.nextRequest = undefined;
   service.throwOnRequest = undefined;
+  registry.newest = null;
+  registry.reads = 0;
   held.control = null;
   held.done = 0;
   shown = "visible";
@@ -276,6 +294,7 @@ describe("what one press does", () => {
 describe("the two ways a request ends", () => {
   it("shows the verdict and asks the page to read itself again, exactly once", async () => {
     service.nextLookup = { state: "known", status: { status: "pending", requestedAt: 1_790_000_000_000 } };
+    registry.newest = 1_790_000_290;
     mount();
     await flush();
 
@@ -362,6 +381,7 @@ describe("how often it asks", () => {
   });
 
   it("asks nothing once the answer has arrived", async () => {
+    registry.newest = 1_790_000_290;
     service.nextLookup = {
       state: "known",
       status: { status: "done", requestedAt: 1_790_000_000_000, finishedAt: 1_790_000_300_000, reportTx: TX },
@@ -402,5 +422,90 @@ describe("how often it asks", () => {
     look("visible");
     await minutes(1);
     expect(service.reads).toBe(2);
+  });
+});
+
+describe("done is the chain's word, not the queue's (R10)", () => {
+  const finished = {
+    state: "known",
+    status: { status: "done", requestedAt: 1_790_000_000_000, finishedAt: 1_790_000_300_000, reportTx: TX, matched: true, distance: 0 },
+  };
+
+  it("shows pending when the service says done and the chain holds no re-check from after the request", async () => {
+    service.nextLookup = finished;
+    registry.newest = 1_789_999_000;
+    mount();
+    await flush();
+
+    expect(registry.reads).toBe(1);
+    expect(state().kind).toBe("confirming");
+    // The page is not asked to read itself again, and nothing the queue claimed is carried.
+    expect(held.done).toBe(0);
+    expect("reportTx" in state()).toBe(false);
+  });
+
+  it("shows pending when the chain holds no re-check at all, or could not be read", async () => {
+    service.nextLookup = finished;
+    registry.newest = null;
+    mount();
+    await flush();
+    expect(state().kind).toBe("confirming");
+
+    registry.newest = "throw";
+    act(() => control().actions.check());
+    await flush();
+    expect(state().kind).toBe("confirming");
+    expect(held.done).toBe(0);
+  });
+
+  it("keeps watching while it waits, and shows done with the chain's date once the verdict lands", async () => {
+    service.nextLookup = finished;
+    registry.newest = null;
+    mount();
+    await flush();
+    expect(state().kind).toBe("confirming");
+
+    registry.newest = 1_790_000_420;
+    await minutes(1);
+
+    const now = state();
+    expect(now.kind).toBe("done");
+    if (now.kind === "done") {
+      expect(now.finishedAt).toBe(1_790_000_420_000);
+      expect(now.reportTx).toBe(TX);
+    }
+    expect(held.done).toBe(1);
+  });
+
+  it("counts a re-check written in the same second as the request", async () => {
+    service.nextLookup = { ...finished, status: { ...finished.status, requestedAt: 1_790_000_000_900 } };
+    registry.newest = 1_790_000_000;
+    mount();
+    await flush();
+    expect(state().kind).toBe("done");
+  });
+
+  it("holds back a press the queue answers with done until the chain agrees", async () => {
+    mount();
+    await flush();
+
+    service.nextRequest = { passportId: PASSPORT, status: "done", requestedAt: 1_790_000_000_000 };
+    registry.newest = null;
+    act(() => control().actions.request());
+    await flush();
+    expect(state().kind).toBe("confirming");
+
+    registry.newest = 1_790_000_010;
+    act(() => control().actions.request());
+    await flush();
+    expect(state().kind).toBe("done");
+  });
+
+  it("never asks the chain about a request that is not finished", async () => {
+    service.nextLookup = { state: "known", status: { status: "running", requestedAt: 1_790_000_000_000 } };
+    mount();
+    await flush();
+    expect(state().kind).toBe("running");
+    expect(registry.reads).toBe(0);
   });
 });

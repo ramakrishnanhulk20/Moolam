@@ -520,7 +520,6 @@
         "simulation": "这次检查由 Chainlink 的 CRE 模拟器在一台机器上运行，没有在 Chainlink 的网络上运行。",
         "network": "多台相互独立的 Chainlink 机器运行了这次检查，并对答案达成一致。"
       },
-      "byReceiver": "由另一个获准的检查方写入 Monad",
       "openTx": "交易 {hash}",
       "noTransaction": "这一条的交易链接暂时还没有。",
       "registeredGrid": "登记时的指纹",
@@ -536,7 +535,15 @@
         "verdict": "一个 Chainlink 机密工作流打开了 Moolam 为这张图保留的小的私有副本，比对了指纹：<apart>64 位中差 {bits} 位</apart>。",
         "gridNote": "第一格是登记时注册表存下的指纹。第二格是工作流用 Moolam 的小私有副本算出来的。每一个对不上的小格都会标出来。"
       },
-      "sealedBody": "谁都能说一张图是自己的。这一部分不一样：由第三方核对指纹，并把答案写到 Monad 上。封存的图片没有公开文件，所以核对是私下进行的：如果创作者提出了要求，Chainlink 机密工作流会打开 Moolam 保留的小的私有副本，比对指纹。"
+      "sealedBody": "谁都能说一张图是自己的。这一部分不一样：由第三方核对指纹，并把答案写到 Monad 上。封存的图片没有公开文件，所以核对是私下进行的：如果创作者提出了要求，Chainlink 机密工作流会打开 Moolam 保留的小的私有副本，比对指纹。",
+      "unknown": {
+        "lead": "由未知写入方写入 Monad",
+        "field": "未知写入方",
+        "distanceLabel": "写入方报告的结果",
+        "recomputedGrid": "写入方的指纹",
+        "verdict": "一个未知写入方为这张图报告了这个指纹：<apart>64 位中差 {bits} 位</apart>。",
+        "gridNote": "第一个网格是这张图登记时注册表存下的指纹。第二个是这个写入方报告的指纹。Moolam 不知道这个写入方由谁运行，所以本页不说明这张图是怎样检查的。"
+      }
     },
     "children": {
       "heading": "编辑版本",
@@ -1022,7 +1029,8 @@
       "notYet": "尚未",
       "unread": "未能读取",
       "noAgent": "未注明智能体",
-      "chainlink": "Chainlink"
+      "chainlink": "Chainlink",
+      "unknownWriter": "未知写入方"
     }
   },
   "agent": {
@@ -1657,7 +1665,6 @@
     "running": "正在运行：工作流正在取回图片并重新计算指纹。",
     "done": "完成：{at} 已复核。",
     "doneNoTime": "完成：这张图片已经复核过。",
-    "openTx": "交易 {hash}",
     "failed": "没能运行：{reason}",
     "failedNoReason": "没能运行。没有说明原因。",
     "stopped": "这个页面在半小时后停止查看。按一下再看一次。",
@@ -1666,7 +1673,8 @@
       "queued": "在队列中",
       "running": "运行中",
       "done": "完成",
-      "failed": "没能运行"
+      "failed": "没能运行",
+      "pending": "待确认"
     },
     "failure": {
       "noPassport": "校验服务不认识这本护照，所以没有可复核的东西。",
@@ -1678,7 +1686,9 @@
     },
     "notePrivate": "免费。Chainlink 的机密工作流会打开 Moolam 保留的小的私有副本，比对指纹，并把判定写到 Monad 上。申请按批次执行，通常当天就有结果。",
     "runningPrivate": "正在运行：工作流正在打开私有副本并比对指纹。",
-    "recheckedOn": "已于 {date} 复核"
+    "recheckedOn": "已于 {date} 复核",
+    "claimedTx": "所报告的交易 {hash}",
+    "confirming": "队列显示这次复核已结束。等它的结论能在 Monad 上读到，才会显示为完成。"
   },
   "mine": {
     "title": "你的图片",

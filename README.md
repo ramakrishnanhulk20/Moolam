@@ -28,6 +28,7 @@ Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's
 - **Run one yourself.** With the CRE CLI signed in (`cre login`), this dry run sends nothing:
   `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive --trigger-index 0 --evm-tx-hash <a PassportRegistered tx> --evm-event-index 0`, from `packages/workflow`.
 - **The code.** [`packages/workflow/moolam-verifier`](packages/workflow/moolam-verifier) (public) and [`packages/workflow/moolam-sealed-verifier`](packages/workflow/moolam-sealed-verifier) (confidential), with the full walk-through in [the Chainlink workflow page](https://moolam.vercel.app/en/docs/developers/chainlink-workflow).
+- **Who can write one.** The receivers accept a simulated report only in a transaction signed by Moolam's own CRE wallet, so a copy of the public workflow cannot write a verdict.
 - **Where it stands.** All 17 real pictures, and 20 passports in all, carry a re-check written on Monad mainnet (index census, 2026-09-25). Every report was sent with `cre workflow simulate --broadcast` through the CRE simulation forwarder, because Moolam's CRE organisation does not have deploy access yet. Each passport card says so in plain words.
 
 ## Live on Monad mainnet
@@ -38,8 +39,10 @@ Chain 143. The first three were deployed in block 103054771 and MoolamConsent in
 | --- | --- | --- | --- |
 | MoolamRegistry | [`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0) | 103054771 | Sourcify match |
 | VerifierPolicy | [`0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821`](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 | Sourcify match |
-| MoolamReceiver | [`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 | Sourcify match |
-| MoolamReceiver, private re-checks | [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) | 107265126 | Sourcify match |
+| MoolamReceiver, retired from the policy on 2026-09-26, history kept | [`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 | Sourcify match |
+| MoolamReceiver, private re-checks, retired from the policy on 2026-09-26, history kept | [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) | 107265126 | Sourcify match |
+| SimulationReceiver, public re-checks, queued in the policy and listable from 2026-09-27 06:03 UTC | [`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) | 108102667 | Sourcify match |
+| SimulationReceiver, private re-checks, queued in the policy and listable from 2026-09-27 06:03 UTC | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) | 108102676 | Sourcify match |
 | MoolamConsent | [`0x1151E69a82947920546e779c4C8c785b2a3C1277`](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 | Sourcify match |
 | Verify service | [https://verifier-production-d76f.up.railway.app/health](https://verifier-production-d76f.up.railway.app/health) | Railway, from packages/verifier/Dockerfile | live |
 

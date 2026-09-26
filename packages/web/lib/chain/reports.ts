@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
 import { CACHE_TAGS, addresses, chain } from "./client";
+import { sameAddress } from "./receivers";
 
 /**
  * Which forwarder carried a CRE report to the receiver.
@@ -19,11 +20,11 @@ const DELIVERY_HOLD_SECONDS = 86_400;
 async function reportDelivery(txHash: Hex): Promise<ReportDelivery> {
   try {
     const transaction = await chain.getTransaction({ hash: txHash });
-    const to = transaction.to?.toLowerCase();
-    if (to === addresses.simulationForwarder.toLowerCase()) {
+    const to = transaction.to ?? "";
+    if (sameAddress(to, addresses.simulationForwarder)) {
       return "simulation";
     }
-    return to === addresses.forwarder.toLowerCase() ? "network" : "unknown";
+    return sameAddress(to, addresses.forwarder) ? "network" : "unknown";
   } catch {
     return "unknown";
   }

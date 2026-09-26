@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
+import { sameAddress } from "@/lib/chain/receivers";
 import { passportTag } from "@/lib/chain/registry";
 import { activeSource, envioUrl } from "@/lib/data/source";
 
@@ -112,7 +113,7 @@ export function transactionFor(
 ): Hex | undefined {
   const found = indexed.find(
     (row) =>
-      row.receiver.toLowerCase() === attestation.receiver.toLowerCase() &&
+      sameAddress(row.receiver, attestation.receiver) &&
       row.at === attestation.at &&
       row.distance === attestation.distance,
   );

@@ -37,13 +37,18 @@ export type RecheckFailureKey =
  * "none" is nobody has asked, which is where the button lives. "refused" is
  * the request itself being turned down, and it is not the same thing as
  * "failed", which is a re-check that really ran and could not finish.
+ *
+ * "done" is only ever drawn once the chain agrees (confirmOnChain below).
+ * "confirming" is the queue saying a run finished while the registry does not
+ * yet hold a Chainlink re-check from after the request, and it reads as pending.
  */
 export type RecheckState =
   | { kind: "none" }
   | { kind: "sending" }
   | { kind: "queued"; requestedAt: number; position?: number; already: boolean }
   | { kind: "running"; requestedAt?: number; startedAt?: number }
-  | { kind: "done"; finishedAt?: number; reportTx?: Hex; matched?: boolean; distance?: number }
+  | { kind: "done"; requestedAt?: number; finishedAt?: number; reportTx?: Hex; matched?: boolean; distance?: number }
+  | { kind: "confirming"; requestedAt?: number }
   | { kind: "failed"; reason?: string }
   | { kind: "refused"; key: RecheckFailureKey; reason?: string; canRetry: boolean };
 
@@ -51,7 +56,7 @@ export const idleRecheck: RecheckState = { kind: "none" };
 
 /** True while the queue still owes this passport an answer, which is when the control keeps asking. */
 export function isWatched(state: RecheckState): boolean {
-  return state.kind === "queued" || state.kind === "running";
+  return state.kind === "queued" || state.kind === "running" || state.kind === "confirming";
 }
 
 /**
@@ -88,6 +93,7 @@ export function stateFromStatus(status: RecheckStatus): RecheckState {
     case "done":
       return {
         kind: "done",
+        requestedAt: status.requestedAt,
         finishedAt: status.finishedAt,
         reportTx: status.reportTx,
         matched: status.matched,
@@ -106,7 +112,7 @@ export function stateFromRequest(answer: RecheckRequested): RecheckState {
   if (answer.status === "done" || answer.status === "failed") {
     // The queue answers a press with the record it holds, and a record that
     // finished between the mount read and the press is worth saying as it is.
-    return answer.status === "done" ? { kind: "done" } : { kind: "failed" };
+    return answer.status === "done" ? { kind: "done", requestedAt: answer.requestedAt } : { kind: "failed" };
   }
   return {
     kind: "queued",
@@ -116,6 +122,34 @@ export function stateFromRequest(answer: RecheckRequested): RecheckState {
     position: answer.position === undefined || answer.position === 0 ? undefined : answer.position,
     already: answer.already === true,
   };
+}
+
+/**
+ * What a finished request may be drawn as, once the chain has been asked (R10).
+ *
+ * The verify service's word that a run is done decides nothing on its own: a
+ * report can be sent and still be refused by the receiver, and a status route
+ * is not the chain. So "done" stands only when the registry holds a Chainlink
+ * re-check written at or after the request, and its date is the chain's. Every
+ * other answer, a read that failed included, is "confirming", which the control
+ * draws as pending and keeps watching. The queue's report transaction survives
+ * only beside that chain check, and the control labels it as the queue's claim.
+ *
+ * `newestOnChain` is the newest such re-check in unix seconds, null when the
+ * registry holds none, and undefined when the read failed. `requestedAt` is in
+ * milliseconds, so it is floored to the second the chain counts in.
+ */
+export function confirmOnChain(state: RecheckState, newestOnChain: number | null | undefined): RecheckState {
+  if (state.kind !== "done") {
+    return state;
+  }
+  const { requestedAt } = state;
+  if (requestedAt === undefined || newestOnChain === null || newestOnChain === undefined) {
+    return { kind: "confirming", requestedAt };
+  }
+  return newestOnChain >= Math.floor(requestedAt / 1000)
+    ? { ...state, finishedAt: newestOnChain * 1000 }
+    : { kind: "confirming", requestedAt };
 }
 
 /**

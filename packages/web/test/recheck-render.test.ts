@@ -212,6 +212,7 @@ describe("every state the reader can meet", () => {
     ["A sealed passport, refused with a sentence", { kind: "refused", key: "sealed", canRetry: false }, false],
     ["The service is not answering", { kind: "refused", key: "notAnswering", canRetry: true, reason: "the verify service at https://verify.moolam.xyz/recheck/request did not answer" }, false],
     ["Half an hour of waiting, and the next look is the reader's own", { kind: "queued", requestedAt: 1_790_000_000_000, already: false }, true],
+    ["The queue says done, the chain does not hold the verdict yet", { kind: "confirming", requestedAt: 1_790_000_000_000 }, false],
   ];
 
   it("draws each one, and says the one thing that state is about", () => {
@@ -230,6 +231,13 @@ describe("every state the reader can meet", () => {
     expect(drawn[9][1]).toContain("never published");
     expect(drawn[10][1]).toContain("The verify service is not answering just now.");
     expect(drawn[11][1]).toContain("stopped checking after half an hour");
+    // The transaction the queue names is the queue's claim, and says so.
+    expect(drawn[6][1]).toContain(`Claimed transaction ${TX.slice(0, 8)}`);
+    // Pending, with no "Done" and no transaction, until the chain agrees (R10).
+    expect(drawn[12][1]).toContain(en.recheck.stamp.pending);
+    expect(drawn[12][1]).toContain(en.recheck.confirming);
+    expect(drawn[12][1]).not.toContain(en.recheck.stamp.done);
+    expect(drawn[12][1]).not.toContain("/tx/");
 
     if (process.env.RECHECK_FIXTURE === "1") {
       const body = drawn

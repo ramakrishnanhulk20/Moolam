@@ -112,7 +112,7 @@ describe("a verdict written by the sealed receiver", () => {
 
     expect(markup).toContain(words.private.badge);
     expect(markup).toContain(asRendered(words.private.lead));
-    expect(markup).not.toContain(words.byReceiver);
+    expect(markup).not.toContain(words.unknown.lead);
   });
 
   it("keeps the network's delivery line, and says the simulator once, in the limit line", async () => {

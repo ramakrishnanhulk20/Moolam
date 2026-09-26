@@ -55,7 +55,8 @@ export function RecheckRequest({
   /**
    * What the chain holds, from the passport page: the newest re-check's date,
    * or null when there is no re-check on chain. Left out by a screen that does
-   * not read the rows, which keeps the queue's own word for a finished request.
+   * not read the rows, where a finished request still shows as done only after
+   * the control's own chain check (lib/recheck/chain.ts).
    */
   recheckedOn?: string | null;
   /**
@@ -234,7 +235,12 @@ function Sentence({
       }
       case "running":
         return t(sealed ? "runningPrivate" : "running");
+      case "confirming":
+        return t("confirming");
       case "done":
+        // Reached only once the chain holds a re-check from after the request,
+        // so the date is the chain's. The transaction is the queue's word for
+        // which report wrote it, and is labelled as that claim.
         return (
           <>
             {state.finishedAt === undefined ? t("doneNoTime") : t("done", { at: when(state.finishedAt) })}
@@ -247,7 +253,7 @@ function Sentence({
                   rel="noreferrer"
                   className="tap underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent hover:decoration-accent"
                 >
-                  {t("openTx", { hash: shortHex(state.reportTx) })}
+                  {t("claimedTx", { hash: shortHex(state.reportTx) })}
                 </a>
               </>
             )}
@@ -326,6 +332,8 @@ function stampFor(state: RecheckState): { key: string; tone: string; mark: strin
       return { key: "stamp.queued", tone: "text-accent", mark: "motif", moving: false };
     case "running":
       return { key: "stamp.running", tone: "text-accent", mark: "bg-accent", moving: true };
+    case "confirming":
+      return { key: "stamp.pending", tone: "text-accent", mark: "bg-accent", moving: true };
     case "done":
       return { key: "stamp.done", tone: "text-verified", mark: "bg-verified", moving: false };
     case "failed":

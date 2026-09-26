@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Hex } from "viem";
-import { addresses, shortHex } from "@/lib/chain/client";
+import { shortHex } from "@/lib/chain/client";
+import { isPrivateRecheck } from "@/lib/chain/receivers";
 import { plainStatement, type ConsentReading, type Statement } from "@/lib/chain/consent";
 import { bitsApart, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
@@ -17,6 +18,7 @@ export const TOP_FACT_WORD_KEYS = [
   "unread",
   "noAgent",
   "chainlink",
+  "unknownWriter",
 ] as const;
 
 export type TopFactWords = Record<(typeof TOP_FACT_WORD_KEYS)[number], string>;
@@ -168,12 +170,11 @@ function rechecked(
       : { ...base, value: say.words.notYet, tone: "faint" };
   }
 
-  const isPrivate = latest.receiver.toLowerCase() === addresses.sealedReceiver.toLowerCase();
-  const who = isPrivate
+  const who = isPrivateRecheck(latest.receiver)
     ? say.privateRecheck
     : attestationSource(latest.receiver) === "chainlink"
       ? say.words.chainlink
-      : shortHex(latest.receiver);
+      : `${say.words.unknownWriter} ${shortHex(latest.receiver)}`;
   // Counted off the chain's own two fingerprints, the same count the section
   // below prints, rather than the receiver's word for it.
   const counted = bitsApart(phash, phashWord(latest.recomputed));
