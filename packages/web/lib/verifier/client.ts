@@ -383,6 +383,11 @@ const matchSchema = z.object({
     "mirror-rot270",
   ]),
   score: z.number(),
+  /**
+   * The passport registered first among everything inside the match thresholds. The service
+   * marks it only when the answer names more than one passport.
+   */
+  firstRegistered: z.literal(true).optional(),
 });
 
 /**
@@ -444,9 +449,19 @@ export const verifyResponseSchema = z.object({
       height: z.number().int().positive(),
       format: z.string(),
     }),
+    /** How many passports registered after the best match carry exactly its fingerprint. */
+    laterSameFingerprint: z.number().int().nonnegative().optional(),
+    /** The first registration inside the thresholds, sent only when it is not the best match. */
+    firstRegisteredId: hexWord.optional(),
   }),
   manifest: z.object({
     present: z.boolean(),
+    /**
+     * What the C2PA library's own check made of the manifest. Absent when the file carries none
+     * and from a service that predates it. "unreadable" comes with present false: something
+     * shaped like a manifest is in the file and could not be parsed.
+     */
+    validation: z.enum(["valid", "invalid", "unreadable"]).optional(),
     manifestHash: hexWord.optional(),
     title: z.string().optional(),
     claimGenerator: z.string().optional(),

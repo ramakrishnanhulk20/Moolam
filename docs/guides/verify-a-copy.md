@@ -64,6 +64,13 @@ down, and the arithmetic is in [Fingerprints](../concepts/fingerprints).
 If more than one passport was in range, the card says how many others and that this one was
 closest.
 
+The closest match leads, but it is not always the first registration. Anyone can register a
+re-encoded copy of someone else's picture, and a copy a bit or two closer to your file would beat
+the original on distance alone. So the answer always carries the passport registered first among
+everything in range, however many closer copies there are, and when that is not the passport on the
+card, the card says an earlier registration matches and links it. A passport proves who registered
+first, so that is the record to open when the question is whose picture this is.
+
 Under that it says whether a C2PA manifest survived: "C2PA manifest still attached", or "No C2PA
 manifest left in this file". The second one is the interesting case, and the whole reason the
 fingerprints are on chain. A platform that stripped the manifest did not strip the picture.

@@ -20,7 +20,8 @@ export interface RankedMatch extends Match, RegistrationOrder {
   registeredAt: number;
 }
 
-interface Registration extends RegistrationOrder {
+/** One passport's place in chain order: enough to decide which of two was registered first. */
+export interface Registration extends RegistrationOrder {
   id: Hex;
   registeredAt: number;
 }
@@ -181,9 +182,37 @@ export class HammingIndex {
     if (limit <= 0) {
       return [];
     }
-    const target = decodeBlockhash(blockhash);
     const hits: RankedMatch[] = [];
+    this.scan(phash, blockhash, limits, (hit) => {
+      hits.push(hit);
+    });
+    hits.sort(compareMatches);
+    return hits.slice(0, limit);
+  }
 
+  /**
+   * The passport registered first among every fingerprint within the limits, with its distances,
+   * or null when nothing is within them. It ignores score and any cap on purpose: however many
+   * closer near-copies exist, this is the registration an honest answer must never drop.
+   */
+  earliest(phash: bigint, blockhash: Hex, limits: { phashMax: number; blockhashMax: number }): RankedMatch | null {
+    let first: RankedMatch | null = null;
+    this.scan(phash, blockhash, limits, (hit) => {
+      if (first === null || compareRegistrations(hit, first) < 0) {
+        first = hit;
+      }
+    });
+    return first;
+  }
+
+  /** Visits every row within both limits, named by the earliest passport carrying its fingerprint. */
+  private scan(
+    phash: bigint,
+    blockhash: Hex,
+    limits: { phashMax: number; blockhashMax: number },
+    visit: (hit: RankedMatch) => void,
+  ): void {
+    const target = decodeBlockhash(blockhash);
     for (let position = 0; position < this.rows; position += 1) {
       const phashDistance = hamming64(this.phashes[position] as bigint, phash);
       if (phashDistance > limits.phashMax) {
@@ -194,7 +223,7 @@ export class HammingIndex {
         continue;
       }
       const first = (this.groups[position] as Registration[])[0] as Registration;
-      hits.push({
+      visit({
         ...first,
         phashDistance,
         blockhashDistance,
@@ -202,9 +231,6 @@ export class HammingIndex {
         score: score(phashDistance, blockhashDistance, limits),
       });
     }
-
-    hits.sort(compareMatches);
-    return hits.slice(0, limit);
   }
 
   private blockhashDistanceAt(position: number, target: Uint8Array): number {
@@ -273,7 +299,7 @@ export function compareMatches(a: RankedMatch, b: RankedMatch): number {
  * no log index, so two registrations in one block fall to the id, which keeps the order stable but
  * is not necessarily the order they were mined in.
  */
-function compareRegistrations(a: Registration, b: Registration): number {
+export function compareRegistrations(a: Registration, b: Registration): number {
   if (a.registeredBlock !== undefined && b.registeredBlock !== undefined && a.registeredBlock !== b.registeredBlock) {
     return a.registeredBlock - b.registeredBlock;
   }

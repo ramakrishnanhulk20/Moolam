@@ -173,6 +173,16 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
     );
   }
 
+  const firstRegisteredId = answer.firstRegisteredId;
+  const manifestLine =
+    answer.manifestCheck === "invalid"
+      ? "manifestInvalid"
+      : answer.manifestCheck === "unreadable"
+        ? "manifestUnreadable"
+        : answer.manifest
+          ? "manifestPresent"
+          : "manifestMissing";
+
   return (
     <Plate tone="verified">
       <Still passport={passport} exact={answer.kind === "exact"} />
@@ -205,6 +215,29 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           <p className="mt-6 text-sm leading-relaxed text-text-muted">{t("others", { count: answer.others })}</p>
         )}
 
+        {/* The closest match leads, but a near-copy registered later can sit closer than the
+            original. The service always keeps the first registration in the answer, and this is
+            where the reader is told it is a different passport from the one on the card. */}
+        {firstRegisteredId === undefined ? null : (
+          <p data-first-registered className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+            {t.rich("firstRegistered", {
+              link: (chunks) => (
+                <Link
+                  href={`/passport/${firstRegisteredId}`}
+                  className="text-accent underline decoration-accent/40 underline-offset-4 transition-colors duration-200 hover:decoration-accent"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </p>
+        )}
+        {answer.laterSameFingerprint === undefined ? null : (
+          <p data-later-copies className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
+            {t("laterSameFingerprint", { count: answer.laterSameFingerprint })}
+          </p>
+        )}
+
         {/* The match is real and the picture behind it is not there to look at.
             That is said here, right under the verdict, rather than left to the
             reader to work out from an empty frame. */}
@@ -222,8 +255,8 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           </p>
         )}
 
-        <p className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
-          {answer.manifest ? t("manifestPresent") : t("manifestMissing")}
+        <p data-manifest-line className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
+          {t(manifestLine)}
         </p>
 
         {/* Proving the picture is registered is half the answer. This is the

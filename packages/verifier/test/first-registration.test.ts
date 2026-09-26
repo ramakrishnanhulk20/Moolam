@@ -2,9 +2,11 @@
 // registration ranks first on a tie, copies of one fingerprint are folded into one row before any
 // cap, and the answer counts the later copies. Also pins what a real registered picture answered
 // before this ordering existed, and that the Envio source carries the block each passport landed in.
-// Does NOT cover copies whose fingerprints differ by a bit or two from the original (each of those
-// is its own row and competes on distance), nor two registrations in one block, which fall back to
-// the passport id because the index carries no log index.
+// Also covers near-copies a bit or two closer to the query than the original: the first registration
+// stays in the answer whatever the cap, on the perceptual path and on the exact path.
+// Does NOT cover two registrations in one block, which fall back to the passport id because the
+// index carries no log index, nor an earlier registration that only matches a rotated copy of an
+// exact hit, which the exact path does not look for.
 
 import { createServer, type Server } from "node:http";
 import sharp from "sharp";
@@ -12,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fingerprint } from "../src/fingerprint.js";
 import { HammingIndex } from "../src/index.js";
 import { matchImage } from "../src/match.js";
+import { renderResult } from "../src/routes/shared.js";
 import { buildServer } from "../src/server.js";
 import { EnvioSource } from "../src/source/EnvioSource.js";
 import type { Hex, PassportRecord } from "../src/types.js";
@@ -104,6 +107,65 @@ describe("first registration wins", () => {
     expect(index.query(0n, blockhashWithBits(0), LIMITS).map((hit) => hit.id)).toEqual([c.id, b.id]);
     expect(index.laterSameFingerprint(c.id)).toBe(0);
     expect(index.size).toBe(2);
+  });
+});
+
+describe("the first registration against closer near-copies", () => {
+  it("keeps the original in the answer when thirty later near-copies sit a bit or two closer", async () => {
+    const picture = await makeImage(22);
+    const print = await fingerprint(picture);
+    // Three bits from the query, registered first.
+    const original: Ordered = { ...recordFor(print), id: idFrom(0xfe), phash: print.phash ^ 0b111n, registeredAt: 100, registeredBlock: 10 };
+    // One or two bits from the query, every one a distinct fingerprint, all registered later.
+    const copies = Array.from({ length: 30 }, (_, i) => {
+      const flip = i % 2 === 0 ? 1n << BigInt(8 + i) : (1n << BigInt(8 + i)) | (1n << 50n);
+      return copyOf(original, i + 1, { phash: print.phash ^ flip, registeredAt: 200 + i, registeredBlock: 20 + i });
+    });
+    const records = [...copies, original];
+
+    const result = await matchImage(picture, new HammingIndex(records), lookupOf(records));
+
+    expect(result.exact).toBeNull();
+    expect(result.best?.phashDistance).toBe(1);
+    expect(result.matches).toHaveLength(20);
+    expect(result.matches.filter((match) => match.firstRegistered === true).map((match) => match.id)).toEqual([original.id]);
+    expect(result.firstRegisteredId).toBe(original.id);
+    expect((renderResult(result) as { firstRegisteredId?: Hex }).firstRegisteredId).toBe(original.id);
+  });
+
+  it("surfaces an earlier registration on the exact path", async () => {
+    const picture = await makeImage(22);
+    const print = await fingerprint(picture);
+    const exact: Ordered = { ...recordFor(print), registeredAt: 300, registeredBlock: 30 };
+    const earlier: Ordered = { ...recordFor(print), id: idFrom(0xab), phash: print.phash ^ 0b11n, registeredAt: 100, registeredBlock: 10 };
+    const records = [exact, earlier];
+
+    const result = await matchImage(picture, new HammingIndex(records), lookupOf(records));
+
+    expect(result.exact).toBe(exact.id);
+    expect(result.best?.id).toBe(exact.id);
+    expect(result.confidence).toBe(1);
+    expect(result.matches.map((match) => [match.id, match.firstRegistered])).toEqual([
+      [exact.id, undefined],
+      [earlier.id, true],
+    ]);
+    expect(result.firstRegisteredId).toBe(earlier.id);
+  });
+
+  it("leaves an answer that names one passport exactly as it was", async () => {
+    const picture = await makeImage(22);
+    const record = recordFor(await fingerprint(picture));
+    const index = new HammingIndex([record]);
+    const lookup = lookupOf([record]);
+    const reencoded = await sharp(picture).resize(320).jpeg({ quality: 60 }).toBuffer();
+
+    for (const bytes of [picture, reencoded]) {
+      const result = await matchImage(bytes, index, lookup);
+      expect(Object.keys(result).sort()).toEqual(["best", "confidence", "exact", "laterSameFingerprint", "matches", "queried"]);
+      expect(result.matches).toHaveLength(1);
+      expect(Object.keys(result.matches[0] as object).sort()).toEqual(["blockhashDistance", "id", "phashDistance", "score", "variant"]);
+      expect(result.best).toEqual(result.matches[0]);
+    }
   });
 });
 

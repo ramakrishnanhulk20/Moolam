@@ -30,6 +30,16 @@ export type Answer =
       variant: Match["variant"];
       others: number;
       manifest: boolean;
+      /**
+       * Set only when the C2PA library found fault with the manifest: "invalid" when it fails
+       * validation, "unreadable" when it could not be parsed. Either way the card must not call it
+       * a signed record still inside the file.
+       */
+      manifestCheck?: "invalid" | "unreadable";
+      /** An earlier registration inside the thresholds, set only when it is not the passport shown. */
+      firstRegisteredId?: Hex;
+      /** How many later registrations carry exactly this passport's fingerprint, set only when above zero. */
+      laterSameFingerprint?: number;
       /** What the holder said about AI use. Absent from an older service, which draws no stamp. */
       consent?: MatchConsent;
       /** Whether a challenge stands against the record. Absent from an older service, which draws no line. */
@@ -44,8 +54,9 @@ export type Answer =
 const IDENTICAL = { phashDistance: 0, blockhashDistance: 0, variant: "identity" as const };
 
 export function readAnswer(response: VerifyResponse): Answer {
-  const { exact, best, matches, confidence, queried } = response.result;
+  const { exact, best, matches, confidence, queried, firstRegisteredId, laterSameFingerprint } = response.result;
   const manifest = response.manifest.present;
+  const { validation } = response.manifest;
   const id = exact ?? best?.id ?? null;
 
   if (id === null) {
@@ -63,6 +74,9 @@ export function readAnswer(response: VerifyResponse): Answer {
     variant: measured.variant,
     others: Math.max(matches.length - 1, 0),
     manifest,
+    ...(validation === "invalid" || validation === "unreadable" ? { manifestCheck: validation } : {}),
+    ...(firstRegisteredId !== undefined && firstRegisteredId.toLowerCase() !== id.toLowerCase() ? { firstRegisteredId } : {}),
+    ...(laterSameFingerprint !== undefined && laterSameFingerprint > 0 ? { laterSameFingerprint } : {}),
     // The service hangs the statement on the best match and on the same
     // passport inside the list, so an exact hit that came back without a best
     // block still finds its own holder's word rather than dropping it.

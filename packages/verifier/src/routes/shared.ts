@@ -157,7 +157,9 @@ export async function verifyBytes(
 /**
  * Renders the match for JSON: the 64-bit pHash goes out as a decimal string, never a double.
  * `laterSameFingerprint` is newer than the rest of the shape and only rides along when something
- * matched, so a client that predates it reads the same answer it always did.
+ * matched, so a client that predates it reads the same answer it always did. `firstRegisteredId`
+ * rides along only when the first registration inside the thresholds is not the headline match,
+ * and each match carries `firstRegistered` only when the answer names more than one passport.
  */
 export function renderResult(result: MatchResult): unknown {
   return {
@@ -167,6 +169,7 @@ export function renderResult(result: MatchResult): unknown {
     confidence: result.confidence,
     queried: { ...result.queried, phash: result.queried.phash.toString() },
     ...(result.laterSameFingerprint === undefined ? {} : { laterSameFingerprint: result.laterSameFingerprint }),
+    ...(result.firstRegisteredId === undefined ? {} : { firstRegisteredId: result.firstRegisteredId }),
   };
 }
 

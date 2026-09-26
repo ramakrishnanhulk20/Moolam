@@ -5,17 +5,28 @@ import {
   fingerprint,
   type Fingerprint,
 } from "./fingerprint.js";
-import { HammingIndex, compareMatches, type RankedMatch } from "./index.js";
+import { HammingIndex, compareMatches, compareRegistrations, type IndexedRecord, type RankedMatch } from "./index.js";
 import type { DihedralName, Hex, Match, PassportRecord } from "./types.js";
+
+/** A match as the answer names it. */
+export interface AnswerMatch extends Match {
+  /**
+   * True on the passport registered first among everything inside the match thresholds. Only set
+   * when the answer names more than one passport, so a one-passport answer keeps its old shape.
+   */
+  firstRegistered?: true;
+}
 
 export interface MatchResult {
   exact: Hex | null;
-  best: Match | null;
-  matches: Match[];
+  best: AnswerMatch | null;
+  matches: AnswerMatch[];
   confidence: number;
   queried: Fingerprint;
   /** How many passports registered after `best` carry exactly its fingerprint. Absent when nothing matched. */
   laterSameFingerprint?: number;
+  /** The first registration inside the thresholds, present only when it is not `best`. */
+  firstRegisteredId?: Hex;
 }
 
 /** The thresholds a query is run at, taken from the spike's measurements. */
@@ -39,6 +50,12 @@ const MAX_MATCHES = 20;
  * The returned `queried` fingerprint is always the identity one, which is what
  * a caller would register or display.
  *
+ * The closest match leads, but the passport registered first inside the thresholds is always in
+ * the answer, whatever the cap, because near-copies a bit or two closer to the query are cheap to
+ * register and must not be able to push the original out. On the exact path that search uses the
+ * identity fingerprint only, so an exact hit still costs one decode; an earlier registration that
+ * only matches a rotated or mirrored copy is not surfaced there.
+ *
  * Throws when the buffer is empty or is not an image sharp can decode.
  */
 export async function matchImage(
@@ -60,13 +77,18 @@ export async function matchImage(
       variant: "identity",
       score: 1,
     };
+    const first = index.earliest(queried.phash, queried.blockhash, MATCH_LIMITS);
+    // Registered strictly before the exact passport, so a stored fingerprint that drifted from these
+    // bytes can never surface a later registration as the first.
+    const earlier = first !== null && compareRegistrations(first, exactRecord as IndexedRecord) < 0 ? first : null;
     return {
       exact: exactRecord.id,
       best: exactMatch,
-      matches: [exactMatch],
+      matches: earlier === null ? [exactMatch] : [exactMatch, { ...toMatch(earlier), firstRegistered: true }],
       confidence: 1,
       queried,
       laterSameFingerprint: index.laterSameFingerprint(exactRecord.id),
+      ...(earlier === null ? {} : { firstRegisteredId: earlier.id }),
     };
   }
 
@@ -76,19 +98,38 @@ export async function matchImage(
   // The index has already folded copies of one fingerprint into their first registration, so every
   // cap below counts distinct fingerprints and a pile of copies cannot crowd the first one out.
   const bestByRecord = new Map<Hex, RankedMatch>();
+  const keep = (hit: RankedMatch): void => {
+    const current = bestByRecord.get(hit.id);
+    if (current === undefined || compareMatches(hit, current) < 0) {
+      bestByRecord.set(hit.id, hit);
+    }
+  };
+  let first: RankedMatch | null = null;
   for (const name of Object.keys(variants) as DihedralName[]) {
     const print = variants[name] as Fingerprint;
     for (const hit of index.query(print.phash, print.blockhash, MATCH_LIMITS, MAX_MATCHES)) {
-      const labelled: RankedMatch = { ...hit, variant: name };
-      const current = bestByRecord.get(labelled.id);
-      if (current === undefined || compareMatches(labelled, current) < 0) {
-        bestByRecord.set(labelled.id, labelled);
+      keep({ ...hit, variant: name });
+    }
+    // Distinct near-copies each hold their own row, so enough of them could fill the cap above.
+    const earliest = index.earliest(print.phash, print.blockhash, MATCH_LIMITS);
+    if (earliest !== null) {
+      const labelled: RankedMatch = { ...earliest, variant: name };
+      keep(labelled);
+      if (first === null || compareRegistrations(labelled, first) < 0) {
+        first = labelled;
       }
     }
   }
 
-  const ranked = [...bestByRecord.values()].sort(compareMatches).slice(0, MAX_MATCHES);
-  const matches = ranked.map(toMatch);
+  const ranked = [...bestByRecord.values()].sort(compareMatches);
+  const kept = ranked.slice(0, MAX_MATCHES);
+  const firstId = first?.id;
+  if (firstId !== undefined && !kept.some((match) => match.id === firstId)) {
+    kept[kept.length - 1] = bestByRecord.get(firstId) as RankedMatch;
+  }
+  const matches: AnswerMatch[] = kept.map((match) =>
+    kept.length > 1 && match.id === firstId ? { ...toMatch(match), firstRegistered: true } : toMatch(match),
+  );
   const best = matches[0] ?? null;
 
   return {
@@ -98,6 +139,7 @@ export async function matchImage(
     confidence: best === null ? 0 : confidenceOf(best),
     queried,
     ...(best === null ? {} : { laterSameFingerprint: index.laterSameFingerprint(best.id) }),
+    ...(best !== null && firstId !== undefined && firstId !== best.id ? { firstRegisteredId: firstId } : {}),
   };
 }
 
