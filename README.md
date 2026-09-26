@@ -19,9 +19,17 @@
 
 ---
 
+## Why this matters
+
+- The label falls off. The Washington Post uploaded an AI video to eight major platforms and [none kept its Content Credentials](https://fredritchin.substack.com/p/major-platforms-are-not-labeling).
+- Nobody can trace a picture back. Asked for the place, date and photographer of ten news photos, seven AI chatbots got all three right in [14 of 280 answers](https://www.cjr.org/tow_center/why-ai-models-are-bad-at-verifying-photos.php).
+- Marking is now the law. Since 2 August 2026, [Article 50 of the EU AI Act](https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act) has asked AI image generators to mark what they make in a machine-readable way.
+
+The sources, the case against provenance and what Moolam does about each: [Why it matters](docs/concepts/why-it-matters.md).
+
 ## Chainlink CRE in two minutes
 
-Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's agent trust scores are counted from those opinions. The workflow wakes on a `PassportRegistered` log, reads the passport from Monad, fetches the picture from IPFS, decodes it and recomputes its fingerprint inside the workflow, reaches consensus on the verdict, and writes it back to Monad through `MoolamReceiver`.
+Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's agent trust scores are counted from those opinions. The workflow wakes on a `PassportRegistered` log, reads the passport from Monad, fetches the picture from IPFS, decodes it and recomputes its fingerprint inside the workflow, reaches consensus on the verdict, and writes it back to Monad through a `SimulationReceiver`: [`0x4aD66c77…BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) for public pictures and [`0x52b8fE54…57f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) for private ones, queued in the policy and listable from 2026-09-27 06:03 UTC. Every re-check already on chain went through the older `MoolamReceiver` pair, and that history stays under their addresses.
 
 - **See one.** [Monsoon Fishing Nets Drying](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and its report [`0x59e6a8d5…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa): the passport card shows the verdict, the distance and the transaction.
 - **See the private one.** [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4) was never published. The confidential workflow (`handlerInTee`) fetched a private copy with a secret and wrote its report [`0xa38fd971…c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954) through a second receiver.
@@ -30,6 +38,40 @@ Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's
 - **The code.** [`packages/workflow/moolam-verifier`](packages/workflow/moolam-verifier) (public) and [`packages/workflow/moolam-sealed-verifier`](packages/workflow/moolam-sealed-verifier) (confidential), with the full walk-through in [the Chainlink workflow page](https://moolam.vercel.app/en/docs/developers/chainlink-workflow).
 - **Who can write one.** The receivers accept a simulated report only in a transaction signed by Moolam's own CRE wallet, so a copy of the public workflow cannot write a verdict.
 - **Where it stands.** All 17 real pictures, and 20 passports in all, carry a re-check written on Monad mainnet (index census, 2026-09-25). Every report was sent with `cre workflow simulate --broadcast` through the CRE simulation forwarder, because Moolam's CRE organisation does not have deploy access yet. Each passport card says so in plain words.
+
+## Built on, and built by us
+
+Built on:
+
+- [Monad](docs/concepts/why-monad.md): the chain, and its P-256 precompile at `0x0100`, which checks a creator's passkey on chain rather than on a server.
+- [Privy](docs/developers/agents-and-privy.md): accounts with no seed phrase, the generator agent's server wallet, and the policies that fence each key.
+- [Chainlink CRE](docs/developers/chainlink-workflow.md): the public and the private re-check workflows.
+- [Envio HyperIndex](docs/developers/envio-indexer.md): the index behind Explore, the counts and the agent trust scores.
+- [ERC-8004](https://monadvision.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432): agent identity, on Monad's canonical registry.
+- [C2PA](docs/concepts/rules-and-standards.md) and [CAWG](docs/api/consent.md): the signed Content Credentials in every file, and the AI-use vocabulary `cawg.training-mining/1.1`.
+- IPFS through [Pinata](https://pinata.cloud): every picture, thumbnail, manifest and document.
+
+Built by us:
+
+- [The fingerprint that finds a passport from any copy](docs/concepts/fingerprints.md), in [`packages/verifier`](packages/verifier). Over 360 test copies: screenshots, social re-shares, stripped metadata and resizes matched 100 percent, a quality-30 re-encode 92, rotations and mirrors 100 through the eight orientations, and false positives 0. A 10 percent crop matched 0, and the page says so.
+- [The two-signature passport registry](packages/contracts/src/MoolamRegistry.sol): the creator's passkey and the agent's key sign one digest, and both are checked on chain ([reference](docs/api/registry.md)).
+- [The dated AI-use register](packages/contracts/src/MoolamConsent.sol): append only, and it answers for any past day ([reference](docs/api/consent.md)).
+- [The wallet-bound simulation receivers](packages/contracts/src/SimulationReceiver.sol) and [the re-check runner](packages/recheck-runner): a simulated Chainlink report lands only when Moolam's CRE wallet sent it, and the runner re-checks new pictures without anyone pressing anything.
+- [The agent trust score](packages/indexer/src/trust.ts): `round(100 * (matched + 1) / (matched + mismatched + 2 * disputesUpheld + 2))`, so a new agent starts at 50.
+- [The private re-check](packages/workflow/moolam-sealed-verifier): a Chainlink confidential workflow that checks a picture nobody has published.
+
+## Agents with least privilege
+
+Every key in Moolam can do one job, and each line below points at the file that shows it.
+
+- The generator agent's key sits in a Privy server wallet whose policy allows `register` on the registry, carrying no MON, and signing that registry's digests, nothing else ([`policies.ts`](packages/agents/src/privy/policies.ts)). Asked to send MON and to call `appendEdit`, Privy refused both, 2 of 2, before anything was signed ([proofs/privy.txt](proofs/privy.txt), lines 24 to 30).
+- The edit permission a creator grants can only append edits: its policy names `appendEdit` on the registry and nothing else ([`policies.ts`](packages/agents/src/privy/policies.ts), `sessionSignerPolicy`). After "Revoke" the same key was refused ([proofs/privy.txt](proofs/privy.txt), line 38).
+- On Moolam's contracts the re-check wallet can only write verdicts, and only it can. It is not the deployer wallet that owns the receivers and the policy, and both simulation receivers refuse a report from any other sender with `WrongSendingWallet`, fixed at deployment with no setter ([proofs/simulation-receivers.txt](proofs/simulation-receivers.txt), lines 2, 11, 15 and 24).
+- The runner caps its spend at 40 reports a day, 5 a pass and a 1.5 MON floor, counted before it spends, and the owner key is never on its machine ([runner README](packages/recheck-runner/README.md), "The guards" and "What this does not do").
+- It fetches only `ipfs://` content through one gateway, with redirects refused and the document cut off at 32,000 bytes ([threat model](docs/security/threat-model.md), R7).
+- A failed read shows as failed, never as a made-up value: the footer says "unreachable", and the runner counts a report as done only when the registry's own log is in the receipt ([threat model](docs/security/threat-model.md), R10 and "Status is read").
+
+The honest limit: whoever holds a key can use it. If the re-check key leaks, it can write any verdict until the owner sends `removeReceiver` on `VerifierPolicy`, which takes the receivers off at once; the command is under "The kill switch" on [the Chainlink workflow page](docs/developers/chainlink-workflow.md). A creator ends the edit permission with "Revoke".
 
 ## Live on Monad mainnet
 

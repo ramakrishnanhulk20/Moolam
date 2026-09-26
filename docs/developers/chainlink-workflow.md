@@ -321,15 +321,22 @@ retried into a different answer.
 
 ### How a run is driven today
 
-Every private re-check is a `cre workflow simulate ... --broadcast` run on an operator's machine, in
-four steps:
+Since 2026-09-26 nobody opens or closes a receiver around a run. Both `SimulationReceiver`
+contracts listen to the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d` all the
+time and accept a report only in a transaction signed by the CRE wallet
+`0xC79620AF233a4434b03f6B57239F8A9E71B3C178` ("The sending-wallet rule" above), so there is no
+window to open and no owner transaction per run. They take reports once the policy's listing runs,
+from 2026-09-27 06:03:51 UTC, and the workflow configs switch to them at that point.
 
-1. **Claim.** The passport is asked for in the re-check queue (`POST /recheck/request`) and claimed
-   with the runner's token (`POST /recheck/claim`). The verify service mints a link only under that
-   claim.
-2. **Open.** The receiver's owner clears the sealed receiver's pin and points it at the simulation
-   forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d`, because a simulated report arrives
-   through that mock forwarder rather than Chainlink's production one.
+The re-check runner in `packages/recheck-runner` drives the runs, on a small Linux machine that
+holds the CRE wallet's key and never the owner key. <!-- HEAD CHEF: once the runner is confirmed live, replace the next sentence with "It is live, and passes every two minutes." --> It is being brought up now. For a
+passport whose document asks for a private re-check, one run is four steps:
+
+1. **Claim.** A queued passport is claimed with the runner's token (`POST /recheck/claim`); one the
+   sweep found gets a request of its own first (`POST /recheck/request`). The verify service mints a
+   link only under that claim.
+2. **Check the copy.** `GET /sealed/status/<id>` is read just before the spend. Kept goes on;
+   unknown means try again next pass with nothing spent.
 3. **Simulate.**
 
    ```bash
@@ -339,14 +346,17 @@ four steps:
 
    The env file carries `CRE_SEALED_LINK_TOKEN` beside the CRE wallet's key. The run is stopped
    after ten minutes, the same window the claim allows.
-4. **Close.** The production forwarder goes back, the author and the name are pinned again and read
-   back from the chain, and the claim is answered with `POST /recheck/done`.
+4. **Answer.** The run counts as done only when its receipt carries the registry's
+   `VerificationAttested` log for that passport, and the claim goes back with `POST /recheck/done`
+   whatever happens.
 
-The re-check runner in `packages/recheck-runner` does the claim, the simulation and the answer for a
-queued passport whose document asks for a private re-check, after reading `GET /sealed/status` to
-make sure the copy is still kept. The receiver's owner opens and closes the receiver around it. A
-launch script on the operator's machine does all four steps in one command, closes the receiver and
-answers the claim whatever happens, and it is what ran the first one.
+Every run is counted against the runner's caps before it spends: 40 reports a day, 5 a pass, and a
+1.5 MON floor on the CRE wallet (`packages/recheck-runner/README.md`, "The guards"). If that machine or its key is ever in doubt, the owner sends "The kill switch" above
+from the deployer wallet and both receivers stop at once; the runner itself stops with
+`systemctl stop moolam-recheck-runner` on its machine.
+
+The first two private re-checks, below, ran before this change, from a launch script on the
+operator's machine that opened and closed the older sealed `MoolamReceiver` around each run.
 
 ### The first run
 
@@ -388,5 +398,9 @@ recomputed to `0x85c0d272787e6e77`, the stored fingerprint exactly, distance 0, 
   leaves the enclave.
 - **Who can see the copy.** Moolam's operator, Pinata as the storage provider and the machine
   running the simulator can all see the 512 pixel copy.
-- **The open window.** While a run is in progress the sealed receiver listens to the simulation
-  forwarder, which any simulator user could drive in that window.
+- **The open window is closed, the key is not.** Until 2026-09-26 the sealed receiver was pointed
+  at the simulation forwarder for each run, and any simulator user could have driven it in that
+  window. The sealed `SimulationReceiver` never opens: a report from any wallet but the CRE wallet
+  reverts `WrongSendingWallet`. What is left is the key itself. Whoever holds the CRE wallet's key
+  can write a verdict until the owner takes the receiver off the policy with "The kill switch"
+  above, which takes effect at once.
