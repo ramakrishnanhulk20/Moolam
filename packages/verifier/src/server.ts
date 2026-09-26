@@ -16,6 +16,7 @@ import { waitingGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { matchImage, type MatchResult } from "./match.js";
+import { safeReason } from "./net/errorText.js";
 import {
   fileQueueStore,
   memoryQueueStore,
@@ -431,8 +432,8 @@ export async function buildServer(
   // only the sentence below, since a thrown message can carry an RPC address, and its path is a key.
   app.setErrorHandler((error: FastifyError, request, reply) => {
     const status = error.statusCode ?? 500;
-    request.log.warn({ ip: request.ip, url: request.url, status, reason: error.message }, "rejected: request failed");
-    return reply.code(status).send({ error: status >= 500 ? "verifier failed to handle the request" : error.message });
+    request.log.warn({ ip: request.ip, url: request.url, status, reason: safeReason(error) }, "rejected: request failed");
+    return reply.code(status).send({ error: status >= 500 ? "verifier failed to handle the request" : safeReason(error) });
   });
 
   app.setNotFoundHandler((request, reply) => {
@@ -477,7 +478,7 @@ export async function buildServer(
       app.log.info({ records: current.index.size }, "passport index refreshed");
     } catch (error) {
       app.log.warn(
-        { reason: error instanceof Error ? error.message : String(error) },
+        { reason: safeReason(error) },
         "index refresh failed, serving the copy already loaded",
       );
     }
@@ -747,7 +748,7 @@ async function start(): Promise<void> {
 // without binding a port.
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   start().catch((error: unknown) => {
-    console.error(error);
+    console.error(safeReason(error));
     process.exit(1);
   });
 }

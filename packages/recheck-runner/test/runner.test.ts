@@ -6,6 +6,7 @@ import { attestationLanded } from "../src/chain.js";
 import { readConfig, type Config } from "../src/config.js";
 import type { Document, PictureRead, RecordLookup } from "../src/document.js";
 import type { PassportRow } from "../src/index-read.js";
+import { HttpError } from "../src/net.js";
 import type { Claim, DoneReport, Placed, QueueClient } from "../src/queue.js";
 import type { CopyState } from "../src/sealed.js";
 import { runSimulation, type SimulateRequest, type SimulateResult } from "../src/simulate.js";
@@ -338,6 +339,26 @@ describe("one pass of the runner", () => {
     const summary = await onePass(kit.deps);
     expect(summary.ran).toBe(1);
     expect(kit.lines.join(" ")).toContain("could not read the request queue");
+  });
+
+  // redact already stripped every whole address from a pass's log lines before V66, so this passes
+  // on the old code too. It holds the line clean with safeReason and redact in place together.
+  it("logs a failed read with no endpoint path in it (V66)", async () => {
+    const kit = standIns({ sweep: [row(PICTURE)] });
+    const echoed = new HttpError("the re-check queue", 404, "no route for https://verify.example/TOKEN123/recheck");
+    const deps: Deps = {
+      ...kit.deps,
+      queue: {
+        ...kit.deps.queue,
+        pending: async () => {
+          throw echoed;
+        },
+      },
+    };
+    await onePass(deps);
+    const logged = kit.lines.join(" ");
+    expect(logged).toContain("could not read the request queue: the re-check queue answered 404: no route for");
+    expect(logged).not.toContain("TOKEN123");
   });
 });
 

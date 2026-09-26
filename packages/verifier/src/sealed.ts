@@ -12,6 +12,7 @@ import { passportExists } from "./edit/registry.js";
 import type { Fingerprint, Hex } from "./fingerprint.js";
 import { PinRefused, PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, type PrivateFile } from "./ipfs/pinata.js";
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
+import { safeReason } from "./net/errorText.js";
 import { PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } from "./prepare.js";
 
 /**
@@ -314,7 +315,7 @@ export async function registrationOf(
     return (await passportExists(chain, registry, passportId)) ? "registered" : "free";
   } catch (error) {
     log.warn(
-      { passportId, reason: error instanceof Error ? error.message : String(error) },
+      { passportId, reason: safeReason(error) },
       "prepare: the duplicate check could not reach the chain",
     );
     return "unreachable";
@@ -414,7 +415,7 @@ export async function keepPrivateCopy(
     log.info({ passportId: id, fileId: kept.id }, "prepare: private copy kept");
     return { kept };
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = safeReason(error);
     if (error instanceof PrivateCopyNotPrivate) {
       log.error({ passportId: id, fileId: error.fileId, reason }, "rejected: the private copy is not private");
       return { refused: { status: 409, body: PRIVATE_COPY_NOT_PRIVATE }, landed: true };
@@ -460,7 +461,7 @@ export async function dropPrivateCopy(file: PrivateFile, log: FastifyBaseLogger)
     log.warn({ fileId: file.id, name: file.name }, "prepare: private copy deleted after the document pin failed");
   } catch (error) {
     log.error(
-      { fileId: file.id, name: file.name, reason: error instanceof Error ? error.message : String(error) },
+      { fileId: file.id, name: file.name, reason: safeReason(error) },
       "prepare: could not delete the private copy after the document pin failed",
     );
   }

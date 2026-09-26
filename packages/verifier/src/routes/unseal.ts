@@ -26,6 +26,7 @@ import {
   type PrivateListing,
 } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { safeReason } from "../net/errorText.js";
 import { fileSlug, manifestDocument } from "../metadata.js";
 import {
   FINGERPRINT_UNSTABLE_REASON,
@@ -57,7 +58,7 @@ import {
   type UnsealRecord,
 } from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField } from "./shared.js";
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
@@ -76,9 +77,11 @@ const MISS_MAX_ENTRIES = 2_000;
 
 /**
  * How long after its own unseal this server never remembers a not-unsealed miss for the passport,
- * when it could not tell which record is the oldest. Pinata's listing can trail a fresh pin, and a
- * miss remembered from that trailing listing would call the passport sealed for a minute while its
- * picture is public (review pass 7, V65). Ten minutes is far past any lag seen in the listing.
+ * when it could not tell which record is the oldest, and answers a second POST /unseal of it with
+ * already-unsealed. Pinata's listing can trail a fresh pin: a miss remembered from that trailing
+ * listing would call the passport sealed for a minute while its picture is public (review pass 7,
+ * V65), and a second unseal that believed it would pin a second record and cache that one as the
+ * oldest. Ten minutes is far past any lag seen in the listing.
  */
 const FRESH_UNSEAL_MS = 10 * 60_000;
 
@@ -206,7 +209,8 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * before V12 is the public thumbnail byte for byte, so it is deleted before the pins, or nothing is
  * pinned (review pass 5). When the check for an earlier record found none, the record just pinned is
  * cached for GET at once. When that check could not answer, the record cached for GET is the oldest
- * one a fresh lookup names, or none, and for ten minutes GET remembers no not-unsealed miss for it.
+ * one a fresh lookup names, or none, and for ten minutes GET remembers no not-unsealed miss for it
+ * and a second POST is answered already-unsealed before any pin.
  *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
  * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed`, `already-unsealed`,
@@ -245,7 +249,7 @@ export async function unsealRoutes(
       upload = await readUnsealUpload(request);
     } catch (error) {
       const status = statusOf(error);
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       // The reason names the field or the limit and never the upload, which is the picture itself.
       request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /unseal");
       return reply.code(status).send({ error: reason });
@@ -317,7 +321,7 @@ export async function unsealRoutes(
         try {
           passport = await readPassport(chain, registry, passportId);
         } catch (error) {
-          request.log.warn({ url: request.url, reason: reasonOf(error) }, "/unseal: the chain did not answer");
+          request.log.warn({ url: request.url, reason: safeReason(error) }, "/unseal: the chain did not answer");
           return reply.code(503).send({ error: "lookup-unavailable" });
         }
         if (passport === undefined) {
@@ -330,7 +334,7 @@ export async function unsealRoutes(
       try {
         state = sealedStateOf(await readMetadataDocument(metadataURI));
       } catch (error) {
-        request.log.warn({ url: request.url, reason: reasonOf(error) }, "/unseal: the passport's document could not be read");
+        request.log.warn({ url: request.url, reason: safeReason(error) }, "/unseal: the passport's document could not be read");
         return reply.code(503).send({ error: "lookup-unavailable" });
       }
       if (state === "unreadable") {
@@ -356,7 +360,7 @@ export async function unsealRoutes(
         record = await readUnsealRecord(found.record.uri, passportId);
       } catch (error) {
         request.log.warn(
-          { url: request.url, cid: found.record.cid, reason: reasonOf(error) },
+          { url: request.url, cid: found.record.cid, reason: safeReason(error) },
           "/unseal: a record was listed but could not be read",
         );
         return reply.code(503).send({ error: "lookup-unavailable" });
@@ -389,9 +393,9 @@ interface UnsealContext {
  * nothing settle first, then the caller's own allowance and the day's ceiling for everyone, and
  * only then the decode and the pins. A creator who pressed the button on the wrong passport, or on
  * one that is already public, is told so without this service decoding a 20 MB picture for them.
- * A passport this server has already seen unsealed is answered from memory before any Privy,
- * Pinata or chain call (review pass 6, V54), and only one unseal of a passport runs at a time on
- * this server (V55).
+ * A passport this server has already seen unsealed, or unsealed itself in the last ten minutes, is
+ * answered from memory before any Privy, Pinata or chain call (review pass 6, V54), and only one
+ * unseal of a passport runs at a time on this server (V55).
  *
  * Both allowances go back whenever no pin can have landed, because an unseal sends no transaction:
  * a request that stored nothing has cost the world nothing to give back. A pin that failed after
@@ -432,6 +436,15 @@ async function open(
       record: pinnedOut(remembered.pinned.uri, remembered.pinned.cid),
     });
   }
+  // This server pinned a record for it minutes ago without learning the oldest, so there is no
+  // record to name, and a listing that still trails that pin must not lead to a second one.
+  if (context.fresh.has(upload.passportId)) {
+    request.log.warn(
+      { url: request.url, passportId: upload.passportId },
+      "rejected: /unseal already unsealed here, the listing may still trail",
+    );
+    return reply.code(409).send({ error: "already-unsealed", passportId: upload.passportId });
+  }
 
   // Taken after the hash check, so only a caller holding the registered file can hold it, and held
   // until this request has answered, so a second one cannot read "no record" while the first pins.
@@ -460,7 +473,7 @@ async function unsealHeld(
   try {
     passport = await readPassport(context.chain, context.registry, upload.passportId);
   } catch (error) {
-    request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /unseal the chain did not answer");
+    request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /unseal the chain did not answer");
     return reply.code(502).send({ error: "chain-unavailable" });
   }
   if (passport === undefined) {
@@ -489,7 +502,7 @@ async function unsealHeld(
   try {
     holder = await holderOf(context.chain, context.registry, upload.passportId);
   } catch (error) {
-    request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /unseal the chain did not answer");
+    request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /unseal the chain did not answer");
     return reply.code(502).send({ error: "chain-unavailable" });
   }
   if (!wallets.includes(holder)) {
@@ -504,7 +517,7 @@ async function unsealHeld(
   try {
     document = await readMetadataDocument(passport.metadataURI);
   } catch (error) {
-    const reason = reasonOf(error);
+    const reason = safeReason(error);
     request.log.error(
       { url: request.url, reason, gateway: isGatewayFailure(error) },
       "rejected: /unseal the metadata document could not be read",
@@ -569,13 +582,13 @@ async function unsealHeld(
     } catch (error) {
       if (error instanceof FingerprintFault) {
         request.log.error(
-          { url: request.url, reason: error.message },
+          { url: request.url, reason: safeReason(error) },
           "rejected: /unseal the service failed reading the image",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
       const tooBig = error instanceof ImageTooLarge;
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       request.log.warn({ url: request.url, reason }, "rejected: /unseal image");
       return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
     }
@@ -619,12 +632,12 @@ async function unsealHeld(
       // slot both come back.
       if (error instanceof FingerprintFault) {
         request.log.error(
-          { url: request.url, reason: error.message },
+          { url: request.url, reason: safeReason(error) },
           "rejected: /unseal the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
-      request.log.warn({ url: request.url, reason: reasonOf(error) }, "rejected: /unseal undecodable image");
+      request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /unseal undecodable image");
       return reply.code(415).send({ error: "not-an-image", reason: UNDECODABLE });
     }
 
@@ -708,7 +721,7 @@ async function unsealHeld(
       pinned = !refusedByPinata(error);
       const privately = heldPrivately(error);
       request.log.error(
-        { url: request.url, passportId: upload.passportId, reason: reasonOf(error), privately },
+        { url: request.url, passportId: upload.passportId, reason: safeReason(error), privately },
         "rejected: /unseal thumbnail pin failed, nothing published",
       );
       if (privately) {
@@ -758,7 +771,7 @@ async function unsealHeld(
           passportId: upload.passportId,
           reason: [imagePin, manifestPin]
             .filter((one) => one.status === "rejected")
-            .map((one) => reasonOf(one.reason))
+            .map((one) => safeReason(one.reason))
             .join("; "),
           landed: Object.keys(landed),
           failed,
@@ -798,7 +811,7 @@ async function unsealHeld(
       // because the caller has to know their picture is already out there. A second attempt lands
       // on the same three addresses and finishes the record.
       request.log.error(
-        { url: request.url, passportId: upload.passportId, reason: reasonOf(error) },
+        { url: request.url, passportId: upload.passportId, reason: safeReason(error) },
         "rejected: /unseal the picture is pinned and the record is not",
       );
       return reply.code(502).send({
@@ -891,7 +904,7 @@ async function forgetPrivateCopy(
   try {
     listed = (await findPrivateByName(name)).filter((file) => file.name === name);
   } catch (error) {
-    log.error({ passportId, reason: reasonOf(error) }, "unseal: could not look for a private copy, it stays");
+    log.error({ passportId, reason: safeReason(error) }, "unseal: could not look for a private copy, it stays");
     copies?.drop(passportId);
     return;
   }
@@ -946,7 +959,7 @@ async function clearPreV12Copy(
   try {
     old = (await findPrivateByName(name)).filter((file) => file.name === name && file.cid === cid);
   } catch (error) {
-    log.warn({ passportId, reason: reasonOf(error) }, "unseal: could not look for an old private copy, going on");
+    log.warn({ passportId, reason: safeReason(error) }, "unseal: could not look for an old private copy, going on");
     return true;
   }
   if (old.length === 0) {
@@ -958,7 +971,7 @@ async function clearPreV12Copy(
       await deletePrivateFile(file.id);
     }
   } catch (error) {
-    log.error({ passportId, reason: reasonOf(error) }, "unseal: an old private copy could not be cleared, nothing pinned");
+    log.error({ passportId, reason: safeReason(error) }, "unseal: an old private copy could not be cleared, nothing pinned");
     return false;
   } finally {
     copies?.drop(passportId);
@@ -990,7 +1003,7 @@ async function oldestRecord(
   try {
     return { record: await readUnsealRecord(found.record.uri, passportId), pinned: found.record };
   } catch (error) {
-    log.warn({ passportId, cid: found.record.cid, reason: reasonOf(error) }, "unseal: the oldest record could not be read, caching none");
+    log.warn({ passportId, cid: found.record.cid, reason: safeReason(error) }, "unseal: the oldest record could not be read, caching none");
     return undefined;
   }
 }
@@ -1049,12 +1062,8 @@ async function readUnsealUpload(request: FastifyRequest): Promise<Upload> {
           throw new BadRequest(`expected a multipart field named "file", got "${part.fieldname}"`);
         }
         bytes = await part.toBuffer();
-      } else if (typeof part.value === "string") {
-        fields.set(part.fieldname, part.value);
       } else {
-        // The multipart plugin parses a part typed application/json, and skipping it would read as
-        // a missing field. Refused in the words routes/shared.ts uses for the other routes (V57).
-        throw new BadRequest(`field "${part.fieldname}" must be sent as plain text`);
+        fields.set(part.fieldname, textField(part));
       }
     }
   } catch (error) {
@@ -1087,15 +1096,11 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
     return await verifyPrivyToken(token, keys);
   } catch (error) {
     if (error instanceof InvalidToken) {
-      request.log.warn({ ip: request.ip, reason: error.message }, "rejected: bad Privy token");
+      request.log.warn({ ip: request.ip, reason: safeReason(error) }, "rejected: bad Privy token");
       return undefined;
     }
     throw error;
   }
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 /**

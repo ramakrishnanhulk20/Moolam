@@ -13,6 +13,7 @@ import {
   type PrivateListing,
 } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { safeReason } from "../net/errorText.js";
 import type { RecheckQueue } from "../recheck/queue.js";
 import { readClient } from "../reputation/registry.js";
 import { privateRecheckFor, privateThumbnailName } from "../sealed.js";
@@ -156,14 +157,14 @@ export function privateCopyStatus(
       }
       metadataURI = passport.metadataURI;
     } catch (error) {
-      return { status: unknown(false, `the chain did not answer: ${reasonOf(error)}`), hold: false };
+      return { status: unknown(false, `the chain did not answer: ${safeReason(error)}`), hold: false };
     }
 
     let document: unknown;
     try {
       document = await readMetadataDocument(metadataURI);
     } catch (error) {
-      return { status: unknown(false, `the metadata document could not be read: ${reasonOf(error)}`), hold: false };
+      return { status: unknown(false, `the metadata document could not be read: ${safeReason(error)}`), hold: false };
     }
     if (privateRecheckFor(document, id) !== "asked") {
       return { status: { found: true, state: "gone", privateRecheck: false }, hold: true };
@@ -173,7 +174,7 @@ export function privateCopyStatus(
     try {
       files = await sameName(id);
     } catch (error) {
-      return { status: unknown(true, `the private listing could not answer: ${reasonOf(error)}`), hold: false };
+      return { status: unknown(true, `the private listing could not answer: ${safeReason(error)}`), hold: false };
     }
     if (files.length === 1) {
       return { status: { found: true, state: "kept", privateRecheck: true }, hold: true };
@@ -302,7 +303,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     try {
       passport = await readPassport(chain, registry, passportId);
     } catch (error) {
-      return refuse(503, "chain-unavailable", reasonOf(error));
+      return refuse(503, "chain-unavailable", safeReason(error));
     }
     if (passport === undefined) {
       return refuse(404, "no-passport");
@@ -312,7 +313,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     try {
       document = await readMetadataDocument(passport.metadataURI);
     } catch (error) {
-      return refuse(503, "metadata-unavailable", reasonOf(error));
+      return refuse(503, "metadata-unavailable", safeReason(error));
     }
     const asked = privateRecheckFor(document, passportId);
     if (asked === "not-asked") {
@@ -330,7 +331,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     try {
       files = await sameName(passportId);
     } catch (error) {
-      return refuse(503, "lookup-unavailable", reasonOf(error));
+      return refuse(503, "lookup-unavailable", safeReason(error));
     }
     if (files.length === 0) {
       return refuse(404, "gone");
@@ -406,7 +407,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     try {
       passport = await readPassport(chain, registry, passportId);
     } catch (error) {
-      return refuse(503, "chain-unavailable", reasonOf(error));
+      return refuse(503, "chain-unavailable", safeReason(error));
     }
     if (passport === undefined) {
       return refuse(404, "no-passport");
@@ -425,7 +426,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     try {
       holder = await holderOf(chain, registry, passportId);
     } catch (error) {
-      return refuse(503, "chain-unavailable", reasonOf(error));
+      return refuse(503, "chain-unavailable", safeReason(error));
     }
     if (!wallets.includes(holder)) {
       return refuse(403, "not-holder");
@@ -439,14 +440,14 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     try {
       asked = privateRecheckFor(await readMetadataDocument(passport.metadataURI), passportId) === "asked";
     } catch (error) {
-      request.log.warn({ passportId, reason: reasonOf(error) }, "/sealed/forget: the document could not be read, deleting by name");
+      request.log.warn({ passportId, reason: safeReason(error) }, "/sealed/forget: the document could not be read, deleting by name");
     }
 
     let files: PrivateListing[];
     try {
       files = await sameName(passportId);
     } catch (error) {
-      return refuse(503, "lookup-unavailable", reasonOf(error));
+      return refuse(503, "lookup-unavailable", safeReason(error));
     }
     if (files.length === 0 && asked !== true) {
       return refuse(404, "nothing-kept");
@@ -594,7 +595,7 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
     return await verifyPrivyToken(token, keys);
   } catch (error) {
     if (error instanceof InvalidToken) {
-      request.log.warn({ ip: request.ip, reason: error.message }, "rejected: bad Privy token");
+      request.log.warn({ ip: request.ip, reason: safeReason(error) }, "rejected: bad Privy token");
       return undefined;
     }
     throw error;
@@ -603,8 +604,4 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
 
 function unknown(privateRecheck: boolean, reason: string): CopyStatus {
   return { found: true, state: "unknown", privateRecheck, reason };
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

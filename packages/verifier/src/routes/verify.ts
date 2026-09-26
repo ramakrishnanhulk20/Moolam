@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { withPassportFacts } from "../disputeRead.js";
+import { safeReason } from "../net/errorText.js";
 import { SERVICE_FAULT_REASON, ServiceFault, readFromUrl, readUpload, statusOf, verifyBytes } from "./shared.js";
 
 /**
@@ -37,7 +38,7 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
       );
     } catch (error) {
       const status = statusOf(error);
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /verify");
       // A fault of this service says so in words, so the caller knows their picture is fine.
       if (error instanceof ServiceFault) {

@@ -25,6 +25,7 @@ import {
   type Hex,
 } from "./fingerprint.js";
 import { manifestDocument } from "./metadata.js";
+import { safeReason } from "./net/errorText.js";
 
 export type { Fingerprint, ManifestSummary };
 
@@ -300,12 +301,12 @@ async function signKeepingCameraRecord(
       if (error instanceof SignerUnavailable) {
         throw error;
       }
-      why = error instanceof Error ? error.message : String(error);
+      why = safeReason(error);
     }
   } else {
     why = plan.why;
   }
-  log?.warn({ reason: why.slice(0, 200) }, "prepare: camera record dropped");
+  log?.warn({ reason: safeReason(why).slice(0, 200) }, "prepare: camera record dropped");
   return { signed: await embedManifest(upright, embed), cameraRecord: "dropped" };
 }
 
@@ -349,7 +350,7 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
       manifestHash: ZERO_BYTES32,
       embedded: false,
       reason: NOT_EMBEDDED_REASON,
-      detail: refused.message.slice(0, 200),
+      detail: safeReason(refused).slice(0, 200),
       ...(await recordLostWithManifest(source, options)),
     };
   }
@@ -391,7 +392,7 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
       manifestHash: ZERO_BYTES32,
       embedded: false,
       reason: NOT_EMBEDDED_REASON,
-      detail: refused.message.slice(0, 200),
+      detail: safeReason(refused).slice(0, 200),
       ...(await recordLostWithManifest(source, options)),
     };
   }

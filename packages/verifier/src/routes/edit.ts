@@ -29,6 +29,7 @@ import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { safeReason } from "../net/errorText.js";
 import { refusedByPinata } from "../sealed.js";
 import { FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
 import {
@@ -142,7 +143,7 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
       upload = await readEditUpload(request);
     } catch (error) {
       const status = statusOf(error);
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /edit");
       return reply.code(status).send({ error: reason });
     }
@@ -152,13 +153,13 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
     } catch (error) {
       if (error instanceof FingerprintFault) {
         request.log.error(
-          { url: request.url, reason: error.message },
+          { url: request.url, reason: safeReason(error) },
           "rejected: /edit the service failed reading the image",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
       const tooBig = error instanceof ImageTooLarge;
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       request.log.warn({ ip: request.ip, url: request.url, reason }, "rejected: /edit image");
       return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
     }
@@ -192,7 +193,7 @@ async function append(
   try {
     known = await passportExists(context.chain, context.registry, upload.parentId);
   } catch (error) {
-    request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /edit the chain did not answer");
+    request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /edit the chain did not answer");
     return reply.code(502).send({ error: "chain-unavailable" });
   }
   if (!known) {
@@ -222,7 +223,7 @@ async function append(
   try {
     owner = await parentOwner(context.chain, context.registry, upload.parentId);
   } catch (error) {
-    request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /edit the chain did not answer");
+    request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /edit the chain did not answer");
     return reply.code(502).send({ error: "chain-unavailable" });
   }
 
@@ -325,33 +326,33 @@ async function append(
         });
       }
       if (error instanceof Busy) {
-        request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit busy");
+        request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /edit busy");
         return reply.code(503).send({ error: "busy" });
       }
       // This service failed to fingerprint a picture it could read, so the file is not to blame
       // (review pass 6, answers 7). Nothing was pinned or sent, so both slots come back.
       if (error instanceof FingerprintFault) {
         request.log.error(
-          { url: request.url, reason: error.message },
+          { url: request.url, reason: safeReason(error) },
           "rejected: /edit the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
       if (error instanceof SignerUnavailable) {
-        request.log.error({ url: request.url, reason: error.message }, "rejected: /edit the signer is down");
+        request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /edit the signer is down");
         return reply.code(502).send({ error: "sign-failed" });
       }
       // A real picture with too much detail for the Chainlink fetch budget, not a file that failed
       // to decode (review pass 5, intake 4). Nothing was pinned or sent, so both slots come back.
       if (error instanceof ThumbnailTooLarge) {
-        request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit thumbnail too large");
+        request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /edit thumbnail too large");
         return reply
           .code(422)
           .send({ error: "thumbnail-too-large", limit: error.limit, reason: EDIT_THUMBNAIL_TOO_LARGE_REASON });
       }
       // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
       // truncated upload only fails here. That is the caller's file, not this service breaking.
-      request.log.warn({ url: request.url, reason: reasonOf(error) }, "rejected: /edit undecodable image");
+      request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /edit undecodable image");
       return reply.code(415).send({ error: "not-an-image", reason: UNDECODABLE });
     }
 
@@ -406,7 +407,7 @@ async function append(
           url: request.url,
           reason: attempted
             .filter((one) => one.status === "rejected")
-            .map((one) => reasonOf(one.reason))
+            .map((one) => safeReason(one.reason))
             .join("; "),
           landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
         },
@@ -439,7 +440,7 @@ async function append(
       );
     } catch (error) {
       request.log.error(
-        { ip: request.ip, url: request.url, reason: reasonOf(error) },
+        { ip: request.ip, url: request.url, reason: safeReason(error) },
         "rejected: /edit metadata pin failed",
       );
       return reply.code(502).send({ error: "pin-failed" });
@@ -466,7 +467,7 @@ async function append(
       // The call ran against current state and was refused, so nothing was signed or broadcast.
       const name = revertName(error);
       request.log.error(
-        { url: request.url, reason: name ?? reasonOf(error) },
+        { url: request.url, reason: name ?? safeReason(error) },
         "rejected: /edit the registry refused",
       );
       return reply.code(502).send({ error: "send-failed", reason: name ?? "the registry refused the edit" });
@@ -499,8 +500,8 @@ async function append(
         return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId, passportId });
       }
       if (error instanceof SponsoredSendFailed) {
-        request.log.error({ url: request.url, reason: error.message }, "rejected: /edit send failed");
-        return reply.code(502).send({ error: "send-failed", reason: error.message });
+        request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /edit send failed");
+        return reply.code(502).send({ error: "send-failed", reason: safeReason(error) });
       }
       // privyErrorText is Privy's status, code and message. The authorization key is never in it.
       request.log.error({ url: request.url, reason: privyErrorText(error) }, "rejected: /edit sign failed");
@@ -514,7 +515,7 @@ async function append(
       receipt = await awaitReceipt(context.chain, sent.hash, RECEIPT_WAIT_MS);
     } catch (error) {
       request.log.error(
-        { url: request.url, hash: sent.hash, reason: reasonOf(error) },
+        { url: request.url, hash: sent.hash, reason: safeReason(error) },
         "rejected: /edit the receipt could not be read",
       );
       return reply
@@ -690,7 +691,7 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
     return await verifyPrivyToken(token, keys);
   } catch (error) {
     if (error instanceof InvalidToken) {
-      request.log.warn({ ip: request.ip, reason: error.message }, "rejected: bad Privy token");
+      request.log.warn({ ip: request.ip, reason: safeReason(error) }, "rejected: bad Privy token");
       return undefined;
     }
     throw error;
@@ -709,13 +710,9 @@ async function alreadyRegistered(context: EditContext, passportId: Hex, request:
     return await passportExists(context.chain, context.registry, passportId);
   } catch (error) {
     request.log.warn(
-      { url: request.url, reason: reasonOf(error) },
+      { url: request.url, reason: safeReason(error) },
       "edit: the duplicate check could not reach the chain",
     );
     return false;
   }
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

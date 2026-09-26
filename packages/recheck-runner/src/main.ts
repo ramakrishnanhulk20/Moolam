@@ -1,11 +1,12 @@
 import { ConfigError, formatMon, readConfig, type Config } from "./config.js";
 import { attestationLanded, balanceWei, eventIndex, rpcCall } from "./chain.js";
 import { readDocument } from "./document.js";
+import { safeReason } from "./errorText.js";
 import { indexClient } from "./index-read.js";
 import { queueClient } from "./queue.js";
 import { redact, runSimulation } from "./simulate.js";
 import { loadState, saveState, type RunnerState } from "./state.js";
-import { message, onePass, openingState, secretValues, type Deps } from "./runner.js";
+import { onePass, openingState, secretValues, type Deps } from "./runner.js";
 
 function log(line: string): void {
   process.stdout.write(`${new Date().toISOString()} ${line}\n`);
@@ -63,7 +64,7 @@ async function main(): Promise<void> {
   try {
     config = readConfig();
   } catch (error) {
-    log(error instanceof ConfigError ? error.message : `the configuration is wrong: ${message(error)}`);
+    log(error instanceof ConfigError ? error.message : `the configuration is wrong: ${safeReason(error)}`);
     process.exitCode = 1;
     return;
   }
@@ -95,7 +96,7 @@ async function main(): Promise<void> {
         `pass finished: ${summary.considered} considered, ${summary.ran} run, ${summary.done} done, ${summary.failed} failed, ${summary.answered} answered from memory`,
       );
     } catch (error) {
-      log(`the pass failed outright: ${redact(message(error), secretValues(config))}`);
+      log(`the pass failed outright: ${redact(safeReason(error), secretValues(config))}`);
     }
     if (once || stopping) {
       break;

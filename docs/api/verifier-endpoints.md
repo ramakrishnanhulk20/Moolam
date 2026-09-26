@@ -153,6 +153,13 @@ a 360 degree description or another tool's data, does not move the hash. It is s
 A match must clear both thresholds: pHash at most 10 of 64, blockhash at most 40 of 256. Past
 either one, nothing is returned and `confidence` is 0.
 
+**An exact hit.** When the bytes are byte for byte a registered file, `exact` names it, `best` is
+that passport and `confidence` is 1, whatever the distances say. `phashDistance`, `blockhashDistance`
+and `score` are still measured, against the fingerprint the passport stored rather than written as
+0: the registry cannot check that a fingerprint belongs to its bytes, so a passport carrying another
+picture's fingerprint shows how far off it is. `score` is never below 0, which is what it reads when
+the stored fingerprint is past a threshold.
+
 **The first registration.** The closest match leads, but anyone can register a re-encoded copy of
 someone else's picture, and a copy a bit or two closer to the query would beat the original on
 distance alone. So the passport registered first among everything inside the thresholds is always
@@ -336,11 +343,33 @@ address to try, and an unsealed one is found through [`GET /unseal/:passportId`]
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once decoded |
 | `429` | Over 60 requests in a minute from that caller. The address is read from the hop named in `TRUST_PROXY`, so a service behind a proxy counts callers rather than the proxy. An IPv6 caller is counted by its /64, because every IPv6 host is handed at least that many addresses and could otherwise take a fresh count for each request; an IPv4 address written inside IPv6 counts as the plain IPv4 address, and an address that cannot be read shares one count with every other such address. A host holding more than a /64 still has one count per /64 |
 | `502` | The remote host did not answer, or answered with a non-2xx status |
-| `503` | `{ "error": "busy" }`. No matching slot came free in time. Nothing is wrong with the picture; send it again |
+| `503` | `{ "error": "busy" }`. No matching slot came free in time, or the uploads being sent right now already fill the 60 MiB ceiling, see below. Nothing is wrong with the picture; send it again |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while matching: a blockhash worker that crashed, stopped or ran out of time, a hash of the wrong length, a decoder out of memory, or a failure nobody named. It is logged, and the picture is fine to send again. A file that is not one of the three formats, or whose pixels the decoders refuse, is still a `400` |
 
-Errors are `{ "error": "<reason>" }`. A 500 answers with a fixed message rather than the internal
-one.
+Errors are `{ "error": "<reason>" }`. The answers no route writes itself have the same shape:
+Fastify's own `413` for a body past the limit, its `415` for a content type it does not read and the
+rate limiter's `429` carry Fastify's words, and any `5xx` says only
+`{ "error": "verifier failed to handle the request" }`, with the reason in the host's log.
+
+Error text is cut before it is logged or answered, on every route: each web address in it is cut to
+its origin, and every `URL:` or `Request body:` line is dropped. A dedicated RPC endpoint's path is
+its access key, and the chain library writes the endpoint it called into its own errors, so an error
+from the chain is told by its name and short message only. The same rule quotes a URL the caller sent
+back by its origin.
+
+**How much is held at once.** Every upload sent to `/verify` or `/verify/paid`, a file or a URL,
+takes a share of one ceiling of 60 MiB, three full uploads, before a byte of its body is read: the
+length it declares, or the 20 MB cap when it declares none. The share comes back once the answer has
+gone or the caller has hung up, and not while a match is still using the bytes. Past the ceiling the
+request is answered `503 busy` at once. The multipart reads of `/prepare`, `/edit` and `/unseal` are
+not under this ceiling.
+
+**The blockhash workers.** Two worker threads work out the blockhash, so the thread that answers
+requests never decodes pixels. A worker is replaced, after it answers, when its decoder threw on the
+way, when the picture was over 8 megapixels, or once the files it has been handed pass 64 MiB in
+total: the decoder keeps memory it never gives back, and a leak nothing reports is bounded by that
+budget. A worker that crashes, stops or runs past 30 seconds is replaced too, and that request
+answers `503 service-fault`.
 
 The five routes that read a picture, `/verify`, `/prepare`, `/generate`, `/edit` and `/unseal`,
 answer a fault of this service with the same `503 service-fault` and the same sentence, beside
@@ -377,10 +406,12 @@ and the paid verification still comes back `200`.
 | `400`, `403`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
+| `409` | `{ "error": "payment-in-flight", "reason": "..." }`. Another request is working on the same payment, the same payer and nonce, right now. It is checked before the upload is read or the facilitator is asked, so two requests never settle one payment side by side. Send it again once the first has answered: the same payment with the same file then gets the answer it bought |
+| `409` | `{ "error": "payment-used-for-another-file", "reason": "..." }`. This payment already bought an answer about another file. One payment buys one answer, for the file it was made for, and the answer held for that file is never written over |
 | `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
 | `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, or the first settle was refused with no transaction and the chain did not show the payment spent, see below. Nothing was cancelled and the answer is held against the payment |
-| `503` | `{ "error": "busy" }`. No matching slot came free in time. Nothing is settled or held, the authorisation is cancelled, and the same payment and picture can be sent again |
+| `503` | `{ "error": "busy" }`. No matching slot came free in time, or the upload ceiling under `/verify` was full. Nothing is settled or held, the authorisation is cancelled, and the same payment and picture can be sent again |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while matching, as under `/verify`. Nothing is settled or held, the authorisation is cancelled, and the picture is fine to send again |
 
 A settlement the facilitator has broadcast but not yet confirmed also answers `200`, with a pending
@@ -515,7 +546,10 @@ Private files are not served on the public IPFS network; Moolam's operator and t
 holder can still open it. The order is fixed: the registry is asked whether the picture is already
 registered, then the private copy is uploaded, then the metadata document is pinned. The copy is
 kept only when Pinata answers that it is private under exactly that name, and it is deleted again if
-the document pin fails. The pinned document gains `"privateRecheck": true` and nothing that names
+the document pin fails, unless Pinata already held that file before this request. Two prepares of
+one picture the signer refused carry the same passport id and so the same copy, and Pinata answers
+the second with the first one's file; that file is left in place for the first prepare, and the
+sweep removes it later if no registered passport asks for it. The pinned document gains `"privateRecheck": true` and nothing that names
 the private file, and the answer gains `privateRecheck: true`. Nothing else changes for a public or
 a plain sealed prepare.
 
@@ -632,6 +666,7 @@ and the byte check after signing looks only for text values held under place or 
 | `200` | Prepared and pinned |
 | `400` | Not a multipart body, no `file` part, an empty file, a file part under another name, a `title` outside 1 to 120 characters, a `kind` other than `human`, or a `training` statement that is not JSON, is over 1024 bytes, carries a key or a value the standard has no room for, or breaks the `constraintInfo` rule. The message names the field |
 | `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
+| `400` | A text part sent as anything but plain text, such as `application/json`: `the "<name>" field must be sent as plain text, not as <type>`. Skipping it would have read `sealed=true` as a public prepare. Nothing is pinned |
 | `400` | `{ "error": "private-recheck-needs-sealed" }`. `privateRecheck` is `true` and `sealed` is not. Nothing is pinned |
 | `401` | No `Authorization: Bearer` header, or a token that fails on its signature, issuer, audience, algorithm or expiry. A key set that cannot be fetched answers the same way, so a caller never learns the difference between a bad token and a bad network. `{ "error": "unauthorized" }` |
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
@@ -643,7 +678,7 @@ and the byte check after signing looks only for text values held under place or 
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. The `reason` says so and adds that registering the picture sealed still works, because a sealed prepare makes no thumbnail. Nothing is pinned and the day's slot is given back. A plain sealed prepare makes no thumbnail and never answers this; one with `privateRecheck` does, and its `reason` says a private re-check could never open the thumbnail and a plain sealed registration still works |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
-| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither. With `privateRecheck`, a refused or timed out private upload answers this with no document pinned, and a document pin that fails after the private copy was kept answers this after the copy is deleted. The day's slot is given back only when no pin can have stored anything: Pinata answered with a 4xx, or the request never left the service. A 5xx, a timeout or a dropped connection may come after Pinata kept the file, so those keep it spent |
+| `502` | Pinata refused a pin. `{ "error": "pin-failed" }`. Pinata's status and its answer go to the log and never to the caller, and the token appears in neither. With `privateRecheck`, a refused or timed out private upload answers this with no document pinned, and a document pin that fails after the private copy was kept answers this after the copy is deleted, or left in place when Pinata held it before this request. The day's slot is given back only when no pin can have stored anything: Pinata answered with a 4xx, or the request never left the service. A 5xx, a timeout or a dropped connection may come after Pinata kept the file, so those keep it spent |
 | `503` | `busy`. The two-slot decode gate stayed full for thirty seconds. Nothing was pinned, so the call can be made again |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while fingerprinting it: a blockhash worker that crashed, stopped or ran out of time, a hash of the wrong length, or a decoder out of memory. The signed path never falls back to an unsigned file for this. Nothing is pinned, and the day's slot is given back |
 | `503` | `{ "error": "chain-unreachable" }`. `privateRecheck` was asked for and the check for an existing passport could not reach the chain, so no private copy was made and nothing was pinned. A public or plain sealed prepare goes on in that case, as it always has |
@@ -829,6 +864,7 @@ arrives with a camera's own record gets the same redaction, read back and `camer
 | `200` | Pinned and sent |
 | `400` | Not a multipart body, no `file` part, a file part under another name, a `title` outside 1 to 120 characters, a `parentId` that is not 32 bytes of hex, or a `note` over 280 characters |
 | `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
+| `400` | A text part sent as anything but plain text, as under `/prepare`. Nothing is pinned or sent |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
 | `403` | `not-owner`. None of this caller's wallets is the one the registry says holds the parent. A creator with more than one embedded wallet is matched by the address on chain, not by which wallet is listed first |
 | `404` | `no-parent`. The registry has no passport with that id |
@@ -841,8 +877,8 @@ arrives with a camera's own record gets the same redaction, read back and `camer
 | `422` | `{ "error": "fingerprint-unstable", "limit": 10, "distance": n, "reason": "..." }`. The edit's own pinned thumbnail would land more than 10 of 64 pHash bits from it, as under `/prepare`. Nothing is pinned or sent, and both allowances are given back |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_EDITS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned, nothing is sent, and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
-| `499` | `{ "error": "client-gone" }`. The caller really left: the connection closed before the answer was written, or its socket is gone. It is checked twice, before the allowance is taken and again just before the send, so a creator who closed the tab while waiting at the decode gate is never sent a transaction. Their own allowance goes back; the day's budget goes back only if nothing was pinned yet. A request whose body was simply read to the end is not read as gone |
-| `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused. After `pin-failed` the day's ceiling comes back only when no pin can have stored anything, the rule under `/prepare` |
+| `499` | `{ "error": "client-gone" }`. The caller really left: the connection closed before the answer was written, or its socket is gone. It is checked twice, before the allowance is taken and again just before the send, so a creator who closed the tab while waiting at the decode gate is never sent a transaction. Both allowances go back only if nothing was pinned yet. A request whose body was simply read to the end is not read as gone |
+| `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused. Both allowances come back only when no pin can have stored anything, the rule under `/prepare` |
 | `502` | `{ "error": "send-failed", "reason": "the user operation reverted: ...", "passportId": "0x...", "hash": "0x..." }`. The transaction landed and its receipt carries no `PassportRegistered` event from the registry for this child. A sponsored send is a user operation inside a bundle, and the bundle succeeds even when the `appendEdit` inside it reverted, so the registry's own event is the only proof the edit was written. `send-failed` with the receipt's own `reason` is also the answer when the receipt says the transaction reverted |
 | `502` | `{ "error": "send-pending", "transactionId": "...", "passportId": "0x...", "hash": "0x..." }`, the hash only when Privy reported one. Privy took the transaction and the chain did not show it inside the wait. It may still land, so a caller must check the chain and must never send it again. `passportId` is the child's own id, which is why the check is a read of that one passport rather than a guess at which edit under the parent belongs to this caller |
 | `502` | `privy-unavailable` or `chain-unavailable`: Privy or the Monad RPC did not answer while the parent, the owner and the signer were being checked. That all happens before the allowance is taken, so nothing was sent and nothing was spent |
@@ -852,6 +888,13 @@ arrives with a camera's own record gets the same redaction, read back and `camer
 The parent is checked first, because it is the one claim in the request that costs nothing to settle.
 Then the signer, then the ownership, then the creator's own allowance, then today's budget for
 everyone, and only then is a pin or a transaction spent.
+
+**The allowance.** `EDITS_PER_DAY` per Privy user id over a rolling 24 hours, beside the day's
+`GLOBAL_EDITS_PER_DAY` for everyone. The two go back together, and only when the request spent
+nothing: no pin that may have stored something and no send. A pin is money spent whether or not the
+edit reaches the chain, so an edit that pinned and then failed at the estimate or the send, or whose
+caller hung up after the pins, keeps both. Giving the creator's own slot back there let one caller
+drain the day's edits for everyone at no cost to their own count.
 
 ## POST /unseal
 
@@ -908,7 +951,9 @@ One unseal of a passport at a time. The first request that passes the hash check
 passport on this server until it has answered, and a second one meanwhile is refused with `409
 unseal-in-progress` rather than reading "no record yet" while the first pins. A passport this
 server has already seen unsealed is answered `409 already-unsealed` from memory, before any Privy,
-Pinata or chain call, so a resend costs nothing.
+Pinata or chain call, so a resend costs nothing. So is a passport this server unsealed in the last ten
+minutes when it could not tell which record is the oldest: Pinata's listing can trail a fresh pin,
+and a second unseal that believed a listing reading "none" would pin a second record.
 
 The thumbnail is pinned first, and alone. If Pinata answers it with a private file, which happens
 when a private copy of these same bytes is kept for another passport, the unseal stops with `409
@@ -950,13 +995,14 @@ compare with the passport id on Monad.
 | `200` | Published. Once the record is pinned, a private copy kept for a private re-check is deleted by its exact name, `sealed-thumb-<passportId>.jpg`, and [`/sealed/status`](#get-sealedstatuspassportid) reads `gone` at once. A lookup or delete that fails is logged with the passport id and changes nothing in this answer |
 | `400` | Not a multipart body, no `file` part, a file part under another name, or a `passportId` that is not 32 bytes of hex |
 | `400` | `{ "error": "too-many-fields" }`. The body carries more than five text parts. Nothing is read further and nothing is pinned |
+| `400` | A text part sent as anything but plain text, as under `/prepare`. Nothing is pinned |
 | `400` | `{ "error": "hash-mismatch", "passportId": "0x..." }`. The upload is not the file this passport commits to. Usually the creator kept their own copy of the picture rather than the file this service signed and handed back |
 | `400` | `{ "error": "fingerprint-mismatch", "passportId": "0x...", "recomputed": {...} }`. The bytes hash right and the fingerprint recomputed from them is not the one on chain |
 | `401` | The token is missing or fails a check. `{ "error": "unauthorized" }` |
 | `403` | `not-holder`. The registry says another wallet holds this passport. A Privy user id this app does not know answers the same way |
 | `404` | `no-passport`. The registry has no passport with that id |
 | `409` | `not-sealed`. The passport's metadata document is already public, so there is nothing to unseal |
-| `409` | `{ "error": "already-unsealed", "passportId": "0x...", "record": {...} }`. A record is pinned for this passport already. A passport this server has seen unsealed is answered from memory, right after the hash check |
+| `409` | `{ "error": "already-unsealed", "passportId": "0x...", "record": {...} }`. A record is pinned for this passport already. A passport this server has seen unsealed is answered from memory, right after the hash check. One this server unsealed in the last ten minutes without learning its oldest record is answered the same way with no `record`, since there is none it can name for sure, and nothing is pinned |
 | `409` | `{ "error": "unseal-in-progress", "passportId": "0x..." }`. Another unseal of this passport is running on this server. Nothing was read or spent |
 | `409` | `{ "error": "thumbnail-held-privately", "passportId": "0x...", "reason": "..." }`. Pinata answered the public thumbnail pin with a private file it already keeps for these bytes. Nothing is public and the passport still reads sealed. The holder's allowance comes back; the day's ceiling stays spent, because the pin reached Pinata |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
@@ -970,7 +1016,7 @@ compare with the passport id on Monad.
 | `502` | `{ "error": "record-pin-failed", "passportId": "0x...", "image": {...}, "thumbnail": {...}, "reason": "..." }`. The picture is public and the record that points at it is not. This is the one half-done state the route can end in, and the answer says so rather than failing silently, because the caller has to know their picture is already out there. Sending the same file again lands on the same three addresses, because every pin is content addressed, and finishes the record |
 | `502` | `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`: the Monad RPC, the gateway or Privy did not answer. All of that happens before the allowance is taken, so nothing was spent |
 | `503` | `busy`. The shared decode gate, which matching, prepares, edits and unseals all queue on, stayed full for thirty seconds |
-| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while fingerprinting the upload, as under `/prepare`, which is never read as a file that is not an image. Nothing is pinned, and both allowances are given back |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while fingerprinting the upload or making its thumbnail, as under `/prepare`, which is never read as a file that is not an image. A thumbnail step that runs out of memory is this answer; `thumbnail-too-large` is only ever the size budget, and any other thumbnail failure is `415 not-an-image`. Nothing is pinned, and both allowances are given back |
 
 A public pin counts only when Pinata answers with the content id this service computed for the
 bytes it sent, on the public network. Pinata stores one copy of any content, across its networks
@@ -1033,8 +1079,15 @@ the rule in [How a passport's metadata document is read](#how-a-passports-metada
 
 A record is pinned once and never changes, so a hit is remembered for the life of the process. A
 miss of any of the three kinds is remembered for 60 seconds, and at most 2,000 misses are held
-before the oldest is forgotten. An unseal on this server clears its own miss at once, so a minute is
-the longest another server's answer can lag behind. `lookup-unavailable` is never remembered.
+before the oldest is forgotten. `lookup-unavailable` is never remembered.
+
+**Right after an unseal on this server.** When the unseal's own check found no earlier record, the
+record it just pinned is the oldest, so it is remembered at once and GET answers `200` with it while
+Pinata's listing still trails the pin. When that check could not answer, another server may have
+pinned first, so the record remembered is the oldest a fresh lookup names, or none; for the next ten
+minutes GET then remembers no `not-unsealed` miss for that passport and asks the listing again each
+time. Either way the unseal clears the passport's own miss, so a minute is the longest another
+server's answer can lag behind.
 
 ## GET /sealed/status/:passportId
 

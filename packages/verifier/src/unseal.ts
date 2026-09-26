@@ -7,6 +7,7 @@ import { env } from "./env.js";
 import { FingerprintFault, UndecodableImage, type Fingerprint, type Hex } from "./fingerprint.js";
 import { gatewayUrl } from "./ipfs/pinata.js";
 import { FINGERPRINT_VERSION, phashHex } from "./metadata.js";
+import { safeReason } from "./net/errorText.js";
 import { BlockedTarget, UnreachableTarget, safeFetch, type SafeFetchOptions } from "./net/safeFetch.js";
 import { THUMBNAIL_MAX_BYTES, ThumbnailTooLarge, makeThumbnail } from "./prepare.js";
 
@@ -195,7 +196,7 @@ export async function unsealThumbnail(bytes: Buffer): Promise<ThumbnailAttempt> 
     return { ok: true, thumbnail: await makeThumbnail(bytes) };
   } catch (error) {
     if (error instanceof ThumbnailTooLarge) {
-      return { ok: false, limit: THUMBNAIL_MAX_BYTES, detail: error.message };
+      return { ok: false, limit: THUMBNAIL_MAX_BYTES, detail: safeReason(error) };
     }
     if (error instanceof FingerprintFault || error instanceof UndecodableImage) {
       throw error;
@@ -474,7 +475,7 @@ export async function findUnsealRecord(passportId: Hex, options: LookupOptions =
     }
     body = await response.json();
   } catch (error) {
-    return { state: "unavailable", reason: error instanceof Error ? error.message : String(error) };
+    return { state: "unavailable", reason: safeReason(error) };
   }
 
   const parsed = listingSchema.safeParse(body);

@@ -6,6 +6,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest }
 import { isAddress, isAddressEqual, parseAbi, parseEventLogs, type Hex } from "viem";
 import { withPassportFacts } from "../disputeRead.js";
 import { env } from "../env.js";
+import { safeReason } from "../net/errorText.js";
 import { readClient } from "../reputation/registry.js";
 import { paymentLedger, type LedgerEntry, type PaymentLedger } from "../x402/ledger.js";
 import { assertPaidRoute, contextFor, PAID_VERIFY_PATH, PAYMENT_SIGNATURE_HEADER } from "../x402/plugin.js";
@@ -203,7 +204,7 @@ async function attempt(settle: () => Promise<ProcessSettleResultResponse>): Prom
       ...(result.transaction.length > 0 ? { transaction: result.transaction } : {}),
     };
   } catch (error) {
-    return { kind: "unknown", reason: error instanceof Error ? error.message : String(error) };
+    return { kind: "unknown", reason: safeReason(error) };
   }
 }
 
@@ -704,7 +705,7 @@ export async function verifyPaidRoutes(
           bytes = await readUpload(request);
         } catch (error) {
           const status = statusOf(error);
-          return reply.code(status).send({ error: error instanceof Error ? error.message : String(error) });
+          return reply.code(status).send({ error: safeReason(error) });
         }
         const replay = await replayFor(seen, bytes, charged);
         if (replay.kind === "other-file") {
@@ -732,7 +733,7 @@ export async function verifyPaidRoutes(
       await ready;
     } catch (error) {
       ready = undefined;
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       request.log.error({ ...where, reason }, "rejected: x402 facilitator unreachable");
       return reply.code(502).send({ error: `the payment facilitator did not answer: ${reason}` });
     }
@@ -741,7 +742,7 @@ export async function verifyPaidRoutes(
     try {
       processed = await payments.processHTTPRequest(context);
     } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       request.log.error({ ...where, reason }, "rejected: x402 could not read the payment");
       return reply.code(502).send({ error: `the payment could not be checked: ${reason}` });
     }
@@ -779,7 +780,7 @@ export async function verifyPaidRoutes(
       );
     } catch (error) {
       const status = statusOf(error);
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       await verified.cancellationDispatcher.cancel({ reason: "handler_failed", responseStatus: status });
       request.log.warn({ ...where, status, reason }, "rejected: /verify/paid");
       // The same two 503 answers /verify gives, so a payer is told in the same words that the

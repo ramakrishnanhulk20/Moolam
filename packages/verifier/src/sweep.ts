@@ -4,6 +4,7 @@ import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { env, type PrivateSweepMode } from "./env.js";
 import { PRIVATE_SWEEP_PAGES, deletePrivateFile, listPrivatePage, type PrivateListing } from "./ipfs/pinata.js";
+import { safeReason } from "./net/errorText.js";
 import { readClient } from "./reputation/registry.js";
 import { privateRecheckFor, privateThumbnailName } from "./sealed.js";
 import type { Hex } from "./types.js";
@@ -212,7 +213,7 @@ export function privateSweep(options: {
       saveFailed = false;
     } catch (error) {
       if (!saveFailed) {
-        log.warn({ reason: reasonOf(error) }, "sweep: its place in the listing could not be saved, keeping it in memory");
+        log.warn({ reason: safeReason(error) }, "sweep: its place in the listing could not be saved, keeping it in memory");
         saveFailed = true;
       }
     }
@@ -244,7 +245,7 @@ export function privateSweep(options: {
     } catch (error) {
       // A saved page token Pinata will not take any more must not stop every run after it.
       moveCursor(undefined);
-      log.warn({ mode: active, reason: reasonOf(error) }, "sweep: stopped, the private listing could not finish, nothing marked");
+      log.warn({ mode: active, reason: safeReason(error) }, "sweep: stopped, the private listing could not finish, nothing marked");
       return run("stopped", false);
     }
     const more = listing.next !== undefined;
@@ -281,7 +282,7 @@ export function privateSweep(options: {
         held = await deps.registered(id);
       } catch (error) {
         log.warn(
-          { mode: active, passportId: id, reason: reasonOf(error) },
+          { mode: active, passportId: id, reason: safeReason(error) },
           "sweep: stopped, the chain did not answer for a passport, nothing marked",
         );
         return run("stopped", more);
@@ -303,7 +304,7 @@ export function privateSweep(options: {
       try {
         asks = privateRecheckFor(await deps.document(id), id) === "asked";
       } catch (error) {
-        log.warn({ mode: active, passportId: id, reason: reasonOf(error) }, "sweep: a registered passport's document could not be read, its copy stays");
+        log.warn({ mode: active, passportId: id, reason: safeReason(error) }, "sweep: a registered passport's document could not be read, its copy stays");
         asks = true;
       }
       if (asks) {
@@ -332,7 +333,7 @@ export function privateSweep(options: {
         log.info({ name: file.name, ageHours }, `sweep: deleted a private copy: ${why}`);
       } catch (error) {
         counts.failed += 1;
-        log.error({ name: file.name, reason: reasonOf(error) }, "sweep: could not delete a private copy");
+        log.error({ name: file.name, reason: safeReason(error) }, "sweep: could not delete a private copy");
       }
     }
     log.info({ mode: active, more, ...counts }, "sweep: run finished");
@@ -354,7 +355,7 @@ export function privateSweep(options: {
       return result;
     } catch (error) {
       // Every step above catches its own failures; this is the belt for one nobody foresaw.
-      log.error({ mode, reason: reasonOf(error) }, "sweep: stopped on an unexpected error, nothing more done");
+      log.error({ mode, reason: safeReason(error) }, "sweep: stopped on an unexpected error, nothing more done");
       return undefined;
     } finally {
       running = false;
@@ -456,8 +457,4 @@ function liveDocument(): (passportId: Hex) => Promise<unknown> {
     }
     return await readMetadataDocument(metadataURI);
   };
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

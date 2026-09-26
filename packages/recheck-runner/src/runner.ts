@@ -2,6 +2,7 @@ import { RegistrationError } from "./chain.js";
 import { formatMon, type Config } from "./config.js";
 import type { Document, PictureRead, RecordLookup } from "./document.js";
 import { fingerprintSizeRefusal, isTestCard, readPicture, readUnsealRecord, withRecord } from "./document.js";
+import { safeReason } from "./errorText.js";
 import type { IndexClient, PassportRow } from "./index-read.js";
 import { cut } from "./net.js";
 import { isTxHash, type DoneReport, type QueueClient } from "./queue.js";
@@ -213,7 +214,7 @@ export async function onePass(given: Deps): Promise<PassSummary> {
     try {
       outcome = await handle(deps, candidate, state);
     } catch (error) {
-      const reason = redact(message(error), secrets);
+      const reason = redact(safeReason(error), secrets);
       log(`passport ${candidate.passportId.slice(0, 12)} could not be handled: ${reason}`);
       const latest = rollDay(deps.readState(), deps.now());
       const failures = latest.failures + 1;
@@ -280,7 +281,7 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
       try {
         landed = await deps.reportLanded(earlier.tx, passportId);
       } catch (error) {
-        return await wait(`the receipt of its earlier report ${tx} could not be read yet (${message(error)})`);
+        return await wait(`the receipt of its earlier report ${tx} could not be read yet (${safeReason(error)})`);
       }
       state = noteSent(state, passportId, { ...earlier, landed });
       state = landed ? noteBreakerLanded(state) : noteBreakerRefusal(state, passportId, deps.now());
@@ -406,7 +407,7 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     if (error instanceof RegistrationError) {
       return await close(error.message);
     }
-    return await wait(`its registration receipt could not be read (${message(error)})`);
+    return await wait(`its registration receipt could not be read (${safeReason(error)})`);
   }
 
   if (deps.stopping?.() === true) {
@@ -489,7 +490,7 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     try {
       landed = await deps.reportLanded(reportTx, passportId);
     } catch (error) {
-      log(`the receipt of report ${tx} could not be read: ${message(error)}`);
+      log(`the receipt of report ${tx} could not be read: ${safeReason(error)}`);
       landed = null;
     }
     state = noteSent(state, passportId, { at: seconds(deps.now()), tx: reportTx, landed });
@@ -650,7 +651,7 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     try {
       await deps.queue.done({ passportId, ...clean });
     } catch (error) {
-      log(`could not report back to the queue: ${message(error)}`);
+      log(`could not report back to the queue: ${safeReason(error)}`);
     }
   }
 }
@@ -677,7 +678,7 @@ async function respond(deps: Deps, passportId: string, report: Omit<DoneReport, 
     deps.log(redact(`answered the request for passport ${short}: ${said}`, scrub));
     return true;
   } catch (error) {
-    deps.log(redact(`could not answer the request for passport ${short}: ${message(error)}`, scrub));
+    deps.log(redact(`could not answer the request for passport ${short}: ${safeReason(error)}`, scrub));
     return false;
   }
 }
@@ -777,7 +778,7 @@ async function gather(deps: Deps, state: RunnerState, nowMs: number): Promise<{ 
   try {
     pending = await deps.queue.pending();
   } catch (error) {
-    log(`could not read the request queue: ${message(error)}`);
+    log(`could not read the request queue: ${safeReason(error)}`);
   }
   for (const raw of pending) {
     const passportId = raw.toLowerCase();
@@ -821,7 +822,7 @@ async function gather(deps: Deps, state: RunnerState, nowMs: number): Promise<{ 
         }
       }
     } catch (error) {
-      log(`could not read the index: ${message(error)}`);
+      log(`could not read the index: ${safeReason(error)}`);
     }
   }
 
@@ -894,8 +895,4 @@ function seconds(nowMs: number): number {
 function hours(totalSeconds: number): string {
   const whole = Math.round(totalSeconds / 3600);
   return whole === 1 ? "an hour" : `${whole} hours`;
-}
-
-export function message(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

@@ -8,6 +8,7 @@ import { FingerprintFault, ImageTooLarge, readImageHeader, type Hex } from "../f
 import { Busy } from "../generate/gate.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { safeReason } from "../net/errorText.js";
 import {
   CAPTURED_DESCRIPTION,
   FINGERPRINT_VERSION,
@@ -205,7 +206,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         upload = await readStudioUpload(request);
       } catch (error) {
         const status = statusOf(error);
-        const reason = error instanceof Error ? error.message : String(error);
+        const reason = safeReason(error);
         request.log.warn({ ip: request.ip, url: request.url, status, reason }, "rejected: /prepare");
         return reply.code(status).send({ error: reason });
       }
@@ -215,13 +216,13 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
       } catch (error) {
         if (error instanceof FingerprintFault) {
           request.log.error(
-            { url: request.url, reason: error.message },
+            { url: request.url, reason: safeReason(error) },
             "rejected: /prepare the service failed reading the image",
           );
           return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
         }
         const tooBig = error instanceof ImageTooLarge;
-        const reason = error instanceof Error ? error.message : String(error);
+        const reason = safeReason(error);
         request.log.warn({ ip: request.ip, url: request.url, reason }, "rejected: /prepare image");
         return reply.code(tooBig ? 413 : 415).send({ error: tooBig ? reason : "not-an-image" });
       }
@@ -281,7 +282,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             studio = published;
           }
         } catch (error) {
-          const reason = error instanceof Error ? error.message : String(error);
+          const reason = safeReason(error);
           if (error instanceof Busy) {
             request.log.warn({ url: request.url, reason }, "rejected: /prepare busy");
             return reply.code(503).send({ error: "busy" });
@@ -380,7 +381,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             // The words that say which field did not fit are this service's own fault to fix, and
             // they stay here. The caller gets the fixed sentence and the knowledge that nothing
             // was pinned.
-            const reason = error instanceof Error ? error.message : String(error);
+            const reason = safeReason(error);
             request.log.error({ url: request.url, reason }, "rejected: /prepare sealed record refused");
             return reply.code(500).send(SEALED_METADATA_REFUSED);
           }
@@ -392,7 +393,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           try {
             file = signedFile(studio.bytes, `${slug}.jpg`, passportId);
           } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
+            const reason = safeReason(error);
             request.log.error({ url: request.url, reason }, "rejected: /prepare sealed file refused");
             return reply.code(500).send(SEALED_FILE_REFUSED);
           }
@@ -417,7 +418,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           try {
             pinnedMetadata = await pinJson(document, `${slug}.json`);
           } catch (error) {
-            const reason = error instanceof Error ? error.message : String(error);
+            const reason = safeReason(error);
             request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
             pinned ||= !refusedByPinata(error);
             if (privateCopy !== undefined) {
@@ -469,7 +470,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
               url: request.url,
               reason: attempted
                 .filter((one) => one.status === "rejected")
-                .map((one) => reasonOf(one.reason))
+                .map((one) => safeReason(one.reason))
                 .join("; "),
               landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
             },
@@ -496,7 +497,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           pinnedMetadata = await pinJson(metadata, `${slug}.json`);
         } catch (error) {
           request.log.error(
-            { ip: request.ip, url: request.url, reason: reasonOf(error) },
+            { ip: request.ip, url: request.url, reason: safeReason(error) },
             "rejected: /prepare metadata pin failed",
           );
           return reply.code(502).send({ error: "pin-failed" });
@@ -550,7 +551,7 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
       return await verifyPrivyToken(token, keys);
     } catch (error) {
       if (error instanceof InvalidToken) {
-        request.log.warn({ ip: request.ip, reason: error.message }, "rejected: bad Privy token");
+        request.log.warn({ ip: request.ip, reason: safeReason(error) }, "rejected: bad Privy token");
         return undefined;
       }
       throw error;
@@ -687,8 +688,4 @@ function manifestAnswer(result: SealedResult): Record<string, unknown> {
     ...(result.embedded ? {} : { reason: result.reason }),
     ...(result.cameraRecord === undefined ? {} : { cameraRecord: result.cameraRecord }),
   };
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }

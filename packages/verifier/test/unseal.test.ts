@@ -28,7 +28,8 @@
 // own 4xx hands it back. From review pass 7: a thumbnail step that runs out of memory is this
 // service's fault and answers 503 (V64), GET shows the record this server just pinned after a
 // "none" check and never remembers a not-unsealed from a trailing listing after an unavailable one
-// (V65), and a field not sent as plain text is refused by name (V57).
+// (V65), a second unseal in the ten minutes after that answers already-unsealed and pins no second
+// record, and a field not sent as plain text is refused by name (V57).
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -268,6 +269,13 @@ async function ask(
     },
     remoteAddress: addressOf(subject),
   });
+}
+
+/** Another flat picture and its facts, for a test that needs a second passport of the same holder. */
+async function anotherSealedFile(background: string): Promise<{ bytes: Buffer; passportId: Hex; phash: bigint; blockhash: Hex }> {
+  const bytes = await sharp({ create: { width: 640, height: 480, channels: 3, background } }).jpeg({ quality: 92 }).toBuffer();
+  const print = await fingerprint(bytes);
+  return { bytes, passportId: print.sha256, phash: print.phash, blockhash: print.blockhash };
 }
 
 /** A picture of pure noise, which is the one thing a 512 pixel thumbnail cannot compress. */
@@ -619,14 +627,19 @@ describe("unsealing a sealed passport", () => {
 
   it("stops a creator at their own daily allowance and pins nothing on the refusal", async () => {
     const user = "did:privy:unseal-quota";
-    // A record lookup that cannot answer leaves nothing cached, so the same passport can be unsealed
-    // twice here; after a "none" the second would be answered already-unsealed (pass 7, V65).
-    stubs.findUnsealRecord.mockResolvedValue({ state: "unavailable", reason: "pinata is down" });
+    // Three passports of one holder, because a passport this server has unsealed is answered
+    // already-unsealed before the allowance is asked (pass 7, V65 and its follow-up).
+    const second = await anotherSealedFile("#2d4b63");
+    const third = await anotherSealedFile("#3d5b73");
+    stubs.readPassport.mockImplementation(async (_chain: unknown, _registry: unknown, id: Hex) => {
+      const file = [sealedFile, second, third].find((one) => one.passportId === id) ?? sealedFile;
+      return { registeredAt: 1_758_000_000, phash: file.phash, blockhash256: file.blockhash, fingerprintVersion: 1, metadataURI: METADATA_URI };
+    });
     expect((await ask(user)).statusCode).toBe(200);
-    expect((await ask(user)).statusCode).toBe(200);
+    expect((await ask(user, { file: second.bytes, passportId: second.passportId })).statusCode).toBe(200);
 
     pins.length = 0;
-    const refused = await ask(user);
+    const refused = await ask(user, { file: third.bytes, passportId: third.passportId });
 
     expect(refused.statusCode).toBe(429);
     expect(refused.json().error).toBe("quota");
@@ -813,16 +826,18 @@ describe("unsealing a sealed passport", () => {
   it("answers exactly as before when the private delete or the lookup fails, and logs the passport id", async () => {
     const id = sealedFile.passportId;
     const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    // Two servers, because one that has just unsealed a passport answers a second unseal of it
+    // already-unsealed (pass 7, V65 and its follow-up).
     const loud = await buildServer({ source: emptySource, logger: true, unseal: { keys: verifying } });
+    const loudAgain = await buildServer({ source: emptySource, logger: true, unseal: { keys: verifying } });
     await loud.ready();
-    // Two unseals of one passport on one server, so the record lookup must leave nothing cached.
-    stubs.findUnsealRecord.mockResolvedValue({ state: "unavailable", reason: "pinata is down" });
+    await loudAgain.ready();
     try {
       privatePinata.deleteFails = true;
       const deleteDown = await captureLog(async () => await ask("did:privy:unseal-delete-down", { on: loud }));
       privatePinata.deleteFails = false;
       privatePinata.listFails = true;
-      const lookupDown = await captureLog(async () => await ask("did:privy:unseal-lookup-private-down", { on: loud }));
+      const lookupDown = await captureLog(async () => await ask("did:privy:unseal-lookup-private-down", { on: loudAgain }));
 
       for (const { response } of [deleteDown, lookupDown]) {
         expect(response.statusCode).toBe(200);
@@ -840,6 +855,7 @@ describe("unsealing a sealed passport", () => {
       expect(notLooked).toContain(id);
     } finally {
       await loud.close();
+      await loudAgain.close();
     }
   }, 120_000);
 
@@ -1153,6 +1169,32 @@ describe("unsealing a sealed passport", () => {
     }
   }, 60_000);
 
+  // Pass 7, the WO-184b follow-up: a listing that still trails this server's own record pin reads
+  // "none", and believing it would pin a second record and cache that one as the oldest.
+  it("answers a second unseal already-unsealed within ten minutes of its own, whatever the listing says, and pins no second record", async () => {
+    const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await on.ready();
+    try {
+      stubs.findUnsealRecord
+        .mockReset()
+        .mockResolvedValueOnce({ state: "unavailable", reason: "pinata is down" })
+        .mockResolvedValue({ state: "none" });
+      expect((await ask("did:privy:unseal-fresh-twice", { on })).statusCode).toBe(200);
+      const pinned = pins.length;
+      const wallets = stubs.embeddedWallets.mock.calls.length;
+
+      const again = await ask("did:privy:unseal-fresh-twice", { on });
+
+      expect(again.statusCode).toBe(409);
+      expect(again.json()).toEqual({ error: "already-unsealed", passportId: sealedFile.passportId });
+      expect(pins).toHaveLength(pinned);
+      expect(pins.filter((pin) => pin.name.startsWith("unseal-"))).toHaveLength(1);
+      expect(stubs.embeddedWallets.mock.calls.length).toBe(wallets);
+    } finally {
+      await on.close();
+    }
+  }, 60_000);
+
   // Pass 7, intake #2 (V57) on /unseal: a part typed application/json reaches the loop parsed, and
   // skipping it would read as a missing field.
   it("refuses a field that is not sent as plain text, naming the field", async () => {
@@ -1181,7 +1223,7 @@ describe("unsealing a sealed passport", () => {
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ error: 'field "passportId" must be sent as plain text' });
+    expect(response.json()).toEqual({ error: 'the "passportId" field must be sent as plain text, not as application/json' });
     expect(pins).toHaveLength(0);
   }, 60_000);
 });

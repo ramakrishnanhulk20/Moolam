@@ -1,6 +1,7 @@
 import { createPrivateKey, createPublicKey } from "node:crypto";
 import { APIError, PrivyClient, type AuthorizationContext } from "@privy-io/node";
 import { env } from "../env.js";
+import { safeReason } from "../net/errorText.js";
 
 /** Old Privy dashboards handed out keys with this prefix. The SDK strips it, the key parser here must too. */
 const KEY_PREFIX = /^wallet-(auth|api):/;
@@ -94,7 +95,7 @@ export function privyErrorText(error: unknown): string {
         : typeof body?.error === "string"
           ? body.error
           : error.message;
-    return `HTTP ${error.status ?? "none"} ${code}: ${message}`;
+    return `HTTP ${error.status ?? "none"} ${code}: ${safeReason(message)}`;
   }
-  return error instanceof Error ? error.message : String(error);
+  return safeReason(error);
 }

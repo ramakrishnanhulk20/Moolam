@@ -15,6 +15,7 @@ import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { safeReason } from "../net/errorText.js";
 import {
   AI_SOURCE_TYPE,
   FINGERPRINT_VERSION,
@@ -308,7 +309,7 @@ export async function generateRoutes(
       // pass 5, intake 4). Only a private re-check makes a thumbnail of a sealed drawing.
       if (error instanceof ThumbnailTooLarge) {
         quota.release(identity.userId, ticket);
-        request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate thumbnail too large");
+        request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /generate thumbnail too large");
         return reply.code(422).send({
           error: "thumbnail-too-large",
           limit: error.limit,
@@ -331,7 +332,7 @@ export async function generateRoutes(
       // for, so both slots stay spent, and the answer says the fault is ours, not the model's.
       if (error instanceof FingerprintFault) {
         request.log.error(
-          { url: request.url, reason: error.message },
+          { url: request.url, reason: safeReason(error) },
           "rejected: /generate the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
@@ -339,14 +340,14 @@ export async function generateRoutes(
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);
         today.slot.giveBack();
-        request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate busy");
+        request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /generate busy");
         return reply.code(503).send({ error: "busy" });
       }
       if (error instanceof PromptRefused) {
         quota.release(identity.userId, ticket);
         today.slot.giveBack();
-        request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate prompt refused");
-        return reply.code(400).send({ error: "prompt-refused", reason: error.message });
+        request.log.warn({ url: request.url, reason: safeReason(error) }, "rejected: /generate prompt refused");
+        return reply.code(400).send({ error: "prompt-refused", reason: safeReason(error) });
       }
       // A 4xx is a call the provider turned down before it drew anything, so the slot goes back.
       // A timeout, a dead connection or a 5xx may have drawn and billed, and that one keeps it.
@@ -358,7 +359,7 @@ export async function generateRoutes(
         today.slot.giveBack();
       }
       request.log.error(
-        { url: request.url, reason: reasonOf(error), slotKept: billed },
+        { url: request.url, reason: safeReason(error), slotKept: billed },
         "rejected: /generate model failed",
       );
       return reply.code(502).send({ error: "model-failed" });
@@ -407,7 +408,7 @@ export async function generateRoutes(
       } catch (error) {
         // Which field did not fit is this service's own fault to fix, so it stays in the log.
         // The picture was drawn, so the daily slot stays spent, and nothing was pinned.
-        request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /generate sealed record refused");
+        request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /generate sealed record refused");
         return reply.code(500).send(SEALED_METADATA_REFUSED);
       }
 
@@ -418,7 +419,7 @@ export async function generateRoutes(
       try {
         file = signedFile(drawn.bytes, `${slug}.jpg`, drawn.print.sha256 as Hex);
       } catch (error) {
-        request.log.error({ url: request.url, reason: reasonOf(error) }, "rejected: /generate sealed file refused");
+        request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /generate sealed file refused");
         return reply.code(500).send(SEALED_FILE_REFUSED);
       }
 
@@ -455,7 +456,7 @@ export async function generateRoutes(
       } catch (error) {
         // pinFile's message carries Pinata's status and its answer, and never the token.
         request.log.error(
-          { ip: request.ip, url: request.url, reason: reasonOf(error) },
+          { ip: request.ip, url: request.url, reason: safeReason(error) },
           "rejected: /generate sealed pin failed",
         );
         if (privateCopy !== undefined) {
@@ -486,7 +487,7 @@ export async function generateRoutes(
             url: request.url,
             reason: attempted
               .filter((one) => one.status === "rejected")
-              .map((one) => reasonOf(one.reason))
+              .map((one) => safeReason(one.reason))
               .join("; "),
             landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
           },
@@ -519,7 +520,7 @@ export async function generateRoutes(
         );
       } catch (error) {
         request.log.error(
-          { ip: request.ip, url: request.url, reason: reasonOf(error) },
+          { ip: request.ip, url: request.url, reason: safeReason(error) },
           "rejected: /generate metadata pin failed",
         );
         return reply.code(502).send({ error: "pin-failed" });
@@ -653,10 +654,6 @@ async function draw(
   return { ...prepared, model: image.model, usage: image.usage, sealed: false };
 }
 
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
 /**
  * Who sent this request, or undefined when the token is missing, expired or from another Privy
  * app. Anything wrong with it is a 401 and never a 500, and the reason is logged rather than
@@ -669,7 +666,7 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
     return await verifyPrivyToken(token, keys);
   } catch (error) {
     if (error instanceof InvalidToken) {
-      request.log.warn({ ip: request.ip, reason: error.message }, "rejected: bad Privy token");
+      request.log.warn({ ip: request.ip, reason: safeReason(error) }, "rejected: bad Privy token");
       return undefined;
     }
     throw error;

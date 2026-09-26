@@ -8,6 +8,7 @@ import { FETCH_TIMEOUT_MS, MAX_UPLOAD_BYTES } from "../env.js";
 import { ImageTooLarge, UndecodableImage, UnsupportedImageFormat } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import type { MatchResult } from "../match.js";
+import { safeReason } from "../net/errorText.js";
 import { BlockedTarget, UnreachableTarget, safeFetch } from "../net/safeFetch.js";
 
 /** A rejection a caller caused, carrying the status the route should answer with. */
@@ -266,7 +267,7 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
       }
       // A body that stalls past the timeout or a connection the remote drops mid-body is the remote
       // host failing, not the caller, so a client that retries a 5xx gets to retry it.
-      const reason = error instanceof Error ? error.message : String(error);
+      const reason = safeReason(error);
       throw new BadRequest(`fetching ${parsed.data.url} failed part way through: ${reason}`, 502);
     }
 
@@ -327,7 +328,7 @@ export async function verifyBytes(
     if (error instanceof ImageTooLarge) {
       throw new BadRequest(error.message, 413);
     }
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = safeReason(error);
     if (error instanceof UnsupportedImageFormat || error instanceof UndecodableImage) {
       throw new BadRequest(`the upload is not an image we can read: ${detail}`);
     }

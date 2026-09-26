@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { safeReason } from "../net/errorText.js";
 import type { Hex } from "../types.js";
 
 /**
@@ -246,7 +247,7 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
       if (!saveFailed) {
         // Said once per run of failures rather than once per request, so a read-only disk does not
         // fill the log with the same line on every button press.
-        log(`the re-check queue could not be saved, holding it in memory only: ${reasonOf(error)}`);
+        log(`the re-check queue could not be saved, holding it in memory only: ${safeReason(error)}`);
         saveFailed = true;
       }
     }
@@ -446,8 +447,4 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
       return [...items.values()].map((item) => ({ ...item }));
     },
   };
-}
-
-function reasonOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
