@@ -13,8 +13,12 @@ export interface PassportRow {
 }
 
 export interface IndexClient {
-  /** Real candidates for a sweep: nothing re-checked, registered before the given second. */
-  unrechecked(before: number, limit: number): Promise<PassportRow[]>;
+  /**
+   * Real candidates for a sweep: nothing re-checked, registered before the given second, and none of
+   * the excluded ids. The exclusion is in the query rather than applied after it, so passports the
+   * runner has already settled cannot fill the page and hide an older one (tally R3).
+   */
+  unrechecked(before: number, limit: number, excluding?: readonly string[]): Promise<PassportRow[]>;
   byId(passportId: string): Promise<PassportRow | null>;
 }
 
@@ -41,9 +45,13 @@ const ONE = `query PassportById($id: String!) {
  */
 export function indexClient(url: string, fetcher: Fetcher = fetch): IndexClient {
   return {
-    async unrechecked(before: number, limit: number): Promise<PassportRow[]> {
+    async unrechecked(before: number, limit: number, excluding: readonly string[] = []): Promise<PassportRow[]> {
       const where = {
-        _and: [{ attestationCount: { _eq: 0 } }, { registeredAt: { _lt: String(before) } }],
+        _and: [
+          { attestationCount: { _eq: 0 } },
+          { registeredAt: { _lt: String(before) } },
+          ...(excluding.length === 0 ? [] : [{ id: { _nin: excluding.map((one) => one.toLowerCase()) } }]),
+        ],
       };
       return rowsOf(await ask(LIST, { where, limit }));
     },

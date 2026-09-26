@@ -61,6 +61,23 @@ describe("the request queue client", () => {
     expect(await queue.claim(ID)).toBe("not-requested");
   });
 
+  it("tells a finished request apart from one somebody else is running (tally R8)", async () => {
+    const answers = [
+      { error: "not-pending", passportId: ID },
+      { error: "already-running", passportId: ID },
+      "not json",
+    ];
+    let at = 0;
+    const { fetcher } = recorder(() => {
+      const body = answers[at++];
+      return new Response(typeof body === "string" ? body : JSON.stringify(body), { status: 409 });
+    });
+    const queue = queueClient(BASE, TOKEN, fetcher);
+    expect(await queue.claim(ID)).toBe("finished");
+    expect(await queue.claim(ID)).toBe("taken");
+    expect(await queue.claim(ID)).toBe("taken");
+  });
+
   it("asks for a request of its own on the public route, without the runner token", async () => {
     const codes = [200, 409, 503];
     let at = 0;
@@ -124,6 +141,16 @@ describe("the index read", () => {
     expect(body.variables.limit).toBe(5);
     expect(JSON.stringify(body.variables.where)).toContain('"attestationCount":{"_eq":0}');
     expect(JSON.stringify(body.variables.where)).toContain('"registeredAt":{"_lt":"1789000000"}');
+  });
+
+  it("leaves the passports the runner has settled out of the query itself, so they cannot fill the page (tally R3)", async () => {
+    const { sent, fetcher } = recorder(() => json({ data: { Passport: [] } }));
+    const index = indexClient("https://index.example/v1/graphql", fetcher);
+    await index.unrechecked(1_789_000_000, 5, [ID.toUpperCase()]);
+    await index.unrechecked(1_789_000_000, 5, []);
+    const where = (at: number): string => JSON.stringify((sent[at]?.body as { variables: { where: unknown } }).variables.where);
+    expect(where(0)).toContain(`{"id":{"_nin":["${ID}"]}}`);
+    expect(where(1)).not.toContain("_nin");
   });
 
   it("reads a timestamp whether the index served a string or a number", () => {

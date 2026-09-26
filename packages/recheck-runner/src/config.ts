@@ -39,12 +39,22 @@ export interface Config {
   maxPerPass: number;
   maxReportsPerDay: number;
   minMonWei: bigint;
-  /** How long a passport is left alone after the runner last finished with it. */
+  /** How long a passport is left alone after a paid run on it ended with no verdict, and the longest passing wait. */
   cooldownSeconds: number;
+  /**
+   * The first wait after a passing failure: a gateway miss, a timeout, a 5xx. Each one in a row
+   * doubles it, up to the cooldown.
+   */
+  retrySeconds: number;
   simulateTimeoutMs: number;
   failuresBeforeBackoff: number;
   backoffMinutes: number;
   dryRun: boolean;
+  /**
+   * RUNNER_RESET_BREAKER=1: clear a tripped circuit breaker when the runner starts. Set it for one
+   * restart and take it out again, or every later restart clears the breaker without anyone looking.
+   */
+  resetBreaker: boolean;
 }
 
 /** The registry the workflow's own config.json names, so the two cannot drift apart silently. */
@@ -98,10 +108,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     maxReportsPerDay: count(env, "RUNNER_MAX_REPORTS_PER_DAY", 40, 0),
     minMonWei: monToWei(env.RUNNER_MIN_MON?.trim() || "1.5"),
     cooldownSeconds: count(env, "RUNNER_COOLDOWN_SECONDS", 6 * 60 * 60, 0),
+    retrySeconds: count(env, "RUNNER_RETRY_SECONDS", 10 * 60, 10),
     simulateTimeoutMs: count(env, "RUNNER_SIMULATE_TIMEOUT_SECONDS", 600, 30) * 1000,
     failuresBeforeBackoff: count(env, "RUNNER_FAILURES_BEFORE_BACKOFF", 3, 1),
     backoffMinutes: count(env, "RUNNER_BACKOFF_MINUTES", 30, 1),
     dryRun: (env.RUNNER_DRY_RUN?.trim() ?? "") === "1",
+    resetBreaker: (env.RUNNER_RESET_BREAKER?.trim() ?? "") === "1",
   };
 }
 

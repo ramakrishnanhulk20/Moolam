@@ -131,6 +131,21 @@ const dct2d = (grid: Float64Array): Float64Array => {
 };
 
 /**
+ * Why a picture this size cannot be fingerprinted, or null when it can. The DCT needs a 32 by 32
+ * grid and this port only ever shrinks towards it, so a side under 32 pixels is refused. The verify
+ * service makes thumbnails at most 512 px on the long side without enlarging them, so a picture more
+ * than 16 times wider than tall lands here too. The re-check runner keeps a byte for byte copy of
+ * this function in packages/recheck-runner/src/document.ts, held to this text and to these answers
+ * by its test/workflow-picture.test.ts, so it can refuse such a passport before paying for a run.
+ */
+export function fingerprintSizeRefusal(width: number, height: number): string | null {
+  if (width < SAMPLE_SIZE || height < SAMPLE_SIZE) {
+    return `image is ${width}x${height}, too small to fingerprint`;
+  }
+  return null;
+}
+
+/**
  * The 64-bit fingerprint of one decoded image.
  *
  * @param pixels Interleaved samples, one byte each. Must hold width by height by channels bytes.
@@ -145,8 +160,9 @@ export const perceptualHash = (
 	height: number,
 	channels: number,
 ): bigint => {
-	if (width < SAMPLE_SIZE || height < SAMPLE_SIZE) {
-		throw new Error(`image is ${width}x${height}, too small to fingerprint`);
+	const tooSmall = fingerprintSizeRefusal(width, height);
+	if (tooSmall !== null) {
+		throw new Error(tooSmall);
 	}
 	if (channels !== 3 && channels !== 1) {
 		throw new Error(`image has ${channels} samples per pixel, expected 3 for colour or 1 for grey`);

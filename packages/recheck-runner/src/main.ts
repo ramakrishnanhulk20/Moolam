@@ -5,7 +5,7 @@ import { indexClient } from "./index-read.js";
 import { queueClient } from "./queue.js";
 import { redact, runSimulation } from "./simulate.js";
 import { loadState, saveState, type RunnerState } from "./state.js";
-import { message, onePass, secretValues, type Deps } from "./runner.js";
+import { message, onePass, openingState, secretValues, type Deps } from "./runner.js";
 
 function log(line: string): void {
   process.stdout.write(`${new Date().toISOString()} ${line}\n`);
@@ -30,12 +30,14 @@ function opening(config: Config): string {
     `target ${config.target}`,
     `state ${config.statePath}`,
     config.dryRun ? "DRY RUN, nothing will be broadcast" : "live, reports will be broadcast",
+    ...(config.resetBreaker ? ["RUNNER_RESET_BREAKER set"] : []),
   ].join(", ");
 }
 
 function build(config: Config): Deps {
   const call = rpcCall(config.rpcUrl);
-  let state: RunnerState = loadState(config.statePath, Date.now());
+  let state: RunnerState = openingState(loadState(config.statePath, Date.now()), config, log);
+  saveState(config.statePath, state);
 
   return {
     config,
@@ -67,25 +69,30 @@ async function main(): Promise<void> {
   }
 
   log(`moolam re-check runner starting: ${opening(config)}`);
-  const deps = build(config);
   const once = process.argv.includes("--once");
 
+  // The pass reads this between passports and before any claim, so a stop never starts new work
+  // and a run already sending finishes and hands back. The unit sends the signal to this process
+  // alone and waits longer than one run can take (deploy/moolam-recheck-runner.service).
   let stopping = false;
+  let wake: () => void = () => {};
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.on(signal, () => {
       if (stopping) {
         process.exit(1);
       }
       stopping = true;
-      log(`${signal} received, stopping after this pass`);
+      log(`${signal} received, stopping once the passport in hand is finished`);
+      wake();
     });
   }
+  const deps: Deps = { ...build(config), stopping: () => stopping };
 
   while (!stopping) {
     try {
       const summary = await onePass(deps);
       log(
-        `pass finished: ${summary.considered} considered, ${summary.ran} run, ${summary.done} done, ${summary.failed} failed`,
+        `pass finished: ${summary.considered} considered, ${summary.ran} run, ${summary.done} done, ${summary.failed} failed, ${summary.answered} answered from memory`,
       );
     } catch (error) {
       log(`the pass failed outright: ${redact(message(error), secretValues(config))}`);
@@ -93,16 +100,16 @@ async function main(): Promise<void> {
     if (once || stopping) {
       break;
     }
-    await sleep(config.intervalSeconds * 1000);
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(resolve, config.intervalSeconds * 1000);
+      wake = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+    });
   }
 
   log("stopped");
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 await main();

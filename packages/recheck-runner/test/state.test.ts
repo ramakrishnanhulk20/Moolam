@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { emptyState, inCooldown, loadState, noteRecent, rollDay, saveState, utcDay } from "../src/state.js";
+import { emptyState, inCooldown, loadState, noteRecent, noteWaiting, rollDay, saveState, utcDay, waitFor } from "../src/state.js";
 
 const folders: string[] = [];
 
@@ -64,6 +64,37 @@ describe("the spend ledger on disk", () => {
     expect(loadState(file, NOON).reports).toBe(8);
   });
 
+  it("reads a file written before the settled maps existed, and drops entries of the wrong shape", () => {
+    const file = scratch();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    const id = `0x${"a".repeat(64)}`;
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        day: "2026-09-22",
+        reports: 3,
+        recent: { [id]: 1_789_000_000, bad: "soon" },
+        closed: { [id]: { at: 1_789_000_000, reason: "its metadata names no thumbnail or image to check" }, other: "closed" },
+        waiting: { [id]: { until: 1 } },
+      }),
+      "utf8",
+    );
+    const state = loadState(file, NOON);
+    expect(state.reports).toBe(3);
+    expect(state.recent).toEqual({ [id]: 1_789_000_000 });
+    expect(Object.keys(state.closed)).toEqual([id]);
+    expect(state).toMatchObject({ held: {}, waiting: {}, refusals: {}, sent: {} });
+  });
+
+  it("reads a tripped breaker it cannot make sense of as tripped, never as clear", () => {
+    const file = scratch();
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ day: "2026-09-22", reports: 0, breaker: { streak: [], tripped: "yes" } }), "utf8");
+    expect(loadState(file, NOON).breaker.tripped).not.toBeNull();
+    fs.writeFileSync(file, JSON.stringify({ day: "2026-09-22", reports: 0 }), "utf8");
+    expect(loadState(file, NOON).breaker).toEqual({ streak: [], tripped: null });
+  });
+
   it("gives the cap back on a new UTC day and keeps everything else", () => {
     const yesterday = { ...emptyState("2026-09-21"), reports: 40, failures: 2, backoffUntil: 99 };
     const rolled = rollDay(yesterday, NOON);
@@ -88,6 +119,18 @@ describe("leaving a passport alone after it was handled", () => {
     expect(inCooldown(state, id, NOON + 60_000, 600)).toBe(true);
     expect(inCooldown(state, id.toUpperCase(), NOON + 60_000, 600)).toBe(true);
     expect(inCooldown(state, id, NOON + 900_000, 600)).toBe(false);
+  });
+
+  it("doubles a passing wait with each miss in a row, up to the cooldown (tally R5)", () => {
+    let state = emptyState("2026-09-22");
+    const waits: number[] = [];
+    for (let miss = 0; miss < 7; miss += 1) {
+      state = noteWaiting(state, id, "the gateway did not answer", NOON, 600, 21_600);
+      waits.push((state.waiting[id]?.until ?? 0) - NOON / 1000);
+    }
+    expect(waits).toEqual([600, 1_200, 2_400, 4_800, 9_600, 19_200, 21_600]);
+    expect(waitFor(state, id, NOON + 21_599_000)).toBeDefined();
+    expect(waitFor(state, id, NOON + 21_600_000)).toBeUndefined();
   });
 
   it("says nothing about a passport it has never seen", () => {

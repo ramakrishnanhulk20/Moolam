@@ -4,13 +4,13 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { attestationLanded } from "../src/chain.js";
 import { readConfig, type Config } from "../src/config.js";
-import type { Document, RecordLookup } from "../src/document.js";
+import type { Document, PictureRead, RecordLookup } from "../src/document.js";
 import type { PassportRow } from "../src/index-read.js";
 import type { Claim, DoneReport, Placed, QueueClient } from "../src/queue.js";
 import type { CopyState } from "../src/sealed.js";
 import { runSimulation, type SimulateRequest, type SimulateResult } from "../src/simulate.js";
-import { emptyState, noteRecent, type RunnerState } from "../src/state.js";
-import { onePass, type Deps } from "../src/runner.js";
+import { emptyState, loadState, noteRecent, saveState, type RunnerState } from "../src/state.js";
+import { isPassingFailure, onePass, openingState, type Deps } from "../src/runner.js";
 
 const NOW = Date.parse("2026-09-22T12:00:00Z");
 
@@ -45,15 +45,29 @@ function row(passportId: string, extra: Partial<PassportRow> = {}): PassportRow 
   };
 }
 
+const NO_PICTURE = id("7");
+
 const DOCUMENTS: Record<string, Document> = {
-  [`ipfs://document-${PICTURE.slice(2, 4)}`]: { title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true, privateRecheck: false },
-  [`ipfs://document-${SEALED.slice(2, 4)}`]: { title: "A kept picture", sealed: true, unsealed: false, readable: true, privateRecheck: false },
-  [`ipfs://document-${SEED.slice(2, 4)}`]: { title: "Moolam seed 4", sealed: false, unsealed: false, readable: true, privateRecheck: false },
-  [`ipfs://document-${ASKED.slice(2, 4)}`]: { title: "Harbour at dusk", sealed: false, unsealed: false, readable: true, privateRecheck: false },
-  [`ipfs://document-${PRIVATE.slice(2, 4)}`]: { title: "Old but strong", sealed: true, unsealed: false, readable: true, privateRecheck: true },
+  [`ipfs://document-${PICTURE.slice(2, 4)}`]: { title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true, privateRecheck: false, picture: "bafkreilighthouse" },
+  [`ipfs://document-${SEALED.slice(2, 4)}`]: { title: "A kept picture", sealed: true, unsealed: false, readable: true, privateRecheck: false, picture: null },
+  [`ipfs://document-${SEED.slice(2, 4)}`]: { title: "Moolam seed 4", sealed: false, unsealed: false, readable: true, privateRecheck: false, picture: "bafkreiseed" },
+  [`ipfs://document-${ASKED.slice(2, 4)}`]: { title: "Harbour at dusk", sealed: false, unsealed: false, readable: true, privateRecheck: false, picture: "bafkreiharbour" },
+  [`ipfs://document-${PRIVATE.slice(2, 4)}`]: { title: "Old but strong", sealed: true, unsealed: false, readable: true, privateRecheck: true, picture: null },
+  [`ipfs://document-${NO_PICTURE.slice(2, 4)}`]: {
+    title: "Harbour",
+    sealed: false,
+    unsealed: false,
+    readable: true,
+    privateRecheck: false,
+    picture: null,
+    refused: "passport metadata has no thumbnail or image to check",
+  },
 };
 
-const UNREADABLE: Document = { title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false };
+const UNREADABLE: Document = { title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false, picture: null };
+
+/** What the unseal record of a published sealed passport names as its thumbnail. */
+const FOUND: RecordLookup = { kind: "found", picture: "bafkreipublished" };
 
 interface StandIns {
   deps: Deps;
@@ -85,6 +99,7 @@ function standIns(input: {
   placed?: Placed;
   token?: string | null;
   landed?: boolean;
+  picture?: (cid: string) => PictureRead;
 }): StandIns {
   const config: Config = readConfig({ ...ENV, ...input.env });
   const lines: string[] = [];
@@ -125,10 +140,13 @@ function standIns(input: {
     config,
     queue,
     index: {
-      unrechecked: async () => input.sweep ?? [],
+      // As the index answers: newest first, the excluded ids left out, then cut to the limit.
+      unrechecked: async (_before, limit, excluding = []) =>
+        (input.sweep ?? []).filter((one) => !excluding.includes(one.id)).slice(0, limit),
       byId: async (passportId) => known.get(passportId) ?? null,
     },
     readDocument: async (metadataURI) => DOCUMENTS[metadataURI] ?? UNREADABLE,
+    readPicture: async (cid) => input.picture?.(cid) ?? { kind: "ok", width: 512, height: 384 },
     unsealRecord: async (passportId) => {
       lookups.push(passportId);
       return input.record?.(passportId) ?? { kind: "none" };
@@ -251,10 +269,17 @@ describe("one pass of the runner", () => {
     expect(kit.reports[0]?.reason).toContain("already carries 1");
   });
 
-  it("says so when the index has never seen the passport somebody asked about", async () => {
+  it("waits for an index that has not seen the passport somebody asked about, then says so", async () => {
     const kit = standIns({ pending: [id("9")] });
+    for (const minutes of [0, 11, 32]) {
+      kit.deps.now = () => NOW + minutes * 60_000;
+      await onePass(kit.deps);
+    }
+    expect(kit.claims).toEqual([]);
+    kit.deps.now = () => NOW + 33 * 60_000;
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
+    expect(kit.reports).toHaveLength(1);
     expect(kit.reports[0]?.reason).toContain("not in the index");
   });
 
@@ -318,7 +343,7 @@ describe("one pass of the runner", () => {
 
 describe("a passport registered sealed and published since", () => {
   it("is re-checked with the same command as a public one once its unseal record exists", async () => {
-    const kit = standIns({ pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "found" }) });
+    const kit = standIns({ pending: [SEALED], rows: [row(SEALED)], record: () => FOUND });
     const summary = await onePass(kit.deps);
 
     expect(kit.lookups).toEqual([SEALED]);
@@ -328,7 +353,7 @@ describe("a passport registered sealed and published since", () => {
   });
 
   it("is picked up by the sweep too", async () => {
-    const kit = standIns({ sweep: [row(SEALED)], record: () => ({ kind: "found" }) });
+    const kit = standIns({ sweep: [row(SEALED)], record: () => FOUND });
     const summary = await onePass(kit.deps);
     expect(summary.ran).toBe(1);
   });
@@ -338,7 +363,8 @@ describe("a passport registered sealed and published since", () => {
     await onePass(kit.deps);
     expect(kit.runs).toHaveLength(0);
     expect(kit.reports[0]?.reason).toContain("is sealed, so there is no published picture");
-    expect(kit.state().recent[SEALED]).toBeDefined();
+    expect(kit.state().held[SEALED]).toBeDefined();
+    expect(kit.state().closed[SEALED]).toBeUndefined();
   });
 
   it("is refused when the record served for it names another passport", async () => {
@@ -359,7 +385,7 @@ describe("a passport registered sealed and published since", () => {
       expect(kit.state().reports).toBe(0);
       expect(kit.state().failures).toBe(0);
       expect(kit.state().recent[SEALED]).toBeUndefined();
-      expect(kit.lines.join(" ")).toContain("trying again next pass");
+      expect(kit.lines.join(" ")).toContain("trying again in 10 minutes");
       expect(kit.lines.join(" ")).not.toContain("is sealed, so there is no published picture");
     }
   });
@@ -478,7 +504,11 @@ describe("the guards", () => {
 
   it("holds the per-pass cap on queued requests too, claiming no more than it will run (R9)", async () => {
     const asked = ["1", "2", "3", "4", "5", "6", "7"].map((letter) => id(letter));
-    const kit = standIns({ pending: asked, rows: asked.map((one) => row(one)), env: { RUNNER_MAX_PER_PASS: "2" } });
+    const kit = standIns({
+      pending: asked,
+      rows: asked.map((one) => row(one, { metadataURI: row(ASKED).metadataURI })),
+      env: { RUNNER_MAX_PER_PASS: "2" },
+    });
     const summary = await onePass(kit.deps);
     expect(summary.considered).toBe(2);
     expect(kit.claims).toHaveLength(2);
@@ -560,10 +590,10 @@ describe("a passport asking for a private re-check", () => {
     expect(kit.state().reports).toBe(1);
   });
 
-  it("does not ask for a second request when the passport came off the queue already claimed", async () => {
+  it("does not ask for a second request when the passport came off the queue, and claims it only just before the run", async () => {
     const kit = standIns({ pending: [PRIVATE], rows: [row(PRIVATE)] });
     await onePass(kit.deps);
-    expect(kit.calls).toEqual([`claim ${PRIVATE}`, `status ${PRIVATE}`, `simulate ${SEALED_DIR}`, `done ${PRIVATE}`]);
+    expect(kit.calls).toEqual([`status ${PRIVATE}`, `claim ${PRIVATE}`, `simulate ${SEALED_DIR}`, `done ${PRIVATE}`]);
   });
 
   it("treats a copy that is gone exactly as a plain sealed passport: refused, nothing spent", async () => {
@@ -579,7 +609,7 @@ describe("a passport asking for a private re-check", () => {
   });
 
   it("re-checks a gone copy's passport publicly when its holder has published the picture since", async () => {
-    const kit = standIns({ sweep: [row(PRIVATE)], copy: "gone", record: () => ({ kind: "found" }) });
+    const kit = standIns({ sweep: [row(PRIVATE)], copy: "gone", record: () => FOUND });
     await onePass(kit.deps);
     expect(path.basename(kit.runs[0]?.workflowDir ?? "")).toBe("moolam-verifier");
     expect(kit.calls).not.toContain(`request ${PRIVATE}`);
@@ -595,7 +625,7 @@ describe("a passport asking for a private re-check", () => {
     expect(kit.state().reports).toBe(0);
     expect(kit.state().failures).toBe(0);
     expect(kit.state().recent[PRIVATE]).toBeUndefined();
-    expect(kit.lines.join(" ")).toContain("trying again next pass");
+    expect(kit.lines.join(" ")).toContain("trying again in 10 minutes");
   });
 
   it("refuses with a named reason when the env file carries no CRE_SEALED_LINK_TOKEN, before any request", async () => {
@@ -641,17 +671,15 @@ describe("a passport asking for a private re-check", () => {
     expect(kit.lines.join(" ")).toContain("could not be handled");
   });
 
-  it("releases the claim in a dry run too, and spends nothing", async () => {
-    const kit = standIns({
-      env: { RUNNER_DRY_RUN: "1" },
-      sweep: [row(PRIVATE)],
-      simulate: () => ({ ok: true, recomputed: "0x1f1bc103fbef6f47", distance: 2, matched: true, printed: "cre ..." }),
-    });
+  it("is named and not started in a dry run, which claims nothing, since a private link needs a claim", async () => {
+    const kit = standIns({ env: { RUNNER_DRY_RUN: "1" }, pending: [PRIVATE], rows: [row(PRIVATE)], sweep: [row(PRIVATE)] });
     await onePass(kit.deps);
 
-    expect(kit.runs[0]?.broadcast).toBe(false);
-    expect(kit.reports).toEqual([{ passportId: PRIVATE, reason: "a dry run, so nothing was written", matched: true, distance: 2 }]);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.calls).toEqual([`status ${PRIVATE}`]);
+    expect(kit.reports).toEqual([]);
     expect(kit.state().reports).toBe(0);
+    expect(kit.lines.join(" ")).toContain("needs a live claim");
   });
 
   it("posts a reason with no download link, no service address and no token in it (B5)", async () => {
@@ -716,7 +744,9 @@ describe("a report the forwarder refused", () => {
     const summary = await onePass(kit.deps);
     expect(summary).toMatchObject({ ran: 1, done: 0, failed: 1 });
     expect(kit.reports[0]?.reportTx).toBeUndefined();
-    expect(kit.state().recent[ASKED]).toBeDefined();
+    expect(kit.state().sent[ASKED]).toMatchObject({ tx: `0x${"f".repeat(64)}`, landed: null });
+    expect(kit.state().waiting[ASKED]).toBeDefined();
+    expect(kit.state().recent[ASKED]).toBeUndefined();
   });
 
   it("is never asked about in a dry run, which writes nothing", async () => {
@@ -785,15 +815,333 @@ describe("nothing from the env file leaves the process (R11)", () => {
 
       const logged = kit.lines.join("\n");
       const posted = kit.reports.map((one) => one.reason ?? "").join("\n");
+      const stored = JSON.stringify(kit.state());
       expect(logged).toContain("could not read the index");
       expect(logged).toContain("could not report back to the queue");
-      expect(kit.reports).toHaveLength(2);
+      // The receipt read that failed for ASKED is a passing miss: left on the queue, its reason kept
+      // in the state file for a later answer. PICTURE ran and failed, and that is the one report.
+      expect(kit.reports.map((one) => one.passportId)).toEqual([PICTURE]);
+      expect(kit.state().waiting[ASKED]?.reason).toContain("could not be read");
       for (const leaked of [PRIVATE_KEY, RUNNER_TOKEN, "5ecre7k3yvalue", "quiknode", "key-0f1e2d3c4b5a", "abcd1234efgh", SEALED_TOKEN]) {
         expect(logged).not.toContain(leaked);
         expect(posted).not.toContain(leaked);
+        expect(stored).not.toContain(leaked);
       }
     } finally {
       fs.rmSync(folder, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * The verify service's queue as packages/verifier/src/recheck/queue.ts keeps it, cut down to what the
+ * runner can see: a page of the fifty oldest pending requests, a claim that answers 404 for no
+ * request and 409 for a finished or running one, and a done that only a running request accepts.
+ */
+function modelQueue(ids: string[]): { client: QueueClient; status: (passportId: string) => string | undefined } {
+  const items = new Map<string, string>(ids.map((one) => [one, "pending"]));
+  const client: QueueClient = {
+    pending: async () =>
+      [...items]
+        .filter(([, status]) => status === "pending")
+        .slice(0, 50)
+        .map(([one]) => one),
+    request: async (passportId) => {
+      const status = items.get(passportId);
+      if (status === undefined || status === "done" || status === "failed") {
+        items.delete(passportId);
+        items.set(passportId, "pending");
+      }
+      return "placed";
+    },
+    claim: async (passportId) => {
+      const status = items.get(passportId);
+      if (status === undefined) {
+        return "not-requested";
+      }
+      if (status === "done" || status === "failed") {
+        return "finished";
+      }
+      if (status === "running") {
+        return "taken";
+      }
+      items.set(passportId, "running");
+      return "claimed";
+    },
+    done: async (report) => {
+      if (items.get(report.passportId) !== "running") {
+        throw new Error("the re-check done route answered 409");
+      }
+      items.set(report.passportId, report.reportTx === undefined ? "failed" : "done");
+    },
+  };
+  return { client, status: (passportId) => items.get(passportId) };
+}
+
+describe("the runner review findings, each shown failing on the code before WO-175", () => {
+  const HOUR = 3_600_000;
+
+  it("hands back every request it claims, on every way a run can stop (tally R1)", async () => {
+    const exits: [string, Parameters<typeof standIns>[0], ((kit: StandIns) => void)?][] = [
+      ["the wallet under the floor", { pending: [ASKED], rows: [row(ASKED)], balance: 1_400_000_000_000_000_000n }],
+      ["a private copy nobody can read", { pending: [PRIVATE], rows: [row(PRIVATE)], copy: "unknown" }],
+      [
+        "an unseal record lookup that failed",
+        { pending: [SEALED], rows: [row(SEALED)], record: () => ({ kind: "failed", reason: "the unseal record lookup answered status 503" }) },
+      ],
+      [
+        "the index failing",
+        { pending: [ASKED] },
+        (kit) => {
+          kit.deps.index.byId = async () => {
+            throw new Error("the index answered 429");
+          };
+        },
+      ],
+      [
+        "a simulator that will not start",
+        { pending: [ASKED], rows: [row(ASKED)] },
+        (kit) => {
+          kit.deps.simulate = async () => {
+            throw new Error("spawn cre ENOENT");
+          };
+        },
+      ],
+    ];
+    for (const [name, input, tweak] of exits) {
+      const kit = standIns(input);
+      tweak?.(kit);
+      await onePass(kit.deps);
+      const answered = kit.reports.map((one) => one.passportId);
+      expect(kit.claims.filter((one) => !answered.includes(one)), name).toEqual([]);
+      expect(answered.length, name).toBeLessThanOrEqual(kit.claims.length);
+    }
+  });
+
+  it("claims nothing in a dry run, from the queue or from the sweep (tally R7)", async () => {
+    const kit = standIns({ env: { RUNNER_DRY_RUN: "1" }, pending: [ASKED], rows: [row(ASKED)], sweep: [row(PICTURE)] });
+    await onePass(kit.deps);
+    expect(kit.runs.map((one) => one.broadcast)).toEqual([false, false]);
+    expect(kit.claims).toEqual([]);
+    expect(kit.calls.filter((one) => one.startsWith("request"))).toEqual([]);
+    expect(kit.reports).toEqual([]);
+  });
+
+  it("stops between passports on a stop signal, and lets the run in hand finish and hand back (tally R10)", async () => {
+    let stop = false;
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)], sweep: [row(PICTURE)] });
+    const simulate = kit.deps.simulate;
+    kit.deps.simulate = async (request) => {
+      stop = true;
+      return simulate(request);
+    };
+    kit.deps.stopping = () => stop;
+    const summary = await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(1);
+    expect(kit.reports).toEqual([expect.objectContaining({ passportId: ASKED, reportTx: `0x${"f".repeat(64)}` })]);
+    expect(summary.stopped).toContain("stop signal");
+  });
+
+  it("settles a document the workflow must refuse once, with its reason, and never reads it again (tally R2)", async () => {
+    const kit = standIns({ pending: [NO_PICTURE], rows: [row(NO_PICTURE)] });
+    let reads = 0;
+    const read = kit.deps.readDocument;
+    kit.deps.readDocument = async (uri) => {
+      reads += 1;
+      return read(uri);
+    };
+    await onePass(kit.deps);
+    kit.deps.now = () => NOW + 7 * HOUR;
+    await onePass(kit.deps);
+
+    expect(reads).toBe(1);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.reports.map((one) => one.reason)).toEqual([
+      expect.stringContaining("no thumbnail or image"),
+      expect.stringContaining("no thumbnail or image"),
+    ]);
+    expect(kit.state().reports).toBe(0);
+    expect(kit.state().failures).toBe(0);
+  });
+
+  it("stops paying for a passport whose report the receiver refused twice (tally R4)", async () => {
+    const kit = standIns({ sweep: [row(PICTURE)], landed: false });
+    for (const hours of [0, 7, 14, 21]) {
+      kit.deps.now = () => NOW + hours * HOUR;
+      await onePass(kit.deps);
+    }
+    expect(kit.runs).toHaveLength(2);
+    expect(kit.state().closed?.[PICTURE]?.reason).toContain("refused");
+  });
+
+  it("tries again soon after a passing miss, and never closes a request as failed for one (tally R5)", async () => {
+    const sweep = standIns({ sweep: [row(PICTURE)] });
+    sweep.deps.readDocument = async () => UNREADABLE;
+    await onePass(sweep.deps);
+    sweep.deps.readDocument = async (uri) => DOCUMENTS[uri] ?? UNREADABLE;
+    sweep.deps.now = () => NOW + 11 * 60_000;
+    await onePass(sweep.deps);
+    expect(sweep.runs).toHaveLength(1);
+
+    const receipt = standIns({ pending: [ASKED], rows: [row(ASKED)] });
+    receipt.deps.eventIndex = async () => {
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    };
+    await onePass(receipt.deps);
+    expect(receipt.reports).toEqual([]);
+
+    const service = modelQueue([ASKED]);
+    const gateway = standIns({
+      rows: [row(ASKED)],
+      simulate: () => ({ ok: false, reason: "thumbnail fetch answered status 504 from [address removed]", printed: "cre ..." }),
+    });
+    gateway.deps.queue = service.client;
+    await onePass(gateway.deps);
+    expect(gateway.runs).toHaveLength(1);
+    expect(service.status(ASKED)).toBe("pending");
+    expect(gateway.state().recent[ASKED]).toBeUndefined();
+  });
+
+  it("tells a failure that may pass from a final one by the words the simulator and the workflows print (tally R5)", () => {
+    for (const passing of [
+      "thumbnail fetch answered status 504 from [address removed]",
+      "the gateway answered 502",
+      "unseal record lookup for passport 0xabc did not answer",
+      "the simulation was still running after 600 seconds and was stopped",
+      "context deadline exceeded",
+      "The operation was aborted due to timeout",
+      "metadata for passport 0xabc answered status 429",
+    ]) {
+      expect(isPassingFailure(passing), passing).toBe(true);
+    }
+    for (const final of [
+      "thumbnail fetch answered status 404 from [address removed]",
+      "the private copy fetch for passport 0xabc returned status 403",
+      "the CLI exited 1",
+      "image is 512x29, too small to fingerprint",
+      "passport 0xabc names a picture that is not an IPFS content id, so it is not fetched",
+    ]) {
+      expect(isPassingFailure(final), final).toBe(false);
+    }
+  });
+
+  it("answers requests for passports in cooldown, so fifty of them never hide a newer one (tally R6)", async () => {
+    const cooled = Array.from({ length: 50 }, (_, index) => `0x${(index + 1).toString(16).padStart(64, "0")}`);
+    let state = emptyState("2026-09-22");
+    for (const one of cooled) {
+      state = noteRecent(state, one, NOW - 60_000);
+    }
+    const service = modelQueue([...cooled, ASKED]);
+    const kit = standIns({ rows: [row(ASKED)], state });
+    kit.deps.queue = service.client;
+    for (let pass = 0; pass < 5; pass += 1) {
+      await onePass(kit.deps);
+    }
+    expect(kit.runs.map((one) => one.txHash)).toEqual([row(ASKED).txHash]);
+    expect(cooled.filter((one) => service.status(one) !== "failed")).toEqual([]);
+  });
+
+  it("does not run a requested passport whose document could not be read, and leaves the request waiting (tally R9)", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
+    kit.deps.readDocument = async () => UNREADABLE;
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.state().reports).toBe(0);
+    expect(kit.claims).toEqual([]);
+  });
+
+  it("never sends a second report for a passport it re-checked, while the index still reads zero (tally R11)", async () => {
+    const kit = standIns({ sweep: [row(PICTURE)] });
+    await onePass(kit.deps);
+    kit.deps.now = () => NOW + 7 * HOUR;
+    kit.deps.queue.pending = async () => [PICTURE];
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(1);
+    expect(kit.reports.at(-1)).toEqual({ passportId: PICTURE, reportTx: `0x${"f".repeat(64)}` });
+  });
+
+  it("settles a picture too narrow or too small to fingerprint, spending nothing on it (tally R12)", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)], picture: () => ({ kind: "ok", width: 512, height: 29 }) });
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.state().reports).toBe(0);
+    expect(kit.state().failures).toBe(0);
+    expect(kit.reports[0]?.reason).toContain("512x29, too small to fingerprint");
+  });
+
+  it("looks past passports it has settled, so an older real picture is still swept (tally R3)", async () => {
+    const newer = ["1", "2", "3", "4", "5"].map((letter) => id(letter));
+    let state = emptyState("2026-09-22");
+    for (const one of newer) {
+      state = noteRecent(state, one, NOW - 60_000);
+    }
+    const kit = standIns({ sweep: [...newer.map((one) => row(one)), row(PICTURE)], state });
+    await onePass(kit.deps);
+    expect(kit.runs.map((one) => one.txHash)).toEqual([row(PICTURE).txHash]);
+  });
+});
+
+describe("the circuit breaker on refused reports (CLAUDE.md 6f)", () => {
+  const FOUR = ["1", "2", "3", "4"].map((letter) => id(letter));
+  const readable = (one: string): PassportRow => row(one, { metadataURI: row(ASKED).metadataURI });
+  // The backoff is set out of reach so these tests see the breaker alone.
+  const ENV = { RUNNER_FAILURES_BEFORE_BACKOFF: "10" };
+
+  it("trips on three refusals in a row across different passports, and the fourth passport spends nothing", async () => {
+    const kit = standIns({ env: ENV, sweep: FOUR.map(readable), landed: false });
+    const summary = await onePass(kit.deps);
+
+    expect(kit.runs).toHaveLength(3);
+    expect(kit.state().reports).toBe(3);
+    expect(kit.claims).not.toContain(FOUR[3]);
+    expect(kit.state().breaker.tripped?.reason).toContain("3 different passports in a row");
+    expect(summary.stopped).toContain("CIRCUIT BREAKER TRIPPED");
+
+    kit.deps.now = () => NOW + 7 * 3_600_000;
+    const later = await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(3);
+    expect(kit.state().reports).toBe(3);
+    expect(later.stopped).toContain("CIRCUIT BREAKER TRIPPED");
+    expect(kit.lines.filter((line) => line.includes("CIRCUIT BREAKER TRIPPED")).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("stays tripped across a restart, and runs again only after a restart with RUNNER_RESET_BREAKER=1", async () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), "moolam-runner-breaker-"));
+    const file = path.join(folder, "state.json");
+    try {
+      const tripped = standIns({ env: ENV, sweep: FOUR.map(readable), landed: false });
+      await onePass(tripped.deps);
+      saveState(file, tripped.state());
+
+      const restarted = standIns({ env: ENV, sweep: [row(PICTURE)] });
+      const plain = openingState(loadState(file, NOW), restarted.deps.config, (line) => restarted.lines.push(line));
+      restarted.deps.readState = () => plain;
+      await onePass(restarted.deps);
+      expect(restarted.runs).toHaveLength(0);
+      expect(restarted.lines.join(" ")).toContain("CIRCUIT BREAKER TRIPPED");
+
+      const reset = standIns({ env: { ...ENV, RUNNER_RESET_BREAKER: "1" }, sweep: [row(PICTURE)] });
+      let state = openingState(loadState(file, NOW), reset.deps.config, (line) => reset.lines.push(line));
+      reset.deps.readState = () => state;
+      reset.deps.writeState = (next) => {
+        state = next;
+      };
+      await onePass(reset.deps);
+      expect(reset.runs).toHaveLength(1);
+      expect(state.breaker).toEqual({ streak: [], tripped: null });
+      expect(reset.lines.join(" ")).toContain("circuit breaker cleared by RUNNER_RESET_BREAKER=1");
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
+  });
+
+  it("starts the count again when a report lands between refusals", async () => {
+    const kit = standIns({ env: ENV, sweep: FOUR.map(readable) });
+    kit.deps.reportLanded = async (_tx, passportId) => passportId === FOUR[2];
+    const summary = await onePass(kit.deps);
+
+    expect(kit.runs).toHaveLength(4);
+    expect(summary.stopped).toBeUndefined();
+    expect(kit.state().breaker).toEqual({ streak: [FOUR[3]], tripped: null });
   });
 });

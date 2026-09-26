@@ -1,5 +1,7 @@
 // Holds the CRE workflow's picture choice, packages/workflow/moolam-verifier/picture.ts, to the
-// unseal record's real shape, and both workflows' fetch rule, pinned.ts, to R7. Does NOT cover the
+// unseal record's real shape, and both workflows' fetch rule, pinned.ts, to R7. Holds the runner's
+// copies of the picture rule, the record's thumbnail rule, the byte caps and phash.ts's size rule
+// to the originals, and its JPEG size reader to the workflow's decoder. Does NOT cover the
 // HTTP capability refusing a redirect by itself (Chainlink's documented behaviour, not ours), the
 // HTTP call that fetches the record, the sandbox's
 // own limits, or the fingerprint of the picture fetched: those run only inside the simulator, and
@@ -222,5 +224,119 @@ describe("the workflow's picture for an unsealed passport", () => {
   it("keeps refusing a document that is neither sealed nor names a picture", () => {
     const choice = choosePicture({ name: "Nothing here" }, PASSPORT, GATEWAY, { status: 200, body: recordBody() });
     expect(reasonOf(choice)).toContain("no thumbnail or image");
+  });
+});
+
+describe("the fingerprint's size rule, before any spend (tally R12)", () => {
+  const PHASH_FILE = path.resolve(import.meta.dirname, "../../workflow/moolam-verifier/phash.ts");
+  const DECODE_FILE = path.resolve(import.meta.dirname, "../../workflow/moolam-verifier/decode.ts");
+  const JPEG_JS = path.resolve(import.meta.dirname, "../../workflow/moolam-verifier/node_modules/jpeg-js/index.js");
+
+  interface PhashModule {
+    fingerprintSizeRefusal: (width: number, height: number) => string | null;
+    perceptualHash: (pixels: Uint8Array, width: number, height: number, channels: number) => bigint;
+  }
+  interface DecodeModule {
+    decodeJpeg: (bytes: Uint8Array) => { pixels: Uint8Array; width: number; height: number; channels: number };
+  }
+  interface JpegJs {
+    encode: (image: { data: Uint8Array; width: number; height: number }, quality: number) => { data: Uint8Array };
+  }
+
+  function jpeg(encoder: JpegJs, width: number, height: number): Uint8Array {
+    const data = new Uint8Array(width * height * 4);
+    for (let at = 0; at < data.length; at += 1) {
+      data[at] = (at * 37) % 251;
+    }
+    return new Uint8Array(encoder.encode({ data, width, height }, 90).data);
+  }
+
+  it("is one predicate: the runner's copy is phash.ts's text and gives the same answer everywhere", async () => {
+    const phash = (await import(pathToFileURL(PHASH_FILE).href)) as PhashModule;
+    const runner = await import(pathToFileURL(RUNNER_DOCUMENT_FILE).href);
+    const text = (file: string): string => {
+      const source = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+      const start = source.indexOf("export function fingerprintSizeRefusal(");
+      expect(start).toBeGreaterThan(-1);
+      return source.slice(start, source.indexOf("\n}\n", start) + 2);
+    };
+    expect(text(RUNNER_DOCUMENT_FILE)).toBe(text(PHASH_FILE));
+    for (const [width, height] of [[512, 29], [29, 512], [31, 31], [32, 32], [512, 32], [33, 1000], [0, 0]] as const) {
+      expect(runner.fingerprintSizeRefusal(width, height)).toBe(phash.fingerprintSizeRefusal(width, height));
+    }
+  });
+
+  it("reads a JPEG's size as the workflow's decoder does, and refuses exactly what perceptualHash refuses", async () => {
+    const phash = (await import(pathToFileURL(PHASH_FILE).href)) as PhashModule;
+    const { decodeJpeg } = (await import(pathToFileURL(DECODE_FILE).href)) as DecodeModule;
+    const encoder = (await import(pathToFileURL(JPEG_JS).href)) as { default?: JpegJs } & JpegJs;
+    const runner = await import(pathToFileURL(RUNNER_DOCUMENT_FILE).href);
+    for (const [width, height] of [[512, 29], [29, 512], [512, 384], [32, 32], [31, 64]] as const) {
+      const bytes = jpeg(encoder.default ?? encoder, width, height);
+      const decoded = decodeJpeg(bytes);
+      expect(runner.jpegSize(bytes)).toEqual({ width: decoded.width, height: decoded.height });
+
+      const refusal = runner.fingerprintSizeRefusal(width, height) as string | null;
+      const hashing = (): bigint => phash.perceptualHash(decoded.pixels, decoded.width, decoded.height, decoded.channels);
+      if (refusal === null) {
+        expect(hashing).not.toThrow();
+      } else {
+        expect(hashing).toThrowError(refusal);
+      }
+    }
+    expect(runner.jpegSize(new TextEncoder().encode("<html>not a picture</html>"))).toBeNull();
+  });
+});
+
+describe("the runner's copies of the workflow's picture rules agree with the originals (tally R2, R12)", () => {
+  it("reads every document the way choosePicture does before it spends", async () => {
+    const runner = await import(pathToFileURL(RUNNER_DOCUMENT_FILE).href);
+    const documents: Record<string, unknown>[] = [
+      { name: "Public", thumbnail: `ipfs://${THUMB}` },
+      { name: "Public", image: `ipfs://${THUMB}` },
+      { name: "Both", thumbnail: `ipfs://${THUMB}`, image: "https://a.example/x.jpg" },
+      { name: "Thumbnail wins", thumbnail: "https://a.example/x.jpg", image: `ipfs://${THUMB}` },
+      { name: "Empty thumbnail", thumbnail: "", image: `ipfs://${THUMB}` },
+      { name: "Number", thumbnail: 42 },
+      { name: "Sentence", sealed: true, image: "the picture was lost" },
+      { name: "Nothing" },
+      { name: "Sealed", sealed: true },
+      { name: "Sealed with null", sealed: true, thumbnail: null },
+      { name: "Sealed but a string", sealed: "yes" },
+      { name: "Path", thumbnail: `ipfs://${THUMB}/x` },
+    ];
+    for (const document of documents) {
+      const workflow = choosePicture(document, PASSPORT, GATEWAY);
+      const copy = runner.pictureRule(document) as { kind: string; cid?: string };
+      expect(copy.kind, JSON.stringify(document)).toBe(workflow.kind);
+      if (workflow.kind === "fetch") {
+        expect(`${GATEWAY}${copy.cid ?? ""}`).toBe(workflow.url);
+      }
+    }
+  });
+
+  it("reads an unseal record's thumbnail the way choosePicture does", async () => {
+    const runner = await import(pathToFileURL(RUNNER_DOCUMENT_FILE).href);
+    for (const thumbnail of [
+      { cid: THUMB, uri: `ipfs://${THUMB}` },
+      { uri: `ipfs://${THUMB}` },
+      { cid: "bafkreiother", uri: `ipfs://${THUMB}` },
+      { uri: `https://evil.example/${THUMB}` },
+      { uri: `ipfs://${THUMB}?x=1` },
+      "ipfs://bare-string",
+      null,
+    ]) {
+      const workflow = choosePicture(SEALED_DOCUMENT, PASSPORT, GATEWAY, { status: 200, body: recordBody({ thumbnail }) });
+      const copy = runner.recordPicture(thumbnail) as string | null;
+      expect(copy === null ? "refused" : `${GATEWAY}${copy}`, JSON.stringify(thumbnail)).toBe(
+        workflow.kind === "fetch" ? workflow.url : "refused",
+      );
+    }
+  });
+
+  it("holds pictures and documents to the workflow's byte caps", async () => {
+    const runner = await import(pathToFileURL(RUNNER_DOCUMENT_FILE).href);
+    expect(runner.MAX_PICTURE_BYTES).toBe(pinned.MAX_PICTURE_BYTES);
+    expect(runner.MAX_DOCUMENT_BYTES).toBe(pinned.MAX_DOCUMENT_BYTES);
   });
 });

@@ -3,10 +3,12 @@ import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
 import {
   MAX_DOCUMENT_BYTES,
+  MAX_PICTURE_BYTES,
   describe as describeDocument,
   isRealPicture,
   isTestCard,
   readDocument,
+  readPicture,
   readUnsealRecord,
   withRecord,
 } from "../src/document.js";
@@ -46,7 +48,7 @@ describe("reading the pinned document", () => {
       GATEWAY,
       answer({ name: "A lighthouse in fog", thumbnail: "ipfs://bafkreithumb" }),
     );
-    expect(document).toEqual({ title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true, privateRecheck: false });
+    expect(document).toEqual({ title: "A lighthouse in fog", sealed: false, unsealed: false, readable: true, privateRecheck: false, picture: "bafkreithumb" });
     expect(isRealPicture(document)).toBe(true);
   });
 
@@ -83,7 +85,7 @@ describe("reading the pinned document", () => {
 
   it("says unreadable rather than guessing when the gateway refuses", async () => {
     const document = await readDocument("ipfs://bafkreigone", GATEWAY, answer("nope", false));
-    expect(document).toEqual({ title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false });
+    expect(document).toEqual({ title: null, sealed: false, unsealed: false, readable: false, privateRecheck: false, picture: null });
     expect(isRealPicture(document)).toBe(false);
   });
 
@@ -110,6 +112,15 @@ describe("reading the pinned document", () => {
 
   it("does not take a picture reference that is a sentence rather than an address", () => {
     expect(describeDocument({ name: "Odd record", sealed: true, image: "the picture was lost" }).sealed).toBe(true);
+  });
+
+  it("refuses, before any spend, a document the public workflow must refuse (tally R2)", () => {
+    expect(describeDocument({ name: "Harbour" }).refused).toContain("no thumbnail or image");
+    expect(describeDocument({ name: "Harbour", image: "https://a.example/h.jpg" }).refused).toContain("not an IPFS content id");
+    expect(describeDocument({ name: "Harbour", thumbnail: "ipfs://bafkreithumb/x" }).refused).toContain("not an IPFS content id");
+    const good = describeDocument({ name: "Harbour", thumbnail: "ipfs://bafkreithumb", image: "https://a.example/h.jpg" });
+    expect(good.refused).toBeUndefined();
+    expect(good.picture).toBe("bafkreithumb");
   });
 });
 
@@ -219,11 +230,11 @@ describe("the unseal record beside a sealed document", () => {
   it("turns a sealed document with a record into the third kind, re-checkable like a public one", async () => {
     const { fetcher, urls } = service(200, { passportId: PASSPORT.toLowerCase(), thumbnail: { uri: "ipfs://bafkreithumb" } });
     const record = await readUnsealRecord(SERVICE, PASSPORT, fetcher);
-    expect(record).toEqual({ kind: "found" });
+    expect(record).toEqual({ kind: "found", picture: "bafkreithumb" });
     expect(urls).toEqual([`${SERVICE}/unseal/${PASSPORT.toLowerCase()}`]);
 
     const document = withRecord(describeDocument(SEALED_DOCUMENT), record);
-    expect(document).toEqual({ title: "A kept picture", sealed: false, unsealed: true, readable: true, privateRecheck: false });
+    expect(document).toEqual({ title: "A kept picture", sealed: false, unsealed: true, readable: true, privateRecheck: false, picture: "bafkreithumb" });
     expect(isRealPicture(document)).toBe(true);
   });
 
@@ -266,5 +277,55 @@ describe("the unseal record beside a sealed document", () => {
     const { fetcher, urls } = service(200, {});
     expect((await readUnsealRecord(SERVICE, "../recheck/queue", fetcher)).kind).toBe("failed");
     expect(urls).toHaveLength(0);
+  });
+});
+
+describe("reading the picture before a run (tally R12)", () => {
+  /** The first bytes of a baseline JPEG: the start marker, then a frame header naming the size. */
+  function frameHeader(width: number, height: number): Uint8Array {
+    return new Uint8Array([0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, height >> 8, height & 0xff, width >> 8, width & 0xff, 0x03]);
+  }
+
+  function serving(status: number, body: Uint8Array | string): { fetcher: typeof fetch; calls: { url: string; init: RequestInit | undefined }[] } {
+    const calls: { url: string; init: RequestInit | undefined }[] = [];
+    const fetcher = (async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(body, { status });
+    }) as unknown as typeof fetch;
+    return { fetcher, calls };
+  }
+
+  it("reads the size off the frame header, through the configured gateway with redirects refused", async () => {
+    const { fetcher, calls } = serving(200, frameHeader(512, 29));
+    expect(await readPicture("bafkreithumb", GATEWAY, fetcher)).toEqual({ kind: "ok", width: 512, height: 29 });
+    expect(calls.map((one) => one.url)).toEqual([`${GATEWAY}bafkreithumb`]);
+    expect(calls[0]?.init?.redirect).toBe("error");
+  });
+
+  it("refuses for good only what the workflow would refuse: over the cap, or not a JPEG", async () => {
+    const big = new Uint8Array(MAX_PICTURE_BYTES + 1);
+    big.set(frameHeader(512, 384));
+    expect((await readPicture("bafkreibig", GATEWAY, serving(200, big).fetcher)).kind).toBe("refused");
+    expect(await readPicture("bafkreipng", GATEWAY, serving(200, "\x89PNG not a jpeg").fetcher)).toMatchObject({
+      kind: "refused",
+      reason: expect.stringContaining("not a JPEG"),
+    });
+    expect((await readPicture("bafkrei/../x", GATEWAY, serving(200, frameHeader(64, 64)).fetcher)).kind).toBe("refused");
+  });
+
+  it("calls a gateway that did not hand the picture over a miss, never a refusal", async () => {
+    for (const status of [404, 429, 502]) {
+      expect((await readPicture("bafkreithumb", GATEWAY, serving(status, "").fetcher)).kind).toBe("missed");
+    }
+    const down = (async () => {
+      throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    }) as unknown as typeof fetch;
+    expect((await readPicture("bafkreithumb", GATEWAY, down)).kind).toBe("missed");
+  });
+
+  it("leaves a JPEG whose size it cannot find to the workflow rather than guessing", async () => {
+    expect(await readPicture("bafkreiodd", GATEWAY, serving(200, new Uint8Array([0xff, 0xd8, 0xff, 0xda, 0x00, 0x02])).fetcher)).toEqual({
+      kind: "unsized",
+    });
   });
 });

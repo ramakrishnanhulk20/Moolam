@@ -1,7 +1,11 @@
 import { HttpError, cut, textOf, type Fetcher } from "./net.js";
 
-/** What happened when the runner tried to take a request off the queue. */
-export type Claim = "claimed" | "not-requested" | "taken" | "disabled";
+/**
+ * What happened when the runner tried to take a request off the queue. "taken" is a request somebody
+ * is running now; "finished" is one already answered, which the service also refuses with a 409 but
+ * which nobody holds.
+ */
+export type Claim = "claimed" | "not-requested" | "taken" | "finished" | "disabled";
 
 /**
  * What happened when the runner asked the queue for a request of its own. "sealed" is the queue's
@@ -79,7 +83,9 @@ export function queueClient(baseUrl: string, token: string, fetcher: Fetcher = f
         return "claimed";
       }
       if (response.status === 409) {
-        return "taken";
+        // Only the service's own word for a finished request reads as finished. Anything else under
+        // a 409, a body that is not JSON included, reads as taken, which runs nothing.
+        return (await errorOf(response)) === "not-pending" ? "finished" : "taken";
       }
       if (response.status === 503) {
         return "disabled";
@@ -106,6 +112,16 @@ export function queueClient(baseUrl: string, token: string, fetcher: Fetcher = f
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(15_000),
     });
+  }
+}
+
+async function errorOf(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.json()) as unknown;
+    const error = typeof body === "object" && body !== null ? (body as { error?: unknown }).error : undefined;
+    return typeof error === "string" ? error : null;
+  } catch {
+    return null;
   }
 }
 

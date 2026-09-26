@@ -145,77 +145,150 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
 
 1. Reads the request queue, `GET /recheck/queue` with the runner token. A service with no token set
    answers 503 and the runner carries on from the index alone.
-2. Reads the index for passports with no re-check at all, registered more than
-   `RUNNER_SETTLE_SECONDS` ago. Requests come first; the sweep fills the rest of the pass.
-3. For each passport in turn, one at a time:
-   - a request is claimed first, `POST /recheck/claim`. A claim somebody else holds means skip.
+2. Answers, with no run, the requests it already knows the answer to, up to 20 a pass: a passport
+   it re-checked itself gets its report transaction back; one it settled as not re-checkable gets
+   the reason; one whose paid run got no verdict within the cooldown gets the time it will be tried
+   again; one that missed three times in a row for a passing reason gets that reason. Each is a
+   claim and a done, so it leaves the queue's page instead of holding its place in it, and fifty of
+   them can never hide a newer request. A request in a short passing wait is left for now.
+3. Reads the index for passports with no re-check at all, registered more than
+   `RUNNER_SETTLE_SECONDS` ago, leaving out by id every passport it is already leaving alone:
+   settled, re-checked by this runner, set aside, cooling or waiting (up to the newest 1,000). The
+   exclusion is in the query, so passports that can never be re-checked cannot fill the page and
+   hide an older real picture. Requests come first; the sweep fills the rest of the pass.
+4. For each passport in turn, one at a time, every read that can end its turn comes before any
+   claim or spend:
+   - its report memory: a passport this runner already sent a report for is never sent another.
+     A report whose receipt could not be read yet is read again first: landed means done, not
+     landed counts as a refusal.
    - the index row gives the registration transaction, which is the only place it is written down.
-     A hash that is not `0x` and 64 hex digits, the queue's own predicate for an id, is refused
-     before anything is read or counted, because it would end up on the CLI's command line.
+     A hash that is not `0x` and 64 hex digits, the queue's own predicate for an id, is settled,
+     because it would end up on the CLI's command line. A passport the index shows with an
+     attestation is settled. One the index has not caught up on yet waits.
    - the pinned document is fetched only from `ipfs://<cid>`, through the configured gateway, with
      redirects refused and the body cut off at 32,000 bytes. An http(s) address a registrant wrote
-     is refused before any request, with that reason, and nothing is spent on it: the workflows
-     apply the same rule, `pinnedContentId` in `packages/workflow/moolam-verifier/pinned.ts`, held
-     byte for byte to the runner's copy by `test/workflow-picture.test.ts`. An inline
-     `data:application/json,` document makes no request and is read as before.
-   - the document decides whether to go on: a seed test card is swept past, though it still
-     runs if somebody asked for it by hand. A sealed document sends one more question to the verify
-     service, `GET /unseal/<id>` with a ten second timeout, because the document on chain says
-     sealed for ever and only the unseal record beside it says the holder has published the picture
-     since. A record means the passport is re-checked with the same command as a public one; a 404
-     means it is refused as sealed; a record about another passport is refused; any other status, a
-     timeout or a body that is not JSON means try again next pass, with no report counted, no
-     cooldown started and no failure counted. Pointed at `deploy/queue-stub.mjs`, which has no
-     unseal route, a sealed passport reads as never published.
+     is refused before any request: the workflows apply the same rule, `pinnedContentId` in
+     `packages/workflow/moolam-verifier/pinned.ts`, held byte for byte to the runner's copy by
+     `test/workflow-picture.test.ts`. An inline `data:application/json,` document makes no request.
+     A body that is not a JSON object is settled; a gateway that did not answer is a passing miss.
+   - the document's picture goes through the public workflow's own picture rule (`choosePicture`
+     in `picture.ts`, copied and held to its answers by the same test file): a document that names
+     no picture, or names one that is not `ipfs://<cid>`, is settled before anything is spent.
+   - a seed test card is set aside by the sweep, though it still runs if somebody asked for it.
+   - a sealed document sends one more question to the verify service, `GET /unseal/<id>` with a ten
+     second timeout, because the document on chain says sealed for ever and only the unseal record
+     beside it says the holder has published the picture since. A record means the passport is
+     re-checked with the same command as a public one, on the record's `ipfs://` thumbnail; a 404
+     or a record about another passport sets it aside, answering a request with the reason, and a
+     later request looks again; any other status, a timeout or a body that is not JSON is a
+     passing miss. Pointed at `deploy/queue-stub.mjs`, which has no unseal route, a sealed passport
+     reads as never published.
    - a document that is sealed, asks for a private re-check and names no picture (the same
      `privatelyRecheckable` predicate as the verify service and the sealed workflow, held byte for
-     byte by `test/sealed-private-copy.test.ts`) goes to `moolam-sealed-verifier` instead, after the
-     wallet check below. `GET /sealed/status/<id>` is read just before the spend: kept goes on; gone
-     is handled exactly as a plain sealed passport, through the unseal record; unknown means try
-     again next pass with nothing spent, claimed or counted. The env file must carry
-     `CRE_SEALED_LINK_TOKEN`, checked by name before anything is asked of the queue, or the
-     passport is refused with that reason. A sweep candidate then gets a request of its own,
-     `POST /recheck/request`, and is claimed, because the service mints a private link only under a
-     live claim. That claim is handed back through `/recheck/done` whatever happens, a failed run, a
-     simulator that would not start and a dry run included.
+     byte by `test/sealed-private-copy.test.ts`) goes to `moolam-sealed-verifier` instead.
+     `GET /sealed/status/<id>` is read on every turn: kept goes on; gone is handled exactly as a
+     plain sealed passport, through the unseal record; unknown is a passing miss. The env file must
+     carry `CRE_SEALED_LINK_TOKEN`, checked by name, or the passport is set aside with that reason.
+   - for a public run, the picture itself is read through the same gateway under the workflow's
+     rules (a 200 only, redirects refused, 60,000 byte cap) and its size taken off the JPEG frame
+     header. A picture over the cap, not a JPEG, or under 32 px on a side, which is what a picture
+     more than 16 times wider than tall becomes as a 512 px thumbnail, is settled: the fingerprint
+     refuses it with `fingerprintSizeRefusal` in `phash.ts`, and the runner's copy is held to that
+     text and to the decoder's own sizes by `test/workflow-picture.test.ts`. A JPEG whose size the
+     runner cannot find is left to the workflow rather than refused on a guess.
    - the CRE wallet's balance is read again, because the passport before it spent from the same
-     wallet.
+     wallet. Under the floor the pass stops, with nothing claimed.
    - the receipt gives the event index: the position of `PassportRegistered` among the logs of its
-     own transaction, 0 for a plain register and 1 for one sent through the ERC-4337 entry point.
-   - `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive
+     own transaction, 0 for a plain register and 1 for one sent through the ERC-4337 entry point. A
+     reverted registration or one with no log for this passport is settled; any other failure of
+     that read is a passing miss.
+   - a stop signal that came in by now ends the pass here, before anything is claimed.
+   - only now the claim, `POST /recheck/claim`. A queued request must answer claimed, or it is left.
+     A sweep candidate is claimed only to catch a request that came in meanwhile: a request
+     somebody is running means skip; a finished one (the service's 409 `not-pending`) or none means
+     run with nothing to tell. A private run needs a live claim for the service to mint its link, so
+     a private sweep candidate places a request of its own first, `POST /recheck/request`.
+   - the spend is counted, then
+     `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive
      --trigger-index 0 --evm-tx-hash <tx> --evm-event-index <n> -e <env file> --broadcast`.
-   - the report transaction and the recomputed fingerprint are read out of the output. The run is
-     done only when that transaction's receipt carries the registry's own `VerificationAttested`
-     log for this passport, whichever receiver wrote it: Chainlink's mock forwarder mines a report
-     its receiver refused with status 1, so the status alone proves nothing. Then
-     `POST /recheck/done` carries them back. A refused report, or one whose receipt cannot be read,
-     is a failure like any other: it is counted, it counts towards the backoff, and it goes back
-     with a reason and no transaction. A failure carries the CLI's own last complaint. Every report
-     is sent with the workflows' explicit gas limit of 1,000,000, which nothing on the command line
-     changes, because an estimated limit starves the receiver inside the mock.
+   - the report transaction and the recomputed fingerprint are read out of the output, and the
+     report is written into the runner's memory before anything else. The run is done only when that
+     transaction's receipt carries the registry's own `VerificationAttested` log for this passport,
+     whichever receiver wrote it: Chainlink's mock forwarder mines a report its receiver refused
+     with status 1, so the status alone proves nothing. Every report is sent with the workflows'
+     explicit gas limit of 1,000,000, which nothing on the command line changes, because an
+     estimated limit starves the receiver inside the mock.
+   - from the claim on, every way out hands the request back exactly once, `POST /recheck/done`: the
+     report transaction when it landed, a redacted reason otherwise, and a reason when the simulator
+     threw or would not start.
    - one log line, and the state file is written.
 
+How a turn ends decides when the passport is looked at again:
+
+| Outcome | Examples | The request | The passport | Counted |
+| --- | --- | --- | --- | --- |
+| Landed | the registry recorded the attestation | done, with the report transaction | never run again: its report is remembered for a week and the index shows it after that | the report |
+| Settled, not re-checkable | no picture, a picture that is not `ipfs://<cid>`, over the cap, not a JPEG, under 32 px, a malformed registration hash, already attested, the receiver refused two reports | failed, with the reason, then answered from memory | never read or run again | nothing, or the reports already sent |
+| Set aside | a seed card in the sweep, sealed and not published, no sealed link token | failed, with the reason | the sweep leaves it for the cooldown; a new request looks again | nothing |
+| Passing miss before the spend | the gateway, the index or the node did not answer, a 429 or 5xx, the private copy's state unknown | stays pending, unclaimed | tried again after `RUNNER_RETRY_SECONDS`, doubling with each miss in a row up to the cooldown; a request is answered after three misses | nothing |
+| Passing failure of a paid run | a gateway timeout or a 5xx inside the workflow, the runner's own time limit, a receipt not served yet | handed back with the reason, then placed again so it reads waiting, not failed | the same short, doubling wait | the report and one failure |
+| Final failure of a paid run | a 404 inside the workflow, a decode error, the first refused report | failed, with the reason | left for the cooldown | the report and one failure |
+
 Only lines matching one of three known patterns are ever taken out of the simulator's output, so
-nothing the CLI happens to print can reach a log by accident. Every reason, and every line the
-runner logs, is then stripped of addresses, bearer values, the parameters of a signed download
-link, the verify service's host, and every value of eight characters or more in the env file and
-in the runner's own token and addresses, with each address's host and key-bearing path segments,
-before it is logged or posted, because the queue serves reasons on a public route. Every value
-handed to the CLI is checked for its shape first: the tx hash as above, the event index a whole
-number from 0 to 1,000, and the target, the env file and the workflow folder never starting with a
-dash or holding a control character. A request that fails any of them is not run.
+nothing the CLI happens to print can reach a log by accident. Every reason, every line the runner
+logs, and every reason it keeps in its state file for a later answer is then stripped of
+addresses, bearer values, the parameters of a signed download link, the verify service's host, and
+every value of eight characters or more in the env file and in the runner's own token and
+addresses, with each address's host and key-bearing path segments, because the queue serves
+reasons on a public route. Every value handed to the CLI is checked for its shape first: the tx
+hash as above, the event index a whole number from 0 to 1,000, and the target, the env file and the
+workflow folder never starting with a dash or holding a control character. A request that fails
+any of them is not run.
 
 ### The guards
 
 | Guard | Default | What it does |
 | --- | --- | --- |
-| `RUNNER_MAX_REPORTS_PER_DAY` | 40 | Counted in the state file, per UTC day, and counted before the run rather than after, so a machine that dies mid-run comes back having already paid for it. A count read back that is not a whole number from zero up reads as the day used up |
-| `RUNNER_MIN_MON` | 1.5 | The pass stops when the CRE wallet is under this, read again before every passport |
-| `RUNNER_MAX_PER_PASS` | 5 | One passport at a time, and no more than this in one pass |
-| `RUNNER_SIMULATE_TIMEOUT_SECONDS` | 600 | A hung compile or a silent gateway is killed rather than held |
+| `RUNNER_MAX_REPORTS_PER_DAY` | 40 | Counted in the state file, per UTC day, and counted before the run rather than after, so a machine that dies mid-run comes back having already paid for it. A count read back that is not a whole number from zero up reads as the day used up. A passport settled before the spend never counts |
+| `RUNNER_MIN_MON` | 1.5 | The pass stops when the CRE wallet is under this, read again before every passport and before any claim |
+| `RUNNER_MAX_PER_PASS` | 5 | One passport at a time, and no more than this run in one pass. Up to 20 requests a pass are also answered from memory, with no run |
+| `RUNNER_SIMULATE_TIMEOUT_SECONDS` | 600 | A hung compile or a silent gateway is killed rather than held. Keep it at least two minutes under the unit's `TimeoutStopSec` of 720 |
 | `RUNNER_FAILURES_BEFORE_BACKOFF` / `RUNNER_BACKOFF_MINUTES` | 3 / 30 | Three failures in a row and the runner sits out half an hour |
-| `RUNNER_COOLDOWN_SECONDS` | 21600 | A passport already handled is left alone for six hours, which is what stops an index that has not caught up from being re-checked twice |
-| `RUNNER_DRY_RUN` | off | Everything except `--broadcast` and the done report. Nothing is sent and nothing is spent |
+| `RUNNER_COOLDOWN_SECONDS` | 21600 | A passport whose paid run got no verdict is left alone for six hours, and so is one the sweep set aside. It is also the longest a passing wait grows to |
+| `RUNNER_RETRY_SECONDS` | 600 | The first wait after a passing miss. It doubles with each miss in a row, up to the cooldown |
+| One report per passport | always | The runner remembers every report it sent for a week and never sends a second for that passport, whatever the index says. See "The index-lag assumption" below |
+| Two refusals | always | A passport whose report the receiver refused twice is settled: a third would be refused and paid for too |
+| Circuit breaker | 3 | Three reports in a row refused by the receiver (mined with `ReportProcessed` false and no `VerificationAttested`), on three different passports, trip it. The pass ends there and the runner sends nothing more: it keeps its loop alive, reads and answers nothing, spends nothing, and logs one `CIRCUIT BREAKER TRIPPED` line a pass saying when and why. A report that lands starts the count again. The trip is kept in the state file, so a restart leaves it tripped. The operator clears it by restarting once with `RUNNER_RESET_BREAKER=1`, then taking that line out of the env file again, below |
+| Stop signal | always | Read between passports and just before any claim. The passport in hand finishes, hands back and the process exits; nothing new starts. The unit sends SIGTERM to the runner alone (`KillMode=mixed`) and waits 720 seconds, longer than one run |
+| `RUNNER_DRY_RUN` | off | Everything except `--broadcast`, and no claim, no request and no done: the live queue is only read. A private re-check needs a live claim for its link, so a dry run names it and does not start it. Nothing is sent and nothing is spent |
+
+### Clearing the circuit breaker
+
+A tripped breaker means the receiver is refusing every report, usually a forwarder or author pin
+that no longer matches what the simulator stamps, or a sending wallet it does not expect (see "How
+the receiver is held during judging" above). Fix that first; a reset with the cause still there
+trips again after three more paid reports.
+
+```bash
+journalctl -u moolam-recheck-runner -n 5 --no-pager      # the CIRCUIT BREAKER TRIPPED line says why
+sudo sh -c 'echo RUNNER_RESET_BREAKER=1 >> /etc/moolam/runner.env'
+sudo systemctl restart moolam-recheck-runner             # logs "circuit breaker cleared by RUNNER_RESET_BREAKER=1"
+sudo sed -i '/^RUNNER_RESET_BREAKER=/d' /etc/moolam/runner.env
+```
+
+The last line matters. While `RUNNER_RESET_BREAKER=1` stays in the env file, every restart clears
+the breaker, including the automatic one after a crash, and the runner says so at every start.
+Editing the state file by hand is not the way: the runner rewrites it on every change.
+
+### The index-lag assumption
+
+Before the runner's own report memory, "never re-checks a passport twice" rested on the index
+being less than six hours behind: a stale row reading zero attestations after the cooldown would
+buy a second report. Now the runner writes down every report it sends, before it reads the receipt,
+and refuses a second report for that passport for a week, from its own state file, without asking
+the index. So the assumption is that the hosted index is less than a week behind, and that the
+state file survives: a machine that loses its state file, or a second runner with a state file of
+its own, is back to trusting the index for passports re-checked before.
 
 ## Configuration
 
@@ -233,7 +306,7 @@ out of what it logs and posts.
 | `CRE_SEALED_WORKFLOW_DIR` | Optional. The sealed workflow's folder, by default `moolam-sealed-verifier` beside `CRE_WORKFLOW_DIR` |
 | `CRE_ENV_FILE` | The file the CRE CLI reads for itself, holding `CRE_ETH_PRIVATE_KEY`, `MONAD_MAINNET_RPC_URL` and, for private re-checks, `CRE_SEALED_LINK_TOKEN`. The runner reads it to refuse a sealed run without that last name and to strip every value in it from what it logs and posts |
 | `CRE_WALLET_ADDRESS` | The wallet watched against the floor |
-| `RUNNER_STATE_PATH` | Where the day's count and the recent list are kept |
+| `RUNNER_STATE_PATH` | Where the day's count and the runner's memory of each passport are kept: reports sent, passports settled with their reasons, set aside, cooling and waiting |
 | `PINATA_GATEWAY_URL` | Optional. Defaults to the gateway the workflow's own `config.json` names |
 | `MOOLAM_REGISTRY_ADDRESS` | Optional. Defaults to the mainnet registry |
 
@@ -252,7 +325,7 @@ At the default two minute interval, 720 passes a day:
 | At the daily cap of 40 reports | Count | Cost |
 | --- | --- | --- |
 | RPC calls | 120: a balance, a receipt and nothing else per passport | 3,600 QuickNode credits of about 2.67M a month |
-| Gateway reads | about 120: the runner's document read, and the metadata and thumbnail the simulator fetches | 1M requests a month on the Pinata plan |
+| Gateway reads | about 160: the runner's document and picture reads, and the metadata and thumbnail the simulator fetches | 1M requests a month on the Pinata plan |
 | Index queries | 760 | Still under one a minute |
 | Report transactions | 40, at 1,000,000 gas and about 102 gwei | **4.08 MON a day from the CRE wallet** |
 
@@ -348,6 +421,10 @@ That is the whole shape in six lines: the request first, the event index read of
 refused with its reason, and a seed card swept past. The state file afterwards read `reports: 0`,
 so the dry run took nothing from the day's cap.
 
+That pass ran before the review fixes of 2026-09-26. The same pass today claims nothing from the
+queue, reads each picture's size before it runs it, words the seed card line "has no title", and
+ends with the number of requests answered from memory.
+
 When that reads right, take `RUNNER_DRY_RUN` out of the env file and restart. Watch the first live
 pass to the end, then check the passport page for whichever picture it handled.
 
@@ -356,7 +433,7 @@ pass to the end, then check the passport page for whichever picture it handled.
 ```bash
 npm test
 npx tsc --noEmit
-RUNNER_DRY_RUN=1 npm run once   # one pass against the live index and queue, sends nothing
+RUNNER_DRY_RUN=1 npm run once   # one pass reading the live index and queue; claims and sends nothing
 ```
 
 `--once` runs a single pass and exits, which is what the dry run above uses.
@@ -380,3 +457,9 @@ node deploy/queue-stub.mjs 4099 dry-run-token 0x<passport id>
 - It does not re-check a passport more than once. A passport with any attestation is left alone,
   so a second opinion on a picture that already has one has to be asked for after the existing
   ones are accounted for.
+- It cannot read a private copy before a private re-check, since that needs the link the run
+  itself asks for. A sealed picture too small to fingerprint is found out by the sealed workflow,
+  as a final failure after the spend, not settled before it as a public one is.
+- It does not stop the whole runner when every report is refused, for example while the receiver
+  points at the wrong forwarder. Each passport stops after two refusals and three failures in a row
+  start the backoff, so a standing refusal costs a few reports a passport, bounded by the daily cap.

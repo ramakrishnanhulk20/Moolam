@@ -60,15 +60,27 @@ export async function eventIndex(
   }
   const receipt = result as { status?: string; logs?: unknown };
   if (receipt.status !== undefined && BigInt(receipt.status) !== 1n) {
-    throw new Error(`the registration transaction ${txHash} did not succeed`);
+    throw new RegistrationError(`the registration transaction ${txHash} did not succeed`);
   }
   const logs = Array.isArray(receipt.logs) ? (receipt.logs as ReceiptLog[]) : [];
 
   const at = logs.findIndex((log) => matches(log, passportId, registry));
   if (at === -1) {
-    throw new Error(`transaction ${txHash} carries no PassportRegistered log for this passport`);
+    throw new RegistrationError(`transaction ${txHash} carries no PassportRegistered log for this passport`);
   }
   return at;
+}
+
+/**
+ * A registration receipt the node did serve and that can never trigger a run: the transaction
+ * reverted, or it holds no registration of this passport. Every other failure of eventIndex, a
+ * timeout, a refused call, a receipt not served yet, is passing and is tried again.
+ */
+export class RegistrationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RegistrationError";
+  }
 }
 
 /**

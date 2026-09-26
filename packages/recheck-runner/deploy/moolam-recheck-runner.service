@@ -23,9 +23,13 @@ ExecStart=/usr/bin/node dist/main.js
 Restart=always
 RestartSec=30
 
-# The CRE CLI compiles the workflow on every run, so a hung compile must not take the box with it.
-TimeoutStopSec=60
+# A stop lets the passport in hand finish and hand its request back, then exits. So SIGTERM goes to
+# the runner alone, not to the cre run it is waiting on (mixed), and the wait before SIGKILL covers
+# one whole run: RUNNER_SIMULATE_TIMEOUT_SECONDS (600) plus the receipt read and the hand-back.
+# Keep that setting at least two minutes under this one.
+KillMode=mixed
 KillSignal=SIGTERM
+TimeoutStopSec=720
 
 StandardOutput=journal
 StandardError=journal
