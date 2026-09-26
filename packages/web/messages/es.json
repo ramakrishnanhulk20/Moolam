@@ -431,7 +431,8 @@
       "badRequest": "El verificador no aceptó esa petición.",
       "badResponse": "El verificador respondió con una forma que esta página no conoce.",
       "serviceFailed": "El verificador no pudo terminar esta comprobación.",
-      "refused": "El verificador rechazó esta petición."
+      "refused": "El verificador rechazó esta petición.",
+      "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto."
     },
     "orientation": {
       "identity": "En la misma posición",
@@ -640,7 +641,8 @@
         "grantDeclined": "No se dio el permiso, así que esta app sigue sin poder añadir ediciones.",
         "grantFailed": "Privy no pudo añadir el firmante a tu cartera.",
         "alreadyRegistered": "Esta imagen exacta ya está registrada. Gana el primer registro, así que abre el pasaporte que la tiene.",
-        "unknown": "La edición no salió adelante."
+        "unknown": "La edición no salió adelante.",
+        "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto."
       },
       "actions": {
         "grant": "Permitir ediciones desde esta app",
@@ -984,7 +986,11 @@
         "badResponse": "El servicio respondió con una forma que esta app no conoce.",
         "offline": "El servicio de verificación no respondió, así que no se publicó nada.",
         "fileMissing": "Elige primero el archivo que guardaste.",
-        "unknown": "Algo salió mal antes de enviar el archivo."
+        "unknown": "Algo salió mal antes de enviar el archivo.",
+        "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto.",
+        "unsealInProgress": "Esta imagen ya se está publicando desde otra pestaña u otro dispositivo. Espera un momento y luego recarga el pasaporte.",
+        "thumbnailHeldPrivately": "No se publicó nada. Una copia privada de esta misma imagen, guardada para otro pasaporte, le cierra el paso a su copia pública. Inténtalo más tarde.",
+        "fingerprintUnstable": "Esta imagen cambia muy poco de un lado a otro para tener una huella que sobreviva a las copias, así que su copia pública nunca podría pasar la comprobación de Chainlink. No se publicó nada."
       },
       "actions": {
         "again": "Intentar otra vez",
@@ -1485,7 +1491,9 @@
       "billedSponsored": "Cobrado: {gas, number} de gas, {fee} MON, pagados por Moolam a través de Privy.",
       "billedOwn": "Cobrado: {gas, number} de gas, {fee} MON, de tu propio saldo.",
       "billedExact": "{fee} MON exactos.",
-      "wouldHaveCost": "A ti te habría costado {fee} MON."
+      "wouldHaveCost": "A ti te habría costado {fee} MON.",
+      "cameraKept": "El registro propio de tu cámara se conserva, sin su ubicación ni su número de serie.",
+      "cameraDropped": "El registro propio de tu cámara se quitó, porque su ubicación no se podía sacar limpiamente."
     },
     "passports": {
       "heading": "Tus imágenes",
@@ -1547,7 +1555,8 @@
       "privateCopyNotPrivate": "El proveedor de almacenamiento no mantuvo privada la copia pequeña, así que Moolam se detuvo y no se fijó ni se registró nada. Desactiva la comprobación privada para registrar esta imagen sellada sin ella.",
       "privateChainUnreachable": "Moolam no pudo llegar a Monad para comprobar que esta imagen es nueva, así que no guardó ninguna copia privada ni registró nada. Inténtalo de nuevo en un momento.",
       "privateThumbnailTooLarge": "Esta imagen tiene demasiado detalle fino para la copia pequeña que Chainlink abre al volver a comprobarla, así que no se fijó ni se registró nada. Mantenla sellada con la comprobación privada desactivada y se registrará.",
-      "fingerprintUnstable": "Esta imagen cambia muy poco de un lado a otro para tener una huella que sobreviva a las copias: hasta su propia copia pequeña parece otra imagen, así que la comprobación de Chainlink y cualquier búsqueda de sus copias fallarían. No se fijó ni se registró nada. Una imagen con más detalle a lo ancho se registrará."
+      "fingerprintUnstable": "Esta imagen cambia muy poco de un lado a otro para tener una huella que sobreviva a las copias: hasta su propia copia pequeña parece otra imagen, así que la comprobación de Chainlink y cualquier búsqueda de sus copias fallarían. No se fijó ni se registró nada. Una imagen con más detalle a lo ancho se registrará.",
+      "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto."
     },
     "actions": {
       "signIn": "Entrar otra vez",

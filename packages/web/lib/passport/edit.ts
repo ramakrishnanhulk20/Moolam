@@ -224,6 +224,14 @@ const PICTURE_KEYS: Record<string, { key: string }> = {
 };
 
 /**
+ * The service failed to read or fingerprint the edit, which says nothing about the picture. It is
+ * named in the body, so nothing was pinned or sent and the same edit can go again in a minute.
+ */
+const FAULT_KEYS: Record<string, { key: string; next: EditFailure["next"] }> = {
+  "service-fault": { key: "serviceFault", next: "later" },
+};
+
+/**
  * The line for an edit that may be on the network: never a retry, always a second look.
  *
  * ConfirmTimeout says exactly this in its own words, so it is not repeated under the sentence.
@@ -268,7 +276,7 @@ export function describeEditFailure(error: unknown, { sent = false }: { sent?: b
     if (mayBeOut(error)) {
       return stillOut(error);
     }
-    const picture = PICTURE_KEYS[error.serviceCode ?? ""];
+    const picture = PICTURE_KEYS[error.serviceCode ?? ""] ?? FAULT_KEYS[error.serviceCode ?? ""];
     if (picture !== undefined) {
       return { ...picture };
     }

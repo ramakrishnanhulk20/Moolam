@@ -96,9 +96,16 @@ const noPin = z.undefined().optional();
 const privateCopyKept = z.literal(true).optional();
 const noPrivateCopy = z.undefined().optional();
 
+/**
+ * What Moolam did with the camera's own signed record, when the upload carried one: kept with its
+ * location and serial redacted, or dropped because they could not be taken out cleanly. Absent
+ * when there was no record, which is every picture Moolam drew itself.
+ */
+const cameraRecord = z.enum(["kept", "dropped"]).optional();
+
 const manifestSchema = z.union([
-  z.object({ embedded: z.literal(true) }),
-  z.object({ embedded: z.literal(false), reason: z.string().optional() }),
+  z.object({ embedded: z.literal(true), cameraRecord }),
+  z.object({ embedded: z.literal(false), reason: z.string().optional(), cameraRecord }),
 ]);
 
 /** How many pictures this creator has had from the agent today, and when the oldest one drops out. */

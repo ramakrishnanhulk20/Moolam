@@ -4,7 +4,7 @@ import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type P
 import { SignerUnavailable, ensureSigner } from "../c2pa.js";
 import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
-import { ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
+import { FingerprintFault, ImageTooLarge, readImageHeader, type Hex } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
@@ -46,7 +46,7 @@ import {
   signedFile,
   type SignedFile,
 } from "../sealed.js";
-import { BadRequest, statusOf } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -162,8 +162,9 @@ const SEALED_FILE_REFUSED = {
  * `private-copy-not-private` when Pinata did not keep the private copy private under its name, 429
  * past the per-user limit or `global-limit` once GLOBAL_PREPARES_PER_DAY is spent for everyone,
  * 502 when Pinata refuses a pin, and 503 `chain-unreachable` when a private re-check was asked for
- * and the duplicate check could not reach the chain. The route is not mounted at all on a host
- * that cannot sign a manifest.
+ * and the duplicate check could not reach the chain, or `service-fault` when this service failed
+ * to read or fingerprint the picture. The route is not mounted at all on a host that cannot sign
+ * a manifest.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
@@ -210,6 +211,13 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
       try {
         await readImageHeader(upload.bytes);
       } catch (error) {
+        if (error instanceof FingerprintFault) {
+          request.log.error(
+            { url: request.url, reason: error.message },
+            "rejected: /prepare the service failed reading the image",
+          );
+          return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+        }
         const tooBig = error instanceof ImageTooLarge;
         const reason = error instanceof Error ? error.message : String(error);
         request.log.warn({ ip: request.ip, url: request.url, reason }, "rejected: /prepare image");
@@ -279,6 +287,12 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           if (error instanceof SignerUnavailable) {
             request.log.error({ url: request.url, reason }, "rejected: /prepare the signer is down");
             return reply.code(502).send({ error: "sign-failed" });
+          }
+          // This service failed to fingerprint a picture it could read, so the file is not to blame
+          // (review pass 6, answers 7). Nothing was pinned, so the day's slot comes back.
+          if (error instanceof FingerprintFault) {
+            request.log.error({ url: request.url, reason }, "rejected: /prepare the service failed fingerprinting");
+            return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
           }
           // A real picture with too much detail to fit the Chainlink fetch budget. Calling it
           // "not an image" sent creators looking for a fault in a file that has none. A plain

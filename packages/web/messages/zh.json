@@ -433,7 +433,8 @@
       "badRequest": "验证服务不接受这个请求。",
       "badResponse": "验证服务返回的格式，这个页面看不懂。",
       "serviceFailed": "验证服务没能完成这次核对。",
-      "refused": "验证服务拒绝了这个请求。"
+      "refused": "验证服务拒绝了这个请求。",
+      "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。"
     },
     "orientation": {
       "identity": "方向没变",
@@ -642,7 +643,8 @@
         "grantDeclined": "权限没有给出，所以这个应用仍然不能添加编辑版本。",
         "grantFailed": "Privy 没能把签名者加到你的钱包上。",
         "alreadyRegistered": "这张图片已经登记过了。先登记的一方为准，去打开收着它的那本护照。",
-        "unknown": "这次编辑没有完成。"
+        "unknown": "这次编辑没有完成。",
+        "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。"
       },
       "actions": {
         "grant": "允许这个应用添加编辑版本",
@@ -986,7 +988,11 @@
         "badResponse": "服务的回应格式是这个应用不认识的。",
         "offline": "校验服务没有回应，所以什么都没有公开。",
         "fileMissing": "请先选择你保存的文件。",
-        "unknown": "文件还没发出去就出了问题。"
+        "unknown": "文件还没发出去就出了问题。",
+        "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。",
+        "unsealInProgress": "这张图片已经在另一个标签页或设备上公开中。稍等片刻，再重新载入这本护照。",
+        "thumbnailHeldPrivately": "什么都没公开。这张图片的一份私有副本为另一本护照保留着，挡住了它的公开副本。稍后再试。",
+        "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹，所以它的公开副本永远通不过 Chainlink 的复核。什么都没公开。"
       },
       "actions": {
         "again": "再试一次",
@@ -1487,7 +1493,9 @@
       "billedSponsored": "计费 {gas, number} gas，{fee} MON，由 Moolam 通过 Privy 支付。",
       "billedOwn": "计费 {gas, number} gas，{fee} MON，由你自己的余额支付。",
       "billedExact": "准确是 {fee} MON。",
-      "wouldHaveCost": "你自己付要花 {fee} MON。"
+      "wouldHaveCost": "你自己付要花 {fee} MON。",
+      "cameraKept": "你相机自己的记录已保留，其中的位置和序列号已删除。",
+      "cameraDropped": "你相机自己的记录已删除，因为无法干净地去掉其中的位置。"
     },
     "passports": {
       "heading": "你的图片",
@@ -1549,7 +1557,8 @@
       "privateCopyNotPrivate": "存储服务商没有把小副本设为私有，所以 Moolam 停了下来，什么都没有固定，也没有登记。关掉私下重新核对，就能不带它把这张图片封存登记。",
       "privateChainUnreachable": "Moolam 连不上 Monad，无法确认这张图片是新的，所以没有保留私有副本，也什么都没有登记。稍后再试一次。",
       "privateThumbnailTooLarge": "这张图片的细节太多，放不进 Chainlink 重新核对时打开的小副本，所以什么都没有固定，也没有登记。关掉私下重新核对并保持封存，就能登记。",
-      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的重新核对和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。"
+      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的重新核对和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。",
+      "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。"
     },
     "actions": {
       "signIn": "重新登录",

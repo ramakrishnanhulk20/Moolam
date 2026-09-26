@@ -151,6 +151,14 @@ const SERVICE_KEYS: Record<string, { key: string; next?: UnsealFailure["next"] }
   "not-sealed": { key: "notSealed", next: "showPicture" },
   "already-unsealed": { key: "alreadyUnsealed", next: "showPicture" },
   "thumbnail-too-large": { key: "thumbnailTooLarge" },
+  // Another tab or device holds this passport's publish right now. Reading the page again once
+  // it has finished is the way on, and that is what the panel's settled button does.
+  "unseal-in-progress": { key: "unsealInProgress", next: "showPicture" },
+  // A private copy kept for another passport is in the way. Pressing again at once would meet the
+  // same copy, so there is no button, only the sentence.
+  "thumbnail-held-privately": { key: "thumbnailHeldPrivately" },
+  // The same file would be refused the same way, so there is nothing to press.
+  "fingerprint-unstable": { key: "fingerprintUnstable" },
   quota: { key: "quota" },
   "global-limit": { key: "todayFull", next: "later" },
   "pin-failed": { key: "pinFailed", next: "again" },
@@ -163,6 +171,8 @@ const SERVICE_KEYS: Record<string, { key: string; next?: UnsealFailure["next"] }
   // worth its own sentence rather than "a shape this app does not know".
   "lookup-unavailable": { key: "lookupUnavailable", next: "again" },
   busy: { key: "busy", next: "again" },
+  // The service failed to read or fingerprint the file, which says nothing about the file.
+  "service-fault": { key: "serviceFault", next: "later" },
   unauthorized: { key: "signedOut", next: "signIn" },
   "not-an-image": { key: "notAnImage", next: "chooseAgain" },
   "too-large": { key: "tooLarge", next: "chooseAgain" },
@@ -172,13 +182,21 @@ const SERVICE_KEYS: Record<string, { key: string; next?: UnsealFailure["next"] }
   "bad-response": { key: "badResponse", next: "again" },
 };
 
+/**
+ * The answers whose English reason only restates the sentence the panel already
+ * prints in the reader's language, so nothing is printed under them.
+ */
+const QUIET = new Set(["service-fault", "thumbnail-held-privately", "fingerprint-unstable"]);
+
 /** One failure from the publish request, turned into the line the panel prints. */
 export function describeUnsealFailure(error: unknown): UnsealFailure {
   if (error instanceof VerifierError) {
     const mapped = SERVICE_KEYS[error.serviceCode ?? ""] ?? SERVICE_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
     // Several refusals are named in the body and nothing else, so printing the
     // service's word under the sentence would repeat the code back at the reader.
-    return error.message === error.serviceCode ? mapped : { ...mapped, reason: error.message };
+    return error.message === error.serviceCode || QUIET.has(error.serviceCode ?? "")
+      ? mapped
+      : { ...mapped, reason: error.message };
   }
   return { key: "unknown", reason: messageOf(error), next: "again" };
 }

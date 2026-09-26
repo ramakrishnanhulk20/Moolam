@@ -124,6 +124,14 @@ const PICTURE_KEYS: Record<string, { key: string }> = {
 };
 
 /**
+ * The service failed to read or fingerprint a picture it was sent, which says nothing about the
+ * picture. Its status is a plain 503, so it is read off the word, and the same request can go again.
+ */
+const FAULT_KEYS: Record<string, { key: string; next: Failure["next"] }> = {
+  "service-fault": { key: "serviceFault", next: "again" },
+};
+
+/**
  * The refusals that happened before a byte left the wallet, so the same signed
  * bytes can go out again with no second passkey prompt.
  */
@@ -157,7 +165,8 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
   }
 
   if (error instanceof VerifierError) {
-    const own = PRIVATE_RECHECK_KEYS[error.serviceCode ?? ""] ?? PICTURE_KEYS[error.serviceCode ?? ""];
+    const word = error.serviceCode ?? "";
+    const own = PRIVATE_RECHECK_KEYS[word] ?? PICTURE_KEYS[word] ?? FAULT_KEYS[word];
     if (own !== undefined) {
       return { ...own };
     }

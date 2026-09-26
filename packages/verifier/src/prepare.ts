@@ -13,6 +13,7 @@ import {
 } from "./c2pa.js";
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
+  FingerprintFault,
   MAX_IMAGE_PIXELS,
   PHASH_MATCH_THRESHOLD,
   fingerprint,
@@ -409,11 +410,13 @@ async function recordLostWithManifest(source: Buffer, options: PrepareOptions): 
 
 /**
  * Turns a failure from the signing path into the refusal a caller may fall back on, or lets it
- * out when falling back cannot help: a host that cannot sign at all, and a thumbnail over the
- * budget, which the unsigned fallback would make from the very same pixels.
+ * out when falling back cannot help: a host that cannot sign at all, a thumbnail over the budget,
+ * which the unsigned fallback would make from the very same pixels, and this service failing to
+ * fingerprint. That last one says nothing about the file, and a fault that passed on the second
+ * try would otherwise hand the creator an unsigned picture for a signer that never refused it.
  */
 function refusalOrThrow(error: unknown): SignerRefusedFile {
-  if (error instanceof SignerUnavailable || error instanceof ThumbnailTooLarge) {
+  if (error instanceof SignerUnavailable || error instanceof ThumbnailTooLarge || error instanceof FingerprintFault) {
     throw error;
   }
   return error instanceof SignerRefusedFile

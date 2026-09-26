@@ -5,7 +5,14 @@ import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type P
 import { embeddedWallets } from "../auth/wallet.js";
 import { readManifest } from "../c2pa.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
-import { ImageTooLarge, fingerprint, readImageHeader, type Fingerprint, type Hex } from "../fingerprint.js";
+import {
+  FingerprintFault,
+  ImageTooLarge,
+  fingerprint,
+  readImageHeader,
+  type Fingerprint,
+  type Hex,
+} from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import { privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
@@ -50,7 +57,7 @@ import {
   type UnsealRecord,
 } from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
-import { BadRequest, statusOf } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
@@ -169,7 +176,8 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * `unseal-in-progress` or `thumbnail-held-privately`, 413 and 415 for the image, 422
  * `thumbnail-too-large` or `fingerprint-unstable`, 429 for the caller's own allowance, for today's
  * ceiling and past 30 a minute from one address, 502 `pin-failed`, `record-pin-failed`,
- * `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`, and 503 `busy`.
+ * `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`, and 503 `busy` or
+ * `service-fault` when this service failed to read or fingerprint the file.
  */
 export async function unsealRoutes(
   app: FastifyInstance,
@@ -516,6 +524,13 @@ async function unsealHeld(
     try {
       await readImageHeader(upload.bytes);
     } catch (error) {
+      if (error instanceof FingerprintFault) {
+        request.log.error(
+          { url: request.url, reason: error.message },
+          "rejected: /unseal the service failed reading the image",
+        );
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      }
       const tooBig = error instanceof ImageTooLarge;
       const reason = error instanceof Error ? error.message : String(error);
       request.log.warn({ url: request.url, reason }, "rejected: /unseal image");
@@ -555,6 +570,16 @@ async function unsealHeld(
       if (error instanceof Busy) {
         request.log.warn({ url: request.url }, "rejected: /unseal busy");
         return reply.code(503).send({ error: "busy" });
+      }
+      // This service failed to fingerprint the file it was handed, so the file is not to blame
+      // (review pass 6, answers 7). Nothing was pinned, so the holder's allowance and the day's
+      // slot both come back.
+      if (error instanceof FingerprintFault) {
+        request.log.error(
+          { url: request.url, reason: error.message },
+          "rejected: /unseal the service failed fingerprinting",
+        );
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
       request.log.warn({ url: request.url, reason: reasonOf(error) }, "rejected: /unseal undecodable image");
       return reply.code(415).send({ error: "not-an-image", reason: UNDECODABLE });

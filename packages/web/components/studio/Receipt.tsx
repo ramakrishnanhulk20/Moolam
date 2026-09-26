@@ -218,6 +218,13 @@ function collect(
   const prepared = studio.register.prepared;
   if (prepared !== null) {
     const manifest = prepared.manifest.embedded ? t("receipt.manifestYes") : t("receipt.manifestNo");
+    // Said under the manifest line only when the photo arrived with its camera's own record, so a
+    // creator knows what of it travels with the picture.
+    const camera = prepared.manifest.cameraRecord;
+    const cameraLines =
+      camera === undefined
+        ? undefined
+        : [camera === "kept" ? t("receipt.cameraKept") : t("receipt.cameraDropped")];
 
     if (prepared.sealed === true) {
       // No pixels were measured here to quote: the fingerprint was taken from
@@ -227,6 +234,7 @@ function collect(
         label: t("receipt.fingerprint"),
         value: prepared.passport.exactHash,
         detail: t("sealed.receipt.fingerprintDetail", { manifest }),
+        lines: cameraLines,
       });
       // Where the public record went, and the one control that matters on this
       // screen: the file itself, again, for as long as the page is open.
@@ -267,6 +275,7 @@ function collect(
           height: prepared.image.height,
           manifest,
         }),
+        lines: cameraLines,
       });
       marks.push({
         key: "pinned",

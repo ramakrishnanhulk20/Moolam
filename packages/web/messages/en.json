@@ -431,7 +431,8 @@
       "badRequest": "The verifier would not take that request.",
       "badResponse": "The verifier answered in a shape this page does not know.",
       "serviceFailed": "The verifier could not finish this check.",
-      "refused": "The verifier refused this request."
+      "refused": "The verifier refused this request.",
+      "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
     },
     "orientation": {
       "identity": "The same way up",
@@ -640,7 +641,8 @@
         "grantDeclined": "The permission was not given, so this app still cannot add edits.",
         "grantFailed": "Privy could not add the signer to your wallet.",
         "alreadyRegistered": "This exact image is already registered. The first registration wins, so open the passport that holds it.",
-        "unknown": "The edit did not go through."
+        "unknown": "The edit did not go through.",
+        "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
       },
       "actions": {
         "grant": "Allow edits from this app",
@@ -984,7 +986,11 @@
         "badResponse": "The service answered in a shape this app does not know.",
         "offline": "The verify service did not answer, so nothing was published.",
         "fileMissing": "Choose the file you saved first.",
-        "unknown": "Something went wrong before the file was sent."
+        "unknown": "Something went wrong before the file was sent.",
+        "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute.",
+        "unsealInProgress": "This picture is already being published from another tab or device. Give it a moment, then reload the passport.",
+        "thumbnailHeldPrivately": "Nothing was published. A private copy of this same picture, kept for another passport, is in the way of its public copy. Try again later.",
+        "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying, so its public copy could never pass the Chainlink re-check. Nothing was published."
       },
       "actions": {
         "again": "Try again",
@@ -1485,7 +1491,9 @@
       "billedSponsored": "Billed {gas, number} gas, {fee} MON, paid by Moolam through Privy.",
       "billedOwn": "Billed {gas, number} gas, {fee} MON, from your own balance.",
       "billedExact": "{fee} MON exactly.",
-      "wouldHaveCost": "It would have cost you {fee} MON."
+      "wouldHaveCost": "It would have cost you {fee} MON.",
+      "cameraKept": "Your camera's own record is kept, with its location and serial number removed.",
+      "cameraDropped": "Your camera's own record was removed, because its location could not be taken out cleanly."
     },
     "passports": {
       "heading": "Your pictures",
@@ -1547,7 +1555,8 @@
       "privateCopyNotPrivate": "The storage provider did not keep the small copy private, so Moolam stopped and nothing was pinned or registered. Turn the private re-check off to register this picture sealed without it.",
       "privateChainUnreachable": "Moolam could not reach Monad to check this picture is new, so it kept no private copy and registered nothing. Try again in a moment.",
       "privateThumbnailTooLarge": "This picture has too much fine detail for the small copy Chainlink opens to re-check it, so nothing was pinned and nothing was registered. Keep it sealed with the private re-check off, and it will register.",
-      "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying: even its own small copy reads as a different picture, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned and nothing was registered. A picture with more detail across its width will register."
+      "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying: even its own small copy reads as a different picture, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned and nothing was registered. A picture with more detail across its width will register.",
+      "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
     },
     "actions": {
       "signIn": "Sign in again",

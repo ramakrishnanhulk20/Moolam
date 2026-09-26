@@ -192,6 +192,11 @@ export interface Problem {
 
 export function verifyProblem(error: unknown): Problem {
   if (error instanceof VerifierError) {
+    // The service failing to read a picture it was sent is its own fault, not the file's, and its
+    // English reason only says so again.
+    if (error.serviceCode === "service-fault") {
+      return { key: "problem.serviceFault" };
+    }
     const key = PROBLEMS[error.code] ?? "problem.badResponse";
     // The offline line already names the service and the port, so repeating the
     // fetch failure under it would say the same thing twice.

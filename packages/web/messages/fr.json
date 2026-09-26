@@ -431,7 +431,8 @@
       "badRequest": "Le vérificateur a refusé cette requête.",
       "badResponse": "Le vérificateur a répondu dans une forme que cette page ne connaît pas.",
       "serviceFailed": "Le vérificateur n’a pas pu terminer ce contrôle.",
-      "refused": "Le vérificateur a rejeté cette requête."
+      "refused": "Le vérificateur a rejeté cette requête.",
+      "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute."
     },
     "orientation": {
       "identity": "Dans le même sens",
@@ -640,7 +641,8 @@
         "grantDeclined": "La permission n'a pas été donnée, cette app ne peut toujours pas ajouter de retouche.",
         "grantFailed": "Privy n'a pas pu ajouter le signataire à votre portefeuille.",
         "alreadyRegistered": "Cette image exacte est déjà enregistrée. Le premier enregistrement l’emporte, ouvrez donc le passeport qui la détient.",
-        "unknown": "La retouche n'est pas passée."
+        "unknown": "La retouche n'est pas passée.",
+        "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute."
       },
       "actions": {
         "grant": "Autoriser les retouches depuis cette app",
@@ -984,7 +986,11 @@
         "badResponse": "Le service a répondu sous une forme que cette app ne connaît pas.",
         "offline": "Le service de vérification n'a pas répondu, donc rien n'a été publié.",
         "fileMissing": "Choisissez d'abord le fichier que vous avez enregistré.",
-        "unknown": "Quelque chose a échoué avant l'envoi du fichier."
+        "unknown": "Quelque chose a échoué avant l'envoi du fichier.",
+        "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute.",
+        "unsealInProgress": "Cette image est déjà en cours de publication depuis un autre onglet ou un autre appareil. Patientez un instant, puis rechargez le passeport.",
+        "thumbnailHeldPrivately": "Rien n'a été publié. Une copie privée de cette même image, gardée pour un autre passeport, bloque sa copie publique. Réessayez plus tard.",
+        "fingerprintUnstable": "Cette image change trop peu d'un côté à l'autre pour une empreinte qui résiste aux copies, donc sa copie publique ne pourrait jamais passer la revérification de Chainlink. Rien n'a été publié."
       },
       "actions": {
         "again": "Réessayer",
@@ -1485,7 +1491,9 @@
       "billedSponsored": "Facturé : {gas, number} de gas, {fee} MON, payés par Moolam via Privy.",
       "billedOwn": "Facturé : {gas, number} de gas, {fee} MON, sur votre propre solde.",
       "billedExact": "{fee} MON exactement.",
-      "wouldHaveCost": "Cela vous aurait coûté {fee} MON."
+      "wouldHaveCost": "Cela vous aurait coûté {fee} MON.",
+      "cameraKept": "Le propre enregistrement de votre appareil photo est conservé, sans sa localisation ni son numéro de série.",
+      "cameraDropped": "Le propre enregistrement de votre appareil photo a été supprimé, car sa localisation ne pouvait pas en être extraite proprement."
     },
     "passports": {
       "heading": "Vos images",
@@ -1547,7 +1555,8 @@
       "privateCopyNotPrivate": "Le fournisseur de stockage n'a pas gardé la petite copie privée, donc Moolam s'est arrêté : rien n'a été épinglé ni enregistré. Désactive la revérification privée pour enregistrer cette image scellée sans elle.",
       "privateChainUnreachable": "Moolam n'a pas pu joindre Monad pour vérifier que cette image est nouvelle, donc aucune copie privée n'a été gardée et rien n'a été enregistré. Réessaie dans un instant.",
       "privateThumbnailTooLarge": "Cette image a trop de détails fins pour la petite copie que Chainlink ouvre pour la revérifier, donc rien n'a été épinglé ni enregistré. Garde-la scellée, revérification privée désactivée, et elle sera enregistrée.",
-      "fingerprintUnstable": "Cette image change trop peu d'un côté à l'autre pour une empreinte qui résiste aux copies : même sa propre petite copie se lit comme une autre image, donc la revérification de Chainlink et toute recherche de ses copies la manqueraient. Rien n'a été épinglé ni enregistré. Une image avec plus de détails sur sa largeur sera enregistrée."
+      "fingerprintUnstable": "Cette image change trop peu d'un côté à l'autre pour une empreinte qui résiste aux copies : même sa propre petite copie se lit comme une autre image, donc la revérification de Chainlink et toute recherche de ses copies la manqueraient. Rien n'a été épinglé ni enregistré. Une image avec plus de détails sur sa largeur sera enregistrée.",
+      "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute."
     },
     "actions": {
       "signIn": "Se reconnecter",

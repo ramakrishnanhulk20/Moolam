@@ -98,7 +98,8 @@ interface EditContext {
  *
  * Every answer that leaves a transaction out on the network carries `passportId`, the child's own
  * id, so the browser can watch the registry for that one passport instead of guessing which edit
- * under the parent is theirs.
+ * under the parent is theirs. The answer's manifest names cameraRecord, kept or dropped, when the
+ * edit arrived carrying a camera's own signed record, as the /prepare answer does.
  *
  * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 413
  * `signed-file-too-large` when signing grew the file past the upload cap, 409
@@ -309,6 +310,7 @@ async function append(
           title: upload.title,
           claimGenerator: CLAIM_GENERATOR,
           action: "c2pa.edited",
+          log: request.log,
         });
         await assertStableFingerprint(prepared.print.phash, prepared.thumbnail);
         return prepared;
@@ -581,7 +583,10 @@ async function append(
       },
       thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
       metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-      manifest: edited.embedded ? { embedded: true } : { embedded: false, reason: edited.reason },
+      manifest: {
+        ...(edited.embedded ? { embedded: true } : { embedded: false, reason: edited.reason }),
+        ...(edited.cameraRecord === undefined ? {} : { cameraRecord: edited.cameraRecord }),
+      },
       quota: context.quota.state(identity.userId),
     });
   } finally {

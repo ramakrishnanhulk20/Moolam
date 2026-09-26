@@ -431,7 +431,8 @@
       "badRequest": "Der Prüfdienst hat diese Anfrage nicht angenommen.",
       "badResponse": "Der Prüfdienst hat in einer Form geantwortet, die diese Seite nicht kennt.",
       "serviceFailed": "Der Prüfdienst konnte diese Prüfung nicht abschließen.",
-      "refused": "Der Prüfdienst hat diese Anfrage abgelehnt."
+      "refused": "Der Prüfdienst hat diese Anfrage abgelehnt.",
+      "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal."
     },
     "orientation": {
       "identity": "Gleiche Lage",
@@ -640,7 +641,8 @@
         "grantDeclined": "Die Erlaubnis wurde nicht gegeben, diese App kann also weiterhin keine Bearbeitungen hinzufügen.",
         "grantFailed": "Privy konnte den Unterzeichner nicht zu deiner Wallet hinzufügen.",
         "alreadyRegistered": "Genau dieses Bild ist schon eingetragen. Die erste Eintragung gewinnt, öffne also den Pass, der es hält.",
-        "unknown": "Die Bearbeitung ist nicht durchgegangen."
+        "unknown": "Die Bearbeitung ist nicht durchgegangen.",
+        "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal."
       },
       "actions": {
         "grant": "Bearbeitungen aus dieser App erlauben",
@@ -984,7 +986,11 @@
         "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
         "offline": "Der Prüfdienst hat nicht geantwortet, also wurde nichts veröffentlicht.",
         "fileMissing": "Wählen Sie zuerst die gespeicherte Datei.",
-        "unknown": "Etwas ist schiefgegangen, bevor die Datei losgeschickt wurde."
+        "unknown": "Etwas ist schiefgegangen, bevor die Datei losgeschickt wurde.",
+        "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit Ihrem Bild. Es wurde nichts gespeichert. Versuchen Sie es in einer Minute noch einmal.",
+        "unsealInProgress": "Dieses Bild wird bereits in einem anderen Tab oder auf einem anderen Gerät veröffentlicht. Warten Sie einen Moment und laden Sie dann den Pass neu.",
+        "thumbnailHeldPrivately": "Es wurde nichts veröffentlicht. Eine private Kopie genau dieses Bildes, die für einen anderen Pass aufbewahrt wird, steht seiner öffentlichen Kopie im Weg. Versuchen Sie es später noch einmal.",
+        "fingerprintUnstable": "Dieses Bild ändert sich von links nach rechts zu wenig für einen Fingerabdruck, der das Kopieren übersteht, also könnte seine öffentliche Kopie die Nachprüfung durch Chainlink nie bestehen. Es wurde nichts veröffentlicht."
       },
       "actions": {
         "again": "Noch einmal versuchen",
@@ -1485,7 +1491,9 @@
       "billedSponsored": "Berechnet: {gas, number} Gas, {fee} MON, bezahlt von Moolam über Privy.",
       "billedOwn": "Berechnet: {gas, number} Gas, {fee} MON, aus deinem eigenen Guthaben.",
       "billedExact": "Genau {fee} MON.",
-      "wouldHaveCost": "Dich hätte es {fee} MON gekostet."
+      "wouldHaveCost": "Dich hätte es {fee} MON gekostet.",
+      "cameraKept": "Die eigene Aufzeichnung deiner Kamera bleibt erhalten, ohne Standort und Seriennummer.",
+      "cameraDropped": "Die eigene Aufzeichnung deiner Kamera wurde entfernt, weil sich ihr Standort nicht sauber herausnehmen ließ."
     },
     "passports": {
       "heading": "Deine Bilder",
@@ -1547,7 +1555,8 @@
       "privateCopyNotPrivate": "Der Speicheranbieter hat die kleine Kopie nicht privat gehalten, deshalb hat Moolam angehalten: nichts wurde gepinnt und nichts eingetragen. Schalte die private Nachprüfung aus, um dieses Bild ohne sie versiegelt einzutragen.",
       "privateChainUnreachable": "Moolam hat Monad nicht erreicht, um zu prüfen, ob dieses Bild neu ist, deshalb wurde keine private Kopie behalten und nichts eingetragen. Versuch es gleich noch einmal.",
       "privateThumbnailTooLarge": "Dieses Bild hat zu viele feine Details für die kleine Kopie, die Chainlink zum Nachprüfen öffnet, deshalb wurde nichts gepinnt und nichts eingetragen. Lass es versiegelt und die private Nachprüfung aus, dann wird es eingetragen.",
-      "fingerprintUnstable": "Dieses Bild ändert sich von links nach rechts zu wenig für einen Fingerabdruck, der das Kopieren übersteht: Schon seine eigene kleine Kopie liest sich wie ein anderes Bild, also würden die Nachprüfung durch Chainlink und jede Suche nach Kopien es verfehlen. Nichts wurde gepinnt und nichts eingetragen. Ein Bild mit mehr Details in der Breite wird eingetragen."
+      "fingerprintUnstable": "Dieses Bild ändert sich von links nach rechts zu wenig für einen Fingerabdruck, der das Kopieren übersteht: Schon seine eigene kleine Kopie liest sich wie ein anderes Bild, also würden die Nachprüfung durch Chainlink und jede Suche nach Kopien es verfehlen. Nichts wurde gepinnt und nichts eingetragen. Ein Bild mit mehr Details in der Breite wird eingetragen.",
+      "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal."
     },
     "actions": {
       "signIn": "Neu anmelden",

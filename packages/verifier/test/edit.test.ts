@@ -7,6 +7,8 @@
 // From review pass 4: the review's SVG is refused before the gate (V17), and an edit's manifest
 // records opened then edited with no source type Moolam cannot see (V22). From review pass 5: a
 // real picture too detailed for the thumbnail budget is told so with 422, not 415 (intake 4).
+// An edit made from a camera's signed photo answers cameraRecord as /prepare does, and the route
+// hands its request logger to prepareOrFallback so a dropped record is logged.
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
 // Those are proven live by packages/agents/scripts/prove-privy.ts step 6 and, from the browser,
 // by a real creator granting a signer. The sponsored poll itself is covered in
@@ -47,7 +49,20 @@ const stubs = vi.hoisted(() => ({
   estimateEditGas: vi.fn(),
   send: vi.fn(),
   receipt: vi.fn(),
+  prepareOptions: [] as { log?: unknown }[],
 }));
+
+// The real preparation, with the options the route passed kept for the one test that reads them.
+vi.mock("../src/prepare.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/prepare.js")>();
+  return {
+    ...real,
+    prepareOrFallback: async (...args: Parameters<typeof real.prepareOrFallback>) => {
+      stubs.prepareOptions.push(args[1]);
+      return await real.prepareOrFallback(...args);
+    },
+  };
+});
 
 vi.mock("../src/edit/signers.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/edit/signers.js")>()),
@@ -85,6 +100,7 @@ const { buildServer } = await import("../src/server.js");
 const { fileSlug } = await import("../src/metadata.js");
 const { readManifest } = await import("../src/c2pa.js");
 const { EDIT_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } = await import("../src/prepare.js");
+const { cameraPhoto } = await import("./cameraPhoto.js");
 const emptySource = { load: async () => [] };
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
@@ -444,6 +460,21 @@ describe("POST /edit", () => {
     expect(JSON.stringify(actions)).not.toContain("digitalSourceType");
     expect(JSON.stringify(actions)).not.toContain("minorHumanEdits");
     expect((await readManifest(signed)).validation).toBe("valid");
+  }, 60_000);
+
+  it("camera record: answers kept for a camera's signed photo, nothing for a plain one, and passes the logger", async () => {
+    stubs.prepareOptions.length = 0;
+    const camera = await ask("did:privy:camera-edit-user", goodFields("warmer"), { image: await cameraPhoto(94) });
+    const plain = await ask("did:privy:camera-edit-user", goodFields("cooler"), { image: await makeImage(94) });
+
+    expect(camera.statusCode).toBe(200);
+    expect(camera.json().manifest).toEqual({ embedded: true, cameraRecord: "kept" });
+    expect(plain.statusCode).toBe(200);
+    expect(plain.json().manifest).toEqual({ embedded: true });
+    expect(stubs.prepareOptions).toHaveLength(2);
+    for (const options of stubs.prepareOptions) {
+      expect(typeof (options.log as { warn?: unknown } | undefined)?.warn).toBe("function");
+    }
   }, 60_000);
 
   it("answers 503 busy and gives the daily slot back when no prepare slot comes free", async () => {
