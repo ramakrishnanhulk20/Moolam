@@ -247,6 +247,8 @@ export interface Verifier {
   picture: PictureReader;
   /** The routes this host mounted, so /health can say what it is able to serve. */
   routes: string[];
+  /** Routes inside a mounted family that this host left off, each with the reason, as the boot log says. */
+  routesOff: { route: string; reason: string }[];
 }
 
 /** The index and the exact-lookup map, replaced together so no request sees a half-built pair. */
@@ -361,9 +363,11 @@ export function sourceFromEnv(): PassportSource {
  * signer the creator granted, so it is mounted on the same terms and says once at boot when it is
  * off. It does not need an image model key: nothing is drawn.
  *
- * The unseal route needs exactly what prepare needs and is mounted on the same
- * condition, so a host that can run the studio can always publish a sealed
- * picture the studio registered.
+ * The unseal and sealed routes are mounted on the same condition as prepare, so a
+ * host that can run the studio can read what the studio registered. The two that
+ * read a holder's wallets from Privy, POST /unseal and POST /sealed/forget, also
+ * need PRIVY_APP_SECRET; a host without it leaves those two off and says so at
+ * boot, and /health lists "unseal" only when POST /unseal is on.
  *
  * The re-check queue is mounted on every host, because asking for a second opinion costs this
  * service nothing to take and nothing to serve. Its three runner routes need RUNNER_TOKEN and say
@@ -491,10 +495,20 @@ export async function buildServer(
     "verify/paid": payments !== undefined,
   };
 
-  // Unsealing needs exactly what a prepare needs, a token to pin with and an app id to check
-  // creators against, so it rides on the same condition rather than on a name of its own in
-  // EXPECT_ROUTES: a host that can run the studio can always finish what the studio started.
+  // Unsealing needs what a prepare needs, a token to pin with and an app id to check creators
+  // against, so it rides on the same condition rather than on a name of its own in EXPECT_ROUTES.
+  // The two routes that read the holder's wallets from Privy also need the app secret (V10): a
+  // caller that hands in its own keys is trusted to have stubbed that read.
   const canUnseal = options.unseal !== undefined || mounts.prepare;
+  const canReadHolders =
+    options.unseal !== undefined || options.sealed !== undefined || env.PRIVY_APP_SECRET !== undefined;
+  const routesOff =
+    canUnseal && !canReadHolders
+      ? ["POST /unseal", "POST /sealed/forget"].map((route) => ({
+          route,
+          reason: "it reads the holder's wallets from Privy, which needs PRIVY_APP_SECRET, and this host has none",
+        }))
+      : [];
 
   const refusals = env.EXPECT_ROUTES.filter((route) => !mounts[route]).map((route) => {
     const missing = missingVariablesFor(route);
@@ -561,9 +575,11 @@ export async function buildServer(
       ...(mounts.prepare ? ["prepare"] : []),
       ...(mounts.generate ? ["generate"] : []),
       ...(mounts.edit ? ["edit"] : []),
-      ...(canUnseal ? ["unseal", "sealed"] : []),
+      ...(canUnseal && canReadHolders ? ["unseal"] : []),
+      ...(canUnseal ? ["sealed"] : []),
       "health",
     ],
+    routesOff,
   });
 
   // The studio uploads straight from the browser, so the app's own origin has to
@@ -639,7 +655,10 @@ export async function buildServer(
   }
 
   if (canUnseal) {
-    await app.register(unsealRoutes, { ...(options.unseal ?? options.prepare ?? {}), copies });
+    await app.register(unsealRoutes, { ...(options.unseal ?? options.prepare ?? {}), copies, holder: canReadHolders });
+    for (const off of routesOff) {
+      app.log.info(`${off.route} off: ${off.reason}`);
+    }
   } else {
     app.log.info("unseal route off: it needs the same PINATA_JWT and PRIVY_APP_ID that /prepare needs");
   }
@@ -652,6 +671,7 @@ export async function buildServer(
       queue: app.recheck,
       linkToken: options.sealed?.linkToken ?? env.SEALED_LINK_TOKEN,
       keys: (options.sealed ?? options.unseal ?? options.prepare ?? {}).keys,
+      forget: canReadHolders,
     });
   } else {
     app.log.info("sealed routes off: they need the same PINATA_JWT and PRIVY_APP_ID that /prepare needs");

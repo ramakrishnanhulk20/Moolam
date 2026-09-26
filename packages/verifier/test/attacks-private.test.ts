@@ -61,6 +61,7 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 }));
 
 const { buildServer } = await import("../src/server.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
 const { sealedMetadata, sealedMetadataSchema, privatelyRecheckable } = await import("../src/sealed.js");
 const { privateSweep } = await import("../src/sweep.js");
 const { env } = await import("../src/env.js");
@@ -226,7 +227,7 @@ function stubPinata(): void {
           : json({ data: { id: UPLOADED_ID, name, cid: UPLOADED_CID, network: "private", is_duplicate: false } });
       }
       calls.push({ kind: "public-upload", url, name, type: file.type, bytes });
-      return json({ data: { cid: `bafypublic${calls.length}`, size: bytes.length } });
+      return json({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } });
     }
     throw new Error("this test makes no live call");
   });

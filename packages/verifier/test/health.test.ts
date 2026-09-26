@@ -23,6 +23,9 @@ vi.hoisted(() => {
   process.env.GLOBAL_UNSEALS_PER_DAY = "9";
   process.env.GLOBAL_LINKS_PER_DAY = "11";
   process.env.PRIVATE_SWEEP = "";
+  // POST /unseal and POST /sealed/forget read the holder's wallets from Privy, which needs the app
+  // secret; set here so the list below does not depend on the developer's own .env.
+  process.env.PRIVY_APP_SECRET = "test-app-secret-not-a-real-one";
 });
 
 const { buildServer } = await import("../src/server.js");
@@ -79,7 +82,7 @@ describe("GET /health", () => {
         deps: {
           list: async () => ({
             files: [{ id: "0199a3c2-5d7e-7f10-9a1b-00000000000c", name: `sealed-thumb-${orphan}.jpg`, cid: "bafkreiprivate0c", createdAt: "2026-09-20T12:00:00Z" }],
-            more: false,
+            next: undefined,
           }),
           registered: async () => false,
           remove: async () => undefined,

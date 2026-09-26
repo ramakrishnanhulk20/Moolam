@@ -12,6 +12,7 @@ import { passportExists } from "./edit/registry.js";
 import type { Fingerprint, Hex } from "./fingerprint.js";
 import { PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, type PrivateFile } from "./ipfs/pinata.js";
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
+import { PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } from "./prepare.js";
 
 /**
  * How the sealed document names the hash the chain commits to.
@@ -327,7 +328,40 @@ export async function registrationOf(
  */
 export type PrivateCopy =
   | { kept: PrivateFile }
-  | { refused: { status: 409 | 502; body: { error: string } }; landed: boolean };
+  | { refused: { status: 409 | 422 | 502; body: { error: string; [field: string]: unknown } }; landed: boolean };
+
+/** What the comment in a private copy says, followed by the passport id. */
+export const PRIVATE_COPY_COMMENT = "moolam-private-copy";
+
+/**
+ * The private thumbnail with a JPEG comment naming its passport, so its bytes, and so its content
+ * id, belong to that passport alone (V12).
+ *
+ * Signing only adds APP11 segments, so two signings of one picture give the same thumbnail bytes
+ * under two passport ids. Pinata de-duplicates by content id, so without this the second upload is
+ * answered with the first file under the first name, and the same picture could never be privately
+ * re-checked twice. A comment changes no pixel: the workflow's jpeg-js and sharp both skip it, so
+ * the fingerprint B14 promises is the same. It sits after the JFIF header when there is one.
+ *
+ * Throws when the bytes are not a JPEG or the id is not a passport id.
+ */
+export function markedPrivateCopy(thumbnail: Buffer, passportId: Hex): Buffer {
+  if (thumbnail.length < 4 || thumbnail[0] !== 0xff || thumbnail[1] !== 0xd8) {
+    throw new Error("a private copy is a JPEG, and these bytes do not start like one");
+  }
+  const id = passportId.toLowerCase();
+  if (!PASSPORT_ID.test(id)) {
+    throw new Error("a private copy is marked with a passport id: 0x and 64 hex characters");
+  }
+  const text = Buffer.from(`${PRIVATE_COPY_COMMENT} ${id}`, "latin1");
+  const segment = Buffer.concat([Buffer.from([0xff, 0xfe, (text.length + 2) >> 8, (text.length + 2) & 0xff]), text]);
+
+  let at = 2;
+  if (thumbnail[2] === 0xff && thumbnail[3] === 0xe0 && thumbnail.length >= 6) {
+    at = 4 + thumbnail.readUInt16BE(4);
+  }
+  return Buffer.concat([thumbnail.subarray(0, at), segment, thumbnail.subarray(at)]);
+}
 
 /**
  * Keeps one thumbnail on Pinata's private network for a sealed passport whose creator asked for a
@@ -335,10 +369,12 @@ export type PrivateCopy =
  *
  * The caller has already made the thumbnail with makeThumbnail from the signed bytes, checked
  * those bytes hash to the passport id, and heard "free" from the chain. The file is named after
- * the passport id and carries it as the `passportId` key-value, and it is kept only if Pinata
- * says it is private under that exact name (B16). Anything else answers 409
+ * the passport id and carries it as the `passportId` key-value, and its bytes carry the id too, in
+ * a JPEG comment (markedPrivateCopy), so no other passport's copy can share its content id. It is
+ * kept only if Pinata says it is private under that exact name (B16). Anything else answers 409
  * private-copy-not-private and logs the file id Pinata gave back, and nothing is deleted, because
- * that id can be a public pin the account already held. An upload Pinata refused or that timed
+ * that id can be a public pin the account already held. A marked copy over THUMBNAIL_MAX_BYTES
+ * answers 422 thumbnail-too-large before any upload, and an upload Pinata refused or that timed
  * out answers 502 pin-failed.
  */
 export async function keepPrivateCopy(
@@ -347,8 +383,19 @@ export async function keepPrivateCopy(
   log: FastifyBaseLogger,
 ): Promise<PrivateCopy> {
   const id = passportId.toLowerCase();
+  const marked = markedPrivateCopy(thumbnail, passportId);
+  if (marked.length > THUMBNAIL_MAX_BYTES) {
+    log.warn({ passportId: id, bytes: marked.length }, "rejected: the private copy is over the fetch budget");
+    return {
+      refused: {
+        status: 422,
+        body: { error: "thumbnail-too-large", limit: THUMBNAIL_MAX_BYTES, reason: PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON },
+      },
+      landed: false,
+    };
+  }
   try {
-    const kept = await pinPrivateFile(thumbnail, privateThumbnailName(passportId), { passportId: id });
+    const kept = await pinPrivateFile(marked, privateThumbnailName(passportId), { passportId: id });
     log.info({ passportId: id, fileId: kept.id }, "prepare: private copy kept");
     return { kept };
   } catch (error) {

@@ -7,40 +7,31 @@ const KEY_PREFIX = /^wallet-(auth|api):/;
 
 let client: PrivyClient | undefined;
 
-interface PrivyConfig {
-  appId: string;
-  appSecret: string;
-  authorizationKey: string;
+/**
+ * The Privy values named, read at the moment they are needed rather than at import, so a host that
+ * only verifies images boots without them. Throws naming every one that is missing.
+ */
+function required(names: readonly ("PRIVY_APP_ID" | "PRIVY_APP_SECRET" | "PRIVY_AUTHORIZATION_KEY")[]): string[] {
+  const missing = names.filter((name) => env[name] === undefined);
+  if (missing.length > 0) {
+    throw new Error(
+      `The root .env is missing or empty for: ${missing.join(", ")}. Fill them in from dashboard.privy.io before running anything that needs them.`,
+    );
+  }
+  return names.map((name) => env[name] as string);
 }
 
 /**
- * The three Privy values this process needs to act as the owner of its server wallets.
+ * The Privy client, built once from the app id and secret in the root .env.
  *
- * Read at the moment they are needed rather than at import, so a host that only verifies images
- * boots without them. Throws naming every one that is missing.
+ * Reading a user's wallets needs only those two, so a host with no authorization key can still
+ * check who holds a passport (V10). Acting as the owner of a server wallet is ownerContext's job,
+ * and that is where the authorization key is asked for.
  */
-function config(): PrivyConfig {
-  const missing: string[] = [];
-  if (env.PRIVY_APP_ID === undefined) missing.push("PRIVY_APP_ID");
-  if (env.PRIVY_APP_SECRET === undefined) missing.push("PRIVY_APP_SECRET");
-  if (env.PRIVY_AUTHORIZATION_KEY === undefined) missing.push("PRIVY_AUTHORIZATION_KEY");
-  if (missing.length > 0) {
-    throw new Error(
-      `The root .env is missing or empty for: ${missing.join(", ")}. Fill them in from dashboard.privy.io before running anything that signs as the generator agent.`,
-    );
-  }
-  return {
-    appId: env.PRIVY_APP_ID as string,
-    appSecret: env.PRIVY_APP_SECRET as string,
-    authorizationKey: env.PRIVY_AUTHORIZATION_KEY as string,
-  };
-}
-
-/** The Privy client, built once from the app id and secret in the root .env. */
 export function privy(): PrivyClient {
   if (!client) {
-    const settings = config();
-    client = new PrivyClient({ appId: settings.appId, appSecret: settings.appSecret });
+    const [appId, appSecret] = required(["PRIVY_APP_ID", "PRIVY_APP_SECRET"]) as [string, string];
+    client = new PrivyClient({ appId, appSecret });
   }
   return client;
 }
@@ -48,10 +39,11 @@ export function privy(): PrivyClient {
 /**
  * The authorization context that proves this server is allowed to ask Privy's enclave to act as
  * the owner of the wallets it created. The private key never leaves this machine: the SDK signs
- * each request locally and sends only the signature.
+ * each request locally and sends only the signature. Throws when PRIVY_AUTHORIZATION_KEY is missing.
  */
 export function ownerContext(): AuthorizationContext {
-  return { authorization_private_keys: [config().authorizationKey] };
+  const [authorizationKey] = required(["PRIVY_AUTHORIZATION_KEY"]) as [string];
+  return { authorization_private_keys: [authorizationKey] };
 }
 
 /**
@@ -59,7 +51,8 @@ export function ownerContext(): AuthorizationContext {
  * names its owner. Derived locally so the .env only ever has to carry the private key.
  */
 export function ownerPublicKey(): string {
-  const raw = config().authorizationKey.replace(KEY_PREFIX, "");
+  const [authorizationKey] = required(["PRIVY_AUTHORIZATION_KEY"]) as [string];
+  const raw = authorizationKey.replace(KEY_PREFIX, "");
   const key = createPrivateKey({
     key: Buffer.from(raw, "base64"),
     format: "der",

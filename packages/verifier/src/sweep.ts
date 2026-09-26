@@ -1,13 +1,7 @@
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { env, type PrivateSweepMode } from "./env.js";
-import {
-  PRIVATE_PREFIX_MAX_FILES,
-  PRIVATE_PREFIX_MAX_PAGES,
-  deletePrivateFile,
-  listPrivateByPrefix,
-  type PrivateListing,
-} from "./ipfs/pinata.js";
+import { PRIVATE_SWEEP_PAGES, deletePrivateFile, listPrivatePage, type PrivateListing } from "./ipfs/pinata.js";
 import { readClient } from "./reputation/registry.js";
 import { privateThumbnailName } from "./sealed.js";
 import type { Hex } from "./types.js";
@@ -30,8 +24,6 @@ export const SWEEP_EVERY_MS = HOUR_MS;
  */
 export const SWEEP_MIN_AGE_MS = 48 * HOUR_MS;
 
-const THUMBNAIL_PREFIX = "sealed-thumb-";
-
 /**
  * The only names the sweep ever acts on: the whole name, the passport id in the lower case hex
  * /prepare writes. Anything else under the prefix, `.jpg.exe` or capitals included, is skipped and
@@ -43,7 +35,7 @@ const THUMBNAIL_NAME = /^sealed-thumb-(0x[0-9a-f]{64})\.jpg$/;
 const createdAtSchema = z.iso.datetime({ offset: true });
 
 export interface SweepCounts {
-  /** Rows the listing handed back under the prefix. */
+  /** Rows the listing handed back this run. */
   listed: number;
   /** Rows whose name is not exactly a thumbnail name. */
   oddNames: number;
@@ -65,13 +57,14 @@ export interface SweepRun {
   mode: "dry" | "delete";
   /** "stopped" is a listing it could not finish or a chain read that failed: nothing was marked. */
   outcome: "finished" | "stopped";
-  /** The listing stopped at its page or row bound, so the account may hold more than was read. */
+  /** The listing stopped at its page bound, so the next run goes on from there. */
   more: boolean;
   counts: SweepCounts;
 }
 
 export interface SweepDeps {
-  list: () => Promise<{ files: PrivateListing[]; more: boolean }>;
+  /** A few pages of the private listing from `from`, or from the first page, and where to go on from. */
+  list: (from: string | undefined) => Promise<{ files: PrivateListing[]; next: string | undefined }>;
   /** True when the chain holds the passport, false only when it answered that it does not. Throws otherwise. */
   registered: (passportId: Hex) => Promise<boolean>;
   remove: (fileId: string) => Promise<void>;
@@ -97,10 +90,13 @@ export interface PrivateSweep {
  * The hourly sweep of private copies whose passport never reached the chain (B9, B15, D5).
  *
  * /prepare keeps a private thumbnail before the creator signs, so a creator who walks away leaves
- * one behind under a passport id nobody registered. Each run lists at most 10 pages and 200 files
- * under the prefix, keeps only exact thumbnail names uploaded more than 48 hours ago, asks the
- * registry about each id, and marks a file only when the chain answered that the passport does
- * not exist. An RPC error, a listing it could not finish, or any answer it does not know ends the
+ * one behind under a passport id nobody registered. Each run reads two pages of the private
+ * listing, 200 rows, starting where the last run stopped and going back to the first page once
+ * the listing ends, so every row is read in turn however many registered copies sit ahead of an
+ * orphan (V16). No name filter is sent to Pinata (V8): the whole-name pattern here is the only
+ * check. It keeps only exact thumbnail names uploaded more than 48 hours ago, asks the registry
+ * about each id, and marks a file only when the chain answered that the passport does not exist.
+ * The place it stopped lives in memory, so a restart starts again at the first page. An RPC error, a listing it could not finish, or any answer it does not know ends the
  * run with nothing marked: deletion cannot be undone, so every doubt keeps the file. In dry it logs
  * each file it would delete by name and age; in delete it deletes them. Both log the counts.
  */
@@ -119,6 +115,8 @@ export function privateSweep(options: {
   };
   let running = false;
   let lastRun: SweepRun | null = null;
+  /** Where the next run's listing starts: Pinata's page token, or undefined for the first page. */
+  let cursor: string | undefined;
 
   const sweep = async (active: "dry" | "delete"): Promise<SweepRun> => {
     const started = deps.now();
@@ -140,13 +138,16 @@ export function privateSweep(options: {
       counts,
     });
 
-    let listing: { files: PrivateListing[]; more: boolean };
+    let listing: { files: PrivateListing[]; next: string | undefined };
     try {
-      listing = await deps.list();
+      listing = await deps.list(cursor);
     } catch (error) {
+      // A saved page token Pinata will not take any more must not stop every run after it.
+      cursor = undefined;
       log.warn({ mode: active, reason: reasonOf(error) }, "sweep: stopped, the private listing could not finish, nothing marked");
       return run("stopped", false);
     }
+    const more = listing.next !== undefined;
 
     const byPassport = new Map<Hex, { file: PrivateListing; ageHours: number }[]>();
     for (const file of listing.files) {
@@ -182,7 +183,7 @@ export function privateSweep(options: {
           { mode: active, passportId: id, reason: reasonOf(error) },
           "sweep: stopped, the chain did not answer for a passport, nothing marked",
         );
-        return run("stopped", listing.more);
+        return run("stopped", more);
       }
       if (held === false) {
         marked.push(...group);
@@ -191,16 +192,18 @@ export function privateSweep(options: {
       }
     }
     counts.marked = marked.length;
+    // Every page read this run was decided on, so the next run goes on past them.
+    cursor = listing.next;
 
     if (active === "dry") {
       for (const { file, ageHours } of marked) {
         log.info({ name: file.name, ageHours }, "sweep (dry): would delete a private copy whose passport never registered");
       }
-      log.info({ mode: active, more: listing.more, ...counts }, "sweep (dry): run finished, nothing deleted");
-      return run("finished", listing.more);
+      log.info({ mode: active, more, ...counts }, "sweep (dry): run finished, nothing deleted");
+      return run("finished", more);
     }
 
-    // Bounded by the listing's own 200 row cap.
+    // Bounded by the two pages the listing reads: 200 rows.
     for (const { file, ageHours } of marked) {
       try {
         await deps.remove(file.id);
@@ -211,8 +214,8 @@ export function privateSweep(options: {
         log.error({ name: file.name, reason: reasonOf(error) }, "sweep: could not delete a private copy");
       }
     }
-    log.info({ mode: active, more: listing.more, ...counts }, "sweep: run finished");
-    return run("finished", listing.more);
+    log.info({ mode: active, more, ...counts }, "sweep: run finished");
+    return run("finished", more);
   };
 
   const runOnce = async (): Promise<SweepRun | undefined> => {
@@ -272,11 +275,8 @@ function uploadedAt(createdAt: string | undefined): number | undefined {
   return Number.isFinite(at) ? at : undefined;
 }
 
-async function liveListing(): Promise<{ files: PrivateListing[]; more: boolean }> {
-  return await listPrivateByPrefix(THUMBNAIL_PREFIX, {
-    maxPages: PRIVATE_PREFIX_MAX_PAGES,
-    maxFiles: PRIVATE_PREFIX_MAX_FILES,
-  });
+async function liveListing(from: string | undefined): Promise<{ files: PrivateListing[]; next: string | undefined }> {
+  return await listPrivatePage(from, PRIVATE_SWEEP_PAGES);
 }
 
 /**

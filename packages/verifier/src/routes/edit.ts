@@ -1,5 +1,6 @@
 import { APIError } from "@privy-io/node";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { getAddress, toEventSelector } from "viem";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { SignerUnavailable } from "../c2pa.js";
@@ -17,6 +18,7 @@ import {
   SponsoredSendPending,
   awaitReceipt,
   sendFromWallet,
+  type ReceiptLog,
 } from "../edit/send.js";
 import { delegatedWallets, signerIds, walletSigners, type OwnerWallet, type WalletSigner } from "../edit/signers.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
@@ -105,12 +107,16 @@ export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKe
 
   app.post("/edit", async (request: FastifyRequest, reply: FastifyReply) => {
     // The one long wait in this route is the prepare gate, and a creator who closed the tab while
-    // waiting must not be charged a slot or have a transaction sent on their behalf.
-    let closed = request.raw.destroyed === true;
-    request.raw.once("close", () => {
-      closed = true;
+    // waiting must not be charged a slot or have a transaction sent on their behalf. The request
+    // stream is no guide: Node closes it as soon as its body has been read, with the caller still
+    // waiting. The connection is: the response closing before it finished, or the socket going.
+    let hungUp = false;
+    reply.raw.once("close", () => {
+      if (!reply.raw.writableFinished) {
+        hungUp = true;
+      }
     });
-    const gone = (): boolean => closed || request.raw.destroyed === true;
+    const gone = (): boolean => hungUp || request.raw.socket?.destroyed === true;
 
     const identity = await identify(request, options.keys);
     if (identity === undefined) {
@@ -460,6 +466,21 @@ async function append(
       );
       return reply.code(502).send({ error: "send-failed", reason: receipt.reason ?? "reverted" });
     }
+    // A sponsored send is a user operation inside a bundle, and the bundle succeeds even when the
+    // appendEdit inside it reverted. The registry's own event for this child is the only proof the
+    // edit was written.
+    if (!childRegistered(receipt.logs, context.registry, passportId)) {
+      request.log.error(
+        { url: request.url, hash: sent.hash, passportId },
+        "rejected: /edit the transaction landed and the registry wrote no child",
+      );
+      return reply.code(502).send({
+        error: "send-failed",
+        reason: "the user operation reverted: the transaction landed and the registry wrote no passport for this edit",
+        passportId,
+        hash: sent.hash,
+      });
+    }
 
     request.log.info(
       { user: identity.userId, parent: upload.parentId, child: child.exactHash, hash: sent.hash },
@@ -507,6 +528,30 @@ async function append(
       today.slot.giveBack();
     }
   }
+}
+
+/** The registry's event for a new passport, whose first indexed topic is the passport id. */
+const PASSPORT_REGISTERED = toEventSelector(
+  "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
+);
+
+/**
+ * Whether a receipt carries the registry's PassportRegistered event for this passport. The address
+ * and the id are compared after the same normaliser on both sides: getAddress for the contract, and
+ * lower case hex for the topic.
+ */
+function childRegistered(logs: readonly ReceiptLog[] | undefined, registry: Hex, passportId: Hex): boolean {
+  const contract = getAddress(registry);
+  const id = passportId.toLowerCase();
+  return (logs ?? []).some((log) => {
+    let from: string;
+    try {
+      from = getAddress(log.address);
+    } catch {
+      return false;
+    }
+    return from === contract && log.topics[0]?.toLowerCase() === PASSPORT_REGISTERED && log.topics[1]?.toLowerCase() === id;
+  });
 }
 
 /**

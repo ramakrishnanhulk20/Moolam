@@ -2,9 +2,23 @@ const TEN_MINUTES_MS = 10 * 60 * 1000;
 
 /** What one payment authorisation bought, and the answer that went out with it. */
 export interface LedgerEntry {
-  state: "pending" | "settled";
+  /**
+   * "settled" and "pending" answers went out. "unknown" is an answer held back because nobody
+   * could say whether the transfer happened: it is handed over only once the chain shows it did.
+   */
+  state: "pending" | "settled" | "unknown";
   payload: unknown;
   headers: Record<string, string>;
+  /**
+   * The verified payment that bought the answer, in the one form a repeat is compared in: the
+   * signature and every signed field. The nonce alone is public on chain once a transfer settles,
+   * so it is only the key.
+   */
+  payment: string;
+  /** The sha256 of the upload the answer is about, so a repeat must carry the same file. */
+  upload: string;
+  /** What the chain is asked about for an "unknown" entry. */
+  proof?: unknown;
   /** Unix milliseconds, when the entry was written. The TTL is measured from here. */
   at: number;
 }
@@ -12,6 +26,7 @@ export interface LedgerEntry {
 export interface PaymentLedger {
   get: (nonce: string) => LedgerEntry | undefined;
   remember: (nonce: string, entry: Omit<LedgerEntry, "at">) => void;
+  forget: (nonce: string) => void;
   sweep: () => void;
 }
 
@@ -21,7 +36,8 @@ export interface PaymentLedger {
  *
  * One authorisation is one signature for one amount, so a repeat of it must not
  * be settled a second time. The answer it bought is handed back instead, until
- * the entry expires.
+ * the entry expires, and only to a request carrying that same payment and that
+ * same file: the caller decides that by comparing `payment` and `upload`.
  *
  * Like the generation quota, this lives in this process's memory only. It is
  * gone on a restart and a second copy of the service keeps its own, so a repeat
@@ -50,6 +66,10 @@ export function paymentLedger(ttlMs: number = TEN_MINUTES_MS): PaymentLedger {
 
     remember(nonce: string, entry: Omit<LedgerEntry, "at">): void {
       entries.set(nonce, { ...entry, at: Date.now() });
+    },
+
+    forget(nonce: string): void {
+      entries.delete(nonce);
     },
 
     sweep,

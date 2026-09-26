@@ -5,9 +5,13 @@
 // an RPC error, a listing that could not finish, and an answer in an unknown shape mark nothing;
 // two runs never overlap, and nothing runs at boot. The Pinata listing is the real client against
 // a stub at the fetch layer, so its paging and its bounds run for real.
+// From the verifier review: the listing asks Pinata for no name filter at all, so whatever that
+// filter matches cannot hide a file, and the exact name check here is the only one (V8); each run
+// reads two pages from where the last one stopped, so every row is read in turn (V16).
 // Does NOT cover a real Pinata account or a real chain read (the registry read is a stub here and
-// its strict shape check is exercised only through a fake answer), what Pinata's own name filter
-// matches, or the server wiring, which test/health.test.ts reads through /health.
+// its strict shape check is exercised only through a fake answer), whether a real page token
+// outlives a day, the cursor across a restart (it lives in memory, so a restart starts at the
+// first page again), or the server wiring, which test/health.test.ts reads through /health.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Hex } from "viem";
@@ -18,7 +22,7 @@ vi.hoisted(() => {
 });
 
 const { privateSweep, SWEEP_FIRST_RUN_MS, SWEEP_EVERY_MS } = await import("../src/sweep.js");
-const { listPrivateByPrefix } = await import("../src/ipfs/pinata.js");
+const { listPrivatePage, PRIVATE_SWEEP_PAGES } = await import("../src/ipfs/pinata.js");
 type SweepDeps = import("../src/sweep.js").SweepDeps;
 type SweepLog = import("../src/sweep.js").SweepLog;
 
@@ -65,9 +69,11 @@ function row(name: string | null, createdAt: string | undefined): Row {
 
 /**
  * Pinata's listing at the fetch layer. The name filter matches anywhere in the name, the loosest
- * reading of an undocumented rule, so the checks in our code are what the tests see. Anything else
- * that tries to leave the process fails the test.
+ * reading of an undocumented rule, so the checks in our code are what the tests see, unless a test
+ * switches it to whole names only, the strictest reading. Anything else that tries to leave the
+ * process fails the test.
  */
+let wholeNamesOnly = false;
 function stubPinata(): void {
   vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
     const url = input instanceof Request ? input.url : String(input);
@@ -80,7 +86,9 @@ function stubPinata(): void {
       if (failAt.has(offset)) {
         return new Response("down", { status: 500 });
       }
-      const matching = account.filter((file) => (file.name ?? "").includes(filter));
+      const matching = account.filter((file) =>
+        wholeNamesOnly && query.has("name") ? file.name === filter : (file.name ?? "").includes(filter),
+      );
       const page = matching.slice(offset, offset + limit);
       const next = offset + limit < matching.length ? String(offset + limit) : "";
       return new Response(JSON.stringify({ data: { files: page, next_page_token: next } }), {
@@ -122,6 +130,7 @@ function deps(overrides: Partial<SweepDeps> = {}): Partial<SweepDeps> {
 }
 
 beforeEach(() => {
+  wholeNamesOnly = false;
   account.length = 0;
   failAt.clear();
   listed.length = 0;
@@ -237,7 +246,7 @@ describe("the private copy sweep (B9, D5)", () => {
     const run = await privateSweep({ mode: "delete", log: recordingLog(), deps: deps() }).runOnce();
 
     expect(run?.outcome).toBe("finished");
-    expect(run?.counts).toMatchObject({ listed: 3, oddNames: 3, marked: 0 });
+    expect(run?.counts).toMatchObject({ listed: 4, oddNames: 4, marked: 0 });
     expect(removed).toHaveLength(0);
   });
 
@@ -292,7 +301,7 @@ describe("the private copy sweep (B9, D5)", () => {
         list: async () => {
           lists += 1;
           await gate;
-          return { files: [], more: false };
+          return { files: [], next: undefined };
         },
       }),
     });
@@ -313,9 +322,9 @@ describe("the private copy sweep (B9, D5)", () => {
   it("D5: does not run at boot, runs first an hour later and then every hour, and off never schedules", async () => {
     vi.useFakeTimers();
     let lists = 0;
-    const list = async (): Promise<{ files: never[]; more: boolean }> => {
+    const list = async (): Promise<{ files: never[]; next: undefined }> => {
       lists += 1;
-      return { files: [], more: false };
+      return { files: [], next: undefined };
     };
     const sweep = privateSweep({ mode: "dry", log: recordingLog(), deps: deps({ list }) });
     const off = privateSweep({ mode: "off", log: recordingLog(), deps: deps({ list }) });
@@ -338,38 +347,93 @@ describe("the private copy sweep (B9, D5)", () => {
   });
 });
 
-describe("the sweep's listing (B15)", () => {
-  it("reads at most 200 of our rows and says there may be more", async () => {
+describe("V8: names matched exactly, whatever Pinata's name filter does", () => {
+  it("finds an orphan when Pinata's name filter matches only whole names, because it asks with none", async () => {
+    wholeNamesOnly = true;
+    const orphan = idOf(0x31);
+    chain.set(orphan, false);
+    const file = row(nameOf(orphan), hoursAgo(60));
+
+    const run = await privateSweep({ mode: "delete", log: recordingLog(), deps: deps() }).runOnce();
+
+    expect(run?.counts).toMatchObject({ listed: 1, marked: 1, deleted: 1 });
+    expect(removed).toEqual([file.id]);
+    expect(listed.every((url) => !new URL(url).searchParams.has("name"))).toBe(true);
+  });
+});
+
+describe("V16: every row is read in turn across runs", () => {
+  it("reads two pages a run from where the last run stopped, and reaches an orphan past row 200", async () => {
     for (let i = 0; i < 250; i += 1) {
-      row(`sealed-thumb-${i}`, hoursAgo(60));
+      const id = `0x${i.toString(16).padStart(4, "0").repeat(16)}` as Hex;
+      chain.set(id, true);
+      row(nameOf(id), hoursAgo(60));
     }
+    const orphan = idOf(0x32);
+    chain.set(orphan, false);
+    const late = row(nameOf(orphan), hoursAgo(60));
+    const sweep = privateSweep({ mode: "delete", log: recordingLog(), deps: deps() });
 
-    const { files, more } = await listPrivateByPrefix("sealed-thumb-");
+    const first = await sweep.runOnce();
+    expect(first?.counts).toMatchObject({ listed: 200, registered: 200, marked: 0 });
+    expect(first?.more).toBe(true);
+    expect(removed).toHaveLength(0);
 
-    expect(files).toHaveLength(200);
-    expect(more).toBe(true);
-    expect(listed).toHaveLength(3);
+    const second = await sweep.runOnce();
+    expect(second?.counts).toMatchObject({ listed: 51, registered: 50, marked: 1, deleted: 1 });
+    expect(second?.more).toBe(false);
+    expect(removed).toEqual([late.id]);
+    expect(new URL(listed[2] as string).searchParams.get("pageToken")).toBe("200");
+
+    // The listing ended, so the next run starts at the first page again.
+    await sweep.runOnce();
+    expect(new URL(listed[3] as string).searchParams.get("pageToken")).toBeNull();
   });
 
-  it("reads at most the pages it is given, and keeps only names that start with the prefix", async () => {
+  it("starts again from the first page when a saved page cannot be read", async () => {
+    for (let i = 0; i < 250; i += 1) {
+      const id = `0x${i.toString(16).padStart(4, "0").repeat(16)}` as Hex;
+      chain.set(id, true);
+      row(nameOf(id), hoursAgo(60));
+    }
+    const sweep = privateSweep({ mode: "dry", log: recordingLog(), deps: deps() });
+    await sweep.runOnce();
+    failAt.add(200);
+
+    expect((await sweep.runOnce())?.outcome).toBe("stopped");
+    failAt.clear();
+    const mark = listed.length;
+    await sweep.runOnce();
+    expect(new URL(listed[mark] as string).searchParams.get("pageToken")).toBeNull();
+  });
+});
+
+describe("the sweep's listing (B15)", () => {
+  it("reads at most the pages it is given and hands back where to go on from", async () => {
     for (let i = 0; i < 350; i += 1) {
       row(i % 2 === 0 ? `sealed-thumb-${i}` : `old-sealed-thumb-${i}`, hoursAgo(60));
     }
 
-    const { files, more } = await listPrivateByPrefix("sealed-thumb-", { maxPages: 2, maxFiles: 500 });
-
+    const first = await listPrivatePage(undefined);
+    expect(PRIVATE_SWEEP_PAGES).toBe(2);
     expect(listed).toHaveLength(2);
-    expect(more).toBe(true);
-    expect(files.every((file) => file.name.startsWith("sealed-thumb-"))).toBe(true);
-    expect(files).toHaveLength(100);
+    expect(first.files).toHaveLength(200);
+    expect(first.next).toBe("200");
+
+    const rest = await listPrivatePage(first.next, 5);
+    expect(rest.files).toHaveLength(150);
+    expect(rest.next).toBeUndefined();
   });
 
-  it("throws rather than answering part of a listing when a later page fails", async () => {
+  it("drops rows with no name, and throws rather than answering part of a listing when a page fails", async () => {
+    row(null, hoursAgo(60));
+    row("sealed-thumb-a", hoursAgo(60));
+    expect((await listPrivatePage(undefined)).files.map((file) => file.name)).toEqual(["sealed-thumb-a"]);
+
     for (let i = 0; i < 150; i += 1) {
       row(`sealed-thumb-${i}`, hoursAgo(60));
     }
     failAt.add(100);
-
-    await expect(listPrivateByPrefix("sealed-thumb-")).rejects.toThrow(/cannot tell/);
+    await expect(listPrivatePage(undefined)).rejects.toThrow(/cannot tell/);
   });
 });

@@ -1,6 +1,8 @@
 // Covers what the service refuses to do at boot and how it reads a caller's address: the proxy
 // hops it will believe, the routes EXPECT_ROUTES insists on, the paid route without a base URL,
-// the registry check, and the match gate answering 503 when no slot comes free.
+// the registry check, the match gate answering 503 when no slot comes free, and (V10) the two
+// routes that read a holder's wallets from Privy staying off, with the reason, on a host without
+// PRIVY_APP_SECRET, while the sealed reads stay on.
 // Every case that needs different settings re-imports the server with the environment stubbed,
 // because src/env.ts validates once when it is first loaded.
 // Does NOT cover the real registry read in src/boot/registryChecks.ts, which talks to Monad: the
@@ -107,6 +109,60 @@ describe("boot refusals", () => {
     expect(app.verifier.routes).toContain("generate");
     await app.close();
   });
+});
+
+describe("routes that read a holder's wallets from Privy (V10)", () => {
+  /** A host that can pin and check creators, and has no Privy app secret. */
+  const studioOnly = {
+    PRIVY_APP_ID: "moolamtestapp0000009",
+    PINATA_JWT: "test-token-not-a-real-pinata-jwt",
+    PRIVY_APP_SECRET: "",
+    PRIVY_AUTHORIZATION_KEY: "",
+    PRIVY_EDIT_SIGNER_ID: "",
+    X402_ENABLED: "false",
+    EXPECT_ROUTES: "",
+  };
+
+  it("leaves POST /unseal and POST /sealed/forget off without PRIVY_APP_SECRET, says why, and keeps the sealed reads on", async () => {
+    const app = await serverWith(studioOnly);
+    await app.ready();
+
+    try {
+      const unseal = await app.inject({ method: "POST", url: "/unseal" });
+      const forget = await app.inject({ method: "POST", url: "/sealed/forget", payload: {} });
+      expect(unseal.statusCode).toBe(404);
+      expect(forget.statusCode).toBe(404);
+
+      expect((await app.inject({ method: "GET", url: "/unseal/0xnothex" })).statusCode).toBe(400);
+      expect((await app.inject({ method: "GET", url: "/sealed/status/0xnothex" })).statusCode).toBe(400);
+
+      const health = (await app.inject({ method: "GET", url: "/health" })).json() as { routes: string[] };
+      expect(health.routes).toContain("sealed");
+      expect(health.routes).not.toContain("unseal");
+      expect(app.verifier.routesOff.map((off) => off.route)).toEqual(["POST /unseal", "POST /sealed/forget"]);
+      expect(app.verifier.routesOff.every((off) => off.reason.includes("PRIVY_APP_SECRET"))).toBe(true);
+    } finally {
+      await app.close();
+    }
+  }, 30_000);
+
+  it("mounts both with the app secret alone, and reads users without PRIVY_AUTHORIZATION_KEY", async () => {
+    const app = await serverWith({ ...studioOnly, PRIVY_APP_SECRET: "test-app-secret-not-a-real-one" });
+    await app.ready();
+
+    try {
+      expect((await app.inject({ method: "POST", url: "/unseal" })).statusCode).toBe(401);
+      expect((await app.inject({ method: "POST", url: "/sealed/forget", payload: {} })).statusCode).toBe(401);
+      expect(app.verifier.routes).toContain("unseal");
+      expect(app.verifier.routesOff).toEqual([]);
+
+      const privy = await import("../src/generate/privy.js");
+      expect(() => privy.privy()).not.toThrow();
+      expect(() => privy.ownerContext()).toThrow(/PRIVY_AUTHORIZATION_KEY/);
+    } finally {
+      await app.close();
+    }
+  }, 30_000);
 });
 
 describe("the match gate", () => {

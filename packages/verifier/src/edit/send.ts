@@ -211,18 +211,30 @@ export async function sendFromWallet(
   return { ...settled, hash, sponsored };
 }
 
+/** One event in a receipt, in the two fields a caller checks: which contract, and its topics. */
+export interface ReceiptLog {
+  address: Hex;
+  topics: readonly Hex[];
+}
+
 /** How the chain settled a send: it landed, or it landed and reverted. */
 export interface SendReceipt {
   status: "success" | "reverted";
   /** The revert reason when the node volunteered one. Most nodes do not. */
   reason?: string;
+  /**
+   * Every event the transaction emitted. A sponsored send lands as a bundle whose status is success
+   * even when the call inside it reverted, so the caller's own contract event is what says it ran.
+   */
+  logs: ReceiptLog[];
 }
 
 /**
  * Waits for the receipt of a transaction that already has a hash, for a bounded time.
  *
  * A hash means Privy broadcast something, not that the chain accepted it, so a caller that
- * reports success on the hash alone reports reverts as wins. Answers undefined when the receipt
+ * reports success on the hash alone reports reverts as wins. A success status is not enough either
+ * for a sponsored send, so the receipt's events come back too. Answers undefined when the receipt
  * did not arrive inside the wait, which means the outcome is unknown rather than bad.
  */
 export async function awaitReceipt(
@@ -236,6 +248,7 @@ export async function awaitReceipt(
     return {
       status: receipt.status === "success" ? "success" : "reverted",
       reason: typeof volunteered === "string" && volunteered.length > 0 ? volunteered : undefined,
+      logs: receipt.logs.map((log) => ({ address: log.address, topics: log.topics })),
     };
   } catch (error) {
     if (error instanceof WaitForTransactionReceiptTimeoutError) return undefined;

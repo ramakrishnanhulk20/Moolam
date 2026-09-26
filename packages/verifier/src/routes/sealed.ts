@@ -218,6 +218,8 @@ export interface SealedRouteOptions {
   linkToken?: string;
   /** Keys to check Privy tokens against, for tests. Undefined uses the app's published key set. */
   keys?: PrivyKeys;
+  /** False leaves POST /sealed/forget off, on a host that cannot read a holder's wallets from Privy. */
+  forget?: boolean;
 }
 
 /**
@@ -357,7 +359,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
    * /sealed/status nor the queue goes on saying "kept" for a copy that is gone. The answer is the
    * count and never a file id, and the log line carries the count the same way.
    */
-  app.post("/sealed/forget", async (request: FastifyRequest, reply: FastifyReply) => {
+  const forget = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
     const identity = await identify(request, options.keys);
     if (identity === undefined) {
       request.log.warn({ ip: request.ip }, "rejected: /sealed/forget unauthorized");
@@ -442,7 +444,10 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     }
     request.log.info({ passportId, user: identity.userId, deleted }, "sealed: private copy forgotten");
     return reply.send(forgetAnswerSchema.parse({ passportId, deleted }));
-  });
+  };
+  if (options.forget !== false) {
+    app.post("/sealed/forget", forget);
+  }
 
   /**
    * GET /sealed/status/:passportId: whether the private copy is kept, gone, or cannot be told.

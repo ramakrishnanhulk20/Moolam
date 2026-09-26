@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { env } from "../env.js";
 
@@ -29,15 +30,21 @@ const uploadResponseSchema = z.object({
   data: z.object({
     cid: z.string().min(1),
     size: z.number().optional(),
+    network: z.string().nullish(),
   }),
 });
 
 /**
  * Pins bytes to public IPFS and returns the content id.
  *
+ * Pinata de-duplicates by content, across networks too, so an answer is believed only when it is
+ * on the public network and names the content id computed here for the bytes sent. Anything else
+ * would let a caller publish, record or delete on the strength of a file that is not this one.
+ *
  * Throws when the buffer is empty, when Pinata refuses the upload, when an upload stalls past the
- * timeout, or when the answer is not the shape their API documents. A 5xx is retried once, because
- * a gateway hiccup in the middle of a seed run would otherwise cost a whole set of uploads.
+ * timeout, or when the answer is not the shape their API documents. Throws PinNotConfirmed when
+ * the answer names another content id or another network. A 5xx is retried once, because a
+ * gateway hiccup in the middle of a seed run would otherwise cost a whole set of uploads.
  */
 export async function pinFile(
   bytes: Buffer,
@@ -59,7 +66,13 @@ export async function pinFile(
   form.append("network", "public");
   form.append("name", name);
 
+  const expected = contentIdOf(bytes);
   const data = await upload(form, name, options.timeoutMs ?? PIN_TIMEOUT_MS);
+  if (data.network !== "public" || data.cid !== expected) {
+    throw new PinNotConfirmed(
+      `Pinata answered the public pin of ${name} with content id ${data.cid} on network ${String(data.network)}, and these bytes are ${expected} on public`,
+    );
+  }
   return { cid: data.cid, uri: `${IPFS_SCHEME}${data.cid}`, size: data.size ?? bytes.length };
 }
 
@@ -81,6 +94,106 @@ export async function pinJson(value: unknown, name: string): Promise<{ cid: stri
   return { cid: pinned.cid, uri: pinned.uri };
 }
 
+/**
+ * Pinata answered a public pin with a file that is not the bytes sent, or not on the public
+ * network. The pin is not believed: nothing downstream may name it or delete anything because of it.
+ */
+export class PinNotConfirmed extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PinNotConfirmed";
+  }
+}
+
+/**
+ * How Pinata cuts a file into blocks: 256 KiB leaves, raw, under one balanced root. A file of one
+ * leaf is its own block. Checked against a real pin: the 368,362 byte hero picture Pinata answered
+ * with bafybeidig23..., in test/pinata.test.ts.
+ */
+const CHUNK_BYTES = 262_144;
+
+/**
+ * The most leaves one root may link. The upload cap is 20 MB, which is 77 leaves, so a file that
+ * would need a second layer is refused rather than guessed at.
+ */
+const MAX_LINKS = 174;
+
+const RAW_CODEC = 0x55;
+const DAG_PB_CODEC = 0x70;
+const BASE32 = "abcdefghijklmnopqrstuvwxyz234567";
+
+/**
+ * The content id Pinata gives these bytes: CIDv1, sha2-256, in lower case base32.
+ *
+ * Covers a file of one leaf (a raw block, bafkrei...) and a file of up to 174 leaves (one UnixFS
+ * file node linking raw leaves, bafybei...). It does not cover a different chunker, CIDv0, or a
+ * folder: a pin Pinata made any of those ways fails the comparison, which is the safe way to be
+ * wrong. Throws for an empty buffer and for a file past 174 leaves.
+ */
+export function contentIdOf(bytes: Buffer): string {
+  if (bytes.length === 0) {
+    throw new Error("an empty file has no content id this service computes");
+  }
+  if (bytes.length <= CHUNK_BYTES) {
+    return base32(cidBytes(RAW_CODEC, bytes));
+  }
+  const leaves = Math.ceil(bytes.length / CHUNK_BYTES);
+  if (leaves > MAX_LINKS) {
+    throw new Error(`a file of ${leaves} blocks is past the ${MAX_LINKS} one root can link`);
+  }
+
+  // dag-pb writes the links before the data, and each link carries an empty name and the leaf's size.
+  const links: Buffer[] = [];
+  const sizes: Buffer[] = [];
+  for (let at = 0; at < bytes.length; at += CHUNK_BYTES) {
+    const leaf = bytes.subarray(at, at + CHUNK_BYTES);
+    const link = Buffer.concat([field(1, cidBytes(RAW_CODEC, leaf)), Buffer.from([0x12, 0x00, 0x18]), varint(leaf.length)]);
+    links.push(field(2, link));
+    sizes.push(Buffer.concat([Buffer.from([0x20]), varint(leaf.length)]));
+  }
+  // UnixFS: type File (2), the whole size, then each leaf's size.
+  const unixfs = Buffer.concat([Buffer.from([0x08, 0x02, 0x18]), varint(bytes.length), ...sizes]);
+  return base32(cidBytes(DAG_PB_CODEC, Buffer.concat([...links, field(1, unixfs)])));
+}
+
+function cidBytes(codec: number, block: Buffer): Buffer {
+  return Buffer.concat([Buffer.from([0x01, codec, 0x12, 0x20]), createHash("sha256").update(block).digest()]);
+}
+
+function varint(value: number): Buffer {
+  const out: number[] = [];
+  let rest = value;
+  while (rest >= 0x80) {
+    out.push((rest % 0x80) | 0x80);
+    rest = Math.floor(rest / 0x80);
+  }
+  out.push(rest);
+  return Buffer.from(out);
+}
+
+/** A protobuf length-delimited field. */
+function field(number: number, payload: Buffer): Buffer {
+  return Buffer.concat([Buffer.from([(number << 3) | 2]), varint(payload.length), payload]);
+}
+
+function base32(bytes: Buffer): string {
+  let bits = 0;
+  let value = 0;
+  let out = "b";
+  for (const byte of bytes) {
+    value = ((value << 8) | byte) & 0xffff;
+    bits += 8;
+    while (bits >= 5) {
+      out += BASE32[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    out += BASE32[(value << (5 - bits)) & 31];
+  }
+  return out;
+}
+
 /** Turns an ipfs:// reference, or a bare content id, into a URL anything can GET. */
 export function gatewayUrl(uri: string): string {
   if (uri.startsWith("http://") || uri.startsWith("https://")) {
@@ -94,7 +207,7 @@ async function upload(
   form: FormData,
   what: string,
   timeoutMs: number,
-): Promise<{ cid: string; size?: number }> {
+): Promise<{ cid: string; size?: number; network?: string | null }> {
   let lastServerError = "";
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
@@ -326,38 +439,32 @@ export async function findPrivateByName(name: string): Promise<PrivateListing[]>
   );
 }
 
-/** How far one sweep's listing pages, and how many of our rows it reads, before it stops for the run. */
-export const PRIVATE_PREFIX_MAX_PAGES = 10;
-export const PRIVATE_PREFIX_MAX_FILES = 200;
+/**
+ * How many pages of 100 one sweep run reads. Two pages bound a run to 200 rows, 200 chain reads and
+ * 200 deletes, and the next run goes on from where this one stopped.
+ */
+export const PRIVATE_SWEEP_PAGES = 2;
 
 /**
- * Private files whose name starts with `prefix`, for the sweep of copies whose passport never
- * reached the chain.
+ * Up to `maxPages` pages of the account's private files, starting at `from` (Pinata's page token)
+ * or at the first page, and the token to go on from, undefined once the listing has ended.
  *
- * Pinata's name filter is used only to shorten the list, because its matching rule is not
- * documented; `startsWith` here is the check, and whatever the caller does next with a name is
- * the caller's own stricter check. It reads at most `maxPages` pages and keeps at most `maxFiles`
- * rows, and `more` says the account may hold rows past where it stopped. Stopping at a bound is
- * not an error: every row it hands back is one Pinata listed.
+ * No name filter is sent (V8): Pinata does not document how it matches one, and the sweep's own
+ * whole-name check is the only one that decides anything. A row with no name is left out, since
+ * this service never uploads one. Every row handed back is one Pinata listed.
  *
  * Throws, and never answers a short list, when a page cannot be read, when Pinata answers with an
  * error status or a shape this client does not know: a listing it could not finish is "cannot
  * tell", and the sweep must not act on part of one.
  */
-export async function listPrivateByPrefix(
-  prefix: string,
-  options: { maxPages?: number; maxFiles?: number } = {},
-): Promise<{ files: PrivateListing[]; more: boolean }> {
-  if (prefix.length === 0) {
-    throw new Error("listPrivateByPrefix needs a name prefix.");
-  }
-  const maxPages = options.maxPages ?? PRIVATE_PREFIX_MAX_PAGES;
-  const maxFiles = options.maxFiles ?? PRIVATE_PREFIX_MAX_FILES;
-
+export async function listPrivatePage(
+  from: string | undefined,
+  maxPages: number = PRIVATE_SWEEP_PAGES,
+): Promise<{ files: PrivateListing[]; next: string | undefined }> {
   const found: PrivateListing[] = [];
-  let pageToken: string | undefined;
+  let pageToken = from;
   for (let page = 1; page <= maxPages; page += 1) {
-    const query = new URLSearchParams({ name: prefix, limit: String(PRIVATE_LIST_PAGE_SIZE) });
+    const query = new URLSearchParams({ limit: String(PRIVATE_LIST_PAGE_SIZE) });
     if (pageToken !== undefined) {
       query.set("pageToken", pageToken);
     }
@@ -375,22 +482,18 @@ export async function listPrivateByPrefix(
     }
     const files = parsed.data.data.files ?? [];
     for (const file of files) {
-      if (file.name === null || !file.name.startsWith(prefix)) {
-        continue;
+      if (file.name !== null) {
+        found.push({ id: file.id, name: file.name, cid: file.cid, createdAt: file.created_at });
       }
-      if (found.length === maxFiles) {
-        return { files: found, more: true };
-      }
-      found.push({ id: file.id, name: file.name, cid: file.cid, createdAt: file.created_at });
     }
 
     const next = parsed.data.data.next_page_token ?? "";
     if (files.length === 0 || next.length === 0) {
-      return { files: found, more: false };
+      return { files: found, next: undefined };
     }
     pageToken = next;
   }
-  return { files: found, more: true };
+  return { files: found, next: pageToken };
 }
 
 /**

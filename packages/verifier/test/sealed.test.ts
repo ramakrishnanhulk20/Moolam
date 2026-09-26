@@ -33,6 +33,7 @@ import {
   sealedMetadataSchema,
   type SealedMetadata,
 } from "../src/sealed.js";
+import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import { makeImage, makeOversizeImage } from "./helpers.js";
@@ -277,7 +278,7 @@ function recordingPinata(): void {
     const file = form.get("file") as File;
     const bytes = Buffer.from(await file.arrayBuffer());
     pins.push({ name: String(form.get("name")), type: file.type, bytes });
-    return new Response(JSON.stringify({ data: { cid: `bafyseal${pins.length}`, size: bytes.length } }), {
+    return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });

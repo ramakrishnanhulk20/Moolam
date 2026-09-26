@@ -11,7 +11,7 @@
 
 import { APIError } from "@privy-io/node";
 import { SignJWT, generateKeyPair } from "jose";
-import { decodeFunctionData, getAddress, type Hex } from "viem";
+import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { makeImage } from "./helpers.js";
@@ -72,6 +72,8 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 }));
 
 const { registryEditAbi } = await import("../src/edit/registry.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
+const { env } = await import("../src/env.js");
 const { SponsoredSendFailed, SponsoredSendPending } = await import("../src/edit/send.js");
 const { Busy } = await import("../src/generate/gate.js");
 const { buildServer } = await import("../src/server.js");
@@ -82,6 +84,19 @@ const OWNER = getAddress("0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6");
 const STRANGER = getAddress("0x1111111111111111111111111111111111111111");
 const PARENT = `0x${"ab".repeat(32)}` as Hex;
 const HASH = `0x${"11".repeat(32)}` as Hex;
+const PASSPORT_REGISTERED = toEventSelector(
+  "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
+);
+
+/** The receipt of a bundle whose inner call ran: it carries the registry's event for the child that was sent. */
+async function landedReceipt(): Promise<{ status: "success"; logs: { address: Hex; topics: Hex[] }[] }> {
+  const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
+  const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
+  return {
+    status: "success",
+    logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [PASSPORT_REGISTERED, input.exactHash] }],
+  };
+}
 
 let signing: CryptoKey;
 let verifying: CryptoKey;
@@ -174,7 +189,7 @@ describe("POST /edit", () => {
       const form = init?.body as FormData;
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
-      return new Response(JSON.stringify({ data: { cid: `bafyedit${bytes.length}`, size: bytes.length } }), {
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -207,7 +222,7 @@ describe("POST /edit", () => {
     stubs.send
       .mockReset()
       .mockResolvedValue({ hash: HASH, sponsored: true, transactionId: "privy-tx-1" });
-    stubs.receipt.mockReset().mockResolvedValue({ status: "success" });
+    stubs.receipt.mockReset().mockImplementation(landedReceipt);
   });
 
   /** What this creator has spent of the daily allowance, read off an edit that goes through. */
@@ -455,6 +470,38 @@ describe("POST /edit", () => {
 
     expect(refused.statusCode).toBe(502);
     expect(refused.json()).toEqual({ error: "send-failed", reason: "reverted" });
+  }, 60_000);
+
+  // V14: a sponsored send is a user operation inside a bundle, and the bundle succeeds even when
+  // the appendEdit inside it reverted. Only the registry's own event says the child was written.
+  it("answers send-failed when the bundle landed but the registry wrote no child, and appended when it did", async () => {
+    stubs.receipt.mockResolvedValueOnce({ status: "success", logs: [] });
+
+    const refused = await ask("did:privy:user-op-reverted", goodFields());
+
+    expect(refused.statusCode).toBe(502);
+    expect(refused.json().error).toBe("send-failed");
+    expect(refused.json().reason).toMatch(/user operation reverted/);
+    expect(refused.json().passportId).toMatch(/^0x[0-9a-f]{64}$/);
+
+    // An event for some other passport, or from another contract, is not this edit either.
+    stubs.receipt.mockImplementationOnce(async () => {
+      const landed = await landedReceipt();
+      const log = landed.logs[0] as { address: Hex; topics: Hex[] };
+      return {
+        status: "success",
+        logs: [
+          { address: log.address, topics: [PASSPORT_REGISTERED, `0x${"77".repeat(32)}` as Hex] },
+          { address: getAddress("0x2222222222222222222222222222222222222222"), topics: log.topics },
+        ],
+      };
+    });
+    const elsewhere = await ask("did:privy:user-op-elsewhere", goodFields("another note"));
+    expect(elsewhere.statusCode).toBe(502);
+    expect(elsewhere.json().error).toBe("send-failed");
+
+    const appended = await ask("did:privy:user-op-landed", goodFields("a third note"));
+    expect(appended.statusCode).toBe(200);
   }, 60_000);
 
   it("answers send-pending with the hash when the receipt does not arrive in time", async () => {

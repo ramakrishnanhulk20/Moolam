@@ -6,7 +6,8 @@
 // after the chain said "not registered" (B2), kept only when Pinata says it is private under its
 // name (B16), deleted again when the document pin fails, and refused without sealed, and the
 // sentence each sealed document pins: the private copy one when a copy is kept, the old one
-// otherwise. Pinata is a
+// otherwise. V12: each private copy carries its passport id in a JPEG comment, so preparing the
+// same picture again keeps a copy of its own instead of being handed the first one back. Pinata is a
 // recording stub at the fetch layer; the chain read, the image model, the caller's wallets and the
 // agent's signer are stubbed.
 // Does NOT cover any route that reads the private copy back (/sealed/link, /sealed/status and
@@ -40,11 +41,13 @@ import {
 } from "../src/prepare.js";
 import {
   keepPrivateCopy,
+  markedPrivateCopy,
   privateThumbnailName,
   privatelyRecheckable,
   sealedMetadata,
   sealedMetadataSchema,
 } from "../src/sealed.js";
+import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import { makeImage } from "./helpers.js";
 
@@ -103,11 +106,13 @@ interface Call {
 
 /** How the recording Pinata answers the next calls. Reset after every test. */
 const pinata = {
-  privateAnswer: "private" as "private" | "duplicate-public" | "refused",
+  privateAnswer: "private" as "private" | "duplicate-public" | "refused" | "by-content",
   failJson: false,
   failDelete: false,
 };
 const calls: Call[] = [];
+/** The private files the "by-content" answer has seen, keyed by content, as Pinata de-duplicates. */
+const byContent = new Map<string, { id: string; name: string }>();
 let signing: CryptoKey;
 let verifying: CryptoKey;
 let app: FastifyInstance;
@@ -191,6 +196,17 @@ function recordingPinata(): void {
         if (pinata.privateAnswer === "refused") {
           return new Response("private files need another plan", { status: 403 });
         }
+        if (pinata.privateAnswer === "by-content") {
+          // Pinata answers bytes it already holds with the file it already holds, under the old name.
+          const cid = contentIdOf(bytes);
+          const first = byContent.get(cid);
+          if (first !== undefined) {
+            return json({ data: { id: first.id, name: first.name, cid, network: "private", is_duplicate: true } });
+          }
+          const id = `0199a3c2-5d7e-7f10-9a1b-${byContent.size.toString(16).padStart(12, "0")}`;
+          byContent.set(cid, { id, name });
+          return json({ data: { id, name, cid, network: "private", is_duplicate: false } });
+        }
         return pinata.privateAnswer === "duplicate-public"
           ? json({ data: { id: PRIVATE_ID, name: "harbour-thumb.jpg", cid: "bafkreipublic", network: "public", is_duplicate: true } })
           : json({ data: { id: PRIVATE_ID, name, cid: PRIVATE_CID, network: "private", is_duplicate: false } });
@@ -199,7 +215,7 @@ function recordingPinata(): void {
       if (pinata.failJson && file.type === "application/json") {
         return new Response("refused", { status: 403 });
       }
-      return json({ data: { cid: `bafypublic${calls.length}`, size: bytes.length } });
+      return json({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } });
     }
     if (url.startsWith(PRIVATE_FILES_URL) && init?.method === "DELETE") {
       calls.push({ kind: "delete", url });
@@ -372,6 +388,7 @@ describe("a sealed registration with a private re-check", () => {
 
   afterEach(() => {
     pinata.privateAnswer = "private";
+    byContent.clear();
     pinata.failJson = false;
     pinata.failDelete = false;
     stubs.passportExists.mockReset();
@@ -451,7 +468,11 @@ describe("a sealed registration with a private re-check", () => {
     expect(`0x${createHash("sha256").update(signed).digest("hex")}`).toBe(answer.passport.exactHash);
 
     const uploaded = (since(mark)[0] as Call).bytes as Buffer;
-    expect(uploaded.equals(await makeThumbnail(signed))).toBe(true);
+    const made = await makeThumbnail(signed);
+    expect(uploaded.equals(markedPrivateCopy(made, answer.passport.exactHash as Hex))).toBe(true);
+    expect(uploaded.toString("latin1")).toContain(`moolam-private-copy ${(answer.passport.exactHash as string).toLowerCase()}`);
+    // The comment is the only difference: the pixels are the public path's own thumbnail.
+    expect((await sharp(uploaded).raw().toBuffer()).equals(await sharp(made).raw().toBuffer())).toBe(true);
     expect(uploaded.length).toBeLessThanOrEqual(THUMBNAIL_MAX_BYTES);
     const size = await sharp(uploaded).metadata();
     expect(Math.max(size.width ?? 0, size.height ?? 0)).toBeLessThanOrEqual(512);
@@ -553,6 +574,25 @@ describe("a sealed registration with a private re-check", () => {
     expect(plain.statusCode).toBe(200);
   }, 60_000);
 
+  // V12: the same picture prepared twice makes two passports, and each keeps a copy of its own.
+  it("V12: keeps a copy of its own when the same picture is prepared again with a private re-check", async () => {
+    pinata.privateAnswer = "by-content";
+    const fields = { title: "Harbour, twice", kind: "human", sealed: "true", privateRecheck: "true" };
+
+    const mark = calls.length;
+    const first = await prepare("did:privy:private-v12", fields);
+    const second = await prepare("did:privy:private-v12", fields);
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode, second.body).toBe(200);
+    const ids = [first, second].map((one) => (one.json().passport.exactHash as string).toLowerCase());
+    expect(ids[0]).not.toBe(ids[1]);
+    const uploads = since(mark).filter((call) => call.kind === "private");
+    expect(uploads.map((call) => call.name)).toEqual(ids.map((id) => `sealed-thumb-${id}.jpg`));
+    expect(((uploads[0] as Call).bytes as Buffer).equals((uploads[1] as Call).bytes as Buffer)).toBe(false);
+    expect(byContent.size).toBe(2);
+  }, 60_000);
+
   // B16: the private copy is private or it does not exist.
   it("B16: refuses the whole prepare with 409 when Pinata hands back the public duplicate, pinning no document and deleting nothing", async () => {
     pinata.privateAnswer = "duplicate-public";
@@ -574,12 +614,30 @@ describe("a sealed registration with a private re-check", () => {
     const { log, lines } = keepingLogger();
     const passportId = `0x${"CD".repeat(32)}` as Hex;
 
-    const outcome = await keepPrivateCopy(Buffer.from("a thumbnail"), passportId, log);
+    const thumbnail = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#204060" } }).jpeg().toBuffer();
+    const outcome = await keepPrivateCopy(thumbnail, passportId, log);
 
     expect(outcome).toEqual({ refused: { status: 409, body: { error: "private-copy-not-private" } }, landed: true });
     const line = lines.find((one) => one.level === "error");
     expect(line?.fields).toMatchObject({ fileId: PRIVATE_ID, passportId: passportId.toLowerCase() });
     expect(privateThumbnailName(passportId)).toBe(`sealed-thumb-0x${"cd".repeat(32)}.jpg`);
+  });
+
+  it("V12: refuses with 422 and uploads nothing when the passport's comment would push the copy past the budget", async () => {
+    const { log } = keepingLogger();
+    const nearlyFull = Buffer.concat([Buffer.from([0xff, 0xd8]), Buffer.alloc(THUMBNAIL_MAX_BYTES - 12, 0x20)]);
+    const mark = calls.length;
+
+    const outcome = await keepPrivateCopy(nearlyFull, PASSPORT, log);
+
+    expect(outcome).toEqual({
+      refused: {
+        status: 422,
+        body: { error: "thumbnail-too-large", limit: THUMBNAIL_MAX_BYTES, reason: PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON },
+      },
+      landed: false,
+    });
+    expect(since(mark)).toHaveLength(0);
   });
 
   it("answers 502 pin-failed when Pinata refuses the private upload, with no document pinned", async () => {
@@ -659,7 +717,7 @@ describe("a sealed registration with a private re-check", () => {
     expect((made[0] as Call).name).toBe(`sealed-thumb-${id}.jpg`);
     expect((made[0] as Call).keyvalues).toEqual({ passportId: id });
     const signed = Buffer.from(answer.signedFile.bytes as string, "base64");
-    expect(((made[0] as Call).bytes as Buffer).equals(await makeThumbnail(signed))).toBe(true);
+    expect(((made[0] as Call).bytes as Buffer).equals(markedPrivateCopy(await makeThumbnail(signed), id as Hex))).toBe(true);
 
     const document = documentOf(made);
     expect(privatelyRecheckable(document)).toBe(true);

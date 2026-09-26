@@ -10,7 +10,7 @@
 // two copies of the service, which count separately by design.
 
 import { SignJWT, generateKeyPair } from "jose";
-import { getAddress, type Hex } from "viem";
+import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
@@ -103,6 +103,9 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 }));
 
 const { buildServer } = await import("../src/server.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
+const { registryEditAbi } = await import("../src/edit/registry.js");
+const { env } = await import("../src/env.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const PARENT = `0x${"cd".repeat(32)}` as Hex;
@@ -224,7 +227,16 @@ describe("the day's ceiling for everyone", () => {
     stubs.delegatedWallets.mockResolvedValue([{ id: "privy-wallet-1", address: OWNER }]);
     stubs.walletSigners.mockResolvedValue([{ signerId: SETTINGS.signerId, policyIds: [SETTINGS.policyId] }]);
     stubs.send.mockResolvedValue({ hash: HASH, sponsored: true, transactionId: "privy-tx-1" });
-    stubs.receipt.mockResolvedValue({ status: "success" });
+    // The bundle carries the registry's own event for the child that was sent, which is what the
+    // edit route reads as the edit having landed.
+    stubs.receipt.mockImplementation(async () => {
+      const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
+      const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
+      const topic = toEventSelector(
+        "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
+      );
+      return { status: "success", logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [topic, input.exactHash] }] };
+    });
     stubs.embeddedWallets.mockResolvedValue([OWNER]);
     stubs.generatorWallet.mockResolvedValue({ id: "moolam-test-generator", address: agent.address });
     stubs.signAsGenerator.mockResolvedValue(`0x${"11".repeat(65)}`);
@@ -244,7 +256,7 @@ describe("the day's ceiling for everyone", () => {
       const form = init?.body as FormData;
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
-      return new Response(JSON.stringify({ data: { cid: `bafyglobal${pins}`, size: bytes.length } }), {
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });

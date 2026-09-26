@@ -84,6 +84,7 @@ const { PACKAGE_ROOT } = await import("../src/env.js");
 const { sealedMetadataSchema } = await import("../src/sealed.js");
 const { pictureReader, unsealRecord } = await import("../src/unseal.js");
 const { buildServer } = await import("../src/server.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
 const { makeImage } = await import("./helpers.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
@@ -236,7 +237,7 @@ function recordingPinata(): void {
     const file = form.get("file") as File;
     const bytes = Buffer.from(await file.arrayBuffer());
     pins.push({ name: String(form.get("name")), type: file.type, bytes });
-    return new Response(JSON.stringify({ data: { cid: `bafyattack${pins.length}`, size: bytes.length } }), {
+    return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
       status: 200,
       headers: { "content-type": "application/json" },
     });

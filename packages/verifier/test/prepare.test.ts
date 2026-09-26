@@ -22,6 +22,7 @@ import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { fileSlug } from "../src/metadata.js";
 import { THUMBNAIL_MAX_BYTES, THUMBNAIL_TOO_LARGE_REASON } from "../src/prepare.js";
+import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import { makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
@@ -122,8 +123,7 @@ describe("POST /prepare", () => {
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
       pinned.set(String(form.get("name")), bytes);
-      const cid = `bafytest${pinned.size}`;
-      return new Response(JSON.stringify({ data: { cid, size: bytes.length } }), {
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });

@@ -41,6 +41,54 @@ import { BadRequest, statusOf } from "./shared.js";
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
 
+/** GET /unseal/:passportId per address, the same as /sealed/status: a miss spends a Pinata request. */
+const LOOKUPS_PER_MINUTE = 30;
+
+/**
+ * How long a miss is held. A holder can unseal at any moment, and this server's own unseal clears
+ * the miss at once, so a minute is the longest another server's answer can lag behind.
+ */
+const MISS_TTL_MS = 60_000;
+
+/** How many misses are held at once before the oldest is forgotten. */
+const MISS_MAX_ENTRIES = 2_000;
+
+type MissAnswer = { error: "no-passport" | "not-sealed" | "not-unsealed"; passportId: Hex };
+
+interface MissMemory {
+  /** The answer held for this passport, or undefined when there is none or it has run out. */
+  get: (passportId: Hex) => MissAnswer | undefined;
+  /** Holds the answer and hands it back, so a route can remember and send in one line. */
+  remember: (passportId: Hex, answer: MissAnswer) => MissAnswer;
+  forget: (passportId: Hex) => void;
+}
+
+function missMemory(now: () => number = () => Date.now()): MissMemory {
+  const held = new Map<Hex, { answer: MissAnswer; until: number }>();
+  return {
+    get: (passportId) => {
+      const entry = held.get(passportId);
+      if (entry === undefined) return undefined;
+      if (entry.until > now()) return entry.answer;
+      held.delete(passportId);
+      return undefined;
+    },
+    remember: (passportId, answer) => {
+      held.delete(passportId);
+      while (held.size >= MISS_MAX_ENTRIES) {
+        const oldest = held.keys().next();
+        if (oldest.done === true) break;
+        held.delete(oldest.value);
+      }
+      held.set(passportId, { answer, until: now() + MISS_TTL_MS });
+      return answer;
+    },
+    forget: (passportId) => {
+      held.delete(passportId);
+    },
+  };
+}
+
 const passportSchema = z
   .string()
   .trim()
@@ -92,6 +140,11 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * told to forget the passport. That step never changes the answer: a lookup or delete that fails is
  * logged with the passport id and the copy stays until the holder or an operator deletes it.
  *
+ * A public pin counts only when Pinata answers with the content id of the bytes sent, on the
+ * public network (V11). When one of the three pins fails, the answer names which pieces are public
+ * and which are not, nothing private is touched, the holder's allowance comes back, and sending the
+ * same file again lands on the same content ids and finishes the unseal (V9).
+ *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
  * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed` or `already-unsealed`, 413 and
  * 415 for the image, 422 `thumbnail-too-large`, 429 for the caller's own allowance and for today's
@@ -100,14 +153,20 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  */
 export async function unsealRoutes(
   app: FastifyInstance,
-  options: { keys?: PrivyKeys; copies?: PrivateCopyStatus } = {},
+  options: {
+    keys?: PrivyKeys;
+    copies?: PrivateCopyStatus;
+    /** False leaves POST /unseal off, on a host that cannot read a holder's wallets from Privy. */
+    holder?: boolean;
+  } = {},
 ): Promise<void> {
   const quota = dailyQuota(env.EDITS_PER_DAY);
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
   const known: Known = new Map();
+  const misses = missMemory();
 
-  app.post("/unseal", async (request: FastifyRequest, reply: FastifyReply) => {
+  const publish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
     const identity = await identify(request, options.keys);
     if (identity === undefined) {
       request.log.warn({ ip: request.ip, url: request.url }, "rejected: /unseal unauthorized");
@@ -125,8 +184,18 @@ export async function unsealRoutes(
       return reply.code(status).send({ error: reason });
     }
 
-    return await open(app, request, reply, identity, upload, { quota, chain, registry, known, copies: options.copies });
-  });
+    return await open(app, request, reply, identity, upload, {
+      quota,
+      chain,
+      registry,
+      known,
+      misses,
+      copies: options.copies,
+    });
+  };
+  if (options.holder !== false) {
+    app.post("/unseal", publish);
+  }
 
   /**
    * GET /unseal/:passportId: where the picture of an unsealed passport lives, or that there is
@@ -135,44 +204,95 @@ export async function unsealRoutes(
    * The passport page cannot learn this from the chain, so it asks here. The answer carries the
    * record's own address as well as the three it names, so a reader who does not want to take this
    * service's word for it can open the record on IPFS and hash the picture themselves.
+   *
+   * Every miss costs one request out of the Pinata account's shared minute, so the listing is asked
+   * only for a passport the index or the chain holds and whose document says sealed. A miss of any
+   * kind (no passport, never sealed, no record) is remembered for MISS_TTL_MS, a record for good,
+   * and the route has its own limit of LOOKUPS_PER_MINUTE per address, the one /sealed/status has.
+   *
+   * Answers 400 for an id that is not 32 bytes of hex, 404 `no-passport`, `not-sealed` or
+   * `not-unsealed`, 429 past the limit, and 503 `lookup-unavailable` when the chain, the document
+   * or Pinata could not say.
    */
-  app.get("/unseal/:passportId", async (request: FastifyRequest, reply: FastifyReply) => {
-    // Nothing sets no-store here: the server's own hook names this path, so the answers no handler
-    // writes, including the rate limiter's 429, carry it too.
-    const parsed = passportSchema.safeParse((request.params as { passportId?: string }).passportId);
-    if (!parsed.success) {
-      return reply.code(400).send({ error: "passportId must be 0x followed by 64 hex characters" });
-    }
-    const passportId = parsed.data.toLowerCase() as Hex;
+  app.get(
+    "/unseal/:passportId",
+    { config: { rateLimit: { max: LOOKUPS_PER_MINUTE, timeWindow: "1 minute" } } },
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      // Nothing sets no-store here: the server's own hook names this path, so the answers no handler
+      // writes, including the rate limiter's 429, carry it too.
+      const parsed = passportSchema.safeParse((request.params as { passportId?: string }).passportId);
+      if (!parsed.success) {
+        return reply.code(400).send({ error: "passportId must be 0x followed by 64 hex characters" });
+      }
+      const passportId = parsed.data.toLowerCase() as Hex;
 
-    const remembered = known.get(passportId);
-    if (remembered !== undefined) {
-      return reply.send(answerFor(passportId, remembered.record, remembered.pinned));
-    }
+      const remembered = known.get(passportId);
+      if (remembered !== undefined) {
+        return reply.send(answerFor(passportId, remembered.record, remembered.pinned));
+      }
+      const missed = misses.get(passportId);
+      if (missed !== undefined) {
+        return reply.code(404).send(missed);
+      }
 
-    const found = await findUnsealRecord(passportId);
-    if (found.state === "unavailable") {
-      request.log.warn({ url: request.url, reason: found.reason }, "/unseal: the record lookup could not answer");
-      return reply.code(503).send({ error: "lookup-unavailable" });
-    }
-    if (found.state === "none") {
-      return reply.code(404).send({ error: "not-unsealed", passportId });
-    }
+      // Pinata is asked only about a passport that exists and whose document says sealed, because
+      // only that passport can have an unseal record. A made-up id costs a chain read at most.
+      let metadataURI: string;
+      const indexed = app.verifier.lookupExact(passportId);
+      if (indexed !== undefined) {
+        metadataURI = indexed.metadataURI;
+      } else {
+        let passport: OnChainPassport | undefined;
+        try {
+          passport = await readPassport(chain, registry, passportId);
+        } catch (error) {
+          request.log.warn({ url: request.url, reason: reasonOf(error) }, "/unseal: the chain did not answer");
+          return reply.code(503).send({ error: "lookup-unavailable" });
+        }
+        if (passport === undefined) {
+          return reply.code(404).send(misses.remember(passportId, { error: "no-passport", passportId }));
+        }
+        metadataURI = passport.metadataURI;
+      }
 
-    let record: UnsealRecord;
-    try {
-      record = await readUnsealRecord(found.record.uri, passportId);
-    } catch (error) {
-      request.log.warn(
-        { url: request.url, cid: found.record.cid, reason: reasonOf(error) },
-        "/unseal: a record was listed but could not be read",
-      );
-      return reply.code(503).send({ error: "lookup-unavailable" });
-    }
+      let state: ReturnType<typeof sealedStateOf>;
+      try {
+        state = sealedStateOf(await readMetadataDocument(metadataURI));
+      } catch (error) {
+        request.log.warn({ url: request.url, reason: reasonOf(error) }, "/unseal: the passport's document could not be read");
+        return reply.code(503).send({ error: "lookup-unavailable" });
+      }
+      if (state === "unreadable") {
+        return reply.code(503).send({ error: "lookup-unavailable" });
+      }
+      if (state === "public") {
+        return reply.code(404).send(misses.remember(passportId, { error: "not-sealed", passportId }));
+      }
 
-    known.set(passportId, { record, pinned: found.record });
-    return reply.send(answerFor(passportId, record, found.record));
-  });
+      const found = await findUnsealRecord(passportId);
+      if (found.state === "unavailable") {
+        request.log.warn({ url: request.url, reason: found.reason }, "/unseal: the record lookup could not answer");
+        return reply.code(503).send({ error: "lookup-unavailable" });
+      }
+      if (found.state === "none") {
+        return reply.code(404).send(misses.remember(passportId, { error: "not-unsealed", passportId }));
+      }
+
+      let record: UnsealRecord;
+      try {
+        record = await readUnsealRecord(found.record.uri, passportId);
+      } catch (error) {
+        request.log.warn(
+          { url: request.url, cid: found.record.cid, reason: reasonOf(error) },
+          "/unseal: a record was listed but could not be read",
+        );
+        return reply.code(503).send({ error: "lookup-unavailable" });
+      }
+
+      known.set(passportId, { record, pinned: found.record });
+      return reply.send(answerFor(passportId, record, found.record));
+    },
+  );
 }
 
 interface UnsealContext {
@@ -180,6 +300,7 @@ interface UnsealContext {
   chain: ReturnType<typeof readClient>;
   registry: Hex;
   known: Known;
+  misses: MissMemory;
   /** The memory behind /sealed/status, so a deleted private copy reads gone at once. */
   copies?: PrivateCopyStatus;
 }
@@ -321,6 +442,7 @@ async function open(
   }
 
   let pinned = false;
+  let completed = false;
   try {
     try {
       await readImageHeader(upload.bytes);
@@ -403,18 +525,44 @@ async function open(
     pinned = attempted.some((one) => one.status === "fulfilled" && one.value !== undefined);
 
     if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
+      // Whatever landed is public now and cannot be taken back, so the holder is told exactly
+      // which pieces those are. Nothing private is touched and no record is written, and a retry
+      // with the same file lands on the same content ids and finishes the job.
+      const landed: Partial<Record<Piece, ReturnType<typeof pinnedOut>>> = {};
+      const failed: Piece[] = [];
+      for (const [piece, outcome] of [
+        ["image", imagePin],
+        ["thumbnail", thumbnailPin],
+        ["manifest", manifestPin],
+      ] as const) {
+        if (outcome.status === "rejected") {
+          failed.push(piece);
+        } else if (outcome.value !== undefined) {
+          landed[piece] = pinnedOut(outcome.value.uri, outcome.value.cid);
+        }
+      }
       request.log.error(
         {
           url: request.url,
+          passportId: upload.passportId,
           reason: attempted
             .filter((one) => one.status === "rejected")
             .map((one) => reasonOf(one.reason))
             .join("; "),
-          landed: attempted.filter((one) => one.status === "fulfilled" && one.value !== undefined).length,
+          landed: Object.keys(landed),
+          failed,
         },
         "rejected: /unseal pin failed",
       );
-      return reply.code(502).send({ error: "pin-failed" });
+      return reply.code(502).send({
+        error: "pin-failed",
+        passportId: upload.passportId,
+        published: landed,
+        failed,
+        reason: pinned
+          ? `these pieces are public now and the rest are not: ${Object.keys(landed).join(", ")}. The passport still reads sealed. Send the same file again to finish it: nothing is pinned twice.`
+          : "nothing was published and the passport still reads sealed. Send the same file again to try once more.",
+      });
     }
 
     const image = imagePin.value;
@@ -456,8 +604,13 @@ async function open(
 
     const pinnedAt: PinnedRecord = { cid: pinnedRecord.cid, uri: pinnedRecord.uri };
     context.known.set(upload.passportId, { record, pinned: pinnedAt });
+    context.misses.forget(upload.passportId);
 
-    await forgetPrivateCopy(upload.passportId, request.log, context.copies);
+    completed = true;
+    // Every public pin above was confirmed against the bytes it carries, so the private copy is
+    // deleted only now, and never a file whose content id is one of the published ones.
+    const publicIds = new Set([image.cid, thumb.cid, manifestPin.value?.cid, pinnedRecord.cid].filter((cid) => cid !== undefined));
+    await forgetPrivateCopy(upload.passportId, request.log, context.copies, publicIds);
 
     request.log.info(
       { user: identity.userId, passportId: upload.passportId, image: image.cid, record: pinnedRecord.cid },
@@ -474,8 +627,12 @@ async function open(
       quota: context.quota.state(identity.userId),
     });
   } finally {
-    if (!pinned) {
+    // The holder's own allowance comes back for any unseal that did not finish, so a partial one
+    // can be finished; the day's ceiling for everyone comes back only when nothing was pinned.
+    if (!completed) {
       context.quota.release(identity.userId, ticket);
+    }
+    if (!pinned) {
       today.slot.giveBack();
     }
   }
@@ -486,17 +643,23 @@ async function open(
  *
  * The name comes from the passport id the upload hashed to, never from the document (B1), and the
  * listing is filtered on the whole name here as well as inside the Pinata client (B3), so a file
- * whose name only starts the same is never touched. The listing pages at most five pages before it
+ * whose name only starts the same is never touched. A file whose content id is one the unseal has
+ * just published is never touched either (V11). The listing pages at most five pages before it
  * refuses to answer, which bounds the loop. The status memory is dropped whatever happened, so the
  * next /sealed/status read goes back to Pinata. Never throws: a failure is logged with the passport
  * id and a count, never a file id, and the unseal answers exactly as it would have.
  */
-async function forgetPrivateCopy(passportId: Hex, log: FastifyBaseLogger, copies?: PrivateCopyStatus): Promise<void> {
+async function forgetPrivateCopy(
+  passportId: Hex,
+  log: FastifyBaseLogger,
+  copies: PrivateCopyStatus | undefined,
+  publicIds: ReadonlySet<string>,
+): Promise<void> {
   const name = privateThumbnailName(passportId);
   try {
     let files: PrivateListing[];
     try {
-      files = (await findPrivateByName(name)).filter((file) => file.name === name);
+      files = (await findPrivateByName(name)).filter((file) => file.name === name && !publicIds.has(file.cid));
     } catch (error) {
       log.error({ passportId, reason: reasonOf(error) }, "unseal: could not look for a private copy, it stays");
       return;
@@ -521,6 +684,9 @@ async function forgetPrivateCopy(passportId: Hex, log: FastifyBaseLogger, copies
     copies?.drop(passportId);
   }
 }
+
+/** The three files an unseal pins before its record, named as a partial answer names them. */
+type Piece = "image" | "thumbnail" | "manifest";
 
 /** What a GET answers, built the same way from a fresh lookup and from the cache. */
 function answerFor(passportId: Hex, record: UnsealRecord, pinned: PinnedRecord): Record<string, unknown> {

@@ -104,6 +104,7 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 
 const { PromptRefused } = await import("../src/generate/imageModel.js");
 const { buildServer } = await import("../src/server.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const PARENT = `0x${"ef".repeat(32)}` as Hex;
@@ -247,7 +248,7 @@ describe("the day's slot for everyone, kept or handed back", () => {
         // about what the route does with the refusal, not about the retry.
         return new Response("this test told Pinata to refuse", { status: 400 });
       }
-      return new Response(JSON.stringify({ data: { cid: `bafyslot${pins}`, size: bytes.length } }), {
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });

@@ -22,6 +22,7 @@ const APP_ID = vi.hoisted(() => {
 });
 
 const { buildServer } = await import("../src/server.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
 const { makeImage } = await import("./helpers.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
@@ -94,7 +95,11 @@ beforeAll(async () => {
     const url = input instanceof Request ? input.url : String(input);
     if (url === UPLOAD_URL) {
       uploads += 1;
-      return new Response(JSON.stringify({ data: { cid: `bafyfields${uploads}`, size: 1 } }), { status: 200 });
+      const file = (init?.body as FormData).get("file") as File;
+      const bytes = Buffer.from(await file.arrayBuffer());
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
+        status: 200,
+      });
     }
     return await realFetch(input, init);
   });

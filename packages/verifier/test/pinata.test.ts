@@ -4,10 +4,17 @@
 // 10 second bound on every one of them (B15), the refusal of an upload Pinata did not keep private
 // under the name sent (B16), whole-name matching and "cannot tell" on a bad or endless listing
 // (B3), and a read link that is checked before it is returned and never printed in an error.
+// Also covers V11: a public pin is believed only when Pinata answers with the content id computed
+// here for the bytes sent, on the public network. The local content id is checked against a real
+// picture Pinata pinned (test/fixtures/pinned-hero.jpg, the hero passport, whose content id is in
+// packages/web/public/hero/degrade.json) and against a one-block file.
 // Does NOT cover a real pin to Pinata (the live check in the README and
 // scripts/pinata-private-smoke.ts do that), the gateway URL helper, or the JSON shape check on the
 // public upload, which the prepare and generate route tests exercise.
 
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.hoisted(() => {
@@ -18,7 +25,9 @@ vi.hoisted(() => {
 const {
   PRIVATE_CALL_TIMEOUT_MS,
   PRIVATE_LIST_MAX_PAGES,
+  PinNotConfirmed,
   PrivateCopyNotPrivate,
+  contentIdOf,
   deletePrivateFile,
   findPrivateByName,
   pinFile,
@@ -125,6 +134,42 @@ describe("pinning through Pinata", () => {
 
     expect(seen).toHaveLength(2);
     expect(seen[0]).not.toBe(seen[1]);
+  });
+});
+
+describe("V11: a public pin is the bytes sent, on the public network", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("computes the content id Pinata gave a real 368 KB picture, and a one-block file's", () => {
+    const hero = readFileSync(path.join(import.meta.dirname, "fixtures", "pinned-hero.jpg"));
+    expect(`0x${createHash("sha256").update(hero).digest("hex")}`).toBe(
+      "0xb328bab5adc8751cd06fc6164480941d6186a5089f2f4b8182cca625a4413c7c",
+    );
+    expect(contentIdOf(hero)).toBe("bafybeidig23ixqssin5577gzqshz5xmpkxjr2pfpwtprizwfolgohm5dv4");
+    expect(contentIdOf(BYTES)).toMatch(/^bafkrei[a-z2-7]{52}$/);
+    expect(contentIdOf(BYTES)).not.toBe(contentIdOf(Buffer.concat([BYTES, Buffer.from(" ")])));
+  });
+
+  it("accepts the answer whose content id and network match, and refuses one that differs in either", async () => {
+    const right = contentIdOf(BYTES);
+    const answers: Array<[string, Record<string, unknown>, boolean]> = [
+      ["the bytes' own content id, public", { cid: right, network: "public" }, true],
+      ["another file's content id", { cid: "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku", network: "public" }, false],
+      ["the private network's duplicate", { cid: right, network: "private" }, false],
+      ["no network field", { cid: right }, false],
+    ];
+    for (const [label, data, accepted] of answers) {
+      vi.stubGlobal("fetch", async () => json({ data: { size: BYTES.length, ...data } }));
+      const outcome = await pinFile(BYTES, "picture.jpg", "image/jpeg").catch((error: unknown) => error);
+      if (accepted) {
+        expect(outcome, label).toEqual({ cid: right, uri: `ipfs://${right}`, size: BYTES.length });
+      } else {
+        expect(outcome, label).toBeInstanceOf(PinNotConfirmed);
+      }
+      vi.unstubAllGlobals();
+    }
   });
 });
 

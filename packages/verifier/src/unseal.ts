@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { getAddress, type PublicClient } from "viem";
+import type { Response as FetchResponse } from "undici";
 import { z } from "zod";
 import { registryEditAbi, tokenIdOf } from "./edit/registry.js";
 import { env } from "./env.js";
@@ -284,25 +285,95 @@ export async function readPassport(
 }
 
 /**
- * The passport's metadata document, read through the public gateway.
+ * The most a metadata document may weigh, counted after decompression. A Moolam document is under
+ * 2 KB; this only stops a document registered outside Moolam from making the service hold or parse
+ * something large.
+ */
+export const MAX_METADATA_BYTES = 64 * 1024;
+
+/**
+ * The content id in `ipfs://<cid>`, or null for anything else.
  *
- * safeFetch rather than a plain fetch because the address comes off the chain: metadataURI is
- * whatever the creator signed at registration, and gatewayUrl passes an `http://` one straight
- * through. A passport pointing at this host's own network must not turn this route into a way of
- * reading it.
+ * A byte for byte copy of the workflows' predicate in packages/workflow/moolam-verifier/pinned.ts,
+ * held to it by test/metadata-read.test.ts, so this service, the runner and both workflows refuse
+ * exactly the same addresses. It is copied rather than imported because that file lives outside
+ * this package's build. What it covers and what it does not is written beside the original.
+ */
+export function pinnedContentId(reference: unknown): string | null {
+  if (typeof reference !== "string" || !reference.startsWith("ipfs://")) {
+    return null;
+  }
+  const cid = reference.slice("ipfs://".length);
+  return /^[A-Za-z0-9]+$/.test(cid) ? cid : null;
+}
+
+/**
+ * The passport's metadata document, read through the configured gateway.
  *
- * Throws BlockedTarget, UnreachableTarget, or an error naming the status, all of which the route
- * reads as "could not tell" rather than as an answer.
+ * The address comes off the chain, where a registrant can write anything, so only a bare pinned
+ * content id is read, and an http(s) address or anything with a path is refused before a request
+ * is made. No redirect is followed, and the body is counted after decompression and abandoned past
+ * MAX_METADATA_BYTES before a byte of JSON is parsed. safeFetch still checks the gateway's address.
+ *
+ * Throws BlockedTarget for an address that is not pinned content, and UnreachableTarget for a
+ * redirect, any status but 200, a body over the cap, or a body that is not JSON. The routes read
+ * every one of those as "could not tell" rather than as an answer.
  */
 export async function readMetadataDocument(uri: string, options: SafeFetchOptions = {}): Promise<unknown> {
-  const response = await safeFetch(new URL(gatewayUrl(uri)), {
+  const cid = pinnedContentId(uri);
+  if (cid === null) {
+    throw new BlockedTarget("this passport's metadata address is not a pinned content id, so it is not read");
+  }
+  const response = await safeFetch(new URL(gatewayUrl(`ipfs://${cid}`)), {
     timeoutMs: LOOKUP_TIMEOUT_MS,
     ...options,
+    maxRedirects: 0,
   });
-  if (!response.ok) {
+  if (response.status !== 200) {
+    await response.body?.cancel().catch(() => undefined);
     throw new UnreachableTarget(`the gateway answered ${response.status} for this passport's metadata`);
   }
-  return await response.json();
+  const text = await cappedText(response, MAX_METADATA_BYTES);
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new UnreachableTarget("this passport's metadata is not JSON");
+  }
+}
+
+/**
+ * The body as text, refused past `cap` bytes. A declared length over the cap is refused unread,
+ * and otherwise reading stops at the first chunk past the cap. The chunks are the decompressed
+ * body, so a few kilobytes that inflate to gigabytes stop here too.
+ */
+async function cappedText(response: Pick<FetchResponse, "headers" | "body">, cap: number): Promise<string> {
+  const refused = (): UnreachableTarget =>
+    new UnreachableTarget(`this passport's metadata is over the ${cap} byte cap, so it is not read`);
+  const declared = Number(response.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > cap) {
+    await response.body?.cancel().catch(() => undefined);
+    throw refused();
+  }
+  if (response.body === null) {
+    return "";
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    length += value.byteLength;
+    if (length > cap) {
+      await reader.cancel().catch(() => undefined);
+      throw refused();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
 }
 
 /** Both failures of a gateway read, named together because the route treats them the same way. */

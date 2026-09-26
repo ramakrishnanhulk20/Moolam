@@ -12,6 +12,11 @@
 // fails changes nothing about the answer.
 // The picture in the happy path is made by the real sealed pipeline, so the bytes under test are
 // the bytes a sealed registration would have handed the creator.
+// From the verifier review (V6, V9, V11): GET /unseal asks Pinata only about a registered, sealed
+// passport, remembers a miss for a minute and has its own route limit; a public pin counts only
+// when Pinata answers with the content id computed here for the bytes sent, on the public network;
+// an unseal that published part of the picture says which parts, keeps the private copy, and
+// finishes on a retry.
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -70,6 +75,7 @@ const { globalDay } = await import("../src/limits/globalDay.js");
 const { sealedMetadata } = await import("../src/sealed.js");
 const { buildServer } = await import("../src/server.js");
 const { fingerprint } = await import("../src/fingerprint.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
 // The real module, so the pure checks and the record lookup are tested rather than the stubs.
 const unseal = await vi.importActual<typeof import("../src/unseal.js")>("../src/unseal.js");
 
@@ -89,6 +95,8 @@ interface Pin {
 const pins: Pin[] = [];
 /** Names whose pin is refused, so a test can fail the record alone and leave the picture public. */
 let refusePin: (name: string) => boolean = () => false;
+/** Lets a test answer one pin with Pinata's own fields bent, for the V11 checks. */
+let bendPin: (name: string) => { cid?: string; network?: string } = () => ({});
 
 /** The private files on the stub account, and what the private half of Pinata was asked. */
 const privateFiles: { id: string; name: string; cid: string }[] = [];
@@ -281,7 +289,8 @@ describe("unsealing a sealed passport", () => {
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
       pins.push({ name, type: file.type, bytes });
-      return new Response(JSON.stringify({ data: { cid: `bafyunseal${pins.length}`, size: bytes.length } }), {
+      const answer = { cid: contentIdOf(bytes), size: bytes.length, network: "public", ...bendPin(name) };
+      return new Response(JSON.stringify({ data: answer }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -299,6 +308,7 @@ describe("unsealing a sealed passport", () => {
   beforeEach(() => {
     pins.length = 0;
     refusePin = () => false;
+    bendPin = () => ({});
     privateFiles.length = 0;
     privateDeleted.length = 0;
     privatePinata.listFails = false;
@@ -584,8 +594,73 @@ describe("unsealing a sealed passport", () => {
     const response = await ask("did:privy:unseal-pin-down");
 
     expect(response.statusCode).toBe(502);
-    expect(response.json()).toEqual({ error: "pin-failed" });
+    expect(response.json()).toMatchObject({
+      error: "pin-failed",
+      passportId: sealedFile.passportId,
+      published: {},
+      failed: ["image", "thumbnail", "manifest"],
+    });
     expect(pins).toHaveLength(0);
+  }, 60_000);
+
+  // V9: a partial unseal says what is public, keeps the private copy, and finishes on a retry.
+  it("names what landed when the picture's pin failed, keeps the private copy, and a retry finishes it", async () => {
+    const id = sealedFile.passportId;
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    const user = "did:privy:unseal-partial";
+    refusePin = (name) => name.endsWith(".jpg") && !name.endsWith("-thumb.jpg");
+
+    const partial = await ask(user);
+
+    expect(partial.statusCode).toBe(502);
+    const said = partial.json();
+    expect(said.error).toBe("pin-failed");
+    expect(said.failed).toEqual(["image"]);
+    expect(Object.keys(said.published).sort()).toEqual(["manifest", "thumbnail"]);
+    expect(said.published.thumbnail.uri).toBe(`ipfs://${said.published.thumbnail.cid}`);
+    expect(said.reason).toMatch(/Send the same file again/);
+    expect(pins.some((pin) => pin.name.startsWith("unseal-"))).toBe(false);
+    expect(privateDeleted).toEqual([]);
+
+    refusePin = () => false;
+    const finished = await ask(user);
+
+    expect(finished.statusCode).toBe(200);
+    const done = finished.json();
+    expect(done.thumbnail.cid).toBe(said.published.thumbnail.cid);
+    expect(done.manifest.cid).toBe(said.published.manifest.cid);
+    expect(privateDeleted).toEqual([kept.id]);
+    // The half-done attempt did not cost the holder their allowance.
+    expect(done.quota.used).toBe(1);
+  }, 120_000);
+
+  // V11: Pinata's answer is checked against the bytes, before anything private is deleted.
+  it("refuses a pin whose content id is not the one computed for the bytes sent, and deletes nothing private", async () => {
+    const id = sealedFile.passportId;
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    bendPin = (name) => (name.endsWith("-thumb.jpg") ? { cid: "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku" } : {});
+
+    const response = await ask("did:privy:unseal-wrong-cid");
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({ error: "pin-failed", failed: ["thumbnail"] });
+    expect(response.json().published.thumbnail).toBeUndefined();
+    expect(pins.some((pin) => pin.name.startsWith("unseal-"))).toBe(false);
+    expect(privateDeleted).toEqual([]);
+    expect(privateFiles).toEqual([kept]);
+  }, 60_000);
+
+  it("refuses a public pin Pinata answered from its private network, and deletes nothing private", async () => {
+    const id = sealedFile.passportId;
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    bendPin = (name) => (name.endsWith("-thumb.jpg") ? { network: "private" } : {});
+
+    const response = await ask("did:privy:unseal-private-duplicate");
+
+    expect(response.statusCode).toBe(502);
+    expect(response.json()).toMatchObject({ error: "pin-failed", failed: ["thumbnail"] });
+    expect(privateDeleted).toEqual([]);
+    expect(privateFiles).toEqual([kept]);
   }, 60_000);
 
   it("says what is already public when the picture landed and the record did not", async () => {
@@ -677,11 +752,66 @@ describe("GET /unseal/:passportId", () => {
   beforeEach(() => {
     stubs.findUnsealRecord.mockReset().mockResolvedValue({ state: "none" });
     stubs.readUnsealRecord.mockReset();
+    // Only the passport's existence and its document's sealed flag matter to this route.
+    stubs.readPassport.mockReset().mockResolvedValue({
+      registeredAt: 1_758_000_000,
+      phash: 1n,
+      blockhash256: `0x${"00".repeat(32)}`,
+      fingerprintVersion: 1,
+      metadataURI: METADATA_URI,
+    });
+    stubs.readMetadataDocument.mockReset().mockResolvedValue({ name: "Monsoon nets, sealed", sealed: true });
   });
 
-  async function read(id: string): Promise<LightMyRequestResponse> {
-    return await reader.inject({ method: "GET", url: `/unseal/${id}`, remoteAddress: "198.51.100.45" });
+  async function read(id: string, from = "198.51.100.45"): Promise<LightMyRequestResponse> {
+    return await reader.inject({ method: "GET", url: `/unseal/${id}`, remoteAddress: from });
   }
+
+  // V6: a made-up id costs a chain read at most, never a Pinata request.
+  it("answers no-passport for an id nobody registered, without asking Pinata", async () => {
+    stubs.readPassport.mockResolvedValue(undefined);
+
+    const response = await read(`0x${"5e".repeat(32)}`);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "no-passport", passportId: `0x${"5e".repeat(32)}` });
+    expect(stubs.findUnsealRecord).not.toHaveBeenCalled();
+  });
+
+  it("answers not-sealed for a passport whose picture was always public, without asking Pinata", async () => {
+    stubs.readMetadataDocument.mockResolvedValue({ name: "A public picture", image: "ipfs://bafypublic" });
+
+    const response = await read(`0x${"5f".repeat(32)}`);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json().error).toBe("not-sealed");
+    expect(stubs.findUnsealRecord).not.toHaveBeenCalled();
+  });
+
+  it("remembers a miss for a while, so asking again costs no second Pinata request", async () => {
+    const id = `0x${"60".repeat(32)}`;
+
+    expect((await read(id)).json().error).toBe("not-unsealed");
+    expect((await read(id)).json().error).toBe("not-unsealed");
+    stubs.readPassport.mockResolvedValue(undefined);
+    const made = `0x${"61".repeat(32)}`;
+    expect((await read(made)).statusCode).toBe(404);
+    expect((await read(made)).statusCode).toBe(404);
+
+    expect(stubs.findUnsealRecord).toHaveBeenCalledTimes(1);
+    expect(stubs.readPassport).toHaveBeenCalledTimes(2);
+  });
+
+  it("gives the route its own limit of 30 a minute per address", async () => {
+    stubs.readPassport.mockResolvedValue(undefined);
+    const answers: number[] = [];
+    for (let i = 0; i < 31; i += 1) {
+      answers.push((await read(`0x${(0x80 + i).toString(16).repeat(32)}`, "198.51.100.99")).statusCode);
+    }
+
+    expect(answers.slice(0, 30).every((status) => status === 404)).toBe(true);
+    expect(answers[30]).toBe(429);
+  });
 
   it("refuses an id that is not 32 bytes of hex", async () => {
     const response = await read("0xnothex");
@@ -733,6 +863,16 @@ describe("GET /unseal/:passportId", () => {
     const again = await read(id);
     expect(again.statusCode).toBe(200);
     expect(stubs.findUnsealRecord).toHaveBeenCalledTimes(1);
+  });
+
+  it("says it cannot tell, and asks nobody else, when the passport's document cannot be read", async () => {
+    stubs.readMetadataDocument.mockRejectedValue(new Error("the gateway answered 504"));
+
+    const response = await read(`0x${"62".repeat(32)}`);
+
+    expect(response.statusCode).toBe(503);
+    expect(response.json()).toEqual({ error: "lookup-unavailable" });
+    expect(stubs.findUnsealRecord).not.toHaveBeenCalled();
   });
 
   it("says it cannot tell, rather than not-unsealed, when the lookup does not answer", async () => {

@@ -58,6 +58,7 @@ vi.mock("../src/generate/generatorSigner.js", async (importOriginal) => ({
 const { PromptRefused, billedOrUnknown } = await import("../src/generate/imageModel.js");
 const { generatorDomain } = await import("../src/generate/generatorSigner.js");
 const { buildServer } = await import("../src/server.js");
+const { contentIdOf } = await import("../src/ipfs/pinata.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const PROMPT = "A lighthouse in a monsoon storm, painted in thick oils";
@@ -165,7 +166,7 @@ describe("POST /generate", () => {
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
       pinned.set(String(form.get("name")), bytes);
-      return new Response(JSON.stringify({ data: { cid: `bafygen${pinned.size}`, size: bytes.length } }), {
+      return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });

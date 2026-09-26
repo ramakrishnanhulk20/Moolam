@@ -6,6 +6,11 @@
 // answer, and the route refusing to serve when it is mounted where x402 is not
 // collecting. The facilitator is a stub in every case, so no request leaves the
 // machine and no USDC moves.
+// From the verifier review: a remembered answer goes only to a request carrying
+// the very payment that bought it and the same file (V7), and a settlement whose
+// outcome is unknown is asked again, then read from the chain, and reported as
+// unknown rather than refused, so a payer who was charged is never served nothing
+// (V15). The chain read is a stub here.
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -18,7 +23,8 @@
 
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import type { FacilitatorClient, x402HTTPResourceServer } from "@x402/core/server";
+import { decodePaymentSignatureHeader } from "@x402/core/http";
+import type { FacilitatorClient, HTTPRequestContext, x402HTTPResourceServer } from "@x402/core/server";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
@@ -58,19 +64,67 @@ function sourceOf(records: PassportRecord[]): PassportSource {
   return { load: async () => records };
 }
 
-/** A verified payment whose settlement is whatever the test hands in. */
+/**
+ * A payment server whose settlement is whatever the test hands in. A header that decodes to a
+ * payload with a signature is verified, as the facilitator would verify a real one, and anything
+ * else is asked to pay.
+ */
 function paymentsThatSettleWith(settle: unknown, cancel: unknown): x402HTTPResourceServer {
   return {
     initialize: async () => undefined,
-    processHTTPRequest: async () => ({
-      type: "payment-verified",
-      paymentPayload: {},
-      paymentRequirements: {},
-      declaredExtensions: [],
-      cancellationDispatcher: { cancel },
-    }),
+    processHTTPRequest: async (context: HTTPRequestContext) => {
+      const header = context.adapter.getHeader("payment-signature");
+      let payload: Record<string, unknown> = {};
+      if (header !== undefined) {
+        payload = decodePaymentSignatureHeader(header) as unknown as Record<string, unknown>;
+        const signature = (payload.payload as { signature?: unknown } | undefined)?.signature;
+        if (typeof signature !== "string") {
+          return { type: "payment-error", response: { status: 402, headers: {}, body: { error: "payment required" } } };
+        }
+      }
+      return {
+        type: "payment-verified",
+        paymentPayload: payload,
+        paymentRequirements: { asset: "0x754704Bc059F8C67012fEd69BC8A327a5aafb603" },
+        declaredExtensions: [],
+        cancellationDispatcher: { cancel },
+      };
+    },
     processSettlement: settle,
   } as unknown as x402HTTPResourceServer;
+}
+
+/** A payment header as a client sends it: one signed EIP-3009 authorisation. */
+function paymentHeaderFor(nonce: string, signature = `0x${"5a".repeat(65)}`): string {
+  return Buffer.from(
+    JSON.stringify({
+      x402Version: 2,
+      accepted: {},
+      payload: {
+        signature,
+        authorization: {
+          from: "0x3333333333333333333333333333333333333333",
+          to: PAY_TO,
+          value: "50000",
+          validAfter: "0",
+          validBefore: "4102444800",
+          nonce,
+        },
+      },
+    }),
+    "utf8",
+  ).toString("base64");
+}
+
+/** What processSettlement hands back once the facilitator has settled. */
+function settled(transaction: string) {
+  return {
+    success: true,
+    transaction,
+    network: X402_NETWORK,
+    headers: { "PAYMENT-RESPONSE": Buffer.from(JSON.stringify({ success: true, transaction }), "utf8").toString("base64") },
+    requirements: {},
+  };
 }
 
 /** What the facilitator answers when it has broadcast the transfer but not seen it confirm. */
@@ -252,10 +306,7 @@ describe("settlement the facilitator has not confirmed yet", () => {
 describe("a payment that already bought an answer", () => {
   it("answers a repeat of the same payment from memory without settling again", async () => {
     const nonce = `0x${"ab".repeat(32)}`;
-    const paymentHeader = Buffer.from(
-      JSON.stringify({ x402Version: 2, accepted: {}, payload: { authorization: { nonce } } }),
-      "utf8",
-    ).toString("base64");
+    const paymentHeader = paymentHeaderFor(nonce);
     const cancel = vi.fn(async () => undefined);
     const settle = vi.fn(async () => ({
       success: true,
@@ -293,6 +344,171 @@ describe("a payment that already bought an answer", () => {
       expect(second.headers["payment-response"]).toBe(first.headers["payment-response"]);
       expect(settle).toHaveBeenCalledTimes(1);
       expect(processed).toHaveBeenCalledTimes(1);
+    } finally {
+      await app.close();
+    }
+  });
+
+  // V7: the nonce is public on chain once the transfer settles, so it can never be the key alone.
+  it("hands nothing to a request carrying only the payer's public nonce, or the payment with another file", async () => {
+    const nonce = `0x${"cd".repeat(32)}`;
+    const cancel = vi.fn(async () => undefined);
+    const settle = vi.fn(async () => settled(`0x${"4b".repeat(32)}`));
+    const payments = paymentsThatSettleWith(settle, cancel);
+    const processed = vi.spyOn(payments, "processHTTPRequest");
+
+    const image = await makeImage(44);
+    const other = await makeImage(45);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0 });
+    await app.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const bought = await app.inject({
+        method: "POST",
+        url: "/verify/paid",
+        payload,
+        headers: { ...headers, "payment-signature": paymentHeaderFor(nonce) },
+      });
+      expect(bought.statusCode).toBe(200);
+
+      const nonceOnly = Buffer.from(JSON.stringify({ payload: { authorization: { nonce } } }), "utf8").toString("base64");
+      const forged = await app.inject({ method: "POST", url: "/verify/paid", headers: { "payment-signature": nonceOnly } });
+      expect(forged.statusCode).toBe(402);
+      expect(forged.body).not.toContain(record.id);
+
+      const second = multipartBody("file", "b.jpg", "image/jpeg", other);
+      const otherFile = await app.inject({
+        method: "POST",
+        url: "/verify/paid",
+        payload: second.payload,
+        headers: { ...second.headers, "payment-signature": paymentHeaderFor(nonce) },
+      });
+      expect(otherFile.body).not.toContain(record.id);
+      expect(processed).toHaveBeenCalledTimes(3);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+describe("a settlement whose outcome is unknown (V15)", () => {
+  async function paidApp(settle: unknown, charged: () => Promise<boolean | undefined>) {
+    const cancel = vi.fn(async () => undefined);
+    const image = await makeImage(61);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments: paymentsThatSettleWith(settle, cancel),
+      settlementRetryDelayMs: 0,
+      charged,
+    });
+    await app.ready();
+    const send = async (header: string) => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+    return { app, cancel, record, send };
+  }
+
+  it("asks again when the first settle call threw, and serves the answer when the second settles", async () => {
+    const settle = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("the facilitator timed out"))
+      .mockResolvedValueOnce(settled(`0x${"6c".repeat(32)}`));
+    const { app, cancel, record, send } = await paidApp(settle, async () => false);
+
+    try {
+      const response = await send(paymentHeaderFor(`0x${"e1".repeat(32)}`));
+      expect(response.statusCode).toBe(200);
+      expect(response.json().result.exact).toBe(record.id);
+      expect(settle).toHaveBeenCalledTimes(2);
+      expect(cancel).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("reads a failure in words, not a facilitator's reason code, as unknown and asks again", async () => {
+    const lost = {
+      success: false,
+      errorReason: "fetch failed",
+      errorMessage: "fetch failed",
+      transaction: "",
+      network: X402_NETWORK,
+      headers: {},
+      response: { status: 402, headers: {}, body: { error: "fetch failed" } },
+    };
+    const settle = vi.fn().mockResolvedValueOnce(lost).mockResolvedValueOnce(settled(`0x${"6d".repeat(32)}`));
+    const { app, send } = await paidApp(settle, async () => false);
+
+    try {
+      expect((await send(paymentHeaderFor(`0x${"e2".repeat(32)}`))).statusCode).toBe(200);
+      expect(settle).toHaveBeenCalledTimes(2);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("serves the answer when the chain shows the payment was spent, whatever the facilitator said", async () => {
+    const settle = vi.fn().mockRejectedValue(new Error("socket hang up"));
+    const { app, cancel, record, send } = await paidApp(settle, async () => true);
+
+    try {
+      const response = await send(paymentHeaderFor(`0x${"e3".repeat(32)}`));
+      expect(response.statusCode).toBe(200);
+      expect(response.json().result.exact).toBe(record.id);
+      expect(cancel).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("says unknown rather than refused when nobody can tell, and the same payment is served once the chain shows it spent", async () => {
+    const settle = vi.fn().mockRejectedValue(new Error("socket hang up"));
+    let spent: boolean | undefined;
+    const { app, cancel, record, send } = await paidApp(settle, async () => spent);
+    const header = paymentHeaderFor(`0x${"e4".repeat(32)}`);
+
+    try {
+      const unknown = await send(header);
+      expect(unknown.statusCode).toBe(502);
+      expect(unknown.json().error).toBe("settlement-unknown");
+      expect(unknown.body).not.toContain(record.id);
+      expect(cancel).not.toHaveBeenCalled();
+      expect(settle).toHaveBeenCalledTimes(2);
+
+      spent = true;
+      const later = await send(header);
+      expect(later.statusCode).toBe(200);
+      expect(later.json().result.exact).toBe(record.id);
+      expect(settle).toHaveBeenCalledTimes(2);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("refuses at once, without asking again, when the facilitator names a reason", async () => {
+    const refused = {
+      success: false,
+      errorReason: "insufficient_funds",
+      errorMessage: "the payer cannot cover it",
+      transaction: "",
+      network: X402_NETWORK,
+      headers: {},
+      response: { status: 402, headers: {}, body: { error: "payment failed" } },
+    };
+    const settle = vi.fn().mockResolvedValue(refused);
+    const { app, cancel, record, send } = await paidApp(settle, async () => false);
+
+    try {
+      const response = await send(paymentHeaderFor(`0x${"e5".repeat(32)}`));
+      expect(response.statusCode).toBe(402);
+      expect(response.body).not.toContain(record.id);
+      expect(settle).toHaveBeenCalledTimes(1);
+      expect(cancel).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }
@@ -511,7 +727,7 @@ describe("a signed payment", () => {
 });
 
 describe("settlement failure", () => {
-  it("cancels the authorisation and answers 502 when the facilitator throws while settling", async () => {
+  it("answers 502 settlement-unknown, without cancelling, when the facilitator throws on every ask", async () => {
     const cancel = vi.fn(async () => undefined);
     const payments = {
       initialize: async () => undefined,
@@ -528,11 +744,8 @@ describe("settlement failure", () => {
     } as unknown as x402HTTPResourceServer;
 
     const image = await makeImage(23);
-    const app = await buildServer({
-      source: sourceOf([recordFor(await fingerprint(image))]),
-      logger: false,
-      payments,
-    });
+    const app = await buildServer({ source: sourceOf([recordFor(await fingerprint(image))]), logger: false });
+    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0 });
     await app.ready();
 
     try {
@@ -540,8 +753,8 @@ describe("settlement failure", () => {
       const response = await app.inject({ method: "POST", url: "/verify/paid", payload, headers });
 
       expect(response.statusCode).toBe(502);
-      expect(response.json().error).toMatch(/could not be settled: facilitator refused the settle call/);
-      expect(cancel).toHaveBeenCalledWith({ reason: "handler_failed", responseStatus: 502 });
+      expect(response.json().error).toBe("settlement-unknown");
+      expect(cancel).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }
