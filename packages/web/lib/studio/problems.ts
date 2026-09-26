@@ -111,9 +111,16 @@ const PRIVATE_RECHECK_KEYS: Record<string, { key: string; next?: Failure["next"]
   "thumbnail-too-large": { key: "privateThumbnailTooLarge" },
 };
 
-/** A refusal about the picture itself, named in the body: the same picture would be refused again. */
+/**
+ * A refusal about the picture itself, named in the body: the same picture would be refused again.
+ *
+ * `signed-file-too-large` shares its 413 with an upload that was over the limit when it arrived,
+ * and the plain size sentence would be untrue for it: the chosen file was under 20 MB and only the
+ * signed copy grew past it.
+ */
 const PICTURE_KEYS: Record<string, { key: string }> = {
   "fingerprint-unstable": { key: "fingerprintUnstable" },
+  "signed-file-too-large": { key: "signedFileTooLarge" },
 };
 
 /**

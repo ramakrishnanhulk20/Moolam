@@ -210,6 +210,20 @@ const SERVICE_KEYS: Record<string, { key: string; next?: EditFailure["next"] }> 
 };
 
 /**
+ * The refusals about the picture itself, read off the service's word in the body because the
+ * status alone says too little: a 422 would read as an answer this app does not know, and a 413
+ * would say the chosen file was over 20 MB when it was only the signed copy that grew past it.
+ *
+ * Each one pinned nothing and sent nothing, and the same file would be refused the same way, so
+ * none offers a retry. The service's English only restates the sentence, so it is not printed.
+ */
+const PICTURE_KEYS: Record<string, { key: string }> = {
+  "fingerprint-unstable": { key: "fingerprintUnstable" },
+  "signed-file-too-large": { key: "signedFileTooLarge" },
+  "thumbnail-too-large": { key: "thumbnailTooLarge" },
+};
+
+/**
  * The line for an edit that may be on the network: never a retry, always a second look.
  *
  * ConfirmTimeout says exactly this in its own words, so it is not repeated under the sentence.
@@ -253,6 +267,10 @@ export function describeEditFailure(error: unknown, { sent = false }: { sent?: b
   if (error instanceof VerifierError) {
     if (mayBeOut(error)) {
       return stillOut(error);
+    }
+    const picture = PICTURE_KEYS[error.serviceCode ?? ""];
+    if (picture !== undefined) {
+      return { ...picture };
     }
     const mapped = SERVICE_KEYS[error.code] ?? { key: "badResponse", next: "again" as const };
     const passportId = error.passportId === undefined ? {} : { passportId: error.passportId };
