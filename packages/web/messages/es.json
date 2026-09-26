@@ -478,6 +478,7 @@
       "none": "No hay ninguna impugnación abierta contra este pasaporte.",
       "open": "Este pasaporte está impugnado. No te fíes de su declaración sobre el uso por IA hasta que se resuelva la impugnación.",
       "upheld": "Una impugnación contra este pasaporte prosperó. Trata su registro, y su declaración sobre el uso por IA, como poco fiables.",
+      "inherited": "Una impugnación contra una versión anterior de esta imagen prosperó. <link>Abrir esa versión</link>.",
       "rejected": "Se presentó una impugnación contra este pasaporte y fue rechazada."
     },
     "sealed": {

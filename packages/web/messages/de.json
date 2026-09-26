@@ -478,6 +478,7 @@
       "none": "Gegen diesen Pass läuft keine Anfechtung.",
       "open": "Dieser Pass wird angefochten. Verlass dich auf seine Erklärung zur KI-Nutzung erst, wenn die Anfechtung entschieden ist.",
       "upheld": "Eine Anfechtung gegen diesen Pass war erfolgreich. Behandle seinen Eintrag und seine Erklärung zur KI-Nutzung als nicht verlässlich.",
+      "inherited": "Gegen eine frühere Version dieses Bildes war eine Anfechtung erfolgreich. <link>Diese Version öffnen</link>.",
       "rejected": "Gegen diesen Pass wurde eine Anfechtung erhoben und abgewiesen."
     },
     "sealed": {

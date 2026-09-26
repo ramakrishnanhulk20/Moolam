@@ -478,6 +478,7 @@
       "none": "Aucune contestation n’est ouverte contre ce passeport.",
       "open": "Ce passeport est contesté. Ne vous fiez pas à sa déclaration sur l’usage par l’IA tant que la contestation n’est pas tranchée.",
       "upheld": "Une contestation contre ce passeport a été retenue. Tenez son enregistrement, et sa déclaration sur l’usage par l’IA, pour peu fiables.",
+      "inherited": "Une contestation contre une version antérieure de cette image a été retenue. <link>Ouvrir cette version</link>.",
       "rejected": "Une contestation a été portée contre ce passeport et rejetée."
     },
     "sealed": {

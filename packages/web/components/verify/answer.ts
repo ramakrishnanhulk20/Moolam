@@ -4,6 +4,7 @@ import {
   type Match,
   type MatchConsent,
   type MatchDispute,
+  type MatchInheritedDispute,
   type MatchRecheck,
   type VerifyResponse,
 } from "@/lib/verifier/client";
@@ -49,6 +50,8 @@ export type Answer =
       firstRegisteredConsent?: MatchConsent;
       /** Whether a challenge stands against the record. Absent from an older service, which draws no line. */
       dispute?: MatchDispute;
+      /** Whether an earlier version of the picture lost a challenge. Absent from an older service. */
+      inheritedDispute?: MatchInheritedDispute;
       /** What re-checked the picture since. Absent from an older service, which draws no line. */
       recheck?: MatchRecheck;
       queried: VerifyResponse["result"]["queried"];
@@ -97,9 +100,25 @@ export function readAnswer(response: VerifyResponse): Answer {
     // the list. The statement is only worth as much as the record under it, so
     // the two are read together and shown together.
     dispute: best?.dispute ?? matches.find((match) => match.id === id)?.dispute,
+    inheritedDispute: best?.inheritedDispute ?? matches.find((match) => match.id === id)?.inheritedDispute,
     recheck: best?.recheck ?? matches.find((match) => match.id === id)?.recheck,
     queried,
   };
+}
+
+/**
+ * The earlier passport whose challenge was upheld, or null for no line at all.
+ *
+ * The id is checked again here, not only at the wire, because it becomes a
+ * link inside Moolam's own frame and an Answer can be built without the schema.
+ * "none" and "unavailable" both draw nothing: the direct dispute line already
+ * speaks for this passport, and "could not find out" is not news to print.
+ */
+export function upheldAncestor(inherited: MatchInheritedDispute | undefined): Hex | null {
+  if (inherited === undefined || inherited.source !== "chain" || inherited.status !== "upheld") {
+    return null;
+  }
+  return /^0x[0-9a-fA-F]{64}$/.test(inherited.ancestor) ? inherited.ancestor : null;
 }
 
 /**

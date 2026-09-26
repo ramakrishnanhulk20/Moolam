@@ -228,6 +228,21 @@ not a clean record, it is this service saying it could not find out. The chain i
 the passport index because a dispute opened since the index was last rebuilt is exactly the one a
 reader must not miss.
 
+**Whether an earlier version lost a challenge.** The registry marks only the passport a challenge
+named, and an edit of a disputed passport is still allowed, so an edit reads `none` in its own
+`dispute`. The same matches carry `inheritedDispute` beside it, read from the chain for up to eight
+passports above the match, under the same memory and timeout.
+
+```ts
+type InheritedDispute =
+  | { source: "chain", status: "upheld", ancestor: `0x${string}` } // the nearest ancestor whose challenge stood
+  | { source: "chain", status: "none" }                             // every ancestor read, none upheld
+  | { source: "unavailable" }                                       // a read failed or the chain is deeper than eight
+```
+
+An open or rejected challenge above does not carry down. The web app shows the upheld case as one
+line under the dispute line, linked to the ancestor's passport, and says nothing new for the others.
+
 **What has re-checked the picture.** The same matches carry `recheck`: what the Chainlink CRE
 workflow found when it re-fetched this picture, recomputed its fingerprint and wrote the verdict to
 Monad. It comes from the passport index this service already holds in memory, the same records the

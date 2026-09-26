@@ -478,6 +478,7 @@
       "none": "No challenge is open against this passport.",
       "open": "This passport is under challenge. Do not rely on its statement on AI use until the challenge is settled.",
       "upheld": "A challenge against this passport was upheld. Treat its record, and its statement on AI use, as unreliable.",
+      "inherited": "An earlier version of this picture lost a challenge. <link>Open that version</link>.",
       "rejected": "A challenge was raised against this passport and rejected."
     },
     "sealed": {

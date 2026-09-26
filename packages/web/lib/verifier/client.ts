@@ -334,6 +334,26 @@ const disputeSchema = z.union([
 ]);
 
 /**
+ * Whether a challenge against an earlier version of the matched picture was
+ * upheld. The registry marks only the passport a challenge named and still lets
+ * a disputed passport be edited, so an edit of a picture proven wrong reads
+ * "none" in its own dispute field. This is the fact beside it that says so.
+ *
+ * The ancestor must be a 32 byte passport id because it becomes a link on the
+ * card. A field this app cannot read is dropped rather than failing the whole
+ * answer: it is one line beside the verdict, and losing it leaves the card
+ * saying exactly what it said before the service learned to send it.
+ */
+const inheritedDisputeSchema = z
+  .union([
+    z.object({ source: z.literal("chain"), status: z.literal("upheld"), ancestor: hexWord }),
+    z.object({ source: z.literal("chain"), status: z.literal("none") }),
+    z.object({ source: z.literal("unavailable") }),
+  ])
+  .optional()
+  .catch(undefined);
+
+/**
  * What has independently re-checked the matched picture since it was
  * registered: a Chainlink CRE workflow fetched it from the address in its
  * passport, recomputed the fingerprint and wrote the verdict to Monad.
@@ -369,6 +389,7 @@ const matchSchema = z.object({
   id: hexWord,
   consent: consentSchema.optional(),
   dispute: disputeSchema.optional(),
+  inheritedDispute: inheritedDisputeSchema,
   recheck: recheckSchema.optional(),
   phashDistance: z.number().int().nonnegative(),
   blockhashDistance: z.number().int().nonnegative(),
@@ -544,6 +565,7 @@ export type Match = z.infer<typeof matchSchema>;
 export type MatchConsent = z.infer<typeof consentSchema>;
 export type MatchRecheck = z.infer<typeof recheckSchema>;
 export type MatchDispute = z.infer<typeof disputeSchema>;
+export type MatchInheritedDispute = z.infer<typeof inheritedDisputeSchema>;
 export type StatedUse = z.infer<typeof statedUse>;
 export type TrainingStatement = z.infer<typeof trainingSchema>;
 /** The same statement on the way out. The standard is the service's to name, not a caller's. */

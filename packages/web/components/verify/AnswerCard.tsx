@@ -14,7 +14,7 @@ import { Link } from "@/lib/i18n/routing";
 import { RecheckRequest } from "@/components/passport/RecheckRequest";
 import { DisputeLine } from "./DisputeLine";
 import { SecondOpinion, hasSecondOpinion } from "./SecondOpinion";
-import { agentChipId, percent, type Answer, type Problem } from "./answer";
+import { agentChipId, percent, upheldAncestor, type Answer, type Problem } from "./answer";
 import type { MatchedPassport } from "./lookup";
 
 /** What the card is showing right now. The first two are its front, the last two its back. */
@@ -174,6 +174,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
   }
 
   const firstRegisteredId = answer.firstRegisteredId;
+  const inheritedAncestor = upheldAncestor(answer.inheritedDispute);
   const manifestLine =
     answer.manifestCheck === "invalid"
       ? "manifestInvalid"
@@ -274,6 +275,22 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
             picture and hashed it again. */}
         <ConsentStamp consent={answer.consent} className="mt-8" />
         <DisputeLine dispute={answer.dispute} className="mt-4" />
+        {/* The registry marks only the passport a challenge named, so an edit of a picture that
+            lost one reads clean on the line above. This is where the reader learns otherwise. */}
+        {inheritedAncestor === null ? null : (
+          <p data-inherited-dispute className="mt-2 max-w-[52ch] text-xs leading-relaxed text-failed">
+            {t.rich("dispute.inherited", {
+              link: (chunks) => (
+                <Link
+                  href={`/passport/${inheritedAncestor}`}
+                  className="underline decoration-failed/40 underline-offset-4 transition-colors duration-200 hover:decoration-failed"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
+          </p>
+        )}
         {/* A re-check works by fetching the registered picture from its own
             address. A sealed passport has none, so the block says that instead
             of reporting a re-check that will never come as "not yet". */}
