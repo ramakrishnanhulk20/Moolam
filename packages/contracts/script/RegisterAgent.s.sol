@@ -9,14 +9,17 @@ import {VmSafe} from "forge-std/Vm.sol";
 interface IAgentIdentity {
     function register(string calldata agentURI) external returns (uint256 agentId);
     function ownerOf(uint256 agentId) external view returns (address);
+    function setAgentURI(uint256 agentId, string calldata newURI) external;
+    function tokenURI(uint256 agentId) external view returns (string memory);
 }
 
 /// @notice Registers the demo generator agent on the real ERC-8004 Identity Registry on Monad
 ///         mainnet, from the deployer wallet. The passport registry reads `ownerOf` on that
 ///         registry, so this agent id is what makes a Generated passport possible at all.
-/// @dev Two entry points. `run` sends the registration. `verify` reads the id back from the chain
+/// @dev Three entry points. `run` sends the registration. `verify` reads the id back from the chain
 ///      afterwards and proves the deployer owns it, because the id the simulation returns could in
-///      principle be taken by another registration landing first.
+///      principle be taken by another registration landing first. `updateCard` replaces the card of
+///      an agent already registered.
 contract RegisterAgent is Script {
     address internal constant AGENT_IDENTITY = 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432;
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
@@ -25,6 +28,7 @@ contract RegisterAgent is Script {
     error WrongChain(uint256 actual, uint256 expected);
     error DeploymentFileMissing();
     error AgentNotOwnedByDeployer(uint256 agentId, address owner, address deployer);
+    error CardNotStored(uint256 agentId);
 
     /// @notice Mints the demo agent to the deployer and writes its id into the deployment file.
     /// @dev The card comes from env MOOLAM_AGENT_URI when set, otherwise from a data URI built
@@ -72,13 +76,50 @@ contract RegisterAgent is Script {
         console2.log("agent id", agentId, "is owned on the canonical registry by", agentOwner);
     }
 
+    /// @dev ERC-8004 ("Update agentURI"): a registration file stored on chain SHOULD be a base64
+    ///      data URI rather than serialized JSON. Raw JSON also breaks every URL reader, because the
+    ///      "#" in the type field starts a fragment and cuts the card off after 48 bytes.
+    /// @notice Replaces the recorded agent's card with the card `run` would register today, in one
+    ///         transaction from the agent owner.
+    /// @dev Written for agent 10248, registered before the card was base64 encoded. The card comes
+    ///      from env MOOLAM_AGENT_URI when set, as in `run`. Reverts WrongChain off Monad mainnet,
+    ///      DeploymentFileMissing when there is no recorded id, AgentNotOwnedByDeployer when the
+    ///      deployer does not own it, and CardNotStored when the registry reads back anything else.
+    ///      The registry emits URIUpdated. Without --broadcast nothing is sent.
+    function updateCard() external {
+        if (block.chainid != MONAD_MAINNET_CHAIN_ID) revert WrongChain(block.chainid, MONAD_MAINNET_CHAIN_ID);
+        if (!vm.exists(DEPLOYMENT_FILE)) revert DeploymentFileMissing();
+
+        uint256 agentId = vm.parseJsonUint(vm.readFile(DEPLOYMENT_FILE), ".demoAgentId");
+        uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        address deployer = vm.addr(deployerKey);
+        address agentOwner = IAgentIdentity(AGENT_IDENTITY).ownerOf(agentId);
+        if (agentOwner != deployer) revert AgentNotOwnedByDeployer(agentId, agentOwner, deployer);
+
+        string memory agentURI = vm.envOr("MOOLAM_AGENT_URI", _defaultAgentCard());
+
+        vm.startBroadcast(deployerKey);
+        IAgentIdentity(AGENT_IDENTITY).setAgentURI(agentId, agentURI);
+        vm.stopBroadcast();
+
+        string memory stored = IAgentIdentity(AGENT_IDENTITY).tokenURI(agentId);
+        if (keccak256(bytes(stored)) != keccak256(bytes(agentURI))) revert CardNotStored(agentId);
+
+        console2.log("agent id      ", agentId);
+        console2.log("agent card URI", stored);
+        if (!vm.isContext(VmSafe.ForgeContext.ScriptBroadcast)) {
+            console2.log("Dry run: nothing was sent. Add --broadcast to replace the card on chain.");
+        }
+    }
+
     function _defaultAgentCard() internal pure returns (string memory) {
-        return string.concat(
-            'data:application/json,{"type":"https://eips.ethereum.org/EIPS/eip-8004#registration-v1",',
+        string memory card = string.concat(
+            '{"type":"https://eips.ethereum.org/EIPS/eip-8004#registration-v1",',
             '"name":"Moolam demo generator",',
             '"description":"The generator agent behind the Moolam demo. It signs the fingerprint of ',
             'every image it makes, so each passport names the agent that made it.",',
             '"services":[],"active":true}'
         );
+        return string.concat("data:application/json;base64,", vm.toBase64(card));
     }
 }

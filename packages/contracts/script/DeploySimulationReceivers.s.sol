@@ -175,6 +175,13 @@ contract DeploySimulationReceivers is SimulationReceiversPlan {
         });
     }
 
+    /// @dev Logs the record as one RECORD line and writes no file, on purpose: the launch script's
+    ///      record is the record. That script (deploy-sim-receivers.sh, kept with the operator's
+    ///      runbooks outside the repo) runs `deployAs` on an Anvil fork of mainnet first and `run`
+    ///      live after, both broadcasting on chain 143, and only it knows which run was live. It
+    ///      saves the live run's RECORD line together with the transaction hashes from the broadcast
+    ///      artifact, which a script cannot see while it runs, and finalize-sim-receivers.sh reads
+    ///      that file. The public copy is proofs/simulation-receivers.txt.
     function _print(Deployment memory d) internal {
         VerifierPolicy policy = VerifierPolicy(POLICY);
         console2.log("chain id              ", block.chainid);

@@ -114,6 +114,7 @@ a real statement on a real passport and change what the demo shows.
   changes it, and the history shows who wrote what and when.
 - It knows nothing about disputes. A disputed passport's statement must not be relied on, so a
   reader takes the dispute status from the registry, and the verify service returns both together.
+- The ten minute wait compares the caller with the writer of the newest entry only, so the "Bounded writes per writer" row above holds only while the passport stays in one wallet. A holder with a second wallet can pass the passport over and back and write again at once, as often as once a second, and each round costs two transfers of about 85,000 gas each, about 0.017 MON for the pair at 102 gwei (estimated against mainnet on 2026-09-26). It never lets anyone write for a passport they do not hold: the holder is read from the registry inside the same call, so the wallet that just gave the passport away is refused `NotPassportHolder`.
 - The clock is the block timestamp, so a time query is only as fine as the chain's clock.
 - No gasless relay and no signatures: a write is a plain call from the holder's wallet.
 - It cannot stop anyone from ignoring a statement. It makes ignoring it provable.

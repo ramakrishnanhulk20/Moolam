@@ -36,6 +36,9 @@ contract Deploy is Script {
     error WrongChain(uint256 actual, uint256 expected);
     error IdentityRegistryHasNoCode(address agentIdentity);
     error MissingWorkflowAuthor();
+    error DeploymentFileMissing();
+    /// @notice No broadcast on disk sent this transaction kind to the recorded address.
+    error NotInBroadcast(string contractName, address recorded);
 
     /// @notice Deploys the policy, the registry and the receiver, pins the receiver to the Moolam
     ///         workflow, then lists the receiver and finalizes the policy bootstrap.
@@ -88,37 +91,72 @@ contract Deploy is Script {
         }
     }
 
-    /// @notice Fills in the transaction hashes and confirmed block of the last broadcast.
-    /// @dev Run after `run --broadcast`, without broadcasting. The vm.getBroadcast cheatcode
-    ///      itself reverts when no matching artifact for this chain exists, so a missing broadcast
-    ///      can never write zeros into the deployment file.
+    /// @notice Fills in the transaction hashes and confirmed block of the deploy the file records.
+    /// @dev Run after `run --broadcast`, without broadcasting. The broadcast cheatcodes search every
+    ///      run of every script on this chain by contract name, so each result is kept only when its
+    ///      contract address is one `run` wrote into the deployment file. Reverts
+    ///      DeploymentFileMissing before a deploy and NotInBroadcast when an address has no matching
+    ///      transaction, so a record can never name another run's transaction or write zeros. A
+    ///      consent hash already in the file is carried over.
     function record() external {
-        VmSafe.BroadcastTxSummary memory policyTx =
-            vm.getBroadcast("VerifierPolicy", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Create);
+        if (!vm.exists(DEPLOYMENT_FILE)) revert DeploymentFileMissing();
+        string memory deployment = vm.readFile(DEPLOYMENT_FILE);
+        address policy = vm.parseJsonAddress(deployment, ".policy");
+
+        VmSafe.BroadcastTxSummary memory policyTx = _creation("VerifierPolicy", policy);
         VmSafe.BroadcastTxSummary memory registryTx =
-            vm.getBroadcast("MoolamRegistry", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Create);
+            _creation("MoolamRegistry", vm.parseJsonAddress(deployment, ".registry"));
         VmSafe.BroadcastTxSummary memory receiverTx =
-            vm.getBroadcast("MoolamReceiver", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Create);
-        VmSafe.BroadcastTxSummary[] memory policyCalls =
-            vm.getBroadcasts("VerifierPolicy", MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Call);
+            _creation("MoolamReceiver", vm.parseJsonAddress(deployment, ".receiver"));
+        bytes32[] memory callHashes = _callsTo("VerifierPolicy", policy);
 
         string memory hashes = "txHashes";
         string memory hashesJson = vm.serializeBytes32(hashes, "policy", policyTx.txHash);
         hashesJson = vm.serializeBytes32(hashes, "registry", registryTx.txHash);
         hashesJson = vm.serializeBytes32(hashes, "receiver", receiverTx.txHash);
-        // The two policy calls are listed newest first by the cheatcode, so they are written as a
-        // list rather than named, and their order is bootstrapAddReceiver then finalizeBootstrap.
-        bytes32[] memory callHashes = new bytes32[](policyCalls.length);
-        for (uint256 i = 0; i < policyCalls.length; ++i) {
-            callHashes[i] = policyCalls[policyCalls.length - 1 - i].txHash;
-        }
         hashesJson = vm.serializeBytes32(hashes, "policyCalls", callHashes);
+        // DeployConsent writes its hash into the same object later, and this object replaces the
+        // whole key, so running record again must not drop it.
+        if (vm.keyExistsJson(deployment, ".txHashes.consent")) {
+            hashesJson = vm.serializeBytes32(hashes, "consent", vm.parseJsonBytes32(deployment, ".txHashes.consent"));
+        }
 
         vm.writeJson(hashesJson, DEPLOYMENT_FILE, ".txHashes");
         vm.writeJson(vm.toString(uint256(registryTx.blockNumber)), DEPLOYMENT_FILE, ".block");
 
         console2.log("Recorded transaction hashes into", DEPLOYMENT_FILE);
         console2.log("registry deployed in block", registryTx.blockNumber);
+    }
+
+    /// @dev The one creation of `contractName` that produced `recorded`.
+    function _creation(string memory contractName, address recorded)
+        private
+        view
+        returns (VmSafe.BroadcastTxSummary memory)
+    {
+        VmSafe.BroadcastTxSummary[] memory found =
+            vm.getBroadcasts(contractName, MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Create);
+        for (uint256 i = 0; i < found.length; ++i) {
+            if (found[i].contractAddress == recorded) return found[i];
+        }
+        revert NotInBroadcast(contractName, recorded);
+    }
+
+    /// @dev The hashes of every call sent to `recorded`, oldest first. The cheatcode lists newest
+    ///      first, so for the policy this reads bootstrapAddReceiver then finalizeBootstrap.
+    function _callsTo(string memory contractName, address recorded) private view returns (bytes32[] memory hashes) {
+        VmSafe.BroadcastTxSummary[] memory found =
+            vm.getBroadcasts(contractName, MONAD_MAINNET_CHAIN_ID, VmSafe.BroadcastTxType.Call);
+        uint256 count = 0;
+        for (uint256 i = 0; i < found.length; ++i) {
+            if (found[i].contractAddress == recorded) ++count;
+        }
+        if (count == 0) revert NotInBroadcast(contractName, recorded);
+
+        hashes = new bytes32[](count);
+        for (uint256 i = 0; i < found.length; ++i) {
+            if (found[i].contractAddress == recorded) hashes[--count] = found[i].txHash;
+        }
     }
 
     function _writeAddresses(address deployer, address policy, address registry, address moolamReceiver) private {
