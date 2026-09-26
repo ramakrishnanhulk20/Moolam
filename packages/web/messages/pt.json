@@ -1556,7 +1556,7 @@
       "privateRecheckNeedsSealed": "O serviço de verificação não guarda cópia privada de uma imagem que não está lacrada, então nada foi fixado nem registrado. Recarregue o estúdio e tente de novo.",
       "privateCopyNotPrivate": "O provedor de armazenamento não manteve a cópia pequena privada, então a Moolam parou e nada foi fixado nem registrado. Desligue a conferência privada para registrar esta imagem lacrada sem ela.",
       "privateChainUnreachable": "A Moolam não conseguiu alcançar a Monad para conferir se esta imagem é nova, então não guardou cópia privada e não registrou nada. Tente de novo daqui a pouco.",
-      "privateThumbnailTooLarge": "Esta imagem tem detalhes finos demais para a cópia pequena que a Chainlink abre para conferir de novo, então nada foi fixado nem registrado. Mantenha-a lacrada com a conferência privada desligada e ela será registrada.",
+      "privateThumbnailTooLarge": "Esta imagem não pode ser reduzida a uma miniatura pequena o bastante para o verificador da Chainlink buscar, então o passaporte dela nunca poderia ser conferido de novo, e um passaporte lacrado nunca poderia ser publicado depois. Nada foi fixado.",
       "fingerprintUnstable": "Esta imagem muda pouco demais de um lado para o outro para ter uma impressão digital que sobreviva às cópias: até a própria cópia pequena parece outra imagem, então a conferência da Chainlink e qualquer busca por cópias falhariam. Nada foi fixado nem registrado. Uma imagem com mais detalhes na largura será registrada.",
       "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto."
     },

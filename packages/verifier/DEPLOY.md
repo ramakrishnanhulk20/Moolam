@@ -30,7 +30,7 @@ Windows `node_modules` and the web app out of the context.
 | CPU | 1 shared vCPU. A match is CPU bound for well under a second |
 | Port | 4010, and the server binds `0.0.0.0` |
 | User | runs as the non-root `node` user |
-| Health | `GET /health` returns `{"ok":true,"records":N,"version":"0.2.0","routes":["verify","prepare","generate","edit","health"]}`, where `routes` is what this host actually mounted. The image also declares a Docker `HEALTHCHECK` on the same path |
+| Health | `GET /health` returns `{"ok":true,"records":N,"version":"0.2.0","routes":["verify","prepare","generate","edit","health"],"off":[],...}`, where `routes` is what this host has on right now and `off` names each route it left off, as `{"route":"POST /prepare","reason":"..."}`, with a plain reason that carries no path, address or key. The image also declares a Docker `HEALTHCHECK` on the same path |
 
 ## Environment
 
@@ -83,6 +83,15 @@ Privy secrets and the wallet id, and it says the same kind of line and answers 4
 when one is missing. `/edit` needs what `/prepare` needs plus the two Privy
 secrets and the two ids above, and no image model key at all, since nothing is
 drawn. It says the same kind of line and answers 404 when one is missing.
+
+A signing certificate or key that does not load, such as a path with no file
+behind it or only one of the two set, no longer stops the boot. `/prepare`, `/generate` and `/edit` sign every picture,
+so the host leaves those three off, logs why once, and lists each under `off` in
+`/health`. `/verify`, the re-check queue and the unseal and sealed routes keep
+serving. Only an `EXPECT_ROUTES` that names one of the three still stops the boot,
+and it names the signer as the reason. In the same way, a registry check that
+cannot read the chain at boot leaves `/generate` answering 503
+`generator-unchecked`, listed under `off`, and tries again every 5 minutes.
 
 Turning the paid route on is those two variables and nothing else: `X402_ENABLED=true` and
 `X402_PAY_TO_ADDRESS` set to the wallet that collects. Setting one without the other stops the boot

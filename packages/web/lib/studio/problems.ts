@@ -100,9 +100,9 @@ const VERIFIER_KEYS: Record<string, { key: string; next?: Failure["next"]; quiet
  * service's words are English and only restate the code, so none is printed
  * under the sentence. Only an unreachable chain is worth trying again as it
  * stands; the others would refuse the same request the same way, so their
- * sentence says what to change instead. A published picture can be refused for
- * its thumbnail too, and the same sentence is true for it: sealed with the
- * private re-check off makes no thumbnail at all.
+ * sentence says what to change instead. A published or plainly sealed picture
+ * can be refused for its thumbnail too, and the same sentence is true for every
+ * case, since a sealed picture must still fit the budget to be published later.
  */
 const PRIVATE_RECHECK_KEYS: Record<string, { key: string; next?: Failure["next"] }> = {
   "private-recheck-needs-sealed": { key: "privateRecheckNeedsSealed" },
