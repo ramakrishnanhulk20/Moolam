@@ -194,7 +194,8 @@ export function offlineDisputeReader(): DisputeReader {
 }
 
 /**
- * Attaches the four facts a verify answer carries, for the exact match and the best match: the
+ * Attaches the four facts a verify answer carries, for the exact match, the best match and the
+ * first registration when the answer names one (review pass 4, V18): the
  * holder's statement on AI use, the dispute status that says how much weight that statement should
  * carry, what has re-checked the picture since it was registered, and whether the picture itself
  * is public, sealed, or sealed and published later by its holder. Both verify routes call this

@@ -34,13 +34,40 @@ export interface QueueClient {
 }
 
 /**
+ * How long to wait before each further try at POST /recheck/done, doubling each time. Three tries
+ * in about six seconds ride out a redeploy's restart or one dropped connection, and stay short
+ * against the ten minutes a run itself may take.
+ */
+export const DONE_RETRY_DELAYS_MS = [2_000, 4_000] as const;
+
+export interface QueueClientOptions {
+  /** Swapped in tests so a retry costs no real waiting. */
+  sleep?: (ms: number) => Promise<void>;
+}
+
+/**
+ * Whether a done that was not accepted may be accepted if sent again: the connection failing, a
+ * timeout, a 429 or any 5xx, a 503 included. A 4xx such as 409 not-running is the service's
+ * answer about this request, and sending it again cannot change it.
+ */
+function worthRetrying(status: number | undefined): boolean {
+  return status === undefined || status === 408 || status === 429 || status >= 500;
+}
+
+/**
  * The verify service's re-check queue, as packages/verifier serves it.
  *
  * The queue route answers 503 when the service has no runner token set, which is a service that
  * is simply not running the queue rather than a fault: the runner then works from the index alone
  * and says so once. Every call carries the shared token, and nothing here ever logs it.
  */
-export function queueClient(baseUrl: string, token: string, fetcher: Fetcher = fetch): QueueClient {
+export function queueClient(
+  baseUrl: string,
+  token: string,
+  fetcher: Fetcher = fetch,
+  options: QueueClientOptions = {},
+): QueueClient {
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const headers = { authorization: `Bearer ${token}` };
 
   return {
@@ -93,14 +120,32 @@ export function queueClient(baseUrl: string, token: string, fetcher: Fetcher = f
       return "not-requested";
     },
 
+    // Only a 2xx means the service recorded the verdict. A 503 used to read as delivered, which left
+    // the request "running" on the service after a redeploy (review pass 4, V19), so every other
+    // answer is a failure here, tried again while it may pass and thrown once it will not.
     async done(report: DoneReport): Promise<void> {
       const body: DoneReport = { ...report };
       if (body.reason !== undefined) {
         body.reason = cut(body.reason, 200);
       }
-      const response = await post("done", body);
-      if (!response.ok && response.status !== 503) {
-        throw new HttpError("the re-check done route", response.status, await textOf(response));
+      for (let attempt = 0; ; attempt += 1) {
+        let failure: Error;
+        let status: number | undefined;
+        try {
+          const response = await post("done", body);
+          if (response.ok) {
+            return;
+          }
+          status = response.status;
+          failure = new HttpError("the re-check done route", response.status, await textOf(response));
+        } catch (error) {
+          failure = error instanceof Error ? error : new Error(String(error));
+        }
+        const delay = DONE_RETRY_DELAYS_MS[attempt];
+        if (delay === undefined || !worthRetrying(status)) {
+          throw failure;
+        }
+        await sleep(delay);
       }
     },
   };

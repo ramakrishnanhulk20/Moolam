@@ -107,6 +107,42 @@ describe("the request queue client", () => {
     expect(sent[0]?.body).toEqual({ passportId: ID, reportTx: `0x${"1".repeat(64)}`, matched: true, distance: 2 });
   });
 
+  it("V19: reads a 503 on done as not accepted, and tries again with a growing wait", async () => {
+    const codes = [503, 502, 200];
+    let at = 0;
+    const waits: number[] = [];
+    const { sent, fetcher } = recorder(() => json({ ok: true }, codes[at++] ?? 500));
+    const sleep = async (ms: number) => {
+      waits.push(ms);
+    };
+
+    await queueClient(BASE, TOKEN, fetcher, { sleep }).done({ passportId: ID, reportTx: `0x${"1".repeat(64)}` });
+
+    expect(sent).toHaveLength(3);
+    expect(waits).toHaveLength(2);
+    expect(waits[1]).toBeGreaterThan(waits[0] as number);
+  });
+
+  it("V19: throws once every try at done was refused, a 503 included, so the runner never reads it as delivered", async () => {
+    const { sent, fetcher } = recorder(() => new Response("runner-disabled", { status: 503 }));
+    const queue = queueClient(BASE, TOKEN, fetcher, { sleep: async () => undefined });
+
+    await expect(queue.done({ passportId: ID, reportTx: `0x${"1".repeat(64)}` })).rejects.toThrowError(/answered 503/);
+    expect(sent.length).toBeGreaterThan(1);
+
+    const down = (async () => {
+      throw new TypeError("fetch failed");
+    }) as unknown as typeof fetch;
+    await expect(queueClient(BASE, TOKEN, down, { sleep: async () => undefined }).done({ passportId: ID })).rejects.toThrowError(/fetch failed/);
+  });
+
+  it("V19: does not try again on a refusal that will not change, such as 409 not-running", async () => {
+    const { sent, fetcher } = recorder(() => json({ error: "not-running" }, 409));
+
+    await expect(queueClient(BASE, TOKEN, fetcher, { sleep: async () => undefined }).done({ passportId: ID })).rejects.toThrowError(/answered 409/);
+    expect(sent).toHaveLength(1);
+  });
+
   it("cuts a long failure reason to what the queue will store", async () => {
     const { sent, fetcher } = recorder(() => json({ ok: true }));
     await queueClient(BASE, TOKEN, fetcher).done({ passportId: ID, reason: "x".repeat(500) });

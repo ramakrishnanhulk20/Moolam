@@ -1,3 +1,5 @@
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import { env, type PrivateSweepMode } from "./env.js";
@@ -69,6 +71,78 @@ export interface SweepDeps {
   registered: (passportId: Hex) => Promise<boolean>;
   remove: (fileId: string) => Promise<void>;
   now: () => number;
+  /** Where the place the listing stopped is kept between runs and across a restart. */
+  cursor: CursorStore;
+}
+
+/**
+ * The sweep's place in the listing: Pinata's page token, or undefined for the first page.
+ * `write` may throw; the sweep keeps its place in memory and says so once.
+ */
+export interface CursorStore {
+  read: () => string | undefined;
+  write: (next: string | undefined) => void;
+}
+
+/** What the cursor file calls itself, so a file of another shape is read as the first page. */
+const CURSOR_FILE_VERSION = 1;
+
+/**
+ * A page token is Pinata's opaque string. It goes back to Pinata as a query value and nowhere
+ * else, so one that is not short printable text with no spaces is not believed and the sweep
+ * starts at the first page, which costs a run and never a file.
+ */
+const PAGE_TOKEN = /^[\x21-\x7e]{1,512}$/;
+
+const cursorFileSchema = z.object({
+  version: z.literal(CURSOR_FILE_VERSION),
+  next: z.string().regex(PAGE_TOKEN).nullable(),
+});
+
+/** A cursor that lives only as long as the process, for tests and for a host with nowhere to write. */
+export function memoryCursorStore(): CursorStore {
+  let held: string | undefined;
+  return {
+    read: () => held,
+    write: (next) => {
+      held = next;
+    },
+  };
+}
+
+/**
+ * The cursor as a small JSON file, written to a temp name and renamed into place the same way the
+ * re-check queue's file is, so a process killed mid-write leaves the last good place behind.
+ * Anything missing, unreadable or of another shape reads as the first page.
+ */
+export function fileCursorStore(filePath: string): CursorStore {
+  const temp = `${filePath}.tmp`;
+  return {
+    read: () => {
+      try {
+        const parsed = cursorFileSchema.safeParse(JSON.parse(readFileSync(filePath, "utf8")));
+        return parsed.success ? (parsed.data.next ?? undefined) : undefined;
+      } catch {
+        return undefined;
+      }
+    },
+    write: (next) => {
+      mkdirSync(path.dirname(filePath), { recursive: true });
+      writeFileSync(temp, `${JSON.stringify({ version: CURSOR_FILE_VERSION, next: next ?? null })}\n`, "utf8");
+      renameSync(temp, filePath);
+    },
+  };
+}
+
+/**
+ * The live cursor file, beside the re-check queue's own file, which is the one place this service
+ * already keeps state that survives a redeploy. Under a test runner nothing is written to disk.
+ */
+function defaultCursorStore(): CursorStore {
+  if (env.NODE_ENV === "test") {
+    return memoryCursorStore();
+  }
+  return fileCursorStore(path.join(path.dirname(env.RECHECK_QUEUE_PATH), "private-sweep-cursor.json"));
 }
 
 export type SweepLog = Pick<FastifyBaseLogger, "info" | "warn" | "error">;
@@ -96,9 +170,11 @@ export interface PrivateSweep {
  * orphan (V16). No name filter is sent to Pinata (V8): the whole-name pattern here is the only
  * check. It keeps only exact thumbnail names uploaded more than 48 hours ago, asks the registry
  * about each id, and marks a file only when the chain answered that the passport does not exist.
- * The place it stopped lives in memory, so a restart starts again at the first page. An RPC error, a listing it could not finish, or any answer it does not know ends the
- * run with nothing marked: deletion cannot be undone, so every doubt keeps the file. In dry it logs
- * each file it would delete by name and age; in delete it deletes them. Both log the counts.
+ * The place it stopped is kept in a file beside the re-check queue's, so a redeploy goes on from
+ * there rather than reading the first pages again; a place that cannot be saved is kept in memory
+ * and said once. An RPC error, a listing it could not finish, or any answer it does not know ends
+ * the run with nothing marked: deletion cannot be undone, so every doubt keeps the file. In dry it
+ * logs each file it would delete by name and age; in delete it deletes them. Both log the counts.
  */
 export function privateSweep(options: {
   mode: PrivateSweepMode;
@@ -112,11 +188,26 @@ export function privateSweep(options: {
     registered: options.deps?.registered ?? liveRegistration(),
     remove: options.deps?.remove ?? deletePrivateFile,
     now: options.deps?.now ?? ((): number => Date.now()),
+    cursor: options.deps?.cursor ?? defaultCursorStore(),
   };
   let running = false;
   let lastRun: SweepRun | null = null;
   /** Where the next run's listing starts: Pinata's page token, or undefined for the first page. */
-  let cursor: string | undefined;
+  let cursor: string | undefined = readCursor(deps.cursor);
+  let saveFailed = false;
+
+  const moveCursor = (next: string | undefined): void => {
+    cursor = next;
+    try {
+      deps.cursor.write(next);
+      saveFailed = false;
+    } catch (error) {
+      if (!saveFailed) {
+        log.warn({ reason: reasonOf(error) }, "sweep: its place in the listing could not be saved, keeping it in memory");
+        saveFailed = true;
+      }
+    }
+  };
 
   const sweep = async (active: "dry" | "delete"): Promise<SweepRun> => {
     const started = deps.now();
@@ -143,7 +234,7 @@ export function privateSweep(options: {
       listing = await deps.list(cursor);
     } catch (error) {
       // A saved page token Pinata will not take any more must not stop every run after it.
-      cursor = undefined;
+      moveCursor(undefined);
       log.warn({ mode: active, reason: reasonOf(error) }, "sweep: stopped, the private listing could not finish, nothing marked");
       return run("stopped", false);
     }
@@ -193,7 +284,7 @@ export function privateSweep(options: {
     }
     counts.marked = marked.length;
     // Every page read this run was decided on, so the next run goes on past them.
-    cursor = listing.next;
+    moveCursor(listing.next);
 
     if (active === "dry") {
       for (const { file, ageHours } of marked) {
@@ -264,6 +355,16 @@ export function privateSweep(options: {
     },
     state: () => ({ mode, lastRun }),
   };
+}
+
+/** The saved place, or the first page when the store itself will not read. */
+function readCursor(store: CursorStore): string | undefined {
+  try {
+    const saved = store.read();
+    return saved !== undefined && PAGE_TOKEN.test(saved) ? saved : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** Pinata's created_at in milliseconds, or undefined for anything that is not a full ISO date and time. */

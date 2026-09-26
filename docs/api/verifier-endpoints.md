@@ -50,7 +50,10 @@ Takes an image and returns the passport it belongs to.
 
 **Request.** Either a multipart upload in a field named `file`, or a JSON body of
 `{ "url": "https://..." }`. Both are capped at 20 MB. The URL form is fetched server-side with a 10
-second timeout and the same cap enforced while the body streams in.
+second timeout and the same cap enforced while the body streams in. Only JPEG, PNG and WebP are
+read, the same three the studio and the verify page take: the file signature is checked before any
+library decodes the bytes, so an SVG, a GIF or a TIFF is refused in milliseconds, whatever it
+declares inside.
 
 ```bash
 curl -s -F "file=@packages/verifier/test-assets/original.jpg" http://localhost:4000/verify
@@ -149,6 +152,10 @@ in `matches`, whatever the cap of 20: when it would have been crowded out, it ta
   case a caller has to look at: the headline match is not the earliest claim on the picture.
 - `firstRegistered: true` marks that passport's entry in `matches`. It is set only when the answer
   names more than one passport, so a one-passport answer keeps the shape it always had.
+- That entry carries the same four facts as `best`, read the same way: `consent`, `dispute`,
+  `recheck` and `picture`, below. A near copy registered later by someone else can be the closest
+  match and carry its own holder's `allowed`; the original's own statement is then right beside it,
+  so the copy's word is never the only one in the answer.
 - On the exact path, where the bytes are a registered file, an earlier registration is looked for
   with the identity fingerprint only, so an exact hit still costs one decode. An earlier passport
   that matches only a rotated or mirrored copy is not surfaced there.
@@ -159,7 +166,8 @@ pile of copies cannot fill the list. `laterSameFingerprint` says how many passpo
 after `best` carry exactly its fingerprint: `0` when there are none. It rides along only when
 something matched, so an answer with `best: null` has the shape it always had.
 
-**What the holder said about AI use.** Every match the answer names carries `consent`, read live from
+**What the holder said about AI use.** The exact match, the best match and the first registration
+each carry `consent`, read live from
 the MoolamConsent contract on Monad mainnet at `CONSENT_ADDRESS`
 (`0x1151E69a82947920546e779c4C8c785b2a3C1277`). This is the lookup an AI company makes before using
 a picture: from the pixels alone, even with the metadata stripped, to the creator's own statement
@@ -190,14 +198,15 @@ Per the CAWG Training and Data Mining 1.1 standard this vocabulary comes from, a
 to reach the creator treats `constrained` the same as `notAllowed`. A field left `unspecified` is
 not permission either: the creator has said nothing about that use.
 
-At most two passports are read per verification, the exact match and the best match when they are
-different, and each answer is held in the service's memory for 60 seconds. `constraintInfo` is
+At most three passports are read per verification, the exact match, the best match and the first
+registration, each once however many of those it is. The other near misses in `matches` carry no
+facts, so twenty candidates never mean twenty chain reads. Each answer is held in the service's memory for 60 seconds. `constraintInfo` is
 returned exactly as the chain holds it, and is dropped if it is not within the 256 printable ASCII
 bytes the contract promises, because this answer is input to other people's parsers.
 
 **Whether the passport is under dispute.** The same matches carry `dispute`, read live from the
 registry's own dispute view at `MOOLAM_REGISTRY_ADDRESS`
-(`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`), under the same limits: at most two passports, a five
+(`0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0`), under the same limits: at most three passports, a five
 second cap, 60 seconds in memory, and a failed read that never fails the verification.
 
 ```ts
@@ -276,7 +285,7 @@ address to try, and an unsealed one is found through [`GET /unseal/:passportId`]
 | Code | When |
 | --- | --- |
 | `200` | Matched, or ran and found nothing. Finding nothing is a 200 with `best: null` |
-| `400` | No multipart `file` field and no `{ "url": "..." }` body, a part named something other than `file`, an empty file, or an upload that is not an image the service can decode |
+| `400` | No multipart `file` field and no `{ "url": "..." }` body, a part named something other than `file`, an empty file, or an upload that is not a JPEG, PNG or WebP the service can decode |
 | `403` | The URL resolves to a loopback, private, link-local, unique-local, carrier-grade NAT, multicast, reserved or cloud metadata address, before or after any redirect |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once decoded |
 | `429` | Over 60 requests in a minute from that caller. The address is read from the hop named in `TRUST_PROXY`, so a service behind a proxy counts callers rather than the proxy |
@@ -318,14 +327,27 @@ and the paid verification still comes back `200`.
 | `429` | Over 60 requests in a minute |
 | `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
+| `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, see below. Nothing was cancelled and the answer is held against the payment |
 
 A settlement the facilitator has broadcast but not yet confirmed also answers `200`, with a pending
 receipt, and a repeat of the same payment inside ten minutes is answered from this process's memory
 without settling again.
 
 Payment is settled only after the match succeeds, so a failed verification never charges. When the
-handler fails after a payment was verified, the authorisation is cancelled rather than left
-standing against the payer.
+match itself fails after a payment was verified, before anything is settled, the authorisation is
+cancelled rather than left standing against the payer. Nothing is cancelled once settlement has
+been asked for: a settle that throws or answers in words is never read as a refusal.
+
+**When nobody can say whether it settled.** A settle call that throws, times out or answers with a
+reason in words rather than a facilitator code says nothing about whether the transfer happened.
+The route asks the chain (USDC's own `authorizationState` for the payer and nonce), then the
+facilitator once more. A payment the chain shows spent is answered `200`. A second refusal counts
+only when the chain says the payment was not spent. Anything else answers `502 settlement-unknown`,
+and the verification is kept against that payment and file. Sending the same payment with the same
+file again hands it over once the chain shows the payment spent. The held answer is dropped only
+when that same file comes back and the chain says the payment was not spent; the same payment with
+another file, or a retry while the chain cannot be read, leaves it in place for the retry that can
+prove the payment.
 
 **When settlement is broadcast but not yet confirmed.** The facilitator can answer a settle call
 with `settlement_pending`: the transfer is on chain but its receipt has not been seen in time. The
@@ -395,7 +417,7 @@ exist and the service answers `404`.
 
 | Part | Type | Rule |
 | --- | --- | --- |
-| `file` | file | The image. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
+| `file` | file | The image, a JPEG, PNG or WebP. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
 | `title` | text | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
 | `kind` | text | `human` is the only value the studio takes today |
 | `training` | text | Optional. A JSON object saying how AI may use the picture: `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`, each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` when a choice is constrained |
@@ -475,6 +497,15 @@ The browser adds its own wallet address and a deadline to those passport fields,
 `hashPassport` from the registry, signs that digest with the creator's passkey and sends `register`
 itself, so the service never holds a key that can write to the chain.
 
+**What the manifest says about the picture.** Moolam sees a signed-in person send a file and nothing
+about how it was made, so the manifest it signs says only that: the upload is its parent ingredient
+and the one action is `c2pa.opened`. No `digitalSourceType` is written. A camera capture, a drawing
+and an AI picture all leave the studio with the same statement, because a source type under
+Moolam's signature would be Moolam vouching for something it never saw. The C2PA library has no form
+for a source type that is only the uploader's own claim, so none is recorded as one either. A
+picture Moolam's own agent made on [`/generate`](#post-generate) is the one case Moolam did see, and
+it says `c2pa.created` with `trainedAlgorithmicMedia`.
+
 `manifest.embedded` is `false` when the C2PA signer refused the file, an unusual container or a
 missing certificate. The upload still stands: `manifestHash` is 32 zero bytes, the fingerprint and
 the on-chain record work without a manifest, and `reason` says what happened, cut to 200 characters.
@@ -491,7 +522,7 @@ the on-chain record work without a manifest, and `reason` says what happened, cu
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact picture. Nothing is pinned, and the id names the passport that holds it |
 | `409` | `{ "error": "private-copy-not-private" }`. Pinata answered the private upload with a file that is not on its private network or not under the name sent, as it does for bytes the account already holds publicly. No document is pinned, nothing is registered, and the file id Pinata gave back goes to the log for an operator |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once the header is read |
-| `415` | The file is not an image the service can decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not |
+| `415` | The file is not a JPEG, PNG or WebP, or is one the service cannot decode. `{ "error": "not-an-image" }`, with `reason` when the header parsed and the pixels behind it did not. Any other format, an SVG above all, is refused by its file signature before anything renders it or takes a place at the shared decode gate |
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. A real picture with so much fine detail that its 512 pixel thumbnail stays over 60,000 bytes even at the lowest quality tried, so the Chainlink verifier could never fetch it. The `reason` says so and adds that registering the picture sealed still works, because a sealed prepare makes no thumbnail. Nothing is pinned and the day's slot is given back. A plain sealed prepare makes no thumbnail and never answers this; one with `privateRecheck` does, and its `reason` says a private re-check could never open the thumbnail and a plain sealed registration still works |
 | `429` | Over 20 prepares in an hour, counted on the Privy user id from the token, or on the caller's address when there is no valid one. This limit replaces the global 60 a minute on this path |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_PREPARES_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned. See [Today's budget for everyone](#todays-budget-for-everyone) |
@@ -621,7 +652,7 @@ access token in an `Authorization: Bearer` header.
 
 | Part | Type | Rule |
 | --- | --- | --- |
-| `file` | file | The edited image. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
+| `file` | file | The edited image, a JPEG, PNG or WebP. Up to 20 MB and 40 megapixels. A file part under any other name is a `400` |
 | `title` | text | 1 to 120 characters after trimming |
 | `parentId` | text | `0x` and 64 hex characters, the passport being edited |
 | `note` | text | Optional, up to 280 characters saying what changed. It is pinned beside the picture with the parent's id |
@@ -662,9 +693,11 @@ curl -s -X POST http://localhost:4000/edit \
 ```
 
 The wallet comes from the Privy user record, never from the request, and the ownership check is read
-from the chain before anything is spent. The manifest written into an edit records the action
-`c2pa.edited` rather than `c2pa.created`, which is the one place inside the file that says this
-picture is a change to another one.
+from the chain before anything is spent. The manifest written into an edit records the file as
+opened and then `c2pa.edited`, with the upload as its parent ingredient and no `digitalSourceType`,
+which is the one place inside the file that says this picture is a change to another one. Moolam
+did not watch the edit being made, so it states no source type for it, the same rule as
+[`/prepare`](#post-prepare).
 
 **Status codes.**
 
@@ -679,10 +712,12 @@ picture is a change to another one.
 | `409` | `no-signer`. This app is not a signer on that wallet, or its signer does not carry the edit policy. A Privy user id this app does not know answers the same way |
 | `409` | `{ "error": "already-registered", "passportId": "0x..." }`. The registry already holds this exact edited picture. The check runs on the fingerprint of the bytes about to be pinned, so nothing is pinned, nothing is sent and the day's allowance is given back |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
-| `415` | `not-an-image`, with `reason` when the header parsed and the pixels behind it did not decode |
+| `415` | `not-an-image`: not a JPEG, PNG or WebP, refused before anything decodes it, or with `reason` when the header parsed and the pixels behind it did not decode |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", "reason": "...", "quota": { used, limit, resetsAt } }` once `GLOBAL_EDITS_PER_DAY` is spent by everyone together, with `retry-after` in seconds. Nothing is pinned, nothing is sent, and the caller's own allowance is handed back. See [Today's budget for everyone](#todays-budget-for-everyone) |
+| `499` | `{ "error": "client-gone" }`. The caller really left: the connection closed before the answer was written, or its socket is gone. It is checked twice, before the allowance is taken and again just before the send, so a creator who closed the tab while waiting at the decode gate is never sent a transaction. Their own allowance goes back; the day's budget goes back only if nothing was pinned yet. A request whose body was simply read to the end is not read as gone |
 | `502` | `pin-failed`, `sign-failed`, or `send-failed` with the registry's own revert name when the call was simulated and refused |
+| `502` | `{ "error": "send-failed", "reason": "the user operation reverted: ...", "passportId": "0x...", "hash": "0x..." }`. The transaction landed and its receipt carries no `PassportRegistered` event from the registry for this child. A sponsored send is a user operation inside a bundle, and the bundle succeeds even when the `appendEdit` inside it reverted, so the registry's own event is the only proof the edit was written. `send-failed` with the receipt's own `reason` is also the answer when the receipt says the transaction reverted |
 | `502` | `{ "error": "send-pending", "transactionId": "...", "passportId": "0x...", "hash": "0x..." }`, the hash only when Privy reported one. Privy took the transaction and the chain did not show it inside the wait. It may still land, so a caller must check the chain and must never send it again. `passportId` is the child's own id, which is why the check is a read of that one passport rather than a guess at which edit under the parent belongs to this caller |
 | `502` | `privy-unavailable` or `chain-unavailable`: Privy or the Monad RPC did not answer while the parent, the owner and the signer were being checked. That all happens before the allowance is taken, so nothing was sent and nothing was spent |
 | `503` | `busy`. The shared decode gate, which matching, prepares and edits all queue on, stayed full for thirty seconds |
@@ -780,7 +815,7 @@ compare with the passport id on Monad.
 | `409` | `not-sealed`. The passport's metadata document is already public, so there is nothing to unseal |
 | `409` | `{ "error": "already-unsealed", "passportId": "0x...", "record": {...} }`. A record is pinned for this passport already |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels |
-| `415` | `not-an-image`, with `reason` when the header parsed and the pixels behind it did not decode |
+| `415` | `not-an-image`: not a JPEG, PNG or WebP, refused before anything decodes it, or with `reason` when the header parsed and the pixels behind it did not decode |
 | `422` | `{ "error": "thumbnail-too-large", "limit": 60000, "reason": "..." }`. Nothing was pinned |
 | `429` | Past `EDITS_PER_DAY` in a rolling 24 hours, which is the allowance unsealing shares. `{ "error": "quota", "quota": { used, limit, resetsAt } }` |
 | `429` | `{ "error": "global-limit", ... }` once `GLOBAL_UNSEALS_PER_DAY` is spent by everyone together. See [Today's budget for everyone](#todays-budget-for-everyone) |
@@ -835,6 +870,10 @@ themselves.
 | `404` | `{ "error": "not-unsealed", "passportId": "0x..." }`. The passport is sealed and no record is pinned for it |
 | `429` | Thirty a minute per address, the limit `/sealed/status` has, rather than the sixty everything else gets |
 | `503` | `lookup-unavailable`. The chain, the metadata document or Pinata could not say, which is not the same as "not unsealed" and must never be shown as one |
+
+Pinata's listing is read by one rule here and in the private listings: `files` as a list, or `null`
+for an empty one, which is `not-unsealed`. A listing with no `files` key at all is a shape this
+service does not know and answers `lookup-unavailable`, never `not-unsealed`.
 
 Every miss costs one request out of the Pinata account's shared minute, so Pinata is asked only
 about a passport that exists and whose document says sealed, the only kind that can have a record.
@@ -1003,7 +1042,10 @@ in the waiting line, 1 for the next one out, and `0` for a passport a runner alr
 `already` is true when this passport was already waiting or running, which is what makes the route
 idempotent: pressing the button twice is one request, and the second answer carries the first
 one's time. A passport asked for again after its last answer starts a fresh request at the back of
-the queue.
+the queue. A claim a runner took more than thirty minutes ago and never closed reads as waiting
+again, here and on every route below: `status: "pending"`, no `startedAt`, and its old place in the
+line, so a runner that died or a done that never arrived cannot leave a passport stuck in
+`running` with nobody able to ask for it.
 
 | Code | When |
 | --- | --- |
@@ -1075,6 +1117,8 @@ curl -s http://localhost:4000/recheck/queue -H "authorization: Bearer $RUNNER_TO
 ```
 
 `pending` is the whole waiting line, so a runner can see there is more than the page it was handed.
+It counts, and the page lists, a claim older than thirty minutes that nobody closed, and `running`
+leaves it out.
 
 ## POST /recheck/claim
 
@@ -1091,7 +1135,9 @@ and `reclaimed`.
 A request that has sat in `running` for more than thirty minutes may be claimed again, because that
 means the runner died rather than that it is slow: a simulation is given ten minutes by the runner
 itself. The worst case of a wrong guess is one duplicate second opinion, which the chain records as
-another attestation and nothing more.
+another attestation and nothing more. The runner keeps the report transactions it sent for seven
+days, so a passport offered again after its done was lost is answered with the report it already
+holds and is never paid for twice.
 
 ## POST /recheck/done
 
@@ -1110,7 +1156,12 @@ The runner says what happened.
 A report transaction is what makes a request `done`; without one it is `failed`, whatever else the
 body carries, because a re-check with no report on chain did not happen. `reason` is cut to 200
 characters. Answers the status shape, `404 no-request`, or `409 not-running` for a request nobody
-claimed.
+claimed. A done that arrives after the thirty minutes is still recorded: the request is offered again,
+but it stays claimed underneath until a done closes it.
+
+The runner reads only a `2xx` as recorded. A `503`, any other `5xx`, a `429` or a connection that
+fails is tried again twice, two and then four seconds apart, and then logged; a `4xx` such as
+`409 not-running` is not tried again.
 
 ## The runner's token
 
@@ -1141,7 +1192,8 @@ The default path is the service's own working directory, which the container's u
 to. A host that wants the queue to survive a redeploy names a writable path, such as
 `/data/recheck-queue.json` on a mounted volume. Without one the queue still takes requests and
 still hands them to the runner; it forgets them when the process stops, and the cost of that is one
-press of a free button.
+press of a free button. The private copy sweep keeps its place in the listing in the same directory,
+so one writable volume serves both.
 
 ## Today's budget for everyone
 
@@ -1265,8 +1317,12 @@ no per-caller data on this route. A host that mounts the unseal and sealed famil
 a runner that has died shows up from outside: `pending` climbs and `running` stays at zero.
 
 `sweep` is the hourly sweep of private copies whose passport never reached the chain, set by
-`PRIVATE_SWEEP`. It first runs an hour after boot and never at boot. Each run lists at most 10 pages
-and 200 files named `sealed-thumb-`, keeps only exact thumbnail names Pinata says were uploaded more
+`PRIVATE_SWEEP`. It first runs an hour after boot and never at boot. Each run reads two pages of
+100 from the account's private listing, asking Pinata for no name filter, and starts where the last
+run stopped, going back to the first page once the listing ends. That place is kept in
+`private-sweep-cursor.json` beside `RECHECK_QUEUE_PATH`, so a redeploy with the queue on a volume
+goes on from there rather than reading the first pages again; a file that is missing or not one it
+wrote means the first page. The run keeps only exact thumbnail names Pinata says were uploaded more
 than 48 hours ago, and marks a file only when the registry answered that its passport does not
 exist. A chain read that failed, a listing it could not finish or an answer in an unknown shape
 stops the run with nothing marked. In `dry`, the default, the host's log names each file it would

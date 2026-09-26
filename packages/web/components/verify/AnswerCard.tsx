@@ -232,6 +232,14 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
             })}
           </p>
         )}
+        {/* A later copy's holder can say "allowed" over an original whose holder said no. When
+            the two statements differ, the first registration's is drawn under the line that names
+            it, so the reader sees both words before trusting the one on the card. */}
+        {firstRegisteredId === undefined || answer.firstRegisteredConsent === undefined ? null : (
+          <div data-first-registered-consent className="mt-3 border-s-2 border-accent/50 ps-4">
+            <ConsentStamp consent={answer.firstRegisteredConsent} />
+          </div>
+        )}
         {answer.laterSameFingerprint === undefined ? null : (
           <p data-later-copies className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
             {t("laterSameFingerprint", { count: answer.laterSameFingerprint })}

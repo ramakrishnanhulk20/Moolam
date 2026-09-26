@@ -10,7 +10,6 @@ import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import {
   CAPTURED_DESCRIPTION,
-  CAPTURE_SOURCE_TYPE,
   FINGERPRINT_VERSION,
   SEALED_CAPTURED_DESCRIPTION,
   SEALED_PRIVATE_CAPTURED_DESCRIPTION,
@@ -216,11 +215,12 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
       // hour of Pinata or the signer being down used to close the studio until midnight.
       let pinned = false;
       try {
+        // Moolam saw a signed-in person send a file and nothing about how it was made, so the
+        // manifest says it opened that file and states no source type (review pass 4, V22).
         const settings = {
           title: upload.title,
           claimGenerator: CLAIM_GENERATOR,
-          action: "c2pa.created" as const,
-          digitalSourceType: CAPTURE_SOURCE_TYPE,
+          action: "c2pa.opened" as const,
           training: upload.training,
         };
 

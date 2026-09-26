@@ -22,7 +22,8 @@ export const MAX_ITEMS = 1000;
 export const KEEP_FINISHED_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
- * How long a claimed request may sit in "running" before another runner may take it.
+ * How long a claimed request may sit in "running" before another runner may take it, and before
+ * the queue offers it and reads it as pending again.
  *
  * A simulation is given ten minutes by the runner itself, so thirty means the runner is gone, not
  * slow. Re-claiming an abandoned request is safe: the worst case is one duplicate second opinion.
@@ -184,7 +185,7 @@ export interface RecheckQueue {
   /** Records a request, or hands back the one already waiting or running for this passport. */
   request: (passportId: Hex) => RequestOutcome;
   status: (passportId: Hex) => RecheckItem | undefined;
-  /** The oldest waiting requests, at most `limit`, marking nothing. */
+  /** The oldest waiting requests, a claim past the timeout among them, at most `limit`, marking nothing. */
   pending: (limit: number) => RecheckItem[];
   claim: (passportId: Hex) => ClaimOutcome;
   /**
@@ -254,6 +255,27 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
   const finished = (item: RecheckItem): boolean => item.status === "done" || item.status === "failed";
 
   /**
+   * A claim nobody closed within claimTimeoutMs: the runner that took it is gone, or its done never
+   * arrived. It reads as pending everywhere a caller or a runner looks, so the passport is offered
+   * again and anyone may ask for it again (review pass 4, V19). What is stored stays "running", so
+   * the claim that picks it up still reports itself as a reclaim.
+   */
+  const abandoned = (item: RecheckItem): boolean =>
+    item.status === "running" && now() - (item.startedAt ?? 0) > claimTimeoutMs;
+
+  const waiting = (item: RecheckItem): boolean => item.status === "pending" || abandoned(item);
+
+  /** The item as a reader sees it: an abandoned claim is a pending request with no start time. */
+  const seen = (item: RecheckItem): RecheckItem => {
+    if (!abandoned(item)) {
+      return { ...item };
+    }
+    const reopened: RecheckItem = { ...item, status: "pending" };
+    delete reopened.startedAt;
+    return reopened;
+  };
+
+  /**
    * Drops what has aged out, then the oldest answered requests until `target` is met.
    *
    * A request that is waiting or running is never dropped, so a queue full of real work stays full
@@ -292,7 +314,7 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
   const positionOf = (passportId: Hex): number => {
     let place = 0;
     for (const item of items.values()) {
-      if (item.status === "pending") {
+      if (waiting(item)) {
         place += 1;
         if (item.passportId === passportId) {
           return place;
@@ -308,7 +330,7 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
       const held = items.get(id);
       if (held !== undefined && !finished(held)) {
         pruneOnRead();
-        return { ok: true, item: { ...held }, already: true, position: positionOf(id) };
+        return { ok: true, item: seen(held), already: true, position: positionOf(id) };
       }
 
       prune(maxItems - 1);
@@ -333,21 +355,21 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
     status: (passportId) => {
       pruneOnRead();
       const held = items.get(passportId.toLowerCase() as Hex);
-      return held === undefined ? undefined : { ...held };
+      return held === undefined ? undefined : seen(held);
     },
 
     pending: (limit) => {
       pruneOnRead();
-      const waiting: RecheckItem[] = [];
+      const offered: RecheckItem[] = [];
       for (const item of items.values()) {
-        if (waiting.length >= limit) {
+        if (offered.length >= limit) {
           break;
         }
-        if (item.status === "pending") {
-          waiting.push({ ...item });
+        if (waiting(item)) {
+          offered.push(seen(item));
         }
       }
-      return waiting;
+      return offered;
     },
 
     claim: (passportId) => {
@@ -359,15 +381,15 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
       if (finished(held)) {
         return { ok: false, refused: "not-pending" };
       }
-      const abandoned = held.status === "running" && now() - (held.startedAt ?? 0) > claimTimeoutMs;
-      if (held.status === "running" && !abandoned) {
+      const reclaimed = abandoned(held);
+      if (held.status === "running" && !reclaimed) {
         return { ok: false, refused: "already-running" };
       }
 
       const claimed: RecheckItem = { ...held, status: "running", startedAt: now() };
       items.set(id, claimed);
       save();
-      return { ok: true, item: { ...claimed }, reclaimed: abandoned };
+      return { ok: true, item: { ...claimed }, reclaimed };
     },
 
     claimedWithin: (passportId, windowMs) => {
@@ -413,8 +435,8 @@ export function recheckQueue(options: RecheckQueueOptions = {}): RecheckQueue {
       let pending = 0;
       let running = 0;
       for (const item of items.values()) {
-        if (item.status === "pending") pending += 1;
-        if (item.status === "running") running += 1;
+        if (waiting(item)) pending += 1;
+        else if (item.status === "running") running += 1;
       }
       return { pending, running };
     },

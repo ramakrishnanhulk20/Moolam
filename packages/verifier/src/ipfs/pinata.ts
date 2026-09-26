@@ -314,6 +314,11 @@ const privateUploadSchema = z.object({
   }),
 });
 
+/**
+ * A private listing page. `files` is required and may be null, which is how Pinata answers an
+ * empty listing; a page with no `files` key fails the parse and reads as "cannot tell". The public
+ * unseal lookup in src/unseal.ts reads its listing by the same rule (review pass 4, V20).
+ */
 const privateListingSchema = z.object({
   data: z.object({
     files: z

@@ -11,10 +11,13 @@
 // The picture state is read through the real pictureReader with its document reader and unseal
 // record finder stubbed: each of its four answers on a /verify and a /verify/paid answer, a finder
 // that throws, a reader that breaks its promise, a read slower than its bound, and its memory.
+// From review pass 4 (V18): the first registration, when it is not the best or exact match,
+// carries the same four facts, read the same way, and no more than three passports are read.
 // Does NOT cover the enum mapping, the consent and dispute caches, or each chain reader's own
 // timeout in isolation, which are consentRead.test.ts and disputeRead.test.ts; pictureStateOf's own
 // cases are test/pictureState.test.ts. It does not cover a live RPC, gateway or Pinata.
 
+import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 import { consentReader, type ConsentCall } from "../src/consentRead.js";
 import { disputeReader, withPassportFacts, type DisputeCall } from "../src/disputeRead.js";
@@ -496,5 +499,92 @@ describe("the picture state on the verify routes", () => {
     }
     // The failed read, the first public read, the first sealed read and the one after the minute.
     expect(reads).toEqual(["ipfs://bafypublic", "ipfs://bafypublic", "ipfs://bafysealed", "ipfs://bafysealed"]);
+  });
+});
+
+describe("the first registration carries the same four facts (pass 4, V18)", () => {
+  /** A consent read that says what each passport's holder stated, and records who was asked. */
+  function statements(words: Map<Hex, number>, asked: Hex[]): ConsentCall {
+    return async (id) => {
+      asked.push(id);
+      const use = words.get(id);
+      if (use === undefined) {
+        return [false, { at: 0n, writer: ZERO_ADDRESS, consent: { aiTraining: 0, aiGenerativeTraining: 0, aiInference: 0, dataMining: 0 }, constraintInfo: "" }] as const;
+      }
+      return [
+        true,
+        { at: 1_700_000_000n, writer: HOLDER, consent: { aiTraining: use, aiGenerativeTraining: use, aiInference: use, dataMining: use }, constraintInfo: "" },
+      ] as const;
+    };
+  }
+
+  const cleanDispute = disputeReader({
+    call: async () => ({ challenger: ZERO_ADDRESS, bond: 0n, evidenceHash: ZERO_HASH, status: 0, openedAt: 0n }),
+  });
+
+  it("gives Alice's original her own statement when Mallory's re-compressed copy is the closest match", async () => {
+    const alicePicture = await makeImage(94);
+    const mallorysCopy = await sharp(alicePicture).jpeg({ quality: 80 }).toBuffer();
+    const unchecked = { rechecks: { attestations: 0, matched: 0, mismatched: 0, latest: null } };
+    const alice = { ...recordFor(await fingerprint(alicePicture), unchecked), registeredAt: 100, registeredBlock: 10 };
+    const mallory = { ...recordFor(await fingerprint(mallorysCopy)), registeredAt: 200, registeredBlock: 20 };
+    // Alice said notAllowed on chain (2), Mallory said allowed (1).
+    const asked: Hex[] = [];
+    const consent = consentReader({ call: statements(new Map([[alice.id, 2], [mallory.id, 1]]), asked) });
+    const picture = pictureReader({ readDocument: async () => ({ name: "public" }), findRecord: async () => undefined });
+    const app = await buildServer({ source: sourceOf([alice, mallory]), logger: false, consent, dispute: cleanDispute, picture });
+    await app.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "copy.jpg", "image/jpeg", mallorysCopy);
+      const response = await app.inject({ method: "POST", url: "/verify", payload, headers });
+
+      expect(response.statusCode).toBe(200);
+      const result = response.json().result;
+      expect(result.best.id).toBe(mallory.id);
+      expect(result.best.consent).toMatchObject({ source: "chain", stated: true, aiTraining: "allowed" });
+      expect(result.firstRegisteredId).toBe(alice.id);
+
+      const original = (result.matches as Record<string, unknown>[]).find((match) => match.id === alice.id);
+      expect(original).toMatchObject({
+        firstRegistered: true,
+        consent: { source: "chain", stated: true, aiTraining: "notAllowed" },
+        dispute: { source: "chain", status: "none" },
+        recheck: { source: "index", attestations: 0 },
+        picture: { state: "public" },
+      });
+      expect([...new Set(asked)].sort()).toEqual([alice.id, mallory.id].sort());
+    } finally {
+      await app.close();
+    }
+  }, 60_000);
+
+  it("reads at most three passports: the exact match, the best match and the first registration", async () => {
+    const exact = `0x${"a1".repeat(32)}` as Hex;
+    const best = `0x${"b2".repeat(32)}` as Hex;
+    const first = `0x${"c3".repeat(32)}` as Hex;
+    const others = Array.from({ length: 17 }, (_, i) => `0x${(0x10 + i).toString(16).repeat(32)}` as Hex);
+    const asked: Hex[] = [];
+
+    const payload = await withPassportFacts(
+      {
+        result: {
+          exact,
+          best: { id: best, score: 0.9 },
+          matches: [best, exact, ...others, first].map((id) => ({ id, score: 0.5, ...(id === first ? { firstRegistered: true } : {}) })),
+          firstRegisteredId: first,
+        },
+        manifest: { present: false },
+      },
+      consentReader({ call: statements(new Map([[exact, 1], [best, 1], [first, 2]]), asked) }),
+      cleanDispute,
+      () => undefined,
+      offlinePictureReader(),
+    );
+
+    expect(asked.sort()).toEqual([exact, best, first].sort());
+    const matches = (payload.result as unknown as { matches: Record<string, unknown>[] }).matches;
+    expect(matches.find((match) => match.id === first)?.consent).toMatchObject({ aiTraining: "notAllowed" });
+    expect(matches.filter((match) => match.consent !== undefined)).toHaveLength(3);
   });
 });

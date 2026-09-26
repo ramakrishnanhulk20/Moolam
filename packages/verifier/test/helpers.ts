@@ -110,3 +110,13 @@ export function multipartBody(
     headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
   };
 }
+
+/**
+ * The review's SVG (pass 4, V17): a few hundred bytes that declare 4000 by 4000 pixels and fill
+ * them through a turbulence filter and a blur. Rendering it took this service's own sharp call
+ * 22 seconds, so it is only ever handed to code that must refuse it before rendering anything.
+ */
+export const FILTER_BOMB_SVG = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="4000"><filter id="f"><feTurbulence baseFrequency="0.9" numOctaves="10"/><feGaussianBlur stdDeviation="5"/></filter><rect width="4000" height="4000" filter="url(#f)"/></svg>',
+  "utf8",
+);

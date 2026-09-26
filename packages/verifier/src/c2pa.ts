@@ -73,6 +73,9 @@ const BLOCKHASH_BYTES = 32;
 
 const AI_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia";
 
+const CREATED_ACTION = "c2pa.created";
+const OPENED_ACTION = "c2pa.opened";
+
 const packageRoot = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "..");
 const devCertDir = path.join(packageRoot, "test-assets", "certs");
 
@@ -206,8 +209,13 @@ function decodeAssertionBytes(raw: unknown): Buffer | null {
 export interface EmbedOptions {
   title: string;
   claimGenerator: string;
+  /**
+   * "c2pa.created" for a picture Moolam itself made, which states a source type. Any other action,
+   * "c2pa.opened" or "c2pa.edited", is for a file somebody handed Moolam and states none.
+   */
   action: string;
   softBinding: { phash: bigint; blockhash: Hex };
+  /** Only with "c2pa.created". Left out there, the picture is declared AI generated. */
   digitalSourceType?: string;
   /** What the creator said about AI use. Left out means they said nothing, and nothing is written. */
   training?: TrainingConsent;
@@ -215,8 +223,19 @@ export interface EmbedOptions {
 
 /**
  * Signs a new C2PA manifest into a copy of the image and returns the signed
- * bytes. The create intent marks the image as a new work and, unless another
- * digital source type is passed, declares it AI generated.
+ * bytes.
+ *
+ * The manifest states only what Moolam saw (review pass 4, V22). A picture
+ * Moolam made itself is "c2pa.created" under the create intent, with its
+ * digital source type, which defaults to AI generated. A file somebody handed
+ * Moolam is signed under the edit intent instead: the file becomes the parent
+ * ingredient and the library records "c2pa.opened" for it, then the action
+ * given, when it is not "c2pa.opened" itself. No source type is written for
+ * such a file, because the C2PA library has no form for a source type that is
+ * only the uploader's claim, and one written under Moolam's signature would be
+ * Moolam saying how a picture was made when it only saw the finished file. A
+ * created action needs a source type to validate, which is why an upload is
+ * never recorded as created.
  *
  * The soft binding is required, not optional. A hard binding breaks the moment
  * a platform re-encodes the file, so without the fingerprint in the manifest
@@ -230,7 +249,8 @@ export interface EmbedOptions {
  * with. A creator who said nothing gets no assertion, because silence is not
  * permission.
  *
- * Throws when the buffer is empty, when the options are incomplete, when the
+ * Throws when the buffer is empty, when the options are incomplete, when a
+ * source type is given with any action but "c2pa.created", when the
  * fingerprint is the wrong size, when the training statement is not one this
  * service may write, SignerUnavailable when no signing identity can be
  * resolved, and SignerRefusedFile when the C2PA library rejects this container.
@@ -242,8 +262,11 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
   if (opts.title.length === 0 || opts.claimGenerator.length === 0 || opts.action.length === 0) {
     throw new Error("embedManifest needs a title, a claim generator and an action");
   }
+  const created = opts.action === CREATED_ACTION;
+  if (!created && opts.digitalSourceType !== undefined) {
+    throw new Error(`embedManifest states a source type only for ${CREATED_ACTION}, never for ${opts.action}`);
+  }
 
-  const sourceType = opts.digitalSourceType ?? AI_SOURCE_TYPE;
   const mimeType = sniffMimeType(bytes);
 
   const builder = Builder.withJson({
@@ -251,8 +274,16 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
     title: opts.title,
     format: mimeType,
   });
-  builder.setIntent({ create: sourceType });
-  builder.addAssertion("c2pa.actions", { actions: [{ action: opts.action, digitalSourceType: sourceType }] }, "Cbor");
+  if (created) {
+    const sourceType = opts.digitalSourceType ?? AI_SOURCE_TYPE;
+    builder.setIntent({ create: sourceType });
+    builder.addAssertion("c2pa.actions", { actions: [{ action: CREATED_ACTION, digitalSourceType: sourceType }] }, "Cbor");
+  } else {
+    builder.setIntent("edit");
+    if (opts.action !== OPENED_ACTION) {
+      builder.addAssertion("c2pa.actions", { actions: [{ action: opts.action }] }, "Cbor");
+    }
+  }
   builder.addAssertion(SOFT_BINDING_LABEL, softBindingAssertion(opts.softBinding), "Cbor");
   const training = trainingAssertion(opts.training);
   if (training !== undefined) {

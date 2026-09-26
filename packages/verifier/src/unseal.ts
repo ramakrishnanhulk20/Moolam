@@ -384,9 +384,10 @@ export function isGatewayFailure(error: unknown): boolean {
 /**
  * What Pinata's file listing says, read loosely on purpose.
  *
- * Only the three fields this service uses are named, and a row missing one of them is dropped
- * rather than failing the whole lookup. An answer shaped differently from this leaves `files`
- * empty, which the caller reports as "cannot tell", never as "nothing is there".
+ * Only the three fields this service uses are named. `files` is read the way the private listing
+ * parser in src/ipfs/pinata.ts reads it: an array, or null for an empty listing. A listing with no
+ * `files` key at all, or any other shape, fails the parse, which the caller reports as "cannot
+ * tell", never as "nothing is there" (review pass 4, V20).
  */
 const listingSchema = z.object({
   data: z.object({
@@ -398,7 +399,7 @@ const listingSchema = z.object({
           created_at: z.string().optional(),
         }),
       )
-      .optional(),
+      .nullable(),
   }),
 });
 

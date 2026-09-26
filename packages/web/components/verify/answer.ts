@@ -42,6 +42,11 @@ export type Answer =
       laterSameFingerprint?: number;
       /** What the holder said about AI use. Absent from an older service, which draws no stamp. */
       consent?: MatchConsent;
+      /**
+       * What the first registration's holder said about AI use, set only when it says something
+       * other than `consent`: a later copy's holder must not be the only voice on the card.
+       */
+      firstRegisteredConsent?: MatchConsent;
       /** Whether a challenge stands against the record. Absent from an older service, which draws no line. */
       dispute?: MatchDispute;
       /** What re-checked the picture since. Absent from an older service, which draws no line. */
@@ -64,6 +69,14 @@ export function readAnswer(response: VerifyResponse): Answer {
   }
 
   const measured = exact !== null ? { ...IDENTICAL, ...(best ?? IDENTICAL) } : (best as Match);
+  // The service hangs the statement on the best match and on the same
+  // passport inside the list, so an exact hit that came back without a best
+  // block still finds its own holder's word rather than dropping it.
+  const consent = best?.consent ?? matches.find((match) => match.id === id)?.consent;
+  const earlier =
+    firstRegisteredId !== undefined && firstRegisteredId.toLowerCase() !== id.toLowerCase()
+      ? matches.find((match) => match.id.toLowerCase() === firstRegisteredId.toLowerCase())?.consent
+      : undefined;
 
   return {
     kind: exact === null ? "close" : "exact",
@@ -77,10 +90,8 @@ export function readAnswer(response: VerifyResponse): Answer {
     ...(validation === "invalid" || validation === "unreadable" ? { manifestCheck: validation } : {}),
     ...(firstRegisteredId !== undefined && firstRegisteredId.toLowerCase() !== id.toLowerCase() ? { firstRegisteredId } : {}),
     ...(laterSameFingerprint !== undefined && laterSameFingerprint > 0 ? { laterSameFingerprint } : {}),
-    // The service hangs the statement on the best match and on the same
-    // passport inside the list, so an exact hit that came back without a best
-    // block still finds its own holder's word rather than dropping it.
-    consent: best?.consent ?? matches.find((match) => match.id === id)?.consent,
+    consent,
+    ...(earlier !== undefined && statementOf(earlier) !== statementOf(consent) ? { firstRegisteredConsent: earlier } : {}),
     // The challenge and the second opinion travel on the same match rows, so
     // they are found the same way and never borrowed from another passport in
     // the list. The statement is only worth as much as the record under it, so
@@ -89,6 +100,29 @@ export function readAnswer(response: VerifyResponse): Answer {
     recheck: best?.recheck ?? matches.find((match) => match.id === id)?.recheck,
     queried,
   };
+}
+
+/**
+ * What a statement says, without when it was said or by which address, so two holders who wrote
+ * the same words compare equal. An unread statement is its own word, never equal to a stated one.
+ */
+function statementOf(consent: MatchConsent | undefined): string {
+  if (consent === undefined) {
+    return "absent";
+  }
+  if (consent.source === "unavailable") {
+    return "unavailable";
+  }
+  if (!consent.stated) {
+    return "never";
+  }
+  return [
+    consent.aiTraining,
+    consent.aiGenerativeTraining,
+    consent.aiInference,
+    consent.dataMining,
+    consent.constraintInfo ?? "",
+  ].join("|");
 }
 
 /**

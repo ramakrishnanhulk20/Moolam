@@ -10,7 +10,9 @@
 // the very payment that bought it and the same file (V7), and a settlement whose
 // outcome is unknown is asked again, then read from the chain, and reported as
 // unknown rather than refused, so a payer who was charged is never served nothing
-// (V15). The chain read is a stub here.
+// (V15). The chain read is a stub here. An answer held that way is forgotten only when the same
+// file comes back and the chain says the payment was not spent, never on another file or a failed
+// chain read (pass 4, V21).
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -509,6 +511,99 @@ describe("a settlement whose outcome is unknown (V15)", () => {
       expect(response.body).not.toContain(record.id);
       expect(settle).toHaveBeenCalledTimes(1);
       expect(cancel).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+describe("an answer held as settlement-unknown (pass 4, V21)", () => {
+  /**
+   * A facilitator that refuses a nonce it has already verified once, as the reference x402
+   * facilitator answers a used EIP-3009 nonce, so a request the ledger lets through goes nowhere.
+   */
+  async function onceOnlyApp(charged: () => Promise<boolean | undefined>) {
+    const settle = vi.fn().mockRejectedValue(new Error("socket hang up"));
+    const inner = paymentsThatSettleWith(settle, vi.fn(async () => undefined));
+    const used = new Set<string>();
+    const payments = {
+      ...inner,
+      processHTTPRequest: async (context: HTTPRequestContext) => {
+        const header = context.adapter.getHeader("payment-signature") ?? "";
+        if (used.has(header)) {
+          return {
+            type: "payment-error",
+            response: { status: 402, headers: {}, body: { error: "invalid_exact_evm_nonce_already_used" } },
+          };
+        }
+        used.add(header);
+        return await inner.processHTTPRequest(context);
+      },
+    } as unknown as x402HTTPResourceServer;
+
+    const image = await makeImage(62);
+    const other = await makeImage(63);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0, charged });
+    await app.ready();
+    const send = async (header: string, file = image) => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", file);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+    return { app, record, other, send };
+  }
+
+  it("keeps the held answer through a retry while the chain read fails, and serves it once the chain answers", async () => {
+    let spent: boolean | undefined;
+    const { app, record, send } = await onceOnlyApp(async () => spent);
+    const header = paymentHeaderFor(`0x${"f1".repeat(32)}`);
+
+    try {
+      expect((await send(header)).json().error).toBe("settlement-unknown");
+      // The chain read fails on the retry, so nobody can say the payment was not spent.
+      expect((await send(header)).statusCode).not.toBe(200);
+
+      spent = true;
+      const later = await send(header);
+      expect(later.statusCode).toBe(200);
+      expect(later.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("keeps the held answer when the same payment arrives with another file", async () => {
+    let spent: boolean | undefined;
+    const { app, record, other, send } = await onceOnlyApp(async () => spent);
+    const header = paymentHeaderFor(`0x${"f2".repeat(32)}`);
+
+    try {
+      expect((await send(header)).json().error).toBe("settlement-unknown");
+      spent = true;
+      const wrongFile = await send(header, other);
+      expect(wrongFile.statusCode).not.toBe(200);
+      expect(wrongFile.body).not.toContain(record.id);
+
+      const later = await send(header);
+      expect(later.statusCode).toBe(200);
+      expect(later.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("forgets the held answer only when the file matches and the chain says the payment was not spent", async () => {
+    let spent: boolean | undefined = false;
+    const { app, send } = await onceOnlyApp(async () => spent);
+    const header = paymentHeaderFor(`0x${"f3".repeat(32)}`);
+
+    try {
+      expect((await send(header)).json().error).toBe("settlement-unknown");
+      // Not spent: the entry goes, and the payment is handed to the facilitator as new.
+      expect((await send(header)).json()).toEqual({ error: "invalid_exact_evm_nonce_already_used" });
+      spent = true;
+      expect((await send(header)).statusCode).toBe(402);
     } finally {
       await app.close();
     }

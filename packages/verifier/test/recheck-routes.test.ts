@@ -305,7 +305,8 @@ describe("GET /recheck/queue", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.json().items).toHaveLength(50);
-    expect(response.json()).toMatchObject({ pending: 60, running: 2 });
+    // The claim a runner walked away from half an hour ago counts as waiting again (pass 4, V19).
+    expect(response.json()).toMatchObject({ pending: 61, running: 1 });
     expect(response.json().items[0]).toMatchObject({ requestedBy: "public" });
     expect(again.json().items[0].passportId).toBe(response.json().items[0].passportId);
     expect(response.headers["cache-control"]).toBe("no-store");

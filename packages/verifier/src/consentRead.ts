@@ -260,14 +260,16 @@ export function offlineConsentReader(): ConsentReader {
 }
 
 /**
- * Attaches however many facts `answerFor` resolves for one passport to the exact match and the
- * best match, and to no others.
+ * Attaches however many facts `answerFor` resolves for one passport to the exact match, the best
+ * match and the first registration, and to no others.
  *
- * At most two passports are read: the exact match, and the best match when it is a different
- * passport (the same passport in both slots costs a single call to `answerFor`, not two). The
- * other candidates in `matches` are near misses on a fingerprint, not pictures the caller asked
- * about, and reading twenty statements to answer one verification would put twenty chain calls
- * behind every upload.
+ * At most three passports are read: the exact match, the best match, and the passport named by
+ * `firstRegisteredId`, each once however many of those slots it fills. The first registration is
+ * read because a later near copy can be the closest match, and its holder's statement must not be
+ * the only one in the answer when the original's holder said something else (review pass 4, V18).
+ * The other candidates in `matches` are near misses on a fingerprint, not pictures the caller
+ * asked about, and reading twenty statements to answer one verification would put twenty chain
+ * calls behind every upload.
  *
  * `answerFor` gets one passport id and returns every field to merge onto that passport's match at
  * once, so a caller reading more than one fact per passport (the consent statement and the dispute
@@ -290,7 +292,7 @@ export async function withMatchFacts<T extends { result: unknown }>(
 
     const best = isRecord(result.best) ? result.best : undefined;
     const wanted: Hex[] = [];
-    for (const id of [result.exact, best?.id]) {
+    for (const id of [result.exact, best?.id, result.firstRegisteredId]) {
       if (isPassportId(id)) {
         const key = id.toLowerCase() as Hex;
         if (!wanted.includes(key)) {

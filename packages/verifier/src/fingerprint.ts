@@ -64,6 +64,40 @@ export const MAX_IMAGE_PIXELS = 40_000_000;
 /** Raised when an image is over the pixel limit, so a route can answer 413 rather than 400. */
 export class ImageTooLarge extends Error {}
 
+/**
+ * Raised for bytes that are not a JPEG, a PNG or a WebP. Sharp reads many more formats, and some
+ * of them cost what their content says rather than what their size says: a few hundred bytes of
+ * SVG filters held a decode slot for 22 seconds (review pass 4, V17).
+ */
+export class UnsupportedImageFormat extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnsupportedImageFormat";
+  }
+}
+
+/**
+ * The raster formats the studio and the verify page take, the same three the web's ACCEPT list
+ * names. Each is recognised by its own file signature, which covers the container and says
+ * nothing about whether the pixels inside decode: that is still sharp's job, after this check.
+ */
+const RASTER_SIGNATURES: Record<"jpeg" | "png" | "webp", (bytes: Buffer) => boolean> = {
+  jpeg: (bytes) => bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff,
+  png: (bytes) =>
+    bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
+  webp: (bytes) =>
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString("latin1") === "RIFF" &&
+    bytes.subarray(8, 12).toString("latin1") === "WEBP",
+};
+
+/** Which of the three raster formats these bytes start as, or undefined for anything else. */
+function rasterFormatOf(bytes: Buffer): keyof typeof RASTER_SIGNATURES | undefined {
+  return (Object.keys(RASTER_SIGNATURES) as (keyof typeof RASTER_SIGNATURES)[]).find((format) =>
+    RASTER_SIGNATURES[format](bytes),
+  );
+}
+
 export interface ImageHeader {
   width: number;
   height: number;
@@ -77,10 +111,21 @@ export interface ImageHeader {
  * than we are willing to hold. The header is parsed without decoding, so the
  * refusal costs nothing.
  *
- * Throws ImageTooLarge past the pixel limit, and a plain Error when the bytes
- * are not an image sharp can read.
+ * Only a JPEG, a PNG or a WebP gets as far as sharp: the file signature is checked first, so a
+ * vector, a GIF, a TIFF or anything else is refused before any library reads it. Sharp's own
+ * reading of the format then has to agree with the signature, so a file one parser calls a PNG and
+ * the other calls something else is refused too. Every route that reads an upload goes through
+ * here before anything decodes it.
+ *
+ * Throws UnsupportedImageFormat for any other format, ImageTooLarge past the pixel limit, and a
+ * plain Error when the bytes are not an image sharp can read.
  */
 export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
+  const signed = rasterFormatOf(bytes);
+  if (signed === undefined) {
+    throw new UnsupportedImageFormat("only JPEG, PNG and WebP pictures are taken");
+  }
+
   let metadata: Metadata;
   try {
     metadata = await sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
@@ -90,6 +135,9 @@ export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
       throw new ImageTooLarge(`the image is over the ${MAX_IMAGE_PIXELS} pixel limit this service decodes`);
     }
     throw error;
+  }
+  if (metadata.format !== signed) {
+    throw new UnsupportedImageFormat("only JPEG, PNG and WebP pictures are taken");
   }
 
   const width = metadata.width ?? 0;
@@ -112,7 +160,8 @@ export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
  * photo turned the right way up fingerprint alike. The dimensions reported are
  * the upright ones.
  *
- * Throws when the buffer is empty, when the image is over the pixel limit
+ * Throws when the buffer is empty, when it is not a JPEG, PNG or WebP
+ * (UnsupportedImageFormat), when the image is over the pixel limit
  * (ImageTooLarge), or when it is not an image sharp can decode.
  */
 export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {

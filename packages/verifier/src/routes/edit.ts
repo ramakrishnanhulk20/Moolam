@@ -37,9 +37,6 @@ import { BadRequest, statusOf } from "./shared.js";
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
 
-/** IPTC's code for a picture a person changed by hand. C2PA readers key their label off it. */
-const EDITED_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/minorHumanEdits";
-
 const EDITED_DESCRIPTION =
   "An edit of a Moolam passport, appended by the creator who holds the original. The service sent it from the creator's own wallet through the signer they granted, under a policy that allows nothing but this one call.";
 
@@ -279,12 +276,14 @@ async function append(
   try {
     let edited: PreparedResult;
     try {
+      // The holder says this is an edit of their passport, and that is all Moolam knows about how
+      // it was made, so the manifest records the file opened and edited with no source type
+      // (review pass 4, V22).
       edited = await app.verifier.runPrepare(() =>
         prepareOrFallback(upload.bytes, {
           title: upload.title,
           claimGenerator: CLAIM_GENERATOR,
           action: "c2pa.edited",
-          digitalSourceType: EDITED_SOURCE_TYPE,
         }),
       );
     } catch (error) {

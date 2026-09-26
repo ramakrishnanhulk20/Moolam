@@ -1,13 +1,50 @@
-// Covers the three fingerprints and the two Hamming helpers.
+// Covers the three fingerprints and the two Hamming helpers, and the header gate every upload
+// passes: only JPEG, PNG and WebP get through it, and the review's SVG is refused before anything
+// renders it (pass 4, V17).
 // Does NOT cover how the hashes behave under real transforms, which is what
-// scripts/robustness.ts measures, nor non-image input beyond the empty buffer.
+// scripts/robustness.ts measures, nor AVIF, HEIF or JPEG XL files, which are refused by the same
+// rule and are not built here.
 
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { ImageTooLarge, MAX_IMAGE_PIXELS, fingerprint, hamming64, hammingHex } from "../src/fingerprint.js";
+import {
+  ImageTooLarge,
+  MAX_IMAGE_PIXELS,
+  UnsupportedImageFormat,
+  fingerprint,
+  hamming64,
+  hammingHex,
+  readImageHeader,
+} from "../src/fingerprint.js";
 import type { Hex } from "../src/types.js";
 import { HammingIndex } from "../src/index.js";
 import { matchImage } from "../src/match.js";
-import { makeImage, makeOversizeImage, makeRotatedImage, recordFor } from "./helpers.js";
+import { FILTER_BOMB_SVG, makeImage, makeOversizeImage, makeRotatedImage, recordFor } from "./helpers.js";
+
+describe("V17: the formats an upload may be", () => {
+  it("refuses the review's SVG in milliseconds, before sharp renders a pixel of it", async () => {
+    expect(FILTER_BOMB_SVG.length).toBeLessThan(300);
+    const started = performance.now();
+
+    await expect(readImageHeader(FILTER_BOMB_SVG)).rejects.toBeInstanceOf(UnsupportedImageFormat);
+    await expect(fingerprint(FILTER_BOMB_SVG)).rejects.toBeInstanceOf(UnsupportedImageFormat);
+
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+
+  it("refuses a GIF and a TIFF, which sharp reads and the studio does not take", async () => {
+    const flat = sharp({ create: { width: 32, height: 32, channels: 3, background: "#336699" } });
+    for (const bytes of [await flat.clone().gif().toBuffer(), await flat.clone().tiff().toBuffer()]) {
+      await expect(readImageHeader(bytes)).rejects.toBeInstanceOf(UnsupportedImageFormat);
+    }
+  });
+
+  it("takes the three formats the web's ACCEPT list names", async () => {
+    for (const format of ["jpeg", "png", "webp"] as const) {
+      expect((await readImageHeader(await makeImage(5, format))).format).toBe(format);
+    }
+  });
+});
 
 describe("fingerprint", () => {
   it("gives the same three hashes for the same bytes every time", async () => {

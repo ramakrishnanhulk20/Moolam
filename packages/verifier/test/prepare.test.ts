@@ -7,6 +7,8 @@
 // while a malformed one is refused, a missing token, a bad title and a text file are each
 // refused, a real picture whose thumbnail cannot fit the Chainlink budget is told so with 422
 // rather than 415, while a file whose pixels do not decode keeps 415.
+// From review pass 4: the review's SVG is refused in milliseconds before anything renders it
+// (V17), and an upload's manifest says Moolam opened a file, never that a camera made it (V22).
 // Does NOT cover a real pin to Pinata, a real read
 // of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
 // hour.
@@ -25,7 +27,7 @@ import { THUMBNAIL_MAX_BYTES, THUMBNAIL_TOO_LARGE_REASON } from "../src/prepare.
 import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
-import { makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
+import { FILTER_BOMB_SVG, makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
 
 // env.ts validates once at import, so the token and the app id have to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The token is a fake: every call
@@ -327,6 +329,58 @@ describe("POST /prepare", () => {
     expect(response.statusCode).toBe(415);
     expect(response.json()).toEqual({ error: "not-an-image" });
   });
+
+  it("V17: refuses the review's SVG with 415 in milliseconds, public or sealed, and pins nothing", async () => {
+    const pinsBefore = pinned.size;
+    for (const sealed of ["false", "true"]) {
+      const { payload, headers } = body({
+        file: { name: "bomb.svg", type: "image/svg+xml", bytes: FILTER_BOMB_SVG },
+        fields: { title: "Turbulence", kind: "human", sealed },
+      });
+      const started = performance.now();
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: `Bearer ${await token("did:privy:svg-user")}` },
+        remoteAddress: "203.0.113.28",
+      });
+
+      expect(performance.now() - started, sealed).toBeLessThan(1_000);
+      expect(response.statusCode, sealed).toBe(415);
+      expect(response.json(), sealed).toEqual({ error: "not-an-image" });
+    }
+    expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
+
+  it("V22: signs an upload as a file Moolam opened, with no source type Moolam could not see", async () => {
+    const title = "Harbour at dusk";
+    const { payload, headers } = body({
+      file: { name: "harbour.jpg", type: "image/jpeg", bytes: await makeImage(34) },
+      fields: { title, kind: "human" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:source-user")}` },
+      remoteAddress: "203.0.113.29",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const signed = pinned.get(`${fileSlug(title, response.json().passport.exactHash)}.jpg`) as Buffer;
+    const reader = await Reader.fromAsset({ buffer: signed, mimeType: "image/jpeg" });
+    const actions = (reader?.getActive()?.assertions ?? [])
+      .filter((one) => one.label?.startsWith("c2pa.actions"))
+      .flatMap((one) => (one.data as { actions: Record<string, unknown>[] }).actions);
+
+    expect(actions.map((one) => one.action)).toEqual(["c2pa.opened"]);
+    expect(JSON.stringify(actions)).not.toContain("digitalSourceType");
+    expect(JSON.stringify(actions)).not.toContain("digitalCapture");
+    expect((await readManifest(signed)).validation).toBe("valid");
+  }, 60_000);
 
   it("refuses a picture whose thumbnail cannot fit the Chainlink budget with 422, and pins nothing", async () => {
     // Pure noise at full quality: the one kind of picture a 512 pixel JPEG cannot squeeze under 60 KB.

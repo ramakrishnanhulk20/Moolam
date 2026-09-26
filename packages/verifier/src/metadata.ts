@@ -12,9 +12,8 @@ export const FINGERPRINT_VERSION = 1;
  */
 export const AGENT_IDENTITY_REGISTRY = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as Hex;
 
-/** IPTC digital source types: what made the picture. C2PA readers key their labels off these. */
+/** The IPTC digital source type for pictures Moolam's own agent generated. */
 export const AI_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia";
-export const CAPTURE_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCapture";
 
 export const GENERATED_DESCRIPTION =
   "An image made by the Moolam demo generator agent. The agent signed this fingerprint with the wallet that owns its ERC-8004 identity, and the creator signed it with a passkey, before the registry would write the record.";

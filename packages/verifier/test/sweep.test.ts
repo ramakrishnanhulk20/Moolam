@@ -7,12 +7,15 @@
 // a stub at the fetch layer, so its paging and its bounds run for real.
 // From the verifier review: the listing asks Pinata for no name filter at all, so whatever that
 // filter matches cannot hide a file, and the exact name check here is the only one (V8); each run
-// reads two pages from where the last one stopped, so every row is read in turn (V16).
+// reads two pages from where the last one stopped, so every row is read in turn (V16), and the
+// place it stopped is kept in a file, so a restart goes on from there rather than the first page.
 // Does NOT cover a real Pinata account or a real chain read (the registry read is a stub here and
 // its strict shape check is exercised only through a fake answer), whether a real page token
-// outlives a day, the cursor across a restart (it lives in memory, so a restart starts at the
-// first page again), or the server wiring, which test/health.test.ts reads through /health.
+// outlives a day, or the server wiring, which test/health.test.ts reads through /health.
 
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Hex } from "viem";
 
@@ -21,7 +24,7 @@ vi.hoisted(() => {
   process.env.PINATA_GATEWAY_URL = "https://moolam-test.mypinata.cloud/ipfs/";
 });
 
-const { privateSweep, SWEEP_FIRST_RUN_MS, SWEEP_EVERY_MS } = await import("../src/sweep.js");
+const { privateSweep, fileCursorStore, SWEEP_FIRST_RUN_MS, SWEEP_EVERY_MS } = await import("../src/sweep.js");
 const { listPrivatePage, PRIVATE_SWEEP_PAGES } = await import("../src/ipfs/pinata.js");
 type SweepDeps = import("../src/sweep.js").SweepDeps;
 type SweepLog = import("../src/sweep.js").SweepLog;
@@ -405,6 +408,44 @@ describe("V16: every row is read in turn across runs", () => {
     const mark = listed.length;
     await sweep.runOnce();
     expect(new URL(listed[mark] as string).searchParams.get("pageToken")).toBeNull();
+  });
+});
+
+describe("the sweep's place survives a restart", () => {
+  it("goes on from the saved page after a restart, and from the first page when the file is not one it wrote", async () => {
+    const folder = mkdtempSync(path.join(tmpdir(), "moolam-sweep-"));
+    try {
+      for (let i = 0; i < 250; i += 1) {
+        const id = `0x${i.toString(16).padStart(4, "0").repeat(16)}` as Hex;
+        chain.set(id, true);
+        row(nameOf(id), hoursAgo(60));
+      }
+      const file = path.join(folder, "private-sweep-cursor.json");
+
+      const before = privateSweep({ mode: "dry", log: recordingLog(), deps: deps({ cursor: fileCursorStore(file) }) });
+      expect((await before.runOnce())?.more).toBe(true);
+
+      // A redeploy: a new sweep over the same file.
+      const after = privateSweep({ mode: "dry", log: recordingLog(), deps: deps({ cursor: fileCursorStore(file) }) });
+      const mark = listed.length;
+      expect((await after.runOnce())?.counts).toMatchObject({ listed: 50 });
+      expect(new URL(listed[mark] as string).searchParams.get("pageToken")).toBe("200");
+
+      // The listing ended, so the saved place is the first page again, for this run and a restart.
+      const again = privateSweep({ mode: "dry", log: recordingLog(), deps: deps({ cursor: fileCursorStore(file) }) });
+      await again.runOnce();
+      expect(new URL(listed[mark + 1] as string).searchParams.get("pageToken")).toBeNull();
+
+      for (const junk of ["not json", JSON.stringify({ version: 1, next: "has spaces in it" }), JSON.stringify({ next: "200" })]) {
+        writeFileSync(file, junk, "utf8");
+        const fresh = privateSweep({ mode: "dry", log: recordingLog(), deps: deps({ cursor: fileCursorStore(file) }) });
+        const at = listed.length;
+        await fresh.runOnce();
+        expect(new URL(listed[at] as string).searchParams.get("pageToken"), junk).toBeNull();
+      }
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 

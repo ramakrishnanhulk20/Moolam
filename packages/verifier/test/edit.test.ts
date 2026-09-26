@@ -4,6 +4,8 @@
 // allowance back and which keep it, the wallet chosen out of several by who holds the parent, the
 // answers for a send that reverted or never confirmed, and the happy path, where what matters is
 // the calldata that would reach the chain and the hash the answer carries back.
+// From review pass 4: the review's SVG is refused before the gate (V17), and an edit's manifest
+// records opened then edited with no source type Moolam cannot see (V22).
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
 // Those are proven live by packages/agents/scripts/prove-privy.ts step 6 and, from the browser,
 // by a real creator granting a signer. The sponsored poll itself is covered in
@@ -14,7 +16,8 @@ import { SignJWT, generateKeyPair } from "jose";
 import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { makeImage } from "./helpers.js";
+import { Reader } from "@contentauth/c2pa-node";
+import { FILTER_BOMB_SVG, makeImage } from "./helpers.js";
 
 // env.ts validates once at import, so everything the route reads has to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The Pinata token is a fake: every
@@ -77,6 +80,8 @@ const { env } = await import("../src/env.js");
 const { SponsoredSendFailed, SponsoredSendPending } = await import("../src/edit/send.js");
 const { Busy } = await import("../src/generate/gate.js");
 const { buildServer } = await import("../src/server.js");
+const { fileSlug } = await import("../src/metadata.js");
+const { readManifest } = await import("../src/c2pa.js");
 const emptySource = { load: async () => [] };
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
@@ -106,6 +111,8 @@ let picture: Buffer;
 let pinFailures = 0;
 /** How many files this request pinned, so a refusal before any pin can be proven. */
 let pins = 0;
+/** Every file the stub pinned, by the name the route gave it, so a signed edit can be read back. */
+const pinnedFiles = new Map<string, Buffer>();
 /** Stands in for the shared prepare gate so the route's own handling of Busy can be exercised. */
 const prepareGate = vi.fn(async (task: () => Promise<unknown>) => await task());
 
@@ -189,6 +196,7 @@ describe("POST /edit", () => {
       const form = init?.body as FormData;
       const file = form.get("file") as File;
       const bytes = Buffer.from(await file.arrayBuffer());
+      pinnedFiles.set(String(form.get("name")), bytes);
       return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -379,6 +387,36 @@ describe("POST /edit", () => {
     expect(refused.json().error).toBe("not-an-image");
     expect(stubs.send).not.toHaveBeenCalled();
     expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("V17: refuses the review's SVG with 415 in milliseconds, before the gate, a pin or the chain", async () => {
+    const started = performance.now();
+
+    const refused = await ask("did:privy:svg-user", goodFields(), { image: FILTER_BOMB_SVG });
+
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(refused.statusCode).toBe(415);
+    expect(refused.json()).toEqual({ error: "not-an-image" });
+    expect(prepareGate).not.toHaveBeenCalled();
+    expect(pins).toBe(0);
+    expect(stubs.passportExists).not.toHaveBeenCalled();
+  }, 60_000);
+
+  it("V22: signs an edit as a file Moolam opened and the creator edited, with no source type", async () => {
+    const response = await ask("did:privy:source-user", goodFields());
+
+    expect(response.statusCode).toBe(200);
+    const child = response.json().child as { exactHash: Hex };
+    const signed = pinnedFiles.get(`${fileSlug(goodFields().title, child.exactHash)}.jpg`) as Buffer;
+    const reader = await Reader.fromAsset({ buffer: signed, mimeType: "image/jpeg" });
+    const actions = (reader?.getActive()?.assertions ?? [])
+      .filter((one) => one.label?.startsWith("c2pa.actions"))
+      .flatMap((one) => (one.data as { actions: Record<string, unknown>[] }).actions);
+
+    expect(actions.map((one) => one.action)).toEqual(["c2pa.opened", "c2pa.edited"]);
+    expect(JSON.stringify(actions)).not.toContain("digitalSourceType");
+    expect(JSON.stringify(actions)).not.toContain("minorHumanEdits");
+    expect((await readManifest(signed)).validation).toBe("valid");
   }, 60_000);
 
   it("answers 503 busy and gives the daily slot back when no prepare slot comes free", async () => {

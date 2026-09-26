@@ -14,7 +14,9 @@ import { verifyResponseSchema } from "@/lib/verifier/client";
 /**
  * The three lines the verify card adds from the service's newer fields: an earlier registration
  * that is not the passport on the card, how many later registrations share its fingerprint, and a
- * manifest that fails validation or cannot be read. Drawn in English and Tamil.
+ * manifest that fails validation or cannot be read. Drawn in English and Tamil. Also the first
+ * registration's AI-use statement, drawn beside the copy's only when the two say different things
+ * (verifier review pass 4, V18).
  *
  * Does NOT cover the other eight languages beyond the key parity the message files already share,
  * nor how the service decides which passport was registered first (the verifier's own suite).
@@ -69,11 +71,43 @@ interface Extra {
   firstRegisteredId?: Hex;
   laterSameFingerprint?: number;
   manifest?: { present: boolean; validation?: string };
+  /** What each holder stated, as the service hangs it on the match rows. */
+  consent?: { best?: unknown; first?: unknown };
+}
+
+/** A holder's statement as the service sends it, one word for all four uses. */
+function stated(word: "allowed" | "notAllowed", at = 1_788_876_100) {
+  return {
+    source: "chain",
+    stated: true,
+    standard: "cawg.training-mining/1.1",
+    aiTraining: word,
+    aiGenerativeTraining: word,
+    aiInference: word,
+    dataMining: word,
+    at,
+    writer: "0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a",
+  };
 }
 
 function body(extra: Extra = {}) {
-  const best = { id: HEADLINE, phashDistance: 1, blockhashDistance: 12, variant: "identity", score: 0.9 };
-  const first = { id: FIRST, phashDistance: 3, blockhashDistance: 12, variant: "identity", score: 0.8, firstRegistered: true };
+  const best = {
+    id: HEADLINE,
+    phashDistance: 1,
+    blockhashDistance: 12,
+    variant: "identity",
+    score: 0.9,
+    ...(extra.consent?.best === undefined ? {} : { consent: extra.consent.best }),
+  };
+  const first = {
+    id: FIRST,
+    phashDistance: 3,
+    blockhashDistance: 12,
+    variant: "identity",
+    score: 0.8,
+    firstRegistered: true,
+    ...(extra.consent?.first === undefined ? {} : { consent: extra.consent.first }),
+  };
   return verifyResponseSchema.parse({
     result: {
       exact: null,
@@ -116,6 +150,22 @@ describe("what the service's newer fields turn into", () => {
   it("refuses a validation word the service does not send", () => {
     expect(() => body({ manifest: { present: true, validation: "trusted" } })).toThrow();
   });
+
+  it("keeps the first registration's statement only when it says something other than the copy's", () => {
+    const differing = readAnswer(
+      body({ firstRegisteredId: FIRST, consent: { best: stated("allowed"), first: stated("notAllowed") } }),
+    );
+    expect(differing).toMatchObject({ consent: { aiTraining: "allowed" }, firstRegisteredConsent: { aiTraining: "notAllowed" } });
+
+    // The same words written on another day are the same statement.
+    const same = readAnswer(
+      body({ firstRegisteredId: FIRST, consent: { best: stated("allowed"), first: stated("allowed", 1_788_000_000) } }),
+    );
+    expect(same).not.toHaveProperty("firstRegisteredConsent");
+    expect(readAnswer(body({ consent: { best: stated("allowed"), first: stated("notAllowed") } }))).not.toHaveProperty(
+      "firstRegisteredConsent",
+    );
+  });
 });
 
 for (const locale of ["en", "ta"] as const) {
@@ -126,6 +176,21 @@ for (const locale of ["en", "ta"] as const) {
       expect(markup).toContain("data-first-registered");
       expect(markup).toContain(lead(locale));
       expect(markup).toContain(`href="/passport/${FIRST}"`);
+    });
+
+    it("draws the first registration's AI-use statement beside the copy's when the two differ", () => {
+      const differing = card(locale, {
+        firstRegisteredId: FIRST,
+        consent: { best: stated("allowed"), first: stated("notAllowed") },
+      });
+      const stamps = createTranslator({ locale, messages: LOCALES[locale], namespace: "verify.consent" });
+
+      expect(differing).toContain("data-first-registered-consent");
+      expect(differing).toContain(stamps("tail.open"));
+      expect(differing).toContain(stamps("tail.closed"));
+
+      const same = card(locale, { firstRegisteredId: FIRST, consent: { best: stated("allowed"), first: stated("allowed") } });
+      expect(same).not.toContain("data-first-registered-consent");
     });
 
     it("draws no such line when the headline is the first registration", () => {

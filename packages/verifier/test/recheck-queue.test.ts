@@ -1,6 +1,7 @@
 // Covers the re-check queue as a module: what a request does, what a second one for the same
 // passport does, how a runner claims and finishes work, when an abandoned claim may be taken
-// again, and the two ceilings that keep the file small (a finished request is dropped after seven
+// again, a claim nobody closed being offered and asked for again once it passes that timeout
+// (review pass 4, V19), and the two ceilings that keep the file small (a finished request is dropped after seven
 // days, and the queue never holds more than its cap). It also covers the file behind it: a round
 // trip through disk, a missing file, a file that is not JSON, a file from another version, and the
 // crash this store exists to survive, where the process dies between the temp file and the rename.
@@ -157,6 +158,31 @@ describe("the re-check queue", () => {
     const again = queue.claim(ONE);
     expect(again).toMatchObject({ ok: true, reclaimed: true });
     expect(again.ok && again.item.startedAt).toBe(START + 31 * 60 * 1000);
+  });
+
+  it("V19: offers a claim nobody closed again once it is past the claim timeout, to the runner and to a caller", () => {
+    const queue = recheckQueue({ store, now: time.now });
+    queue.request(ONE);
+    queue.request(TWO);
+    queue.claim(ONE);
+
+    time.move(29 * 60 * 1000);
+    expect(queue.pending(10).map((item) => item.passportId)).toEqual([TWO]);
+    expect(queue.request(ONE)).toMatchObject({ ok: true, already: true, position: 0, item: { status: "running" } });
+
+    time.move(2 * 60 * 1000);
+    const offered = queue.pending(10);
+    expect(offered.map((item) => item.passportId)).toEqual([ONE, TWO]);
+    expect(offered[0]).toEqual({ passportId: ONE, status: "pending", requestedAt: START, requestedBy: "public" });
+    const asked = queue.request(ONE);
+    expect(asked).toMatchObject({ ok: true, already: true, position: 1, item: { status: "pending" } });
+    expect(asked.ok && asked.item.startedAt).toBeUndefined();
+    expect(queue.status(ONE)?.status).toBe("pending");
+    expect(queue.counts()).toEqual({ pending: 2, running: 0 });
+
+    // The runner that comes back for it takes it as a fresh claim and closes it as usual.
+    expect(queue.claim(ONE)).toMatchObject({ ok: true, reclaimed: true });
+    expect(queue.finish(ONE, { reportTx: TX })).toMatchObject({ ok: true, item: { status: "done" } });
   });
 
   it("refuses to claim a passport nobody asked about, or one that is already answered", () => {

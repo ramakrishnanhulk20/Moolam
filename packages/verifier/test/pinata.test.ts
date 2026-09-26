@@ -8,6 +8,8 @@
 // here for the bytes sent, on the public network. The local content id is checked against a real
 // picture Pinata pinned (test/fixtures/pinned-hero.jpg, the hero passport, whose content id is in
 // packages/web/public/hero/degrade.json) and against a one-block file.
+// Also covers review pass 4, V20: files null reads as an empty list and a missing files key as
+// "cannot tell", in the public unseal lookup and in both private listing parsers alike.
 // Does NOT cover a real pin to Pinata (the live check in the README and
 // scripts/pinata-private-smoke.ts do that), the gateway URL helper, or the JSON shape check on the
 // public upload, which the prepare and generate route tests exercise.
@@ -379,5 +381,42 @@ describe("the private network calls", () => {
       process.env.PINATA_GATEWAY_URL = kept;
       vi.resetModules();
     }
+  });
+});
+
+describe("V20: the three shapes of an empty listing, in both listing parsers", () => {
+  const PASSPORT = `0x${"cd".repeat(32)}` as `0x${string}`;
+  const shapes = {
+    empty: { data: { files: [], next_page_token: "" } },
+    nulled: { data: { files: null, next_page_token: "" } },
+    missing: { data: { next_page_token: "" } },
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sent.length = 0;
+  });
+
+  it("reads the public unseal lookup's null as none and a missing files key as cannot tell", async () => {
+    const { findUnsealRecord } = await import("../src/unseal.js");
+    const answerWith = (body: unknown) => ({ fetchImpl: (async () => json(body)) as unknown as typeof fetch });
+
+    expect(await findUnsealRecord(PASSPORT, answerWith(shapes.empty))).toEqual({ state: "none" });
+    expect(await findUnsealRecord(PASSPORT, answerWith(shapes.nulled))).toEqual({ state: "none" });
+    expect(await findUnsealRecord(PASSPORT, answerWith(shapes.missing))).toMatchObject({ state: "unavailable" });
+  }, 30_000);
+
+  it("reads the private listings' null as an empty list and a missing files key as cannot tell", async () => {
+    const { listPrivatePage } = await import("../src/ipfs/pinata.js");
+    for (const shape of ["empty", "nulled"] as const) {
+      recording(() => json(shapes[shape]), () => json(shapes[shape]));
+      expect(await findPrivateByName(NAME), shape).toEqual([]);
+      expect(await listPrivatePage(undefined, 1), shape).toEqual({ files: [], next: undefined });
+      vi.unstubAllGlobals();
+    }
+
+    recording(() => json(shapes.missing), () => json(shapes.missing));
+    await expect(findPrivateByName(NAME)).rejects.toThrow(/cannot tell/);
+    await expect(listPrivatePage(undefined, 1)).rejects.toThrow(/cannot tell/);
   });
 });

@@ -108,7 +108,12 @@ export type SealedResult = Omit<PreparedResult, "thumbnail" | "manifestDoc">;
 export interface PrepareOptions {
   title: string;
   claimGenerator: string;
-  action: "c2pa.created" | "c2pa.edited";
+  /**
+   * "c2pa.created" only for a picture Moolam's own agent made. An upload is "c2pa.opened" and an
+   * edit "c2pa.edited", and neither states a source type: Moolam saw the file, not how it was made.
+   */
+  action: "c2pa.created" | "c2pa.opened" | "c2pa.edited";
+  /** Only with "c2pa.created"; embedManifest refuses it on any other action. */
   digitalSourceType?: string;
   /** What the creator said about AI use, written into the manifest. Left out means they said nothing. */
   training?: TrainingConsent;

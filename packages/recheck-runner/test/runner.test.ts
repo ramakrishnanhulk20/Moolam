@@ -836,9 +836,14 @@ describe("nothing from the env file leaves the process (R11)", () => {
 /**
  * The verify service's queue as packages/verifier/src/recheck/queue.ts keeps it, cut down to what the
  * runner can see: a page of the fifty oldest pending requests, a claim that answers 404 for no
- * request and 409 for a finished or running one, and a done that only a running request accepts.
+ * request and 409 for a finished or running one, a done that only a running request accepts, and
+ * revive, which is the service offering a claim nobody closed again once it passed its timeout.
  */
-function modelQueue(ids: string[]): { client: QueueClient; status: (passportId: string) => string | undefined } {
+function modelQueue(ids: string[]): {
+  client: QueueClient;
+  status: (passportId: string) => string | undefined;
+  revive: (passportId: string) => void;
+} {
   const items = new Map<string, string>(ids.map((one) => [one, "pending"]));
   const client: QueueClient = {
     pending: async () =>
@@ -875,7 +880,15 @@ function modelQueue(ids: string[]): { client: QueueClient; status: (passportId: 
       items.set(report.passportId, report.reportTx === undefined ? "failed" : "done");
     },
   };
-  return { client, status: (passportId) => items.get(passportId) };
+  return {
+    client,
+    status: (passportId) => items.get(passportId),
+    revive: (passportId) => {
+      if (items.get(passportId) === "running") {
+        items.set(passportId, "pending");
+      }
+    },
+  };
 }
 
 describe("the runner review findings, each shown failing on the code before WO-175", () => {
@@ -1143,5 +1156,40 @@ describe("the circuit breaker on refused reports (CLAUDE.md 6f)", () => {
     expect(kit.runs).toHaveLength(4);
     expect(summary.stopped).toBeUndefined();
     expect(kit.state().breaker).toEqual({ streak: [FOUR[3]], tripped: null });
+  });
+});
+
+describe("a report whose done never reached the service (verifier review pass 4, V19)", () => {
+  it("answers the passport the service offers again with the report it remembers, and never pays twice", async () => {
+    const service = modelQueue([ASKED]);
+    const kit = standIns({ rows: [row(ASKED)] });
+    const handedBack: DoneReport[] = [];
+    let lose = true;
+    kit.deps.queue = {
+      ...service.client,
+      done: async (report) => {
+        if (lose) {
+          lose = false;
+          throw new Error("the re-check done route answered 503");
+        }
+        handedBack.push(report);
+        await service.client.done(report);
+      },
+    };
+
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(1);
+    expect(service.status(ASKED)).toBe("running");
+    expect(kit.lines.join(" ")).toContain("could not report back to the queue");
+
+    // The claim passed its thirty minutes on the service, which offers the passport again.
+    service.revive(ASKED);
+    kit.deps.now = () => NOW + 31 * 60_000;
+    await onePass(kit.deps);
+
+    expect(kit.runs).toHaveLength(1);
+    expect(kit.state().reports).toBe(1);
+    expect(handedBack).toEqual([{ passportId: ASKED, reportTx: `0x${"f".repeat(64)}` }]);
+    expect(service.status(ASKED)).toBe("done");
   });
 });

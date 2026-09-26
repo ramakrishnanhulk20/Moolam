@@ -350,15 +350,17 @@ export async function verifyPaidRoutes(
           return reply.code(status).send({ error: error instanceof Error ? error.message : String(error) });
         }
         const replay = await replayFor(seen, bytes, charged);
-        if (replay !== undefined) {
-          request.log.info({ ...where, state: replay.state }, "replayed: this payment already bought an answer");
-          if (replay !== seen) {
-            ledger.remember(offered.nonce, replay);
+        if (replay.kind === "serve") {
+          request.log.info({ ...where, state: replay.entry.state }, "replayed: this payment already bought an answer");
+          if (replay.entry !== seen) {
+            ledger.remember(offered.nonce, replay.entry);
           }
-          return reply.headers(replay.headers).send(replay.payload);
+          return reply.headers(replay.entry.headers).send(replay.entry.payload);
         }
-        if (seen.state === "unknown") {
-          // The chain says this payment was not spent, so it goes through as new.
+        // Only the chain saying "not spent" about this very file lets the held answer go, so the
+        // payment can go through as new. Another file, or a chain read that failed, keeps it for
+        // the retry that can prove the payment (review pass 4, V21).
+        if (replay.kind === "not-spent") {
           ledger.forget(offered.nonce);
         }
       }
@@ -478,21 +480,34 @@ export async function verifyPaidRoutes(
 }
 
 /**
- * The answer a repeat of a remembered payment gets, or undefined when it gets none from memory.
- * The file must be the one the answer is about. An answer held back as unknown is handed over only
- * once the chain shows the payment spent, and comes back marked settled so the chain is not asked
- * again.
+ * What a repeat of a remembered payment gets from memory, and why when it gets nothing.
+ *
+ * "serve" hands the entry over: the file is the one the answer is about, and the payment is known
+ * to be spent, which for an answer held back as unknown means the chain shows it now; that entry
+ * comes back marked settled so the chain is not asked again. "other-file" is the right payment
+ * with the wrong file. "not-spent" is the chain answering that the payment was never spent, and
+ * "cannot-tell" is a chain read that failed or a held entry with no proof to ask about.
  */
-async function replayFor(seen: LedgerEntry, bytes: Buffer, charged: ChargedCheck): Promise<LedgerEntry | undefined> {
+type Replay =
+  | { kind: "serve"; entry: LedgerEntry }
+  | { kind: "other-file" }
+  | { kind: "not-spent" }
+  | { kind: "cannot-tell" };
+
+async function replayFor(seen: LedgerEntry, bytes: Buffer, charged: ChargedCheck): Promise<Replay> {
   if (sha256Hex(bytes) !== seen.upload) {
-    return undefined;
+    return { kind: "other-file" };
   }
   if (seen.state !== "unknown") {
-    return seen;
+    return { kind: "serve", entry: seen };
   }
   const proof = seen.proof as { payment: PaymentPayload; requirements: PaymentRequirements } | undefined;
-  if (proof === undefined || (await charged(proof.payment, proof.requirements)) !== true) {
-    return undefined;
+  if (proof === undefined) {
+    return { kind: "cannot-tell" };
   }
-  return { ...seen, state: "settled" };
+  const spent = await charged(proof.payment, proof.requirements);
+  if (spent === true) {
+    return { kind: "serve", entry: { ...seen, state: "settled" } };
+  }
+  return spent === false ? { kind: "not-spent" } : { kind: "cannot-tell" };
 }
