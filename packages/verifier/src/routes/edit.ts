@@ -29,10 +29,15 @@ import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
+import { refusedByPinata } from "../sealed.js";
 import { FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
 import {
   EDIT_THUMBNAIL_TOO_LARGE_REASON,
+  FINGERPRINT_UNSTABLE_REASON,
+  FingerprintUnstable,
+  SIGNED_FILE_TOO_LARGE_REASON,
   ThumbnailTooLarge,
+  assertStableFingerprint,
   prepareOrFallback,
   type PreparedResult,
 } from "../prepare.js";
@@ -95,13 +100,16 @@ interface EditContext {
  * id, so the browser can watch the registry for that one passport instead of guessing which edit
  * under the parent is theirs.
  *
- * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 409
+ * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 413
+ * `signed-file-too-large` when signing grew the file past the upload cap, 409
  * `no-signer` when the owner has granted nothing this app can use, 409 `already-registered` when
  * the child is on chain already, 404 `no-parent`, 403 `not-owner`, 429 `quota` past EDITS_PER_DAY
  * and 429 `global-limit` once GLOBAL_EDITS_PER_DAY is spent for everyone,
  * 502 `pin-failed`, `sign-failed`, `send-failed`, `send-pending`, `privy-unavailable` or
  * `chain-unavailable`, 422 `thumbnail-too-large` for a picture too detailed for the Chainlink
- * fetch budget, and 503 `busy`.
+ * fetch budget, 422 `fingerprint-unstable` when the picture's own thumbnail is further from its
+ * pHash than the match threshold, and 503 `busy`. The two 413s and both 422s pin nothing and send
+ * nothing, so both allowances come back.
  */
 export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   const quota = dailyQuota(env.EDITS_PER_DAY);
@@ -285,14 +293,28 @@ async function append(
       // The holder says this is an edit of their passport, and that is all Moolam knows about how
       // it was made, so the manifest records the file opened and edited with no source type
       // (review pass 4, V22).
-      edited = await app.verifier.runPrepare(() =>
-        prepareOrFallback(upload.bytes, {
+      // The edit is judged by the thumbnail the runner's re-check will hash, exactly as /prepare
+      // judges an upload, because this route pins and sends the edit itself (review pass 6,
+      // intake 2).
+      edited = await app.verifier.runPrepare(async () => {
+        const prepared = await prepareOrFallback(upload.bytes, {
           title: upload.title,
           claimGenerator: CLAIM_GENERATOR,
           action: "c2pa.edited",
-        }),
-      );
+        });
+        await assertStableFingerprint(prepared.print.phash, prepared.thumbnail);
+        return prepared;
+      });
     } catch (error) {
+      if (error instanceof FingerprintUnstable) {
+        request.log.warn({ url: request.url, distance: error.distance }, "rejected: /edit fingerprint unstable");
+        return reply.code(422).send({
+          error: "fingerprint-unstable",
+          limit: error.limit,
+          distance: error.distance,
+          reason: FINGERPRINT_UNSTABLE_REASON,
+        });
+      }
       if (error instanceof Busy) {
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit busy");
         return reply.code(503).send({ error: "busy" });
@@ -313,6 +335,16 @@ async function append(
       // truncated upload only fails here. That is the caller's file, not this service breaking.
       request.log.warn({ url: request.url, reason: reasonOf(error) }, "rejected: /edit undecodable image");
       return reply.code(415).send({ error: "not-an-image", reason: UNDECODABLE });
+    }
+
+    // Signing can re-encode at quality 95 and adds the manifest store, so an upload under the cap
+    // can come out over it, and /verify could never take the registered file back (review pass 6,
+    // intake 3). Refused before the duplicate read and before anything is pinned.
+    if (edited.bytes.length > MAX_UPLOAD_BYTES) {
+      request.log.warn({ url: request.url, bytes: edited.bytes.length }, "rejected: /edit signed file over the upload cap");
+      return reply
+        .code(413)
+        .send({ error: "signed-file-too-large", limit: MAX_UPLOAD_BYTES, reason: SIGNED_FILE_TOO_LARGE_REASON });
     }
 
     if (!edited.embedded) {
@@ -341,7 +373,12 @@ async function append(
       edited.manifestDoc === undefined ? Promise.resolve(undefined) : pinJson(edited.manifestDoc, `${slug}-c2pa.json`),
     ]);
     const attempted = [imagePin, thumbnailPin, manifestPin];
-    pinned = attempted.some((one) => one.status === "fulfilled" && one.value !== undefined);
+    // A pin that failed after its bytes left this process may still have stored them, so only
+    // Pinata's own refusal, or a request never sent, counts as nothing landed (review pass 6,
+    // intake 4). The rule is the one the private copy follows.
+    pinned = attempted.some((one) =>
+      one.status === "fulfilled" ? one.value !== undefined : !refusedByPinata(one.reason),
+    );
 
     if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
       // pinFile's message carries Pinata's status and its answer, and never the token.

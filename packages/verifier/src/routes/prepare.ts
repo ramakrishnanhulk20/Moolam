@@ -40,6 +40,7 @@ import {
   SEALED_METADATA_REFUSED,
   dropPrivateCopy,
   keepPrivateCopy,
+  refusedByPinata,
   registrationOf,
   sealedMetadata,
   signedFile,
@@ -396,6 +397,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           } catch (error) {
             const reason = error instanceof Error ? error.message : String(error);
             request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
+            pinned ||= !refusedByPinata(error);
             if (privateCopy !== undefined) {
               await dropPrivateCopy(privateCopy, request.log);
             }
@@ -430,7 +432,12 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             : pinJson(published.manifestDoc, `${slug}-c2pa.json`),
         ]);
         const attempted = [imagePin, thumbnailPin, manifestPin];
-        pinned = attempted.some((one) => one.status === "fulfilled" && one.value !== undefined);
+        // A pin that failed after its bytes left this process may still have stored them, so only
+        // Pinata's own refusal, or a request never sent, counts as nothing landed (review pass 6,
+        // intake 4). The rule is the one the private copy follows.
+        pinned = attempted.some((one) =>
+          one.status === "fulfilled" ? one.value !== undefined : !refusedByPinata(one.reason),
+        );
 
         if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
           // pinFile's message carries Pinata's status and its answer, and never the token.

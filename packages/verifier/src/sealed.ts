@@ -10,7 +10,7 @@ import {
 } from "./consent.js";
 import { passportExists } from "./edit/registry.js";
 import type { Fingerprint, Hex } from "./fingerprint.js";
-import { PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, type PrivateFile } from "./ipfs/pinata.js";
+import { PinRefused, PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, type PrivateFile } from "./ipfs/pinata.js";
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
 import { PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } from "./prepare.js";
 
@@ -419,21 +419,21 @@ export async function keepPrivateCopy(
       log.error({ passportId: id, fileId: error.fileId, reason }, "rejected: the private copy is not private");
       return { refused: { status: 409, body: PRIVATE_COPY_NOT_PRIVATE }, landed: true };
     }
-    const landed = !refusedByPinata(reason);
+    const landed = !refusedByPinata(error);
     log.error({ passportId: id, reason, landed }, "rejected: the private copy was not kept");
     return { refused: { status: 502, body: { error: "pin-failed" } }, landed };
   }
 }
 
 /**
- * Whether pinPrivateFile's error is Pinata answering with a 4xx, the one failure that says the file
- * was not taken. pinPrivateFile reports that answer as "Pinata refused the private upload of
- * <name>: <status>", and this reads the status from the end of that message. Every other message,
- * including one this rule does not know, reads as "may have landed", which keeps the slot spent.
+ * Whether a failed pin, private or public, left Pinata unable to hold the file: it answered with a
+ * 4xx, or the request never left this process. Both pin functions say so by throwing PinRefused,
+ * and only that class. Every other failure, including one this rule does not know, reads as "may
+ * have landed", which keeps the day's slot spent. /prepare and /edit ask the same question of
+ * their public pins (review pass 6, intake 4).
  */
-function refusedByPinata(message: string): boolean {
-  const status = /^Pinata refused the private upload of .+: (\d{3})$/.exec(message)?.[1];
-  return status !== undefined && status.startsWith("4");
+export function refusedByPinata(error: unknown): boolean {
+  return error instanceof PinRefused;
 }
 
 /**

@@ -41,10 +41,13 @@ const uploadResponseSchema = z.object({
  * on the public network and names the content id computed here for the bytes sent. Anything else
  * would let a caller publish, record or delete on the strength of a file that is not this one.
  *
- * Throws when the buffer is empty, when Pinata refuses the upload, when an upload stalls past the
- * timeout, or when the answer is not the shape their API documents. Throws PinNotConfirmed when
- * the answer names another content id or another network. A 5xx is retried once, because a
- * gateway hiccup in the middle of a seed run would otherwise cost a whole set of uploads.
+ * Throws PinRefused when nothing was sent (an empty buffer, no token, a file too large to address)
+ * or Pinata refused the upload with a 4xx, the two cases where it cannot hold the file. Throws a
+ * plain Error when an upload stalls past the timeout, when both attempts answer a 5xx, or when the
+ * answer is not the shape their API documents, and PinNotConfirmed when the answer names another
+ * content id or another network: each of those may come after Pinata stored the file. A 5xx is
+ * retried once, because a gateway hiccup in the middle of a seed run would otherwise cost a whole
+ * set of uploads.
  */
 export async function pinFile(
   bytes: Buffer,
@@ -53,10 +56,10 @@ export async function pinFile(
   options: PinOptions = {},
 ): Promise<{ cid: string; uri: `ipfs://${string}`; size: number }> {
   if (bytes.length === 0) {
-    throw new Error(`Refusing to pin ${name}: there are no bytes to pin.`);
+    throw new PinRefused(`Refusing to pin ${name}: there are no bytes to pin.`);
   }
   if (name.length === 0 || contentType.length === 0) {
-    throw new Error("pinFile needs a file name and a content type.");
+    throw new PinRefused("pinFile needs a file name and a content type.");
   }
 
   // A Node Buffer can sit on a shared ArrayBuffer, which File will not accept, so the bytes are
@@ -66,7 +69,12 @@ export async function pinFile(
   form.append("network", "public");
   form.append("name", name);
 
-  const expected = contentIdOf(bytes);
+  let expected: string;
+  try {
+    expected = contentIdOf(bytes);
+  } catch (error) {
+    throw new PinRefused(`Refusing to pin ${name}: ${error instanceof Error ? error.message : String(error)}`);
+  }
   const data = await upload(form, name, options.timeoutMs ?? PIN_TIMEOUT_MS);
   if (data.network !== "public" || data.cid !== expected) {
     throw new PinNotConfirmed(
@@ -87,7 +95,7 @@ export async function pinJson(value: unknown, name: string): Promise<{ cid: stri
   try {
     text = `${JSON.stringify(value, null, 2)}\n`;
   } catch (error) {
-    throw new Error(`Cannot turn ${name} into JSON: ${error instanceof Error ? error.message : String(error)}`);
+    throw new PinRefused(`Cannot turn ${name} into JSON: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   const pinned = await pinFile(Buffer.from(text, "utf8"), name, "application/json");
@@ -102,6 +110,23 @@ export class PinNotConfirmed extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PinNotConfirmed";
+  }
+}
+
+/**
+ * Pinata cannot hold the file because of this call: it answered with a 4xx and nothing before
+ * that answer was a 5xx, or the request never left this process (no bytes, no name, no token, a
+ * file too large to address, a document that is not JSON).
+ *
+ * It is the only pin failure after which nothing can have been stored. A 5xx, an abort after the
+ * body went out, a dropped connection, an answer that would not parse and PinNotConfirmed can each
+ * come after Pinata kept the file, so they are thrown as anything but this class, and a caller
+ * that asks "may this have landed" reads yes for them (refusedByPinata in sealed.ts).
+ */
+export class PinRefused extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PinRefused";
   }
 }
 
@@ -209,13 +234,14 @@ async function upload(
   timeoutMs: number,
 ): Promise<{ cid: string; size?: number; network?: string | null }> {
   let lastServerError = "";
+  const token = unsentWithout(readToken);
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     // A fresh signal per attempt: a retry after a stall needs its own clock, not the remains of
     // the first one's.
     const response = await fetch(UPLOAD_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${readToken()}` },
+      headers: { Authorization: `Bearer ${token}` },
       body: form,
       signal: AbortSignal.timeout(timeoutMs),
     });
@@ -225,7 +251,9 @@ async function upload(
       continue;
     }
     if (!response.ok) {
-      throw new Error(`Pinata refused to pin ${what}: ${response.status} ${await response.text()}`);
+      const message = `Pinata refused to pin ${what}: ${response.status} ${await response.text()}`;
+      // A refusal on the retry says nothing about the first attempt, which may have been stored.
+      throw lastServerError.length === 0 ? new PinRefused(message) : new Error(message);
     }
 
     const parsed = uploadResponseSchema.safeParse(await response.json());
@@ -345,9 +373,10 @@ const downloadLinkSchema = z.object({ data: z.string().min(1) });
  * the same name, and the caller would rather refuse than guess.
  *
  * Throws PrivateCopyNotPrivate when the answer's network is not `private` (a missing field
- * included) or its name is not the one sent. Throws a plain Error when the bytes or name are empty,
- * when Pinata refuses (the message names the status only), after PRIVATE_CALL_TIMEOUT_MS, or when
- * the answer has no file id.
+ * included) or its name is not the one sent. Throws PinRefused when the bytes, the name or the
+ * token are missing, or when Pinata answers with a 4xx. Throws a plain Error for any other status
+ * (the message names the status only), after PRIVATE_CALL_TIMEOUT_MS, or when the answer has no
+ * file id.
  */
 export async function pinPrivateFile(
   bytes: Buffer,
@@ -355,10 +384,10 @@ export async function pinPrivateFile(
   keyvalues: Record<string, string>,
 ): Promise<PrivateFile> {
   if (bytes.length === 0) {
-    throw new Error(`Refusing to keep ${name} privately: there are no bytes.`);
+    throw new PinRefused(`Refusing to keep ${name} privately: there are no bytes.`);
   }
   if (name.length === 0) {
-    throw new Error("pinPrivateFile needs a file name.");
+    throw new PinRefused("pinPrivateFile needs a file name.");
   }
 
   const form = new FormData();
@@ -369,12 +398,13 @@ export async function pinPrivateFile(
 
   const response = await fetch(UPLOAD_URL, {
     method: "POST",
-    headers: { Authorization: `Bearer ${readToken()}` },
+    headers: { Authorization: `Bearer ${unsentWithout(readToken)}` },
     body: form,
     signal: AbortSignal.timeout(PRIVATE_CALL_TIMEOUT_MS),
   });
   if (!response.ok) {
-    throw new Error(`Pinata refused the private upload of ${name}: ${response.status}`);
+    const message = `Pinata refused the private upload of ${name}: ${response.status}`;
+    throw response.status >= 400 && response.status < 500 ? new PinRefused(message) : new Error(message);
   }
 
   const parsed = privateUploadSchema.safeParse(await response.json());
@@ -591,6 +621,15 @@ function dedicatedGateway(): URL {
     throw new Error("PINATA_GATEWAY_URL must be the account's own https://<name>.mypinata.cloud gateway to mint a private link.");
   }
   return gateway;
+}
+
+/** The token for an upload, or PinRefused with readToken's own message: without it nothing is sent. */
+function unsentWithout(read: () => string): string {
+  try {
+    return read();
+  } catch (error) {
+    throw new PinRefused(error instanceof Error ? error.message : String(error));
+  }
 }
 
 /**

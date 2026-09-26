@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { manifestUnreadable, readManifest, type ManifestSummary } from "../c2pa.js";
 import { FETCH_TIMEOUT_MS, MAX_UPLOAD_BYTES } from "../env.js";
-import { ImageTooLarge } from "../fingerprint.js";
+import { ImageTooLarge, UndecodableImage, UnsupportedImageFormat } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import type { MatchResult } from "../match.js";
 import { BlockedTarget, UnreachableTarget, safeFetch } from "../net/safeFetch.js";
@@ -13,6 +13,15 @@ export class BadRequest extends Error {
   constructor(message: string, statusCode = 400) {
     super(message);
     this.statusCode = statusCode;
+  }
+}
+
+/** A failure of this service rather than of the request. Routes answer it with its status, 503. */
+export class ServiceFault extends Error {
+  readonly statusCode = 503;
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "ServiceFault";
   }
 }
 
@@ -125,6 +134,9 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+/** What a caller is told when this service, not their picture, failed while matching. */
+export const SERVICE_FAULT_REASON = "the service could not read this picture right now, try again";
+
 /**
  * Matches an image against the registry and reads any manifest it carries, in
  * the JSON shape both routes answer with.
@@ -132,10 +144,14 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
  * The match runs behind the service's concurrency gate, so a burst of large
  * uploads queues instead of decoding all at once.
  *
- * Throws BadRequest: 413 when the image is over the pixel limit, 400 when it is
- * not an image we can decode. Throws Busy, which carries 503, when no slot came
- * free in time: that is the service being full, not a bad upload, and turning it
- * into a 400 would tell the caller to change an image that is fine.
+ * Throws BadRequest: 413 when the image is over the pixel limit, 400 only when
+ * the upload itself is at fault (not one of the three formats, or pixels the
+ * decoders refused). Throws ServiceFault, 503 with SERVICE_FAULT_REASON, for
+ * anything else, which is this service failing: a blockhash worker that stopped
+ * or timed out, a hash of the wrong length, a decoder out of memory, or a
+ * failure nobody named. That one is logged, because telling the caller to change
+ * a file that is fine would hide it (review pass 6, answers 7). Throws Busy,
+ * which carries 503, when no slot came free in time.
  */
 export async function verifyBytes(
   app: FastifyInstance,
@@ -158,7 +174,14 @@ export async function verifyBytes(
       throw new BadRequest(error.message, 413);
     }
     const detail = error instanceof Error ? error.message : String(error);
-    throw new BadRequest(`the upload is not an image we can read: ${detail}`);
+    if (error instanceof UnsupportedImageFormat || error instanceof UndecodableImage) {
+      throw new BadRequest(`the upload is not an image we can read: ${detail}`);
+    }
+    app.log.error(
+      { reason: detail, fault: error instanceof Error ? error.name : typeof error },
+      "verify: the service failed while matching",
+    );
+    throw new ServiceFault(SERVICE_FAULT_REASON, { cause: error });
   }
 
   return { result: renderResult(result), manifest: renderManifest(manifest) };

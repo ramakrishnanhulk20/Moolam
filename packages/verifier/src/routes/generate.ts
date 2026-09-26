@@ -26,12 +26,16 @@ import {
 } from "../metadata.js";
 import type { PrivateFile } from "../ipfs/pinata.js";
 import {
+  FINGERPRINT_UNSTABLE_REASON,
+  FingerprintUnstable,
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
   THUMBNAIL_TOO_LARGE_REASON,
   ThumbnailTooLarge,
+  assertStableFingerprint,
   makeThumbnail,
   prepareOrFallback,
   prepareSealed,
+  recheckThumbnail,
   type PreparedResult,
   type SealedResult,
 } from "../prepare.js";
@@ -204,7 +208,9 @@ const SEALED_FILE_REFUSED = {
  * `creator-mismatch` when the creator is not one of the caller's wallets, 429 `quota` past
  * GENERATE_PER_DAY in a rolling day, 429 `global-limit` once GLOBAL_GENERATIONS_PER_DAY is spent
  * for everyone, 422 `thumbnail-too-large` when a drawing is too detailed for the Chainlink fetch
- * budget, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
+ * budget, 422 `fingerprint-unstable` when a drawing's own thumbnail is further from its pHash than
+ * the match threshold, which pins nothing and keeps both slots spent, 502 `model-failed`,
+ * `pin-failed` or `sign-failed` when one of
  * the three outside services will not play, and 503 `busy` when no drawing slot came free.
  *
  * A picture the provider never drew gives the daily slot back. A call that timed out or died in
@@ -304,6 +310,18 @@ export async function generateRoutes(
           error: "thumbnail-too-large",
           limit: error.limit,
           reason: privateRecheck ? PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON : THUMBNAIL_TOO_LARGE_REASON,
+        });
+      }
+      // A drawing whose fingerprint would not survive its own thumbnail was drawn and paid for, and
+      // both slots stay spent: handing them back would let one person spend the day's budget on
+      // pictures that can never register (review pass 6, intake 2).
+      if (error instanceof FingerprintUnstable) {
+        request.log.warn({ url: request.url, distance: error.distance }, "rejected: /generate fingerprint unstable");
+        return reply.code(422).send({
+          error: "fingerprint-unstable",
+          limit: error.limit,
+          distance: error.distance,
+          reason: FINGERPRINT_UNSTABLE_REASON,
         });
       }
       if (error instanceof Busy) {
@@ -607,14 +625,19 @@ async function draw(
     digitalSourceType: AI_SOURCE_TYPE,
     training,
   };
+  // Each drawing is judged by the thumbnail a re-check would hash, exactly as /prepare judges an
+  // upload: the private copy when there is one, the copy an unseal would publish for a plain
+  // sealed drawing, and the pinned thumbnail otherwise (review pass 6, intake 2).
   if (sealed) {
     const prepared = await prepareSealed(image.bytes, settings);
     const privateThumbnail = privateRecheck
       ? await makeThumbnail(prepared.bytes, PRIVATE_THUMBNAIL_MAX_BYTES)
       : undefined;
+    await assertStableFingerprint(prepared.print.phash, privateThumbnail ?? (await recheckThumbnail(prepared.bytes)));
     return { ...prepared, privateThumbnail, model: image.model, usage: image.usage, sealed: true };
   }
   const prepared = await prepareOrFallback(image.bytes, settings);
+  await assertStableFingerprint(prepared.print.phash, prepared.thumbnail);
   return { ...prepared, model: image.model, usage: image.usage, sealed: false };
 }
 

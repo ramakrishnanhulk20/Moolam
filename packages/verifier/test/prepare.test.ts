@@ -39,6 +39,7 @@ import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import { FILTER_BOMB_SVG, makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
+import { grownWithTables } from "./jpegParts.js";
 
 // env.ts validates once at import, so the token and the app id have to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The token is a fake: every call
@@ -524,15 +525,9 @@ describe("POST /prepare", () => {
   }, 60_000);
 
   it("intake 2: refuses with 413 when signing grows an upload just under the cap past it, public or sealed", async () => {
-    // Comment segments survive every step before signing, so the file stays just under the cap
-    // until the manifest store goes in.
-    const picture = await makeImage(41);
-    const room = MAX_UPLOAD_BYTES - 20_000 - picture.length;
-    const filler: Buffer[] = [];
-    for (let left = room; left > 4; left -= 65_537) {
-      filler.push(segment(0xfe, Buffer.alloc(Math.min(65_533, left - 4), 0x20)));
-    }
-    const nearCap = withSegments(picture, filler);
+    // Repeated quantisation tables survive every step before signing, where comments no longer do
+    // (pass 6, intake 1), so the file stays just under the cap until the manifest store goes in.
+    const nearCap = grownWithTables(await makeImage(41), MAX_UPLOAD_BYTES - 20_000);
     expect(nearCap.length).toBeLessThan(MAX_UPLOAD_BYTES);
     expect(nearCap.length).toBeGreaterThan(MAX_UPLOAD_BYTES - 30_000);
 

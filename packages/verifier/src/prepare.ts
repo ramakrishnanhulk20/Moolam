@@ -1,5 +1,14 @@
 import sharp from "sharp";
-import { SignerRefusedFile, SignerUnavailable, embedManifest, readManifest, type ManifestSummary } from "./c2pa.js";
+import {
+  SignerRefusedFile,
+  SignerUnavailable,
+  c2paStoreInstance,
+  embedManifest,
+  jumbfPacket,
+  readManifest,
+  type JumbfPacket,
+  type ManifestSummary,
+} from "./c2pa.js";
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
   MAX_IMAGE_PIXELS,
@@ -345,9 +354,10 @@ function refusalOrThrow(error: unknown): SignerRefusedFile {
  * and the thumbnail all describe one file.
  *
  * A JPEG that is already upright and already baseline is not re-encoded, because that would cost
- * image quality for no gain. It loses its EXIF, XMP and IPTC segments instead, byte for byte, so
- * the file pinned to public IPFS for good carries no camera location or serial whatever format it
- * arrived in: the re-encode below drops them too (review pass 5, intake 6).
+ * image quality for no gain. It is rebuilt instead from the segments a decoder needs, byte for
+ * byte, so the file pinned to public IPFS for good carries no camera location or serial wherever
+ * the camera hid it: the re-encode below drops all of it too (review pass 5, intake 6, and pass 6,
+ * intake 1).
  *
  * Transparency is flattened onto white, since a JPEG has no alpha channel to carry it, by the same
  * flatten fingerprint() and the eight variants apply to a query.
@@ -355,9 +365,9 @@ function refusalOrThrow(error: unknown): SignerRefusedFile {
 export async function uprightImage(source: Buffer): Promise<Buffer> {
   const header = await readImageHeader(source);
   if (header.format === "jpeg" && header.orientation === 1 && !(await isProgressive(source))) {
-    const stripped = withoutCameraMetadata(source);
-    if (stripped !== null) {
-      return stripped;
+    const rebuilt = decodableSegmentsOnly(source);
+    if (rebuilt !== null) {
+      return rebuilt;
     }
   }
 
@@ -366,49 +376,150 @@ export async function uprightImage(source: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
-/** APP1 carries EXIF and XMP, APP13 carries IPTC. Nothing else in a JPEG names a place or a camera. */
-const CAMERA_METADATA_MARKERS = new Set([0xe1, 0xed]);
+/** What the rebuild does with one header segment: keep it, leave it out, or give up and re-encode. */
+type SegmentFate = "keep" | "drop" | "re-encode";
+
+const SOI = Buffer.from([0xff, 0xd8]);
+const APP0 = 0xe0;
+const APP2 = 0xe2;
+const APP11 = 0xeb;
+const APP14 = 0xee;
+const COM = 0xfe;
+/** Baseline and extended sequential frames, the two the Chainlink sandbox's jpeg-js decodes. */
+const SEQUENTIAL_FRAMES = new Set([0xc0, 0xc1]);
+/** Quantisation tables, Huffman tables and the restart interval: what the one scan is decoded with. */
+const DECODING_TABLES = new Set([0xdb, 0xc4, 0xdd]);
 
 /**
- * The same JPEG without its APP1 and APP13 segments, every other byte kept in order: the JFIF
- * header, the colour profile, the Adobe transform marker, any C2PA store in APP11, the tables and
- * the compressed scans. No pixel is decoded or re-encoded.
+ * The same JPEG rebuilt from the segments that decide its pixels and nothing else: the start
+ * marker, the JFIF header, the colour profile, the Adobe colour transform marker, the C2PA store
+ * when the upload carries one, the tables, the one frame, and the one scan up to its end marker.
+ * No pixel is decoded or re-encoded, so the picture is exactly the upload's.
  *
- * The file is the caller's, so every length is checked against the buffer. Anything this walk does
- * not recognise before the first scan returns null, and the caller re-encodes instead, which drops
- * the metadata too: a malformed header costs quality, never a leaked location.
+ * Every other application segment and every comment is left out, whatever it says: those are
+ * where cameras put EXIF, XMP, IPTC, GoPro GPS blocks, maker notes, depth maps and serial numbers,
+ * and none of them changes a decoded pixel. A JUMBF box other than the C2PA store is left out too,
+ * decided by the same reader the manifest hash uses (jumbfPacket in c2pa.ts). Nothing after the
+ * scan's end marker is kept: a second image, a gain map, a motion clip or a trailer.
+ *
+ * Returns null, and the caller re-encodes, for anything else: a header segment that could change
+ * how the scan decodes and is not one of the tables above, a frame type the sandbox cannot read,
+ * more than one frame, a second scan, a scan with no end marker, or a length that runs past the
+ * buffer. A structure this does not know costs quality, never a leaked location.
  */
-export function withoutCameraMetadata(jpeg: Buffer): Buffer | null {
+function decodableSegmentsOnly(jpeg: Buffer): Buffer | null {
   if (jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) {
     return null;
   }
-  const kept: Buffer[] = [jpeg.subarray(0, 2)];
+  const header: { marker: number; bytes: Buffer }[] = [];
   let offset = 2;
-  while (offset + 4 <= jpeg.length) {
-    if (jpeg[offset] !== 0xff) {
+  for (;;) {
+    if (offset + 4 > jpeg.length || jpeg[offset] !== 0xff) {
       return null;
     }
     const marker = jpeg[offset + 1] as number;
-    // Fill bytes before a marker, and the standalone markers, carry no length.
+    // Fill bytes before a marker carry no length.
     if (marker === 0xff) {
       offset += 1;
       continue;
     }
+    if (marker === 0xda) {
+      break;
+    }
+    // Every marker left before the scan carries a length, except the standalone ones below.
     if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) {
       return null;
-    }
-    if (marker === 0xda) {
-      kept.push(jpeg.subarray(offset));
-      return Buffer.concat(kept);
     }
     const end = offset + 2 + jpeg.readUInt16BE(offset + 2);
     if (end - offset < 4 || end > jpeg.length) {
       return null;
     }
-    if (!CAMERA_METADATA_MARKERS.has(marker)) {
-      kept.push(jpeg.subarray(offset, end));
-    }
+    header.push({ marker, bytes: jpeg.subarray(offset, end) });
     offset = end;
+  }
+
+  const scanEnd = endOfScan(jpeg, offset);
+  if (scanEnd === null) {
+    return null;
+  }
+
+  const packets = header
+    .filter((one) => one.marker === APP11)
+    .map((one) => jumbfPacket(one.bytes.subarray(4)))
+    .filter((one): one is JumbfPacket => one !== null);
+  const store = c2paStoreInstance(packets);
+
+  const kept: Buffer[] = [SOI];
+  let frames = 0;
+  for (const one of header) {
+    const fate = fateOf(one.marker, one.bytes.subarray(4), store);
+    if (fate === "re-encode") {
+      return null;
+    }
+    if (fate === "keep") {
+      kept.push(one.bytes);
+      frames += SEQUENTIAL_FRAMES.has(one.marker) ? 1 : 0;
+    }
+  }
+  if (frames !== 1) {
+    return null;
+  }
+  kept.push(jpeg.subarray(offset, scanEnd));
+  return Buffer.concat(kept);
+}
+
+/** What happens to one header segment, from its marker and its payload. */
+function fateOf(marker: number, payload: Buffer, store: number | undefined): SegmentFate {
+  if (SEQUENTIAL_FRAMES.has(marker) || DECODING_TABLES.has(marker)) {
+    return "keep";
+  }
+  if (marker === APP0) {
+    return startsWith(payload, "JFIF\u0000") ? "keep" : "drop";
+  }
+  if (marker === APP2) {
+    return startsWith(payload, "ICC_PROFILE\u0000") ? "keep" : "drop";
+  }
+  if (marker === APP14) {
+    return startsWith(payload, "Adobe") ? "keep" : "drop";
+  }
+  if (marker === APP11) {
+    const packet = jumbfPacket(payload);
+    return packet !== null && store !== undefined && packet.instance === store ? "keep" : "drop";
+  }
+  if ((marker >= 0xe0 && marker <= 0xef) || marker === COM) {
+    return "drop";
+  }
+  return "re-encode";
+}
+
+function startsWith(payload: Buffer, prefix: string): boolean {
+  return payload.subarray(0, prefix.length).toString("latin1") === prefix;
+}
+
+/**
+ * Where the one scan that starts at `sos` ends, just past its end marker: the first FF D9 that is
+ * neither stuffed data (FF 00) nor a restart marker. Null when the scan header runs past the
+ * buffer, when the data meets any other marker first (a second scan, or a DNL), or when it never
+ * ends.
+ */
+function endOfScan(jpeg: Buffer, sos: number): number | null {
+  let at = sos + 2 + jpeg.readUInt16BE(sos + 2);
+  if (at > jpeg.length) {
+    return null;
+  }
+  while (at + 1 < jpeg.length) {
+    if (jpeg[at] !== 0xff) {
+      at += 1;
+      continue;
+    }
+    const next = jpeg[at + 1] as number;
+    if (next === 0x00 || (next >= 0xd0 && next <= 0xd7)) {
+      at += 2;
+    } else if (next === 0xff) {
+      at += 1;
+    } else {
+      return next === 0xd9 ? at + 2 : null;
+    }
   }
   return null;
 }

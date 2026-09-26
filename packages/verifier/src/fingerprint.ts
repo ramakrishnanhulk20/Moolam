@@ -91,6 +91,52 @@ export class UnsupportedImageFormat extends Error {
 }
 
 /**
+ * The upload's own pixels would not decode: sharp or the blockhash library refused the bytes, as
+ * they do a truncated or corrupt file. The file is at fault and sending it again will not help.
+ */
+export class UndecodableImage extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "UndecodableImage";
+  }
+}
+
+/**
+ * This service failed to fingerprint a picture: the blockhash worker stopped, crashed or ran past
+ * its limit, or a hashing library answered with a hash of the wrong length. None of these says
+ * anything about the upload, so a route answers them as its own fault and the caller may retry
+ * (review pass 6, answers 7).
+ */
+export class FingerprintFault extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = "FingerprintFault";
+  }
+}
+
+/**
+ * What a failure to decode the upload says about who is at fault. A decoder that ran out of memory
+ * is this host under pressure, and libvips ("out of memory") and libjpeg ("Insufficient memory")
+ * both say so with the word "memory", so that one is a FingerprintFault. The classes this file
+ * raises on purpose pass through as they are. Anything else a decoder threw while reading the
+ * upload's bytes is the upload's: UndecodableImage.
+ */
+function decodeFailure(error: unknown): Error {
+  if (
+    error instanceof FingerprintFault ||
+    error instanceof UndecodableImage ||
+    error instanceof ImageTooLarge ||
+    error instanceof UnsupportedImageFormat
+  ) {
+    return error;
+  }
+  const detail = error instanceof Error ? error.message : String(error);
+  return /memory/i.test(detail)
+    ? new FingerprintFault(detail, { cause: error })
+    : new UndecodableImage(detail, { cause: error });
+}
+
+/**
  * The raster formats the studio and the verify page take, the same three the web's ACCEPT list
  * names. Each is recognised by its own file signature, which covers the container and says
  * nothing about whether the pixels inside decode: that is still sharp's job, after this check.
@@ -133,8 +179,8 @@ export interface ImageHeader {
  * the other calls something else is refused too. Every route that reads an upload goes through
  * here before anything decodes it.
  *
- * Throws UnsupportedImageFormat for any other format, ImageTooLarge past the pixel limit, and a
- * plain Error when the bytes are not an image sharp can read.
+ * Throws UnsupportedImageFormat for any other format, ImageTooLarge past the pixel limit, and
+ * UndecodableImage when the bytes are not an image sharp can read.
  */
 export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
   const signed = rasterFormatOf(bytes);
@@ -150,7 +196,7 @@ export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
     if (/pixel limit/i.test(detail)) {
       throw new ImageTooLarge(`the image is over the ${MAX_IMAGE_PIXELS} pixel limit this service decodes`);
     }
-    throw error;
+    throw decodeFailure(error);
   }
   if (metadata.format !== signed) {
     throw new UnsupportedImageFormat("only JPEG, PNG and WebP pictures are taken");
@@ -185,7 +231,8 @@ export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
  *
  * Throws when the buffer is empty, when it is not a JPEG, PNG or WebP
  * (UnsupportedImageFormat), when the image is over the pixel limit
- * (ImageTooLarge), or when it is not an image sharp can decode.
+ * (ImageTooLarge), UndecodableImage when its pixels do not decode, and
+ * FingerprintFault when this service failed to hash a picture it could read.
  */
 export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
   if (bytes.length === 0) {
@@ -194,16 +241,26 @@ export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
 
   const header = await readImageHeader(bytes);
   const oriented = await hashableImage(bytes, header);
-  const [phashBits, blockhashHex] = await Promise.all([
+  // Both are waited for, and the pHash's failure is reported first: sharp decodes the same bytes,
+  // so when both fail it is the upload, not the worker, that the caller is told about.
+  const [phash, blockhash] = await Promise.allSettled([
     sharpPhash(oriented.bytes),
     blockhashOffThread(oriented.bytes, oriented.width * oriented.height),
   ]);
+  if (phash.status === "rejected") {
+    throw decodeFailure(phash.reason);
+  }
+  if (blockhash.status === "rejected") {
+    throw decodeFailure(blockhash.reason);
+  }
+  const phashBits = phash.value;
+  const blockhashHex = blockhash.value;
 
   if (phashBits.length !== PHASH_BITS) {
-    throw new Error(`expected a ${PHASH_BITS} bit pHash, got ${phashBits.length} bits`);
+    throw new FingerprintFault(`expected a ${PHASH_BITS} bit pHash, got ${phashBits.length} bits`);
   }
   if (blockhashHex.length !== BLOCKHASH_BITS / 4) {
-    throw new Error(`expected a ${BLOCKHASH_BITS} bit blockhash, got ${blockhashHex.length * 4} bits`);
+    throw new FingerprintFault(`expected a ${BLOCKHASH_BITS} bit blockhash, got ${blockhashHex.length * 4} bits`);
   }
 
   return {
@@ -227,9 +284,14 @@ export async function phashOf(bytes: Buffer): Promise<bigint> {
     throw new Error("phashOf needs a non-empty image buffer");
   }
   const oriented = await hashableImage(bytes, await readImageHeader(bytes));
-  const bits = await sharpPhash(oriented.bytes);
+  let bits: string;
+  try {
+    bits = await sharpPhash(oriented.bytes);
+  } catch (error) {
+    throw decodeFailure(error);
+  }
   if (bits.length !== PHASH_BITS) {
-    throw new Error(`expected a ${PHASH_BITS} bit pHash, got ${bits.length} bits`);
+    throw new FingerprintFault(`expected a ${PHASH_BITS} bit pHash, got ${bits.length} bits`);
   }
   return BigInt(`0b${bits}`);
 }
@@ -264,10 +326,14 @@ async function hashableImage(
   }
 
   const upright = sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate();
-  const { data, info } = await (header.hasAlpha ? flattenedOntoWhite(upright) : upright)
-    .png({ compressionLevel: 3 })
-    .toBuffer({ resolveWithObject: true });
-  return { bytes: data, width: info.width, height: info.height };
+  try {
+    const { data, info } = await (header.hasAlpha ? flattenedOntoWhite(upright) : upright)
+      .png({ compressionLevel: 3 })
+      .toBuffer({ resolveWithObject: true });
+    return { bytes: data, width: info.width, height: info.height };
+  } catch (error) {
+    throw decodeFailure(error);
+  }
 }
 
 /**
@@ -308,9 +374,9 @@ let runningWorkers = 0;
  * The imghash blockhash of an encoded picture, worked out on a worker thread so the thread that
  * answers requests never decodes pixels itself. A caller waits in line when both workers are busy.
  *
- * Rejects with imghash's own message for a file it cannot decode, and with a plain Error when a
- * worker crashes or runs past BLOCKHASH_TIMEOUT_MS; that worker is thrown away and the next
- * request gets a fresh one.
+ * Rejects with UndecodableImage carrying imghash's own message for a file it cannot decode, and
+ * with FingerprintFault when a worker crashes, stops or runs past BLOCKHASH_TIMEOUT_MS; that worker
+ * is thrown away and the next request gets a fresh one.
  */
 function blockhashOffThread(bytes: Buffer, pixels: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -354,13 +420,14 @@ function runOn(worker: Worker, request: BlockhashRequest): void {
     startWaiting();
   };
   const onMessage = (answer: BlockhashAnswer): void => {
-    finish("hex" in answer ? { hex: answer.hex } : { error: new Error(answer.error) }, false);
+    finish("hex" in answer ? { hex: answer.hex } : { error: decodeFailure(answer.error) }, false);
   };
-  const onError = (error: Error): void => finish({ error }, true);
+  const onError = (error: Error): void =>
+    finish({ error: new FingerprintFault(`the blockhash worker crashed: ${error.message}`, { cause: error }) }, true);
   const onExit = (code: number): void =>
-    finish({ error: new Error(`the blockhash worker stopped with code ${code}`) }, true);
+    finish({ error: new FingerprintFault(`the blockhash worker stopped with code ${code}`) }, true);
   const timer = setTimeout(
-    () => finish({ error: new Error(`the blockhash took longer than ${BLOCKHASH_TIMEOUT_MS} ms`) }, true),
+    () => finish({ error: new FingerprintFault(`the blockhash took longer than ${BLOCKHASH_TIMEOUT_MS} ms`) }, true),
     BLOCKHASH_TIMEOUT_MS,
   );
 

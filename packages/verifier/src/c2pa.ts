@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Builder, LocalSigner, Reader } from "@contentauth/c2pa-node";
+import { Builder, LocalSigner, Reader, createVerifySettings, settingsToJson } from "@contentauth/c2pa-node";
 import { TRAINING_ASSERTION_LABEL, trainingAssertion, type TrainingConsent } from "./consent.js";
 import { env } from "./env.js";
 import type { Hex } from "./types.js";
@@ -86,36 +86,56 @@ export function manifestUnreadable(): ManifestSummary {
 
 const MAX_FAILURE_CODES = 8;
 
+/** How long one manifest read may take before the file is answered as unreadable. */
+export const READ_MANIFEST_TIMEOUT_MS = 5_000;
+
+/**
+ * The reader is told never to fetch a remote manifest. The installed library does fetch one when a
+ * file with no embedded store names an address in its XMP (review pass 6, answers 3, measured in
+ * test/intake-bytes.test.ts), and that request would leave this host outside safeFetch's checks
+ * and with no time limit, to wherever an uploader pointed it.
+ */
+const READER_SETTINGS = settingsToJson(createVerifySettings({ remoteManifestFetch: false }));
+
 /**
  * Reads any C2PA manifest embedded in an image, and whether it validates.
  *
  * Never throws. A file with no manifest, or empty bytes, is present false. A
- * file the library cannot parse, or a JPEG that still carries C2PA segments the
- * library could not read, is present false with validation "unreadable", so a
- * damaged manifest costs the caller the manifest and never the match. A manifest
- * that parses is present, with the library's own validation state: anything but
- * a clean pass reads as invalid. Checking the signing certificate against a
- * trust list is deliberately not done here: the spike signs with a throwaway
- * certificate, so every manifest it reads back is reported as untrusted.
+ * file the library cannot parse, a JPEG that still carries C2PA segments the
+ * library could not read, a file that names a remote manifest (never fetched),
+ * and a read still running after READ_MANIFEST_TIMEOUT_MS are present false with
+ * validation "unreadable", so a damaged manifest costs the caller the manifest
+ * and never the match. A read given up on keeps running in the library until it
+ * ends, and its answer is dropped. A manifest that parses is present, with the
+ * library's own validation state: anything but a clean pass reads as invalid.
+ * Checking the signing certificate against a trust list is deliberately not done
+ * here: the spike signs with a throwaway certificate, so every manifest it reads
+ * back is reported as untrusted.
  */
 export async function readManifest(bytes: Buffer): Promise<ManifestSummary> {
   if (bytes.length === 0) {
     return { present: false };
   }
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<ManifestSummary>((resolve) => {
+    timer = setTimeout(() => resolve(manifestUnreadable()), READ_MANIFEST_TIMEOUT_MS);
+  });
   try {
-    return await summarise(bytes);
-  } catch {
-    return manifestUnreadable();
+    return await Promise.race([summarise(bytes).catch(() => manifestUnreadable()), limit]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 async function summarise(bytes: Buffer): Promise<ManifestSummary> {
-  const reader = await Reader.fromAsset({ buffer: bytes, mimeType: sniffMimeType(bytes) });
+  const reader = await Reader.fromAsset({ buffer: bytes, mimeType: sniffMimeType(bytes) }, READER_SETTINGS);
   const active = reader?.getActive();
   if (reader === null || active === undefined) {
     // The library answers "nothing here" for a store whose boxes it cannot parse, so the segments
-    // themselves are what tell a broken manifest apart from a file that never had one.
-    return extractManifestStore(bytes) === null ? { present: false } : manifestUnreadable();
+    // themselves are what tell a broken manifest apart from a file that never had one. A box that
+    // plainly names itself as something else is not a manifest; one whose name cannot be read may
+    // be the store, damaged.
+    return mayHoldStore(jumbfPackets(bytes)) ? manifestUnreadable() : { present: false };
   }
 
   const store = reader.json();
@@ -334,10 +354,92 @@ function softBindingAssertion(binding: { phash: bigint; blockhash: Hex }): unkno
   };
 }
 
+/** The label the C2PA specification gives the description box of the manifest store's superbox. */
+const C2PA_STORE_LABEL = "c2pa";
+
+/** One JUMBF packet from an APP11 segment, as JPEG XT splits a box across segments. */
+export interface JumbfPacket {
+  /** The box instance: every packet of one box carries the same number. */
+  instance: number;
+  /** 1 for the packet that opens the box, counting up from there. */
+  packet: number;
+  /** The label of the box's description box, read from packet 1 only, when it carries one. */
+  label?: string;
+  /** The box bytes this packet contributes, after its own packet header. */
+  payload: Buffer;
+}
+
 /**
- * Pulls the raw C2PA manifest store out of a JPEG by reassembling its APP11
- * segments, so the store can be hashed exactly as it sits in the file. Returns
- * null for any other container, which is all the spike needs.
+ * Reads one APP11 segment, the bytes after its length field, as a JUMBF packet: a two byte "JP"
+ * tag, the box instance, the packet number, then the box. Only packet 1 carries the box's own
+ * header, so later packets repeat an eight byte box header before their payload. The label comes
+ * from the jumd box that opens the superbox in packet 1.
+ *
+ * This is the one reading of JUMBF segments in the service: the byte path in prepare.ts keeps the
+ * packets it says belong to the C2PA store, and the manifest hash covers the packets it says
+ * belong to the same store, so the two can never disagree about which box is the store.
+ *
+ * Returns null for a segment that is not a JUMBF packet or too short to hold its header. Every
+ * length is checked against the segment, and a label with no terminating zero byte is no label.
+ */
+export function jumbfPacket(segment: Buffer): JumbfPacket | null {
+  if (segment.length < 8 || segment.subarray(0, 2).toString("latin1") !== "JP") {
+    return null;
+  }
+  const instance = segment.readUInt16BE(2);
+  const packet = segment.readUInt32BE(4);
+  const header = packet === 1 ? 8 : 16;
+  if (segment.length < header) {
+    return null;
+  }
+  const payload = segment.subarray(header);
+  return packet === 1 ? { instance, packet, label: superboxLabel(payload), payload } : { instance, packet, payload };
+}
+
+/** The label of a jumb superbox's opening jumd box, or undefined when it has none this can read. */
+function superboxLabel(box: Buffer): string | undefined {
+  const outer = boxHeader(box, 0);
+  if (outer === null || outer.type !== "jumb") {
+    return undefined;
+  }
+  const inner = boxHeader(box, outer.size);
+  if (inner === null || inner.type !== "jumd") {
+    return undefined;
+  }
+  // The description box: a 16 byte content type, one byte of toggles, then the label when the
+  // label toggle (0x02) is set, UTF-8 ending in a zero byte.
+  const toggles = outer.size + inner.size + 16;
+  if (toggles >= box.length || ((box[toggles] as number) & 0x02) === 0) {
+    return undefined;
+  }
+  const end = box.indexOf(0x00, toggles + 1);
+  return end === -1 ? undefined : box.subarray(toggles + 1, end).toString("utf8");
+}
+
+/** A box header at `offset`: its type and how many bytes the header takes, 16 with an extended length. */
+function boxHeader(box: Buffer, offset: number): { type: string; size: number } | null {
+  if (offset + 8 > box.length) {
+    return null;
+  }
+  const size = box.readUInt32BE(offset) === 1 ? 16 : 8;
+  return offset + size > box.length ? null : { type: box.subarray(offset + 4, offset + 8).toString("latin1"), size };
+}
+
+/**
+ * Which box instance is the C2PA manifest store: the first instance, in file order, whose packet 1
+ * is a superbox labelled "c2pa". Undefined when no packet says so.
+ */
+export function c2paStoreInstance(packets: readonly JumbfPacket[]): number | undefined {
+  return packets.find((one) => one.packet === 1 && one.label === C2PA_STORE_LABEL)?.instance;
+}
+
+/**
+ * Pulls the raw C2PA manifest store out of a JPEG by reassembling the APP11
+ * segments of its one box instance, so the store can be hashed exactly as it
+ * sits in the file. Any other JUMBF box in the file, a 360 degree description
+ * or another tool's data, is left out: the chain records the hash of the C2PA
+ * store and nothing beside it (review pass 6, intake 5). Returns null for any
+ * other container, and for a JPEG with no box labelled as the C2PA store.
  *
  * The file is the caller's, so every length in it is checked against the
  * buffer before it is used. A segment that runs past the end stops the walk,
@@ -345,11 +447,34 @@ function softBindingAssertion(binding: { phash: bigint; blockhash: Hex }): unkno
  * what the C2PA library itself does with one.
  */
 function extractManifestStore(bytes: Buffer): Buffer | null {
-  if (sniffMimeType(bytes) !== "image/jpeg") {
+  const packets = jumbfPackets(bytes);
+  const store = c2paStoreInstance(packets);
+  if (store === undefined) {
     return null;
   }
+  return Buffer.concat(packets.filter((one) => one.instance === store).map((one) => one.payload));
+}
 
-  const chunks: Buffer[] = [];
+/**
+ * Whether these packets hold a C2PA store or something that may be one: a box labelled "c2pa", or
+ * a box whose label cannot be read, as a damaged store's cannot. A file whose every box names
+ * itself as something else holds none.
+ */
+function mayHoldStore(packets: readonly JumbfPacket[]): boolean {
+  if (c2paStoreInstance(packets) !== undefined) {
+    return true;
+  }
+  const named = new Set(packets.filter((one) => one.packet === 1 && one.label !== undefined).map((one) => one.instance));
+  return packets.some((one) => !named.has(one.instance));
+}
+
+/** Every JUMBF packet in a JPEG's APP11 segments before its first scan, in file order. Empty for any other container. */
+function jumbfPackets(bytes: Buffer): JumbfPacket[] {
+  if (sniffMimeType(bytes) !== "image/jpeg") {
+    return [];
+  }
+
+  const packets: JumbfPacket[] = [];
   let offset = 2;
   while (offset < bytes.length - 1) {
     if (bytes[offset] !== 0xff) {
@@ -370,22 +495,14 @@ function extractManifestStore(bytes: Buffer): Buffer | null {
       break;
     }
     if (marker === 0xeb) {
-      const segment = bytes.subarray(offset + 4, end);
-      // Layout for JUMBF inside JPEG: a two byte JP tag, the box instance, the
-      // packet number, then the box itself. Only packet one carries the box
-      // header, so later packets contribute their payload alone.
-      if (segment.length >= 8 && segment.subarray(0, 2).toString("latin1") === "JP") {
-        const packet = segment.readUInt32BE(4);
-        const header = packet === 1 ? 8 : 16;
-        if (segment.length >= header) {
-          chunks.push(segment.subarray(header));
-        }
+      const packet = jumbfPacket(bytes.subarray(offset + 4, end));
+      if (packet !== null) {
+        packets.push(packet);
       }
     }
     offset = end;
   }
-
-  return chunks.length === 0 ? null : Buffer.concat(chunks);
+  return packets;
 }
 
 function sniffMimeType(bytes: Buffer): string {

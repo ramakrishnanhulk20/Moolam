@@ -82,6 +82,24 @@ describe("a picture refused for a fingerprint that would not survive copying", (
     expect(failure.next).toBeUndefined();
     expect(failure.reason).toBeUndefined();
   });
+
+  // Review pass 6, intake 2: /generate now answers the same refusal for a drawing, and the screen
+  // says the same plain sentence there, with no button that would spend another drawing on it.
+  it("says the same sentence when a generation is refused for it", () => {
+    const generating = registerReducer(initialRegisterState, { type: "mode", mode: "generate" });
+    const refused = registerReducer(generating, {
+      type: "failed",
+      failure: describeFailure(
+        new VerifierError("bad-response", 422, "the service's English", undefined, {
+          serviceCode: "fingerprint-unstable",
+          named: true,
+        }),
+        "prepare",
+      ),
+      stage: "prepare",
+    });
+    expect(refused.failure).toEqual({ key: "fingerprintUnstable" });
+  });
 });
 
 describe("the four refusals a private re-check has of its own", () => {
