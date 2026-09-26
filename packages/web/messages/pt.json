@@ -419,6 +419,7 @@
     "others": "{count, plural, =1 {# outro passaporte estava na faixa} other {# outros passaportes estavam na faixa}}, e este era o mais próximo.",
     "firstRegistered": "Um registro anterior também corresponde a esta imagem. <link>Abrir o primeiro registro</link>.",
     "laterSameFingerprint": "{count, plural, =1 {# registro posterior tem} other {# registros posteriores têm}} esta mesma impressão.",
+    "staleIndex": "A cópia do registro que o Moolam tem é de {minutes} minutos atrás, então uma imagem registrada depois disso pode ainda não aparecer.",
     "manifestInvalid": "As Content Credentials deste arquivo falham na validação: o arquivo foi alterado depois de assinado, ou o registro foi copiado de outro arquivo. As impressões bateram mesmo assim.",
     "manifestUnreadable": "Este arquivo traz Content Credentials que não conseguimos ler, então não dá para dizer se são válidas. As impressões bateram mesmo assim.",
     "openAgent": "Agente {id}",

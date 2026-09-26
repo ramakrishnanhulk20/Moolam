@@ -11,6 +11,9 @@ import type { FastifyInstance } from "fastify";
  * while the registry on chain has not yet been read, and the two holder routes without
  * PRIVY_APP_SECRET. A reason never carries a path, an address or a key.
  *
+ * `index` is when the passport index last loaded and whether that copy is stale, which is how a
+ * refresh that keeps failing shows from outside while `records` still looks healthy (V82).
+ *
  * `limits` is how the daily check sees a ceiling coming before creators do, and `limits.links` is how
  * many read links to private copies were minted today against GLOBAL_LINKS_PER_DAY (B15). It counts
  * the whole world, never one person: nothing here names a caller, a user id or an address.
@@ -29,6 +32,7 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
   app.get("/health", { config: { rateLimit: false } }, async () => ({
     ok: true,
     records: app.verifier.index.size,
+    index: app.verifier.indexState(),
     version: app.verifier.version,
     routes: app.verifier.routes,
     off: app.verifier.routesOff,

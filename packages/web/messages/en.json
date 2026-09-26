@@ -418,6 +418,7 @@
     "others": "{count, plural, =1 {# other passport was in range} other {# other passports were in range}}, and this one was closest.",
     "firstRegistered": "An earlier registration matches this picture. <link>Open the first registration</link>.",
     "laterSameFingerprint": "{count, plural, =1 {# later registration shares} other {# later registrations share}} this fingerprint.",
+    "staleIndex": "Moolam's copy of the register is {minutes} minutes old, so a picture registered since then may not show yet.",
     "manifestInvalid": "The Content Credentials inside this file fail validation: the file was changed after signing, or the record was copied in from another file. The fingerprints matched anyway.",
     "manifestUnreadable": "This file carries Content Credentials we could not read, so we cannot say whether they hold. The fingerprints matched anyway.",
     "openAgent": "Agent {id}",

@@ -27,6 +27,9 @@ import {
  * through one timeout and then another. A read that fails leaves that field as
  * { source: "unavailable" } and the match stands.
  *
+ * Every answer carries index { loadedAt, stale }: when the passport index it was matched against
+ * last loaded, and whether that copy is too old to be sure a recent registration is in it (V82).
+ *
  * Answers 503 `busy` when no matching slot came free in time, and 503 `service-fault` with
  * SERVICE_FAULT_REASON when this service, not the picture, failed while matching.
  */
@@ -34,7 +37,7 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
   app.post("/verify", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const bytes = request.isMultipart() ? await readUpload(request) : await readFromUrl(request);
-      const answer = await verifyBytes(app, bytes);
+      const answer = { ...(await verifyBytes(app, bytes)), index: app.verifier.indexState() };
       return reply.send(
         await withPassportFacts(
           answer,

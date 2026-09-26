@@ -418,6 +418,7 @@
     "others": "{count, plural, =1 {# autre passeport était dans la marge} other {# autres passeports étaient dans la marge}}, et celui-ci était le plus proche.",
     "firstRegistered": "Un enregistrement antérieur correspond aussi à cette image. <link>Ouvrir le premier enregistrement</link>.",
     "laterSameFingerprint": "{count, plural, =1 {# enregistrement ultérieur partage} other {# enregistrements ultérieurs partagent}} cette empreinte.",
+    "staleIndex": "La copie du registre que tient Moolam date de {minutes} minutes, donc une image enregistrée depuis peut ne pas encore apparaître.",
     "manifestInvalid": "Les Content Credentials de ce fichier échouent à la validation : le fichier a été modifié après la signature, ou l’enregistrement a été copié depuis un autre fichier. Les empreintes correspondent quand même.",
     "manifestUnreadable": "Ce fichier contient des Content Credentials que nous n’avons pas pu lire, donc nous ne pouvons pas dire si elles sont valides. Les empreintes correspondent quand même.",
     "openAgent": "Agent {id}",

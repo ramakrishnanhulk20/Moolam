@@ -21,6 +21,7 @@ import {
   FINGERPRINT_UNSTABLE_REASON,
   FingerprintUnstable,
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+  ReadBackFault,
   SIGNED_FILE_TOO_LARGE_REASON,
   THUMBNAIL_TOO_LARGE_REASON,
   ThumbnailTooLarge,
@@ -304,7 +305,12 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           // This service failed to fingerprint a picture it could read, so the file is not to blame
           // (review pass 6, answers 7). Nothing was pinned, so the day's slot comes back.
           if (error instanceof FingerprintFault) {
-            request.log.error({ url: request.url, reason }, "rejected: /prepare the service failed fingerprinting");
+            request.log.error(
+              { url: request.url, reason },
+              error instanceof ReadBackFault
+                ? "rejected: /prepare signing read-back fault"
+                : "rejected: /prepare the service failed fingerprinting",
+            );
             return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
           }
           // A real picture with too much detail to fit the Chainlink fetch budget. Calling it

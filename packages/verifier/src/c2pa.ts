@@ -8,7 +8,7 @@ import { LocalSigner, Reader, createVerifySettings, settingsToJson } from "@cont
 import sharp from "sharp";
 import { TRAINING_ASSERTION_LABEL, trainingAssertion, type TrainingConsent } from "./consent.js";
 import { env } from "./env.js";
-import { MAX_IMAGE_PIXELS } from "./fingerprint.js";
+import { FingerprintFault, MAX_IMAGE_PIXELS } from "./fingerprint.js";
 import type { SigningAnswer, SigningAssertion, SigningJob } from "./signingWorker.js";
 import type { Hex } from "./types.js";
 
@@ -647,19 +647,35 @@ const MOOLAM_THUMBNAILS = 2;
  * missing part, none of `secrets` appears anywhere in the bytes, and no thumbnail left in the store
  * carries EXIF, XMP or IPTC.
  *
- * Never throws: a read back that fails or runs out of time is itself the fault. The answer is for
- * the log, and says which check failed without quoting any value from the upload.
+ * A read back that fails is itself the fault, and the record is dropped. A read back still running
+ * after READ_MANIFEST_TIMEOUT_MS says nothing about the record, only that this service was slow, so
+ * it throws FingerprintFault instead: the route answers 503 service-fault and the creator retries
+ * with the record, rather than losing it for good (WO-186b follow-up). The answer is for the log,
+ * and says which check failed without quoting any value from the upload.
  */
 export async function cameraRecordFault(signed: Buffer, secrets: readonly string[]): Promise<string | undefined> {
   if (secrets.some((secret) => signed.includes(Buffer.from(secret, "utf8")))) {
     return "a location or serial value from the upload's record is still in the signed bytes";
   }
-  let reader: Reader | null;
+  const late = Symbol("late");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let read: Reader | null | typeof late;
   try {
-    reader = await withinReadLimit(Reader.fromAsset({ buffer: signed, mimeType: sniffMimeType(signed) }, READER_SETTINGS));
+    read = await Promise.race([
+      Reader.fromAsset({ buffer: signed, mimeType: sniffMimeType(signed) }, READER_SETTINGS),
+      new Promise<typeof late>((resolve) => {
+        timer = setTimeout(() => resolve(late), READ_MANIFEST_TIMEOUT_MS);
+      }),
+    ]);
   } catch (error) {
     return `the signed file could not be read back: ${error instanceof Error ? error.message : String(error)}`.slice(0, 200);
+  } finally {
+    clearTimeout(timer);
   }
+  if (read === late) {
+    throw new FingerprintFault(`the C2PA reader was still reading back the signed file after ${READ_MANIFEST_TIMEOUT_MS} ms`);
+  }
+  const reader = read;
   const active = reader?.getActive();
   if (reader === null || active === undefined) {
     return "the signed file carries no manifest";

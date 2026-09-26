@@ -60,6 +60,17 @@ export interface PassportRecord {
   rechecks?: PassportRechecks;
 }
 
+/**
+ * How current the passport index is, as /health and every verify answer publish it. `loadedAt` is
+ * the unix second of the last load that worked. `stale` is true once that is more than five
+ * refresh periods ago, so a picture registered since may not match yet; a host that never
+ * refreshes is never stale (review pass 9, V82).
+ */
+export interface IndexState {
+  loadedAt: number;
+  stale: boolean;
+}
+
 /** One candidate the index returned, with the variant that produced it. */
 export interface Match {
   id: Hex;

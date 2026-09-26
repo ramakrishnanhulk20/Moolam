@@ -11,6 +11,9 @@
 // and nothing was sent, so an edit whose pins may have landed keeps it spent.
 // An edit made from a camera's signed photo answers cameraRecord as /prepare does, and the route
 // hands its request logger to prepareOrFallback so a dropped record is logged.
+// From review pass 9 (V89): the send carries a key derived from the child, and a send reported dead
+// or reverted whose child is on chain under the creator's wallet is answered as appended. A signing
+// read-back fault is logged as one, not as failed fingerprinting.
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
 // Those are proven live by packages/agents/scripts/prove-privy.ts step 6 and, from the browser,
 // by a real creator granting a signer. The sponsored poll itself is covered in
@@ -52,6 +55,8 @@ const stubs = vi.hoisted(() => ({
   send: vi.fn(),
   receipt: vi.fn(),
   prepareOptions: [] as { log?: unknown }[],
+  /** Thrown by the next preparation instead of preparing, when set. */
+  prepareFault: undefined as Error | undefined,
 }));
 
 // The real preparation, with the options the route passed kept for the one test that reads them.
@@ -61,6 +66,11 @@ vi.mock("../src/prepare.js", async (importOriginal) => {
     ...real,
     prepareOrFallback: async (...args: Parameters<typeof real.prepareOrFallback>) => {
       stubs.prepareOptions.push(args[1]);
+      const fault = stubs.prepareFault;
+      if (fault !== undefined) {
+        stubs.prepareFault = undefined;
+        throw fault;
+      }
       return await real.prepareOrFallback(...args);
     },
   };
@@ -101,7 +111,7 @@ const { Busy } = await import("../src/generate/gate.js");
 const { buildServer } = await import("../src/server.js");
 const { fileSlug } = await import("../src/metadata.js");
 const { readManifest } = await import("../src/c2pa.js");
-const { EDIT_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } = await import("../src/prepare.js");
+const { EDIT_THUMBNAIL_TOO_LARGE_REASON, ReadBackFault, THUMBNAIL_MAX_BYTES } = await import("../src/prepare.js");
 const { cameraPhoto } = await import("./cameraPhoto.js");
 const emptySource = { load: async () => [] };
 
@@ -670,5 +680,82 @@ describe("POST /edit", () => {
     expect(refused.statusCode).toBe(502);
     expect(refused.json()).toEqual({ error: "chain-unavailable" });
     expect(stubs.send).not.toHaveBeenCalled();
+  });
+
+  it("logs a signing read-back fault as one, not as failed fingerprinting, and answers 503 service-fault", async () => {
+    const logged = vi.spyOn(app.log, "error");
+    stubs.prepareFault = new ReadBackFault("The C2PA reader could not read back the JPEG just signed.");
+    try {
+      const refused = await ask("did:privy:readback-log-user", goodFields());
+      expect(refused.statusCode).toBe(503);
+      expect(refused.json().error).toBe("service-fault");
+      const lines = logged.mock.calls.map((call) => call[1]);
+      expect(lines).toContain("rejected: /edit signing read-back fault");
+      expect(lines).not.toContain("rejected: /edit the service failed fingerprinting");
+    } finally {
+      logged.mockRestore();
+    }
+  }, 60_000);
+
+  // WO-186b follow-up (V89): one child is one appendEdit, so the send carries a key derived from the
+  // child, and a send reported dead or reverted is read against the chain before it is called failed.
+  describe("V89: an edit the chain holds is never answered send-failed", () => {
+    /** The child is on chain once a send has gone out, and never before, so the duplicate check passes. */
+    function childOnChainAfterTheSend(): void {
+      stubs.passportExists.mockImplementation(
+        async (_chain, _registry, id: Hex) => id === PARENT || stubs.send.mock.calls.length > 0,
+      );
+    }
+
+    it("sends under an idempotency key derived from the child passport id", async () => {
+      const response = await ask("did:privy:idempotent-user", goodFields());
+
+      expect(response.statusCode).toBe(200);
+      const child = response.json().child.exactHash as string;
+      expect(stubs.send.mock.lastCall?.[2]).toMatchObject({ idempotencyKey: `moolam-edit-${child}` });
+    }, 60_000);
+
+    it("answers success for a revert whose child is on chain under the creator's wallet", async () => {
+      childOnChainAfterTheSend();
+      stubs.receipt.mockResolvedValueOnce({ status: "reverted", reason: "AlreadyRegistered" });
+
+      const response = await ask("did:privy:reverted-but-landed-user", goodFields());
+
+      expect(response.statusCode).toBe(200);
+      expect(response.json()).toMatchObject({ hash: HASH, child: { creator: OWNER } });
+    }, 60_000);
+
+    it("answers success when the bundle wrote no child but the child is on chain, and when Privy called a hashed send dead", async () => {
+      childOnChainAfterTheSend();
+      stubs.receipt.mockResolvedValueOnce({ status: "success", logs: [] });
+      expect((await ask("did:privy:no-event-but-landed-user", goodFields())).statusCode).toBe(200);
+
+      stubs.send.mockClear();
+      stubs.send.mockRejectedValueOnce(new SponsoredSendFailed("privy-tx-11", "execution_reverted", HASH));
+      const dead = await ask("did:privy:dead-but-landed-user", goodFields());
+      expect(dead.statusCode).toBe(200);
+      expect(dead.json().hash).toBe(HASH);
+    }, 60_000);
+
+    it("still answers send-failed when the child on chain belongs to another address, or the chain cannot say", async () => {
+      childOnChainAfterTheSend();
+      stubs.parentOwner.mockImplementation(async (_chain, _registry, id: Hex) => (id === PARENT ? OWNER : STRANGER));
+      stubs.receipt.mockResolvedValueOnce({ status: "reverted" });
+      const elsewhere = await ask("did:privy:front-run-user", goodFields());
+      expect(elsewhere.statusCode).toBe(502);
+      expect(elsewhere.json().error).toBe("send-failed");
+
+      stubs.parentOwner.mockResolvedValue(OWNER);
+      stubs.send.mockClear();
+      stubs.passportExists.mockImplementation(async (_chain, _registry, id: Hex) => {
+        if (id === PARENT) return true;
+        if (stubs.send.mock.calls.length > 0) throw new Error("fetch failed");
+        return false;
+      });
+      stubs.receipt.mockResolvedValueOnce({ status: "reverted" });
+      const unreadable = await ask("did:privy:chain-silent-user", goodFields());
+      expect(unreadable.statusCode).toBe(502);
+      expect(unreadable.json().error).toBe("send-failed");
+    }, 60_000);
   });
 });

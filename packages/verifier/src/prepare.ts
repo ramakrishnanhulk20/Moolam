@@ -292,7 +292,8 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
  * to the log. A picture Moolam made itself states c2pa.created and has no parent, so it is signed
  * as it always was, and so is an upload with no store.
  *
- * Throws what embedManifest throws for the plain signing, and SignerUnavailable from either try.
+ * Throws what embedManifest throws for the plain signing, SignerUnavailable from either try, and
+ * ReadBackFault when the read back of the file with the record ran out of time.
  */
 async function signKeepingCameraRecord(
   source: Buffer,
@@ -317,6 +318,10 @@ async function signKeepingCameraRecord(
     } catch (error) {
       if (error instanceof SignerUnavailable) {
         throw error;
+      }
+      // cameraRecordFault ran out of time reading back the file: this service's fault, not the record's.
+      if (error instanceof FingerprintFault) {
+        throw new ReadBackFault(error.message);
       }
       why = safeReason(error);
     }

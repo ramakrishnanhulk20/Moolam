@@ -73,10 +73,18 @@ export function waitingGate(
 /** Which work a turn at the fair gate is for: a verify, or a creator's registration, edit or unseal. */
 export type GateLane = "verify" | "studio";
 
+/**
+ * Asked as a turn comes up. An error means the caller has left: the turn is skipped rather than
+ * run, and the call rejects with that error.
+ */
+export type GoneCheck = () => Error | undefined;
+
 interface Turn {
   lane: GateLane;
   caller: string | undefined;
+  gone: GoneCheck | undefined;
   start: () => void;
+  skip: (error: Error) => void;
 }
 
 /**
@@ -92,7 +100,9 @@ interface Turn {
  * before all of them, oldest waiter first. Serving the oldest waiter instead let two callers with a
  * standing backlog hold both verify slots, since their own queued turns were always older than a
  * newcomer's, and everyone else waited out most of `maxWaitMs` or was turned away (review pass 9,
- * V77). Every waiter gives up with Busy after `maxWaitMs`, as waitingGate does.
+ * V77). Every waiter gives up with Busy after `maxWaitMs`, as waitingGate does. A turn whose caller
+ * has hung up by the time it comes up is skipped, not run, and its slot goes to the next waiter: a
+ * picture decode for nobody is the most expensive way to spend a slot.
  *
  * The queue is walked once for each turn started when a task ends. Its length is bounded by the
  * rate limit times the wait limit, since no waiter stays longer than `maxWaitMs`, and a caller's
@@ -102,7 +112,7 @@ export function fairGate(options: {
   verifySlots: number;
   studioSlots: number;
   maxWaitMs: number;
-}): <T>(lane: GateLane, caller: string | undefined, task: () => Promise<T>) => Promise<T> {
+}): <T>(lane: GateLane, caller: string | undefined, task: () => Promise<T>, gone?: GoneCheck) => Promise<T> {
   const total = options.verifySlots + options.studioSlots;
   let running = 0;
   let verifying = 0;
@@ -161,17 +171,30 @@ export function fairGate(options: {
       const at = next();
       if (at === -1) return;
       const [turn] = queue.splice(at, 1) as [Turn];
+      const left = turn.gone?.();
+      if (left !== undefined) {
+        const skipped = turn.caller;
+        if (skipped !== undefined && !callers.has(skipped) && !queue.some((one) => one.caller === skipped)) {
+          lastStart.delete(skipped);
+        }
+        turn.skip(left);
+        continue;
+      }
       take(turn.lane, turn.caller);
       turn.start();
     }
   };
 
-  return async <T>(lane: GateLane, caller: string | undefined, task: () => Promise<T>): Promise<T> => {
+  return async <T>(lane: GateLane, caller: string | undefined, task: () => Promise<T>, gone?: GoneCheck): Promise<T> => {
     if (mayRun(lane, caller)) {
+      const left = gone?.();
+      if (left !== undefined) {
+        throw left;
+      }
       take(lane, caller);
     } else {
       await new Promise<void>((resolve, reject) => {
-        const turn: Turn = { lane, caller, start: () => undefined };
+        const turn: Turn = { lane, caller, gone, start: () => undefined, skip: () => undefined };
         const timer = setTimeout(() => {
           const at = queue.indexOf(turn);
           if (at !== -1) queue.splice(at, 1);
@@ -185,6 +208,10 @@ export function fairGate(options: {
         turn.start = () => {
           clearTimeout(timer);
           resolve();
+        };
+        turn.skip = (error) => {
+          clearTimeout(timer);
+          reject(error);
         };
         queue.push(turn);
       });

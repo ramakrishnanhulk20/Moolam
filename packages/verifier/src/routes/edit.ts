@@ -36,6 +36,7 @@ import {
   EDIT_THUMBNAIL_TOO_LARGE_REASON,
   FINGERPRINT_UNSTABLE_REASON,
   FingerprintUnstable,
+  ReadBackFault,
   SIGNED_FILE_TOO_LARGE_REASON,
   ThumbnailTooLarge,
   assertStableFingerprint,
@@ -110,6 +111,11 @@ interface EditContext {
  * id, so the browser can watch the registry for that one passport instead of guessing which edit
  * under the parent is theirs. The answer's manifest names cameraRecord, kept or dropped, when the
  * edit arrived carrying a camera's own signed record, as the /prepare answer does.
+ *
+ * The send carries an idempotency key derived from the child's id, so Privy runs one appendEdit per
+ * child however often it is retried. A send Privy calls dead, or a receipt that shows no child, is
+ * read against the chain before it is answered send-failed: a child that is there under the
+ * creator's own wallet is answered as appended (review pass 9, V89).
  *
  * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 413
  * `signed-file-too-large` when signing grew the file past the upload cap, 409
@@ -347,7 +353,9 @@ async function append(
       if (error instanceof FingerprintFault) {
         request.log.error(
           { url: request.url, reason: safeReason(error) },
-          "rejected: /edit the service failed fingerprinting",
+          error instanceof ReadBackFault
+            ? "rejected: /edit signing read-back fault"
+            : "rejected: /edit the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
@@ -491,6 +499,44 @@ async function append(
       return reply.code(499).send({ error: "client-gone" });
     }
 
+    /** The answer for an edit the registry holds: the child, where its files are, and the hash. */
+    const appended = (hash: Hex, sponsored: boolean): FastifyReply => {
+      request.log.info({ user: identity.userId, parent: upload.parentId, child: child.exactHash, hash }, "edit: appended");
+      return reply.send({
+        child: {
+          exactHash: child.exactHash,
+          parentId: child.parentId,
+          creator: child.creator,
+          generatorAgentId: child.generatorAgentId.toString(),
+          phash: child.phash.toString(),
+          blockhash256: child.blockhash256,
+          manifestHash: child.manifestHash,
+          kind: child.kind,
+          fingerprintVersion: child.fingerprintVersion,
+          metadataURI: child.metadataURI,
+          deadline: child.deadline.toString(),
+        },
+        tokenId: tokenIdOf(child.exactHash).toString(),
+        hash,
+        sponsored,
+        image: {
+          cid: pinnedImage.cid,
+          uri: pinnedImage.uri,
+          gatewayUrl: gatewayUrl(pinnedImage.uri),
+          bytes: edited.bytes.length,
+          width: edited.print.width,
+          height: edited.print.height,
+        },
+        thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
+        metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
+        manifest: {
+          ...(edited.embedded ? { embedded: true } : { embedded: false, reason: edited.reason }),
+          ...(edited.cameraRecord === undefined ? {} : { cameraRecord: edited.cameraRecord }),
+        },
+        quota: context.quota.state(identity.userId),
+      });
+    };
+
     let sent;
     try {
       submitted = true;
@@ -502,6 +548,9 @@ async function append(
         sponsor: true,
         context: ownerContext(),
         log: request.log,
+        // One child is one appendEdit, so every retry of this send, the SDK's or Privy's own, carries
+        // the same key and Privy runs it once (review pass 9, V89).
+        idempotencyKey: `moolam-edit-${passportId}`,
       });
     } catch (error) {
       if (error instanceof SponsoredSendPending) {
@@ -513,6 +562,15 @@ async function append(
         return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId, passportId });
       }
       if (error instanceof SponsoredSendFailed) {
+        if (await childLanded(context, passportId, wallet.address, request)) {
+          // Privy called this send dead, and the child is on chain under the creator's wallet all
+          // the same. With a hash that is the edit landing; without one, the browser is told to
+          // watch the child, which it will find at once.
+          if (error.hash !== undefined) {
+            return appended(error.hash, true);
+          }
+          return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId, passportId });
+        }
         request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /edit send failed");
         return reply.code(502).send({ error: "send-failed", reason: safeReason(error) });
       }
@@ -542,6 +600,9 @@ async function append(
         .send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash, passportId });
     }
     if (receipt.status === "reverted") {
+      if (await childLanded(context, passportId, wallet.address, request)) {
+        return appended(sent.hash, sent.sponsored);
+      }
       request.log.error(
         { url: request.url, hash: sent.hash, reason: receipt.reason },
         "rejected: /edit the chain reverted the edit",
@@ -552,6 +613,9 @@ async function append(
     // appendEdit inside it reverted. The registry's own event for this child is the only proof the
     // edit was written.
     if (!childRegistered(receipt.logs, context.registry, passportId)) {
+      if (await childLanded(context, passportId, wallet.address, request)) {
+        return appended(sent.hash, sent.sponsored);
+      }
       request.log.error(
         { url: request.url, hash: sent.hash, passportId },
         "rejected: /edit the transaction landed and the registry wrote no child",
@@ -564,44 +628,7 @@ async function append(
       });
     }
 
-    request.log.info(
-      { user: identity.userId, parent: upload.parentId, child: child.exactHash, hash: sent.hash },
-      "edit: appended",
-    );
-
-    return reply.send({
-      child: {
-        exactHash: child.exactHash,
-        parentId: child.parentId,
-        creator: child.creator,
-        generatorAgentId: child.generatorAgentId.toString(),
-        phash: child.phash.toString(),
-        blockhash256: child.blockhash256,
-        manifestHash: child.manifestHash,
-        kind: child.kind,
-        fingerprintVersion: child.fingerprintVersion,
-        metadataURI: child.metadataURI,
-        deadline: child.deadline.toString(),
-      },
-      tokenId: tokenIdOf(child.exactHash).toString(),
-      hash: sent.hash,
-      sponsored: sent.sponsored,
-      image: {
-        cid: pinnedImage.cid,
-        uri: pinnedImage.uri,
-        gatewayUrl: gatewayUrl(pinnedImage.uri),
-        bytes: edited.bytes.length,
-        width: edited.print.width,
-        height: edited.print.height,
-      },
-      thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
-      metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-      manifest: {
-        ...(edited.embedded ? { embedded: true } : { embedded: false, reason: edited.reason }),
-        ...(edited.cameraRecord === undefined ? {} : { cameraRecord: edited.cameraRecord }),
-      },
-      quota: context.quota.state(identity.userId),
-    });
+    return appended(sent.hash, sent.sponsored);
   } finally {
     // An edit that pinned and then failed on the gas estimate or the send still spent four files
     // of somebody's Pinata plan. Handing the slots back there would let one bad afternoon at a
@@ -712,6 +739,26 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
       return undefined;
     }
     throw error;
+  }
+}
+
+/**
+ * Whether the child this request sent is on chain under the creator's own wallet, read before any
+ * send-failed answer that follows a send. A bundle can report a revert, and Privy a dead send, for
+ * an appendEdit that an earlier try of the same idempotent send already landed, and telling the
+ * creator it failed would send them to edit again (review pass 9, V89). The owner is read too, so a
+ * copy of these bytes someone else registered first is never reported as this edit. A chain that
+ * will not answer is not a landing: the send-failed answer stands.
+ */
+async function childLanded(context: EditContext, passportId: Hex, wallet: Hex, request: FastifyRequest): Promise<boolean> {
+  try {
+    if (!(await passportExists(context.chain, context.registry, passportId))) {
+      return false;
+    }
+    return (await parentOwner(context.chain, context.registry, passportId)) === getAddress(wallet);
+  } catch (error) {
+    request.log.warn({ url: request.url, passportId, reason: safeReason(error) }, "edit: could not read whether the child landed");
+    return false;
   }
 }
 

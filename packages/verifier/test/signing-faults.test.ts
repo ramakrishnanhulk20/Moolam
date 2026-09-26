@@ -3,7 +3,8 @@
 // this service's fault, so /prepare answers 503 service-fault, public or sealed, and hands back no
 // unsigned file, while a file the signer truly refuses still falls back to an unsigned passport.
 // V91: a signing worker that fails after the model drew and billed a picture answers /generate 502
-// sign-failed, not model-failed, and keeps both slots spent.
+// sign-failed, not model-failed, and keeps both slots spent. The /prepare log names a read-back fault
+// as one, not as a fingerprinting failure (WO-186b follow-up).
 // The read-back answer is stubbed as readManifest's own "unreadable" summary rather than waiting out
 // the real five second limit, and the signer failures are thrown by a stubbed embedManifest. Does
 // NOT cover a real slow C2PA read, a real signing worker crash, a real drawing or a real pin.
@@ -204,6 +205,19 @@ describe("faults on the signing path", () => {
     stubs.readBackUnreadable = true;
     await expect(prepareOrFallback(picture, SETTINGS_FOR_PREPARE)).rejects.toBeInstanceOf(FingerprintFault);
     await expect(prepareSealed(picture, SETTINGS_FOR_PREPARE)).rejects.toBeInstanceOf(FingerprintFault);
+  }, 120_000);
+
+  it("logs an unreadable read-back on /prepare as a signing read-back fault, not as failed fingerprinting", async () => {
+    const logged = vi.spyOn(app.log, "error");
+    stubs.readBackUnreadable = true;
+    try {
+      expect((await prepareUpload("did:privy:readback-log", false)).statusCode).toBe(503);
+      const lines = logged.mock.calls.map((call) => call[1]);
+      expect(lines).toContain("rejected: /prepare signing read-back fault");
+      expect(lines).not.toContain("rejected: /prepare the service failed fingerprinting");
+    } finally {
+      logged.mockRestore();
+    }
   }, 120_000);
 
   it("V88: still falls back to an unsigned passport for a file the signer truly refuses", async () => {

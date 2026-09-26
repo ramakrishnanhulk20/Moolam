@@ -97,3 +97,37 @@ describe("V77: the fair gate takes callers in turn", () => {
     expect(most).toBe(1);
   });
 });
+
+// WO-186a follow-up: a turn queued before its caller hung up used to run anyway, spending a picture
+// decode on nobody. It is now asked again as it comes up and skipped when its caller has gone.
+describe("a turn whose caller left while it waited", () => {
+  it("is skipped, not run, rejects with the caller's error, and hands its slot to the next waiter", async () => {
+    const gate = fairGate({ verifySlots: 1, studioSlots: 0, maxWaitMs: WAIT_MS });
+    let release: () => void = () => undefined;
+    const holding = gate("verify", "holder", () => new Promise<void>((resolve) => (release = resolve)));
+
+    let left = false;
+    const ran: string[] = [];
+    class Left extends Error {}
+    const gone = gate("verify", "leaver", async () => ran.push("leaver"), () => (left ? new Left("gone") : undefined));
+    const next = gate("verify", "stayer", async () => ran.push("stayer"), () => undefined);
+
+    left = true;
+    release();
+    await holding;
+
+    await expect(gone).rejects.toBeInstanceOf(Left);
+    await next;
+    expect(ran).toEqual(["stayer"]);
+  });
+
+  it("is refused at once when its caller has already gone and a slot is free", async () => {
+    const gate = fairGate({ verifySlots: 1, studioSlots: 0, maxWaitMs: WAIT_MS });
+    let ran = false;
+
+    await expect(gate("verify", "leaver", async () => (ran = true), () => new Busy(0))).rejects.toBeInstanceOf(Busy);
+    expect(ran).toBe(false);
+    // The slot was never taken, so the next caller runs straight away.
+    await expect(gate("verify", "next", async () => "ran")).resolves.toBe("ran");
+  });
+});

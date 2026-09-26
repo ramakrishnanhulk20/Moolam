@@ -55,20 +55,34 @@ export type Answer =
       /** What re-checked the picture since. Absent from an older service, which draws no line. */
       recheck?: MatchRecheck;
       queried: VerifyResponse["result"]["queried"];
+      staleMinutes?: number;
     }
-  | { kind: "miss"; manifest: boolean; queried: VerifyResponse["result"]["queried"] };
+  | { kind: "miss"; manifest: boolean; queried: VerifyResponse["result"]["queried"]; staleMinutes?: number };
 
 /** An exact hit reports zero distance on both hashes, which is what the service sends back. */
 const IDENTICAL = { phashDistance: 0, blockhashDistance: 0, variant: "identity" as const };
 
-export function readAnswer(response: VerifyResponse): Answer {
+/**
+ * How many minutes old the service said its copy of the register is, set only when it also said
+ * that copy is stale. A "no match" from an old copy is not the same answer as one from a current
+ * copy, so the card says so beside the verdict (verifier review pass 9, V82).
+ */
+function staleMinutesOf(index: VerifyResponse["index"], now: number): { staleMinutes?: number } {
+  if (index === undefined || !index.stale) {
+    return {};
+  }
+  return { staleMinutes: Math.max(1, Math.floor((now / 1000 - index.loadedAt) / 60)) };
+}
+
+export function readAnswer(response: VerifyResponse, now: number = Date.now()): Answer {
   const { exact, best, matches, confidence, queried, firstRegisteredId, laterSameFingerprint } = response.result;
   const manifest = response.manifest.present;
   const { validation } = response.manifest;
   const id = exact ?? best?.id ?? null;
+  const stale = staleMinutesOf(response.index, now);
 
   if (id === null) {
-    return { kind: "miss", manifest, queried };
+    return { kind: "miss", manifest, queried, ...stale };
   }
 
   const measured = exact !== null ? { ...IDENTICAL, ...(best ?? IDENTICAL) } : (best as Match);
@@ -103,6 +117,7 @@ export function readAnswer(response: VerifyResponse): Answer {
     inheritedDispute: best?.inheritedDispute ?? matches.find((match) => match.id === id)?.inheritedDispute,
     recheck: best?.recheck ?? matches.find((match) => match.id === id)?.recheck,
     queried,
+    ...stale,
   };
 }
 

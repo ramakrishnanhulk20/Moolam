@@ -8,9 +8,18 @@ import { withPassportFacts } from "../disputeRead.js";
 import { env } from "../env.js";
 import { safeReason } from "../net/errorText.js";
 import { readClient } from "../reputation/registry.js";
+import type { IndexState } from "../types.js";
 import { paymentLedger, type LedgerEntry, type PaymentLedger } from "../x402/ledger.js";
 import { assertPaidRoute, contextFor, PAID_VERIFY_PATH, PAYMENT_SIGNATURE_HEADER } from "../x402/plugin.js";
-import { SERVICE_FAULT_REASON, ServiceFault, readUpload, statusOf, verifyBytes } from "./shared.js";
+import {
+  CallerGone,
+  SERVICE_FAULT_REASON,
+  ServiceFault,
+  givesUploadsBack,
+  readUpload,
+  statusOf,
+  verifyBytes,
+} from "./shared.js";
 
 /** What the facilitator calls a transfer it has broadcast but not yet seen confirmed. */
 const SETTLEMENT_PENDING = "settlement_pending";
@@ -776,7 +785,9 @@ export async function verifyPaidRoutes(
     ledger.remember(key, entry);
   };
 
-  app.post(PAID_VERIFY_PATH, async (request: FastifyRequest, reply: FastifyReply) => {
+  // Wrapped so the upload share comes back when this handler ends, the way /verify gives its own back
+  // in a finally, rather than through the handler-end backstop in shared.ts.
+  app.post(PAID_VERIFY_PATH, givesUploadsBack(async (request: FastifyRequest, reply: FastifyReply) => {
     const context = contextFor(request);
     const where: Where = { ip: request.ip, url: request.url };
     const offered = offeredPayment(context);
@@ -787,6 +798,9 @@ export async function verifyPaidRoutes(
     try {
       bytes = await readUpload(request);
     } catch (error) {
+      if (error instanceof CallerGone) {
+        return callerGone(request, reply, where);
+      }
       const status = statusOf(error);
       return reply.code(status).send({ error: safeReason(error) });
     }
@@ -801,7 +815,7 @@ export async function verifyPaidRoutes(
     } finally {
       inFlight.delete(offered.key);
     }
-  });
+  }));
 
   async function answer(
     request: FastifyRequest,
@@ -879,10 +893,10 @@ export async function verifyPaidRoutes(
 
     const verified = processed;
 
-    let payload: { result: unknown; manifest: unknown };
+    let payload: { result: unknown; manifest: unknown; index: IndexState };
     try {
       bytes = bytes ?? (await readUpload(request));
-      const answer = await verifyBytes(app, bytes);
+      const answer = { ...(await verifyBytes(app, bytes)), index: app.verifier.indexState() };
       payload = await withPassportFacts(
         answer,
         app.verifier.consent,
@@ -894,6 +908,9 @@ export async function verifyPaidRoutes(
       const status = statusOf(error);
       const reason = safeReason(error);
       await verified.cancellationDispatcher.cancel({ reason: "handler_failed", responseStatus: status });
+      if (error instanceof CallerGone) {
+        return callerGone(request, reply, where);
+      }
       request.log.warn({ ...where, status, reason }, "rejected: /verify/paid");
       // The same two 503 answers /verify gives, so a payer is told in the same words that the
       // picture is fine and the retry is theirs to make.
@@ -983,6 +1000,15 @@ export async function verifyPaidRoutes(
     reply.headers(settlement.headers);
     return reply.send(payload);
   }
+}
+
+/**
+ * A payer who hung up before the answer was ready: nothing is settled, and the 499 reaches nobody.
+ * The same status and word /verify answers a caller who left with.
+ */
+function callerGone(request: FastifyRequest, reply: FastifyReply, where: Where): FastifyReply {
+  request.log.warn(where, "/verify/paid: the caller left before the answer was ready");
+  return reply.code(499).send({ error: "client-gone" });
 }
 
 /**

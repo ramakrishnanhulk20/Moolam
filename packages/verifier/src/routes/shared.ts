@@ -118,9 +118,10 @@ const accountOfBytes = new WeakMap<Buffer, UploadAccount>();
 
 /**
  * Gives every request's upload bytes back once its route handler has returned or thrown. The routes
- * that read uploads also do it in their own finally (givesUploadsBack); this is the same rule for a
- * route that does not, /verify/paid today, so no share outlives its handler. Fastify publishes the
- * end of every handler on this channel, the test harness's inject() included.
+ * that read uploads also do it in their own finally (givesUploadsBack or, on /verify, a finally of
+ * its own); this is the backstop for a route added later that forgets to, so no share outlives its
+ * handler. Fastify publishes the end of every handler on this channel, the test harness's inject()
+ * included.
  */
 tracingChannel<{ request: FastifyRequest; async?: boolean }>("fastify.request.handler").subscribe({
   start: () => undefined,
@@ -428,8 +429,8 @@ export async function underUploadCeiling<T extends { bytes: Buffer }>(
  * time while other callers go ahead of its second request, as verifyBytes does for verifies. A
  * caller who has hung up is not queued at all.
  *
- * Throws CallerGone (499) when the caller has left, Busy when no turn came free in time, and
- * whatever `task` throws.
+ * Throws CallerGone (499) when the caller has left, before the turn is queued or while it waited,
+ * Busy when no turn came free in time, and whatever `task` throws.
  */
 export async function studioTurn<T>(
   app: FastifyInstance,
@@ -440,7 +441,9 @@ export async function studioTurn<T>(
   if (callerLeft(request)) {
     throw new CallerGone();
   }
-  return await app.verifier.runPrepare(task, accountOfBytes.get(bytes)?.caller ?? rateLimitKey(request.ip));
+  return await app.verifier.runPrepare(task, accountOfBytes.get(bytes)?.caller ?? rateLimitKey(request.ip), () =>
+    callerLeft(request) ? new CallerGone() : undefined,
+  );
 }
 
 /**
@@ -601,16 +604,21 @@ export const SERVICE_FAULT_REASON = "the service could not read this picture rig
  * failure nobody named. That one is logged, because telling the caller to change
  * a file that is fine would hide it (review pass 6, answers 7). Throws Busy,
  * which carries 503, when no slot came free in time, and CallerGone (499) when
- * the caller left before a turn was joined.
+ * the caller left before a turn was joined or while it waited for one.
  */
 export async function verifyBytes(
   app: FastifyInstance,
   bytes: Buffer,
 ): Promise<{ result: unknown; manifest: unknown }> {
   const account = accountOfBytes.get(bytes);
+  const left = (): CallerGone | undefined =>
+    account !== undefined && !account.closed && hasLeft(account.response.req, account.response)
+      ? new CallerGone()
+      : undefined;
   const refuseIfLeft = (): void => {
-    if (account !== undefined && !account.closed && hasLeft(account.response.req, account.response)) {
-      throw new CallerGone();
+    const gone = left();
+    if (gone !== undefined) {
+      throw gone;
     }
   };
   let result: MatchResult;
@@ -622,9 +630,10 @@ export async function verifyBytes(
     manifest = await app.verifier.runVerify(
       () => readManifest(bytes).catch(() => manifestUnreadable()),
       account?.caller,
+      left,
     );
     refuseIfLeft();
-    result = await app.verifier.runMatch(bytes, account?.caller);
+    result = await app.verifier.runMatch(bytes, account?.caller, left);
   } catch (error) {
     if (error instanceof Busy || error instanceof CallerGone) {
       throw error;

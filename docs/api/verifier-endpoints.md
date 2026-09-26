@@ -71,7 +71,7 @@ curl -s -X POST http://localhost:4000/verify \
   -d '{"url":"https://example.com/photo.jpg"}'
 ```
 
-**Response.** `200` with `{ result, manifest }`.
+**Response.** `200` with `{ result, manifest, index }`.
 
 ```ts
 {
@@ -119,9 +119,24 @@ curl -s -X POST http://localhost:4000/verify \
       phash: string,                // decimal
       blockhash: `0x${string}`
     }
+  },
+  index: {
+    loadedAt: number,               // unix seconds, the last good load of the passport index
+    stale: boolean                  // true once that load is over five refresh periods old
   }
 }
 ```
+
+**How current the index is.** Matches run against a copy of the passport index this service holds
+in memory and reloads every `INDEX_REFRESH_MS`, a minute by default. A reload that fails keeps the
+copy it has. `index.loadedAt` is when the copy in hand last loaded, and `index.stale` turns true
+once that is more than five refresh periods ago, five minutes by default, and false again after the
+next good load. A stale answer is still a real match against that copy, but a picture registered
+since it loaded may be missing from it, so a "no match" from a stale copy is not proof the picture is
+unregistered. The verify card says so in one line beside the verdict: "Moolam's copy of the register
+is {minutes} minutes old, so a picture registered since then may not show yet." A host with
+`INDEX_REFRESH_MS=0` never reloads and never reports stale. [`/health`](#get-health) carries the
+same two fields.
 
 The 64-bit pHash goes out as a decimal string, never a JSON number, because a double cannot hold
 it. That applies to `result.queried.phash` and to `manifest.softBinding.phash`.
@@ -364,14 +379,17 @@ from the chain is told by its name and short message only. The same rule quotes 
 back by its origin.
 
 **How much is held at once.** Every upload sent to `/verify`, `/verify/paid`, `/prepare`, `/edit`
-or `/unseal`, a file or a URL, takes a share of one ceiling of 200 MiB, ten full uploads, before a
-byte of its body is read: the length it declares, or the 20 MB cap when it declares none. One
-caller, counted by the same address the rate limit counts, may hold 40 MiB of it at once, two full
-uploads, so a browser can send a verify while a registration is still uploading and one address
-cannot hold the room everyone else needs. Once the body is in, the share shrinks to the bytes
-actually read. The share comes back once the answer has gone or the caller has hung up, and not
-while a match or a studio job is still using the bytes. Past the ceiling or the caller's share the
-request is answered `503 busy` at once, and nothing of its body is read.
+or `/unseal`, a file or a URL, counts against one ceiling of 200 MiB, ten full uploads. It counts the
+bytes that have actually arrived, chunk by chunk as they come in, never the length the request or
+the remote host declares, so a body trickling in holds only what it has sent. One caller, counted by
+the same address the rate limit counts, may hold 40 MiB of it at once, two full uploads, so a browser
+can send a verify while a registration is still uploading and one address cannot hold the room
+everyone else needs. Once the body is in, only the file stays counted. The share comes back when the
+route's handler has finished with the bytes, not when the connection closes: a caller who hangs up
+while a match or a studio job still holds their bytes keeps them counted until that work ends. The
+moment a chunk would pass the ceiling or the caller's share, the request is answered `503 busy` and
+the rest of its body is dropped unread. A caller who has hung up is not read, fetched or queued any
+further, and a turn at the decode gate whose caller left while it waited is skipped rather than run.
 
 A body that stops arriving is closed after 30 seconds with nothing arriving, and its share comes
 back. A request whose body is in is never cut off by that limit while it waits for a turn or its
@@ -414,7 +432,7 @@ Mounted only when `X402_ENABLED=true`. Otherwise the path does not exist and the
 path carries the checks that stop a fetch reaching a private address; rather than copy those checks
 and risk the two copies drifting, the paid route does not offer it.
 
-**Response.** `200` with the same `{ result, manifest }` body as `/verify`, and the base64
+**Response.** `200` with the same `{ result, manifest, index }` body as `/verify`, and the base64
 `PAYMENT-RESPONSE` header carrying the settlement: `{ success, transaction, network, payer }`.
 
 Each match carries the same `consent`, `dispute`, `recheck` and `picture` fields, with the same sources, the same rule that
@@ -429,12 +447,11 @@ and the paid verification still comes back `200`.
 | Code | When |
 | --- | --- |
 | `200` | Paid and matched. The settlement receipt rides in the `PAYMENT-RESPONSE` header |
-| `402` | No payment, or the facilitator refused this one when it checked it, before anything was matched. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next. At settlement a refusal answers `402` only on the second ask, and only when the chain shows the payment was not spent, see below |
+| `402` | No payment, or the facilitator refused this one when it checked it, before anything was matched. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next. At settlement a refusal answers `402` only on the second ask, and only when the chain shows the payment was not spent, see below. A payment that already bought an answer about another file goes through this same payment check, as a payment this service never saw would, so the answer never says which file it was for; it is never served for the other file |
 | `400`, `403`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
-| `409` | `{ "error": "payment-in-flight", "reason": "..." }`. Another request is working on the same payment, the same payer and nonce, right now. It is checked before the upload is read or the facilitator is asked, so two requests never settle one payment side by side. Send it again once the first has answered: the same payment with the same file then gets the answer it bought |
-| `409` | `{ "error": "payment-used-for-another-file", "reason": "..." }`. This payment already bought an answer about another file. One payment buys one answer, for the file it was made for, and the answer held for that file is never written over |
+| `409` | `{ "error": "payment-in-flight", "reason": "..." }`. Another request is working on the same payment, the same payer and nonce, right now. It is checked once the upload is read and before the facilitator is asked, so two requests never settle one payment side by side, and a body sent slowly under someone else's payment holds nothing. Send it again once the first has answered: the same payment with the same file then gets the answer it bought |
 | `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
 | `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, or the first settle was refused with no transaction and the chain did not show the payment spent, see below. Nothing was cancelled and the answer is held against the payment |
@@ -1501,7 +1518,10 @@ Every reply to a POST on `/prepare`, `/generate`, `/edit` and `/unseal` carries
 each route, so the replies no handler writes carry it too: the `401` sent before the body is read,
 the `413` raised in the middle of an upload and the `429` from the rate limiter. These answers hold
 a title, a prompt, a wallet address or, for a sealed registration, the only copy of a picture, and
-none of that belongs in a proxy or a browser store.
+none of that belongs in a proxy or a browser store. The hook judges by the route the request
+matched, not by the path as sent, so a percent-encoded spelling such as `POST /%70repare`, which
+the router decodes and runs as `/prepare`, carries the header too; a request that matches no route
+is judged by its decoded path.
 
 `GET /unseal/:passportId` is in the same hook for a different reason: whether a passport is still
 sealed is the one fact on this service that turns from private to public in an instant, and a
@@ -1528,6 +1548,7 @@ curl -s http://localhost:4000/health
 {
   ok: boolean,
   records: number,
+  index: { loadedAt: number, stale: boolean },
   version: string,
   routes: string[],
   off: { route: string, reason: string }[],
@@ -1554,7 +1575,10 @@ curl -s http://localhost:4000/health
 
 `records` is how many passports the index is holding, which is what tells you whether the service
 booted against the source you meant. It is re-read from the source every `INDEX_REFRESH_MS`, a
-minute by default, so a passport registered a minute ago verifies without a redeploy. `version` is
+minute by default, so a passport registered a minute ago verifies without a redeploy. `index` is
+the same pair every verify answer carries: `loadedAt`, the unix second of the last good load, and
+`stale`, true once that is more than five refresh periods old. A refresh that keeps failing shows
+here while `ok` and `records` still look healthy. `version` is
 the package version. `routes` is what this host actually mounted, which is where a deploy missing a
 key becomes visible from outside: a host without `PINATA_JWT` still boots and still verifies, and
 `prepare` is simply not in the list. It is read on every call, so `generate` appears once the

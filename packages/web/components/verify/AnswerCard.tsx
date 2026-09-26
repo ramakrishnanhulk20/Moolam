@@ -158,6 +158,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           <p className="mt-5 max-w-[18ch] font-display text-[clamp(2rem,4.4vw,3.2rem)] font-semibold uppercase leading-[0.92] tracking-[-0.04em]">
             {t("none")}
           </p>
+          <StaleIndex minutes={answer.staleMinutes} />
           <p className="mt-5 max-w-[44ch] text-sm leading-relaxed text-text-muted">{t("noneHint")}</p>
 
           <Link
@@ -197,6 +198,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
             ? t("verdictExact", { title: passport?.title ?? t("untitled") })
             : t("verdict", { title: passport?.title ?? t("untitled") })}
         </p>
+        <StaleIndex minutes={answer.staleMinutes} />
 
         <div className="mt-7 flex flex-wrap items-end gap-x-6 gap-y-2">
           <p className="font-display text-[clamp(3.4rem,9vw,6rem)] font-semibold leading-[0.8] tracking-[-0.05em] tabular-nums text-accent">
@@ -398,6 +400,23 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The service matched against a copy of the register that has not refreshed for a while, so a
+ * picture registered since may be missing from it. Said once, quietly, under the verdict it
+ * qualifies, and only when the service itself called the copy stale.
+ */
+function StaleIndex({ minutes }: { minutes: number | undefined }) {
+  const t = useTranslations("verify");
+  if (minutes === undefined) {
+    return null;
+  }
+  return (
+    <p data-stale-index className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
+      {t("staleIndex", { minutes })}
+    </p>
   );
 }
 

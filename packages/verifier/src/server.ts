@@ -14,7 +14,7 @@ import { ensureSigner } from "./c2pa.js";
 import { consentReader, offlineConsentReader, type ConsentReader } from "./consentRead.js";
 import { disputeReader, offlineDisputeReader, type DisputeReader } from "./disputeRead.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSweepMode } from "./env.js";
-import { fairGate } from "./generate/gate.js";
+import { fairGate, type GoneCheck } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { matchImage, type MatchResult } from "./match.js";
@@ -49,9 +49,16 @@ import { paymentServerFromEnv } from "./x402/plugin.js";
 import { EnvioSource } from "./source/EnvioSource.js";
 import { JsonFileSource } from "./source/JsonFileSource.js";
 import type { PassportSource } from "./source/PassportSource.js";
-import type { Hex, PassportRecord } from "./types.js";
+import type { Hex, IndexState, PassportRecord } from "./types.js";
 
 const RATE_LIMIT_PER_MINUTE = 60;
+
+/**
+ * How many refresh periods the index may go without a good load before every answer calls it
+ * stale. One or two failed refreshes are a hiccup at the indexer; five in a row mean a picture
+ * registered in that time may read as unregistered, and the caller must be told (review pass 9, V82).
+ */
+const STALE_AFTER_PERIODS = 5;
 
 /**
  * How many verifies may decode at the same time.
@@ -101,8 +108,8 @@ const REQUEST_ARRIVAL_MS = 180_000;
  * can repeat a title, a prompt or a field the caller sent. It is set in the hook rather than in
  * the handlers because the answers that most need it are the ones no handler writes: the 401
  * before the body is read, the 413 raised in the middle of the upload, and the 429 the rate
- * limiter sends. Judging by the path rather than by what the route decided means an answer cannot
- * lose the header by taking an early exit.
+ * limiter sends. Judging by the route the request matched rather than by what the route decided
+ * means an answer cannot lose the header by taking an early exit, or by spelling the path another way.
  */
 const UNCACHEABLE = new Set([
   "/prepare",
@@ -247,10 +254,24 @@ function partsNamingTheFieldLimit(parts: PartsReader): PartsReader {
   };
 }
 
-/** The path on its own. A query string is not part of which route a request reached. */
-function pathOf(url: string): string {
-  const query = url.indexOf("?");
-  return query === -1 ? url : url.slice(0, query);
+/**
+ * The path a request reached, as the router matched it. The router decodes a percent-encoded path
+ * before matching, so POST /%70repare runs the /prepare handler; judging by the raw URL sent those
+ * spellings out without no-store (review pass 9, V85). A matched request is judged by its route's
+ * own pattern, and one that matched nothing by its decoded path, with the query string left off.
+ */
+function pathOf(request: FastifyRequest): string {
+  const matched = request.routeOptions.url;
+  if (matched !== undefined) {
+    return matched;
+  }
+  const query = request.url.indexOf("?");
+  const raw = query === -1 ? request.url : request.url.slice(0, query);
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
 }
 
 /**
@@ -261,8 +282,9 @@ function pathOf(url: string): string {
  * that changes from private to public in an instant, and a cached "still sealed" would show a
  * sealed plate over a picture that is already out.
  */
-function uncacheable(method: string, url: string): boolean {
-  const path = pathOf(url);
+function uncacheable(request: FastifyRequest): boolean {
+  const method = request.method;
+  const path = pathOf(request);
   if (path === "/unseal" || path.startsWith("/unseal/")) {
     return true;
   }
@@ -280,15 +302,18 @@ export interface Verifier {
   version: string;
   /**
    * Matches an image in a verify slot, waiting for one so heavy uploads cannot pile up. `caller`,
-   * a rate-limit key, holds one slot at a time; left out, only the slot counts apply.
+   * a rate-limit key, holds one slot at a time; left out, only the slot counts apply. `gone` is
+   * asked as the turn comes up, and an error from it skips the turn and rejects with that error.
    */
-  runMatch: (bytes: Buffer, caller?: string) => Promise<MatchResult>;
+  runMatch: (bytes: Buffer, caller?: string, gone?: GoneCheck) => Promise<MatchResult>;
   /** Runs other verify work, the manifest read, in a verify slot on the same terms as runMatch. */
-  runVerify: <T>(task: () => Promise<T>, caller?: string) => Promise<T>;
+  runVerify: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => Promise<T>;
   /** Runs /prepare, /edit and /unseal work, which may also take the slot no verify can. */
-  runPrepare: <T>(task: () => Promise<T>, caller?: string) => Promise<T>;
+  runPrepare: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => Promise<T>;
   /** Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand. */
   reload: () => Promise<void>;
+  /** When the copy in hand was loaded, and whether it is too old to trust as current. */
+  indexState: () => IndexState;
   /** Reads what a passport's holder has stated about AI use, for the verify answers. */
   consent: ConsentReader;
   /** Reads whether a passport is under dispute, which is how that statement should be read. */
@@ -394,7 +419,8 @@ export function sourceFromEnv(): PassportSource {
  * Hamming search is a full scan by design, and rebuilding it per call would put
  * a file read in front of every verification. It is rebuilt in the background
  * every INDEX_REFRESH_MS so an image registered a minute ago verifies, which a
- * load-once index could never do; a refresh that fails keeps the copy in hand.
+ * load-once index could never do; a refresh that fails keeps the copy in hand, and once that copy
+ * is more than five refresh periods old, /health and every verify answer say it is stale.
  *
  * The passport id is the sha256 of the registered bytes, which is what makes
  * the exact lookup a plain map hit.
@@ -461,6 +487,8 @@ export async function buildServer(
     picture?: PictureReader;
     /** Replaces the registry check, and how long a check that could not read the chain waits to try again. */
     checks?: { registry?: () => Promise<void>; retryMs?: number };
+    /** Replaces the refresh period and the clock the index's age is read on, for tests. */
+    index?: { refreshMs?: number; clock?: () => number };
     /** Replaces the idle and whole-request limits on a body that is arriving, for tests. */
     timeouts?: { idleMs?: number; requestMs?: number };
     recheck?: {
@@ -525,13 +553,20 @@ export async function buildServer(
     // The studio calls this service from another origin, so "cross-origin" is the only value here
     // that cannot break it. "same-origin" would, and it is the value a template would have given.
     reply.header("cross-origin-resource-policy", "cross-origin");
-    if (uncacheable(request.method, request.url)) {
+    if (uncacheable(request)) {
       reply.header("cache-control", "no-store");
     }
   });
 
   const source = options.source ?? sourceFromEnv();
+  const clock = options.index?.clock ?? Date.now;
+  const refreshMs = options.index?.refreshMs ?? env.INDEX_REFRESH_MS;
   let current = await loadIndex(source);
+  let loadedAtMs = clock();
+  const indexState = (): IndexState => ({
+    loadedAt: Math.floor(loadedAtMs / 1000),
+    stale: refreshMs > 0 && clock() - loadedAtMs > STALE_AFTER_PERIODS * refreshMs,
+  });
   const lookupExact = (sha256: Hex): PassportRecord | undefined => current.byId.get(sha256.toLowerCase() as Hex);
   const gate = fairGate({ verifySlots: VERIFY_SLOTS, studioSlots: STUDIO_SLOTS, maxWaitMs: env.MATCH_WAIT_MS });
   // Under a test runner the default reader makes no network call: a unit suite must not depend on
@@ -548,10 +583,11 @@ export async function buildServer(
     try {
       // One assignment, so an in-flight request reads either the old pair or the new one.
       current = await loadIndex(source);
+      loadedAtMs = clock();
       app.log.info({ records: current.index.size }, "passport index refreshed");
     } catch (error) {
       app.log.warn(
-        { reason: safeReason(error) },
+        { reason: safeReason(error), ...indexState() },
         "index refresh failed, serving the copy already loaded",
       );
     }
@@ -684,11 +720,12 @@ export async function buildServer(
     },
     lookupExact,
     version,
-    runMatch: (bytes: Buffer, caller?: string) =>
-      gate("verify", caller, () => matchImage(bytes, current.index, lookupExact)),
-    runVerify: <T>(task: () => Promise<T>, caller?: string) => gate("verify", caller, task),
-    runPrepare: <T>(task: () => Promise<T>, caller?: string) => gate("studio", caller, task),
+    runMatch: (bytes: Buffer, caller?: string, gone?: GoneCheck) =>
+      gate("verify", caller, () => matchImage(bytes, current.index, lookupExact), gone),
+    runVerify: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => gate("verify", caller, task, gone),
+    runPrepare: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => gate("studio", caller, task, gone),
     reload,
+    indexState,
     consent,
     dispute,
     picture,
@@ -842,10 +879,10 @@ export async function buildServer(
   }
   app.log.info({ mode: sweep.mode }, "private copy sweep: first run an hour after boot, then hourly");
 
-  if (env.INDEX_REFRESH_MS > 0) {
+  if (refreshMs > 0) {
     const timer = setInterval(() => {
       void reload();
-    }, env.INDEX_REFRESH_MS);
+    }, refreshMs);
     // A refresh that is only waiting for its next tick must not keep the process alive.
     timer.unref();
     app.addHook("onClose", async () => {
@@ -859,7 +896,7 @@ export async function buildServer(
       source: env.PASSPORT_SOURCE,
       corsOrigins: env.CORS_ORIGINS.length,
       routes: app.verifier.routes,
-      refreshMs: env.INDEX_REFRESH_MS,
+      refreshMs,
     },
     "passport index loaded",
   );

@@ -497,6 +497,11 @@ export const verifyResponseSchema = z.object({
     ingredients: z.number().int().nonnegative().optional(),
     softBinding: z.object({ alg: z.string(), phash: decimal, blockhash: hexWord }).optional(),
   }),
+  /**
+   * When the service's passport index last loaded, in unix seconds, and whether that copy is old
+   * enough that a picture registered since may not match yet. Absent from a service that predates it.
+   */
+  index: z.object({ loadedAt: z.number().int().nonnegative(), stale: z.boolean() }).optional(),
 });
 
 /**
