@@ -25,7 +25,10 @@
 // answered from memory with no Privy or Pinata call (V54), and two unseals sent together pin one
 // record (V55). The private answer is read from PinNotConfirmed's network field whatever its
 // message says, and a thumbnail pin that may have landed keeps the day's slot spent while Pinata's
-// own 4xx hands it back.
+// own 4xx hands it back. From review pass 7: a thumbnail step that runs out of memory is this
+// service's fault and answers 503 (V64), GET shows the record this server just pinned after a
+// "none" check and never remembers a not-unsealed from a trailing listing after an unavailable one
+// (V65), and a field not sent as plain text is refused by name (V57).
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -35,7 +38,7 @@ import fs from "node:fs";
 import { SignJWT, generateKeyPair } from "jose";
 import sharp from "sharp";
 import { getAddress, type Hex } from "viem";
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { makeImage } from "./helpers.js";
 import { skyOverHorizon } from "./skyPicture.js";
@@ -100,6 +103,20 @@ vi.mock("../src/ipfs/pinata.js", async (importOriginal) => {
   };
 });
 
+/** While set, the thumbnail step throws this instead of making a thumbnail. */
+const thumbnailStep = vi.hoisted(() => ({ throws: undefined as Error | undefined }));
+
+vi.mock("../src/prepare.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/prepare.js")>();
+  return {
+    ...real,
+    makeThumbnail: async (...args: Parameters<typeof real.makeThumbnail>) => {
+      if (thumbnailStep.throws !== undefined) throw thumbnailStep.throws;
+      return await real.makeThumbnail(...args);
+    },
+  };
+});
+
 const { FINGERPRINT_UNSTABLE_REASON, THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } = await import(
   "../src/prepare.js"
 );
@@ -108,6 +125,7 @@ const { sealedMetadata } = await import("../src/sealed.js");
 const { buildServer } = await import("../src/server.js");
 const { fingerprint } = await import("../src/fingerprint.js");
 const { contentIdOf } = await import("../src/ipfs/pinata.js");
+const { SERVICE_FAULT_REASON } = await import("../src/routes/shared.js");
 // The real module, so the pure checks and the record lookup are tested rather than the stubs.
 const unseal = await vi.importActual<typeof import("../src/unseal.js")>("../src/unseal.js");
 
@@ -358,16 +376,21 @@ describe("unsealing a sealed passport", () => {
       });
     });
 
-    app = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
-    await app.ready();
   }, 120_000);
 
-  afterAll(async () => {
+  afterAll(() => {
     vi.unstubAllGlobals();
+  });
+
+  // A server per test, because a finished unseal is remembered for good (pass 7, V65), and a test
+  // that unseals the same passport after another one must not be answered already-unsealed.
+  afterEach(async () => {
     await app.close();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    app = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await app.ready();
     pins.length = 0;
     refusePin = () => false;
     bendPin = () => ({});
@@ -380,6 +403,7 @@ describe("unsealing a sealed passport", () => {
     privatePinata.trailing = false;
     fetched.length = 0;
     pinGate = undefined;
+    thumbnailStep.throws = undefined;
     stubs.readPassport.mockReset().mockResolvedValue({
       registeredAt: 1_758_000_000,
       phash: sealedFile.phash,
@@ -595,6 +619,9 @@ describe("unsealing a sealed passport", () => {
 
   it("stops a creator at their own daily allowance and pins nothing on the refusal", async () => {
     const user = "did:privy:unseal-quota";
+    // A record lookup that cannot answer leaves nothing cached, so the same passport can be unsealed
+    // twice here; after a "none" the second would be answered already-unsealed (pass 7, V65).
+    stubs.findUnsealRecord.mockResolvedValue({ state: "unavailable", reason: "pinata is down" });
     expect((await ask(user)).statusCode).toBe(200);
     expect((await ask(user)).statusCode).toBe(200);
 
@@ -788,6 +815,8 @@ describe("unsealing a sealed passport", () => {
     const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
     const loud = await buildServer({ source: emptySource, logger: true, unseal: { keys: verifying } });
     await loud.ready();
+    // Two unseals of one passport on one server, so the record lookup must leave nothing cached.
+    stubs.findUnsealRecord.mockResolvedValue({ state: "unavailable", reason: "pinata is down" });
     try {
       privatePinata.deleteFails = true;
       const deleteDown = await captureLog(async () => await ask("did:privy:unseal-delete-down", { on: loud }));
@@ -1056,6 +1085,104 @@ describe("unsealing a sealed passport", () => {
     const answers = await Promise.all(both);
     expect(answers.map((answer) => answer.statusCode).sort()).toEqual([200, 409]);
     expect(pins.filter((pin) => pin.name.startsWith("unseal-"))).toHaveLength(1);
+  }, 60_000);
+  // Pass 7, sealed #1 (V64): only ThumbnailTooLarge says the picture can never be re-checked.
+  it("answers 503 service-fault when the thumbnail step runs out of memory, and the upload's fault otherwise", async () => {
+    thumbnailStep.throws = new Error("VipsJpeg: Insufficient memory");
+    const starved = await ask("did:privy:unseal-thumb-memory");
+
+    expect(starved.statusCode).toBe(503);
+    expect(starved.json()).toEqual({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+
+    thumbnailStep.throws = new Error("VipsJpeg: Corrupt JPEG data: premature end of data segment");
+    const broken = await ask("did:privy:unseal-thumb-corrupt");
+
+    expect(broken.statusCode).toBe(415);
+    expect(broken.json().error).toBe("not-an-image");
+    expect(pins).toHaveLength(0);
+  }, 60_000);
+
+  // Pass 7, sealed #2 (V65): the pre-check said none and unseals of one passport run one at a time
+  // here, so the record this server just pinned is the oldest, whatever a trailing listing says.
+  it("answers GET /unseal with the record it just pinned while the listing still trails, after a none pre-check", async () => {
+    const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await on.ready();
+    try {
+      const unsealed = await ask("did:privy:unseal-trailing-listing", { on });
+      expect(unsealed.statusCode).toBe(200);
+      const lookups = stubs.findUnsealRecord.mock.calls.length;
+
+      const shown = await on.inject({ method: "GET", url: `/unseal/${sealedFile.passportId}`, remoteAddress: "198.51.100.47" });
+
+      expect(shown.statusCode).toBe(200);
+      expect(shown.json().record).toEqual(unsealed.json().record);
+      expect(shown.json().image).toEqual(unsealed.json().image);
+      expect(stubs.findUnsealRecord.mock.calls.length).toBe(lookups);
+    } finally {
+      await on.close();
+    }
+  }, 60_000);
+
+  it("asks a fresh listing on every GET after an unavailable pre-check, never a remembered not-unsealed", async () => {
+    const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await on.ready();
+    const read = async (): Promise<LightMyRequestResponse> =>
+      await on.inject({ method: "GET", url: `/unseal/${sealedFile.passportId}`, remoteAddress: "198.51.100.48" });
+    try {
+      stubs.findUnsealRecord
+        .mockReset()
+        .mockResolvedValueOnce({ state: "unavailable", reason: "pinata is down" })
+        .mockResolvedValue({ state: "none" });
+      expect((await ask("did:privy:unseal-blind-then-trailing", { on })).statusCode).toBe(200);
+
+      expect((await read()).json()).toEqual({ error: "not-unsealed", passportId: sealedFile.passportId });
+      const lookups = stubs.findUnsealRecord.mock.calls.length;
+      expect((await read()).statusCode).toBe(404);
+      expect(stubs.findUnsealRecord.mock.calls.length).toBe(lookups + 1);
+
+      const recordPin = pins.find((pin) => pin.name.startsWith("unseal-")) as Pin;
+      const cid = contentIdOf(recordPin.bytes);
+      stubs.findUnsealRecord.mockResolvedValue({ state: "found", record: { cid, uri: `ipfs://${cid}` } });
+      stubs.readUnsealRecord.mockResolvedValue(JSON.parse(recordPin.bytes.toString("utf8")));
+      const shown = await read();
+
+      expect(shown.statusCode).toBe(200);
+      expect(shown.json().record.cid).toBe(cid);
+    } finally {
+      await on.close();
+    }
+  }, 60_000);
+
+  // Pass 7, intake #2 (V57) on /unseal: a part typed application/json reaches the loop parsed, and
+  // skipping it would read as a missing field.
+  it("refuses a field that is not sent as plain text, naming the field", async () => {
+    const boundary = "----moolamunseal";
+    const payload = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="passportId"\r\nContent-Type: application/json\r\n\r\n` +
+          `{"id":"${sealedFile.passportId}"}\r\n`,
+      ),
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="sealed.jpg"\r\nContent-Type: image/jpeg\r\n\r\n`,
+      ),
+      sealedFile.bytes,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/unseal",
+      payload,
+      headers: {
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+        authorization: `Bearer ${await token("did:privy:unseal-json-field")}`,
+      },
+      remoteAddress: addressOf("did:privy:unseal-json-field"),
+    });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ error: 'field "passportId" must be sent as plain text' });
+    expect(pins).toHaveLength(0);
   }, 60_000);
 });
 

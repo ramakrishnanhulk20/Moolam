@@ -19,6 +19,9 @@
 // fake RPC; a first settle refused with no transaction is held, and the ledger is keyed by the payer
 // and the nonce together (pass 6, V43 and V48). A fault of this service while matching answers
 // 503 service-fault and a full match gate 503 busy, as /verify does, with nothing settled or held.
+// From pass 7: a failed settle whose reply leaves out the transaction is held, not a 500, through
+// the real HTTP facilitator client and a stubbed fetch (V59); one payment is worked on by one
+// request at a time and buys one answer for one file, and never replaces another file's entry (V60).
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -32,7 +35,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { decodePaymentSignatureHeader } from "@x402/core/http";
-import type { FacilitatorClient, HTTPRequestContext, x402HTTPResourceServer } from "@x402/core/server";
+import { HTTPFacilitatorClient, type FacilitatorClient, type HTTPRequestContext, type x402HTTPResourceServer } from "@x402/core/server";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
@@ -407,7 +410,10 @@ describe("a payment that already bought an answer", () => {
         headers: { ...second.headers, "payment-signature": paymentHeaderFor(nonce) },
       });
       expect(otherFile.body).not.toContain(record.id);
-      expect(processed).toHaveBeenCalledTimes(3);
+      // One payment buys one answer, for the file it was made for (pass 7, V60): the other file is
+      // refused before the facilitator is asked.
+      expect(otherFile.statusCode).toBe(409);
+      expect(processed).toHaveBeenCalledTimes(2);
     } finally {
       await app.close();
     }
@@ -1347,6 +1353,166 @@ describe("settlement failure", () => {
       expect(response.statusCode).toBe(502);
       expect(response.json().error).toBe("settlement-unknown");
       expect(cancel).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+// Pass 7, answers #1 (V59): a facilitator that answers a failed settle with a non-2xx status and no
+// transaction field made the route read `.length` of undefined and answer 500 with nothing held.
+describe("a failed settle that names no transaction (pass 7, V59)", () => {
+  it("holds the answer and answers 502 settlement-unknown, never 500, through the real HTTP facilitator client", async () => {
+    const account = privateKeyToAccount(generatePrivateKey());
+    const facilitatorUrl = "https://facilitator.invalid";
+    const settles: string[] = [];
+    vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0]) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (url === `${facilitatorUrl}/supported`) {
+        return Response.json({ kinds: [{ x402Version: 2, scheme: "exact", network: X402_NETWORK }], extensions: [], signers: {} });
+      }
+      if (url === `${facilitatorUrl}/verify`) {
+        return Response.json({ isValid: true, payer: account.address });
+      }
+      if (url === `${facilitatorUrl}/settle`) {
+        settles.push(url);
+        return Response.json(
+          { success: false, errorReason: "unexpected_settle_error", network: X402_NETWORK },
+          { status: 500 },
+        );
+      }
+      throw new Error(`no request may leave this test: ${url}`);
+    });
+
+    const ledger = paymentLedger();
+    const image = await makeImage(81);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments: buildPaymentServer({
+        payTo: PAY_TO,
+        price: "$0.05",
+        facilitator: new HTTPFacilitatorClient({ url: facilitatorUrl }),
+      }),
+      settlementRetryDelayMs: 0,
+      ledger,
+      charged: async () => undefined,
+    });
+    await app.ready();
+
+    try {
+      const unpaid = await app.inject({ method: "POST", url: "/verify/paid" });
+      const http = new x402HTTPClient(new x402Client().register(X402_NETWORK, new ExactEvmScheme(account)));
+      const terms = http.getPaymentRequiredResponse((name) => unpaid.headers[name.toLowerCase()] as string | undefined);
+      const signed = await http.createPaymentPayload(terms);
+      const nonce = (signed.payload.authorization as { nonce: string }).nonce.toLowerCase();
+
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      const response = await app.inject({
+        method: "POST",
+        url: "/verify/paid",
+        payload,
+        headers: { ...headers, ...http.encodePaymentSignatureHeader(signed) },
+      });
+
+      expect(response.statusCode).toBe(502);
+      expect(response.json().error).toBe("settlement-unknown");
+      expect(response.body).not.toContain(record.id);
+      // A reason code with no transaction is held at once, never asked again (pass 6, V43).
+      expect(settles).toHaveLength(1);
+      expect(ledger.get(`${account.address.toLowerCase()}:${nonce}`)?.state).toBe("unknown");
+    } finally {
+      vi.unstubAllGlobals();
+      await app.close();
+    }
+  });
+});
+
+// Pass 7, answers #2 (V60): one payment bought two answers when two requests carried it at once,
+// and a second file under the same payment replaced the first file's held answer and its proof.
+describe("one payment buys one answer for one file (pass 7, V60)", () => {
+  const PAYER = "0x3333333333333333333333333333333333333333";
+  const nonceUsed = {
+    success: false,
+    errorReason: "invalid_exact_evm_nonce_already_used",
+    errorMessage: "nonce used",
+    transaction: "",
+    network: X402_NETWORK,
+    headers: {},
+    response: { status: 402, headers: {}, body: { error: "invalid_exact_evm_nonce_already_used" } },
+  };
+
+  async function appWith(settle: unknown, charged: () => Promise<boolean | undefined>) {
+    const payments = paymentsThatSettleWith(settle, vi.fn(async () => undefined));
+    const processed = vi.spyOn(payments, "processHTTPRequest");
+    const ledger = paymentLedger();
+    const x = await makeImage(82);
+    const y = await makeImage(83);
+    const record = recordFor(await fingerprint(x));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0, ledger, charged });
+    await app.ready();
+    const send = async (header: string, file: Buffer) => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", file);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+    return { app, processed, ledger, x, y, send };
+  }
+
+  it("serves one of two requests sent together with one payment, and tells the other to wait without asking the facilitator", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const settle = vi
+      .fn()
+      .mockImplementationOnce(async () => {
+        await gate;
+        return settled(`0x${"8a".repeat(32)}`);
+      })
+      .mockResolvedValue(nonceUsed);
+    // The reviewer's sequence: whichever request settles second is refused, and the chain then
+    // shows the first request's transfer.
+    const { app, processed, x, y, send } = await appWith(settle, async () => true);
+    const header = paymentHeaderFor(`0x${"8b".repeat(32)}`);
+
+    try {
+      const both = [send(header, x), send(header, y)];
+      await Promise.race(both);
+      release();
+      const answers = await Promise.all(both);
+
+      expect(answers.map((answer) => answer.statusCode).sort()).toEqual([200, 409]);
+      const waited = answers.find((answer) => answer.statusCode === 409);
+      expect(waited?.json()).toEqual({ error: "payment-in-flight", reason: expect.stringMatching(/try again in a moment/i) });
+      expect(settle).toHaveBeenCalledTimes(1);
+      expect(processed).toHaveBeenCalledTimes(1);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("leaves file X's held answer and its proof as they were when the same payment comes with file Y", async () => {
+    const settle = vi.fn().mockRejectedValue(new Error("socket hang up"));
+    const { app, processed, ledger, x, y, send } = await appWith(settle, async () => undefined);
+    const nonce = `0x${"8c".repeat(32)}`;
+    const header = paymentHeaderFor(nonce);
+
+    try {
+      expect((await send(header, x)).json().error).toBe("settlement-unknown");
+      const held = ledger.get(`${PAYER}:${nonce}`);
+      expect(held?.state).toBe("unknown");
+
+      const other = await send(header, y);
+
+      expect(other.statusCode).toBe(409);
+      expect(other.json()).toEqual({
+        error: "payment-used-for-another-file",
+        reason: expect.stringMatching(/one payment buys one answer, for the file it was made for/),
+      });
+      expect(ledger.get(`${PAYER}:${nonce}`)).toEqual(held);
+      expect(processed).toHaveBeenCalledTimes(1);
+      expect(settle).toHaveBeenCalledTimes(2);
     } finally {
       await app.close();
     }

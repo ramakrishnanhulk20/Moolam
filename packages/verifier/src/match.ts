@@ -3,9 +3,18 @@ import {
   BLOCKHASH_MATCH_THRESHOLD,
   PHASH_MATCH_THRESHOLD,
   fingerprint,
+  hamming64,
+  hammingHex,
   type Fingerprint,
 } from "./fingerprint.js";
-import { HammingIndex, compareMatches, compareRegistrations, type IndexedRecord, type RankedMatch } from "./index.js";
+import {
+  HammingIndex,
+  compareMatches,
+  compareRegistrations,
+  score,
+  type IndexedRecord,
+  type RankedMatch,
+} from "./index.js";
 import type { DihedralName, Hex, Match, PassportRecord } from "./types.js";
 
 /** A match as the answer names it. */
@@ -43,6 +52,8 @@ const MAX_MATCHES = 20;
  * The exact-bytes sha256 of the image is tried first: a hit there means the
  * file is byte for byte a registered passport and nothing else needs deciding,
  * so the eight rotated copies are never built and the work stops at one decode.
+ * That hit keeps confidence 1 and reports the two distances and the score
+ * measured between this file's fingerprint and the one the passport stored.
  * Otherwise all eight rotated and mirrored copies of the query are fingerprinted
  * and each is run through the index, so a quarter-turned or mirrored re-upload
  * is caught even though its raw pHash is 30 of 64 bits away from the original.
@@ -70,12 +81,19 @@ export async function matchImage(
 
   const exactRecord = exactLookup(queried.sha256);
   if (exactRecord !== undefined) {
+    // The byte match is what makes this exact and worth confidence 1. The distances are still
+    // measured against the fingerprint the passport stored, because the registry cannot check that
+    // a fingerprint belongs to its bytes, and a passport carrying another picture's fingerprint must
+    // not be reported as 0 bits from it (review pass 7, V63).
+    const phashDistance = hamming64(queried.phash, exactRecord.phash);
+    const blockhashDistance = hammingHex(queried.blockhash, exactRecord.blockhash);
     const exactMatch: Match = {
       id: exactRecord.id,
-      phashDistance: 0,
-      blockhashDistance: 0,
+      phashDistance,
+      blockhashDistance,
       variant: "identity",
-      score: 1,
+      // Past either threshold the formula goes below zero; 0 already says nothing alike.
+      score: Math.max(0, score(phashDistance, blockhashDistance, MATCH_LIMITS)),
     };
     const first = index.earliest(queried.phash, queried.blockhash, MATCH_LIMITS);
     // Registered strictly before the exact passport, so a stored fingerprint that drifted from these

@@ -4,11 +4,11 @@ import type { Response as FetchResponse } from "undici";
 import { z } from "zod";
 import { registryEditAbi, tokenIdOf } from "./edit/registry.js";
 import { env } from "./env.js";
-import type { Fingerprint, Hex } from "./fingerprint.js";
+import { FingerprintFault, UndecodableImage, type Fingerprint, type Hex } from "./fingerprint.js";
 import { gatewayUrl } from "./ipfs/pinata.js";
 import { FINGERPRINT_VERSION, phashHex } from "./metadata.js";
 import { BlockedTarget, UnreachableTarget, safeFetch, type SafeFetchOptions } from "./net/safeFetch.js";
-import { THUMBNAIL_MAX_BYTES, makeThumbnail } from "./prepare.js";
+import { THUMBNAIL_MAX_BYTES, ThumbnailTooLarge, makeThumbnail } from "./prepare.js";
 
 /**
  * Where Pinata lists the files this account has pinned publicly.
@@ -181,16 +181,29 @@ export type ThumbnailAttempt =
  * publicly. Unsealing it without this check would publish a passport the workflow can never
  * re-check, and the passport page would show a picture with a permanent "not re-checked" next to
  * it. Better to refuse the unseal and say why.
+ *
+ * Only ThumbnailTooLarge is that answer (review pass 7, V64). Any other failure says nothing
+ * permanent about the picture, so it is thrown, sorted by the rule fingerprint.ts uses for a
+ * decoder: one that ran out of memory ("out of memory" from libvips, "Insufficient memory" from
+ * libjpeg) is this host's FingerprintFault, and the caller may retry; anything else is the upload's
+ * UndecodableImage.
+ *
+ * Throws FingerprintFault or UndecodableImage for any failure that is not the size budget.
  */
 export async function unsealThumbnail(bytes: Buffer): Promise<ThumbnailAttempt> {
   try {
     return { ok: true, thumbnail: await makeThumbnail(bytes) };
   } catch (error) {
-    return {
-      ok: false,
-      limit: THUMBNAIL_MAX_BYTES,
-      detail: error instanceof Error ? error.message : String(error),
-    };
+    if (error instanceof ThumbnailTooLarge) {
+      return { ok: false, limit: THUMBNAIL_MAX_BYTES, detail: error.message };
+    }
+    if (error instanceof FingerprintFault || error instanceof UndecodableImage) {
+      throw error;
+    }
+    const detail = error instanceof Error ? error.message : String(error);
+    throw /memory/i.test(detail)
+      ? new FingerprintFault(detail, { cause: error })
+      : new UndecodableImage(detail, { cause: error });
   }
 }
 

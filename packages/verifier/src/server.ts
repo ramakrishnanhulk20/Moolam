@@ -425,6 +425,21 @@ export async function buildServer(
     trustProxy: env.TRUST_PROXY === "" ? false : env.TRUST_PROXY,
   });
 
+  // Set before the first register, because Fastify fixes each route's error handler when the route
+  // is added: a handler set after the route plugins reaches none of them, and every route would keep
+  // the default, which answers a thrown 5xx with its raw message (review pass 7, V61). A 5xx says
+  // only the sentence below, since a thrown message can carry an RPC address, and its path is a key.
+  app.setErrorHandler((error: FastifyError, request, reply) => {
+    const status = error.statusCode ?? 500;
+    request.log.warn({ ip: request.ip, url: request.url, status, reason: error.message }, "rejected: request failed");
+    return reply.code(status).send({ error: status >= 500 ? "verifier failed to handle the request" : error.message });
+  });
+
+  app.setNotFoundHandler((request, reply) => {
+    request.log.warn({ ip: request.ip, method: request.method, url: request.url }, "rejected: unknown route");
+    return reply.code(404).type("application/json").send({ error: `no route for ${request.method} ${request.url}` });
+  });
+
   // Registered before any route or plugin, because a child context copies the hooks the root had
   // at the moment it was created: a hook added later would miss every route registered above it.
   // These four are on every answer, the 404 and the error page included. Fastify advertises no
@@ -698,17 +713,6 @@ export async function buildServer(
     });
   }
   app.log.info({ mode: sweep.mode }, "private copy sweep: first run an hour after boot, then hourly");
-
-  app.setNotFoundHandler((request, reply) => {
-    request.log.warn({ ip: request.ip, method: request.method, url: request.url }, "rejected: unknown route");
-    return reply.code(404).type("application/json").send({ error: `no route for ${request.method} ${request.url}` });
-  });
-
-  app.setErrorHandler((error: FastifyError, request, reply) => {
-    const status = error.statusCode ?? 500;
-    request.log.warn({ ip: request.ip, url: request.url, status, reason: error.message }, "rejected: request failed");
-    return reply.code(status).send({ error: status >= 500 ? "verifier failed to handle the request" : error.message });
-  });
 
   if (env.INDEX_REFRESH_MS > 0) {
     const timer = setInterval(() => {

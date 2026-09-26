@@ -1,13 +1,14 @@
 // Covers the HTTP surface: health, a good upload, rejected bodies, the refused
 // fetch targets, unknown routes, the body limits and the rate limit, and /health answering fast
-// while a 40 megapixel upload is being matched (review pass 5, answers 1).
+// while a 40 megapixel upload is being matched (review pass 5, answers 1), and every route's
+// error answer in the service's own shape, a thrown message never included (pass 7, V61).
 // Requests go through fastify.inject, so no port is bound.
 // Does NOT cover the remote URL fetch path against a real network, does not cover
 // the boot refusals or the match gate giving up, which are in boot.test.ts, and
 // does not cover TLS or any deployment concern.
 
 import sharp from "sharp";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { MAX_IMAGE_PIXELS, fingerprint } from "../src/fingerprint.js";
 import { buildServer } from "../src/server.js";
@@ -170,6 +171,66 @@ describe("answers 1: a large upload does not freeze the service", () => {
       await app.close();
     }
   }, 60_000);
+});
+
+// Pass 7, answers #3 (V61): the handler was set after every route plugin, so every route kept
+// Fastify's default, which answers a thrown 5xx with its raw message.
+describe("the service's own error answers (pass 7, V61)", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildServer({ source: sourceOf([]), logger: false });
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("answers a route that throws with the service's own words and no part of the thrown message", async () => {
+    const counts = vi.spyOn(app.recheck, "counts").mockImplementationOnce(() => {
+      throw new Error("secret https://rpc.example/TOKEN123");
+    });
+
+    const response = await app.inject({ method: "GET", url: "/health" });
+
+    expect(counts).toHaveBeenCalled();
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({ error: "verifier failed to handle the request" });
+    for (const part of ["secret", "rpc.example", "TOKEN123"]) {
+      expect(response.body).not.toContain(part);
+    }
+  });
+
+  it("answers a 413, a 415 and the rate limiter's 429 as { error } alone", async () => {
+    const fat = await app.inject({
+      method: "POST",
+      url: "/verify",
+      payload: JSON.stringify({ url: `https://example.com/${"a".repeat(20 * 1024)}.jpg` }),
+      headers: { "content-type": "application/json" },
+    });
+    const odd = await app.inject({
+      method: "POST",
+      url: "/verify",
+      payload: "<picture/>",
+      headers: { "content-type": "application/xml" },
+    });
+    for (let i = 0; i < 60; i += 1) {
+      await app.inject({ method: "POST", url: "/verify", remoteAddress: "203.0.113.21" });
+    }
+    const limited = await app.inject({ method: "POST", url: "/verify", remoteAddress: "203.0.113.21" });
+
+    for (const [response, status] of [
+      [fat, 413],
+      [odd, 415],
+      [limited, 429],
+    ] as const) {
+      expect(response.statusCode).toBe(status);
+      const body = response.json() as Record<string, unknown>;
+      expect(Object.keys(body)).toEqual(["error"]);
+      expect(typeof body.error).toBe("string");
+    }
+  }, 30_000);
 });
 
 describe("rate limit", () => {

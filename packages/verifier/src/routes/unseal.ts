@@ -74,6 +74,14 @@ const MISS_TTL_MS = 60_000;
 /** How many misses are held at once before the oldest is forgotten. */
 const MISS_MAX_ENTRIES = 2_000;
 
+/**
+ * How long after its own unseal this server never remembers a not-unsealed miss for the passport,
+ * when it could not tell which record is the oldest. Pinata's listing can trail a fresh pin, and a
+ * miss remembered from that trailing listing would call the passport sealed for a minute while its
+ * picture is public (review pass 7, V65). Ten minutes is far past any lag seen in the listing.
+ */
+const FRESH_UNSEAL_MS = 10 * 60_000;
+
 type MissAnswer = { error: "no-passport" | "not-sealed" | "not-unsealed"; passportId: Hex };
 
 interface MissMemory {
@@ -82,6 +90,34 @@ interface MissMemory {
   /** Holds the answer and hands it back, so a route can remember and send in one line. */
   remember: (passportId: Hex, answer: MissAnswer) => MissAnswer;
   forget: (passportId: Hex) => void;
+}
+
+/** Passports this server has just unsealed without knowing their oldest record. */
+interface FreshUnseals {
+  hold: (passportId: Hex) => void;
+  has: (passportId: Hex) => boolean;
+}
+
+function freshUnseals(now: () => number = () => Date.now()): FreshUnseals {
+  const until = new Map<Hex, number>();
+  return {
+    hold: (passportId) => {
+      until.delete(passportId);
+      while (until.size >= MISS_MAX_ENTRIES) {
+        const oldest = until.keys().next();
+        if (oldest.done === true) break;
+        until.delete(oldest.value);
+      }
+      until.set(passportId, now() + FRESH_UNSEAL_MS);
+    },
+    has: (passportId) => {
+      const end = until.get(passportId);
+      if (end === undefined) return false;
+      if (end > now()) return true;
+      until.delete(passportId);
+      return false;
+    },
+  };
 }
 
 function missMemory(now: () => number = () => Date.now()): MissMemory {
@@ -168,8 +204,9 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * not, nothing private is touched, the holder's allowance comes back, and sending the same file
  * again lands on the same content ids and finishes the unseal (V9). A private copy kept
  * before V12 is the public thumbnail byte for byte, so it is deleted before the pins, or nothing is
- * pinned (review pass 5). When the check for an earlier record could not answer, the record cached
- * for GET is the oldest one a fresh lookup names, or none.
+ * pinned (review pass 5). When the check for an earlier record found none, the record just pinned is
+ * cached for GET at once. When that check could not answer, the record cached for GET is the oldest
+ * one a fresh lookup names, or none, and for ten minutes GET remembers no not-unsealed miss for it.
  *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
  * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed`, `already-unsealed`,
@@ -193,6 +230,7 @@ export async function unsealRoutes(
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
   const known: Known = new Map();
   const misses = missMemory();
+  const fresh = freshUnseals();
   const unsealing = new Set<Hex>();
 
   const publish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -219,6 +257,7 @@ export async function unsealRoutes(
       registry,
       known,
       misses,
+      fresh,
       unsealing,
       copies: options.copies,
     });
@@ -307,7 +346,9 @@ export async function unsealRoutes(
         return reply.code(503).send({ error: "lookup-unavailable" });
       }
       if (found.state === "none") {
-        return reply.code(404).send(misses.remember(passportId, { error: "not-unsealed", passportId }));
+        const miss: MissAnswer = { error: "not-unsealed", passportId };
+        // A listing that trails this server's own fresh unseal is not believed for long.
+        return reply.code(404).send(fresh.has(passportId) ? miss : misses.remember(passportId, miss));
       }
 
       let record: UnsealRecord;
@@ -333,6 +374,8 @@ interface UnsealContext {
   registry: Hex;
   known: Known;
   misses: MissMemory;
+  /** Passports unsealed here whose oldest record this server could not confirm, for FRESH_UNSEAL_MS. */
+  fresh: FreshUnseals;
   /** Passports with an unseal running on this server, so two never pin two records (review pass 6, V55). */
   unsealing: Set<Hex>;
   /** The memory behind /sealed/status, so a deleted private copy reads gone at once. */
@@ -768,12 +811,20 @@ async function unsealHeld(
     }
 
     const pinnedAt: PinnedRecord = { cid: pinnedRecord.cid, uri: pinnedRecord.uri };
-    // Whatever the check before the pins said, another server, or a listing that trailed an earlier
-    // unseal, can have pinned a record first. Every other reader shows the oldest, so this server
-    // caches the oldest or nothing (review pass 6, V55).
-    const oldest = await oldestRecord(upload.passportId, pinnedAt, record, request.log);
-    if (oldest !== undefined) {
-      context.known.set(upload.passportId, oldest);
+    if (existing.state === "none") {
+      // The check before the pins found no record, and unseals of one passport run one at a time
+      // here, so the record just pinned is the oldest. It is known at once, without asking a
+      // listing that may not show it yet (review pass 7, V65).
+      context.known.set(upload.passportId, { record, pinned: pinnedAt });
+    } else {
+      // The check could not tell, so another server can have pinned a record first. Every other
+      // reader shows the oldest, so this server caches the oldest or nothing (review pass 6, V55),
+      // and remembers no not-unsealed miss for a while, since the listing may trail this pin.
+      const oldest = await oldestRecord(upload.passportId, pinnedAt, record, request.log);
+      if (oldest !== undefined) {
+        context.known.set(upload.passportId, oldest);
+      }
+      context.fresh.hold(upload.passportId);
     }
     context.misses.forget(upload.passportId);
 
@@ -981,7 +1032,7 @@ function titleOf(document: unknown): string {
  * Reads the file and the passport id out of the multipart body, in whatever order they arrive.
  *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
- * name, or a passport id that is not 32 bytes of hex.
+ * name, a field that is not sent as plain text, or a passport id that is not 32 bytes of hex.
  */
 async function readUnsealUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {
@@ -1000,6 +1051,10 @@ async function readUnsealUpload(request: FastifyRequest): Promise<Upload> {
         bytes = await part.toBuffer();
       } else if (typeof part.value === "string") {
         fields.set(part.fieldname, part.value);
+      } else {
+        // The multipart plugin parses a part typed application/json, and skipping it would read as
+        // a missing field. Refused in the words routes/shared.ts uses for the other routes (V57).
+        throw new BadRequest(`field "${part.fieldname}" must be sent as plain text`);
       }
     }
   } catch (error) {

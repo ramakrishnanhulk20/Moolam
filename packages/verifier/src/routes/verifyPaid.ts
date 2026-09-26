@@ -32,6 +32,14 @@ const FACILITATOR_REASON = /^[a-z][a-z0-9_]*$/;
 
 const NONCE = /^0x[0-9a-fA-F]{64}$/;
 
+/** What a second request carrying a payment another request is still working on is told. */
+export const PAYMENT_IN_FLIGHT_REASON =
+  "another request is using this payment right now and has not finished. Try again in a moment: once it answers, the same payment with the same file gets the answer it bought, and nothing is charged twice.";
+
+/** What a payment that already bought an answer about one file is told when it comes with another. */
+export const OTHER_FILE_REASON =
+  "this payment already bought an answer about another file, and one payment buys one answer, for the file it was made for. Send that file with it again, or pay once more for this one.";
+
 /** The one call the chain is asked: whether an EIP-3009 authorisation has been used. */
 const AUTHORIZATION_STATE_ABI = [
   {
@@ -169,21 +177,34 @@ function isRefusal(settled: ProcessSettleResultResponse): boolean {
   return !settled.success && FACILITATOR_REASON.test(reason) && settled.transaction.length === 0;
 }
 
+/**
+ * The settle answer with its transaction read once, as a string. @x402/core only promises the field
+ * on a 2xx settle reply; a non-2xx reply is passed on as the facilitator wrote it, so a failure that
+ * left the field out arrives with it undefined (review pass 7, V59). Missing reads as none.
+ */
+function normalised(result: ProcessSettleResultResponse): ProcessSettleResultResponse {
+  const transaction = (result as { transaction?: unknown }).transaction;
+  return typeof transaction === "string" ? result : { ...result, transaction: "" };
+}
+
+/**
+ * One ask of the facilitator, sorted. The classification sits inside the same try as the call, so
+ * an answer of a shape nobody expected is unknown, and held, rather than a crash that drops it.
+ */
 async function attempt(settle: () => Promise<ProcessSettleResultResponse>): Promise<Attempt> {
-  let result: ProcessSettleResultResponse;
   try {
-    result = await settle();
+    const result = normalised(await settle());
+    if (result.success) return { kind: "settled", headers: result.headers };
+    if (isBroadcast(result)) return { kind: "broadcast", result };
+    if (isRefusal(result)) return { kind: "refused", result };
+    return {
+      kind: "unknown",
+      reason: result.errorReason ?? "the facilitator gave no reason",
+      ...(result.transaction.length > 0 ? { transaction: result.transaction } : {}),
+    };
   } catch (error) {
     return { kind: "unknown", reason: error instanceof Error ? error.message : String(error) };
   }
-  if (result.success) return { kind: "settled", headers: result.headers };
-  if (isBroadcast(result)) return { kind: "broadcast", result };
-  if (isRefusal(result)) return { kind: "refused", result };
-  return {
-    kind: "unknown",
-    reason: result.errorReason ?? "the facilitator gave no reason",
-    ...(result.transaction.length > 0 ? { transaction: result.transaction } : {}),
-  };
 }
 
 /** The transaction an attempt named, which is what the chain check proves a payment by. */
@@ -601,6 +622,13 @@ async function settleSequence(
  * kept under the payer and the nonce together (V48); both are public on chain
  * once the transfer settles, so they open nothing on their own.
  *
+ * One payment buys one answer, for one file (review pass 7, V60). The payer and
+ * the nonce are marked in flight before the upload is read or the facilitator is
+ * asked, and a second request carrying them meanwhile answers 409
+ * `payment-in-flight` without the facilitator hearing of it. A remembered payment
+ * sent with another file answers 409 `payment-used-for-another-file`, and no
+ * request ever replaces an entry that holds the answer about another file.
+ *
  * The route is mounted only when X402_ENABLED is true. Otherwise the path does
  * not exist and the service answers 404.
  */
@@ -624,12 +652,47 @@ export async function verifyPaidRoutes(
   const charged: ChargedCheck = options.charged ?? (env.NODE_ENV === "test" ? async () => undefined : chainCharged());
   const head = options.head ?? (env.NODE_ENV === "test" ? async () => undefined : liveHead());
   let ready: Promise<void> | undefined;
+  // Payer and nonce of every payment a request is working on right now, taken before the upload is
+  // read or the facilitator is asked, so two requests can never settle one payment side by side.
+  const inFlight = new Set<string>();
+
+  /** Writes an entry, but never over one that holds the answer about another file (review pass 7, V60). */
+  const keep = (key: string, entry: Omit<LedgerEntry, "at">, log: FastifyBaseLogger, where: Where): void => {
+    const existing = ledger.get(key);
+    if (existing !== undefined && existing.upload !== entry.upload) {
+      log.warn({ ...where, state: existing.state }, "kept the answer this payment holds for another file");
+      return;
+    }
+    ledger.remember(key, entry);
+  };
 
   app.post(PAID_VERIFY_PATH, async (request: FastifyRequest, reply: FastifyReply) => {
     const context = contextFor(request);
     const where: Where = { ip: request.ip, url: request.url };
     const offered = offeredPayment(context);
+    if (offered === undefined) {
+      return await answer(request, reply, context, where, undefined);
+    }
+    // Checked and taken in the same tick, before any await, so a second request cannot slip in.
+    if (inFlight.has(offered.key)) {
+      request.log.warn(where, "rejected: this payment is in flight on another request");
+      return reply.code(409).send({ error: "payment-in-flight", reason: PAYMENT_IN_FLIGHT_REASON });
+    }
+    inFlight.add(offered.key);
+    try {
+      return await answer(request, reply, context, where, offered);
+    } finally {
+      inFlight.delete(offered.key);
+    }
+  });
 
+  async function answer(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    context: HTTPRequestContext,
+    where: Where,
+    offered: PaymentIdentity | undefined,
+  ): Promise<FastifyReply> {
     // Read only for a repeat of a payment this service remembers, and handed on below so the
     // upload is never read twice.
     let bytes: Buffer | undefined;
@@ -644,6 +707,10 @@ export async function verifyPaidRoutes(
           return reply.code(status).send({ error: error instanceof Error ? error.message : String(error) });
         }
         const replay = await replayFor(seen, bytes, charged);
+        if (replay.kind === "other-file") {
+          request.log.warn({ ...where, state: seen.state }, "rejected: this payment already bought an answer for another file");
+          return reply.code(409).send({ error: "payment-used-for-another-file", reason: OTHER_FILE_REASON });
+        }
         if (replay.kind === "serve") {
           request.log.info({ ...where, state: replay.entry.state }, "replayed: this payment already bought an answer");
           if (replay.entry !== seen) {
@@ -654,11 +721,9 @@ export async function verifyPaidRoutes(
         // The payment goes through as new, and the held answer is never let go on a "not spent"
         // read: that read is also what a first transfer still pending looks like, so the answer
         // stays held until a new settle replaces it or its ten minutes run out (review pass 5,
-        // answers #6). Another file is a different answer and settles on its own.
-        if (replay.kind === "not-spent" || replay.kind === "cannot-tell") {
-          const proof = proofOf(seen);
-          held = { transactions: proof?.transactions ?? [], since: proof?.since };
-        }
+        // answers #6).
+        const proof = proofOf(seen);
+        held = { transactions: proof?.transactions ?? [], since: proof?.since };
       }
     }
 
@@ -753,7 +818,7 @@ export async function verifyPaidRoutes(
 
     if (settlement.state === "unknown") {
       if (paid !== undefined) {
-        ledger.remember(paid.key, {
+        keep(paid.key, {
           state: "unknown",
           payload,
           headers: {},
@@ -765,7 +830,7 @@ export async function verifyPaidRoutes(
             transactions: settlement.transactions,
             since,
           } satisfies HeldProof,
-        });
+        }, request.log, where);
       }
       return reply.code(502).send({
         error: "settlement-unknown",
@@ -775,18 +840,23 @@ export async function verifyPaidRoutes(
     }
 
     if (paid !== undefined) {
-      ledger.remember(paid.key, {
-        state: settlement.state === "settled" ? "settled" : "pending",
-        payload,
-        headers: settlement.headers,
-        payment: paid.identity,
-        upload,
-      });
+      keep(
+        paid.key,
+        {
+          state: settlement.state === "settled" ? "settled" : "pending",
+          payload,
+          headers: settlement.headers,
+          payment: paid.identity,
+          upload,
+        },
+        request.log,
+        where,
+      );
     }
 
     reply.headers(settlement.headers);
     return reply.send(payload);
-  });
+  }
 }
 
 /**

@@ -1,14 +1,15 @@
 // Covers matchImage: the exact sha256 path, a near match through a transform,
-// and an image nobody registered.
+// and an image nobody registered. An exact hit reports the distances measured against the
+// passport's stored fingerprint, not zeros it never measured (pass 7, V63).
 // Does NOT cover the HTTP layer (see server.test.ts) or the measured match rate
 // per transform, which scripts/robustness.ts reports.
 
 import sharp from "sharp";
 import { describe, expect, it, vi } from "vitest";
 import { dihedralFingerprints } from "../src/dihedral.js";
-import { fingerprint } from "../src/fingerprint.js";
+import { fingerprint, hamming64, hammingHex } from "../src/fingerprint.js";
 import { HammingIndex } from "../src/index.js";
-import { matchImage } from "../src/match.js";
+import { MATCH_LIMITS, matchImage } from "../src/match.js";
 import type { Hex, PassportRecord } from "../src/types.js";
 import { makeImage, recordFor } from "./helpers.js";
 
@@ -39,7 +40,30 @@ describe("matchImage", () => {
     expect(result.exact).not.toBeNull();
     expect(result.confidence).toBe(1);
     expect(result.best?.phashDistance).toBe(0);
+    expect(result.best?.blockhashDistance).toBe(0);
+    expect(result.best?.score).toBe(1);
     expect(result.queried.sha256).toBe(result.exact);
+  });
+
+  // The registry cannot check that a passport's fingerprint belongs to its bytes, so a passport can
+  // carry the bytes of F and the fingerprint of G.
+  it("reports the distances measured against the passport's stored fingerprint on an exact hit", async () => {
+    const f = await makeImage(21);
+    const g = await makeImage(57);
+    const [printF, printG] = await Promise.all([fingerprint(f), fingerprint(g)]);
+    const bent = recordFor(printG, { id: printF.sha256 });
+    const index = new HammingIndex([bent]);
+
+    const result = await matchImage(f, index, (sha256) => (sha256 === bent.id ? bent : undefined));
+
+    const phashDistance = hamming64(printF.phash, printG.phash);
+    const blockhashDistance = hammingHex(printF.blockhash, printG.blockhash);
+    expect(phashDistance).toBeGreaterThan(MATCH_LIMITS.phashMax);
+    expect(result.exact).toBe(bent.id);
+    expect(result.confidence).toBe(1);
+    expect(result.best).toMatchObject({ id: bent.id, phashDistance, blockhashDistance, variant: "identity" });
+    expect(result.best?.score).toBeLessThan(1);
+    expect(result.matches[0]).toEqual(result.best);
   });
 
   it("does no dihedral work when the bytes are an exact hit", async () => {
