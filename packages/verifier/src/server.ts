@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { Socket } from "node:net";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import cors from "@fastify/cors";
@@ -12,7 +13,7 @@ import { checkRegistry } from "./boot/registryChecks.js";
 import { consentReader, offlineConsentReader, type ConsentReader } from "./consentRead.js";
 import { disputeReader, offlineDisputeReader, type DisputeReader } from "./disputeRead.js";
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSweepMode } from "./env.js";
-import { waitingGate } from "./generate/gate.js";
+import { fairGate } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
 import { globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { matchImage, type MatchResult } from "./match.js";
@@ -52,14 +53,21 @@ import type { Hex, PassportRecord } from "./types.js";
 const RATE_LIMIT_PER_MINUTE = 60;
 
 /**
- * How many images may be matched at the same time.
+ * How many verifies may decode at the same time.
  *
  * Matching decodes the picture nine times over, so the rate limit alone does
  * not bound memory: sixty large uploads inside one minute would all decode at
- * once. Two runs in flight keeps the peak to roughly two decodes while queued
- * callers simply wait their turn.
+ * once. Two verifies in flight while queued callers simply wait their turn.
  */
-const MAX_CONCURRENT_MATCHES = 2;
+const VERIFY_SLOTS = 2;
+
+/**
+ * The slot /prepare, /edit and /unseal keep for themselves, which no verify can take, so a flood
+ * of verifies cannot turn a creator's registration away busy (review pass 8, V74). With the two
+ * verify slots that makes three decodes in flight at most, about 1.15 GB at 383 MB each for 40 MP
+ * pictures (the budget is argued at UPLOAD_CEILING_BYTES in src/routes/shared.ts).
+ */
+const STUDIO_SLOTS = 1;
 
 /**
  * The cap on a body this service will parse into memory.
@@ -70,6 +78,20 @@ const MAX_CONCURRENT_MATCHES = 2;
  * cannot make this process buffer megabytes before a single check has run.
  */
 const MAX_JSON_BODY_BYTES = 16 * 1024;
+
+/**
+ * How long a socket may sit with nothing arriving while its request body is still coming. A body
+ * that stops arriving is closed after this, and its share of the upload ceiling comes back
+ * (review pass 8, V70). A request whose body is in is not cut off by it: see the timeout hook.
+ */
+const IDLE_BODY_MS = 30_000;
+
+/**
+ * How long a whole request may take to arrive. A 20 MB upload from a phone on a slow uplink of
+ * about 1 Mbit/s takes some 160 seconds, so 180 still lets that caller through while no share of
+ * the upload ceiling can be held by a body trickling in for longer than three minutes.
+ */
+const REQUEST_ARRIVAL_MS = 180_000;
 
 /**
  * The routes whose answers must never sit in a cache, proxy or browser store.
@@ -236,9 +258,15 @@ export interface Verifier {
   index: HammingIndex;
   lookupExact: (sha256: Hex) => PassportRecord | undefined;
   version: string;
-  /** Matches an image, waiting for a free slot so heavy uploads cannot pile up. */
-  runMatch: (bytes: Buffer) => Promise<MatchResult>;
-  runPrepare: <T>(task: () => Promise<T>) => Promise<T>;
+  /**
+   * Matches an image in a verify slot, waiting for one so heavy uploads cannot pile up. `caller`,
+   * a rate-limit key, holds one slot at a time; left out, only the slot counts apply.
+   */
+  runMatch: (bytes: Buffer, caller?: string) => Promise<MatchResult>;
+  /** Runs other verify work, the manifest read, in a verify slot on the same terms as runMatch. */
+  runVerify: <T>(task: () => Promise<T>, caller?: string) => Promise<T>;
+  /** Runs /prepare, /edit and /unseal work, which may also take the slot no verify can. */
+  runPrepare: <T>(task: () => Promise<T>, caller?: string) => Promise<T>;
   /** Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand. */
   reload: () => Promise<void>;
   /** Reads what a passport's holder has stated about AI use, for the verify answers. */
@@ -407,6 +435,8 @@ export async function buildServer(
     dispute?: DisputeReader;
     picture?: PictureReader;
     checks?: { registry?: () => Promise<void> };
+    /** Replaces the idle and whole-request limits on a body that is arriving, for tests. */
+    timeouts?: { idleMs?: number; requestMs?: number };
     recheck?: {
       store?: QueueStore;
       runnerToken?: string;
@@ -424,6 +454,21 @@ export async function buildServer(
     // forwarded entry", and that entry is written by the caller, which would hand every caller a
     // bucket of their own choosing.
     trustProxy: env.TRUST_PROXY === "" ? false : env.TRUST_PROXY,
+    connectionTimeout: options.timeouts?.idleMs ?? IDLE_BODY_MS,
+    requestTimeout: options.timeouts?.requestMs ?? REQUEST_ARRIVAL_MS,
+  });
+
+  // Node's idle timeout counts silence in both directions, so on its own it would also close a
+  // caller whose body is in and who is waiting on the match gate or an image model for longer than
+  // the idle limit. Node closes a timed-out socket itself only when nobody listens for the timeout,
+  // so listening here leaves the choice to this hook: a body still arriving is closed, a request
+  // already read is left to finish.
+  app.addHook("onRequest", async (request, reply) => {
+    reply.raw.on("timeout", (socket: Socket) => {
+      if (!request.raw.complete) {
+        socket.destroy();
+      }
+    });
   });
 
   // Set before the first register, because Fastify fixes each route's error handler when the route
@@ -460,7 +505,7 @@ export async function buildServer(
   const source = options.source ?? sourceFromEnv();
   let current = await loadIndex(source);
   const lookupExact = (sha256: Hex): PassportRecord | undefined => current.byId.get(sha256.toLowerCase() as Hex);
-  const gate = waitingGate(MAX_CONCURRENT_MATCHES, env.MATCH_WAIT_MS);
+  const gate = fairGate({ verifySlots: VERIFY_SLOTS, studioSlots: STUDIO_SLOTS, maxWaitMs: env.MATCH_WAIT_MS });
   // Under a test runner the default reader makes no network call: a unit suite must not depend on
   // a public RPC being up. A test that wants a statement passes its own reader.
   const consent = options.consent ?? (env.NODE_ENV === "test" ? offlineConsentReader() : consentReader());
@@ -580,8 +625,10 @@ export async function buildServer(
     },
     lookupExact,
     version,
-    runMatch: (bytes: Buffer) => gate(() => matchImage(bytes, current.index, lookupExact)),
-    runPrepare: <T>(task: () => Promise<T>) => gate(task),
+    runMatch: (bytes: Buffer, caller?: string) =>
+      gate("verify", caller, () => matchImage(bytes, current.index, lookupExact)),
+    runVerify: <T>(task: () => Promise<T>, caller?: string) => gate("verify", caller, task),
+    runPrepare: <T>(task: () => Promise<T>, caller?: string) => gate("studio", caller, task),
     reload,
     consent,
     dispute,

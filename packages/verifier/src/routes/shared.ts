@@ -7,6 +7,7 @@ import { manifestUnreadable, readManifest, type ManifestSummary } from "../c2pa.
 import { FETCH_TIMEOUT_MS, MAX_UPLOAD_BYTES } from "../env.js";
 import { ImageTooLarge, UndecodableImage, UnsupportedImageFormat } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
+import { rateLimitKey } from "../limits/addressKey.js";
 import type { MatchResult } from "../match.js";
 import { safeReason } from "../net/errorText.js";
 import { BlockedTarget, UnreachableTarget, safeFetch } from "../net/safeFetch.js";
@@ -30,18 +31,34 @@ export class ServiceFault extends Error {
 }
 
 /**
- * The upload bytes every request together may hold in memory at once: three full uploads, 60 MiB.
- * DEPLOY.md gives the host 512 MB and measured 72 MiB at idle, and the match gate lets two decodes
- * run at once at up to about 160 MB each (MAX_IMAGE_PIXELS), which leaves roughly 120 MB. A held
- * upload is copied at least once more on its way through (the blockhash worker's copy, sharp's
- * input), so 60 MiB of bodies is what that headroom can carry. Without it every caller parked
- * behind the match gate kept its whole body, 20 MB each, and 30 of them outgrew the host
- * (review pass 7, V62).
+ * The upload bytes every request together may hold in memory at once: ten full uploads, 200 MiB.
+ *
+ * Measured on 2026-09-26: Railway gives this service 8 GB and it ran at 240 MB on average with a
+ * 290 MB peak. One 40 MP picture's blockhash decode adds about 383 MB (review pass 8, intake 1),
+ * and the match gate runs three decodes at most, so a full gate is about 1.15 GB. A held upload is
+ * copied at least once more on its way through (the blockhash worker's copy, sharp's input), so
+ * 200 MiB of bodies costs about 420 MB at worst. 290 MB, 1.15 GB and 420 MB together stay under
+ * the 2 GB DEPLOY.md asks for. Without a ceiling every caller parked behind the match gate kept its
+ * whole body, 20 MB each, and 30 of them outgrew the host (review pass 7, V62).
  */
-export const UPLOAD_CEILING_BYTES = 3 * MAX_UPLOAD_BYTES;
+export const UPLOAD_CEILING_BYTES = 10 * MAX_UPLOAD_BYTES;
 
-/** What the ceiling allows and what requests hold now. The limit is a field so a test can lower it. */
-export const heldUploads = { limit: UPLOAD_CEILING_BYTES, held: 0 };
+/**
+ * What one rate-limit key may hold of the ceiling at once: two full uploads, 40 MiB. Without it
+ * three idle uploads from one address held the whole ceiling and every other upload was refused
+ * busy (review pass 8, V70). Two, not one, so a browser that sends a verify while a registration
+ * is still uploading is not refused.
+ */
+export const CALLER_CEILING_BYTES = 2 * MAX_UPLOAD_BYTES;
+
+/**
+ * What the ceilings allow and what requests hold now. The limits are fields so a test can lower
+ * them.
+ */
+export const heldUploads = { limit: UPLOAD_CEILING_BYTES, perCaller: CALLER_CEILING_BYTES, held: 0 };
+
+/** What each rate-limit key holds now. A key holding nothing has no entry. */
+const heldByCaller = new Map<string, number>();
 
 /** Past the ceiling. It carries 503, so every upload route answers it as its one word, busy. */
 export class UploadsBusy extends Error {
@@ -54,6 +71,8 @@ export class UploadsBusy extends Error {
 
 /** One request's share of the ceiling, given back once its response is done and no match is using its bytes. */
 interface UploadHold {
+  /** The rate-limit key of the caller, which the per-caller ceiling and the match gate both count on. */
+  caller: string;
   share: number;
   answered: boolean;
   matching: number;
@@ -82,12 +101,36 @@ function shareOf(declared: string | string[] | null | undefined): number {
     : MAX_UPLOAD_BYTES;
 }
 
+/** Takes `bytes` off both counts for this hold's caller. */
+function release(hold: UploadHold, bytes: number): void {
+  heldUploads.held -= bytes;
+  const left = (heldByCaller.get(hold.caller) ?? 0) - bytes;
+  if (left > 0) {
+    heldByCaller.set(hold.caller, left);
+  } else {
+    heldByCaller.delete(hold.caller);
+  }
+}
+
 function giveBack(hold: UploadHold): void {
   if (hold.returned) {
     return;
   }
   hold.returned = true;
-  heldUploads.held -= hold.share;
+  release(hold, hold.share);
+}
+
+/**
+ * Shrinks a share to the bytes actually read, once the body is in. A share is taken at what the
+ * body declares, or at the upload cap when it declares nothing, and a URL fetch sent without a
+ * length held 20 MB for the whole match before this (review pass 8, V70). Never grows a share.
+ */
+function trim(hold: UploadHold, bytes: number): void {
+  if (hold.returned || bytes >= hold.share) {
+    return;
+  }
+  release(hold, hold.share - bytes);
+  hold.share = bytes;
 }
 
 /**
@@ -96,19 +139,25 @@ function giveBack(hold: UploadHold): void {
  * up on. A caller who hangs up while verifyBytes is still using the bytes keeps them counted until
  * the match lets go, because the bytes are still in memory until then.
  *
- * Throws UploadsBusy past the ceiling, and ServiceFault for a request whose response this process
- * cannot watch, since a share nothing gives back would shut the door on everyone after it.
+ * The share counts against the ceiling for everyone and against the ceiling for this caller's
+ * rate-limit key, so one address cannot hold the room every other caller needs.
+ *
+ * Throws UploadsBusy past either ceiling, and ServiceFault for a request whose response this
+ * process cannot watch, since a share nothing gives back would shut the door on everyone after it.
  */
 function holdUpload(request: FastifyRequest, share: number): UploadHold {
   const response = responses.get(request.raw);
   if (response === undefined) {
     throw new ServiceFault("this request has no response the upload ceiling can watch");
   }
-  if (heldUploads.held + share > heldUploads.limit) {
+  const caller = rateLimitKey(request.ip);
+  const callerHeld = heldByCaller.get(caller) ?? 0;
+  if (heldUploads.held + share > heldUploads.limit || callerHeld + share > heldUploads.perCaller) {
     throw new UploadsBusy();
   }
   heldUploads.held += share;
-  const hold: UploadHold = { share, answered: false, matching: 0, returned: false };
+  heldByCaller.set(caller, callerHeld + share);
+  const hold: UploadHold = { caller, share, answered: false, matching: 0, returned: false };
   const answered = (): void => {
     hold.answered = true;
     if (hold.matching === 0) {
@@ -157,7 +206,8 @@ export function statusOf(error: unknown): number {
  * Reads the image out of a multipart upload.
  *
  * The request's share of the upload ceiling is taken first, at its Content-Length or at the upload
- * cap when it gives none, and nothing of the body is read when the share does not fit.
+ * cap when it gives none, and nothing of the body is read when the share does not fit. Once the
+ * file is in, the share shrinks to the file's length.
  *
  * Throws UploadsBusy (503) past the ceiling, and BadRequest when the request carries no file part,
  * when the part is not named "file", when the file is empty, or when it is over the byte limit (413).
@@ -190,8 +240,34 @@ export async function readUpload(request: FastifyRequest): Promise<Buffer> {
     if (bytes.length === 0) {
       throw new BadRequest("the uploaded file is empty");
     }
+    trim(hold, bytes.length);
     holds.set(bytes, hold);
     return bytes;
+  } catch (error) {
+    giveBack(hold);
+    throw error;
+  }
+}
+
+/**
+ * Runs a studio route's multipart reader under the upload ceiling, as readUpload runs its own.
+ *
+ * The share is taken before `read` touches the body, at the Content-Length or at the upload cap
+ * when there is none, shrinks to the file once it is in, and comes back when the response closes,
+ * or at once when `read` throws. /prepare, /edit and /unseal used to buffer whole uploads outside
+ * the ceiling while they waited on the gate (review pass 8, V69).
+ *
+ * Throws UploadsBusy (503) past either ceiling without calling `read`, and whatever `read` throws.
+ */
+export async function underUploadCeiling<T extends { bytes: Buffer }>(
+  request: FastifyRequest,
+  read: () => Promise<T>,
+): Promise<T> {
+  const hold = holdUpload(request, shareOf(request.headers["content-length"]));
+  try {
+    const upload = await read();
+    trim(hold, upload.bytes.length);
+    return upload;
   } catch (error) {
     giveBack(hold);
     throw error;
@@ -208,7 +284,8 @@ export async function readUpload(request: FastifyRequest): Promise<Buffer> {
  * The body's share of the upload ceiling is taken once the remote host has
  * answered and before a byte of its body is read: its Content-Length when it
  * sends the bytes as they are, the upload cap otherwise, and a body that runs
- * past the length it declared is abandoned.
+ * past the length it declared is abandoned. Once the body is in, the share
+ * shrinks to its real length.
  *
  * Throws UploadsBusy (503) past the ceiling, and BadRequest: 400 for a body that
  * is not { "url": "..." }, 403 for a URL that points inside our own network, 413
@@ -275,6 +352,7 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
       throw new BadRequest(`the image at ${parsed.data.url} is empty`);
     }
     const bytes = Buffer.concat(chunks);
+    trim(hold, bytes.length);
     holds.set(bytes, hold);
     return bytes;
   } catch (error) {
@@ -290,10 +368,12 @@ export const SERVICE_FAULT_REASON = "the service could not read this picture rig
  * Matches an image against the registry and reads any manifest it carries, in
  * the JSON shape both routes answer with.
  *
- * The manifest read and the match each run in a slot of the service's
+ * The manifest read and the match each run in a verify slot of the service's
  * concurrency gate, the manifest first because it is the cheaper of the two to
  * throw away when the gate turns the request down, so a burst of large uploads
- * queues instead of reading and decoding all at once (review pass 7, V62). The
+ * queues instead of reading and decoding all at once (review pass 7, V62). Both
+ * run under the caller's rate-limit key, so one caller holds one slot at a time
+ * (review pass 8, V74). The
  * upload ceiling keeps counting the bytes for as long as this runs, even when
  * the caller has hung up.
  *
@@ -319,8 +399,11 @@ export async function verifyBytes(
   try {
     // readManifest promises never to throw. The catch is for the day it breaks that promise: a
     // manifest problem may cost the answer its manifest, never the match.
-    manifest = await app.verifier.runPrepare(() => readManifest(bytes).catch(() => manifestUnreadable()));
-    result = await app.verifier.runMatch(bytes);
+    manifest = await app.verifier.runVerify(
+      () => readManifest(bytes).catch(() => manifestUnreadable()),
+      hold?.caller,
+    );
+    result = await app.verifier.runMatch(bytes, hold?.caller);
   } catch (error) {
     if (error instanceof Busy) {
       throw error;

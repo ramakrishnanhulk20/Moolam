@@ -43,7 +43,7 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField, underUploadCeiling } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
 const CLAIM_GENERATOR = "moolam-studio/0.1.0";
@@ -631,13 +631,17 @@ function childRegistered(logs: readonly ReceiptLog[] | undefined, registry: Hex,
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
  * name, a text field that did not arrive as plain text (named in the answer, never skipped), a
  * title outside 1 to 120 characters, a parent id that is not 32 bytes of hex, or a note longer than
- * 280 characters.
+ * 280 characters. The body is read under the upload ceiling, so past it this throws UploadsBusy
+ * (503) before a byte is read.
  */
 async function readEditUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {
     throw new BadRequest('send the image in a multipart field named "file"');
   }
+  return await underUploadCeiling(request, async () => await parseEditUpload(request));
+}
 
+async function parseEditUpload(request: FastifyRequest): Promise<Upload> {
   let bytes: Buffer | undefined;
   const fields = new Map<string, string>();
 

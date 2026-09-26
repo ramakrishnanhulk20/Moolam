@@ -109,8 +109,8 @@ afterAll(async () => {
 });
 
 describe("V62: the ceiling on upload bytes held at once", () => {
-  it("is three full uploads", () => {
-    expect(UPLOAD_CEILING_BYTES).toBe(3 * MAX_UPLOAD_BYTES);
+  it("is ten full uploads", () => {
+    expect(UPLOAD_CEILING_BYTES).toBe(10 * MAX_UPLOAD_BYTES);
     expect(heldUploads.limit).toBe(UPLOAD_CEILING_BYTES);
   });
 
@@ -208,7 +208,8 @@ describe("V62: the ceiling on upload bytes held at once", () => {
 
     request.destroy();
     await new Promise((resolve) => setTimeout(resolve, 200));
-    expect(heldUploads.held).toBe(payload.length);
+    // The share shrank to the file once the body was in (review pass 8, V70).
+    expect(heldUploads.held).toBe(picture.length);
 
     finish(new Error("the match was let go"));
     await until(() => heldUploads.held === 0);
@@ -269,13 +270,13 @@ describe("V62: the URL form under the same ceiling", () => {
 });
 
 describe("V62: the manifest read waits for a match slot", () => {
-  it("does not read the manifest while both match slots are taken", async () => {
+  it("does not read the manifest while both verify slots are taken", async () => {
     const reads = vi.spyOn(Reader, "fromAsset");
     let release: () => void = () => undefined;
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const held = [app.verifier.runPrepare(() => blocked), app.verifier.runPrepare(() => blocked)];
+    const held = [app.verifier.runVerify(() => blocked), app.verifier.runVerify(() => blocked)];
 
     const answer = upload(picture);
     await new Promise((resolve) => setTimeout(resolve, 300));

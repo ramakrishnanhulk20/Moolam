@@ -174,7 +174,7 @@ describe("the match gate", () => {
     const blocked = new Promise<void>((resolve) => {
       release = resolve;
     });
-    const held = [app.verifier.runPrepare(() => blocked), app.verifier.runPrepare(() => blocked)];
+    const held = [app.verifier.runVerify(() => blocked), app.verifier.runVerify(() => blocked)];
 
     try {
       const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", await makeImage(81));

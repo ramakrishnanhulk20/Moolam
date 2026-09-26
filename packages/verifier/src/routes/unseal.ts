@@ -58,7 +58,7 @@ import {
   type UnsealRecord,
 } from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
-import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField } from "./shared.js";
+import { BadRequest, SERVICE_FAULT_REASON, statusOf, textField, underUploadCeiling } from "./shared.js";
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
@@ -1045,13 +1045,18 @@ function titleOf(document: unknown): string {
  * Reads the file and the passport id out of the multipart body, in whatever order they arrive.
  *
  * Throws BadRequest: 413 over the byte limit, 400 for a missing file, a file part under another
- * name, a field that is not sent as plain text, or a passport id that is not 32 bytes of hex.
+ * name, a field that is not sent as plain text, or a passport id that is not 32 bytes of hex. The
+ * body is read under the upload ceiling, so past it this throws UploadsBusy (503) before a byte is
+ * read.
  */
 async function readUnsealUpload(request: FastifyRequest): Promise<Upload> {
   if (!request.isMultipart()) {
     throw new BadRequest('send the signed file in a multipart field named "file"');
   }
+  return await underUploadCeiling(request, async () => await parseUnsealUpload(request));
+}
 
+async function parseUnsealUpload(request: FastifyRequest): Promise<Upload> {
   let bytes: Buffer | undefined;
   const fields = new Map<string, string>();
 

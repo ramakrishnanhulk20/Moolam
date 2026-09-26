@@ -66,3 +66,100 @@ export function waitingGate(
     }
   };
 }
+
+/** Which work a turn at the fair gate is for: a verify, or a creator's registration, edit or unseal. */
+export type GateLane = "verify" | "studio";
+
+interface Turn {
+  lane: GateLane;
+  caller: string | undefined;
+  start: () => void;
+}
+
+/**
+ * The gate every picture decode passes through, fair between callers and between the two kinds of
+ * work (review pass 8, V74).
+ *
+ * At most `verifySlots + studioSlots` tasks run at once. Verify work may take at most `verifySlots`
+ * of them, so `studioSlots` stay free for /prepare, /edit and /unseal however many verifies queue;
+ * studio work may take any free slot. One caller, named by its rate-limit key, runs one task at a
+ * time: its other requests wait behind its own while other callers go ahead of them. A task that
+ * names no caller is held to the slot counts only. Among the waiters allowed to run, the one that
+ * came first goes first, and every waiter gives up with Busy after `maxWaitMs`, as waitingGate does.
+ *
+ * The queue is walked once each time a task ends. Its length is bounded by the rate limit times
+ * the wait limit, since no waiter stays longer than `maxWaitMs`.
+ */
+export function fairGate(options: {
+  verifySlots: number;
+  studioSlots: number;
+  maxWaitMs: number;
+}): <T>(lane: GateLane, caller: string | undefined, task: () => Promise<T>) => Promise<T> {
+  const total = options.verifySlots + options.studioSlots;
+  let running = 0;
+  let verifying = 0;
+  const callers = new Set<string>();
+  const queue: Turn[] = [];
+
+  const mayRun = (lane: GateLane, caller: string | undefined): boolean =>
+    running < total &&
+    (lane !== "verify" || verifying < options.verifySlots) &&
+    (caller === undefined || !callers.has(caller));
+
+  const take = (lane: GateLane, caller: string | undefined): void => {
+    running += 1;
+    if (lane === "verify") verifying += 1;
+    if (caller !== undefined) callers.add(caller);
+  };
+
+  const leave = (lane: GateLane, caller: string | undefined): void => {
+    running -= 1;
+    if (lane === "verify") verifying -= 1;
+    if (caller !== undefined) callers.delete(caller);
+  };
+
+  // A turn becomes able to run only when a task ends, so every waiter that could run has been
+  // started by the time this returns, and a new arrival that may run jumps nobody who could.
+  const serve = (): void => {
+    let at = 0;
+    while (at < queue.length && running < total) {
+      const turn = queue[at] as Turn;
+      if (mayRun(turn.lane, turn.caller)) {
+        queue.splice(at, 1);
+        take(turn.lane, turn.caller);
+        turn.start();
+      } else {
+        at += 1;
+      }
+    }
+  };
+
+  return async <T>(lane: GateLane, caller: string | undefined, task: () => Promise<T>): Promise<T> => {
+    if (mayRun(lane, caller)) {
+      take(lane, caller);
+    } else {
+      await new Promise<void>((resolve, reject) => {
+        const turn: Turn = { lane, caller, start: () => undefined };
+        const timer = setTimeout(() => {
+          const at = queue.indexOf(turn);
+          if (at !== -1) queue.splice(at, 1);
+          reject(new Busy(options.maxWaitMs));
+        }, options.maxWaitMs);
+        // A queued caller must not be the reason the process cannot shut down.
+        timer.unref?.();
+        turn.start = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        queue.push(turn);
+      });
+    }
+
+    try {
+      return await task();
+    } finally {
+      leave(lane, caller);
+      serve();
+    }
+  };
+}
