@@ -6,9 +6,9 @@
 // box beside it changes nothing, and a file carrying only Moolam's store hashes as it always did.
 // V45: reading a manifest never reaches the network, even when the file names a remote manifest,
 // and a read that hangs is given up after five seconds as unreadable while /verify still answers.
-// Does NOT cover what the C2PA signer does with a store the upload already carried (kept as the
-// parent ingredient, unchanged in this order), HEIF, AVIF or JPEG XL, or a real camera's files:
-// the review's file is built here segment by segment.
+// Does NOT cover what the C2PA signer does with a store the upload already carried (the camera
+// record, test/camera-record.test.ts), HEIF, AVIF or JPEG XL, or a real camera's files: the
+// review's file is built here segment by segment.
 
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
@@ -72,7 +72,7 @@ describe("V38: what an upright baseline JPEG keeps", () => {
     expect((await sharp(upright).raw().toBuffer()).equals(await sharp(upload).raw().toBuffer())).toBe(true);
   }, 60_000);
 
-  it("keeps only the C2PA store of the APP11 segments an upload carries", async () => {
+  it("keeps none of the APP11 segments an upload carries, its C2PA store included", async () => {
     const signed = (await prepareOrFallback(await makeImage(63), SETTINGS)).bytes;
     const upload = withSegments(signed, [jumbfSegment(7, "jpeg360")]);
     expect(segmentsBeforeScan(upload, 0xeb).length).toBeGreaterThan(1);
@@ -80,7 +80,8 @@ describe("V38: what an upright baseline JPEG keeps", () => {
     const upright = await uprightImage(upload);
 
     expect(upright.includes(Buffer.from("jpeg360", "latin1"))).toBe(false);
-    expect(segmentsBeforeScan(upright, 0xeb)).toEqual(segmentsBeforeScan(signed, 0xeb));
+    expect(markersBeforeScan(upright)).not.toContain(0xeb);
+    expect((await sharp(upright).raw().toBuffer()).equals(await sharp(upload).raw().toBuffer())).toBe(true);
   }, 60_000);
 
   it("re-encodes a file whose header carries a segment no rule here knows", async () => {

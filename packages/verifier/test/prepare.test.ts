@@ -13,6 +13,8 @@
 // with 422 fingerprint-unstable (intake 1), a signed file that grew past the upload cap is refused
 // with 413 before any pin (intake 2), and an upright baseline JPEG loses its EXIF, XMP and IPTC
 // with no pixel changed (intake 6).
+// A photo with its camera's own C2PA record answers cameraRecord "kept" or "dropped", and a plain
+// upload answers no cameraRecord at all (Ram, 2026-09-26).
 // Does NOT cover a real pin to Pinata, a real read
 // of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
 // hour.
@@ -39,6 +41,7 @@ import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import { FILTER_BOMB_SVG, makeImage, makeProgressiveImage, makeRotatedImage } from "./helpers.js";
+import { CAMERA_SECRETS, cameraPhoto } from "./cameraPhoto.js";
 import { grownWithTables } from "./jpegParts.js";
 
 // env.ts validates once at import, so the token and the app id have to be set before any module
@@ -444,6 +447,39 @@ describe("POST /prepare", () => {
     expect(JSON.stringify(actions)).not.toContain("digitalSourceType");
     expect(JSON.stringify(actions)).not.toContain("digitalCapture");
     expect((await readManifest(signed)).validation).toBe("valid");
+  }, 60_000);
+
+  it("camera record: says kept, dropped, or nothing, and never pins the camera's location or serial", async () => {
+    const send = async (bytes: Buffer, title: string) => {
+      const { payload, headers } = body({ file: { name: "camera.jpg", type: "image/jpeg", bytes }, fields: { title, kind: "human" } });
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: `Bearer ${await token("did:privy:camera-user")}` },
+        remoteAddress: "203.0.113.34",
+      });
+      expect(response.statusCode, title).toBe(200);
+      const answer = response.json();
+      return { manifest: answer.manifest, pinned: pinned.get(`${fileSlug(title, answer.passport.exactHash)}.jpg`) as Buffer };
+    };
+    const camera = await cameraPhoto(93);
+
+    const kept = await send(camera, "Kept camera record");
+    // The signer takes the file, then refuses it once the camera's record and its redactions are in.
+    stubs.embedManifest.mockRejectedValueOnce(new SignerRefusedFile("assertion could not be redacted"));
+    const dropped = await send(camera, "Dropped camera record");
+    const plain = await send(await makeImage(93), "No camera record");
+
+    expect(kept.manifest).toEqual({ embedded: true, cameraRecord: "kept" });
+    expect(dropped.manifest).toEqual({ embedded: true, cameraRecord: "dropped" });
+    expect(plain.manifest).toEqual({ embedded: true });
+    for (const file of [kept.pinned, dropped.pinned]) {
+      for (const secret of Object.values(CAMERA_SECRETS)) {
+        expect(file.includes(Buffer.from(secret)), secret).toBe(false);
+      }
+    }
+    expect((await readManifest(dropped.pinned)).ingredients).toBe(1);
   }, 60_000);
 
   it("refuses a picture whose thumbnail cannot fit the Chainlink budget with 422, and pins nothing", async () => {

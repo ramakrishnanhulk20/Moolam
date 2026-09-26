@@ -4,8 +4,10 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Builder, LocalSigner, Reader, createVerifySettings, settingsToJson } from "@contentauth/c2pa-node";
+import sharp from "sharp";
 import { TRAINING_ASSERTION_LABEL, trainingAssertion, type TrainingConsent } from "./consent.js";
 import { env } from "./env.js";
+import { MAX_IMAGE_PIXELS } from "./fingerprint.js";
 import type { Hex } from "./types.js";
 
 export interface SoftBinding {
@@ -239,6 +241,16 @@ export interface EmbedOptions {
   digitalSourceType?: string;
   /** What the creator said about AI use. Left out means they said nothing, and nothing is written. */
   training?: TrainingConsent;
+  /**
+   * The upload exactly as it arrived, when it carries a C2PA store of its own: it becomes the one
+   * parentOf ingredient, so the camera's hard binding is checked against the bytes the camera
+   * signed. Never with "c2pa.created", which has no parent.
+   */
+  parent?: {
+    bytes: Buffer;
+    /** JUMBF URIs of the parent's assertions to redact, each with the reason c2pa.PII.present. */
+    redactions: readonly string[];
+  };
 }
 
 /**
@@ -269,11 +281,17 @@ export interface EmbedOptions {
  * with. A creator who said nothing gets no assertion, because silence is not
  * permission.
  *
+ * An upload that arrived with its own C2PA store is given as `parent`: the
+ * upload's original bytes become the one parentOf ingredient, in place of the
+ * plain parent the edit intent would make from `bytes`, and each redaction in
+ * it is recorded with the reason c2pa.PII.present.
+ *
  * Throws when the buffer is empty, when the options are incomplete, when a
- * source type is given with any action but "c2pa.created", when the
- * fingerprint is the wrong size, when the training statement is not one this
- * service may write, SignerUnavailable when no signing identity can be
- * resolved, and SignerRefusedFile when the C2PA library rejects this container.
+ * source type is given with any action but "c2pa.created" or a parent with
+ * it, when the fingerprint is the wrong size, when the training statement is
+ * not one this service may write, SignerUnavailable when no signing identity
+ * can be resolved, and SignerRefusedFile when the C2PA library rejects this
+ * container, the parent, or one of its redactions.
  */
 export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<Buffer> {
   if (bytes.length === 0) {
@@ -286,22 +304,35 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
   if (!created && opts.digitalSourceType !== undefined) {
     throw new Error(`embedManifest states a source type only for ${CREATED_ACTION}, never for ${opts.action}`);
   }
+  if (created && opts.parent !== undefined) {
+    throw new Error(`embedManifest takes a parent ingredient only for an upload, never for ${CREATED_ACTION}`);
+  }
 
   const mimeType = sniffMimeType(bytes);
 
-  const builder = Builder.withJson({
-    claim_generator_info: [{ name: opts.claimGenerator }],
-    title: opts.title,
-    format: mimeType,
-  });
+  // The builder reads the parent ingredient, and a parent that still carries its XMP can name a
+  // remote manifest, so it gets the same no-fetch settings as every read.
+  const builder = Builder.withJson(
+    {
+      claim_generator_info: [{ name: opts.claimGenerator }],
+      title: opts.title,
+      format: mimeType,
+    },
+    READER_SETTINGS,
+  );
   if (created) {
     const sourceType = opts.digitalSourceType ?? AI_SOURCE_TYPE;
     builder.setIntent({ create: sourceType });
     builder.addAssertion("c2pa.actions", { actions: [{ action: CREATED_ACTION, digitalSourceType: sourceType }] }, "Cbor");
   } else {
     builder.setIntent("edit");
+    // Before the parent and its redactions: the library files every c2pa.redacted action into the
+    // actions assertion that exists at that moment, and would otherwise start a second one.
     if (opts.action !== OPENED_ACTION) {
       builder.addAssertion("c2pa.actions", { actions: [{ action: opts.action }] }, "Cbor");
+    }
+    if (opts.parent !== undefined) {
+      await addParent(builder, opts.title, opts.parent);
     }
   }
   builder.addAssertion(SOFT_BINDING_LABEL, softBindingAssertion(opts.softBinding), "Cbor");
@@ -322,6 +353,302 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
     throw new SignerRefusedFile("embedManifest signed the image but got no bytes back");
   }
   return destination.buffer;
+}
+
+/**
+ * Makes the upload the manifest's one parentOf ingredient and records each redaction, which the
+ * library writes as a c2pa.redacted action naming the assertion. The library reads the upload's
+ * store here, so the read is held to the same limit as readManifest.
+ *
+ * Throws SignerRefusedFile when the library will not take the upload as an ingredient or a
+ * redaction, or is still reading the upload after READ_MANIFEST_TIMEOUT_MS.
+ */
+async function addParent(builder: Builder, title: string, parent: NonNullable<EmbedOptions["parent"]>): Promise<void> {
+  try {
+    await withinReadLimit(
+      builder.addIngredient(JSON.stringify({ title, relationship: "parentOf" }), {
+        buffer: parent.bytes,
+        mimeType: sniffMimeType(parent.bytes),
+      }),
+    );
+    for (const uri of parent.redactions) {
+      builder.addRedaction(uri, PII_REASON);
+    }
+  } catch (error) {
+    throw new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
+  }
+}
+
+/** The work's own answer, or a rejection once READ_MANIFEST_TIMEOUT_MS has passed. */
+async function withinReadLimit<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const limit = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`the C2PA read was still running after ${READ_MANIFEST_TIMEOUT_MS} ms`)),
+      READ_MANIFEST_TIMEOUT_MS,
+    );
+  });
+  try {
+    return await Promise.race([work, limit]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Whether a camera's own record came through into Moolam's manifest. */
+export type CameraRecord = "kept" | "dropped";
+
+/**
+ * What an upload's own C2PA store means for signing it: nothing, a store that cannot be used, or
+ * a store to keep as the parent ingredient.
+ */
+export type CameraRecordPlan =
+  | { kind: "none" }
+  | { kind: "unusable"; why: string }
+  | {
+      kind: "store";
+      /** The JUMBF URI of every assertion and thumbnail to redact, across every manifest in the store. */
+      redactions: string[];
+      /** Every text value the store holds under a location or serial key: none may reach the signed file. */
+      secrets: string[];
+    };
+
+/** The C2PA standard's reason for a redaction made because the assertion holds personal information. */
+const PII_REASON = "c2pa.PII.present";
+
+/** Assertions whose whole purpose is to describe the capture: the camera, its settings, the place. */
+const CAPTURE_METADATA_LABELS = ["stds.exif", "stds.iptc", "c2pa.metadata", "cawg.metadata"];
+
+/**
+ * What the standard does not allow to be redacted, and what the record is kept for: the actions,
+ * the hard bindings and the ingredients. A location or serial inside one of these cannot be taken
+ * out, so it survives into the signed bytes and the read back after signing drops the record.
+ */
+const NEVER_REDACTED = ["c2pa.actions", "c2pa.hash.", "c2pa.ingredient"];
+
+/**
+ * A key that names a place or a unit: a GPS or geo tag, a location, a city, a country or a region,
+ * an address, a serial number. It is a rule over the key's name rather than a list of every tag a
+ * camera writes, so a vendor's own "vendor:LensSerial" or "geoPoint" is caught too. It says nothing
+ * about a value stored under an innocent key; that is what the byte check after signing is for.
+ */
+const LOCATION_OR_SERIAL_KEY = /gps|geo|locat|latitude|longitude|altitude|serial|city|country|province|region|address|(^|[:.])state$/i;
+
+/** Labels as the library reports them, which go into a JUMBF URI: anything else stops the record. */
+const SAFE_LABEL = /^[A-Za-z0-9._:-]{1,128}$/;
+
+/** Shorter values would match unrelated bytes in the picture by chance and drop a clean record. */
+const MIN_SECRET_LENGTH = 4;
+
+/**
+ * Caps on what one upload's store may ask of this service. A camera writes one manifest with a
+ * handful of assertions; a store past these is not a camera's, and it is dropped rather than walked.
+ */
+const MAX_RECORD_MANIFESTS = 16;
+const MAX_REDACTIONS = 64;
+const MAX_THUMBNAILS = 32;
+const MAX_SECRETS = 256;
+const MAX_DATA_DEPTH = 32;
+
+/**
+ * Reads the C2PA store an upload arrived with, with the no-fetch settings and the time limit every
+ * read here gets, and plans its redaction.
+ *
+ * In every manifest of the store, an assertion is redacted when it is capture metadata (EXIF, IPTC,
+ * c2pa.metadata, cawg.metadata), when any key in its data names a place or a serial, or when its
+ * data cannot be looked into at all. A thumbnail is redacted when it carries EXIF, XMP or IPTC, or
+ * cannot be decoded. Actions, hard bindings and ingredients are never redacted.
+ *
+ * Never throws. "none" for a file with no store, including one that only names a remote manifest,
+ * which is never fetched. "unusable" for a store the library cannot read, a JPEG box that may be a
+ * damaged store, a label that cannot go into a URI, and a store past the caps above. "store"
+ * otherwise, with the redactions to make and the values that must not survive them.
+ */
+export async function cameraRecordOf(upload: Buffer): Promise<CameraRecordPlan> {
+  let reader: Reader | null;
+  try {
+    reader = await withinReadLimit(Reader.fromAsset({ buffer: upload, mimeType: sniffMimeType(upload) }, READER_SETTINGS));
+  } catch (error) {
+    return noStoreOr(upload, `the upload's C2PA store could not be read: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (reader === null || reader.getActive() === undefined) {
+    return noStoreOr(upload, "the upload carries a JUMBF box the C2PA library could not read as a store");
+  }
+
+  const manifests = Object.entries(reader.json().manifests ?? {});
+  if (manifests.length > MAX_RECORD_MANIFESTS) {
+    return unusable(`the upload's store holds ${manifests.length} manifests, over the ${MAX_RECORD_MANIFESTS} a camera record may`);
+  }
+  const redactions = new Set<string>();
+  const secrets = new Set<string>();
+  for (const [label, manifest] of manifests) {
+    if (!SAFE_LABEL.test(label)) {
+      return unusable("a manifest label in the upload's store cannot be named in a redaction");
+    }
+    for (const assertion of manifest.assertions ?? []) {
+      if (!SAFE_LABEL.test(assertion.label)) {
+        return unusable("an assertion label in the upload's store cannot be named in a redaction");
+      }
+      const found = placesAndSerials(assertion.data);
+      for (const value of found.values) {
+        if (value.length >= MIN_SECRET_LENGTH) {
+          secrets.add(value);
+        }
+      }
+      if (neverRedacted(assertion.label)) {
+        continue;
+      }
+      const inspectable = assertion.data !== null && typeof assertion.data === "object";
+      if (isCaptureMetadata(assertion.label) || found.hit || !inspectable) {
+        const instance = typeof assertion.instance === "number" && assertion.instance > 0 ? `__${assertion.instance}` : "";
+        redactions.add(`self#jumbf=/c2pa/${label}/c2pa.assertions/${assertion.label}${instance}`);
+      }
+    }
+  }
+
+  const thumbnails = thumbnailsIn(manifests.map(([, manifest]) => manifest));
+  if (thumbnails.length > MAX_THUMBNAILS) {
+    return unusable(`the upload's store holds ${thumbnails.length} thumbnails, over the ${MAX_THUMBNAILS} a camera record may`);
+  }
+  for (const uri of thumbnails) {
+    if (await carriesMetadata(reader, uri)) {
+      redactions.add(uri);
+    }
+  }
+
+  if (redactions.size > MAX_REDACTIONS || secrets.size > MAX_SECRETS) {
+    return unusable("the upload's store holds more to redact than a camera record does");
+  }
+  return { kind: "store", redactions: [...redactions], secrets: [...secrets] };
+}
+
+/** Moolam's own claim thumbnail and the parent ingredient's, on top of what the upload brought. */
+const MOOLAM_THUMBNAILS = 2;
+
+/**
+ * Reads a file signed with a camera's record back, before it is handed to anyone, and says what is
+ * wrong with it. Nothing is wrong when Moolam's manifest validates, it names exactly one ingredient
+ * and that one is the parentOf carrying the camera's manifest, the parent reports no mismatched or
+ * missing part, none of `secrets` appears anywhere in the bytes, and no thumbnail left in the store
+ * carries EXIF, XMP or IPTC.
+ *
+ * Never throws: a read back that fails or runs out of time is itself the fault. The answer is for
+ * the log, and says which check failed without quoting any value from the upload.
+ */
+export async function cameraRecordFault(signed: Buffer, secrets: readonly string[]): Promise<string | undefined> {
+  if (secrets.some((secret) => signed.includes(Buffer.from(secret, "utf8")))) {
+    return "a location or serial value from the upload's record is still in the signed bytes";
+  }
+  let reader: Reader | null;
+  try {
+    reader = await withinReadLimit(Reader.fromAsset({ buffer: signed, mimeType: sniffMimeType(signed) }, READER_SETTINGS));
+  } catch (error) {
+    return `the signed file could not be read back: ${error instanceof Error ? error.message : String(error)}`.slice(0, 200);
+  }
+  const active = reader?.getActive();
+  if (reader === null || active === undefined) {
+    return "the signed file carries no manifest";
+  }
+  const store = reader.json();
+  if (store.validation_state !== "Valid" && store.validation_state !== "Trusted") {
+    return `Moolam's manifest does not validate: ${failureCodes(store).join(", ")}`;
+  }
+  const ingredients = active.ingredients ?? [];
+  const parent = ingredients[0];
+  if (ingredients.length !== 1 || parent?.relationship !== "parentOf" || parent.active_manifest == null) {
+    return "the manifest does not name the camera's record as its one parent";
+  }
+  const reported = [
+    ...(parent.validation_results?.activeManifest?.failure ?? []),
+    ...(parent.validation_status ?? []),
+    ...(store.validation_results?.ingredientDeltas ?? []).flatMap((one) => one.validationDeltas?.failure ?? []),
+  ];
+  const broken = [...new Set(reported.map((one) => one.code).filter((code) => /mismatch|missing/i.test(code)))];
+  if (broken.length > 0) {
+    return `the camera's record reports ${broken.slice(0, MAX_FAILURE_CODES).join(", ")}`.slice(0, 200);
+  }
+  const thumbnails = thumbnailsIn(Object.values(store.manifests ?? {}));
+  if (thumbnails.length > MAX_THUMBNAILS + MOOLAM_THUMBNAILS) {
+    return "the signed store holds more thumbnails than were planned";
+  }
+  for (const uri of thumbnails) {
+    if (await carriesMetadata(reader, uri)) {
+      return "a thumbnail in the signed store still carries EXIF, XMP or IPTC";
+    }
+  }
+  return undefined;
+}
+
+function unusable(why: string): CameraRecordPlan {
+  return { kind: "unusable", why: why.slice(0, 200) };
+}
+
+/** "none", unless the upload's JPEG segments hold something that may be a damaged store. */
+function noStoreOr(upload: Buffer, why: string): CameraRecordPlan {
+  return mayHoldStore(jumbfPackets(upload)) ? unusable(why) : { kind: "none" };
+}
+
+function neverRedacted(label: string): boolean {
+  return NEVER_REDACTED.some((prefix) => label.startsWith(prefix));
+}
+
+function isCaptureMetadata(label: string): boolean {
+  return CAPTURE_METADATA_LABELS.some((name) => label === name || label.startsWith(`${name}.`));
+}
+
+/**
+ * Whether any key in the data names a place or a serial, and every string held under such a key,
+ * however deeply. Data nested past MAX_DATA_DEPTH counts as a hit, since it was not looked into.
+ */
+function placesAndSerials(data: unknown): { hit: boolean; values: string[] } {
+  const values: string[] = [];
+  let hit = false;
+  const visit = (node: unknown, under: boolean, depth: number): void => {
+    if (depth > MAX_DATA_DEPTH) {
+      hit = true;
+    } else if (typeof node === "string") {
+      if (under) values.push(node);
+    } else if (Array.isArray(node)) {
+      for (const one of node) visit(one, under, depth + 1);
+    } else if (node !== null && typeof node === "object") {
+      for (const [key, value] of Object.entries(node)) {
+        const named = LOCATION_OR_SERIAL_KEY.test(key);
+        hit ||= named;
+        visit(value, under || named, depth + 1);
+      }
+    }
+  };
+  visit(data, false, 0);
+  return { hit, values };
+}
+
+type StoreManifest = NonNullable<ReturnType<Reader["getActive"]>>;
+
+/** Every thumbnail the manifests and their ingredients point at inside this store, once each. */
+function thumbnailsIn(manifests: readonly StoreManifest[]): string[] {
+  const uris = new Set<string>();
+  for (const manifest of manifests) {
+    for (const ref of [manifest.thumbnail, ...(manifest.ingredients ?? []).map((one) => one.thumbnail)]) {
+      if (ref !== null && ref !== undefined && "identifier" in ref && ref.identifier.startsWith("self#jumbf=/c2pa/")) {
+        uris.add(ref.identifier);
+      }
+    }
+  }
+  return [...uris];
+}
+
+/**
+ * Whether a thumbnail in the store carries EXIF, XMP or IPTC, any of which can hold a location. A
+ * thumbnail that cannot be read out or decoded counts as carrying it.
+ */
+async function carriesMetadata(reader: Reader, uri: string): Promise<boolean> {
+  try {
+    const resource = await withinReadLimit(reader.resourceToAsset(uri, { buffer: null }));
+    const metadata = await sharp(resource.buffer, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
+    return metadata.exif !== undefined || metadata.xmp !== undefined || metadata.iptc !== undefined;
+  } catch {
+    return true;
+  }
 }
 
 /**

@@ -133,6 +133,11 @@ const SEALED_FILE_REFUSED = {
  * statement goes into the signed manifest and into the pinned metadata, so it travels with the
  * file and sits under the passkey signature rather than in a database of ours.
  *
+ * A photo that arrives with its camera's own Content Credentials keeps that signed record inside
+ * Moolam's manifest, with its location and serial redacted, or loses it when it cannot be redacted
+ * cleanly. The answer's manifest.cameraRecord says "kept" or "dropped", and is absent when the
+ * upload carried no record.
+ *
  * With `sealed=true` the picture is registered without being published. Everything up to and
  * including the signing is the same, and then nothing of the picture is pinned or written down:
  * one small metadata document goes to IPFS, and the signed file itself comes back in the answer,
@@ -231,6 +236,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           claimGenerator: CLAIM_GENERATOR,
           action: "c2pa.opened" as const,
           training: upload.training,
+          log: request.log,
         };
 
         let studio: SealedResult;
@@ -411,7 +417,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           return reply.send({
             passport: passport(pinnedMetadata.uri),
             metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-            manifest: studio.embedded ? { embedded: true } : { embedded: false, reason: studio.reason },
+            manifest: manifestAnswer(studio),
             training: trainingStatement(upload.training),
             preparedBy: identity.userId,
             sealed: true,
@@ -492,7 +498,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           },
           thumbnail: { cid: thumbnail.cid, uri: thumbnail.uri, gatewayUrl: gatewayUrl(thumbnail.uri) },
           metadata: { cid: pinnedMetadata.cid, uri: pinnedMetadata.uri },
-          manifest: published.embedded ? { embedded: true } : { embedded: false, reason: published.reason },
+          manifest: manifestAnswer(published),
           training: trainingStatement(upload.training),
           preparedBy: identity.userId,
         });
@@ -651,6 +657,19 @@ function readTraining(raw: string | undefined): TrainingConsent | undefined {
     throw new BadRequest(detail);
   }
   return statement.data;
+}
+
+/**
+ * What the answer says about the manifest: whether it is embedded, and, only for an upload that
+ * arrived with a camera's own C2PA record, whether that record was kept (with its location and
+ * serial redacted) or dropped. An upload with no record gets no cameraRecord field at all.
+ */
+function manifestAnswer(result: SealedResult): Record<string, unknown> {
+  return {
+    embedded: result.embedded,
+    ...(result.embedded ? {} : { reason: result.reason }),
+    ...(result.cameraRecord === undefined ? {} : { cameraRecord: result.cameraRecord }),
+  };
 }
 
 function reasonOf(error: unknown): string {

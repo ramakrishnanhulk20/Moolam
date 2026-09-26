@@ -2,11 +2,13 @@ import sharp from "sharp";
 import {
   SignerRefusedFile,
   SignerUnavailable,
-  c2paStoreInstance,
+  cameraRecordFault,
+  cameraRecordOf,
   embedManifest,
-  jumbfPacket,
   readManifest,
-  type JumbfPacket,
+  type CameraRecord,
+  type CameraRecordPlan,
+  type EmbedOptions,
   type ManifestSummary,
 } from "./c2pa.js";
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
@@ -114,6 +116,11 @@ export interface PreparedImage {
   fingerprint: Fingerprint;
   manifestHash: Hex;
   manifest: ManifestSummary;
+  /**
+   * Only when the upload arrived with a C2PA store of its own: "kept" when the camera's record is
+   * inside Moolam's manifest with its location and serial redacted, "dropped" when it is not.
+   */
+  cameraRecord?: CameraRecord;
 }
 
 /** A passport with no manifest commits to no manifest store, so the chain records 32 zero bytes. */
@@ -142,6 +149,8 @@ export interface PreparedResult {
    * it can name a file path on this host.
    */
   detail?: string;
+  /** As on PreparedImage. An upload whose manifest could not be embedded at all lost its record too. */
+  cameraRecord?: CameraRecord;
 }
 
 /**
@@ -163,6 +172,13 @@ export interface PrepareOptions {
   digitalSourceType?: string;
   /** What the creator said about AI use, written into the manifest. Left out means they said nothing. */
   training?: TrainingConsent;
+  /** Where the reason a camera's record was dropped is written. Left out, it is not written. */
+  log?: PrepareLog;
+}
+
+/** The one method of a request logger that preparing a picture uses. */
+export interface PrepareLog {
+  warn(details: Record<string, unknown>, message: string): void;
 }
 
 /**
@@ -206,14 +222,19 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
   const format = (await readImageHeader(source)).format;
   const upright = await uprightImage(source);
   const sourcePrint = await fingerprint(upright);
-  const signed = await embedManifest(upright, {
-    title: opts.title,
-    claimGenerator: opts.claimGenerator,
-    action: opts.action,
-    softBinding: { phash: sourcePrint.phash, blockhash: sourcePrint.blockhash },
-    digitalSourceType: opts.digitalSourceType,
-    training: opts.training,
-  });
+  const { signed, cameraRecord } = await signKeepingCameraRecord(
+    source,
+    upright,
+    {
+      title: opts.title,
+      claimGenerator: opts.claimGenerator,
+      action: opts.action,
+      softBinding: { phash: sourcePrint.phash, blockhash: sourcePrint.blockhash },
+      digitalSourceType: opts.digitalSourceType,
+      training: opts.training,
+    },
+    opts.log,
+  );
 
   const signedPrint = await fingerprint(signed);
   if (signedPrint.phash !== sourcePrint.phash) {
@@ -237,7 +258,54 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
     fingerprint: signedPrint,
     manifestHash: manifest.manifestHash,
     manifest,
+    ...(cameraRecord === undefined ? {} : { cameraRecord }),
   };
+}
+
+/**
+ * Signs the upright bytes, and keeps the camera's own signed record when the upload arrived with
+ * one (Ram, 2026-09-26): the upload exactly as it came is the parent ingredient, with every
+ * assertion and thumbnail that can hold a location or a serial redacted (cameraRecordOf).
+ *
+ * The signed file is read back before it goes anywhere (cameraRecordFault). A record that fails
+ * that read back is dropped, and so is a store that cannot be read and one the library will not
+ * take as an ingredient or redact: the file is signed again as a plain upload, and the reason goes
+ * to the log. A picture Moolam made itself states c2pa.created and has no parent, so it is signed
+ * as it always was, and so is an upload with no store.
+ *
+ * Throws what embedManifest throws for the plain signing, and SignerUnavailable from either try.
+ */
+async function signKeepingCameraRecord(
+  source: Buffer,
+  upright: Buffer,
+  embed: EmbedOptions,
+  log: PrepareLog | undefined,
+): Promise<{ signed: Buffer; cameraRecord?: CameraRecord }> {
+  const plan: CameraRecordPlan = embed.action === "c2pa.created" ? { kind: "none" } : await cameraRecordOf(source);
+  if (plan.kind === "none") {
+    return { signed: await embedManifest(upright, embed) };
+  }
+
+  let why: string;
+  if (plan.kind === "store") {
+    try {
+      const signed = await embedManifest(upright, { ...embed, parent: { bytes: source, redactions: plan.redactions } });
+      const fault = await cameraRecordFault(signed, plan.secrets);
+      if (fault === undefined) {
+        return { signed, cameraRecord: "kept" };
+      }
+      why = fault;
+    } catch (error) {
+      if (error instanceof SignerUnavailable) {
+        throw error;
+      }
+      why = error instanceof Error ? error.message : String(error);
+    }
+  } else {
+    why = plan.why;
+  }
+  log?.warn({ reason: why.slice(0, 200) }, "prepare: camera record dropped");
+  return { signed: await embedManifest(upright, embed), cameraRecord: "dropped" };
 }
 
 /**
@@ -268,6 +336,7 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
       manifestHash: prepared.manifestHash,
       manifestDoc: manifestDocument(prepared),
       embedded: true,
+      ...(prepared.cameraRecord === undefined ? {} : { cameraRecord: prepared.cameraRecord }),
     };
   } catch (error) {
     const refused = refusalOrThrow(error);
@@ -280,6 +349,7 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
       embedded: false,
       reason: NOT_EMBEDDED_REASON,
       detail: refused.message.slice(0, 200),
+      ...(await recordLostWithManifest(source, options)),
     };
   }
 }
@@ -309,6 +379,7 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
       print: signed.fingerprint,
       manifestHash: signed.manifestHash,
       embedded: true,
+      ...(signed.cameraRecord === undefined ? {} : { cameraRecord: signed.cameraRecord }),
     };
   } catch (error) {
     const refused = refusalOrThrow(error);
@@ -320,8 +391,20 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
       embedded: false,
       reason: NOT_EMBEDDED_REASON,
       detail: refused.message.slice(0, 200),
+      ...(await recordLostWithManifest(source, options)),
     };
   }
+}
+
+/**
+ * The unsigned fallback pins the upright bytes, which carry no C2PA store, so an upload that
+ * arrived with a camera's record has lost it.
+ */
+async function recordLostWithManifest(source: Buffer, options: PrepareOptions): Promise<{ cameraRecord?: CameraRecord }> {
+  if (options.action === "c2pa.created") {
+    return {};
+  }
+  return (await cameraRecordOf(source)).kind === "none" ? {} : { cameraRecord: "dropped" };
 }
 
 /**
@@ -382,7 +465,6 @@ type SegmentFate = "keep" | "drop" | "re-encode";
 const SOI = Buffer.from([0xff, 0xd8]);
 const APP0 = 0xe0;
 const APP2 = 0xe2;
-const APP11 = 0xeb;
 const APP14 = 0xee;
 const COM = 0xfe;
 /** Baseline and extended sequential frames, the two the Chainlink sandbox's jpeg-js decodes. */
@@ -392,15 +474,17 @@ const DECODING_TABLES = new Set([0xdb, 0xc4, 0xdd]);
 
 /**
  * The same JPEG rebuilt from the segments that decide its pixels and nothing else: the start
- * marker, the JFIF header, the colour profile, the Adobe colour transform marker, the C2PA store
- * when the upload carries one, the tables, the one frame, and the one scan up to its end marker.
- * No pixel is decoded or re-encoded, so the picture is exactly the upload's.
+ * marker, the JFIF header, the colour profile, the Adobe colour transform marker, the tables, the
+ * one frame, and the one scan up to its end marker. No pixel is decoded or re-encoded, so the
+ * picture is exactly the upload's.
  *
  * Every other application segment and every comment is left out, whatever it says: those are
  * where cameras put EXIF, XMP, IPTC, GoPro GPS blocks, maker notes, depth maps and serial numbers,
- * and none of them changes a decoded pixel. A JUMBF box other than the C2PA store is left out too,
- * decided by the same reader the manifest hash uses (jumbfPacket in c2pa.ts). Nothing after the
- * scan's end marker is kept: a second image, a gain map, a motion clip or a trailer.
+ * and none of them changes a decoded pixel. Every APP11 segment goes too, the upload's own C2PA
+ * store included: a camera's record reaches Moolam's manifest only as the redacted parent
+ * ingredient signImage makes from the upload itself, so the signed file holds one store, Moolam's.
+ * Nothing after the scan's end marker is kept: a second image, a gain map, a motion clip or a
+ * trailer.
  *
  * Returns null, and the caller re-encodes, for anything else: a header segment that could change
  * how the scan decodes and is not one of the tables above, a frame type the sandbox cannot read,
@@ -443,16 +527,10 @@ function decodableSegmentsOnly(jpeg: Buffer): Buffer | null {
     return null;
   }
 
-  const packets = header
-    .filter((one) => one.marker === APP11)
-    .map((one) => jumbfPacket(one.bytes.subarray(4)))
-    .filter((one): one is JumbfPacket => one !== null);
-  const store = c2paStoreInstance(packets);
-
   const kept: Buffer[] = [SOI];
   let frames = 0;
   for (const one of header) {
-    const fate = fateOf(one.marker, one.bytes.subarray(4), store);
+    const fate = fateOf(one.marker, one.bytes.subarray(4));
     if (fate === "re-encode") {
       return null;
     }
@@ -469,7 +547,7 @@ function decodableSegmentsOnly(jpeg: Buffer): Buffer | null {
 }
 
 /** What happens to one header segment, from its marker and its payload. */
-function fateOf(marker: number, payload: Buffer, store: number | undefined): SegmentFate {
+function fateOf(marker: number, payload: Buffer): SegmentFate {
   if (SEQUENTIAL_FRAMES.has(marker) || DECODING_TABLES.has(marker)) {
     return "keep";
   }
@@ -481,10 +559,6 @@ function fateOf(marker: number, payload: Buffer, store: number | undefined): Seg
   }
   if (marker === APP14) {
     return startsWith(payload, "Adobe") ? "keep" : "drop";
-  }
-  if (marker === APP11) {
-    const packet = jumbfPacket(payload);
-    return packet !== null && store !== undefined && packet.instance === store ? "keep" : "drop";
   }
   if ((marker >= 0xe0 && marker <= 0xef) || marker === COM) {
     return "drop";
