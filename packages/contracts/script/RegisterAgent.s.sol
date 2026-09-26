@@ -4,8 +4,8 @@ pragma solidity 0.8.30;
 import {Script, console2} from "forge-std/Script.sol";
 import {VmSafe} from "forge-std/Vm.sol";
 
-/// @notice The slice of the canonical ERC-8004 Identity Registry this script uses. The live
-///         contract overloads register three ways; only the one argument form is declared here.
+/// @notice The slice of the ERC-8004 Identity Registry this script uses. The live contract
+///         overloads register three ways; only the one argument form is declared.
 interface IAgentIdentity {
     function register(string calldata agentURI) external returns (uint256 agentId);
     function ownerOf(uint256 agentId) external view returns (address);
@@ -13,13 +13,8 @@ interface IAgentIdentity {
     function tokenURI(uint256 agentId) external view returns (string memory);
 }
 
-/// @notice Registers the demo generator agent on the real ERC-8004 Identity Registry on Monad
-///         mainnet, from the deployer wallet. The passport registry reads `ownerOf` on that
-///         registry, so this agent id is what makes a Generated passport possible at all.
-/// @dev Three entry points. `run` sends the registration. `verify` reads the id back from the chain
-///      afterwards and proves the deployer owns it, because the id the simulation returns could in
-///      principle be taken by another registration landing first. `updateCard` replaces the card of
-///      an agent already registered.
+/// @notice Registers the demo generator agent on the ERC-8004 Identity Registry on Monad mainnet,
+///         from the deployer wallet. Without it no Generated passport is possible.
 contract RegisterAgent is Script {
     address internal constant AGENT_IDENTITY = 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432;
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
@@ -31,10 +26,6 @@ contract RegisterAgent is Script {
     error CardNotStored(uint256 agentId);
 
     /// @notice Mints the demo agent to the deployer and writes its id into the deployment file.
-    /// @dev The card comes from env MOOLAM_AGENT_URI when set, otherwise from a data URI built
-    ///      here. Reverts WrongChain off Monad mainnet and DeploymentFileMissing when the contracts
-    ///      have not been deployed yet.
-    /// @return agentId The id the registry minted.
     function run() external returns (uint256 agentId) {
         if (block.chainid != MONAD_MAINNET_CHAIN_ID) revert WrongChain(block.chainid, MONAD_MAINNET_CHAIN_ID);
 
@@ -60,10 +51,8 @@ contract RegisterAgent is Script {
         }
     }
 
-    /// @notice Reads the recorded agent id back from the canonical registry.
-    /// @dev Reverts DeploymentFileMissing when there is nothing to check and
-    ///      AgentNotOwnedByDeployer when another registration took that id first, which means the
-    ///      run should be repeated.
+    /// @notice Proves the deployer owns the recorded agent id, since another registration could
+    ///         have landed first and taken the id the simulation returned.
     function verify() external view {
         if (!vm.exists(DEPLOYMENT_FILE)) revert DeploymentFileMissing();
 
@@ -76,16 +65,7 @@ contract RegisterAgent is Script {
         console2.log("agent id", agentId, "is owned on the canonical registry by", agentOwner);
     }
 
-    /// @dev ERC-8004 ("Update agentURI"): a registration file stored on chain SHOULD be a base64
-    ///      data URI rather than serialized JSON. Raw JSON also breaks every URL reader, because the
-    ///      "#" in the type field starts a fragment and cuts the card off after 48 bytes.
-    /// @notice Replaces the recorded agent's card with the card `run` would register today, in one
-    ///         transaction from the agent owner.
-    /// @dev Written for agent 10248, registered before the card was base64 encoded. The card comes
-    ///      from env MOOLAM_AGENT_URI when set, as in `run`. Reverts WrongChain off Monad mainnet,
-    ///      DeploymentFileMissing when there is no recorded id, AgentNotOwnedByDeployer when the
-    ///      deployer does not own it, and CardNotStored when the registry reads back anything else.
-    ///      The registry emits URIUpdated. Without --broadcast nothing is sent.
+    /// @notice Replaces the recorded agent's card with the one `run` would register today.
     function updateCard() external {
         if (block.chainid != MONAD_MAINNET_CHAIN_ID) revert WrongChain(block.chainid, MONAD_MAINNET_CHAIN_ID);
         if (!vm.exists(DEPLOYMENT_FILE)) revert DeploymentFileMissing();
@@ -112,6 +92,7 @@ contract RegisterAgent is Script {
         }
     }
 
+    /// @dev Base64, as ERC-8004 asks: raw JSON breaks URL readers at the "#" in the type field.
     function _defaultAgentCard() internal pure returns (string memory) {
         string memory card = string.concat(
             '{"type":"https://eips.ethereum.org/EIPS/eip-8004#registration-v1",',

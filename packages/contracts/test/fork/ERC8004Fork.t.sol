@@ -1,13 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: Monad's own P-256 implementation. Foundry 1.8.1 answers calls to
-// 0x0100 with its own RIP-7212 precompile (measured: one P256.verify costs 7,831 gas here, which is
-// the precompile price, not the roughly 190,000 gas of OpenZeppelin's Solidity fallback), so the
-// passkey path is exercised but against Foundry's implementation, and only a real mainnet
-// transaction runs Monad's. It also does not cover the Chainlink forwarder, which is proven by a
-// workflow simulation, and it does not spend real MON: every call here runs against a local fork of
-// Monad mainnet state.
+// Does NOT cover: Monad's own P-256 (Foundry answers 0x0100 itself), the Chainlink forwarder, or real MON spent.
 
 import {Test, console2} from "forge-std/Test.sol";
 import {WebAuthn} from "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
@@ -18,8 +12,7 @@ import {VerifierPolicy} from "../../src/VerifierPolicy.sol";
 import {Kind, PassportInput, Passport} from "../../src/interfaces/IMoolamRegistry.sol";
 import {WebAuthnFixture} from "../utils/WebAuthnFixture.sol";
 
-/// @notice The slice of the canonical ERC-8004 Identity Registry this project uses. The live
-///         contract overloads register three ways; only the one argument form is declared here.
+// The slice of the ERC-8004 Identity Registry this test uses.
 interface IAgentIdentity {
     function register(string calldata agentURI) external returns (uint256 agentId);
     function ownerOf(uint256 agentId) external view returns (address);
@@ -27,9 +20,8 @@ interface IAgentIdentity {
 }
 
 contract ERC8004ForkTest is Test {
-    /// @dev The ERC-8004 Identity Registry Monad's own docs point builders at, on chain 143.
+    // The ERC-8004 Identity Registry Monad's docs point builders at, on chain 143.
     address internal constant AGENT_IDENTITY = 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432;
-    /// @dev The production Chainlink KeystoneForwarder on Monad mainnet.
     address internal constant FORWARDER = 0x76c9cf548b4179F8901cda1f8623568b58215E62;
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
     uint256 internal constant BOND = 1 ether;
@@ -44,7 +36,6 @@ contract ERC8004ForkTest is Test {
     address internal treasury = makeAddr("treasury");
     address internal creWallet = makeAddr("creWallet");
 
-    /// @dev The workflow name in packages/workflow/moolam-verifier/workflow.yaml.
     string internal constant WORKFLOW_NAME = "moolam-verifier";
 
     uint256 internal agentOwnerKey = 0xA6E17;
@@ -93,8 +84,6 @@ contract ERC8004ForkTest is Test {
         registry.bindPasskey(qx, qy, bindAuth);
     }
 
-    /// @dev A minimal ERC-8004 registration file, inline as a data URI so the fork test does not
-    ///      depend on IPFS being reachable.
     function _agentCard() internal pure returns (string memory) {
         return string.concat(
             'data:application/json,{"type":"https://eips.ethereum.org/EIPS/eip-8004#registration-v1",',
@@ -150,8 +139,7 @@ contract ERC8004ForkTest is Test {
         assertEq(registry.ownerOf(tokenId), agentOwner);
         assertEq(stored.generatorAgentId, agentId);
         assertEq(uint8(stored.kind), uint8(Kind.Generated));
-        // The claim only stands because the wallet that owns the agent on the canonical registry
-        // signed the image digest. Read that owner back from their contract, not from ours.
+        // The agent owner is read back from the canonical registry, not from ours.
         assertEq(agents.ownerOf(stored.generatorAgentId), registry.ownerOf(tokenId));
     }
 

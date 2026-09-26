@@ -7,19 +7,10 @@ import {VmSafe} from "forge-std/Vm.sol";
 import {MoolamReceiver} from "../src/MoolamReceiver.sol";
 import {VerifierPolicy} from "../src/VerifierPolicy.sol";
 
-/// @notice Deploys a second MoolamReceiver for private re-checks, pins it to the sealed workflow,
-///         and queues its listing in the VerifierPolicy. The bytecode is the reviewed receiver,
-///         unchanged. Only the pinned workflow name differs, so every verdict on chain names the
-///         workflow that wrote it: the public receiver takes moolam-verifier, this one takes
-///         moolam-sealed-verifier, and each refuses the other's reports.
-/// @dev The policy closed its setup window at the first deploy, so the listing waits 24 hours in
-///      the open. FinalizeSealedReceiver.s.sol runs it once the delay has passed. Three entry
-///      points: `run` deploys with the key from the environment and writes
-///      deployments/sealed-receiver-monad-mainnet.json, `record` fills in the transaction hashes
-///      afterwards, and `deployAs` runs the same steps for a sender given by address, which is
-///      how the fork test drives it without a key.
+/// @notice Deploys a second MoolamReceiver pinned to the sealed workflow and queues its listing.
+///         Same bytecode as the public receiver; only the pinned name differs, so each refuses the
+///         other's reports. FinalizeSealedReceiver.s.sol lists it after the 24 hour delay.
 contract DeploySealedReceiver is Script {
-    /// @notice What the deploy produced, read back from the contracts rather than assumed.
     struct Deployment {
         address deployer;
         MoolamReceiver sealedReceiver;
@@ -30,14 +21,8 @@ contract DeploySealedReceiver is Script {
     }
 
     uint64 internal constant MONAD_MAINNET_CHAIN_ID = 143;
-    /// @dev The production Chainlink KeystoneForwarder on Monad mainnet, the same one the public
-    ///      receiver trusts.
     address internal constant PRODUCTION_FORWARDER = 0x76c9cf548b4179F8901cda1f8623568b58215E62;
-    /// @dev The CRE wallet that owns both workflows. Checked against the public receiver's own pin
-    ///      before anything is sent, so the two receivers cannot drift apart on who the author is.
     address internal constant WORKFLOW_AUTHOR = 0xC79620AF233a4434b03f6B57239F8A9E71B3C178;
-    /// @dev The name in the sealed workflow's workflow.yaml. Chainlink's template stores it as the
-    ///      first ten hex characters of its sha256.
     string internal constant WORKFLOW_NAME = "moolam-sealed-verifier";
 
     string internal constant LIVE_FILE = "deployments/monad-mainnet.json";
@@ -54,13 +39,7 @@ contract DeploySealedReceiver is Script {
     error AlreadyDeployed(address sealedReceiver);
     error DeploymentFileNotWritten();
 
-    /// @notice Deploys the sealed receiver, pins it and queues its listing, from the wallet in
-    ///         DEPLOYER_PRIVATE_KEY.
-    /// @dev Reverts WrongChain off Monad mainnet, DeploymentFileMissing without the live deployment
-    ///      file, AlreadyDeployed when an earlier run left a receiver with code at the recorded
-    ///      address, and every check in `_preflight`. Run without --broadcast for a dry run that
-    ///      sends nothing and writes nothing.
-    /// @return d The deployment as read back from the contracts.
+    /// @notice Deploys, pins and queues from DEPLOYER_PRIVATE_KEY. Without --broadcast it is a dry run.
     function run() external returns (Deployment memory d) {
         _refuseIfAlreadyDeployed();
         uint256 deployerKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
@@ -79,12 +58,7 @@ contract DeploySealedReceiver is Script {
         }
     }
 
-    /// @notice The same steps as `run` for a sender given by address. Writes no file.
-    /// @dev For the fork test, where the policy owner is acted as without its key. A broadcast
-    ///      through this entry needs the signer supplied on the command line, so `run` stays the
-    ///      path for the real deploy. Reverts on every check in `_preflight`.
-    /// @param deployer The wallet that sends the four transactions. Must own the policy.
-    /// @return d The deployment as read back from the contracts.
+    /// @notice The same steps as `run` for a sender given by address, for the fork test. Writes no file.
     function deployAs(address deployer) external returns (Deployment memory d) {
         (VerifierPolicy policy, address registry) = _preflight(deployer);
 
@@ -95,17 +69,9 @@ contract DeploySealedReceiver is Script {
         _print(d, policy, registry);
     }
 
-    /// @notice Writes the four transaction hashes of the last broadcast into the deployment file.
-    /// @dev Run after `run --broadcast`, without broadcasting. The launch script reads the hashes
-    ///      from Foundry's broadcast artifact for this script and checks each receipt on chain
-    ///      first. They come in as arguments because Foundry cannot name the policy call from
-    ///      inside a script: the policy was not deployed by this script, so its artifact entry has
-    ///      no contract name to search by. Reverts DeploymentFileNotWritten when `run` has not
-    ///      written the file yet.
-    /// @param createTx The hash of the receiver deployment.
-    /// @param authorTx The hash of setExpectedAuthor.
-    /// @param nameTx The hash of setExpectedWorkflowName.
-    /// @param queueTx The hash of queueAddReceiver.
+    /// @notice Writes the four transaction hashes into the deployment file. Run after `run`.
+    /// @dev The hashes come in as arguments: the policy was not deployed here, so its call has no
+    ///      contract name the broadcast cheatcodes can search by.
     function record(bytes32 createTx, bytes32 authorTx, bytes32 nameTx, bytes32 queueTx) external {
         if (!vm.exists(DEPLOYMENT_FILE)) revert DeploymentFileNotWritten();
 
@@ -119,8 +85,6 @@ contract DeploySealedReceiver is Script {
         console2.log("Recorded transaction hashes into", DEPLOYMENT_FILE);
     }
 
-    /// @dev Every check that can fail runs before the first transaction, so a mistake stops the
-    ///      run with nothing sent.
     function _preflight(address deployer) internal view returns (VerifierPolicy policy, address registry) {
         if (block.chainid != MONAD_MAINNET_CHAIN_ID) revert WrongChain(block.chainid, MONAD_MAINNET_CHAIN_ID);
         if (!vm.exists(LIVE_FILE)) revert DeploymentFileMissing();
@@ -138,9 +102,6 @@ contract DeploySealedReceiver is Script {
         _matchThePublicReceiver(policy, registry, publicReceiver, deployer);
     }
 
-    /// @dev The sealed receiver must trust the same forwarder, write to the same registry and
-    ///      answer to the same author as the receiver already live, and the sender must be able to
-    ///      queue the listing.
     function _matchThePublicReceiver(
         VerifierPolicy policy,
         address registry,
@@ -164,9 +125,7 @@ contract DeploySealedReceiver is Script {
         returns (Deployment memory d)
     {
         MoolamReceiver sealedReceiver = new MoolamReceiver(PRODUCTION_FORWARDER, registry);
-        // The author goes in first. Chainlink's template refuses every report when a name is
-        // pinned without an author, so setting the name first would leave a window where the
-        // receiver is bricked.
+        // Author first: a name with no author makes the template refuse every report.
         sealedReceiver.setExpectedAuthor(WORKFLOW_AUTHOR);
         sealedReceiver.setExpectedWorkflowName(WORKFLOW_NAME);
         bytes32 changeId = policy.queueAddReceiver(address(sealedReceiver));
@@ -221,7 +180,6 @@ contract DeploySealedReceiver is Script {
         json = vm.serializeBytes(root, "workflowNameEncoded", abi.encodePacked(d.workflowName));
         json = vm.serializeBytes32(root, "changeId", d.changeId);
         json = vm.serializeUint(root, "executeAfter", d.executeAfter);
-        // Filled by `record` once the transactions have landed and their hashes exist.
         json = vm.serializeString(root, "txHashes", "pending");
 
         vm.writeJson(json, DEPLOYMENT_FILE);

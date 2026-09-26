@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: it sends no real transaction and spends no real MON. Every call
-// here runs against a local fork of Monad mainnet state, so it proves the contract against the real
-// registry and a real passport with a real holder, not that a mainnet write has happened. The unit,
-// fuzz and invariant files own the rules themselves.
+// Does NOT cover: a real mainnet write or real MON spent; this runs on a local fork of mainnet state.
 
 import {Test, console2} from "forge-std/Test.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -13,13 +10,9 @@ import {MoolamConsent} from "../../src/MoolamConsent.sol";
 import {IMoolamConsent} from "../../src/interfaces/IMoolamConsent.sol";
 
 contract MoolamConsentForkTest is Test {
-    /// @dev The deployed Moolam passport registry on Monad mainnet.
     address internal constant REGISTRY = 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0;
-    /// @dev A passport registered on mainnet by the live proof run, held by a real wallet.
+    // Passports written on mainnet by the live proof run.
     bytes32 internal constant PASSPORT = 0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638;
-    /// @dev Two more real passports from the live proof run, original.jpg and the same photo with a
-    ///      C2PA manifest. They were minted by the same wallet, which is what the batch test needs.
-    ///      The test reads both owners back before it trusts that, and skips if they have parted.
     bytes32 internal constant PASSPORT_A = 0xb95adc0cf9b3bb3af90bafa247b5a49dd5c5d50877537b47f7b000c5a573354c;
     bytes32 internal constant PASSPORT_B = 0x7b4732f365aa235556b4b11b8916fd544f10acc034ae7e0b9e39068becae1a50;
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
@@ -129,8 +122,6 @@ contract MoolamConsentForkTest is Test {
             assertEq(consent.historyLength(ids[i]), 1);
         }
 
-        // A passport the same wallet does not hold takes the whole batch down with it, including
-        // the write for the passport ahead of it in the list.
         vm.warp(block.timestamp + consent.MIN_INTERVAL());
         bytes32[] memory mixed = new bytes32[](2);
         mixed[0] = PASSPORT_A;

@@ -1,0 +1,96 @@
+Contract comments trimmed, 2026-09-26
+Ram's reason: comments trimmed for readability. Only comments changed. Every contract compiles to the same bytes as
+before, so the deployed and verified contracts are untouched.
+
+Source before the trim
+Local git tag deployed-source-2026-09-26 marks commit 38ae3cb3275adcaec45470f8bfabe3956b871747, the last commit
+before the trim, so the commented source verified on MonadVision stays findable. Check out that tag to read it.
+
+How it was checked
+1. forge build --force on the untouched tree, then the creation and runtime bytecode of all 128 compiled artifacts
+   (src, scripts and tests) saved.
+2. Comments trimmed in packages/contracts/src, src/interfaces, script and test. src/vendor (Chainlink's template)
+   not touched.
+3. forge build --force again and every artifact compared: 128 compared, 0 differences in creation or runtime code.
+   foundry.toml sets bytecode_hash = "none", so no comment reaches the bytecode.
+4. With comments stripped out, the code of all 36 touched files is identical to the tagged commit, character for
+   character. No trailing comment on a code line was touched.
+5. forge test -n monad with the root .env loaded: 16 suites, 215 passed, 0 failed, 0 skipped (fork tests ran).
+6. forge lint: the same 19 notes as before, word for word, none new. solhint on
+   src/**/*.sol: no errors, no warnings, as before. solhint's use-natspec rule still requires @param on every named
+   parameter of a public function, so those tags stay, one short line each.
+
+sha256 of the raw bytecode bytes, before and after
+contract             code      before                                                            after                                                             result
+MoolamRegistry       runtime   1d67b8deeb59c37c4bff90d009b9c4638e189689ebd9d4d5f4f82f41c8a2f023  1d67b8deeb59c37c4bff90d009b9c4638e189689ebd9d4d5f4f82f41c8a2f023  equal
+MoolamRegistry       creation  7403b9ac094cfb001dc4f7f15556267b9be7f8e27f4dc4904525b3e5603c7478  7403b9ac094cfb001dc4f7f15556267b9be7f8e27f4dc4904525b3e5603c7478  equal
+VerifierPolicy       runtime   d893bdd107529fecff9cac91aedc6801dae45a731d5d91d3b2128ad0620acb21  d893bdd107529fecff9cac91aedc6801dae45a731d5d91d3b2128ad0620acb21  equal
+VerifierPolicy       creation  09f2df1753c0ce875b16904dd14f43605577001d25221a927f8164896026dfd8  09f2df1753c0ce875b16904dd14f43605577001d25221a927f8164896026dfd8  equal
+MoolamReceiver       runtime   b660d911d303a5853e06c8f0ba1384bff069733b640ae7ccc97ebd3d9081301e  b660d911d303a5853e06c8f0ba1384bff069733b640ae7ccc97ebd3d9081301e  equal
+MoolamReceiver       creation  14fe2776931b783afc362b34fb12800a27462b58e46e07b13373a85097b519b8  14fe2776931b783afc362b34fb12800a27462b58e46e07b13373a85097b519b8  equal
+MoolamConsent        runtime   880d4c87c34f7ba482bba73ae4dd8e69c9f8f15fe6d5f7e3ab00d4e4cd3808b6  880d4c87c34f7ba482bba73ae4dd8e69c9f8f15fe6d5f7e3ab00d4e4cd3808b6  equal
+MoolamConsent        creation  fed1263f81d80aeb320fbc3d738e9ca3d3dabde76583d19dea2cbd30f703a7ae  fed1263f81d80aeb320fbc3d738e9ca3d3dabde76583d19dea2cbd30f703a7ae  equal
+SimulationReceiver   runtime   70f33619dc11692aab89c2c175d28237470ba6cb283d331b169b1a4a24506da3  70f33619dc11692aab89c2c175d28237470ba6cb283d331b169b1a4a24506da3  equal
+SimulationReceiver   creation  048a37ff2d51512d7032ba9dcf4ebc9aeef3b8773937b85affb0f7a6a57c99ad  048a37ff2d51512d7032ba9dcf4ebc9aeef3b8773937b85affb0f7a6a57c99ad  equal
+The three interfaces have no code of their own.
+
+Comment lines per file, before and after (a line counts when any part of it is a comment)
+file                                         before  after
+src/MoolamRegistry.sol                          204    157
+src/MoolamConsent.sol                           105     49
+src/VerifierPolicy.sol                           94     80
+src/SimulationReceiver.sol                       87     40
+src/MoolamReceiver.sol                           41     21
+src/interfaces/IMoolamRegistry.sol              111     88
+src/interfaces/IMoolamConsent.sol                75     52
+src/interfaces/IVerifierPolicy.sol               14      9
+script/ConfigureReceiver.s.sol                   14      5
+script/Deploy.s.sol                              42     11
+script/DeployConsent.s.sol                       14      5
+script/DeploySealedReceiver.s.sol                52     10
+script/DeploySimulationReceivers.s.sol           45     12
+script/FinalizeSealedReceiver.s.sol              26      7
+script/FinalizeSimulationReceivers.s.sol         27     10
+script/LiveProof.s.sol                           59     19
+script/RegisterAgent.s.sol                       29     10
+test/MoolamConsent.fuzz.t.sol                    21      3
+test/MoolamConsent.invariants.t.sol              22      5
+test/MoolamConsent.t.sol                         16      4
+test/MoolamReceiver.t.sol                        22      5
+test/MoolamRegistry.fuzz.t.sol                   10      2
+test/MoolamRegistry.invariants.t.sol             20      4
+test/MoolamRegistry.t.sol                        15      5
+test/RenounceOwnership.t.sol                     13      3
+test/SimulationReceiver.fuzz.t.sol               12      3
+test/SimulationReceiver.t.sol                    31      8
+test/VerifierPolicy.t.sol                         6      3
+test/fork/ERC8004Fork.t.sol                      22     10
+test/fork/MoolamConsent.fork.t.sol               16      7
+test/fork/ReceiverSwap.fork.t.sol                 9      4
+test/fork/SealedReceiver.fork.t.sol              26      6
+test/fork/SimulationReceiver.fork.t.sol          36     15
+test/mocks/LocalMockForwarder.sol                12      3
+test/mocks/MockAgentIdentity.sol                  7      3
+test/utils/WebAuthnFixture.sol                   19      6
+total                                          1374    684
+The src counts include the SPDX line and every forge-lint and solhint directive, which stay as they were.
+
+Repeat the comparison
+From the repo root in Git Bash with Foundry on the PATH. It builds the tagged source in a temporary folder and prints
+"equal" or "DIFFERENT" with the sha256 of the raw bytes for each contract:
+H=$(mktemp -d); git archive deployed-source-2026-09-26 packages/contracts/src | tar -x -C $H; cp -r packages/contracts/lib packages/contracts/foundry.toml packages/contracts/remappings.txt $H/packages/contracts/; for c in MoolamRegistry VerifierPolicy MoolamReceiver MoolamConsent SimulationReceiver; do for k in deployedBytecode bytecode; do a=$(cd $H/packages/contracts && forge inspect $c $k | sed 's/^0x//' | xxd -r -p | sha256sum); b=$(cd packages/contracts && forge inspect $c $k | sed 's/^0x//' | xxd -r -p | sha256sum); [ "$a" = "$b" ] && echo "equal $c $k ${b%% *}" || echo "DIFFERENT $c $k"; done; done; rm -rf $H
+
+Output of that command on 2026-09-26:
+equal MoolamRegistry deployedBytecode 1d67b8deeb59c37c4bff90d009b9c4638e189689ebd9d4d5f4f82f41c8a2f023
+equal MoolamRegistry bytecode 7403b9ac094cfb001dc4f7f15556267b9be7f8e27f4dc4904525b3e5603c7478
+equal VerifierPolicy deployedBytecode d893bdd107529fecff9cac91aedc6801dae45a731d5d91d3b2128ad0620acb21
+equal VerifierPolicy bytecode 09f2df1753c0ce875b16904dd14f43605577001d25221a927f8164896026dfd8
+equal MoolamReceiver deployedBytecode b660d911d303a5853e06c8f0ba1384bff069733b640ae7ccc97ebd3d9081301e
+equal MoolamReceiver bytecode 14fe2776931b783afc362b34fb12800a27462b58e46e07b13373a85097b519b8
+equal MoolamConsent deployedBytecode 880d4c87c34f7ba482bba73ae4dd8e69c9f8f15fe6d5f7e3ab00d4e4cd3808b6
+equal MoolamConsent bytecode fed1263f81d80aeb320fbc3d738e9ca3d3dabde76583d19dea2cbd30f703a7ae
+equal SimulationReceiver deployedBytecode 70f33619dc11692aab89c2c175d28237470ba6cb283d331b169b1a4a24506da3
+equal SimulationReceiver bytecode 048a37ff2d51512d7032ba9dcf4ebc9aeef3b8773937b85affb0f7a6a57c99ad
+
+What this does not show: that the bytecode on chain equals these builds. That is what the MonadVision verification
+records elsewhere in proofs/ cover.

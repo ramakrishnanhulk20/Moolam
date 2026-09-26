@@ -3,13 +3,10 @@ pragma solidity 0.8.30;
 
 /// @title IMoolamConsent
 /// @notice What a passport holder says about AI use of their picture, and every statement they
-///         made before this one. The web app, the verify service and any crawler that wants to
-///         know what was allowed on a given day are all written against this interface.
+///         made before. The web app, the verify service and crawlers read this interface.
 interface IMoolamConsent {
-    /// @notice What the holder allows for one kind of AI use. Unspecified is where every passport
-    ///         starts and is also the way back: a holder who no longer wants to say anything writes
-    ///         all four fields Unspecified again. Constrained means the conditions are written in
-    ///         the constraint text beside the statement.
+    /// @notice What the holder allows for one kind of AI use. Unspecified is the start and also the
+    ///         way back. Constrained means the conditions are in the constraint text.
     enum Use {
         Unspecified,
         Allowed,
@@ -17,8 +14,7 @@ interface IMoolamConsent {
         Constrained
     }
 
-    /// @notice The four uses one statement covers. They are independent: a holder can refuse
-    ///         training and still allow inference.
+    /// @notice The four uses one statement covers, each independent of the others.
     struct Consent {
         Use aiTraining;
         Use aiGenerativeTraining;
@@ -26,8 +22,7 @@ interface IMoolamConsent {
         Use dataMining;
     }
 
-    /// @notice One statement, kept exactly as it was written. Nothing here is ever edited, so a
-    ///         reader can quote the entry that was in force on the day a picture was used.
+    /// @notice One statement, never edited after it is written.
     struct Entry {
         uint64 at; // block timestamp of the write
         address writer; // the holder who wrote it
@@ -36,12 +31,12 @@ interface IMoolamConsent {
     }
 
     /// @notice A passport's holder stated how their picture may be used by AI.
-    /// @param passportId The passport the statement is about.
-    /// @param writer The address that held the passport when the statement was written.
-    /// @param index Where this statement sits in the passport's history, counting from zero.
-    /// @param consent The four field values exactly as stored.
-    /// @param constraintInfo The conditions in free text, empty unless a field is Constrained.
-    /// @param at The block timestamp the statement was written at.
+    /// @param passportId The passport.
+    /// @param writer The holder at the time of writing.
+    /// @param index The position in the passport's history, from zero.
+    /// @param consent The four field values as stored.
+    /// @param constraintInfo The conditions, empty unless a field is Constrained.
+    /// @param at The block timestamp of the write.
     event ConsentSet(
         bytes32 indexed passportId,
         address indexed writer,
@@ -60,80 +55,62 @@ interface IMoolamConsent {
     error EmptyBatch();
     error BatchTooLarge(uint256 length);
 
-    /// @notice The vocabulary this register speaks, named on chain so a reader never has to guess
-    ///         what a value means. The four fields and the three stated values are those of the
-    ///         CAWG Training and Data Mining assertion, version 1.1: aiTraining, aiGenerativeTraining,
-    ///         aiInference and dataMining, each Allowed, NotAllowed or Constrained. Unspecified is
-    ///         this contract's fourth value and means the creator has not stated that use at all.
-    ///         Per that standard, a reader with no way to reach the creator treats Constrained the
-    ///         same as NotAllowed.
-    /// @return The assertion label and version.
+    /// @notice The vocabulary of this register: the CAWG Training and Data Mining assertion, v1.1.
     function STANDARD() external view returns (string memory);
 
     /// @notice The passport registry this contract asks who holds a passport.
-    /// @return The registry address, fixed at deployment.
     function REGISTRY() external view returns (address);
 
     /// @notice How long the same address must wait before changing the same passport again.
-    /// @return Ten minutes, in seconds.
     function MIN_INTERVAL() external view returns (uint64);
 
-    /// @notice The longest the constraint text may be.
-    /// @return 256 bytes.
+    /// @notice The longest the constraint text may be, in bytes.
     function MAX_INFO_BYTES() external view returns (uint256);
 
     /// @notice The most history entries one read can return.
-    /// @return 64 entries.
     function MAX_PAGE() external view returns (uint256);
 
     /// @notice The most passports one batch call can state for.
-    /// @return 32 passports.
     function MAX_BATCH() external view returns (uint256);
 
     /// @notice Records what the passport's holder allows AI to do with their picture.
-    /// @param passportId The passport the statement is about.
-    /// @param consent The four field values. All four Unspecified is a valid statement and takes
-    ///        an earlier one back without hiding it.
-    /// @param constraintInfo The conditions in free text: a licence name, a link to a policy file,
-    ///        or a line of plain words. Required when any field is Constrained, refused otherwise,
-    ///        at most 256 printable ASCII bytes.
+    /// @dev Reverts NotPassportHolder, TooSoon, or a ConstraintInfo error. Emits ConsentSet.
+    /// @param passportId The passport.
+    /// @param consent The four field values. All four Unspecified takes an earlier statement back.
+    /// @param constraintInfo Required when a field is Constrained, refused otherwise, at most 256
+    ///        printable ASCII bytes.
     function setConsent(bytes32 passportId, Consent calldata consent, string calldata constraintInfo) external;
 
-    /// @notice Records the same statement for a whole set of passports in one transaction, for a
-    ///         creator who wants one policy across their work.
-    /// @dev All or nothing. If any one passport in the set is refused, for any reason, nothing is
-    ///      written for any of them and the caller gets that passport's own error. Naming the same
-    ///      passport twice in one call is refused as TooSoon, because the first write already
-    ///      happened this second.
-    /// @param passportIds The passports to state for, at least one and at most 32.
-    /// @param consent The four field values, the same for every passport in the set.
-    /// @param constraintInfo The conditions in free text, the same for every passport in the set.
-    ///        It is checked once for the call, and stored against each passport.
+    /// @notice Records the same statement for up to 32 passports in one transaction.
+    /// @dev All or nothing: one refused passport reverts the call with its own error. Also reverts
+    ///      EmptyBatch or BatchTooLarge. Emits one ConsentSet per passport, in order.
+    /// @param passportIds The passports, at least one and at most 32.
+    /// @param consent The four field values for every passport.
+    /// @param constraintInfo The conditions for every passport.
     function setConsentBatch(bytes32[] calldata passportIds, Consent calldata consent, string calldata constraintInfo)
         external;
 
     /// @notice The statement that stands for a passport right now.
-    /// @param passportId The passport to read.
-    /// @return stated False when the holder has never said anything, in which case latest is empty.
-    /// @return latest The newest entry in the passport's history.
+    /// @param passportId The passport.
+    /// @return stated False when the holder has never said anything.
+    /// @return latest The newest entry.
     function consentOf(bytes32 passportId) external view returns (bool stated, Entry memory latest);
 
     /// @notice The statement that was in force at a moment in the past.
-    /// @param passportId The passport to read.
-    /// @param timestamp The moment to ask about, in seconds.
-    /// @return stated False when nothing had been stated yet at that moment.
+    /// @param passportId The passport.
+    /// @param timestamp The moment, in seconds.
+    /// @return stated False when nothing had been stated yet.
     /// @return inForce The last entry written at or before that moment.
     function consentAt(bytes32 passportId, uint64 timestamp) external view returns (bool stated, Entry memory inForce);
 
     /// @notice How many statements a passport has collected.
-    /// @param passportId The passport to read.
-    /// @return The number of entries, zero for a passport nobody has spoken for.
+    /// @param passportId The passport.
     function historyLength(bytes32 passportId) external view returns (uint256);
 
-    /// @notice Reads a page of a passport's history, oldest first.
-    /// @param passportId The passport to read.
-    /// @param start Where to start, counting from zero.
-    /// @param count How many to read. Clipped to what exists and to 64.
+    /// @notice Reads a page of a passport's history, oldest first, clipped to 64 entries.
+    /// @param passportId The passport.
+    /// @param start Where to start, from zero.
+    /// @param count How many to read.
     /// @return page The entries, empty when start is past the end.
     function historyPage(bytes32 passportId, uint256 start, uint256 count) external view returns (Entry[] memory page);
 }

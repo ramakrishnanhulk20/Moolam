@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the ordering of many actions against each other, which is what
-// the invariant suite is for, and the Chainlink report path. It fuzzes one action at a time on a
-// fresh state.
+// Does NOT cover: many actions against each other (invariants) or the Chainlink report path.
 
 import {Test} from "forge-std/Test.sol";
 import {WebAuthn} from "@openzeppelin/contracts/utils/cryptography/WebAuthn.sol";
@@ -58,7 +56,6 @@ contract MoolamRegistryFuzzTest is Test {
         return registry.register(p, auth, agentSig);
     }
 
-    /// Any well formed input the creator and the agent both signed must land, whatever the values.
     function testFuzz_registerStoresExactlyWhatWasSigned(
         bytes32 exactHash,
         uint64 phash,
@@ -70,7 +67,6 @@ contract MoolamRegistryFuzzTest is Test {
     ) public {
         vm.assume(exactHash != bytes32(0));
         vm.assume(bytes(metadataURI).length != 0);
-        // Version zero is a rejected input, not a well formed one, so it belongs in the unit tests.
         vm.assume(fingerprintVersion != 0);
 
         PassportInput memory p = PassportInput({
@@ -100,7 +96,6 @@ contract MoolamRegistryFuzzTest is Test {
         assertEq(stored.registeredAt, uint64(block.timestamp));
     }
 
-    /// Changing any signed field after signing must break the passkey check.
     function testFuzz_registerRefusesATamperedField(bytes32 exactHash, uint64 phash, uint64 tamperedPhash) public {
         vm.assume(exactHash != bytes32(0));
         vm.assume(phash != tamperedPhash);
@@ -129,7 +124,6 @@ contract MoolamRegistryFuzzTest is Test {
         registry.register(p, auth, agentSig);
     }
 
-    /// Every edit must point at a parent that exists, and mint to that parent's owner.
     function testFuzz_appendEditAlwaysHangsOffALiveParent(bytes32 parentHash, bytes32 childHash) public {
         vm.assume(parentHash != bytes32(0) && childHash != bytes32(0) && parentHash != childHash);
 
@@ -163,7 +157,6 @@ contract MoolamRegistryFuzzTest is Test {
         assertEq(registry.childCount(parentHash), 1);
     }
 
-    /// A dispute must move the exact bond and nothing more, whatever the bond size or the verdict.
     function testFuzz_disputeMoneyIsConserved(uint256 bond, bool upheld, address challenger) public {
         bond = bound(bond, 0, 100 ether);
         vm.assume(challenger != address(0) && challenger != address(registry));
@@ -224,7 +217,6 @@ contract MoolamRegistryFuzzTest is Test {
         assertEq(registry.withdrawable(paid), 0);
     }
 
-    /// Nobody can ever pull more than they were credited, however many times they try.
     function testFuzz_withdrawNeverPaysTwice(uint8 attempts) public {
         uint256 bond = 0.05 ether;
         address challenger = makeAddr("challenger");

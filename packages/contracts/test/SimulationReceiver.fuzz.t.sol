@@ -1,17 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the sending wallet itself signing a false verdict (the contract
-// cannot tell, and says so in its non-goals), Chainlink's live mock forwarder (the fork tests), and
-// executedAt values around a block time other than the one the fuzzer warps to.
+// Does NOT cover: the sending wallet signing a false verdict, the live mock forwarder (fork tests), other block times.
 
 import {SimulationReceiver} from "../src/SimulationReceiver.sol";
 import {SimulationReceiverSetup} from "./SimulationReceiver.t.sol";
 
 contract SimulationReceiverFuzzTest is SimulationReceiverSetup {
-    /// @dev R1. Whoever signs, and whoever calls the mock, only the sending wallet as tx.origin
-    ///      writes. Checked straight at the receiver for the exact error and through the mock for
-    ///      the outcome: nothing written, floor untouched.
     function testFuzz_anyOriginOtherThanTheSendingWalletIsRefused(address origin, address caller, uint64 executedAt)
         public
     {
@@ -29,8 +24,6 @@ contract SimulationReceiverFuzzTest is SimulationReceiverSetup {
         assertEq(simReceiver.lastExecutedAt(passportId), 0);
     }
 
-    /// @dev R4 over the whole uint64 range at a fuzzed block time: accepted exactly when
-    ///      0 < executedAt <= now + MAX_FUTURE_SKEW, and the floor moves only on acceptance.
     function testFuzz_executedAtIsAcceptedExactlyUpToTheSkew(uint64 executedAt, uint64 blockTime) public {
         blockTime = uint64(bound(blockTime, NOW, type(uint64).max - 2 hours));
         vm.warp(blockTime);
@@ -51,8 +44,6 @@ contract SimulationReceiverFuzzTest is SimulationReceiverSetup {
         assertEq(registry.attestationCount(passportId), accepted ? 1 : 0);
     }
 
-    /// @dev R4 near the edge, where a mistake would be an off-by-one: within two hours either
-    ///      side of now plus the skew.
     function testFuzz_executedAtNearTheBound(int256 offset) public {
         offset = bound(offset, -2 hours, 2 hours);
         uint256 edge = uint256(NOW) + 1 hours;

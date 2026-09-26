@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the Chainlink KeystoneForwarder itself, report signature checking
-// (that happens inside the forwarder before our contract is ever called), and the CRE workflow that
-// produces the report. Those live off chain and are proven by a workflow simulation, not by Foundry.
+// Does NOT cover: the KeystoneForwarder, report signatures or the CRE workflow; a workflow simulation proves those.
 
 import {Test} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -32,7 +30,6 @@ contract MoolamReceiverTest is Test {
     address internal stranger = makeAddr("stranger");
     address internal creWallet = makeAddr("creWallet");
 
-    /// @dev The workflow name in packages/workflow/moolam-verifier/workflow.yaml.
     string internal constant WORKFLOW_NAME = "moolam-verifier";
 
     uint256 internal constant AGENT_ID = 7;
@@ -43,8 +40,6 @@ contract MoolamReceiverTest is Test {
 
     bytes32 internal passportId = keccak256("image-under-review");
 
-    // The workflow stamps each report with the second it ran. Any fixed value works here as long
-    // as the replay tests move relative to it.
     uint64 internal constant EXECUTED_AT = 1_800_000_000;
 
     event VerificationAttested(
@@ -108,8 +103,7 @@ contract MoolamReceiverTest is Test {
     }
 
     function _metadata() internal pure returns (bytes memory) {
-        // The production forwarder hands over a 64 byte slice: 32 workflow id, 10 workflow name,
-        // 20 workflow owner, then a 2 byte report id.
+        // Forwarder metadata: 32 byte workflow id, 10 byte name, 20 byte owner, 2 byte report id.
         return _metadata(bytes10("moolamver"), address(uint160(0xABCD)));
     }
 
@@ -117,8 +111,6 @@ contract MoolamReceiverTest is Test {
         return abi.encodePacked(bytes32(uint256(1)), workflowName, workflowAuthor, bytes2(0));
     }
 
-    /// @dev Pins the receiver the way the deploy script does and hands back the encoded name the
-    ///      template computed, which is the first ten hex characters of the sha256 of the name.
     function _pinIdentity() internal returns (bytes10 encodedName) {
         moolamReceiver.setExpectedAuthor(creWallet);
         moolamReceiver.setExpectedWorkflowName(WORKFLOW_NAME);
@@ -172,14 +164,7 @@ contract MoolamReceiverTest is Test {
         assertEq(registry.attestationCount(passportId), 1);
     }
 
-    /// @dev The replay guard is per receiver: the executedAt floor lives in this contract's own
-    ///      storage and starts at zero, so a report this receiver has already used is refused here
-    ///      while the very same bytes still land on a receiver deployed later and listed after it.
-    ///      That is the replay window, and it is open from the moment a second receiver is listed
-    ///      until reports newer than the old ones are the only ones in flight. The operator control
-    ///      today is that listing a receiver takes the policy's 24 hour queue, so nobody adds a
-    ///      fresh door quietly. The remedy in receiver v2 is an executedAt floor set at deploy
-    ///      time, which makes every report older than the deployment stale on arrival.
+    // The replay floor is per receiver, so a used report still lands on a newly listed one.
     function test_aUsedReportIsRefusedHereAndStillLandsOnAFreshReceiver() public {
         bytes memory report = _report(passportId, true, 4, keccak256("recomputed"));
 
@@ -317,9 +302,7 @@ contract MoolamReceiverTest is Test {
     function test_clearingThePinReopensTheReceiverForASimulation() public {
         _pinIdentity();
 
-        // Chainlink's mock forwarder sends no workflow metadata during `cre workflow simulate`, so
-        // the pin has to come off for that run. ConfigureReceiver.s.sol does exactly these two
-        // calls, name first, so no report ever meets a name with no author behind it.
+        // Name first, so no report ever meets a name with no author behind it.
         moolamReceiver.setExpectedWorkflowName("");
         moolamReceiver.setExpectedAuthor(address(0));
 

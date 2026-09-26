@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: anything about the registry itself, the receiver, or how the
-// registry reads this policy. It also does not cover Ownable2Step, which is OpenZeppelin's own
-// tested code, beyond checking that a non owner is refused.
+// Does NOT cover: the registry, the receiver, or Ownable2Step beyond refusing a non owner.
 
 import {Test} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {VerifierPolicy} from "../src/VerifierPolicy.sol";
 
-// No receive and no fallback, so an empty call to it reverts. This is the wallet-shaped mistake
-// the treasury probe is there to catch.
+// No receive and no fallback: the wallet-shaped mistake the treasury probe catches.
 contract UnreachableTreasury {
     uint256 public marker;
 }

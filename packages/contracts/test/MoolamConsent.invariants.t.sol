@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the exact revert reason of any single call, which the unit file
-// owns, and the shape of the constraint text, which the fuzz file owns. The handler drives three
-// holders who pass three passports among themselves, write, wait, and try to push MON into the
-// contract, and the six invariants below must hold after every one of those calls.
+// Does NOT cover: exact revert reasons (unit file) or the shape of the constraint text (fuzz file).
 
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
@@ -13,9 +10,6 @@ import {MoolamConsent} from "../src/MoolamConsent.sol";
 import {IMoolamConsent} from "../src/interfaces/IMoolamConsent.sol";
 import {MockAgentIdentity} from "./mocks/MockAgentIdentity.sol";
 
-/// @notice Drives the register the way the outside world would: passports that change hands, some
-///         writes from the holder and some from anyone else, time moving in uneven steps, and
-///         someone trying to pay a contract that wants no money.
 contract ConsentHandler is Test {
     MoolamConsent public consent;
     MockAgentIdentity public registry;
@@ -82,8 +76,6 @@ contract ConsentHandler is Test {
         } catch {}
     }
 
-    /// The same statement for a run of passports in one call. The set is a slice of the same three
-    /// passports the single write uses, so the two paths compete for the same histories.
     function writeBatch(uint256 actorSeed, uint256 startSeed, uint256 sizeSeed, uint8 raw, bool constrained) external {
         uint256 size = (sizeSeed % PASSPORT_COUNT) + 1;
         uint256 start = startSeed % PASSPORT_COUNT;
@@ -133,8 +125,7 @@ contract ConsentHandler is Test {
         if (ok && value != 0) monAccepted++;
     }
 
-    /// Fingerprints every entry the first time it is seen. An entry is never written again, so a
-    /// second fingerprint of the same index would be the bug, not a legitimate update.
+    // An entry is never rewritten, so a changed fingerprint at a seen index is the bug.
     function _remember(bytes32 id) internal {
         uint256 length = consent.historyLength(id);
         for (uint256 i = lengthSeen[id]; i < length; ++i) {
@@ -160,8 +151,6 @@ contract MoolamConsentInvariantsTest is StdInvariant, Test {
         excludeSender(address(registry));
     }
 
-    /// A history never shrinks, and every write that landed is exactly one entry and nothing else.
-    /// The second half of that is also what proves the run is doing real work.
     function invariant_historyOnlyGrows() public view {
         uint256 total;
         uint256 count = handler.passportCount();
@@ -174,7 +163,6 @@ contract MoolamConsentInvariantsTest is StdInvariant, Test {
         assertEq(total, handler.writesLanded());
     }
 
-    /// Every entry ever fingerprinted still hashes to the same bytes.
     function invariant_anEntryOnceWrittenNeverChanges() public view {
         uint256 count = handler.passportCount();
         for (uint256 i = 0; i < count; ++i) {
@@ -186,7 +174,6 @@ contract MoolamConsentInvariantsTest is StdInvariant, Test {
         }
     }
 
-    /// Timestamps of one passport strictly increase, which is what makes the time query exact.
     function invariant_timestampsStrictlyIncrease() public view {
         uint256 count = handler.passportCount();
         for (uint256 i = 0; i < count; ++i) {
@@ -203,8 +190,6 @@ contract MoolamConsentInvariantsTest is StdInvariant, Test {
         }
     }
 
-    /// Every write that landed came from the address the registry named at that moment, and the
-    /// latest entry still says so.
     function invariant_theWriterHeldThePassport() public view {
         assertEq(handler.writesByANonHolder(), 0);
 
@@ -217,13 +202,11 @@ contract MoolamConsentInvariantsTest is StdInvariant, Test {
         }
     }
 
-    /// The contract holds no money and has no way to accept any.
     function invariant_theContractHoldsNothing() public view {
         assertEq(address(consent).balance, 0);
         assertEq(handler.monAccepted(), 0);
     }
 
-    /// The newest entry is what consentOf returns and what consentAt returns for now.
     function invariant_theLatestEntryIsTheOneInForce() public view {
         uint256 count = handler.passportCount();
         for (uint256 i = 0; i < count; ++i) {

@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: time queries against random sequences of writes, which the fuzz
-// file proves against a plain reference model; the ordering of many writers and transfers against
-// each other, which the invariant file owns; and the real passport registry on Monad mainnet,
-// which the fork file reads. The registry here is the project's ERC-721 stand-in, because the only
-// behaviour this contract asks of the registry is ownerOf, including the revert on an id nobody
-// holds.
+// Does NOT cover: random write sequences (fuzz), many writers over time (invariants), the live registry (fork).
 
 import {Test} from "forge-std/Test.sol";
 
@@ -193,8 +188,6 @@ contract MoolamConsentTest is Test {
         vm.prank(holder);
         consent.setConsent(PASSPORT, _notAllowed(), "");
 
-        // A burn makes the registry's ownerOf revert for an id that used to have a holder. What
-        // matters is that the caller sees this contract's refusal, not another contract's error.
         vm.mockCallRevert(
             address(registry),
             abi.encodeWithSignature("ownerOf(uint256)", uint256(PASSPORT)),
@@ -600,10 +593,6 @@ contract MoolamConsentTest is Test {
         }
     }
 
-    /// The numbers behind the gas table in proofs/gas.txt. Measured with gasleft around the call,
-    /// so each figure carries the call overhead a real transaction pays too. The bounds are loose
-    /// on purpose: they are here to catch a change that makes a creator's write cost more, not to
-    /// pin a number.
     function test_gasOfTheMainActions() public {
         vm.prank(holder);
         uint256 gas = gasleft();
@@ -671,8 +660,7 @@ contract MoolamConsentTest is Test {
         assertLt(laterWrite, 120_000);
         assertLt(writeWithText, 400_000);
         assertLt(readAtTwoFiftySix, 60_000);
-        // The cap on MAX_BATCH only means something if the worst batch fits in one Monad
-        // transaction, which is 30,000,000 gas.
+        // The worst batch must fit in one Monad transaction of 30,000,000 gas.
         assertLt(batchOfThirtyTwoWithText, 30_000_000);
     }
 

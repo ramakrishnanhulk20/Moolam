@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the policy's own timelock (see VerifierPolicy.t.sol), the
-// Chainlink receiver path (see MoolamReceiver.t.sol), money conservation across random action
-// orders (see the fuzz and invariant files), and the real P-256 precompile, because Foundry's
-// local EVM runs OpenZeppelin's own P256 code path here rather than Monad's precompile at 0x0100.
+// Does NOT cover: the policy timelock, the receiver path, random action orders, or Monad's real P-256 precompile.
 
 import {Test} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -31,8 +28,7 @@ contract RefusesNative {
     }
 }
 
-// A treasury that can be called but cannot be paid. Its fallback is not payable, so the policy's
-// zero value probe succeeds while a real payout reverts. This is the case withdrawTo exists for.
+// Takes the policy's zero value probe but refuses a real payout: the case withdrawTo exists for.
 contract TreasuryThatCannotBePaid {
     MoolamRegistry private immutable REGISTRY;
 
@@ -110,9 +106,7 @@ contract MoolamRegistryTest is Test {
         _bind(creator, passkeyKey);
     }
 
-    // Every signature is built into a local before a prank or an expectRevert. The fixture calls
-    // Foundry cheatcodes, and a cheatcode call sitting inside an argument list would swallow the
-    // prank meant for the contract call.
+    // Signatures are built into locals first: a cheatcode inside an argument list swallows the prank.
     function _bind(address wallet, uint256 key) internal {
         (bytes32 qx, bytes32 qy) = WebAuthnFixture.publicKey(key);
         bytes32 digest = registry.hashBind(wallet, qx, qy, registry.bindNonce(wallet));
@@ -542,11 +536,7 @@ contract MoolamRegistryTest is Test {
         assertEq(registry.getPassport(edit.exactHash).generatorAgentId, 0);
     }
 
-    /// @dev The registry marks only the passport the challenge named, so an edit of a picture that
-    ///      was proven fake is accepted and reads clean. This is the documented gap: the deployed
-    ///      registry cannot walk the edit chain on a write, so the index carries inheritedDisputed
-    ///      and the web shows the child as disputed. The contract stores the parent link, which is
-    ///      what makes that reconstruction possible off chain.
+    // Known gap: only the named passport is marked; the index derives inheritedDisputed for its edits.
     function test_anEditOfADisputedParentIsAcceptedAndReadsClean() public {
         bytes32 parent = _registerDefault();
         _flag(stranger, parent);

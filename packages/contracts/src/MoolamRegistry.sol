@@ -25,14 +25,12 @@ import {
 import {IVerifierPolicy} from "./interfaces/IVerifierPolicy.sol";
 
 /// @title MoolamRegistry
-/// @notice The permanent record of where an image came from. A creator signs the image
-///         fingerprint with the passkey on their own device, the AI agent that generated it signs
-///         the same fingerprint with the wallet that owns its ERC-8004 identity, and this contract
-///         only writes the record when both signatures check out on chain.
-/// @dev Immutable on purpose. The only moving part is the VerifierPolicy address handed in at
-///      deployment, so nobody, including the owner, can rewrite a passport after the fact.
-///      Passkey checks run through OpenZeppelin WebAuthn, which uses the P-256 precompile at
-///      0x0100 on Monad and falls back to pure Solidity anywhere the precompile is missing.
+/// @notice The permanent record of where an image came from. The creator's passkey and the
+///         generating AI agent's ERC-8004 owner both sign the fingerprint, and the record is
+///         written only when both signatures check out on chain.
+/// @dev Immutable: nobody, the owner included, can rewrite a passport. The only moving part is
+///      the VerifierPolicy. Passkeys verify through OpenZeppelin WebAuthn and Monad's P-256
+///      precompile.
 contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -42,9 +40,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice The most attestations one passport can ever hold.
-    /// @dev The cap bounds storage growth per passport and keeps a full getAttestations read
-    ///      well inside one block. 64 records is roughly 6,000 gas of returned data, three orders
-    ///      of magnitude under the 150M gas Monad block limit, so a whole page always fits.
+    /// @dev Bounds storage per passport. A full read of 64 is about 6,000 gas, far under the block limit.
     uint256 public constant MAX_ATTESTATIONS = 64;
 
     bytes32 private constant PASSPORT_TYPEHASH = keccak256(
@@ -73,20 +69,20 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
 
     /// @notice A wallet bound or rotated the passkey that signs its passports.
     /// @param wallet The wallet the key now belongs to.
-    /// @param qx The passkey public key x coordinate.
-    /// @param qy The passkey public key y coordinate.
-    /// @param nonce The bind nonce this signature consumed.
+    /// @param qx The public key x coordinate.
+    /// @param qy The public key y coordinate.
+    /// @param nonce The bind nonce consumed.
     event PasskeyBound(address indexed wallet, bytes32 qx, bytes32 qy, uint256 nonce);
-    /// @notice A new passport was written. Indexers build the whole provenance graph from this.
+    /// @notice A new passport was written. Indexers build the provenance graph from this.
     /// @param passportId The sha256 of the exact image bytes, and the token id.
-    /// @param creator The wallet that owns the token.
+    /// @param creator The token owner.
     /// @param generatorAgentId The ERC-8004 agent that generated the image, zero if none.
-    /// @param parentId The passport this one was edited from, zero for an original.
+    /// @param parentId The passport this was edited from, zero for an original.
     /// @param phash The 64 bit perceptual hash.
-    /// @param blockhash256 The 256 bit block hash recorded with the image.
-    /// @param manifestHash The sha256 of the C2PA manifest store, zero when there is none.
+    /// @param blockhash256 The 256 bit block hash of the image.
+    /// @param manifestHash The sha256 of the C2PA manifest store, zero if none.
     /// @param kind 0 Generated, 1 Captured, 2 Edited.
-    /// @param fingerprintVersion Which fingerprint algorithm produced phash.
+    /// @param fingerprintVersion The algorithm that produced phash.
     /// @param metadataURI Where the image, manifest and thumbnail live.
     event PassportRegistered(
         bytes32 indexed passportId,
@@ -100,8 +96,8 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         uint8 fingerprintVersion,
         string metadataURI
     );
-    /// @notice A listed verifier rechecked a passport and recorded the result.
-    /// @param passportId The passport that was rechecked.
+    /// @notice A listed verifier rechecked a passport.
+    /// @param passportId The passport.
     /// @param receiver The listed receiver that wrote the result.
     /// @param matched Whether the recomputed fingerprint matched the recorded one.
     /// @param distance The perceptual hash distance measured.
@@ -110,27 +106,27 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         bytes32 indexed passportId, address indexed receiver, bool matched, uint16 distance, bytes32 recomputed
     );
     /// @notice Someone challenged a passport and posted a bond.
-    /// @param passportId The passport being challenged.
+    /// @param passportId The passport.
     /// @param challenger Who opened the dispute.
-    /// @param bond The bond held by this contract until the dispute is settled.
-    /// @param evidenceHash The keccak256 of the evidence URI, stored so the URI cannot be swapped.
+    /// @param bond The bond held until the dispute is settled.
+    /// @param evidenceHash The keccak256 of the evidence URI, so the URI cannot be swapped.
     /// @param evidenceURI Where the evidence lives.
     event PassportFlagged(
         bytes32 indexed passportId, address indexed challenger, uint256 bond, bytes32 evidenceHash, string evidenceURI
     );
     /// @notice A dispute was settled.
-    /// @param passportId The passport that was disputed.
-    /// @param upheld True when the challenge stood and the passport is now marked disputed.
+    /// @param passportId The passport.
+    /// @param upheld True when the challenge stood and the passport is marked disputed.
     /// @param resolver The resolver that settled it.
     event DisputeResolved(bytes32 indexed passportId, bool upheld, address indexed resolver);
     /// @notice Someone pulled the native token they were owed.
     /// @param who The address that pulled.
-    /// @param amount How much left the contract.
+    /// @param amount The amount paid out.
     event Withdrawn(address indexed who, uint256 amount);
-    /// @notice Someone pulled what they were owed and sent it to another address.
+    /// @notice Someone pulled what they were owed to another address.
     /// @param who The address whose credit was spent.
     /// @param to Where the money went.
-    /// @param amount How much left the contract.
+    /// @param amount The amount paid out.
     event WithdrawnTo(address indexed who, address indexed to, uint256 amount);
     /// @notice The owner moved stranded value out. Never touches a bond or an unclaimed credit.
     /// @param token The ERC-20 moved, or the zero address for native token.
@@ -170,19 +166,16 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     error TransferFailed();
 
     /// @notice Deploys the registry and locks in the two addresses it trusts.
-    /// @param initialOwner Owner of pause and rescue only. Two step transfer, and the owner can
-    ///        never touch a passport record or a user balance.
-    /// @param policyAddress The VerifierPolicy that lists receivers and holds dispute settings.
-    /// @param agentIdentityAddress The ERC-8004 Identity Registry, an ERC-721 whose owner of an
-    ///        agent id is the wallet that must sign for that agent.
+    /// @param initialOwner Owner of pause and rescue only. It can never touch a passport or a balance.
+    /// @param policyAddress The VerifierPolicy.
+    /// @param agentIdentityAddress The ERC-8004 Identity Registry. An agent's token owner signs for it.
     constructor(address initialOwner, address policyAddress, address agentIdentityAddress)
         ERC721("Moolam Content Passport", "MOOLAM")
         EIP712("Moolam", "1")
         Ownable(initialOwner)
     {
         if (policyAddress == address(0) || agentIdentityAddress == address(0)) revert ZeroAddress();
-        // ownerOf is read through try/catch, and a call to an address with no code would return
-        // empty data that cannot be decoded, so refuse to deploy against a plain wallet.
+        // A plain wallet here would make every agent look unknown.
         if (agentIdentityAddress.code.length == 0) revert NotAContract();
         _POLICY = policyAddress;
         _AGENT_IDENTITY = agentIdentityAddress;
@@ -221,13 +214,11 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Binds a passkey to the calling wallet, or rotates the one already bound.
-    /// @dev The wallet proves it holds the key by signing the bind digest with it, so a stolen
-    ///      public key cannot be parked on someone else's wallet. Requires user presence and user
-    ///      verification, meaning a live touch plus a biometric or PIN on the device.
-    ///      Reverts InvalidPublicKey on a zero coordinate and InvalidPasskeySignature when the
-    ///      assertion does not check out. Emits PasskeyBound.
-    /// @param qx The passkey public key x coordinate.
-    /// @param qy The passkey public key y coordinate.
+    /// @dev The key signs the bind, so nobody can park a public key they do not hold. Requires user
+    ///      verification (biometric or PIN). Reverts InvalidPublicKey or InvalidPasskeySignature.
+    ///      Emits PasskeyBound.
+    /// @param qx The public key x coordinate.
+    /// @param qy The public key y coordinate.
     /// @param auth The WebAuthn assertion over hashBind(msg.sender, qx, qy, bindNonce(msg.sender)).
     function bindPasskey(bytes32 qx, bytes32 qy, WebAuthn.WebAuthnAuth calldata auth) external {
         if (qx == bytes32(0) || qy == bytes32(0)) revert InvalidPublicKey();
@@ -243,19 +234,13 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Registers an original image and mints its passport token to the creator.
-    /// @dev Anyone may send this transaction. Authority comes from the two signatures, not from
-    ///      msg.sender, which is what lets a relayer pay the gas for a creator.
-    ///      Reverts InvalidExactHash on a zero hash, PassportAlreadyExists on a repeat,
-    ///      ParentNotAllowed when parentId is set, InvalidCreator on a zero creator, InvalidKind
-    ///      when kind is Edited, InvalidFingerprintVersion when the version byte is zero,
-    ///      EmptyMetadataURI on an empty URI, SignatureExpired past the
-    ///      deadline, PasskeyNotBound when the creator has no key, InvalidPasskeySignature,
-    ///      InvalidAgentId, UnknownAgent, InvalidGeneratorSignature. Emits PassportRegistered.
+    /// @dev Authority is the two signatures, not msg.sender, so a relayer can pay the gas.
+    ///      Reverts on a bad input field, an expired deadline, a missing or wrong passkey, or a bad
+    ///      agent signature. Emits PassportRegistered.
     /// @param p The passport input.
     /// @param creatorAuth The creator's WebAuthn assertion over hashPassport(p).
-    /// @param generatorSig The agent owner's ECDSA signature over the same digest, empty for
-    ///        a Captured image.
-    /// @return tokenId The minted token id, equal to uint256(p.exactHash).
+    /// @param generatorSig The agent owner's ECDSA signature over the same digest, empty for Captured.
+    /// @return tokenId uint256(p.exactHash).
     function register(PassportInput calldata p, WebAuthn.WebAuthnAuth calldata creatorAuth, bytes calldata generatorSig)
         external
         whenNotPaused
@@ -285,20 +270,13 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Records an edit of an existing passport and mints the child token.
-    /// @dev No passkey signature here. Holding the parent token is the authority, which is what
-    ///      lets an editing session sign many edits without a fresh biometric prompt each time.
-    ///      An ERC-721 approval is not enough. Approval is permission to move the token, granted
-    ///      to marketplaces and escrows, and it must never become permission to write history
-    ///      under the owner's name. A session signer edits from the owner's own wallet.
-    ///      Reverts InvalidParent on a zero parent, ParentNotFound when the parent is unknown,
-    ///      NotParentOwner when the caller is not the parent owner, InvalidCreator when the
-    ///      creator field is not the parent owner, InvalidKind when kind is not Edited,
-    ///      InvalidFingerprintVersion when the version byte is zero,
-    ///      InvalidExactHash, PassportAlreadyExists, EmptyMetadataURI, SignatureExpired,
-    ///      InvalidGeneratorSignature, UnknownAgent. Emits PassportRegistered.
+    /// @dev Holding the parent token is the authority, so an editing session needs no passkey
+    ///      prompt per edit. An ERC-721 approval is not enough: it moves tokens, not history.
+    ///      Reverts NotParentOwner, a bad input field, an expired deadline or a bad agent
+    ///      signature. Emits PassportRegistered.
     /// @param p The passport input with parentId set and kind Edited.
     /// @param generatorSig The agent owner's ECDSA signature, empty when generatorAgentId is zero.
-    /// @return tokenId The minted token id, equal to uint256(p.exactHash).
+    /// @return tokenId uint256(p.exactHash).
     function appendEdit(PassportInput calldata p, bytes calldata generatorSig)
         external
         whenNotPaused
@@ -324,12 +302,9 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         return _write(p, parentOwner);
     }
 
-    /// @notice Writes one verifier's recheck of a passport.
-    /// @dev Only an address the policy lists may call this, which in practice is the
-    ///      MoolamReceiver that the Chainlink forwarder talks to. Stays open while paused so a
-    ///      verification already in flight can still land.
-    ///      Reverts NotReceiver, PassportNotFound, AttestationCapReached. Emits
-    ///      VerificationAttested.
+    /// @notice Writes one verifier's recheck of a passport. Only a receiver the policy lists.
+    /// @dev Open while paused so a verification in flight still lands.
+    ///      Reverts NotReceiver, PassportNotFound, AttestationCapReached. Emits VerificationAttested.
     /// @param passportId The passport being rechecked.
     /// @param matched Whether the recomputed fingerprint matched the recorded one.
     /// @param distance The perceptual hash distance measured.
@@ -355,12 +330,8 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         emit VerificationAttested(passportId, msg.sender, matched, distance, recomputed);
     }
 
-    /// @notice Opens a dispute against a passport, backed by a bond.
-    /// @dev The bond is held by this contract and never sent anywhere until resolve runs, so a
-    ///      flag costs the challenger nothing but the gas if they turn out to be right.
-    ///      A passport whose challenge was already upheld cannot be flagged again: the record
-    ///      already says disputed, so a second bond would be burned for nothing. A passport whose
-    ///      challenge was rejected can be flagged again with fresh evidence.
+    /// @notice Opens a dispute against a passport, backed by a bond held here until resolve.
+    /// @dev A rejected passport can be flagged again, an upheld one cannot.
     ///      Reverts PassportNotFound, DisputeAlreadyOpen, PassportAlreadyDisputed, InvalidBond.
     ///      Emits PassportFlagged.
     /// @param passportId The passport being challenged.
@@ -390,12 +361,11 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Settles an open dispute.
-    /// @dev Credits are recorded, never pushed, so a resolver can never be blocked by a
-    ///      challenger or treasury that refuses native token.
+    /// @dev Credits, never pushes, so a recipient that refuses native token cannot block it.
     ///      Reverts NotResolver, NoOpenDispute. Emits DisputeResolved.
     /// @param passportId The disputed passport.
-    /// @param upheld True marks the passport disputed and credits the bond back to the
-    ///        challenger. False credits the bond to the treasury.
+    /// @param upheld True marks the passport disputed and credits the challenger. False credits
+    ///        the treasury.
     function resolve(bytes32 passportId, bool upheld) external nonReentrant {
         address resolverAddress = IVerifierPolicy(_POLICY).resolver();
         if (msg.sender != resolverAddress) revert NotResolver(msg.sender);
@@ -421,24 +391,18 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         emit DisputeResolved(passportId, upheld, resolverAddress);
     }
 
-    /// @notice Pulls whatever the caller is owed.
-    /// @dev Pull pattern, guarded, and the balance is zeroed before the transfer. Stays open
-    ///      while paused so a pause can never trap someone's money.
-    ///      Reverts NothingToWithdraw on a zero balance and TransferFailed if the send fails.
-    ///      Emits Withdrawn.
+    /// @notice Pulls whatever the caller is owed. Open while paused, so a pause never traps money.
+    /// @dev Reverts NothingToWithdraw or TransferFailed. Emits Withdrawn.
     function withdraw() external nonReentrant {
         uint256 amount = _takeCredit();
         emit Withdrawn(msg.sender, amount);
         _payOut(msg.sender, amount);
     }
 
-    /// @notice Pulls whatever the caller is owed and sends it to an address the caller names.
-    /// @dev The escape hatch for a credited address that cannot hold native token itself, such as
-    ///      a treasury contract with no payable path. Nobody can move anyone else's credit: the
-    ///      balance spent is always the caller's own.
-    ///      Reverts ZeroAddress on a zero destination, NothingToWithdraw on a zero balance and
-    ///      TransferFailed if the send fails. Emits WithdrawnTo.
-    /// @param to Where the money should go.
+    /// @notice Pulls whatever the caller is owed to an address the caller names, for a credited
+    ///         contract that cannot take native token itself. Only ever the caller's own credit.
+    /// @dev Reverts ZeroAddress, NothingToWithdraw or TransferFailed. Emits WithdrawnTo.
+    /// @param to Where the money goes.
     function withdrawTo(address to) external nonReentrant {
         if (to == address(0)) revert ZeroAddress();
         uint256 amount = _takeCredit();
@@ -458,9 +422,8 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         _unpause();
     }
 
-    /// @notice Moves ERC-20 tokens that were sent here by mistake.
-    /// @dev This contract never holds ERC-20 for a user, so there is no user balance to touch.
-    ///      Reverts ZeroAddress. Emits Rescued.
+    /// @notice Moves ERC-20 tokens sent here by mistake. No user ever holds ERC-20 here.
+    /// @dev Reverts ZeroAddress. Emits Rescued.
     /// @param token The ERC-20 to move.
     /// @param to Where to send it.
     /// @param amount How much to send.
@@ -471,9 +434,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Moves native token that is not backing a bond or an unclaimed credit.
-    /// @dev The amount is the balance minus every liability, so an open bond and an unclaimed
-    ///      credit can never be swept by the owner.
-    ///      Reverts ZeroAddress, NothingToRescue, TransferFailed. Emits Rescued.
+    /// @dev Reverts ZeroAddress, NothingToRescue or TransferFailed. Emits Rescued.
     /// @param to Where to send the surplus.
     function rescueNative(address to) external nonReentrant onlyOwner {
         if (to == address(0)) revert ZeroAddress();
@@ -509,11 +470,9 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Reads a page of a passport's attestations.
-    /// @dev Read only, so the loop costs an off-chain caller nothing and no on-chain function
-    ///      ever walks this array. The list is capped at MAX_ATTESTATIONS anyway.
     /// @param id The passport id.
     /// @param offset Where to start.
-    /// @param limit How many to read at most. The page is clipped to what exists.
+    /// @param limit How many to read at most, clipped to what exists.
     /// @return page Attestations, oldest first.
     function getAttestations(bytes32 id, uint256 offset, uint256 limit)
         external
@@ -534,11 +493,10 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     /// @notice Reads a page of a passport's direct children.
-    /// @dev Read only, same reasoning as getAttestations. The child list has no cap because each
-    ///      edit is its own transaction paid for by its own creator.
+    /// @dev No cap: each edit is its own paid transaction, and only views walk this list.
     /// @param id The parent passport id.
     /// @param offset Where to start.
-    /// @param limit How many to read at most. The page is clipped to what exists.
+    /// @param limit How many to read at most, clipped to what exists.
     /// @return page Child passport ids, oldest first.
     function getChildren(bytes32 id, uint256 offset, uint256 limit) external view returns (bytes32[] memory page) {
         bytes32[] storage list = _children[id];
@@ -571,8 +529,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
 
     /// @notice Where the image, its C2PA manifest and its thumbnail live.
     /// @dev Reverts ERC721NonexistentToken for an unminted id.
-    /// @param tokenId The token id, equal to uint256(passportId).
-    /// @return The metadata URI recorded at registration.
+    /// @param tokenId uint256(passportId).
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         _requireOwned(tokenId);
         return _passports[bytes32(tokenId)].metadataURI;
@@ -588,9 +545,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
 
     // slither-disable-next-line arbitrary-send-eth
     function _payOut(address to, uint256 amount) private {
-        // The destination is chosen by the caller on purpose, and that is the point of withdrawTo.
-        // What bounds it is the amount: _takeCredit has already zeroed the caller's own balance,
-        // so the only money that can leave here is money that caller was owed.
+        // The caller picks the destination, but _takeCredit has already spent only their own credit.
         // forge-lint: disable-next-line(arbitrary-send-eth)
         (bool ok,) = to.call{value: amount}("");
         if (!ok) revert TransferFailed();
@@ -627,8 +582,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
         );
 
         tokenId = uint256(p.exactHash);
-        // _mint, not _safeMint: no ERC721Received callback, so minting hands control to nobody
-        // and there is no reentrancy surface at the end of register or appendEdit.
+        // _mint, not _safeMint: no receiver callback, so no reentrancy surface.
         // forge-lint: disable-next-line(unsafe-oz-erc721-mint)
         _mint(to, tokenId);
     }
@@ -649,8 +603,7 @@ contract MoolamRegistry is IMoolamRegistry, ERC721, EIP712, Ownable2Step, Pausab
     }
 
     function _agentOwnerOf(uint256 agentId) private view returns (address) {
-        // The ERC-8004 registry reverts on an unknown id, so a bad agent id must not bubble up
-        // as the registry's own error and confuse a caller about which contract refused.
+        // Turns the identity registry's own revert into UnknownAgent.
         try IERC721(_AGENT_IDENTITY).ownerOf(agentId) returns (address owner_) {
             if (owner_ == address(0)) revert UnknownAgent(agentId);
             return owner_;

@@ -7,12 +7,10 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IVerifierPolicy} from "./interfaces/IVerifierPolicy.sol";
 
 /// @title VerifierPolicy
-/// @notice Holds the list of addresses allowed to write attestations into the Moolam registry,
-///         plus the dispute resolver, the treasury and the bond size. The registry is immutable,
-///         so this contract is the only moving part of the system.
-/// @dev Every change that widens trust waits 24 hours in the open, which gives anyone watching
-///      time to react before a new verifier can write. Removing a receiver is immediate, because
-///      a compromised verifier must be cut off in one transaction.
+/// @notice The list of addresses allowed to write attestations into the immutable Moolam registry,
+///         plus the dispute resolver, the treasury and the bond. The one moving part of the system.
+/// @dev Widening trust waits 24 hours in the open. Removing a receiver is immediate, so a
+///      compromised verifier is cut off in one transaction.
 contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     /// @notice A change waiting out its delay.
     struct PendingChange {
@@ -43,11 +41,11 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     address private _treasury;
     uint256 private _disputeBond;
 
-    /// @notice A change was put in the queue and its 24 hour clock started.
-    /// @param id The change id, keccak256 of the operation tag and its encoded data.
-    /// @param op Which operation was queued.
-    /// @param data The encoded argument the operation will apply.
-    /// @param executeAfter The timestamp from which execute will work.
+    /// @notice A change was queued and its 24 hour clock started.
+    /// @param id keccak256 of the operation tag and its encoded data.
+    /// @param op The operation tag.
+    /// @param data The encoded argument.
+    /// @param executeAfter The time from which execute works.
     event ChangeQueued(bytes32 indexed id, bytes32 indexed op, bytes data, uint64 executeAfter);
 
     /// @notice A queued change ran.
@@ -91,10 +89,10 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     error TreasuryCannotReceive(address who);
 
     /// @notice Deploys the policy with its starting settings.
-    /// @param initialOwner The owner. Uses two step transfer, so a typo cannot lose the contract.
+    /// @param initialOwner The owner, moved only by two step transfer.
     /// @param initialResolver The address allowed to settle disputes.
     /// @param initialTreasury Where rejected challengers' bonds go.
-    /// @param initialDisputeBond The bond a challenger must post, in wei.
+    /// @param initialDisputeBond The challenger's bond in wei.
     constructor(address initialOwner, address initialResolver, address initialTreasury, uint256 initialDisputeBond)
         Ownable(initialOwner)
     {
@@ -127,16 +125,14 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
         return _disputeBond;
     }
 
-    /// @notice Reads a queued change.
+    /// @notice Reads a queued change. A zero executeAfter means nothing is queued under that id.
     /// @param id The change id returned by the queue call.
-    /// @return The pending change. A zero executeAfter means nothing is queued under that id.
     function getPendingChange(bytes32 id) external view returns (PendingChange memory) {
         return _pending[id];
     }
 
     /// @notice Adds a receiver immediately, during the setup window only.
-    /// @dev Reverts BootstrapClosed once finalizeBootstrap has run, ZeroAddress on the zero
-    ///      address, AlreadyReceiver when the address is already listed. Emits ReceiverAdded.
+    /// @dev Reverts BootstrapClosed, ZeroAddress or AlreadyReceiver. Emits ReceiverAdded.
     /// @param who The receiver contract to list.
     function bootstrapAddReceiver(address who) external onlyOwner {
         if (bootstrapped) revert BootstrapClosed();
@@ -151,9 +147,8 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
         emit BootstrapFinalized();
     }
 
-    /// @notice Drops a receiver at once. No delay, because a compromised verifier must stop
-    ///         writing in the same block the owner notices.
-    /// @dev Reverts NotAReceiver when the address is not listed. Emits ReceiverRemoved.
+    /// @notice Drops a receiver at once, so a compromised verifier stops in the same block.
+    /// @dev Reverts NotAReceiver. Emits ReceiverRemoved.
     /// @param who The receiver to drop.
     function removeReceiver(address who) external onlyOwner {
         if (!_receivers[who]) revert NotAReceiver();
@@ -181,13 +176,8 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     }
 
     /// @notice Queues a new treasury.
-    /// @dev A candidate with code is probed with an empty zero value call before it can be
-    ///      queued, which catches the common mistake of pointing the treasury at a contract that
-    ///      has no way to take native token at all. It is a heuristic and nothing more: a contract
-    ///      can pass this probe and still refuse a real payout. The registry's withdrawTo is the
-    ///      actual escape hatch, because a credited contract that can make a call can always send
-    ///      its own credit somewhere else. The probe runs before anything is written, and the
-    ///      caller is already the owner, so a candidate that calls back gains nothing.
+    /// @dev A contract candidate gets a zero value probe call to catch one that cannot take native
+    ///      token at all. Only a heuristic: the registry's withdrawTo is the real escape hatch.
     ///      Reverts ZeroAddress, TreasuryCannotReceive or ChangeAlreadyQueued. Emits ChangeQueued.
     /// @param who The new treasury.
     /// @return id The change id.
@@ -209,8 +199,7 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     }
 
     /// @notice Runs a queued change once its delay has passed.
-    /// @dev Reverts UnknownChange when nothing is queued under the id, ChangeNotReady while the
-    ///      delay is still running. Emits ChangeExecuted plus the event for the specific change.
+    /// @dev Reverts UnknownChange or ChangeNotReady. Emits ChangeExecuted and the change's own event.
     /// @param id The change id.
     function execute(bytes32 id) external onlyOwner {
         PendingChange memory change = _pending[id];
@@ -240,7 +229,7 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
     }
 
     /// @notice Drops a queued change before it runs.
-    /// @dev Reverts UnknownChange when nothing is queued under the id. Emits ChangeCancelled.
+    /// @dev Reverts UnknownChange. Emits ChangeCancelled.
     /// @param id The change id.
     function cancel(bytes32 id) external onlyOwner {
         if (_pending[id].executeAfter == 0) revert UnknownChange();
@@ -255,10 +244,7 @@ contract VerifierPolicy is IVerifierPolicy, Ownable2Step {
         // forge-lint: disable-next-line(unsafe-typecast)
         uint64 executeAfter = uint64(block.timestamp) + CHANGE_DELAY;
         _pending[id] = PendingChange({op: op, executeAfter: executeAfter, data: data});
-        // Reached after the treasury probe's zero value call, so the linter counts this as an
-        // event emitted after an external call. Every queue path is owner only and the pending
-        // entry is written before the emit, so a candidate that calls back can neither queue
-        // anything of its own nor change what this event reports.
+        // Emitted after the treasury probe call, which is safe: queueing is owner only and the entry is written first.
         // forge-lint: disable-next-line(reentrancy-events)
         emit ChangeQueued(id, op, data, executeAfter);
     }

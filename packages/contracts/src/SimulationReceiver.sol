@@ -5,56 +5,28 @@ import {ReceiverTemplate} from "./vendor/chainlink/ReceiverTemplate.sol";
 import {IMoolamRegistry} from "./interfaces/IMoolamRegistry.sol";
 
 /// @title SimulationReceiver
-/// @notice The door a Chainlink CRE workflow run in Chainlink's simulator (`cre workflow simulate
-///         --broadcast`) uses to write a re-check verdict into the Moolam registry. It accepts a
-///         report only when the transaction was sent by one wallet, Moolam's CRE wallet, fixed at
-///         deployment and never changeable.
-/// @dev Inherits Chainlink's ReceiverTemplate unchanged and is otherwise MoolamReceiver's report
-///      path. The simulator delivers through MockKeystoneForwarder, which checks no signature and
-///      builds the workflow metadata from bytes the caller supplied. The workflow id, owner and
-///      name the simulator stamps are the same for anyone who runs the public workflow, so the
-///      forwarder check and the pins keep out other workflows and nothing else. The one value on
-///      this path an outsider cannot produce is the externally owned account that signed the
-///      transaction, because the mock adds a hop: msg.sender here is always Chainlink's public
-///      contract. That is why the sender check reads tx.origin, and why it is the first check in
-///      _processReport.
-///
-///      What this contract does not defend against, stated so nobody assumes it does:
-///      - The holder of the CRE wallet's key can write any verdict on any passport through this
-///        receiver. The holder of the owner key can re-point the forwarder, change the pins, or
-///        list and unlist receivers at the policy. Neither is stopped here.
-///      - A verdict is one machine's word. There is no network consensus and no signature check
-///        behind a simulated report.
-///      - Senders that are smart accounts or relayers are excluded on purpose: tx.origin is always
-///        an externally owned account, so only a plain wallet can be the sending wallet.
-///      - The CRE wallet must sign nothing but reports. Any contract it calls could call this
-///        receiver's forwarder path inside the same transaction and inherit its authority.
-///      - Replaying an old report here needs the sending wallet too, so the per-receiver floor
-///        starting at zero is an insider matter, not an outsider one.
-///      - A stolen machine holding the CRE key means forgery until the owner removes this receiver
-///        at the policy, which takes effect at once.
-///      - The mock forwarder is Chainlink's contract and may change.
-///      A receiver for a real Chainlink network deployment is a separate contract, listed through
-///      the policy's 24 hour queue, never this one with its sender rule switched off: there is no
-///      switch.
+/// @notice The door a workflow run in Chainlink's simulator (`cre workflow simulate --broadcast`)
+///         uses to write a re-check verdict into the Moolam registry. It accepts a report only
+///         from transactions sent by Moolam's CRE wallet, fixed at deployment.
+/// @dev The simulator's mock forwarder checks no signature and anyone can stamp the same workflow
+///      metadata, so the one value an outsider cannot produce is the wallet that signed the
+///      transaction. Hence the tx.origin check.
+///      Does not defend against:
+///      - the CRE wallet key or the owner key: either holder can write or re-point at will;
+///      - a verdict being one machine's word, with no network consensus behind it;
+///      - smart accounts or relayers as sender (tx.origin is always a plain wallet);
+///      - the CRE wallet signing anything but reports: a contract it calls inherits its authority;
+///      - changes to Chainlink's mock forwarder.
 contract SimulationReceiver is ReceiverTemplate {
     /// @notice How far past the current block time a report's executedAt may be.
-    /// @dev The workflow stamps executedAt from the simulator machine's wall clock, in unix seconds,
-    ///      before the run fetches and fingerprints the picture, and the report transaction lands
-    ///      after that, so an honest executedAt sits at or before block.timestamp. The allowance is
-    ///      for a machine clock running ahead of Monad's block time. A clock kept by NTP is within
-    ///      a second, and one that has lost sync drifts by seconds a day, so an hour is far more
-    ///      room than an honest run needs and never refuses one over clock trouble short of a
-    ///      wrongly set clock. In the other direction it caps the harm of any value that does land:
-    ///      a floor can sit at most one hour ahead, so the honest workflow is locked out of a
-    ///      passport for at most one hour, never for ever.
+    /// @dev An hour covers any honest machine clock drift, and caps how long a bad floor can lock a
+    ///      passport out to one hour.
     uint256 public constant MAX_FUTURE_SKEW = 1 hours;
 
     /// @notice The registry this receiver writes into.
     IMoolamRegistry public immutable REGISTRY;
 
-    /// @notice The only wallet whose transactions this receiver accepts reports from.
-    /// @dev Set once in the constructor. There is no setter, and it can never be zero.
+    /// @notice The only wallet whose transactions this receiver accepts reports from. No setter.
     address public immutable SENDING_WALLET;
 
     mapping(bytes32 passportId => uint64 executedAt) private _lastExecutedAt;
@@ -62,56 +34,37 @@ contract SimulationReceiver is ReceiverTemplate {
     /// @notice A constructor argument was the zero address.
     error ZeroAddress();
     /// @notice The transaction was not sent by the sending wallet.
-    /// @param origin The wallet that signed the transaction.
-    /// @param expected The sending wallet.
     error WrongSendingWallet(address origin, address expected);
     /// @notice The report was built for a different chain.
-    /// @param reported The chain id inside the report.
-    /// @param expected This chain's id.
     error WrongChain(uint256 reported, uint256 expected);
     /// @notice The report is not newer than the last one recorded for this passport.
-    /// @param passportId The passport the report is about.
-    /// @param reported The report's executedAt.
-    /// @param lastSeen The executedAt of the newest report already recorded.
     error StaleReport(bytes32 passportId, uint64 reported, uint64 lastSeen);
-    /// @notice The report claims a time further ahead of the block than MAX_FUTURE_SKEW allows.
-    /// @param passportId The passport the report is about.
-    /// @param reported The report's executedAt.
-    /// @param latestAccepted block.timestamp plus MAX_FUTURE_SKEW at the moment it was refused.
+    /// @notice The report's executedAt is more than MAX_FUTURE_SKEW ahead of the block.
     error ReportFromTheFuture(bytes32 passportId, uint64 reported, uint256 latestAccepted);
 
     /// @notice Deploys the receiver, locked to one registry and one sending wallet for good.
-    /// @dev The workflow author, name and id are pinned after deployment with the template's
-    ///      owner setters, author before name, because the template refuses a name with no author.
-    ///      Reverts InvalidForwarderAddress on a zero forwarder (from the template) and ZeroAddress
-    ///      on a zero registry or sending wallet. Emits ForwarderAddressUpdated (from the template).
-    /// @param forwarder The forwarder allowed to call onReport, Chainlink's MockKeystoneForwarder.
-    /// @param registry The Moolam registry that receives the attestations.
-    /// @param sendingWallet The externally owned account that must sign every report transaction.
+    /// @dev Pin the workflow author before the name: the template refuses a name with no author.
+    ///      Reverts InvalidForwarderAddress or ZeroAddress on a zero argument.
+    /// @param forwarder Chainlink's MockKeystoneForwarder, allowed to call onReport.
+    /// @param registry The registry that receives the attestations.
+    /// @param sendingWallet The plain wallet that must sign every report transaction.
     constructor(address forwarder, address registry, address sendingWallet) ReceiverTemplate(forwarder) {
         if (registry == address(0) || sendingWallet == address(0)) revert ZeroAddress();
         REGISTRY = IMoolamRegistry(registry);
         SENDING_WALLET = sendingWallet;
     }
 
-    /// @notice The workflow timestamp of the newest report this contract accepted for a passport.
+    /// @notice The executedAt of the newest report accepted for a passport, zero if none.
     /// @param passportId The passport to read.
-    /// @return The executedAt value from that report, zero when no report has landed yet.
     function lastExecutedAt(bytes32 passportId) external view returns (uint64) {
         return _lastExecutedAt[passportId];
     }
 
-    /// @dev Runs after the template's forwarder and pin checks. The sender check comes first and
-    ///      reads nothing from the report, so a stranger learns nothing and writes nothing. The
-    ///      chain id and the executedAt window turn a resent or foreign report into a revert, and
-    ///      the upper bound stops a far-future executedAt from freezing a passport's floor. The floor
-    ///      lives in this contract's own storage, so it guards this receiver only.
-    ///      Reverts WrongSendingWallet, WrongChain, StaleReport, ReportFromTheFuture, and whatever
-    ///      the registry refuses (NotReceiver, PassportNotFound, AttestationCapReached). The
-    ///      registry emits VerificationAttested.
+    /// @dev Runs after the template's forwarder and pin checks. The time floor guards this
+    ///      receiver only. Reverts WrongSendingWallet, WrongChain, StaleReport,
+    ///      ReportFromTheFuture, or whatever the registry refuses.
     function _processReport(bytes calldata report) internal override {
-        // tx.origin on purpose: the mock forwarder is msg.sender, so the signing wallet is the only
-        // value on this path a stranger cannot reproduce. See the contract notes above.
+        // tx.origin on purpose: msg.sender is Chainlink's public mock forwarder.
         // solhint-disable avoid-tx-origin
         // forge-lint: disable-next-line(tx-origin)
         if (tx.origin != SENDING_WALLET) revert WrongSendingWallet(tx.origin, SENDING_WALLET);

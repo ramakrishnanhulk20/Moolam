@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the exact revert reason of the holder check, which the unit file
-// owns, and the ordering of writes against transfers over a long run, which the invariant file
-// drives. Here one behaviour at a time is pushed against a plain model written out in the test: a
-// linear scan for the time query, and the printable byte rule spelled out again by hand.
+// Does NOT cover: exact revert reasons of the holder check (unit file) or long write and transfer runs (invariants).
 
 import {Test} from "forge-std/Test.sol";
 
@@ -48,8 +45,7 @@ contract MoolamConsentFuzzTest is Test {
         });
     }
 
-    /// A write at now plus gap. A gap under ten minutes is handed to the other holder first, which
-    /// is exactly what the contract asks for and keeps the sequence realistic.
+    // A gap under MIN_INTERVAL hands the passport to the other holder first, as the contract requires.
     function _write(uint64 gap, uint8 raw) internal {
         uint64 at = uint64(block.timestamp) + gap;
         vm.warp(at);
@@ -68,7 +64,6 @@ contract MoolamConsentFuzzTest is Test {
         fields.push(raw % 3);
     }
 
-    /// The model: walk every entry in order and keep the last one written at or before the query.
     function _inForce(uint64 query) internal view returns (bool stated, uint64 at, uint8 field) {
         for (uint256 i = 0; i < times.length; ++i) {
             if (times[i] <= query) {
@@ -89,8 +84,6 @@ contract MoolamConsentFuzzTest is Test {
         assertEq(uint8(got.consent.aiTraining), wantField, "field");
     }
 
-    /// The contract's binary search must answer exactly what a linear scan answers, at every
-    /// boundary, one second before the first entry, and far past the last one.
     function testFuzz_consentAtMatchesALinearScan(uint16[8] calldata gaps, uint8[8] calldata raws, uint64 query)
         public
     {
@@ -113,7 +106,6 @@ contract MoolamConsentFuzzTest is Test {
         assertEq(latest.at, times[times.length - 1]);
     }
 
-    /// The latest entry and the entry in force at the latest timestamp are the same entry.
     function testFuzz_consentOfIsConsentAtTheLastWrite(uint16[4] calldata gaps, uint8[4] calldata raws) public {
         for (uint256 i = 0; i < 4; ++i) {
             _write(uint64(bound(gaps[i], 1, 4000)), raws[i]);
@@ -126,9 +118,6 @@ contract MoolamConsentFuzzTest is Test {
         assertEq(uint8(atLatest.consent.aiTraining), uint8(latest.consent.aiTraining));
     }
 
-    /// Any byte string at all, judged by the rule written out again here: empty is refused, longer
-    /// than 256 is refused with its length, the first byte outside 0x20 to 0x7E is refused with its
-    /// position, and anything else lands and reads back byte for byte.
     function testFuzz_theTextRuleIsTheWholeRule(bytes calldata raw) public {
         string memory text = string(raw);
 
@@ -161,7 +150,6 @@ contract MoolamConsentFuzzTest is Test {
         assertEq(keccak256(bytes(latest.constraintInfo)), keccak256(raw));
     }
 
-    /// Every all printable string up to 256 bytes is accepted when a field is Constrained.
     function testFuzz_everyPrintableStringUpToTheCapIsAccepted(uint16 length, bytes32 seed) public {
         uint256 size = bound(length, 1, 256);
         bytes memory text = new bytes(size);
@@ -176,8 +164,6 @@ contract MoolamConsentFuzzTest is Test {
         assertEq(keccak256(bytes(latest.constraintInfo)), keccak256(text));
     }
 
-    /// A batch of any allowed size writes exactly one entry for each picture, all with the same
-    /// statement, the same second and the same writer.
     function testFuzz_aBatchWritesOneEntryPerPicture(uint8 count, uint8 raw) public {
         uint256 size = bound(count, 1, 32);
         bytes32[] memory ids = new bytes32[](size);
@@ -199,8 +185,6 @@ contract MoolamConsentFuzzTest is Test {
         }
     }
 
-    /// A batch with one picture the caller does not hold writes nothing at all, wherever that
-    /// picture sits in the list.
     function testFuzz_oneRefusalLeavesTheWholeBatchUnwritten(uint8 count, uint8 position) public {
         uint256 size = bound(count, 1, 31);
         uint256 at = bound(position, 0, size);
@@ -227,7 +211,6 @@ contract MoolamConsentFuzzTest is Test {
         }
     }
 
-    /// Nobody but the address the registry names may write, whoever they are.
     function testFuzz_onlyTheHolderEverWrites(address caller) public {
         vm.assume(caller != holderA);
 
@@ -236,7 +219,6 @@ contract MoolamConsentFuzzTest is Test {
         consent.setConsent(PASSPORT, _state(1), "");
     }
 
-    /// No passport other than a minted one can ever be written, whatever id is tried.
     function testFuzz_anIdNobodyHoldsIsNeverWritable(bytes32 passportId) public {
         vm.assume(passportId != PASSPORT);
 

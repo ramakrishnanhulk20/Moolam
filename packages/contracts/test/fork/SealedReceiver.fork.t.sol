@@ -1,12 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: it sends no real transaction and spends no real MON. Every call
-// runs against a local fork of Monad mainnet state. The report is delivered by acting as the
-// production forwarder's address, so the forwarder's own check of the Chainlink nodes' signatures
-// is not exercised here; that is Chainlink's code and is proven by a live workflow run. The deploy
-// script is driven through deployAs, which shares every step with run except reading the key and
-// writing the deployment file; the file writing is proven by the Anvil dry run and the mainnet deploy.
+// Does NOT cover: real MON spent, the forwarder's signature check (we act as its address), or the deploy file write.
 
 import {Test, console2} from "forge-std/Test.sol";
 
@@ -20,22 +15,16 @@ import {FinalizeSealedReceiver} from "../../script/FinalizeSealedReceiver.s.sol"
 
 contract SealedReceiverForkTest is Test {
     uint256 internal constant MONAD_MAINNET_CHAIN_ID = 143;
-    /// @dev The fork is pinned to a block while the old public receiver was still listed. It was
-    ///      removed at block 108,102,728, so a fork of the latest block no longer matches what this
-    ///      file proves. The state after that removal is checked in ReceiverSwap.fork.t.sol.
+    // Pinned to a block while the old public receiver was still listed (removed at 108,102,728).
     uint256 internal constant FORK_BLOCK = 108_102_500;
     address internal constant POLICY = 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821;
     address internal constant REGISTRY = 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0;
-    /// @dev The public workflow's receiver at FORK_BLOCK. Off the policy since block 108,102,728.
     address internal constant PUBLIC_RECEIVER = 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04;
     address internal constant PRODUCTION_FORWARDER = 0x76c9cf548b4179F8901cda1f8623568b58215E62;
     address internal constant WORKFLOW_AUTHOR = 0xC79620AF233a4434b03f6B57239F8A9E71B3C178;
-    /// @dev A passport registered on mainnet by the live proof run.
     bytes32 internal constant PASSPORT = 0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638;
 
-    /// @dev The first ten hex characters of sha256("moolam-sealed-verifier") and of
-    ///      sha256("moolam-verifier"), worked out off chain with sha256sum. Chainlink's template
-    ///      stores a pinned name this way and the forwarder sends it this way in the metadata.
+    // The first ten hex characters of sha256 of each workflow name, as the template stores them.
     bytes10 internal constant SEALED_NAME = bytes10("d206cac2c4");
     bytes10 internal constant PUBLIC_NAME = bytes10("4b8c03df04");
 
@@ -78,9 +67,7 @@ contract SealedReceiverForkTest is Test {
         assertEq(deployed.workflowAuthor, WORKFLOW_AUTHOR);
         assertEq(deployed.workflowName, SEALED_NAME);
 
-        // The same bytecode as the live public receiver, so the second door is the reviewed one.
         assertEq(address(sealedReceiver).codehash, PUBLIC_RECEIVER.codehash);
-        // The two receivers differ in the name they are pinned to and nothing else.
         assertEq(publicReceiver.getExpectedWorkflowName(), PUBLIC_NAME);
         assertEq(publicReceiver.getExpectedAuthor(), WORKFLOW_AUTHOR);
         assertEq(publicReceiver.getForwarderAddress(), PRODUCTION_FORWARDER);
@@ -96,7 +83,6 @@ contract SealedReceiverForkTest is Test {
         assertFalse(policy.isReceiver(address(sealedReceiver)));
         assertTrue(policy.isReceiver(PUBLIC_RECEIVER));
 
-        // Pinned and deployed, but not yet a door the registry listens to.
         uint256 before = registry.attestationCount(PASSPORT);
         vm.prank(PRODUCTION_FORWARDER);
         vm.expectRevert(abi.encodeWithSelector(MoolamRegistry.NotReceiver.selector, address(sealedReceiver)));
@@ -111,13 +97,11 @@ contract SealedReceiverForkTest is Test {
         vm.expectRevert(abi.encodeWithSelector(VerifierPolicy.ChangeNotReady.selector, executeAfter));
         policy.execute(deployed.changeId);
 
-        // One second short of the delay is still too early.
         vm.warp(executeAfter - 1);
         vm.prank(policyOwner);
         vm.expectRevert(abi.encodeWithSelector(VerifierPolicy.ChangeNotReady.selector, executeAfter));
         policy.execute(deployed.changeId);
 
-        // The script refuses on its own before it builds a transaction.
         vm.expectRevert(abi.encodeWithSelector(FinalizeSealedReceiver.TooEarly.selector, executeAfter, 1));
         finalizer.finalizeAs(policyOwner, policy, address(sealedReceiver), PUBLIC_RECEIVER, deployed.changeId);
 
@@ -136,7 +120,6 @@ contract SealedReceiverForkTest is Test {
         assertTrue(policy.isReceiver(PUBLIC_RECEIVER));
         assertEq(policy.getPendingChange(deployed.changeId).executeAfter, 0);
 
-        // A second run finds it listed and sends nothing.
         vm.recordLogs();
         assertTrue(
             finalizer.finalizeAs(policyOwner, policy, address(sealedReceiver), PUBLIC_RECEIVER, deployed.changeId)
@@ -154,7 +137,6 @@ contract SealedReceiverForkTest is Test {
 
         assertEq(registry.attestationCount(PASSPORT), before + 1);
         Attestation memory landed = registry.getAttestations(PASSPORT, before, 1)[0];
-        // The chain itself says which workflow wrote this verdict: the sealed receiver's address.
         assertEq(landed.receiver, address(sealedReceiver));
         assertTrue(landed.receiver != PUBLIC_RECEIVER);
         assertTrue(landed.matched);
@@ -195,8 +177,6 @@ contract SealedReceiverForkTest is Test {
         assertTrue(policy.isReceiver(address(sealedReceiver)));
     }
 
-    /// @dev The forwarder hands over 32 bytes of workflow id, 10 of workflow name, 20 of workflow
-    ///      owner and a 2 byte report id, the layout the receiver unit tests use.
     function _metadata(bytes10 workflowName, address workflowAuthor) internal pure returns (bytes memory) {
         return abi.encodePacked(bytes32(uint256(1)), workflowName, workflowAuthor, bytes2(0));
     }

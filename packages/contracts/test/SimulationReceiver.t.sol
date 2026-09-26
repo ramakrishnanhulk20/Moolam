@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: Chainlink's live MockKeystoneForwarder (a local copy with the same
-// three behaviours stands in for it; the fork tests use the real one), the CRE simulator that builds
-// the report, and the key custody of the sending wallet. A test cannot tell an honest holder of that
-// key from a thief, and neither can the contract: that is a named non-goal.
+// Does NOT cover: the live mock forwarder (fork tests use it), the CRE simulator, or custody of the sending wallet key.
 
 import {Test} from "forge-std/Test.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -21,9 +18,6 @@ import {MockAgentIdentity} from "./mocks/MockAgentIdentity.sol";
 import {LocalMockForwarder} from "./mocks/LocalMockForwarder.sol";
 import {WebAuthnFixture} from "./utils/WebAuthnFixture.sol";
 
-/// @dev Shared by the unit and the fuzz file. Builds the registry, the policy and one registered
-///      passport, deploys a receiver on a local copy of the mock forwarder, pins it the way the
-///      deploy script does, and lists it.
 abstract contract SimulationReceiverSetup is Test {
     SimulationReceiver internal simReceiver;
     LocalMockForwarder internal mock;
@@ -37,11 +31,9 @@ abstract contract SimulationReceiverSetup is Test {
     address internal creWallet = makeAddr("creWallet");
     address internal stranger = makeAddr("stranger");
 
-    /// @dev What the CRE simulator stamps into every report header, read off real report
-    ///      transactions on Monad mainnet (packages/recheck-runner/README.md).
+    // What the CRE simulator stamps into every report header, read off real mainnet reports.
     bytes32 internal constant SIM_WORKFLOW_ID = 0x1111111111111111111111111111111111111111111111111111111111111111;
     address internal constant SIM_OWNER = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
-    /// @dev The first ten hex characters of sha256("moolam-verifier"), as text.
     bytes10 internal constant PUBLIC_NAME = 0x34623863303364663034;
     string internal constant WORKFLOW_NAME = "moolam-verifier";
 
@@ -53,7 +45,6 @@ abstract contract SimulationReceiverSetup is Test {
     bytes32 internal passportId = keccak256("image-under-review");
 
     uint64 internal constant NOW = 1_800_000_000;
-    /// @dev A run stamps executedAt before it fetches and fingerprints, so it trails the block.
     uint64 internal constant EXECUTED_AT = NOW - 90;
 
     event VerificationAttested(
@@ -105,7 +96,6 @@ abstract contract SimulationReceiverSetup is Test {
         );
     }
 
-    /// @dev The same three pins, in the same order, as script/DeploySimulationReceivers.s.sol.
     function _pin(SimulationReceiver r) internal {
         r.setExpectedAuthor(SIM_OWNER);
         r.setExpectedWorkflowName(WORKFLOW_NAME);
@@ -120,8 +110,7 @@ abstract contract SimulationReceiverSetup is Test {
         return _payload(block.chainid, executedAt, passportId);
     }
 
-    /// @dev The simulator's 109 byte header: version, execution id, timestamp, DON id, config
-    ///      version (45 bytes the receiver never sees), then workflow id, name, owner, report id.
+    // The simulator's 109 byte header; the first 45 bytes never reach the receiver.
     function _raw(bytes memory payload) internal pure returns (bytes memory) {
         return abi.encodePacked(
             bytes1(0x01),
@@ -141,8 +130,7 @@ abstract contract SimulationReceiverSetup is Test {
         return abi.encodePacked(SIM_WORKFLOW_ID, PUBLIC_NAME, SIM_OWNER, bytes2(0x0001));
     }
 
-    /// @dev Sends a report through the mock the way the CLI does: the signing wallet calls the
-    ///      mock's report, which calls onReport. Two-argument prank, so tx.origin is set as well.
+    // Two-argument prank, so tx.origin is set as well.
     function _sendThroughMock(address origin, bytes memory payload) internal {
         vm.prank(origin, origin);
         mock.report(address(simReceiver), _raw(payload), "", new bytes[](0));
@@ -188,19 +176,15 @@ contract SimulationReceiverTest is SimulationReceiverSetup {
     }
 
     function test_aReportFromAnyOtherOriginIsRefused() public {
-        // Straight at the receiver, as the mock would call it, with a stranger signing.
         vm.prank(address(mock), stranger);
         vm.expectRevert(abi.encodeWithSelector(SimulationReceiver.WrongSendingWallet.selector, stranger, creWallet));
         simReceiver.onReport(_metadata(), _payload(EXECUTED_AT));
 
-        // Through the mock: the mock swallows the revert, so the transaction succeeds, the event
-        // says false, and nothing is written.
         vm.expectEmit(true, true, true, true, address(mock));
         emit ReportProcessed(address(simReceiver), keccak256("execution"), bytes2(0x0001), false);
         _sendThroughMock(stranger, _payload(EXECUTED_AT));
 
-        // The wallet as the immediate caller of the mock is not enough: a contract it called
-        // would have msg.sender set to the wallet while tx.origin is someone else.
+        // The wallet as msg.sender with another tx.origin is refused too.
         vm.prank(creWallet, stranger);
         mock.report(address(simReceiver), _raw(_payload(EXECUTED_AT)), "", new bytes[](0));
 
@@ -319,11 +303,7 @@ contract SimulationReceiverTest is SimulationReceiverSetup {
         simReceiver.onReport(metadata, _payload(EXECUTED_AT));
     }
 
-    /// @dev R2. Two halves. The runtime code's dispatcher is read for every selector it answers,
-    ///      and that set must be exactly the known one, so a function added later fails this test
-    ///      until someone looks at it. Then every owner setter that exists is run to its widest
-    ///      setting, pins cleared and ownership given away, and the sending wallet is unchanged and
-    ///      a stranger is still refused.
+    // A selector added later fails this test until someone reviews it.
     function test_noFunctionChangesTheSendingWallet() public {
         bytes4[] memory found = _dispatcherSelectors(address(simReceiver).code);
         bytes4[17] memory known = [
@@ -368,10 +348,7 @@ contract SimulationReceiverTest is SimulationReceiverSetup {
         simReceiver.onReport("", _payload(EXECUTED_AT));
     }
 
-    /// @dev Walks the runtime code opcode by opcode, skipping push data, and collects every
-    ///      PUSH4 that is compared with EQ straight after, which is how solc's dispatcher matches
-    ///      a selector. Duplicates are counted once, since supportsInterface compares against
-    ///      interface ids that equal the onReport and supportsInterface selectors.
+    // Collects every PUSH4 followed by EQ, which is how solc's dispatcher matches a selector.
     function _dispatcherSelectors(bytes memory code) internal pure returns (bytes4[] memory out) {
         bytes4[] memory buffer = new bytes4[](64);
         uint256 count;

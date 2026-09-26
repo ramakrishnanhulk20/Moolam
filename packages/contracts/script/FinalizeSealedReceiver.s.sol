@@ -6,13 +6,8 @@ import {Script, console2} from "forge-std/Script.sol";
 import {MoolamReceiver} from "../src/MoolamReceiver.sol";
 import {VerifierPolicy} from "../src/VerifierPolicy.sol";
 
-/// @notice Runs the queued listing of the sealed receiver once the policy's 24 hour delay has
-///         passed, then reads the list back.
-/// @dev Everything it acts on comes from deployments/sealed-receiver-monad-mainnet.json, the file
-///      DeploySealedReceiver.s.sol writes, and is checked against the chain before anything is
-///      sent: the pending change must still be there, must be the add of that exact receiver, and
-///      its delay must be over. `finalizeAs` runs the same steps for a sender given by address,
-///      which is how the fork test drives it without a key.
+/// @notice Runs the queued listing of the sealed receiver once the 24 hour delay has passed, then
+///         reads the list back. The queued change is checked against the chain before anything is sent.
 contract FinalizeSealedReceiver is Script {
     uint64 internal constant MONAD_MAINNET_CHAIN_ID = 143;
     string internal constant DEPLOYMENT_FILE = "deployments/sealed-receiver-monad-mainnet.json";
@@ -22,17 +17,12 @@ contract FinalizeSealedReceiver is Script {
     error HasNoCode(address target);
     error NothingQueued(bytes32 changeId);
     error QueuedChangeIsNotThisListing(bytes32 changeId);
-    /// @notice The 24 hour delay is still running. Try again after executeAfter.
     error TooEarly(uint64 executeAfter, uint256 secondsLeft);
     error NotPolicyOwner(address sender, address owner);
     error NotListedAfterExecute(address sealedReceiver);
     error PublicReceiverDropped(address publicReceiver);
 
-    /// @notice Lists the sealed receiver from the wallet in DEPLOYER_PRIVATE_KEY.
-    /// @dev Reverts WrongChain off Monad mainnet, DeploymentFileMissing before the deploy has run,
-    ///      and every check in `_ready`. Does nothing and sends nothing when the receiver is
-    ///      already listed. Run without --broadcast for a dry run.
-    /// @return listed Whether the policy lists the sealed receiver afterwards.
+    /// @notice Lists the sealed receiver from DEPLOYER_PRIVATE_KEY. Without --broadcast it is a dry run.
     function run() external returns (bool listed) {
         if (block.chainid != MONAD_MAINNET_CHAIN_ID) revert WrongChain(block.chainid, MONAD_MAINNET_CHAIN_ID);
         if (!vm.exists(DEPLOYMENT_FILE)) revert DeploymentFileMissing();
@@ -54,14 +44,7 @@ contract FinalizeSealedReceiver is Script {
         listed = _readBack(policy, sealedReceiver, publicReceiver);
     }
 
-    /// @notice The same steps as `run` for a sender and addresses given directly. Reads no file.
-    /// @dev For the fork test. Reverts on every check in `_ready` and in the read-back.
-    /// @param owner The policy owner that sends the execute.
-    /// @param policy The VerifierPolicy holding the queued listing.
-    /// @param sealedReceiver The receiver the change lists.
-    /// @param publicReceiver The receiver already listed, which must still be listed afterwards.
-    /// @param changeId The id queueAddReceiver returned.
-    /// @return listed Whether the policy lists the sealed receiver afterwards.
+    /// @notice The same steps as `run` with every address given directly, for the fork test.
     function finalizeAs(
         address owner,
         VerifierPolicy policy,
@@ -78,9 +61,7 @@ contract FinalizeSealedReceiver is Script {
         listed = _readBack(policy, sealedReceiver, publicReceiver);
     }
 
-    /// @dev False means the receiver is already listed and there is nothing to send. Every other
-    ///      outcome is either true or a revert, so a wrong or stale change id stops the run before
-    ///      a transaction is built.
+    /// @dev False means already listed. A wrong or early change reverts before anything is sent.
     function _ready(VerifierPolicy policy, address sealedReceiver, bytes32 changeId, address sender)
         internal
         view

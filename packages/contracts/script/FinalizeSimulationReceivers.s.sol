@@ -7,29 +7,19 @@ import {SimulationReceiver} from "../src/SimulationReceiver.sol";
 import {VerifierPolicy} from "../src/VerifierPolicy.sol";
 import {SimulationReceiversPlan} from "./DeploySimulationReceivers.s.sol";
 
-/// @notice Runs the two queued listings once the policy's 24 hour delay has passed, then reads the
-///         list back: the two simulation receivers listed, the two old receivers not.
-/// @dev Before anything is sent, each receiver is read back against the plan again, because the
-///      owner key could have changed a pin during the delay, and each change id must be the
-///      queued add of exactly that receiver with its delay over. A receiver already listed is
-///      skipped. `run` sends from the key in DEPLOYER_PRIVATE_KEY and `finalizeAs` runs the same
-///      steps for a sender given by address, for the fork rehearsal.
+/// @notice Runs the two queued listings once the 24 hour delay has passed, then reads the list
+///         back: the two simulation receivers listed, the two old receivers not.
+/// @dev Each receiver is read back against the plan again first, since a pin could have changed
+///      during the delay.
 contract FinalizeSimulationReceivers is SimulationReceiversPlan {
     error NothingQueued(bytes32 changeId);
     error QueuedChangeIsNotThisListing(bytes32 changeId, address receiver);
-    /// @notice The 24 hour delay is still running. Try again after executeAfter.
     error TooEarly(bytes32 changeId, uint64 executeAfter, uint256 secondsLeft);
     error NotListedAfterExecute(address receiver);
     error OldReceiverStillListed(address receiver);
 
-    /// @notice Lists both simulation receivers from the wallet in DEPLOYER_PRIVATE_KEY.
-    /// @dev Reverts on every check in `_preflightChain`, NotLocked, NothingQueued,
-    ///      QueuedChangeIsNotThisListing, TooEarly, and on the read-back afterwards. Run without
-    ///      --broadcast for a dry run.
-    /// @param publicReceiver The public simulation receiver from the deploy record.
-    /// @param sealedReceiver The sealed simulation receiver from the deploy record.
-    /// @param publicChangeId The change id queueAddReceiver returned for the public receiver.
-    /// @param sealedChangeId The change id queueAddReceiver returned for the sealed receiver.
+    /// @notice Lists both simulation receivers from DEPLOYER_PRIVATE_KEY, with the addresses and
+    ///         change ids from the deploy record. Without --broadcast it is a dry run.
     function run(address publicReceiver, address sealedReceiver, bytes32 publicChangeId, bytes32 sealedChangeId)
         external
     {
@@ -46,13 +36,7 @@ contract FinalizeSimulationReceivers is SimulationReceiversPlan {
         _readBack(publicReceiver, sealedReceiver);
     }
 
-    /// @notice The same steps as `run` for a sender given by address.
-    /// @dev For the fork rehearsal on Anvil, with --unlocked and --sender set to the policy owner.
-    /// @param owner The policy owner that sends the executes.
-    /// @param publicReceiver The public simulation receiver.
-    /// @param sealedReceiver The sealed simulation receiver.
-    /// @param publicChangeId The public receiver's change id.
-    /// @param sealedChangeId The sealed receiver's change id.
+    /// @notice The same steps as `run` for a sender given by address, for the Anvil fork rehearsal.
     function finalizeAs(
         address owner,
         address publicReceiver,
@@ -84,8 +68,7 @@ contract FinalizeSimulationReceivers is SimulationReceiversPlan {
         sealedDue = _due(sealedReceiver, sealedChangeId);
     }
 
-    /// @dev False when the receiver is already listed. Otherwise true or a revert, so a wrong,
-    ///      cancelled or early change stops the run before any transaction is built.
+    /// @dev False means already listed. A wrong, cancelled or early change reverts before anything is sent.
     function _due(address receiver, bytes32 changeId) internal view returns (bool) {
         VerifierPolicy policy = VerifierPolicy(POLICY);
         if (policy.isReceiver(receiver)) {

@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: the exact revert reason of any single call, which the unit tests
-// own, and the Chainlink forwarder. The handler drives random actors through register, appendEdit,
-// attest, flag, resolve, withdraw, pause and unpause, and the seven invariants below must hold
-// after every one of them.
+// Does NOT cover: exact revert reasons of single calls (unit file) or the Chainlink forwarder.
 
 import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
@@ -16,8 +13,6 @@ import {Kind, PassportInput, Passport, Dispute, DisputeStatus} from "../src/inte
 import {MockAgentIdentity} from "./mocks/MockAgentIdentity.sol";
 import {WebAuthnFixture} from "./utils/WebAuthnFixture.sol";
 
-/// @notice Drives the registry the way the outside world would: several creators with their own
-///         passkeys, one listed receiver, one resolver, and an owner who can pause at any moment.
 contract RegistryHandler is Test {
     MoolamRegistry public registry;
     VerifierPolicy public policy;
@@ -29,8 +24,7 @@ contract RegistryHandler is Test {
 
     uint256 public constant BOND = 0.05 ether;
     uint256 internal constant ACTOR_COUNT = 3;
-    // The invariant checks walk this list, so cap it. The run still reaches every state, it just
-    // does not spend the whole budget on one more near identical passport.
+    // The invariant checks walk this list, so it is capped.
     uint256 internal constant MAX_PASSPORTS = 48;
     uint256 internal constant AGENT_ID = 1;
 
@@ -84,8 +78,6 @@ contract RegistryHandler is Test {
         return passports.length;
     }
 
-    /// The invariant suite walks the same actor list the handler drives, so it can add up every
-    /// address that could ever hold a credit.
     function actorCount() external pure returns (uint256) {
         return ACTOR_COUNT;
     }
@@ -245,12 +237,10 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
         excludeSender(address(policy));
     }
 
-    /// The contract can always pay what it owes: bonds still held plus credits not yet pulled.
     function invariant_balanceCoversEveryLiability() public view {
         assertGe(address(registry).balance, registry.totalBonds() + registry.totalOwed());
     }
 
-    /// The bond total is exactly the sum of the bonds behind disputes that are still open.
     function invariant_totalBondsMatchesOpenDisputes() public view {
         uint256 sum;
         uint256 count = handler.passportCount();
@@ -261,7 +251,6 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
         assertEq(registry.totalBonds(), sum);
     }
 
-    /// Every edit points at a parent that really exists.
     function invariant_everyChildHasALiveParent() public view {
         uint256 count = handler.passportCount();
         for (uint256 i = 0; i < count; ++i) {
@@ -273,7 +262,6 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
         }
     }
 
-    /// No image id is ever minted twice, and every recorded passport has exactly one owner.
     function invariant_noPassportIdIsMintedTwice() public view {
         assertEq(handler.duplicateMints(), 0);
         uint256 count = handler.passportCount();
@@ -284,7 +272,6 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
         }
     }
 
-    /// Attestations only ever come from an address the policy lists.
     function invariant_attestationsOnlyComeFromListedReceivers() public view {
         uint256 count = handler.passportCount();
         for (uint256 i = 0; i < count; ++i) {
@@ -297,9 +284,7 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
         }
     }
 
-    /// What the contract says it owes in total is exactly what the credited addresses can pull.
-    /// Only two kinds of address are ever credited: a challenger whose challenge was upheld, which
-    /// is always one of the handler's actors, and the treasury when a challenge was rejected.
+    // Only an actor (upheld challenger) or the treasury (rejected challenge) is ever credited.
     function invariant_totalOwedMatchesEveryCredit() public view {
         uint256 sum = registry.withdrawable(handler.TREASURY());
         uint256 count = handler.actorCount();
@@ -309,7 +294,6 @@ contract MoolamRegistryInvariantsTest is StdInvariant, Test {
         assertEq(registry.totalOwed(), sum);
     }
 
-    /// A pause really stops new passports appearing.
     function invariant_noPassportAppearsWhilePaused() public view {
         assertEq(handler.registeredWhilePaused(), 0);
     }

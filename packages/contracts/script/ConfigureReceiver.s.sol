@@ -5,21 +5,13 @@ import {Script, console2} from "forge-std/Script.sol";
 
 import {MoolamReceiver} from "../src/MoolamReceiver.sol";
 
-/// @notice Pins an already deployed MoolamReceiver to one Chainlink workflow, or unpins it again.
-/// @dev The deploy script pins the live receiver at deploy time. This script is for the receiver
-///      that is already on chain and for the switch a simulation needs: `cre workflow simulate`
-///      talks through a mock forwarder that sends no workflow metadata, so a pinned receiver
-///      refuses every simulated report. Clear the pin for a simulation, set it again afterwards.
-///      Reads RECEIVER, CRE_WALLET_ADDRESS and CRE_WORKFLOW_NAME from the environment. An empty
-///      CRE_WORKFLOW_NAME and a zero CRE_WALLET_ADDRESS clear the pin.
+/// @notice Pins a deployed MoolamReceiver to one Chainlink workflow, or clears the pin for a
+///         `cre workflow simulate` run. A zero CRE_WALLET_ADDRESS and empty CRE_WORKFLOW_NAME clear it.
 contract ConfigureReceiver is Script {
     error ReceiverHasNoCode(address moolamReceiver);
     error NameWithoutAuthor();
 
-    /// @notice Sets or clears the expected workflow author and workflow name on the receiver.
-    /// @dev Must be run by the receiver's owner, which is the deployer wallet. Reverts
-    ///      ReceiverHasNoCode when RECEIVER points at an empty address and NameWithoutAuthor when
-    ///      a name is given with no author, which is a state Chainlink's template refuses to serve.
+    /// @notice Sets or clears the expected workflow author and name. Run by the receiver's owner.
     function run() external {
         address receiverAddress = vm.envAddress("RECEIVER");
         if (receiverAddress.code.length == 0) revert ReceiverHasNoCode(receiverAddress);
@@ -33,8 +25,7 @@ contract ConfigureReceiver is Script {
 
         vm.startBroadcast(deployerKey);
         if (author == address(0)) {
-            // Clearing runs name first: an author of zero with a name still set makes the template
-            // revert every report, and that half-state must never exist between two transactions.
+            // Name first: a name with no author makes the template refuse every report.
             moolamReceiver.setExpectedWorkflowName("");
             moolamReceiver.setExpectedAuthor(address(0));
         } else {

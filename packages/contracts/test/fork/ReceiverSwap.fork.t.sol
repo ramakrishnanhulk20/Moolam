@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.30;
 
-// What this file does NOT cover: it only reads. It forks the latest block and checks that the
-// policy agrees with the receiver swap of 2026-09-26. It sends no report and runs no listing; the
-// report paths are proven at a pinned block in SimulationReceiver.fork.t.sol and
-// SealedReceiver.fork.t.sol.
+// Does NOT cover: any report or listing. It only reads the latest block for the receiver swap of 2026-09-26.
 
 import {Test, console2} from "forge-std/Test.sol";
 
@@ -18,11 +15,9 @@ contract ReceiverSwapForkTest is Test {
     address internal constant MOCK_FORWARDER = 0x9eF6468C5f37b976E57d52054c693269479A784d;
     address internal constant CRE_WALLET = 0xC79620AF233a4434b03f6B57239F8A9E71B3C178;
 
-    /// @dev Removed from the policy at blocks 108,102,728 and 108,102,734.
     address internal constant OLD_PUBLIC = 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04;
     address internal constant OLD_SEALED = 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A;
 
-    /// @dev Deployed at blocks 108,102,667 and 108,102,676, queued at 108,102,716 and 108,102,722.
     address internal constant NEW_PUBLIC = 0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95;
     address internal constant NEW_SEALED = 0x52b8fE549B432920eeB061c26cAc5c2D527657f6;
     bytes32 internal constant PUBLIC_CHANGE = 0x4a6589bbfe8f5fa2957f2af550bfbd2be0f9dd227eaf72cad106b34562f0480d;
@@ -60,7 +55,7 @@ contract ReceiverSwapForkTest is Test {
         assertEq(NEW_PUBLIC.codehash, NEW_SEALED.codehash);
     }
 
-    /// @dev Listing clears the pending entry, so exactly one of the two states holds at any block.
+    // Listing clears the pending entry, so exactly one of the two states holds.
     function _assertQueuedOrListed(address receiver, bytes32 changeId, uint64 executeAfter) internal view {
         assertEq(changeId, keccak256(abi.encode(policy.OP_ADD_RECEIVER(), abi.encode(receiver))));
         VerifierPolicy.PendingChange memory change = policy.getPendingChange(changeId);
