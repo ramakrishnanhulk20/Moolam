@@ -197,6 +197,11 @@ export function verifyProblem(error: unknown): Problem {
     if (error.serviceCode === "service-fault") {
       return { key: "problem.serviceFault" };
     }
+    // A full match gate: the service answered and the picture is fine, so it reads as a wait, and
+    // the one word "busy" under the sentence would only say it again.
+    if (error.code === "busy") {
+      return { key: "problem.busy" };
+    }
     const key = PROBLEMS[error.code] ?? "problem.badResponse";
     // The offline line already names the service and the port, so repeating the
     // fetch failure under it would say the same thing twice.

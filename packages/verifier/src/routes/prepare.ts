@@ -46,6 +46,7 @@ import {
   signedFile,
   type SignedFile,
 } from "../sealed.js";
+import { rateLimitKey } from "../limits/addressKey.js";
 import { BadRequest, SERVICE_FAULT_REASON, statusOf } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim. */
@@ -57,8 +58,9 @@ const CLAIM_GENERATOR = "moolam-studio/0.1.0";
  * Every prepare spends about a second of CPU and up to four pins on the operator's Pinata account, one of
  * them for a sealed registration, so the cap is what stops one account draining the plan. It is
  * counted on the verified Privy user id, which a caller cannot choose, and falls back to the
- * socket address for a caller with no valid token. A sealed registration is counted the same as
- * a public one: it is the same work and the same picture.
+ * caller's address for a caller with no valid token, read the way the service-wide limit reads
+ * it (rateLimitKey), so an IPv6 caller is counted by its /64. A sealed registration is counted the
+ * same as a public one: it is the same work and the same picture.
  */
 const PREPARES_PER_HOUR = 20;
 
@@ -183,7 +185,7 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
           timeWindow: "1 hour",
           keyGenerator: async (request: FastifyRequest) => {
             const identity = await identify(request, options.keys);
-            return identity === undefined ? `ip:${request.ip}` : `user:${identity.userId}`;
+            return identity === undefined ? `ip:${rateLimitKey(request.ip)}` : `user:${identity.userId}`;
           },
           onExceeded: (request: FastifyRequest) => {
             request.log.warn({ ip: request.ip, url: request.url }, "rejected: prepare limit exceeded");

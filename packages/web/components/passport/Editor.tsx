@@ -296,9 +296,13 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
 /** The receipt: the child passport, the block it landed in, and where to read it. */
 function Recorded({ edit }: { edit: PassportEdit }) {
   const t = useTranslations("passport.edit");
+  // The studio's own sentences, so an edit and a first registration say the same thing about a
+  // camera's record.
+  const receipt = useTranslations("studio.receipt");
   const format = useFormatter();
   const { state } = edit;
   const child = state.result?.child.exactHash ?? null;
+  const camera = state.result?.manifest?.cameraRecord;
 
   return (
     <div className="mt-5">
@@ -314,6 +318,11 @@ function Recorded({ edit }: { edit: PassportEdit }) {
       )}
 
       <p className="mt-6 max-w-[50ch] text-sm leading-relaxed text-text-muted">{t("done.body")}</p>
+      {camera === undefined ? null : (
+        <p data-camera-record={camera} className="mt-3 max-w-[50ch] text-sm leading-relaxed text-text-muted">
+          {camera === "kept" ? receipt("cameraKept") : receipt("cameraDropped")}
+        </p>
+      )}
 
       <dl className="mt-6 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-2">
         <div className="min-w-0">

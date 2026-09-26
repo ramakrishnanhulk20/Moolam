@@ -14,10 +14,10 @@
 // with 413 before any pin (intake 2), and an upright baseline JPEG loses its EXIF, XMP and IPTC
 // with no pixel changed (intake 6).
 // A photo with its camera's own C2PA record answers cameraRecord "kept" or "dropped", and a plain
-// upload answers no cameraRecord at all (Ram, 2026-09-26).
+// upload answers no cameraRecord at all (Ram, 2026-09-26). A caller with no token is counted by
+// its IPv6 /64, as the service-wide limit counts it, so a neighbour in the same /64 meets the 21st.
 // Does NOT cover a real pin to Pinata, a real read
-// of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
-// hour.
+// of the registry on Monad, the remote JWKS fetch, or one signed-in user reaching 20 in an hour.
 
 import { Reader } from "@contentauth/c2pa-node";
 import { SignJWT, generateKeyPair } from "jose";
@@ -737,4 +737,18 @@ describe("POST /prepare", () => {
       expect(response.statusCode, JSON.stringify(fields)).toBe(400);
     }
   }, 30_000);
+
+  it("counts a caller with no token by its IPv6 /64, so two addresses in one /64 share the hour's 20", async () => {
+    const codes: number[] = [];
+    for (let i = 1; i <= 20; i += 1) {
+      const response = await app.inject({ method: "POST", url: "/prepare", remoteAddress: `2001:db8:7:8::${i.toString(16)}` });
+      codes.push(response.statusCode);
+    }
+    const neighbour = await app.inject({ method: "POST", url: "/prepare", remoteAddress: "2001:db8:7:8::ffff" });
+    const otherNetwork = await app.inject({ method: "POST", url: "/prepare", remoteAddress: "2001:db8:7:9::1" });
+
+    expect(codes.every((code) => code === 401)).toBe(true);
+    expect(neighbour.statusCode).toBe(429);
+    expect(otherNetwork.statusCode).toBe(401);
+  });
 });

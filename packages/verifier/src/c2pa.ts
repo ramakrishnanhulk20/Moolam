@@ -702,9 +702,10 @@ export interface JumbfPacket {
  * header, so later packets repeat an eight byte box header before their payload. The label comes
  * from the jumd box that opens the superbox in packet 1.
  *
- * This is the one reading of JUMBF segments in the service: the byte path in prepare.ts keeps the
- * packets it says belong to the C2PA store, and the manifest hash covers the packets it says
- * belong to the same store, so the two can never disagree about which box is the store.
+ * This is the one reading of JUMBF segments in the service: the manifest hash covers the packets it
+ * says belong to the C2PA store, and whether an upload holds a store, or something that may be one,
+ * is read from the same packets. The byte path in prepare.ts keeps no APP11 segment of the upload
+ * at all: a camera's own record travels only as the redacted parent ingredient of Moolam's manifest.
  *
  * Returns null for a segment that is not a JUMBF packet or too short to hold its header. Every
  * length is checked against the segment, and a label with no terminating zero byte is no label.

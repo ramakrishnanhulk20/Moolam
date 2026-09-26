@@ -432,7 +432,8 @@
       "badResponse": "Der Prüfdienst hat in einer Form geantwortet, die diese Seite nicht kennt.",
       "serviceFailed": "Der Prüfdienst konnte diese Prüfung nicht abschließen.",
       "refused": "Der Prüfdienst hat diese Anfrage abgelehnt.",
-      "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal."
+      "serviceFault": "Das war ein Fehler auf der Seite von Moolam, kein Problem mit deinem Bild. Es wurde nichts gespeichert. Versuch es in einer Minute noch einmal.",
+      "busy": "Moolam prüft gerade andere Bilder. Versuch es in einer Minute noch einmal."
     },
     "orientation": {
       "identity": "Gleiche Lage",

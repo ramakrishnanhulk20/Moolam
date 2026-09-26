@@ -434,7 +434,8 @@
       "badResponse": "验证服务返回的格式，这个页面看不懂。",
       "serviceFailed": "验证服务没能完成这次核对。",
       "refused": "验证服务拒绝了这个请求。",
-      "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。"
+      "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。",
+      "busy": "Moolam 正忙着核对别的图片。过一分钟再试。"
     },
     "orientation": {
       "identity": "方向没变",

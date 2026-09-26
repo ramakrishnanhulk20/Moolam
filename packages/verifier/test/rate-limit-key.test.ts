@@ -6,7 +6,8 @@
 // callers reach this service at all, or TRUST_PROXY, which is test/headers.test.ts.
 
 import { describe, expect, it } from "vitest";
-import { buildServer, rateLimitKey } from "../src/server.js";
+import { rateLimitKey } from "../src/limits/addressKey.js";
+import { buildServer } from "../src/server.js";
 
 describe("the rate limit key", () => {
   it("folds two addresses in one IPv6 /64 into one bucket, and keeps two /64s apart", () => {

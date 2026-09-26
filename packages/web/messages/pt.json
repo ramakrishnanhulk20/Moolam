@@ -433,7 +433,8 @@
       "badResponse": "O verificador respondeu num formato que esta página não conhece.",
       "serviceFailed": "O verificador não conseguiu terminar esta conferência.",
       "refused": "O verificador recusou esta requisição.",
-      "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto."
+      "serviceFault": "Foi uma falha do lado da Moolam, não um problema com a sua imagem. Nada foi salvo. Tente de novo daqui a um minuto.",
+      "busy": "Moolam está conferindo outras imagens agora. Tente de novo daqui a um minuto."
     },
     "orientation": {
       "identity": "Na mesma posição",

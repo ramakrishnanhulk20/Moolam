@@ -432,7 +432,8 @@
       "badResponse": "The verifier answered in a shape this page does not know.",
       "serviceFailed": "The verifier could not finish this check.",
       "refused": "The verifier refused this request.",
-      "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
+      "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute.",
+      "busy": "Moolam is busy checking other pictures. Try again in a minute."
     },
     "orientation": {
       "identity": "The same way up",

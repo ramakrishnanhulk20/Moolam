@@ -9,7 +9,7 @@ import { env } from "../env.js";
 import { readClient } from "../reputation/registry.js";
 import { paymentLedger, type LedgerEntry, type PaymentLedger } from "../x402/ledger.js";
 import { assertPaidRoute, contextFor, PAID_VERIFY_PATH, PAYMENT_SIGNATURE_HEADER } from "../x402/plugin.js";
-import { readUpload, statusOf, verifyBytes } from "./shared.js";
+import { SERVICE_FAULT_REASON, ServiceFault, readUpload, statusOf, verifyBytes } from "./shared.js";
 
 /** What the facilitator calls a transfer it has broadcast but not yet seen confirmed. */
 const SETTLEMENT_PENDING = "settlement_pending";
@@ -584,7 +584,9 @@ async function settleSequence(
  *
  * A caller with no payment gets 402 and the payment terms. A caller whose
  * payment fails verification gets the facilitator's reason. Payment is settled
- * only after the match succeeds, so a failed verification never charges. A
+ * only after the match succeeds, so a failed verification never charges: a full
+ * match gate answers 503 `busy` and a fault of this service 503 `service-fault`
+ * with SERVICE_FAULT_REASON, as /verify does, and neither is settled or held. A
  * settlement the facilitator has broadcast but not yet confirmed is asked about
  * once more, then answered with the verification and a pending receipt. A
  * settlement whose outcome nobody can tell answers 502 settlement-unknown and is
@@ -715,7 +717,12 @@ export async function verifyPaidRoutes(
       const reason = error instanceof Error ? error.message : String(error);
       await verified.cancellationDispatcher.cancel({ reason: "handler_failed", responseStatus: status });
       request.log.warn({ ...where, status, reason }, "rejected: /verify/paid");
-      return reply.code(status).send({ error: reason });
+      // The same two 503 answers /verify gives, so a payer is told in the same words that the
+      // picture is fine and the retry is theirs to make.
+      if (error instanceof ServiceFault) {
+        return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      }
+      return reply.code(status).send({ error: status === 503 ? "busy" : reason });
     }
 
     // Read before the first settle, so no transfer this settle starts can sit below it. A held

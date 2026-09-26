@@ -432,7 +432,8 @@
       "badResponse": "Le vérificateur a répondu dans une forme que cette page ne connaît pas.",
       "serviceFailed": "Le vérificateur n’a pas pu terminer ce contrôle.",
       "refused": "Le vérificateur a rejeté cette requête.",
-      "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute."
+      "serviceFault": "C'était une panne du côté de Moolam, pas un problème avec votre image. Rien n'a été enregistré. Réessayez dans une minute.",
+      "busy": "Moolam est occupé à vérifier d'autres images. Réessayez dans une minute."
     },
     "orientation": {
       "identity": "Dans le même sens",

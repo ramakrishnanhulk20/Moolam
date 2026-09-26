@@ -352,4 +352,38 @@ describe("the receipt once the edit is on chain", () => {
     expect(markup).toContain("Paid from your own balance");
     expect(markup).not.toContain("Sponsored by Privy");
   });
+
+  const kept = "Your camera&#x27;s own record is kept, with its location and serial number removed.";
+  const dropped = "Your camera&#x27;s own record was removed, because its location could not be taken out cleanly.";
+  const withCamera = (cameraRecord?: "kept" | "dropped") => ({
+    ...(result as unknown as Record<string, unknown>),
+    manifest: cameraRecord === undefined ? { embedded: true } : { embedded: true, cameraRecord },
+  });
+
+  it("says the studio receipt's camera line when the edit kept or dropped a camera's record", () => {
+    const keptMarkup = recorded({ result: withCamera("kept") });
+    expect(keptMarkup).toContain(kept);
+    expect(keptMarkup).not.toContain(dropped);
+    expect(keptMarkup).toContain('data-camera-record="kept"');
+
+    const droppedMarkup = recorded({ result: withCamera("dropped") });
+    expect(droppedMarkup).toContain(dropped);
+    expect(droppedMarkup).not.toContain(kept);
+  });
+
+  it("says nothing about a camera when the edit carried no record", () => {
+    const markup = recorded({ result: withCamera() });
+    expect(markup).not.toContain(kept);
+    expect(markup).not.toContain(dropped);
+    expect(markup).not.toContain("data-camera-record");
+  });
+
+  it("says the camera line in Tamil too, in the studio's own words", () => {
+    stub.current = edit(
+      { granted: true },
+      { steps: { pin: "done", send: "done" }, result: withCamera("kept") as never, block: 41273109n, total: 51 },
+    );
+    const markup = render("ta", createElement(EditPanel, { parentId: PARENT, owner: OWNER }));
+    expect(markup).toContain((ta as { studio: { receipt: Record<string, string> } }).studio.receipt.cameraKept ?? "missing");
+  });
 });

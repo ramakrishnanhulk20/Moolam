@@ -211,7 +211,7 @@ green tick.
 | --- | --- |
 | File size | 20 MB |
 | Pixels | 40 megapixels once decoded |
-| Requests | 60 a minute from one socket address |
+| Requests | 60 a minute per address, an IPv6 caller counted by its /64 |
 
 When a check does not run, the card reads "The check did not run" and one of these, with the
 service's own words underneath:

@@ -380,6 +380,8 @@ and the paid verification still comes back `200`.
 | `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
 | `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, or the first settle was refused with no transaction and the chain did not show the payment spent, see below. Nothing was cancelled and the answer is held against the payment |
+| `503` | `{ "error": "busy" }`. No matching slot came free in time. Nothing is settled or held, the authorisation is cancelled, and the same payment and picture can be sent again |
+| `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while matching, as under `/verify`. Nothing is settled or held, the authorisation is cancelled, and the picture is fine to send again |
 
 A settlement the facilitator has broadcast but not yet confirmed also answers `200`, with a pending
 receipt, and a repeat of the same payment inside ten minutes is answered from this process's memory
@@ -494,6 +496,7 @@ exist and the service answers `404`.
 | `title` | text | 1 to 120 characters after trimming. It becomes the passport's name and the C2PA title |
 | `kind` | text | `human` is the only value the studio takes today |
 | `training` | text | Optional. A JSON object saying how AI may use the picture: `aiTraining`, `aiGenerativeTraining`, `aiInference` and `dataMining`, each `allowed`, `notAllowed` or `constrained`, plus `constraintInfo` when a choice is constrained |
+| `sealed` | text | Optional, `true` or `false`; left out or blank is `false`, and any other word is a `400` rather than being read as `false`. `true` registers the picture without publishing it: it is signed and fingerprinted the same way, then only one small metadata document is pinned, and the signed file comes back in the answer as `signedFile`, base64, as the only copy there will be, beside `sealed: true` |
 | `privateRecheck` | text | Optional, `true` or `false`. `true` is accepted only together with `sealed` set to `true`, and keeps one private thumbnail for a later private Chainlink re-check, see below. Without `sealed` it is a `400` |
 
 The `training` statement is written into the signed C2PA manifest as one `cawg.training-mining`

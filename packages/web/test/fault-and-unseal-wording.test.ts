@@ -34,7 +34,8 @@ import {
  *
  * The failures go through the real client, from a stubbed fetch answering exactly what the service
  * sends, so the mapping is proven on the error a screen actually receives. A creator whose camera
- * signed the photo is told on the studio's stub what Moolam kept of that record.
+ * signed the photo is told on the studio's stub what Moolam kept of that record. A full match gate
+ * on the verify page reads as Moolam being busy.
  *
  * Does NOT click anything in a browser, and does not prove a translation says the same thing as the
  * English, only that each language says something of its own.
@@ -121,6 +122,13 @@ describe("a 503 service-fault", () => {
   });
 });
 
+describe("a 503 busy on the verify page", () => {
+  it("reads as Moolam being busy, not as an answer it did not understand, with no English word under it", async () => {
+    const error = await refusal(503, { error: "busy" }, () => verify({ file: picture() }));
+    expect(verifyProblem(error)).toEqual({ key: "problem.busy" });
+  });
+});
+
 describe("the refusals pass 6 added to publishing a sealed picture", () => {
   const publish = () => unseal({ file: picture(), passportId: PASSPORT, accessToken: "token" });
 
@@ -198,6 +206,18 @@ describe("the sentences those keys print", () => {
     expect(at(english, "studio.receipt.cameraDropped")).toBe(
       "Your camera's own record was removed, because its location could not be taken out cleanly.",
     );
+  });
+
+  it("says the verify page's busy sentence in the order's English, and in every language in its own words", () => {
+    const english = files[0][1];
+    expect(at(english, "verify.problem.busy")).toBe("Moolam is busy checking other pictures. Try again in a minute.");
+    for (const [lang, tree] of files) {
+      const said = at(tree, "verify.problem.busy");
+      expect(typeof said, lang).toBe("string");
+      if (lang !== "en") {
+        expect(said, lang).not.toBe(at(english, "verify.problem.busy"));
+      }
+    }
   });
 
   it("are in every language, each in its own words rather than the English", () => {

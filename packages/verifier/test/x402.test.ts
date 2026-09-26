@@ -17,7 +17,8 @@
 // from the pay asset, the transaction the facilitator named or else the asset's own
 // AuthorizationUsed log for this payer and nonce, then that transaction's receipt, read against a
 // fake RPC; a first settle refused with no transaction is held, and the ledger is keyed by the payer
-// and the nonce together (pass 6, V43 and V48).
+// and the nonce together (pass 6, V43 and V48). A fault of this service while matching answers
+// 503 service-fault and a full match gate 503 busy, as /verify does, with nothing settled or held.
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -43,6 +44,9 @@ import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
 import { chainCharged, verifyPaidRoutes } from "../src/routes/verifyPaid.js";
+import { SERVICE_FAULT_REASON } from "../src/routes/shared.js";
+import { Busy } from "../src/generate/gate.js";
+import { paymentLedger } from "../src/x402/ledger.js";
 
 const USDC_EVENTS = parseAbi([
   "event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce)",
@@ -1043,6 +1047,60 @@ describe("the paid ledger key (pass 6, V48)", () => {
       const retry = await send(fromA);
       expect(retry.statusCode).toBe(200);
       expect(retry.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+describe("a fault of this service while matching a paid upload", () => {
+  async function faultyApp() {
+    const settle = vi.fn(async () => settled(`0x${"9d".repeat(32)}`));
+    const cancel = vi.fn(async () => undefined);
+    const ledger = paymentLedger();
+    const image = await makeImage(71);
+    const app = await buildServer({ source: sourceOf([recordFor(await fingerprint(image))]), logger: false });
+    await app.register(verifyPaidRoutes, { payments: paymentsThatSettleWith(settle, cancel), settlementRetryDelayMs: 0, ledger });
+    await app.ready();
+    const send = async (header: string) => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+    return { app, settle, cancel, ledger, send };
+  }
+
+  it("answers 503 service-fault with the /verify sentence, settles nothing and holds nothing", async () => {
+    const { app, settle, cancel, ledger, send } = await faultyApp();
+    const nonce = `0x${"d4".repeat(32)}`;
+    vi.spyOn(app.verifier, "runMatch").mockRejectedValueOnce(new Error("the blockhash worker stopped with code 1"));
+
+    try {
+      const response = await send(paymentHeaderFor(nonce));
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      expect(settle).not.toHaveBeenCalled();
+      expect(cancel).toHaveBeenCalledWith({ reason: "handler_failed", responseStatus: 503 });
+      expect(ledger.get(`0x3333333333333333333333333333333333333333:${nonce}`)).toBeUndefined();
+
+      const retry = await send(paymentHeaderFor(nonce));
+      expect(retry.statusCode).toBe(200);
+      expect(settle).toHaveBeenCalledTimes(1);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("answers a full match gate as the one word busy, as /verify does, and settles nothing", async () => {
+    const { app, settle, send } = await faultyApp();
+    vi.spyOn(app.verifier, "runMatch").mockRejectedValueOnce(new Busy(60_000));
+
+    try {
+      const response = await send(paymentHeaderFor(`0x${"d5".repeat(32)}`));
+
+      expect(response.statusCode).toBe(503);
+      expect(response.json()).toEqual({ error: "busy" });
+      expect(settle).not.toHaveBeenCalled();
     } finally {
       await app.close();
     }
