@@ -605,12 +605,13 @@ export async function unsealRecordFor(
 /**
  * The picture fact a verify answer carries. "unavailable" is the same word the consent, dispute and
  * re-check facts use when their own read could not answer, and it covers "unreadable" too: both
- * mean this service could not find out, which must never be printed as sealed or as public.
+ * mean this service could not find out, which must never be printed as sealed or as public. Every
+ * answer that was read carries `readAt`, the unix seconds of that read (review pass 6, V46).
  */
 export type PictureAnswer =
-  | { state: "public" }
-  | { state: "sealed" }
-  | { state: "unsealed"; at: string }
+  | { state: "public"; readAt: number }
+  | { state: "sealed"; readAt: number }
+  | { state: "unsealed"; at: string; readAt: number }
   | { source: "unavailable" };
 
 export interface PictureReader {
@@ -618,8 +619,12 @@ export interface PictureReader {
   answerFor: (passport: { id: Hex; metadataURI: string } | undefined) => Promise<PictureAnswer>;
 }
 
-/** How long a "sealed" answer is held: a holder can publish the picture at any moment. */
-export const PICTURE_SEALED_TTL_MS = 60_000;
+/**
+ * How long a "sealed" answer is held: a holder can publish the picture at any moment, and a sealed
+ * plate over a picture already out is the one answer server.ts promises never to serve, so ten
+ * seconds at most (review pass 6, V46).
+ */
+export const PICTURE_SEALED_TTL_MS = 10_000;
 
 /** How many passports are remembered at once, on the same reasoning as the consent and dispute memories. */
 export const PICTURE_CACHE_MAX = 2_000;
@@ -633,8 +638,9 @@ const PICTURE_UNAVAILABLE: PictureAnswer = { source: "unavailable" };
  * Reads a passport's picture state for the verify answers, with a memory in front of it.
  *
  * "public" and "unsealed" are kept for as long as there is room, because neither can change: the
- * document is written once and an unseal record is never taken back. "sealed" is kept for a minute,
- * because that is the one answer the holder can change, and a failed or slow read is never kept.
+ * document is written once and an unseal record is never taken back. "sealed" is kept for ten
+ * seconds, because that is the one answer the holder can change, and a failed or slow read is never
+ * kept. Each answer says when it was read.
  *
  * Tests pass their own readDocument and findRecord; nothing here touches the network on its own.
  */
@@ -678,6 +684,7 @@ export function pictureReader(options: {
         cache.delete(key);
       }
 
+      const readAt = Math.floor(Date.now() / 1000);
       let reading: PictureReading;
       try {
         reading = await withPictureTimeout(
@@ -692,7 +699,9 @@ export function pictureReader(options: {
         return PICTURE_UNAVAILABLE;
       }
       const answer: PictureAnswer =
-        reading.state === "unsealed" ? { state: "unsealed", at: reading.at } : { state: reading.state };
+        reading.state === "unsealed"
+          ? { state: "unsealed", at: reading.at, readAt }
+          : { state: reading.state, readAt };
       remember(key, answer, reading.state === "sealed" ? sealedTtlMs : Number.POSITIVE_INFINITY);
       return answer;
     },

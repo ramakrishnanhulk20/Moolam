@@ -7,7 +7,9 @@
 // logs the link or the token (B5). POST /sealed/forget deletes only for the holder and only on a
 // listing that finished, every file under the name (B9). The queue takes a privately re-checkable
 // passport while its copy is kept or unknown and refuses it once gone (B11). Each test names the
-// invariant it holds.
+// invariant it holds. From review pass 6: status reads gone right after a complete delete even while
+// Pinata's listing still shows the file (V51), the holder's delete removes a copy whatever the
+// document says (V53), and the delete has its own limit of 30 a minute (V54).
 // Does NOT cover the runner or the sealed workflow, the sweep of copies whose passport never
 // registered (sweep.test.ts), or a real call to Pinata, Privy, the chain or the gateway:
 // the chain read, the document read and the holder's wallets are stubbed, and Pinata is a
@@ -144,6 +146,8 @@ const pinata = {
   linkAnswer: undefined as undefined | ((cid: string) => Response),
   /** File ids whose delete answers 500. */
   deleteFails: new Set<string>(),
+  /** Answers a delete but keeps listing the file, as Pinata's listing lags a delete. */
+  trailing: false,
 };
 
 function json(body: unknown, status = 200): Response {
@@ -187,7 +191,7 @@ function stubPinata(): void {
         return new Response("down", { status: 500 });
       }
       const at = account.findIndex((file) => file.id === fileId);
-      if (at !== -1) {
+      if (at !== -1 && !pinata.trailing) {
         account.splice(at, 1);
       }
       return json({ data: null });
@@ -430,6 +434,7 @@ afterEach(() => {
   pinata.listFails.clear();
   pinata.linkAnswer = undefined;
   pinata.deleteFails.clear();
+  pinata.trailing = false;
   vi.useRealTimers();
 });
 
@@ -978,6 +983,58 @@ describe("POST /sealed/forget (B9)", () => {
     expect(response.json()).toEqual({ error: "delete-failed", passportId: F.partial, deleted: 0 });
     expect(response.body).not.toContain(file.id);
     expect((await status(F.partial)).json().state).toBe("kept");
+  });
+
+  // Review pass 6, sealed #2 (V51): Pinata's listing trails a delete, so the status read that
+  // follows the holder's delete must not go back to it and remember "kept" for a minute.
+  it("reads gone right after the delete, while Pinata's listing still shows the deleted file", async () => {
+    const id = idOf(0x39);
+    register(id, sealedDocument(id));
+    const file = keep(nameOf(id));
+    pinata.trailing = true;
+
+    const response = await forget(id, "did:privy:holder");
+
+    expect(response.json()).toEqual({ passportId: id, deleted: 1 });
+    expect(held(id)).toEqual([file]);
+    const after = await status(id);
+    expect(after.json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
+  });
+
+  // Review pass 6, sealed #4 (V53): the same unsigned file prepared first with a private re-check
+  // (document D1, copy kept) and then without (document D2), and registered with D2.
+  it("deletes the copy D1 left for the holder of a passport registered with D2, which does not ask", async () => {
+    const id = idOf(0x3a);
+    const d1 = keep(nameOf(id));
+    register(id, sealedDocument(id, false));
+
+    const response = await forget(id, "did:privy:holder");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ passportId: id, deleted: 1 });
+    expect(held(id)).toEqual([]);
+    expect(response.body).not.toContain(d1.id);
+  });
+
+  // Review pass 6, sealed #5 (V54): the delete spent a Privy read and a Pinata listing on every call.
+  it("gives the delete its own limit of 30 a minute per address and refuses the thirty-first", async () => {
+    const limited = await build();
+    try {
+      const codes: number[] = [];
+      for (let i = 0; i < 31; i += 1) {
+        const response = await limited.inject({
+          method: "POST",
+          url: "/sealed/forget",
+          payload: { passportId: idOf(0x3b) },
+          remoteAddress: "198.51.100.250",
+        });
+        codes.push(response.statusCode);
+      }
+      expect(codes.slice(0, 30).every((code) => code === 401)).toBe(true);
+      expect(codes[30]).toBe(429);
+    } finally {
+      await limited.close();
+    }
   });
 
   it("logs the use with the count and no file id", async () => {

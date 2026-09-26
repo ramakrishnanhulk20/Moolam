@@ -27,6 +27,12 @@ export const COPY_STATUS_TTL_MS = 60_000;
 const COPY_STATUS_MAX_ENTRIES = 2_000;
 
 /**
+ * Calls a minute per address for GET /sealed/status and POST /sealed/forget, below the service's
+ * sixty, because each one that reaches Pinata spends a request out of the account's shared minute.
+ */
+const STATUS_PER_MINUTE = 30;
+
+/**
  * How long a read link lives. Fixed here and never taken from a request (B15): long enough for the
  * workflow to open it once, and well inside the Pinata client's own cap.
  */
@@ -90,8 +96,14 @@ export type CopyStatus =
 export interface PrivateCopyStatus {
   /** Never rejects. Every read that fails comes back as unknown and is not remembered. */
   statusOf: (passportId: Hex) => Promise<CopyStatus>;
-  /** Forgets what is held for this passport, so the next read goes back to Pinata. */
+  /** Forgets what is held for this passport, so the next read goes back to Pinata. For a delete that failed. */
   drop: (passportId: Hex) => void;
+  /**
+   * Holds gone for this passport for the whole TTL, for a delete that removed every file under its
+   * exact name. Pinata's listing trails a delete, so a read that went back to it straight away could
+   * see the deleted file and remember "kept" for a minute (review pass 6, V51).
+   */
+  gone: (passportId: Hex, privateRecheck: boolean) => void;
 }
 
 /**
@@ -105,9 +117,11 @@ export interface PrivateCopyStatus {
  * under one name is not a state this service ever writes.
  *
  * Kept and gone are held for a minute; unknown, a chain that did not answer and a passport the
- * chain does not hold are never held. Two readers asking at once share one read. `drop` also
- * stops a read already in flight from being remembered, so a lookup that listed the file a moment
- * before the holder deleted it cannot put "kept" back into memory afterwards.
+ * chain does not hold are never held. Two readers asking at once share one read. `drop` and `gone`
+ * both stop a read already in flight from being remembered, so a lookup that listed the file a
+ * moment before the holder deleted it cannot put "kept" back into memory afterwards; `gone`, used
+ * when every file under the name was deleted, also holds gone for the TTL rather than letting the
+ * next read ask a listing that still shows the file.
  */
 export function privateCopyStatus(
   options: { ttlMs?: number; maxEntries?: number; now?: () => number } = {},
@@ -207,6 +221,13 @@ export function privateCopyStatus(
       held.delete(id);
       inFlight.delete(id);
       epoch += 1;
+    },
+
+    gone: (passportId, privateRecheck) => {
+      const id = passportId.toLowerCase() as Hex;
+      inFlight.delete(id);
+      epoch += 1;
+      remember(id, { found: true, state: "gone", privateRecheck });
     },
   };
 }
@@ -352,12 +373,17 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
    * on the registry, read at this moment, has to be one of them: the unseal route's pattern, so a
    * wallet never comes from the body and never from an index. Then every private file whose name is
    * exactly this passport's is deleted, two included, because two files under one name are both
-   * copies of this passport's thumbnail. A listing that could not finish deletes nothing and answers
-   * 503: deletion happens only on a definite answer.
+   * copies of this passport's thumbnail, whatever the passport's document says about a private
+   * re-check (review pass 6, V53). A listing that could not finish deletes nothing and answers
+   * 503: deletion happens only on a definite answer. No file and a document that did not ask
+   * answers 404 nothing-kept. Thirty a minute per address, like the GET routes, because every call
+   * spends a Privy read and a Pinata listing (V54).
    *
-   * The status memory for the passport is dropped whatever happened after the listing, so neither
-   * /sealed/status nor the queue goes on saying "kept" for a copy that is gone. The answer is the
-   * count and never a file id, and the log line carries the count the same way.
+   * When every file under the name was deleted, the status memory holds gone for its TTL, so
+   * neither /sealed/status nor the queue says "kept" for a copy that is gone, even while Pinata's
+   * listing still shows it; a delete that failed drops the memory instead, so the next read asks
+   * (review pass 6, V51). The answer is the count and never a file id, and the log line carries the
+   * count the same way.
    */
   const forget = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
     const identity = await identify(request, options.keys);
@@ -405,14 +431,15 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
       return refuse(403, "not-holder");
     }
 
-    let document: unknown;
+    // The document no longer decides whether anything is deleted (review pass 6, V53): a copy kept
+    // for one prepare of a picture can sit under a passport registered with another prepare's
+    // document that never asked. It only says what the status memory should hold afterwards, and a
+    // document that cannot be read leaves that to the next status read.
+    let asked: boolean | undefined;
     try {
-      document = await readMetadataDocument(passport.metadataURI);
+      asked = privateRecheckFor(await readMetadataDocument(passport.metadataURI), passportId) === "asked";
     } catch (error) {
-      return refuse(503, "metadata-unavailable", reasonOf(error));
-    }
-    if (privateRecheckFor(document, passportId) !== "asked") {
-      return refuse(404, "nothing-kept");
+      request.log.warn({ passportId, reason: reasonOf(error) }, "/sealed/forget: the document could not be read, deleting by name");
     }
 
     let files: PrivateListing[];
@@ -420,6 +447,9 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
       files = await sameName(passportId);
     } catch (error) {
       return refuse(503, "lookup-unavailable", reasonOf(error));
+    }
+    if (files.length === 0 && asked !== true) {
+      return refuse(404, "nothing-kept");
     }
 
     // Bounded by the listing itself, which pages at most five pages before it refuses to answer.
@@ -433,7 +463,11 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
         failed += 1;
       }
     }
-    copies.drop(passportId);
+    if (failed > 0 || asked === undefined) {
+      copies.drop(passportId);
+    } else {
+      copies.gone(passportId, asked);
+    }
 
     if (failed > 0) {
       request.log.error(
@@ -446,7 +480,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     return reply.send(forgetAnswerSchema.parse({ passportId, deleted }));
   };
   if (options.forget !== false) {
-    app.post("/sealed/forget", forget);
+    app.post("/sealed/forget", { config: { rateLimit: { max: STATUS_PER_MINUTE, timeWindow: "1 minute" } } }, forget);
   }
 
   /**
@@ -459,7 +493,7 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
    */
   app.get(
     "/sealed/status/:passportId",
-    { config: { rateLimit: { max: 30, timeWindow: "1 minute" } } },
+    { config: { rateLimit: { max: STATUS_PER_MINUTE, timeWindow: "1 minute" } } },
     async (request: FastifyRequest, reply: FastifyReply) => {
       reply.header("cache-control", "no-store");
       const parsed = passportSchema.safeParse((request.params as { passportId?: string }).passportId);

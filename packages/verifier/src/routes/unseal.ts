@@ -9,12 +9,26 @@ import { ImageTooLarge, fingerprint, readImageHeader, type Fingerprint, type Hex
 import { Busy } from "../generate/gate.js";
 import { privy, privyErrorText } from "../generate/privy.js";
 import { dailyQuota } from "../generate/quota.js";
-import { contentIdOf, deletePrivateFile, findPrivateByName, pinFile, pinJson, type PrivateListing } from "../ipfs/pinata.js";
+import {
+  PinNotConfirmed,
+  contentIdOf,
+  deletePrivateFile,
+  findPrivateByName,
+  pinFile,
+  pinJson,
+  type PrivateListing,
+} from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { fileSlug, manifestDocument } from "../metadata.js";
-import { UNSEAL_THUMBNAIL_TOO_LARGE_REASON, type PreparedImage } from "../prepare.js";
+import {
+  FINGERPRINT_UNSTABLE_REASON,
+  FingerprintUnstable,
+  UNSEAL_THUMBNAIL_TOO_LARGE_REASON,
+  assertStableFingerprint,
+  type PreparedImage,
+} from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
-import { privateThumbnailName } from "../sealed.js";
+import { privateRecheckFor, privateThumbnailName } from "../sealed.js";
 import {
   findUnsealRecord,
   fingerprintMatches,
@@ -141,18 +155,21 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * logged with the passport id and the copy stays until the holder or an operator deletes it.
  *
  * A public pin counts only when Pinata answers with the content id of the bytes sent, on the
- * public network (V11). When one of the three pins fails, the answer names which pieces are public
- * and which are not, nothing private is touched, the holder's allowance comes back, and sending the
- * same file again lands on the same content ids and finishes the unseal (V9). A private copy kept
+ * public network (V11). The thumbnail is pinned first and alone, and when Pinata answers it with a
+ * private file the unseal stops with 409 `thumbnail-held-privately` and nothing public (review pass
+ * 6, V52). When one of the other pins fails, the answer names which pieces are public and which are
+ * not, nothing private is touched, the holder's allowance comes back, and sending the same file
+ * again lands on the same content ids and finishes the unseal (V9). A private copy kept
  * before V12 is the public thumbnail byte for byte, so it is deleted before the pins, or nothing is
  * pinned (review pass 5). When the check for an earlier record could not answer, the record cached
  * for GET is the oldest one a fresh lookup names, or none.
  *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
- * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed` or `already-unsealed`, 413 and
- * 415 for the image, 422 `thumbnail-too-large`, 429 for the caller's own allowance and for today's
- * ceiling, 502 `pin-failed`, `record-pin-failed`, `chain-unavailable`, `metadata-unavailable` or
- * `privy-unavailable`, and 503 `busy`.
+ * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed`, `already-unsealed`,
+ * `unseal-in-progress` or `thumbnail-held-privately`, 413 and 415 for the image, 422
+ * `thumbnail-too-large` or `fingerprint-unstable`, 429 for the caller's own allowance, for today's
+ * ceiling and past 30 a minute from one address, 502 `pin-failed`, `record-pin-failed`,
+ * `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`, and 503 `busy`.
  */
 export async function unsealRoutes(
   app: FastifyInstance,
@@ -168,6 +185,7 @@ export async function unsealRoutes(
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
   const known: Known = new Map();
   const misses = missMemory();
+  const unsealing = new Set<Hex>();
 
   const publish = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
     const identity = await identify(request, options.keys);
@@ -193,11 +211,14 @@ export async function unsealRoutes(
       registry,
       known,
       misses,
+      unsealing,
       copies: options.copies,
     });
   };
   if (options.holder !== false) {
-    app.post("/unseal", publish);
+    // The GET route's limit, because a refused resend still costs a Privy read and a chain read
+    // (review pass 6, V54).
+    app.post("/unseal", { config: { rateLimit: { max: LOOKUPS_PER_MINUTE, timeWindow: "1 minute" } } }, publish);
   }
 
   /**
@@ -304,6 +325,8 @@ interface UnsealContext {
   registry: Hex;
   known: Known;
   misses: MissMemory;
+  /** Passports with an unseal running on this server, so two never pin two records (review pass 6, V55). */
+  unsealing: Set<Hex>;
   /** The memory behind /sealed/status, so a deleted private copy reads gone at once. */
   copies?: PrivateCopyStatus;
 }
@@ -315,6 +338,9 @@ interface UnsealContext {
  * nothing settle first, then the caller's own allowance and the day's ceiling for everyone, and
  * only then the decode and the pins. A creator who pressed the button on the wrong passport, or on
  * one that is already public, is told so without this service decoding a 20 MB picture for them.
+ * A passport this server has already seen unsealed is answered from memory before any Privy,
+ * Pinata or chain call (review pass 6, V54), and only one unseal of a passport runs at a time on
+ * this server (V55).
  *
  * Both allowances go back whenever nothing was pinned, because an unseal sends no transaction: a
  * request that pinned nothing has cost the world nothing to give back.
@@ -339,6 +365,43 @@ async function open(
     return reply.code(400).send({ error: "hash-mismatch", passportId: upload.passportId });
   }
 
+  // An unseal record never changes, and GET /unseal/:passportId serves this same memory to anyone.
+  const remembered = context.known.get(upload.passportId);
+  if (remembered !== undefined) {
+    request.log.warn(
+      { url: request.url, passportId: upload.passportId, cid: remembered.pinned.cid },
+      "rejected: /unseal already unsealed",
+    );
+    return reply.code(409).send({
+      error: "already-unsealed",
+      passportId: upload.passportId,
+      record: pinnedOut(remembered.pinned.uri, remembered.pinned.cid),
+    });
+  }
+
+  // Taken after the hash check, so only a caller holding the registered file can hold it, and held
+  // until this request has answered, so a second one cannot read "no record" while the first pins.
+  if (context.unsealing.has(upload.passportId)) {
+    request.log.warn({ url: request.url, passportId: upload.passportId }, "rejected: /unseal already running");
+    return reply.code(409).send({ error: "unseal-in-progress", passportId: upload.passportId });
+  }
+  context.unsealing.add(upload.passportId);
+  try {
+    return await unsealHeld(app, request, reply, identity, upload, context);
+  } finally {
+    context.unsealing.delete(upload.passportId);
+  }
+}
+
+/** The rest of an unseal, from the chain read to the record, with this passport's unseal held. */
+async function unsealHeld(
+  app: FastifyInstance,
+  request: FastifyRequest,
+  reply: FastifyReply,
+  identity: PrivyIdentity,
+  upload: Upload,
+  context: UnsealContext,
+): Promise<FastifyReply> {
   let passport: OnChainPassport | undefined;
   try {
     passport = await readPassport(context.chain, context.registry, upload.passportId);
@@ -459,15 +522,31 @@ async function open(
     // Both decodes queue behind the same gate as matching and preparing, in one slot rather than
     // two, so an unseal of a large picture neither decodes several at once nor joins the queue
     // twice. The thumbnail is only made when the fingerprint agreed, because a picture that is not
-    // the registered one is refused whatever its thumbnail would have weighed.
-    let work: { print: Fingerprint; thumbnail?: ThumbnailAttempt };
+    // the registered one is refused whatever its thumbnail would have weighed. The thumbnail that
+    // will be published is then held to the check /prepare makes: a picture registered sealed
+    // before that check, or drawn by /generate, can have a fingerprint its own thumbnail does not
+    // keep, and publishing it would leave a passport the re-check reads mismatched for good
+    // (review pass 6, V50).
+    let work: { print: Fingerprint; thumbnail?: ThumbnailAttempt; unstable?: FingerprintUnstable };
     try {
       work = await app.verifier.runPrepare(async () => {
         const print = await fingerprint(upload.bytes);
         if (!fingerprintMatches(print, passport)) {
           return { print };
         }
-        return { print, thumbnail: await unsealThumbnail(upload.bytes) };
+        const thumbnail = await unsealThumbnail(upload.bytes);
+        if (!thumbnail.ok) {
+          return { print, thumbnail };
+        }
+        try {
+          await assertStableFingerprint(print.phash, thumbnail.thumbnail);
+        } catch (error) {
+          if (error instanceof FingerprintUnstable) {
+            return { print, thumbnail, unstable: error };
+          }
+          throw error;
+        }
+        return { print, thumbnail };
       });
     } catch (error) {
       if (error instanceof Busy) {
@@ -504,6 +583,18 @@ async function open(
         reason: UNSEAL_THUMBNAIL_TOO_LARGE_REASON,
       });
     }
+    if (work.unstable !== undefined) {
+      request.log.warn(
+        { url: request.url, passportId: upload.passportId, distance: work.unstable.distance },
+        "rejected: /unseal fingerprint unstable",
+      );
+      return reply.code(422).send({
+        error: "fingerprint-unstable",
+        limit: work.unstable.limit,
+        distance: work.unstable.distance,
+        reason: FINGERPRINT_UNSTABLE_REASON,
+      });
+    }
     const thumbnail = attempt.thumbnail;
 
     const manifest = await readManifest(upload.bytes);
@@ -534,23 +625,53 @@ async function open(
     }
 
     const slug = fileSlug(titleOf(document), upload.passportId);
-    const [imagePin, thumbnailPin, manifestPin] = await Promise.allSettled([
+    // The thumbnail goes first and alone (review pass 6, V52). A private copy of these very bytes
+    // under another passport's name, kept before V12, makes Pinata answer the public pin with that
+    // private file, and clearPreV12Copy only looks under this passport's name. Pinned in parallel,
+    // the full image would already be public by then; pinned first, the unseal stops with nothing
+    // public and the day's slot handed back.
+    let thumb: Awaited<ReturnType<typeof pinFile>>;
+    try {
+      thumb = await pinFile(thumbnail, `${slug}-thumb.jpg`, "image/jpeg");
+    } catch (error) {
+      const privately = heldPrivately(error);
+      request.log.error(
+        { url: request.url, passportId: upload.passportId, reason: reasonOf(error), privately },
+        "rejected: /unseal thumbnail pin failed, nothing published",
+      );
+      if (privately) {
+        return reply.code(409).send({
+          error: "thumbnail-held-privately",
+          passportId: upload.passportId,
+          reason:
+            "nothing was published and the passport still reads sealed: the storage service already keeps this picture's thumbnail as a private file, so it cannot be made public from here. Your allowance was not used.",
+        });
+      }
+      return reply.code(502).send({
+        error: "pin-failed",
+        passportId: upload.passportId,
+        published: {},
+        failed: ["thumbnail"],
+        reason: "nothing was published and the passport still reads sealed. Send the same file again to try once more.",
+      });
+    }
+    pinned = true;
+
+    const [imagePin, manifestPin] = await Promise.allSettled([
       pinFile(upload.bytes, `${slug}.jpg`, "image/jpeg"),
-      pinFile(thumbnail, `${slug}-thumb.jpg`, "image/jpeg"),
       doc === undefined ? Promise.resolve(undefined) : pinJson(doc, `${slug}-c2pa.json`),
     ]);
-    const attempted = [imagePin, thumbnailPin, manifestPin];
-    pinned = attempted.some((one) => one.status === "fulfilled" && one.value !== undefined);
 
-    if (imagePin.status === "rejected" || thumbnailPin.status === "rejected" || manifestPin.status === "rejected") {
+    if (imagePin.status === "rejected" || manifestPin.status === "rejected") {
       // Whatever landed is public now and cannot be taken back, so the holder is told exactly
       // which pieces those are. Nothing private is touched and no record is written, and a retry
       // with the same file lands on the same content ids and finishes the job.
-      const landed: Partial<Record<Piece, ReturnType<typeof pinnedOut>>> = {};
+      const landed: Partial<Record<Piece, ReturnType<typeof pinnedOut>>> = {
+        thumbnail: pinnedOut(thumb.uri, thumb.cid),
+      };
       const failed: Piece[] = [];
       for (const [piece, outcome] of [
         ["image", imagePin],
-        ["thumbnail", thumbnailPin],
         ["manifest", manifestPin],
       ] as const) {
         if (outcome.status === "rejected") {
@@ -563,7 +684,7 @@ async function open(
         {
           url: request.url,
           passportId: upload.passportId,
-          reason: attempted
+          reason: [imagePin, manifestPin]
             .filter((one) => one.status === "rejected")
             .map((one) => reasonOf(one.reason))
             .join("; "),
@@ -577,14 +698,11 @@ async function open(
         passportId: upload.passportId,
         published: landed,
         failed,
-        reason: pinned
-          ? `these pieces are public now and the rest are not: ${Object.keys(landed).join(", ")}. The passport still reads sealed. Send the same file again to finish it: nothing is pinned twice.`
-          : "nothing was published and the passport still reads sealed. Send the same file again to try once more.",
+        reason: `these pieces are public now and the rest are not: ${Object.keys(landed).join(", ")}. The passport still reads sealed. Send the same file again to finish it: nothing is pinned twice.`,
       });
     }
 
     const image = imagePin.value;
-    const thumb = thumbnailPin.value;
     const published = {
       image: pinnedOut(image.uri, image.cid),
       thumbnail: pinnedOut(thumb.uri, thumb.cid),
@@ -621,15 +739,12 @@ async function open(
     }
 
     const pinnedAt: PinnedRecord = { cid: pinnedRecord.cid, uri: pinnedRecord.uri };
-    if (existing.state === "unavailable") {
-      // The check before the pins could not see an older record, so this one may be a second.
-      // Every other reader shows the oldest, so this server caches the oldest or nothing.
-      const oldest = await oldestRecord(upload.passportId, pinnedAt, record, request.log);
-      if (oldest !== undefined) {
-        context.known.set(upload.passportId, oldest);
-      }
-    } else {
-      context.known.set(upload.passportId, { record, pinned: pinnedAt });
+    // Whatever the check before the pins said, another server, or a listing that trailed an earlier
+    // unseal, can have pinned a record first. Every other reader shows the oldest, so this server
+    // caches the oldest or nothing (review pass 6, V55).
+    const oldest = await oldestRecord(upload.passportId, pinnedAt, record, request.log);
+    if (oldest !== undefined) {
+      context.known.set(upload.passportId, oldest);
     }
     context.misses.forget(upload.passportId);
 
@@ -637,7 +752,13 @@ async function open(
     // Every public pin above was confirmed against the bytes it carries, so the private copy is
     // deleted only now, and never a file whose content id is one of the published ones.
     const publicIds = new Set([image.cid, thumb.cid, manifestPin.value?.cid, pinnedRecord.cid].filter((cid) => cid !== undefined));
-    await forgetPrivateCopy(upload.passportId, request.log, context.copies, publicIds);
+    await forgetPrivateCopy(
+      upload.passportId,
+      request.log,
+      context.copies,
+      publicIds,
+      privateRecheckFor(document, upload.passportId) === "asked",
+    );
 
     request.log.info(
       { user: identity.userId, passportId: upload.passportId, image: image.cid, record: pinnedRecord.cid },
@@ -672,42 +793,48 @@ async function open(
  * listing is filtered on the whole name here as well as inside the Pinata client (B3), so a file
  * whose name only starts the same is never touched. A file whose content id is one the unseal has
  * just published is never touched either (V11). The listing pages at most five pages before it
- * refuses to answer, which bounds the loop. The status memory is dropped whatever happened, so the
- * next /sealed/status read goes back to Pinata. Never throws: a failure is logged with the passport
- * id and a count, never a file id, and the unseal answers exactly as it would have.
+ * refuses to answer, which bounds the loop. When every file under the name was deleted, the status
+ * memory holds gone for its TTL, because Pinata's listing trails a delete and a read that went back
+ * to it could remember "kept" for a minute (review pass 6, V51); a listing or a delete that failed
+ * drops the memory, so the next read asks. Never throws: a failure is logged with the passport id
+ * and a count, never a file id, and the unseal answers exactly as it would have.
  */
 async function forgetPrivateCopy(
   passportId: Hex,
   log: FastifyBaseLogger,
   copies: PrivateCopyStatus | undefined,
   publicIds: ReadonlySet<string>,
+  privateRecheck: boolean,
 ): Promise<void> {
   const name = privateThumbnailName(passportId);
+  let listed: PrivateListing[];
   try {
-    let files: PrivateListing[];
-    try {
-      files = (await findPrivateByName(name)).filter((file) => file.name === name && !publicIds.has(file.cid));
-    } catch (error) {
-      log.error({ passportId, reason: reasonOf(error) }, "unseal: could not look for a private copy, it stays");
-      return;
-    }
+    listed = (await findPrivateByName(name)).filter((file) => file.name === name);
+  } catch (error) {
+    log.error({ passportId, reason: reasonOf(error) }, "unseal: could not look for a private copy, it stays");
+    copies?.drop(passportId);
+    return;
+  }
+  const files = listed.filter((file) => !publicIds.has(file.cid));
 
-    let deleted = 0;
-    let failed = 0;
-    for (const file of files) {
-      try {
-        await deletePrivateFile(file.id);
-        deleted += 1;
-      } catch {
-        failed += 1;
-      }
+  let deleted = 0;
+  let failed = 0;
+  for (const file of files) {
+    try {
+      await deletePrivateFile(file.id);
+      deleted += 1;
+    } catch {
+      failed += 1;
     }
-    if (failed > 0) {
-      log.error({ passportId, deleted, failed }, "unseal: the private copy was only partly deleted");
-    } else if (deleted > 0) {
-      log.info({ passportId, deleted }, "unseal: private copy deleted, the picture is public");
-    }
-  } finally {
+  }
+  if (failed > 0) {
+    log.error({ passportId, deleted, failed }, "unseal: the private copy was only partly deleted");
+  } else if (deleted > 0) {
+    log.info({ passportId, deleted }, "unseal: private copy deleted, the picture is public");
+  }
+  if (failed === 0 && files.length === listed.length) {
+    copies?.gone(passportId, privateRecheck);
+  } else {
     copies?.drop(passportId);
   }
 }
@@ -761,8 +888,8 @@ async function clearPreV12Copy(
 }
 
 /**
- * The record GET /unseal may cache after a pin whose pre-check could not look: the oldest record
- * under this passport's name, as every other reader picks it. Undefined when the lookup still
+ * The record GET /unseal and a resent POST /unseal may answer from after a record pin: the oldest
+ * record under this passport's name, as every other reader picks it. Undefined when the lookup still
  * cannot tell, including a listing that does not show the record just pinned yet, or when the
  * oldest cannot be read back; then nothing is cached and GET asks Pinata itself.
  */
@@ -885,4 +1012,14 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Whether a public pin failed because Pinata answered with a file it keeps on its private network,
+ * which is what it does for bytes it already holds privately. PinNotConfirmed carries only its
+ * message, so this reads the network pinFile writes into it; a message in any other form reads as
+ * a plain pin failure, which also publishes nothing.
+ */
+function heldPrivately(error: unknown): boolean {
+  return error instanceof PinNotConfirmed && / on network private[ ,]/.test(error.message);
 }

@@ -113,6 +113,39 @@ describe("the inherited dispute field on the wire", () => {
     expect(answer.kind === "miss" ? null : answer.inheritedDispute).toBeUndefined();
   });
 
+  // The service now says when it read each fact (verifier review pass 6, V46). The card shows nothing new.
+  it("parses facts that carry readAt, and draws the same card as facts without it", () => {
+    const readAt = 1_790_000_000;
+    const upheld = { source: "chain", status: "upheld", ancestor: ANCESTOR };
+    const stamped = wire({ ...upheld, readAt });
+    expect(stamped.success).toBe(true);
+    const best = stamped.success ? stamped.data.result.best : null;
+    expect(best?.inheritedDispute).toEqual(upheld);
+
+    const withTimes = verifyResponseSchema.safeParse({
+      result: {
+        exact: ID,
+        best: {
+          id: ID,
+          phashDistance: 0,
+          blockhashDistance: 0,
+          variant: "identity",
+          score: 1,
+          consent: { source: "chain", stated: false, readAt },
+          dispute: { source: "chain", status: "none", readAt },
+          inheritedDispute: { ...upheld, readAt },
+          picture: { state: "public", readAt },
+        },
+        matches: [],
+        confidence: 1,
+        queried,
+      },
+      manifest: { present: true },
+    });
+    expect(withTimes.success).toBe(true);
+    expect(card(answerWith({ ...upheld, readAt }))).toBe(card(answerWith(upheld)));
+  });
+
   it("drops an ancestor that is not a 32 byte id instead of failing the whole answer", () => {
     for (const ancestor of ["0x1234", "javascript:alert(1)", `0x${"zz".repeat(32)}`, `${"a1".repeat(32)}`, 7]) {
       const parsed = wire({ source: "chain", status: "upheld", ancestor });

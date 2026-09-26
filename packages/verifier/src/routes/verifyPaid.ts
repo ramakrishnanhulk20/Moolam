@@ -56,23 +56,56 @@ const TRANSFER_EVENTS_ABI = parseAbi([
   "event Transfer(address indexed from, address indexed to, uint256 value)",
 ]);
 
+/** The one event the log search asks for, with the payer and the nonce as its two indexed topics. */
+const AUTHORIZATION_USED_EVENT = TRANSFER_EVENTS_ABI[0];
+
 const TRANSACTION_HASH = /^0x[0-9a-fA-F]{64}$/;
 
 /**
- * Whether this request's payment landed. True only when a transaction the facilitator named for
- * this payment is mined, succeeded, and carries this payer's authorisation used for this nonce and
- * the transfer to the payee. False when no transaction proves it and the chain says the
- * authorisation was never used. Undefined when nobody can tell: a named transaction still pending,
- * a failed read, or an authorisation used by something this request did not send (a cancellation,
- * or another request spending the same authorisation).
+ * How many blocks one eth_getLogs call covers. Monad's public RPC refuses a wide range, and 100 is
+ * the window packages/agents already walks the registry's logs in.
+ */
+export const LOG_CHUNK_BLOCKS = 100n;
+
+/**
+ * How far before the block read when the payment was held the log search starts. The block number
+ * comes from whichever RPC endpoint answered, and a second endpoint can trail the first by a block
+ * or two, so a transfer mined right at the hold is still inside the range.
+ */
+export const HOLD_LOOKBACK_BLOCKS = 5n;
+
+/**
+ * The most chunks one check reads: 5,000 blocks, far past any x402 authorisation's lifetime on
+ * Monad. A search that has not reached the block at validBefore by then answers "cannot tell".
+ */
+export const LOG_SEARCH_MAX_CHUNKS = 50;
+
+/**
+ * Whether this request's payment landed, proven from the pay asset itself (review pass 6, V43).
+ *
+ * True only when the asset says the authorisation was used, and a transaction that used it for this
+ * payer and nonce succeeded and moved at least the price from the payer to the payee. False when the
+ * asset says the authorisation was never used, or when every block up to the one at validBefore was
+ * searched and no such transaction is there (a cancellation, or a use before this request). Undefined
+ * when nobody can tell: a failed or unfinished read, or a transfer that may still land.
+ *
+ * `heldAt` is the block read when this payment was first settled, where the search starts.
  */
 export type ChargedCheck = (
   payment: PaymentPayload,
   requirements: PaymentRequirements,
   transactions: readonly string[],
+  heldAt?: bigint,
 ) => Promise<boolean | undefined>;
 
-/** The two reads the live check makes. A viem public client has both. */
+/** One AuthorizationUsed log as the search reads it, every field checked before it is believed. */
+interface UsedLog {
+  address?: unknown;
+  transactionHash?: unknown;
+  args?: { authorizer?: unknown; nonce?: unknown };
+}
+
+/** The reads the live check makes. A viem public client has all five. */
 export interface ChargeReader {
   readContract: (args: {
     address: Hex;
@@ -81,6 +114,15 @@ export interface ChargeReader {
     args: readonly [Hex, Hex];
   }) => Promise<unknown>;
   getTransactionReceipt: (args: { hash: Hex }) => Promise<{ status: string; logs: readonly unknown[] }>;
+  getBlockNumber: () => Promise<bigint>;
+  getBlock: (args: { blockNumber: bigint }) => Promise<{ timestamp: bigint }>;
+  getLogs: (args: {
+    address: Hex;
+    event: typeof AUTHORIZATION_USED_EVENT;
+    args: { authorizer: Hex; nonce: Hex };
+    fromBlock: bigint;
+    toBlock: bigint;
+  }) => Promise<readonly UsedLog[]>;
 }
 
 /** The request fields every log line here carries. */
@@ -154,9 +196,13 @@ function transactionOf(attempted: Attempt): string | undefined {
 const pause = (ms: number): Promise<void> =>
   ms <= 0 ? Promise.resolve() : new Promise((resolve) => setTimeout(resolve, ms));
 
-/** A payment as it is compared: the nonce it is kept under, and every signed field with the signature. */
+/**
+ * A payment as it is compared: the payer and nonce it is kept under, and every signed field with the
+ * signature. EIP-3009 nonces are unique per payer, not across payers, so the nonce alone would let a
+ * second payer's entry replace the first one's (review pass 6, V48).
+ */
 interface PaymentIdentity {
-  nonce: string;
+  key: string;
   identity: string;
 }
 
@@ -183,10 +229,11 @@ function identityOf(payment: unknown): PaymentIdentity | undefined {
     return undefined;
   }
   const nonce = (authorization?.nonce as string).toLowerCase();
-  if (!NONCE.test(nonce)) {
+  const from = (authorization?.from as string).toLowerCase();
+  if (!NONCE.test(nonce) || !isAddress(from)) {
     return undefined;
   }
-  return { nonce, identity: (fields as string[]).map((field) => field.toLowerCase()).join("|") };
+  return { key: `${from}:${nonce}`, identity: (fields as string[]).map((field) => field.toLowerCase()).join("|") };
 }
 
 /** The payment this request offers, read from its header without trusting it. */
@@ -206,80 +253,187 @@ function sha256Hex(bytes: Buffer): string {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
-/**
- * The live check, proven by the transfer itself (review pass 5, answers #4).
- *
- * Each transaction the facilitator named for this payment is read back. One that is mined,
- * succeeded, and carries, from the asset contract, AuthorizationUsed for this payer and nonce and a
- * Transfer of the signed value from the payer to the payee, is this payment landing: true. A named
- * transaction with no receipt yet, or a read that failed, means the transfer has not resolved:
- * undefined, never false.
- *
- * With no transaction to prove it, USDC's authorizationState can only say no. False there is the
- * authorisation never used, so nothing was charged. True is not taken as payment, because it is
- * equally true after the payer cancelled the authorisation and after another request spent it.
- *
- * Anything malformed in the payment or the terms is undefined.
- */
-export function chainCharged(chain: ChargeReader = readClient() as unknown as ChargeReader): ChargedCheck {
-  return async (payment, requirements, transactions) => {
-    const authorization = (
-      payment.payload as { authorization?: { from?: unknown; nonce?: unknown; value?: unknown } } | undefined
-    )?.authorization;
-    const from = authorization?.from;
-    const nonce = authorization?.nonce;
-    const value = authorization?.value;
-    const asset = requirements.asset;
-    const payTo = requirements.payTo;
-    if (typeof from !== "string" || !isAddress(from) || typeof nonce !== "string" || !NONCE.test(nonce)) {
-      return undefined;
-    }
-    if (typeof asset !== "string" || !isAddress(asset) || typeof payTo !== "string" || !isAddress(payTo)) {
-      return undefined;
-    }
-    if (typeof value !== "string" || !/^[0-9]+$/.test(value)) {
-      return undefined;
-    }
+/** The fields of a payment and its terms the chain check compares against, each already checked. */
+interface PaymentTerms {
+  asset: Hex;
+  from: Hex;
+  payTo: Hex;
+  nonce: Hex;
+  price: bigint;
+  /** Unix seconds. Undefined when the payment does not carry it, which leaves only named transactions. */
+  validBefore: bigint | undefined;
+}
 
-    let pending = false;
-    for (const hash of new Set(transactions)) {
-      if (!TRANSACTION_HASH.test(hash)) {
-        continue;
-      }
-      let receipt: { status: string; logs: readonly unknown[] };
-      try {
-        receipt = await chain.getTransactionReceipt({ hash: hash as Hex });
-      } catch {
-        pending = true;
-        continue;
-      }
-      if (receipt.status === "success" && carriesPayment(receipt.logs, { asset, from, payTo, nonce, value: BigInt(value) })) {
-        return true;
-      }
-    }
-    if (pending) {
-      return undefined;
-    }
+const WHOLE_NUMBER = /^[0-9]+$/;
 
-    try {
-      const used = await chain.readContract({
-        address: asset,
-        abi: AUTHORIZATION_STATE_ABI,
-        functionName: "authorizationState",
-        args: [from, nonce as Hex],
-      });
-      return used === false ? false : undefined;
-    } catch {
-      return undefined;
-    }
+/** The payment and its terms read as the chain check needs them, or undefined for anything malformed. */
+function termsOf(payment: PaymentPayload, requirements: PaymentRequirements): PaymentTerms | undefined {
+  const authorization = (
+    payment.payload as { authorization?: { from?: unknown; nonce?: unknown; validBefore?: unknown } } | undefined
+  )?.authorization;
+  const from = authorization?.from;
+  const nonce = authorization?.nonce;
+  const validBefore = authorization?.validBefore;
+  const asset = requirements.asset;
+  const payTo = requirements.payTo;
+  const price = (requirements as { amount?: unknown }).amount;
+  if (typeof from !== "string" || !isAddress(from) || typeof nonce !== "string" || !NONCE.test(nonce)) {
+    return undefined;
+  }
+  if (typeof asset !== "string" || !isAddress(asset) || typeof payTo !== "string" || !isAddress(payTo)) {
+    return undefined;
+  }
+  if (typeof price !== "string" || !WHOLE_NUMBER.test(price)) {
+    return undefined;
+  }
+  return {
+    asset,
+    from,
+    payTo,
+    nonce: nonce.toLowerCase() as Hex,
+    price: BigInt(price),
+    validBefore: typeof validBefore === "string" && WHOLE_NUMBER.test(validBefore) ? BigInt(validBefore) : undefined,
   };
 }
 
-/** Whether a receipt's logs hold this payment: both events, emitted by the asset contract itself. */
-function carriesPayment(
-  logs: readonly unknown[],
-  expected: { asset: Hex; from: Hex; payTo: Hex; nonce: string; value: bigint },
-): boolean {
+/**
+ * The live check, proven from the pay asset itself (review pass 6, V43).
+ *
+ * authorizationState is read first. False is the authorisation never used, so nothing was charged.
+ * True is not taken as payment on its own, because it is equally true after the payer cancelled
+ * the authorisation and after another request spent it, so the transaction that used it is found
+ * and read: first any the facilitator named, then the asset's own AuthorizationUsed log for this
+ * payer and this nonce, searched from a few blocks before the payment was held, in chunks the RPC
+ * accepts, up to the block at the authorisation's validBefore, since the transfer cannot land after
+ * it. That transaction counts only when it succeeded and moved at least the price from the payer to
+ * the payee, both events emitted by the asset contract.
+ *
+ * Anything malformed in the payment or the terms, and any read that fails, is undefined.
+ */
+export function chainCharged(chain: ChargeReader = readClient() as unknown as ChargeReader): ChargedCheck {
+  return async (payment, requirements, transactions, heldAt) => {
+    const terms = termsOf(payment, requirements);
+    if (terms === undefined) {
+      return undefined;
+    }
+
+    let used: unknown;
+    try {
+      used = await chain.readContract({
+        address: terms.asset,
+        abi: AUTHORIZATION_STATE_ABI,
+        functionName: "authorizationState",
+        args: [terms.from, terms.nonce],
+      });
+    } catch {
+      return undefined;
+    }
+    if (used === false) {
+      return false;
+    }
+    if (used !== true) {
+      return undefined;
+    }
+
+    for (const hash of new Set(transactions)) {
+      if (TRANSACTION_HASH.test(hash) && (await landed(chain, hash as Hex, terms)) === true) {
+        return true;
+      }
+    }
+    return await searchLogs(chain, terms, heldAt);
+  };
+}
+
+/**
+ * Walks the asset's AuthorizationUsed logs for this payer and nonce, forward from the hold, and
+ * reads each transaction one names. Bounded by LOG_SEARCH_MAX_CHUNKS calls of LOG_CHUNK_BLOCKS.
+ */
+async function searchLogs(chain: ChargeReader, terms: PaymentTerms, heldAt: bigint | undefined): Promise<boolean | undefined> {
+  if (heldAt === undefined || terms.validBefore === undefined) {
+    return undefined;
+  }
+  let head: bigint;
+  try {
+    head = await chain.getBlockNumber();
+  } catch {
+    return undefined;
+  }
+
+  let unresolved = false;
+  let from = heldAt > HOLD_LOOKBACK_BLOCKS ? heldAt - HOLD_LOOKBACK_BLOCKS : 0n;
+  for (let chunk = 0; chunk < LOG_SEARCH_MAX_CHUNKS && from <= head; chunk += 1) {
+    const to = from + LOG_CHUNK_BLOCKS - 1n < head ? from + LOG_CHUNK_BLOCKS - 1n : head;
+    let logs: readonly UsedLog[];
+    try {
+      logs = await chain.getLogs({
+        address: terms.asset,
+        event: AUTHORIZATION_USED_EVENT,
+        args: { authorizer: terms.from, nonce: terms.nonce },
+        fromBlock: from,
+        toBlock: to,
+      });
+    } catch {
+      return undefined;
+    }
+    for (const log of logs) {
+      // The RPC's answer is read like an input: the asset, the payer, the nonce and the hash are
+      // each checked here rather than trusted to the topic filter.
+      const hash = log.transactionHash;
+      if (
+        typeof log.address !== "string" ||
+        !isAddress(log.address) ||
+        !isAddressEqual(log.address, terms.asset) ||
+        typeof log.args?.authorizer !== "string" ||
+        !isAddress(log.args.authorizer) ||
+        !isAddressEqual(log.args.authorizer, terms.from) ||
+        typeof log.args.nonce !== "string" ||
+        log.args.nonce.toLowerCase() !== terms.nonce ||
+        typeof hash !== "string" ||
+        !TRANSACTION_HASH.test(hash)
+      ) {
+        continue;
+      }
+      const proved = await landed(chain, hash as Hex, terms);
+      if (proved === true) {
+        return true;
+      }
+      if (proved === undefined) {
+        unresolved = true;
+      }
+    }
+
+    // EIP-3009 refuses a transfer in any block whose time is at or past validBefore, so once this
+    // chunk's last block is there, no later block can hold it.
+    let end: { timestamp: bigint };
+    try {
+      end = await chain.getBlock({ blockNumber: to });
+    } catch {
+      return undefined;
+    }
+    if (end.timestamp >= terms.validBefore) {
+      return unresolved ? undefined : false;
+    }
+    from = to + 1n;
+  }
+  return undefined;
+}
+
+/** Whether one transaction is this payment landing: true, false, or undefined when its receipt cannot be read. */
+async function landed(chain: ChargeReader, hash: Hex, terms: PaymentTerms): Promise<boolean | undefined> {
+  let receipt: { status: string; logs: readonly unknown[] };
+  try {
+    receipt = await chain.getTransactionReceipt({ hash });
+  } catch {
+    return undefined;
+  }
+  return receipt.status === "success" && carriesPayment(receipt.logs, terms);
+}
+
+/**
+ * Whether a receipt's logs hold this payment: AuthorizationUsed for this payer and nonce, and a
+ * Transfer of at least the price from the payer to the payee, both emitted by the asset contract.
+ */
+function carriesPayment(logs: readonly unknown[], expected: PaymentTerms): boolean {
   let events;
   try {
     events = parseEventLogs({
@@ -295,14 +449,14 @@ function carriesPayment(
     (event) =>
       event.eventName === "AuthorizationUsed" &&
       isAddressEqual(event.args.authorizer, expected.from) &&
-      event.args.nonce.toLowerCase() === expected.nonce.toLowerCase(),
+      event.args.nonce.toLowerCase() === expected.nonce,
   );
   const moved = events.some(
     (event) =>
       event.eventName === "Transfer" &&
       isAddressEqual(event.args.from, expected.from) &&
       isAddressEqual(event.args.to, expected.payTo) &&
-      event.args.value === expected.value,
+      event.args.value >= expected.price,
   );
   return used && moved;
 }
@@ -316,7 +470,11 @@ function carriesPayment(
  *   way, so the payer gets the answer. A second call that throws, or that comes
  *   back a different failure, cannot recall that transfer, so it is logged and
  *   the first answer stands.
- * - the facilitator names a reason: "refused", and nothing is served.
+ * - the first ask names a reason and no transaction: the chain is asked, a spent
+ *   payment is "broadcast", and anything else is "unknown", never "refused". The
+ *   reference facilitator answers that way whenever its transferWithAuthorization
+ *   call throws, including an RPC that took the transfer and then timed out, so the
+ *   answer is held against the payment rather than thrown away (review pass 6, V43).
  * - nobody can say (a thrown call, a reason in words): the chain is asked whether
  *   the payment was spent, and if it cannot say, the facilitator is asked once
  *   more after a pause. A spent payment is "broadcast"; a refusal on that second
@@ -325,10 +483,9 @@ function carriesPayment(
  *   never "refused", because the payer may have been charged.
  *
  * Every transaction the facilitator names on the way is collected and handed to the chain check,
- * which proves a payment only by one of them (review pass 5, answers #4). `held` is a payment whose
- * answer this service already holds as unknown, sent again with the same file: its first transfer
- * may land between the facilitator's verify and this settle, so a refusal on the first ask is final
- * only when the chain still says the payment was not spent (answers #6).
+ * which reads those first and then the asset's own logs. `held` is a payment whose answer this
+ * service already holds as unknown, sent again with the same file: the transactions named then are
+ * carried into this attempt's proof.
  */
 async function settleSequence(
   settle: () => Promise<ProcessSettleResultResponse>,
@@ -353,24 +510,13 @@ async function settleSequence(
     return { state: "settled", headers: first.headers };
   }
   if (first.kind === "refused") {
-    if (held !== undefined) {
-      const spent = await charged(transactions);
-      if (spent === true) {
-        log.warn({ ...where, reason: first.result.errorReason }, "the held payment landed before this settle: serving its answer");
-        return { state: "broadcast", headers: {} };
-      }
-      if (spent === undefined) {
-        log.error({ ...where, reason: first.result.errorReason }, "settlement outcome unknown: the held answer stays held");
-        return { state: "unknown", reason: first.result.errorReason ?? "refused", transactions };
-      }
+    const reason = first.result.errorReason ?? "refused";
+    if ((await charged(transactions)) === true) {
+      log.warn({ ...where, reason }, "the payment landed although the facilitator refused it: serving its answer");
+      return { state: "broadcast", headers: {} };
     }
-    log.error({ ...where, reason: first.result.errorReason }, "payment did not settle");
-    return {
-      state: "refused",
-      status: first.result.response.status,
-      headers: first.result.response.headers,
-      body: first.result.response.body ?? {},
-    };
+    log.error({ ...where, reason, held: held !== undefined }, "settlement refused with no transaction: the answer is held against this payment");
+    return { state: "unknown", reason, transactions };
   }
 
   if (first.kind === "broadcast") {
@@ -443,12 +589,15 @@ async function settleSequence(
  * once more, then answered with the verification and a pending receipt. A
  * settlement whose outcome nobody can tell answers 502 settlement-unknown and is
  * never cancelled; the answer is kept against the payment and handed over when
- * the same payment and file come back and the chain shows the payment spent.
+ * the same payment and file come back and the pay asset itself shows the payment
+ * spent. That check runs before the facilitator is asked about the repeat, because
+ * the facilitator refuses a spent nonce (review pass 6, V43).
  *
  * A payment that already bought an answer is given that same answer back rather
  * than being settled a second time, but only to a request carrying that very
- * payment, every signed field and the signature, and the same file (V7). The
- * nonce alone is public on chain once the transfer settles, so it opens nothing.
+ * payment, every signed field and the signature, and the same file (V7). It is
+ * kept under the payer and the nonce together (V48); both are public on chain
+ * once the transfer settles, so they open nothing on their own.
  *
  * The route is mounted only when X402_ENABLED is true. Otherwise the path does
  * not exist and the service answers 404.
@@ -461,6 +610,8 @@ export async function verifyPaidRoutes(
     ledger?: PaymentLedger;
     /** Replaces the chain read that says whether a payment was spent. Under a test runner the default answers undefined. */
     charged?: ChargedCheck;
+    /** Replaces the read of the chain's newest block, where a proof search starts. Under a test runner the default answers undefined. */
+    head?: () => Promise<bigint | undefined>;
   },
 ): Promise<void> {
   assertPaidRoute(app);
@@ -469,6 +620,7 @@ export async function verifyPaidRoutes(
   const retryDelayMs = options.settlementRetryDelayMs ?? PENDING_SETTLEMENT_RETRY_MS;
   const ledger = options.ledger ?? paymentLedger();
   const charged: ChargedCheck = options.charged ?? (env.NODE_ENV === "test" ? async () => undefined : chainCharged());
+  const head = options.head ?? (env.NODE_ENV === "test" ? async () => undefined : liveHead());
   let ready: Promise<void> | undefined;
 
   app.post(PAID_VERIFY_PATH, async (request: FastifyRequest, reply: FastifyReply) => {
@@ -479,9 +631,9 @@ export async function verifyPaidRoutes(
     // Read only for a repeat of a payment this service remembers, and handed on below so the
     // upload is never read twice.
     let bytes: Buffer | undefined;
-    let held: { transactions: readonly string[] } | undefined;
+    let held: { transactions: readonly string[]; since?: bigint } | undefined;
     if (offered !== undefined) {
-      const seen = ledger.get(offered.nonce);
+      const seen = ledger.get(offered.key);
       if (seen !== undefined && seen.payment === offered.identity) {
         try {
           bytes = await readUpload(request);
@@ -493,7 +645,7 @@ export async function verifyPaidRoutes(
         if (replay.kind === "serve") {
           request.log.info({ ...where, state: replay.entry.state }, "replayed: this payment already bought an answer");
           if (replay.entry !== seen) {
-            ledger.remember(offered.nonce, replay.entry);
+            ledger.remember(offered.key, replay.entry);
           }
           return reply.headers(replay.entry.headers).send(replay.entry.payload);
         }
@@ -502,7 +654,8 @@ export async function verifyPaidRoutes(
         // stays held until a new settle replaces it or its ten minutes run out (review pass 5,
         // answers #6). Another file is a different answer and settles on its own.
         if (replay.kind === "not-spent" || replay.kind === "cannot-tell") {
-          held = { transactions: proofOf(seen)?.transactions ?? [] };
+          const proof = proofOf(seen);
+          held = { transactions: proof?.transactions ?? [], since: proof?.since };
         }
       }
     }
@@ -565,6 +718,9 @@ export async function verifyPaidRoutes(
       return reply.code(status).send({ error: reason });
     }
 
+    // Read before the first settle, so no transfer this settle starts can sit below it. A held
+    // payment keeps the block read when it was first settled, since its transfer may be older.
+    const since = held?.since ?? (await head());
     const settlement = await settleSequence(
       async () =>
         payments.processSettlement(
@@ -573,7 +729,7 @@ export async function verifyPaidRoutes(
           verified.declaredExtensions,
           { request: context, responseBody: Buffer.from(JSON.stringify(payload)) },
         ),
-      async (transactions) => await charged(verified.paymentPayload, verified.paymentRequirements, transactions),
+      async (transactions) => await charged(verified.paymentPayload, verified.paymentRequirements, transactions, since),
       retryDelayMs,
       request.log,
       where,
@@ -590,7 +746,7 @@ export async function verifyPaidRoutes(
 
     if (settlement.state === "unknown") {
       if (paid !== undefined) {
-        ledger.remember(paid.nonce, {
+        ledger.remember(paid.key, {
           state: "unknown",
           payload,
           headers: {},
@@ -600,6 +756,7 @@ export async function verifyPaidRoutes(
             payment: verified.paymentPayload,
             requirements: verified.paymentRequirements,
             transactions: settlement.transactions,
+            since,
           } satisfies HeldProof,
         });
       }
@@ -611,7 +768,7 @@ export async function verifyPaidRoutes(
     }
 
     if (paid !== undefined) {
-      ledger.remember(paid.nonce, {
+      ledger.remember(paid.key, {
         state: settlement.state === "settled" ? "settled" : "pending",
         payload,
         headers: settlement.headers,
@@ -645,8 +802,10 @@ type Replay =
 interface HeldProof {
   payment: PaymentPayload;
   requirements: PaymentRequirements;
-  /** Every transaction the facilitator named for this payment, which is what proves it landed. */
+  /** Every transaction the facilitator named for this payment, read before the asset's logs. */
   transactions: string[];
+  /** The newest block when the payment was first settled, where the log search starts. */
+  since: bigint | undefined;
 }
 
 function proofOf(entry: LedgerEntry): HeldProof | undefined {
@@ -664,9 +823,21 @@ async function replayFor(seen: LedgerEntry, bytes: Buffer, charged: ChargedCheck
   if (proof === undefined) {
     return { kind: "cannot-tell" };
   }
-  const spent = await charged(proof.payment, proof.requirements, proof.transactions ?? []);
+  const spent = await charged(proof.payment, proof.requirements, proof.transactions ?? [], proof.since);
   if (spent === true) {
     return { kind: "serve", entry: { ...seen, state: "settled" } };
   }
   return spent === false ? { kind: "not-spent" } : { kind: "cannot-tell" };
+}
+
+/** The chain's newest block through the service's own client, or undefined when the read fails. */
+function liveHead(): () => Promise<bigint | undefined> {
+  const chain = readClient();
+  return async () => {
+    try {
+      return await chain.getBlockNumber();
+    } catch {
+      return undefined;
+    }
+  };
 }

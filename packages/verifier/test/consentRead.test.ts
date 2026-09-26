@@ -1,6 +1,7 @@
 // Covers the consent read behind /verify and /verify/paid: the enum mapping, the three answer
-// shapes, the constraint text checked on the way out, the sixty second memory and its cap, the
-// five second timeout, and both routes still answering 200 with a full match when the read fails.
+// shapes, the constraint text checked on the way out, the ten second memory, each answer saying when
+// it was read (review pass 6, V46), and its cap, the five second timeout, and both routes still
+// answering 200 with a full match when the read fails.
 // The chain is a fake transport that answers the eth_call viem makes, so the encoding and the
 // decoding are real and the network is not.
 // Does NOT cover the deployed contract's own rules, which are the contract's tests, and does not
@@ -29,6 +30,8 @@ import { makeImage, multipartBody, recordFor } from "./helpers.js";
 const CONSENT_ADDRESS = "0x1151E69a82947920546e779c4C8c785b2a3C1277" as Hex;
 const PASSPORT = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex;
 const HOLDER = "0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7" as Hex;
+/** Every answer read from the chain says when, in unix seconds (review pass 6, V46). */
+const READ_AT = expect.any(Number) as unknown as number;
 
 interface Entry {
   at: bigint;
@@ -118,13 +121,14 @@ describe("consent reader", () => {
       constraintInfo: "ask hello@moolam.app",
       at: 1_788_880_000,
       writer: HOLDER,
+      readAt: READ_AT,
     });
   });
 
   it("answers stated false for a passport whose holder has never spoken", async () => {
     const { read } = readerFor({});
 
-    expect(await read.answerFor(PASSPORT)).toEqual({ source: "chain", stated: false });
+    expect(await read.answerFor(PASSPORT)).toEqual({ source: "chain", stated: false, readAt: READ_AT });
   });
 
   it("treats a value the enum has no room for as a failed read rather than guessing at it", async () => {
@@ -171,7 +175,7 @@ describe("consent reader", () => {
     }
   });
 
-  it("serves the next minute from memory and asks the chain again once it is up", async () => {
+  it("serves from memory until its time is up, then asks the chain again", async () => {
     vi.useFakeTimers();
     try {
       const { read, asked } = readerFor({ [PASSPORT]: entry([2, 2, 2, 2]) });
@@ -208,10 +212,32 @@ describe("consent reader", () => {
     expect(asked).toEqual([ids[0], ids[1], ids[2], ids[0]]);
   });
 
-  it("holds two thousand passports for sixty seconds by default", () => {
+  it("holds two thousand passports for ten seconds at most by default", () => {
     expect(CONSENT_CACHE_MAX).toBe(2_000);
-    expect(CONSENT_TTL_MS).toBe(60_000);
+    expect(CONSENT_TTL_MS).toBeLessThanOrEqual(10_000);
     expect(CONSENT_READ_TIMEOUT_MS).toBe(5_000);
+  });
+
+  // Review pass 6, answers #4 (V46): a new holder, or the same one through a second wallet, can
+  // restate within seconds, so a statement kept for a minute went out as the chain's word.
+  it("reads a changed statement eleven seconds later, and says when each was read", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const stored: Record<string, Entry> = { [PASSPORT]: entry([1, 1, 1, 1]) };
+      const { read } = readerFor(stored);
+      const start = Date.now();
+
+      expect(await read.answerFor(PASSPORT)).toMatchObject({ aiTraining: "allowed", readAt: Math.floor(start / 1000) });
+      stored[PASSPORT] = entry([2, 2, 2, 2]);
+      vi.setSystemTime(start + 11_000);
+
+      expect(await read.answerFor(PASSPORT)).toMatchObject({
+        aiTraining: "notAllowed",
+        readAt: Math.floor((start + 11_000) / 1000),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // Through withPassportFacts, the one walker both verify routes call. The thin withConsent that
@@ -274,6 +300,7 @@ describe("consent on the verify routes", () => {
         constraintInfo: "licence at moolam.app/terms",
         at: 1_788_880_000,
         writer: HOLDER,
+        readAt: READ_AT,
       });
       // The exact match and the best match are the same passport, so it is read once.
       expect(asked).toHaveLength(1);

@@ -13,8 +13,11 @@
 // (V15). The chain read is a stub here. An answer held that way is never let go on a "not spent"
 // read, which a first transfer still pending also gives, and a retry whose first settle is refused
 // serves it once the chain shows the first transfer (pass 4, V21; pass 5, answers #6). The chain
-// check proves a payment only by a transaction the facilitator named for it, read against fake
-// receipts, never by authorizationState alone (pass 5, answers #4).
+// check never takes authorizationState alone as payment (pass 5, answers #4): it proves a payment
+// from the pay asset, the transaction the facilitator named or else the asset's own
+// AuthorizationUsed log for this payer and nonce, then that transaction's receipt, read against a
+// fake RPC; a first settle refused with no transaction is held, and the ledger is keyed by the payer
+// and the nonce together (pass 6, V43 and V48).
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -104,7 +107,11 @@ function paymentsThatSettleWith(settle: unknown, cancel: unknown): x402HTTPResou
 }
 
 /** A payment header as a client sends it: one signed EIP-3009 authorisation. */
-function paymentHeaderFor(nonce: string, signature = `0x${"5a".repeat(65)}`): string {
+function paymentHeaderFor(
+  nonce: string,
+  signature = `0x${"5a".repeat(65)}`,
+  from = "0x3333333333333333333333333333333333333333",
+): string {
   return Buffer.from(
     JSON.stringify({
       x402Version: 2,
@@ -112,7 +119,7 @@ function paymentHeaderFor(nonce: string, signature = `0x${"5a".repeat(65)}`): st
       payload: {
         signature,
         authorization: {
-          from: "0x3333333333333333333333333333333333333333",
+          from,
           to: PAY_TO,
           value: "50000",
           validAfter: "0",
@@ -499,7 +506,9 @@ describe("a settlement whose outcome is unknown (V15)", () => {
     }
   });
 
-  it("refuses at once, without asking again, when the facilitator names a reason", async () => {
+  // Pass 6, V43: a reason code with no transaction is also what a facilitator answers when its
+  // RPC accepted the transfer and then timed out, so a first refusal is held, never final.
+  it("holds the answer as unknown, without asking again, when the first settle names a reason", async () => {
     const refused = {
       success: false,
       errorReason: "insufficient_funds",
@@ -514,7 +523,8 @@ describe("a settlement whose outcome is unknown (V15)", () => {
 
     try {
       const response = await send(paymentHeaderFor(`0x${"e5".repeat(32)}`));
-      expect(response.statusCode).toBe(402);
+      expect(response.statusCode).toBe(502);
+      expect(response.json().error).toBe("settlement-unknown");
       expect(response.body).not.toContain(record.id);
       expect(settle).toHaveBeenCalledTimes(1);
       expect(cancel).not.toHaveBeenCalled();
@@ -690,6 +700,9 @@ describe("proving a payment by its transfer", () => {
   function chainWith(options: { state: boolean; receipt?: { status: string; logs: unknown[] } | "pending" }) {
     return {
       readContract: vi.fn(async () => options.state),
+      getBlockNumber: vi.fn(async () => 1_000n),
+      getBlock: vi.fn(async () => ({ timestamp: 0n })),
+      getLogs: vi.fn(async () => []),
       getTransactionReceipt: vi.fn(async (): Promise<{ status: string; logs: unknown[] }> => {
         if (options.receipt === undefined || options.receipt === "pending") {
           throw new Error("Transaction receipt with hash could not be found");
@@ -749,6 +762,287 @@ describe("proving a payment by its transfer", () => {
 
       expect(response.statusCode).toBe(502);
       expect(charged.mock.calls.at(-1)?.[2]).toEqual([HASH]);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+// Review pass 6, answers #1 (V43): a facilitator that timed out names no transaction, so a held or
+// refused payment is proven from the pay asset itself: authorizationState, then the
+// AuthorizationUsed log for this payer and nonce, then that transaction's receipt.
+describe("proving a payment from the pay asset (pass 6, V43)", () => {
+  const USDC = "0x754704Bc059F8C67012fEd69BC8A327a5aafb603" as Hex;
+  const FROM = "0x3333333333333333333333333333333333333333" as Hex;
+  const OTHER = "0x4444444444444444444444444444444444444444" as Hex;
+  const NONCE = `0x${"9b".repeat(32)}` as Hex;
+  const HASH = `0x${"7f".repeat(32)}` as Hex;
+  /** Block n was mined at BASE + n seconds, so a time converts to a block by subtraction. */
+  const BASE = 1_790_000_000n;
+  const HELD_AT = 1_000n;
+  const requirements = { asset: USDC, payTo: PAY_TO, amount: "50000" } as unknown as PaymentRequirements;
+
+  function paymentOf(validBefore: bigint, from: Hex = FROM): PaymentPayload {
+    return {
+      payload: { authorization: { from, to: PAY_TO, value: "50000", validAfter: "0", validBefore: String(validBefore), nonce: NONCE } },
+    } as unknown as PaymentPayload;
+  }
+
+  function receiptLogs(from: Hex, value: bigint): unknown[] {
+    return [
+      {
+        address: USDC,
+        topics: encodeEventTopics({ abi: USDC_EVENTS, eventName: "AuthorizationUsed", args: { authorizer: from, nonce: NONCE } }),
+        data: "0x",
+      },
+      {
+        address: USDC,
+        topics: encodeEventTopics({ abi: USDC_EVENTS, eventName: "Transfer", args: { from, to: PAY_TO } }),
+        data: encodeAbiParameters([{ type: "uint256" }], [value]),
+      },
+    ];
+  }
+
+  /**
+   * The pay asset as an RPC sees it. getLogs honours the address, both indexed topics and the
+   * range, and records every range it was asked for, so the chunking can be checked.
+   */
+  function assetChain(state: {
+    used: boolean;
+    latest?: bigint;
+    logs?: { authorizer: Hex; block: bigint; hash: Hex }[];
+    receipts?: Record<string, { status: string; logs: unknown[] }>;
+  }) {
+    const ranges: [bigint, bigint][] = [];
+    const chain = {
+      readContract: vi.fn(async () => state.used),
+      getBlockNumber: vi.fn(async () => state.latest ?? 1_400n),
+      getBlock: vi.fn(async ({ blockNumber }: { blockNumber: bigint }) => ({ timestamp: BASE + blockNumber })),
+      getLogs: vi.fn(
+        async (query: { address: Hex; args: { authorizer: Hex; nonce: Hex }; fromBlock: bigint; toBlock: bigint }) => {
+          ranges.push([query.fromBlock, query.toBlock]);
+          return (state.logs ?? [])
+            .filter(
+              (log) =>
+                query.address.toLowerCase() === USDC.toLowerCase() &&
+                log.authorizer.toLowerCase() === query.args.authorizer.toLowerCase() &&
+                NONCE === query.args.nonce.toLowerCase() &&
+                log.block >= query.fromBlock &&
+                log.block <= query.toBlock,
+            )
+            .map((log) => ({ address: USDC, args: { authorizer: log.authorizer, nonce: NONCE }, transactionHash: log.hash, blockNumber: log.block }));
+        },
+      ),
+      getTransactionReceipt: vi.fn(async ({ hash }: { hash: Hex }) => {
+        const receipt = state.receipts?.[hash];
+        if (receipt === undefined) throw new Error("Transaction receipt with hash could not be found");
+        return receipt;
+      }),
+    };
+    return { chain, ranges, state };
+  }
+
+  it("proves a payment the facilitator named no transaction for, from the log and its receipt, reading in chunks the RPC accepts", async () => {
+    const { chain, ranges } = assetChain({
+      used: true,
+      logs: [{ authorizer: FROM, block: 1_120n, hash: HASH }],
+      receipts: { [HASH]: { status: "success", logs: receiptLogs(FROM, 50_000n) } },
+    });
+
+    expect(await chainCharged(chain)(paymentOf(BASE + 1_150n), requirements, [], HELD_AT)).toBe(true);
+    expect(ranges.length).toBeGreaterThan(0);
+    expect(ranges.every(([from, to]) => to - from + 1n <= 100n)).toBe(true);
+    const first = ranges[0] as [bigint, bigint];
+    expect(first[0]).toBeLessThan(HELD_AT);
+    expect(first[0]).toBeGreaterThanOrEqual(HELD_AT - 10n);
+  });
+
+  it("answers not charged from authorizationState alone when the authorisation was never used", async () => {
+    const { chain } = assetChain({ used: false });
+
+    expect(await chainCharged(chain)(paymentOf(BASE + 1_150n), requirements, [], HELD_AT)).toBe(false);
+    expect(chain.getLogs).not.toHaveBeenCalled();
+  });
+
+  it("releases nothing for a nonce another payer spent, a cancelled authorisation, or a transfer that reverted", async () => {
+    const otherPayer = assetChain({
+      used: true,
+      logs: [{ authorizer: OTHER, block: 1_120n, hash: HASH }],
+      receipts: { [HASH]: { status: "success", logs: receiptLogs(OTHER, 50_000n) } },
+    });
+    // AuthorizationCanceled marks the nonce used as well, and emits no AuthorizationUsed.
+    const cancelled = assetChain({ used: true, logs: [] });
+    const reverted = assetChain({
+      used: true,
+      logs: [{ authorizer: FROM, block: 1_120n, hash: HASH }],
+      receipts: { [HASH]: { status: "reverted", logs: receiptLogs(FROM, 50_000n) } },
+    });
+    const short = assetChain({
+      used: true,
+      logs: [{ authorizer: FROM, block: 1_120n, hash: HASH }],
+      receipts: { [HASH]: { status: "success", logs: receiptLogs(FROM, 49_999n) } },
+    });
+
+    for (const [label, { chain }] of [
+      ["another payer", otherPayer],
+      ["cancelled", cancelled],
+      ["reverted", reverted],
+      ["under the price", short],
+    ] as const) {
+      expect(await chainCharged(chain)(paymentOf(BASE + 1_150n), requirements, [], HELD_AT), label).not.toBe(true);
+    }
+  });
+
+  it("hands over the held answer on the retry when the facilitator timed out and the transfer landed meanwhile", async () => {
+    const image = await makeImage(66);
+    const record = recordFor(await fingerprint(image));
+    const asset = assetChain({ used: false });
+    const settle = vi.fn(async () => {
+      throw new Error("FacilitatorTimeoutError: settle did not answer in 30000 ms");
+    });
+    const seen = new Set<string>();
+    const payments = {
+      initialize: async () => undefined,
+      processHTTPRequest: async (context: HTTPRequestContext) => {
+        const header = context.adapter.getHeader("payment-signature") ?? "";
+        // The facilitator's verify simulates the transfer, so a spent nonce is refused here.
+        if (seen.has(header) && asset.state.used) {
+          return { type: "payment-error", response: { status: 402, headers: {}, body: { error: "invalid_exact_evm_nonce_already_used" } } };
+        }
+        seen.add(header);
+        return {
+          type: "payment-verified",
+          paymentPayload: decodePaymentSignatureHeader(header),
+          paymentRequirements: requirements,
+          declaredExtensions: [],
+          cancellationDispatcher: { cancel: async () => undefined },
+        };
+      },
+      processSettlement: settle,
+    } as unknown as x402HTTPResourceServer;
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments,
+      settlementRetryDelayMs: 0,
+      charged: chainCharged(asset.chain),
+      head: async () => HELD_AT,
+    });
+    await app.ready();
+    const header = paymentHeaderFor(NONCE);
+    const send = async () => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+
+    try {
+      const first = await send();
+      expect(first.statusCode).toBe(502);
+      expect(first.json().error).toBe("settlement-unknown");
+
+      asset.state.used = true;
+      asset.state.logs = [{ authorizer: FROM, block: 1_003n, hash: HASH }];
+      asset.state.receipts = { [HASH]: { status: "success", logs: receiptLogs(FROM, 50_000n) } };
+      const retry = await send();
+
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json().result.exact).toBe(record.id);
+      expect(settle).toHaveBeenCalledTimes(2);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("holds a first settle that names a reason with no transaction as unknown, and serves it once the chain shows it", async () => {
+    const failed = {
+      success: false,
+      errorReason: "invalid_exact_evm_transaction_failed",
+      errorMessage: "the RPC accepted the transaction and then timed out",
+      transaction: "",
+      network: X402_NETWORK,
+      headers: {},
+      response: { status: 402, headers: {}, body: { error: "payment failed" } },
+    };
+    const settle = vi.fn().mockResolvedValue(failed);
+    let spent: boolean | undefined = false;
+    const image = await makeImage(67);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments: paymentsThatSettleWith(settle, vi.fn(async () => undefined)),
+      settlementRetryDelayMs: 0,
+      charged: async () => spent,
+    });
+    await app.ready();
+    const header = paymentHeaderFor(`0x${"f6".repeat(32)}`);
+    const send = async () => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+
+    try {
+      const first = await send();
+      expect(first.statusCode).toBe(502);
+      expect(first.json().error).toBe("settlement-unknown");
+      expect(first.body).not.toContain(record.id);
+
+      spent = true;
+      const later = await send();
+      expect(later.statusCode).toBe(200);
+      expect(later.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+});
+
+// Review pass 6, answers #6 (V48): EIP-3009 nonces are unique per payer, not across payers.
+describe("the paid ledger key (pass 6, V48)", () => {
+  it("keeps payer A's held answer when payer B pays with the same nonce, and serves A's retry", async () => {
+    const nonce = `0x${"c7".repeat(32)}`;
+    const A = "0x3333333333333333333333333333333333333333";
+    const B = "0x5555555555555555555555555555555555555555";
+    const spentBy = new Map<string, boolean>();
+    const settle = vi.fn(async (payload: { payload: { authorization: { from: string } } }) => {
+      if (payload.payload.authorization.from === A) throw new Error("socket hang up");
+      return settled(`0x${"8c".repeat(32)}`);
+    });
+    const inner = paymentsThatSettleWith(settle, vi.fn(async () => undefined));
+    const used = new Set<string>();
+    const payments = {
+      ...inner,
+      processHTTPRequest: async (context: HTTPRequestContext) => {
+        const header = context.adapter.getHeader("payment-signature") ?? "";
+        if (used.has(header)) {
+          return { type: "payment-error", response: { status: 402, headers: {}, body: { error: "invalid_exact_evm_nonce_already_used" } } };
+        }
+        used.add(header);
+        return await inner.processHTTPRequest(context);
+      },
+    } as unknown as x402HTTPResourceServer;
+    const image = await makeImage(68);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, {
+      payments,
+      settlementRetryDelayMs: 0,
+      charged: async (payment) => spentBy.get((payment.payload as { authorization: { from: string } }).authorization.from),
+    });
+    await app.ready();
+    const send = async (header: string) => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+    const fromA = paymentHeaderFor(nonce, `0x${"5a".repeat(65)}`, A);
+    const fromB = paymentHeaderFor(nonce, `0x${"6b".repeat(65)}`, B);
+
+    try {
+      expect((await send(fromA)).json().error).toBe("settlement-unknown");
+      expect((await send(fromB)).statusCode).toBe(200);
+
+      spentBy.set(A, true);
+      const retry = await send(fromA);
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json().result.exact).toBe(record.id);
     } finally {
       await app.close();
     }

@@ -10,7 +10,8 @@
 // of the reads, not the reads themselves.
 // The picture state is read through the real pictureReader with its document reader and unseal
 // record finder stubbed: each of its four answers on a /verify and a /verify/paid answer, a finder
-// that throws, a reader that breaks its promise, a read slower than its bound, and its memory.
+// that throws, a reader that breaks its promise, a read slower than its bound, and its memory,
+// where "sealed" is held ten seconds at most and every fact says when it was read (pass 6, V46).
 // From review pass 4 (V18): the first registration, when it is not the best or exact match,
 // carries the same four facts, read the same way, and no more than three passports are read.
 // Does NOT cover the enum mapping, the consent and dispute caches, or each chain reader's own
@@ -40,6 +41,8 @@ const HOLDER = "0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7" as Hex;
 const RECHECKER = "0x0d69055c43eacb3b1ca687ca2263a049bc7eff04" as Hex;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Hex;
 const ZERO_HASH = `0x${"00".repeat(32)}` as Hex;
+/** Every fact read from its source says when, in unix seconds (review pass 6, V46). */
+const READ_AT = expect.any(Number) as unknown as number;
 
 function sourceOf(records: PassportRecord[]): PassportSource {
   return { load: async () => records };
@@ -118,7 +121,7 @@ describe("withPassportFacts", () => {
 
     const best = (payload.result as unknown as { best: Record<string, unknown> }).best;
     expect(best.consent).toMatchObject({ source: "chain", stated: true });
-    expect(best.dispute).toEqual({ source: "chain", status: "none" });
+    expect(best.dispute).toEqual({ source: "chain", status: "none", readAt: READ_AT });
     // The two used to be attached by one call after another, consent then dispute; a caller reading
     // the object's own key order must see that same order today.
     expect(Object.keys(best).indexOf("consent")).toBeLessThan(Object.keys(best).indexOf("dispute"));
@@ -349,9 +352,9 @@ describe("the picture state on the verify routes", () => {
     };
     const findRecord: UnsealRecordFinder = async (id) => (id === unsealedId ? recordOf(id) : undefined);
     const expected = {
-      public: { state: "public" },
-      sealed: { state: "sealed" },
-      unsealed: { state: "unsealed", at: UNSEALED_AT },
+      public: { state: "public", readAt: READ_AT },
+      sealed: { state: "sealed", readAt: READ_AT },
+      unsealed: { state: "unsealed", at: UNSEALED_AT, readAt: READ_AT },
       unavailable: { source: "unavailable" },
     };
 
@@ -429,7 +432,7 @@ describe("the picture state on the verify routes", () => {
       const best = response.json().result.best;
       expect(best.picture).toEqual({ source: "unavailable" });
       expect(best.consent).toMatchObject({ source: "chain", stated: true, aiTraining: "notAllowed" });
-      expect(best.dispute).toEqual({ source: "chain", status: "none" });
+      expect(best.dispute).toEqual({ source: "chain", status: "none", readAt: READ_AT });
       expect(best.recheck).toMatchObject({ source: "index", attestations: 1, matched: 1 });
     } finally {
       await app.close();
@@ -484,21 +487,48 @@ describe("the picture state on the verify routes", () => {
     try {
       expect(await reader.answerFor(publicOne)).toEqual({ source: "unavailable" });
       gatewayUp = true;
-      expect(await reader.answerFor(publicOne)).toEqual({ state: "public" });
-      expect(await reader.answerFor(sealedOne)).toEqual({ state: "sealed" });
+      expect(await reader.answerFor(publicOne)).toEqual({ state: "public", readAt: READ_AT });
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "sealed", readAt: READ_AT });
       published.add(sealedOne.id);
-      expect(await reader.answerFor(sealedOne)).toEqual({ state: "sealed" });
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "sealed", readAt: READ_AT });
 
       vi.setSystemTime(Date.now() + 61_000);
-      expect(await reader.answerFor(sealedOne)).toEqual({ state: "unsealed", at: UNSEALED_AT });
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "unsealed", at: UNSEALED_AT, readAt: READ_AT });
       vi.setSystemTime(Date.now() + 24 * 60 * 60 * 1000);
-      expect(await reader.answerFor(sealedOne)).toEqual({ state: "unsealed", at: UNSEALED_AT });
-      expect(await reader.answerFor(publicOne)).toEqual({ state: "public" });
+      expect(await reader.answerFor(sealedOne)).toEqual({ state: "unsealed", at: UNSEALED_AT, readAt: READ_AT });
+      expect(await reader.answerFor(publicOne)).toEqual({ state: "public", readAt: READ_AT });
     } finally {
       vi.useRealTimers();
     }
     // The failed read, the first public read, the first sealed read and the one after the minute.
     expect(reads).toEqual(["ipfs://bafypublic", "ipfs://bafypublic", "ipfs://bafysealed", "ipfs://bafysealed"]);
+  });
+
+  // Review pass 6, answers #4 (V46): "sealed" kept for a minute was the stale "still sealed" the
+  // service promises never to serve, over a picture its holder had already published.
+  it("reads an unseal eleven seconds after sealed was read, and says when each was read", async () => {
+    const published = new Set<Hex>();
+    const reader = pictureReader({
+      readDocument: async () => SEALED_DOCUMENT,
+      findRecord: async (id) => (published.has(id) ? recordOf(id) : undefined),
+    });
+    const passport = { id: `0x${"83".repeat(32)}` as Hex, metadataURI: "ipfs://bafysealed" };
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const start = Date.now();
+      expect(await reader.answerFor(passport)).toEqual({ state: "sealed", readAt: Math.floor(start / 1000) });
+      published.add(passport.id);
+      vi.setSystemTime(start + 11_000);
+
+      expect(await reader.answerFor(passport)).toEqual({
+        state: "unsealed",
+        at: UNSEALED_AT,
+        readAt: Math.floor((start + 11_000) / 1000),
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

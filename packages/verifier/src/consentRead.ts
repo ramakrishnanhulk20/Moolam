@@ -48,8 +48,12 @@ const USE_WORDS = ["unspecified", "allowed", "notAllowed", "constrained"] as con
 
 export type Use = (typeof USE_WORDS)[number];
 
-/** How long one passport's answer is held before the chain is asked again. */
-export const CONSENT_TTL_MS = 60_000;
+/**
+ * How long one passport's answer is held before the chain is asked again. A new holder, or the same
+ * holder through a second wallet, can restate within seconds, so nothing is held past ten (review
+ * pass 6, V46).
+ */
+export const CONSENT_TTL_MS = 10_000;
 
 /**
  * How many passports are remembered at once. Two thousand answers is a few hundred kilobytes and
@@ -78,6 +82,8 @@ export interface StatedConsent {
   at: number;
   /** The address that held the passport when it was written. */
   writer: Hex;
+  /** Unix seconds: when this service read it, which can be up to CONSENT_TTL_MS before the answer. */
+  readAt: number;
 }
 
 /**
@@ -85,7 +91,10 @@ export interface StatedConsent {
  * holder has never spoken; "unavailable" is this service saying it could not find out, which is
  * not the same thing and must never be read as permission.
  */
-export type ConsentAnswer = StatedConsent | { source: "chain"; stated: false } | { source: "unavailable" };
+export type ConsentAnswer =
+  | StatedConsent
+  | { source: "chain"; stated: false; readAt: number }
+  | { source: "unavailable" };
 
 const UNAVAILABLE: ConsentAnswer = { source: "unavailable" };
 
@@ -136,11 +145,12 @@ function useWordFor(value: number): Use | undefined {
  * a field outside the contract's enum, a timestamp too large for a JSON number and a writer that
  * is not an address all make the whole answer unavailable rather than half true, and constraint
  * text that is not what the contract promised is dropped while the rest of the statement stands.
+ * `readAt` is the unix seconds the read was made at.
  */
-export function answerFromChain(raw: Awaited<ReturnType<ConsentCall>>): ConsentAnswer {
+export function answerFromChain(raw: Awaited<ReturnType<ConsentCall>>, readAt: number): ConsentAnswer {
   const [stated, entry] = raw;
   if (!stated) {
-    return { source: "chain", stated: false };
+    return { source: "chain", stated: false, readAt };
   }
 
   const aiTraining = useWordFor(entry.consent.aiTraining);
@@ -173,6 +183,7 @@ export function answerFromChain(raw: Awaited<ReturnType<ConsentCall>>): ConsentA
     dataMining,
     at: Number(entry.at),
     writer: entry.writer as Hex,
+    readAt,
   };
 
   const info = entry.constraintInfo;
@@ -185,10 +196,12 @@ export function answerFromChain(raw: Awaited<ReturnType<ConsentCall>>): ConsentA
 /**
  * Reads what a passport's holder has stated about AI use, with a short memory in front of it.
  *
- * A stated or not-stated answer is kept for `ttlMs`, because a statement changes at most once
- * every ten minutes on chain and the same picture is often verified twice in a row. A failed read
- * is never kept: pinning "unavailable" for a minute would hide a statement that is there and the
- * chain is reachable again, and the route's own rate limit is what bounds the retries.
+ * A stated or not-stated answer is kept for `ttlMs`, ten seconds, because the same picture is often
+ * verified twice in a row, and says when it was read. A statement can change within seconds when
+ * the passport changes hands, so a minute of memory went out as the chain's word over a statement
+ * already replaced (review pass 6, V46). A failed read is never kept: pinning "unavailable" would
+ * hide a statement that is there and the chain is reachable again, and the route's own rate limit
+ * is what bounds the retries.
  *
  * Tests pass their own `call` or `transport`; nothing here touches the network on its own.
  */
@@ -242,7 +255,8 @@ export function consentReader(
         // resolves to something this reader cannot destructure, undefined among them, has to come
         // out as "unavailable" here rather than as a thrown error at the walker, where it would
         // cost this passport its dispute status and its re-check count as well.
-        const answer = answerFromChain(await withTimeout(call(key), timeoutMs));
+        const readAt = Math.floor(Date.now() / 1000);
+        const answer = answerFromChain(await withTimeout(call(key), timeoutMs), readAt);
         if (answer.source === "chain") {
           remember(key, answer);
         }

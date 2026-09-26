@@ -92,7 +92,7 @@ describe("an endpoint answering 429", () => {
 
     const answer = await disputeReader({ address: REGISTRY }).answerFor(PASSPORT);
 
-    expect(answer).toEqual({ source: "chain", status: "open" });
+    expect(answer).toMatchObject({ source: "chain", status: "open" });
     expect(asked).toEqual([BUSY, SPARE]);
   });
 

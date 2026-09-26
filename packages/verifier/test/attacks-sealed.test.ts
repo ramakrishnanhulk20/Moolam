@@ -1052,8 +1052,8 @@ describe("attack 4: sealed never reads as public or broken (invariant 7)", () =>
       expect(text, label).not.toContain("mypinata.cloud");
       expect(text, label).not.toMatch(/"(image|thumbnail|gatewayUrl|metadataURI)"/);
       // The match says sealed in the service's own words, and as a state rather than a fault.
-      expect(answer.result.best.picture, label).toEqual({ state: "sealed" });
-      const carriesFlag = /"picture"\s*:\s*\{\s*"state"\s*:\s*"sealed"\s*\}/.test(text);
+      expect(answer.result.best.picture, label).toEqual({ state: "sealed", readAt: expect.any(Number) });
+      const carriesFlag = /"picture"\s*:\s*\{\s*"state"\s*:\s*"sealed"\s*,\s*"readAt"\s*:\s*\d+\s*\}/.test(text);
       if (carriesFlag) flagged += 1;
       detail.push(
         `${label.padEnd(24)} ${response.statusCode}, best ${answer.result.best.id.slice(0, 12)}... confidence ${answer.result.confidence.toFixed(3)}, keys ${Object.keys(answer).join(",")}, image or thumbnail address none, sealed flag ${carriesFlag ? "present" : "absent"}`,
@@ -1106,7 +1106,7 @@ describe("attack 4: sealed never reads as public or broken (invariant 7)", () =>
 
     expect(copy.statusCode).toBe(200);
     expect(copy.json().result.best.id).toBe(opened.passportId);
-    expect(copy.json().result.best.picture).toEqual({ state: "unsealed", at: UNSEALED_AT.toISOString() });
+    expect(copy.json().result.best.picture).toEqual({ state: "unsealed", at: UNSEALED_AT.toISOString(), readAt: expect.any(Number) });
     expect(asked.statusCode).toBe(200);
     expect(asked.json()).toMatchObject({ passportId: opened.passportId, status: "pending" });
     record({

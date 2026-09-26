@@ -11,8 +11,8 @@ export interface LedgerEntry {
   headers: Record<string, string>;
   /**
    * The verified payment that bought the answer, in the one form a repeat is compared in: the
-   * signature and every signed field. The nonce alone is public on chain once a transfer settles,
-   * so it is only the key.
+   * signature and every signed field. The payer and nonce are public on chain once a transfer
+   * settles, so together they are only the key.
    */
   payment: string;
   /** The sha256 of the upload the answer is about, so a repeat must carry the same file. */
@@ -24,15 +24,17 @@ export interface LedgerEntry {
 }
 
 export interface PaymentLedger {
-  get: (nonce: string) => LedgerEntry | undefined;
-  remember: (nonce: string, entry: Omit<LedgerEntry, "at">) => void;
-  forget: (nonce: string) => void;
+  get: (key: string) => LedgerEntry | undefined;
+  remember: (key: string, entry: Omit<LedgerEntry, "at">) => void;
+  forget: (key: string) => void;
   sweep: () => void;
 }
 
 /**
- * The answer each payment has already bought, keyed by the EIP-3009 nonce the
- * payer signed.
+ * The answer each payment has already bought, keyed by the payer's address and
+ * the EIP-3009 nonce they signed, together. A nonce is unique per payer and not
+ * across payers, so a second payer signing the same nonce must never land on the
+ * first payer's entry (review pass 6, V48).
  *
  * One authorisation is one signature for one amount, so a repeat of it must not
  * be settled a second time. The answer it bought is handed back instead, until
@@ -51,25 +53,25 @@ export function paymentLedger(ttlMs: number = TEN_MINUTES_MS): PaymentLedger {
 
   const sweep = (): void => {
     const cutoff = Date.now() - ttlMs;
-    for (const [nonce, entry] of entries) {
+    for (const [key, entry] of entries) {
       if (entry.at <= cutoff) {
-        entries.delete(nonce);
+        entries.delete(key);
       }
     }
   };
 
   return {
-    get(nonce: string): LedgerEntry | undefined {
+    get(key: string): LedgerEntry | undefined {
       sweep();
-      return entries.get(nonce);
+      return entries.get(key);
     },
 
-    remember(nonce: string, entry: Omit<LedgerEntry, "at">): void {
-      entries.set(nonce, { ...entry, at: Date.now() });
+    remember(key: string, entry: Omit<LedgerEntry, "at">): void {
+      entries.set(key, { ...entry, at: Date.now() });
     },
 
-    forget(nonce: string): void {
-      entries.delete(nonce);
+    forget(key: string): void {
+      entries.delete(key);
     },
 
     sweep,

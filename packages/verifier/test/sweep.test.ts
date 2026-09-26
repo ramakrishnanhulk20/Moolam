@@ -9,6 +9,8 @@
 // filter matches cannot hide a file, and the exact name check here is the only one (V8); each run
 // reads two pages from where the last one stopped, so every row is read in turn (V16), and the
 // place it stopped is kept in a file, so a restart goes on from there rather than the first page.
+// From review pass 6 (V53): a registered passport whose document does not ask for a private re-check
+// has its copy deleted too, and one whose document cannot be read keeps it.
 // Does NOT cover a real Pinata account or a real chain read (the registry read is a stub here and
 // its strict shape check is exercised only through a fake answer), whether a real page token
 // outlives a day, or the server wiring, which test/health.test.ts reads through /health.
@@ -105,6 +107,20 @@ function stubPinata(): void {
 
 /** The chain: true for a registered passport, false for one it says does not exist, throws for the rest. */
 const chain = new Map<Hex, boolean>();
+/**
+ * The metadata document of a registered passport, as the gateway serves it. A passport missing here
+ * reads as a sealed document that asks for a private re-check of exactly itself.
+ */
+const documents = new Map<Hex, unknown>();
+
+function sealedDocument(id: Hex, privateRecheck: boolean): Record<string, unknown> {
+  return {
+    name: "Harbour kept private",
+    sealed: true,
+    commitment: { algorithm: "sha-256", value: id },
+    ...(privateRecheck ? { privateRecheck: true } : {}),
+  };
+}
 const removed: string[] = [];
 
 function recordingLog(): SweepLog & { lines: { level: string; fields: Record<string, unknown>; message: string }[] } {
@@ -124,6 +140,7 @@ function deps(overrides: Partial<SweepDeps> = {}): Partial<SweepDeps> {
       if (held === undefined) throw new Error("the RPC timed out");
       return held;
     },
+    document: async (id) => documents.get(id) ?? sealedDocument(id, true),
     remove: async (fileId) => {
       removed.push(fileId);
     },
@@ -138,6 +155,7 @@ beforeEach(() => {
   failAt.clear();
   listed.length = 0;
   chain.clear();
+  documents.clear();
   removed.length = 0;
   stubPinata();
 });
@@ -267,6 +285,34 @@ describe("the private copy sweep (B9, D5)", () => {
 
     expect(run?.counts).toMatchObject({ listed: 4, registered: 1, undated: 3, marked: 0 });
     expect(removed).toHaveLength(0);
+  });
+
+  // Review pass 6, sealed #4 (V53): the same unsigned file prepared first with a private re-check
+  // (document D1, copy kept) and then without (document D2), and registered with D2.
+  it("deletes the copy D1 left under a passport registered with D2, and keeps one whose document asks or cannot be read", async () => {
+    const d2 = idOf(0x0d);
+    const asks = idOf(0x0e);
+    const unreadable = idOf(0x0f);
+    for (const id of [d2, asks, unreadable]) chain.set(id, true);
+    documents.set(d2, sealedDocument(d2, false));
+    const left = row(nameOf(d2), hoursAgo(60));
+    row(nameOf(asks), hoursAgo(60));
+    row(nameOf(unreadable), hoursAgo(60));
+
+    const run = await privateSweep({
+      mode: "delete",
+      log: recordingLog(),
+      deps: deps({
+        document: async (id) => {
+          if (id === unreadable) throw new Error("the gateway answered 504");
+          return documents.get(id) ?? sealedDocument(id, true);
+        },
+      }),
+    }).runOnce();
+
+    expect(run?.outcome).toBe("finished");
+    expect(run?.counts).toMatchObject({ listed: 3, registered: 2, marked: 1, deleted: 1 });
+    expect(removed).toEqual([left.id]);
   });
 
   it("deletes every file under an orphan's name, and counts a delete Pinata refused without stopping", async () => {

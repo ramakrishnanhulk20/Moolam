@@ -18,7 +18,12 @@
 // an unseal that published part of the picture says which parts, keeps the private copy, and
 // finishes on a retry. From review pass 5: a private copy kept before V12, which is the public
 // thumbnail byte for byte, is cleared before the pins so the unseal finishes, and an unseal that
-// could not check for an earlier record caches the oldest record or nothing.
+// could not check for an earlier record caches the oldest record or nothing. From review pass 6: a
+// picture whose fingerprint does not survive its own thumbnail is refused before any pin (V50),
+// status reads gone right after the unseal deleted the copy (V51), the thumbnail is pinned first
+// and a private answer stops the unseal with nothing public (V52), a resend after the unseal is
+// answered from memory with no Privy or Pinata call (V54), and two unseals sent together pin one
+// record (V55).
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -31,6 +36,7 @@ import { getAddress, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance, LightMyRequestResponse } from "fastify";
 import { makeImage } from "./helpers.js";
+import { skyOverHorizon } from "./skyPicture.js";
 
 const APP_ID = vi.hoisted(() => {
   const id = "moolamtestapp0000003";
@@ -72,7 +78,9 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
   privy: () => ({}),
 }));
 
-const { THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } = await import("../src/prepare.js");
+const { FINGERPRINT_UNSTABLE_REASON, THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } = await import(
+  "../src/prepare.js"
+);
 const { globalDay } = await import("../src/limits/globalDay.js");
 const { sealedMetadata } = await import("../src/sealed.js");
 const { buildServer } = await import("../src/server.js");
@@ -103,8 +111,13 @@ let bendPin: (name: string) => { cid?: string; network?: string } = () => ({});
 /** The private files on the stub account, and what the private half of Pinata was asked. */
 const privateFiles: { id: string; name: string; cid: string }[] = [];
 const privateDeleted: string[] = [];
-const privatePinata = { listFails: false, deleteFails: false };
+/** `trailing` answers a delete but keeps listing the file, as Pinata's listing lags a delete. */
+const privatePinata = { listFails: false, deleteFails: false, trailing: false };
 let privateCounter = 0;
+/** Every URL this process tried to fetch, so a test can say no Pinata call was made. */
+const fetched: string[] = [];
+/** While set, every public pin waits for it, so a test can hold one unseal in the middle of its pins. */
+let pinGate: Promise<void> | undefined;
 
 function keepPrivate(name: string, cid?: string): { id: string; name: string; cid: string } {
   privateCounter += 1;
@@ -138,7 +151,7 @@ function privateAnswer(url: string, method: string): Response | undefined {
     const id = url.slice(PRIVATE_FILES_URL.length + 1);
     privateDeleted.push(id);
     const at = privateFiles.findIndex((file) => file.id === id);
-    if (at !== -1) privateFiles.splice(at, 1);
+    if (at !== -1 && !privatePinata.trailing) privateFiles.splice(at, 1);
     return new Response(JSON.stringify({ data: null }), { status: 200 });
   }
   return undefined;
@@ -182,6 +195,19 @@ function unsealBody(
   return { payload: Buffer.concat(chunks), headers: { "content-type": `multipart/form-data; boundary=${boundary}` } };
 }
 
+/**
+ * One address per caller, because POST /unseal has its own limit of 30 a minute per address (pass
+ * 6, V54) and this file sends more than that from its callers together.
+ */
+const addresses = new Map<string, string>();
+function addressOf(subject: string): string {
+  const known = addresses.get(subject);
+  if (known !== undefined) return known;
+  const address = `203.0.113.${addresses.size + 1}`;
+  addresses.set(subject, address);
+  return address;
+}
+
 async function ask(
   subject: string,
   options: { file?: Buffer; passportId?: string; auth?: boolean; on?: FastifyInstance } = {},
@@ -198,7 +224,7 @@ async function ask(
       ...headers,
       ...(options.auth === false ? {} : { authorization: `Bearer ${await token(subject)}` }),
     },
-    remoteAddress: "198.51.100.44",
+    remoteAddress: addressOf(subject),
   });
 }
 
@@ -276,6 +302,7 @@ describe("unsealing a sealed passport", () => {
     const realFetch = globalThis.fetch;
     vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
+      fetched.push(url);
       const privately = privateAnswer(url, init?.method ?? "GET");
       if (privately !== undefined) {
         return privately;
@@ -283,6 +310,7 @@ describe("unsealing a sealed passport", () => {
       if (url !== UPLOAD_URL) {
         return await realFetch(input, init);
       }
+      await pinGate;
       const form = init?.body as FormData;
       const name = String(form.get("name"));
       if (refusePin(name)) {
@@ -319,6 +347,9 @@ describe("unsealing a sealed passport", () => {
     privateDeleted.length = 0;
     privatePinata.listFails = false;
     privatePinata.deleteFails = false;
+    privatePinata.trailing = false;
+    fetched.length = 0;
+    pinGate = undefined;
     stubs.readPassport.mockReset().mockResolvedValue({
       registeredAt: 1_758_000_000,
       phash: sealedFile.phash,
@@ -600,12 +631,14 @@ describe("unsealing a sealed passport", () => {
     const response = await ask("did:privy:unseal-pin-down");
 
     expect(response.statusCode).toBe(502);
+    // The thumbnail goes first (pass 6, V52), so its failure stops the unseal before the rest.
     expect(response.json()).toMatchObject({
       error: "pin-failed",
       passportId: sealedFile.passportId,
       published: {},
-      failed: ["image", "thumbnail", "manifest"],
+      failed: ["thumbnail"],
     });
+    expect(response.json().reason).toMatch(/nothing was published/);
     expect(pins).toHaveLength(0);
   }, 60_000);
 
@@ -656,15 +689,16 @@ describe("unsealing a sealed passport", () => {
     expect(privateFiles).toEqual([kept]);
   }, 60_000);
 
-  it("refuses a public pin Pinata answered from its private network, and deletes nothing private", async () => {
+  it("refuses a public pin Pinata answered from its private network, publishes nothing, and deletes nothing private", async () => {
     const id = sealedFile.passportId;
     const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
     bendPin = (name) => (name.endsWith("-thumb.jpg") ? { network: "private" } : {});
 
     const response = await ask("did:privy:unseal-private-duplicate");
 
-    expect(response.statusCode).toBe(502);
-    expect(response.json()).toMatchObject({ error: "pin-failed", failed: ["thumbnail"] });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: "thumbnail-held-privately", passportId: id });
+    expect(pins.every((pin) => pin.name.endsWith("-thumb.jpg"))).toBe(true);
     expect(privateDeleted).toEqual([]);
     expect(privateFiles).toEqual([kept]);
   }, 60_000);
@@ -696,19 +730,27 @@ describe("unsealing a sealed passport", () => {
     );
     const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
     const lookalike = keepPrivate(`sealed-thumb-${id}.jpg.old`);
+    // A server of its own, because the tests above unsealed this passport under a document that
+    // did not ask, and its status memory rightly holds that answer for a minute.
+    const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await on.ready();
     const status = async (): Promise<LightMyRequestResponse> =>
-      await app.inject({ method: "GET", url: `/sealed/status/${id}`, remoteAddress: "198.51.100.45" });
+      await on.inject({ method: "GET", url: `/sealed/status/${id}`, remoteAddress: "198.51.100.45" });
 
-    expect((await status()).json().state).toBe("kept");
-    const response = await ask("did:privy:unseal-private-copy");
+    try {
+      expect((await status()).json().state).toBe("kept");
+      const response = await ask("did:privy:unseal-private-copy", { on });
 
-    expect(response.statusCode).toBe(200);
-    expect(pins).toHaveLength(4);
-    expect(privateDeleted).toEqual([kept.id]);
-    expect(privateFiles).toEqual([lookalike]);
-    expect(response.body).not.toContain(kept.id);
-    // Without the drop, the status memory would go on saying kept for the rest of its minute.
-    expect((await status()).json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
+      expect(response.statusCode).toBe(200);
+      expect(pins).toHaveLength(4);
+      expect(privateDeleted).toEqual([kept.id]);
+      expect(privateFiles).toEqual([lookalike]);
+      expect(response.body).not.toContain(kept.id);
+      // Without the update, the status memory would go on saying kept for the rest of its minute.
+      expect((await status()).json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
+    } finally {
+      await on.close();
+    }
   }, 60_000);
 
   it("answers exactly as before when the private delete or the lookup fails, and logs the passport id", async () => {
@@ -830,6 +872,127 @@ describe("unsealing a sealed passport", () => {
       await blind.close();
     }
   }, 120_000);
+
+  // Review pass 6, sealed #1 (V50): /prepare refuses a picture whose fingerprint does not survive
+  // its own thumbnail, and a sealed picture registered before that check, or drawn by /generate,
+  // must not be unsealed into a passport the re-check reads mismatched for good.
+  it("refuses 422 fingerprint-unstable for the sky over a horizon registered sealed, and pins nothing", async () => {
+    const sky = await skyOverHorizon(11);
+    const print = await fingerprint(sky);
+    stubs.readPassport.mockResolvedValue({
+      registeredAt: 1_758_000_000,
+      phash: print.phash,
+      blockhash256: print.blockhash,
+      fingerprintVersion: 1,
+      metadataURI: METADATA_URI,
+    });
+    const before = (await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used as number;
+
+    const response = await ask("did:privy:unseal-sky", { file: sky, passportId: print.sha256 });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.json()).toMatchObject({ error: "fingerprint-unstable", reason: FINGERPRINT_UNSTABLE_REASON });
+    expect(pins).toHaveLength(0);
+    expect((await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used).toBe(before);
+  }, 60_000);
+
+  // Review pass 6, sealed #2 (V51): Pinata's listing trails a delete, so a status read right after
+  // the unseal must not go back to it and remember "kept" for a minute.
+  it("reads gone right after the unseal deleted the copy, while the listing still shows it", async () => {
+    const id = sealedFile.passportId;
+    stubs.readMetadataDocument.mockResolvedValue(
+      sealedMetadata({
+        title: "Monsoon nets, sealed",
+        description: "A picture registered with Moolam and kept sealed.",
+        passportId: id,
+        fingerprint: { sha256: id, phash: sealedFile.phash, blockhash: sealedFile.blockhash, width: 640, height: 480, format: "jpeg" },
+        privateRecheck: true,
+      }),
+    );
+    const kept = keepPrivate(`sealed-thumb-${id}.jpg`);
+    privatePinata.trailing = true;
+    const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await on.ready();
+    try {
+      expect((await ask("did:privy:unseal-trailing", { on })).statusCode).toBe(200);
+      expect(privateDeleted).toEqual([kept.id]);
+      expect(privateFiles).toEqual([kept]);
+
+      const status = await on.inject({ method: "GET", url: `/sealed/status/${id}`, remoteAddress: "198.51.100.47" });
+      expect(status.json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
+    } finally {
+      await on.close();
+    }
+  }, 60_000);
+
+  // Review pass 6, sealed #3 (V52): a pre-V12 private copy of another passport made from the same
+  // picture is the thumbnail byte for byte, and Pinata answers its public pin with the private file.
+  it("pins the thumbnail first and stops with 409 and nothing public when Pinata holds those bytes privately", async () => {
+    const thumbnail = await unseal.unsealThumbnail(sealedFile.bytes);
+    if (!thumbnail.ok) throw new Error("the test picture should make a thumbnail");
+    keepPrivate(`sealed-thumb-0x${"4e".repeat(32)}.jpg`, contentIdOf(thumbnail.thumbnail));
+    const before = (await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used as number;
+
+    const response = await ask("did:privy:unseal-other-old-copy");
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: "thumbnail-held-privately", passportId: sealedFile.passportId });
+    expect(response.json().reason).toMatch(/nothing was published/i);
+    expect(pins.map((pin) => pin.name.endsWith("-thumb.jpg"))).toEqual([true]);
+    expect((await app.inject({ method: "GET", url: "/health" })).json().limits.unseals.used).toBe(before);
+  }, 60_000);
+
+  // Review pass 6, sealed #5 (V54): a resend of a finished unseal spent a Privy read and a Pinata
+  // listing on every call.
+  it("answers a resend after the unseal as already-unsealed with no Privy or Pinata call", async () => {
+    stubs.findUnsealRecord.mockImplementation(async () => {
+      const pinned = pins.find((pin) => pin.name.startsWith("unseal-"));
+      if (pinned === undefined) return { state: "none" };
+      const cid = contentIdOf(pinned.bytes);
+      return { state: "found", record: { cid, uri: `ipfs://${cid}` } };
+    });
+    const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
+    await on.ready();
+    try {
+      const first = await ask("did:privy:unseal-resend", { on });
+      expect(first.statusCode).toBe(200);
+      const lookups = stubs.findUnsealRecord.mock.calls.length;
+      const wallets = stubs.embeddedWallets.mock.calls.length;
+      fetched.length = 0;
+
+      const again = await ask("did:privy:unseal-resend", { on });
+
+      expect(again.statusCode).toBe(409);
+      expect(again.json()).toMatchObject({ error: "already-unsealed", passportId: sealedFile.passportId });
+      expect(again.json().record.cid).toBe(first.json().record.cid);
+      expect(fetched.filter((url) => url.includes("pinata.cloud"))).toEqual([]);
+      expect(stubs.findUnsealRecord.mock.calls.length).toBe(lookups);
+      expect(stubs.embeddedWallets.mock.calls.length).toBe(wallets);
+    } finally {
+      await on.close();
+    }
+  }, 60_000);
+
+  // Review pass 6, sealed #6 (V55): two unseals that both saw "none" pinned two records.
+  it("lets one unseal per passport run at a time, so two sent together pin one record", async () => {
+    let release: () => void = () => undefined;
+    pinGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const both = [ask("did:privy:unseal-race-one"), ask("did:privy:unseal-race-two")];
+    const stuck = new Promise<never>((_resolve, reject) => {
+      setTimeout(() => reject(new Error("neither unseal answered while the other was pinning")), 20_000).unref();
+    });
+
+    const early = await Promise.race([...both, stuck]);
+    expect(early.statusCode).toBe(409);
+    expect(early.json()).toMatchObject({ error: "unseal-in-progress", passportId: sealedFile.passportId });
+
+    release();
+    const answers = await Promise.all(both);
+    expect(answers.map((answer) => answer.statusCode).sort()).toEqual([200, 409]);
+    expect(pins.filter((pin) => pin.name.startsWith("unseal-"))).toHaveLength(1);
+  }, 60_000);
 });
 
 describe("GET /unseal/:passportId", () => {

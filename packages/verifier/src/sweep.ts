@@ -5,9 +5,9 @@ import { z } from "zod";
 import { env, type PrivateSweepMode } from "./env.js";
 import { PRIVATE_SWEEP_PAGES, deletePrivateFile, listPrivatePage, type PrivateListing } from "./ipfs/pinata.js";
 import { readClient } from "./reputation/registry.js";
-import { privateThumbnailName } from "./sealed.js";
+import { privateRecheckFor, privateThumbnailName } from "./sealed.js";
 import type { Hex } from "./types.js";
-import { registryUnsealAbi } from "./unseal.js";
+import { readMetadataDocument, registryUnsealAbi } from "./unseal.js";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -45,9 +45,12 @@ export interface SweepCounts {
   undated: number;
   /** Rows 48 hours old or younger. */
   young: number;
-  /** Rows whose passport the chain holds. */
+  /** Rows whose passport the chain holds and whose document asks for the copy, or cannot be read. */
   registered: number;
-  /** Rows whose passport the chain said does not exist: logged in dry, deleted in delete. */
+  /**
+   * Rows whose passport the chain said does not exist, or holds under a document that does not ask
+   * for a private re-check of it: logged in dry, deleted in delete.
+   */
   marked: number;
   deleted: number;
   failed: number;
@@ -69,6 +72,8 @@ export interface SweepDeps {
   list: (from: string | undefined) => Promise<{ files: PrivateListing[]; next: string | undefined }>;
   /** True when the chain holds the passport, false only when it answered that it does not. Throws otherwise. */
   registered: (passportId: Hex) => Promise<boolean>;
+  /** A registered passport's metadata document. Throws when it cannot be read. */
+  document: (passportId: Hex) => Promise<unknown>;
   remove: (fileId: string) => Promise<void>;
   now: () => number;
   /** Where the place the listing stopped is kept between runs and across a restart. */
@@ -169,7 +174,10 @@ export interface PrivateSweep {
  * the listing ends, so every row is read in turn however many registered copies sit ahead of an
  * orphan (V16). No name filter is sent to Pinata (V8): the whole-name pattern here is the only
  * check. It keeps only exact thumbnail names uploaded more than 48 hours ago, asks the registry
- * about each id, and marks a file only when the chain answered that the passport does not exist.
+ * about each id, and marks a file when the chain answered that the passport does not exist, or when
+ * the passport is registered under a document that does not ask for a private re-check of it
+ * (review pass 6, V53): the same file prepared once with the private re-check and once without
+ * leaves a copy no route would ever use. A document that cannot be read keeps its file.
  * The place it stopped is kept in a file beside the re-check queue's, so a redeploy goes on from
  * there rather than reading the first pages again; a place that cannot be saved is kept in memory
  * and said once. An RPC error, a listing it could not finish, or any answer it does not know ends
@@ -186,6 +194,7 @@ export function privateSweep(options: {
   const deps: SweepDeps = {
     list: options.deps?.list ?? liveListing,
     registered: options.deps?.registered ?? liveRegistration(),
+    document: options.deps?.document ?? liveDocument(),
     remove: options.deps?.remove ?? deletePrivateFile,
     now: options.deps?.now ?? ((): number => Date.now()),
     cursor: options.deps?.cursor ?? defaultCursorStore(),
@@ -264,7 +273,8 @@ export function privateSweep(options: {
       byPassport.set(id, group);
     }
 
-    const marked: { file: PrivateListing; ageHours: number }[] = [];
+    const marked: { file: PrivateListing; ageHours: number; why: string }[] = [];
+    const unasked: Hex[] = [];
     for (const [id, group] of byPassport) {
       let held: boolean;
       try {
@@ -277,9 +287,29 @@ export function privateSweep(options: {
         return run("stopped", more);
       }
       if (held === false) {
-        marked.push(...group);
-      } else {
+        marked.push(...group.map((one) => ({ ...one, why: "its passport never registered" })));
+        continue;
+      }
+      if (held !== true) {
         counts.registered += group.length;
+        continue;
+      }
+      unasked.push(id);
+    }
+    // Read only once every chain answer is in, so a run that stops on the chain reads no document.
+    for (const id of unasked) {
+      const group = byPassport.get(id) ?? [];
+      let asks: boolean;
+      try {
+        asks = privateRecheckFor(await deps.document(id), id) === "asked";
+      } catch (error) {
+        log.warn({ mode: active, passportId: id, reason: reasonOf(error) }, "sweep: a registered passport's document could not be read, its copy stays");
+        asks = true;
+      }
+      if (asks) {
+        counts.registered += group.length;
+      } else {
+        marked.push(...group.map((one) => ({ ...one, why: "its registered passport's document does not ask for it" })));
       }
     }
     counts.marked = marked.length;
@@ -287,19 +317,19 @@ export function privateSweep(options: {
     moveCursor(listing.next);
 
     if (active === "dry") {
-      for (const { file, ageHours } of marked) {
-        log.info({ name: file.name, ageHours }, "sweep (dry): would delete a private copy whose passport never registered");
+      for (const { file, ageHours, why } of marked) {
+        log.info({ name: file.name, ageHours }, `sweep (dry): would delete a private copy: ${why}`);
       }
       log.info({ mode: active, more, ...counts }, "sweep (dry): run finished, nothing deleted");
       return run("finished", more);
     }
 
     // Bounded by the two pages the listing reads: 200 rows.
-    for (const { file, ageHours } of marked) {
+    for (const { file, ageHours, why } of marked) {
       try {
         await deps.remove(file.id);
         counts.deleted += 1;
-        log.info({ name: file.name, ageHours }, "sweep: deleted a private copy whose passport never registered");
+        log.info({ name: file.name, ageHours }, `sweep: deleted a private copy: ${why}`);
       } catch (error) {
         counts.failed += 1;
         log.error({ name: file.name, reason: reasonOf(error) }, "sweep: could not delete a private copy");
@@ -402,6 +432,29 @@ function liveRegistration(): (passportId: Hex) => Promise<boolean> {
       throw new Error("the registry answered getPassport in a shape the sweep does not know");
     }
     return registeredAt !== 0n;
+  };
+}
+
+/**
+ * A registered passport's metadata document: its metadataURI read straight from getPassport, then
+ * the document through the same guarded gateway read the routes use. Throws on anything else, which
+ * keeps the file.
+ */
+function liveDocument(): (passportId: Hex) => Promise<unknown> {
+  const chain = readClient();
+  const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
+  return async (passportId) => {
+    const record: unknown = await chain.readContract({
+      address: registry,
+      abi: registryUnsealAbi,
+      functionName: "getPassport",
+      args: [passportId],
+    });
+    const metadataURI = (record as { metadataURI?: unknown } | null)?.metadataURI;
+    if (typeof metadataURI !== "string") {
+      throw new Error("the registry answered getPassport in a shape the sweep does not know");
+    }
+    return await readMetadataDocument(metadataURI);
   };
 }
 
