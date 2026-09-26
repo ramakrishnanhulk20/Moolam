@@ -7,7 +7,10 @@
 // name (B16), deleted again when the document pin fails, and refused without sealed, and the
 // sentence each sealed document pins: the private copy one when a copy is kept, the old one
 // otherwise. V12: each private copy carries its passport id in a JPEG comment, so preparing the
-// same picture again keeps a copy of its own instead of being handed the first one back. Pinata is a
+// same picture again keeps a copy of its own instead of being handed the first one back. From
+// review pass 5: a copy the comment would push over the budget steps down a quality instead of
+// being refused (intake 5), and an upload that left the process counts as landed unless Pinata
+// itself refused it (sealed 3). Pinata is a
 // recording stub at the fetch layer; the chain read, the image model, the caller's wallets and the
 // agent's signer are stubbed.
 // Does NOT cover any route that reads the private copy back (/sealed/link, /sealed/status and
@@ -106,7 +109,7 @@ interface Call {
 
 /** How the recording Pinata answers the next calls. Reset after every test. */
 const pinata = {
-  privateAnswer: "private" as "private" | "duplicate-public" | "refused" | "by-content",
+  privateAnswer: "private" as "private" | "duplicate-public" | "refused" | "by-content" | "server-error" | "unreadable" | "timeout",
   failJson: false,
   failDelete: false,
 };
@@ -195,6 +198,15 @@ function recordingPinata(): void {
         });
         if (pinata.privateAnswer === "refused") {
           return new Response("private files need another plan", { status: 403 });
+        }
+        if (pinata.privateAnswer === "server-error") {
+          return new Response("upstream fell over", { status: 502 });
+        }
+        if (pinata.privateAnswer === "unreadable") {
+          return new Response("<html>stored</html>", { status: 200 });
+        }
+        if (pinata.privateAnswer === "timeout") {
+          throw new DOMException("The operation was aborted due to timeout", "TimeoutError");
         }
         if (pinata.privateAnswer === "by-content") {
           // Pinata answers bytes it already holds with the file it already holds, under the old name.
@@ -639,6 +651,69 @@ describe("a sealed registration with a private re-check", () => {
     });
     expect(since(mark)).toHaveLength(0);
   });
+
+  it("sealed 3: counts a private upload as landed once it left the process, and as not landed only on Pinata's refusal", async () => {
+    const thumbnail = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#204060" } }).jpeg().toBuffer();
+    const outcomes: Record<string, boolean> = {};
+    for (const answer of ["server-error", "unreadable", "timeout", "refused"] as const) {
+      pinata.privateAnswer = answer;
+      const { log } = keepingLogger();
+      const outcome = await keepPrivateCopy(thumbnail, PASSPORT, log);
+      expect(outcome, answer).toMatchObject({ refused: { status: 502, body: { error: "pin-failed" } } });
+      outcomes[answer] = (outcome as { landed: boolean }).landed;
+    }
+
+    expect(outcomes).toEqual({ "server-error": true, unreadable: true, timeout: true, refused: false });
+  });
+
+  it("intake 5: keeps a private copy the passport comment would have pushed over the budget, one quality step down", async () => {
+    // A picture whose first fitting thumbnail sits within the comment's 90 bytes of the budget,
+    // found by growing a band of noise under structured shapes one pixel at a time.
+    const width = 512;
+    const height = 512;
+    const shapes = await sharp(await makeImage(29)).resize(width, height, { fit: "fill" }).removeAlpha().raw().toBuffer();
+    const pictureWith = async (noisy: number): Promise<Buffer> => {
+      const raw = Buffer.from(shapes);
+      let state = 31337;
+      const start = raw.length - noisy * 3;
+      for (let i = start; i < raw.length; i += 1) {
+        state = (state * 1103515245 + 12345) & 0x7fffffff;
+        raw[i] = (state >> 16) & 0xff;
+      }
+      return await sharp(raw, { raw: { width, height, channels: 3 } }).jpeg({ quality: 95 }).toBuffer();
+    };
+    const sizeAtStart = async (noisy: number): Promise<number> =>
+      (await sharp(await pictureWith(noisy)).jpeg({ quality: 85, progressive: false }).toBuffer()).length;
+
+    let low = 0;
+    let high = width * height;
+    while (high - low > 1) {
+      const middle = Math.floor((low + high) / 2);
+      if ((await sizeAtStart(middle)) <= THUMBNAIL_MAX_BYTES) {
+        low = middle;
+      } else {
+        high = middle;
+      }
+    }
+    const upload = await pictureWith(low);
+    const plain = await makeThumbnail(upload);
+    expect(plain.length).toBeLessThanOrEqual(THUMBNAIL_MAX_BYTES);
+    expect(plain.length).toBeGreaterThan(THUMBNAIL_MAX_BYTES - 90);
+
+    const mark = calls.length;
+    const response = await prepare(
+      "did:privy:private-near-cap",
+      { title: "Right at the edge", kind: "human", sealed: "true", privateRecheck: "true" },
+      upload,
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().privateRecheck).toBe(true);
+    const kept = since(mark).find((call) => call.kind === "private") as Call;
+    expect((kept.bytes as Buffer).length).toBeLessThanOrEqual(THUMBNAIL_MAX_BYTES);
+    const print = decodeJpeg(new Uint8Array(kept.bytes as Buffer));
+    expect(print.width).toBe(width);
+  }, 120_000);
 
   it("answers 502 pin-failed when Pinata refuses the private upload, with no document pinned", async () => {
     pinata.privateAnswer = "refused";

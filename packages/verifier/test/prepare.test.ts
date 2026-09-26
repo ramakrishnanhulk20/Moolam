@@ -9,6 +9,10 @@
 // rather than 415, while a file whose pixels do not decode keeps 415.
 // From review pass 4: the review's SVG is refused in milliseconds before anything renders it
 // (V17), and an upload's manifest says Moolam opened a file, never that a camera made it (V22).
+// From review pass 5: a picture whose own thumbnail already reads as another picture is refused
+// with 422 fingerprint-unstable (intake 1), a signed file that grew past the upload cap is refused
+// with 413 before any pin (intake 2), and an upright baseline JPEG loses its EXIF, XMP and IPTC
+// with no pixel changed (intake 6).
 // Does NOT cover a real pin to Pinata, a real read
 // of the registry on Monad, the remote JWKS fetch, or the per-user rate limit reaching 20 in an
 // hour.
@@ -20,10 +24,17 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { SignerRefusedFile, SignerUnavailable, readManifest } from "../src/c2pa.js";
 import { TRAINING_ASSERTION_LABEL } from "../src/consent.js";
-import { PACKAGE_ROOT } from "../src/env.js";
-import { fingerprint } from "../src/fingerprint.js";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { MAX_UPLOAD_BYTES, PACKAGE_ROOT } from "../src/env.js";
+import { PHASH_MATCH_THRESHOLD, fingerprint } from "../src/fingerprint.js";
 import { fileSlug } from "../src/metadata.js";
-import { THUMBNAIL_MAX_BYTES, THUMBNAIL_TOO_LARGE_REASON } from "../src/prepare.js";
+import {
+  FINGERPRINT_UNSTABLE_REASON,
+  SIGNED_FILE_TOO_LARGE_REASON,
+  THUMBNAIL_MAX_BYTES,
+  THUMBNAIL_TOO_LARGE_REASON,
+} from "../src/prepare.js";
 import { contentIdOf } from "../src/ipfs/pinata.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
@@ -104,6 +115,58 @@ function body(parts: { file?: { name: string; type: string; bytes: Buffer }; fie
     payload: Buffer.concat(chunks),
     headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
   };
+}
+
+/**
+ * The review's picture for intake 1: a sky that only changes from top to bottom over a dark
+ * horizon band, with plus or minus 4 of grain. The pHash never reads row 0 or column 0 of its
+ * DCT block, so almost nothing in this picture decides its bits except the grain.
+ */
+async function skyOverHorizon(seed: number): Promise<Buffer> {
+  const width = 1200;
+  const height = 900;
+  const horizon = Math.round(height * 0.7);
+  const raw = Buffer.alloc(width * height * 3);
+  let state = seed;
+  const clamp = (value: number): number => Math.max(0, Math.min(255, Math.round(value)));
+  for (let y = 0; y < height; y += 1) {
+    const t = y / horizon;
+    for (let x = 0; x < width; x += 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      const grain = ((state >> 16) % 9) - 4;
+      const i = (y * width + x) * 3;
+      const [r, g, b] = y < horizon ? [90 + 120 * t, 150 + 80 * t, 230 + 20 * t] : [30, 34, 28];
+      raw[i] = clamp(r + grain);
+      raw[i + 1] = clamp(g + grain);
+      raw[i + 2] = clamp(b + grain);
+    }
+  }
+  return await sharp(raw, { raw: { width, height, channels: 3 } }).jpeg({ quality: 92 }).toBuffer();
+}
+
+/** One JPEG marker segment: FF, the marker, a two byte length that counts itself, the payload. */
+function segment(marker: number, payload: Buffer): Buffer {
+  return Buffer.concat([Buffer.from([0xff, marker, (payload.length + 2) >> 8, (payload.length + 2) & 0xff]), payload]);
+}
+
+/** The same JPEG with extra segments right after its start marker. */
+function withSegments(jpeg: Buffer, segments: Buffer[]): Buffer {
+  return Buffer.concat([jpeg.subarray(0, 2), ...segments, jpeg.subarray(2)]);
+}
+
+/** Every marker a JPEG carries before its first scan, in order. */
+function markersBeforeScan(jpeg: Buffer): number[] {
+  const markers: number[] = [];
+  let offset = 2;
+  while (offset + 4 <= jpeg.length && jpeg[offset] === 0xff) {
+    const marker = jpeg[offset + 1] as number;
+    markers.push(marker);
+    if (marker === 0xda) {
+      break;
+    }
+    offset += 2 + jpeg.readUInt16BE(offset + 2);
+  }
+  return markers;
 }
 
 describe("POST /prepare", () => {
@@ -413,6 +476,133 @@ describe("POST /prepare", () => {
       reason: THUMBNAIL_TOO_LARGE_REASON,
     });
     expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
+
+  it("intake 1: refuses a sky over a horizon with 422 fingerprint-unstable, public or sealed, and pins nothing", async () => {
+    const sky = await skyOverHorizon(1);
+    const pinsBefore = pinned.size;
+    for (const sealed of ["false", "true"]) {
+      const { payload, headers } = body({
+        file: { name: "sky.jpg", type: "image/jpeg", bytes: sky },
+        fields: { title: "Clear sky", kind: "human", sealed },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: `Bearer ${await token("did:privy:sky-user")}` },
+        remoteAddress: "203.0.113.30",
+      });
+
+      expect(response.statusCode, sealed).toBe(422);
+      const answer = response.json();
+      expect(answer.error, sealed).toBe("fingerprint-unstable");
+      expect(answer.limit, sealed).toBe(PHASH_MATCH_THRESHOLD);
+      expect(answer.distance, sealed).toBeGreaterThan(PHASH_MATCH_THRESHOLD);
+      expect(answer.reason, sealed).toBe(FINGERPRINT_UNSTABLE_REASON);
+    }
+    expect(pinned.size).toBe(pinsBefore);
+  }, 60_000);
+
+  it("intake 1: takes a picture Moolam really pinned, whose thumbnail reads as the same picture", async () => {
+    const hero = readFileSync(path.join(PACKAGE_ROOT, "test", "fixtures", "pinned-hero.jpg"));
+    const { payload, headers } = body({
+      file: { name: "hero.jpg", type: "image/jpeg", bytes: hero },
+      fields: { title: "The hero picture", kind: "human" },
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:hero-user")}` },
+      remoteAddress: "203.0.113.31",
+    });
+
+    expect(response.statusCode).toBe(200);
+  }, 60_000);
+
+  it("intake 2: refuses with 413 when signing grows an upload just under the cap past it, public or sealed", async () => {
+    // Comment segments survive every step before signing, so the file stays just under the cap
+    // until the manifest store goes in.
+    const picture = await makeImage(41);
+    const room = MAX_UPLOAD_BYTES - 20_000 - picture.length;
+    const filler: Buffer[] = [];
+    for (let left = room; left > 4; left -= 65_537) {
+      filler.push(segment(0xfe, Buffer.alloc(Math.min(65_533, left - 4), 0x20)));
+    }
+    const nearCap = withSegments(picture, filler);
+    expect(nearCap.length).toBeLessThan(MAX_UPLOAD_BYTES);
+    expect(nearCap.length).toBeGreaterThan(MAX_UPLOAD_BYTES - 30_000);
+
+    const pinsBefore = pinned.size;
+    for (const sealed of ["false", "true"]) {
+      const { payload, headers } = body({
+        file: { name: "big.jpg", type: "image/jpeg", bytes: nearCap },
+        fields: { title: "Nearly too big", kind: "human", sealed },
+      });
+
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: `Bearer ${await token("did:privy:big-user")}` },
+        remoteAddress: "203.0.113.32",
+      });
+
+      expect(response.statusCode, sealed).toBe(413);
+      expect(response.json(), sealed).toEqual({
+        error: "signed-file-too-large",
+        limit: MAX_UPLOAD_BYTES,
+        reason: SIGNED_FILE_TOO_LARGE_REASON,
+      });
+    }
+    expect(pinned.size).toBe(pinsBefore);
+  }, 120_000);
+
+  it("intake 6: an upright baseline JPEG loses its EXIF, XMP and IPTC before signing, with no pixel changed", async () => {
+    const tagged = await sharp(await makeImage(42))
+      .withExif({
+        IFD0: { Make: "Moolam Test Camera", Model: "Serial 0042" },
+        IFD3: { GPSLatitudeRef: "N", GPSLatitude: "13/1 4/1 0/1", GPSLongitudeRef: "E", GPSLongitude: "80/1 16/1 0/1" },
+      })
+      .withXmp('<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"/></x:xmpmeta>')
+      .jpeg({ quality: 92 })
+      .toBuffer();
+    const upload = withSegments(tagged, [segment(0xed, Buffer.from("Photoshop 3.0\u00008BIM\u0004\u0004Chennai", "latin1"))]);
+    expect(markersBeforeScan(upload)).toContain(0xe1);
+    expect(markersBeforeScan(upload)).toContain(0xed);
+    expect((await sharp(upload).metadata()).isProgressive).toBe(false);
+
+    const title = "Tagged at the harbour";
+    const { payload, headers } = body({
+      file: { name: "tagged.jpg", type: "image/jpeg", bytes: upload },
+      fields: { title, kind: "human" },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      payload,
+      headers: { ...headers, authorization: `Bearer ${await token("did:privy:exif-user")}` },
+      remoteAddress: "203.0.113.33",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const signed = pinned.get(`${fileSlug(title, response.json().passport.exactHash)}.jpg`) as Buffer;
+    expect(markersBeforeScan(signed)).not.toContain(0xe1);
+    expect(markersBeforeScan(signed)).not.toContain(0xed);
+    expect(markersBeforeScan(signed)).toContain(0xeb);
+    const meta = await sharp(signed).metadata();
+    expect(meta.exif).toBeUndefined();
+    expect(meta.xmp).toBeUndefined();
+    expect(meta.iptc).toBeUndefined();
+    expect(signed.includes(Buffer.from("Serial 0042"))).toBe(false);
+    expect((await readManifest(signed)).validation).toBe("valid");
+
+    const before = await sharp(upload).raw().toBuffer();
+    const after = await sharp(signed).raw().toBuffer();
+    expect(after.equals(before)).toBe(true);
   }, 60_000);
 
   it("keeps 415 for a picture whose header reads and whose pixels do not decode", async () => {

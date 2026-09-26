@@ -27,6 +27,7 @@ import {
 import type { PrivateFile } from "../ipfs/pinata.js";
 import {
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+  THUMBNAIL_TOO_LARGE_REASON,
   ThumbnailTooLarge,
   makeThumbnail,
   prepareOrFallback,
@@ -38,6 +39,7 @@ import { readClient } from "../reputation/registry.js";
 import {
   CHAIN_UNREACHABLE,
   PRIVATE_RECHECK_NEEDS_SEALED,
+  PRIVATE_THUMBNAIL_MAX_BYTES,
   SEALED_METADATA_REFUSED,
   dropPrivateCopy,
   keepPrivateCopy,
@@ -193,7 +195,7 @@ const SEALED_FILE_REFUSED = {
  * `sealed` is refused with 400 `private-recheck-needs-sealed` before anything is drawn; the other
  * refusals it adds are 409 `already-registered`, 409 `private-copy-not-private`, 422
  * `thumbnail-too-large` and 503 `chain-unreachable`, all after the picture was drawn, so the daily
- * slot stays spent.
+ * slot stays spent, except that the 422 hands the creator's own slot back.
  *
  * Answers 401 for a missing or foreign token, 400 for a bad prompt, title, creator, deadline or
  * training statement, 400 `prompt-refused` when the model's safety system turns the prompt down,
@@ -201,7 +203,8 @@ const SEALED_FILE_REFUSED = {
  * when too little of the window is left for a person to answer a passkey prompt, 403
  * `creator-mismatch` when the creator is not one of the caller's wallets, 429 `quota` past
  * GENERATE_PER_DAY in a rolling day, 429 `global-limit` once GLOBAL_GENERATIONS_PER_DAY is spent
- * for everyone, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
+ * for everyone, 422 `thumbnail-too-large` when a drawing is too detailed for the Chainlink fetch
+ * budget, 502 `model-failed`, `pin-failed` or `sign-failed` when one of
  * the three outside services will not play, and 503 `busy` when no drawing slot came free.
  *
  * A picture the provider never drew gives the daily slot back. A call that timed out or died in
@@ -290,15 +293,17 @@ export async function generateRoutes(
         draw(parsed.data.prompt, parsed.data.title, parsed.data.training, parsed.data.sealed === true, privateRecheck),
       );
     } catch (error) {
-      // Only a private re-check makes a thumbnail of a sealed drawing, and a drawing too detailed
-      // for the budget was drawn and paid for, so the slot stays spent. A public drawing that
-      // lands here keeps the answer it had before this branch existed.
-      if (error instanceof ThumbnailTooLarge && privateRecheck) {
+      // A drawing too detailed for the thumbnail budget was drawn and paid for, so the day's
+      // ceiling for everyone stays spent. The creator's own slot comes back: the same prompt would
+      // likely hit the same wall, and they should not pay a second slot to learn that (review
+      // pass 5, intake 4). Only a private re-check makes a thumbnail of a sealed drawing.
+      if (error instanceof ThumbnailTooLarge) {
+        quota.release(identity.userId, ticket);
         request.log.warn({ url: request.url, reason: error.message }, "rejected: /generate thumbnail too large");
         return reply.code(422).send({
           error: "thumbnail-too-large",
           limit: error.limit,
-          reason: PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+          reason: privateRecheck ? PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON : THUMBNAIL_TOO_LARGE_REASON,
         });
       }
       if (error instanceof Busy) {
@@ -604,7 +609,9 @@ async function draw(
   };
   if (sealed) {
     const prepared = await prepareSealed(image.bytes, settings);
-    const privateThumbnail = privateRecheck ? await makeThumbnail(prepared.bytes) : undefined;
+    const privateThumbnail = privateRecheck
+      ? await makeThumbnail(prepared.bytes, PRIVATE_THUMBNAIL_MAX_BYTES)
+      : undefined;
     return { ...prepared, privateThumbnail, model: image.model, usage: image.usage, sealed: true };
   }
   const prepared = await prepareOrFallback(image.bytes, settings);

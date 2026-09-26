@@ -33,6 +33,14 @@ threshold. The agent side bakes the rotation into the pixels before the C2PA man
 the registered file, its fingerprint, the thumbnail and the hash the Chainlink workflow recomputes
 all describe one picture the same way up.
 
+## Transparency
+
+A JPEG has no alpha channel, so registration flattens a transparent PNG or WebP onto white before
+it signs. A query is flattened onto the same white before either hash reads it, in the fingerprint
+and in all eight variants, so a logo or a sticker that kept its transparency still matches its own
+passport. Before this rule the transparent areas read as black at query time and a registered logo
+landed 48 of 64 bits from itself. A picture with no alpha channel is hashed exactly as before.
+
 ## The eight variants
 
 A rotated or mirrored re-upload is the same picture to a person and a completely different one to a
@@ -63,6 +71,21 @@ identical bytes.
 An upload whose bytes are already registered is answered from the sha256 alone, without building
 the eight rotated copies. Anything over 40 megapixels is refused with 413 before a single pixel is
 decoded, because a 572 KB JPEG can unpack to 100 megapixels.
+
+## Pictures a fingerprint cannot hold
+
+The pHash reads the 8 by 8 block of coefficients next to the DC term and never row 0 or column 0.
+A picture that only changes from top to bottom, such as a clear sky over a flat horizon or a flag
+of horizontal bands, puts almost nothing in that block, so grain and compression noise decide its
+bits. Measured on a 1200 by 900 sky with plus or minus 4 of grain, its own 512 pixel thumbnail
+landed 31 to 39 bits away, far past the threshold of 10. Such a passport would fail its Chainlink
+re-check and no copy of it could ever be matched.
+
+So `/prepare` measures every picture the way the re-check will, before anything is pinned or
+handed back: the pHash of the prepared picture against the pHash of its own thumbnail, made by the
+same code the workflow and a private copy use. Past 10 bits the picture is refused with 422
+`fingerprint-unstable` and the distance, and nothing is pinned. A sealed picture keeps no public
+thumbnail, so it is judged by the one an unseal would publish.
 
 ## What survives and what does not
 

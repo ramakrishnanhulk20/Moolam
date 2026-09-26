@@ -1,5 +1,11 @@
 import sharp, { type Sharp } from "sharp";
-import { MAX_IMAGE_PIXELS, fingerprint, readImageHeader, type Fingerprint } from "./fingerprint.js";
+import {
+  MAX_IMAGE_PIXELS,
+  fingerprint,
+  flattenedOntoWhite,
+  readImageHeader,
+  type Fingerprint,
+} from "./fingerprint.js";
 import type { DihedralName } from "./types.js";
 
 /**
@@ -49,9 +55,10 @@ interface RawImage {
  * straight from the name.
  *
  * The image is decoded to raw pixels once, turned upright by its EXIF
- * orientation and shrunk to a longest side of 1024 first, so the eight
- * pipelines never hold eight full-size buffers. Every variant is re-encoded as
- * PNG rather than JPEG, because a lossy round trip would push its own
+ * orientation, flattened onto white when it has an alpha channel (the same
+ * flatten registration and fingerprint() apply), and shrunk to a longest side of
+ * 1024 first, so the eight pipelines never hold eight full-size buffers. Every
+ * variant is re-encoded as PNG rather than JPEG, because a lossy round trip would push its own
  * compression artefacts into the fingerprints and blur the very thing being
  * measured.
  *
@@ -68,10 +75,10 @@ export async function dihedralVariants(bytes: Buffer): Promise<Record<DihedralNa
 
   // Reading the header first is what turns an oversized image into the clear
   // ImageTooLarge refusal rather than sharp's own message from inside a decode.
-  await readImageHeader(bytes);
+  const header = await readImageHeader(bytes);
+  const turned = sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate();
   const upright = await decodeRaw(
-    sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS })
-      .rotate()
+    (header.hasAlpha ? flattenedOntoWhite(turned) : turned)
       .resize({
         width: VARIANT_LONGEST_SIDE,
         height: VARIANT_LONGEST_SIDE,

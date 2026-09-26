@@ -1,16 +1,15 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import sharp, { type Metadata } from "sharp";
+import { Worker } from "node:worker_threads";
+import sharp, { type Metadata, type Sharp } from "sharp";
+import type { BlockhashAnswer, BlockhashJob } from "./fingerprintWorker.js";
 import type { Hex } from "./types.js";
 
 const require = createRequire(import.meta.url);
 
-// sharp-phash and imghash ship no type declarations, so they are loaded through
-// require and given the exact shapes their READMEs document.
+// sharp-phash ships no type declarations, so it is loaded through require and given the exact
+// shape its README documents. imghash is loaded the same way, inside fingerprintWorker.ts.
 const sharpPhash = require("sharp-phash") as (input: Buffer) => Promise<string>;
-const imghash = require("imghash") as {
-  hash: (input: Buffer | string, bits?: number, format?: "hex" | "binary") => Promise<string>;
-};
 
 export type { Hex };
 
@@ -61,6 +60,21 @@ export const BLOCKHASH_MATCH_THRESHOLD = 40;
  */
 export const MAX_IMAGE_PIXELS = 40_000_000;
 
+/**
+ * What a transparent pixel becomes before anything is hashed or signed. Registration writes a JPEG,
+ * which has no alpha channel, so the signed file is flattened onto this; a query is flattened onto
+ * the same colour, or a logo that kept its transparency would never match its own passport.
+ */
+export const FLATTEN_BACKGROUND = "#ffffff";
+
+/**
+ * The one flatten both sides use: prepare.ts before it signs, and the fingerprint and the eight
+ * variants before they hash. A picture with no alpha channel comes out of it unchanged.
+ */
+export function flattenedOntoWhite(pipeline: Sharp): Sharp {
+  return pipeline.flatten({ background: FLATTEN_BACKGROUND });
+}
+
 /** Raised when an image is over the pixel limit, so a route can answer 413 rather than 400. */
 export class ImageTooLarge extends Error {}
 
@@ -104,6 +118,8 @@ export interface ImageHeader {
   format: string;
   /** The EXIF orientation tag, 1 when the file carries none. */
   orientation: number;
+  /** True when the file carries an alpha channel, which is flattened onto white before hashing. */
+  hasAlpha: boolean;
 }
 
 /**
@@ -147,7 +163,13 @@ export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
       `the image is ${width}x${height} pixels, over the ${MAX_IMAGE_PIXELS} pixel limit this service decodes`,
     );
   }
-  return { width, height, format: metadata.format ?? "unknown", orientation: metadata.orientation ?? 1 };
+  return {
+    width,
+    height,
+    format: metadata.format ?? "unknown",
+    orientation: metadata.orientation ?? 1,
+    hasAlpha: metadata.hasAlpha === true,
+  };
 }
 
 /**
@@ -156,9 +178,10 @@ export async function readImageHeader(bytes: Buffer): Promise<ImageHeader> {
  * container format.
  *
  * The sha256 is of the bytes exactly as they arrived. The two perceptual hashes
- * are taken from the upright picture, so a sideways phone photo and the same
- * photo turned the right way up fingerprint alike. The dimensions reported are
- * the upright ones.
+ * are taken from the upright picture flattened onto white, so a sideways phone
+ * photo and the same photo turned the right way up fingerprint alike, and a
+ * transparent PNG hashes as the white-backed JPEG registration signed. The
+ * dimensions reported are the upright ones.
  *
  * Throws when the buffer is empty, when it is not a JPEG, PNG or WebP
  * (UnsupportedImageFormat), when the image is over the pixel limit
@@ -170,10 +193,10 @@ export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
   }
 
   const header = await readImageHeader(bytes);
-  const oriented = await orientedImage(bytes, header);
+  const oriented = await hashableImage(bytes, header);
   const [phashBits, blockhashHex] = await Promise.all([
     sharpPhash(oriented.bytes),
-    imghash.hash(oriented.bytes, BLOCKHASH_BITS_PER_ROW, "hex"),
+    blockhashOffThread(oriented.bytes, oriented.width * oriented.height),
   ]);
 
   if (phashBits.length !== PHASH_BITS) {
@@ -194,8 +217,27 @@ export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
 }
 
 /**
+ * The pHash alone, from the same pixels fingerprint() hashes. Prepare uses it to ask whether a
+ * picture's own thumbnail still reads as the picture, without paying for a blockhash nobody reads.
+ *
+ * Throws what fingerprint() throws for bytes it cannot read.
+ */
+export async function phashOf(bytes: Buffer): Promise<bigint> {
+  if (bytes.length === 0) {
+    throw new Error("phashOf needs a non-empty image buffer");
+  }
+  const oriented = await hashableImage(bytes, await readImageHeader(bytes));
+  const bits = await sharpPhash(oriented.bytes);
+  if (bits.length !== PHASH_BITS) {
+    throw new Error(`expected a ${PHASH_BITS} bit pHash, got ${bits.length} bits`);
+  }
+  return BigInt(`0b${bits}`);
+}
+
+/**
  * The pixels both hashes are taken from: the picture the way a person sees it,
- * with any EXIF orientation already applied.
+ * with any EXIF orientation already applied and any transparency flattened onto
+ * white.
  *
  * A phone photo taken sideways stores its pixels rotated and leaves a tag
  * saying which way up it goes. Hashing the stored pixels would give the same
@@ -204,23 +246,133 @@ export async function fingerprint(bytes: Buffer): Promise<Fingerprint> {
  * buffer. The rewritten copy is a PNG because it is lossless: re-encoding to
  * JPEG would add compression noise to the very thing being measured.
  *
- * A file with no rotation to apply is handed on untouched. Its stored pixels
- * are already the upright ones, and skipping the re-encode keeps every
- * fingerprint recorded before this check byte for byte reproducible.
+ * Transparency is flattened because sharp-phash premultiplies alpha around its
+ * resize, so a transparent area reads as black, while registration signs the
+ * picture flattened onto white (review pass 5, intake 3).
+ *
+ * A file with no rotation to apply and no alpha channel is handed on untouched.
+ * Its stored pixels are already the ones to hash, and skipping the re-encode
+ * keeps every fingerprint recorded before these checks byte for byte
+ * reproducible.
  */
-async function orientedImage(
+async function hashableImage(
   bytes: Buffer,
   header: ImageHeader,
 ): Promise<{ bytes: Buffer; width: number; height: number }> {
-  if (header.orientation === 1) {
+  if (header.orientation === 1 && !header.hasAlpha) {
     return { bytes, width: header.width, height: header.height };
   }
 
-  const { data, info } = await sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS })
-    .rotate()
+  const upright = sharp(bytes, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate();
+  const { data, info } = await (header.hasAlpha ? flattenedOntoWhite(upright) : upright)
     .png({ compressionLevel: 3 })
     .toBuffer({ resolveWithObject: true });
   return { bytes: data, width: info.width, height: info.height };
+}
+
+/**
+ * How many blockhash decodes run at once, each on its own worker thread. Two is the match gate's
+ * width, and dihedralFingerprints queues its eight small variants behind them.
+ */
+const BLOCKHASH_WORKERS = 2;
+
+/**
+ * A worker that decoded more pixels than this is replaced rather than kept. WebAssembly memory
+ * grows to fit the largest picture it has held and never shrinks, and one 40 megapixel decode left
+ * about 440 MB resident in the review's measurement (answers 1). Eight megapixels covers the
+ * variants and every thumbnail, so only a large upload pays for a fresh worker.
+ */
+const RECYCLE_AFTER_PIXELS = 8_000_000;
+
+/** Far past the 1 to 1.5 seconds a 40 megapixel decode measured, so only a stuck worker meets it. */
+const BLOCKHASH_TIMEOUT_MS = 30_000;
+
+/** The compiled service runs fingerprintWorker.js; the tests and tsx run the .ts beside this file. */
+const WORKER_URL = new URL(
+  import.meta.url.endsWith(".ts") ? "./fingerprintWorker.ts" : "./fingerprintWorker.js",
+  import.meta.url,
+);
+
+interface BlockhashRequest {
+  bytes: Buffer;
+  pixels: number;
+  resolve: (hex: string) => void;
+  reject: (error: Error) => void;
+}
+
+const waiting: BlockhashRequest[] = [];
+const idleWorkers: Worker[] = [];
+let runningWorkers = 0;
+
+/**
+ * The imghash blockhash of an encoded picture, worked out on a worker thread so the thread that
+ * answers requests never decodes pixels itself. A caller waits in line when both workers are busy.
+ *
+ * Rejects with imghash's own message for a file it cannot decode, and with a plain Error when a
+ * worker crashes or runs past BLOCKHASH_TIMEOUT_MS; that worker is thrown away and the next
+ * request gets a fresh one.
+ */
+function blockhashOffThread(bytes: Buffer, pixels: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    waiting.push({ bytes, pixels, resolve, reject });
+    startWaiting();
+  });
+}
+
+function startWaiting(): void {
+  while (runningWorkers < BLOCKHASH_WORKERS && waiting.length > 0) {
+    const request = waiting.shift() as BlockhashRequest;
+    runningWorkers += 1;
+    runOn(idleWorkers.pop() ?? new Worker(WORKER_URL), request);
+  }
+}
+
+function runOn(worker: Worker, request: BlockhashRequest): void {
+  let settled = false;
+  const finish = (outcome: { hex: string } | { error: Error }, broken: boolean): void => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    clearTimeout(timer);
+    worker.off("message", onMessage);
+    worker.off("error", onError);
+    worker.off("exit", onExit);
+    runningWorkers -= 1;
+    if (broken || request.pixels > RECYCLE_AFTER_PIXELS) {
+      void worker.terminate();
+    } else {
+      // An idle worker must not keep a script or a test process alive on its own.
+      worker.unref();
+      idleWorkers.push(worker);
+    }
+    if ("hex" in outcome) {
+      request.resolve(outcome.hex);
+    } else {
+      request.reject(outcome.error);
+    }
+    startWaiting();
+  };
+  const onMessage = (answer: BlockhashAnswer): void => {
+    finish("hex" in answer ? { hex: answer.hex } : { error: new Error(answer.error) }, false);
+  };
+  const onError = (error: Error): void => finish({ error }, true);
+  const onExit = (code: number): void =>
+    finish({ error: new Error(`the blockhash worker stopped with code ${code}`) }, true);
+  const timer = setTimeout(
+    () => finish({ error: new Error(`the blockhash took longer than ${BLOCKHASH_TIMEOUT_MS} ms`) }, true),
+    BLOCKHASH_TIMEOUT_MS,
+  );
+
+  worker.on("message", onMessage);
+  worker.on("error", onError);
+  worker.on("exit", onExit);
+  worker.ref();
+  // A copy of exactly these bytes, handed over rather than cloned: a Buffer can be a view into a
+  // much larger allocation, and cloning a view clones all of it.
+  const copy = new Uint8Array(request.bytes);
+  const job: BlockhashJob = { bytes: copy, bits: BLOCKHASH_BITS_PER_ROW };
+  worker.postMessage(job, [copy.buffer]);
 }
 
 /** Counts the differing bits between two 64-bit pHashes. */

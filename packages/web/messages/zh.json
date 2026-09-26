@@ -1543,7 +1543,8 @@
       "privateRecheckNeedsSealed": "验证服务不会为没有封存的图片保留私有副本，所以什么都没有固定，也没有登记。重新载入工作室后再试一次。",
       "privateCopyNotPrivate": "存储服务商没有把小副本设为私有，所以 Moolam 停了下来，什么都没有固定，也没有登记。关掉私下重新核对，就能不带它把这张图片封存登记。",
       "privateChainUnreachable": "Moolam 连不上 Monad，无法确认这张图片是新的，所以没有保留私有副本，也什么都没有登记。稍后再试一次。",
-      "privateThumbnailTooLarge": "这张图片的细节太多，放不进 Chainlink 重新核对时打开的小副本，所以什么都没有固定，也没有登记。关掉私下重新核对并保持封存，就能登记。"
+      "privateThumbnailTooLarge": "这张图片的细节太多，放不进 Chainlink 重新核对时打开的小副本，所以什么都没有固定，也没有登记。关掉私下重新核对并保持封存，就能登记。",
+      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的重新核对和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。"
     },
     "actions": {
       "signIn": "重新登录",

@@ -3,7 +3,11 @@ import { SignerRefusedFile, SignerUnavailable, embedManifest, readManifest, type
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
   MAX_IMAGE_PIXELS,
+  PHASH_MATCH_THRESHOLD,
   fingerprint,
+  flattenedOntoWhite,
+  hamming64,
+  phashOf,
   readImageHeader,
   type Fingerprint,
   type Hex,
@@ -30,6 +34,9 @@ export const THUMBNAIL_TOO_LARGE_REASON =
 export const PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON =
   "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a private re-check could never open it. Registering it sealed without the private re-check makes no thumbnail and still works. Nothing was pinned.";
 
+export const EDIT_THUMBNAIL_TOO_LARGE_REASON =
+  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so an edit made from it could never be re-checked. Nothing was pinned and nothing was sent.";
+
 export const UNSEAL_THUMBNAIL_TOO_LARGE_REASON =
   "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so unsealing it would publish a passport that can never be re-checked. Nothing was pinned.";
 
@@ -46,6 +53,39 @@ export class ThumbnailTooLarge extends Error {
   }
 }
 
+/**
+ * What a creator is told when signing grew their file past the upload cap every other route holds
+ * to. The registered file has to come back through /verify and /unseal byte for byte, and both
+ * refuse anything over the cap.
+ */
+export const SIGNED_FILE_TOO_LARGE_REASON =
+  "signing this picture made the file larger than the 20 MB every Moolam route accepts, so its passport could never be checked or unsealed with the registered file. A slightly smaller copy of the picture will register. Nothing was pinned.";
+
+/**
+ * What a creator is told when a picture's fingerprint does not survive its own thumbnail. The
+ * sentence names the cause a person can see, a picture that only changes from top to bottom, such
+ * as a clear sky over a flat horizon, rather than the DCT block that makes it so.
+ */
+export const FINGERPRINT_UNSTABLE_REASON =
+  "this picture has too little detail across its width for a fingerprint that survives copying: its own small copy already reads as a different picture, so the Chainlink re-check and any search for its copies would miss it. A picture with more detail from side to side will register. Nothing was pinned.";
+
+/**
+ * The picture's pHash and the pHash of its own thumbnail are further apart than the match
+ * threshold, so the re-check would call the registered thumbnail a mismatch and an honest copy of
+ * the picture could not be matched either (review pass 5, intake 1).
+ */
+export class FingerprintUnstable extends Error {
+  readonly limit = PHASH_MATCH_THRESHOLD;
+  readonly distance: number;
+  constructor(distance: number) {
+    super(
+      `the thumbnail's pHash is ${distance} of 64 bits from the picture's, over the ${PHASH_MATCH_THRESHOLD} bit threshold`,
+    );
+    this.name = "FingerprintUnstable";
+    this.distance = distance;
+  }
+}
+
 /** Longest side of the thumbnail in pixels. Small enough to decode fast, large enough to hash. */
 export const THUMBNAIL_LONGEST_SIDE = 512;
 
@@ -54,9 +94,6 @@ export const THUMBNAIL_LONGEST_SIDE = 512;
  * re-encode of a creator's PNG is invisible next to the JPEG the studio would have pinned anyway.
  */
 const NORMALISED_QUALITY = 95;
-
-/** What a transparent pixel becomes once the picture is a JPEG, which has no alpha channel. */
-const FLATTEN_BACKGROUND = "#ffffff";
 
 const QUALITY_START = 85;
 const QUALITY_FLOOR = 30;
@@ -307,22 +344,73 @@ function refusalOrThrow(error: unknown): SignerRefusedFile {
  * reads baseline JPEG only. Converting here means the pinned bytes, the manifest, the fingerprints
  * and the thumbnail all describe one file.
  *
- * A JPEG that is already upright and already baseline is handed back untouched, because re-encoding
- * it would cost image quality for no gain.
+ * A JPEG that is already upright and already baseline is not re-encoded, because that would cost
+ * image quality for no gain. It loses its EXIF, XMP and IPTC segments instead, byte for byte, so
+ * the file pinned to public IPFS for good carries no camera location or serial whatever format it
+ * arrived in: the re-encode below drops them too (review pass 5, intake 6).
  *
- * Transparency is flattened onto white, since a JPEG has no alpha channel to carry it.
+ * Transparency is flattened onto white, since a JPEG has no alpha channel to carry it, by the same
+ * flatten fingerprint() and the eight variants apply to a query.
  */
 export async function uprightImage(source: Buffer): Promise<Buffer> {
   const header = await readImageHeader(source);
   if (header.format === "jpeg" && header.orientation === 1 && !(await isProgressive(source))) {
-    return source;
+    const stripped = withoutCameraMetadata(source);
+    if (stripped !== null) {
+      return stripped;
+    }
   }
 
-  return await sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS })
-    .rotate()
-    .flatten({ background: FLATTEN_BACKGROUND })
+  return await flattenedOntoWhite(sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate())
     .jpeg({ quality: NORMALISED_QUALITY, progressive: false })
     .toBuffer();
+}
+
+/** APP1 carries EXIF and XMP, APP13 carries IPTC. Nothing else in a JPEG names a place or a camera. */
+const CAMERA_METADATA_MARKERS = new Set([0xe1, 0xed]);
+
+/**
+ * The same JPEG without its APP1 and APP13 segments, every other byte kept in order: the JFIF
+ * header, the colour profile, the Adobe transform marker, any C2PA store in APP11, the tables and
+ * the compressed scans. No pixel is decoded or re-encoded.
+ *
+ * The file is the caller's, so every length is checked against the buffer. Anything this walk does
+ * not recognise before the first scan returns null, and the caller re-encodes instead, which drops
+ * the metadata too: a malformed header costs quality, never a leaked location.
+ */
+export function withoutCameraMetadata(jpeg: Buffer): Buffer | null {
+  if (jpeg.length < 4 || jpeg[0] !== 0xff || jpeg[1] !== 0xd8) {
+    return null;
+  }
+  const kept: Buffer[] = [jpeg.subarray(0, 2)];
+  let offset = 2;
+  while (offset + 4 <= jpeg.length) {
+    if (jpeg[offset] !== 0xff) {
+      return null;
+    }
+    const marker = jpeg[offset + 1] as number;
+    // Fill bytes before a marker, and the standalone markers, carry no length.
+    if (marker === 0xff) {
+      offset += 1;
+      continue;
+    }
+    if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7) || marker === 0x01) {
+      return null;
+    }
+    if (marker === 0xda) {
+      kept.push(jpeg.subarray(offset));
+      return Buffer.concat(kept);
+    }
+    const end = offset + 2 + jpeg.readUInt16BE(offset + 2);
+    if (end - offset < 4 || end > jpeg.length) {
+      return null;
+    }
+    if (!CAMERA_METADATA_MARKERS.has(marker)) {
+      kept.push(jpeg.subarray(offset, end));
+    }
+    offset = end;
+  }
+  return null;
 }
 
 /**
@@ -340,10 +428,29 @@ async function isProgressive(source: Buffer): Promise<boolean> {
  * The output is a baseline JPEG on purpose: the Chainlink sandbox decodes with jpeg-js, which
  * reads baseline files only, so a progressive thumbnail would fail every verification.
  *
+ * `maxBytes` is smaller than THUMBNAIL_MAX_BYTES only for a private copy, which gains a comment
+ * after this and still has to fit the fetch budget (review pass 5, intake 5).
+ *
  * Throws ThumbnailTooLarge when even the lowest quality is over the budget, and whatever sharp
  * throws for pixels it cannot decode.
  */
-export async function makeThumbnail(image: Buffer): Promise<Buffer> {
+export async function makeThumbnail(image: Buffer, maxBytes: number = THUMBNAIL_MAX_BYTES): Promise<Buffer> {
+  const budget = Math.min(maxBytes, THUMBNAIL_MAX_BYTES);
+  const shrunk = await shrinkToBudget(image, budget);
+  if (!shrunk.fits) {
+    throw new ThumbnailTooLarge(
+      `The thumbnail is still ${shrunk.thumbnail.length} bytes at quality ${QUALITY_FLOOR}, over the ${budget} byte cap.`,
+    );
+  }
+  return shrunk.thumbnail;
+}
+
+/**
+ * The first quality at or under the budget, or the lowest quality tried when none fits. Every
+ * candidate is a baseline JPEG of the same resized pixels, so the one kept is exactly what
+ * makeThumbnail would hand the workflow.
+ */
+async function shrinkToBudget(image: Buffer, maxBytes: number): Promise<{ thumbnail: Buffer; fits: boolean }> {
   const resized = sharp(image, { limitInputPixels: MAX_IMAGE_PIXELS }).resize({
     width: THUMBNAIL_LONGEST_SIDE,
     height: THUMBNAIL_LONGEST_SIDE,
@@ -351,16 +458,44 @@ export async function makeThumbnail(image: Buffer): Promise<Buffer> {
     withoutEnlargement: true,
   });
 
-  let smallest = Number.POSITIVE_INFINITY;
+  let last: Buffer | undefined;
   for (let quality = QUALITY_START; quality >= QUALITY_FLOOR; quality -= QUALITY_STEP) {
     const candidate = await resized.clone().jpeg({ quality, progressive: false }).toBuffer();
-    if (candidate.length <= THUMBNAIL_MAX_BYTES) {
-      return candidate;
+    if (candidate.length <= maxBytes) {
+      return { thumbnail: candidate, fits: true };
     }
-    smallest = candidate.length;
+    last = candidate;
   }
+  if (last === undefined) {
+    throw new Error("the thumbnail quality range is empty");
+  }
+  return { thumbnail: last, fits: false };
+}
 
-  throw new ThumbnailTooLarge(
-    `The thumbnail is still ${smallest} bytes at quality ${QUALITY_FLOOR}, over the ${THUMBNAIL_MAX_BYTES} byte cap.`,
-  );
+/**
+ * The thumbnail a re-check of this picture would hash: makeThumbnail's pick, or its lowest quality
+ * when nothing fits. A plain sealed prepare keeps no thumbnail and still has to be judged by the
+ * copy an unseal would publish, so this one never refuses on size.
+ */
+export async function recheckThumbnail(image: Buffer): Promise<Buffer> {
+  return (await shrinkToBudget(image, THUMBNAIL_MAX_BYTES)).thumbnail;
+}
+
+/**
+ * Refuses a picture whose fingerprint does not survive its own thumbnail, measured the way the
+ * Chainlink re-check measures it: the registered pHash against the pHash of the thumbnail, over
+ * the same match threshold. A picture that only changes from top to bottom leaves the pHash's
+ * 8 by 8 block almost empty, so its bits are decided by grain and compression noise and the two
+ * land 30 bits apart. Such a passport could never be re-checked as matched, and no re-encoded copy
+ * of it could be found by /verify.
+ *
+ * Returns the distance in bits. Throws FingerprintUnstable past PHASH_MATCH_THRESHOLD, and what
+ * phashOf throws for a thumbnail it cannot read.
+ */
+export async function assertStableFingerprint(phash: bigint, thumbnail: Buffer): Promise<number> {
+  const distance = hamming64(phash, await phashOf(thumbnail));
+  if (distance > PHASH_MATCH_THRESHOLD) {
+    throw new FingerprintUnstable(distance);
+  }
+  return distance;
 }

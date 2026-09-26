@@ -17,12 +17,17 @@ import {
   passportMetadata,
 } from "../metadata.js";
 import {
+  FINGERPRINT_UNSTABLE_REASON,
+  FingerprintUnstable,
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+  SIGNED_FILE_TOO_LARGE_REASON,
   THUMBNAIL_TOO_LARGE_REASON,
   ThumbnailTooLarge,
+  assertStableFingerprint,
   makeThumbnail,
   prepareOrFallback,
   prepareSealed,
+  recheckThumbnail,
   type PreparedResult,
   type SealedResult,
 } from "../prepare.js";
@@ -31,6 +36,7 @@ import { readClient } from "../reputation/registry.js";
 import {
   CHAIN_UNREACHABLE,
   PRIVATE_RECHECK_NEEDS_SEALED,
+  PRIVATE_THUMBNAIL_MAX_BYTES,
   SEALED_METADATA_REFUSED,
   dropPrivateCopy,
   keepPrivateCopy,
@@ -142,14 +148,16 @@ const SEALED_FILE_REFUSED = {
  *
  * Answers 401 for a missing or foreign token, 400 for a bad title, kind, sealed or privateRecheck
  * flag or training statement, 400 `private-recheck-needs-sealed` for privateRecheck without
- * sealed, 413 over the size or pixel limit, 415 when the file is not an image, 422
- * `thumbnail-too-large` when a public or privately re-checked picture's thumbnail cannot fit the
- * Chainlink fetch budget, 409 `already-registered` when the registry already holds this exact
- * picture, 409 `private-copy-not-private` when Pinata did not keep the private copy private under
- * its name, 429 past the per-user limit or `global-limit` once GLOBAL_PREPARES_PER_DAY is spent
- * for everyone, 502 when Pinata refuses a pin, and 503 `chain-unreachable` when a private re-check
- * was asked for and the duplicate check could not reach the chain. The route is not mounted at all
- * on a host that cannot sign a manifest.
+ * sealed, 413 over the size or pixel limit or `signed-file-too-large` when signing grew the file
+ * past the upload cap, 415 when the file is not an image, 422 `thumbnail-too-large` when a public
+ * or privately re-checked picture's thumbnail cannot fit the Chainlink fetch budget, 422
+ * `fingerprint-unstable` when the picture's own thumbnail is further from its pHash than the match
+ * threshold, 409 `already-registered` when the registry already holds this exact picture, 409
+ * `private-copy-not-private` when Pinata did not keep the private copy private under its name, 429
+ * past the per-user limit or `global-limit` once GLOBAL_PREPARES_PER_DAY is spent for everyone,
+ * 502 when Pinata refuses a pin, and 503 `chain-unreachable` when a private re-check was asked for
+ * and the duplicate check could not reach the chain. The route is not mounted at all on a host
+ * that cannot sign a manifest.
  */
 export async function prepareRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   // A host with no signing identity would otherwise answer 200 with an unsigned picture for every
@@ -232,16 +240,27 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
         // makeThumbnail the public path uses, from the signed bytes, so the private run hashes
         // the same thumbnail a public run would (B14).
         let privateThumbnail: Buffer | undefined;
+        // Every path is judged by the thumbnail a re-check would hash before anything is signed by
+        // the creator or pinned by this service (review pass 5, intake 1). A plain sealed prepare
+        // keeps no thumbnail, so it is judged by the one an unseal would publish.
         try {
           if (upload.sealed) {
             const made = await app.verifier.runPrepare(async () => {
               const sealed = await prepareSealed(upload.bytes, settings);
-              return { sealed, thumbnail: upload.privateRecheck ? await makeThumbnail(sealed.bytes) : undefined };
+              const thumbnail = upload.privateRecheck
+                ? await makeThumbnail(sealed.bytes, PRIVATE_THUMBNAIL_MAX_BYTES)
+                : undefined;
+              await assertStableFingerprint(sealed.print.phash, thumbnail ?? (await recheckThumbnail(sealed.bytes)));
+              return { sealed, thumbnail };
             });
             studio = made.sealed;
             privateThumbnail = made.thumbnail;
           } else {
-            published = await app.verifier.runPrepare(() => prepareOrFallback(upload.bytes, settings));
+            published = await app.verifier.runPrepare(async () => {
+              const prepared = await prepareOrFallback(upload.bytes, settings);
+              await assertStableFingerprint(prepared.print.phash, prepared.thumbnail);
+              return prepared;
+            });
             studio = published;
           }
         } catch (error) {
@@ -266,10 +285,31 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
               reason: upload.sealed ? PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON : THUMBNAIL_TOO_LARGE_REASON,
             });
           }
+          if (error instanceof FingerprintUnstable) {
+            request.log.warn({ url: request.url, distance: error.distance }, "rejected: /prepare fingerprint unstable");
+            return reply.code(422).send({
+              error: "fingerprint-unstable",
+              limit: error.limit,
+              distance: error.distance,
+              reason: FINGERPRINT_UNSTABLE_REASON,
+            });
+          }
           // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
           // truncated upload only fails here. That is the caller's file, not this service breaking.
           request.log.warn({ url: request.url, reason }, "rejected: /prepare undecodable image");
           return reply.code(415).send({ error: "not-an-image", reason: "the file could not be decoded" });
+        }
+        // The cap was checked on the upload, and signing adds the manifest store and can re-encode
+        // at quality 95. A file past it could never come back through /verify or /unseal, so it
+        // is refused here, before a pin or a hand-back (review pass 5, intake 2).
+        if (studio.bytes.length > MAX_UPLOAD_BYTES) {
+          request.log.warn(
+            { url: request.url, bytes: studio.bytes.length, sealed: upload.sealed },
+            "rejected: /prepare signed file over the upload cap",
+          );
+          return reply
+            .code(413)
+            .send({ error: "signed-file-too-large", limit: MAX_UPLOAD_BYTES, reason: SIGNED_FILE_TOO_LARGE_REASON });
         }
         if (!studio.embedded) {
           request.log.warn({ url: request.url, reason: studio.detail }, "prepare: manifest not embedded");

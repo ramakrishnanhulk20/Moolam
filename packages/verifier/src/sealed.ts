@@ -333,6 +333,16 @@ export type PrivateCopy =
 /** What the comment in a private copy says, followed by the passport id. */
 export const PRIVATE_COPY_COMMENT = "moolam-private-copy";
 
+/** How many bytes markedPrivateCopy adds: the comment marker, its length and the text. */
+export const PRIVATE_COPY_MARK_BYTES = 4 + `${PRIVATE_COPY_COMMENT} 0x${"0".repeat(64)}`.length;
+
+/**
+ * The budget a private thumbnail is made to, so the marked copy still fits THUMBNAIL_MAX_BYTES. A
+ * thumbnail that fitted only before its comment now takes the next quality step down instead of
+ * being refused (review pass 5, intake 5).
+ */
+export const PRIVATE_THUMBNAIL_MAX_BYTES = THUMBNAIL_MAX_BYTES - PRIVATE_COPY_MARK_BYTES;
+
 /**
  * The private thumbnail with a JPEG comment naming its passport, so its bytes, and so its content
  * id, belong to that passport alone (V12).
@@ -367,15 +377,20 @@ export function markedPrivateCopy(thumbnail: Buffer, passportId: Hex): Buffer {
  * Keeps one thumbnail on Pinata's private network for a sealed passport whose creator asked for a
  * private re-check.
  *
- * The caller has already made the thumbnail with makeThumbnail from the signed bytes, checked
- * those bytes hash to the passport id, and heard "free" from the chain. The file is named after
- * the passport id and carries it as the `passportId` key-value, and its bytes carry the id too, in
- * a JPEG comment (markedPrivateCopy), so no other passport's copy can share its content id. It is
- * kept only if Pinata says it is private under that exact name (B16). Anything else answers 409
- * private-copy-not-private and logs the file id Pinata gave back, and nothing is deleted, because
- * that id can be a public pin the account already held. A marked copy over THUMBNAIL_MAX_BYTES
- * answers 422 thumbnail-too-large before any upload, and an upload Pinata refused or that timed
- * out answers 502 pin-failed.
+ * The caller has already made the thumbnail with makeThumbnail from the signed bytes, to
+ * PRIVATE_THUMBNAIL_MAX_BYTES, checked those bytes hash to the passport id, and heard "free" from
+ * the chain. The file is named after the passport id and carries it as the `passportId` key-value,
+ * and its bytes carry the id too, in a JPEG comment (markedPrivateCopy), so no other passport's
+ * copy can share its content id. It is kept only if Pinata says it is private under that exact
+ * name (B16). Anything else answers 409 private-copy-not-private and logs the file id Pinata gave
+ * back, and nothing is deleted, because that id can be a public pin the account already held. A marked copy over THUMBNAIL_MAX_BYTES
+ * answers 422 thumbnail-too-large before any upload, which a thumbnail made to the smaller budget
+ * never meets, and an upload that failed answers 502 pin-failed.
+ *
+ * `landed` on a refusal says whether Pinata may hold a file because of this request. It is false
+ * only when nothing was sent, or when Pinata answered and refused (a 4xx). An abort, a 5xx, an
+ * answer that would not parse or a connection that dropped can each come after Pinata stored the
+ * file, so they count as landed and the day's slot stays spent (review pass 5, sealed 3).
  */
 export async function keepPrivateCopy(
   thumbnail: Buffer,
@@ -404,9 +419,21 @@ export async function keepPrivateCopy(
       log.error({ passportId: id, fileId: error.fileId, reason }, "rejected: the private copy is not private");
       return { refused: { status: 409, body: PRIVATE_COPY_NOT_PRIVATE }, landed: true };
     }
-    log.error({ passportId: id, reason }, "rejected: the private copy was not kept");
-    return { refused: { status: 502, body: { error: "pin-failed" } }, landed: false };
+    const landed = !refusedByPinata(reason);
+    log.error({ passportId: id, reason, landed }, "rejected: the private copy was not kept");
+    return { refused: { status: 502, body: { error: "pin-failed" } }, landed };
   }
+}
+
+/**
+ * Whether pinPrivateFile's error is Pinata answering with a 4xx, the one failure that says the file
+ * was not taken. pinPrivateFile reports that answer as "Pinata refused the private upload of
+ * <name>: <status>", and this reads the status from the end of that message. Every other message,
+ * including one this rule does not know, reads as "may have landed", which keeps the slot spent.
+ */
+function refusedByPinata(message: string): boolean {
+  const status = /^Pinata refused the private upload of .+: (\d{3})$/.exec(message)?.[1];
+  return status !== undefined && status.startsWith("4");
 }
 
 /**

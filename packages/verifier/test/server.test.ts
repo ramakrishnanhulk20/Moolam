@@ -1,13 +1,15 @@
 // Covers the HTTP surface: health, a good upload, rejected bodies, the refused
-// fetch targets, unknown routes, the body limits and the rate limit.
+// fetch targets, unknown routes, the body limits and the rate limit, and /health answering fast
+// while a 40 megapixel upload is being matched (review pass 5, answers 1).
 // Requests go through fastify.inject, so no port is bound.
 // Does NOT cover the remote URL fetch path against a real network, does not cover
 // the boot refusals or the match gate giving up, which are in boot.test.ts, and
 // does not cover TLS or any deployment concern.
 
+import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { fingerprint } from "../src/fingerprint.js";
+import { MAX_IMAGE_PIXELS, fingerprint } from "../src/fingerprint.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
@@ -129,6 +131,45 @@ describe("body limits", () => {
       await app.close();
     }
   }, 30_000);
+});
+
+describe("answers 1: a large upload does not freeze the service", () => {
+  it("answers /health in under 100 ms while a 40 megapixel upload is matched", async () => {
+    const app = await buildServer({ source: sourceOf([]), logger: false });
+    await app.ready();
+
+    try {
+      // The review's input: one colour, so the file is small and the decode is all that costs.
+      const side = 6300;
+      const flat = await sharp({ create: { width: side, height: side, channels: 3, background: "#3a6ea5" } })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+      expect(side * side).toBeLessThanOrEqual(MAX_IMAGE_PIXELS);
+
+      const { payload, headers } = multipartBody("file", "flat.png", "image/png", flat);
+      let finished = false;
+      const verify = app.inject({ method: "POST", url: "/verify", payload, headers }).finally(() => {
+        finished = true;
+      });
+
+      // Each wait runs from the moment a probe was due, so a stall that lands between two probes
+      // delays the next one and is counted too.
+      const waits: number[] = [];
+      while (!finished) {
+        const due = performance.now() + 20;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        const probe = await app.inject({ method: "GET", url: "/health", remoteAddress: "203.0.113.9" });
+        waits.push(performance.now() - due);
+        expect(probe.statusCode).toBe(200);
+      }
+
+      expect((await verify).statusCode).toBe(200);
+      expect(waits.length).toBeGreaterThan(5);
+      expect(Math.max(...waits)).toBeLessThan(100);
+    } finally {
+      await app.close();
+    }
+  }, 60_000);
 });
 
 describe("rate limit", () => {

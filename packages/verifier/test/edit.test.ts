@@ -5,7 +5,8 @@
 // answers for a send that reverted or never confirmed, and the happy path, where what matters is
 // the calldata that would reach the chain and the hash the answer carries back.
 // From review pass 4: the review's SVG is refused before the gate (V17), and an edit's manifest
-// records opened then edited with no source type Moolam cannot see (V22).
+// records opened then edited with no source type Moolam cannot see (V22). From review pass 5: a
+// real picture too detailed for the thumbnail budget is told so with 422, not 415 (intake 4).
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
 // Those are proven live by packages/agents/scripts/prove-privy.ts step 6 and, from the browser,
 // by a real creator granting a signer. The sponsored poll itself is covered in
@@ -13,6 +14,7 @@
 
 import { APIError } from "@privy-io/node";
 import { SignJWT, generateKeyPair } from "jose";
+import sharp from "sharp";
 import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
@@ -82,6 +84,7 @@ const { Busy } = await import("../src/generate/gate.js");
 const { buildServer } = await import("../src/server.js");
 const { fileSlug } = await import("../src/metadata.js");
 const { readManifest } = await import("../src/c2pa.js");
+const { EDIT_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } = await import("../src/prepare.js");
 const emptySource = { load: async () => [] };
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
@@ -385,6 +388,30 @@ describe("POST /edit", () => {
 
     expect(refused.statusCode).toBe(415);
     expect(refused.json().error).toBe("not-an-image");
+    expect(stubs.send).not.toHaveBeenCalled();
+    expect(await usedAfter(user)).toBe(1);
+  }, 60_000);
+
+  it("intake 4: answers 422 thumbnail-too-large for a real picture too detailed for the budget, and gives the slot back", async () => {
+    const user = "did:privy:noise-user";
+    const side = 512;
+    const raw = Buffer.alloc(side * side * 3);
+    let state = 4242;
+    for (let i = 0; i < raw.length; i += 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      raw[i] = (state >> 16) & 0xff;
+    }
+    const noise = await sharp(raw, { raw: { width: side, height: side, channels: 3 } }).png().toBuffer();
+
+    const refused = await ask(user, goodFields(), { image: noise });
+
+    expect(refused.statusCode).toBe(422);
+    expect(refused.json()).toEqual({
+      error: "thumbnail-too-large",
+      limit: THUMBNAIL_MAX_BYTES,
+      reason: EDIT_THUMBNAIL_TOO_LARGE_REASON,
+    });
+    expect(pins).toBe(0);
     expect(stubs.send).not.toHaveBeenCalled();
     expect(await usedAfter(user)).toBe(1);
   }, 60_000);

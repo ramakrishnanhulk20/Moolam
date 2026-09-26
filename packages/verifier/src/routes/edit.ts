@@ -30,7 +30,12 @@ import { dailyQuota } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { FINGERPRINT_VERSION, fileSlug, passportMetadata } from "../metadata.js";
-import { prepareOrFallback, type PreparedResult } from "../prepare.js";
+import {
+  EDIT_THUMBNAIL_TOO_LARGE_REASON,
+  ThumbnailTooLarge,
+  prepareOrFallback,
+  type PreparedResult,
+} from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
 import { BadRequest, statusOf } from "./shared.js";
 
@@ -95,7 +100,8 @@ interface EditContext {
  * the child is on chain already, 404 `no-parent`, 403 `not-owner`, 429 `quota` past EDITS_PER_DAY
  * and 429 `global-limit` once GLOBAL_EDITS_PER_DAY is spent for everyone,
  * 502 `pin-failed`, `sign-failed`, `send-failed`, `send-pending`, `privy-unavailable` or
- * `chain-unavailable`, and 503 `busy`.
+ * `chain-unavailable`, 422 `thumbnail-too-large` for a picture too detailed for the Chainlink
+ * fetch budget, and 503 `busy`.
  */
 export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
   const quota = dailyQuota(env.EDITS_PER_DAY);
@@ -294,6 +300,14 @@ async function append(
       if (error instanceof SignerUnavailable) {
         request.log.error({ url: request.url, reason: error.message }, "rejected: /edit the signer is down");
         return reply.code(502).send({ error: "sign-failed" });
+      }
+      // A real picture with too much detail for the Chainlink fetch budget, not a file that failed
+      // to decode (review pass 5, intake 4). Nothing was pinned or sent, so both slots come back.
+      if (error instanceof ThumbnailTooLarge) {
+        request.log.warn({ url: request.url, reason: error.message }, "rejected: /edit thumbnail too large");
+        return reply
+          .code(422)
+          .send({ error: "thumbnail-too-large", limit: error.limit, reason: EDIT_THUMBNAIL_TOO_LARGE_REASON });
       }
       // readImageHeader passes on a file whose header is intact and whose pixels are not, so a
       // truncated upload only fails here. That is the caller's file, not this service breaking.

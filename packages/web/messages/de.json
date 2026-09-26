@@ -1541,7 +1541,8 @@
       "privateRecheckNeedsSealed": "Der Prüfdienst behält keine private Kopie eines Bildes, das nicht versiegelt ist, deshalb wurde nichts gepinnt und nichts eingetragen. Lade das Studio neu und versuch es noch einmal.",
       "privateCopyNotPrivate": "Der Speicheranbieter hat die kleine Kopie nicht privat gehalten, deshalb hat Moolam angehalten: nichts wurde gepinnt und nichts eingetragen. Schalte die private Nachprüfung aus, um dieses Bild ohne sie versiegelt einzutragen.",
       "privateChainUnreachable": "Moolam hat Monad nicht erreicht, um zu prüfen, ob dieses Bild neu ist, deshalb wurde keine private Kopie behalten und nichts eingetragen. Versuch es gleich noch einmal.",
-      "privateThumbnailTooLarge": "Dieses Bild hat zu viele feine Details für die kleine Kopie, die Chainlink zum Nachprüfen öffnet, deshalb wurde nichts gepinnt und nichts eingetragen. Lass es versiegelt und die private Nachprüfung aus, dann wird es eingetragen."
+      "privateThumbnailTooLarge": "Dieses Bild hat zu viele feine Details für die kleine Kopie, die Chainlink zum Nachprüfen öffnet, deshalb wurde nichts gepinnt und nichts eingetragen. Lass es versiegelt und die private Nachprüfung aus, dann wird es eingetragen.",
+      "fingerprintUnstable": "Dieses Bild ändert sich von links nach rechts zu wenig für einen Fingerabdruck, der das Kopieren übersteht: Schon seine eigene kleine Kopie liest sich wie ein anderes Bild, also würden die Nachprüfung durch Chainlink und jede Suche nach Kopien es verfehlen. Nichts wurde gepinnt und nichts eingetragen. Ein Bild mit mehr Details in der Breite wird eingetragen."
     },
     "actions": {
       "signIn": "Neu anmelden",

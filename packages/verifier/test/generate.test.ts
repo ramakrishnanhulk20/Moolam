@@ -4,13 +4,15 @@
 // that is not the caller's, a deadline that runs out while the picture is drawn, the daily quota
 // on a fake clock and which failures give a quota slot back, a prompt the model refuses, a body
 // that does not parse, a training statement travelling into the pinned metadata that the agent's
-// signature covers, and the waiting gate giving up.
+// signature covers, and the waiting gate giving up. From review pass 5: a drawing too detailed for
+// the thumbnail budget is answered 422 and the creator's slot comes back (intake 4).
 // Does NOT cover the real image model, a real pin, or Privy actually signing or listing wallets:
 // those need the hosted services. It also does
 // not cover the browser side, which adds the passkey signature and sends the transaction.
 
 import { SignJWT, generateKeyPair } from "jose";
 import { APIError, APIConnectionError } from "openai";
+import sharp from "sharp";
 import { getAddress, recoverAddress, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -59,6 +61,7 @@ const { PromptRefused, billedOrUnknown } = await import("../src/generate/imageMo
 const { generatorDomain } = await import("../src/generate/generatorSigner.js");
 const { buildServer } = await import("../src/server.js");
 const { contentIdOf } = await import("../src/ipfs/pinata.js");
+const { THUMBNAIL_MAX_BYTES, THUMBNAIL_TOO_LARGE_REASON } = await import("../src/prepare.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const PROMPT = "A lighthouse in a monsoon storm, painted in thick oils";
@@ -442,6 +445,35 @@ describe("POST /generate", () => {
     expect(drawn.statusCode).toBe(200);
     expect(drawn.json().quota).toEqual({ used: 2, limit: 2, resetsAt: expect.any(Number) });
     expect((await ask(user, body("One too many"))).statusCode).toBe(429);
+  }, 60_000);
+
+  it("intake 4: answers 422 thumbnail-too-large for a drawing too detailed for the budget, and gives the creator's slot back", async () => {
+    const user = "did:privy:noise-draw-user";
+    const creator = "0x3333333333333333333333333333333333333333";
+    const side = 512;
+    const raw = Buffer.alloc(side * side * 3);
+    let state = 9090;
+    for (let i = 0; i < raw.length; i += 1) {
+      state = (state * 1103515245 + 12345) & 0x7fffffff;
+      raw[i] = (state >> 16) & 0xff;
+    }
+    const noise = await sharp(raw, { raw: { width: side, height: side, channels: 3 } }).png().toBuffer();
+    stubs.createImage.mockImplementationOnce(async (prompt: string) => ({ bytes: noise, model: MODEL, promptUsed: prompt }));
+    const pinsBefore = pinned.size;
+
+    const refused = await ask(user, { prompt: PROMPT, title: "Static", creator, deadline: deadline() });
+
+    expect(refused.statusCode).toBe(422);
+    expect(refused.json()).toEqual({
+      error: "thumbnail-too-large",
+      limit: THUMBNAIL_MAX_BYTES,
+      reason: THUMBNAIL_TOO_LARGE_REASON,
+    });
+    expect(pinned.size).toBe(pinsBefore);
+
+    const next = await ask(user, { prompt: PROMPT, title: "Second try", creator, deadline: deadline() });
+    expect(next.statusCode).toBe(200);
+    expect(next.json().quota).toEqual({ used: 1, limit: 2, resetsAt: expect.any(Number) });
   }, 60_000);
 
   it("is not mounted on a host without the generator's own variables", async () => {

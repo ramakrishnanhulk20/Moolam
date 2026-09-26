@@ -69,6 +69,21 @@ describe("what the register screen remembers about the private re-check", () => 
   });
 });
 
+describe("a picture refused for a fingerprint that would not survive copying", () => {
+  it("turns a 422 fingerprint-unstable into its own sentence", () => {
+    const failure = describeFailure(
+      new VerifierError("bad-response", 422, "the service's English", undefined, {
+        serviceCode: "fingerprint-unstable",
+        named: true,
+      }),
+      "prepare",
+    );
+    expect(failure.key).toBe("fingerprintUnstable");
+    expect(failure.next).toBeUndefined();
+    expect(failure.reason).toBeUndefined();
+  });
+});
+
 describe("the four refusals a private re-check has of its own", () => {
   const cases = [
     [400, "private-recheck-needs-sealed", "privateRecheckNeedsSealed", undefined],

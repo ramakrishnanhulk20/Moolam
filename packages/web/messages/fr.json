@@ -1541,7 +1541,8 @@
       "privateRecheckNeedsSealed": "Le service de vérification ne garde pas de copie privée d'une image qui n'est pas scellée, donc rien n'a été épinglé ni enregistré. Recharge le studio et réessaie.",
       "privateCopyNotPrivate": "Le fournisseur de stockage n'a pas gardé la petite copie privée, donc Moolam s'est arrêté : rien n'a été épinglé ni enregistré. Désactive la revérification privée pour enregistrer cette image scellée sans elle.",
       "privateChainUnreachable": "Moolam n'a pas pu joindre Monad pour vérifier que cette image est nouvelle, donc aucune copie privée n'a été gardée et rien n'a été enregistré. Réessaie dans un instant.",
-      "privateThumbnailTooLarge": "Cette image a trop de détails fins pour la petite copie que Chainlink ouvre pour la revérifier, donc rien n'a été épinglé ni enregistré. Garde-la scellée, revérification privée désactivée, et elle sera enregistrée."
+      "privateThumbnailTooLarge": "Cette image a trop de détails fins pour la petite copie que Chainlink ouvre pour la revérifier, donc rien n'a été épinglé ni enregistré. Garde-la scellée, revérification privée désactivée, et elle sera enregistrée.",
+      "fingerprintUnstable": "Cette image change trop peu d'un côté à l'autre pour une empreinte qui résiste aux copies : même sa propre petite copie se lit comme une autre image, donc la revérification de Chainlink et toute recherche de ses copies la manqueraient. Rien n'a été épinglé ni enregistré. Une image avec plus de détails sur sa largeur sera enregistrée."
     },
     "actions": {
       "signIn": "Se reconnecter",

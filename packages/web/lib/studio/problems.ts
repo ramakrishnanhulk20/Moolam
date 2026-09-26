@@ -111,6 +111,11 @@ const PRIVATE_RECHECK_KEYS: Record<string, { key: string; next?: Failure["next"]
   "thumbnail-too-large": { key: "privateThumbnailTooLarge" },
 };
 
+/** A refusal about the picture itself, named in the body: the same picture would be refused again. */
+const PICTURE_KEYS: Record<string, { key: string }> = {
+  "fingerprint-unstable": { key: "fingerprintUnstable" },
+};
+
 /**
  * The refusals that happened before a byte left the wallet, so the same signed
  * bytes can go out again with no second passkey prompt.
@@ -145,7 +150,7 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
   }
 
   if (error instanceof VerifierError) {
-    const own = PRIVATE_RECHECK_KEYS[error.serviceCode ?? ""];
+    const own = PRIVATE_RECHECK_KEYS[error.serviceCode ?? ""] ?? PICTURE_KEYS[error.serviceCode ?? ""];
     if (own !== undefined) {
       return { ...own };
     }
