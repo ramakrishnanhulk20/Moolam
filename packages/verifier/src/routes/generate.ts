@@ -4,6 +4,7 @@ import { getAddress } from "viem";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { embeddedWallets } from "../auth/wallet.js";
+import { SignerUnavailable } from "../c2pa.js";
 import { trainingSchema, trainingStatement, type TrainingConsent } from "../consent.js";
 import { env } from "../env.js";
 import { FingerprintFault, type Hex } from "../fingerprint.js";
@@ -213,7 +214,8 @@ const SEALED_FILE_REFUSED = {
  * budget, 422 `fingerprint-unstable` when a drawing's own thumbnail is further from its pHash than
  * the match threshold, which pins nothing and keeps both slots spent, 502 `model-failed`,
  * `pin-failed` or `sign-failed` when one of
- * the three outside services will not play, 503 `busy` when no drawing slot came free, 503
+ * the three outside services will not play, `sign-failed` too when the signing worker fails after
+ * the drawing, which keeps both slots spent, 503 `busy` when no drawing slot came free, 503
  * `service-fault` with the sentence /verify uses when this service failed while fingerprinting a
  * drawing, which keeps both slots spent because the drawing was made and paid for, and 503
  * `generator-unchecked` with a plain reason, before anything else is looked at, while this host
@@ -352,6 +354,13 @@ export async function generateRoutes(
           "rejected: /generate the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      }
+      // The signing worker crashed, stopped or ran past its limit after the model drew and billed
+      // the picture, so both slots stay spent and the answer blames the signer, as /prepare and
+      // /edit do, never the model (review pass 9, intake 6, V91).
+      if (error instanceof SignerUnavailable) {
+        request.log.error({ url: request.url, reason: safeReason(error) }, "rejected: /generate the signer is down");
+        return reply.code(502).send({ error: "sign-failed" });
       }
       if (error instanceof Busy) {
         quota.release(identity.userId, ticket);

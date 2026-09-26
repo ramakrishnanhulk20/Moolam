@@ -22,6 +22,8 @@
 // From pass 7: a failed settle whose reply leaves out the transaction is held, not a 500, through
 // the real HTTP facilitator client and a stubbed fetch (V59); one payment is worked on by one
 // request at a time and buys one answer for one file, and never replaces another file's entry (V60).
+// From pass 9 (V84): another file under a remembered payment goes the way a payment this service
+// never saw goes, so these tests check it is never served rather than a 409 of its own.
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -410,10 +412,10 @@ describe("a payment that already bought an answer", () => {
         headers: { ...second.headers, "payment-signature": paymentHeaderFor(nonce) },
       });
       expect(otherFile.body).not.toContain(record.id);
-      // One payment buys one answer, for the file it was made for (pass 7, V60): the other file is
-      // refused before the facilitator is asked.
-      expect(otherFile.statusCode).toBe(409);
-      expect(processed).toHaveBeenCalledTimes(2);
+      // One payment buys one answer, for the file it was made for (pass 7, V60). The other file goes
+      // through the payment check as a stranger's payment would (pass 9, V84) and is never served.
+      expect(otherFile.statusCode).not.toBe(200);
+      expect(processed).toHaveBeenCalledTimes(3);
     } finally {
       await app.close();
     }
@@ -1505,14 +1507,11 @@ describe("one payment buys one answer for one file (pass 7, V60)", () => {
 
       const other = await send(header, y);
 
-      expect(other.statusCode).toBe(409);
-      expect(other.json()).toEqual({
-        error: "payment-used-for-another-file",
-        reason: expect.stringMatching(/one payment buys one answer, for the file it was made for/),
-      });
+      // File Y hears what a payment this service never saw hears from this facilitator (pass 9, V84).
+      expect(other.statusCode).toBe(502);
+      expect(other.json().error).toBe("settlement-unknown");
       expect(ledger.get(`${PAYER}:${nonce}`)).toEqual(held);
-      expect(processed).toHaveBeenCalledTimes(1);
-      expect(settle).toHaveBeenCalledTimes(2);
+      expect(processed).toHaveBeenCalledTimes(2);
     } finally {
       await app.close();
     }

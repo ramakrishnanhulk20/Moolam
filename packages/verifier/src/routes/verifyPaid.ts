@@ -37,10 +37,6 @@ const NONCE = /^0x[0-9a-fA-F]{64}$/;
 export const PAYMENT_IN_FLIGHT_REASON =
   "another request is using this payment right now and has not finished. Try again in a moment: once it answers, the same payment with the same file gets the answer it bought, and nothing is charged twice.";
 
-/** What a payment that already bought an answer about one file is told when it comes with another. */
-export const OTHER_FILE_REASON =
-  "this payment already bought an answer about another file, and one payment buys one answer, for the file it was made for. Send that file with it again, or pay once more for this one.";
-
 /** The one call the chain is asked: whether an EIP-3009 authorisation has been used. */
 const AUTHORIZATION_STATE_ABI = [
   {
@@ -98,7 +94,8 @@ export const LOG_SEARCH_MAX_CHUNKS = 50;
  * searched and no such transaction is there (a cancellation, or a use before this request). Undefined
  * when nobody can tell: a failed or unfinished read, or a transfer that may still land.
  *
- * `heldAt` is the block read when this payment was first settled, where the search starts.
+ * `heldAt` is the block read when this payment was first settled, where the search starts. When
+ * that read failed it is undefined, and the search starts from the authorisation's validAfter.
  */
 export type ChargedCheck = (
   payment: PaymentPayload,
@@ -282,30 +279,40 @@ interface PaymentTerms {
   payTo: Hex;
   nonce: Hex;
   price: bigint;
+  /** The value the payer signed. The transfer that proves this payment moves exactly this much. */
+  value: bigint;
+  /** Unix seconds. Undefined when the payment does not carry it. */
+  validAfter: bigint | undefined;
   /** Unix seconds. Undefined when the payment does not carry it, which leaves only named transactions. */
   validBefore: bigint | undefined;
 }
 
 const WHOLE_NUMBER = /^[0-9]+$/;
 
+function wholeNumber(value: unknown): bigint | undefined {
+  return typeof value === "string" && WHOLE_NUMBER.test(value) ? BigInt(value) : undefined;
+}
+
 /** The payment and its terms read as the chain check needs them, or undefined for anything malformed. */
 function termsOf(payment: PaymentPayload, requirements: PaymentRequirements): PaymentTerms | undefined {
   const authorization = (
-    payment.payload as { authorization?: { from?: unknown; nonce?: unknown; validBefore?: unknown } } | undefined
+    payment.payload as
+      | { authorization?: { from?: unknown; nonce?: unknown; value?: unknown; validAfter?: unknown; validBefore?: unknown } }
+      | undefined
   )?.authorization;
   const from = authorization?.from;
   const nonce = authorization?.nonce;
-  const validBefore = authorization?.validBefore;
+  const value = wholeNumber(authorization?.value);
   const asset = requirements.asset;
   const payTo = requirements.payTo;
-  const price = (requirements as { amount?: unknown }).amount;
+  const price = wholeNumber((requirements as { amount?: unknown }).amount);
   if (typeof from !== "string" || !isAddress(from) || typeof nonce !== "string" || !NONCE.test(nonce)) {
     return undefined;
   }
   if (typeof asset !== "string" || !isAddress(asset) || typeof payTo !== "string" || !isAddress(payTo)) {
     return undefined;
   }
-  if (typeof price !== "string" || !WHOLE_NUMBER.test(price)) {
+  if (price === undefined || value === undefined) {
     return undefined;
   }
   return {
@@ -313,8 +320,10 @@ function termsOf(payment: PaymentPayload, requirements: PaymentRequirements): Pa
     from,
     payTo,
     nonce: nonce.toLowerCase() as Hex,
-    price: BigInt(price),
-    validBefore: typeof validBefore === "string" && WHOLE_NUMBER.test(validBefore) ? BigInt(validBefore) : undefined,
+    price,
+    value,
+    validAfter: wholeNumber(authorization?.validAfter),
+    validBefore: wholeNumber(authorization?.validBefore),
   };
 }
 
@@ -327,8 +336,10 @@ function termsOf(payment: PaymentPayload, requirements: PaymentRequirements): Pa
  * and read: first any the facilitator named, then the asset's own AuthorizationUsed log for this
  * payer and this nonce, searched from a few blocks before the payment was held, in chunks the RPC
  * accepts, up to the block at the authorisation's validBefore, since the transfer cannot land after
- * it. That transaction counts only when it succeeded and moved at least the price from the payer to
- * the payee, both events emitted by the asset contract.
+ * it. A payment held while the newest block could not be read is searched from the block at its
+ * validAfter instead (review pass 9, V83). That transaction counts only when it succeeded and its
+ * AuthorizationUsed for this payer and nonce is followed at the very next log by a Transfer of the
+ * signed value from the payer to the payee, both emitted by the asset contract (V81).
  *
  * Anything malformed in the payment or the terms, and any read that fails, is undefined.
  */
@@ -371,7 +382,7 @@ export function chainCharged(chain: ChargeReader = readClient() as unknown as Ch
  * reads each transaction one names. Bounded by LOG_SEARCH_MAX_CHUNKS calls of LOG_CHUNK_BLOCKS.
  */
 async function searchLogs(chain: ChargeReader, terms: PaymentTerms, heldAt: bigint | undefined): Promise<boolean | undefined> {
-  if (heldAt === undefined || terms.validBefore === undefined) {
+  if (terms.validBefore === undefined) {
     return undefined;
   }
   let head: bigint;
@@ -381,8 +392,21 @@ async function searchLogs(chain: ChargeReader, terms: PaymentTerms, heldAt: bigi
     return undefined;
   }
 
-  let unresolved = false;
-  let from = heldAt > HOLD_LOOKBACK_BLOCKS ? heldAt - HOLD_LOOKBACK_BLOCKS : 0n;
+  let from: bigint;
+  // A start later than the first block the authorisation allows leaves blocks unread, so a search
+  // that ends empty there cannot say the payment never landed.
+  let skipped = false;
+  if (heldAt !== undefined) {
+    from = heldAt > HOLD_LOOKBACK_BLOCKS ? heldAt - HOLD_LOOKBACK_BLOCKS : 0n;
+  } else {
+    const start = await startFromValidity(chain, terms.validAfter, terms.validBefore, head);
+    if (start === undefined) {
+      return undefined;
+    }
+    ({ from, skipped } = start);
+  }
+
+  let unresolved = skipped;
   for (let chunk = 0; chunk < LOG_SEARCH_MAX_CHUNKS && from <= head; chunk += 1) {
     const to = from + LOG_CHUNK_BLOCKS - 1n < head ? from + LOG_CHUNK_BLOCKS - 1n : head;
     let logs: readonly UsedLog[];
@@ -440,6 +464,63 @@ async function searchLogs(chain: ChargeReader, terms: PaymentTerms, heldAt: bigi
   return undefined;
 }
 
+/**
+ * Most block reads one bisection makes. 64 halvings cover any block number a bigint the RPC hands
+ * back could hold on Monad for centuries; Monad's head today needs about 26.
+ */
+const BISECT_MAX_STEPS = 64;
+
+/**
+ * Where the search for a payment held with no block starts (review pass 9, V83): the first block
+ * whose time is past validAfter, the earliest EIP-3009 lets the transfer land in. The x402 client
+ * signs validAfter as 0, so when the blocks from there to the last one before validBefore are more
+ * than one search reads, the search covers the newest of them, ending at that last block, and says
+ * so with `skipped`. Undefined when validAfter is missing or a block read fails.
+ */
+async function startFromValidity(
+  chain: ChargeReader,
+  validAfter: bigint | undefined,
+  validBefore: bigint,
+  head: bigint,
+): Promise<{ from: bigint; skipped: boolean } | undefined> {
+  if (validAfter === undefined) {
+    return undefined;
+  }
+  const first = validAfter === 0n ? 0n : await firstBlockPast(chain, validAfter, head);
+  const atValidBefore = validBefore === 0n ? 0n : await firstBlockPast(chain, validBefore - 1n, head);
+  if (first === undefined || atValidBefore === undefined) {
+    return undefined;
+  }
+  const last = atValidBefore - 1n < head ? atValidBefore - 1n : head;
+  const budget = LOG_CHUNK_BLOCKS * BigInt(LOG_SEARCH_MAX_CHUNKS);
+  const floor = last + 1n > budget ? last + 1n - budget : 0n;
+  return floor > first ? { from: floor, skipped: true } : { from: first, skipped: false };
+}
+
+/**
+ * The lowest block from 0 to `head` whose time is past `time`, or head + 1 when none is yet.
+ * Undefined when a block read fails or the bisection runs past BISECT_MAX_STEPS.
+ */
+async function firstBlockPast(chain: ChargeReader, time: bigint, head: bigint): Promise<bigint | undefined> {
+  let low = 0n;
+  let high = head + 1n;
+  for (let step = 0; step < BISECT_MAX_STEPS && low < high; step += 1) {
+    const middle = (low + high) / 2n;
+    let block: { timestamp: bigint };
+    try {
+      block = await chain.getBlock({ blockNumber: middle });
+    } catch {
+      return undefined;
+    }
+    if (block.timestamp > time) {
+      high = middle;
+    } else {
+      low = middle + 1n;
+    }
+  }
+  return low === high ? low : undefined;
+}
+
 /** Whether one transaction is this payment landing: true, false, or undefined when its receipt cannot be read. */
 async function landed(chain: ChargeReader, hash: Hex, terms: PaymentTerms): Promise<boolean | undefined> {
   let receipt: { status: string; logs: readonly unknown[] };
@@ -451,36 +532,58 @@ async function landed(chain: ChargeReader, hash: Hex, terms: PaymentTerms): Prom
   return receipt.status === "success" && carriesPayment(receipt.logs, terms);
 }
 
+/** One receipt log as carriesPayment reads it. */
+interface ReceiptLog {
+  address?: unknown;
+  logIndex?: unknown;
+}
+
+/** The asset's own AuthorizationUsed or Transfer event in one log, or undefined for anything else. */
+function assetEvent(log: ReceiptLog | undefined, asset: Hex) {
+  if (log === undefined || typeof log.address !== "string" || !isAddress(log.address) || !isAddressEqual(log.address, asset)) {
+    return undefined;
+  }
+  try {
+    return parseEventLogs({ abi: TRANSFER_EVENTS_ABI, logs: [log] as never })[0];
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Whether a receipt's logs hold this payment: AuthorizationUsed for this payer and nonce, and a
- * Transfer of at least the price from the payer to the payee, both emitted by the asset contract.
+ * Whether a receipt's logs hold this payment (review pass 9, V81). FiatToken's
+ * transferWithAuthorization emits AuthorizationUsed and then, as the very next log, the Transfer it
+ * authorised, so only that Transfer proves this nonce: from the asset, from the payer to the payee,
+ * for exactly the value the payer signed, which is at least the price. A Transfer anywhere else in
+ * the receipt belongs to some other authorisation, and one transaction that spends several nonces
+ * beside one real transfer proves one payment, not all of them. The next log is found by its
+ * logIndex when the receipt carries one, and by its place in the list when it does not.
  */
 function carriesPayment(logs: readonly unknown[], expected: PaymentTerms): boolean {
-  let events;
-  try {
-    events = parseEventLogs({
-      abi: TRANSFER_EVENTS_ABI,
-      logs: (logs as { address?: unknown }[]).filter(
-        (log) => typeof log.address === "string" && isAddress(log.address) && isAddressEqual(log.address, expected.asset),
-      ) as never,
-    });
-  } catch {
-    return false;
+  const entries = logs as readonly ReceiptLog[];
+  for (const [at, log] of entries.entries()) {
+    const used = assetEvent(log, expected.asset);
+    if (
+      used?.eventName !== "AuthorizationUsed" ||
+      !isAddressEqual(used.args.authorizer, expected.from) ||
+      used.args.nonce.toLowerCase() !== expected.nonce
+    ) {
+      continue;
+    }
+    const index = log.logIndex;
+    const next =
+      typeof index === "number" ? entries.find((other) => other.logIndex === index + 1) : entries[at + 1];
+    const moved = assetEvent(next, expected.asset);
+    // A nonce is used once, so the first AuthorizationUsed for it is the only one to judge.
+    return (
+      moved?.eventName === "Transfer" &&
+      isAddressEqual(moved.args.from, expected.from) &&
+      isAddressEqual(moved.args.to, expected.payTo) &&
+      moved.args.value === expected.value &&
+      expected.value >= expected.price
+    );
   }
-  const used = events.some(
-    (event) =>
-      event.eventName === "AuthorizationUsed" &&
-      isAddressEqual(event.args.authorizer, expected.from) &&
-      event.args.nonce.toLowerCase() === expected.nonce,
-  );
-  const moved = events.some(
-    (event) =>
-      event.eventName === "Transfer" &&
-      isAddressEqual(event.args.from, expected.from) &&
-      isAddressEqual(event.args.to, expected.payTo) &&
-      event.args.value >= expected.price,
-  );
-  return used && moved;
+  return false;
 }
 
 /**
@@ -624,11 +727,16 @@ async function settleSequence(
  * once the transfer settles, so they open nothing on their own.
  *
  * One payment buys one answer, for one file (review pass 7, V60). The payer and
- * the nonce are marked in flight before the upload is read or the facilitator is
- * asked, and a second request carrying them meanwhile answers 409
- * `payment-in-flight` without the facilitator hearing of it. A remembered payment
- * sent with another file answers 409 `payment-used-for-another-file`, and no
- * request ever replaces an entry that holds the answer about another file.
+ * the nonce are marked in flight once the upload is read and before the
+ * facilitator is asked, and a second request carrying them meanwhile answers 409
+ * `payment-in-flight` without the facilitator hearing of it. The whole payment is
+ * public in the calldata of the transfer that settles it, so the mark waits for the
+ * upload: a caller trickling a body under someone else's payment holds nothing
+ * (review pass 9, V84). For the same reason a remembered payment sent with another
+ * file is answered exactly as a payment this service never saw, through the normal
+ * payment check, which refuses a spent nonce, so the answer never says which file
+ * the payment was for. It never serves that other file, and no request ever
+ * replaces an entry that holds the answer about another file.
  *
  * The route is mounted only when X402_ENABLED is true. Otherwise the path does
  * not exist and the service answers 404.
@@ -653,8 +761,9 @@ export async function verifyPaidRoutes(
   const charged: ChargedCheck = options.charged ?? (env.NODE_ENV === "test" ? async () => undefined : chainCharged());
   const head = options.head ?? (env.NODE_ENV === "test" ? async () => undefined : liveHead());
   let ready: Promise<void> | undefined;
-  // Payer and nonce of every payment a request is working on right now, taken before the upload is
-  // read or the facilitator is asked, so two requests can never settle one payment side by side.
+  // Payer and nonce of every payment a request is working on right now, taken once the upload is
+  // read and before the facilitator is asked, so two requests can never settle one payment side by
+  // side and nobody holds a payer's repeat off by sending a body slowly.
   const inFlight = new Set<string>();
 
   /** Writes an entry, but never over one that holds the answer about another file (review pass 7, V60). */
@@ -672,16 +781,23 @@ export async function verifyPaidRoutes(
     const where: Where = { ip: request.ip, url: request.url };
     const offered = offeredPayment(context);
     if (offered === undefined) {
-      return await answer(request, reply, context, where, undefined);
+      return await answer(request, reply, context, where, undefined, undefined);
     }
-    // Checked and taken in the same tick, before any await, so a second request cannot slip in.
+    let bytes: Buffer;
+    try {
+      bytes = await readUpload(request);
+    } catch (error) {
+      const status = statusOf(error);
+      return reply.code(status).send({ error: safeReason(error) });
+    }
+    // Checked and taken in the same tick, with no await between, so a second request cannot slip in.
     if (inFlight.has(offered.key)) {
       request.log.warn(where, "rejected: this payment is in flight on another request");
       return reply.code(409).send({ error: "payment-in-flight", reason: PAYMENT_IN_FLIGHT_REASON });
     }
     inFlight.add(offered.key);
     try {
-      return await answer(request, reply, context, where, offered);
+      return await answer(request, reply, context, where, offered, bytes);
     } finally {
       inFlight.delete(offered.key);
     }
@@ -693,25 +809,19 @@ export async function verifyPaidRoutes(
     context: HTTPRequestContext,
     where: Where,
     offered: PaymentIdentity | undefined,
+    uploaded: Buffer | undefined,
   ): Promise<FastifyReply> {
-    // Read only for a repeat of a payment this service remembers, and handed on below so the
-    // upload is never read twice.
-    let bytes: Buffer | undefined;
+    // Read already when a payment was offered, and otherwise only once the payment is verified.
+    let bytes = uploaded;
     let held: { transactions: readonly string[]; since?: bigint } | undefined;
-    if (offered !== undefined) {
+    // Set when this payment already bought an answer about another file: this request then goes
+    // the way an unknown payment goes, and is never served.
+    let otherFile = false;
+    if (offered !== undefined && bytes !== undefined) {
       const seen = ledger.get(offered.key);
       if (seen !== undefined && seen.payment === offered.identity) {
-        try {
-          bytes = await readUpload(request);
-        } catch (error) {
-          const status = statusOf(error);
-          return reply.code(status).send({ error: safeReason(error) });
-        }
         const replay = await replayFor(seen, bytes, charged);
-        if (replay.kind === "other-file") {
-          request.log.warn({ ...where, state: seen.state }, "rejected: this payment already bought an answer for another file");
-          return reply.code(409).send({ error: "payment-used-for-another-file", reason: OTHER_FILE_REASON });
-        }
+        otherFile = replay.kind === "other-file";
         if (replay.kind === "serve") {
           request.log.info({ ...where, state: replay.entry.state }, "replayed: this payment already bought an answer");
           if (replay.entry !== seen) {
@@ -722,9 +832,11 @@ export async function verifyPaidRoutes(
         // The payment goes through as new, and the held answer is never let go on a "not spent"
         // read: that read is also what a first transfer still pending looks like, so the answer
         // stays held until a new settle replaces it or its ten minutes run out (review pass 5,
-        // answers #6).
-        const proof = proofOf(seen);
-        held = { transactions: proof?.transactions ?? [], since: proof?.since };
+        // answers #6). Another file carries none of the held proof: it goes as a stranger would.
+        if (!otherFile) {
+          const proof = proofOf(seen);
+          held = { transactions: proof?.transactions ?? [], since: proof?.since };
+        }
       }
     }
 
@@ -792,8 +904,9 @@ export async function verifyPaidRoutes(
     }
 
     // Read before the first settle, so no transfer this settle starts can sit below it. A held
-    // payment keeps the block read when it was first settled, since its transfer may be older.
-    const since = held?.since ?? (await head());
+    // payment keeps the block read when it was first settled, since its transfer may be older, and
+    // one held with no block keeps none: a later head could sit past its transfer (review pass 9, V83).
+    const since = held !== undefined ? held.since : await head();
     const settlement = await settleSequence(
       async () =>
         payments.processSettlement(
@@ -816,6 +929,12 @@ export async function verifyPaidRoutes(
     // The ledger is keyed by the payment the facilitator verified, never by the header's own word.
     const paid = identityOf(verified.paymentPayload);
     const upload = sha256Hex(bytes);
+    const unknownAnswer = (): FastifyReply =>
+      reply.code(502).send({
+        error: "settlement-unknown",
+        reason:
+          "the payment facilitator did not say whether your payment went through. Nothing was cancelled. Send the same payment with the same file again: once the chain shows the payment, the answer it bought is handed over, and a payment that never happened is not taken twice.",
+      });
 
     if (settlement.state === "unknown") {
       if (paid !== undefined) {
@@ -833,11 +952,17 @@ export async function verifyPaidRoutes(
           } satisfies HeldProof,
         }, request.log, where);
       }
-      return reply.code(502).send({
-        error: "settlement-unknown",
-        reason:
-          "the payment facilitator did not say whether your payment went through. Nothing was cancelled. Send the same payment with the same file again: once the chain shows the payment, the answer it bought is handed over, and a payment that never happened is not taken twice.",
-      });
+      return unknownAnswer();
+    }
+
+    // A transfer still pending for the file this payment first came with can prove this settle
+    // too, and some facilitators answer a nonce they already broadcast with that same transaction.
+    // Either way the one payment bought the other file's answer, so this file is never served, and
+    // it hears what a settle nobody could confirm hears (review pass 9, V84).
+    const existing = paid === undefined ? undefined : ledger.get(paid.key);
+    if (otherFile || (existing !== undefined && existing.upload !== upload)) {
+      request.log.warn({ ...where, state: existing?.state }, "rejected: this payment already bought an answer for another file");
+      return unknownAnswer();
     }
 
     if (paid !== undefined) {
@@ -882,7 +1007,10 @@ interface HeldProof {
   requirements: PaymentRequirements;
   /** Every transaction the facilitator named for this payment, read before the asset's logs. */
   transactions: string[];
-  /** The newest block when the payment was first settled, where the log search starts. */
+  /**
+   * The newest block when the payment was first settled, where the log search starts. Undefined
+   * when that read failed, and then kept undefined, so the search starts from validAfter.
+   */
   since: bigint | undefined;
 }
 

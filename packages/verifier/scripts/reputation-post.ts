@@ -3,7 +3,7 @@ import path from "node:path";
 import { formatEther, getAddress } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { PACKAGE_ROOT, env } from "../src/env.js";
-import { postFeedback, readReputation, type ReputationSummary } from "../src/reputation/feedback.js";
+import { failureLine, postFeedback, readReputation, type ReputationSummary } from "../src/reputation/feedback.js";
 import { REPUTATION_REGISTRY, readClient } from "../src/reputation/registry.js";
 import type { Hex } from "../src/types.js";
 
@@ -205,8 +205,7 @@ main()
     flush();
   })
   .catch((error: unknown) => {
-    const detail = error instanceof Error ? error.message : String(error);
-    say(`FAILED: ${detail}`);
+    say(failureLine(error));
     say();
     flush();
     process.exitCode = 1;

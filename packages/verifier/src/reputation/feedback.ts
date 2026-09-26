@@ -1,6 +1,7 @@
 import { keccak256, stringToHex, type Transport } from "viem";
 import { env } from "../env.js";
 import { PHASH_MATCH_THRESHOLD } from "../fingerprint.js";
+import { safeReason } from "../net/errorText.js";
 import type { Hex } from "../types.js";
 import {
   FEEDBACK_TAG_KIND,
@@ -223,6 +224,16 @@ export async function readReputation(
   });
 
   return { count, value, decimals };
+}
+
+/**
+ * The line the reputation script writes about an error it caught. That file is tracked in git, and
+ * a viem error names the RPC endpoint it called, whose path is a dedicated endpoint's access key, so
+ * the error goes through safeReason first like every other chain error this service writes down
+ * (review pass 9, answers #10, V87).
+ */
+export function failureLine(error: unknown): string {
+  return `FAILED: ${safeReason(error)}`;
 }
 
 function assertDistance(distance: number): void {

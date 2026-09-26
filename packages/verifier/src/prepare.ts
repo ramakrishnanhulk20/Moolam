@@ -99,6 +99,20 @@ export class FingerprintUnstable extends Error {
   }
 }
 
+/**
+ * The C2PA reader could not read back the file this service had just signed, or ran past
+ * READ_MANIFEST_TIMEOUT_MS doing it (review pass 9, intake 3, V88). Our own signer wrote that file,
+ * so this says nothing about the creator's picture, and falling back would register it with no
+ * manifest for good. It is a FingerprintFault so every route that registers a picture already
+ * answers it 503 service-fault and the creator retries.
+ */
+export class ReadBackFault extends FingerprintFault {
+  constructor(message: string) {
+    super(message);
+    this.name = "ReadBackFault";
+  }
+}
+
 /** Longest side of the thumbnail in pixels. Small enough to decode fast, large enough to hash. */
 export const THUMBNAIL_LONGEST_SIDE = 512;
 
@@ -198,8 +212,8 @@ export interface PrepareLog {
  * describes a different picture than the one being registered is worse than no manifest.
  *
  * Throws when the buffer is empty, when the C2PA library will not sign the container, when the
- * signed file carries no readable manifest, and ThumbnailTooLarge when no thumbnail small enough
- * can be produced.
+ * signed file carries no manifest, ReadBackFault when the reader cannot read the signed file back,
+ * and ThumbnailTooLarge when no thumbnail small enough can be produced.
  */
 export async function prepareImage(source: Buffer, opts: PrepareOptions): Promise<PreparedImage> {
   const signed = await signImage(source, opts);
@@ -246,6 +260,9 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
   }
 
   const manifest = await readManifest(signed);
+  if (manifest.validation === "unreadable") {
+    throw new ReadBackFault(`The C2PA reader could not read back the JPEG just signed from this ${format} upload.`);
+  }
   if (!manifest.present || manifest.manifestHash === undefined) {
     throw new Error(`The signed JPEG made from this ${format} upload carries no manifest this reader can find.`);
   }
@@ -427,8 +444,9 @@ async function recordLostWithManifest(source: Buffer, options: PrepareOptions): 
  * Turns a failure from the signing path into the refusal a caller may fall back on, or lets it
  * out when falling back cannot help: a host that cannot sign at all, a thumbnail over the budget,
  * which the unsigned fallback would make from the very same pixels, and this service failing to
- * fingerprint. That last one says nothing about the file, and a fault that passed on the second
- * try would otherwise hand the creator an unsigned picture for a signer that never refused it.
+ * fingerprint or to read back its own signed file, ReadBackFault being a FingerprintFault. Those
+ * say nothing about the file, and a fault that passed on the second try would otherwise hand the
+ * creator an unsigned picture for a signer that never refused it.
  */
 function refusalOrThrow(error: unknown): SignerRefusedFile {
   if (error instanceof SignerUnavailable || error instanceof ThumbnailTooLarge || error instanceof FingerprintFault) {

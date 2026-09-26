@@ -11,8 +11,9 @@ export interface LedgerEntry {
   headers: Record<string, string>;
   /**
    * The verified payment that bought the answer, in the one form a repeat is compared in: the
-   * signature and every signed field. The payer and nonce are public on chain once a transfer
-   * settles, so together they are only the key.
+   * signature and every signed field. All of it is public in the calldata of the transfer that
+   * settles it, so a match says nothing about who is asking: the route hands the answer only to the
+   * same file, and answers any other file as a payment it never saw (review pass 9, V84).
    */
   payment: string;
   /** The sha256 of the upload the answer is about, so a repeat must carry the same file. */

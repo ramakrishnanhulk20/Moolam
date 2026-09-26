@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { AuthorizationContext, PrivyClient } from "@privy-io/node";
 import { WaitForTransactionReceiptTimeoutError, type Hex, type PublicClient } from "viem";
 import { caip2, privyErrorText } from "../generate/privy.js";
@@ -139,6 +140,12 @@ export interface SendOptions {
   context: AuthorizationContext;
   /** Where a failed status poll is reported while this waits for a hash. */
   log?: PollLog;
+  /**
+   * Sent as privy-idempotency-key, so Privy runs every request carrying it once in 24 hours. A
+   * caller whose send is tied to one on-chain write, such as /edit with its child passport id,
+   * passes a key derived from that write. Left out, the send gets a fresh key of its own.
+   */
+  idempotencyKey?: string;
 }
 
 export interface SentTransaction {
@@ -161,6 +168,11 @@ export interface SentTransaction {
  *
  * Whether gas was sponsored is read off the transaction record when there was one to read, since
  * Privy is the only party that knows whether its paymaster took the bill.
+ *
+ * The Privy SDK sends a request again after a connection error, a timeout, a 408, 409, 429 or 5xx,
+ * and Privy may already have broadcast the first one whose reply was lost. Every send therefore
+ * carries a privy-idempotency-key, the same on each of the SDK's tries, so Privy runs it once and
+ * one edit never lands as a second transaction that reverts (review pass 9, intake 4, V89).
  */
 export async function sendFromWallet(
   client: PrivyClient,
@@ -183,6 +195,7 @@ export async function sendFromWallet(
       },
       ...(options.sponsor ? { sponsor: true } : {}),
       authorization_context: options.context,
+      idempotency_key: options.idempotencyKey ?? `moolam-send-${randomUUID()}`,
     });
 
   const settled: SentTransaction = {
