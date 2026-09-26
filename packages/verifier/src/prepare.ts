@@ -42,10 +42,10 @@ export const THUMBNAIL_MAX_BYTES = 60_000;
  * private re-check, which a plain sealed one can still replace, or an unseal.
  */
 export const THUMBNAIL_TOO_LARGE_REASON =
-  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a public passport for it could never be re-checked. Registering it sealed makes no thumbnail and still works. Nothing was pinned.";
+  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a public passport for it could never be re-checked and a sealed one could never be unsealed. Nothing was pinned.";
 
 export const PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON =
-  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a private re-check could never open it. Registering it sealed without the private re-check makes no thumbnail and still works. Nothing was pinned.";
+  "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so a private re-check could never open it. Nothing was pinned.";
 
 export const EDIT_THUMBNAIL_TOO_LARGE_REASON =
   "this picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so an edit made from it could never be re-checked. Nothing was pinned and nothing was sent.";
@@ -364,19 +364,24 @@ export async function prepareOrFallback(source: Buffer, options: PrepareOptions)
  * readable manifest document: both exist only to be pinned, and a sealed registration pins
  * neither. Nothing derived from the picture is produced that nobody is going to use.
  *
- * One behaviour differs and it differs in the creator's favour: a picture whose thumbnail cannot
- * be squeezed under the Chainlink fetch budget fails a public prepare and passes a sealed one,
- * because that budget is about a file a sealed passport never publishes.
+ * The thumbnail budget still applies, to the copy an unseal would publish. A sealed passport keeps
+ * the promise that its holder may unseal it later, and /unseal refuses a file whose thumbnail cannot
+ * fit the Chainlink fetch budget, for good, since the file is fixed by its sha256. So a picture
+ * whose thumbnail cannot fit is refused here, before anything is pinned or registered, exactly as a
+ * public prepare refuses it (review pass 8, intake 5, V72).
  *
  * Throws what prepareOrFallback throws: SignerUnavailable when this host can sign nothing at all,
- * and a training statement this service may not write stops the picture before anything is signed.
+ * ThumbnailTooLarge when the thumbnail an unseal would publish is over THUMBNAIL_MAX_BYTES at the
+ * lowest quality, and a training statement this service may not write stops the picture before
+ * anything is signed.
  */
 export async function prepareSealed(source: Buffer, options: PrepareOptions): Promise<SealedResult> {
   trainingAssertion(options.training);
 
+  let result: SealedResult;
   try {
     const signed = await signImage(source, options);
-    return {
+    result = {
       bytes: signed.original,
       print: signed.fingerprint,
       manifestHash: signed.manifestHash,
@@ -386,7 +391,7 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
   } catch (error) {
     const refused = refusalOrThrow(error);
     const upright = await uprightImage(source);
-    return {
+    result = {
       bytes: upright,
       print: await fingerprint(upright),
       manifestHash: ZERO_BYTES32,
@@ -396,7 +401,16 @@ export async function prepareSealed(source: Buffer, options: PrepareOptions): Pr
       ...(await recordLostWithManifest(source, options)),
     };
   }
+  unsealThumbnails.set(result.bytes, await makeThumbnail(result.bytes));
+  return result;
 }
+
+/**
+ * The thumbnail prepareSealed judged each sealed file by, so recheckThumbnail hands the route the
+ * same one without resizing a large picture twice. Keyed by the very Buffer prepareSealed returned,
+ * and gone with it.
+ */
+const unsealThumbnails = new WeakMap<Buffer, Buffer>();
 
 /**
  * The unsigned fallback pins the upright bytes, which carry no C2PA store, so an upload that
@@ -662,12 +676,16 @@ async function shrinkToBudget(image: Buffer, maxBytes: number): Promise<{ thumbn
 }
 
 /**
- * The thumbnail a re-check of this picture would hash: makeThumbnail's pick, or its lowest quality
- * when nothing fits. A plain sealed prepare keeps no thumbnail and still has to be judged by the
- * copy an unseal would publish, so this one never refuses on size.
+ * The thumbnail a re-check of this picture would hash, which is the one an unseal would publish:
+ * exactly makeThumbnail's pick. A plain sealed prepare keeps no thumbnail and is judged by this one.
+ * For bytes prepareSealed just returned it is the thumbnail prepareSealed already made.
+ *
+ * Throws ThumbnailTooLarge when nothing fits the budget, as makeThumbnail does. It used to hand
+ * back the lowest quality over the budget instead, which let a sealed passport be made that /unseal
+ * refuses for good (review pass 8, intake 5, V72).
  */
 export async function recheckThumbnail(image: Buffer): Promise<Buffer> {
-  return (await shrinkToBudget(image, THUMBNAIL_MAX_BYTES)).thumbnail;
+  return unsealThumbnails.get(image) ?? (await makeThumbnail(image));
 }
 
 /**

@@ -3,11 +3,13 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Builder, LocalSigner, Reader, createVerifySettings, settingsToJson } from "@contentauth/c2pa-node";
+import { Worker } from "node:worker_threads";
+import { LocalSigner, Reader, createVerifySettings, settingsToJson } from "@contentauth/c2pa-node";
 import sharp from "sharp";
 import { TRAINING_ASSERTION_LABEL, trainingAssertion, type TrainingConsent } from "./consent.js";
 import { env } from "./env.js";
 import { MAX_IMAGE_PIXELS } from "./fingerprint.js";
+import type { SigningAnswer, SigningAssertion, SigningJob } from "./signingWorker.js";
 import type { Hex } from "./types.js";
 
 export interface SoftBinding {
@@ -48,7 +50,8 @@ export const SOFT_BINDING_ALG = "com.moolam.phash-blockhash.v1";
  * This host cannot sign anything at all: the certificate or the key is not where the environment
  * points, only one of the two paths is set, or openssl is not installed to make the development
  * identity. No file can get past it, so a caller has to stop rather than quietly pin unsigned
- * pictures for everyone.
+ * pictures for everyone. A signing worker that crashed, stopped or hung is answered the same way:
+ * it says nothing about the file, so the file must not be pinned unsigned for it either.
  */
 export class SignerUnavailable extends Error {
   constructor(message: string, options?: ErrorOptions) {
@@ -286,12 +289,18 @@ export interface EmbedOptions {
  * plain parent the edit intent would make from `bytes`, and each redaction in
  * it is recorded with the reason c2pa.PII.present.
  *
+ * The library's sign is a blocking native call that hashes the whole file, so
+ * it runs on a worker thread of its own that holds the signer (review pass 8,
+ * intake 4, V71). Every check on the options is made here first, and the
+ * worker builds the manifest from exactly what this function decided. One
+ * file is signed at a time, in the order they came.
+ *
  * Throws when the buffer is empty, when the options are incomplete, when a
  * source type is given with any action but "c2pa.created" or a parent with
  * it, when the fingerprint is the wrong size, when the training statement is
  * not one this service may write, SignerUnavailable when no signing identity
- * can be resolved, and SignerRefusedFile when the C2PA library rejects this
- * container, the parent, or one of its redactions.
+ * can be resolved or the signing worker failed, and SignerRefusedFile when the
+ * C2PA library rejects this container, the parent, or one of its redactions.
  */
 export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<Buffer> {
   if (bytes.length === 0) {
@@ -310,73 +319,179 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
 
   const mimeType = sniffMimeType(bytes);
 
-  // The builder reads the parent ingredient, and a parent that still carries its XMP can name a
-  // remote manifest, so it gets the same no-fetch settings as every read.
-  const builder = Builder.withJson(
-    {
-      claim_generator_info: [{ name: opts.claimGenerator }],
-      title: opts.title,
-      format: mimeType,
-    },
-    READER_SETTINGS,
-  );
+  let intent: SigningJob["intent"];
+  const before: SigningAssertion[] = [];
   if (created) {
     const sourceType = opts.digitalSourceType ?? AI_SOURCE_TYPE;
-    builder.setIntent({ create: sourceType });
-    builder.addAssertion("c2pa.actions", { actions: [{ action: CREATED_ACTION, digitalSourceType: sourceType }] }, "Cbor");
+    intent = { create: sourceType };
+    before.push({ label: "c2pa.actions", data: { actions: [{ action: CREATED_ACTION, digitalSourceType: sourceType }] } });
   } else {
-    builder.setIntent("edit");
+    intent = "edit";
     // Before the parent and its redactions: the library files every c2pa.redacted action into the
     // actions assertion that exists at that moment, and would otherwise start a second one.
     if (opts.action !== OPENED_ACTION) {
-      builder.addAssertion("c2pa.actions", { actions: [{ action: opts.action }] }, "Cbor");
-    }
-    if (opts.parent !== undefined) {
-      await addParent(builder, opts.title, opts.parent);
+      before.push({ label: "c2pa.actions", data: { actions: [{ action: opts.action }] } });
     }
   }
-  builder.addAssertion(SOFT_BINDING_LABEL, softBindingAssertion(opts.softBinding), "Cbor");
+  const after: SigningAssertion[] = [{ label: SOFT_BINDING_LABEL, data: softBindingAssertion(opts.softBinding) }];
   const training = trainingAssertion(opts.training);
   if (training !== undefined) {
-    builder.addAssertion(TRAINING_ASSERTION_LABEL, training, "Cbor");
+    after.push({ label: TRAINING_ASSERTION_LABEL, data: training });
   }
 
-  const signer = loadSigner();
-  const destination: { buffer: Buffer | null } = { buffer: null };
-  try {
-    builder.sign(signer, { buffer: bytes, mimeType }, destination);
-  } catch (error) {
-    throw new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
-  }
-
-  if (destination.buffer === null) {
-    throw new SignerRefusedFile("embedManifest signed the image but got no bytes back");
-  }
-  return destination.buffer;
+  // Copies of exactly these bytes, handed over rather than cloned: a Buffer can be a view into a
+  // much larger allocation, and cloning a view clones all of it.
+  const job: SigningJob = {
+    bytes: new Uint8Array(bytes),
+    mimeType,
+    definition: { claim_generator_info: [{ name: opts.claimGenerator }], title: opts.title, format: mimeType },
+    // The builder reads the parent ingredient, and a parent that still carries its XMP can name a
+    // remote manifest, so it gets the same no-fetch settings as every read.
+    settings: READER_SETTINGS,
+    intent,
+    before,
+    ...(opts.parent === undefined
+      ? {}
+      : {
+          parent: {
+            bytes: new Uint8Array(opts.parent.bytes),
+            mimeType: sniffMimeType(opts.parent.bytes),
+            ingredient: JSON.stringify({ title: opts.title, relationship: "parentOf" }),
+            redactions: [...opts.parent.redactions],
+            reason: PII_REASON,
+          },
+        }),
+    after,
+    identity: signingIdentity(),
+    readLimitMs: READ_MANIFEST_TIMEOUT_MS,
+  };
+  return await signOffThread(job);
 }
 
 /**
- * Makes the upload the manifest's one parentOf ingredient and records each redaction, which the
- * library writes as a c2pa.redacted action naming the assertion. The library reads the upload's
- * store here, so the read is held to the same limit as readManifest.
- *
- * Throws SignerRefusedFile when the library will not take the upload as an ingredient or a
- * redaction, or is still reading the upload after READ_MANIFEST_TIMEOUT_MS.
+ * How long one signing may take on the worker. Far past the 0.9 seconds a 22 MB JPEG measured, so
+ * only a stuck worker meets it.
  */
-async function addParent(builder: Builder, title: string, parent: NonNullable<EmbedOptions["parent"]>): Promise<void> {
-  try {
-    await withinReadLimit(
-      builder.addIngredient(JSON.stringify({ title, relationship: "parentOf" }), {
-        buffer: parent.bytes,
-        mimeType: sniffMimeType(parent.bytes),
-      }),
-    );
-    for (const uri of parent.redactions) {
-      builder.addRedaction(uri, PII_REASON);
+const SIGN_TIMEOUT_MS = 30_000;
+
+/** The compiled service runs signingWorker.js; the tests and tsx run the .ts beside this file. */
+const SIGNING_WORKER_URL = new URL(
+  import.meta.url.endsWith(".ts") ? "./signingWorker.ts" : "./signingWorker.js",
+  import.meta.url,
+);
+
+interface SigningRequest {
+  job: SigningJob;
+  resolve: (signed: Buffer) => void;
+  reject: (error: Error) => void;
+}
+
+const signingLine: SigningRequest[] = [];
+let signingWorker: Worker | undefined;
+let signingBusy = false;
+
+/**
+ * Signs on the one signing worker, in the order the requests came. One worker signs one file at a
+ * time, which is the throughput the main thread gave before, without the stall.
+ */
+function signOffThread(job: SigningJob): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    signingLine.push({ job, resolve, reject });
+    signNext();
+  });
+}
+
+function startSigningWorker(): Worker {
+  const worker = new Worker(SIGNING_WORKER_URL);
+  // An idle worker that fails is seen through its exit, which clears it so the next file gets a
+  // fresh one. Without a listener here, that failure would be thrown on this thread instead.
+  worker.on("error", () => undefined);
+  worker.once("exit", () => {
+    if (signingWorker === worker) {
+      signingWorker = undefined;
     }
-  } catch (error) {
-    throw new SignerRefusedFile(error instanceof Error ? error.message : String(error), { cause: error });
+  });
+  return worker;
+}
+
+/**
+ * Hands the next file in line to the worker. The library's refusal comes back as the class the
+ * main thread always threw for it. A worker that crashes, stops or runs past SIGN_TIMEOUT_MS is
+ * thrown away and the file is answered SignerUnavailable: that is this host failing, not the file,
+ * so a caller must not fall back to pinning it unsigned.
+ */
+function signNext(): void {
+  if (signingBusy) {
+    return;
   }
+  const request = signingLine.shift();
+  if (request === undefined) {
+    return;
+  }
+  signingBusy = true;
+  const worker = signingWorker ?? startSigningWorker();
+  signingWorker = worker;
+
+  let settled = false;
+  const finish = (outcome: { signed: Buffer } | { error: Error }, broken: boolean): void => {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    clearTimeout(timer);
+    worker.off("message", onMessage);
+    worker.off("error", onError);
+    worker.off("exit", onExit);
+    signingBusy = false;
+    if (broken) {
+      if (signingWorker === worker) {
+        signingWorker = undefined;
+      }
+      void worker.terminate();
+    } else {
+      // An idle worker must not keep a script or a test process alive on its own.
+      worker.unref();
+    }
+    if ("signed" in outcome) {
+      request.resolve(outcome.signed);
+    } else {
+      request.reject(outcome.error);
+    }
+    signNext();
+  };
+  const onMessage = (answer: SigningAnswer): void => {
+    finish(
+      "signed" in answer
+        ? { signed: Buffer.from(answer.signed.buffer, answer.signed.byteOffset, answer.signed.byteLength) }
+        : { error: signingFailure(answer) },
+      false,
+    );
+  };
+  const onError = (error: Error): void =>
+    finish({ error: new SignerUnavailable(`the signing worker crashed: ${error.message}`, { cause: error }) }, true);
+  const onExit = (code: number): void =>
+    finish({ error: new SignerUnavailable(`the signing worker stopped with code ${code}`) }, true);
+  const timer = setTimeout(
+    () => finish({ error: new SignerUnavailable(`signing took longer than ${SIGN_TIMEOUT_MS} ms`) }, true),
+    SIGN_TIMEOUT_MS,
+  );
+
+  worker.on("message", onMessage);
+  worker.on("error", onError);
+  worker.on("exit", onExit);
+  worker.ref();
+  const { job } = request;
+  worker.postMessage(job, job.parent === undefined ? [job.bytes.buffer] : [job.bytes.buffer, job.parent.bytes.buffer]);
+}
+
+function signingFailure(answer: Exclude<SigningAnswer, { signed: Uint8Array }>): Error {
+  if (answer.kind === "refused") {
+    return new SignerRefusedFile(answer.error);
+  }
+  if (answer.kind === "unavailable") {
+    return new SignerUnavailable(answer.error);
+  }
+  return new Error(answer.error);
 }
 
 /** The work's own answer, or a rejection once READ_MANIFEST_TIMEOUT_MS has passed. */
@@ -874,6 +989,20 @@ export function loadSigner(
     keyPath: env.MOOLAM_C2PA_KEY_PATH,
   },
 ): LocalSigner {
+  const identity = signingIdentity(paths);
+  return LocalSigner.newSigner(readFileSync(identity.certPath), readFileSync(identity.keyPath), "es256");
+}
+
+/**
+ * Where the certificate and the key loadSigner would use are on disk, by the same rules, so the
+ * signing worker loads the identity this thread checked. Throws what loadSigner throws for them.
+ */
+function signingIdentity(
+  paths: { certPath?: string; keyPath?: string } = {
+    certPath: env.MOOLAM_C2PA_CERT_PATH,
+    keyPath: env.MOOLAM_C2PA_KEY_PATH,
+  },
+): { certPath: string; keyPath: string } {
   const { certPath, keyPath } = paths;
   if ((certPath === undefined) !== (keyPath === undefined)) {
     throw new SignerUnavailable(
@@ -885,7 +1014,7 @@ export function loadSigner(
     if (!existsSync(certPath) || !existsSync(keyPath)) {
       throw new SignerUnavailable(`no signing certificate or key found at ${certPath} and ${keyPath}`);
     }
-    return LocalSigner.newSigner(readFileSync(certPath), readFileSync(keyPath), "es256");
+    return { certPath, keyPath };
   }
 
   const devCert = path.join(devCertDir, "chain.cert.pem");
@@ -893,7 +1022,7 @@ export function loadSigner(
   if (!existsSync(devCert) || !existsSync(devKey)) {
     generateDevSigningIdentity();
   }
-  return LocalSigner.newSigner(readFileSync(devCert), readFileSync(devKey), "es256");
+  return { certPath: devCert, keyPath: devKey };
 }
 
 /**

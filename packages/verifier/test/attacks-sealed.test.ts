@@ -908,7 +908,7 @@ describe("attack 3: only the holder unseals, and only the registered bytes (inva
     });
   }, 120_000);
 
-  it("3d applies the public path's thumbnail rule when a sealed picture too big for it is unsealed", async () => {
+  it("3d applies the public path's thumbnail rule to a sealed picture before anything is pinned", async () => {
     const noise = await makeNoiseImage();
     const publicMark = pins.length;
     const publicTry = await prepare("did:privy:attack-3d-public", { title: "Noise, public", kind: "human" }, { file: noise });
@@ -916,10 +916,10 @@ describe("attack 3: only the holder unseals, and only the registered bytes (inva
     expect(publicTry.statusCode).toBeGreaterThanOrEqual(400);
     expect(publicPins).toBe(0);
 
-    const loud = await sealThroughTheRoute("did:privy:attack-3d-seal", "Noise, sealed", noise);
-    chainHolds(loud);
+    // Sealing it used to pass and leave a passport /unseal refuses for good (review pass 8,
+    // intake 5, V72). The sealed path is now judged by the thumbnail an unseal would publish.
     const mark = pins.length;
-    const response = await unseal("did:privy:attack-3d", loud.bytes, loud.passportId);
+    const response = await prepare("did:privy:attack-3d-seal", { title: "Noise, sealed", kind: "human", sealed: "true" }, { file: noise });
 
     expect(response.statusCode).toBe(422);
     const answer = response.json();
@@ -929,13 +929,13 @@ describe("attack 3: only the holder unseals, and only the registered bytes (inva
     expect(pinsSince(mark)).toHaveLength(0);
     record({
       n: "3d",
-      what: "a picture whose thumbnail cannot fit the workflow's 60 KB budget, registered sealed and then unsealed",
-      verdict: `REFUSED, unseal ${response.statusCode} thumbnail-too-large with the 60,000 byte limit named, pins 0`,
-      notCovered: "the Chainlink workflow's own fetch, whose 60 KB budget is taken from the workflow and not measured here",
+      what: "a picture whose thumbnail cannot fit the workflow's 60 KB budget, registered sealed so it could never be unsealed",
+      verdict: `REFUSED, sealed /prepare ${response.statusCode} thumbnail-too-large with the 60,000 byte limit named, pins 0`,
+      notCovered:
+        "the Chainlink workflow's own fetch, whose 60 KB budget is taken from the workflow and not measured here; /unseal's own refusal of such a file, for a passport made outside Moolam, is test/unseal.test.ts",
       detail: [
         `public /prepare of the same picture   ${publicTry.statusCode} ${publicTry.body}, pins ${publicPins}`,
-        `sealed /prepare of it                 200, one JSON pin, passport ${loud.passportId}`,
-        `unseal                                ${response.statusCode} ${response.body}`,
+        `sealed /prepare of it                 ${response.statusCode} ${response.body}, pins ${pinsSince(mark).length}`,
       ],
     });
   }, 120_000);

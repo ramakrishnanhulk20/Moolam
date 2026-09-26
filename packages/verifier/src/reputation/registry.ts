@@ -105,10 +105,21 @@ export const reputationAbi = [
 ] as const;
 
 /**
+ * How long one endpoint may take on the consent and dispute reads a verify answer carries. Each of
+ * those reads gives up after five seconds, and an endpoint allowed the same five left the fallback
+ * no time at all: a stalled first endpoint cost every answer its facts while the second was healthy
+ * (review pass 8, answers 3, V75). Two seconds each lets the second answer inside the five.
+ */
+export const FACT_ENDPOINT_TIMEOUT_MS = 2_000;
+
+/**
  * The way every read and every send in this service reaches Monad.
  *
  * MONAD_MAINNET_RPC_URL answers first and MONAD_RPC_FALLBACK_URL only picks up what it drops, so a
- * rate-limited minute on a dedicated endpoint becomes a slower answer rather than a failed one.
+ * rate-limited minute on a dedicated endpoint becomes a slower answer rather than a failed one. An
+ * endpoint that stalls instead of refusing is only dropped once `timeout` runs out, viem's 10 seconds
+ * when none is given, so a read with a shorter budget of its own passes a timeout well inside it
+ * (FACT_ENDPOINT_TIMEOUT_MS) or the fallback never gets the chance to answer.
  * Ranking is off on purpose: the order is the one written here, not whichever endpoint happened to
  * be quickest a moment ago. When the two names hold the same address there is nothing to fall back
  * to, so it stays a plain transport instead of asking one endpoint twice for every failure.

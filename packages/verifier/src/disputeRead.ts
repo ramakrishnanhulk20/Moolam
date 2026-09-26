@@ -2,7 +2,7 @@ import { type Transport } from "viem";
 import { env } from "./env.js";
 import { isPassportId, withMatchFacts, type ConsentAnswer, type ConsentReader } from "./consentRead.js";
 import { recheckFor, type RecheckAnswer } from "./recheck.js";
-import { monadTransport, readClient } from "./reputation/registry.js";
+import { FACT_ENDPOINT_TIMEOUT_MS, monadTransport, readClient } from "./reputation/registry.js";
 import type { Hex, PassportRecord } from "./types.js";
 import type { PictureAnswer, PictureReader } from "./unseal.js";
 
@@ -68,6 +68,7 @@ export const DISPUTE_CACHE_MAX = 2_000;
 /**
  * How long one read may take. A verification is the answer the caller came for, so a slow or
  * unreachable RPC costs five seconds at most and then the dispute is reported as unavailable.
+ * Each endpoint gets FACT_ENDPOINT_TIMEOUT_MS of it, so the fallback can answer for a stalled first.
  */
 export const DISPUTE_READ_TIMEOUT_MS = 5_000;
 
@@ -377,11 +378,14 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** The live read: the service's own Monad client, pointed at the registry. */
+/**
+ * The live read: the service's own Monad client, pointed at the registry, with each endpoint held
+ * to FACT_ENDPOINT_TIMEOUT_MS inside the read's own five seconds.
+ */
 function chainCall(options: { address?: Hex; rpcUrl?: string; transport?: Transport }): DisputeCall {
   const address = options.address ?? (env.MOOLAM_REGISTRY_ADDRESS as Hex);
   const client = readClient({
-    transport: options.transport ?? monadTransport({ rpcUrl: options.rpcUrl, timeout: DISPUTE_READ_TIMEOUT_MS }),
+    transport: options.transport ?? monadTransport({ rpcUrl: options.rpcUrl, timeout: FACT_ENDPOINT_TIMEOUT_MS }),
   });
   return async (passportId: Hex) =>
     await client.readContract({ address, abi: disputeAbi, functionName: "getDispute", args: [passportId] });

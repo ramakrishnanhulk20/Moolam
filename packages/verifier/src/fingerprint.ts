@@ -56,7 +56,11 @@ export const BLOCKHASH_MATCH_THRESHOLD = 40;
  * The most pixels we will decode from an image a stranger sent, 40 megapixels.
  * Decoding is what costs memory, not the file: a 572 KB JPEG that unpacks to
  * 100 megapixels took the service to 917 MB of resident memory. 40 megapixels
- * covers every camera on sale and holds one decode to roughly 160 MB.
+ * covers every camera on sale, and one 40 megapixel blockhash decode still adds
+ * about 383 MB while it runs (review pass 8, intake 1). Railway measured this
+ * service at 240 MB on average and 290 MB at peak and gives it up to 8 GB;
+ * DEPLOY.md asks for at least 2 GB, for three such decodes in flight and a full
+ * upload ceiling at once.
  */
 export const MAX_IMAGE_PIXELS = 40_000_000;
 
@@ -337,8 +341,11 @@ async function hashableImage(
 }
 
 /**
- * How many blockhash decodes run at once, each on its own worker thread. Two is the match gate's
- * width, and dihedralFingerprints queues its eight small variants behind them.
+ * How many blockhash decodes run at once, each on its own worker thread, at about 383 MB each for a
+ * 40 megapixel picture (review pass 8, intake 1). The match gate allows three decodes in flight, so
+ * a third picture waits here for a worker, and dihedralFingerprints queues its eight small variants
+ * behind them. The 2 GB DEPLOY.md asks for covers three such decodes, a full upload ceiling and the
+ * 290 MB peak Railway measured, together.
  */
 const BLOCKHASH_WORKERS = 2;
 

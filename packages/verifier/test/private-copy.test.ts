@@ -512,12 +512,15 @@ describe("a sealed registration with a private re-check", () => {
       reason: PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
     });
     expect(refused.json().reason).toMatch(/private re-check could never open it/);
-    expect(refused.json().reason).toMatch(/without the private re-check .* still works/);
+    expect(refused.json().reason).not.toMatch(/still works/);
     expect(since(mark)).toHaveLength(0);
 
-    // What the sentence promises: the same picture registers sealed without the re-check.
+    // Sealed without the re-check it is refused too, since an unseal could never publish it
+    // (review pass 8, intake 5, V72), and nothing is pinned either way.
     const plain = await prepare("did:privy:private-noise-plain", { title: "Static", kind: "human", sealed: "true" }, NOISE);
-    expect(plain.statusCode).toBe(200);
+    expect(plain.statusCode).toBe(422);
+    expect(plain.json()).toMatchObject({ error: "thumbnail-too-large", limit: THUMBNAIL_MAX_BYTES });
+    expect(since(mark)).toHaveLength(0);
   }, 120_000);
 
   it("answers 400 private-recheck-needs-sealed without sealed, and pins nothing", async () => {

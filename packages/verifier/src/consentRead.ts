@@ -1,7 +1,7 @@
 import { type Transport } from "viem";
 import { CONSTRAINT_INFO_MAX_BYTES, TRAINING_STANDARD } from "./consent.js";
 import { env } from "./env.js";
-import { monadTransport, readClient } from "./reputation/registry.js";
+import { FACT_ENDPOINT_TIMEOUT_MS, monadTransport, readClient } from "./reputation/registry.js";
 import type { Hex } from "./types.js";
 
 /**
@@ -65,6 +65,7 @@ export const CONSENT_CACHE_MAX = 2_000;
 /**
  * How long one read may take. A verification is the answer the caller came for, so a slow or
  * unreachable RPC costs five seconds at most and then the statement is reported as unavailable.
+ * Each endpoint gets FACT_ENDPOINT_TIMEOUT_MS of it, so the fallback can answer for a stalled first.
  */
 export const CONSENT_READ_TIMEOUT_MS = 5_000;
 
@@ -354,12 +355,15 @@ function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** The live read: the service's own Monad client, pointed at the consent contract. */
+/**
+ * The live read: the service's own Monad client, pointed at the consent contract, with each endpoint
+ * held to FACT_ENDPOINT_TIMEOUT_MS inside the read's own five seconds.
+ */
 function chainCall(options: { address?: Hex; rpcUrl?: string; transport?: Transport }): ConsentCall {
   const address = options.address ?? (env.CONSENT_ADDRESS as Hex);
   const client = readClient({
     transport:
-      options.transport ?? monadTransport({ rpcUrl: options.rpcUrl, timeout: CONSENT_READ_TIMEOUT_MS }),
+      options.transport ?? monadTransport({ rpcUrl: options.rpcUrl, timeout: FACT_ENDPOINT_TIMEOUT_MS }),
   });
   return async (passportId: Hex) =>
     await client.readContract({ address, abi: consentAbi, functionName: "consentOf", args: [passportId] });

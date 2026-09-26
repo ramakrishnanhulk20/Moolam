@@ -25,8 +25,8 @@ Windows `node_modules` and the web app out of the context.
 | Resource | Value |
 | --- | --- |
 | Image size | 716 MB (base `node:26-bookworm-slim`) |
-| Memory | 72 MiB resident with 22 passports loaded, measured with `docker stats` after one verification |
-| Memory to allocate | 512 MB. Matching decodes the image nine times and two matches may run at once, so headroom above the idle figure is the point |
+| Memory | 240 MB on average and 290 MB at peak on Railway, from `railway metrics` on 2026-09-26. One 40 megapixel blockhash decode adds about 383 MB while it runs (review pass 8) |
+| Memory to allocate | At least 2 GB. Three 40 megapixel decodes may be in flight at once, about 1.15 GB, and a full 200 MiB upload ceiling costs about 420 MB with the copies each body gets, which with the 290 MB peak comes to about 1.9 GB. Railway gives this service up to 8 GB |
 | CPU | 1 shared vCPU. A match is CPU bound for well under a second |
 | Port | 4010, and the server binds `0.0.0.0` |
 | User | runs as the non-root `node` user |
