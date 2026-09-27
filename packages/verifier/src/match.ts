@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
 import { dihedralFingerprints } from "./dihedral.js";
 import {
   BLOCKHASH_MATCH_THRESHOLD,
+  ImageTooLarge,
   PHASH_MATCH_THRESHOLD,
+  UndecodableImage,
+  UnsupportedImageFormat,
   fingerprint,
   hamming64,
   hammingHex,
@@ -26,12 +30,35 @@ export interface AnswerMatch extends Match {
   firstRegistered?: true;
 }
 
+/**
+ * The passport a file is byte for byte, when this service could not read the file's pixels: a
+ * format other than JPEG, PNG or WebP, a picture over the pixel limit, or pixels that do not decode.
+ * Nothing was measured, so it carries no distances and no score.
+ */
+export interface BytesOnlyMatch {
+  id: Hex;
+  variant: "identity";
+  phashDistance?: never;
+  blockhashDistance?: never;
+  score?: never;
+  firstRegistered?: never;
+}
+
+/** What was measured of the upload: its whole fingerprint, or its sha256 alone when the pixels could not be read. */
+export type Queried = Fingerprint | { sha256: Hex };
+
+/** What an exact answer says when the file's pixels could not be read. */
+export const PIXELS_UNREAD_NOTE =
+  "this file is byte for byte the one this passport registered, but its pixels could not be read here, so no distances were measured";
+
 export interface MatchResult {
   exact: Hex | null;
-  best: AnswerMatch | null;
-  matches: AnswerMatch[];
+  best: AnswerMatch | BytesOnlyMatch | null;
+  matches: (AnswerMatch | BytesOnlyMatch)[];
   confidence: number;
-  queried: Fingerprint;
+  queried: Queried;
+  /** Set only on an exact answer whose pixels could not be read: PIXELS_UNREAD_NOTE. */
+  note?: string;
   /** How many passports registered after `best` carry exactly its fingerprint. Absent when nothing matched. */
   laterSameFingerprint?: number;
   /** The first registration inside the thresholds, present only when it is not `best`. */
@@ -49,9 +76,13 @@ const MAX_MATCHES = 20;
 /**
  * Matches an image against the registry.
  *
- * The exact-bytes sha256 of the image is tried first: a hit there means the
- * file is byte for byte a registered passport and nothing else needs deciding,
- * so the eight rotated copies are never built and the work stops at one decode.
+ * The exact-bytes sha256 of the image is tried first, before the format and
+ * pixel checks: a hit there means the file is byte for byte a registered
+ * passport and nothing else needs deciding, so the eight rotated copies are never
+ * built and the work stops at one decode. The registry takes any sha256, so a
+ * passport registered straight on chain from a GIF, a HEIC or a picture over the
+ * pixel limit is still answered exact by its own file, with confidence 1, no
+ * distances and PIXELS_UNREAD_NOTE (review pass 11, V115).
  * That hit keeps confidence 1 and reports the two distances and the score
  * measured between this file's fingerprint and the one the passport stored.
  * Otherwise all eight rotated and mirrored copies of the query are fingerprinted
@@ -67,20 +98,39 @@ const MAX_MATCHES = 20;
  * identity fingerprint only, so an exact hit still costs one decode; an earlier registration that
  * only matches a rotated or mirrored copy is not surfaced there.
  *
- * Throws when the buffer is empty or is not an image sharp can decode.
+ * Throws when the buffer is empty, or when it is not an image sharp can decode
+ * and not a registered file either.
  */
 export async function matchImage(
   bytes: Buffer,
   index: HammingIndex,
   exactLookup: (sha256: Hex) => PassportRecord | undefined,
 ): Promise<MatchResult> {
-  // The identity variant is a PNG re-encode, so its sha256 is the hash of that
-  // PNG and not of the file the caller sent. The exact lookup has to use the
-  // fingerprint of the original bytes, which is also what a caller wants back.
-  const queried = await fingerprint(bytes);
-
-  const exactRecord = exactLookup(queried.sha256);
+  // The hash of the bytes as they arrived, the same one fingerprint() reports. The identity variant
+  // is a PNG re-encode, so its sha256 would be the hash of that PNG and not of the file sent.
+  const sha256 = `0x${createHash("sha256").update(bytes).digest("hex")}` as Hex;
+  const exactRecord = exactLookup(sha256);
   if (exactRecord !== undefined) {
+    let queried: Fingerprint;
+    try {
+      queried = await fingerprint(bytes);
+    } catch (error) {
+      // Only the file's own faults. A fault of this service still goes out as one, to be retried.
+      if (!(error instanceof UnsupportedImageFormat || error instanceof ImageTooLarge || error instanceof UndecodableImage)) {
+        throw error;
+      }
+      const bytesOnly: BytesOnlyMatch = { id: exactRecord.id, variant: "identity" };
+      return {
+        exact: exactRecord.id,
+        best: bytesOnly,
+        matches: [bytesOnly],
+        confidence: 1,
+        queried: { sha256 },
+        note: PIXELS_UNREAD_NOTE,
+        laterSameFingerprint: index.laterSameFingerprint(exactRecord.id),
+      };
+    }
+
     // The byte match is what makes this exact and worth confidence 1. The distances are still
     // measured against the fingerprint the passport stored, because the registry cannot check that
     // a fingerprint belongs to its bytes, and a passport carrying another picture's fingerprint must
@@ -110,6 +160,7 @@ export async function matchImage(
     };
   }
 
+  const queried = await fingerprint(bytes);
   const rotated = await dihedralFingerprints(bytes);
   const variants: Record<DihedralName, Fingerprint> = { ...rotated, identity: queried };
 

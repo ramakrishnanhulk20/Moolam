@@ -55,11 +55,12 @@ sealed routes, and a request let through on `/recheck/request`.
 Takes an image and returns the passport it belongs to.
 
 **Request.** Either a multipart upload in a field named `file`, or a JSON body of
-`{ "url": "https://..." }`. Both are capped at 20 MB. The URL form is fetched server-side with a 10
-second timeout and the same cap enforced while the body streams in. Only JPEG, PNG and WebP are
-read, the same three the studio and the verify page take: the file signature is checked before any
-library decodes the bytes, so an SVG, a GIF or a TIFF is refused in milliseconds, whatever it
-declares inside.
+`{ "url": "https://..." }`. Both are capped at 20 MB. The URL form is fetched server-side within one
+10 second limit that covers every lookup, every redirect and the body, with the same cap enforced
+while the body streams in. Only JPEG, PNG and WebP are read, the same three the studio and the
+verify page take: the file signature is checked before any library decodes the bytes, so an SVG, a
+GIF or a TIFF is refused in milliseconds, whatever it declares inside. The one exception is a file
+that is byte for byte a registered passport, see "An exact hit" below.
 
 ```bash
 curl -s -F "file=@packages/verifier/test-assets/original.jpg" http://localhost:4000/verify
@@ -103,7 +104,8 @@ curl -s -X POST http://localhost:4000/verify \
       format: string
     },
     laterSameFingerprint?: number,  // absent when nothing matched, see below
-    firstRegisteredId?: `0x${string}` // absent unless the first registration is not best
+    firstRegisteredId?: `0x${string}`, // absent unless the first registration is not best
+    note?: string                   // only on an exact hit whose pixels could not be read
   },
   manifest: {
     present: boolean,
@@ -218,6 +220,14 @@ and `score` are still measured, against the fingerprint the passport stored rath
 0: the registry cannot check that a fingerprint belongs to its bytes, so a passport carrying another
 picture's fingerprint shows how far off it is. `score` is never below 0, which is what it reads when
 the stored fingerprint is past a threshold.
+
+The bytes are hashed and looked up before the format and pixel checks. The registry takes any
+sha256, so a passport registered straight on chain from a GIF, a HEIC or a picture over 40
+megapixels is still answered exact by its own file, where anything else in that format is refused.
+Its pixels are not read, so that answer carries `confidence` 1, a `best` and a single entry in
+`matches` with only `id` and `variant: "identity"`, no distances and no `score`, a `queried` with
+only `sha256`, no earlier registration, and `note`: "this file is byte for byte the one this
+passport registered, but its pixels could not be read here, so no distances were measured".
 
 **The first registration.** The closest match leads, but anyone can register a re-encoded copy of
 someone else's picture, and a copy a bit or two closer to the query would beat the original on
@@ -389,7 +399,9 @@ answer the holder can change.
 In short, the answers that are final are remembered as before: `public` and `unsealed` for the life
 of the process, and an `upheld` dispute for 60 seconds. Every answer that can still change, the
 holder's statement, a dispute that is `none`, `open` or `rejected`, and `sealed`, is at most 10
-seconds old, and each says when it was read in `readAt`. Nothing in the field says where the picture lives: a sealed match carries no
+seconds old, counted from the moment its read began, and each says when it was read in `readAt`. A
+read that ends after a newer one never replaces it, so no answer goes back to an older state.
+Nothing in the field says where the picture lives: a sealed match carries no
 address to try, and an unsealed one is found through [`GET /unseal/:passportId`](#get-unsealpassportid).
 
 **Status codes.**
@@ -398,10 +410,10 @@ address to try, and an unsealed one is found through [`GET /unseal/:passportId`]
 | --- | --- |
 | `200` | Matched, or ran and found nothing. Finding nothing is a 200 with `best: null` |
 | `400` | No multipart `file` field and no `{ "url": "..." }` body, a part named something other than `file`, an empty file, or an upload that is not a JPEG, PNG or WebP the service can decode |
-| `403` | The URL resolves to a loopback, private, link-local, unique-local, carrier-grade NAT, multicast, reserved or cloud metadata address, before or after any redirect |
 | `413` | Over the 20 MB byte limit, or over 40 megapixels once decoded |
 | `429` | Over 60 requests in a minute from that caller. The address is read from the hop named in `TRUST_PROXY`, so a service behind a proxy counts callers rather than the proxy. An IPv6 caller is counted by its /64, because every IPv6 host is handed at least that many addresses and could otherwise take a fresh count for each request; an IPv4 address written inside IPv6 counts as the plain IPv4 address, and an address that cannot be read shares one count with every other such address. A host holding more than a /64 still has one count per /64 |
-| `502` | The remote host did not answer, or answered with a non-2xx status |
+| `502` | `{ "error": "that address could not be fetched" }`, and nothing else, for every URL the service would not or could not fetch: one that resolves to a loopback, private, link-local, unique-local, carrier-grade NAT, multicast, reserved or cloud metadata address before or after any redirect, a name that does not resolve, a port that refuses or does not answer, too many redirects, or a fetch that ran past its 10 seconds. The reason goes to the service log only, so the answer says nothing about which names resolve inside Moolam's network or which ports answer from its address |
+| `502` | The remote host answered with a non-2xx status, failed part way through the body, or sent more than it declared |
 | `503` | `{ "error": "busy" }`. No turn at the decode gate came free inside `MATCH_WAIT_MS`, 30 seconds by default, or the uploads being sent right now already fill the 200 MiB ceiling or this caller's 40 MiB share of it, see below. Nothing is wrong with the picture; send it again |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while matching: a blockhash worker that crashed, stopped or ran out of time, a hash of the wrong length, a decoder out of memory, or a failure nobody named. It is logged, and the picture is fine to send again. A file that is not one of the three formats, or whose pixels the decoders refuse, is still a `400` |
 
@@ -487,19 +499,19 @@ and the paid verification still comes back `200`.
 | `200` | Paid and matched. The settlement receipt rides in the `PAYMENT-RESPONSE` header |
 | `402` | No payment, or the facilitator refused this one when it checked it, before anything was matched. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next. At settlement a refusal answers `402` only on the second ask, and only when the chain shows the payment was not spent, see below. A payment that already bought an answer about another file goes through this same payment check, as a payment this service never saw would, so the answer never says which file it was for; it is never served for the other file |
 | `402` | `{ "error": "payment-unreadable", "reason": "..." }`. The payment header is there, and this service cannot read a payer, a nonce and every signed field from it as strings. It is refused before the upload is read and before the facilitator hears of it, because a payment the in-flight mark and the answer ledger cannot be keyed on could otherwise buy several answers. Nothing was checked or charged: pay with an x402 client, which signs every authorisation field as a string, and send it again |
-| `400`, `403`, `413` | Same as `/verify` |
+| `400`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
 | `409` | `{ "error": "payment-in-flight", "reason": "..." }`. Another request is working on the same payment, the same payer and nonce, right now. It is checked once the upload is read and before the facilitator is asked, so two requests never settle one payment side by side, and a body sent slowly under someone else's payment holds nothing. Send it again once the first has answered: the same payment with the same file then gets the answer it bought |
 | `500` | `{ "error": "payment-misconfigured" }`: the route is mounted where x402 is not collecting a payment, so it serves nothing rather than answer free |
 | `502` | The facilitator did not answer, or the payment could not be checked |
-| `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, or the first settle was refused with no transaction and the chain did not show the payment spent, see below. Nothing was cancelled and the answer is held against the payment |
+| `502` | `{ "error": "settlement-unknown", "reason": "..." }`. Nobody could say whether the payment went through, the first settle was refused with no transaction and the chain did not show the payment spent, or the facilitator broadcast the transfer and the chain did not yet show it landed, see below. Nothing was cancelled and the answer is held against the payment. The same payment with the same file answers this again, without reaching the facilitator, while the chain cannot be read |
 | `503` | `{ "error": "busy" }`. No turn at the decode gate came free in time, or the upload ceiling under `/verify` or this caller's share of it was full. Nothing is settled or held, the authorisation is cancelled, and the same payment and picture can be sent again |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service, not the picture, failed while matching, as under `/verify`. Nothing is settled or held, the authorisation is cancelled, and the picture is fine to send again |
 
-A settlement the facilitator has broadcast but not yet confirmed also answers `200`, with a pending
-receipt, and a repeat of the same payment inside ten minutes is answered from this process's memory
-without settling again. That memory is keyed on the payer and the nonce together, because an
+A settlement the facilitator has broadcast but not yet confirmed answers `200`, with a pending
+receipt, once the chain shows its transaction landed, and a repeat of the same payment inside ten
+minutes is answered from this process's memory without settling again. That memory is keyed on the payer and the nonce together, because an
 EIP-3009 nonce is unique per payer and not across payers, and it hands an answer over only to a
 request carrying the same signed payment, every field and the signature, and the same file.
 
@@ -522,7 +534,10 @@ shows the payment spent, and that check runs before the facilitator is asked abo
 because the facilitator refuses a nonce already spent. A held answer is never released on a "not
 spent" read, which is also what a first transfer still pending looks like; the same payment with
 another file, or a retry while the chain cannot be read, leaves it in place for the retry that can
-prove the payment, until its ten minutes run out.
+prove the payment, until its ten minutes run out. A retry while the chain cannot be read answers
+`502 settlement-unknown` again and never reaches the facilitator: sent through as a new payment, a
+payment that did land would meet its own spent nonce there and come back as a fresh `402` asking
+for a payment already made.
 
 **How the chain proves a payment.** Spent is proven from the pay asset itself, never from one
 flag. USDC's `authorizationState` for the payer and nonce is read first: `false` means the
@@ -552,13 +567,15 @@ first, is "cannot tell".
 
 **When settlement is broadcast but not yet confirmed.** The facilitator can answer a settle call
 with `settlement_pending`: the transfer is on chain but its receipt has not been seen in time. The
-route asks once more, five seconds later, and if the answer is the same it returns `200` with the
-verification and a `PAYMENT-RESPONSE` whose `success` is false, whose `errorReason` is
-`settlement_pending`, and which carries the transaction hash. It does not cancel: the authorisation
-is signed for that one amount, the facilitator holds it, and the money lands when the transaction
-confirms.
-Cancelling would throw away a transfer already on its way, and withholding the answer would take
-the payment and give nothing back.
+route asks once more, five seconds later, and if that does not confirm it either, it asks the chain,
+as above, starting with the transaction the facilitator named. When the chain shows that transaction
+landed, the route returns `200` with the verification and a `PAYMENT-RESPONSE` whose `success` is
+false, whose `errorReason` is `settlement_pending`, and which carries the transaction hash. Otherwise
+it answers `502 settlement-unknown` and holds the verification against the payment, exactly as for a
+settle nobody could read: a broadcast transfer can still revert, when the payer's balance moved
+first, or be dropped, and serving it then would give the answer for nothing. It does not cancel:
+the authorisation is signed for that one amount and the transfer may still land, and the same
+payment with the same file is handed the answer once the chain shows it did.
 
 ### Paying for one
 

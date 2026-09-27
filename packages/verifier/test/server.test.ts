@@ -1,20 +1,29 @@
 // Covers the HTTP surface: health, a good upload, rejected bodies, the refused
 // fetch targets, unknown routes, the body limits and the rate limit, and /health answering fast
 // while a 40 megapixel upload is being matched (review pass 5, answers 1), and every route's
-// error answer in the service's own shape, a thrown message never included (pass 7, V61).
+// error answer in the service's own shape, a thrown message never included (pass 7, V61). From
+// pass 11: every URL the service would not or could not fetch answers one status and one sentence
+// (V118), and a GIF registered straight on chain is answered exact by its own file (V115).
 // Requests go through fastify.inject, so no port is bound.
 // Does NOT cover the remote URL fetch path against a real network, does not cover
 // the boot refusals or the match gate giving up, which are in boot.test.ts, and
 // does not cover TLS or any deployment concern.
 
+import { createHash } from "node:crypto";
+import { promises as dnsPromises } from "node:dns";
+import { createServer } from "node:http";
+import net from "node:net";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { MAX_IMAGE_PIXELS, fingerprint } from "../src/fingerprint.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
-import type { PassportRecord } from "../src/types.js";
+import type { Hex, PassportRecord } from "../src/types.js";
 import { makeImage, makeOversizeImage, multipartBody, recordFor } from "./helpers.js";
+
+/** The one thing the URL form says about an address it could not fetch, whatever the reason (V118). */
+const URL_REFUSED = "that address could not be fetched";
 
 function sourceOf(records: PassportRecord[]): PassportSource {
   return { load: async () => records };
@@ -66,10 +75,89 @@ describe("verify service", () => {
       "http://2130706433/x.jpg",
     ]) {
       const response = await app.inject({ method: "POST", url: "/verify", payload: { url } });
-      expect(response.statusCode, url).toBe(403);
-      expect(response.json().error).toContain("not a public address");
+      expect(response.statusCode, url).toBe(502);
+      expect(response.json(), url).toEqual({ error: URL_REFUSED });
     }
   });
+
+  // Review pass 11, answers #6 (V118): a 403 for a name that resolves inside our network, a 502
+  // "could not resolve" for one that does not, and the connect error for a public port made the
+  // service an oracle for its own resolver's names and a port prober from Moolam's address.
+  it("answers a private name, an unresolvable name and a refused port with the same status and sentence", async () => {
+    const closed = createServer();
+    await new Promise<void>((resolve) => closed.listen(0, "127.0.0.1", resolve));
+    const closedPort = (closed.address() as { port: number }).port;
+    await new Promise<void>((resolve) => closed.close(() => resolve()));
+
+    const noSuchName = (): Promise<string[]> =>
+      Promise.reject(Object.assign(new Error("queryA ENOTFOUND"), { code: "ENOTFOUND" }));
+    const answers = (host: string): Promise<string[]> =>
+      host === "internal.example.test" ? Promise.resolve(["10.0.0.9"]) : noSuchName();
+    const resolve4 = vi.spyOn(dnsPromises.Resolver.prototype, "resolve4").mockImplementation(answers);
+    const resolve6 = vi.spyOn(dnsPromises.Resolver.prototype, "resolve6").mockImplementation(noSuchName);
+    // The public address literal needs no lookup; only its dial is sent to a closed port on this machine.
+    const realConnect = net.connect;
+    const connect = vi
+      .spyOn(net, "connect")
+      .mockImplementation(((options: net.NetConnectOpts) =>
+        realConnect({ ...options, host: "127.0.0.1", port: closedPort } as net.NetConnectOpts)) as typeof net.connect);
+
+    try {
+      const said = [];
+      for (const url of [
+        "http://internal.example.test/x.jpg",
+        "http://nothing-here.example.test/x.jpg",
+        "http://93.184.216.34:8081/x.jpg",
+      ]) {
+        const response = await app.inject({ method: "POST", url: "/verify", payload: { url } });
+        said.push({ status: response.statusCode, body: response.json() });
+      }
+
+      expect(said).toEqual([
+        { status: 502, body: { error: URL_REFUSED } },
+        { status: 502, body: { error: URL_REFUSED } },
+        { status: 502, body: { error: URL_REFUSED } },
+      ]);
+      expect(resolve4).toHaveBeenCalled();
+      expect(connect).toHaveBeenCalled();
+    } finally {
+      resolve4.mockRestore();
+      resolve6.mockRestore();
+      connect.mockRestore();
+    }
+  });
+
+  // Review pass 11, answers #3 (V115): the exact lookup waited behind the format and pixel checks,
+  // so a passport registered straight on chain from a GIF could never be matched by its own file.
+  it("answers a GIF registered straight on chain as exact, with no distances and a plain note", async () => {
+    const gif = await sharp(await makeImage(66)).gif().toBuffer();
+    const stand = recordFor(await fingerprint(await makeImage(67)));
+    const onChain = { ...stand, id: `0x${createHash("sha256").update(gif).digest("hex")}` as Hex };
+    const direct = await buildServer({ source: sourceOf([onChain]), logger: false });
+    await direct.ready();
+
+    try {
+      const { payload, headers } = multipartBody("file", "a.gif", "image/gif", gif);
+      const response = await direct.inject({ method: "POST", url: "/verify", payload, headers });
+
+      expect(response.statusCode).toBe(200);
+      const result = response.json().result;
+      expect(result.exact).toBe(onChain.id);
+      expect(result.confidence).toBe(1);
+      expect(result.best).toMatchObject({ id: onChain.id });
+      expect(result.best).not.toHaveProperty("phashDistance");
+      expect(result.best).not.toHaveProperty("blockhashDistance");
+      expect(result.queried).toEqual({ sha256: onChain.id });
+      expect(result.note).toMatch(/byte for byte/);
+
+      const other = await sharp(await makeImage(68)).gif().toBuffer();
+      const stranger = multipartBody("file", "b.gif", "image/gif", other);
+      const refused = await direct.inject({ method: "POST", url: "/verify", payload: stranger.payload, headers: stranger.headers });
+      expect(refused.statusCode).toBe(400);
+    } finally {
+      await direct.close();
+    }
+  }, 30_000);
 
   it("returns 400 for a JSON body that is neither a file nor a url", async () => {
     const response = await app.inject({ method: "POST", url: "/verify", payload: { nope: 1 } });

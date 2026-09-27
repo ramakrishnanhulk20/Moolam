@@ -696,9 +696,10 @@ const PICTURE_UNAVAILABLE: PictureAnswer = { source: "unavailable" };
  *
  * "public" and "unsealed" are kept for as long as there is room, because neither can change: the
  * document is written once and an unseal record is never taken back. "sealed" is kept for ten
- * seconds, because that is the one answer the holder can change, and a failed or slow read is never
- * kept. A passport this process unsealed itself answers "unsealed" from rememberPinnedUnseal before
- * any of that. Each answer says when it was read.
+ * seconds from the moment its read began, because that is the one answer the holder can change, and
+ * a failed or slow read is never kept, nor one that ends after a newer read (review pass 11, V113).
+ * A passport this process unsealed itself answers "unsealed" from rememberPinnedUnseal before any of
+ * that. Each answer says when it was read.
  *
  * Tests pass their own readDocument and findRecord; nothing here touches the network on its own.
  */
@@ -712,9 +713,19 @@ export function pictureReader(options: {
   const sealedTtlMs = options.sealedTtlMs ?? PICTURE_SEALED_TTL_MS;
   const maxEntries = options.maxEntries ?? PICTURE_CACHE_MAX;
   const timeoutMs = options.timeoutMs ?? PICTURE_READ_TIMEOUT_MS;
-  const cache = new Map<Hex, { answer: PictureAnswer; expiresAt: number }>();
+  const cache = new Map<Hex, { answer: PictureAnswer; startedAt: number; expiresAt: number }>();
 
-  const remember = (key: Hex, answer: PictureAnswer, ttl: number): void => {
+  /**
+   * Keeps an answer whose read began at `startedAt`, unless the memory already holds one from a
+   * read that began later, and answers with whichever of the two is the newer word. A slow "sealed"
+   * read that ends after a newer "unsealed" must not put the sealed plate back (review pass 11,
+   * V113). The time held counts from the read's start.
+   */
+  const remember = (key: Hex, answer: PictureAnswer, startedAt: number, ttl: number): PictureAnswer => {
+    const held = cache.get(key);
+    if (held !== undefined && held.startedAt > startedAt) {
+      return held.expiresAt > Date.now() ? held.answer : answer;
+    }
     // Deleting first keeps the map in write order, which is what makes the first key the oldest.
     cache.delete(key);
     while (cache.size >= maxEntries) {
@@ -724,7 +735,8 @@ export function pictureReader(options: {
       }
       cache.delete(oldest.value);
     }
-    cache.set(key, { answer, expiresAt: Date.now() + ttl });
+    cache.set(key, { answer, startedAt, expiresAt: startedAt + ttl });
+    return answer;
   };
 
   return {
@@ -738,8 +750,9 @@ export function pictureReader(options: {
       // unseal, and before a listing that may not show the record yet (V104).
       const here = pinnedUnsealOf(key);
       if (here !== undefined) {
-        const answer: PictureAnswer = { state: "unsealed", at: here.record.unsealedAt, readAt: Math.floor(Date.now() / 1000) };
-        remember(key, answer, Number.POSITIVE_INFINITY);
+        const now = Date.now();
+        const answer: PictureAnswer = { state: "unsealed", at: here.record.unsealedAt, readAt: Math.floor(now / 1000) };
+        remember(key, answer, now, Number.POSITIVE_INFINITY);
         return answer;
       }
 
@@ -751,7 +764,8 @@ export function pictureReader(options: {
         cache.delete(key);
       }
 
-      const readAt = Math.floor(Date.now() / 1000);
+      const startedAt = Date.now();
+      const readAt = Math.floor(startedAt / 1000);
       let reading: PictureReading;
       try {
         reading = await withPictureTimeout(
@@ -769,8 +783,7 @@ export function pictureReader(options: {
         reading.state === "unsealed"
           ? { state: "unsealed", at: reading.at, readAt }
           : { state: reading.state, readAt };
-      remember(key, answer, reading.state === "sealed" ? sealedTtlMs : Number.POSITIVE_INFINITY);
-      return answer;
+      return remember(key, answer, startedAt, reading.state === "sealed" ? sealedTtlMs : Number.POSITIVE_INFINITY);
     },
   };
 }

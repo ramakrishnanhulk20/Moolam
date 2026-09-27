@@ -1,6 +1,7 @@
 // Covers the consent read behind /verify and /verify/paid: the enum mapping, the three answer
 // shapes, the constraint text checked on the way out, the ten second memory, each answer saying when
-// it was read (review pass 6, V46), and its cap, the five second timeout, and both routes still
+// it was read (review pass 6, V46), a slow read never replacing a newer one (review pass 11, V113),
+// and its cap, the five second timeout, and both routes still
 // answering 200 with a full match when the read fails.
 // The chain is a fake transport that answers the eth_call viem makes, so the encoding and the
 // decoding are real and the network is not.
@@ -235,6 +236,49 @@ describe("consent reader", () => {
         aiTraining: "notAllowed",
         readAt: Math.floor((start + 11_000) / 1000),
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Review pass 11, answers #1 (V113): a read that stalled near its limit ended after a newer one
+  // and replaced it, so a statement its holder had already replaced went out again.
+  it("keeps a newer statement over a slow older read that ends after it, and times the memory from the read's start", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      type Raw = Awaited<ReturnType<ConsentCall>>;
+      const start = Date.now();
+      let finishSlow: (value: Raw) => void = () => undefined;
+      const steps: (() => Promise<Raw>)[] = [
+        () =>
+          new Promise<Raw>((resolve) => {
+            finishSlow = resolve;
+          }),
+        // Starts at t=3 and takes a second, as a read through a slow endpoint does.
+        async () => {
+          vi.setSystemTime(start + 4_000);
+          return [true, entry([2, 2, 2, 2])] as const;
+        },
+        async () => [true, entry([2, 2, 2, 2])] as const,
+      ];
+      const call = vi.fn<ConsentCall>(async () => await (steps.shift() as () => Promise<Raw>)());
+      const read = consentReader({ call });
+
+      const slow = read.answerFor(PASSPORT);
+      vi.setSystemTime(start + 3_000);
+      const newer = { aiTraining: "notAllowed", readAt: Math.floor((start + 3_000) / 1000) };
+      expect(await read.answerFor(PASSPORT)).toMatchObject(newer);
+
+      vi.setSystemTime(start + 4_900);
+      finishSlow([true, entry([1, 1, 1, 1])] as const);
+      expect(await slow).toMatchObject(newer);
+      expect(await read.answerFor(PASSPORT)).toMatchObject(newer);
+      expect(call).toHaveBeenCalledTimes(2);
+
+      // Held for ten seconds from the moment the read that produced it began, not from when it ended.
+      vi.setSystemTime(start + 3_000 + CONSENT_TTL_MS);
+      await read.answerFor(PASSPORT);
+      expect(call).toHaveBeenCalledTimes(3);
     } finally {
       vi.useRealTimers();
     }

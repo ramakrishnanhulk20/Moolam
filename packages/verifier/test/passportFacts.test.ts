@@ -11,7 +11,8 @@
 // The picture state is read through the real pictureReader with its document reader and unseal
 // record finder stubbed: each of its four answers on a /verify and a /verify/paid answer, a finder
 // that throws, a reader that breaks its promise, a read slower than its bound, and its memory,
-// where "sealed" is held ten seconds at most and every fact says when it was read (pass 6, V46).
+// where "sealed" is held ten seconds at most and every fact says when it was read (pass 6, V46),
+// and a slow "sealed" read never replaces a newer "unsealed" (pass 11, V113).
 // From review pass 4 (V18): the first registration, when it is not the best or exact match,
 // carries the same four facts, read the same way, and no more than three passports are read.
 // Does NOT cover the enum mapping, the consent and dispute caches, or each chain reader's own
@@ -526,6 +527,41 @@ describe("the picture state on the verify routes", () => {
         at: UNSEALED_AT,
         readAt: Math.floor((start + 11_000) / 1000),
       });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Review pass 11, answers #1 (V113): a slow "sealed" read that ended after a newer "unsealed"
+  // replaced it, and the sealed plate went back over a picture its holder had published.
+  it("keeps a newer unsealed over a slow older sealed read that ends after it", async () => {
+    let finishSlow: (found: undefined) => void = () => undefined;
+    const lookups: (() => Promise<ReturnType<typeof recordOf> | undefined>)[] = [
+      () =>
+        new Promise((resolve) => {
+          finishSlow = resolve;
+        }),
+    ];
+    const passport = { id: `0x${"84".repeat(32)}` as Hex, metadataURI: "ipfs://bafysealed" };
+    const reader = pictureReader({
+      readDocument: async () => SEALED_DOCUMENT,
+      findRecord: async (id) => await (lookups.shift() ?? (async () => recordOf(id)))(),
+    });
+
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const start = Date.now();
+      const slow = reader.answerFor(passport);
+      // Lets the slow read reach its record lookup before the newer read starts.
+      await new Promise((resolve) => setImmediate(resolve));
+      vi.setSystemTime(start + 3_000);
+      const unsealed = { state: "unsealed", at: UNSEALED_AT, readAt: Math.floor((start + 3_000) / 1000) };
+      expect(await reader.answerFor(passport)).toEqual(unsealed);
+
+      vi.setSystemTime(start + 4_900);
+      finishSlow(undefined);
+      expect(await slow).toEqual(unsealed);
+      expect(await reader.answerFor(passport)).toEqual(unsealed);
     } finally {
       vi.useRealTimers();
     }

@@ -2,7 +2,8 @@
 // every redirect hop is checked, and that the lookup the socket uses hands over
 // only approved addresses. From review pass 5: names are resolved once per hop
 // through the c-ares resolver with a hard timeout, and a remote that fails after
-// its headers, or redirects to a Location that does not parse, is a 502.
+// its headers, or redirects to a Location that does not parse, is a 502. From review pass 11 (V119):
+// one deadline holds the whole fetch, every hop and lookup included.
 // Does NOT cover a real connection to a real host. The redirect test opens real
 // sockets through the live transport, but to a stub on this machine: the address
 // guard approves a public address and the dial is then pointed at the stub, so no
@@ -151,6 +152,39 @@ describe("safeFetch", () => {
 
     await expect(attempt).rejects.toBeInstanceOf(UnreachableTarget);
     await expect(attempt).rejects.toThrow(/redirected more than 2 times/);
+  });
+
+  // Review pass 11, answers #7 (V119): each hop had a fresh timeout of its own, so four slow hops
+  // held one request for four times the limit the route states.
+  it("stops four slow redirects at the one limit for the whole fetch, lookups included", async () => {
+    const HOP_MS = 250;
+    const LIMIT_MS = 500;
+    const next: Record<string, string> = {
+      "http://slow.example.test/a": "/b",
+      "http://slow.example.test/b": "/c",
+      "http://slow.example.test/c": "/d",
+    };
+    const resolve: ResolveAll = async () => {
+      await new Promise((settle) => setTimeout(settle, 20));
+      return [PUBLIC_ADDRESS];
+    };
+    const transport: NonNullable<Parameters<typeof safeFetch>[1]>["transport"] = (url, init) =>
+      new Promise((answer, fail) => {
+        const timer = setTimeout(() => {
+          const location = next[url];
+          answer(location === undefined ? new Response("bytes") : new Response(null, { status: 302, headers: { location } }));
+        }, HOP_MS);
+        init.signal.addEventListener("abort", () => {
+          clearTimeout(timer);
+          fail(init.signal.reason);
+        });
+      });
+
+    const started = Date.now();
+    const attempt = safeFetch(new URL("http://slow.example.test/a"), { resolve, transport, timeoutMs: LIMIT_MS });
+
+    await expect(attempt).rejects.toBeInstanceOf(UnreachableTarget);
+    expect(Date.now() - started).toBeLessThan(LIMIT_MS + HOP_MS);
   });
 });
 

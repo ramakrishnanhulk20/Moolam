@@ -343,6 +343,14 @@ export function textField(part: MultipartValue): string {
   return part.value;
 }
 
+/**
+ * All the URL form says about an address it could not fetch, whatever the reason: a name that
+ * resolves inside this network, a name that does not resolve, a port that refuses, a host that timed
+ * out. Told apart, those answers made the service an oracle for the names its own resolver knows and
+ * a port prober from its own address (review pass 11, V118). The reason goes to the log only.
+ */
+export const URL_UNFETCHABLE = "that address could not be fetched";
+
 const urlBodySchema = z.object({
   url: z.string().refine(isHttpUrl, "url must be an absolute http or https URL"),
 });
@@ -462,9 +470,10 @@ export async function studioTurn<T>(
  *
  * Throws CallerGone (499) for a caller who has hung up, UploadsBusy (503) past
  * either ceiling, and BadRequest: 400 for a body that is not { "url": "..." },
- * 403 for a URL that points inside our own network, 413 over the byte limit, 502
- * when the remote host does not answer, fails part way through the body, or
- * sends more than it declared.
+ * 413 over the byte limit, 502 with URL_UNFETCHABLE and nothing else for an
+ * address that points inside our own network, does not resolve, or does not
+ * answer within the one deadline, and 502 when the remote host fails part way
+ * through the body or sends more than it declared.
  */
 export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
   const parsed = urlBodySchema.safeParse(request.body);
@@ -486,7 +495,8 @@ export async function readFromUrl(request: FastifyRequest): Promise<Buffer> {
       throw error;
     }
     if (error instanceof BlockedTarget || error instanceof UnreachableTarget) {
-      throw new BadRequest(error.message, error.statusCode);
+      request.log.warn({ ip: request.ip, reason: safeReason(error) }, "verify: the URL could not be fetched");
+      throw new BadRequest(URL_UNFETCHABLE, 502);
     }
     throw error;
   }
@@ -598,7 +608,8 @@ export const SERVICE_FAULT_REASON = "the service could not read this picture rig
  *
  * Throws BadRequest: 413 when the image is over the pixel limit, 400 only when
  * the upload itself is at fault (not one of the three formats, or pixels the
- * decoders refused). Throws ServiceFault, 503 with SERVICE_FAULT_REASON, for
+ * decoders refused), and neither when the bytes are a registered file, which is
+ * answered exact without its pixels. Throws ServiceFault, 503 with SERVICE_FAULT_REASON, for
  * anything else, which is this service failing: a blockhash worker that stopped
  * or timed out, a hash of the wrong length, a decoder out of memory, or a
  * failure nobody named. That one is logged, because telling the caller to change
@@ -660,17 +671,20 @@ export async function verifyBytes(
  * `laterSameFingerprint` is newer than the rest of the shape and only rides along when something
  * matched, so a client that predates it reads the same answer it always did. `firstRegisteredId`
  * rides along only when the first registration inside the thresholds is not the headline match,
- * and each match carries `firstRegistered` only when the answer names more than one passport.
+ * and each match carries `firstRegistered` only when the answer names more than one passport. An
+ * exact answer whose pixels could not be read carries `queried` as the sha256 alone and its `note`.
  */
 export function renderResult(result: MatchResult): unknown {
+  const queried = result.queried;
   return {
     exact: result.exact,
     best: result.best,
     matches: result.matches,
     confidence: result.confidence,
-    queried: { ...result.queried, phash: result.queried.phash.toString() },
+    queried: "phash" in queried ? { ...queried, phash: queried.phash.toString() } : queried,
     ...(result.laterSameFingerprint === undefined ? {} : { laterSameFingerprint: result.laterSameFingerprint }),
     ...(result.firstRegisteredId === undefined ? {} : { firstRegisteredId: result.firstRegisteredId }),
+    ...(result.note === undefined ? {} : { note: result.note }),
   };
 }
 

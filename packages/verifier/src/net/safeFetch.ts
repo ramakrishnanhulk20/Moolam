@@ -67,6 +67,7 @@ export interface HopInit {
 }
 
 export interface SafeFetchOptions {
+  /** One limit for the whole call: every lookup, every redirect and the final answer's body. */
   timeoutMs?: number;
   maxRedirects?: number;
   /** The hard limit on each hop's lookup. Tests pass a short one. */
@@ -177,9 +178,15 @@ export function guardedLookup(resolve: ResolveAll): LookupFunction {
  * internal address is the classic way in, and every hop is checked the same way
  * as the first. The connection is pinned to the addresses that were checked.
  *
+ * One deadline, `timeoutMs` from the call, covers the whole fetch: each hop's
+ * lookup and request get only the time that is left, and the answer handed back
+ * keeps the same deadline for its body. A fresh limit per hop let four slow
+ * redirects hold one request for four times the limit (review pass 11, V119).
+ *
  * Throws BlockedTarget (403) when a hop resolves to an address we refuse, and
- * UnreachableTarget (502) when the host does not answer or the chain of
- * redirects runs past the limit.
+ * UnreachableTarget (502) when the host does not answer, the deadline passes, or
+ * the chain of redirects runs past the limit. Both carry the detail for a log;
+ * the /verify URL form never passes it on (V118).
  */
 export async function safeFetch(url: URL, options: SafeFetchOptions = {}): Promise<Response> {
   const resolve = options.resolve ?? resolveThroughDns;
@@ -187,18 +194,20 @@ export async function safeFetch(url: URL, options: SafeFetchOptions = {}): Promi
   const timeoutMs = options.timeoutMs ?? FETCH_TIMEOUT_MS;
   const lookupTimeoutMs = options.lookupTimeoutMs ?? LOOKUP_TIMEOUT_MS;
   const transport = options.transport ?? pinnedTransport(timeoutMs);
+  const deadline = Date.now() + timeoutMs;
+  const signal = AbortSignal.timeout(timeoutMs);
 
   let target = url;
   for (let hop = 0; hop <= maxRedirects; hop += 1) {
-    const addresses = await assertPublicHost(target, resolve, lookupTimeoutMs);
+    const left = deadline - Date.now();
+    if (left <= 0) {
+      throw new UnreachableTarget(`fetching ${url.toString()} took longer than ${timeoutMs} ms`);
+    }
+    const addresses = await assertPublicHost(target, resolve, Math.min(lookupTimeoutMs, left));
 
     let response: Response;
     try {
-      response = await transport(target.toString(), {
-        signal: AbortSignal.timeout(timeoutMs),
-        redirect: "manual",
-        addresses,
-      });
+      response = await transport(target.toString(), { signal, redirect: "manual", addresses });
     } catch (error) {
       if (error instanceof BlockedTarget) {
         throw error;

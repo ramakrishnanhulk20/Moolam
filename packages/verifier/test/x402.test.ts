@@ -24,6 +24,9 @@
 // request at a time and buys one answer for one file, and never replaces another file's entry (V60).
 // From pass 9 (V84): another file under a remembered payment goes the way a payment this service
 // never saw goes, so these tests check it is never served rather than a 409 of its own.
+// From pass 11: a held answer whose chain read fails on the retry is answered settlement-unknown
+// again, never a fresh 402 (V116), and a broadcast is served only once the chain shows its
+// transaction landed, so one that reverts is held, never served (V117).
 // Does NOT cover the chain: the stub checks the EIP-3009 signature and the
 // authorisation fields the real facilitator checks, but nothing submits
 // transferWithAuthorization, so a payer with no USDC, a nonce already spent and
@@ -48,7 +51,7 @@ import { parseEnv } from "../src/env.js";
 import { buildServer } from "../src/server.js";
 import type { PassportSource } from "../src/source/PassportSource.js";
 import type { PassportRecord } from "../src/types.js";
-import { chainCharged, verifyPaidRoutes } from "../src/routes/verifyPaid.js";
+import { chainCharged, verifyPaidRoutes, type ChargedCheck } from "../src/routes/verifyPaid.js";
 import { SERVICE_FAULT_REASON } from "../src/routes/shared.js";
 import { Busy } from "../src/generate/gate.js";
 import { paymentLedger } from "../src/x402/ledger.js";
@@ -168,6 +171,11 @@ function pendingSettlement(transaction: string) {
   };
 }
 
+/** A chain check that shows the payment landed once it is asked about `transaction`, and cannot tell otherwise. */
+function landsAs(transaction: string): ChargedCheck {
+  return async (_payment, _requirements, transactions) => (transactions.includes(transaction) ? true : undefined);
+}
+
 /** The receipt the caller got back, decoded. */
 function receiptOf(header: unknown): { success: boolean; errorReason?: string; transaction: string } {
   return JSON.parse(Buffer.from(String(header), "base64").toString("utf8"));
@@ -229,7 +237,7 @@ describe("paid verify route", () => {
 });
 
 describe("settlement the facilitator has not confirmed yet", () => {
-  it("asks once more, then answers with the verification and a pending receipt", async () => {
+  it("asks once more, then answers with the verification and a pending receipt once the chain shows its transaction", async () => {
     const transaction = "0x1d5f2b3c4e5a60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9";
     const cancel = vi.fn(async () => undefined);
     const settle = vi.fn(async () => pendingSettlement(transaction));
@@ -240,7 +248,7 @@ describe("settlement the facilitator has not confirmed yet", () => {
     const app = await buildServer({ source: sourceOf([record]), logger: false });
     // The wait between the two settle calls is what makes a second ask worth
     // anything in production and pure delay in a test, so this one is zero.
-    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0 });
+    await app.register(verifyPaidRoutes, { payments, settlementRetryDelayMs: 0, charged: landsAs(transaction) });
     await app.ready();
 
     try {
@@ -272,7 +280,11 @@ describe("settlement the facilitator has not confirmed yet", () => {
     const image = await makeImage(37);
     const record = recordFor(await fingerprint(image));
     const app = await buildServer({ source: sourceOf([record]), logger: false });
-    await app.register(verifyPaidRoutes, { payments: paymentsThatSettleWith(settle, cancel), settlementRetryDelayMs: 0 });
+    await app.register(verifyPaidRoutes, {
+      payments: paymentsThatSettleWith(settle, cancel),
+      settlementRetryDelayMs: 0,
+      charged: landsAs(transaction),
+    });
     await app.ready();
 
     try {
@@ -306,7 +318,11 @@ describe("settlement the facilitator has not confirmed yet", () => {
     const image = await makeImage(41);
     const record = recordFor(await fingerprint(image));
     const app = await buildServer({ source: sourceOf([record]), logger: false });
-    await app.register(verifyPaidRoutes, { payments: paymentsThatSettleWith(settle, cancel), settlementRetryDelayMs: 0 });
+    await app.register(verifyPaidRoutes, {
+      payments: paymentsThatSettleWith(settle, cancel),
+      settlementRetryDelayMs: 0,
+      charged: landsAs(transaction),
+    });
     await app.ready();
 
     try {
@@ -322,6 +338,47 @@ describe("settlement the facilitator has not confirmed yet", () => {
       const receipt = receiptOf(response.headers["payment-response"]);
       expect(receipt.errorReason).toBe("settlement_pending");
       expect(receipt.transaction).toBe(transaction);
+    } finally {
+      await app.close();
+    }
+  });
+
+  // Review pass 11, answers #5 (V117): a broadcast answer was served and kept as paid with no chain
+  // check, so a transfer that reverted after the payer's balance moved bought an answer with nothing.
+  it("never serves a broadcast whose transaction reverts, and holds it as unknown until the chain shows it", async () => {
+    const transaction = `0x${"5b".repeat(32)}`;
+    const cancel = vi.fn(async () => undefined);
+    const settle = vi.fn(async () => pendingSettlement(transaction));
+    let reverted = true;
+    const charged = vi.fn<ChargedCheck>(async (_payment, _requirements, transactions) =>
+      reverted ? false : transactions.includes(transaction),
+    );
+
+    const image = await makeImage(43);
+    const record = recordFor(await fingerprint(image));
+    const app = await buildServer({ source: sourceOf([record]), logger: false });
+    await app.register(verifyPaidRoutes, { payments: paymentsThatSettleWith(settle, cancel), settlementRetryDelayMs: 0, charged });
+    await app.ready();
+    const header = paymentHeaderFor(`0x${"e6".repeat(32)}`);
+    const send = async () => {
+      const { payload, headers } = multipartBody("file", "a.jpg", "image/jpeg", image);
+      return await app.inject({ method: "POST", url: "/verify/paid", payload, headers: { ...headers, "payment-signature": header } });
+    };
+
+    try {
+      for (const attempt of [await send(), await send()]) {
+        expect(attempt.statusCode).toBe(502);
+        expect(attempt.json().error).toBe("settlement-unknown");
+        expect(attempt.body).not.toContain(record.id);
+      }
+      expect(charged.mock.calls.some(([, , transactions]) => transactions.includes(transaction))).toBe(true);
+      expect(cancel).not.toHaveBeenCalled();
+
+      // The same payment with the same file, once the chain shows the named transaction landed.
+      reverted = false;
+      const later = await send();
+      expect(later.statusCode).toBe(200);
+      expect(later.json().result.exact).toBe(record.id);
     } finally {
       await app.close();
     }
@@ -598,6 +655,25 @@ describe("an answer held as settlement-unknown (pass 4, V21)", () => {
       const later = await send(header);
       expect(later.statusCode).toBe(200);
       expect(later.json().result.exact).toBe(record.id);
+    } finally {
+      await app.close();
+    }
+  });
+
+  // Review pass 11, answers #4 (V116): a retry whose chain read failed went back to the facilitator
+  // as a new payment, and a payment that had landed came back as a fresh 402 with new terms.
+  it("answers settlement-unknown again, never a fresh 402, when the chain cannot tell on the retry", async () => {
+    const { app, record, send } = await onceOnlyApp(async () => undefined);
+    const header = paymentHeaderFor(`0x${"f5".repeat(32)}`);
+
+    try {
+      expect((await send(header)).json().error).toBe("settlement-unknown");
+
+      const retry = await send(header);
+      expect(retry.statusCode).toBe(502);
+      expect(retry.json().error).toBe("settlement-unknown");
+      expect(retry.headers["payment-required"]).toBeUndefined();
+      expect(retry.body).not.toContain(record.id);
     } finally {
       await app.close();
     }

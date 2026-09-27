@@ -347,7 +347,10 @@ export interface Verifier {
   runVerify: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => Promise<T>;
   /** Runs /prepare, /edit and /unseal work, which may also take the slot no verify can. */
   runPrepare: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => Promise<T>;
-  /** Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand. */
+  /**
+   * Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand, and
+   * so does one that began before the copy in hand did.
+   */
   reload: () => Promise<void>;
   /** When the copy in hand now was loaded, and whether it is too old to trust as current. */
   indexState: () => IndexState;
@@ -375,14 +378,20 @@ interface LoadedIndex {
   progress?: IndexerProgress | null;
 }
 
+/**
+ * Loads one copy of the register. It is stamped with the moment its first page was asked for, not
+ * the moment the load ended: a load can wait a minute on slow block reads after its rows were read,
+ * and a copy stamped at the end would claim to be newer than its rows (review pass 11, V114).
+ */
 async function loadIndex(source: PassportSource, clock: () => number): Promise<LoadedIndex> {
+  const startedAtMs = clock();
   const loaded =
     source.loadWithProgress !== undefined ? await source.loadWithProgress() : { records: await source.load() };
   const { records } = loaded;
   return {
     index: new HammingIndex(records),
     byId: new Map<Hex, PassportRecord>(records.map((record) => [record.id, record])),
-    loadedAtMs: clock(),
+    loadedAtMs: startedAtMs,
     ...("progress" in loaded ? { progress: loaded.progress ?? null } : {}),
   };
 }
@@ -663,17 +672,29 @@ export async function buildServer(
       ? offlinePictureReader()
       : pictureReader({ readDocument: liveDocument, findRecord: liveRecord }));
 
+  // How many loads are running now. The timer skips its tick while one is, so loads never pile up
+  // behind a slow indexer (review pass 11, V114).
+  let reloading = 0;
   const reload = async (): Promise<void> => {
+    reloading += 1;
     try {
+      const loaded = await loadIndex(source, clock);
+      // A load that began before the copy in hand read older rows, however late it ended.
+      if (loaded.loadedAtMs < current.loadedAtMs) {
+        app.log.info({ records: loaded.index.size, ...indexState() }, "index refresh ended after a newer one, kept the newer copy");
+        return;
+      }
       // One assignment, so an in-flight request reads either the old copy or the new one, and a
       // request that took a snapshot keeps reading its own.
-      current = await loadIndex(source, clock);
+      current = loaded;
       app.log.info({ records: current.index.size, ...indexState() }, "passport index refreshed");
     } catch (error) {
       app.log.warn(
         { reason: safeReason(error), ...indexState() },
         "index refresh failed, serving the copy already loaded",
       );
+    } finally {
+      reloading -= 1;
     }
   };
 
@@ -976,7 +997,9 @@ export async function buildServer(
 
   if (refreshMs > 0) {
     const timer = setInterval(() => {
-      void reload();
+      if (reloading === 0) {
+        void reload();
+      }
     }, refreshMs);
     // A refresh that is only waiting for its next tick must not keep the process alive.
     timer.unref();

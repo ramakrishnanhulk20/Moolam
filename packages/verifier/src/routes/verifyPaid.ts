@@ -156,10 +156,11 @@ interface Where {
 /**
  * How one payment ended.
  *
- * "settled" and "broadcast" both mean the payer's money is moving, so both
- * answer with the verification. "refused" means the facilitator said no transfer
- * exists, so nothing is served. "unknown" means nobody could say, so the answer
- * is held back and kept against this payment, never thrown away as refused.
+ * "settled" is the facilitator confirming the transfer, and "broadcast" is the pay asset itself
+ * showing it landed when the facilitator did not confirm it, so both answer with the verification.
+ * "refused" means the facilitator said no transfer exists, so nothing is served. "unknown" means
+ * nobody could say, so the answer is held back and kept against this payment, never thrown away as
+ * refused.
  */
 type Settlement =
   | { state: "settled" | "broadcast"; headers: Record<string, string> }
@@ -621,10 +622,10 @@ function carriesPayment(logs: readonly unknown[], expected: PaymentTerms): boole
  *
  * - the facilitator confirms the transfer: "settled", with its receipt.
  * - the facilitator has broadcast it but not confirmed it: ask once more after a
- *   pause, then "broadcast" with the first receipt. The money is already on its
- *   way, so the payer gets the answer. A second call that throws, or that comes
- *   back a different failure, cannot recall that transfer, so it is logged and
- *   the first answer stands.
+ *   pause, then ask the chain. "broadcast" with the first receipt only when the
+ *   pay asset shows the named transaction landed, and "unknown" otherwise, held
+ *   until the chain shows it: a broadcast transfer can still revert when the
+ *   payer's balance moved first, or be dropped (review pass 11, V117).
  * - the first ask names a reason and no transaction: the chain is asked, a spent
  *   payment is "broadcast", and anything else is "unknown", never "refused". The
  *   reference facilitator answers that way whenever its transferWithAuthorization
@@ -677,21 +678,20 @@ async function settleSequence(
   if (first.kind === "broadcast") {
     log.warn({ ...where, transaction: first.result.transaction }, "settlement pending: asking the facilitator once more");
     await pause(retryDelayMs);
-    const second = await attempt(settle);
+    const second = note(await attempt(settle));
     if (second.kind === "settled") {
       return { state: "settled", headers: second.headers };
     }
-    if (second.kind !== "broadcast") {
-      log.warn(
-        { ...where, second: second.kind, transaction: first.result.transaction },
-        "the second settle call did not confirm it; the broadcast transfer stands",
-      );
+    // Never cancelled: the transfer may still land, and cancelling would throw it away. Nor served
+    // until the chain shows it did, since a broadcast transfer can still revert or be dropped.
+    if ((await charged(transactions)) === true) {
+      return { state: "broadcast", headers: first.result.headers };
     }
-    // The authorisation is signed for this one amount and the transfer is on
-    // chain, so it cannot be spent twice and the money lands when it confirms.
-    // Cancelling here would throw away a transfer that is already on its way, and
-    // withholding the answer would take the payment and give nothing back.
-    return { state: "broadcast", headers: first.result.headers };
+    log.error(
+      { ...where, second: second.kind, transaction: first.result.transaction },
+      "settlement pending and not yet on chain: the answer is held against this payment",
+    );
+    return { state: "unknown", reason: SETTLEMENT_PENDING, transactions };
   }
 
   log.warn({ ...where, reason: first.reason }, "settlement outcome unknown: asking the chain, then the facilitator once more");
@@ -703,12 +703,10 @@ async function settleSequence(
   if (second.kind === "settled") {
     return { state: "settled", headers: second.headers };
   }
-  if (second.kind === "broadcast") {
-    return { state: "broadcast", headers: second.result.headers };
-  }
+  // A broadcast on the second ask is served on the same terms as one on the first: once the chain shows it.
   const spent = await charged(transactions);
   if (spent === true) {
-    return { state: "broadcast", headers: {} };
+    return { state: "broadcast", headers: second.kind === "broadcast" ? second.result.headers : {} };
   }
   if (second.kind === "refused" && spent === false) {
     log.error({ ...where, reason: second.result.errorReason }, "payment did not settle");
@@ -719,7 +717,12 @@ async function settleSequence(
       body: second.result.response.body ?? {},
     };
   }
-  const reason = second.kind === "unknown" ? second.reason : (second.result.errorReason ?? "refused");
+  const reason =
+    second.kind === "unknown"
+      ? second.reason
+      : second.kind === "broadcast"
+        ? SETTLEMENT_PENDING
+        : (second.result.errorReason ?? "refused");
   log.error({ ...where, first: first.reason, second: reason }, "settlement outcome unknown: the answer is held against this payment");
   return { state: "unknown", reason, transactions };
 }
@@ -743,12 +746,15 @@ async function settleSequence(
  * match gate answers 503 `busy` and a fault of this service 503 `service-fault`
  * with SERVICE_FAULT_REASON, as /verify does, and neither is settled or held. A
  * settlement the facilitator has broadcast but not yet confirmed is asked about
- * once more, then answered with the verification and a pending receipt. A
- * settlement whose outcome nobody can tell answers 502 settlement-unknown and is
- * never cancelled; the answer is kept against the payment and handed over when
- * the same payment and file come back and the pay asset itself shows the payment
- * spent. That check runs before the facilitator is asked about the repeat, because
- * the facilitator refuses a spent nonce (review pass 6, V43).
+ * once more, then answered with the verification and a pending receipt once the
+ * pay asset shows the named transaction landed, and otherwise held as unknown
+ * (review pass 11, V117). A settlement whose outcome nobody can tell answers 502
+ * settlement-unknown and is never cancelled; the answer is kept against the
+ * payment and handed over when the same payment and file come back and the pay
+ * asset itself shows the payment spent. That check runs before the facilitator is
+ * asked about the repeat, because the facilitator refuses a spent nonce (review
+ * pass 6, V43), and while the chain cannot say, the repeat is answered 502
+ * settlement-unknown again rather than sent to the facilitator (V116).
  *
  * A payment that already bought an answer is given that same answer back rather
  * than being settled a second time, but only to a request carrying that very
@@ -875,6 +881,13 @@ export async function verifyPaidRoutes(
           }
           return reply.headers(replay.entry.headers).send(replay.entry.payload);
         }
+        // Sent through as new, a payment that did land meets its used nonce at the facilitator, and
+        // the payer would be handed fresh terms for an answer this service holds. Until the chain
+        // can say, the answer is the same one the first settle gave (review pass 11, V116).
+        if (replay.kind === "cannot-tell") {
+          request.log.warn(where, "held payment: the chain could not say whether it landed, answered unknown again");
+          return settlementUnknown(reply);
+        }
         // The payment goes through as new, and the held answer is never let go on a "not spent"
         // read: that read is also what a first transfer still pending looks like, so the answer
         // stays held until a new settle replaces it or its ten minutes run out (review pass 5,
@@ -974,12 +987,7 @@ export async function verifyPaidRoutes(
     // The ledger is keyed by the payment the facilitator verified, never by the header's own word.
     const paid = identityOf(verified.paymentPayload);
     const upload = sha256Hex(bytes);
-    const unknownAnswer = (): FastifyReply =>
-      reply.code(502).send({
-        error: "settlement-unknown",
-        reason:
-          "the payment facilitator did not say whether your payment went through. Nothing was cancelled. Send the same payment with the same file again: once the chain shows the payment, the answer it bought is handed over, and a payment that never happened is not taken twice.",
-      });
+    const unknownAnswer = (): FastifyReply => settlementUnknown(reply);
 
     if (settlement.state === "unknown") {
       if (paid !== undefined) {
@@ -1030,6 +1038,14 @@ export async function verifyPaidRoutes(
   }
 }
 
+/** What a payer is told when nobody can yet say whether their payment went through. */
+export const SETTLEMENT_UNKNOWN_REASON =
+  "the payment facilitator did not say whether your payment went through. Nothing was cancelled. Send the same payment with the same file again: once the chain shows the payment, the answer it bought is handed over, and a payment that never happened is not taken twice.";
+
+function settlementUnknown(reply: FastifyReply): FastifyReply {
+  return reply.code(502).send({ error: "settlement-unknown", reason: SETTLEMENT_UNKNOWN_REASON });
+}
+
 /**
  * A payer who hung up before the answer was ready: nothing is settled, and the 499 reaches nobody.
  * The same status and word /verify answers a caller who left with.
@@ -1047,7 +1063,8 @@ function callerGone(request: FastifyRequest, reply: FastifyReply, where: Where):
  * comes back marked settled so the chain is not asked again. "other-file" is the right payment
  * with the wrong file. "not-spent" is the chain answering that the payment is not spent yet, which
  * a first transfer still pending also reads as, and "cannot-tell" is a chain read that failed or a
- * held entry with no proof to ask about. Neither lets the held answer go.
+ * held entry with no proof to ask about. Neither lets the held answer go: "not-spent" goes through
+ * as a new payment, and "cannot-tell" is answered settlement-unknown again (review pass 11, V116).
  */
 type Replay =
   | { kind: "serve"; entry: LedgerEntry }

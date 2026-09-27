@@ -157,8 +157,10 @@ export function answerFromChain(raw: Awaited<ReturnType<DisputeCall>>, readAt: n
  *
  * An upheld answer is kept for `ttlMs`, because the ruling does not change; every other answer for
  * at most `changeableTtlMs`, ten seconds, because a flag can be mined at any moment (review pass 6,
- * V46). Either way the answer says when it was read. A failed read is never kept, since pinning
- * "unavailable" would hide a dispute that is there and the chain reachable again.
+ * V46), both counted from the moment the read began. Either way the answer says when it was read,
+ * and a read that ends after a newer one never replaces it (review pass 11, V113). A failed read is
+ * never kept, since pinning "unavailable" would hide a dispute that is there and the chain reachable
+ * again.
  *
  * The chain is read rather than the passport index, because the index is rebuilt on a timer and a
  * dispute opened since the last rebuild is exactly the case a reader must not miss.
@@ -182,9 +184,20 @@ export function disputeReader(
   const maxEntries = options.maxEntries ?? DISPUTE_CACHE_MAX;
   const timeoutMs = options.timeoutMs ?? DISPUTE_READ_TIMEOUT_MS;
   const call = options.call ?? chainCall(options);
-  const cache = new Map<Hex, { answer: DisputeAnswer; expiresAt: number }>();
+  const cache = new Map<Hex, { answer: DisputeAnswer; startedAt: number; expiresAt: number }>();
 
-  const remember = (key: Hex, answer: DisputeAnswer, heldFor: number): void => {
+  /**
+   * Keeps an answer whose read began at `startedAt`, unless the memory already holds one from a
+   * read that began later, and answers with whichever of the two is the newer word. A read that
+   * stalled near its limit can end after a newer one, and must not put the older state back
+   * (review pass 11, V113). The time held counts from the read's start, so nothing is served more
+   * than `heldFor` after the moment the chain was asked.
+   */
+  const remember = (key: Hex, answer: DisputeAnswer, startedAt: number, heldFor: number): DisputeAnswer => {
+    const held = cache.get(key);
+    if (held !== undefined && held.startedAt > startedAt) {
+      return held.expiresAt > Date.now() ? held.answer : answer;
+    }
     // Deleting first keeps the map in write order, which is what makes the first key the oldest.
     cache.delete(key);
     while (cache.size >= maxEntries) {
@@ -194,7 +207,8 @@ export function disputeReader(
       }
       cache.delete(oldest.value);
     }
-    cache.set(key, { answer, expiresAt: Date.now() + heldFor });
+    cache.set(key, { answer, startedAt, expiresAt: startedAt + heldFor });
+    return answer;
   };
 
   return {
@@ -217,12 +231,12 @@ export function disputeReader(
         // resolves to something with no status on it, undefined among them, has to come out as
         // "unavailable" here rather than as a thrown error at the walker, where it would cost this
         // passport its consent statement and its re-check count as well.
-        const readAt = Math.floor(Date.now() / 1000);
-        const answer = answerFromChain(await withTimeout(call(key), timeoutMs), readAt);
-        if (answer.source === "chain") {
-          remember(key, answer, answer.status === "upheld" ? ttlMs : changeableTtlMs);
+        const startedAt = Date.now();
+        const answer = answerFromChain(await withTimeout(call(key), timeoutMs), Math.floor(startedAt / 1000));
+        if (answer.source !== "chain") {
+          return answer;
         }
-        return answer;
+        return remember(key, answer, startedAt, answer.status === "upheld" ? ttlMs : changeableTtlMs);
       } catch {
         return UNAVAILABLE;
       }

@@ -16,8 +16,9 @@ import {
  *
  * Accepts either a multipart upload in a field named "file" or a JSON body of
  * { "url": "..." }. The upload and the fetched image are capped at 20 MB, the JSON body at 16 KB,
- * and the URL form is fetched server-side with a 10 second timeout, refusing any address inside
- * our own network before and after every redirect.
+ * and the URL form is fetched server-side within one 10 second limit that covers every redirect
+ * and lookup, refusing any address inside our own network before and after every redirect. An
+ * address it could not fetch, for whatever reason, answers 502 with one fixed sentence (V118, V119).
  *
  * The matched passport carries what its holder stated about AI use, read from the consent
  * contract, whether it is under dispute, read from the registry, and what has re-checked the

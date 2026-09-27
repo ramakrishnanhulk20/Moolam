@@ -200,9 +200,10 @@ export function answerFromChain(raw: Awaited<ReturnType<ConsentCall>>, readAt: n
  * A stated or not-stated answer is kept for `ttlMs`, ten seconds, because the same picture is often
  * verified twice in a row, and says when it was read. A statement can change within seconds when
  * the passport changes hands, so a minute of memory went out as the chain's word over a statement
- * already replaced (review pass 6, V46). A failed read is never kept: pinning "unavailable" would
- * hide a statement that is there and the chain is reachable again, and the route's own rate limit
- * is what bounds the retries.
+ * already replaced (review pass 6, V46). The ten seconds count from the moment the read began, and
+ * a read that ends after a newer one never replaces it (review pass 11, V113). A failed read is
+ * never kept: pinning "unavailable" would hide a statement that is there and the chain is reachable
+ * again, and the route's own rate limit is what bounds the retries.
  *
  * Tests pass their own `call` or `transport`; nothing here touches the network on its own.
  */
@@ -221,9 +222,19 @@ export function consentReader(
   const maxEntries = options.maxEntries ?? CONSENT_CACHE_MAX;
   const timeoutMs = options.timeoutMs ?? CONSENT_READ_TIMEOUT_MS;
   const call = options.call ?? chainCall(options);
-  const cache = new Map<Hex, { answer: ConsentAnswer; expiresAt: number }>();
+  const cache = new Map<Hex, { answer: ConsentAnswer; startedAt: number; expiresAt: number }>();
 
-  const remember = (key: Hex, answer: ConsentAnswer): void => {
+  /**
+   * Keeps an answer whose read began at `startedAt`, unless the memory already holds one from a
+   * read that began later, and answers with whichever of the two is the newer word. A read that
+   * stalled near its limit can end after a newer one, and must not put a replaced statement back
+   * (review pass 11, V113). The time held counts from the read's start.
+   */
+  const remember = (key: Hex, answer: ConsentAnswer, startedAt: number): ConsentAnswer => {
+    const held = cache.get(key);
+    if (held !== undefined && held.startedAt > startedAt) {
+      return held.expiresAt > Date.now() ? held.answer : answer;
+    }
     // Deleting first keeps the map in write order, which is what makes the first key the oldest.
     cache.delete(key);
     while (cache.size >= maxEntries) {
@@ -233,7 +244,8 @@ export function consentReader(
       }
       cache.delete(oldest.value);
     }
-    cache.set(key, { answer, expiresAt: Date.now() + ttlMs });
+    cache.set(key, { answer, startedAt, expiresAt: startedAt + ttlMs });
+    return answer;
   };
 
   return {
@@ -256,12 +268,12 @@ export function consentReader(
         // resolves to something this reader cannot destructure, undefined among them, has to come
         // out as "unavailable" here rather than as a thrown error at the walker, where it would
         // cost this passport its dispute status and its re-check count as well.
-        const readAt = Math.floor(Date.now() / 1000);
-        const answer = answerFromChain(await withTimeout(call(key), timeoutMs), readAt);
-        if (answer.source === "chain") {
-          remember(key, answer);
+        const startedAt = Date.now();
+        const answer = answerFromChain(await withTimeout(call(key), timeoutMs), Math.floor(startedAt / 1000));
+        if (answer.source !== "chain") {
+          return answer;
         }
-        return answer;
+        return remember(key, answer, startedAt);
       } catch {
         return UNAVAILABLE;
       }

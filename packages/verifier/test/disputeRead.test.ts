@@ -3,7 +3,8 @@
 // was read) and its cap, the five second timeout, which passports are read, and the field itself in
 // each of its shapes on both routes, and the inherited fact beside it: an edit of a passport whose
 // challenge was upheld says so (review pass 5), from the first eight ancestors of a deeper chain too
-// (review pass 6, V46 and V47). The chain is a fake transport that
+// (review pass 6, V46 and V47), and a slow read that ends after a newer one never replaces it
+// (review pass 11, V113). The chain is a fake transport that
 // answers the eth_call viem makes, so the encoding and the decoding are real and the network is not.
 // Does NOT cover the registry's own dispute rules, which are the contract's tests, and does not
 // cover a live RPC.
@@ -188,6 +189,49 @@ describe("dispute reader", () => {
         readAt: Math.floor((start + 11_000) / 1000),
       });
       expect(asked).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // Review pass 11, answers #1 (V113): a read that stalled near its limit ended after a newer one
+  // and replaced it, so a flag read at t=3.2 went out as "none" until t=14.9.
+  it("keeps a newer answer over a slow older read that ends after it, and times the memory from the read's start", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      type Raw = ReturnType<typeof record>;
+      const start = Date.now();
+      let finishSlow: (value: Raw) => void = () => undefined;
+      const steps: (() => Promise<Raw>)[] = [
+        () =>
+          new Promise<Raw>((resolve) => {
+            finishSlow = resolve;
+          }),
+        // Starts at t=3 and takes a second, as a read through a slow endpoint does.
+        async () => {
+          vi.setSystemTime(start + 4_000);
+          return record(1);
+        },
+        async () => record(1),
+      ];
+      const call = vi.fn<DisputeCall>(async () => await (steps.shift() as () => Promise<Raw>)());
+      const read = disputeReader({ call });
+
+      const slow = read.answerFor(PASSPORT);
+      vi.setSystemTime(start + 3_000);
+      const open = { source: "chain", status: "open", readAt: Math.floor((start + 3_000) / 1000) };
+      expect(await read.answerFor(PASSPORT)).toEqual(open);
+
+      vi.setSystemTime(start + 4_900);
+      finishSlow(record(0));
+      expect(await slow).toEqual(open);
+      expect(await read.answerFor(PASSPORT)).toEqual(open);
+      expect(call).toHaveBeenCalledTimes(2);
+
+      // Held for ten seconds from the moment the read that produced it began, not from when it ended.
+      vi.setSystemTime(start + 3_000 + DISPUTE_CHANGEABLE_TTL_MS);
+      await read.answerFor(PASSPORT);
+      expect(call).toHaveBeenCalledTimes(3);
     } finally {
       vi.useRealTimers();
     }
