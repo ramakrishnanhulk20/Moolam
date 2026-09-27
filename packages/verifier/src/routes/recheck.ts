@@ -5,7 +5,13 @@ import { bearerToken } from "../auth/privy.js";
 import type { RecheckItem, RecheckQueue } from "../recheck/queue.js";
 import { privatelyRecheckable } from "../sealed.js";
 import type { Hex, PassportRecord } from "../types.js";
-import { PICTURE_SEALED_TTL_MS, pictureStateOf, type DocumentReader, type UnsealRecordFinder } from "../unseal.js";
+import {
+  PICTURE_SEALED_TTL_MS,
+  pictureStateOf,
+  pinnedUnsealOf,
+  type DocumentReader,
+  type UnsealRecordFinder,
+} from "../unseal.js";
 import type { PrivateCopyStatus } from "./sealed.js";
 
 export type { DocumentReader } from "../unseal.js";
@@ -299,6 +305,9 @@ type SealedAnswer = "sealed" | "sealed-private" | "public" | "unsealed" | "unkno
  * sealed passport slipping through costs the runner one refusal; a gateway or Pinata being slow
  * must never cost a real picture its second opinion.
  *
+ * A passport this process unsealed itself answers "unsealed" before any of that, even over a
+ * "sealed" held from a moment earlier and a listing that does not show the record yet (V104).
+ *
  * A sealed document that also passes the privately re-checkable predicate answers "sealed-private"
  * and is held the same ten seconds, and whether its copy is still kept is the route's next question.
  */
@@ -315,6 +324,9 @@ function sealedChecker(
     });
 
   return async (record) => {
+    if (pinnedUnsealOf(record.id) !== undefined) {
+      return "unsealed";
+    }
     if (read === undefined) {
       return "unknown";
     }

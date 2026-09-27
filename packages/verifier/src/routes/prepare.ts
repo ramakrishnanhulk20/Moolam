@@ -40,7 +40,6 @@ import {
   PRIVATE_RECHECK_NEEDS_SEALED,
   PRIVATE_THUMBNAIL_MAX_BYTES,
   SEALED_METADATA_REFUSED,
-  dropPrivateCopy,
   keepPrivateCopy,
   refusedByPinata,
   registrationOf,
@@ -438,8 +437,15 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
             const reason = safeReason(error);
             request.log.error({ ip: request.ip, url: request.url, reason }, "rejected: /prepare sealed pin failed");
             pinned ||= !refusedByPinata(error);
+            // The private copy is never deleted here (review pass 10, V96). Another prepare of the
+            // same bytes can have been handed this very file and pinned its own document, and the
+            // passport registered from that document needs it. The sweep removes a copy no
+            // registered passport asks for, and it reads the chain first.
             if (privateCopy !== undefined) {
-              await dropPrivateCopy(privateCopy, request.log);
+              request.log.warn(
+                { fileId: privateCopy.id, name: privateCopy.name },
+                "prepare: private copy left for the sweep after the document pin failed",
+              );
             }
             return reply.code(502).send({ error: "pin-failed" });
           }

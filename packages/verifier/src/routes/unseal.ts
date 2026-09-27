@@ -3,7 +3,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest }
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { embeddedWallets } from "../auth/wallet.js";
-import { readManifest } from "../c2pa.js";
+import { READ_MANIFEST_TIMEOUT_MS, readManifest, type ManifestSummary } from "../c2pa.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import {
   FingerprintFault,
@@ -43,10 +43,12 @@ import {
   holderOf,
   isGatewayFailure,
   pinnedOut,
+  pinnedUnsealOf,
   printOut,
   readMetadataDocument,
   readPassport,
   readUnsealRecord,
+  rememberPinnedUnseal,
   sealedStateOf,
   sha256Of,
   unsealRecord,
@@ -71,6 +73,12 @@ import {
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
+
+/**
+ * How much earlier than READ_MANIFEST_TIMEOUT_MS a manifest read may end and still count as one that
+ * ran into the limit: a timer can fire a few milliseconds early by the wall clock.
+ */
+const TIMER_SLACK_MS = 50;
 
 /** GET /unseal/:passportId per address, the same as /sealed/status: a miss spends a Pinata request. */
 const LOOKUPS_PER_MINUTE = 30;
@@ -219,7 +227,9 @@ type Known = Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>;
  * pinned (review pass 5). When the check for an earlier record found none, the record just pinned is
  * cached for GET at once. When that check could not answer, the record cached for GET is the oldest
  * one a fresh lookup names, or none, and for ten minutes GET remembers no not-unsealed miss for it
- * and a second POST is answered already-unsealed before any pin.
+ * and a second POST is answered already-unsealed before any pin. Either way the record is handed to
+ * rememberPinnedUnseal, so the verify picture fact, the re-check request and GET all read the
+ * passport as unsealed from that moment, whatever the listing says (review pass 10, V104, V105).
  *
  * Answers 401 for a missing or foreign token, 400 for the fields or a hash or fingerprint that does
  * not match, 403 `not-holder`, 404 `no-passport`, 409 `not-sealed`, `already-unsealed`,
@@ -298,6 +308,11 @@ export async function unsealRoutes(
    * kind (no passport, never sealed, no record) is remembered for MISS_TTL_MS, a record for good,
    * and the route has its own limit of LOOKUPS_PER_MINUTE per address, the one /sealed/status has.
    *
+   * A passport this process unsealed itself is answered with its own record when the listing
+   * shows none yet or cannot answer, never with not-unsealed (review pass 10, V105). It is not
+   * cached as the oldest record, because when the check before the pins could not answer, another
+   * server may have pinned one first, and the listing names that one once it catches up.
+   *
    * Answers 400 for an id that is not 32 bytes of hex, 404 `no-passport`, `not-sealed` or
    * `not-unsealed`, 429 past the limit, and 503 `lookup-unavailable` when the chain, the document
    * or Pinata could not say.
@@ -358,6 +373,12 @@ export async function unsealRoutes(
       }
 
       const found = await findUnsealRecord(passportId);
+      if (found.state !== "found") {
+        const mine = pinnedUnsealOf(passportId);
+        if (mine !== undefined) {
+          return reply.send(answerFor(passportId, mine.record, mine.pinned));
+        }
+      }
       if (found.state === "unavailable") {
         request.log.warn({ url: request.url, reason: found.reason }, "/unseal: the record lookup could not answer");
         return reply.code(503).send({ error: "lookup-unavailable" });
@@ -698,7 +719,19 @@ async function unsealHeld(
     }
     const thumbnail = attempt.thumbnail;
 
+    // Read before any pin, so a read that could not finish costs the holder a retry and never leaves
+    // a record that names no manifest for good (review pass 10, V106). Nothing is pinned yet, so the
+    // holder's allowance and the day's slot both come back.
+    const readFrom = Date.now();
     const manifest = await readManifest(upload.bytes);
+    const tookMs = Date.now() - readFrom;
+    if (manifestReadFailedHere(manifest, passport, tookMs)) {
+      request.log.error(
+        { url: request.url, passportId: upload.passportId, tookMs, recorded: !noManifestRecorded(passport) },
+        "rejected: /unseal the service could not read the manifest it would publish",
+      );
+      return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+    }
     const doc =
       manifest.present && manifest.manifestHash !== undefined
         ? manifestDocument({
@@ -846,6 +879,7 @@ async function unsealHeld(
       // here, so the record just pinned is the oldest. It is known at once, without asking a
       // listing that may not show it yet (review pass 7, V65).
       context.known.set(upload.passportId, { record, pinned: pinnedAt });
+      rememberPinnedUnseal(record, pinnedAt);
     } else {
       // The check could not tell, so another server can have pinned a record first. Every other
       // reader shows the oldest, so this server caches the oldest or nothing (review pass 6, V55),
@@ -854,6 +888,9 @@ async function unsealHeld(
       if (oldest !== undefined) {
         context.known.set(upload.passportId, oldest);
       }
+      // Whichever record turns out to be the oldest, the picture is published from this moment,
+      // and every reader here says so without waiting for the listing (V104, V105).
+      rememberPinnedUnseal(oldest?.record ?? record, oldest?.pinned ?? pinnedAt);
       context.fresh.hold(upload.passportId);
     }
     context.misses.forget(upload.passportId);
@@ -1023,6 +1060,30 @@ async function oldestRecord(
     log.warn({ passportId, cid: found.record.cid, reason: safeReason(error) }, "unseal: the oldest record could not be read, caching none");
     return undefined;
   }
+}
+
+/**
+ * Whether a manifest read that came back unreadable is this service failing rather than the file.
+ *
+ * readManifest answers "unreadable" both for a store it cannot parse and for a read it gave up on
+ * after READ_MANIFEST_TIMEOUT_MS, and it tells the two apart no other way than by the time taken.
+ * The upload hashes to the passport id, so these are the registered bytes: when the chain records a
+ * manifest for them, one that cannot be read now is this host failing (a slow read, a reader short
+ * of memory), however quickly it failed. When the chain records none, only a read that ran to the
+ * limit counts, and a quick unreadable answer is the file's own damaged store, published as before
+ * with no manifest document.
+ */
+function manifestReadFailedHere(manifest: ManifestSummary, passport: OnChainPassport, tookMs: number): boolean {
+  if (manifest.validation !== "unreadable") {
+    return false;
+  }
+  return !noManifestRecorded(passport) || tookMs >= READ_MANIFEST_TIMEOUT_MS - TIMER_SLACK_MS;
+}
+
+/** True when the chain's manifestHash is 32 zero bytes, or missing from the answer altogether. */
+function noManifestRecorded(passport: OnChainPassport): boolean {
+  const hash: unknown = passport.manifestHash;
+  return typeof hash !== "string" || /^0x0{64}$/.test(hash);
 }
 
 /** The three files an unseal pins before its record, named as a partial answer names them. */

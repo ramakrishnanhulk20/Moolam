@@ -1,4 +1,12 @@
 import sharp from "sharp";
+import {
+  decodeFunctionData,
+  encodeAbiParameters,
+  encodeEventTopics,
+  parseAbiItem,
+  parseAbiParameters,
+} from "viem";
+import { registryEditAbi } from "../src/edit/registry.js";
 import type { Fingerprint } from "../src/fingerprint.js";
 import type { Hex, PassportRecord } from "../src/types.js";
 
@@ -120,3 +128,49 @@ export const FILTER_BOMB_SVG = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="4000" height="4000"><filter id="f"><feTurbulence baseFrequency="0.9" numOctaves="10"/><feGaussianBlur stdDeviation="5"/></filter><rect width="4000" height="4000" filter="url(#f)"/></svg>',
   "utf8",
 );
+
+/** The registry's event for a new passport, as packages/contracts/src/MoolamRegistry.sol declares it. */
+const PASSPORT_REGISTERED = parseAbiItem(
+  "event PassportRegistered(bytes32 indexed passportId, address indexed creator, uint256 indexed generatorAgentId, bytes32 parentId, uint64 phash, bytes32 blockhash256, bytes32 manifestHash, uint8 kind, uint8 fingerprintVersion, string metadataURI)",
+);
+
+/**
+ * The PassportRegistered event the registry writes for the child in an appendEdit's calldata, as a
+ * receipt log: the id, the creator and the agent in the topics, the parent and the rest in the data.
+ * `changes` writes it for another creator or under another parent.
+ */
+export function registeredEventLog(
+  registry: Hex,
+  calldata: Hex,
+  changes: { creator?: Hex; parentId?: Hex } = {},
+): { address: Hex; topics: Hex[]; data: Hex } {
+  const [child] = decodeFunctionData({ abi: registryEditAbi, data: calldata }).args as unknown as [
+    {
+      exactHash: Hex;
+      parentId: Hex;
+      creator: Hex;
+      generatorAgentId: bigint;
+      phash: bigint;
+      blockhash256: Hex;
+      manifestHash: Hex;
+      kind: number;
+      fingerprintVersion: number;
+      metadataURI: string;
+    },
+  ];
+  const topics = encodeEventTopics({
+    abi: [PASSPORT_REGISTERED],
+    eventName: "PassportRegistered",
+    args: { passportId: child.exactHash, creator: changes.creator ?? child.creator, generatorAgentId: child.generatorAgentId },
+  }) as Hex[];
+  const data = encodeAbiParameters(parseAbiParameters("bytes32, uint64, bytes32, bytes32, uint8, uint8, string"), [
+    changes.parentId ?? child.parentId,
+    child.phash,
+    child.blockhash256,
+    child.manifestHash,
+    child.kind,
+    child.fingerprintVersion,
+    child.metadataURI,
+  ]);
+  return { address: registry, topics, data };
+}

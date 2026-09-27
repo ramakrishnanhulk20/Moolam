@@ -4,17 +4,19 @@
 // /generate keeps when the creator asks for a private re-check: made by the public path's own
 // makeThumbnail from the signed bytes and close enough for the workflow's hash (B14), made only
 // after the chain said "not registered" (B2), kept only when Pinata says it is private under its
-// name (B16), deleted again when the document pin fails, and refused without sealed, and the
-// sentence each sealed document pins: the private copy one when a copy is kept, the old one
-// otherwise. V12: each private copy carries its passport id in a JPEG comment, so preparing the
+// name (B16), left for the sweep when a prepare's document pin fails and deleted when a drawing's
+// does, and refused without sealed, and the sentence each sealed document pins: the private copy
+// one when a copy is kept, the old one otherwise. V12: each private copy carries its passport id in a JPEG comment, so preparing the
 // same picture again keeps a copy of its own instead of being handed the first one back. From
 // review pass 5: a copy the comment would push over the budget steps down a quality instead of
 // being refused (intake 5), and an upload that left the process counts as landed unless Pinata
 // itself refused it (sealed 3). From review pass 7 (V67): a clean-up never deletes a private copy
 // Pinata answered with because it already held it, so request B's failed document pin cannot take
-// away the copy request A kept for the same picture. Pinata is a
-// recording stub at the fetch layer; the chain read, the image model, the caller's wallets and the
-// agent's signer are stubbed.
+// away the copy request A kept for the same picture. From review pass 10 (V96): a prepare whose
+// document pin fails never deletes its copy, so request A's failure cannot take away the copy
+// request B was handed and registered with either, and a re-keep is noted for the sweep (V108).
+// Pinata is a recording stub at the fetch layer; the chain read, the image model, the caller's
+// wallets and the agent's signer are stubbed.
 // Does NOT cover any route that reads the private copy back (/sealed/link, /sealed/status and
 // /sealed/forget are later orders), the queue, the runner or the workflow's own copy of the
 // predicate, or a real call to Pinata: scripts/pinata-private-smoke.ts is the one live check. The
@@ -49,6 +51,7 @@ import {
   dropPrivateCopy,
   keepPrivateCopy,
   markedPrivateCopy,
+  privateCopyKeptAt,
   privateThumbnailName,
   privatelyRecheckable,
   sealedMetadata,
@@ -83,6 +86,21 @@ vi.mock("../src/edit/registry.js", async (importOriginal) => ({
 
 vi.mock("../src/auth/wallet.js", () => ({ embeddedWallets: stubs.embeddedWallets }));
 
+/** While on, every sealed prepare is handed the first one's result, as the unsigned path gives one picture one id. */
+const sealedRepeat = vi.hoisted(() => ({ on: false, first: undefined as unknown }));
+
+vi.mock("../src/prepare.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/prepare.js")>();
+  return {
+    ...real,
+    prepareSealed: async (...args: Parameters<typeof real.prepareSealed>) => {
+      if (!sealedRepeat.on) return await real.prepareSealed(...args);
+      sealedRepeat.first ??= await real.prepareSealed(...args);
+      return sealedRepeat.first as Awaited<ReturnType<typeof real.prepareSealed>>;
+    },
+  };
+});
+
 vi.mock("../src/generate/imageModel.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/generate/imageModel.js")>()),
   createImage: stubs.createImage,
@@ -116,6 +134,8 @@ const pinata = {
   privateAnswer: "private" as "private" | "duplicate-public" | "refused" | "by-content" | "server-error" | "unreadable" | "timeout",
   failJson: false,
   failDelete: false,
+  /** When set, the next document pin waits for it and is then refused. */
+  holdDocument: undefined as Promise<void> | undefined,
 };
 const calls: Call[] = [];
 /** The private files the "by-content" answer has seen, keyed by content, as Pinata de-duplicates. */
@@ -228,6 +248,12 @@ function recordingPinata(): void {
           : json({ data: { id: PRIVATE_ID, name, cid: PRIVATE_CID, network: "private", is_duplicate: false } });
       }
       calls.push({ kind: "public", name, type: file.type, bytes, url });
+      const held = file.type === "application/json" ? pinata.holdDocument : undefined;
+      if (held !== undefined) {
+        pinata.holdDocument = undefined;
+        await held;
+        return new Response("refused", { status: 403 });
+      }
       if (pinata.failJson && file.type === "application/json") {
         return new Response("refused", { status: 403 });
       }
@@ -652,9 +678,16 @@ describe("a sealed registration with a private re-check", () => {
     const thumbnail = await sharp({ create: { width: 8, height: 8, channels: 3, background: "#406020" } }).jpeg().toBuffer();
     const { log, lines } = keepingLogger();
     const mark = calls.length;
+    const startedAt = Date.now();
 
     const kept = await keepPrivateCopy(thumbnail, PASSPORT, log);
+    const keptFirst = privateCopyKeptAt(PASSPORT) as number;
+    await new Promise((resolve) => setTimeout(resolve, 5));
     const again = await keepPrivateCopy(thumbnail, PASSPORT, log);
+    // Pass 10 (V108): the re-keep of a file Pinata already held is noted, so the sweep ages the copy
+    // by it and not by the first upload.
+    expect(keptFirst).toBeGreaterThanOrEqual(startedAt);
+    expect(privateCopyKeptAt(PASSPORT)).toBeGreaterThan(keptFirst);
     if (!("kept" in kept) || !("kept" in again)) {
       throw new Error("both requests should have been answered with a private file");
     }
@@ -671,6 +704,42 @@ describe("a sealed registration with a private re-check", () => {
       `${PRIVATE_FILES_URL}/${kept.kept.id}`,
     ]);
   });
+
+  // Review pass 10, intake #5 (V96), the mirror of V67: request A made the file, request B of the
+  // same bytes was answered with it and pinned its document, then A's document pin failed.
+  it("V96: a failed document pin leaves the private copy that a second prepare of the same bytes relies on", async () => {
+    pinata.privateAnswer = "by-content";
+    sealedRepeat.on = true;
+    let release = (): void => undefined;
+    pinata.holdDocument = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const fields = { title: "Harbour, mirrored", kind: "human", sealed: "true", privateRecheck: "true" };
+    const mark = calls.length;
+    try {
+      const first = prepare("did:privy:private-v96", fields);
+      for (let i = 0; i < 400 && !since(mark).some((call) => call.kind === "public"); i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      const second = await prepare("did:privy:private-v96", fields);
+      expect(second.statusCode, second.body).toBe(200);
+      release();
+      const failed = await first;
+
+      expect(failed.statusCode).toBe(502);
+      expect(failed.json()).toEqual({ error: "pin-failed" });
+      const uploads = since(mark).filter((call) => call.kind === "private");
+      expect(uploads).toHaveLength(2);
+      expect((uploads[0] as Call).name).toBe((uploads[1] as Call).name);
+      expect(byContent.size).toBe(1);
+      expect(since(mark).filter((call) => call.kind === "delete")).toEqual([]);
+    } finally {
+      release();
+      pinata.holdDocument = undefined;
+      sealedRepeat.on = false;
+      sealedRepeat.first = undefined;
+    }
+  }, 120_000);
 
   it("V12: refuses with 422 and uploads nothing when the passport's comment would push the copy past the budget", async () => {
     const { log } = keepingLogger();
@@ -767,7 +836,7 @@ describe("a sealed registration with a private re-check", () => {
     expect(since(mark).map((call) => call.kind)).toEqual(["private"]);
   }, 60_000);
 
-  it("deletes the private copy when the document pin fails after it, and answers 502 even if the delete fails too", async () => {
+  it("V96: leaves the private copy for the sweep when the document pin fails after it, and answers 502", async () => {
     pinata.failJson = true;
     const mark = calls.length;
     const response = await prepare("did:privy:private-drop", {
@@ -779,19 +848,7 @@ describe("a sealed registration with a private re-check", () => {
 
     expect(response.statusCode).toBe(502);
     expect(response.json()).toEqual({ error: "pin-failed" });
-    const made = since(mark);
-    expect(made.map((call) => call.kind)).toEqual(["private", "public", "delete"]);
-    expect((made[2] as Call).url).toBe(`${PRIVATE_FILES_URL}/${PRIVATE_ID}`);
-
-    pinata.failDelete = true;
-    const again = await prepare("did:privy:private-drop-fails", {
-      title: "Document refused twice",
-      kind: "human",
-      sealed: "true",
-      privateRecheck: "true",
-    });
-    expect(again.statusCode).toBe(502);
-    expect(again.json()).toEqual({ error: "pin-failed" });
+    expect(since(mark).map((call) => call.kind)).toEqual(["private", "public"]);
   }, 120_000);
 
   it("takes the studio's five text fields and refuses a sixth with 400 too-many-fields, pinning nothing", async () => {

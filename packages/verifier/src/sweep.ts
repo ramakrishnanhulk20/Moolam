@@ -6,7 +6,7 @@ import { env, type PrivateSweepMode } from "./env.js";
 import { PRIVATE_SWEEP_PAGES, deletePrivateFile, listPrivatePage, type PrivateListing } from "./ipfs/pinata.js";
 import { safeReason } from "./net/errorText.js";
 import { readClient } from "./reputation/registry.js";
-import { privateRecheckFor, privateThumbnailName } from "./sealed.js";
+import { privateCopyKeptAt, privateRecheckFor, privateThumbnailName } from "./sealed.js";
 import type { Hex } from "./types.js";
 import { readMetadataDocument, registryUnsealAbi } from "./unseal.js";
 
@@ -21,9 +21,10 @@ export const SWEEP_FIRST_RUN_MS = HOUR_MS;
 export const SWEEP_EVERY_MS = HOUR_MS;
 
 /**
- * How old a private copy must be, by Pinata's own upload time, before a missing passport is read as
- * abandoned (ruling D5). A creator signs and registers minutes after /prepare, so two days is far
- * past any registration still in flight and past any RPC that lags behind the chain.
+ * How old a private copy must be before a missing passport is read as abandoned (ruling D5). A
+ * creator signs and registers minutes after /prepare, so two days is far past any registration
+ * still in flight and past any RPC that lags behind the chain. The age runs from the later of
+ * Pinata's own upload time and the latest time this service kept the copy (review pass 10, V108).
  */
 export const SWEEP_MIN_AGE_MS = 48 * HOUR_MS;
 
@@ -76,6 +77,8 @@ export interface SweepDeps {
   /** A registered passport's metadata document. Throws when it cannot be read. */
   document: (passportId: Hex) => Promise<unknown>;
   remove: (fileId: string) => Promise<void>;
+  /** The latest time this service kept a copy for the passport, in milliseconds, or undefined. */
+  keptAt: (passportId: Hex) => number | undefined;
   now: () => number;
   /** Where the place the listing stopped is kept between runs and across a restart. */
   cursor: CursorStore;
@@ -174,7 +177,9 @@ export interface PrivateSweep {
  * listing, 200 rows, starting where the last run stopped and going back to the first page once
  * the listing ends, so every row is read in turn however many registered copies sit ahead of an
  * orphan (V16). No name filter is sent to Pinata (V8): the whole-name pattern here is the only
- * check. It keeps only exact thumbnail names uploaded more than 48 hours ago, asks the registry
+ * check. It keeps only exact thumbnail names more than 48 hours old, by the later of Pinata's upload
+ * time and the latest time this service kept the copy, because a second prepare of the same bytes is
+ * handed Pinata's first file with its first upload time (review pass 10, V108). It asks the registry
  * about each id, and marks a file when the chain answered that the passport does not exist, or when
  * the passport is registered under a document that does not ask for a private re-check of it
  * (review pass 6, V53): the same file prepared once with the private re-check and once without
@@ -197,6 +202,7 @@ export function privateSweep(options: {
     registered: options.deps?.registered ?? liveRegistration(),
     document: options.deps?.document ?? liveDocument(),
     remove: options.deps?.remove ?? deletePrivateFile,
+    keptAt: options.deps?.keptAt ?? privateCopyKeptAt,
     now: options.deps?.now ?? ((): number => Date.now()),
     cursor: options.deps?.cursor ?? defaultCursorStore(),
   };
@@ -264,7 +270,8 @@ export function privateSweep(options: {
         counts.undated += 1;
         continue;
       }
-      const age = started - created;
+      const kept = deps.keptAt(id);
+      const age = started - (kept !== undefined && kept > created ? kept : created);
       if (age <= SWEEP_MIN_AGE_MS) {
         counts.young += 1;
         continue;

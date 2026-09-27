@@ -29,7 +29,10 @@
 // service's fault and answers 503 (V64), GET shows the record this server just pinned after a
 // "none" check and never remembers a not-unsealed from a trailing listing after an unavailable one
 // (V65), a second unseal in the ten minutes after that answers already-unsealed and pins no second
-// record, and a field not sent as plain text is refused by name (V57).
+// record, and a field not sent as plain text is refused by name (V57). From review pass 10: GET
+// answers this server's own record, never not-unsealed, while the listing trails (V105; the other
+// two readers are test/unseal-readers.test.ts), and a manifest read that gave up, or that failed on
+// bytes the chain says carry a manifest, answers 503 with nothing pinned (V106).
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -115,6 +118,20 @@ vi.mock("../src/prepare.js", async (importOriginal) => {
       if (thumbnailStep.throws !== undefined) throw thumbnailStep.throws;
       return await real.makeThumbnail(...args);
     },
+  };
+});
+
+/** While set, the unseal's manifest read answers with this instead of reading the file. */
+const manifestStep = vi.hoisted(() => ({
+  read: undefined as undefined | (() => Promise<{ present: boolean; validation?: "valid" | "invalid" | "unreadable" }>),
+}));
+
+vi.mock("../src/c2pa.js", async (importOriginal) => {
+  const real = await importOriginal<typeof import("../src/c2pa.js")>();
+  return {
+    ...real,
+    readManifest: async (...args: Parameters<typeof real.readManifest>) =>
+      manifestStep.read === undefined ? await real.readManifest(...args) : await manifestStep.read(),
   };
 });
 
@@ -903,7 +920,7 @@ describe("unsealing a sealed passport", () => {
   }, 60_000);
 
   // Review pass 5, sealed #2: every other reader shows the oldest record, so this server must too.
-  it("caches the oldest record after an unseal that could not check first, and nothing when it still cannot tell", async () => {
+  it("caches the oldest record after an unseal that could not check first, and answers its own when it still cannot tell", async () => {
     const id = sealedFile.passportId;
     const first = unseal.unsealRecord({
       passportId: id,
@@ -938,11 +955,13 @@ describe("unsealing a sealed passport", () => {
     try {
       stubs.findUnsealRecord.mockReset().mockResolvedValue({ state: "unavailable", reason: "pinata is down" });
 
-      expect((await ask("did:privy:unseal-blind-record", { on: blind })).statusCode).toBe(200);
+      const unsealed = await ask("did:privy:unseal-blind-record", { on: blind });
+      expect(unsealed.statusCode).toBe(200);
       const shown = await reader(blind);
 
-      expect(shown.statusCode).toBe(503);
-      expect(shown.json()).toEqual({ error: "lookup-unavailable" });
+      // Pass 10 (V105): the record this server pinned, not a 503 over a picture it just published.
+      expect(shown.statusCode).toBe(200);
+      expect(shown.json().record).toEqual(unsealed.json().record);
     } finally {
       await blind.close();
     }
@@ -1118,6 +1137,49 @@ describe("unsealing a sealed passport", () => {
     expect(pins).toHaveLength(0);
   }, 60_000);
 
+  // Pass 10, sealed #3 (V106): a manifest read that gave up is this service being slow, and a record
+  // pinned without the manifest could never be replaced.
+  it("V106: answers 503 service-fault and pins nothing when the manifest read gives up or fails, and hands both slots back", async () => {
+    const withManifest = { registeredAt: 1_758_000_000, phash: sealedFile.phash, blockhash256: sealedFile.blockhash, fingerprintVersion: 1, metadataURI: METADATA_URI };
+    const user = "did:privy:unseal-manifest-late";
+    try {
+      // The chain says this file was registered with a manifest, so a read that cannot find one
+      // readable in the very same bytes is this service failing, however quickly it failed.
+      stubs.readPassport.mockResolvedValue({ ...withManifest, manifestHash: `0x${"5a".repeat(32)}` });
+      manifestStep.read = async () => ({ present: false, validation: "unreadable" });
+      const failed = await ask(user);
+      expect(failed.statusCode).toBe(503);
+      expect(failed.json()).toEqual({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      expect(pins).toHaveLength(0);
+
+      // A chain with no manifest on record, and a read that ran into the five second limit.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      stubs.readPassport.mockResolvedValue({ ...withManifest, manifestHash: `0x${"00".repeat(32)}` });
+      manifestStep.read = async () => {
+        vi.setSystemTime(Date.now() + 5_000);
+        return { present: false, validation: "unreadable" };
+      };
+      const late = await ask(user);
+      expect(late.statusCode).toBe(503);
+      expect(late.json().error).toBe("service-fault");
+      expect(pins).toHaveLength(0);
+      vi.useRealTimers();
+
+      // Nothing was pinned, so the holder's allowance and the day's slot both came back.
+      manifestStep.read = undefined;
+      stubs.readPassport.mockResolvedValue(withManifest);
+      const finished = await ask(user);
+      expect(finished.statusCode).toBe(200);
+      expect(finished.json().quota.used).toBe(1);
+      expect(finished.json().manifest.uri).toMatch(/^ipfs:\/\//);
+      const record = JSON.parse((pins.find((pin) => pin.name.startsWith("unseal-")) as Pin).bytes.toString("utf8"));
+      expect(record.manifest).toBe(finished.json().manifest.uri);
+    } finally {
+      manifestStep.read = undefined;
+      vi.useRealTimers();
+    }
+  }, 60_000);
+
   // Pass 7, sealed #2 (V65): the pre-check said none and unseals of one passport run one at a time
   // here, so the record this server just pinned is the oldest, whatever a trailing listing says.
   it("answers GET /unseal with the record it just pinned while the listing still trails, after a none pre-check", async () => {
@@ -1139,7 +1201,7 @@ describe("unsealing a sealed passport", () => {
     }
   }, 60_000);
 
-  it("asks a fresh listing on every GET after an unavailable pre-check, never a remembered not-unsealed", async () => {
+  it("asks a fresh listing on every GET after an unavailable pre-check, and answers its own record while the listing trails", async () => {
     const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });
     await on.ready();
     const read = async (): Promise<LightMyRequestResponse> =>
@@ -1149,11 +1211,15 @@ describe("unsealing a sealed passport", () => {
         .mockReset()
         .mockResolvedValueOnce({ state: "unavailable", reason: "pinata is down" })
         .mockResolvedValue({ state: "none" });
-      expect((await ask("did:privy:unseal-blind-then-trailing", { on })).statusCode).toBe(200);
+      const unsealed = await ask("did:privy:unseal-blind-then-trailing", { on });
+      expect(unsealed.statusCode).toBe(200);
 
-      expect((await read()).json()).toEqual({ error: "not-unsealed", passportId: sealedFile.passportId });
+      // Pass 10 (V105): never not-unsealed for a passport this server has just unsealed.
+      const trailing = await read();
+      expect(trailing.statusCode).toBe(200);
+      expect(trailing.json().record).toEqual(unsealed.json().record);
       const lookups = stubs.findUnsealRecord.mock.calls.length;
-      expect((await read()).statusCode).toBe(404);
+      expect((await read()).statusCode).toBe(200);
       expect(stubs.findUnsealRecord.mock.calls.length).toBe(lookups + 1);
 
       const recordPin = pins.find((pin) => pin.name.startsWith("unseal-")) as Pin;
@@ -1434,6 +1500,9 @@ describe("the unseal checks on their own", () => {
       blockhash256: print.blockhash,
       fingerprintVersion: 1,
       metadataURI: METADATA_URI,
+      manifestHash: `0x${"00".repeat(32)}` as Hex,
+      creator: HOLDER,
+      parentId: `0x${"00".repeat(32)}` as Hex,
     };
 
     expect(unseal.fingerprintMatches(print, chain)).toBe(true);

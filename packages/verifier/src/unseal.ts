@@ -133,6 +133,12 @@ export interface OnChainPassport {
   blockhash256: Hex;
   fingerprintVersion: number;
   metadataURI: string;
+  /** The sha256 of the manifest store the registration committed to, or 32 zero bytes for none. */
+  manifestHash: Hex;
+  /** Who registered it, the address the registry's PassportRegistered event named. */
+  creator: Hex;
+  /** The passport this one is an edit of, or 32 zero bytes for an original. */
+  parentId: Hex;
 }
 
 /**
@@ -280,8 +286,11 @@ export async function readPassport(
     functionName: "getPassport",
     args: [passportId],
   })) as {
+    parentId: Hex;
+    creator: Hex;
     phash: bigint;
     blockhash256: Hex;
+    manifestHash: Hex;
     fingerprintVersion: number;
     registeredAt: bigint;
     metadataURI: string;
@@ -295,6 +304,9 @@ export async function readPassport(
     blockhash256: record.blockhash256,
     fingerprintVersion: Number(record.fingerprintVersion),
     metadataURI: record.metadataURI,
+    manifestHash: record.manifestHash,
+    creator: record.creator,
+    parentId: record.parentId,
   };
 }
 
@@ -422,6 +434,44 @@ export interface PinnedRecord {
   uri: `ipfs://${string}`;
   /** When Pinata says the file was pinned, which is a third party's clock rather than ours. */
   createdAt?: string;
+}
+
+/** How many records this process remembers pinning itself before it forgets the oldest. */
+export const PINNED_HERE_MAX = 2_000;
+
+const pinnedHere = new Map<Hex, { record: UnsealRecord; pinned: PinnedRecord }>();
+
+/**
+ * Remembers an unseal record this process has just pinned, so every reader in it says unsealed
+ * from that moment (review pass 10, V104 and V105).
+ *
+ * Pinata's listing trails a fresh pin. The verify answer's picture fact, the re-check request and
+ * GET /unseal each asked that listing, or held a "sealed" answer from it, and for the length of the
+ * lag called a published picture sealed. A record is never taken back, so one remembered here cannot
+ * go stale. The memory is one per process, which is one server in production; another server's
+ * unseal still reaches this one through the listing. A record that does not fit the published shape
+ * is not kept, the rule every record read back is held to.
+ */
+export function rememberPinnedUnseal(record: UnsealRecord, pinned: PinnedRecord): void {
+  const parsed = unsealRecordSchema.safeParse(record);
+  if (!parsed.success) {
+    return;
+  }
+  const key = parsed.data.passportId as Hex;
+  pinnedHere.delete(key);
+  while (pinnedHere.size >= PINNED_HERE_MAX) {
+    const oldest = pinnedHere.keys().next();
+    if (oldest.done === true) {
+      break;
+    }
+    pinnedHere.delete(oldest.value);
+  }
+  pinnedHere.set(key, { record: parsed.data, pinned });
+}
+
+/** The record this process pinned for a passport, or undefined when it pinned none it still remembers. */
+export function pinnedUnsealOf(passportId: Hex): { record: UnsealRecord; pinned: PinnedRecord } | undefined {
+  return pinnedHere.get(passportId.toLowerCase() as Hex);
 }
 
 /**
@@ -654,7 +704,8 @@ const PICTURE_UNAVAILABLE: PictureAnswer = { source: "unavailable" };
  * "public" and "unsealed" are kept for as long as there is room, because neither can change: the
  * document is written once and an unseal record is never taken back. "sealed" is kept for ten
  * seconds, because that is the one answer the holder can change, and a failed or slow read is never
- * kept. Each answer says when it was read.
+ * kept. A passport this process unsealed itself answers "unsealed" from rememberPinnedUnseal before
+ * any of that. Each answer says when it was read.
  *
  * Tests pass their own readDocument and findRecord; nothing here touches the network on its own.
  */
@@ -689,6 +740,15 @@ export function pictureReader(options: {
         return PICTURE_UNAVAILABLE;
       }
       const key = passport.id.toLowerCase() as Hex;
+
+      // Before the memory below, which can still hold "sealed" from a read made just before the
+      // unseal, and before a listing that may not show the record yet (V104).
+      const here = pinnedUnsealOf(key);
+      if (here !== undefined) {
+        const answer: PictureAnswer = { state: "unsealed", at: here.record.unsealedAt, readAt: Math.floor(Date.now() / 1000) };
+        remember(key, answer, Number.POSITIVE_INFINITY);
+        return answer;
+      }
 
       const held = cache.get(key);
       if (held !== undefined) {

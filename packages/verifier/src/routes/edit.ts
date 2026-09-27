@@ -1,6 +1,6 @@
 import { APIError } from "@privy-io/node";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { getAddress, toEventSelector } from "viem";
+import { decodeEventLog, getAddress, parseAbiItem } from "viem";
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { SignerUnavailable } from "../c2pa.js";
@@ -17,6 +17,7 @@ import {
   SponsoredSendFailed,
   SponsoredSendPending,
   awaitReceipt,
+  callIdempotencyKey,
   sendFromWallet,
   type ReceiptLog,
 } from "../edit/send.js";
@@ -44,6 +45,7 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { MONAD_CHAIN_ID, readClient } from "../reputation/registry.js";
+import { readPassport } from "../unseal.js";
 import {
   BadRequest,
   CallerGone,
@@ -112,10 +114,12 @@ interface EditContext {
  * under the parent is theirs. The answer's manifest names cameraRecord, kept or dropped, when the
  * edit arrived carrying a camera's own signed record, as the /prepare answer does.
  *
- * The send carries an idempotency key derived from the child's id, so Privy runs one appendEdit per
- * child however often it is retried. A send Privy calls dead, or a receipt that shows no child, is
- * read against the chain before it is answered send-failed: a child that is there under the
- * creator's own wallet is answered as appended (review pass 9, V89).
+ * The send carries an idempotency key made from the wallet id and the whole calldata, deadline
+ * included, so the SDK's own retries run one appendEdit, and a request the creator sends again, or
+ * another holder's send of the same bytes, gets a key of its own (review pass 10, V95). An edit is
+ * answered appended only when the registry's event, or the chain's record of the child, names this
+ * creator and this parent. A send Privy calls dead, or a receipt that shows no such event, is read
+ * against the chain before it is answered send-failed (review pass 9, V89).
  *
  * Answers 401 for a missing or foreign token, 400 for the fields, 413 and 415 for the image, 413
  * `signed-file-too-large` when signing grew the file past the upload cap, 409
@@ -537,20 +541,21 @@ async function append(
       });
     };
 
+    const calldata = editCalldata(child, NO_GENERATOR_SIGNATURE);
     let sent;
     try {
       submitted = true;
       sent = await sendFromWallet(client, wallet.id, {
         to: context.registry,
-        data: editCalldata(child, NO_GENERATOR_SIGNATURE),
+        data: calldata,
         gasLimit,
         chainId: MONAD_CHAIN_ID,
         sponsor: true,
         context: ownerContext(),
         log: request.log,
-        // One child is one appendEdit, so every retry of this send, the SDK's or Privy's own, carries
-        // the same key and Privy runs it once (review pass 9, V89).
-        idempotencyKey: `moolam-edit-${passportId}`,
+        // The SDK's retries of this exact call share the key and Privy runs it once (V89); this
+        // request built again, with its new deadline, is a new call (V95).
+        idempotencyKey: callIdempotencyKey("moolam-edit", wallet.id, calldata),
       });
     } catch (error) {
       if (error instanceof SponsoredSendPending) {
@@ -562,7 +567,7 @@ async function append(
         return reply.code(502).send({ error: "send-pending", transactionId: error.transactionId, passportId });
       }
       if (error instanceof SponsoredSendFailed) {
-        if (await childLanded(context, passportId, wallet.address, request)) {
+        if (await childLanded(context, passportId, wallet.address, upload.parentId, request)) {
           // Privy called this send dead, and the child is on chain under the creator's wallet all
           // the same. With a hash that is the edit landing; without one, the browser is told to
           // watch the child, which it will find at once.
@@ -600,7 +605,7 @@ async function append(
         .send({ error: "send-pending", transactionId: sent.transactionId, hash: sent.hash, passportId });
     }
     if (receipt.status === "reverted") {
-      if (await childLanded(context, passportId, wallet.address, request)) {
+      if (await childLanded(context, passportId, wallet.address, upload.parentId, request)) {
         return appended(sent.hash, sent.sponsored);
       }
       request.log.error(
@@ -612,8 +617,8 @@ async function append(
     // A sponsored send is a user operation inside a bundle, and the bundle succeeds even when the
     // appendEdit inside it reverted. The registry's own event for this child is the only proof the
     // edit was written.
-    if (!childRegistered(receipt.logs, context.registry, passportId)) {
-      if (await childLanded(context, passportId, wallet.address, request)) {
+    if (!childRegistered(receipt.logs, context.registry, passportId, wallet.address, upload.parentId)) {
+      if (await childLanded(context, passportId, wallet.address, upload.parentId, request)) {
         return appended(sent.hash, sent.sponsored);
       }
       request.log.error(
@@ -640,27 +645,47 @@ async function append(
   }
 }
 
-/** The registry's event for a new passport, whose first indexed topic is the passport id. */
-const PASSPORT_REGISTERED = toEventSelector(
-  "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
+/** The registry's event for a new passport, as packages/contracts/src/MoolamRegistry.sol declares it. */
+const PASSPORT_REGISTERED = parseAbiItem(
+  "event PassportRegistered(bytes32 indexed passportId, address indexed creator, uint256 indexed generatorAgentId, bytes32 parentId, uint64 phash, bytes32 blockhash256, bytes32 manifestHash, uint8 kind, uint8 fingerprintVersion, string metadataURI)",
 );
 
 /**
- * Whether a receipt carries the registry's PassportRegistered event for this passport. The address
- * and the id are compared after the same normaliser on both sides: getAddress for the contract, and
- * lower case hex for the topic.
+ * Whether a receipt carries the registry's PassportRegistered event for this passport, written for
+ * this creator under this parent. The id alone is not enough (review pass 10, V95): another holder's
+ * send of the same bytes writes the same id. Each log is decoded against the event's own ABI, and
+ * one that does not decode is not this edit. Every pair is compared after the same normaliser on
+ * both sides: getAddress for the contract and the creator, lower case hex for the two ids.
  */
-function childRegistered(logs: readonly ReceiptLog[] | undefined, registry: Hex, passportId: Hex): boolean {
+function childRegistered(
+  logs: readonly ReceiptLog[] | undefined,
+  registry: Hex,
+  passportId: Hex,
+  creator: Hex,
+  parentId: Hex,
+): boolean {
   const contract = getAddress(registry);
   const id = passportId.toLowerCase();
+  const by = getAddress(creator);
+  const parent = parentId.toLowerCase();
   return (logs ?? []).some((log) => {
-    let from: string;
     try {
-      from = getAddress(log.address);
+      if (getAddress(log.address) !== contract) {
+        return false;
+      }
+      const event = decodeEventLog({
+        abi: [PASSPORT_REGISTERED],
+        data: log.data,
+        topics: log.topics as [Hex, ...Hex[]],
+      });
+      return (
+        event.args.passportId.toLowerCase() === id &&
+        getAddress(event.args.creator) === by &&
+        event.args.parentId.toLowerCase() === parent
+      );
     } catch {
       return false;
     }
-    return from === contract && log.topics[0]?.toLowerCase() === PASSPORT_REGISTERED && log.topics[1]?.toLowerCase() === id;
   });
 }
 
@@ -743,19 +768,30 @@ async function identify(request: FastifyRequest, keys?: PrivyKeys): Promise<Priv
 }
 
 /**
- * Whether the child this request sent is on chain under the creator's own wallet, read before any
- * send-failed answer that follows a send. A bundle can report a revert, and Privy a dead send, for
- * an appendEdit that an earlier try of the same idempotent send already landed, and telling the
- * creator it failed would send them to edit again (review pass 9, V89). The owner is read too, so a
- * copy of these bytes someone else registered first is never reported as this edit. A chain that
- * will not answer is not a landing: the send-failed answer stands.
+ * Whether the child this request sent is on chain for this creator under this parent, read before
+ * any send-failed answer that follows a send. A bundle can report a revert, and Privy a dead send,
+ * for an appendEdit that an earlier try of the same idempotent send already landed, and telling the
+ * creator it failed would send them to edit again (review pass 9, V89). The chain's own record of
+ * the registration is read, the creator and the parent the event named, so a copy of these bytes
+ * someone else registered first, or under another parent, is never reported as this edit (review
+ * pass 10, V95). A chain that will not answer is not a landing: the send-failed answer stands.
  */
-async function childLanded(context: EditContext, passportId: Hex, wallet: Hex, request: FastifyRequest): Promise<boolean> {
+async function childLanded(
+  context: EditContext,
+  passportId: Hex,
+  wallet: Hex,
+  parentId: Hex,
+  request: FastifyRequest,
+): Promise<boolean> {
   try {
-    if (!(await passportExists(context.chain, context.registry, passportId))) {
+    const registered = await readPassport(context.chain, context.registry, passportId);
+    if (registered === undefined) {
       return false;
     }
-    return (await parentOwner(context.chain, context.registry, passportId)) === getAddress(wallet);
+    return (
+      getAddress(registered.creator) === getAddress(wallet) &&
+      registered.parentId.toLowerCase() === parentId.toLowerCase()
+    );
   } catch (error) {
     request.log.warn({ url: request.url, passportId, reason: safeReason(error) }, "edit: could not read whether the child landed");
     return false;

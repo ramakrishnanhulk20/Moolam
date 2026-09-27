@@ -11,9 +11,11 @@
 // and nothing was sent, so an edit whose pins may have landed keeps it spent.
 // An edit made from a camera's signed photo answers cameraRecord as /prepare does, and the route
 // hands its request logger to prepareOrFallback so a dropped record is logged.
-// From review pass 9 (V89): the send carries a key derived from the child, and a send reported dead
-// or reverted whose child is on chain under the creator's wallet is answered as appended. A signing
-// read-back fault is logged as one, not as failed fingerprinting.
+// From review pass 9 (V89): a send reported dead or reverted whose child is on chain for the creator
+// is answered as appended. A signing read-back fault is logged as one, not as failed
+// fingerprinting. From review pass 10 (V95): the send key is made from the wallet and the whole
+// calldata, so a retry with a new deadline is a new send, and an event or a chain record that names
+// another creator or another parent is never answered as this edit.
 // Does NOT cover Privy actually signing, gas sponsorship, or the registry accepting the edit.
 // Those are proven live by packages/agents/scripts/prove-privy.ts step 6 and, from the browser,
 // by a real creator granting a signer. The sponsored poll itself is covered in
@@ -26,7 +28,7 @@ import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { Reader } from "@contentauth/c2pa-node";
-import { FILTER_BOMB_SVG, makeImage } from "./helpers.js";
+import { FILTER_BOMB_SVG, makeImage, registeredEventLog } from "./helpers.js";
 
 // env.ts validates once at import, so everything the route reads has to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The Pinata token is a fake: every
@@ -55,6 +57,10 @@ const stubs = vi.hoisted(() => ({
   send: vi.fn(),
   receipt: vi.fn(),
   prepareOptions: [] as { log?: unknown }[],
+  /** While on, every preparation is handed the first one's result, as the unsigned fallback gives one file one id. */
+  samePrepared: false,
+  prepared: undefined as unknown,
+  readPassport: vi.fn(),
   /** Thrown by the next preparation instead of preparing, when set. */
   prepareFault: undefined as Error | undefined,
 }));
@@ -70,6 +76,10 @@ vi.mock("../src/prepare.js", async (importOriginal) => {
       if (fault !== undefined) {
         stubs.prepareFault = undefined;
         throw fault;
+      }
+      if (stubs.samePrepared) {
+        stubs.prepared ??= await real.prepareOrFallback(...args);
+        return stubs.prepared as Awaited<ReturnType<typeof real.prepareOrFallback>>;
       }
       return await real.prepareOrFallback(...args);
     },
@@ -89,6 +99,13 @@ vi.mock("../src/edit/registry.js", async (importOriginal) => ({
   estimateEditGas: stubs.estimateEditGas,
 }));
 
+// The chain's record of a registered passport, read before an edit whose send looked lost is
+// answered as appended.
+vi.mock("../src/unseal.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/unseal.js")>()),
+  readPassport: stubs.readPassport,
+}));
+
 vi.mock("../src/edit/send.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/edit/send.js")>()),
   sendFromWallet: stubs.send,
@@ -106,7 +123,7 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 const { registryEditAbi } = await import("../src/edit/registry.js");
 const { contentIdOf } = await import("../src/ipfs/pinata.js");
 const { env } = await import("../src/env.js");
-const { SponsoredSendFailed, SponsoredSendPending } = await import("../src/edit/send.js");
+const { SponsoredSendFailed, SponsoredSendPending, callIdempotencyKey } = await import("../src/edit/send.js");
 const { Busy } = await import("../src/generate/gate.js");
 const { buildServer } = await import("../src/server.js");
 const { fileSlug } = await import("../src/metadata.js");
@@ -124,14 +141,31 @@ const PASSPORT_REGISTERED = toEventSelector(
   "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
 );
 
+interface SentChild {
+  exactHash: Hex;
+  parentId: Hex;
+  creator: Hex;
+}
+
+/** The calldata of the last send. */
+function lastSentData(): Hex {
+  return (stubs.send.mock.lastCall?.[2] as { data: Hex }).data;
+}
+
+/** The child in the calldata of the last send. */
+function lastSentChild(): SentChild {
+  const [input] = decodeFunctionData({ abi: registryEditAbi, data: lastSentData() }).args as unknown as [SentChild];
+  return input;
+}
+
+/** The registry's event for the last send's child, with the creator and parent it was written under. */
+function registeredLog(changes: { creator?: Hex; parentId?: Hex } = {}): { address: Hex; topics: Hex[]; data: Hex } {
+  return registeredEventLog(env.MOOLAM_REGISTRY_ADDRESS as Hex, lastSentData(), changes);
+}
+
 /** The receipt of a bundle whose inner call ran: it carries the registry's event for the child that was sent. */
-async function landedReceipt(): Promise<{ status: "success"; logs: { address: Hex; topics: Hex[] }[] }> {
-  const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
-  const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
-  return {
-    status: "success",
-    logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [PASSPORT_REGISTERED, input.exactHash] }],
-  };
+async function landedReceipt(): Promise<{ status: "success"; logs: { address: Hex; topics: Hex[]; data: Hex }[] }> {
+  return { status: "success", logs: [registeredLog()] };
 }
 
 let signing: CryptoKey;
@@ -269,6 +303,9 @@ describe("POST /edit", () => {
       .mockReset()
       .mockResolvedValue({ hash: HASH, sponsored: true, transactionId: "privy-tx-1" });
     stubs.receipt.mockReset().mockImplementation(landedReceipt);
+    stubs.readPassport.mockReset().mockResolvedValue(undefined);
+    stubs.samePrepared = false;
+    stubs.prepared = undefined;
   });
 
   /** What this creator has spent of the daily allowance, read off an edit that goes through. */
@@ -697,22 +734,89 @@ describe("POST /edit", () => {
     }
   }, 60_000);
 
+  // Review pass 10, intake #4 (V95): the unsigned fallback gives one file one child id, so a key made
+  // from the child alone blocked every retry for a day and could bind another holder's send.
+  describe("V95: a send key per wallet and exact call, and an appended answer only for this creator and parent", () => {
+    it("sends two edits of one child id with different deadlines under different keys", async () => {
+      stubs.samePrepared = true;
+      vi.useFakeTimers({ toFake: ["Date"] });
+      try {
+        vi.setSystemTime(new Date("2026-09-27T09:00:00Z"));
+        expect((await ask("did:privy:v95-retry-user", goodFields())).statusCode).toBe(200);
+        const first = lastSentChild();
+        vi.setSystemTime(new Date("2026-09-27T09:05:00Z"));
+        expect((await ask("did:privy:v95-retry-user", goodFields())).statusCode).toBe(200);
+        const second = lastSentChild();
+
+        expect(second.exactHash).toBe(first.exactHash);
+        const [one, two] = stubs.send.mock.calls.map((call) => call[2] as { idempotencyKey: string; data: Hex });
+        expect(one?.data).not.toBe(two?.data);
+        expect(one?.idempotencyKey).toMatch(/^moolam-edit-[0-9a-f]{64}$/);
+        expect(two?.idempotencyKey).toMatch(/^moolam-edit-[0-9a-f]{64}$/);
+        expect(one?.idempotencyKey).not.toBe(two?.idempotencyKey);
+      } finally {
+        vi.useRealTimers();
+      }
+    }, 60_000);
+
+    it("never answers appended for a child whose event or chain record names another creator or another parent", async () => {
+      const other = `0x${"cd".repeat(32)}` as Hex;
+      const cases: { label: string; creator?: Hex; parentId?: Hex }[] = [
+        { label: "another creator", creator: STRANGER },
+        { label: "another parent", parentId: other },
+      ];
+      for (const [index, one] of cases.entries()) {
+        stubs.receipt.mockImplementationOnce(async () => ({
+          status: "success",
+          logs: [registeredLog(one)],
+        }));
+        const refused = await ask(`did:privy:v95-event-${index}`, goodFields(`event ${one.label}`));
+        expect(refused.statusCode, one.label).toBe(502);
+        expect(refused.json().error, one.label).toBe("send-failed");
+      }
+
+      for (const [index, one] of cases.entries()) {
+        stubs.send.mockClear();
+        stubs.passportExists.mockImplementation(
+          async (_chain, _registry, id: Hex) => id === PARENT || stubs.send.mock.calls.length > 0,
+        );
+        stubs.readPassport.mockImplementation(async (_chain: unknown, _registry: unknown, id: Hex) =>
+          id === PARENT || stubs.send.mock.calls.length === 0
+            ? undefined
+            : { creator: one.creator ?? OWNER, parentId: one.parentId ?? PARENT, registeredAt: 1_758_000_000 },
+        );
+        stubs.receipt.mockResolvedValueOnce({ status: "reverted" });
+        const refused = await ask(`did:privy:v95-chain-${index}`, goodFields(`chain ${one.label}`));
+        expect(refused.statusCode, one.label).toBe(502);
+        expect(refused.json().error, one.label).toBe("send-failed");
+      }
+    }, 60_000);
+  });
+
   // WO-186b follow-up (V89): one child is one appendEdit, so the send carries a key derived from the
   // child, and a send reported dead or reverted is read against the chain before it is called failed.
   describe("V89: an edit the chain holds is never answered send-failed", () => {
-    /** The child is on chain once a send has gone out, and never before, so the duplicate check passes. */
-    function childOnChainAfterTheSend(): void {
+    /**
+     * The child is on chain once a send has gone out, and never before, so the duplicate check
+     * passes. The chain's record names the creator and the parent this edit was sent for.
+     */
+    function childOnChainAfterTheSend(creator: Hex = OWNER): void {
       stubs.passportExists.mockImplementation(
         async (_chain, _registry, id: Hex) => id === PARENT || stubs.send.mock.calls.length > 0,
       );
+      stubs.readPassport.mockImplementation(async (_chain: unknown, _registry: unknown, id: Hex) =>
+        id === PARENT || stubs.send.mock.calls.length === 0
+          ? undefined
+          : { creator, parentId: PARENT, registeredAt: 1_758_000_000 },
+      );
     }
 
-    it("sends under an idempotency key derived from the child passport id", async () => {
+    it("sends under an idempotency key derived from the wallet and the exact calldata (V95)", async () => {
       const response = await ask("did:privy:idempotent-user", goodFields());
 
       expect(response.statusCode).toBe(200);
-      const child = response.json().child.exactHash as string;
-      expect(stubs.send.mock.lastCall?.[2]).toMatchObject({ idempotencyKey: `moolam-edit-${child}` });
+      const sent = stubs.send.mock.lastCall?.[2] as { data: Hex; idempotencyKey: string };
+      expect(sent.idempotencyKey).toBe(callIdempotencyKey("moolam-edit", "privy-wallet-1", sent.data));
     }, 60_000);
 
     it("answers success for a revert whose child is on chain under the creator's wallet", async () => {
@@ -738,19 +842,17 @@ describe("POST /edit", () => {
     }, 60_000);
 
     it("still answers send-failed when the child on chain belongs to another address, or the chain cannot say", async () => {
-      childOnChainAfterTheSend();
-      stubs.parentOwner.mockImplementation(async (_chain, _registry, id: Hex) => (id === PARENT ? OWNER : STRANGER));
+      childOnChainAfterTheSend(STRANGER);
       stubs.receipt.mockResolvedValueOnce({ status: "reverted" });
       const elsewhere = await ask("did:privy:front-run-user", goodFields());
       expect(elsewhere.statusCode).toBe(502);
       expect(elsewhere.json().error).toBe("send-failed");
 
-      stubs.parentOwner.mockResolvedValue(OWNER);
       stubs.send.mockClear();
-      stubs.passportExists.mockImplementation(async (_chain, _registry, id: Hex) => {
-        if (id === PARENT) return true;
+      stubs.passportExists.mockImplementation(async (_chain, _registry, id: Hex) => id === PARENT);
+      stubs.readPassport.mockImplementation(async () => {
         if (stubs.send.mock.calls.length > 0) throw new Error("fetch failed");
-        return false;
+        return undefined;
       });
       stubs.receipt.mockResolvedValueOnce({ status: "reverted" });
       const unreadable = await ask("did:privy:chain-silent-user", goodFields());

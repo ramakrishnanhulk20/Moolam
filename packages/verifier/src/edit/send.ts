@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { AuthorizationContext, PrivyClient } from "@privy-io/node";
 import { WaitForTransactionReceiptTimeoutError, type Hex, type PublicClient } from "viem";
 import { caip2, privyErrorText } from "../generate/privy.js";
@@ -142,10 +142,26 @@ export interface SendOptions {
   log?: PollLog;
   /**
    * Sent as privy-idempotency-key, so Privy runs every request carrying it once in 24 hours. A
-   * caller whose send is tied to one on-chain write, such as /edit with its child passport id,
-   * passes a key derived from that write. Left out, the send gets a fresh key of its own.
+   * caller whose send is tied to one exact call, such as /edit, passes callIdempotencyKey of the
+   * wallet and the calldata. Left out, the send gets a fresh key of its own.
    */
   idempotencyKey?: string;
+}
+
+/**
+ * The privy-idempotency-key for one exact call from one wallet: the prefix and the sha256 of the
+ * wallet id and the calldata together.
+ *
+ * The SDK's own retries of a send carry the same wallet and the same calldata, so they share the
+ * key and Privy runs the call once (V89). Anything that differs gets a key of its own: a retry the
+ * route built again, whose calldata carries a new deadline, and another wallet sending the same
+ * bytes. A key made from the passport id alone did neither, so an unsigned edit whose bytes repeat
+ * could not be sent again for a day, and two holders could share one key (review pass 10, V95).
+ * The two parts go in as a JSON pair, so no wallet id can run into the calldata.
+ */
+export function callIdempotencyKey(prefix: string, walletId: string, data: Hex): string {
+  const digest = createHash("sha256").update(JSON.stringify([walletId, data.toLowerCase()])).digest("hex");
+  return `${prefix}-${digest}`;
 }
 
 export interface SentTransaction {
@@ -224,10 +240,11 @@ export async function sendFromWallet(
   return { ...settled, hash, sponsored };
 }
 
-/** One event in a receipt, in the two fields a caller checks: which contract, and its topics. */
+/** One event in a receipt: which contract, its topics, and the data its unindexed fields sit in. */
 export interface ReceiptLog {
   address: Hex;
   topics: readonly Hex[];
+  data: Hex;
 }
 
 /** How the chain settled a send: it landed, or it landed and reverted. */
@@ -261,7 +278,7 @@ export async function awaitReceipt(
     return {
       status: receipt.status === "success" ? "success" : "reverted",
       reason: typeof volunteered === "string" && volunteered.length > 0 ? volunteered : undefined,
-      logs: receipt.logs.map((log) => ({ address: log.address, topics: log.topics })),
+      logs: receipt.logs.map((log) => ({ address: log.address, topics: log.topics, data: log.data })),
     };
   } catch (error) {
     if (error instanceof WaitForTransactionReceiptTimeoutError) return undefined;

@@ -105,6 +105,11 @@ export interface PrivateCopyStatus {
    * see the deleted file and remember "kept" for a minute (review pass 6, V51).
    */
   gone: (passportId: Hex, privateRecheck: boolean) => void;
+  /**
+   * True while the memory holds gone for this passport, read without asking anyone. /sealed/link
+   * asks it before the listing, which can still show a file the holder has just deleted (V109).
+   */
+  heldGone: (passportId: Hex) => boolean;
 }
 
 /**
@@ -230,6 +235,11 @@ export function privateCopyStatus(
       epoch += 1;
       remember(id, { found: true, state: "gone", privateRecheck });
     },
+
+    heldGone: (passportId) => {
+      const memory = held.get(passportId.toLowerCase() as Hex);
+      return memory !== undefined && memory.until > now() && memory.status.found && memory.status.state === "gone";
+    },
   };
 }
 
@@ -268,8 +278,9 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
    * (B4): the token, compared in constant time; the id, 32 bytes of hex lower-cased once; the
    * registry holding the passport, where a read that failed is 503 and never a guess; its document,
    * read through the guarded fetch, privately re-checkable and committing to this very id (B1); a
-   * runner holding the passport's request, claimed less than ten minutes ago (D3); and exactly one
-   * file under the passport's name (B3). Only then are the hourly and daily caps taken (B15) and
+   * runner holding the passport's request, claimed less than ten minutes ago (D3); a status memory
+   * that does not hold gone for it, because Pinata's listing trails a delete (review pass 10, V109);
+   * and exactly one file under the passport's name (B3). Only then are the hourly and daily caps taken (B15) and
    * the link minted, for a fixed 120 seconds, and parsed again before it is sent: https, on the
    * configured dedicated gateway's host (standard 3).
    *
@@ -326,6 +337,9 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
     if (!queue.claimedWithin(passportId, LINK_CLAIM_WINDOW_MS)) {
       return refuse(409, "not-claimed");
     }
+    if (copies.heldGone(passportId)) {
+      return refuse(404, "gone", "the status memory holds gone, the listing may still trail a delete");
+    }
 
     let files: PrivateListing[];
     try {
@@ -381,9 +395,10 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
    * spends a Privy read and a Pinata listing (V54).
    *
    * When every file under the name was deleted, the status memory holds gone for its TTL, so
-   * neither /sealed/status nor the queue says "kept" for a copy that is gone, even while Pinata's
-   * listing still shows it; a delete that failed drops the memory instead, so the next read asks
-   * (review pass 6, V51). The answer is the count and never a file id, and the log line carries the
+   * neither /sealed/status, the queue nor /sealed/link says "kept" for a copy that is gone, even
+   * while Pinata's listing still shows it, and whether or not the document could be read (review
+   * pass 10, V107); a delete that failed drops the memory instead, so the next read asks (review
+   * pass 6, V51). The answer is the count and never a file id, and the log line carries the
    * count the same way.
    */
   const forget = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply> => {
@@ -434,8 +449,8 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
 
     // The document no longer decides whether anything is deleted (review pass 6, V53): a copy kept
     // for one prepare of a picture can sit under a passport registered with another prepare's
-    // document that never asked. It only says what the status memory should hold afterwards, and a
-    // document that cannot be read leaves that to the next status read.
+    // document that never asked. It only says which privateRecheck flag the status memory holds
+    // with gone afterwards.
     let asked: boolean | undefined;
     try {
       asked = privateRecheckFor(await readMetadataDocument(passport.metadataURI), passportId) === "asked";
@@ -464,10 +479,13 @@ export async function sealedRoutes(app: FastifyInstance, options: SealedRouteOpt
         failed += 1;
       }
     }
-    if (failed > 0 || asked === undefined) {
+    // Gone is held whether or not the document could be read: every file under the name was
+    // deleted, and the listing trails a delete (review pass 10, V107). A document that could not be
+    // read is taken to have asked, since files were kept under its name.
+    if (failed > 0) {
       copies.drop(passportId);
     } else {
-      copies.gone(passportId, asked);
+      copies.gone(passportId, asked ?? true);
     }
 
     if (failed > 0) {

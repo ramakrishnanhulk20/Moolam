@@ -10,11 +10,11 @@
 // two copies of the service, which count separately by design.
 
 import { SignJWT, generateKeyPair } from "jose";
-import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { makeImage } from "./helpers.js";
+import { makeImage, registeredEventLog } from "./helpers.js";
 
 // env.ts validates once at import, so everything the routes read has to be set before any module
 // in this file loads. vi.hoisted runs before the imports above. The Pinata token is a fake: every
@@ -104,7 +104,6 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
 
 const { buildServer } = await import("../src/server.js");
 const { contentIdOf } = await import("../src/ipfs/pinata.js");
-const { registryEditAbi } = await import("../src/edit/registry.js");
 const { env } = await import("../src/env.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
@@ -231,11 +230,7 @@ describe("the day's ceiling for everyone", () => {
     // edit route reads as the edit having landed.
     stubs.receipt.mockImplementation(async () => {
       const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
-      const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
-      const topic = toEventSelector(
-        "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
-      );
-      return { status: "success", logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [topic, input.exactHash] }] };
+      return { status: "success", logs: [registeredEventLog(env.MOOLAM_REGISTRY_ADDRESS as Hex, sent.data)] };
     });
     stubs.embeddedWallets.mockResolvedValue([OWNER]);
     stubs.generatorWallet.mockResolvedValue({ id: "moolam-test-generator", address: agent.address });

@@ -10,7 +10,9 @@
 // reads two pages from where the last one stopped, so every row is read in turn (V16), and the
 // place it stopped is kept in a file, so a restart goes on from there rather than the first page.
 // From review pass 6 (V53): a registered passport whose document does not ask for a private re-check
-// has its copy deleted too, and one whose document cannot be read keeps it.
+// has its copy deleted too, and one whose document cannot be read keeps it. From review pass 10
+// (V108): a copy is aged by the later of Pinata's created_at and the latest time this service kept
+// it, and those keep times survive a restart.
 // Does NOT cover a real Pinata account or a real chain read (the registry read is a stub here and
 // its strict shape check is exercised only through a fake answer), whether a real page token
 // outlives a day, or the server wiring, which test/health.test.ts reads through /health.
@@ -489,6 +491,42 @@ describe("the sweep's place survives a restart", () => {
         await fresh.runOnce();
         expect(new URL(listed[at] as string).searchParams.get("pageToken"), junk).toBeNull();
       }
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
+  });
+});
+
+// Review pass 10, sealed #5 (V108): a second prepare of the same bytes gets Pinata's first file back
+// with its first created_at, and a creator relying on that copy right now must not lose it.
+describe("V108: a copy this service kept again is aged by its latest keep", () => {
+  it("keeps a copy Pinata uploaded 72 hours ago that was kept again an hour ago, and marks it once that keep is 49 hours old", async () => {
+    const id = idOf(0x40);
+    chain.set(id, false);
+    const file = row(nameOf(id), hoursAgo(72));
+
+    const recent = privateSweep({ mode: "delete", log: recordingLog(), deps: deps({ keptAt: (asked) => (asked === id ? NOW - HOUR : undefined) }) });
+    expect((await recent.runOnce())?.counts).toMatchObject({ listed: 1, young: 1, marked: 0, deleted: 0 });
+    expect(removed).toHaveLength(0);
+
+    const stale = privateSweep({ mode: "delete", log: recordingLog(), deps: deps({ keptAt: () => NOW - 49 * HOUR }) });
+    expect((await stale.runOnce())?.counts).toMatchObject({ listed: 1, young: 0, marked: 1, deleted: 1 });
+    expect(removed).toEqual([file.id]);
+  });
+
+  it("remembers each keep across a restart, and ignores a file that is not one it wrote", async () => {
+    const { fileKeepTimes } = await import("../src/sealed.js");
+    const folder = mkdtempSync(path.join(tmpdir(), "moolam-kept-"));
+    try {
+      const file = path.join(folder, "private-copy-kept.json");
+      const id = idOf(0x41);
+      fileKeepTimes(file, () => NOW).note(id, NOW - HOUR);
+      fileKeepTimes(file, () => NOW).note(id, NOW - 2 * HOUR);
+      expect(fileKeepTimes(file, () => NOW).latest(id)).toBe(NOW - HOUR);
+      expect(fileKeepTimes(file, () => NOW).latest(idOf(0x42))).toBeUndefined();
+
+      writeFileSync(file, JSON.stringify({ version: 1, kept: { [id]: "yesterday" } }), "utf8");
+      expect(fileKeepTimes(file, () => NOW).latest(id)).toBeUndefined();
     } finally {
       rmSync(folder, { recursive: true, force: true });
     }

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import type { FastifyBaseLogger } from "fastify";
 import { z } from "zod";
 import {
@@ -9,6 +11,7 @@ import {
   type TrainingStatement,
 } from "./consent.js";
 import { passportExists } from "./edit/registry.js";
+import { env } from "./env.js";
 import type { Fingerprint, Hex } from "./fingerprint.js";
 import { PinRefused, PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, type PrivateFile } from "./ipfs/pinata.js";
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
@@ -388,6 +391,10 @@ export function markedPrivateCopy(thumbnail: Buffer, passportId: Hex): Buffer {
  * answers 422 thumbnail-too-large before any upload, which a thumbnail made to the smaller budget
  * never meets, and an upload that failed answers 502 pin-failed.
  *
+ * Every copy kept, a file Pinata already held included, is noted with the time in the keep-time
+ * store, so the sweep ages it by this keep rather than by Pinata's first upload (review pass 10,
+ * V108). A store that cannot be written is logged and the time is still held in memory.
+ *
  * `landed` on a refusal says whether Pinata may hold a file because of this request. It is false
  * only when nothing was sent, or when Pinata answered and refused (a 4xx). An abort, a 5xx, an
  * answer that would not parse or a connection that dropped can each come after Pinata stored the
@@ -413,6 +420,11 @@ export async function keepPrivateCopy(
   try {
     const kept = await pinPrivateFile(marked, privateThumbnailName(passportId), { passportId: id });
     log.info({ passportId: id, fileId: kept.id }, "prepare: private copy kept");
+    try {
+      keepTimes().note(id as Hex, Date.now());
+    } catch (error) {
+      log.warn({ passportId: id, reason: safeReason(error) }, "prepare: the time this copy was kept could not be saved, it is held in memory");
+    }
     return { kept };
   } catch (error) {
     const reason = safeReason(error);
@@ -440,7 +452,8 @@ export function refusedByPinata(error: unknown): boolean {
 /**
  * Deletes a private copy the registration it was made for will never use, after the document pin
  * failed. Best effort: a failure is logged with the file id for an operator and never changes the
- * answer the caller is about to get.
+ * answer the caller is about to get. Only /generate calls it, whose drawings never repeat bytes;
+ * /prepare leaves the copy to the sweep instead (review pass 10, V96).
  *
  * A file Pinata already held when this request uploaded it is never deleted. Two prepares of one
  * picture the signer refused give the same passport id and so the same marked thumbnail, and
@@ -465,4 +478,107 @@ export async function dropPrivateCopy(file: PrivateFile, log: FastifyBaseLogger)
       "prepare: could not delete the private copy after the document pin failed",
     );
   }
+}
+
+/**
+ * When this service last kept a private copy for each passport (review pass 10, V108).
+ *
+ * A second prepare of the same bytes is handed Pinata's existing file, and that file keeps the first
+ * upload's created_at, so by Pinata's clock a copy a creator is relying on right now can read as a
+ * 48 hour orphan. The sweep ages a copy by the later of the two times instead. Only a keep younger
+ * than KEPT_RETAIN_MS can change the sweep's answer, so older ones are dropped on the next write.
+ */
+export interface KeepTimes {
+  /** Records a keep. Throws when the store cannot be written; the time is held in memory all the same. */
+  note: (passportId: Hex, at: number) => void;
+  /** The latest keep remembered for this passport, in milliseconds, or undefined. */
+  latest: (passportId: Hex) => number | undefined;
+}
+
+/** Past the sweep's 48 hours with a day to spare: a keep older than this cannot make a copy young. */
+export const KEPT_RETAIN_MS = 72 * 60 * 60 * 1000;
+
+/** The most keeps remembered at once. The oldest go first, and a day's prepares are far fewer. */
+export const KEPT_MAX_ENTRIES = 10_000;
+
+const KEPT_FILE_VERSION = 1;
+
+const keptFileSchema = z.object({
+  version: z.literal(KEPT_FILE_VERSION),
+  kept: z.record(z.string().regex(PASSPORT_ID), z.number().int().nonnegative()),
+});
+
+/** Keep times that live only as long as the process, for tests and for a host with nowhere to write. */
+export function memoryKeepTimes(now: () => number = () => Date.now()): KeepTimes {
+  return keepTimesOver(new Map(), now, () => undefined);
+}
+
+/**
+ * Keep times in a small JSON file, written to a temp name and renamed into place the way the
+ * sweep's cursor is, so a redeploy between a re-keep and the next sweep does not forget it. A file
+ * that is missing, unreadable or of another shape reads as no keeps, which leaves the sweep with
+ * Pinata's own time, the rule it had before.
+ */
+export function fileKeepTimes(filePath: string, now: () => number = () => Date.now()): KeepTimes {
+  const temp = `${filePath}.tmp`;
+  let saved = new Map<string, number>();
+  try {
+    const parsed = keptFileSchema.safeParse(JSON.parse(readFileSync(filePath, "utf8")));
+    if (parsed.success) {
+      saved = new Map(Object.entries(parsed.data.kept));
+    }
+  } catch {
+    saved = new Map();
+  }
+  return keepTimesOver(saved, now, (kept) => {
+    mkdirSync(path.dirname(filePath), { recursive: true });
+    writeFileSync(temp, `${JSON.stringify({ version: KEPT_FILE_VERSION, kept: Object.fromEntries(kept) })}\n`, "utf8");
+    renameSync(temp, filePath);
+  });
+}
+
+function keepTimesOver(
+  kept: Map<string, number>,
+  now: () => number,
+  save: (kept: ReadonlyMap<string, number>) => void,
+): KeepTimes {
+  return {
+    note: (passportId, at) => {
+      const id = passportId.toLowerCase();
+      const cutoff = now() - KEPT_RETAIN_MS;
+      // Bounded by KEPT_MAX_ENTRIES.
+      for (const [key, time] of kept) {
+        if (time <= cutoff) kept.delete(key);
+      }
+      const before = kept.get(id);
+      kept.delete(id);
+      while (kept.size >= KEPT_MAX_ENTRIES) {
+        const oldest = kept.keys().next();
+        if (oldest.done === true) break;
+        kept.delete(oldest.value);
+      }
+      kept.set(id, Math.max(at, before ?? at));
+      save(kept);
+    },
+    latest: (passportId) => kept.get(passportId.toLowerCase()),
+  };
+}
+
+let shared: KeepTimes | undefined;
+
+/**
+ * The live keep times, in a file beside the re-check queue's own, which is the one place this
+ * service keeps state that survives a redeploy. Under a test runner nothing is written to disk.
+ */
+function keepTimes(): KeepTimes {
+  shared ??=
+    env.NODE_ENV === "test"
+      ? memoryKeepTimes()
+      : fileKeepTimes(path.join(path.dirname(env.RECHECK_QUEUE_PATH), "private-copy-kept.json"));
+  return shared;
+}
+
+/** When this process last kept a private copy for the passport, as the sweep reads it. */
+export function privateCopyKeptAt(passportId: Hex): number | undefined {
+  return keepTimes().latest(passportId);
 }

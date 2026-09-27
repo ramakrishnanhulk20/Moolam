@@ -10,10 +10,10 @@
 
 import { request as httpRequest, type ClientRequest } from "node:http";
 import { SignJWT, generateKeyPair } from "jose";
-import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { makeImage } from "./helpers.js";
+import { makeImage, registeredEventLog } from "./helpers.js";
 
 const SETTINGS = vi.hoisted(() => {
   const settings = {
@@ -65,7 +65,6 @@ vi.mock("../src/generate/privy.js", async (importOriginal) => ({
   ownerContext: () => ({}),
 }));
 
-const { registryEditAbi } = await import("../src/edit/registry.js");
 const { contentIdOf } = await import("../src/ipfs/pinata.js");
 const { env } = await import("../src/env.js");
 const { buildServer } = await import("../src/server.js");
@@ -74,9 +73,6 @@ const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const OWNER = getAddress("0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6");
 const PARENT = `0x${"ab".repeat(32)}` as Hex;
 const HASH = `0x${"11".repeat(32)}` as Hex;
-const PASSPORT_REGISTERED = toEventSelector(
-  "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
-);
 
 let signing: CryptoKey;
 let verifying: CryptoKey;
@@ -183,11 +179,7 @@ describe("POST /edit over a real connection (V2)", () => {
     // The receipt carries the registry's own event for the child the send was built for.
     stubs.receipt.mockReset().mockImplementation(async () => {
       const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
-      const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
-      return {
-        status: "success",
-        logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [PASSPORT_REGISTERED, input.exactHash] }],
-      };
+      return { status: "success", logs: [registeredEventLog(env.MOOLAM_REGISTRY_ADDRESS as Hex, sent.data)] };
     });
   });
 

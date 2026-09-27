@@ -9,7 +9,9 @@
 // passport while its copy is kept or unknown and refuses it once gone (B11). Each test names the
 // invariant it holds. From review pass 6: status reads gone right after a complete delete even while
 // Pinata's listing still shows the file (V51), the holder's delete removes a copy whatever the
-// document says (V53), and the delete has its own limit of 30 a minute (V54).
+// document says (V53), and the delete has its own limit of 30 a minute (V54). From review pass 10:
+// gone is held after a complete delete whose document could not be read (V107), and /sealed/link
+// reads that memory before the listing, so no link is minted for a copy just deleted (V109).
 // Does NOT cover the runner or the sealed workflow, the sweep of copies whose passport never
 // registered (sweep.test.ts), or a real call to Pinata, Privy, the chain or the gateway:
 // the chain read, the document read and the holder's wallets are stubbed, and Pinata is a
@@ -253,6 +255,7 @@ const L = {
   capped: idOf(0x2d),
   foreign: idOf(0x2e),
   expiry: idOf(0x2f),
+  forgotten: idOf(0x70),
 };
 
 /** The passports the queue tests ask the re-check queue about. */
@@ -288,6 +291,7 @@ const queued: RecheckItem[] = [
   running(L.capped, 1),
   running(L.foreign, 1),
   running(L.expiry, 1),
+  running(L.forgotten, 1),
 ];
 
 let app: FastifyInstance;
@@ -718,6 +722,25 @@ describe("POST /sealed/link (B1, B3, B4, B5, B15, D3)", () => {
     expect(callsSince(mark, "link")).toHaveLength(0);
   });
 
+  // Review pass 10, sealed #6 (V109): Pinata's listing trails a delete, so the link route reads the
+  // status memory the holder's delete set before it lists anything.
+  it("V109: refuses 404 gone, listing nothing, for a copy the holder has just deleted while the listing still shows it", async () => {
+    const id = L.forgotten;
+    register(id, sealedDocument(id));
+    keep(nameOf(id));
+    pinata.trailing = true;
+    expect((await forget(id, "did:privy:holder")).json()).toEqual({ passportId: id, deleted: 1 });
+    expect(account.filter((file) => file.name === nameOf(id))).toHaveLength(1);
+
+    const mark = calls.length;
+    const response = await link(id);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "gone", passportId: id });
+    expectNothingOfTheFile(response);
+    expect(callsSince(mark)).toHaveLength(0);
+  });
+
   it("B4: mints a link for the one file under the name, on the dedicated gateway, answering only url and expiresAt", async () => {
     const file = account.find((one) => one.name === nameOf(L.ok)) as Kept;
     const mark = calls.length;
@@ -997,6 +1020,24 @@ describe("POST /sealed/forget (B9)", () => {
 
     expect(response.json()).toEqual({ passportId: id, deleted: 1 });
     expect(held(id)).toEqual([file]);
+    const after = await status(id);
+    expect(after.json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
+  });
+
+  // Review pass 10, sealed #4 (V107): the document read failing during the delete used to drop the
+  // memory, and the next status read went back to a listing that still showed the deleted file.
+  it("V107: holds gone after a complete delete whose document could not be read, while the listing still shows the file", async () => {
+    const id = idOf(0x71);
+    register(id, sealedDocument(id));
+    keep(nameOf(id));
+    pinata.trailing = true;
+    stubs.readMetadataDocument.mockImplementationOnce(async () => {
+      throw new Error("the gateway answered 504 for this passport's metadata");
+    });
+
+    const response = await forget(id, "did:privy:holder");
+
+    expect(response.json()).toEqual({ passportId: id, deleted: 1 });
     const after = await status(id);
     expect(after.json()).toEqual({ passportId: id, state: "gone", privateRecheck: true });
   });
