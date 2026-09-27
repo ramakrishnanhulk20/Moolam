@@ -1,0 +1,104 @@
+Repeated review passes, 2026-09-25 to 2026-09-27
+The same AI code review prompt was run again and again over each part of Moolam until a pass found
+nothing new at medium or high. Monad's advice for builders was that one review pass is not enough,
+because the same reviewer finds different bugs on different runs. This file is the record of that
+loop: how many passes each part took, what they found, and the commit that fixed each finding.
+
+The rule
+1. One prompt, word for word the same on every pass. Only the area and the output file change.
+2. Each reviewer reads the threat model first (docs/security/threat-model.md), then every file in
+   its area, and reports real bugs only: wrong results, security holes, broken failure handling, loss
+   of money or data, a wrong on-chain state, a screen that could say something untrue, a limit that
+   does not hold. No style notes. Each finding carries a severity, a confidence, a file and line, a
+   concrete input that shows it, and a one-line fix.
+3. Reviewers cannot see earlier passes, and they never edit code, send a transaction or start a
+   server. Many ran the code they were reading, in memory, to prove a finding.
+4. From pass 4 on, every finding was first shown with a test that failed on the old code, then
+   fixed, and the whole suite had to pass before the commit. A finding that did not reproduce
+   was marked rejected.
+5. An area stops when a pass adds no new finding at medium or high. Lows found on the last pass are
+   fixed anyway.
+
+The prompt, in short
+Review AREA of the Moolam repository for real bugs. Read docs/security/threat-model.md first for
+the intended invariants, then read every file in AREA. Report only real bugs: wrong results,
+security holes, broken failure handling, loss of money or data, wrong on-chain state, a screen or
+record that could state something untrue, a limit that does not hold. No style, no naming, no "add
+more tests", no hypothetical hardening without a concrete path. When unsure, say so in the
+confidence field; never inflate. At most 25 findings, most severe first, each with severity,
+confidence, file:line, title, what goes wrong, a concrete input or sequence, and the fix in one line.
+
+Contracts (packages/contracts/src and the mainnet scripts): stopped after pass 2
+pass   found   new   high   medium   low
+1      4       4     0      0        4
+2      5       2     0      0        2
+Fixed in b4ba5b2 (deploy record, proof links, agent card data). One finding lives in a deployed
+contract that cannot change: the consent register's ten minute wait per writer can be stepped
+around by passing a passport to a second wallet and back. It is written up as a known limit in the
+threat model, under "Bounded writes per writer".
+
+Re-check runner and the two Chainlink CRE workflows: stopped after pass 3
+pass   found   new   high   medium   low
+1      6       6     0      4        2
+2      9       5     0      1        4
+3      7       1     0      0        1
+Fixed in c34a53a and 38ae3cb (claims handed back, refusals that stop spending, a circuit breaker,
+bare IPFS content ids only, a landed check that reads the registry's own event).
+
+Verify service (packages/verifier/src): stopped after pass 11
+From pass 5 the service was split into three areas (intake, answers, sealed), each with its own
+reviewer, so each read went deeper.
+pass   areas                       new   high   medium   low
+1      whole service               7     2      3        2
+2      whole service               3     1      0        2
+3      whole service               6     0      1        5
+4      whole service               6     0      4        2
+5      intake, answers, sealed     15    0      7        8
+6      intake, answers, sealed     18    0      5        13
+7      intake, answers, sealed     12    1      3        8
+8      intake, answers             9     0      3        6
+9      intake, answers             15    0      4        11
+10     intake, answers, sealed     18    0      4        14
+11     intake, answers             11    0      0        11
+The sealed area found no medium or high in passes 6, 7 and 10 and stopped. Intake and answers
+stopped at pass 11. Pass 8 reported one high, two large pictures decoded at once using about
+760 MB against a 512 MB figure in the deploy notes; the service's real memory limit on Railway is
+8 GB (read from railway metrics), so it was re-rated low and the deploy notes were corrected.
+
+What the verify service passes found, in short
+- Highs: an unbounded metadata read, a route that refused every real caller, a copied fingerprint
+  outranking the original, and a decoder that leaked memory on crafted CMYK files. All fixed.
+- Privacy: camera GPS surviving in segments other than EXIF, and a camera's own C2PA record carrying
+  location and serial. The pinned file now keeps only what decodes the pixels, and a camera's record
+  is kept with those assertions redacted, or dropped when redaction is not clean.
+- Money: a paid answer lost when the facilitator timed out, one transfer proving several payments, a
+  payer asked to pay twice. Each paid answer is now proven from the asset's own AuthorizationUsed log
+  and the Transfer right after it, for the exact signed value.
+- Honesty: an expired signing certificate reading as a tampered file, a stale index answering "no
+  match" as if current, facts shown as current when a minute old. Answers now carry when each fact
+  and the index copy were read, and say so when the register copy is behind.
+- Availability: uploads held open to lock others out, one caller holding every decode turn, a memory
+  leak in the fingerprint worker. Uploads are now counted byte by byte against a ceiling per caller,
+  turns are shared in rotation, and the worker is replaced before it can grow.
+
+Fix commits for the verify service
+passes 1 to 3     3cedbed 83c8546 ddf35fa
+pass 4            cacd1a7
+pass 5            613ee93 e984ed1
+pass 6            c325ef3 fa2efd0 4ac39aa ceb59a3 c645c09 196e989
+pass 7            1a91227 1178923 2b92b67
+pass 8            fa96c7b 5189b64 486588c 6632167
+pass 9            95e570a 8ef6e0f 289f0c4
+pass 10           acb1ccb 68c1194 3c63fa1 91f84dd aa2bd6b
+pass 11           c0faf06 f1685a3
+
+Deploys of the verify service while the loop ran, each proven from outside the host
+7a41456e, 03eaaff3, b2db0b39, f81b0376, 990569c2, 2cf50119, 34c3b94f
+Each proof: /health lists every route, a 40,000 pixel SVG is refused in under a second, an unsigned
+edit is refused, a URL pointing at the cloud metadata address is refused, and a registered picture
+verifies against its own passport.
+
+Test counts at the end
+verify service: 874 tests. web app: 2332 tests, none of which may reach a live
+network (an unstubbed request fails the test). contracts: 215 tests including mainnet fork tests.
+re-check runner: 291 tests.
