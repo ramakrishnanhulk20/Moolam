@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
+import { X509Certificate, createHash, createPrivateKey } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,7 +28,17 @@ export interface ManifestSummary {
    * the file carries no manifest.
    */
   validation?: "valid" | "invalid" | "unreadable";
-  /** The library's failure codes for an invalid manifest, such as "assertion.dataHash.mismatch". */
+  /**
+   * Set only on a "valid" manifest the library itself failed for its signing certificate alone:
+   * "expired" when a certificate that signed it, Moolam's or an ingredient's, has since expired,
+   * "untrusted" when the only complaint is trust. The signature and the bindings still hold.
+   */
+  credential?: "expired" | "untrusted";
+  /**
+   * The library's failure codes, such as "assertion.dataHash.mismatch", from the active manifest
+   * and from every ingredient's deltas. Sent with an invalid manifest, and with a valid one that
+   * carries `credential`, so the certificate's own code is named.
+   */
   failures?: string[];
   manifestHash?: Hex;
   title?: string;
@@ -48,9 +58,10 @@ export const SOFT_BINDING_ALG = "com.moolam.phash-blockhash.v1";
 
 /**
  * This host cannot sign anything at all: the certificate or the key is not where the environment
- * points, only one of the two paths is set, or openssl is not installed to make the development
- * identity. No file can get past it, so a caller has to stop rather than quietly pin unsigned
- * pictures for everyone. A signing worker that crashed, stopped or hung is answered the same way:
+ * points, only one of the two paths is set, openssl is not installed to make the development
+ * identity, the leaf is outside its validity window, the key is not the leaf's, or the library
+ * refused to sign for the certificate's sake. No file can get past it, so a caller has to stop rather than
+ * quietly pin unsigned pictures for everyone. A signing worker that crashed, stopped or hung is answered the same way:
  * it says nothing about the file, so the file must not be pinned unsigned for it either.
  */
 export class SignerUnavailable extends Error {
@@ -112,7 +123,8 @@ const READER_SETTINGS = settingsToJson(createVerifySettings({ remoteManifestFetc
  * validation "unreadable", so a damaged manifest costs the caller the manifest
  * and never the match. A read given up on keeps running in the library until it
  * ends, and its answer is dropped. A manifest that parses is present, with the
- * library's own validation state: anything but a clean pass reads as invalid.
+ * library's own validation state: anything but a clean pass reads as invalid,
+ * except a failure that is only about the signing certificate (see judged).
  * Checking the signing certificate against a trust list is deliberately not done
  * here: the spike signs with a throwaway certificate, so every manifest it reads
  * back is reported as untrusted.
@@ -144,8 +156,6 @@ async function summarise(bytes: Buffer): Promise<ManifestSummary> {
   }
 
   const store = reader.json();
-  const state = store.validation_state;
-  const validation = state === "Valid" || state === "Trusted" ? "valid" : "invalid";
 
   const actions = (active.assertions ?? [])
     .filter((assertion) => assertion.label?.startsWith("c2pa.actions"))
@@ -160,8 +170,7 @@ async function summarise(bytes: Buffer): Promise<ManifestSummary> {
 
   return {
     present: true,
-    validation,
-    ...(validation === "invalid" ? { failures: failureCodes(store) } : {}),
+    ...judged(store),
     manifestHash:
       manifestStore === null ? undefined : `0x${createHash("sha256").update(manifestStore).digest("hex")}`,
     title: active.title ?? undefined,
@@ -208,14 +217,62 @@ function parseSoftBinding(assertions: { label?: string; data?: unknown }[]): Sof
   return undefined;
 }
 
+type ManifestStore = ReturnType<Reader["json"]>;
+
 /**
- * The failure codes the library reported for the active manifest, falling back to its flat status
- * list. Each code is passed on to callers, so only short dotted names are kept and the list is
- * capped: a crafted manifest cannot use this field to smuggle text into the answer.
+ * The two codes the library raises about the signing certificate alone. Moolam signs with no trusted
+ * timestamp, so the library judges the certificate against today: once a leaf that signed a file
+ * expires, that untouched file fails with "signingCredential.expired", and every certificate off a
+ * trust list, which is every one here, carries "signingCredential.untrusted". Neither says a byte or
+ * a claim changed. Any other code, "signingCredential.revoked" and "signingCredential.invalid"
+ * included, is not on this list and so keeps a manifest invalid: an unknown code fails closed.
  */
-function failureCodes(store: ReturnType<Reader["json"]>): string[] {
-  const entries = store.validation_results?.activeManifest?.failure ?? store.validation_status ?? [];
-  const codes = entries
+const CREDENTIAL_ONLY = new Set(["signingCredential.expired", "signingCredential.untrusted"]);
+
+/**
+ * The validation a manifest is answered with. A clean pass from the library is valid. A failure is
+ * valid too when every code reported anywhere, in the active manifest, in each ingredient's deltas
+ * and in the flat list, is one of CREDENTIAL_ONLY, and `credential` then names which: the signature
+ * and the hard bindings held, only the certificate's standing changed. Anything else is invalid.
+ * The decision reads every raw entry before any is filtered or capped for the answer, so a code that
+ * would be left out of `failures` still makes the manifest invalid.
+ */
+function judged(store: ManifestStore): Pick<ManifestSummary, "validation" | "credential" | "failures"> {
+  const state = store.validation_state;
+  if (state === "Valid" || state === "Trusted") {
+    return { validation: "valid" };
+  }
+  const reported = reportedFailures(store);
+  const failures = failureCodes(store);
+  const credentialOnly =
+    reported.length > 0 && reported.every((entry) => typeof entry.code === "string" && CREDENTIAL_ONLY.has(entry.code));
+  if (!credentialOnly) {
+    return { validation: "invalid", failures };
+  }
+  const expired = reported.some((entry) => entry.code === "signingCredential.expired");
+  return { validation: "valid", credential: expired ? "expired" : "untrusted", failures };
+}
+
+/**
+ * Every failure the library reported: the active manifest's, each ingredient's deltas, where an
+ * ingredient's own certificate expiring is recorded, and the flat status list.
+ */
+function reportedFailures(store: ManifestStore): { code?: unknown }[] {
+  const results = store.validation_results;
+  return [
+    ...(results?.activeManifest?.failure ?? []),
+    ...(results?.ingredientDeltas ?? []).flatMap((one) => one.validationDeltas?.failure ?? []),
+    ...(store.validation_status ?? []),
+  ];
+}
+
+/**
+ * The failure codes reportedFailures finds, once each. Each code is passed on to callers, so only
+ * short dotted names are kept and the list is capped: a crafted manifest cannot use this field to
+ * smuggle text into the answer.
+ */
+function failureCodes(store: ManifestStore): string[] {
+  const codes = reportedFailures(store)
     .map((entry) => entry.code)
     .filter((code): code is string => typeof code === "string" && /^[A-Za-z0-9._-]{1,64}$/.test(code));
   return [...new Set(codes)].slice(0, MAX_FAILURE_CODES);
@@ -996,8 +1053,15 @@ function sniffMimeType(bytes: Buffer): string {
  * ships only dist, scripts and src, so the test certificates that live in its
  * repository are not installed with it.
  *
+ * The leaf, the first certificate in the file, must be inside its validity
+ * window now: the C2PA library refuses to sign with one outside it, and a host
+ * whose every signing fails that way must not look ready (review pass 10, V93).
+ * The key must be the leaf's own: the library signs with any key it is handed,
+ * and every manifest signed with the wrong one fails its signature check (V94).
+ *
  * Throws SignerUnavailable when only one of the two paths is set, when a path is
- * set and no file is there, and when openssl is missing.
+ * set and no file is there, when openssl is missing, when the leaf cannot be
+ * read or is outside its validity window, and when the key is not the leaf's.
  */
 export function loadSigner(
   paths: { certPath?: string; keyPath?: string } = {
@@ -1006,7 +1070,46 @@ export function loadSigner(
   },
 ): LocalSigner {
   const identity = signingIdentity(paths);
-  return LocalSigner.newSigner(readFileSync(identity.certPath), readFileSync(identity.keyPath), "es256");
+  const cert = readFileSync(identity.certPath);
+  const key = readFileSync(identity.keyPath);
+  const problem = credentialProblem(cert, key, new Date());
+  if (problem !== undefined) {
+    throw new SignerUnavailable(problem);
+  }
+  return LocalSigner.newSigner(cert, key, "es256");
+}
+
+/**
+ * Why this certificate and key cannot sign at `now`, or undefined when they can. The leaf is the
+ * first certificate in the file, which is where a C2PA chain puts it, and the key has to be its own.
+ * signingWorker.ts makes the same checks, in the same words, since it may not import this file.
+ */
+function credentialProblem(cert: Buffer, key: Buffer, now: Date): string | undefined {
+  let leaf: X509Certificate;
+  try {
+    leaf = new X509Certificate(cert);
+  } catch {
+    return "the signing certificate could not be read as an X.509 certificate";
+  }
+  if (!isLeafKey(leaf, key)) {
+    return "the signing key is not the key of the signing certificate";
+  }
+  if (now < leaf.validFromDate) {
+    return `the signing certificate is not valid until ${leaf.validFromDate.toISOString()}`;
+  }
+  if (now > leaf.validToDate) {
+    return `the signing certificate expired at ${leaf.validToDate.toISOString()}`;
+  }
+  return undefined;
+}
+
+/** Whether `key` is the private half of the leaf's public key. A key that cannot be read is not. */
+function isLeafKey(leaf: X509Certificate, key: Buffer): boolean {
+  try {
+    return leaf.checkPrivateKey(createPrivateKey(key));
+  } catch {
+    return false;
+  }
 }
 
 /**

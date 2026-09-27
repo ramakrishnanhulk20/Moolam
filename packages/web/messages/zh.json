@@ -423,6 +423,8 @@
     "staleIndex": "Moolam 手里的登记表副本是 {minutes} 分钟前的，所以之后登记的图片可能还显示不出来。",
     "manifestInvalid": "这个文件里的 Content Credentials 没有通过校验：文件在签名后被改过，或者这份记录是从别的文件搬过来的。指纹仍然对上了。",
     "manifestUnreadable": "这个文件带有我们读不出来的 Content Credentials，所以没法判断它是否有效。指纹仍然对上了。",
+    "manifestCredentialExpired": "签名完好无损。生成它的证书后来已经过期。",
+    "manifestCredentialUntrusted": "签名完好无损。生成它的证书不在这项检查信任的范围内。",
     "openAgent": "智能体 {id}",
     "lookupFailed": "登记处没有回应这个 id。它可能落后了一两个区块。",
     "problemLabel": "这次核对没有跑起来",

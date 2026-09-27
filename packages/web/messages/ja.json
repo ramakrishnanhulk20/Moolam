@@ -423,6 +423,8 @@
     "staleIndex": "Moolam が持つレジストリの写しは {minutes} 分前のものなので、その後に登録された画像はまだ表示されないことがあります。",
     "manifestInvalid": "このファイル内の Content Credentials は検証に失敗しています。署名の後にファイルが変更されたか、記録が別のファイルから移されています。それでも指紋は一致しました。",
     "manifestUnreadable": "このファイルには読み取れない Content Credentials が含まれているため、有効かどうかは判断できません。それでも指紋は一致しました。",
+    "manifestCredentialExpired": "署名は無傷です。署名に使われた証明書は、その後有効期限が切れています。",
+    "manifestCredentialUntrusted": "署名は無傷です。署名に使われた証明書は、このチェックが信頼するものではありません。",
     "openAgent": "エージェント {id}",
     "lookupFailed": "その id についてレジストリから応答がありません。ブロック一つか二つ遅れている可能性があります。",
     "problemLabel": "確認は動きませんでした",

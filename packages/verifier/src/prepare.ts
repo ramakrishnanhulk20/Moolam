@@ -14,6 +14,7 @@ import {
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
   FingerprintFault,
+  ImageTooLarge,
   MAX_IMAGE_PIXELS,
   PHASH_MATCH_THRESHOLD,
   fingerprint,
@@ -21,6 +22,8 @@ import {
   hamming64,
   phashOf,
   readImageHeader,
+  UndecodableImage,
+  UnsupportedImageFormat,
   type Fingerprint,
   type Hex,
 } from "./fingerprint.js";
@@ -213,7 +216,8 @@ export interface PrepareLog {
  *
  * Throws when the buffer is empty, when the C2PA library will not sign the container, when the
  * signed file carries no manifest, ReadBackFault when the reader cannot read the signed file back,
- * and ThumbnailTooLarge when no thumbnail small enough can be produced.
+ * SignerUnavailable when the manifest just signed does not validate, and ThumbnailTooLarge when no
+ * thumbnail small enough can be produced.
  */
 export async function prepareImage(source: Buffer, opts: PrepareOptions): Promise<PreparedImage> {
   const signed = await signImage(source, opts);
@@ -265,6 +269,14 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
   }
   if (!manifest.present || manifest.manifestHash === undefined) {
     throw new Error(`The signed JPEG made from this ${format} upload carries no manifest this reader can find.`);
+  }
+  // A signature made a moment ago that does not validate cleanly, a key that is not the
+  // certificate's being the case met (review pass 10, V94), is this host's signer failing: the file
+  // would be registered with a manifest /verify calls tampered, so nothing is answered embedded.
+  if (manifest.validation !== "valid" || manifest.credential !== undefined) {
+    throw new SignerUnavailable(
+      `The manifest just signed into this ${format} upload does not validate: ${(manifest.failures ?? []).join(", ")}`,
+    );
   }
   if (manifest.softBinding === undefined) {
     throw new Error(
@@ -495,9 +507,38 @@ export async function uprightImage(source: Buffer): Promise<Buffer> {
     }
   }
 
-  return await flattenedOntoWhite(sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate())
-    .jpeg({ quality: NORMALISED_QUALITY, progressive: false })
-    .toBuffer();
+  return await viaSharp(() =>
+    flattenedOntoWhite(sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).rotate())
+      .jpeg({ quality: NORMALISED_QUALITY, progressive: false })
+      .toBuffer(),
+  );
+}
+
+/**
+ * Runs one sharp call and answers its failure in the classes fingerprint.ts gives a decoder's: a
+ * decoder out of memory, which libvips and libjpeg both say with the word "memory", is this host
+ * under pressure and a FingerprintFault, and anything else is the picture's, UndecodableImage.
+ * Without it a raw sharp error while making the upright copy or a thumbnail read as the signer
+ * refusing the file, and the fallback pinned it unsigned (review pass 10, V97). This is the rule of
+ * fingerprint.ts's decodeFailure, which that file keeps to itself.
+ */
+async function viaSharp<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (
+      error instanceof FingerprintFault ||
+      error instanceof UndecodableImage ||
+      error instanceof ImageTooLarge ||
+      error instanceof UnsupportedImageFormat
+    ) {
+      throw error;
+    }
+    const detail = error instanceof Error ? error.message : String(error);
+    throw /memory/i.test(detail)
+      ? new FingerprintFault(detail, { cause: error })
+      : new UndecodableImage(detail, { cause: error });
+  }
 }
 
 /** What the rebuild does with one header segment: keep it, leave it out, or give up and re-encode. */
@@ -644,7 +685,7 @@ function endOfScan(jpeg: Buffer, sos: number): number | null {
  * reads baseline files only, so a progressive upload has to be re-encoded rather than passed on.
  */
 async function isProgressive(source: Buffer): Promise<boolean> {
-  const metadata = await sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
+  const metadata = await viaSharp(() => sharp(source, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata());
   return metadata.isProgressive === true;
 }
 
@@ -657,8 +698,8 @@ async function isProgressive(source: Buffer): Promise<boolean> {
  * `maxBytes` is smaller than THUMBNAIL_MAX_BYTES only for a private copy, which gains a comment
  * after this and still has to fit the fetch budget (review pass 5, intake 5).
  *
- * Throws ThumbnailTooLarge when even the lowest quality is over the budget, and whatever sharp
- * throws for pixels it cannot decode.
+ * Throws ThumbnailTooLarge when even the lowest quality is over the budget, FingerprintFault when a
+ * decoder runs out of memory, and UndecodableImage for pixels it cannot decode.
  */
 export async function makeThumbnail(image: Buffer, maxBytes: number = THUMBNAIL_MAX_BYTES): Promise<Buffer> {
   const budget = Math.min(maxBytes, THUMBNAIL_MAX_BYTES);
@@ -686,7 +727,7 @@ async function shrinkToBudget(image: Buffer, maxBytes: number): Promise<{ thumbn
 
   let last: Buffer | undefined;
   for (let quality = QUALITY_START; quality >= QUALITY_FLOOR; quality -= QUALITY_STEP) {
-    const candidate = await resized.clone().jpeg({ quality, progressive: false }).toBuffer();
+    const candidate = await viaSharp(() => resized.clone().jpeg({ quality, progressive: false }).toBuffer());
     if (candidate.length <= maxBytes) {
       return { thumbnail: candidate, fits: true };
     }

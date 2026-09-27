@@ -490,6 +490,11 @@ export const verifyResponseSchema = z.object({
      * shaped like a manifest is in the file and could not be parsed.
      */
     validation: z.enum(["valid", "invalid", "unreadable"]).optional(),
+    /**
+     * Only with "valid": the library failed the manifest for its signing certificate alone, one
+     * that has since expired or is not trusted. The signature and the bindings still hold.
+     */
+    credential: z.enum(["expired", "untrusted"]).optional(),
     manifestHash: hexWord.optional(),
     title: z.string().optional(),
     claimGenerator: z.string().optional(),

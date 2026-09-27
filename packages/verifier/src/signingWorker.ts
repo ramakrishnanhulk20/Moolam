@@ -1,3 +1,4 @@
+import { X509Certificate, createPrivateKey } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { parentPort } from "node:worker_threads";
 import { Builder, LocalSigner } from "@contentauth/c2pa-node";
@@ -44,7 +45,8 @@ export interface SigningJob {
 
 /**
  * The signed file, or why there is none. "refused" is the library turning down this file, its
- * parent or a redaction; "unavailable" is a signing identity that would not load; "invalid" is a
+ * parent or a redaction; "unavailable" is a signing identity that would not load, a leaf outside its
+ * validity window, or the library refusing to sign for the certificate's sake; "invalid" is a
  * manifest the library would not build, which embedManifest's own checks should already have caught.
  */
 export type SigningAnswer = { signed: Uint8Array } | { kind: "refused" | "unavailable" | "invalid"; error: string };
@@ -52,23 +54,64 @@ export type SigningAnswer = { signed: Uint8Array } | { kind: "refused" | "unavai
 class Refused extends Error {}
 class Unavailable extends Error {}
 
-let held: { key: string; signer: LocalSigner } | undefined;
+let held: { key: string; signer: LocalSigner; leaf: X509Certificate } | undefined;
 
 /**
  * The signer for this identity, made once and kept. A certificate and key swapped on disk under the
  * same paths are picked up by the next worker, which a restart of the service gives.
+ *
+ * The leaf's validity window is checked before every signing, not only at load: a leaf that expires
+ * while the service runs would otherwise be refused by the library on every file, and each refusal
+ * would read as the file's fault (review pass 10, V93). A key that is not the leaf's is refused at
+ * load (V94). The words match c2pa.ts's credentialProblem.
  */
 function signerFor(identity: SigningJob["identity"]): LocalSigner {
   const key = `${identity.certPath}\n${identity.keyPath}`;
   if (held?.key !== key) {
+    let cert: Buffer;
+    let privateKey: Buffer;
+    let leaf: X509Certificate;
+    let signer: LocalSigner;
     try {
-      held = { key, signer: LocalSigner.newSigner(readFileSync(identity.certPath), readFileSync(identity.keyPath), "es256") };
+      cert = readFileSync(identity.certPath);
+      privateKey = readFileSync(identity.keyPath);
+      signer = LocalSigner.newSigner(cert, privateKey, "es256");
     } catch (error) {
       throw new Unavailable(error instanceof Error ? error.message : String(error));
     }
+    try {
+      leaf = new X509Certificate(cert);
+    } catch {
+      throw new Unavailable("the signing certificate could not be read as an X.509 certificate");
+    }
+    let paired: boolean;
+    try {
+      paired = leaf.checkPrivateKey(createPrivateKey(privateKey));
+    } catch {
+      paired = false;
+    }
+    if (!paired) {
+      throw new Unavailable("the signing key is not the key of the signing certificate");
+    }
+    held = { key, signer, leaf };
+  }
+  const now = new Date();
+  if (now < held.leaf.validFromDate) {
+    throw new Unavailable(`the signing certificate is not valid until ${held.leaf.validFromDate.toISOString()}`);
+  }
+  if (now > held.leaf.validToDate) {
+    throw new Unavailable(`the signing certificate expired at ${held.leaf.validToDate.toISOString()}`);
   }
   return held.signer;
 }
+
+/**
+ * Every refusal the C2PA library gives at signing about the signing credential names the
+ * certificate: not valid at time of signing, invalid, not v3, an unsupported algorithm, a wrong
+ * extended key usage. None of those is the file's doing, so each is this host being unable to sign.
+ * A refusal that does not name it stays the file's.
+ */
+const CREDENTIAL_REFUSAL = /certificate/i;
 
 async function withinReadLimit<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -114,7 +157,8 @@ async function sign(job: SigningJob): Promise<Buffer> {
   try {
     builder.sign(signer, { buffer: asBuffer(job.bytes), mimeType: job.mimeType }, destination);
   } catch (error) {
-    throw new Refused(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    throw CREDENTIAL_REFUSAL.test(message) ? new Unavailable(message) : new Refused(message);
   }
   if (destination.buffer === null) {
     throw new Refused("the C2PA library signed the image but gave no bytes back");

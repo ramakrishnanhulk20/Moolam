@@ -16,7 +16,9 @@ import { verifyResponseSchema } from "@/lib/verifier/client";
  * that is not the passport on the card, how many later registrations share its fingerprint, and a
  * manifest that fails validation or cannot be read. Drawn in English and Tamil. Also the first
  * registration's AI-use statement, drawn beside the copy's only when the two say different things
- * (verifier review pass 4, V18).
+ * (verifier review pass 4, V18). And a manifest that validates although its signing certificate has
+ * since expired or is not trusted, which keeps the record-inside line and adds one quiet line about
+ * the certificate, never the tampered one (verifier review pass 10, V92).
  *
  * Does NOT cover the other eight languages beyond the key parity the message files already share,
  * nor how the service decides which passport was registered first (the verifier's own suite).
@@ -70,7 +72,7 @@ const LOCALES = { en, ta } as const;
 interface Extra {
   firstRegisteredId?: Hex;
   laterSameFingerprint?: number;
-  manifest?: { present: boolean; validation?: string };
+  manifest?: { present: boolean; validation?: string; credential?: string };
   /** What each holder stated, as the service hangs it on the match rows. */
   consent?: { best?: unknown; first?: unknown };
 }
@@ -149,6 +151,17 @@ describe("what the service's newer fields turn into", () => {
 
   it("refuses a validation word the service does not send", () => {
     expect(() => body({ manifest: { present: true, validation: "trusted" } })).toThrow();
+    expect(() => body({ manifest: { present: true, validation: "valid", credential: "revoked" } })).toThrow();
+  });
+
+  it("carries the certificate's state only on a manifest that validates", () => {
+    expect(readAnswer(body({ manifest: { present: true, validation: "valid", credential: "expired" } }))).toMatchObject({
+      manifestCredential: "expired",
+    });
+    expect(readAnswer(body({ manifest: { present: true, validation: "invalid", credential: "expired" } }))).not.toHaveProperty(
+      "manifestCredential",
+    );
+    expect(readAnswer(body())).not.toHaveProperty("manifestCredential");
   });
 
   it("keeps the first registration's statement only when it says something other than the copy's", () => {
@@ -223,7 +236,19 @@ for (const locale of ["en", "ta"] as const) {
 
     it("keeps the old lines for a valid manifest and for none at all", () => {
       expect(card(locale)).toContain(words(locale)("manifestPresent"));
+      expect(card(locale)).not.toContain("data-manifest-credential");
       expect(card(locale, { manifest: { present: false } })).toContain(words(locale)("manifestMissing"));
+    });
+
+    it("says the signature is intact and the certificate expired, never that the file was changed", () => {
+      const expired = card(locale, { manifest: { present: true, validation: "valid", credential: "expired" } });
+      expect(expired).toContain(words(locale)("manifestPresent"));
+      expect(expired).toContain(words(locale)("manifestCredentialExpired"));
+      expect(expired).not.toContain(words(locale)("manifestInvalid"));
+
+      const untrusted = card(locale, { manifest: { present: true, validation: "valid", credential: "untrusted" } });
+      expect(untrusted).toContain(words(locale)("manifestCredentialUntrusted"));
+      expect(untrusted).not.toContain(words(locale)("manifestInvalid"));
     });
   });
 }

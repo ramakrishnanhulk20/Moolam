@@ -421,6 +421,8 @@
     "staleIndex": "Moolam's copy of the register is {minutes} minutes old, so a picture registered since then may not show yet.",
     "manifestInvalid": "The Content Credentials inside this file fail validation: the file was changed after signing, or the record was copied in from another file. The fingerprints matched anyway.",
     "manifestUnreadable": "This file carries Content Credentials we could not read, so we cannot say whether they hold. The fingerprints matched anyway.",
+    "manifestCredentialExpired": "The signature is intact. The certificate that made it has since expired.",
+    "manifestCredentialUntrusted": "The signature is intact. The certificate that made it is not one this check trusts.",
     "openAgent": "Agent {id}",
     "lookupFailed": "The registry has not answered for that id. It may be a block or two behind.",
     "problemLabel": "The check did not run",

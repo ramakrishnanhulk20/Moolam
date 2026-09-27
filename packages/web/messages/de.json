@@ -421,6 +421,8 @@
     "staleIndex": "Moolams Kopie der Registry ist {minutes} Minuten alt, daher erscheint ein seitdem eingetragenes Bild vielleicht noch nicht.",
     "manifestInvalid": "Die Content Credentials in dieser Datei bestehen die Prüfung nicht: Die Datei wurde nach dem Signieren verändert, oder der Eintrag wurde aus einer anderen Datei hineinkopiert. Die Fingerabdrücke stimmen trotzdem.",
     "manifestUnreadable": "Diese Datei enthält Content Credentials, die wir nicht lesen konnten, also können wir nicht sagen, ob sie gültig sind. Die Fingerabdrücke stimmen trotzdem.",
+    "manifestCredentialExpired": "Die Signatur ist intakt. Das Zertifikat, mit dem sie erstellt wurde, ist inzwischen abgelaufen.",
+    "manifestCredentialUntrusted": "Die Signatur ist intakt. Das Zertifikat, mit dem sie erstellt wurde, gehört nicht zu denen, denen diese Prüfung vertraut.",
     "openAgent": "Agent {id}",
     "lookupFailed": "Das Register hat für diese Id nicht geantwortet. Es hinkt vielleicht ein, zwei Blöcke hinterher.",
     "problemLabel": "Die Prüfung lief nicht",

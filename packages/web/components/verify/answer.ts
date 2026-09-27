@@ -37,6 +37,12 @@ export type Answer =
        * a signed record still inside the file.
        */
       manifestCheck?: "invalid" | "unreadable";
+      /**
+       * Set only for a manifest that validates but whose signing certificate has since expired or
+       * is not trusted. The card still says the record is inside, then one quiet line on the
+       * certificate, never that the file was changed.
+       */
+      manifestCredential?: "expired" | "untrusted";
       /** An earlier registration inside the thresholds, set only when it is not the passport shown. */
       firstRegisteredId?: Hex;
       /** How many later registrations carry exactly this passport's fingerprint, set only when above zero. */
@@ -77,7 +83,7 @@ function staleMinutesOf(index: VerifyResponse["index"], now: number): { staleMin
 export function readAnswer(response: VerifyResponse, now: number = Date.now()): Answer {
   const { exact, best, matches, confidence, queried, firstRegisteredId, laterSameFingerprint } = response.result;
   const manifest = response.manifest.present;
-  const { validation } = response.manifest;
+  const { validation, credential } = response.manifest;
   const id = exact ?? best?.id ?? null;
   const stale = staleMinutesOf(response.index, now);
 
@@ -105,6 +111,7 @@ export function readAnswer(response: VerifyResponse, now: number = Date.now()): 
     others: Math.max(matches.length - 1, 0),
     manifest,
     ...(validation === "invalid" || validation === "unreadable" ? { manifestCheck: validation } : {}),
+    ...(validation === "valid" && manifest && credential !== undefined ? { manifestCredential: credential } : {}),
     ...(firstRegisteredId !== undefined && firstRegisteredId.toLowerCase() !== id.toLowerCase() ? { firstRegisteredId } : {}),
     ...(laterSameFingerprint !== undefined && laterSameFingerprint > 0 ? { laterSameFingerprint } : {}),
     consent,

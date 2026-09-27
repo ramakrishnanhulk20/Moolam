@@ -269,6 +269,14 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
         <p data-manifest-line className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
           {t(manifestLine)}
         </p>
+        {/* Moolam signs with no trusted timestamp, so a certificate that expires later makes the
+            C2PA library fail a file nobody touched. The record is still intact, and this line
+            says what changed without calling the file tampered. */}
+        {answer.manifestCredential === undefined ? null : (
+          <p data-manifest-credential className="mt-2 max-w-[44ch] text-xs leading-relaxed text-text-faint">
+            {t(answer.manifestCredential === "expired" ? "manifestCredentialExpired" : "manifestCredentialUntrusted")}
+          </p>
+        )}
 
         {/* Proving the picture is registered is half the answer. This is the
             other half, three facts that are read together: what the holder said

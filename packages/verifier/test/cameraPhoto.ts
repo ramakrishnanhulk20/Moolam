@@ -1,4 +1,4 @@
-import { Builder } from "@contentauth/c2pa-node";
+import { Builder, type LocalSigner } from "@contentauth/c2pa-node";
 import sharp from "sharp";
 import { loadSigner } from "../src/c2pa.js";
 import { makeImage } from "./helpers.js";
@@ -25,6 +25,8 @@ export interface CameraPhotoOptions {
   exifThumbnail?: boolean;
   /** More assertions the camera signs, each as CBOR. */
   extra?: { label: string; data: Record<string, unknown> }[];
+  /** The camera's own signer. Left out, it is the development identity. */
+  signer?: LocalSigner;
 }
 
 /**
@@ -72,7 +74,7 @@ export async function cameraPhoto(seed: number, options: CameraPhotoOptions = {}
   }
 
   const destination: { buffer: Buffer | null } = { buffer: null };
-  builder.sign(loadSigner(), { buffer: picture, mimeType: "image/jpeg" }, destination);
+  builder.sign(options.signer ?? loadSigner(), { buffer: picture, mimeType: "image/jpeg" }, destination);
   if (destination.buffer === null) {
     throw new Error("the test camera signed nothing");
   }

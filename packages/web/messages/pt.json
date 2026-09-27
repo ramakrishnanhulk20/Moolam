@@ -422,6 +422,8 @@
     "staleIndex": "A cópia do registro que o Moolam tem é de {minutes} minutos atrás, então uma imagem registrada depois disso pode ainda não aparecer.",
     "manifestInvalid": "As Content Credentials deste arquivo falham na validação: o arquivo foi alterado depois de assinado, ou o registro foi copiado de outro arquivo. As impressões bateram mesmo assim.",
     "manifestUnreadable": "Este arquivo traz Content Credentials que não conseguimos ler, então não dá para dizer se são válidas. As impressões bateram mesmo assim.",
+    "manifestCredentialExpired": "A assinatura está intacta. O certificado que a criou já expirou.",
+    "manifestCredentialUntrusted": "A assinatura está intacta. O certificado que a criou não é um em que esta verificação confia.",
     "openAgent": "Agente {id}",
     "lookupFailed": "O registro não respondeu para esse id. Ele pode estar um ou dois blocos atrás.",
     "problemLabel": "A conferência não rodou",

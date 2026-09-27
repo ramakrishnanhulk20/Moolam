@@ -421,6 +421,8 @@
     "staleIndex": "La copia del registro que tiene Moolam es de hace {minutes} minutos, así que una imagen registrada desde entonces puede no aparecer todavía.",
     "manifestInvalid": "Las Content Credentials de este archivo no superan la validación: el archivo se cambió después de firmarlo, o el registro se copió desde otro archivo. Las huellas coinciden igualmente.",
     "manifestUnreadable": "Este archivo lleva unas Content Credentials que no pudimos leer, así que no podemos decir si son válidas. Las huellas coinciden igualmente.",
+    "manifestCredentialExpired": "La firma está intacta. El certificado que la creó ha caducado desde entonces.",
+    "manifestCredentialUntrusted": "La firma está intacta. El certificado que la creó no es uno en el que esta comprobación confíe.",
     "openAgent": "Agente {id}",
     "lookupFailed": "El registro no ha respondido para ese id. Puede ir uno o dos bloques por detrás.",
     "problemLabel": "La comprobación no se ejecutó",
