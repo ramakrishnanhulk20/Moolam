@@ -3,10 +3,12 @@
 Every real picture on the Moolam registry gets a Chainlink second opinion within minutes of being
 registered, and a re-check somebody asks for runs the same way, without anyone pressing anything.
 
-Today that only happens when the maintainer runs a local launch script by hand: each run opens the
-receiver with the deployer's key, broadcasts one simulated report per passport, and closes the
-receiver again. Fourteen pictures have a verdict that way and nothing has run since 2026-09-17. A
-picture registered on a judging day would sit there with an empty verdict card under it.
+Without the runner, that only happens when the maintainer runs Chainlink's simulator by hand with
+`--broadcast`. Each report goes through Chainlink's mock forwarder to one of the two
+`SimulationReceiver` contracts, the public one or the sealed one, and since 2026-09-27 nothing is
+opened or closed around a run: the receivers take a report only in a transaction signed by the CRE
+wallet. A picture registered on a judging day with nobody at the keyboard would sit there with an
+empty verdict card under it.
 
 This package is the same work, on a small Linux machine, every two minutes. It is a loop with no
 framework and no runtime dependencies: Node's own `fetch` for the index, the verify service and the
@@ -17,31 +19,50 @@ RPC, and `child_process` for the CRE CLI.
 This is the part that decides whether the runner is safe to leave alone, so it is written with the
 evidence rather than the conclusion.
 
+In short: since 2026-09-27 at 14:18 UTC every report the runner sends goes through Chainlink's mock
+forwarder to one of two `SimulationReceiver` contracts, one per workflow. They accept it only in a
+transaction signed by the CRE wallet, only for chain 143, only when it is newer than the last
+verdict that receiver took for the passport, and only when it is at most an hour ahead of the
+block. Nothing is opened before judging and nothing is closed after it.
+
 ### What the receiver actually checks
 
-`MoolamReceiver` `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` (retired 2026-09-26; since 2026-09-27 the workflows send to the two `SimulationReceiver` contracts named in their `config.json`, which need none of this section's owner transactions) inherits Chainlink's `ReceiverTemplate` unchanged
-(`packages/contracts/src/vendor/chainlink/ReceiverTemplate.sol`). `onReport(metadata, report)` does
-two things before the report is decoded:
+`SimulationReceiver` (`packages/contracts/src/SimulationReceiver.sol`) inherits Chainlink's
+`ReceiverTemplate` unchanged (`packages/contracts/src/vendor/chainlink/ReceiverTemplate.sol`).
+`onReport(metadata, report)` runs these checks in this order, and the first one that fails reverts:
 
-1. `msg.sender` must be the stored forwarder address.
-2. If any of the three identity fields is set, the template reads three values out of the
-   `metadata` bytes the forwarder passes: `workflowId` at offset 32, `workflowName` at offset 64,
-   `workflowOwner` at offset 74. Each set field must match. A name set without an author reverts
-   `WorkflowNameRequiresAuthorValidation`, so those two always move together.
+1. `msg.sender` must be the stored forwarder, the mock. Otherwise `InvalidSender`.
+2. The template reads three values out of the `metadata` bytes the forwarder passes: `workflowId`
+   at offset 32, `workflowName` at offset 64, `workflowOwner` at offset 74. Each must match its pin:
+   `InvalidWorkflowId`, `InvalidAuthor`, `InvalidWorkflowName`. A name set without an author
+   reverts `WorkflowNameRequiresAuthorValidation`, so those two always move together.
+3. `tx.origin` must be the sending wallet, fixed in the constructor with no setter. Otherwise
+   `WrongSendingWallet`. The mock forwarder is a public contract anyone can call, so the wallet
+   that signed the transaction is the one value an outsider cannot produce.
+4. The report's chain id must be this chain's, 143. Otherwise `WrongChain`.
+5. Its `executedAt` must be newer than the last one this receiver took for that passport.
+   Otherwise `StaleReport`.
+6. Its `executedAt` must be at most `MAX_FUTURE_SKEW`, one hour, past the block time. Otherwise
+   `ReportFromTheFuture`.
+
+Then it records the new `executedAt` and calls `attest` on the registry, which refuses any receiver
+the policy does not list.
 
 The pinned name is not the string. `setExpectedWorkflowName` takes `sha256(name)`, writes it as
 hex, and keeps the first ten characters as ASCII. `sha256("moolam-verifier")` begins `4b8c03df04`,
-so the pinned `bytes10` is `0x34623863303364663034`. Read from the live receiver on 2026-09-22:
+so the public pin is `0x34623863303364663034`; the sealed one, from `moolam-sealed-verifier`, is
+`0x64323036636163326334`, which is `d206cac2c4`. Read back from Monad mainnet after the deploy on
+2026-09-26, in `proofs/simulation-receivers.txt`:
 
-| Field | Today |
-| --- | --- |
-| forwarder | `0x76c9cf548b4179F8901cda1f8623568b58215E62`, the production KeystoneForwarder |
-| expected author | `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, the CRE wallet |
-| expected workflow name | `0x34623863303364663034`, which is `4b8c03df04` |
-| expected workflow id | unset |
-
-Then `_processReport` checks that the report's chain id is 143 and that its `executedAt` is newer
-than the last one this receiver recorded for that passport, and calls `attest` on the registry.
+| Field | Public receiver | Sealed receiver |
+| --- | --- | --- |
+| address | `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` | `0x52b8fE549B432920eeB061c26cAc5c2D527657f6` |
+| forwarder | `0x9eF6468C5f37b976E57d52054c693269479A784d`, the mock | the same |
+| sending wallet | `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, the CRE wallet | the same |
+| expected author | `0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa` | the same |
+| expected workflow name | `0x34623863303364663034` | `0x64323036636163326334` |
+| expected workflow id | `0x1111111111111111111111111111111111111111111111111111111111111111` | the same |
+| listed by the policy | 2026-09-27, tx `0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb` | 2026-09-27, tx `0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d` |
 
 ### What the simulator stamps in those fields
 
@@ -66,12 +87,19 @@ And the forwarder is the CLI's own answer. `cre workflow supported-chains` print
 `monad-mainnet`, a forwarder of `0x76c9cf54…15E62` and a mock forwarder of `0x9eF6468C…9A784d`.
 That second address answers `typeAndVersion()` with `MockKeystoneForwarder 1.0.0`.
 
-So the author does not vary per run, and the name the simulator stamps is our real one. The pin can
-hold. It does not have to be cleared.
+So the author and the id do not vary per run, and the name the simulator stamps is our real one.
+That is why both receivers pin the author to `0xaAaA...aAaA` and the id to `0x1111...1111`: they are
+what every simulated report carries, and they hold for the whole judging window.
 
 ### The narrowest state that works
 
-Two owner transactions from the deployer wallet, sent once before judging opens:
+Today, no owner transaction at all, before judging or after it. The two receivers were deployed,
+pinned and queued on 2026-09-26, and the policy listed them on 2026-09-27 once its public 24 hour
+wait had run. Nothing the runner does needs the deployer key.
+
+A record, not a procedure: until 2026-09-26 the workflow wrote to the retired `MoolamReceiver`
+`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`, which had to be opened for a judging window with the
+owner transactions below and closed again after, in reverse. None of them is to be run again.
 
 ```bash
 # 1. point the receiver at the mock forwarder (a record: this receiver is retired since 2026-09-26)
@@ -93,51 +121,48 @@ cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setExpectedWorkflowId(byte
   --rpc-url "$MONAD_MAINNET_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY"
 ```
 
-Step 1 before step 2 leaves no dangerous moment: between them the receiver is on the mock forwarder
-but still pinned to the CRE wallet as author, which refuses every simulated report.
-
-Putting it back afterwards runs the same script with `CRE_WALLET_ADDRESS` set to the CRE wallet
-again, then `setExpectedWorkflowId(0x0)`, then the forwarder back to
-`0x76c9cf548b4179F8901cda1f8623568b58215E62`. Identity first and the forwarder last, so the door is
-never wider than it was a moment before.
-
 ### What that keeps out, and what it does not
 
-Being honest about the size of it. The pin narrows the door. It does not lock it.
+Being honest about the size of it. The door has one key, and the VM holds it.
 
-It keeps out any workflow not named `moolam-verifier`. That is the whole of the protection, because
-the other two fields are placeholders the CLI puts there for everybody. And the name is public:
-`packages/workflow/moolam-verifier/workflow.yaml` is in this repository. Anyone who reads it can
-name their own workflow the same and produce a report whose three identity fields match ours
-exactly. The mock forwarder is a public contract owned by Chainlink, not by us, and the signatures
-on a simulated report come from the simulator's own local keys.
+It keeps out a copy of this workflow. The three identity stamps are no protection on their own:
+two are placeholders the CLI puts there for everybody, and the name is public in
+`packages/workflow/moolam-verifier/workflow.yaml`. The mock forwarder is a public contract owned by
+Chainlink, and the signatures on a simulated report come from the simulator's own local keys. So
+anyone who installs the CRE CLI, copies this workflow and points its `config.json` at our receiver
+produces a report that passes checks 1 and 2 above. It stops at check 3, `WrongSendingWallet`,
+because their transaction is signed by their own wallet, not the CRE wallet. The mock does not pass
+that refusal on: the transaction succeeds, its `ReportProcessed` event says false, and no
+`VerificationAttested` log appears. On a fork of Monad mainnet the Monsoon report sent this way
+wrote an attestation from the CRE wallet, nothing from a stranger, and nothing on a replay
+(`proofs/simulation-receivers.txt`). A caller who skips the mock stops at `InvalidSender`, and a
+report sent to the other workflow's receiver stops at its name pin.
 
-So, plainly: **while the receiver points at the mock forwarder, anyone who installs the CRE CLI,
-copies this workflow, names it `moolam-verifier`, points its `config.json` at our receiver and pays
-about 0.102 MON of gas can append an attestation of their choosing to any passport in the
-registry.** `VerifierPolicy` does not stop it, because our receiver is the one on its list. What is
-left is inside the report: the chain id must be 143, and `executedAt` must be newer than the last
-one recorded for that passport, which makes it one forged attestation per passport per run rather
-than a flood. Attestations are appended, never replaced, so a forged one would sit beside the
-honest one on the passport page with the same delivery label.
+It does not keep out:
 
-That exposure already exists for the few minutes each by-hand run lasts. The runner turns a few
-minutes three times into the whole judging window. That is the trade, with the number in front of
-it.
+- **The holder of the CRE key.** That key is on the VM, because the CLI signs every report
+  transaction with it (`CRE_ENV_FILE` below). Whoever holds it can append an attestation of their
+  choosing to any passport. What is left is inside the report: chain 143, an `executedAt` newer than
+  the last one for that passport and at most an hour ahead, so one forged verdict per passport per
+  newer timestamp rather than a flood, and a bad floor locks a passport out for at most an hour.
+  Attestations are appended, never replaced, so a forged one would sit beside the honest one on the
+  passport page with the same delivery label.
+- **The owner key.** The owner can re-point the forwarder and the pins, though never the sending
+  wallet. It is the deployer wallet, and it is not on the VM.
+- **One machine's word.** A simulated verdict has no network consensus behind it, which is what the
+  passport page says under each one.
 
 What would change it, in the order worth trying:
 
 1. **Deploy access from Chainlink.** A deployed workflow writes through the production forwarder
-   and the receiver keeps its real pin, with no open window at all. It also removes the login
-   problem below. This is the only thing that closes the door rather than narrowing it.
+   with node consensus behind every report, and no single wallet can write a verdict. It also
+   removes the login problem below. This is the only thing that takes the key out of the picture.
 2. **A watcher.** The runner reads back the attestations on every passport it handled and shouts
-   about any it did not write. Not built here: it needs a registry read per passport and the
-   queue's own record of what was asked for. It is the first follow-up.
-3. **Keep the window to the judging days.** Two transactions to open, three to close.
-4. **Do not put the deployer key on the VM.** The other shape, opening and closing the receiver
-   around each run the way the launch scripts do, needs that key on a rented box, and a key that
-   can re-point the receiver and spend the treasury is a worse thing to leave lying about than the
-   window is.
+   about any it did not write, which is how a leaked CRE key would be noticed. Not built here: it
+   needs a registry read per passport and the queue's own record of what was asked for. It is the
+   first follow-up.
+3. **The kill switch.** The policy owner can take either receiver off the list at once with
+   `removeReceiver`, one transaction per receiver, from the deployer wallet, never from the VM.
 
 ## What the runner does, in order
 

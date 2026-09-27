@@ -1,5 +1,6 @@
-# The name is what the second receiver, 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A, is pinned to,
-# so a verdict this workflow writes lands there and nowhere else, and the public receiver refuses it.
+# The name is what the sealed SimulationReceiver, 0x52b8fE549B432920eeB061c26cAc5c2D527657f6, is
+# pinned to (since 2026-09-27, beside the mock forwarder and the CRE wallet), so a verdict this
+# workflow writes lands there and nowhere else, and the public receiver refuses it.
 monad-mainnet:
   user-workflow:
     workflow-name: "moolam-sealed-verifier"

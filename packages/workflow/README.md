@@ -52,8 +52,11 @@ themselves, and they have to agree with each other before anything is signed.
    re-encode to one node is fine as long as every node lands on the same answer.
 6. **Write.** The verdict is ABI encoded as
    `(uint256 chainId, uint64 executedAt, bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed)`,
-   signed into a report, and delivered by Chainlink's KeystoneForwarder to `MoolamReceiver`, which
-   calls `attest` on the registry. `chainId` and `executedAt` are inside the signed payload because
+   signed into a report, and delivered to a receiver that calls `attest` on the registry. Today every
+   run is a simulator run, so Chainlink's mock forwarder delivers it to the public
+   `SimulationReceiver` `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` (see "Where a broadcast lands"
+   below). A deployed workflow would go through the production KeystoneForwarder instead, to a
+   receiver pointed at it. `chainId` and `executedAt` are inside the signed payload because
    Chainlink's own guidance says a report can be replayed later or on another chain; the receiver
    rejects a wrong chain id and any timestamp that is not newer than the last one for that passport.
 
@@ -85,9 +88,11 @@ enclave, and only the verdict leaves it.
 7. **Fingerprint.** `../moolam-verifier/decode.ts` and `../moolam-verifier/phash.ts`, imported, not
    copied. Ten bits or fewer from the stored fingerprint is a match.
 8. **The crossing.** `runtime.usingTheDons()`, one report over the same six fields, written to the
-   second receiver `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` with a gas limit of 1,000,000. That
-   receiver is pinned to the name `moolam-sealed-verifier`, so the chain itself says which workflow
-   wrote each verdict.
+   sealed `SimulationReceiver` `0x52b8fE549B432920eeB061c26cAc5c2D527657f6` with a gas limit of
+   1,000,000. That receiver is pinned to the name `moolam-sealed-verifier`, so the chain itself says
+   which workflow wrote each verdict. It has taken the sealed workflow's reports since 2026-09-27; the
+   first two private verdicts went to `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`, retired
+   2026-09-26.
 
 Three HTTP calls per run (document, link, bytes) against CRE's 15, and one to three contract reads.
 The log lines keep the public workflow's shapes, `recomputed 0x.. distance N matched true` and
@@ -156,29 +161,35 @@ cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive \
 Add `--broadcast` to send the attestation for real. The transaction is paid for by the CRE wallet
 `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`.
 
-### Before and after a broadcast: switch the receiver's forwarder
+### Where a broadcast lands
 
-Simulation signs reports with a local mock forwarder, while the live network uses the production
-one, and they are different addresses on Monad mainnet. `MoolamReceiver` only accepts calls from
-the forwarder it is pointed at, so the owner has to move it for the duration of the run. Both
-commands are sent by the deployer wallet, which owns the receiver.
+A simulated run's report goes through Chainlink's `MockKeystoneForwarder`
+`0x9eF6468C5f37b976E57d52054c693269479A784d` to the receiver named in the workflow's `config.json`.
+Since 2026-09-27 at 14:18 UTC those are two `SimulationReceiver` contracts
+(`packages/contracts/src/SimulationReceiver.sol`), both on the policy's list. Nothing has to be
+switched before or after a run. Pins as read back after the deploy, in
+`proofs/simulation-receivers.txt`:
 
-```bash
-# before the simulate --broadcast run: point the receiver at the simulation forwarder
-cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setForwarderAddress(address)" \
-  0x9eF6468C5f37b976E57d52054c693269479A784d \
-  --rpc-url $MONAD_MAINNET_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
+| | `moolam-verifier` | `moolam-sealed-verifier` |
+| --- | --- | --- |
+| receiver | `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` | `0x52b8fE549B432920eeB061c26cAc5c2D527657f6` |
+| forwarder | the mock, `0x9eF6468C5f37b976E57d52054c693269479A784d` | the same |
+| sending wallet, fixed with no setter | the CRE wallet, `0xC79620AF233a4434b03f6B57239F8A9E71B3C178` | the same |
+| workflow author | `0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa`, what the simulator stamps | the same |
+| workflow name | `0x34623863303364663034` | `0x64323036636163326334` |
+| workflow id | `0x1111111111111111111111111111111111111111111111111111111111111111`, what the simulator stamps | the same |
 
-# after the run: put the production forwarder back
-cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setForwarderAddress(address)" \
-  0x76c9cf548b4179F8901cda1f8623568b58215E62 \
-  --rpc-url $MONAD_MAINNET_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
-```
+A report is refused unless it came through the mock, carries those three stamps, sits in a
+transaction signed by the CRE wallet, names chain 143, is newer than the last verdict that receiver
+took for the passport, and is at most an hour ahead of the block. The mock does not pass a refusal
+on: the transaction still succeeds, its `ReportProcessed` event says false, and no
+`VerificationAttested` log appears. The registry's `VerifierPolicy` is the second lock: it only
+accepts `attest` from receivers on its list.
 
-Leaving the receiver on the simulation forwarder would let anyone holding that mock forwarder push
-an attestation, so the second command is not optional. The registry's `VerifierPolicy` is the
-second lock: it only accepts `attest` from receivers on its list, so even a forwarder mistake
-cannot forge a passport record.
+Before 2026-09-27 both workflows wrote to `MoolamReceiver` contracts, and the deployer wallet
+pointed the public one, `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`, at the mock forwarder before
+each broadcast and back at the production one after. Both came off the policy's list on 2026-09-26,
+and every verdict they wrote stays on chain under their addresses.
 
 ## What this does not prove
 

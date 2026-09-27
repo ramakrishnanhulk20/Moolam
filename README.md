@@ -677,6 +677,22 @@ OpenZeppelin's unmodified ERC-721 surface.
 | `lastExecutedAt(passportId)`, `REGISTRY()`, `getForwarderAddress()`, `getExpectedAuthor()`, `getExpectedWorkflowName()`, `getExpectedWorkflowId()` | Anyone | What the receiver is pinned to, and the newest report accepted per passport | none |
 | `setForwarderAddress` / `setExpectedAuthor` / `setExpectedWorkflowName` / `setExpectedWorkflowId` | Owner | Chainlink's template setters. Each emits an event | `InvalidForwarderAddress`, `WorkflowNameRequiresAuthorValidation` |
 
+### SimulationReceiver
+
+Two of them since 2026-09-27, one per workflow: public `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`
+and sealed `0x52b8fE549B432920eeB061c26cAc5c2D527657f6`. The same Chainlink template as
+`MoolamReceiver`, plus one wallet fixed at deployment that must sign every report transaction.
+
+| Function | Who may call | What it does | Notable reverts |
+| --- | --- | --- | --- |
+| `onReport(metadata, report)` | Chainlink's MockKeystoneForwarder, inside a transaction signed by `SENDING_WALLET` | Checks, in order, the forwarder, the pinned workflow id, author and name, the wallet that signed the transaction, the chain id, a per-passport timestamp that must rise, and that the timestamp is at most an hour ahead of the block. Then records it and calls `attest` | `InvalidSender`, `InvalidWorkflowId`, `InvalidAuthor`, `InvalidWorkflowName`, `WrongSendingWallet`, `WrongChain`, `StaleReport`, `ReportFromTheFuture` |
+| `lastExecutedAt(passportId)`, `REGISTRY()`, `SENDING_WALLET()`, `MAX_FUTURE_SKEW()`, `getForwarderAddress()`, `getExpectedAuthor()`, `getExpectedWorkflowName()`, `getExpectedWorkflowId()` | Anyone | What the receiver is pinned to, and the newest report accepted per passport. `MAX_FUTURE_SKEW` is 3600 seconds | none |
+| `setForwarderAddress` / `setExpectedAuthor` / `setExpectedWorkflowName` / `setExpectedWorkflowId` | Owner | Chainlink's template setters. Each emits an event. None of them, and no other function, changes `SENDING_WALLET` or `REGISTRY` | `OwnableUnauthorizedAccount` |
+
+The constructor takes the forwarder, the registry and the sending wallet, and reverts
+`InvalidForwarderAddress` or `ZeroAddress` on a zero address. Full record in
+[proofs/simulation-receivers.txt](proofs/simulation-receivers.txt).
+
 ### MoolamConsent
 
 Immutable, no owner, append only, not payable. Where a passport's holder states whether AI may use

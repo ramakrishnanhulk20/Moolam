@@ -4,7 +4,14 @@ import path from "node:path";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
-import { BaseError, ContractFunctionRevertedError, HttpRequestError, type Abi, type Hex } from "viem";
+import {
+  BaseError,
+  ContractFunctionRevertedError,
+  HttpRequestError,
+  encodeErrorResult,
+  type Abi,
+  type Hex,
+} from "viem";
 import consentAbiJson from "../../contracts/abi/MoolamConsent.json";
 import registryAbiJson from "../../contracts/abi/MoolamRegistry.json";
 import receiverAbiJson from "../../contracts/abi/MoolamReceiver.json";
@@ -84,6 +91,36 @@ describe("the attacks the page can send", () => {
       expect(names).toContain(attack.expected);
     },
   );
+
+  it("aims the receiver row at the public simulation receiver and expects its first refusal", () => {
+    const row = ATTACKS.find((attack) => attack.id === "report-from-fake-forwarder");
+    expect(row).toMatchObject({
+      contract: "SimulationReceiver",
+      address: "0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95",
+      fn: "onReport",
+      from: "0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7",
+      expected: "InvalidSender",
+    });
+    // A caller that is not the mock forwarder meets the template's first revert
+    // before the pins or the sending wallet are read.
+    const template = readFileSync(
+      path.join(repoRoot, "packages/contracts/src/vendor/chainlink/ReceiverTemplate.sol"),
+      "utf8",
+    );
+    const onReport = template.slice(template.indexOf("function onReport("));
+    expect(onReport.match(/revert (\w+)\(/)?.[1]).toBe("InvalidSender");
+    const receiver = readFileSync(path.join(repoRoot, "packages/contracts/src/SimulationReceiver.sol"), "utf8");
+    expect(receiver).toContain("contract SimulationReceiver is ReceiverTemplate");
+
+    const answer = encodeErrorResult({
+      abi: abis.receiver,
+      errorName: "InvalidSender",
+      args: ["0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7", "0x9eF6468C5f37b976E57d52054c693269479A784d"],
+    });
+    expect(refusalLine(decodeRefusal(answer, abis.receiver))).toBe(
+      "InvalidSender(0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7, 0x9eF6468C5f37b976E57d52054c693269479A784d)",
+    );
+  });
 
   it("sends every call from an address that is not the app's own", () => {
     // A key for any of these would defeat the point: the refusal has to be

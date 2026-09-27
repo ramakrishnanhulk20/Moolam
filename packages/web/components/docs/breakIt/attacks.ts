@@ -120,7 +120,7 @@ function passportInput(over: Record<string, unknown>): Record<string, unknown> {
 
 const CONSENT_TEST = "packages/contracts/test/MoolamConsent.t.sol";
 const REGISTRY_TEST = "packages/contracts/test/MoolamRegistry.t.sol";
-const RECEIVER_TEST = "packages/contracts/test/MoolamReceiver.t.sol";
+const SIMULATION_RECEIVER_TEST = "packages/contracts/test/SimulationReceiver.t.sol";
 
 const CONSENT_SAVED = "proofs/consent-attacks.txt";
 const CONSENT_COPY = "passport.consent.failure";
@@ -292,8 +292,15 @@ export const ATTACKS: readonly Attack[] = [
   {
     id: "report-from-fake-forwarder",
     what: "Deliver a well formed Chainlink report from the wrong sender",
-    contract: "MoolamReceiver",
-    address: addresses.receiver,
+    // Aimed at the public receiver the workflow writes to since 2026-09-27.
+    // Its first check is the template's: msg.sender must be the mock forwarder
+    // 0x9eF6...784d. The outsider is not, so the call stops there as
+    // InvalidSender(outsider, mock), before the metadata pins or the sending
+    // wallet check are read. The "receiver" ABI is MoolamReceiver's, which
+    // carries the same InvalidSender(address,address) from the same template.
+    // The saved run is this check against the retired 0x0d69 receiver.
+    contract: "SimulationReceiver",
+    address: addresses.simulationReceiver,
     abi: "receiver",
     fn: "onReport",
     from: OUTSIDER,
@@ -304,7 +311,7 @@ export const ATTACKS: readonly Attack[] = [
     answer: "refused",
     reverts: "none",
     copyIn: null,
-    test: { file: RECEIVER_TEST, name: "test_aReportFromAnyOtherAddressIsRefused" },
+    test: { file: SIMULATION_RECEIVER_TEST, name: "test_theSendingWalletCannotSkipTheForwarder" },
     saved: "docs/security/attacks/report-from-fake-forwarder.txt",
   },
   {
