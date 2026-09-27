@@ -39,7 +39,7 @@ the boot loudly and names the variable.
 
 | Variable | Required | Where the value comes from |
 | --- | --- | --- |
-| `PASSPORT_SOURCE` | yes, set `envio` | Defaults to `json`, which reads a local file. Production reads the chain through Envio |
+| `PASSPORT_SOURCE` | yes, set `envio` | Defaults to `json`, which reads a local file. Production reads the chain through Envio: with `NODE_ENV=production` any other value refuses to boot and names this variable, because the image holds no local file and an empty register would call every picture unregistered |
 | `ENVIO_GRAPHQL_URL` | yes when source is `envio` | The GraphQL endpoint of the Envio Cloud deployment for the Moolam indexer |
 | `VERIFIER_PORT` | no | The image sets 4010. Override only if the host insists on its own port |
 | `PASSPORT_SOURCE_PATH` | no | Only read when `PASSPORT_SOURCE` is `json`. Leave unset in production |

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { readAnswer, percent, verifyProblem, type Answer, type Problem } from "@/components/verify/answer";
+import { StaleIndex } from "@/components/verify/StaleIndex";
 import { checkImage, type RefusalCode } from "@/lib/upload/checkImage";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
@@ -207,23 +208,6 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
 
       <p className="mt-4 break-all font-mono text-[11px] text-text-faint">{name}</p>
     </div>
-  );
-}
-
-/**
- * The verify card's line for an answer matched against a copy of the register the service itself
- * called stale, in the card's own words (verify.staleIndex): "not this picture" or "a different
- * record" from an old copy may only mean a registration it has not seen yet.
- */
-function StaleIndex({ minutes }: { minutes: number | undefined }) {
-  const v = useTranslations("verify");
-  if (minutes === undefined) {
-    return null;
-  }
-  return (
-    <p data-stale-index className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
-      {v("staleIndex", { minutes })}
-    </p>
   );
 }
 

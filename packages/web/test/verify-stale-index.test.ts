@@ -25,9 +25,13 @@ import { verifyResponseSchema } from "@/lib/verifier/client";
  * counted from the service's loadedAt; drawn nowhere when the service calls the copy current or
  * predates the field.
  *
+ * The line itself is components/verify/StaleIndex.tsx, one component shared by this card, the
+ * passport page's check and the story's try panel, so the words checked here in every language are
+ * the words all three draw.
+ *
  * Does NOT cover how the service decides the copy is stale (the verifier's stale-index test), nor
- * the other screens that read the same answer (the home drop, the passport page's check), which
- * draw no such line yet.
+ * the other screens that show the same answer (the home drop, the passport page's check, the try
+ * panel): test/stale-index-screens.test.ts draws each of those, in English.
  */
 
 vi.mock("@/lib/i18n/routing", () => ({

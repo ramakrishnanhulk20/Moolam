@@ -6,6 +6,7 @@ import { probe, progress, resetProbe, type ProbeState } from "@/components/story
 import { Picture } from "@/components/passport/Picture";
 import { DisputeLine } from "@/components/verify/DisputeLine";
 import { readAnswer } from "@/components/verify/answer";
+import { StaleIndex } from "@/components/verify/StaleIndex";
 import { fileFromSample } from "@/components/verify/sample";
 import { pictureSources } from "@/lib/images";
 import { Link } from "@/lib/i18n/routing";
@@ -383,7 +384,7 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
         <p className="font-display text-[clamp(1.6rem,3vw,2.4rem)] font-semibold leading-[1] tracking-[-0.04em] text-failed">
           {t("noMatch")}
         </p>
-        <StaleIndex minutes={read.staleMinutes} />
+        <StaleIndex minutes={read.staleMinutes} className="mt-2" />
         <p className="mt-2 break-all font-mono text-[11px] text-text-faint">{name}</p>
         <p className="mt-2 text-sm leading-relaxed text-text-muted">{t("noMatchBody")}</p>
       </div>
@@ -400,7 +401,7 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
           {answer.result.exact !== null ? t("exact") : t("match")}
         </span>
       </div>
-      <StaleIndex minutes={read.staleMinutes} />
+      <StaleIndex minutes={read.staleMinutes} className="mt-2" />
       {/* What was matched, by its own name. The registry answers with a hex
           word, which tells a reader nothing, so the picture's pinned title is
           read after the answer lands and takes its place the moment it does. */}
@@ -432,22 +433,5 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
 
       {!answer.manifest.present && <p className="mt-3 text-sm leading-relaxed text-text-faint">{t("noManifest")}</p>}
     </div>
-  );
-}
-
-/**
- * The verify card's line for an answer matched against a copy of the register the service itself
- * called stale, in the card's own words (verify.staleIndex), so a judge who drops a copy here is
- * told what a reader of the verify page is told: a miss from an old copy is not the last word.
- */
-function StaleIndex({ minutes }: { minutes: number | undefined }) {
-  const v = useTranslations("verify");
-  if (minutes === undefined) {
-    return null;
-  }
-  return (
-    <p data-stale-index className="mt-2 max-w-[44ch] text-xs leading-relaxed text-text-faint">
-      {v("staleIndex", { minutes })}
-    </p>
   );
 }

@@ -13,6 +13,7 @@ import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { RecheckRequest } from "@/components/passport/RecheckRequest";
 import { DisputeLine } from "./DisputeLine";
+import { StaleIndex } from "./StaleIndex";
 import { SecondOpinion, hasSecondOpinion } from "./SecondOpinion";
 import { agentChipId, percent, upheldAncestor, type Answer, type Problem } from "./answer";
 import type { MatchedPassport } from "./lookup";
@@ -408,23 +409,6 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
         </div>
       )}
     </div>
-  );
-}
-
-/**
- * The service matched against a copy of the register that has not refreshed for a while, so a
- * picture registered since may be missing from it. Said once, quietly, under the verdict it
- * qualifies, and only when the service itself called the copy stale.
- */
-function StaleIndex({ minutes }: { minutes: number | undefined }) {
-  const t = useTranslations("verify");
-  if (minutes === undefined) {
-    return null;
-  }
-  return (
-    <p data-stale-index className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
-      {t("staleIndex", { minutes })}
-    </p>
   );
 }
 

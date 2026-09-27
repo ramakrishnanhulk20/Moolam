@@ -3,13 +3,15 @@
 // passport that can never be registered.
 // The C2PA signer is made to refuse this one file, so the route runs its real fallback branch.
 // Privy, the chain reads and Pinata are stubbed, the way packages/verifier/test/edit.test.ts
-// stubs them.
+// stubs them: the receipt carries the registry's full PassportRegistered event and readPassport
+// answers from the stub, so no request here leaves the machine (test/network-guard.ts fails any
+// that tries).
 // Does NOT cover the signed path (a fresh manifest changes the bytes, so two uploads of one
 // picture get two ids), Privy actually signing, or the registry refusing the duplicate itself.
 // The registry's own refusal is proven on chain by packages/agents/scripts/attack-pass-2.ts.
 
 import { SignJWT, generateKeyPair } from "jose";
-import { decodeFunctionData, getAddress, toEventSelector, type Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
 
@@ -36,6 +38,7 @@ const stubs = vi.hoisted(() => ({
   estimateEditGas: vi.fn(),
   send: vi.fn(),
   receipt: vi.fn(),
+  readPassport: vi.fn(),
 }));
 
 vi.mock("@moolam/verifier/src/edit/signers.js", async (importOriginal) => ({
@@ -57,6 +60,11 @@ vi.mock("@moolam/verifier/src/edit/send.js", async (importOriginal) => ({
   awaitReceipt: stubs.receipt,
 }));
 
+vi.mock("@moolam/verifier/src/unseal.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@moolam/verifier/src/unseal.js")>()),
+  readPassport: stubs.readPassport,
+}));
+
 vi.mock("@moolam/verifier/src/generate/privy.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@moolam/verifier/src/generate/privy.js")>()),
   privy: () => ({}),
@@ -76,8 +84,7 @@ vi.mock("@moolam/verifier/src/c2pa.js", async (importOriginal) => {
 });
 
 const { buildServer } = await import("@moolam/verifier/src/server.js");
-const { makeImage } = await import("@moolam/verifier/test/helpers.js");
-const { registryEditAbi } = await import("@moolam/verifier/src/edit/registry.js");
+const { makeImage, registeredEventLog } = await import("@moolam/verifier/test/helpers.js");
 const { contentIdOf } = await import("@moolam/verifier/src/ipfs/pinata.js");
 const { env } = await import("@moolam/verifier/src/env.js");
 
@@ -86,21 +93,16 @@ const OWNER = getAddress("0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6");
 const PARENT = `0x${"ab".repeat(32)}` as Hex;
 const HASH = `0x${"11".repeat(32)}` as Hex;
 const USER = "did:privy:attack-pass-2-duplicate";
-const PASSPORT_REGISTERED = toEventSelector(
-  "PassportRegistered(bytes32,address,uint256,bytes32,uint64,bytes32,bytes32,uint8,uint8,string)",
-);
 
 /**
- * The receipt of a send whose appendEdit ran: the route believes an edit only when the registry's
- * own event for the child it sent is in the logs, so the event names the child from the calldata.
+ * The receipt of a send whose appendEdit ran. The route believes an edit only when the registry's
+ * own event for the child it sent is in the logs, decoded in full: the id, the creator and the
+ * parent must all match (V95), so the event is built from the calldata the way the verifier's own
+ * tests build it.
  */
-async function landedReceipt(): Promise<{ status: "success"; logs: { address: Hex; topics: Hex[] }[] }> {
+async function landedReceipt(): Promise<{ status: "success"; logs: { address: Hex; topics: Hex[]; data: Hex }[] }> {
   const sent = stubs.send.mock.lastCall?.[2] as { data: Hex };
-  const [input] = decodeFunctionData({ abi: registryEditAbi, data: sent.data }).args as unknown as [{ exactHash: Hex }];
-  return {
-    status: "success",
-    logs: [{ address: env.MOOLAM_REGISTRY_ADDRESS as Hex, topics: [PASSPORT_REGISTERED, input.exactHash] }],
-  };
+  return { status: "success", logs: [registeredEventLog(env.MOOLAM_REGISTRY_ADDRESS as Hex, sent.data)] };
 }
 
 let signing: CryptoKey;
@@ -158,11 +160,12 @@ describe("the same fallback bytes posted twice", () => {
     verifying = pair.publicKey;
     picture = await makeImage(21);
 
-    const realFetch = globalThis.fetch;
+    // Anything but the Pinata upload goes on to the network guard, which fails the test.
+    const guarded = globalThis.fetch;
     vi.stubGlobal("fetch", async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const url = input instanceof Request ? input.url : String(input);
       if (url !== UPLOAD_URL) {
-        return await realFetch(input, init);
+        return await guarded(input, init);
       }
       pins += 1;
       const file = (init?.body as FormData).get("file") as File;
@@ -196,6 +199,9 @@ describe("the same fallback bytes posted twice", () => {
     stubs.estimateEditGas.mockReset().mockResolvedValue(420_000n);
     stubs.send.mockReset().mockResolvedValue({ hash: HASH, sponsored: true, transactionId: "privy-tx-1" });
     stubs.receipt.mockReset().mockImplementation(landedReceipt);
+    // Only read when the receipt shows no child. A chain that holds nothing for it keeps a missing
+    // event a failure here, instead of a quiet read of the live registry.
+    stubs.readPassport.mockReset().mockResolvedValue(undefined);
   });
 
   it("answers 409 already-registered on the second, before a single byte is pinned", async () => {

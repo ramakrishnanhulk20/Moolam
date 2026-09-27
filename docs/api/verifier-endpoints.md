@@ -486,6 +486,7 @@ and the paid verification still comes back `200`.
 | --- | --- |
 | `200` | Paid and matched. The settlement receipt rides in the `PAYMENT-RESPONSE` header |
 | `402` | No payment, or the facilitator refused this one when it checked it, before anything was matched. The terms ride in the base64 `PAYMENT-REQUIRED` header, whose `error` field carries the refusal, and the JSON body says in words what to do next. At settlement a refusal answers `402` only on the second ask, and only when the chain shows the payment was not spent, see below. A payment that already bought an answer about another file goes through this same payment check, as a payment this service never saw would, so the answer never says which file it was for; it is never served for the other file |
+| `402` | `{ "error": "payment-unreadable", "reason": "..." }`. The payment header is there, and this service cannot read a payer, a nonce and every signed field from it as strings. It is refused before the upload is read and before the facilitator hears of it, because a payment the in-flight mark and the answer ledger cannot be keyed on could otherwise buy several answers. Nothing was checked or charged: pay with an x402 client, which signs every authorisation field as a string, and send it again |
 | `400`, `403`, `413` | Same as `/verify` |
 | `404` | `X402_ENABLED` is not `true` |
 | `429` | Over 60 requests in a minute |
