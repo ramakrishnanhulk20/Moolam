@@ -809,10 +809,10 @@ headroom on top of Monad's 10 MON reserve balance, which every account has to ke
 ```
 Moolam/
 ├── packages/
-│   ├── contracts/          Solidity, Foundry. The four contracts, 182 tests, deploy and proof scripts
-│   │   ├── src/            MoolamRegistry, VerifierPolicy, MoolamReceiver, MoolamConsent, the vendored Chainlink template
+│   ├── contracts/          Solidity, Foundry. Five contracts, 215 tests, deploy and proof scripts
+│   │   ├── src/            MoolamRegistry, VerifierPolicy, MoolamReceiver, SimulationReceiver, MoolamConsent, the vendored Chainlink template
 │   │   ├── test/           unit, fuzz, invariant and mainnet fork suites
-│   │   ├── script/         Deploy, ConfigureReceiver, RegisterAgent, LiveProof
+│   │   ├── script/         Deploy, the receiver deploys and listings, ConfigureReceiver, RegisterAgent, LiveProof
 │   │   ├── abi/            the four ABIs the app and the indexer read
 │   │   └── deployments/    monad-mainnet.json, the source of truth for every script
 │   │
@@ -824,7 +824,9 @@ Moolam/
 │   │
 │   ├── indexer/            Envio HyperIndex V3: passports, edit trees, tallies, disputes, trust scores
 │   │
-│   ├── workflow/           The Chainlink CRE workflow that re-fetches the picture and recomputes the fingerprint
+│   ├── workflow/           The two Chainlink CRE workflows, public and sealed, that re-fetch the picture and recompute the fingerprint
+│   │
+│   ├── recheck-runner/     The runner on its own server that runs those workflows for new passports and sends each verdict
 │   │
 │   └── web/                The Next.js app: passports, explore, agents, the studio, disputes, docs
 │       ├── app/[locale]/   home, verify, studio, explore, agents, passport, agent, resolve, docs
@@ -928,6 +930,12 @@ service and the sealed receiver that send no transaction. None got through where
 been refused.
 `npm run attack:pass4` in `packages/agents` and `npx vitest run test/attacks-private.test.ts` in
 `packages/verifier`.
+
+Besides the attacks, the code went through repeated AI review: one prompt, run again and again over
+each part until a pass found nothing new at medium or high. The contracts took 2 passes, the
+re-check runner and its Chainlink CRE workflows 3, and the verify service 11, which found and fixed
+120 issues, 4 of them high. Every pass, its counts by severity and the commits that fixed each
+finding are in [proofs/review-passes.txt](proofs/review-passes.txt).
 
 ### What Moolam does not defend against
 
