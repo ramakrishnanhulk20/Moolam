@@ -1497,7 +1497,8 @@
       "billedExact": "{fee} MON exactos.",
       "wouldHaveCost": "A ti te habría costado {fee} MON.",
       "cameraKept": "El registro propio de tu cámara se conserva, sin su ubicación ni su número de serie.",
-      "cameraDropped": "El registro propio de tu cámara se quitó, porque su ubicación no se podía sacar limpiamente."
+      "cameraDropped": "El registro propio de tu cámara se quitó, porque su ubicación no se podía sacar limpiamente.",
+      "credentialsKept": "Las Content Credentials anteriores de este archivo se conservan dentro de las de Moolam, sin ubicación ni número de serie."
     },
     "passports": {
       "heading": "Tus imágenes",

@@ -382,8 +382,10 @@ export interface EmbedOptions {
  * source type is given with any action but "c2pa.created" or a parent with
  * it, when the fingerprint is the wrong size, when the training statement is
  * not one this service may write, SignerUnavailable when no signing identity
- * can be resolved or the signing worker failed, and SignerRefusedFile when the
- * C2PA library rejects this container, the parent, or one of its redactions.
+ * can be resolved or the signing worker failed, SignerRefusedFile when the
+ * C2PA library rejects this container, the parent, or one of its redactions,
+ * and FingerprintFault when reading the parent's store ran past
+ * READ_MANIFEST_TIMEOUT_MS, which is this host being slow and not the parent.
  */
 export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<Buffer> {
   if (bytes.length === 0) {
@@ -571,18 +573,27 @@ function signingFailure(answer: Exclude<SigningAnswer, { signed: Uint8Array }>):
   if (answer.kind === "refused") {
     return new SignerRefusedFile(answer.error);
   }
+  // The worker gave up reading the parent's store: this host was slow, and the file is not at fault.
+  if (answer.kind === "slow") {
+    return new FingerprintFault(answer.error);
+  }
   if (answer.kind === "unavailable") {
     return new SignerUnavailable(answer.error);
   }
   return new Error(answer.error);
 }
 
-/** The work's own answer, or a rejection once READ_MANIFEST_TIMEOUT_MS has passed. */
+/**
+ * The work's own answer, or FingerprintFault once READ_MANIFEST_TIMEOUT_MS has passed. A read that
+ * slow says this host is busy and nothing about the file, so it is this service's fault, which every
+ * studio route answers 503 service-fault, and never a verdict on the camera's record (review pass
+ * 11, V111). A read that fails on its own is the work's rejection, as it always was.
+ */
 async function withinReadLimit<T>(work: Promise<T>): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<never>((_, reject) => {
     timer = setTimeout(
-      () => reject(new Error(`the C2PA read was still running after ${READ_MANIFEST_TIMEOUT_MS} ms`)),
+      () => reject(new FingerprintFault(`the C2PA read was still running after ${READ_MANIFEST_TIMEOUT_MS} ms`)),
       READ_MANIFEST_TIMEOUT_MS,
     );
   });
@@ -593,8 +604,12 @@ async function withinReadLimit<T>(work: Promise<T>): Promise<T> {
   }
 }
 
-/** Whether a camera's own record came through into Moolam's manifest. */
-export type CameraRecord = "kept" | "dropped";
+/**
+ * Whether the upload's own C2PA store came through into Moolam's manifest: "kept" when it is a
+ * camera's record of a capture, "credentials-kept" when it is any other store, an image generator's,
+ * an editing app's or Moolam's own, and "dropped" when it did not come through.
+ */
+export type CameraRecord = "kept" | "credentials-kept" | "dropped";
 
 /**
  * What an upload's own C2PA store means for signing it: nothing, a store that cannot be used, or
@@ -609,7 +624,40 @@ export type CameraRecordPlan =
       redactions: string[];
       /** Every text value the store holds under a location or serial key: none may reach the signed file. */
       secrets: string[];
+      /** True only when the store's active manifest records a camera capture (recordsCapture). */
+      capture: boolean;
     };
+
+/**
+ * The IPTC digital source types a camera states for a picture it captured. Phones that merge several
+ * exposures, Pixel among them, state computationalCapture for an ordinary photo.
+ */
+const CAPTURE_SOURCES = new Set([
+  "http://cv.iptc.org/newscodes/digitalsourcetype/digitalCapture",
+  "http://cv.iptc.org/newscodes/digitalsourcetype/computationalCapture",
+]);
+
+/**
+ * Whether a manifest records a capture: one of its actions is c2pa.created from a capture source,
+ * and no action names any source type that is not a capture, so a capture later filled in by a model is not
+ * one. Covers what the manifest says about itself and nothing more: a signer on no trust list can
+ * say it too, which is why the studio says "your camera's record" and never that the photo is real.
+ */
+function recordsCapture(manifest: StoreManifest): boolean {
+  const actions = (manifest.assertions ?? [])
+    .filter((assertion) => assertion.label?.startsWith("c2pa.actions"))
+    .flatMap((assertion) => {
+      const data = assertion.data as { actions?: unknown } | undefined;
+      return Array.isArray(data?.actions) ? (data.actions as { action?: unknown; digitalSourceType?: unknown }[]) : [];
+    });
+  const created = actions.some(
+    (one) => one?.action === CREATED_ACTION && CAPTURE_SOURCES.has(String(one.digitalSourceType)),
+  );
+  const otherSource = actions.some(
+    (one) => one?.digitalSourceType !== undefined && !CAPTURE_SOURCES.has(String(one.digitalSourceType)),
+  );
+  return created && !otherSource;
+}
 
 /** The C2PA standard's reason for a redaction made because the assertion holds personal information. */
 const PII_REASON = "c2pa.PII.present";
@@ -657,19 +705,29 @@ const MAX_DATA_DEPTH = 32;
  * data cannot be looked into at all. A thumbnail is redacted when it carries EXIF, XMP or IPTC, or
  * cannot be decoded. Actions, hard bindings and ingredients are never redacted.
  *
- * Never throws. "none" for a file with no store, including one that only names a remote manifest,
- * which is never fetched. "unusable" for a store the library cannot read, a JPEG box that may be a
- * damaged store, a label that cannot go into a URI, and a store past the caps above. "store"
- * otherwise, with the redactions to make and the values that must not survive them.
+ * "none" for a file with no store, including one that only names a remote manifest, which is never
+ * fetched. "unusable" for a store the library cannot read, a JPEG box that may be a damaged store, a
+ * label that cannot go into a URI, and a store past the caps above. "store" otherwise, with the
+ * redactions to make and the values that must not survive them, and whether the store's active
+ * manifest records a camera capture (review pass 11, V112). A thumbnail whose read runs out of time
+ * is redacted, which costs the record nothing.
+ *
+ * Throws FingerprintFault, and nothing else, when the read of the store itself runs past
+ * READ_MANIFEST_TIMEOUT_MS: that is this host being slow, and answering "unusable" for it dropped a
+ * camera's record for good from a file that would have kept it on a retry (review pass 11, V111).
  */
 export async function cameraRecordOf(upload: Buffer): Promise<CameraRecordPlan> {
   let reader: Reader | null;
   try {
     reader = await withinReadLimit(Reader.fromAsset({ buffer: upload, mimeType: sniffMimeType(upload) }, READER_SETTINGS));
   } catch (error) {
+    if (error instanceof FingerprintFault) {
+      throw error;
+    }
     return noStoreOr(upload, `the upload's C2PA store could not be read: ${error instanceof Error ? error.message : String(error)}`);
   }
-  if (reader === null || reader.getActive() === undefined) {
+  const active = reader?.getActive();
+  if (reader === null || active === undefined) {
     return noStoreOr(upload, "the upload carries a JUMBF box the C2PA library could not read as a store");
   }
 
@@ -709,7 +767,13 @@ export async function cameraRecordOf(upload: Buffer): Promise<CameraRecordPlan> 
     return unusable(`the upload's store holds ${thumbnails.length} thumbnails, over the ${MAX_THUMBNAILS} a camera record may`);
   }
   for (const uri of thumbnails) {
-    if (await carriesMetadata(reader, uri)) {
+    const carries = await carriesMetadata(reader, uri).catch((error: unknown) => {
+      if (error instanceof FingerprintFault) {
+        return true;
+      }
+      throw error;
+    });
+    if (carries) {
       redactions.add(uri);
     }
   }
@@ -717,7 +781,7 @@ export async function cameraRecordOf(upload: Buffer): Promise<CameraRecordPlan> 
   if (redactions.size > MAX_REDACTIONS || secrets.size > MAX_SECRETS) {
     return unusable("the upload's store holds more to redact than a camera record does");
   }
-  return { kind: "store", redactions: [...redactions], secrets: [...secrets] };
+  return { kind: "store", redactions: [...redactions], secrets: [...secrets], capture: recordsCapture(active) };
 }
 
 /** Moolam's own claim thumbnail and the parent ingredient's, on top of what the upload brought. */
@@ -735,7 +799,8 @@ const MOOLAM_THUMBNAILS = 2;
  * A read back that fails is itself the fault, and the record is dropped. A read back still running
  * after READ_MANIFEST_TIMEOUT_MS says nothing about the record, only that this service was slow, so
  * it throws FingerprintFault instead: the route answers 503 service-fault and the creator retries
- * with the record, rather than losing it for good (WO-186b follow-up). The answer is for the log,
+ * with the record, rather than losing it for good (WO-186b follow-up). A thumbnail read that runs
+ * out of time throws it the same way (review pass 11, V111). The answer is for the log,
  * and says which check failed without quoting any value from the upload.
  */
 export async function cameraRecordFault(signed: Buffer, secrets: readonly string[]): Promise<string | undefined> {
@@ -855,14 +920,19 @@ function thumbnailsIn(manifests: readonly StoreManifest[]): string[] {
 
 /**
  * Whether a thumbnail in the store carries EXIF, XMP or IPTC, any of which can hold a location. A
- * thumbnail that cannot be read out or decoded counts as carrying it.
+ * thumbnail that cannot be read out or decoded counts as carrying it. Throws FingerprintFault when
+ * reading it out runs past READ_MANIFEST_TIMEOUT_MS, which says nothing about the thumbnail, so each
+ * caller decides what a slow read means to it.
  */
 async function carriesMetadata(reader: Reader, uri: string): Promise<boolean> {
   try {
     const resource = await withinReadLimit(reader.resourceToAsset(uri, { buffer: null }));
     const metadata = await sharp(resource.buffer, { limitInputPixels: MAX_IMAGE_PIXELS }).metadata();
     return metadata.exif !== undefined || metadata.xmp !== undefined || metadata.iptc !== undefined;
-  } catch {
+  } catch (error) {
+    if (error instanceof FingerprintFault) {
+      throw error;
+    }
     return true;
   }
 }

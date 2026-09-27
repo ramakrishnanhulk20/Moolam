@@ -218,13 +218,20 @@ function collect(
   const prepared = studio.register.prepared;
   if (prepared !== null) {
     const manifest = prepared.manifest.embedded ? t("receipt.manifestYes") : t("receipt.manifestNo");
-    // Said under the manifest line only when the photo arrived with its camera's own record, so a
-    // creator knows what of it travels with the picture.
+    // Said under the manifest line only when the photo arrived with a signed record of its own, so a
+    // creator knows what of it travels with the picture. Only a record of a capture is called the
+    // camera's; any other is the file's own earlier credentials.
     const camera = prepared.manifest.cameraRecord;
     const cameraLines =
       camera === undefined
         ? undefined
-        : [camera === "kept" ? t("receipt.cameraKept") : t("receipt.cameraDropped")];
+        : [
+            camera === "kept"
+              ? t("receipt.cameraKept")
+              : camera === "credentials-kept"
+                ? t("receipt.credentialsKept")
+                : t("receipt.cameraDropped"),
+          ];
 
     if (prepared.sealed === true) {
       // No pixels were measured here to quote: the fingerprint was taken from

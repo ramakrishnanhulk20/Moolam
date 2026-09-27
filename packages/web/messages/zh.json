@@ -1499,7 +1499,8 @@
       "billedExact": "准确是 {fee} MON。",
       "wouldHaveCost": "你自己付要花 {fee} MON。",
       "cameraKept": "你相机自己的记录已保留，其中的位置和序列号已删除。",
-      "cameraDropped": "你相机自己的记录已删除，因为无法干净地去掉其中的位置。"
+      "cameraDropped": "你相机自己的记录已删除，因为无法干净地去掉其中的位置。",
+      "credentialsKept": "此文件原有的 Content Credentials 已保留在 Moolam 的记录中，其中的位置和序列号已删除。"
     },
     "passports": {
       "heading": "你的图片",

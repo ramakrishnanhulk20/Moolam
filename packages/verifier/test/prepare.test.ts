@@ -16,6 +16,9 @@
 // A photo with its camera's own C2PA record answers cameraRecord "kept" or "dropped", and a plain
 // upload answers no cameraRecord at all (Ram, 2026-09-26). A caller with no token is counted by
 // its IPv6 /64, as the service-wide limit counts it, so a neighbour in the same /64 meets the 21st.
+// From review pass 11: one address signed in as several accounts still meets the service's 60 a
+// minute (V110), and a kept store that records no camera capture is answered "credentials-kept"
+// rather than "kept" (V112).
 // Does NOT cover a real pin to Pinata, a real read
 // of the registry on Monad, the remote JWKS fetch, or one signed-in user reaching 20 in an hour.
 
@@ -757,4 +760,58 @@ describe("POST /prepare", () => {
     expect(neighbour.statusCode).toBe(429);
     expect(otherNetwork.statusCode).toBe(401);
   });
+
+  it("V110: holds one address to the service's 60 a minute however many accounts it signs in with", async () => {
+    const bearers = await Promise.all(
+      ["one", "two", "three", "four"].map(async (name) => `Bearer ${await token(`did:privy:address-limit-${name}`)}`),
+    );
+    const codes: number[] = [];
+    for (let i = 0; i < 61; i += 1) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        headers: { authorization: bearers[i % bearers.length] as string },
+        remoteAddress: "203.0.113.110",
+      });
+      codes.push(response.statusCode);
+    }
+    const elsewhere = await app.inject({
+      method: "POST",
+      url: "/prepare",
+      headers: { authorization: bearers[0] as string },
+      remoteAddress: "203.0.113.111",
+    });
+
+    // No account reaches its own 20 an hour: each sends 15 or 16. Only the address limit can refuse.
+    expect(codes.slice(0, 60).every((code) => code === 400)).toBe(true);
+    expect(codes[60]).toBe(429);
+    expect(elsewhere.statusCode).toBe(400);
+  });
+
+  it("V112: calls a kept store a camera's only when it records a capture, and any other the file's own credentials", async () => {
+    const send = async (bytes: Buffer, title: string) => {
+      const { payload, headers } = body({ file: { name: "upload.jpg", type: "image/jpeg", bytes }, fields: { title, kind: "human" } });
+      const response = await app.inject({
+        method: "POST",
+        url: "/prepare",
+        payload,
+        headers: { ...headers, authorization: `Bearer ${await token("did:privy:credentials-user")}` },
+        remoteAddress: "203.0.113.112",
+      });
+      expect(response.statusCode, title).toBe(200);
+      return response.json().manifest;
+    };
+    const drawn = await makeImage(112);
+    const print = await fingerprint(drawn);
+    const generated = await stubs.embedManifest(drawn, {
+      title: "generated.jpg",
+      claimGenerator: "example-image-model/2.0",
+      action: "c2pa.created",
+      digitalSourceType: "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia",
+      softBinding: { phash: print.phash, blockhash: print.blockhash },
+    });
+
+    expect(await send(generated, "Generated upload")).toEqual({ embedded: true, cameraRecord: "credentials-kept" });
+    expect(await send(await cameraPhoto(112), "Camera upload")).toEqual({ embedded: true, cameraRecord: "kept" });
+  }, 60_000);
 });

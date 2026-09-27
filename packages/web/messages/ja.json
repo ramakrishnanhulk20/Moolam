@@ -1499,7 +1499,8 @@
       "billedExact": "正確には {fee} MON。",
       "wouldHaveCost": "自分で払えば {fee} MON かかっていました。",
       "cameraKept": "カメラ自身の記録は、位置情報とシリアル番号を取り除いたうえで残しています。",
-      "cameraDropped": "カメラ自身の記録は削除しました。位置情報をきれいに取り除けなかったためです。"
+      "cameraDropped": "カメラ自身の記録は削除しました。位置情報をきれいに取り除けなかったためです。",
+      "credentialsKept": "このファイルに以前からあった Content Credentials は、位置情報とシリアル番号を取り除いたうえで Moolam の記録の中に残しています。"
     },
     "passports": {
       "heading": "あなたの画像",

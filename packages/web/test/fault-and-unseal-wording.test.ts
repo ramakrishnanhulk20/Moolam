@@ -178,6 +178,7 @@ describe("the sentences those keys print", () => {
     "passport.unseal.failure.fingerprintUnstable",
     "studio.receipt.cameraKept",
     "studio.receipt.cameraDropped",
+    "studio.receipt.credentialsKept",
   ];
   const at = (tree: unknown, path: string): unknown =>
     path.split(".").reduce<unknown>((node, key) => (node as Record<string, unknown> | undefined)?.[key], tree);
@@ -205,6 +206,9 @@ describe("the sentences those keys print", () => {
     );
     expect(at(english, "studio.receipt.cameraDropped")).toBe(
       "Your camera's own record was removed, because its location could not be taken out cleanly.",
+    );
+    expect(at(english, "studio.receipt.credentialsKept")).toBe(
+      "This file's earlier Content Credentials are kept inside Moolam's, with any location and serial removed.",
     );
   });
 
@@ -290,6 +294,17 @@ describe("the camera's own record on the studio's stub", () => {
     const sealed = prepareResponseSchema.parse({ ...SEALED, manifest: { embedded: true, cameraRecord: "dropped" } });
     expect(published.manifest).toEqual({ embedded: true, cameraRecord: "kept" });
     expect(sealed.manifest).toEqual({ embedded: true, cameraRecord: "dropped" });
+    const credentials = prepareResponseSchema.parse({ ...PUBLIC, manifest: { embedded: true, cameraRecord: "credentials-kept" } });
+    expect(credentials.manifest).toEqual({ embedded: true, cameraRecord: "credentials-kept" });
+  });
+
+  it("V112: says the file's own earlier credentials were kept, never the camera's, for a store that records no capture", () => {
+    const credentials = "This file&#x27;s earlier Content Credentials are kept inside Moolam&#x27;s, with any location and serial removed.";
+    const markup = stub({ ...PUBLIC, manifest: { embedded: true, cameraRecord: "credentials-kept" } });
+    expect(markup).toContain(credentials);
+    expect(markup).not.toContain(kept);
+    expect(markup).not.toContain(dropped);
+    expect(stub({ ...PUBLIC, manifest: { embedded: true, cameraRecord: "kept" } })).not.toContain(credentials);
   });
 
   it("says kept or removed under the manifest line, and nothing when the photo carried no record", () => {

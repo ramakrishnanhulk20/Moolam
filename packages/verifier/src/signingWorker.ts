@@ -39,7 +39,7 @@ export interface SigningJob {
   };
   after: SigningAssertion[];
   identity: { certPath: string; keyPath: string };
-  /** How long reading the parent's store may take before the parent is refused. */
+  /** How long reading the parent's store may take before the answer is "slow". */
   readLimitMs: number;
 }
 
@@ -48,11 +48,16 @@ export interface SigningJob {
  * parent or a redaction; "unavailable" is a signing identity that would not load, a leaf outside its
  * validity window, or the library refusing to sign for the certificate's sake; "invalid" is a
  * manifest the library would not build, which embedManifest's own checks should already have caught.
+ * "slow" is the parent's store still being read at readLimitMs: this host was busy, and the parent is
+ * not at fault, so it must never read as a refusal that drops a camera's record (review pass 11, V111).
  */
-export type SigningAnswer = { signed: Uint8Array } | { kind: "refused" | "unavailable" | "invalid"; error: string };
+export type SigningAnswer =
+  | { signed: Uint8Array }
+  | { kind: "refused" | "unavailable" | "invalid" | "slow"; error: string };
 
 class Refused extends Error {}
 class Unavailable extends Error {}
+class Slow extends Error {}
 
 let held: { key: string; signer: LocalSigner; leaf: X509Certificate } | undefined;
 
@@ -116,7 +121,7 @@ const CREDENTIAL_REFUSAL = /certificate/i;
 async function withinReadLimit<T>(work: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`the C2PA read was still running after ${ms} ms`)), ms);
+    timer = setTimeout(() => reject(new Slow(`the C2PA read of the parent was still running after ${ms} ms`)), ms);
   });
   try {
     return await Promise.race([work, limit]);
@@ -145,6 +150,9 @@ async function sign(job: SigningJob): Promise<Buffer> {
         builder.addRedaction(uri, job.parent.reason);
       }
     } catch (error) {
+      if (error instanceof Slow) {
+        throw error;
+      }
       throw new Refused(error instanceof Error ? error.message : String(error));
     }
   }
@@ -180,7 +188,14 @@ port.on("message", (job: SigningJob) => {
       port.postMessage({ signed: copy } satisfies SigningAnswer, [copy.buffer]);
     },
     (error: unknown) => {
-      const kind = error instanceof Refused ? "refused" : error instanceof Unavailable ? "unavailable" : "invalid";
+      const kind =
+        error instanceof Refused
+          ? "refused"
+          : error instanceof Unavailable
+            ? "unavailable"
+            : error instanceof Slow
+              ? "slow"
+              : "invalid";
       port.postMessage({ kind, error: error instanceof Error ? error.message : String(error) } satisfies SigningAnswer);
     },
   );

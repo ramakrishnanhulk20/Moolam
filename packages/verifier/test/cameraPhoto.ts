@@ -27,6 +27,8 @@ export interface CameraPhotoOptions {
   extra?: { label: string; data: Record<string, unknown> }[];
   /** The camera's own signer. Left out, it is the development identity. */
   signer?: LocalSigner;
+  /** The source type the camera states. Left out, a plain digital capture. */
+  sourceType?: string;
 }
 
 /**
@@ -53,8 +55,9 @@ export async function cameraPhoto(seed: number, options: CameraPhotoOptions = {}
       .toBuffer();
     await builder.addResource(thumbnailId, { buffer: thumbnail, mimeType: "image/jpeg" });
   }
-  builder.setIntent({ create: DIGITAL_CAPTURE });
-  const created: Record<string, unknown> = { action: "c2pa.created", digitalSourceType: DIGITAL_CAPTURE };
+  const source = options.sourceType ?? DIGITAL_CAPTURE;
+  builder.setIntent({ create: source });
+  const created: Record<string, unknown> = { action: "c2pa.created", digitalSourceType: source };
   if (options.gpsInAction) {
     created.parameters = { "exif:GPSLatitude": CAMERA_SECRETS.latitude };
   }

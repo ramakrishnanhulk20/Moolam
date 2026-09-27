@@ -1497,7 +1497,8 @@
       "billedExact": "Genau {fee} MON.",
       "wouldHaveCost": "Dich hätte es {fee} MON gekostet.",
       "cameraKept": "Die eigene Aufzeichnung deiner Kamera bleibt erhalten, ohne Standort und Seriennummer.",
-      "cameraDropped": "Die eigene Aufzeichnung deiner Kamera wurde entfernt, weil sich ihr Standort nicht sauber herausnehmen ließ."
+      "cameraDropped": "Die eigene Aufzeichnung deiner Kamera wurde entfernt, weil sich ihr Standort nicht sauber herausnehmen ließ.",
+      "credentialsKept": "Die früheren Content Credentials dieser Datei bleiben in denen von Moolam erhalten, ohne Standort und Seriennummer."
     },
     "passports": {
       "heading": "Deine Bilder",

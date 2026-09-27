@@ -320,7 +320,11 @@ function Recorded({ edit }: { edit: PassportEdit }) {
       <p className="mt-6 max-w-[50ch] text-sm leading-relaxed text-text-muted">{t("done.body")}</p>
       {camera === undefined ? null : (
         <p data-camera-record={camera} className="mt-3 max-w-[50ch] text-sm leading-relaxed text-text-muted">
-          {camera === "kept" ? receipt("cameraKept") : receipt("cameraDropped")}
+          {camera === "kept"
+            ? receipt("cameraKept")
+            : camera === "credentials-kept"
+              ? receipt("credentialsKept")
+              : receipt("cameraDropped")}
         </p>
       )}
 

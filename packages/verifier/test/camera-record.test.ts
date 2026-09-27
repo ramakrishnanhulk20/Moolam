@@ -47,6 +47,18 @@ describe("item 1: the camera's location and serial", () => {
   }, 60_000);
 });
 
+describe("a phone's computational capture", () => {
+  it("is kept as the camera's own record, as a plain digital capture is", async () => {
+    const upload = await cameraPhoto(96, {
+      sourceType: "http://cv.iptc.org/newscodes/digitalsourcetype/computationalCapture",
+    });
+    const prepared = await prepareOrFallback(upload, SETTINGS);
+    expect(prepared.embedded).toBe(true);
+    expect(prepared.cameraRecord).toBe("kept");
+    expect(leaked(prepared.bytes)).toEqual([]);
+  }, 60_000);
+});
+
 describe("item 2: the signed file holds one C2PA store, Moolam's", () => {
   it("carries none of the upload's APP11 segments", async () => {
     const upload = await cameraPhoto(83);
@@ -145,6 +157,7 @@ describe("item 4: every place a location or a serial can sit is redacted", () =>
         `self#jumbf=/c2pa/${camera}/c2pa.assertions/com.example.where`,
       ],
       secrets: expect.arrayContaining([...Object.values(CAMERA_SECRETS), "Marina-Lighthouse-Gate"]),
+      capture: true,
     });
 
     const signed = (await prepareOrFallback(upload, SETTINGS)).bytes;

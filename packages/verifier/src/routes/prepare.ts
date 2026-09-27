@@ -70,7 +70,8 @@ const CLAIM_GENERATOR = "moolam-studio/0.1.0";
  * counted on the verified Privy user id, which a caller cannot choose, and falls back to the
  * caller's address for a caller with no valid token, read the way the service-wide limit reads
  * it (rateLimitKey), so an IPv6 caller is counted by its /64. A sealed registration is counted the
- * same as a public one: it is the same work and the same picture.
+ * same as a public one: it is the same work and the same picture. The service-wide 60 a minute per
+ * address is checked before it, so several accounts on one address do not add up to more.
  */
 const PREPARES_PER_HOUR = 20;
 
@@ -148,7 +149,9 @@ const SEALED_FILE_REFUSED = {
  * A photo that arrives with its camera's own Content Credentials keeps that signed record inside
  * Moolam's manifest, with its location and serial redacted, or loses it when it cannot be redacted
  * cleanly. The answer's manifest.cameraRecord says "kept" or "dropped", and is absent when the
- * upload carried no record.
+ * upload carried no record. A file whose own Content Credentials record anything but a camera
+ * capture, an image generator's or an editing app's, is kept the same way and answered
+ * "credentials-kept", so the studio never calls it the camera's (review pass 11, V112).
  *
  * With `sealed=true` the picture is registered without being published. Everything up to and
  * including the signing is the same, and then nothing of the picture is pinned or written down:
@@ -172,7 +175,8 @@ const SEALED_FILE_REFUSED = {
  * `fingerprint-unstable` when the picture's own thumbnail is further from its pHash than the match
  * threshold, 409 `already-registered` when the registry already holds this exact picture, 409
  * `private-copy-not-private` when Pinata did not keep the private copy private under its name, 429
- * past the per-user limit or `global-limit` once GLOBAL_PREPARES_PER_DAY is spent for everyone,
+ * past the service's per-address limit, past the per-user limit, or `global-limit` once
+ * GLOBAL_PREPARES_PER_DAY is spent for everyone,
  * 502 when Pinata refuses a pin, and 503 `chain-unreachable` when a private re-check was asked for
  * and the duplicate check could not reach the chain, or `service-fault` when this service failed
  * to read or fingerprint the picture. The route is not mounted at all on a host that cannot sign
@@ -183,9 +187,31 @@ export async function prepareRoutes(app: FastifyInstance, options: { keys?: Priv
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 
+  // A route with a limit of its own gets only that one from @fastify/rate-limit 11, never the
+  // service-wide one as well, so a caller signed in as several accounts was held to nothing per
+  // address here (review pass 11, V110). Called with no options, createRateLimit is the global rule
+  // itself, 60 a minute keyed by rateLimitKey, counted in the same store every other route shares.
+  // It runs first, so the Privy token is not even checked for a caller past it.
+  const perAddress = app.createRateLimit();
+  const addressLimit = async (request: FastifyRequest, reply: FastifyReply): Promise<FastifyReply | undefined> => {
+    const verdict = await perAddress(request);
+    if (verdict.isAllowed || !verdict.isExceeded) {
+      return undefined;
+    }
+    request.log.warn({ ip: request.ip, url: request.url }, "rejected: rate limit exceeded");
+    return await reply
+      .code(429)
+      .header("x-ratelimit-limit", verdict.max)
+      .header("x-ratelimit-remaining", 0)
+      .header("x-ratelimit-reset", verdict.ttlInSeconds)
+      .header("retry-after", verdict.ttlInSeconds)
+      .send({ error: `Rate limit exceeded, retry in ${verdict.ttlInSeconds} seconds` });
+  };
+
   app.post(
     "/prepare",
     {
+      onRequest: addressLimit,
       config: {
         rateLimit: {
           max: PREPARES_PER_HOUR,
@@ -706,8 +732,9 @@ function readTraining(raw: string | undefined): TrainingConsent | undefined {
 
 /**
  * What the answer says about the manifest: whether it is embedded, and, only for an upload that
- * arrived with a camera's own C2PA record, whether that record was kept (with its location and
- * serial redacted) or dropped. An upload with no record gets no cameraRecord field at all.
+ * arrived with a C2PA store of its own, whether it was kept as a camera's record, kept as the file's
+ * own earlier credentials (each with its location and serial redacted), or dropped. An upload with
+ * no store gets no cameraRecord field at all.
  */
 function manifestAnswer(result: SealedResult): Record<string, unknown> {
   return {

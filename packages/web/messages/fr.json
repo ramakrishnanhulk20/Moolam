@@ -1497,7 +1497,8 @@
       "billedExact": "{fee} MON exactement.",
       "wouldHaveCost": "Cela vous aurait coûté {fee} MON.",
       "cameraKept": "Le propre enregistrement de votre appareil photo est conservé, sans sa localisation ni son numéro de série.",
-      "cameraDropped": "Le propre enregistrement de votre appareil photo a été supprimé, car sa localisation ne pouvait pas en être extraite proprement."
+      "cameraDropped": "Le propre enregistrement de votre appareil photo a été supprimé, car sa localisation ne pouvait pas en être extraite proprement.",
+      "credentialsKept": "Les Content Credentials antérieurs de ce fichier sont conservés dans ceux de Moolam, sans localisation ni numéro de série."
     },
     "passports": {
       "heading": "Vos images",

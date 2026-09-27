@@ -1499,7 +1499,8 @@
       "billedExact": "정확히 {fee} MON.",
       "wouldHaveCost": "직접 냈다면 {fee} MON이 들었습니다.",
       "cameraKept": "카메라가 직접 남긴 기록은 위치와 일련번호를 지운 채로 유지됩니다.",
-      "cameraDropped": "카메라가 직접 남긴 기록은 삭제되었습니다. 위치를 깔끔하게 지울 수 없었기 때문입니다."
+      "cameraDropped": "카메라가 직접 남긴 기록은 삭제되었습니다. 위치를 깔끔하게 지울 수 없었기 때문입니다.",
+      "credentialsKept": "이 파일에 원래 있던 Content Credentials는 위치와 일련번호를 지운 채로 Moolam의 기록 안에 유지됩니다."
     },
     "passports": {
       "heading": "내 이미지",

@@ -355,7 +355,7 @@ describe("the receipt once the edit is on chain", () => {
 
   const kept = "Your camera&#x27;s own record is kept, with its location and serial number removed.";
   const dropped = "Your camera&#x27;s own record was removed, because its location could not be taken out cleanly.";
-  const withCamera = (cameraRecord?: "kept" | "dropped") => ({
+  const withCamera = (cameraRecord?: "kept" | "credentials-kept" | "dropped") => ({
     ...(result as unknown as Record<string, unknown>),
     manifest: cameraRecord === undefined ? { embedded: true } : { embedded: true, cameraRecord },
   });
@@ -369,6 +369,15 @@ describe("the receipt once the edit is on chain", () => {
     const droppedMarkup = recorded({ result: withCamera("dropped") });
     expect(droppedMarkup).toContain(dropped);
     expect(droppedMarkup).not.toContain(kept);
+  });
+
+  it("V112: says the file's own earlier credentials were kept, not a camera's, when the kept store records no capture", () => {
+    const credentials = "This file&#x27;s earlier Content Credentials are kept inside Moolam&#x27;s, with any location and serial removed.";
+    const markup = recorded({ result: withCamera("credentials-kept") });
+    expect(markup).toContain(credentials);
+    expect(markup).not.toContain(kept);
+    expect(markup).not.toContain(dropped);
+    expect(markup).toContain('data-camera-record="credentials-kept"');
   });
 
   it("says nothing about a camera when the edit carried no record", () => {

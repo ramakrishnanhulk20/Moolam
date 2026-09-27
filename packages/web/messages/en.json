@@ -1497,7 +1497,8 @@
       "billedExact": "{fee} MON exactly.",
       "wouldHaveCost": "It would have cost you {fee} MON.",
       "cameraKept": "Your camera's own record is kept, with its location and serial number removed.",
-      "cameraDropped": "Your camera's own record was removed, because its location could not be taken out cleanly."
+      "cameraDropped": "Your camera's own record was removed, because its location could not be taken out cleanly.",
+      "credentialsKept": "This file's earlier Content Credentials are kept inside Moolam's, with any location and serial removed."
     },
     "passports": {
       "heading": "Your pictures",

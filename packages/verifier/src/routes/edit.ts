@@ -111,8 +111,8 @@ interface EditContext {
  *
  * Every answer that leaves a transaction out on the network carries `passportId`, the child's own
  * id, so the browser can watch the registry for that one passport instead of guessing which edit
- * under the parent is theirs. The answer's manifest names cameraRecord, kept or dropped, when the
- * edit arrived carrying a camera's own signed record, as the /prepare answer does.
+ * under the parent is theirs. The answer's manifest names cameraRecord, kept, credentials-kept or
+ * dropped, when the edit arrived carrying a C2PA store of its own, as the /prepare answer does.
  *
  * The send carries an idempotency key made from the wallet id and the whole calldata, deadline
  * included, so the SDK's own retries run one appendEdit, and a request the creator sends again, or

@@ -5,14 +5,20 @@
 // Does NOT cover the size of the stall itself, which is measured rather than asserted (the report
 // for WO-185b gives the before and after), nor a worker that crashes or hangs, which would need a
 // broken native library to provoke.
+// Review pass 11, V111: a parent whose read runs past the worker's limit is answered "slow", which
+// the main thread turns into this service's fault, not a file the library refused. The limit is set
+// to nothing so the real read cannot win; a real slow read is not provoked.
 
 import path from "node:path";
-import { Builder, Reader } from "@contentauth/c2pa-node";
+import { Worker } from "node:worker_threads";
+import { Builder, Reader, createVerifySettings, settingsToJson } from "@contentauth/c2pa-node";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { SOFT_BINDING_ALG, SignerRefusedFile, embedManifest, readManifest } from "../src/c2pa.js";
+import { SOFT_BINDING_ALG, SignerRefusedFile, embedManifest, loadSigner, readManifest } from "../src/c2pa.js";
 import { PACKAGE_ROOT } from "../src/env.js";
 import { fingerprint } from "../src/fingerprint.js";
+import type { SigningAnswer, SigningJob } from "../src/signingWorker.js";
+import { cameraPhoto } from "./cameraPhoto.js";
 import { makeImage } from "./helpers.js";
 
 const AI_SOURCE_TYPE = "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia";
@@ -150,5 +156,41 @@ describe("V71: signing off the thread that answers requests", () => {
       }),
     ).rejects.toBeInstanceOf(fresh.SignerUnavailable);
     vi.doUnmock("../src/env.js");
+  }, 60_000);
+
+  it("V111: answers a parent whose read runs past the limit as slow, not as a file the library refused", async () => {
+    loadSigner();
+    const certs = path.join(PACKAGE_ROOT, "test-assets", "certs");
+    const parent = await cameraPhoto(111);
+    const job: SigningJob = {
+      bytes: new Uint8Array(await makeImage(111)),
+      mimeType: "image/jpeg",
+      definition: { claim_generator_info: [{ name: "moolam-studio/0.1.0" }], title: "slow-parent.jpg", format: "image/jpeg" },
+      settings: settingsToJson(createVerifySettings({ remoteManifestFetch: false })),
+      intent: "edit",
+      before: [],
+      parent: {
+        bytes: new Uint8Array(parent),
+        mimeType: "image/jpeg",
+        ingredient: JSON.stringify({ title: "slow-parent.jpg", relationship: "parentOf" }),
+        redactions: [],
+        reason: "c2pa.PII.present",
+      },
+      after: [],
+      identity: { certPath: path.join(certs, "chain.cert.pem"), keyPath: path.join(certs, "signer.key.pem") },
+      readLimitMs: 0,
+    };
+
+    const worker = new Worker(new URL("../src/signingWorker.ts", import.meta.url));
+    try {
+      const answer = await new Promise<SigningAnswer>((resolve, reject) => {
+        worker.once("message", resolve);
+        worker.once("error", reject);
+        worker.postMessage(job);
+      });
+      expect(answer).toMatchObject({ kind: "slow" });
+    } finally {
+      await worker.terminate();
+    }
   }, 60_000);
 });

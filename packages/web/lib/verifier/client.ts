@@ -97,11 +97,13 @@ const privateCopyKept = z.literal(true).optional();
 const noPrivateCopy = z.undefined().optional();
 
 /**
- * What Moolam did with the camera's own signed record, when the upload carried one: kept with its
- * location and serial redacted, or dropped because they could not be taken out cleanly. Absent
- * when there was no record, which is every picture Moolam drew itself.
+ * What Moolam did with the upload's own signed record, when it carried one: kept with its location
+ * and serial redacted, as a camera's record of a capture ("kept") or as the file's own earlier
+ * Content Credentials from anything else, an image generator or an editing app ("credentials-kept"),
+ * or dropped because they could not be taken out cleanly. Absent when there was no record, which is
+ * every picture Moolam drew itself.
  */
-const cameraRecord = z.enum(["kept", "dropped"]).optional();
+const cameraRecord = z.enum(["kept", "credentials-kept", "dropped"]).optional();
 
 const manifestSchema = z.union([
   z.object({ embedded: z.literal(true), cameraRecord }),

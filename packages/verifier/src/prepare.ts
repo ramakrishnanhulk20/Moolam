@@ -102,7 +102,8 @@ export class FingerprintUnstable extends Error {
 
 /**
  * The C2PA reader could not read back the file this service had just signed, or ran past
- * READ_MANIFEST_TIMEOUT_MS doing it (review pass 9, intake 3, V88). Our own signer wrote that file,
+ * READ_MANIFEST_TIMEOUT_MS doing it (review pass 9, intake 3, V88), or ran past it reading a camera's
+ * record while signing it in (review pass 11, V111). Our own signer wrote that file,
  * so this says nothing about the creator's picture, and falling back would register it with no
  * manifest for good. It is a FingerprintFault so every route that registers a picture already
  * answers it 503 service-fault and the creator retries.
@@ -134,8 +135,9 @@ export interface PreparedImage {
   manifestHash: Hex;
   manifest: ManifestSummary;
   /**
-   * Only when the upload arrived with a C2PA store of its own: "kept" when the camera's record is
-   * inside Moolam's manifest with its location and serial redacted, "dropped" when it is not.
+   * Only when the upload arrived with a C2PA store of its own: "kept" when that store is a camera's
+   * record of a capture and is inside Moolam's manifest with its location and serial redacted,
+   * "credentials-kept" when it is any other store kept the same way, "dropped" when it is not kept.
    */
   cameraRecord?: CameraRecord;
 }
@@ -302,8 +304,13 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
  * to the log. A picture Moolam made itself states c2pa.created and has no parent, so it is signed
  * as it always was, and so is an upload with no store.
  *
- * Throws what embedManifest throws for the plain signing, SignerUnavailable from either try, and
- * ReadBackFault when the read back of the file with the record ran out of time.
+ * Every read on this path that runs out of time is this host being slow and says nothing about the
+ * record, so none of them drops it (review pass 11, V111): the read of the upload's store throws
+ * FingerprintFault, and the signing worker's read of it as the parent, the read back and a thumbnail
+ * read in it throw ReadBackFault, both of which the routes answer 503 service-fault.
+ *
+ * Throws what embedManifest throws for the plain signing, SignerUnavailable from either try, and the
+ * two faults above.
  */
 async function signKeepingCameraRecord(
   source: Buffer,
@@ -322,14 +329,15 @@ async function signKeepingCameraRecord(
       const signed = await embedManifest(upright, { ...embed, parent: { bytes: source, redactions: plan.redactions } });
       const fault = await cameraRecordFault(signed, plan.secrets);
       if (fault === undefined) {
-        return { signed, cameraRecord: "kept" };
+        return { signed, cameraRecord: plan.capture ? "kept" : "credentials-kept" };
       }
       why = fault;
     } catch (error) {
       if (error instanceof SignerUnavailable) {
         throw error;
       }
-      // cameraRecordFault ran out of time reading back the file: this service's fault, not the record's.
+      // A read of the parent, of the file signed with it, or of a thumbnail in it ran out of time:
+      // this service's fault, not the record's.
       if (error instanceof FingerprintFault) {
         throw new ReadBackFault(error.message);
       }
