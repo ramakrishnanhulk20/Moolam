@@ -180,6 +180,28 @@ export async function Poster({
                 })}
               </span>
             )}
+            {/* The exact signed file, straight from IPFS through this app's own
+                route, so the saved copy hashes to this passport's id. Only
+                where a picture is known to be public: this branch is never a
+                sealed passport, and a document the gateway would not hand over
+                says nothing either way. */}
+            {art.imageUrl === undefined ? null : (
+              <span>
+                <a
+                  href={`/api/passports/${passport.id}/picture`}
+                  download
+                  data-download-original
+                  className="group/download -my-3 inline-flex items-center gap-2 py-3 text-text-muted transition-colors duration-200 hover:text-accent"
+                >
+                  <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover/download:bg-[length:100%_1px]">
+                    {t("download")}
+                  </span>
+                  <span aria-hidden className="transition-transform duration-200 group-hover/download:translate-y-0.5">
+                    &darr;
+                  </span>
+                </a>
+              </span>
+            )}
           </MetaLine>
           <div className="mt-6 sm:mt-8">{strip}</div>
         </div>

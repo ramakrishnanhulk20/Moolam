@@ -790,6 +790,7 @@
     "openTransaction": "Registrierungstransaktion",
     "openToken": "Token auf MonadVision",
     "openImage": "Registrierte Datei öffnen",
+    "download": "Original herunterladen",
     "noManifest": "Diese Datei trug keine Content Credentials.",
     "ipfsCid": "Gespeicherten Eintrag auf IPFS öffnen",
     "consent": {
@@ -1480,6 +1481,8 @@
       "manifestNo": "nein",
       "pinned": "An IPFS geheftet",
       "pinnedDetail": "Die signierten Bytes, die Vorschau und die Metadaten gingen alle an IPFS.",
+      "download": "Dein Bild herunterladen",
+      "downloadHelp": "Die signierte Datei mit ihren Content Credentials: Eine Kopie davon lässt sich weiterhin gegen diesen Pass prüfen.",
       "signed": "Digest den du signiert hast",
       "signedDetail": "Aus dem Vertrag gelesen, von deiner Entsperrung signiert, hier geprüft bevor er ging.",
       "sent": "An Monad geschickt",

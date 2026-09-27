@@ -792,6 +792,7 @@
     "openTransaction": "등록 트랜잭션",
     "openToken": "MonadVision의 토큰",
     "openImage": "등록된 파일 열기",
+    "download": "원본 다운로드",
     "noManifest": "이 파일에는 Content Credentials가 없었습니다.",
     "ipfsCid": "IPFS에 저장된 기록 열기",
     "consent": {
@@ -1482,6 +1483,8 @@
       "manifestNo": "아니오",
       "pinned": "IPFS에 고정됨",
       "pinnedDetail": "서명된 바이트, 미리보기, 메타데이터가 모두 IPFS로 갔습니다.",
+      "download": "내 이미지 다운로드",
+      "downloadHelp": "Content Credentials가 담긴 서명된 파일입니다. 복사본도 이 여권과 대조해 검증됩니다.",
       "signed": "서명한 다이제스트",
       "signedDetail": "컨트랙트에서 읽어 와, 당신의 잠금 해제로 서명하고, 보내기 전에 여기서 확인했습니다.",
       "sent": "Monad로 보냄",

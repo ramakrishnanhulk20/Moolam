@@ -30,6 +30,8 @@ interface Mark {
   lines?: string[];
   /** The one thing a reader can do about this stamp, on the few that have anything. */
   action?: { label: string; onClick: () => void };
+  /** A file this stamp hands over, saved rather than opened, with the line that says what it is. */
+  download?: { label: string; href: string; help: string };
 }
 
 /**
@@ -134,6 +136,29 @@ export function Receipt({ studio }: { studio: Studio }) {
                   >
                     {mark.action.label}
                   </button>
+                )}
+                {mark.download === undefined ? null : (
+                  // It arrives on a stamp that is already there, once Monad has
+                  // the passport the route reads, so it rises in on its own.
+                  <motion.div
+                    initial={reduced ? { opacity: 0 } : { opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    className="mt-3.5"
+                  >
+                    <a
+                      href={mark.download.href}
+                      download
+                      data-download-picture
+                      className="group inline-flex items-center gap-2.5 rounded-[8px] border border-accent/60 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-accent transition-colors duration-200 hover:border-accent hover:bg-accent hover:text-accent-ink"
+                    >
+                      {mark.download.label}
+                      <span aria-hidden className="transition-transform duration-200 group-hover:translate-y-0.5">
+                        &darr;
+                      </span>
+                    </a>
+                    <p className="mt-2 max-w-[46ch] text-xs leading-relaxed text-text-faint">{mark.download.help}</p>
+                  </motion.div>
                 )}
               </motion.li>
             ))}
@@ -290,6 +315,16 @@ function collect(
         value: prepared.image.cid,
         href: gatewayUrl(prepared.image.uri),
         detail: t("receipt.pinnedDetail"),
+        // Offered once Monad holds the passport, because the route finds the
+        // file from the registry and not from anything this browser says.
+        download:
+          studio.register.registeredAt === null
+            ? undefined
+            : {
+                label: t("receipt.download"),
+                href: `/api/passports/${prepared.passport.exactHash}/picture`,
+                help: t("receipt.downloadHelp"),
+              },
       });
     }
   }

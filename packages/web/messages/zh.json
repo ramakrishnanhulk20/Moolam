@@ -792,6 +792,7 @@
     "openTransaction": "登记交易",
     "openToken": "在 MonadVision 上看代币",
     "openImage": "打开登记的文件",
+    "download": "下载原始文件",
     "noManifest": "这个文件没有带 Content Credentials。",
     "ipfsCid": "打开 IPFS 上存放的记录",
     "consent": {
@@ -1482,6 +1483,8 @@
       "manifestNo": "否",
       "pinned": "已固定到 IPFS",
       "pinnedDetail": "签名后的字节、缩略图和元数据都上了 IPFS。",
+      "download": "下载你的图片",
+      "downloadHelp": "带有 Content Credentials 的签名文件：它的副本依然可以对照这本护照完成验证。",
       "signed": "你签过的摘要",
       "signedDetail": "从合约读出，由你的解锁签名，发出之前在这里核对过。",
       "sent": "已发往 Monad",

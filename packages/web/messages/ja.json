@@ -792,6 +792,7 @@
     "openTransaction": "登録トランザクション",
     "openToken": "MonadVision のトークン",
     "openImage": "登録されたファイルを開く",
+    "download": "元のファイルをダウンロード",
     "noManifest": "このファイルには Content Credentials が付いていませんでした。",
     "ipfsCid": "IPFS に保存された記録を開く",
     "consent": {
@@ -1482,6 +1483,8 @@
       "manifestNo": "なし",
       "pinned": "IPFS に固定",
       "pinnedDetail": "署名されたバイト、サムネイル、メタデータのすべてが IPFS に上がりました。",
+      "download": "画像をダウンロード",
+      "downloadHelp": "Content Credentials 付きの署名済みファイルです。コピーしても、このパスポートと照合して検証できます。",
       "signed": "あなたが署名したダイジェスト",
       "signedDetail": "コントラクトから読み、あなたのロック解除で署名し、送る前にここで確かめました。",
       "sent": "Monad へ送信",

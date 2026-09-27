@@ -790,6 +790,7 @@
     "openTransaction": "Transaction d'enregistrement",
     "openToken": "Jeton sur MonadVision",
     "openImage": "Ouvrir le fichier enregistré",
+    "download": "Télécharger l'original",
     "noManifest": "Ce fichier ne contenait pas de Content Credentials.",
     "ipfsCid": "Ouvrir l’enregistrement stocké sur IPFS",
     "consent": {
@@ -1480,6 +1481,8 @@
       "manifestNo": "non",
       "pinned": "Épinglée sur IPFS",
       "pinnedDetail": "Les octets signés, la vignette et les métadonnées sont tous partis sur IPFS.",
+      "download": "Télécharger votre image",
+      "downloadHelp": "Le fichier signé, avec ses Content Credentials : une copie se vérifie toujours avec ce passeport.",
       "signed": "Condensé que vous avez signé",
       "signedDetail": "Lu depuis le contrat, signé par votre déverrouillage, contrôlé ici avant l’envoi.",
       "sent": "Envoyée sur Monad",

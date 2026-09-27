@@ -790,6 +790,7 @@
     "openTransaction": "Registration transaction",
     "openToken": "Token on MonadVision",
     "openImage": "Open the registered file",
+    "download": "Download the original",
     "noManifest": "This file carried no Content Credentials.",
     "ipfsCid": "Open the stored record on IPFS",
     "consent": {
@@ -1480,6 +1481,8 @@
       "manifestNo": "no",
       "pinned": "Pinned to IPFS",
       "pinnedDetail": "The signed bytes, the thumbnail and the metadata all went to IPFS.",
+      "download": "Download your picture",
+      "downloadHelp": "The signed file, with its Content Credentials: a copy of it still verifies against this passport.",
       "signed": "Digest you signed",
       "signedDetail": "Read from the contract, signed by your unlock, checked here before it was sent.",
       "sent": "Sent to Monad",

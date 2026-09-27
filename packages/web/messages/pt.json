@@ -791,6 +791,7 @@
     "openTransaction": "Transação de registro",
     "openToken": "Token no MonadVision",
     "openImage": "Abrir o arquivo registrado",
+    "download": "Baixar o original",
     "noManifest": "Este arquivo não trazia Content Credentials.",
     "ipfsCid": "Abrir o registro guardado no IPFS",
     "consent": {
@@ -1481,6 +1482,8 @@
       "manifestNo": "não",
       "pinned": "Fixada no IPFS",
       "pinnedDetail": "Os bytes assinados, a miniatura e os metadados foram todos para o IPFS.",
+      "download": "Baixar sua imagem",
+      "downloadHelp": "O arquivo assinado, com as suas Content Credentials: uma cópia dele ainda é verificada contra este passaporte.",
       "signed": "Resumo que você assinou",
       "signedDetail": "Lido do contrato, assinado pelo seu desbloqueio, conferido aqui antes de sair.",
       "sent": "Enviada para a Monad",
