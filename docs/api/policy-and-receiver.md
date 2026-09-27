@@ -99,12 +99,26 @@ Ownership uses `Ownable2Step`.
 
 ## MoolamReceiver
 
-`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` on Monad mainnet. ABI in
+`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` on Monad mainnet (retired 2026-09-26). ABI in
 `packages/contracts/abi/MoolamReceiver.json`.
 
-The one door a Chainlink CRE workflow uses to write a verification result into the registry. It
-inherits Chainlink's `ReceiverTemplate` unchanged, so the forwarder check and the workflow identity
-checks are Chainlink's, not Moolam's.
+The door a Chainlink CRE workflow used to write a verification result into the registry until
+2026-09-26, when it and its sealed twin `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` came off the
+policy. Every attestation they wrote stays on chain under their addresses. It inherits Chainlink's
+`ReceiverTemplate` unchanged, so the forwarder check and the workflow identity checks are
+Chainlink's, not Moolam's.
+
+Since 2026-09-27 14:18 UTC the policy lists two `SimulationReceiver` contracts instead:
+`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` for `moolam-verifier`, listed in transaction
+`0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb`, and
+`0x52b8fE549B432920eeB061c26cAc5c2D527657f6` for `moolam-sealed-verifier`, listed in transaction
+`0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d`. They take the same
+`onReport` call and payload as below, from Chainlink's MockKeystoneForwarder, and add one lock in
+front of the payload checks: the transaction must be signed by Moolam's CRE wallet
+`0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, or it reverts `WrongSendingWallet`. A report more
+than an hour ahead of the block reverts `ReportFromTheFuture`. The full account is in
+[Chainlink CRE workflow](../developers/chainlink-workflow), "The receiver, and what a simulation
+needs".
 
 ### onReport
 

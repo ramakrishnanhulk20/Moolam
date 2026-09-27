@@ -1,7 +1,7 @@
 {
   "chain": "monad-mainnet",
   "registry": "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
-  "receiver": "0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04",
+  "receiver": "0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95",
   "gateway": "https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/",
   "verifierUrl": "https://verifier-production-d76f.up.railway.app",
   "matchThreshold": 10

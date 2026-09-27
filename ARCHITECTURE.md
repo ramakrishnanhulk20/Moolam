@@ -20,7 +20,8 @@ flowchart LR
     subgraph Monad mainnet
         R[MoolamRegistry<br/>ERC-721 passports, edit tree,<br/>attestations, disputes]
         P[VerifierPolicy<br/>who may attest, 24h delay]
-        RC[MoolamReceiver<br/>Chainlink ReceiverTemplate]
+        RC[SimulationReceiver, public<br/>0x4aD6…Aa95, CRE wallet only]
+        RS[SimulationReceiver, sealed<br/>0x52b8…57f6, CRE wallet only]
         I8[ERC-8004 Identity Registry<br/>canonical, read only]
         PC[P-256 precompile 0x0100]
     end
@@ -28,7 +29,8 @@ flowchart LR
     subgraph Off-chain
         S[Verifier service<br/>fingerprints, C2PA, Hamming search,<br/>x402-paid API]
         X[Envio HyperIndex<br/>passports, trees, trust scores]
-        W[Chainlink CRE workflow<br/>independent re-fetch and re-fingerprint]
+        W[moolam-verifier<br/>Chainlink CRE workflow, public pictures]
+        WS[moolam-sealed-verifier<br/>Chainlink CRE workflow, private copies]
         F[IPFS via Pinata<br/>image, manifest, thumbnail]
     end
 
@@ -39,10 +41,12 @@ flowchart LR
     R -- ownerOf agentId --> I8
     R -- isReceiver --> P
     W -- writeReport --> RC -- attest --> R
+    WS -- writeReport --> RS -- attest --> R
     R -- events --> X
     X -- GraphQL --> S
     S -- reads --> F
     W -- fetches image --> F
+    WS -- private copy, by a link S mints --> F
     V -- upload any copy --> S
 ```
 
@@ -57,7 +61,7 @@ sequenceDiagram
     participant R as MoolamRegistry
     participant X as Envio
     participant W as CRE workflow
-    participant RC as MoolamReceiver
+    participant RC as SimulationReceiver (public)
 
     A->>A: generate image (OpenAI image model)
     A->>S: fingerprint(bytes): sha256, pHash, blockhash
@@ -76,11 +80,16 @@ sequenceDiagram
     R-->>X: event indexed
     X-->>W: log trigger fires
     W->>F: fetch image (downscaled copy under 100 KB)
-    W->>W: recompute fingerprint, nodes reach consensus
-    W->>RC: writeReport(passportId, matched, distance)
+    W->>W: recompute fingerprint (in the simulator today, one machine)
+    W->>RC: writeReport(passportId, matched, distance), sent by the CRE wallet
     RC->>R: attest(...)
     R-->>X: VerificationAttested indexed
 ```
+
+Today the workflow runs in Chainlink's simulator and its report reaches the receiver through
+Chainlink's MockKeystoneForwarder, so the receiver takes it only from a transaction the CRE wallet
+signed. A private re-check runs the same way through `moolam-sealed-verifier` and the sealed
+`SimulationReceiver`.
 
 Verification of a copy later: anyone uploads a file to the service, the service
 computes the eight rotated and mirrored fingerprints, searches the index, returns
@@ -102,7 +111,10 @@ flowchart TD
     MR -. reads ownerOf .-> I8[ERC-8004 Identity Registry, mainnet]
     VP[VerifierPolicy] --> O2
     VP -. implements .-> IVP
-    RC[MoolamReceiver] --> RT[Chainlink ReceiverTemplate]
+    SR[SimulationReceiver, public and sealed] --> RT[Chainlink ReceiverTemplate]
+    SR -. calls attest .-> MR
+    MF[MockKeystoneForwarder, Chainlink] -. onReport, CRE wallet only .-> SR
+    RC[MoolamReceiver, retired 2026-09-26] --> RT
     RC -. calls attest .-> MR
     FW[Keystone Forwarder, Chainlink] -. onReport .-> RC
 ```
@@ -120,15 +132,24 @@ flowchart TD
 
 ## 5. The interface the app and the indexer use
 
-Live on Monad mainnet (chain 143), deployed in block 103054771 and verified on MonadVision:
+Live on Monad mainnet (chain 143), deployed in block 103054771 and verified on MonadVision. The two
+simulation receivers were deployed in blocks 108102667 and 108102676 and have been the receivers
+the policy lists since 2026-09-27 14:18 UTC:
 
 | Contract | Address |
 |---|---|
 | MoolamRegistry | 0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0 |
 | VerifierPolicy | 0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821 |
-| MoolamReceiver | 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 |
+| SimulationReceiver, public, `moolam-verifier` sends here, listed in tx 0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb | 0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95 |
+| SimulationReceiver, sealed, `moolam-sealed-verifier` sends here, listed in tx 0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d | 0x52b8fE549B432920eeB061c26cAc5c2D527657f6 |
+| MoolamReceiver, public (retired 2026-09-26), history kept | 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 |
+| MoolamReceiver, sealed (retired 2026-09-26), history kept | 0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A |
 | ERC-8004 Identity Registry (Monad's) | 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432 |
+| Chainlink MockKeystoneForwarder, which the simulation receivers listen to | 0x9eF6468C5f37b976E57d52054c693269479A784d |
 | Chainlink Keystone Forwarder (production) | 0x76c9cf548b4179F8901cda1f8623568b58215E62 |
+
+The simulation receivers' deploy record is
+`packages/contracts/deployments/simulation-receivers-monad-mainnet.json`.
 
 The first mainnet deployment (registry 0xeBeeD7A422531789aa009a9c45CC10C84dF12119, block
 102977372) is superseded by the addresses above.

@@ -29,7 +29,7 @@ The sources, the case against provenance and what Moolam does about each: [Why i
 
 ## Chainlink CRE in two minutes
 
-Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's agent trust scores are counted from those opinions. The workflow wakes on a `PassportRegistered` log, reads the passport from Monad, fetches the picture from IPFS, decodes it and recomputes its fingerprint inside the workflow, reaches consensus on the verdict, and writes it back to Monad through a `SimulationReceiver`: [`0x4aD66c77…BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) for public pictures and [`0x52b8fE54…57f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) for private ones, queued in the policy and listable from 2026-09-27 06:03 UTC. Every re-check already on chain went through the older `MoolamReceiver` pair, and that history stays under their addresses.
+Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's agent trust scores are counted from those opinions. The workflow wakes on a `PassportRegistered` log, reads the passport from Monad, fetches the picture from IPFS, decodes it and recomputes its fingerprint inside the workflow, reaches consensus on the verdict, and writes it back to Monad through a `SimulationReceiver`: [`0x4aD66c77…BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) for public pictures and [`0x52b8fE54…57f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) for private ones, both listed in the policy since 2026-09-27 14:18 UTC (listing transactions [`0xac642cc5…0bfb`](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb) and [`0x0e1e2937…457d`](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d)). The older `MoolamReceiver` pair came off the policy on 2026-09-26. Every re-check written before that went through them, and that history stays under their addresses.
 
 - **See one.** [Monsoon Fishing Nets Drying](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and its report [`0x59e6a8d5…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa): the passport card shows the verdict, the distance and the transaction.
 - **See the private one.** [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4) was never published. The confidential workflow (`handlerInTee`) fetched a private copy with a secret and wrote its report [`0xa38fd971…c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954) through a second receiver.
@@ -83,8 +83,8 @@ Chain 143. The first three were deployed in block 103054771 and MoolamConsent in
 | VerifierPolicy | [`0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821`](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 | Sourcify match |
 | MoolamReceiver, retired from the policy on 2026-09-26, history kept | [`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 | Sourcify match |
 | MoolamReceiver, private re-checks, retired from the policy on 2026-09-26, history kept | [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) | 107265126 | Sourcify match |
-| SimulationReceiver, public re-checks, queued in the policy and listable from 2026-09-27 06:03 UTC | [`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) | 108102667 | Sourcify match |
-| SimulationReceiver, private re-checks, queued in the policy and listable from 2026-09-27 06:03 UTC | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) | 108102676 | Sourcify match |
+| SimulationReceiver, public re-checks, listed in the policy since 2026-09-27 14:18 UTC, tx [`0xac642cc5…0bfb`](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb) | [`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) | 108102667 | Sourcify match |
+| SimulationReceiver, private re-checks, listed in the policy since 2026-09-27 14:18 UTC, tx [`0x0e1e2937…457d`](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d) | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) | 108102676 | Sourcify match |
 | MoolamConsent | [`0x1151E69a82947920546e779c4C8c785b2a3C1277`](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 | Sourcify match |
 | Verify service | [https://verifier-production-d76f.up.railway.app/health](https://verifier-production-d76f.up.railway.app/health) | Railway, from packages/verifier/Dockerfile | live |
 
@@ -194,9 +194,10 @@ sets out what happens once the product has to pay for itself.
 
 - Chainlink CRE is the second opinion. A log trigger on `PassportRegistered` wakes a workflow, each
   node downloads the thumbnail and recomputes the 64-bit hash inside the sandbox, and a quorum has
-  to produce the identical verdict before it is signed into a report and written back through
-  `MoolamReceiver` as an attestation. That is the network path; the re-checks on chain today came
-  from simulation runs of the same workflow, one machine each.
+  to produce the identical verdict before it is signed into a report and written back through a
+  receiver as an attestation. That is the network path; the re-checks on chain today came from
+  simulation runs of the same workflow, one machine each, and since 2026-09-27 they land through the
+  two `SimulationReceiver` contracts.
 - A sealed picture can be re-checked without being published. The creator switches on "Let
   Chainlink re-check this privately", Moolam keeps one 512 pixel copy on Pinata's private storage,
   and a Chainlink confidential workflow, `moolam-sealed-verifier`, opens it through a two minute link
@@ -278,8 +279,8 @@ never been published; the `moolam-sealed-verifier` confidential workflow opened 
 private copy of it, recomputed the fingerprint at distance 1, matched, and wrote the verdict in
 [`0xdc1834ea...9b790bef`](https://monadvision.com/tx/0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef)
 through the second receiver,
-[`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A),
-deployed in block 107265126 and pinned to that workflow's name. It ran in Chainlink's simulator with
+[`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A)
+(retired 2026-09-26), deployed in block 107265126 and pinned to that workflow's name. It ran in Chainlink's simulator with
 `--broadcast` like every other re-check: one machine, no network consensus, and no real enclave. The
 record is in [proofs/sealed-passports.txt](proofs/sealed-passports.txt) and the workflow in
 [the Chainlink workflow page](docs/developers/chainlink-workflow.md).
@@ -315,7 +316,8 @@ flowchart LR
     subgraph Monad mainnet
         R[MoolamRegistry<br/>ERC-721 passports, edit tree,<br/>attestations, disputes]
         P[VerifierPolicy<br/>who may attest, 24h delay]
-        RC[MoolamReceiver<br/>Chainlink ReceiverTemplate]
+        RC[SimulationReceiver, public<br/>0x4aD6…Aa95, CRE wallet only]
+        RS[SimulationReceiver, sealed<br/>0x52b8…57f6, CRE wallet only]
         I8[ERC-8004 Identity Registry<br/>canonical, read only]
         PC[P-256 precompile 0x0100]
     end
@@ -323,7 +325,8 @@ flowchart LR
     subgraph Off-chain
         S[Verifier service<br/>fingerprints, C2PA, Hamming search,<br/>x402-paid API]
         X[Envio HyperIndex<br/>passports, trees, trust scores]
-        W[Chainlink CRE workflow<br/>re-fetch and re-fingerprint]
+        W[moolam-verifier<br/>Chainlink CRE workflow, public pictures]
+        WS[moolam-sealed-verifier<br/>Chainlink CRE workflow, private copies]
         F[IPFS via Pinata<br/>image, manifest, thumbnail]
     end
 
@@ -334,10 +337,12 @@ flowchart LR
     R -- ownerOf agentId --> I8
     R -- isReceiver --> P
     W -- writeReport --> RC -- attest --> R
+    WS -- writeReport --> RS -- attest --> R
     R -- events --> X
     X -- GraphQL --> S
     S -- reads --> F
     W -- fetches image --> F
+    WS -- private copy, by a link S mints --> F
     V -- upload any copy --> S
 ```
 
@@ -357,7 +362,7 @@ sequenceDiagram
     participant R as MoolamRegistry
     participant X as Envio
     participant W as CRE workflow
-    participant RC as MoolamReceiver
+    participant RC as SimulationReceiver (public)
 
     A->>A: generate image (OpenAI image model)
     A->>S: fingerprint(bytes): sha256, pHash, blockhash
@@ -376,14 +381,16 @@ sequenceDiagram
     R-->>X: event indexed
     X-->>W: log trigger fires
     W->>F: fetch image (downscaled copy under 100 KB)
-    W->>W: recompute fingerprint (on the network, nodes must agree)
-    W->>RC: writeReport(passportId, matched, distance)
+    W->>W: recompute fingerprint (in the simulator today, one machine)
+    W->>RC: writeReport(passportId, matched, distance), sent by the CRE wallet
     RC->>R: attest(...)
     R-->>X: VerificationAttested indexed
 ```
 
-The diagram is the designed path on the live Chainlink network. The reports on chain today came from
-simulation runs of the same workflow, one machine each, which is why the passport card names the forwarder.
+The diagram is the path the reports take today: the workflow runs in Chainlink's simulator on one
+machine, and its report reaches the receiver through Chainlink's MockKeystoneForwarder in a
+transaction the CRE wallet signed. On Chainlink's network a quorum of nodes would have to agree
+first. The passport card names the forwarder that delivered each report.
 
 ### Contract dependencies
 
@@ -406,7 +413,10 @@ flowchart TD
     MR -. reads ownerOf .-> I8[ERC-8004 Identity Registry, mainnet]
     VP[VerifierPolicy] --> O2
     VP -. implements .-> IVP
-    RC[MoolamReceiver] --> RT[Chainlink ReceiverTemplate]
+    SR[SimulationReceiver, public and sealed] --> RT[Chainlink ReceiverTemplate]
+    SR -. calls attest .-> MR
+    MF[MockKeystoneForwarder, Chainlink] -. onReport, CRE wallet only .-> SR
+    RC[MoolamReceiver, retired 2026-09-26] --> RT
     RC -. calls attest .-> MR
     FW[Keystone Forwarder, Chainlink] -. onReport .-> RC
 ```

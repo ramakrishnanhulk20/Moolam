@@ -19,7 +19,7 @@ evidence rather than the conclusion.
 
 ### What the receiver actually checks
 
-`MoolamReceiver` inherits Chainlink's `ReceiverTemplate` unchanged
+`MoolamReceiver` `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` (retired 2026-09-26; since 2026-09-27 the workflows send to the two `SimulationReceiver` contracts named in their `config.json`, which need none of this section's owner transactions) inherits Chainlink's `ReceiverTemplate` unchanged
 (`packages/contracts/src/vendor/chainlink/ReceiverTemplate.sol`). `onReport(metadata, report)` does
 two things before the report is decoded:
 
@@ -74,7 +74,7 @@ hold. It does not have to be cleared.
 Two owner transactions from the deployer wallet, sent once before judging opens:
 
 ```bash
-# 1. point the receiver at the mock forwarder
+# 1. point the receiver at the mock forwarder (a record: this receiver is retired since 2026-09-26)
 cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setForwarderAddress(address)" \
   0x9eF6468C5f37b976E57d52054c693269479A784d \
   --rpc-url "$MONAD_MAINNET_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY"
@@ -380,11 +380,12 @@ and no CRE_API_KEY set`. Two ways:
   words: "API key authentication requires your account to have deploy access approval." Moolam does
   not have deploy access today, so this is the second option only after Chainlink grants it.
 
-**3. Create the runner token and send the receiver transaction.** Invent a long random token, put
+**3. Create the runner token.** Invent a long random token, put
 it in `/etc/moolam/runner.env` as `RUNNER_TOKEN` and set the same value on Railway so the verify
-service will answer the queue routes. Then send the receiver transactions in "The narrowest state
-that works" above, from the deployer wallet, on the machine that holds that key. It is never on
-the VM.
+service will answer the queue routes. No receiver transaction is needed any more: the two
+`SimulationReceiver` contracts the workflow configs name have been listed since 2026-09-27 and
+accept a report only from the CRE wallet. The transactions in "The narrowest state that works"
+above were for the retired `MoolamReceiver`. The deployer key is never on the VM.
 
 ## Checks after install
 

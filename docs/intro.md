@@ -28,13 +28,15 @@ holder can write, so a platform that strips the file's metadata does not strip t
 
 ## Live on Monad mainnet
 
-Chain 143, all four verified on MonadVision through Sourcify.
+Chain 143, every one verified on MonadVision through Sourcify.
 
 | Contract | Address | Deployed in block |
 | --- | --- | --- |
 | MoolamRegistry | [0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0) | 103054771 |
 | VerifierPolicy | [0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821) | 103054771 |
-| MoolamReceiver | [0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 |
+| SimulationReceiver, public re-checks, listed in the policy since 2026-09-27 14:18 UTC ([listing](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb)) | [0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) | 108102667 |
+| SimulationReceiver, private re-checks, listed in the policy since 2026-09-27 14:18 UTC ([listing](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d)) | [0x52b8fE549B432920eeB061c26cAc5c2D527657f6](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) | 108102676 |
+| MoolamReceiver (retired 2026-09-26), removed from the policy with its sealed twin, every re-check it wrote kept | [0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) | 103054771 |
 | MoolamConsent | [0x1151E69a82947920546e779c4C8c785b2a3C1277](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277) | 105828247 |
 
 Two contracts Moolam reads but did not deploy: Monad's canonical

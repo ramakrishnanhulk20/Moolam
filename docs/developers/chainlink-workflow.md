@@ -75,8 +75,10 @@ node is fine as long as every node lands on the same answer.
 
 ### 6. Write
 
-The verdict is ABI encoded, signed into a report, and delivered by Chainlink's KeystoneForwarder to
-`MoolamReceiver`, which calls `attest` on the registry.
+The verdict is ABI encoded, signed into a report, and delivered through a Chainlink forwarder to the
+public `SimulationReceiver`, `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`, which calls `attest` on
+the registry. Today that forwarder is the simulator's `MockKeystoneForwarder`; "The receiver, and
+what a simulation needs" below says why that needs a receiver of its own.
 
 ```
 (uint256 chainId, uint64 executedAt, bytes32 passportId, bool matched, uint16 distance, bytes32 recomputed)
@@ -94,7 +96,7 @@ timestamp that is not newer than the last one it recorded for that passport.
 | --- | --- |
 | `chain` | `monad-mainnet` |
 | `registry` | `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0` |
-| `receiver` | `0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04` |
+| `receiver` | `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` |
 | `gateway` | `https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/` |
 | `matchThreshold` | `10` |
 
@@ -135,12 +137,13 @@ the same for everyone who runs this public workflow. A receiver that trusted the
 metadata alone would trust anyone with the CLI.
 
 Since 2026-09-26 simulated reports have their own receivers, one per workflow, both
-`SimulationReceiver`:
+`SimulationReceiver`, and both listed in the policy since 2026-09-27 14:18 UTC. Each workflow's
+`config.json` sends its reports to its own:
 
-| Workflow | Receiver |
-| --- | --- |
-| `moolam-verifier` | [`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) |
-| `moolam-sealed-verifier` | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) |
+| Workflow | Receiver | Listed in the policy |
+| --- | --- | --- |
+| `moolam-verifier` | [`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95`](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95) | [`0xac642cc5…0bfb`](https://monadvision.com/tx/0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb), block 108,487,207 |
+| `moolam-sealed-verifier` | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) | [`0x0e1e2937…457d`](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d), block 108,487,216 |
 
 Both listen to the mock forwarder, both carry the simulator's own stamps as their pins (author
 `0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa`, workflow id `0x11..11` and the workflow's name), which
@@ -180,12 +183,14 @@ machine. The registry refuses the removed receiver as soon as that transaction l
 again goes through the policy's public 24 hour queue.
 
 **Where it stands.** Both were deployed on 2026-09-26 in blocks 108,102,667 and 108,102,676,
-verified through Sourcify, and queued in the policy, where the listing can run from 2026-09-27
-06:03:51 UTC. The two older receivers came off the policy in the same run. The workflow configs still
-name the older receivers and switch to these only after the listing has run. A receiver for a real Chainlink network
-deployment would be a separate contract, listed through the same queue: this one has no switch that
-turns the sending-wallet rule off. The deploy record is
-[simulation-receivers.txt](../../proofs/simulation-receivers.txt).
+verified through Sourcify, and put in the policy's queue. The listing ran on 2026-09-27 at 14:18 UTC,
+after the policy's public 24 hour wait, in the two transactions in the table above. The two older
+receivers came off the policy on 2026-09-26, in the deploy run, and every verdict they wrote stays
+on chain under their addresses. Both workflow configs name the new receivers. A receiver for a real
+Chainlink network deployment would be a separate contract, listed through the same queue: this one
+has no switch that turns the sending-wallet rule off. The deploy record is
+[simulation-receivers.txt](../../proofs/simulation-receivers.txt), and the addresses and
+transactions are in `packages/contracts/deployments/simulation-receivers-monad-mainnet.json`.
 
 **Before 2026-09-26.** The first two receivers, both `MoolamReceiver`, listened to Chainlink's
 production forwarder and were pinned to the workflow author and name. A simulated report cannot pass
@@ -269,33 +274,44 @@ attacked is in the [Threat model](../security/threat-model), section "The privat
    link or the token.
 7. **Fingerprint.** The public workflow's `decode.ts` and `phash.ts`, imported rather than copied.
    Ten bits or fewer from the stored fingerprint is a match.
-8. **Write.** One report over the same six fields, through `usingTheDons()`, to the second receiver,
-   with a gas limit of 1,000,000.
+8. **Write.** One report over the same six fields, through `usingTheDons()`, to the sealed
+   `SimulationReceiver`, with a gas limit of 1,000,000.
 
 On chain it writes nothing else: the same six fields the public workflow writes, and no part of the
 picture.
 
 ### The second receiver
 
+The receiver `moolam-sealed-verifier` sends to now:
+
 | What | Value |
 | --- | --- |
-| Address | [`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A) |
-| Deployed | block 107,265,126, the same `MoolamReceiver` code as the first |
-| Forwarder | Chainlink's production forwarder `0x76c9cf548b4179F8901cda1f8623568b58215E62` |
-| Pinned author | the CRE wallet `0xC79620AF233a4434b03f6B57239F8A9E71B3C178` |
+| Address | [`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6) |
+| Deployed | block 108,102,676, the same `SimulationReceiver` code as the public one |
+| Forwarder | Chainlink's `MockKeystoneForwarder` `0x9eF6468C5f37b976E57d52054c693269479A784d` |
+| Sending wallet | the CRE wallet `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, fixed in the constructor with no setter |
+| Pinned author and workflow id | the simulator's own stamps, `0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa` and `0x11..11` |
 | Pinned workflow name | `moolam-sealed-verifier`, stored as `0x64323036636163326334`, which is how Chainlink's template keeps a name: the first ten hex characters of its SHA-256, as text |
-| Listed by the policy | on 2026-09-25, after the policy's public 24 hour wait, transaction [`0x79d34b81...`](https://monadvision.com/tx/0x79d34b81ce94d4a21b10277a70d656b4588360e232839e0e25a16edf91687380) |
+| Listed by the policy | on 2026-09-27 at 14:18 UTC, after the policy's public 24 hour wait, transaction [`0x0e1e2937...`](https://monadvision.com/tx/0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d), block 108,487,216 |
+
+Before it, private verdicts went through the older sealed `MoolamReceiver`
+[`0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A`](https://monadvision.com/address/0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A)
+(retired 2026-09-26): deployed in block 107,265,126, pinned to Chainlink's production forwarder, the
+CRE wallet as author and the same workflow name, listed on 2026-09-25 in transaction
+[`0x79d34b81...`](https://monadvision.com/tx/0x79d34b81ce94d4a21b10277a70d656b4588360e232839e0e25a16edf91687380),
+and taken off the policy on 2026-09-26. The first two private verdicts carry its address.
 
 Why a second receiver rather than a second name on the first: the registry stores the receiver with
 every attestation. With one receiver per workflow, the chain itself says which workflow wrote each
 verdict, and neither receiver's pin has to be widened. The passport page reads that field to label a
-private verdict. The deploy record is `packages/contracts/deployments/sealed-receiver-monad-mainnet.json`.
+private verdict. The deploy record is `packages/contracts/deployments/simulation-receivers-monad-mainnet.json`,
+and the older receiver's is `packages/contracts/deployments/sealed-receiver-monad-mainnet.json`.
 
 `moolam-sealed-verifier/config.json`:
 
 | Key | Value |
 | --- | --- |
-| `receiver` | `0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A` |
+| `receiver` | `0x52b8fE549B432920eeB061c26cAc5c2D527657f6` |
 | `gateway` | `https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/` |
 | `privateGatewayHost` | `lavender-personal-grasshopper-978.mypinata.cloud` |
 | `verifierUrl` | `https://verifier-production-d76f.up.railway.app` |
@@ -325,8 +341,8 @@ Since 2026-09-26 nobody opens or closes a receiver around a run. Both `Simulatio
 contracts listen to the simulation forwarder `0x9eF6468C5f37b976E57d52054c693269479A784d` all the
 time and accept a report only in a transaction signed by the CRE wallet
 `0xC79620AF233a4434b03f6B57239F8A9E71B3C178` ("The sending-wallet rule" above), so there is no
-window to open and no owner transaction per run. They take reports once the policy's listing runs,
-from 2026-09-27 06:03:51 UTC, and the workflow configs switch to them at that point.
+window to open and no owner transaction per run. The policy has listed both since 2026-09-27 14:18
+UTC, and both workflow configs send their reports to them.
 
 The re-check runner in `packages/recheck-runner` drives the runs, on a small Linux machine that
 holds the CRE wallet's key and never the owner key. <!-- HEAD CHEF: once the runner is confirmed live, replace the next sentence with "It is live, and passes every two minutes." --> It is being brought up now. For a
@@ -371,7 +387,7 @@ published:
 | Verdict | distance 1, matched |
 | Report | [`0xdc1834ea...`](https://monadvision.com/tx/0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef), block 107,817,793, status 1 |
 | Delivered by | the simulation forwarder: one machine, no network consensus, not a real enclave |
-| Written by | the sealed receiver, which the attestation names |
+| Written by | the older sealed `MoolamReceiver` (retired 2026-09-26), which the attestation names |
 
 Afterwards the receiver read back on the production forwarder, pinned to the workflow author and
 `moolam-sealed-verifier`. The records are in [sealed-passports.txt](../../proofs/sealed-passports.txt)

@@ -102,12 +102,14 @@ transaction reaches Monad at all, which is the point.
 
 ## Verified source
 
-All four contracts are verified on MonadVision through Sourcify, so the deployed bytecode can be
+Every contract below is verified on MonadVision through Sourcify, so the deployed bytecode can be
 read against the source in this repository:
 
 - [MoolamRegistry](https://monadvision.com/address/0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0)
 - [VerifierPolicy](https://monadvision.com/address/0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821)
-- [MoolamReceiver](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04)
+- [SimulationReceiver, public](https://monadvision.com/address/0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95), listed in the policy since 2026-09-27 14:18 UTC
+- [SimulationReceiver, sealed](https://monadvision.com/address/0x52b8fE549B432920eeB061c26cAc5c2D527657f6), listed in the policy since 2026-09-27 14:18 UTC
+- [MoolamReceiver](https://monadvision.com/address/0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04) (retired 2026-09-26), off the policy with its history kept
 - [MoolamConsent](https://monadvision.com/address/0x1151E69a82947920546e779c4C8c785b2a3C1277)
 
 ## What this does not cover

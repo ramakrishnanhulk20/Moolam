@@ -1,0 +1,68 @@
+{
+  "chainId": 143,
+  "deployer": "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
+  "owner": "0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c",
+  "policy": "0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821",
+  "registry": "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0",
+  "sendingWallet": "0xC79620AF233a4434b03f6B57239F8A9E71B3C178",
+  "public": {
+    "block": 108102667,
+    "changeId": "0x4a6589bbfe8f5fa2957f2af550bfbd2be0f9dd227eaf72cad106b34562f0480d",
+    "contract": "SimulationReceiver",
+    "executeAfter": 1790489029,
+    "forwarder": "0x9eF6468C5f37b976E57d52054c693269479A784d",
+    "listingBlock": 108487207,
+    "queueBlock": 108102716,
+    "receiver": "0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95",
+    "txHashes": {
+      "execute": "0xac642cc5c89290a2659e0ee7aaa78d7b729643f22138725815590dd2abbc0bfb",
+      "queueAddReceiver": "0x92e91eb81093dfc29abef25e1f36f63ec86d6189eadb5ac5e5f7b1a34c263fe5",
+      "receiver": "0x85c1b5866ed5c6a86cee597bfce12650bd46b8f1feb35e033f193a161650a50d",
+      "setExpectedAuthor": "0xb7c242190a8b582be9ad02fdca71f926ba2517b7dcdf7fc399cbbc72ebd024ce",
+      "setExpectedWorkflowId": "0x73908a81fe7a67ad06f53d91628a14da55887a8338624a9035915e1ade55ac8f",
+      "setExpectedWorkflowName": "0x631810cf44c8e6dad3fb55acd7887f0b415694dc79fb12f1b42ef21734c47695"
+    },
+    "workflowAuthor": "0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa",
+    "workflowId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "workflowName": "moolam-verifier",
+    "workflowNameEncoded": "0x34623863303364663034"
+  },
+  "sealed": {
+    "block": 108102676,
+    "changeId": "0x018889ea4917dceb5f7d660f8c3e1f841a29495f48996a865678f3e3fdd65139",
+    "contract": "SimulationReceiver",
+    "executeAfter": 1790489031,
+    "forwarder": "0x9eF6468C5f37b976E57d52054c693269479A784d",
+    "listingBlock": 108487216,
+    "queueBlock": 108102722,
+    "receiver": "0x52b8fE549B432920eeB061c26cAc5c2D527657f6",
+    "txHashes": {
+      "execute": "0x0e1e2937ee4593cb8aad78d4bb6696b14584080b216d4c3c028f0c32eecf457d",
+      "queueAddReceiver": "0x14d02fed42be834b37d4605b30228eb37cb74e76a8926d6614f5a3c3d3fa2aa1",
+      "receiver": "0xb27bee3fd4e401c10c5012b85db8afe8a40ed944b14736fcd0e49896e764221a",
+      "setExpectedAuthor": "0xf034084dab67e8fdf1a24ef99f43412b5ada3acfb6a166e27b0f8430b1fc163f",
+      "setExpectedWorkflowId": "0x8a94a6afb3706c942f2daf5178dbb804dd466f39860a17fb73f62ecb3fa0e5fe",
+      "setExpectedWorkflowName": "0x490a2191f54d890602f69da979d8a0516b9d65aab3c323f1bac6c1bf2f9f7041"
+    },
+    "workflowAuthor": "0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa",
+    "workflowId": "0x1111111111111111111111111111111111111111111111111111111111111111",
+    "workflowName": "moolam-sealed-verifier",
+    "workflowNameEncoded": "0x64323036636163326334"
+  },
+  "retired": [
+    {
+      "contract": "MoolamReceiver",
+      "receiver": "0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04",
+      "retiredBlock": 108102728,
+      "retiredTx": "0xf0d63ff4dec3211a552bcc0b4d63cd2aead9d0c5e59e965f5b17a995746bc31a",
+      "workflowName": "moolam-verifier"
+    },
+    {
+      "contract": "MoolamReceiver",
+      "receiver": "0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A",
+      "retiredBlock": 108102734,
+      "retiredTx": "0xad29012339a471ddbb7c3e12e5480615e772bec5f2931ec8ab9d89d7d035ae88",
+      "workflowName": "moolam-sealed-verifier"
+    }
+  ]
+}

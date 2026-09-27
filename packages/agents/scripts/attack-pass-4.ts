@@ -38,12 +38,15 @@ const MONSOON_ID = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d
 /** The private re-check run of 2026-09-25 (proofs/sealed-passports.txt). */
 const REPORT_TX = "0xdc1834ea3d801fd965433dfefe02a70e7f06889655dceb7934d4668f9b790bef" as Hex;
 
-const SEALED_RECEIVER = getAddress("0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A");
+/** The sealed SimulationReceiver, listed in the policy since 2026-09-27. */
+const SEALED_RECEIVER = getAddress("0x52b8fE549B432920eeB061c26cAc5c2D527657f6");
+/** The sealed MoolamReceiver, retired 2026-09-26, which wrote the 2026-09-25 verdict that 8d reads. */
+const OLD_SEALED_RECEIVER = getAddress("0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A");
 
 const REQUEST_TIMEOUT_MS = 20_000;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SEALED_DEPLOYMENT = join(HERE, "..", "..", "contracts", "deployments", "sealed-receiver-monad-mainnet.json");
+const SEALED_DEPLOYMENT = join(HERE, "..", "..", "contracts", "deployments", "simulation-receivers-monad-mainnet.json");
 
 const getPassportAbi = [
   {
@@ -123,7 +126,7 @@ const registryAbi = [
   { type: "error", name: "AttestationCapReached", inputs: [{ name: "passportId", type: "bytes32" }] },
 ] as const;
 
-/** Chainlink's ReceiverTemplate as MoolamReceiver inherits it, with every error onReport can raise. */
+/** Chainlink's ReceiverTemplate as SimulationReceiver inherits it, with every error onReport can raise. */
 const receiverAbi = [
   {
     type: "function",
@@ -188,13 +191,34 @@ const receiverAbi = [
       { name: "lastSeen", type: "uint64" },
     ],
   },
+  {
+    type: "error",
+    name: "WrongSendingWallet",
+    inputs: [
+      { name: "origin", type: "address" },
+      { name: "expected", type: "address" },
+    ],
+  },
+  {
+    type: "error",
+    name: "ReportFromTheFuture",
+    inputs: [
+      { name: "passportId", type: "bytes32" },
+      { name: "reported", type: "uint64" },
+      { name: "latestAccepted", type: "uint256" },
+    ],
+  },
 ] as const;
 
-interface SealedDeployment {
-  receiver: string;
-  forwarder: string;
-  workflowAuthor: string;
-  workflowNameEncoded: string;
+interface SimulationDeployment {
+  sendingWallet: string;
+  sealed: {
+    receiver: string;
+    forwarder: string;
+    workflowAuthor: string;
+    workflowId: string;
+    workflowNameEncoded: string;
+  };
 }
 
 type Verdict = "REFUSED" | "PASS" | "LANDED AS EXPECTED" | "LANDED, NOT EXPECTED" | "FAILED";
@@ -322,7 +346,9 @@ async function main(): Promise<void> {
   const gateway = required("PINATA_GATEWAY_URL").replace(/\/?$/, "/");
   const linkToken = required("SEALED_LINK_TOKEN");
   const { registry } = loadDeployment();
-  const sealed = JSON.parse(readFileSync(SEALED_DEPLOYMENT, "utf8")) as SealedDeployment;
+  const deployment = JSON.parse(readFileSync(SEALED_DEPLOYMENT, "utf8")) as SimulationDeployment;
+  const sealed = deployment.sealed;
+  const sendingWallet = getAddress(deployment.sendingWallet);
   if (getAddress(sealed.receiver) !== SEALED_RECEIVER) {
     throw new Error("the sealed receiver deployment file names another address than this pass attacks");
   }
@@ -344,7 +370,7 @@ async function main(): Promise<void> {
   say(`commit      ${commitHash()}`);
   say(`chain       Monad mainnet, chain 143, read at block ${block.toLocaleString("en-US")}`);
   say(`registry    ${registry}`);
-  say(`receiver    ${SEALED_RECEIVER} (the sealed receiver)`);
+  say(`receiver    ${SEALED_RECEIVER} (the sealed SimulationReceiver)`);
   say(`passport    ${PRIVATE_ID} (privately re-checkable)`);
   say(`            registered at unix ${passport.registeredAt}, metadata ${passport.metadataURI}`);
   say(`monsoon     ${MONSOON_ID} (public)`);
@@ -501,18 +527,22 @@ async function main(): Promise<void> {
   // A stranger's address with no code and no history: made fresh for this run.
   const stranger = getAddress(`0x${randomBytes(20).toString("hex")}`);
   const author = getAddress(sealed.workflowAuthor);
+  const forwarderAddress = getAddress(sealed.forwarder);
   const encodedName = sealed.workflowNameEncoded.toLowerCase() as Hex;
-  // The metadata a real report carries (workflow id, name, owner), filled with the pinned name and
-  // author, so the only thing wrong about the call is who sent it. The report says "not matched".
-  const metadata = encodePacked(["bytes32", "bytes10", "address"], [`0x${"00".repeat(32)}`, encodedName, author]);
+  // The metadata a real report carries (workflow id, name, owner), filled with the pinned id, name
+  // and author, so the only thing wrong about the call is who sent it. The report says "not matched".
+  const metadata = encodePacked(["bytes32", "bytes10", "address"], [sealed.workflowId as Hex, encodedName, author]);
   const report = encodeAbiParameters(
     [{ type: "uint256" }, { type: "uint64" }, { type: "bytes32" }, { type: "bool" }, { type: "uint16" }, { type: "bytes32" }],
     [143n, BigInt(Math.floor(Date.now() / 1000)), PRIVATE_ID, false, 64, `0x${"00".repeat(32)}`],
   );
+  // The mock forwarder swallows a receiver's refusal, so a call through it shows no revert. The
+  // eth_call goes out as the mock instead, the one caller the template lets through, and then its
+  // origin is the mock's own address: like a stranger's transaction, not signed by the CRE wallet.
   const onReport = await revertOf(
     async () =>
       await client.simulateContract({
-        account: stranger,
+        account: forwarderAddress,
         address: SEALED_RECEIVER,
         abi: receiverAbi,
         functionName: "onReport",
@@ -520,14 +550,16 @@ async function main(): Promise<void> {
         blockNumber: block,
       }),
   );
-  say("8a  eth_call onReport on the sealed receiver from a stranger, the pinned name and author in the metadata, a false verdict in the report");
+  const [, expectedWallet] = onReport.args.split(", ");
+  const walletRefused = onReport.name === "WrongSendingWallet" && expectedWallet === sendingWallet;
+  say("8a  eth_call onReport on the sealed receiver as Chainlink's mock forwarder, not signed by the CRE wallet, the pinned id, name and author in the metadata, a false verdict in the report");
   say(`      reverted ${onReport.name}(${onReport.args})`);
   push({
     n: "8a",
-    what: "onReport on the sealed receiver from a stranger's address, eth_call",
+    what: "onReport on the sealed receiver through the mock forwarder's address, origin not the CRE wallet, eth_call",
     found: `reverted ${onReport.name}`,
-    notCovered: "the simulation forwarder during an operator run, when the pin is open by design (ruling D10)",
-    verdict: onReport.name === "InvalidSender" ? "REFUSED" : "LANDED, NOT EXPECTED",
+    notCovered: "the CRE wallet itself, whose reports the receiver takes by design; a stranger's real transaction through the mock, which mines with ReportProcessed false instead of reverting",
+    verdict: walletRefused ? "REFUSED" : "LANDED, NOT EXPECTED",
   });
 
   const [forwarder, pinnedAuthor, pinnedName] = await Promise.all([
@@ -536,18 +568,18 @@ async function main(): Promise<void> {
     client.readContract({ address: SEALED_RECEIVER, abi: receiverAbi, functionName: "getExpectedWorkflowName", blockNumber: block }),
   ]);
   const pinned =
-    getAddress(forwarder) === getAddress(sealed.forwarder) &&
+    getAddress(forwarder) === forwarderAddress &&
     getAddress(pinnedAuthor) === author &&
     pinnedName.toLowerCase() === encodedName;
   say("8b  the sealed receiver's pin, read back");
-  say(`      forwarder ${forwarder} (${getAddress(forwarder) === getAddress(sealed.forwarder) ? "Chainlink's production forwarder" : "NOT the production forwarder"})`);
-  say(`      author    ${pinnedAuthor} (${getAddress(pinnedAuthor) === author ? "the workflow author" : "NOT the workflow author"})`);
+  say(`      forwarder ${forwarder} (${getAddress(forwarder) === forwarderAddress ? "Chainlink's mock forwarder" : "NOT the mock forwarder"})`);
+  say(`      author    ${pinnedAuthor} (${getAddress(pinnedAuthor) === author ? "the simulator's author stamp" : "NOT the simulator's author stamp"})`);
   say(`      name      ${pinnedName} (${pinnedName.toLowerCase() === encodedName ? "moolam-sealed-verifier, encoded" : "NOT the sealed workflow's name"})`);
   push({
     n: "8b",
     what: "the sealed receiver's forwarder, author and workflow name, read back",
-    found: pinned ? "production forwarder, workflow author and moolam-sealed-verifier, all pinned" : "the pin is not what the deployment file names",
-    notCovered: "the window during an operator run when the pin is cleared, which the runbook closes and the run report reads back",
+    found: pinned ? "mock forwarder, the simulator's author stamp and moolam-sealed-verifier, all pinned" : "the pin is not what the deployment file names",
+    notCovered: "the owner key, which can re-pin at will; the sending wallet, which has no setter, is read in proofs/simulation-receivers.txt",
     verdict: pinned ? "PASS" : "FAILED",
   });
 
@@ -583,7 +615,7 @@ async function main(): Promise<void> {
     count === 1n &&
     rows.length === 1 &&
     row !== undefined &&
-    getAddress(row.receiver) === SEALED_RECEIVER &&
+    getAddress(row.receiver) === OLD_SEALED_RECEIVER &&
     row.matched === true &&
     row.distance === 1 &&
     receipt.status === "success" &&
@@ -599,7 +631,7 @@ async function main(): Promise<void> {
   push({
     n: "8d",
     what: "the private passport's attestations, against the report tx of 2026-09-25",
-    found: row === undefined ? `${count} rows` : `${count} row, receiver the sealed receiver ${getAddress(row.receiver) === SEALED_RECEIVER ? "yes" : "NO"}, matched ${String(row.matched)}, distance ${row.distance}, written in the report tx's block`,
+    found: row === undefined ? `${count} rows` : `${count} row, receiver the older sealed receiver ${getAddress(row.receiver) === OLD_SEALED_RECEIVER ? "yes" : "NO"}, matched ${String(row.matched)}, distance ${row.distance}, written in the report tx's block`,
     notCovered: "which machine ran the workflow, which the chain does not record; the receiver says which workflow name wrote it",
     verdict: rowOk ? "PASS" : "FAILED",
   });
