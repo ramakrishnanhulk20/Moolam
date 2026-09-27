@@ -3,7 +3,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest }
 import { z } from "zod";
 import { InvalidToken, bearerToken, verifyPrivyToken, type PrivyIdentity, type PrivyKeys } from "../auth/privy.js";
 import { embeddedWallets } from "../auth/wallet.js";
-import { READ_MANIFEST_TIMEOUT_MS, readManifest, type ManifestSummary } from "../c2pa.js";
+import { readManifest, readTimedOut, type ManifestSummary } from "../c2pa.js";
 import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import {
   FingerprintFault,
@@ -31,6 +31,7 @@ import { fileSlug, manifestDocument } from "../metadata.js";
 import {
   FINGERPRINT_UNSTABLE_REASON,
   FingerprintUnstable,
+  ReadBackFault,
   UNSEAL_THUMBNAIL_TOO_LARGE_REASON,
   assertStableFingerprint,
   type PreparedImage,
@@ -73,12 +74,6 @@ import {
 
 /** The header parsed, so this is a real picture, but the pixels behind it did not decode. */
 const UNDECODABLE = "the file could not be decoded";
-
-/**
- * How much earlier than READ_MANIFEST_TIMEOUT_MS a manifest read may end and still count as one that
- * ran into the limit: a timer can fire a few milliseconds early by the wall clock.
- */
-const TIMER_SLACK_MS = 50;
 
 /** GET /unseal/:passportId per address, the same as /sealed/status: a miss spends a Pinata request. */
 const LOOKUPS_PER_MINUTE = 30;
@@ -667,11 +662,13 @@ async function unsealHeld(
       }
       // This service failed to fingerprint the file it was handed, so the file is not to blame
       // (review pass 6, answers 7). Nothing was pinned, so the holder's allowance and the day's
-      // slot both come back.
+      // slot both come back. A read-back fault is logged as one, the way /prepare and /edit log it.
       if (error instanceof FingerprintFault) {
         request.log.error(
           { url: request.url, reason: safeReason(error) },
-          "rejected: /unseal the service failed fingerprinting",
+          error instanceof ReadBackFault
+            ? "rejected: /unseal signing read-back fault"
+            : "rejected: /unseal the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }
@@ -722,12 +719,10 @@ async function unsealHeld(
     // Read before any pin, so a read that could not finish costs the holder a retry and never leaves
     // a record that names no manifest for good (review pass 10, V106). Nothing is pinned yet, so the
     // holder's allowance and the day's slot both come back.
-    const readFrom = Date.now();
     const manifest = await readManifest(upload.bytes);
-    const tookMs = Date.now() - readFrom;
-    if (manifestReadFailedHere(manifest, passport, tookMs)) {
+    if (manifestReadFailedHere(manifest, passport)) {
       request.log.error(
-        { url: request.url, passportId: upload.passportId, tookMs, recorded: !noManifestRecorded(passport) },
+        { url: request.url, passportId: upload.passportId, timedOut: readTimedOut(manifest), recorded: !noManifestRecorded(passport) },
         "rejected: /unseal the service could not read the manifest it would publish",
       );
       return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
@@ -1065,19 +1060,18 @@ async function oldestRecord(
 /**
  * Whether a manifest read that came back unreadable is this service failing rather than the file.
  *
- * readManifest answers "unreadable" both for a store it cannot parse and for a read it gave up on
- * after READ_MANIFEST_TIMEOUT_MS, and it tells the two apart no other way than by the time taken.
- * The upload hashes to the passport id, so these are the registered bytes: when the chain records a
- * manifest for them, one that cannot be read now is this host failing (a slow read, a reader short
- * of memory), however quickly it failed. When the chain records none, only a read that ran to the
- * limit counts, and a quick unreadable answer is the file's own damaged store, published as before
- * with no manifest document.
+ * readManifest answers "unreadable" both for a store it cannot parse and for a read it gave up on,
+ * and marks the second, which readTimedOut reads. The upload hashes to the passport id, so these
+ * are the registered bytes: when the chain records a manifest for them, one that cannot be read now
+ * is this host failing (a slow read, a reader short of memory), however it failed. When the chain
+ * records none, only a read given up on counts, and any other unreadable answer is the file's own
+ * damaged store, published as before with no manifest document, however long it took to parse.
  */
-function manifestReadFailedHere(manifest: ManifestSummary, passport: OnChainPassport, tookMs: number): boolean {
+function manifestReadFailedHere(manifest: ManifestSummary, passport: OnChainPassport): boolean {
   if (manifest.validation !== "unreadable") {
     return false;
   }
-  return !noManifestRecorded(passport) || tookMs >= READ_MANIFEST_TIMEOUT_MS - TIMER_SLACK_MS;
+  return !noManifestRecorded(passport) || readTimedOut(manifest);
 }
 
 /** True when the chain's manifestHash is 32 zero bytes, or missing from the answer altogether. */

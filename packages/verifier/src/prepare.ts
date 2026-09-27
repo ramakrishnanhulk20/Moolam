@@ -14,16 +14,14 @@ import {
 import { trainingAssertion, type TrainingConsent } from "./consent.js";
 import {
   FingerprintFault,
-  ImageTooLarge,
   MAX_IMAGE_PIXELS,
   PHASH_MATCH_THRESHOLD,
+  decodeFailure,
   fingerprint,
   flattenedOntoWhite,
   hamming64,
   phashOf,
   readImageHeader,
-  UndecodableImage,
-  UnsupportedImageFormat,
   type Fingerprint,
   type Hex,
 } from "./fingerprint.js";
@@ -515,29 +513,17 @@ export async function uprightImage(source: Buffer): Promise<Buffer> {
 }
 
 /**
- * Runs one sharp call and answers its failure in the classes fingerprint.ts gives a decoder's: a
- * decoder out of memory, which libvips and libjpeg both say with the word "memory", is this host
- * under pressure and a FingerprintFault, and anything else is the picture's, UndecodableImage.
- * Without it a raw sharp error while making the upright copy or a thumbnail read as the signer
- * refusing the file, and the fallback pinned it unsigned (review pass 10, V97). This is the rule of
- * fingerprint.ts's decodeFailure, which that file keeps to itself.
+ * Runs one sharp call and answers its failure in the classes fingerprint.ts gives a decoder's, by
+ * that file's decodeFailure: a decoder out of memory is this host under pressure and a
+ * FingerprintFault, and anything else is the picture's, UndecodableImage. Without it a raw sharp
+ * error while making the upright copy or a thumbnail read as the signer refusing the file, and the
+ * fallback pinned it unsigned (review pass 10, V97).
  */
 async function viaSharp<T>(work: () => Promise<T>): Promise<T> {
   try {
     return await work();
   } catch (error) {
-    if (
-      error instanceof FingerprintFault ||
-      error instanceof UndecodableImage ||
-      error instanceof ImageTooLarge ||
-      error instanceof UnsupportedImageFormat
-    ) {
-      throw error;
-    }
-    const detail = error instanceof Error ? error.message : String(error);
-    throw /memory/i.test(detail)
-      ? new FingerprintFault(detail, { cause: error })
-      : new UndecodableImage(detail, { cause: error });
+    throw decodeFailure(error);
   }
 }
 

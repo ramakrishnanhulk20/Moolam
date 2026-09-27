@@ -108,7 +108,8 @@ curl -s -X POST http://localhost:4000/verify \
   manifest: {
     present: boolean,
     validation?: "valid" | "invalid" | "unreadable", // see below
-    failures?: string[],            // only with validation "invalid"
+    credential?: "expired" | "untrusted", // only on a "valid" manifest, see below
+    failures?: string[],            // with "invalid", and with a "valid" one that carries credential
     manifestHash?: `0x${string}`,   // sha256 of the C2PA store's own box, see below
     title?: string,
     claimGenerator?: string,
@@ -122,7 +123,9 @@ curl -s -X POST http://localhost:4000/verify \
   },
   index: {
     loadedAt: number,               // unix seconds, the last good load of the passport index
-    stale: boolean                  // true once that load is over five refresh periods old
+    stale: boolean,                 // true once that load is too old, or the indexer behind it is behind, see below
+    indexedTo?: number | null,      // on an Envio host, the newest block the indexer had processed
+    indexedAt?: number | null       // on an Envio host, that block's time in unix seconds
   }
 }
 ```
@@ -135,8 +138,27 @@ next good load. A stale answer is still a real match against that copy, but a pi
 since it loaded may be missing from it, so a "no match" from a stale copy is not proof the picture is
 unregistered. The verify card says so in one line beside the verdict: "Moolam's copy of the register
 is {minutes} minutes old, so a picture registered since then may not show yet." A host with
-`INDEX_REFRESH_MS=0` never reloads and never reports stale. [`/health`](#get-health) carries the
-same two fields.
+`INDEX_REFRESH_MS=0` never reloads and is never stale on that count. [`/health`](#get-health)
+carries the same fields.
+
+**How far the indexer had read.** A host whose `PASSPORT_SOURCE` is `envio` also reads, on every
+load, how far the indexer behind the copy had got. `indexedTo` is the newest block the indexer says
+it has finished, taken from Envio's own `chain_metadata` and never from the newest passport it
+holds, and `indexedAt` is that block's time in unix seconds, read from the chain. Each is `null`
+when it could not be read. `stale` is then also true when, at that load, the indexer was more than
+ten minutes of block time behind the chain head, still said it was syncing, or either block time
+could not be read: an indexer nobody can show is current is never called current. Both block times
+come from the chain's RPC, so an RPC that does not answer turns every answer stale until it does. A
+host reading the JSON file has no indexer and leaves both fields off.
+
+Every field of one answer comes from one copy of the index: the match, the exact lookup, the four
+facts below and `index` all read the copy that was in hand when the match began, so a reload that
+lands in the middle of a request never mixes two copies in one answer.
+
+**No production host without the indexer.** A host whose `NODE_ENV` is `production` refuses to
+boot unless `PASSPORT_SOURCE` is `envio`. Unset reads as `json`, and the deployed image carries
+no passport file, so a production host on that default would load an empty register and call every
+picture unregistered while `/health` looked fine. The boot error names `PASSPORT_SOURCE`.
 
 The 64-bit pHash goes out as a decimal string, never a JSON number, because a double cannot hold
 it. That applies to `result.queried.phash` and to `manifest.softBinding.phash`.
@@ -150,12 +172,28 @@ made of the file, and it is one of three words, or absent:
 - `valid`: a manifest is present, and its signature and its bindings to these bytes check out. The
   signing certificate is not looked up on any trust list, so `valid` says the file is the one that
   was signed, not who signed it.
-- `invalid`: a manifest is present and anything short of a clean pass came back, which usually means
-  the file was altered after signing or the manifest was moved here from another file. `failures`
-  carries the library's failure codes for the active manifest, such as
-  `assertion.dataHash.mismatch`. Only short dotted codes of letters, digits, dots, underscores and
-  hyphens, at most 64 characters each, are kept, duplicates are dropped, and the list stops at eight,
-  so a crafted manifest cannot use the field to put text of its own into the answer.
+- `valid` with `credential`: the library failed the manifest for a signing certificate alone, and
+  for nothing else. Moolam signs without a trusted timestamp, so the library judges each certificate
+  against today: once a leaf that signed the file, Moolam's own or a camera's inside the file, passes
+  its end date, the untouched file reports `signingCredential.expired`, and a certificate on no
+  trust list reports `signingCredential.untrusted`. Neither says a byte or a claim changed.
+  `credential` is `expired` when any certificate expired and `untrusted` otherwise. The verify
+  card still calls the record signed, with one quiet line on the certificate. A camera certificate
+  that had already expired when Moolam signed over it is recorded inside the camera's ingredient
+  rather than reported for the file, so that file reads plain `valid`.
+- `invalid`: a manifest is present and anything else short of a clean pass came back, which usually
+  means the file was altered after signing or the manifest was moved here from another file. Every
+  code but those two keeps the manifest invalid, `signingCredential.revoked`,
+  `signingCredential.invalid` and any code this service has never seen included.
+
+`failures` carries the library's failure codes, such as `assertion.dataHash.mismatch`, from the
+active manifest, from each ingredient's deltas, which is where a camera certificate that expired is
+recorded, and from the flat status list. It is sent with `invalid`, and with a `valid` manifest that
+carries `credential`, so the certificate's own code is named. Only short dotted codes of letters,
+digits, dots, underscores and hyphens, at most 64 characters each, are kept, duplicates are dropped,
+and the list stops at eight, so a crafted manifest cannot use the field to put text of its own into
+the answer. Whether a manifest is `valid` is decided on every code the library reported, before
+any is left out of the list.
 - `unreadable`: the file carries C2PA data the library could not parse, the library could not
   read the file at all, the file names a manifest stored elsewhere instead of carrying one, or the
   read was still running after five seconds. `present` is `false`, and no other manifest field is
@@ -494,10 +532,22 @@ transaction that used it is found and read: first any the facilitator named, the
 read when the payment was first held, in chunks of 100 blocks, at most 50 of them, up to the block
 whose time passes the authorisation's `validBefore`, since EIP-3009 refuses the transfer after
 that. A transaction counts only when its receipt is a success and carries both events from the
-asset contract: `AuthorizationUsed` for this payer and nonce, and a `Transfer` of at least the
-price from the payer to the payee. Not spent is `authorizationState` false, or a search that
-reached `validBefore` with no such transaction. A read that fails, or a search that ran out of
-chunks first, is "cannot tell".
+asset contract: `AuthorizationUsed` for this payer and nonce and, as the very next log after it,
+the `Transfer` that authorisation moved, from the payer to the payee, for exactly the value the
+payer signed, which must be at least the price. USDC's `transferWithAuthorization` emits the two
+in that order, so a `Transfer` anywhere else in the receipt belongs to some other authorisation,
+and one transaction that spends several nonces beside one real transfer proves one payment, not all
+of them. The next log is found by its `logIndex` when the receipt carries one, and by its place in
+the list when it does not.
+
+A payment held while the newest block could not be read has no block to start from, so its search
+starts at the first block whose time is past the authorisation's `validAfter`, the earliest block
+the transfer can land in. When the blocks from there to `validBefore` are more than one search
+reads, as they are for the x402 client's `validAfter` of 0, the search covers the newest of them,
+ending at the last block before `validBefore`, and finding nothing there answers "cannot tell",
+never "not spent". Not spent is `authorizationState` false, or a search that covered every block
+up to `validBefore` with no such transaction. A read that fails, or a search that ran out of chunks
+first, is "cannot tell".
 
 **When settlement is broadcast but not yet confirmed.** The facilitator can answer a settle call
 with `settlement_pending`: the transfer is on chain but its receipt has not been seen in time. The
@@ -690,7 +740,9 @@ thumbnail that carries EXIF, XMP or IPTC or will not decode. The actions, the ha
 ingredients are never redacted, because the standard does not allow it.
 
 The signed file is read back before it goes anywhere. It keeps the record only when Moolam's
-manifest validates, names that one parent, the parent reports nothing mismatched or missing, no
+manifest validates by the rule under [`/verify`](#post-verify), so a camera certificate that has
+expired, or is on no trust list, does not cost the record while any other failure does, names that
+one parent, the parent reports nothing mismatched or missing, no
 text value the record held under a place or serial key appears anywhere in the signed bytes, and no
 thumbnail left in the store carries EXIF, XMP or IPTC. Otherwise, and for a store that cannot be
 read, one past the caps (16 manifests, 64 redactions, 32 thumbnails) or one the library will not
@@ -938,6 +990,22 @@ arrives with a camera's own record gets the same redaction, read back and `camer
 | `503` | `busy`. No turn at the decode gate came free inside `MATCH_WAIT_MS`, as under `/prepare`, or the upload ceiling or this caller's share of it was full |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while reading or fingerprinting the edit, as under `/prepare`. Nothing is pinned or sent, and both allowances are given back |
 
+**One send per edit, and a landing read from the chain.** The send carries Privy's idempotency key
+`moolam-edit-` followed by the sha256 of the wallet id and the whole calldata, the deadline included.
+The Privy SDK's own retries of one send carry the same key, so Privy runs that `appendEdit` once.
+The same edit sent again by the creator is built with a new deadline, so it is a new send with a key
+of its own, and another holder's send of the same bytes, from another wallet, never shares a key.
+
+Before any `send-failed` that follows a send, whether Privy called the send dead, the receipt says
+reverted, or the receipt carries no `PassportRegistered` event for this child, the registry is read
+for the child passport. When the chain holds it, registered by this creator's wallet under this
+parent, the edit landed, most likely through an earlier try of the same send: the answer is `200`,
+or `502 send-pending` with the `passportId` when Privy called the send dead and reported no hash,
+so the browser watches for a child it will find at once. The receipt's own event is read the same
+way, and its creator and parent must be this edit's too. A copy of these bytes someone else
+registered, or one under another parent, is never answered as this edit, and a chain that does not
+answer is not a landing: `send-failed` stands.
+
 The parent is checked first, because it is the one claim in the request that costs nothing to settle.
 Then the signer, then the ownership, then the creator's own allowance, then today's budget for
 everyone, and only then is a pin or a transaction spent.
@@ -1071,6 +1139,7 @@ compare with the passport id on Monad.
 | `502` | `chain-unavailable`, `metadata-unavailable` or `privy-unavailable`: the Monad RPC, the gateway or Privy did not answer. All of that happens before the allowance is taken, so nothing was spent |
 | `503` | `busy`. No turn at the decode gate came free inside `MATCH_WAIT_MS`, as under `/prepare`, or the upload ceiling or this caller's share of it was full |
 | `503` | `{ "error": "service-fault", "reason": "the service could not read this picture right now, try again" }`. The service failed while fingerprinting the upload or making its thumbnail, as under `/prepare`, which is never read as a file that is not an image. A thumbnail step that runs out of memory is this answer; `thumbnail-too-large` is only ever the size budget, and any other thumbnail failure is `415 not-an-image`. Nothing is pinned, and both allowances are given back |
+| `503` | `service-fault` as well when the manifest read of the upload, made before any pin, gives up at its five second limit, or comes back unreadable for bytes the chain says were registered with a manifest. A record pinned without the manifest could never be replaced, so the holder sends the same file again. Only a read given up on counts: a file registered with no manifest whose own store cannot be parsed is published without a manifest document, however long the read took. Nothing is pinned, and both allowances are given back |
 
 A public pin counts only when Pinata answers with the content id this service computed for the
 bytes it sent, on the public network. Pinata stores one copy of any content, across its networks
@@ -1184,8 +1253,9 @@ itself could not be read, `privateRecheck` is `false` because the service does n
 held, because they are the answers that must be asked again. A delete through
 [`/sealed/forget`](#post-sealedforget), or by an unseal, that removed every file under the name
 makes the status read `gone` at once and holds it for the next 60 seconds, even while Pinata's
-listing still shows the deleted file. A delete that failed part way, or one made while the
-passport's document could not be read, drops the memory instead, so the next read asks again.
+listing still shows the deleted file. That holds for a delete made while the passport's document
+could not be read too, since every file under the name went. A delete that failed part way drops the
+memory instead, so the next read asks again.
 
 ## POST /sealed/link
 
@@ -1207,8 +1277,10 @@ A link is minted only when every check holds, and they run in this order. The to
 constant time. The id is 32 bytes of hex, lower-cased once. The registry holds the passport. Its
 metadata document, read through the service's own guarded fetch, asks for a private re-check and
 commits to this very id. The re-check queue holds a request for it that a runner claimed less than
-ten minutes ago, so a stolen token opens only what is being run right now. Exactly one private file
-has the passport's name. The link is then asked of Pinata for a fixed 120 seconds, never a time from
+ten minutes ago, so a stolen token opens only what is being run right now. The status memory behind
+[`/sealed/status`](#get-sealedstatuspassportid) does not hold `gone` for it: for the minute after a
+delete removed every file under the name, the link is refused without asking the listing, which can
+still show the deleted file. Exactly one private file has the passport's name. The link is then asked of Pinata for a fixed 120 seconds, never a time from
 the request, and parsed again before it is sent: it has to be `https` on the host
 `PINATA_GATEWAY_URL` names.
 
@@ -1219,7 +1291,7 @@ the request, and parsed again before it is sent: it has to be `https` on the hos
 | `401` | `unauthorized`. No `Authorization: Bearer ...` header, or the wrong token |
 | `404` | `no-passport`. The registry holds no such passport |
 | `404` | `nothing-kept`. The passport's document did not ask for a private re-check |
-| `404` | `gone`. No private file has the passport's name |
+| `404` | `gone`. No private file has the passport's name, or a delete through [`/sealed/forget`](#post-sealedforget) or an unseal removed every file under it in the last minute, while Pinata's listing may still show one |
 | `409` | `commitment-mismatch`. The document commits to a different passport id |
 | `409` | `not-claimed`. No runner claimed this passport's request in the last ten minutes: nobody asked, it is still waiting, it is answered, or the claim is older |
 | `409` | `ambiguous`. More than one private file has the passport's name |

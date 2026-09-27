@@ -169,6 +169,7 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
         <p className="font-display text-[clamp(1.3rem,2.4vw,1.8rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-failed">
           {t("none")}
         </p>
+        <StaleIndex minutes={answer.staleMinutes} />
         <p className="mt-3 break-all font-mono text-[11px] text-text-faint">{name}</p>
       </div>
     );
@@ -183,6 +184,7 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
       >
         {same ? (answer.kind === "exact" ? t("sameExact") : t("same")) : t("different")}
       </p>
+      <StaleIndex minutes={answer.staleMinutes} />
 
       {/* Two columns of readings need about 150 px each before a value starts
           breaking up. Under 420 px they get the whole width, one under the
@@ -205,6 +207,23 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
 
       <p className="mt-4 break-all font-mono text-[11px] text-text-faint">{name}</p>
     </div>
+  );
+}
+
+/**
+ * The verify card's line for an answer matched against a copy of the register the service itself
+ * called stale, in the card's own words (verify.staleIndex): "not this picture" or "a different
+ * record" from an old copy may only mean a registration it has not seen yet.
+ */
+function StaleIndex({ minutes }: { minutes: number | undefined }) {
+  const v = useTranslations("verify");
+  if (minutes === undefined) {
+    return null;
+  }
+  return (
+    <p data-stale-index className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
+      {v("staleIndex", { minutes })}
+    </p>
   );
 }
 

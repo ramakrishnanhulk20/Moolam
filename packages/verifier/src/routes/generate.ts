@@ -31,6 +31,7 @@ import {
   FINGERPRINT_UNSTABLE_REASON,
   FingerprintUnstable,
   PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON,
+  ReadBackFault,
   THUMBNAIL_TOO_LARGE_REASON,
   ThumbnailTooLarge,
   assertStableFingerprint,
@@ -346,12 +347,15 @@ export async function generateRoutes(
           reason: FINGERPRINT_UNSTABLE_REASON,
         });
       }
-      // This service failed to fingerprint a drawing it could read. The drawing was made and paid
-      // for, so both slots stay spent, and the answer says the fault is ours, not the model's.
+      // This service failed to fingerprint a drawing it could read, or to read back the file it had
+      // just signed. The drawing was made and paid for, so both slots stay spent, and the answer
+      // says the fault is ours, not the model's. The log names which of the two it was.
       if (error instanceof FingerprintFault) {
         request.log.error(
           { url: request.url, reason: safeReason(error) },
-          "rejected: /generate the service failed fingerprinting",
+          error instanceof ReadBackFault
+            ? "rejected: /generate signing read-back fault"
+            : "rejected: /generate the service failed fingerprinting",
         );
         return reply.code(503).send({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       }

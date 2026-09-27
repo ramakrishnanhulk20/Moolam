@@ -1,9 +1,11 @@
 // Covers review pass 9 intake #4 (V89), the send half: sendFromWallet sends every transaction under
 // a privy-idempotency-key, so when the Privy SDK sends the same request again after a lost reply,
-// Privy sees the same key and runs it once. The client is the real @privy-io/node client with its
-// fetch stubbed, so the retry and the headers are the SDK's own and nothing leaves the machine.
-// Does NOT cover Privy's server honouring the key, and does NOT cover the /edit route reading the
-// chain for the child passport before it answers send-failed: that check lives in routes/edit.ts.
+// Privy sees the same key and runs it once. A key the caller names is sent as it is, and two sends
+// that name none get two keys. The client is the real @privy-io/node client with its fetch stubbed,
+// so the retry and the headers are the SDK's own and nothing leaves the machine.
+// Does NOT cover Privy's server honouring the key. The /edit side lives in test/edit.test.ts: the
+// key /edit names, callIdempotencyKey of the wallet and the whole calldata (V95), and the chain
+// read for the child passport before a send is answered send-failed (V89).
 
 import { PrivyClient } from "@privy-io/node";
 import { describe, expect, it } from "vitest";

@@ -124,8 +124,11 @@ export class FingerprintFault extends Error {
  * both say so with the word "memory", so that one is a FingerprintFault. The classes this file
  * raises on purpose pass through as they are. Anything else a decoder threw while reading the
  * upload's bytes is the upload's: UndecodableImage.
+ *
+ * The one copy of this rule: prepare.ts sorts every sharp failure through it, and unseal.ts every
+ * failure of the thumbnail step that is not the size budget.
  */
-function decodeFailure(error: unknown): Error {
+export function decodeFailure(error: unknown): Error {
   if (
     error instanceof FingerprintFault ||
     error instanceof UndecodableImage ||

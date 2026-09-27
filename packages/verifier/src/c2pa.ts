@@ -100,6 +100,31 @@ export function manifestUnreadable(): ManifestSummary {
   return { present: false, validation: "unreadable" };
 }
 
+/**
+ * The answers readManifest gave for a read it gave up on. Kept beside the summary rather than in
+ * it, so the answer a caller sends out is the plain unreadable one, byte for byte.
+ */
+const givenUp = new WeakSet<ManifestSummary>();
+
+/**
+ * The answer for a read still running after READ_MANIFEST_TIMEOUT_MS: the same unreadable summary a
+ * damaged store gets, marked so readTimedOut tells the two apart.
+ */
+export function manifestTimedOut(): ManifestSummary {
+  const summary = manifestUnreadable();
+  givenUp.add(summary);
+  return summary;
+}
+
+/**
+ * Whether this summary is readManifest giving up on a slow read, which says nothing about the file,
+ * rather than a store it could not parse. Only the very object readManifest returned carries the
+ * mark: a copy made by spreading it does not.
+ */
+export function readTimedOut(summary: ManifestSummary): boolean {
+  return givenUp.has(summary);
+}
+
 const MAX_FAILURE_CODES = 8;
 
 /** How long one manifest read may take before the file is answered as unreadable. */
@@ -122,7 +147,8 @@ const READER_SETTINGS = settingsToJson(createVerifySettings({ remoteManifestFetc
  * and a read still running after READ_MANIFEST_TIMEOUT_MS are present false with
  * validation "unreadable", so a damaged manifest costs the caller the manifest
  * and never the match. A read given up on keeps running in the library until it
- * ends, and its answer is dropped. A manifest that parses is present, with the
+ * ends, and its answer is dropped; its summary is the same unreadable one, and
+ * readTimedOut says it timed out. A manifest that parses is present, with the
  * library's own validation state: anything but a clean pass reads as invalid,
  * except a failure that is only about the signing certificate (see judged).
  * Checking the signing certificate against a trust list is deliberately not done
@@ -135,7 +161,7 @@ export async function readManifest(bytes: Buffer): Promise<ManifestSummary> {
   }
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<ManifestSummary>((resolve) => {
-    timer = setTimeout(() => resolve(manifestUnreadable()), READ_MANIFEST_TIMEOUT_MS);
+    timer = setTimeout(() => resolve(manifestTimedOut()), READ_MANIFEST_TIMEOUT_MS);
   });
   try {
     return await Promise.race([summarise(bytes).catch(() => manifestUnreadable()), limit]);
@@ -699,10 +725,12 @@ const MOOLAM_THUMBNAILS = 2;
 
 /**
  * Reads a file signed with a camera's record back, before it is handed to anyone, and says what is
- * wrong with it. Nothing is wrong when Moolam's manifest validates, it names exactly one ingredient
- * and that one is the parentOf carrying the camera's manifest, the parent reports no mismatched or
- * missing part, none of `secrets` appears anywhere in the bytes, and no thumbnail left in the store
- * carries EXIF, XMP or IPTC.
+ * wrong with it. Nothing is wrong when Moolam's manifest validates by the rule readManifest answers
+ * with (judged): a failure that is only about a signing certificate, the camera's leaf having
+ * expired or being on no trust list, keeps the record, while any integrity failure is a fault. It
+ * names exactly one ingredient and that one is the parentOf carrying the camera's manifest, the
+ * parent reports no mismatched or missing part, none of `secrets` appears anywhere in the bytes, and
+ * no thumbnail left in the store carries EXIF, XMP or IPTC.
  *
  * A read back that fails is itself the fault, and the record is dropped. A read back still running
  * after READ_MANIFEST_TIMEOUT_MS says nothing about the record, only that this service was slow, so
@@ -738,7 +766,7 @@ export async function cameraRecordFault(signed: Buffer, secrets: readonly string
     return "the signed file carries no manifest";
   }
   const store = reader.json();
-  if (store.validation_state !== "Valid" && store.validation_state !== "Trusted") {
+  if (judged(store).validation !== "valid") {
     return `Moolam's manifest does not validate: ${failureCodes(store).join(", ")}`;
   }
   const ingredients = active.ingredients ?? [];

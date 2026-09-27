@@ -6,7 +6,8 @@
 // every fixture (answers 1). From review pass 7 (V56): a blockhash worker is retired after a job
 // whose JPEG decoder threw, as the WebAssembly decoder does on a CMYK file and leaks when it does,
 // and once the bytes it was handed pass 64 MB, so the reviewer's padded file cannot pile up inside
-// one long-lived worker; the hash that comes back is the one imghash gives on its own.
+// one long-lived worker; the hash that comes back is the one imghash gives on its own. decodeFailure,
+// the one rule prepare.ts and unseal.ts share for who is at fault when a decoder throws.
 // Does NOT cover how the hashes behave under real transforms, which is what
 // scripts/robustness.ts measures, nor AVIF, HEIF or JPEG XL files, which are refused by the same
 // rule and are not built here.
@@ -22,10 +23,13 @@ import { uprightImage } from "../src/prepare.js";
 import {
   BLOCKHASH_MATCH_THRESHOLD,
   PHASH_MATCH_THRESHOLD,
+  FingerprintFault,
   ImageTooLarge,
   MAX_IMAGE_PIXELS,
+  UndecodableImage,
   UnsupportedImageFormat,
   blockhashWorkersRetired,
+  decodeFailure,
   fingerprint,
   hamming64,
   hammingHex,
@@ -268,5 +272,29 @@ describe("hammingHex", () => {
 
   it("refuses hashes of different lengths", () => {
     expect(() => hammingHex("0x00" as Hex, "0x0000" as Hex)).toThrow(/equal length/);
+  });
+});
+
+describe("decodeFailure: the one rule for who is at fault when a decoder throws", () => {
+  it("passes this file's own classes through, calls a decoder out of memory this host's fault, and anything else the upload's", () => {
+    for (const own of [
+      new FingerprintFault("the blockhash worker stopped"),
+      new UndecodableImage("truncated"),
+      new ImageTooLarge("too many pixels"),
+      new UnsupportedImageFormat("svg"),
+    ]) {
+      expect(decodeFailure(own)).toBe(own);
+    }
+
+    const libvips = new Error("vips_image_new: out of memory");
+    const starved = decodeFailure(libvips);
+    expect(starved).toBeInstanceOf(FingerprintFault);
+    expect(starved.cause).toBe(libvips);
+    expect(decodeFailure(new Error("VipsJpeg: Insufficient memory"))).toBeInstanceOf(FingerprintFault);
+
+    const corrupt = decodeFailure(new Error("VipsJpeg: Corrupt JPEG data: premature end of data segment"));
+    expect(corrupt).toBeInstanceOf(UndecodableImage);
+    expect(corrupt.message).toBe("VipsJpeg: Corrupt JPEG data: premature end of data segment");
+    expect(decodeFailure("a bare string")).toBeInstanceOf(UndecodableImage);
   });
 });

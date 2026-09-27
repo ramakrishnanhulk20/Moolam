@@ -5,7 +5,8 @@
 // marker survive untouched. V42: the manifest hash covers the C2PA store alone, so a foreign JUMBF
 // box beside it changes nothing, and a file carrying only Moolam's store hashes as it always did.
 // V45: reading a manifest never reaches the network, even when the file names a remote manifest,
-// and a read that hangs is given up after five seconds as unreadable while /verify still answers.
+// and a read that hangs is given up after five seconds as unreadable while /verify still answers;
+// that answer is marked for callers as timed out and its JSON is the plain unreadable one.
 // Does NOT cover what the C2PA signer does with a store the upload already carried (the camera
 // record, test/camera-record.test.ts), HEIF, AVIF or JPEG XL, or a real camera's files: the
 // review's file is built here segment by segment.
@@ -15,7 +16,7 @@ import { createServer } from "node:http";
 import { Reader } from "@contentauth/c2pa-node";
 import sharp from "sharp";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { READ_MANIFEST_TIMEOUT_MS, readManifest } from "../src/c2pa.js";
+import { READ_MANIFEST_TIMEOUT_MS, readManifest, readTimedOut } from "../src/c2pa.js";
 import { prepareOrFallback, prepareSealed, uprightImage } from "../src/prepare.js";
 import { buildServer } from "../src/server.js";
 import { makeImage, multipartBody } from "./helpers.js";
@@ -157,6 +158,19 @@ describe("V45: reading a manifest stays off the network and inside five seconds"
 
     expect(READ_MANIFEST_TIMEOUT_MS).toBe(5_000);
     await expect(reading).resolves.toEqual({ present: false, validation: "unreadable" });
+  }, 30_000);
+
+  it("marks a read it gave up on as timed out for callers, while its JSON stays the plain unreadable answer", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.spyOn(Reader, "fromAsset").mockImplementation(() => new Promise(() => {}));
+
+    const reading = readManifest(await makeImage(71));
+    await vi.advanceTimersByTimeAsync(READ_MANIFEST_TIMEOUT_MS);
+    const summary = await reading;
+
+    expect(readTimedOut(summary)).toBe(true);
+    expect(JSON.stringify(summary)).toBe(JSON.stringify({ present: false, validation: "unreadable" }));
+    expect(readTimedOut({ present: false, validation: "unreadable" })).toBe(false);
   }, 30_000);
 
   it("still answers /verify when the manifest read hangs", async () => {

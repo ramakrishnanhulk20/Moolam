@@ -1,13 +1,14 @@
 // Covers what /verify says about a Content Credentials manifest that is damaged, tampered with or
 // moved onto another picture: the fingerprint answer always stands, a manifest that fails the C2PA
-// library's own validation says so, and one that cannot be read says that instead.
+// library's own validation says so, and one that cannot be read says that instead, never marked as
+// a read this service gave up on.
 // Does NOT cover trust lists (the development certificate is on none, so a clean manifest reads as
 // valid, never trusted), and does not cover PNG or WebP containers, which the damage cases here do
 // not reach.
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { embedManifest, readManifest } from "../src/c2pa.js";
+import { embedManifest, readManifest, readTimedOut } from "../src/c2pa.js";
 import { fingerprint } from "../src/fingerprint.js";
 import { buildServer } from "../src/server.js";
 import { makeImage, multipartBody, recordFor } from "./helpers.js";
@@ -110,6 +111,8 @@ describe("a damaged manifest on /verify", () => {
     expect(body.result.best.id).toBe(passportId);
     expect(body.manifest.present).toBe(false);
     expect(body.manifest.validation).toBe("unreadable");
+    // A store that cannot be parsed is the file's own damage, never a read this service gave up on.
+    expect(readTimedOut(await readManifest(broken))).toBe(false);
   });
 
   it("leaves a picture with no manifest at all as plainly absent", async () => {

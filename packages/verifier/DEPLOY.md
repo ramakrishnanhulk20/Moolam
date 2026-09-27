@@ -93,6 +93,20 @@ and it names the signer as the reason. In the same way, a registry check that
 cannot read the chain at boot leaves `/generate` answering 503
 `generator-unchecked`, listed under `off`, and tries again every 5 minutes.
 
+With neither `MOOLAM_C2PA_CERT_PATH` nor `MOOLAM_C2PA_KEY_PATH` set, the service
+makes a development signing identity with openssl at boot, in
+`test-assets/certs` inside the container, which is why the image installs
+openssl. Its signing certificate lasts 365 days from the moment it was made, and
+nothing renews it. The window is checked at boot and again on every signing, so
+when it runs out, signing turns off with a plain reason rather than producing
+files no reader can verify: a host that boots with it expired leaves
+`/prepare`, `/generate` and `/edit` off and names the reason under `off` in
+`/health`, and a host that was already running answers each of those three
+`502 sign-failed`, with "the signing certificate expired at" and the date in the
+log. A redeploy starts a fresh container with no identity on disk, so it makes a
+new one that lasts another 365 days. Pictures signed under the old one stay
+valid: the verify answer calls them signed and adds `credential: "expired"`.
+
 Turning the paid route on is those two variables and nothing else: `X402_ENABLED=true` and
 `X402_PAY_TO_ADDRESS` set to the wallet that collects. Setting one without the other stops the boot
 and names the missing variable, because a payment route with no recipient must never mount. Nothing

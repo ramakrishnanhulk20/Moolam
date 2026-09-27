@@ -32,7 +32,10 @@
 // record, and a field not sent as plain text is refused by name (V57). From review pass 10: GET
 // answers this server's own record, never not-unsealed, while the listing trails (V105; the other
 // two readers are test/unseal-readers.test.ts), and a manifest read that gave up, or that failed on
-// bytes the chain says carry a manifest, answers 503 with nothing pinned (V106).
+// bytes the chain says carry a manifest, answers 503 with nothing pinned (V106). Whether a read gave
+// up is read from readManifest's own mark, not the clock, so a damaged store that was slow to parse
+// on a passport with no manifest on record is published without one. A read-back fault is logged as
+// one, not as failed fingerprinting.
 // Does NOT cover a real Pinata pin, a real Privy call or a real chain read: the pins are recorded
 // at the fetch layer and the three chain and gateway reads are stubbed. It does not cover the web
 // control, which is a later order, and it does not prove Pinata's own name filter, which this
@@ -124,10 +127,15 @@ vi.mock("../src/prepare.js", async (importOriginal) => {
 /** While set, the unseal's manifest read answers with this instead of reading the file. */
 const manifestStep = vi.hoisted(() => ({
   read: undefined as undefined | (() => Promise<{ present: boolean; validation?: "valid" | "invalid" | "unreadable" }>),
+  /** The real module's answer for a read it gave up on, marked the way the route reads it. */
+  timedOut: (() => {
+    throw new Error("the c2pa mock has not loaded yet");
+  }) as () => { present: boolean; validation?: "valid" | "invalid" | "unreadable" },
 }));
 
 vi.mock("../src/c2pa.js", async (importOriginal) => {
   const real = await importOriginal<typeof import("../src/c2pa.js")>();
+  manifestStep.timedOut = real.manifestTimedOut;
   return {
     ...real,
     readManifest: async (...args: Parameters<typeof real.readManifest>) =>
@@ -135,9 +143,8 @@ vi.mock("../src/c2pa.js", async (importOriginal) => {
   };
 });
 
-const { FINGERPRINT_UNSTABLE_REASON, THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } = await import(
-  "../src/prepare.js"
-);
+const { FINGERPRINT_UNSTABLE_REASON, ReadBackFault, THUMBNAIL_MAX_BYTES, UNSEAL_THUMBNAIL_TOO_LARGE_REASON, prepareSealed } =
+  await import("../src/prepare.js");
 const { globalDay } = await import("../src/limits/globalDay.js");
 const { sealedMetadata } = await import("../src/sealed.js");
 const { buildServer } = await import("../src/server.js");
@@ -1137,6 +1144,23 @@ describe("unsealing a sealed passport", () => {
     expect(pins).toHaveLength(0);
   }, 60_000);
 
+  it("logs a read-back fault as one, not as failed fingerprinting, and answers 503 service-fault", async () => {
+    const logged = vi.spyOn(app.log, "error");
+    thumbnailStep.throws = new ReadBackFault("The C2PA reader could not read back the JPEG just signed.");
+    try {
+      const refused = await ask("did:privy:unseal-readback-log");
+
+      expect(refused.statusCode).toBe(503);
+      expect(refused.json()).toEqual({ error: "service-fault", reason: SERVICE_FAULT_REASON });
+      const lines = logged.mock.calls.map((call) => call[1]);
+      expect(lines).toContain("rejected: /unseal signing read-back fault");
+      expect(lines).not.toContain("rejected: /unseal the service failed fingerprinting");
+      expect(pins).toHaveLength(0);
+    } finally {
+      logged.mockRestore();
+    }
+  }, 60_000);
+
   // Pass 10, sealed #3 (V106): a manifest read that gave up is this service being slow, and a record
   // pinned without the manifest could never be replaced.
   it("V106: answers 503 service-fault and pins nothing when the manifest read gives up or fails, and hands both slots back", async () => {
@@ -1152,18 +1176,14 @@ describe("unsealing a sealed passport", () => {
       expect(failed.json()).toEqual({ error: "service-fault", reason: SERVICE_FAULT_REASON });
       expect(pins).toHaveLength(0);
 
-      // A chain with no manifest on record, and a read that ran into the five second limit.
-      vi.useFakeTimers({ toFake: ["Date"] });
+      // A chain with no manifest on record, and a read readManifest gave up on. The marker decides,
+      // not the clock: this one answers at once.
       stubs.readPassport.mockResolvedValue({ ...withManifest, manifestHash: `0x${"00".repeat(32)}` });
-      manifestStep.read = async () => {
-        vi.setSystemTime(Date.now() + 5_000);
-        return { present: false, validation: "unreadable" };
-      };
+      manifestStep.read = async () => manifestStep.timedOut();
       const late = await ask(user);
       expect(late.statusCode).toBe(503);
       expect(late.json().error).toBe("service-fault");
       expect(pins).toHaveLength(0);
-      vi.useRealTimers();
 
       // Nothing was pinned, so the holder's allowance and the day's slot both came back.
       manifestStep.read = undefined;
@@ -1174,6 +1194,33 @@ describe("unsealing a sealed passport", () => {
       expect(finished.json().manifest.uri).toMatch(/^ipfs:\/\//);
       const record = JSON.parse((pins.find((pin) => pin.name.startsWith("unseal-")) as Pin).bytes.toString("utf8"));
       expect(record.manifest).toBe(finished.json().manifest.uri);
+    } finally {
+      manifestStep.read = undefined;
+      vi.useRealTimers();
+    }
+  }, 60_000);
+
+  it("V106: publishes a damaged store with no manifest on record however long its read took, since only a read given up on is this service's fault", async () => {
+    stubs.readPassport.mockResolvedValue({
+      registeredAt: 1_758_000_000,
+      phash: sealedFile.phash,
+      blockhash256: sealedFile.blockhash,
+      fingerprintVersion: 1,
+      metadataURI: METADATA_URI,
+      manifestHash: `0x${"00".repeat(32)}`,
+    });
+    vi.useFakeTimers({ toFake: ["Date"] });
+    manifestStep.read = async () => {
+      vi.setSystemTime(Date.now() + 6_000);
+      return { present: false, validation: "unreadable" };
+    };
+    try {
+      const published = await ask("did:privy:unseal-slow-damaged-store");
+
+      expect(published.statusCode).toBe(200);
+      expect(published.json().manifest).toBeUndefined();
+      const record = JSON.parse((pins.find((pin) => pin.name.startsWith("unseal-")) as Pin).bytes.toString("utf8"));
+      expect(record.manifest).toBeUndefined();
     } finally {
       manifestStep.read = undefined;
       vi.useRealTimers();

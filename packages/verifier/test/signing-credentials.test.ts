@@ -5,7 +5,10 @@
 // signing routes off, and one that expires while the service runs makes each signing fail as
 // SignerUnavailable, never an unsigned file. V94: a certificate and a key that are not a pair stop the
 // signer at load, and a freshly signed file whose signature does not validate is SignerUnavailable,
-// never embedded. Every identity is made with openssl in a temporary folder for this run.
+// never embedded. A camera's record is read back by the same rule (WO-187d): a kept record whose
+// camera leaf expired is no fault while a tampered one is, and a photo uploaded after its camera
+// leaf expired keeps its record, public and sealed, unless it was changed after capture.
+// Every identity is made with openssl in a temporary folder for this run.
 // Does NOT cover a trusted timestamp (Moolam signs without one), a revoked certificate, or the C2PA
 // library itself refusing a credential that passed the window and pair checks, which the worker
 // classifies by the library's own words and which no certificate made here provokes.
@@ -14,10 +17,11 @@ import { readFileSync } from "node:fs";
 import { Builder, LocalSigner } from "@contentauth/c2pa-node";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { SOFT_BINDING_ALG, SignerUnavailable, loadSigner, readManifest, type EmbedOptions } from "../src/c2pa.js";
-import { prepareOrFallback } from "../src/prepare.js";
+import { SOFT_BINDING_ALG, SignerUnavailable, cameraRecordFault, loadSigner, readManifest, type EmbedOptions } from "../src/c2pa.js";
+import { prepareOrFallback, prepareSealed } from "../src/prepare.js";
 import { cameraPhoto } from "./cameraPhoto.js";
 import { makeImage } from "./helpers.js";
+import { segment, withSegments } from "./jpegParts.js";
 import { removeSigningIdentities, signingIdentity, waitUntilPast, type SigningIdentity } from "./signingIdentity.js";
 
 const SETTINGS = { title: "Harbour", claimGenerator: "moolam-studio/0.1.0", action: "c2pa.opened" as const };
@@ -80,6 +84,8 @@ describe("a leaf that expires after it signed", () => {
   let picture: Buffer;
   let signedByShort: Buffer;
   let keptRecord: Buffer;
+  /** A camera photo signed by the short leaf and uploaded only after that leaf expired. */
+  let lateUpload: Buffer;
   const before: Record<string, Awaited<ReturnType<typeof readManifest>>> = {};
 
   beforeAll(async () => {
@@ -100,6 +106,7 @@ describe("a leaf that expires after it signed", () => {
     expect(prepared.embedded).toBe(true);
     expect(prepared.cameraRecord).toBe("kept");
     keptRecord = prepared.bytes;
+    lateUpload = await cameraPhoto(923, { signer: camera });
 
     before.signed = await readManifest(signedByShort);
     before.kept = await readManifest(keptRecord);
@@ -134,6 +141,34 @@ describe("a leaf that expires after it signed", () => {
     expect(after).toMatchObject({ present: true, validation: "valid", credential: "expired" });
     expect(after.failures).toContain("signingCredential.expired");
   });
+
+  it("keeps the record of a camera photo whose camera leaf expired before the upload, public and sealed", async () => {
+    const pub = await prepareOrFallback(lateUpload, SETTINGS);
+    expect(pub.embedded).toBe(true);
+    expect(pub.cameraRecord).toBe("kept");
+    expect(await readManifest(pub.bytes)).toMatchObject({ present: true, validation: "valid", ingredients: 1 });
+
+    const sealed = await prepareSealed(lateUpload, SETTINGS);
+    expect(sealed.embedded).toBe(true);
+    expect(sealed.cameraRecord).toBe("kept");
+  }, 60_000);
+
+  it("reads back a kept record whose camera leaf expired after signing by readManifest's rule: no fault, and a tampered copy still one", async () => {
+    expect(await cameraRecordFault(keptRecord, [])).toBeUndefined();
+
+    const fault = await cameraRecordFault(tampered(keptRecord), []);
+    expect(fault).toMatch(/does not validate/);
+    expect(fault).toContain("assertion.dataHash.mismatch");
+  }, 30_000);
+
+  it("still drops the record of an expired camera's photo that was changed after capture", async () => {
+    const touched = withSegments(lateUpload, [segment(0xfe, Buffer.from("touched after capture"))]);
+
+    const prepared = await prepareOrFallback(touched, SETTINGS);
+
+    expect(prepared.embedded).toBe(true);
+    expect(prepared.cameraRecord).toBe("dropped");
+  }, 60_000);
 
   it("V93: a leaf that expires between two signings makes the next one SignerUnavailable, and prepare hands back no unsigned file", async () => {
     await expect(
