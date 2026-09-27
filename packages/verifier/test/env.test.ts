@@ -1,4 +1,5 @@
-// Covers environment parsing: defaults, and every failure naming its variable.
+// Covers environment parsing: defaults, every failure naming its variable, and a production boot
+// that would read an empty passport file refused (pass 10, V102).
 // Does NOT cover reading the repo .env file, which the module does at import
 // time on a real boot.
 
@@ -118,5 +119,24 @@ describe("parseEnv", () => {
     const both = parseEnv({ MOOLAM_C2PA_CERT_PATH: "certs/chain.pem", MOOLAM_C2PA_KEY_PATH: "certs/signer.key.pem" });
     expect(both.MOOLAM_C2PA_CERT_PATH).toBe("certs/chain.pem");
     expect(parseEnv({ MOOLAM_C2PA_CERT_PATH: "  " }).MOOLAM_C2PA_CERT_PATH).toBeUndefined();
+  });
+
+  // Review pass 10, V102: the runtime image holds no passport file, so the json source there is an
+  // empty register that calls every picture unregistered.
+  it("refuses a production boot with PASSPORT_SOURCE unset or json, and names the variable", () => {
+    expect(() => parseEnv({ NODE_ENV: "production" })).toThrow(/PASSPORT_SOURCE/);
+    expect(() => parseEnv({ NODE_ENV: "production", PASSPORT_SOURCE: "json" })).toThrow(/PASSPORT_SOURCE/);
+
+    const envio = parseEnv({
+      NODE_ENV: "production",
+      PASSPORT_SOURCE: "envio",
+      ENVIO_GRAPHQL_URL: "https://indexer.envio.dev/v1/graphql",
+    });
+    expect(envio.PASSPORT_SOURCE).toBe("envio");
+  });
+
+  it("keeps the json default outside production", () => {
+    expect(parseEnv({ NODE_ENV: "development" }).PASSPORT_SOURCE).toBe("json");
+    expect(parseEnv({ NODE_ENV: "test", PASSPORT_SOURCE: "json" }).PASSPORT_SOURCE).toBe("json");
   });
 });

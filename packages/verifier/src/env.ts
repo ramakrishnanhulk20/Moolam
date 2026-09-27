@@ -398,6 +398,17 @@ const schema = z
         message: "PASSPORT_SOURCE_PATH is required when PASSPORT_SOURCE is \"json\"",
       });
     }
+    // The runtime image carries no passport file and a missing one loads as an empty list, so a
+    // production host on the json default would call every picture unregistered while /health said
+    // it was fine (review pass 10, V102). Unset reads as json here, so both are refused.
+    if (value.NODE_ENV === "production" && value.PASSPORT_SOURCE === "json") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["PASSPORT_SOURCE"],
+        message:
+          "PASSPORT_SOURCE must be \"envio\" when NODE_ENV is production: the json source reads a local file the deployed image does not hold, and an empty register would call every picture unregistered",
+      });
+    }
     if (value.PASSPORT_SOURCE === "envio" && value.ENVIO_GRAPHQL_URL === undefined) {
       ctx.addIssue({
         code: "custom",

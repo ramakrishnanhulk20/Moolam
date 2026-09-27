@@ -29,6 +29,10 @@ import {
  *
  * Every answer carries index { loadedAt, stale }: when the passport index it was matched against
  * last loaded, and whether that copy is too old to be sure a recent registration is in it (V82).
+ * Behind an indexer it also carries indexedTo and indexedAt, how far that indexer had read (V99).
+ * The request takes one copy of the index when its upload is in, and the match, the exact lookup,
+ * the facts and the index field all read that copy, so a reload meanwhile changes none of them
+ * (review pass 10, V101).
  *
  * Answers 503 `busy` when no matching slot came free in time, and 503 `service-fault` with
  * SERVICE_FAULT_REASON when this service, not the picture, failed while matching.
@@ -37,15 +41,10 @@ export async function verifyRoutes(app: FastifyInstance): Promise<void> {
   app.post("/verify", async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const bytes = request.isMultipart() ? await readUpload(request) : await readFromUrl(request);
-      const answer = { ...(await verifyBytes(app, bytes)), index: app.verifier.indexState() };
+      const copy = app.verifier.snapshot(bytes);
+      const answer = { ...(await verifyBytes(app, bytes)), index: copy.state() };
       return reply.send(
-        await withPassportFacts(
-          answer,
-          app.verifier.consent,
-          app.verifier.dispute,
-          app.verifier.lookupExact,
-          app.verifier.picture,
-        ),
+        await withPassportFacts(answer, app.verifier.consent, app.verifier.dispute, copy.lookupExact, app.verifier.picture),
       );
     } catch (error) {
       const status = statusOf(error);

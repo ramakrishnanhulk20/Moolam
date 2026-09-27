@@ -46,10 +46,11 @@ import {
   type UnsealRecordFinder,
 } from "./unseal.js";
 import { paymentServerFromEnv } from "./x402/plugin.js";
-import { EnvioSource } from "./source/EnvioSource.js";
+import { readClient } from "./reputation/registry.js";
+import { EnvioSource, type BlockReader } from "./source/EnvioSource.js";
 import { JsonFileSource } from "./source/JsonFileSource.js";
 import type { PassportSource } from "./source/PassportSource.js";
-import type { Hex, IndexState, PassportRecord } from "./types.js";
+import type { Hex, IndexState, IndexerProgress, PassportRecord } from "./types.js";
 
 const RATE_LIMIT_PER_MINUTE = 60;
 
@@ -59,6 +60,24 @@ const RATE_LIMIT_PER_MINUTE = 60;
  * registered in that time may read as unregistered, and the caller must be told (review pass 9, V82).
  */
 const STALE_AFTER_PERIODS = 5;
+
+/**
+ * How far behind the chain head, in seconds of block time, the indexer may be before every answer
+ * calls the index stale (review pass 10, V99). Ten minutes is far past the few seconds a healthy
+ * Envio indexer trails Monad by, and short enough that a stalled one shows well inside an hour.
+ */
+const INDEXER_LAG_LIMIT_S = 600;
+
+/**
+ * Whether the indexer behind a load had fallen behind, as that load saw it. Anything it could not
+ * read counts as behind: an indexer nobody can show is current is not called current.
+ */
+function indexerBehind(progress: IndexerProgress | null): boolean {
+  if (progress === null || progress.syncing || progress.blockTime === null || progress.headTime === null) {
+    return true;
+  }
+  return progress.headTime - progress.blockTime > INDEXER_LAG_LIMIT_S;
+}
 
 /**
  * How many verifies may decode at the same time.
@@ -296,9 +315,27 @@ function uncacheable(request: FastifyRequest): boolean {
   return method === "POST" && UNCACHEABLE.has(path);
 }
 
+/**
+ * One loaded copy of the register, as a request reads it. It never changes under the holder: a
+ * reload replaces the copy in hand, not this one.
+ */
+export interface IndexCopy {
+  index: HammingIndex;
+  lookupExact: (sha256: Hex) => PassportRecord | undefined;
+  /** How current this copy is, judged now: its own load time and its own indexer progress. */
+  state: () => IndexState;
+}
+
 export interface Verifier {
   index: HammingIndex;
   lookupExact: (sha256: Hex) => PassportRecord | undefined;
+  /**
+   * The copy of the register in hand right now. Given the bytes of an upload, it is tied to them:
+   * the first call takes the copy, every later call for those bytes returns the same one, and the
+   * match of those bytes reads it, so one answer's match, exact lookup, facts and index field all
+   * describe one copy however many reloads land meanwhile (review pass 10, V101).
+   */
+  snapshot: (bytes?: Buffer) => IndexCopy;
   version: string;
   /**
    * Matches an image in a verify slot, waiting for one so heavy uploads cannot pile up. `caller`,
@@ -312,7 +349,7 @@ export interface Verifier {
   runPrepare: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => Promise<T>;
   /** Rebuilds the index from the source. Never throws: a failed refresh keeps the copy in hand. */
   reload: () => Promise<void>;
-  /** When the copy in hand was loaded, and whether it is too old to trust as current. */
+  /** When the copy in hand now was loaded, and whether it is too old to trust as current. */
   indexState: () => IndexState;
   /** Reads what a passport's holder has stated about AI use, for the verify answers. */
   consent: ConsentReader;
@@ -326,17 +363,27 @@ export interface Verifier {
   routesOff: { route: string; reason: string }[];
 }
 
-/** The index and the exact-lookup map, replaced together so no request sees a half-built pair. */
+/**
+ * The index and the exact-lookup map, replaced together so no request sees a half-built pair, with
+ * when they loaded and how far the indexer behind them had read. `progress` is left off for a
+ * source with no indexer.
+ */
 interface LoadedIndex {
   index: HammingIndex;
   byId: Map<Hex, PassportRecord>;
+  loadedAtMs: number;
+  progress?: IndexerProgress | null;
 }
 
-async function loadIndex(source: PassportSource): Promise<LoadedIndex> {
-  const records = await source.load();
+async function loadIndex(source: PassportSource, clock: () => number): Promise<LoadedIndex> {
+  const loaded =
+    source.loadWithProgress !== undefined ? await source.loadWithProgress() : { records: await source.load() };
+  const { records } = loaded;
   return {
     index: new HammingIndex(records),
     byId: new Map<Hex, PassportRecord>(records.map((record) => [record.id, record])),
+    loadedAtMs: clock(),
+    ...("progress" in loaded ? { progress: loaded.progress ?? null } : {}),
   };
 }
 
@@ -401,6 +448,10 @@ const version = (
  * Throws when "envio" is chosen without an endpoint. Failing loudly beats
  * booting with an empty index and telling every caller their image is
  * unregistered.
+ *
+ * The Envio source reads two block times from the chain on each load to judge how far behind its
+ * indexer is. Under a test runner it gets no chain, so no unit suite depends on a public RPC, and its
+ * index then reads stale.
  */
 export function sourceFromEnv(): PassportSource {
   if (env.PASSPORT_SOURCE === "json") {
@@ -409,7 +460,8 @@ export function sourceFromEnv(): PassportSource {
   if (env.ENVIO_GRAPHQL_URL === undefined) {
     throw new Error('PASSPORT_SOURCE "envio" needs ENVIO_GRAPHQL_URL');
   }
-  return new EnvioSource({ url: env.ENVIO_GRAPHQL_URL });
+  const chain = env.NODE_ENV === "test" ? undefined : (readClient() as unknown as BlockReader);
+  return new EnvioSource({ url: env.ENVIO_GRAPHQL_URL, ...(chain === undefined ? {} : { chain }) });
 }
 
 /**
@@ -561,13 +613,45 @@ export async function buildServer(
   const source = options.source ?? sourceFromEnv();
   const clock = options.index?.clock ?? Date.now;
   const refreshMs = options.index?.refreshMs ?? env.INDEX_REFRESH_MS;
-  let current = await loadIndex(source);
-  let loadedAtMs = clock();
-  const indexState = (): IndexState => ({
-    loadedAt: Math.floor(loadedAtMs / 1000),
-    stale: refreshMs > 0 && clock() - loadedAtMs > STALE_AFTER_PERIODS * refreshMs,
-  });
-  const lookupExact = (sha256: Hex): PassportRecord | undefined => current.byId.get(sha256.toLowerCase() as Hex);
+  let current = await loadIndex(source, clock);
+  const stateOf = (copy: LoadedIndex): IndexState => {
+    const loadedAt = Math.floor(copy.loadedAtMs / 1000);
+    const aged = refreshMs > 0 && clock() - copy.loadedAtMs > STALE_AFTER_PERIODS * refreshMs;
+    const progress = copy.progress;
+    if (progress === undefined) {
+      return { loadedAt, stale: aged };
+    }
+    return {
+      loadedAt,
+      stale: aged || indexerBehind(progress),
+      indexedTo: progress?.block ?? null,
+      indexedAt: progress?.blockTime ?? null,
+    };
+  };
+  const lookupIn =
+    (copy: LoadedIndex) =>
+    (sha256: Hex): PassportRecord | undefined =>
+      copy.byId.get(sha256.toLowerCase() as Hex);
+  const indexState = (): IndexState => stateOf(current);
+  const lookupExact = (sha256: Hex): PassportRecord | undefined => lookupIn(current)(sha256);
+  // Keyed by the upload's own buffer, which lives exactly as long as its request, so an entry goes
+  // with the request and nothing here needs clearing.
+  const pinned = new WeakMap<Buffer, LoadedIndex>();
+  const copyFor = (bytes: Buffer | undefined): LoadedIndex => {
+    if (bytes === undefined) {
+      return current;
+    }
+    const held = pinned.get(bytes);
+    if (held !== undefined) {
+      return held;
+    }
+    pinned.set(bytes, current);
+    return current;
+  };
+  const snapshot = (bytes?: Buffer): IndexCopy => {
+    const copy = copyFor(bytes);
+    return { index: copy.index, lookupExact: lookupIn(copy), state: () => stateOf(copy) };
+  };
   const gate = fairGate({ verifySlots: VERIFY_SLOTS, studioSlots: STUDIO_SLOTS, maxWaitMs: env.MATCH_WAIT_MS });
   // Under a test runner the default reader makes no network call: a unit suite must not depend on
   // a public RPC being up. A test that wants a statement passes its own reader.
@@ -581,10 +665,10 @@ export async function buildServer(
 
   const reload = async (): Promise<void> => {
     try {
-      // One assignment, so an in-flight request reads either the old pair or the new one.
-      current = await loadIndex(source);
-      loadedAtMs = clock();
-      app.log.info({ records: current.index.size }, "passport index refreshed");
+      // One assignment, so an in-flight request reads either the old copy or the new one, and a
+      // request that took a snapshot keeps reading its own.
+      current = await loadIndex(source, clock);
+      app.log.info({ records: current.index.size, ...indexState() }, "passport index refreshed");
     } catch (error) {
       app.log.warn(
         { reason: safeReason(error), ...indexState() },
@@ -719,9 +803,20 @@ export async function buildServer(
       return current.index;
     },
     lookupExact,
+    snapshot,
     version,
+    // The copy is taken when the turn starts, or is the one the request already took for these
+    // bytes, and the index and the exact lookup both come from it.
     runMatch: (bytes: Buffer, caller?: string, gone?: GoneCheck) =>
-      gate("verify", caller, () => matchImage(bytes, current.index, lookupExact), gone),
+      gate(
+        "verify",
+        caller,
+        () => {
+          const copy = copyFor(bytes);
+          return matchImage(bytes, copy.index, lookupIn(copy));
+        },
+        gone,
+      ),
     runVerify: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => gate("verify", caller, task, gone),
     runPrepare: <T>(task: () => Promise<T>, caller?: string, gone?: GoneCheck) => gate("studio", caller, task, gone),
     reload,

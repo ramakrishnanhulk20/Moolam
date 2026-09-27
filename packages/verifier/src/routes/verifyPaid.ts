@@ -42,6 +42,13 @@ const FACILITATOR_REASON = /^[a-z][a-z0-9_]*$/;
 
 const NONCE = /^0x[0-9a-fA-F]{64}$/;
 
+/**
+ * What a request is told when its payment header cannot be read as one signed EIP-3009 payment with
+ * every field a string, before anything is checked or charged (review pass 10, V100).
+ */
+export const PAYMENT_UNREADABLE_REASON =
+  "this payment could not be read: pay with an x402 client, which signs every authorisation field as a string, and send the request again. Nothing was checked or charged.";
+
 /** What a second request carrying a payment another request is still working on is told. */
 export const PAYMENT_IN_FLIGHT_REASON =
   "another request is using this payment right now and has not finished. Try again in a moment: once it answers, the same payment with the same file gets the answer it bought, and nothing is charged twice.";
@@ -264,16 +271,19 @@ function identityOf(payment: unknown): PaymentIdentity | undefined {
   return { key: `${from}:${nonce}`, identity: (fields as string[]).map((field) => field.toLowerCase()).join("|") };
 }
 
-/** The payment this request offers, read from its header without trusting it. */
-function offeredPayment(context: HTTPRequestContext): PaymentIdentity | undefined {
+/**
+ * The payment this request offers, read from its header without trusting it: "none" when there is
+ * no header, "unreadable" when there is one this route cannot read an identity from.
+ */
+function offeredPayment(context: HTTPRequestContext): PaymentIdentity | "none" | "unreadable" {
   const header = context.adapter.getHeader(PAYMENT_SIGNATURE_HEADER);
   if (header === undefined || header.length === 0) {
-    return undefined;
+    return "none";
   }
   try {
-    return identityOf(decodePaymentSignatureHeader(header));
+    return identityOf(decodePaymentSignatureHeader(header)) ?? "unreadable";
   } catch {
-    return undefined;
+    return "unreadable";
   }
 }
 
@@ -302,6 +312,16 @@ function wholeNumber(value: unknown): bigint | undefined {
   return typeof value === "string" && WHOLE_NUMBER.test(value) ? BigInt(value) : undefined;
 }
 
+/**
+ * An address in any letter case (review pass 10, V103). The facilitator reads the payer and the
+ * pay-to address with viem's non-strict getAddress, env.ts takes X402_PAY_TO_ADDRESS in any case,
+ * and identityOf lower-cases the payer before its check, so the chain proof reads them the same way.
+ * It checks the shape, twenty bytes of hex, and not a mixed-case checksum.
+ */
+function anyCaseAddress(value: string): value is Hex {
+  return isAddress(value, { strict: false });
+}
+
 /** The payment and its terms read as the chain check needs them, or undefined for anything malformed. */
 function termsOf(payment: PaymentPayload, requirements: PaymentRequirements): PaymentTerms | undefined {
   const authorization = (
@@ -315,19 +335,20 @@ function termsOf(payment: PaymentPayload, requirements: PaymentRequirements): Pa
   const asset = requirements.asset;
   const payTo = requirements.payTo;
   const price = wholeNumber((requirements as { amount?: unknown }).amount);
-  if (typeof from !== "string" || !isAddress(from) || typeof nonce !== "string" || !NONCE.test(nonce)) {
+  if (typeof from !== "string" || !anyCaseAddress(from) || typeof nonce !== "string" || !NONCE.test(nonce)) {
     return undefined;
   }
-  if (typeof asset !== "string" || !isAddress(asset) || typeof payTo !== "string" || !isAddress(payTo)) {
+  if (typeof asset !== "string" || !anyCaseAddress(asset) || typeof payTo !== "string" || !anyCaseAddress(payTo)) {
     return undefined;
   }
   if (price === undefined || value === undefined) {
     return undefined;
   }
+  // Lower-cased once here, so every read below hands the RPC an address it takes as written.
   return {
-    asset,
-    from,
-    payTo,
+    asset: asset.toLowerCase() as Hex,
+    from: from.toLowerCase() as Hex,
+    payTo: payTo.toLowerCase() as Hex,
     nonce: nonce.toLowerCase() as Hex,
     price,
     value,
@@ -436,10 +457,10 @@ async function searchLogs(chain: ChargeReader, terms: PaymentTerms, heldAt: bigi
       const hash = log.transactionHash;
       if (
         typeof log.address !== "string" ||
-        !isAddress(log.address) ||
+        !anyCaseAddress(log.address) ||
         !isAddressEqual(log.address, terms.asset) ||
         typeof log.args?.authorizer !== "string" ||
-        !isAddress(log.args.authorizer) ||
+        !anyCaseAddress(log.args.authorizer) ||
         !isAddressEqual(log.args.authorizer, terms.from) ||
         typeof log.args.nonce !== "string" ||
         log.args.nonce.toLowerCase() !== terms.nonce ||
@@ -549,7 +570,7 @@ interface ReceiptLog {
 
 /** The asset's own AuthorizationUsed or Transfer event in one log, or undefined for anything else. */
 function assetEvent(log: ReceiptLog | undefined, asset: Hex) {
-  if (log === undefined || typeof log.address !== "string" || !isAddress(log.address) || !isAddressEqual(log.address, asset)) {
+  if (log === undefined || typeof log.address !== "string" || !anyCaseAddress(log.address) || !isAddressEqual(log.address, asset)) {
     return undefined;
   }
   try {
@@ -747,6 +768,11 @@ async function settleSequence(
  * the payment was for. It never serves that other file, and no request ever
  * replaces an entry that holds the answer about another file.
  *
+ * A payment header this route cannot read a payer, a nonce and every signed field
+ * from, as strings, answers 402 `payment-unreadable` before the facilitator hears
+ * of it, so every payment that reaches a settle has taken the in-flight mark and
+ * can be kept (review pass 10, V100).
+ *
  * The route is mounted only when X402_ENABLED is true. Otherwise the path does
  * not exist and the service answers 404.
  */
@@ -791,8 +817,14 @@ export async function verifyPaidRoutes(
     const context = contextFor(request);
     const where: Where = { ip: request.ip, url: request.url };
     const offered = offeredPayment(context);
-    if (offered === undefined) {
+    if (offered === "none") {
       return await answer(request, reply, context, where, undefined, undefined);
+    }
+    // A payment the in-flight mark and the ledger cannot be keyed on never reaches the facilitator,
+    // which would accept it and let one payment buy several answers (review pass 10, V100).
+    if (offered === "unreadable") {
+      request.log.warn(where, "rejected: a payment header whose payer, nonce or signed fields cannot be read");
+      return reply.code(402).send({ error: "payment-unreadable", reason: PAYMENT_UNREADABLE_REASON });
     }
     let bytes: Buffer;
     try {
@@ -896,14 +928,10 @@ export async function verifyPaidRoutes(
     let payload: { result: unknown; manifest: unknown; index: IndexState };
     try {
       bytes = bytes ?? (await readUpload(request));
-      const answer = { ...(await verifyBytes(app, bytes)), index: app.verifier.indexState() };
-      payload = await withPassportFacts(
-        answer,
-        app.verifier.consent,
-        app.verifier.dispute,
-        app.verifier.lookupExact,
-        app.verifier.picture,
-      );
+      // One copy of the index for the match, the exact lookup, the facts and the index field (V101).
+      const copy = app.verifier.snapshot(bytes);
+      const answer = { ...(await verifyBytes(app, bytes)), index: copy.state() };
+      payload = await withPassportFacts(answer, app.verifier.consent, app.verifier.dispute, copy.lookupExact, app.verifier.picture);
     } catch (error) {
       const status = statusOf(error);
       const reason = safeReason(error);

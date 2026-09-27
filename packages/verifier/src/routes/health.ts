@@ -12,7 +12,9 @@ import type { FastifyInstance } from "fastify";
  * PRIVY_APP_SECRET. A reason never carries a path, an address or a key.
  *
  * `index` is when the passport index last loaded and whether that copy is stale, which is how a
- * refresh that keeps failing shows from outside while `records` still looks healthy (V82).
+ * refresh that keeps failing shows from outside while `records` still looks healthy (V82). Behind an
+ * indexer it also says how far that indexer had read, and an indexer that has stopped or is
+ * re-syncing reads stale too (V99).
  *
  * `limits` is how the daily check sees a ceiling coming before creators do, and `limits.links` is how
  * many read links to private copies were minted today against GLOBAL_LINKS_PER_DAY (B15). It counts
@@ -29,15 +31,19 @@ export async function healthRoutes(app: FastifyInstance): Promise<void> {
   // A probe that can be refused lies about the service: a status footer, an uptime monitor or a
   // build pre-rendering hundreds of pages would read the 61st answer in a minute as "down". The
   // answer costs microseconds, so the limiter skips this route and nothing else.
-  app.get("/health", { config: { rateLimit: false } }, async () => ({
-    ok: true,
-    records: app.verifier.index.size,
-    index: app.verifier.indexState(),
-    version: app.verifier.version,
-    routes: app.verifier.routes,
-    off: app.verifier.routesOff,
-    limits: app.globalDay.counts(),
-    recheck: app.recheck.counts(),
-    sweep: app.privateSweep.state(),
-  }));
+  app.get("/health", { config: { rateLimit: false } }, async () => {
+    // One copy, so the count and the index state describe the same load.
+    const copy = app.verifier.snapshot();
+    return {
+      ok: true,
+      records: copy.index.size,
+      index: copy.state(),
+      version: app.verifier.version,
+      routes: app.verifier.routes,
+      off: app.verifier.routesOff,
+      limits: app.globalDay.counts(),
+      recheck: app.recheck.counts(),
+      sweep: app.privateSweep.state(),
+    };
+  });
 }

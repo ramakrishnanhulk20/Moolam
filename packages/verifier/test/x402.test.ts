@@ -415,7 +415,8 @@ describe("a payment that already bought an answer", () => {
       // One payment buys one answer, for the file it was made for (pass 7, V60). The other file goes
       // through the payment check as a stranger's payment would (pass 9, V84) and is never served.
       expect(otherFile.statusCode).not.toBe(200);
-      expect(processed).toHaveBeenCalledTimes(3);
+      // The nonce-only header is refused before the payment check (pass 10, V100), so two, not three.
+      expect(processed).toHaveBeenCalledTimes(2);
     } finally {
       await app.close();
     }

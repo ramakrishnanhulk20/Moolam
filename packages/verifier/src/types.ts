@@ -61,14 +61,38 @@ export interface PassportRecord {
 }
 
 /**
+ * How far the indexer behind a source had read when the source loaded, as that same load found it.
+ * The block comes from the indexer's own account of itself, never from the newest passport it
+ * holds, which measures registrations rather than the indexer.
+ */
+export interface IndexerProgress {
+  /** The newest block the indexer had finished processing. */
+  block: number;
+  /** That block's time in unix seconds, read from the chain, or null when the chain did not answer. */
+  blockTime: number | null;
+  /** The chain head's time in unix seconds at the same load, or null when the chain did not answer. */
+  headTime: number | null;
+  /** True while the indexer says it has not caught up with the chain head, as during a re-sync. */
+  syncing: boolean;
+}
+
+/**
  * How current the passport index is, as /health and every verify answer publish it. `loadedAt` is
  * the unix second of the last load that worked. `stale` is true once that is more than five
  * refresh periods ago, so a picture registered since may not match yet; a host that never
- * refreshes is never stale (review pass 9, V82).
+ * refreshes is never stale on that count (review pass 9, V82).
+ *
+ * A source with an indexer behind it also says how far that indexer had read: `indexedTo` is its
+ * newest processed block and `indexedAt` that block's time in unix seconds, each null when it could
+ * not be read. `stale` is then also true when the indexer was more than ten minutes behind the
+ * chain head, was still syncing, or either could not be read (review pass 10, V99). A source with
+ * no indexer, the JSON file, leaves both off.
  */
 export interface IndexState {
   loadedAt: number;
   stale: boolean;
+  indexedTo?: number | null;
+  indexedAt?: number | null;
 }
 
 /** One candidate the index returned, with the variant that produced it. */
