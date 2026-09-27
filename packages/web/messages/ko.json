@@ -420,6 +420,7 @@
     "others": "{count, plural, other {다른 여권 #건이 범위 안에 있었고}}, 그중 이것이 가장 가까웠습니다.",
     "firstRegistered": "이 그림과 일치하는 더 이른 등록이 있습니다. <link>첫 등록 열기</link>.",
     "laterSameFingerprint": "{count, plural, other {같은 지문을 가진 이후 등록이 #건 있습니다}}.",
+    "pixelsUnread": "등록된 파일과 바이트 단위까지 같은 파일입니다. 픽셀을 읽을 수 없어 모양이나 구도는 비교하지 않았습니다.",
     "staleIndex": "Moolam이 가진 레지스트리 사본은 {minutes}분 전 것이라, 그 뒤에 등록된 그림은 아직 보이지 않을 수 있습니다.",
     "manifestInvalid": "이 파일 안의 Content Credentials가 검증을 통과하지 못합니다. 서명 후 파일이 바뀌었거나, 기록이 다른 파일에서 옮겨졌습니다. 그래도 지문은 일치했습니다.",
     "manifestUnreadable": "이 파일에는 읽을 수 없는 Content Credentials가 들어 있어 유효한지 말할 수 없습니다. 그래도 지문은 일치했습니다.",

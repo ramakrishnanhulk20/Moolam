@@ -6,7 +6,10 @@ import {
   type MatchDispute,
   type MatchInheritedDispute,
   type MatchRecheck,
+  type MeasuredResult,
+  type BytesOnlyResult,
   type VerifyResponse,
+  isMeasured,
 } from "@/lib/verifier/client";
 import { checkImage, MAX_UPLOAD_BYTES, type RefusalCode } from "@/lib/upload/checkImage";
 
@@ -22,12 +25,10 @@ export { MAX_UPLOAD_BYTES };
  * pin it down without a browser.
  */
 export type Answer =
-  | {
+  | ({
       kind: "exact" | "close";
       id: Hex;
       confidence: number;
-      phashDistance: number;
-      blockhashDistance: number;
       variant: Match["variant"];
       others: number;
       manifest: boolean;
@@ -60,9 +61,15 @@ export type Answer =
       inheritedDispute?: MatchInheritedDispute;
       /** What re-checked the picture since. Absent from an older service, which draws no line. */
       recheck?: MatchRecheck;
-      queried: VerifyResponse["result"]["queried"];
       staleMinutes?: number;
-    }
+    } & (
+      | { pixelsUnread?: undefined; phashDistance: number; blockhashDistance: number; queried: MeasuredResult["queried"] }
+      /**
+       * An exact byte match on a file the service could not decode. Nothing was measured, so there
+       * are no distances to draw, only the sha256 the match was found by.
+       */
+      | { kind: "exact"; pixelsUnread: true; phashDistance?: undefined; blockhashDistance?: undefined; queried: BytesOnlyResult["queried"] }
+    ))
   | { kind: "miss"; manifest: boolean; queried: VerifyResponse["result"]["queried"]; staleMinutes?: number };
 
 /** An exact hit reports zero distance on both hashes, which is what the service sends back. */
@@ -91,7 +98,11 @@ export function readAnswer(response: VerifyResponse, now: number = Date.now()): 
     return { kind: "miss", manifest, queried, ...stale };
   }
 
-  const measured = exact !== null ? { ...IDENTICAL, ...(best ?? IDENTICAL) } : (best as Match);
+  // Spreading an unmeasured row over the zeros would draw "0 of 64 bits apart" for a comparison
+  // that was never made, so the bytes-only answer keeps its distances out entirely.
+  const measuredPart = isMeasured(response.result)
+    ? measuredOf(response.result)
+    : { kind: "exact" as const, pixelsUnread: true as const, variant: "identity" as const, queried: response.result.queried };
   // The service hangs the statement on the best match and on the same
   // passport inside the list, so an exact hit that came back without a best
   // block still finds its own holder's word rather than dropping it.
@@ -103,11 +114,9 @@ export function readAnswer(response: VerifyResponse, now: number = Date.now()): 
 
   return {
     kind: exact === null ? "close" : "exact",
+    ...measuredPart,
     id,
     confidence,
-    phashDistance: measured.phashDistance,
-    blockhashDistance: measured.blockhashDistance,
-    variant: measured.variant,
     others: Math.max(matches.length - 1, 0),
     manifest,
     ...(validation === "invalid" || validation === "unreadable" ? { manifestCheck: validation } : {}),
@@ -123,8 +132,17 @@ export function readAnswer(response: VerifyResponse, now: number = Date.now()): 
     dispute: best?.dispute ?? matches.find((match) => match.id === id)?.dispute,
     inheritedDispute: best?.inheritedDispute ?? matches.find((match) => match.id === id)?.inheritedDispute,
     recheck: best?.recheck ?? matches.find((match) => match.id === id)?.recheck,
-    queried,
     ...stale,
+  };
+}
+
+function measuredOf(result: MeasuredResult) {
+  const measured = result.exact !== null ? { ...IDENTICAL, ...(result.best ?? IDENTICAL) } : (result.best as Match);
+  return {
+    phashDistance: measured.phashDistance,
+    blockhashDistance: measured.blockhashDistance,
+    variant: measured.variant,
+    queried: result.queried,
   };
 }
 

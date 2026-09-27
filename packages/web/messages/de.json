@@ -418,6 +418,7 @@
     "others": "{count, plural, =1 {# weiterer Pass lag im Bereich} other {# weitere Pässe lagen im Bereich}}, und dieser war der nächste.",
     "firstRegistered": "Eine frühere Registrierung passt ebenfalls zu diesem Bild. <link>Erste Registrierung öffnen</link>.",
     "laterSameFingerprint": "{count, plural, =1 {# spätere Registrierung trägt} other {# spätere Registrierungen tragen}} denselben Fingerabdruck.",
+    "pixelsUnread": "Das ist die registrierte Datei, Byte für Byte. Ihre Pixel ließen sich nicht lesen, daher wurden Aussehen und Aufbau nicht verglichen.",
     "staleIndex": "Moolams Kopie der Registry ist {minutes} Minuten alt, daher erscheint ein seitdem eingetragenes Bild vielleicht noch nicht.",
     "manifestInvalid": "Die Content Credentials in dieser Datei bestehen die Prüfung nicht: Die Datei wurde nach dem Signieren verändert, oder der Eintrag wurde aus einer anderen Datei hineinkopiert. Die Fingerabdrücke stimmen trotzdem.",
     "manifestUnreadable": "Diese Datei enthält Content Credentials, die wir nicht lesen konnten, also können wir nicht sagen, ob sie gültig sind. Die Fingerabdrücke stimmen trotzdem.",

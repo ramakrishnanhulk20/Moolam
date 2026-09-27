@@ -66,7 +66,8 @@ vi.mock("@/components/home/check", async () => {
 vi.mock("@/components/verify/sample", () => ({
   fileFromSample: () => hold.sampleBytes?.promise,
 }));
-vi.mock("@/lib/verifier/client", () => ({
+vi.mock("@/lib/verifier/client", async (importOriginal) => ({
+  isMeasured: (await importOriginal<typeof import("@/lib/verifier/client")>()).isMeasured,
   verifierHost: () => "verify.example",
   verify: ({ file }: { file: File }) => hold.answers.get(file.name)?.promise,
 }));

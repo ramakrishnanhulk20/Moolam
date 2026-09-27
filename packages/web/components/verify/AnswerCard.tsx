@@ -209,11 +209,19 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           <p className="pb-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">{t("confidence")}</p>
         </div>
 
-        <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 border-t border-line pt-7 sm:grid-cols-3">
-          <Readout label={t("phashDistance")} value={t("bits", { count: answer.phashDistance, of: 64 })} />
-          <Readout label={t("blockhashDistance")} value={t("bits", { count: answer.blockhashDistance, of: 256 })} />
-          <Readout label={t("variant")} value={t(`orientation.${answer.variant}`)} />
-        </dl>
+        {/* A file the service could not decode was matched by its bytes alone. Nothing about
+            its look was compared, so there are no distances to print, not zeros. */}
+        {answer.pixelsUnread ? (
+          <p data-pixels-unread className="mt-8 max-w-[52ch] border-t border-line pt-7 text-sm leading-relaxed text-text-muted">
+            {t("pixelsUnread")}
+          </p>
+        ) : (
+          <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-6 border-t border-line pt-7 sm:grid-cols-3">
+            <Readout label={t("phashDistance")} value={t("bits", { count: answer.phashDistance, of: 64 })} />
+            <Readout label={t("blockhashDistance")} value={t("bits", { count: answer.blockhashDistance, of: 256 })} />
+            <Readout label={t("variant")} value={t(`orientation.${answer.variant}`)} />
+          </dl>
+        )}
 
         {answer.others === 0 ? null : (
           <p className="mt-6 text-sm leading-relaxed text-text-muted">{t("others", { count: answer.others })}</p>
@@ -421,10 +429,16 @@ function Measured({ answer }: { answer: Answer }) {
     <div className="mt-10 border-t border-line pt-6">
       <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("measured")}</p>
       <dl className="mt-5 grid grid-cols-2 gap-x-8 gap-y-5">
-        <Readout label={t("queriedSize")} value={`${queried.width} x ${queried.height} ${queried.format}`} />
-        <Readout label={t("queriedPhash")} value={queried.phash} hex />
-        <Readout label={t("queriedSha")} value={shortHex(queried.sha256, 10, 8)} hex />
-        <Readout label={t("queriedBlockhash")} value={shortHex(queried.blockhash, 10, 8)} hex />
+        {queried.phash === undefined ? (
+          <Readout label={t("queriedSha")} value={shortHex(queried.sha256, 10, 8)} hex />
+        ) : (
+          <>
+            <Readout label={t("queriedSize")} value={`${queried.width} x ${queried.height} ${queried.format}`} />
+            <Readout label={t("queriedPhash")} value={queried.phash} hex />
+            <Readout label={t("queriedSha")} value={shortHex(queried.sha256, 10, 8)} hex />
+            <Readout label={t("queriedBlockhash")} value={shortHex(queried.blockhash, 10, 8)} hex />
+          </>
+        )}
       </dl>
     </div>
   );

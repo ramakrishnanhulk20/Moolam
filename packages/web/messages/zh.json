@@ -420,6 +420,7 @@
     "others": "{count, plural, other {另有 # 本护照落在范围内}}，而这一本最接近。",
     "firstRegistered": "还有一个更早的登记也与这张图片匹配。<link>打开最早的登记</link>。",
     "laterSameFingerprint": "{count, plural, other {之后另有 # 个登记使用同一个指纹}}。",
+    "pixelsUnread": "这正是登记的那个文件，逐字节一致。它的像素无法读取，因此没有比较外观或构图。",
     "staleIndex": "Moolam 手里的登记表副本是 {minutes} 分钟前的，所以之后登记的图片可能还显示不出来。",
     "manifestInvalid": "这个文件里的 Content Credentials 没有通过校验：文件在签名后被改过，或者这份记录是从别的文件搬过来的。指纹仍然对上了。",
     "manifestUnreadable": "这个文件带有我们读不出来的 Content Credentials，所以没法判断它是否有效。指纹仍然对上了。",

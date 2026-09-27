@@ -394,12 +394,19 @@ const recheckSchema = z.union([
   z.object({ source: z.literal("unavailable") }),
 ]);
 
-const matchSchema = z.object({
+/** A field one answer shape never carries, so a value there sends the answer to the other shape or fails it. */
+const absent = z.undefined().optional();
+
+const matchFacts = {
   id: hexWord,
   consent: consentSchema.optional(),
   dispute: disputeSchema.optional(),
   inheritedDispute: inheritedDisputeSchema,
   recheck: recheckSchema.optional(),
+};
+
+const matchSchema = z.object({
+  ...matchFacts,
   phashDistance: z.number().int().nonnegative(),
   blockhashDistance: z.number().int().nonnegative(),
   variant: z.enum([
@@ -418,6 +425,40 @@ const matchSchema = z.object({
    * marks it only when the answer names more than one passport.
    */
   firstRegistered: z.literal(true).optional(),
+});
+
+/**
+ * The passport a file is byte for byte, when the service could not read the file's pixels: a GIF,
+ * a HEIC or a picture over the pixel limit registered straight on chain. Nothing was measured, so
+ * the distances and the score are absent rather than zero, and they must stay absent: a row that
+ * carries a broken distance must fail here, not slip through as this shape.
+ */
+const bytesOnlyMatchSchema = z.object({
+  ...matchFacts,
+  phashDistance: absent,
+  blockhashDistance: absent,
+  score: absent,
+  variant: z.literal("identity"),
+  firstRegistered: absent,
+});
+
+const queriedSchema = z.object({
+  sha256: hexWord,
+  phash: decimal,
+  blockhash: hexWord,
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  format: z.string(),
+});
+
+/** What the service measured of a file whose pixels it could not read: its sha256 and nothing else. */
+const queriedBytesSchema = z.object({
+  sha256: hexWord,
+  phash: absent,
+  blockhash: absent,
+  width: absent,
+  height: absent,
+  format: absent,
 });
 
 /**
@@ -465,25 +506,37 @@ export const recheckStatusSchema = z.object({
   reason: z.string().optional(),
 });
 
+const measuredResultSchema = z.object({
+  exact: hexWord.nullable(),
+  best: matchSchema.nullable(),
+  matches: z.array(matchSchema),
+  confidence: z.number().min(0).max(1),
+  queried: queriedSchema,
+  /** How many passports registered after the best match carry exactly its fingerprint. */
+  laterSameFingerprint: z.number().int().nonnegative().optional(),
+  /** The first registration inside the thresholds, sent only when it is not the best match. */
+  firstRegisteredId: hexWord.optional(),
+  note: z.string().optional(),
+});
+
+/**
+ * An exact byte match on a file whose pixels could not be read (verifier review pass 11, V115).
+ * Only ever exact: a file that is not byte for byte a passport and cannot be read is refused.
+ */
+const bytesOnlyResultSchema = z.object({
+  exact: hexWord,
+  best: bytesOnlyMatchSchema,
+  matches: z.array(bytesOnlyMatchSchema),
+  confidence: z.literal(1),
+  queried: queriedBytesSchema,
+  laterSameFingerprint: z.number().int().nonnegative().optional(),
+  firstRegisteredId: absent,
+  /** The service's own English sentence saying no distances were measured. */
+  note: z.string(),
+});
+
 export const verifyResponseSchema = z.object({
-  result: z.object({
-    exact: hexWord.nullable(),
-    best: matchSchema.nullable(),
-    matches: z.array(matchSchema),
-    confidence: z.number().min(0).max(1),
-    queried: z.object({
-      sha256: hexWord,
-      phash: decimal,
-      blockhash: hexWord,
-      width: z.number().int().positive(),
-      height: z.number().int().positive(),
-      format: z.string(),
-    }),
-    /** How many passports registered after the best match carry exactly its fingerprint. */
-    laterSameFingerprint: z.number().int().nonnegative().optional(),
-    /** The first registration inside the thresholds, sent only when it is not the best match. */
-    firstRegisteredId: hexWord.optional(),
-  }),
+  result: z.union([measuredResultSchema, bytesOnlyResultSchema]),
   manifest: z.object({
     present: z.boolean(),
     /**
@@ -579,6 +632,16 @@ export type UnsealLookup =
 export type SealedCopyLookup = { state: "kept" } | { state: "gone" } | { state: "unknown"; reason: string };
 export type ForgetResponse = z.infer<typeof forgetResponseSchema>;
 export type VerifyResponse = z.infer<typeof verifyResponseSchema>;
+export type MeasuredResult = z.infer<typeof measuredResultSchema>;
+export type BytesOnlyResult = z.infer<typeof bytesOnlyResultSchema>;
+
+/**
+ * Whether the service measured the file's pixels, so the distances and the queried fingerprint are
+ * there to read. False only on an exact byte match for a file it could not decode.
+ */
+export function isMeasured(result: VerifyResponse["result"]): result is MeasuredResult {
+  return result.queried.phash !== undefined;
+}
 export type QuotaState = z.infer<typeof quotaSchema>;
 export type Match = z.infer<typeof matchSchema>;
 export type MatchConsent = z.infer<typeof consentSchema>;

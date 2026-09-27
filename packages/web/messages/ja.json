@@ -420,6 +420,7 @@
     "others": "{count, plural, other {ほかに # 冊のパスポートが範囲内でした}}。その中でこれがいちばん近い一冊です。",
     "firstRegistered": "この画像には、より早い登録も一致しています。<link>最初の登録を開く</link>。",
     "laterSameFingerprint": "{count, plural, other {同じ指紋を持つ後からの登録が # 件あります}}。",
+    "pixelsUnread": "登録されたファイルとバイト単位で完全に一致しています。ピクセルを読み取れなかったため、見た目や構図の比較は行っていません。",
     "staleIndex": "Moolam が持つレジストリの写しは {minutes} 分前のものなので、その後に登録された画像はまだ表示されないことがあります。",
     "manifestInvalid": "このファイル内の Content Credentials は検証に失敗しています。署名の後にファイルが変更されたか、記録が別のファイルから移されています。それでも指紋は一致しました。",
     "manifestUnreadable": "このファイルには読み取れない Content Credentials が含まれているため、有効かどうかは判断できません。それでも指紋は一致しました。",

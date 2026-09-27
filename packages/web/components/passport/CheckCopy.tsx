@@ -192,10 +192,19 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
           other. */}
       <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-4 min-[420px]:grid-cols-2">
         <Small label={v("confidence")} value={`${percent(answer.confidence)}%`} />
-        <Small label={v("variant")} value={v(`orientation.${answer.variant}`)} />
-        <Small label={v("phashDistance")} value={v("bits", { count: answer.phashDistance, of: 64 })} />
-        <Small label={v("blockhashDistance")} value={v("bits", { count: answer.blockhashDistance, of: 256 })} />
+        {answer.pixelsUnread ? null : (
+          <>
+            <Small label={v("variant")} value={v(`orientation.${answer.variant}`)} />
+            <Small label={v("phashDistance")} value={v("bits", { count: answer.phashDistance, of: 64 })} />
+            <Small label={v("blockhashDistance")} value={v("bits", { count: answer.blockhashDistance, of: 256 })} />
+          </>
+        )}
       </dl>
+      {answer.pixelsUnread ? (
+        <p data-pixels-unread className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">
+          {v("pixelsUnread")}
+        </p>
+      ) : null}
 
       {same ? null : (
         <Link

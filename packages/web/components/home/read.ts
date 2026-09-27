@@ -7,7 +7,7 @@ import { heldPassportRecord } from "@/lib/chain/registry";
 import { offeredSamples } from "@/lib/data/offeredSamples";
 import { askIndex, heldArt } from "@/lib/data/passports";
 import type { TrySample } from "@/lib/data/samples";
-import { verify } from "@/lib/verifier/client";
+import { isMeasured, verify } from "@/lib/verifier/client";
 import {
   COPY_RECIPE,
   FINDING_ID,
@@ -282,6 +282,11 @@ async function makeCopy(thumbnail: string, id: string, phash: string): Promise<C
 
   const bytes = new Uint8Array(data);
   const answer = await verify({ file: new File([bytes], "copy.jpg", { type: "image/jpeg" }) });
+  // The copy is a fresh JPEG from sharp, so the service can always read its pixels. An answer
+  // without them is a fault, and it fails this read like any other.
+  if (!isMeasured(answer.result)) {
+    throw new Error("the verify service could not read the copy's pixels");
+  }
   const verdict = copyVerdict(answer.result, id, phash);
 
   return {

@@ -373,6 +373,7 @@ function refusal(error: unknown, t: (key: string, values?: Record<string, string
 
 function Answer({ answer, name, title }: { answer: VerifyResponse; name: string; title: string | null }) {
   const t = useTranslations("story.tryIt");
+  const v = useTranslations("verify");
   const id = answer.result.exact ?? answer.result.best?.id ?? null;
   // The verify page's own reader, so the challenge is found on the matched row
   // by the one rule rather than by a second copy of it here.
@@ -402,6 +403,13 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
         </span>
       </div>
       <StaleIndex minutes={read.staleMinutes} className="mt-2" />
+      {/* The same line the verify card prints when a match was made on the bytes alone: the 1.00
+          above is a byte match, not a comparison of how the two pictures look. */}
+      {read.kind !== "miss" && read.pixelsUnread ? (
+        <p data-pixels-unread className="mt-2 max-w-[40ch] text-xs leading-relaxed text-text-muted">
+          {v("pixelsUnread")}
+        </p>
+      ) : null}
       {/* What was matched, by its own name. The registry answers with a hex
           word, which tells a reader nothing, so the picture's pinned title is
           read after the answer lands and takes its place the moment it does. */}

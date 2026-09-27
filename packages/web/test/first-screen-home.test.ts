@@ -29,7 +29,10 @@ vi.mock("@/lib/chain/registry", () => ({ heldPassportRecord: stub.record }));
 vi.mock("@/lib/chain/consent", () => ({ heldConsent: stub.consent, plainStatement: () => "closed" }));
 vi.mock("@/lib/data/passports", () => ({ heldArt: stub.art, askIndex: stub.index }));
 vi.mock("@/lib/data/offeredSamples", () => ({ offeredSamples: stub.offered }));
-vi.mock("@/lib/verifier/client", () => ({ verify: stub.verify }));
+vi.mock("@/lib/verifier/client", async (importOriginal) => ({
+  isMeasured: (await importOriginal<typeof import("@/lib/verifier/client")>()).isMeasured,
+  verify: stub.verify,
+}));
 
 // The copy is made by sharp from the gateway's bytes. Its pixels are not what
 // is under test here, only whether it is made at all and how often.
