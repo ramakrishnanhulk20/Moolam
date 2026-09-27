@@ -345,7 +345,7 @@ window to open and no owner transaction per run. The policy has listed both sinc
 UTC, and both workflow configs send their reports to them.
 
 The re-check runner in `packages/recheck-runner` drives the runs, on a small Linux machine that
-holds the CRE wallet's key and never the owner key. <!-- HEAD CHEF: once the runner is confirmed live, replace the next sentence with "It is live, and passes every two minutes." --> It is being brought up now. For a
+holds the CRE wallet's key and never the owner key. It is live, and passes every two minutes: its first verdict, for a picture drawn on 2026-09-27, landed through the public simulation receiver in [block 108,499,297](https://monadvision.com/tx/0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b) a few minutes after the picture was registered. For a
 passport whose document asks for a private re-check, one run is four steps:
 
 1. **Claim.** A queued passport is claimed with the runner's token (`POST /recheck/claim`); one the
