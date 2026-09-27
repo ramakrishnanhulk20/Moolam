@@ -2,7 +2,19 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { emptyState, inCooldown, loadState, noteRecent, noteWaiting, rollDay, saveState, utcDay, waitFor } from "../src/state.js";
+import {
+  emptyState,
+  inCooldown,
+  loadState,
+  noteRecent,
+  noteUndecided,
+  noteWaiting,
+  rollDay,
+  saveState,
+  undecidedUntil,
+  utcDay,
+  waitFor,
+} from "../src/state.js";
 
 const folders: string[] = [];
 
@@ -83,7 +95,7 @@ describe("the spend ledger on disk", () => {
     expect(state.reports).toBe(3);
     expect(state.recent).toEqual({ [id]: 1_789_000_000 });
     expect(Object.keys(state.closed)).toEqual([id]);
-    expect(state).toMatchObject({ held: {}, waiting: {}, refusals: {}, sent: {} });
+    expect(state).toMatchObject({ held: {}, waiting: {}, refusals: {}, sent: {}, undecided: {} });
   });
 
   it("reads a tripped breaker it cannot make sense of as tripped, never as clear", () => {
@@ -131,6 +143,17 @@ describe("leaving a passport alone after it was handled", () => {
     expect(waits).toEqual([600, 1_200, 2_400, 4_800, 9_600, 19_200, 21_600]);
     expect(waitFor(state, id, NOON + 21_599_000)).toBeDefined();
     expect(waitFor(state, id, NOON + 21_600_000)).toBeUndefined();
+  });
+
+  it("holds an undecided run for the cooldown, across a restart, and lets it go after (WO-190)", () => {
+    const file = scratch();
+    const noted = noteUndecided(noteWaiting(emptyState("2026-09-22"), id, "the gateway did not answer", NOON, 600, 21_600), id, NOON);
+    expect(noted.waiting[id]).toBeUndefined();
+    saveState(file, noted);
+    const state = loadState(file, NOON);
+    expect(undecidedUntil(state, id.toUpperCase().replace("0X", "0x"), NOON + 60_000, 21_600)).toBe(NOON / 1000 + 21_600);
+    expect(undecidedUntil(state, id, NOON + 21_600_000, 21_600)).toBeUndefined();
+    expect(undecidedUntil(emptyState("2026-09-22"), id, NOON, 21_600)).toBeUndefined();
   });
 
   it("says nothing about a passport it has never seen", () => {

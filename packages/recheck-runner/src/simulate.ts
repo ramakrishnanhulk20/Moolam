@@ -41,6 +41,11 @@ export interface SimulateResult {
   distance?: number;
   matched?: boolean;
   reason?: string;
+  /**
+   * On a failed run, the last few lines the CLI printed, redacted and with every address cut to its
+   * origin. For the runner's own log only: never posted, never stored.
+   */
+  lastLines?: string[];
   printed: string;
 }
 
@@ -65,8 +70,11 @@ const SIGNED_QUERY = /\bX-(Algorithm|Date|Expires|Method|Signature)=[^\s&]*/gi;
  * scheme. Used on every reason before it is logged or posted to the queue's public status.
  */
 export function redact(line: string, scrub: readonly string[] = []): string {
+  return scrubbed(line.replace(ADDRESS, "[address removed]"), scrub);
+}
+
+function scrubbed(line: string, scrub: readonly string[]): string {
   let clean = line
-    .replace(ADDRESS, "[address removed]")
     .replace(BEARER, "Bearer [removed]")
     .replace(SIGNED_QUERY, "[signature removed]");
   // Longest first, so a value is removed whole before a shorter one inside it can split it.
@@ -76,6 +84,43 @@ export function redact(line: string, scrub: readonly string[] = []): string {
     }
   }
   return clean;
+}
+
+/** How many of the CLI's last lines a failed run's log line carries, and how long each may be. */
+const TAIL_LINES = 5;
+const TAIL_LINE_LENGTH = 200;
+
+/** Colour and cursor codes the CLI writes around its words. */
+const TERMINAL_CODE = /\x1b\[[0-?]*[ -/]*[@-~]/g;
+const CONTROL = /[\x00-\x1f\x7f]/g;
+
+/**
+ * The last few lines of a run's output that hold a word or a number, for the log line of a failed
+ * run, so the cause is there to read next time without anyone rerunning it.
+ *
+ * Each line has its terminal codes and control characters taken out, every address cut to its
+ * origin, so an endpoint's path, query and user never survive, and then the same bearer, signed
+ * link and scrub list removal as redact. The runner's own log filter runs over the whole line again
+ * after this, and it removes the origin too. It does not cover a secret shorter than eight
+ * characters or one the CLI printed in another encoding (see scrubList).
+ */
+export function lastLines(output: string, scrub: readonly string[] = []): string[] {
+  return output
+    .replace(TERMINAL_CODE, "")
+    .split(/\r\n|\r|\n/)
+    .map((line) => line.replace(CONTROL, " ").trim())
+    .filter((line) => /[\p{L}\p{N}]/u.test(line))
+    .slice(-TAIL_LINES)
+    .map((line) => cut(scrubbed(line.replace(ADDRESS, originOf), scrub), TAIL_LINE_LENGTH));
+}
+
+function originOf(address: string): string {
+  try {
+    const origin = new URL(address).origin;
+    return origin === "null" ? "[address removed]" : origin;
+  } catch {
+    return "[address removed]";
+  }
 }
 
 /**
@@ -237,7 +282,9 @@ export function parseSimulation(
  *
  * A broadcast run has to end with a report transaction; a dry run has to end with the verdict and
  * the zero hash. Anything else is a failure carrying the CLI's own last complaint, cut short, so
- * the reason a judge could be shown is the machine's words rather than ours.
+ * the reason a judge could be shown is the machine's words rather than ours. A broadcast run with
+ * no printed hash may still have sent its report (CLI v1.35.0 does), which the runner settles from
+ * the chain, not from here.
  */
 export async function runSimulation(
   request: SimulateRequest,
@@ -250,17 +297,22 @@ export async function runSimulation(
   const command = simulateCommand(request);
   const result = await exec(command, request.timeoutMs);
   const parsed = parseSimulation(result.output, request.scrub);
+  const tail = lastLines(result.output, request.scrub);
 
   const verdict = {
     ...(parsed.recomputed === undefined ? {} : { recomputed: parsed.recomputed }),
     ...(parsed.distance === undefined ? {} : { distance: parsed.distance }),
     ...(parsed.matched === undefined ? {} : { matched: parsed.matched }),
   };
+  const failure = {
+    ...verdict,
+    ...(tail.length === 0 ? {} : { lastLines: tail }),
+  };
 
   if (result.timedOut) {
     return {
       ok: false,
-      ...verdict,
+      ...failure,
       reason: `the simulation was still running after ${Math.round(request.timeoutMs / 1000)} seconds and was stopped`,
       printed: command.printed,
     };
@@ -272,7 +324,7 @@ export async function runSimulation(
     }
     return {
       ok: false,
-      ...verdict,
+      ...failure,
       reason: cut(parsed.trouble ?? "the run wrote no report transaction", 200),
       printed: command.printed,
     };
@@ -283,7 +335,7 @@ export async function runSimulation(
   }
   return {
     ok: false,
-    ...verdict,
+    ...failure,
     reason: cut(parsed.trouble ?? `the CLI exited ${result.code ?? "on a signal"}`, 200),
     printed: command.printed,
   };

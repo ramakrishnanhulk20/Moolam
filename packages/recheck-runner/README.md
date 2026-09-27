@@ -228,6 +228,8 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
      reverted registration or one with no log for this passport is settled; any other failure of
      that read is a passing miss.
    - a stop signal that came in by now ends the pass here, before anything is claimed.
+   - the chain head is noted, `eth_blockNumber`, so the run can be proved from the chain later. A
+     head that cannot be read is a passing miss, before anything is claimed.
    - only now the claim, `POST /recheck/claim`. A queued request must answer claimed, or it is left.
      A sweep candidate is claimed only to catch a request that came in meanwhile: a request
      somebody is running means skip; a finished one (the service's 409 `not-pending`) or none means
@@ -243,6 +245,17 @@ Every `RUNNER_INTERVAL_SECONDS`, by default two minutes:
      with status 1, so the status alone proves nothing. Every report is sent with the workflows'
      explicit gas limit of 1,000,000, which nothing on the command line changes, because an
      estimated limit starves the receiver inside the mock.
+   - no printed hash is not taken as nothing sent. The CRE CLI v1.35.0 the VM runs can send the
+     report and print no `report tx` hash for it, or only the zero one: on 2026-09-27 it sent
+     `0x37717b0c…abe24b` for passport `0xfd09a77100` and printed none, while v1.32.0 on the
+     maintainer's machine printed every hash in `proofs/rechecks.txt`. So when a broadcast run ends
+     with no non-zero hash, the runner reads the registry's `VerificationAttested` logs for that
+     passport from ten blocks before the noted head to the latest block, newest first, 100 blocks a
+     call and at most 10,000 blocks, and takes only a log whose transaction has status 1 and was sent
+     from `CRE_WALLET_ADDRESS` to the mock forwarder. Found, the run is done with that transaction,
+     remembered and counted exactly as a printed hash is. Not found, it is a failure as below. A
+     read that fails is "cannot tell": the passport is not counted as failed, and no source runs it
+     again, a fresh request included, until the index shows its verdict or the cooldown ends.
    - from the claim on, every way out hands the request back exactly once, `POST /recheck/done`: the
      report transaction when it landed, a redacted reason otherwise, and a reason when the simulator
      threw or would not start.
@@ -258,9 +271,13 @@ How a turn ends decides when the passport is looked at again:
 | Passing miss before the spend | the gateway, the index or the node did not answer, a 429 or 5xx, the private copy's state unknown | stays pending, unclaimed | tried again after `RUNNER_RETRY_SECONDS`, doubling with each miss in a row up to the cooldown; a request is answered after three misses | nothing |
 | Passing failure of a paid run | a gateway timeout or a 5xx inside the workflow, the runner's own time limit, a receipt not served yet | handed back with the reason, then placed again so it reads waiting, not failed | the same short, doubling wait | the report and one failure |
 | Final failure of a paid run | a 404 inside the workflow, a decode error, the first refused report | failed, with the reason | left for the cooldown | the report and one failure |
+| Cannot tell | the run printed no report hash and the chain could not be read to look for its verdict | handed back with the reason, not placed again; a later request is answered held | not run again from any source until the index shows its verdict, which settles it, or the cooldown ends | the report, and no failure |
 
-Only lines matching one of three known patterns are ever taken out of the simulator's output, so
-nothing the CLI happens to print can reach a log by accident. Every reason, every line the runner
+Only lines matching one of three known patterns are ever taken out of the simulator's output into a
+reason, so nothing the CLI happens to print can reach the queue or the state file by accident. The
+one exception is the runner's own log line for a failed broadcast run, which carries the CLI's last
+five lines so the cause is there to read: each is cut to 200 characters, every address in it is cut
+to its origin, and it goes through the same filter as below. Every reason, every line the runner
 logs, and every reason it keeps in its state file for a later answer is then stripped of
 addresses, bearer values, the parameters of a signed download link, the verify service's host, and
 every value of eight characters or more in the env file and in the runner's own token and
@@ -349,7 +366,7 @@ At the default two minute interval, 720 passes a day:
 
 | At the daily cap of 40 reports | Count | Cost |
 | --- | --- | --- |
-| RPC calls | 120: a balance, a receipt and nothing else per passport | 3,600 QuickNode credits of about 2.67M a month |
+| RPC calls | 160 for the balance, the registration receipt, the chain head and the report receipt of each run. The VM's CLI v1.35.0 prints no hash, so each run is also looked up on the chain: about 3 more calls when the report is found (a block number, a log read or two, a receipt), up to about 17 for a ten minute run that sent nothing. About 280 a day, 840 at worst | About 8,400 QuickNode credits at the 30 a call the old count used, 25,000 at worst, of about 2.67M a month. Whether QuickNode prices `eth_getLogs` higher is not checked |
 | Gateway reads | about 160: the runner's document and picture reads, and the metadata and thumbnail the simulator fetches | 1M requests a month on the Pinata plan |
 | Index queries | 760 | Still under one a minute |
 | Report transactions | 40, at 1,000,000 gas and about 102 gwei | **4.08 MON a day from the CRE wallet** |

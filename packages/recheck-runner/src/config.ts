@@ -32,6 +32,11 @@ export interface Config {
   target: string;
   /** The wallet that pays for every report, watched against the floor below. */
   creWallet: string;
+  /**
+   * Chainlink's mock forwarder, which every report the CLI broadcasts is sent to. With creWallet it
+   * picks out this runner's own report transaction when the CLI printed no hash for it.
+   */
+  forwarder: string;
   statePath: string;
   intervalSeconds: number;
   /** How long a registration must have settled before the sweep picks it up. */
@@ -62,6 +67,13 @@ const REGISTRY = "0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0";
 
 /** The gateway in packages/workflow/moolam-verifier/config.json, which is what the workflow reads. */
 const GATEWAY = "https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/";
+
+/**
+ * The mock forwarder `cre workflow supported-chains` names for monad-mainnet, and the one both
+ * SimulationReceiver contracts are pinned to. Not configurable: a report sent anywhere else would be
+ * refused by the receiver anyway.
+ */
+const FORWARDER = "0x9eF6468C5f37b976E57d52054c693269479A784d";
 
 const REQUIRED = [
   "VERIFY_SERVICE_URL",
@@ -101,6 +113,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
     envFile: text(env, "CRE_ENV_FILE"),
     target: env.CRE_WORKFLOW_TARGET?.trim() || "monad-mainnet",
     creWallet: text(env, "CRE_WALLET_ADDRESS").toLowerCase(),
+    forwarder: FORWARDER.toLowerCase(),
     statePath: env.RUNNER_STATE_PATH?.trim() || "runner-state.json",
     intervalSeconds: count(env, "RUNNER_INTERVAL_SECONDS", 120, 10),
     settleSeconds: count(env, "RUNNER_SETTLE_SECONDS", 120, 0),

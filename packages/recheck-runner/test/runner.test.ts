@@ -15,6 +15,9 @@ import { isPassingFailure, onePass, openingState, type Deps } from "../src/runne
 
 const NOW = Date.parse("2026-09-22T12:00:00Z");
 
+/** The chain head every stand-in pass reads before a broadcast run. */
+const HEAD = 108_499_200;
+
 const ENV = {
   VERIFY_SERVICE_URL: "https://verify.example",
   RUNNER_TOKEN: "a-token",
@@ -101,6 +104,8 @@ function standIns(input: {
   token?: string | null;
   landed?: boolean;
   picture?: (cid: string) => PictureRead;
+  /** The chain's answer to "did this passport's verdict land since the head", when the CLI printed no hash. */
+  found?: (passportId: string, head: number) => string | null;
 }): StandIns {
   const config: Config = readConfig({ ...ENV, ...input.env });
   const lines: string[] = [];
@@ -159,6 +164,8 @@ function standIns(input: {
     sealedToken: () => (input.token === undefined ? SEALED_TOKEN : input.token),
     eventIndex: async (txHash) => (txHash.startsWith("0xdddd") ? 1 : 0),
     reportLanded: async () => input.landed ?? true,
+    chainHead: async () => HEAD,
+    findReport: async (passportId, head) => input.found?.(passportId, head) ?? null,
     balanceWei: async () => input.balance ?? 28_266_000_000_000_000_000n,
     simulate: async (request) => {
       calls.push(`simulate ${path.basename(request.workflowDir)}`);
@@ -1212,5 +1219,168 @@ describe("a report whose done never reached the service (verifier review pass 4,
     expect(kit.state().reports).toBe(1);
     expect(handedBack).toEqual([{ passportId: ASKED, reportTx: `0x${"f".repeat(64)}` }]);
     expect(service.status(ASKED)).toBe("done");
+  });
+});
+
+describe("a broadcast run the CLI printed no report hash for (WO-190)", () => {
+  /** The passport and the report the droplet's CLI v1.35.0 sent on 2026-09-27 without printing its hash. */
+  const OBSERVED = "0xfd09a7710088e9bdcdd630904668c29e54a4042eafdab74f25749d397eef6c98";
+  const OBSERVED_TX = "0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b";
+  const ZERO_HASH_OUTPUT = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "simulate-dry-run.txt"), "utf8");
+
+  it("is done with the chain's transaction when the output held only the zero hash and the verdict is on chain", async () => {
+    const kit = standIns({
+      pending: [OBSERVED],
+      rows: [row(OBSERVED, { metadataURI: row(ASKED).metadataURI })],
+      found: (passportId, head) => (passportId === OBSERVED && head === HEAD ? OBSERVED_TX : null),
+    });
+    kit.deps.simulate = (request) => runSimulation(request, async () => ({ output: ZERO_HASH_OUTPUT, code: 0, timedOut: false }));
+    const summary = await onePass(kit.deps);
+
+    expect(summary).toMatchObject({ ran: 1, done: 1, failed: 0 });
+    expect(kit.reports).toEqual([{ passportId: OBSERVED, reportTx: OBSERVED_TX, matched: true, distance: 0 }]);
+    expect(kit.state().sent[OBSERVED]).toMatchObject({ tx: OBSERVED_TX, landed: true });
+    expect(kit.state().reports).toBe(1);
+    expect(kit.state().failures).toBe(0);
+    expect(kit.state().recent[OBSERVED]).toBeUndefined();
+  });
+
+  it("is a failure as today when the chain holds no verdict from this runner for it", async () => {
+    const kit = standIns({ pending: [OBSERVED], rows: [row(OBSERVED, { metadataURI: row(ASKED).metadataURI })], found: () => null });
+    kit.deps.simulate = (request) => runSimulation(request, async () => ({ output: ZERO_HASH_OUTPUT, code: 0, timedOut: false }));
+    const summary = await onePass(kit.deps);
+
+    expect(summary).toMatchObject({ ran: 1, done: 0, failed: 1 });
+    expect(kit.reports).toEqual([{ passportId: OBSERVED, reason: "the run wrote no report transaction" }]);
+    expect(kit.state().sent[OBSERVED]).toBeUndefined();
+    expect(kit.state().failures).toBe(1);
+    expect(kit.state().recent[OBSERVED]).toBeDefined();
+  });
+
+  it("holds the passport and sends nothing more when the chain cannot be read, and never counts it failed", async () => {
+    const service = modelQueue([OBSERVED]);
+    const kit = standIns({ rows: [row(OBSERVED, { metadataURI: row(ASKED).metadataURI })], sweep: [row(PICTURE)] });
+    kit.deps.queue = service.client;
+    const simulate = kit.deps.simulate;
+    kit.deps.simulate = async (request) =>
+      request.txHash === row(OBSERVED).txHash
+        ? (await simulate(request), runSimulation(request, async () => ({ output: ZERO_HASH_OUTPUT, code: 0, timedOut: false })))
+        : simulate(request);
+    kit.deps.findReport = async () => {
+      throw new Error("eth_getLogs was refused: block range too large");
+    };
+    const summary = await onePass(kit.deps);
+
+    expect(summary).toMatchObject({ ran: 2, done: 1, failed: 0 });
+    expect(kit.runs.filter((one) => one.txHash === row(OBSERVED).txHash)).toHaveLength(1);
+    expect(kit.state().reports).toBe(2);
+    expect(kit.state().failures).toBe(0);
+    expect(kit.state().breaker.streak).toEqual([]);
+    expect(kit.state().undecided[OBSERVED]).toBe(Math.floor(NOW / 1000));
+    expect(kit.state().recent[OBSERVED]).toBeUndefined();
+    expect(kit.state().waiting[OBSERVED]).toBeUndefined();
+    expect(service.status(OBSERVED)).toBe("failed");
+    expect(kit.lines.join(" ")).toContain("could not be read to tell whether its verdict landed");
+
+    kit.deps.now = () => NOW + 3_600_000;
+    kit.deps.index.unrechecked = async () => [row(OBSERVED, { metadataURI: row(ASKED).metadataURI })];
+    await onePass(kit.deps);
+    expect(kit.runs.filter((one) => one.txHash === row(OBSERVED).txHash)).toHaveLength(1);
+  });
+
+  it("starts no second run for an undecided passport on a fresh request within the cooldown, and answers it held", async () => {
+    const observed = row(OBSERVED, { metadataURI: row(ASKED).metadataURI });
+    const service = modelQueue([OBSERVED]);
+    const kit = standIns({ rows: [observed] });
+    kit.deps.queue = {
+      ...service.client,
+      done: async (report) => {
+        kit.reports.push(report);
+        await service.client.done(report);
+      },
+    };
+    kit.deps.simulate = (request) => {
+      kit.runs.push(request);
+      return runSimulation(request, async () => ({ output: ZERO_HASH_OUTPUT, code: 0, timedOut: false }));
+    };
+    kit.deps.findReport = async () => {
+      throw new Error("eth_getLogs was refused: block range too large");
+    };
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(1);
+
+    kit.deps.findReport = async () => null;
+    for (const hours of [1, 3, 5.9]) {
+      kit.deps.now = () => NOW + hours * 3_600_000;
+      await service.client.request(OBSERVED);
+      kit.deps.index.unrechecked = async () => [observed];
+      await onePass(kit.deps);
+      expect(kit.runs, `after ${hours} hours`).toHaveLength(1);
+      expect(kit.reports.at(-1)?.reason, `after ${hours} hours`).toContain("is held");
+      expect(service.status(OBSERVED)).toBe("failed");
+    }
+    expect(kit.state().reports).toBe(1);
+    expect(kit.state().failures).toBe(0);
+
+    // The index catching up settles it; with no verdict there, the cooldown's end lets it run again.
+    const settled = standIns({ rows: [row(OBSERVED, { metadataURI: row(ASKED).metadataURI, attestationCount: 1 })], pending: [OBSERVED], state: kit.state() });
+    settled.deps.now = () => NOW + 3_600_000;
+    await onePass(settled.deps);
+    expect(settled.runs).toHaveLength(0);
+    expect(settled.state().closed[OBSERVED]?.reason).toContain("already carries 1");
+
+    kit.deps.now = () => NOW + 6 * 3_600_000 + 60_000;
+    await service.client.request(OBSERVED);
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(2);
+  });
+
+  it("still takes a printed hash as today, without asking the chain for one", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
+    let asked = false;
+    kit.deps.findReport = async () => {
+      asked = true;
+      return OBSERVED_TX;
+    };
+    kit.deps.simulate = (request) =>
+      runSimulation(request, async () => ({ output: fs.readFileSync(path.join(import.meta.dirname, "fixtures", "simulate-broadcast.txt"), "utf8"), code: 0, timedOut: false }));
+    const summary = await onePass(kit.deps);
+
+    expect(asked).toBe(false);
+    expect(summary).toMatchObject({ ran: 1, done: 1, failed: 0 });
+    expect(kit.reports[0]?.reportTx).toBe("0x085d8500ab86dc1f9028d8375b92e5b4b569d83d5f3c96c32e38679e5b6a3602");
+  });
+
+  it("does not start a paid run when the chain head cannot be noted first", async () => {
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)] });
+    kit.deps.chainHead = async () => {
+      throw new Error("the RPC call eth_blockNumber answered 503");
+    };
+    await onePass(kit.deps);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.claims).toEqual([]);
+    expect(kit.state().reports).toBe(0);
+  });
+
+  it("logs the CLI's last lines on a failed run, with no address path, and posts none of them", async () => {
+    const output = [
+      "RPC health check failed for https://example-name.monad-mainnet.quiknode.pro/5ecre7k3y/ (status 401)",
+      "Transaction sent to https://rpc.example/key-0f1e2d3c4b5a?api=hidden",
+      "the broadcast did not print a hash",
+    ].join("\n");
+    const kit = standIns({ pending: [ASKED], rows: [row(ASKED)], found: () => null });
+    kit.deps.simulate = (request) => runSimulation(request, async () => ({ output, code: 1, timedOut: false }));
+    await onePass(kit.deps);
+
+    const logged = kit.lines.join("\n");
+    const failed = kit.lines.find((line) => line.includes(" failed: ")) ?? "";
+    expect(failed).toContain("The CLI's last lines:");
+    expect(failed).toContain("the broadcast did not print a hash");
+    for (const leaked of ["5ecre7k3y", "key-0f1e2d3c4b5a", "api=hidden", "quiknode.pro/", "rpc.example/"]) {
+      expect(logged).not.toContain(leaked);
+    }
+    expect(logged).not.toMatch(/[a-z]+:\/\/\S*\/\S/i);
+    expect(kit.reports[0]?.reason ?? "").not.toContain("last lines");
+    expect(JSON.stringify(kit.state())).not.toContain("last lines");
   });
 });

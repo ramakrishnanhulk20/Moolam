@@ -131,13 +131,161 @@ export async function attestationLanded(
     return false;
   }
   const logs = Array.isArray(receipt.logs) ? (receipt.logs as ReceiptLog[]) : [];
-  return logs.some(
-    (log) =>
-      typeof log.address === "string" &&
-      log.address.toLowerCase() === registry.toLowerCase() &&
-      Array.isArray(log.topics) &&
-      (log.topics[0] ?? "").toLowerCase() === VERIFICATION_ATTESTED_TOPIC &&
-      (log.topics[1] ?? "").toLowerCase() === passportId.toLowerCase(),
+  return logs.some((log) => isAttestation(log, passportId, registry));
+}
+
+/** The registry's VerificationAttested log for this passport, one predicate for every place that asks. */
+function isAttestation(log: ReceiptLog, passportId: string, registry: string): boolean {
+  return (
+    typeof log === "object" &&
+    log !== null &&
+    typeof log.address === "string" &&
+    log.address.toLowerCase() === registry.toLowerCase() &&
+    Array.isArray(log.topics) &&
+    String(log.topics[0] ?? "").toLowerCase() === VERIFICATION_ATTESTED_TOPIC &&
+    String(log.topics[1] ?? "").toLowerCase() === passportId.toLowerCase()
+  );
+}
+
+/** The latest block number, as a whole number. Throws on anything the node gives back that is not one. */
+export async function blockNumber(call: RpcCall): Promise<number> {
+  const result = await call("eth_blockNumber", []);
+  if (typeof result !== "string" || !/^0x[0-9a-f]{1,13}$/i.test(result)) {
+    throw new Error("the RPC gave no block number back");
+  }
+  return Number(BigInt(result));
+}
+
+/**
+ * How far before the head noted at the start of a run the search begins, because the node the runner
+ * reads and the one the CLI sends through need not agree on the latest block to the block.
+ */
+export const LOOKBACK_BLOCKS = 10;
+
+/**
+ * The widest block range asked for in one eth_getLogs call. Monad's public endpoints refuse wider
+ * ranges than their providers allow, and a hundred is inside every limit they publish.
+ */
+export const LOG_CHUNK_BLOCKS = 100;
+
+/**
+ * The widest window searched, about an hour of Monad blocks at 0.4 seconds each, which is several
+ * times the longest run the timeout allows. A wider window is not searched in part: the answer
+ * would be a guess, so it throws and the caller reads that as cannot tell.
+ */
+export const MOST_BLOCKS_SEARCHED = 10_000;
+
+/**
+ * The most attestation logs for one passport looked at in one search. Past it the search throws
+ * rather than stop early with an answer it has not finished checking.
+ */
+export const MOST_LOGS_CHECKED = 20;
+
+export interface ReportSearch {
+  passportId: string;
+  registry: string;
+  /** The CRE wallet, the one account that signs this runner's report transactions. */
+  sender: string;
+  /** The mock forwarder every report transaction is sent to. */
+  forwarder: string;
+  /** The chain head noted just before the run started. */
+  head: number;
+}
+
+const TX_HASH = /^0x[0-9a-f]{64}$/;
+
+/**
+ * The report transaction a broadcast run sent for this passport, found on the chain rather than in
+ * the CLI's output, or null when there is none.
+ *
+ * The CRE CLI v1.35.0 sends the report and can print no hash for it (seen on 2026-09-27, report
+ * 0x37717b0c...). So the registry's VerificationAttested logs with topic1 equal to the passport id
+ * are read from a few blocks before the noted head to the latest block, newest first, in chunks, and
+ * a log counts only when its transaction's receipt has status 1, was sent from `sender` to
+ * `forwarder`, and carries that same attestation. A log from anyone else, a copy of this workflow
+ * sent by another wallet included, is not taken.
+ *
+ * Every read that fails, a refused call, a malformed answer, a receipt the node does not serve, a
+ * window or a log count past its cap, throws: "not found" is said only after every log in the whole
+ * window was checked.
+ */
+export async function findLandedReport(call: RpcCall, search: ReportSearch): Promise<string | null> {
+  if (!Number.isSafeInteger(search.head) || search.head < 0) {
+    throw new Error("the chain head noted before the run is not a block number");
+  }
+  const passportId = search.passportId.toLowerCase();
+  const registry = search.registry.toLowerCase();
+  const sender = search.sender.toLowerCase();
+  const forwarder = search.forwarder.toLowerCase();
+
+  const latest = await blockNumber(call);
+  const from = Math.max(0, search.head - LOOKBACK_BLOCKS);
+  if (latest < from) {
+    throw new Error(`the node's latest block ${latest} is behind the block ${from} the run started near`);
+  }
+  if (latest - from + 1 > MOST_BLOCKS_SEARCHED) {
+    throw new Error(`the run spans ${latest - from + 1} blocks, more than the ${MOST_BLOCKS_SEARCHED} searched`);
+  }
+
+  let checked = 0;
+  for (let to = latest; to >= from; to -= LOG_CHUNK_BLOCKS) {
+    const start = Math.max(from, to - LOG_CHUNK_BLOCKS + 1);
+    const result = await call("eth_getLogs", [
+      {
+        address: registry,
+        topics: [VERIFICATION_ATTESTED_TOPIC, passportId],
+        fromBlock: `0x${start.toString(16)}`,
+        toBlock: `0x${to.toString(16)}`,
+      },
+    ]);
+    if (!Array.isArray(result)) {
+      throw new Error("the RPC gave no log list back");
+    }
+    for (const entry of result.reverse() as unknown[]) {
+      const log = entry as ReceiptLog & { transactionHash?: unknown; removed?: unknown };
+      if (log === null || typeof log !== "object" || log.removed === true || !isAttestation(log, passportId, registry)) {
+        continue;
+      }
+      checked += 1;
+      if (checked > MOST_LOGS_CHECKED) {
+        throw new Error(`more than ${MOST_LOGS_CHECKED} attestation logs for this passport in the window`);
+      }
+      const tx = typeof log.transactionHash === "string" ? log.transactionHash.toLowerCase() : "";
+      if (!TX_HASH.test(tx)) {
+        throw new Error("an attestation log came back with no transaction hash");
+      }
+      if (await sentByRunner(call, tx, passportId, registry, sender, forwarder)) {
+        return tx;
+      }
+    }
+  }
+  return null;
+}
+
+/** Whether this transaction is one of the runner's own reports that landed for this passport. */
+async function sentByRunner(
+  call: RpcCall,
+  tx: string,
+  passportId: string,
+  registry: string,
+  sender: string,
+  forwarder: string,
+): Promise<boolean> {
+  const result = await call("eth_getTransactionReceipt", [tx]);
+  if (result === null || typeof result !== "object") {
+    throw new Error(`the node has no receipt for ${tx}, which carries an attestation log`);
+  }
+  const receipt = result as { status?: unknown; from?: unknown; to?: unknown; logs?: unknown };
+  const logs = Array.isArray(receipt.logs) ? (receipt.logs as ReceiptLog[]) : [];
+  return (
+    typeof receipt.status === "string" &&
+    /^0x[0-9a-f]+$/i.test(receipt.status) &&
+    BigInt(receipt.status) === 1n &&
+    typeof receipt.from === "string" &&
+    receipt.from.toLowerCase() === sender &&
+    typeof receipt.to === "string" &&
+    receipt.to.toLowerCase() === forwarder &&
+    logs.some((log) => isAttestation(log, passportId, registry))
   );
 }
 

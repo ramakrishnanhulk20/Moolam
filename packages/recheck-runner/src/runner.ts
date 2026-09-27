@@ -1,4 +1,4 @@
-import { RegistrationError } from "./chain.js";
+import { RegistrationError, blockNumber, findLandedReport, rpcCall } from "./chain.js";
 import { formatMon, type Config } from "./config.js";
 import type { Document, PictureRead, RecordLookup } from "./document.js";
 import { fingerprintSizeRefusal, isTestCard, readPicture, readUnsealRecord, withRecord } from "./document.js";
@@ -20,9 +20,11 @@ import {
   noteRecent,
   noteRefusal,
   noteSent,
+  noteUndecided,
   noteWaiting,
   rollDay,
   sentFor,
+  undecidedUntil,
   waitFor,
   type Closure,
   type RunnerState,
@@ -66,6 +68,17 @@ export interface Deps {
    * not the CLI's word or the transaction's status, is what makes a run done.
    */
   reportLanded: (reportTx: string, passportId: string) => Promise<boolean>;
+  /**
+   * The latest block, noted before every broadcast run so a run the CLI printed no hash for can be
+   * looked up on the chain from there. Left out, config.rpcUrl is asked.
+   */
+  chainHead?: () => Promise<number>;
+  /**
+   * This runner's own report for the passport, found on the chain since `head`: a VerificationAttested
+   * log in a transaction from the CRE wallet to the forwarder with status 1. Null when there is none;
+   * throws when the chain could not be read. Left out, config.rpcUrl is asked (chain.ts).
+   */
+  findReport?: (passportId: string, head: number) => Promise<string | null>;
   balanceWei: () => Promise<bigint>;
   simulate: (request: SimulateRequest) => Promise<SimulateResult>;
   readState: () => RunnerState;
@@ -111,6 +124,8 @@ interface Outcome {
   state: RunnerState;
   ran: boolean;
   succeeded: boolean;
+  /** A paid run nobody can yet call done or failed: its verdict may be on chain. Counted as neither. */
+  undecided?: boolean;
   stopped?: string;
 }
 
@@ -229,7 +244,7 @@ export async function onePass(given: Deps): Promise<PassSummary> {
       summary.ran += 1;
       if (outcome.succeeded) {
         summary.done += 1;
-      } else {
+      } else if (outcome.undecided !== true) {
         summary.failed += 1;
       }
     }
@@ -319,6 +334,13 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
   }
   if (row.attestationCount > 0) {
     return await close(`it already carries ${row.attestationCount} re-check(s)`);
+  }
+  // After the index, so a verdict the index now shows settles the passport rather than holding it.
+  const heldUntil = undecidedUntil(state, passportId, deps.now(), config.cooldownSeconds);
+  if (heldUntil !== undefined) {
+    return await hold(
+      `passport ${short} is held: its last run printed no report hash and the chain could not be read to tell if it landed, so it is not run again before ${new Date(heldUntil * 1000).toISOString()}`,
+    );
   }
 
   let document = await deps.readDocument(row.metadataURI);
@@ -419,6 +441,15 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     return await dryRun(row.txHash, at);
   }
 
+  // Noted before the claim and the spend, because the CLI can send a report and print no hash for
+  // it, and then the chain from this block on is the only place the run can be proved.
+  let head: number;
+  try {
+    head = await (deps.chainHead ?? (() => blockNumber(rpcCall(config.rpcUrl))))();
+  } catch (error) {
+    return await wait(`the chain head could not be read before the run (${safeReason(error)})`);
+  }
+
   // The claim, taken only now that the run is about to spend. A private run needs one of its own
   // for the service to mint its link, so a sweep candidate asks for a request first.
   let claimed = false;
@@ -477,14 +508,30 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
       scrub,
     });
 
-    if (!result.ok || result.reportTx === undefined) {
+    let reportTx = result.ok ? result.reportTx : undefined;
+    if (reportTx === undefined) {
+      // No printed hash is not proof that nothing was sent: the CLI v1.35.0 sends the report and
+      // can print none. The chain decides, and a failure is called only when it holds no verdict.
       const reason = result.reason ?? "the run wrote no report transaction";
-      return isPassingFailure(reason) ? await passing(reason) : await final(reason);
+      const tail = result.lastLines === undefined ? "" : `. The CLI's last lines: ${result.lastLines.join(" | ")}`;
+      let found: string | null;
+      try {
+        found = await (deps.findReport ?? defaultFindReport)(passportId, head);
+      } catch (error) {
+        return await undecided(safeReason(error), tail);
+      }
+      if (found !== null && !isTxHash(found)) {
+        return await undecided("the lookup answered with something that is not a transaction hash", tail);
+      }
+      if (found === null) {
+        return isPassingFailure(reason) ? await passing(reason, tail) : await final(reason, tail);
+      }
+      log(`passport ${short}'s run printed no report hash, and the chain holds its verdict in ${found.slice(0, 12)} from the CRE wallet to the forwarder`);
+      reportTx = found.toLowerCase();
     }
 
     // Transaction status is not the verdict: Chainlink's mock forwarder mines a report its receiver
     // refused with status 1. Only the registry's own attestation in that receipt makes the run done.
-    const reportTx = result.reportTx;
     const tx = reportTx.slice(0, 12);
     let landed: boolean | null;
     try {
@@ -517,10 +564,38 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     throw error;
   }
 
+  /** The chain lookup a run with no printed hash gets, from config.rpcUrl. */
+  function defaultFindReport(id: string, noted: number): Promise<string | null> {
+    return findLandedReport(rpcCall(config.rpcUrl), {
+      passportId: id,
+      registry: config.registry,
+      sender: config.creWallet,
+      forwarder: config.forwarder,
+      head: noted,
+    });
+  }
+
+  /**
+   * A run with no printed hash whose verdict the chain could not be read to confirm or rule out. It
+   * may be in the registry, so it is neither done nor failed: the spend stays counted, the failures,
+   * the cooldown and the breaker are left alone, the request is handed back and not placed again,
+   * and no source runs the passport again until the index shows its verdict or the cooldown ends.
+   */
+  async function undecided(why: string, tail: string): Promise<Outcome> {
+    log(
+      `passport ${short}'s run printed no report hash and the chain could not be read to tell whether its verdict landed (${cut(why, 160)}), so it is held and not sent again this round${tail}`,
+    );
+    await handBack({
+      reason: "the run printed no report transaction and the chain could not be read yet to tell whether its verdict landed, so it is not sent again for now",
+    });
+    state = noteUndecided(state, passportId, deps.now());
+    return { state, ran: true, succeeded: false, undecided: true };
+  }
+
   /** A run that did not land for a reason that may change: back soon, and the request stays open (tally R5). */
-  async function passing(reason: string): Promise<Outcome> {
+  async function passing(reason: string, tail = ""): Promise<Outcome> {
     state = { ...state, failures: state.failures + 1 };
-    log(`passport ${short} failed for a reason that may pass: ${reason}`);
+    log(`passport ${short} failed for a reason that may pass: ${reason}${tail}`);
     await handBack({ reason });
     if (personAsked) {
       // The service closes a request on any done without a report, and has no route to reopen one,
@@ -535,9 +610,9 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
   }
 
   /** A run that did not land for a reason that will not change by itself: the cooldown. */
-  async function final(reason: string): Promise<Outcome> {
+  async function final(reason: string, tail = ""): Promise<Outcome> {
     state = { ...state, failures: state.failures + 1 };
-    log(`passport ${short} failed: ${reason}`);
+    log(`passport ${short} failed: ${reason}${tail}`);
     await handBack({ reason });
     state = noteRecent(state, passportId, deps.now());
     return backedOff(deps, { state, ran: true, succeeded: false });
@@ -812,7 +887,8 @@ async function gather(deps: Deps, state: RunnerState, nowMs: number): Promise<{ 
         if (
           seen.has(passportId) ||
           remembered(deps, state, passportId, nowMs).kind !== "free" ||
-          isHeld(state, passportId, nowMs, config.cooldownSeconds)
+          isHeld(state, passportId, nowMs, config.cooldownSeconds) ||
+          undecidedUntil(state, passportId, nowMs, config.cooldownSeconds) !== undefined
         ) {
           continue;
         }
@@ -831,7 +907,7 @@ async function gather(deps: Deps, state: RunnerState, nowMs: number): Promise<{ 
 
 /**
  * Every id the sweep's query should leave out: the requests already in this pass, and every
- * passport settled, re-checked by this runner, held, cooling or waiting. The newest are kept when
+ * passport settled, re-checked by this runner, held, undecided, cooling or waiting. The newest are kept when
  * there are more than the query should carry.
  */
 function sweepExclusions(deps: Deps, state: RunnerState, nowMs: number, seen: ReadonlySet<string>): string[] {
@@ -844,6 +920,11 @@ function sweepExclusions(deps: Deps, state: RunnerState, nowMs: number, seen: Re
     }
   }
   for (const [id, at] of Object.entries(state.held)) {
+    if (now - at < config.cooldownSeconds) {
+      stamped.push([id, at]);
+    }
+  }
+  for (const [id, at] of Object.entries(state.undecided)) {
     if (now - at < config.cooldownSeconds) {
       stamped.push([id, at]);
     }

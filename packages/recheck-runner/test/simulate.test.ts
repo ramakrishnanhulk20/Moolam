@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  lastLines,
   parseSimulation,
   runSimulation,
   simulateCommand,
@@ -243,4 +244,41 @@ describe("the timeout, against a real child process", () => {
     expect(result.timedOut).toBe(false);
     expect(result.output).toContain("failed to start the CRE CLI");
   }, 20_000);
+});
+
+describe("the CLI's last lines on a failed broadcast run (WO-190)", () => {
+  const OUTPUT = [
+    "\u001b[32m✓ Workflow compiled\u001b[0m",
+    "RPC health check failed for https://user:pa55word@example-name.monad-mainnet.quiknode.pro/5ecre7k3y/path?key=abc (status 401)",
+    "sending to wss://example-name.monad-mainnet.quiknode.pro/5ecre7k3y/ws with Bearer eyJhbGciOi.secret",
+    "╰──────────╯",
+    "",
+    "fetch ipfs://bafkreiharbour answered X-Signature=9c1f0a and token sealed-link-token-4f1b9c0e77d2a6",
+    "✗ failed to broadcast the report",
+  ].join("\r\n");
+
+  it("keeps the last lines that say something, with every address cut to its origin and every secret removed", () => {
+    const lines = lastLines(OUTPUT, ["sealed-link-token-4f1b9c0e77d2a6"]);
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toBe("✓ Workflow compiled");
+    expect(lines.at(-1)).toBe("✗ failed to broadcast the report");
+    expect(lines[1]).toContain("https://example-name.monad-mainnet.quiknode.pro (status 401)");
+    expect(lines[2]).toContain("wss://example-name.monad-mainnet.quiknode.pro with Bearer [removed]");
+    const joined = lines.join("\n");
+    for (const leaked of ["5ecre7k3y", "pa55word", "key=abc", "eyJhbGciOi", "9c1f0a", "sealed-link-token", "bafkreiharbour", "\u001b"]) {
+      expect(joined).not.toContain(leaked);
+    }
+  });
+
+  it("rides on a failed broadcast run and never on its reason", async () => {
+    const result = await runSimulation({ ...request, scrub: ["sealed-link-token-4f1b9c0e77d2a6"] }, exec({ output: OUTPUT, code: 1 }));
+    expect(result.ok).toBe(false);
+    expect(result.lastLines?.at(-1)).toBe("✗ failed to broadcast the report");
+    expect(result.reason).toBe("✗ failed to broadcast the report");
+  });
+
+  it("is not there when a run wrote its report", async () => {
+    const result = await runSimulation(request, exec({ output: BROADCAST }));
+    expect(result.lastLines).toBeUndefined();
+  });
 });

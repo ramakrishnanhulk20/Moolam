@@ -36,6 +36,12 @@ export interface RunnerState {
   refusals: Record<string, number>;
   /** Every report this runner broadcast, by passport: the guard against a second one that does not read the index. */
   sent: Record<string, Sent>;
+  /**
+   * Passport id to the epoch second a broadcast run on it printed no report hash while the chain
+   * could not be read to say whether its verdict landed. The report may be in the registry, so the
+   * passport is not run again from any source until the index shows its verdict or the cooldown ends.
+   */
+  undecided: Record<string, number>;
   /** The circuit breaker on refused reports. Survives a restart; only the operator clears it. */
   breaker: Breaker;
 }
@@ -104,6 +110,7 @@ export function emptyState(day: string): RunnerState {
     waiting: {},
     refusals: {},
     sent: {},
+    undecided: {},
     breaker: { streak: [], tripped: null },
   };
 }
@@ -131,6 +138,7 @@ export function loadState(file: string, nowMs: number): RunnerState {
         waiting: entries(parsed.waiting, waitOf),
         refusals: entries(parsed.refusals, (value) => (isCount(value) ? value : null)),
         sent: entries(parsed.sent, sentOf),
+        undecided: entries(parsed.undecided, (value) => (isCount(value) ? value : null)),
         breaker: breakerOf(parsed.breaker),
       },
       nowMs,
@@ -325,6 +333,21 @@ export function noteSent(state: RunnerState, passportId: string, sent: Sent): Ru
   const kept = bounded(state.sent, passportId, sent, LONG_CAP, (entry) => entry.at);
   const settled = sent.landed === true ? { waiting: without(state.waiting, passportId), refusals: without(state.refusals, passportId) } : {};
   return { ...state, sent: kept, ...settled };
+}
+
+/**
+ * Remembers a paid run that printed no report hash and whose verdict the chain could not be read to
+ * confirm or rule out. Kept with the long lists, because dropping one early could buy a second report.
+ */
+export function noteUndecided(state: RunnerState, passportId: string, nowMs: number): RunnerState {
+  const undecided = bounded(state.undecided, passportId, epoch(nowMs), LONG_CAP, (at) => at);
+  return { ...state, undecided, waiting: without(state.waiting, passportId) };
+}
+
+/** The epoch second an undecided run on this passport stops holding it, or undefined when none holds it now. */
+export function undecidedUntil(state: RunnerState, passportId: string, nowMs: number, seconds: number): number | undefined {
+  const at = state.undecided[passportId.toLowerCase()];
+  return at !== undefined && epoch(nowMs) - at < seconds ? at + seconds : undefined;
 }
 
 /** The report this runner sent for this passport within the memory window, if it sent one. */
