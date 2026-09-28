@@ -1,4 +1,4 @@
-import { RegistrationError, blockNumber, findLandedReport, rpcCall } from "./chain.js";
+import { RegistrationError, attestationCount, blockNumber, findLandedReport, rpcCall } from "./chain.js";
 import { formatMon, type Config } from "./config.js";
 import type { Document, PictureRead, RecordLookup } from "./document.js";
 import { fingerprintSizeRefusal, isTestCard, readPicture, readUnsealRecord, withRecord } from "./document.js";
@@ -79,6 +79,14 @@ export interface Deps {
    * throws when the chain could not be read. Left out, config.rpcUrl is asked (chain.ts).
    */
   findReport?: (passportId: string, head: number) => Promise<string | null>;
+  /**
+   * How many verdicts the registry itself holds for the passport, asked before a sweep candidate is
+   * run so an index that is behind cannot buy a second report. Throws when the chain could not be
+   * read. Left out, config.rpcUrl is asked (chain.ts).
+   */
+  attestationCount?: (passportId: string) => Promise<bigint>;
+  /** The wait between two chain lookups for a report still being mined. Left out, a real timer. */
+  sleep?: (ms: number) => Promise<void>;
   balanceWei: () => Promise<bigint>;
   simulate: (request: SimulateRequest) => Promise<SimulateResult>;
   readState: () => RunnerState;
@@ -150,6 +158,14 @@ const REFUSALS_BEFORE_CLOSING = 2;
 const MOST_EXCLUDED = 1_000;
 
 const STOP_SIGNAL = "a stop signal came in, so the pass ends here";
+
+/**
+ * How many times the chain is read for a run's report when the CLI printed no hash for it, and the
+ * wait between reads. The CLI can exit while its report is sent and not yet mined, so one empty read
+ * straight away is not proof it never landed; four reads span fifteen seconds, dozens of Monad blocks.
+ */
+export const LANDED_LOOKUP_TRIES = 4;
+export const LANDED_LOOKUP_GAP_MS = 5_000;
 
 /**
  * Whether a failed run's reason may change by itself (tally R5): a timeout, a server that did not
@@ -432,6 +448,21 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
     return await wait(`its registration receipt could not be read (${safeReason(error)})`);
   }
 
+  // The runner's own memory of a report lasts only the cooldown for a run it could not confirm, and
+  // the index can be stalled for longer, so the registry is asked directly before a sweep spends. A
+  // read that fails never runs the candidate blind; it waits like any passing miss.
+  if (!fromQueue) {
+    let onChain: bigint;
+    try {
+      onChain = await (deps.attestationCount ?? ((id: string) => attestationCount(rpcCall(config.rpcUrl), config.registry, id)))(passportId);
+    } catch (error) {
+      return await wait(`the registry's count of its re-checks could not be read from the chain (${safeReason(error)})`);
+    }
+    if (onChain > 0n) {
+      return await close(`the chain already holds a verdict for it: the registry counts ${onChain} re-check(s) while the index reads none`);
+    }
+  }
+
   if (deps.stopping?.() === true) {
     log(`passport ${short} is left for the next start: ${STOP_SIGNAL}`);
     return { state, ran: false, succeeded: false, stopped: STOP_SIGNAL };
@@ -514,11 +545,21 @@ async function handle(deps: Deps, candidate: Candidate, entering: RunnerState): 
       // can print none. The chain decides, and a failure is called only when it holds no verdict.
       const reason = result.reason ?? "the run wrote no report transaction";
       const tail = result.lastLines === undefined ? "" : `. The CLI's last lines: ${result.lastLines.join(" | ")}`;
-      let found: string | null;
-      try {
-        found = await (deps.findReport ?? defaultFindReport)(passportId, head);
-      } catch (error) {
-        return await undecided(safeReason(error), tail);
+      // A read that throws cannot rule the verdict out, so it is undecided at once; only an empty
+      // answer on the last read goes on to be called a failure.
+      const lookup = deps.findReport ?? defaultFindReport;
+      const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+      let found: string | null = null;
+      for (let read = 1; read <= LANDED_LOOKUP_TRIES; read++) {
+        try {
+          found = await lookup(passportId, head);
+        } catch (error) {
+          return await undecided(safeReason(error), tail);
+        }
+        if (found !== null || read === LANDED_LOOKUP_TRIES) {
+          break;
+        }
+        await sleep(LANDED_LOOKUP_GAP_MS);
       }
       if (found !== null && !isTxHash(found)) {
         return await undecided("the lookup answered with something that is not a transaction hash", tail);

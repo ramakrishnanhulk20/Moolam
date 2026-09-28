@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { attestationLanded } from "../src/chain.js";
+import { attestationCount, attestationLanded } from "../src/chain.js";
 import { readConfig, type Config } from "../src/config.js";
 import type { Document, PictureRead, RecordLookup } from "../src/document.js";
 import type { PassportRow } from "../src/index-read.js";
@@ -11,7 +11,7 @@ import type { Claim, DoneReport, Placed, QueueClient } from "../src/queue.js";
 import type { CopyState } from "../src/sealed.js";
 import { runSimulation, type SimulateRequest, type SimulateResult } from "../src/simulate.js";
 import { emptyState, loadState, noteRecent, saveState, type RunnerState } from "../src/state.js";
-import { isPassingFailure, onePass, openingState, type Deps } from "../src/runner.js";
+import { LANDED_LOOKUP_GAP_MS, LANDED_LOOKUP_TRIES, isPassingFailure, onePass, openingState, type Deps } from "../src/runner.js";
 
 const NOW = Date.parse("2026-09-22T12:00:00Z");
 
@@ -166,6 +166,8 @@ function standIns(input: {
     reportLanded: async () => input.landed ?? true,
     chainHead: async () => HEAD,
     findReport: async (passportId, head) => input.found?.(passportId, head) ?? null,
+    sleep: async () => {},
+    attestationCount: async () => 0n,
     balanceWei: async () => input.balance ?? 28_266_000_000_000_000_000n,
     simulate: async (request) => {
       calls.push(`simulate ${path.basename(request.workflowDir)}`);
@@ -1382,5 +1384,142 @@ describe("a broadcast run the CLI printed no report hash for (WO-190)", () => {
     expect(logged).not.toMatch(/[a-z]+:\/\/\S*\/\S/i);
     expect(kit.reports[0]?.reason ?? "").not.toContain("last lines");
     expect(JSON.stringify(kit.state())).not.toContain("last lines");
+  });
+});
+
+describe("a report still being mined, and an index that is behind the chain (WO-196)", () => {
+  const LATE = "0xfd09a7710088e9bdcdd630904668c29e54a4042eafdab74f25749d397eef6c98";
+  const LATE_TX = "0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b";
+  const ZERO_HASH_OUTPUT = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "simulate-dry-run.txt"), "utf8");
+
+  /** A requested no-hash run whose chain lookup gives these answers in turn, a thrown Error for a failed read. */
+  function lateRun(answers: (string | null | Error)[]): { kit: StandIns; reads: () => number; gaps: number[] } {
+    const kit = standIns({ pending: [LATE], rows: [row(LATE, { metadataURI: row(ASKED).metadataURI })] });
+    kit.deps.simulate = (request) => {
+      kit.runs.push(request);
+      return runSimulation(request, async () => ({ output: ZERO_HASH_OUTPUT, code: 0, timedOut: false }));
+    };
+    let reads = 0;
+    kit.deps.findReport = async () => {
+      const answer = answers[reads] ?? null;
+      reads += 1;
+      if (answer instanceof Error) {
+        throw answer;
+      }
+      return answer;
+    };
+    const gaps: number[] = [];
+    kit.deps.sleep = async (ms) => {
+      gaps.push(ms);
+    };
+    return { kit, reads: () => reads, gaps };
+  }
+
+  it("is done when the lookup finds the report on the third read, not failed on the first (F3)", async () => {
+    const { kit, reads } = lateRun([null, null, LATE_TX]);
+    const summary = await onePass(kit.deps);
+
+    expect(reads()).toBe(3);
+    expect(summary).toMatchObject({ ran: 1, done: 1, failed: 0 });
+    expect(kit.reports).toEqual([{ passportId: LATE, reportTx: LATE_TX, matched: true, distance: 0 }]);
+    expect(kit.state().failures).toBe(0);
+    expect(kit.state().recent[LATE]).toBeUndefined();
+  });
+
+  it("does not run a sweep candidate the index reads as unchecked when the registry already counts a verdict (F2)", async () => {
+    const kit = standIns({ sweep: [row(PICTURE)] });
+    const asked: string[] = [];
+    kit.deps.attestationCount = async (passportId) => {
+      asked.push(passportId);
+      return 1n;
+    };
+    const summary = await onePass(kit.deps);
+
+    expect(asked).toEqual([PICTURE]);
+    expect(kit.runs).toHaveLength(0);
+    expect(kit.claims).toEqual([]);
+    expect(summary.ran).toBe(0);
+    expect(kit.state().reports).toBe(0);
+    expect(kit.state().closed[PICTURE]).toBeDefined();
+    expect(kit.lines.join(" ")).toContain("the chain already holds a verdict for it");
+  });
+
+  it("is done when the lookup finds the report on the fourth read, five seconds apart", async () => {
+    const { kit, reads, gaps } = lateRun([null, null, null, LATE_TX]);
+    const summary = await onePass(kit.deps);
+
+    expect(reads()).toBe(LANDED_LOOKUP_TRIES);
+    expect(gaps).toEqual([LANDED_LOOKUP_GAP_MS, LANDED_LOOKUP_GAP_MS, LANDED_LOOKUP_GAP_MS]);
+    expect(summary).toMatchObject({ ran: 1, done: 1, failed: 0 });
+    expect(kit.state().sent[LATE]).toMatchObject({ tx: LATE_TX, landed: true });
+  });
+
+  it("is a failure as today after four empty reads, and reads no fifth time", async () => {
+    const { kit, reads, gaps } = lateRun([null, null, null, null, LATE_TX]);
+    const summary = await onePass(kit.deps);
+
+    expect(reads()).toBe(4);
+    expect(gaps).toHaveLength(3);
+    expect(summary).toMatchObject({ ran: 1, done: 0, failed: 1 });
+    expect(kit.reports).toEqual([{ passportId: LATE, reason: "the run wrote no report transaction" }]);
+    expect(kit.state().failures).toBe(1);
+    expect(kit.state().recent[LATE]).toBeDefined();
+  });
+
+  it("is undecided at once when the second read throws, with no third read", async () => {
+    const { kit, reads } = lateRun([null, new Error("eth_getLogs was refused: block range too large"), LATE_TX]);
+    const summary = await onePass(kit.deps);
+
+    expect(reads()).toBe(2);
+    expect(summary).toMatchObject({ ran: 1, done: 0, failed: 0 });
+    expect(kit.state().undecided[LATE]).toBe(Math.floor(NOW / 1000));
+    expect(kit.state().recent[LATE]).toBeUndefined();
+    expect(kit.state().failures).toBe(0);
+  });
+
+  it("runs a sweep candidate as today when the registry counts no verdict, asking it in one eth_call", async () => {
+    const kit = standIns({ sweep: [row(PICTURE)] });
+    const calls: [string, unknown[]][] = [];
+    kit.deps.attestationCount = (passportId) =>
+      attestationCount(
+        async (method, params) => {
+          calls.push([method, params]);
+          return `0x${"0".repeat(64)}`;
+        },
+        kit.deps.config.registry,
+        passportId,
+      );
+    const summary = await onePass(kit.deps);
+
+    expect(calls).toEqual([["eth_call", [{ to: kit.deps.config.registry, data: `0xd65ddd52${PICTURE.slice(2)}` }, "latest"]]]);
+    expect(summary).toMatchObject({ ran: 1, done: 1 });
+    expect(kit.runs).toHaveLength(1);
+  });
+
+  it("never runs a sweep candidate blind when the count cannot be read: no run, no spend, no failure", async () => {
+    for (const answer of [new Error("eth_call answered 503"), "0x", null]) {
+      const kit = standIns({ sweep: [row(PICTURE)] });
+      kit.deps.attestationCount = (passportId) =>
+        attestationCount(
+          async () => {
+            if (answer instanceof Error) {
+              throw answer;
+            }
+            return answer;
+          },
+          kit.deps.config.registry,
+          passportId,
+        );
+      const summary = await onePass(kit.deps);
+
+      expect(kit.runs, String(answer)).toHaveLength(0);
+      expect(kit.claims, String(answer)).toEqual([]);
+      expect(summary.ran, String(answer)).toBe(0);
+      expect(kit.state().reports, String(answer)).toBe(0);
+      expect(kit.state().failures, String(answer)).toBe(0);
+      expect(kit.state().closed[PICTURE], String(answer)).toBeUndefined();
+      expect(kit.state().waiting[PICTURE]?.misses, String(answer)).toBe(1);
+      expect(kit.lines.join(" "), String(answer)).toContain("trying again in 10 minutes");
+    }
   });
 });

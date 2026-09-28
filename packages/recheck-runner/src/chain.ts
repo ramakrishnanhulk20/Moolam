@@ -147,6 +147,33 @@ function isAttestation(log: ReceiptLog, passportId: string, registry: string): b
   );
 }
 
+/**
+ * The selector of the registry's `attestationCount(bytes32)`: keccak256 of that signature, first four
+ * bytes. Checked against packages/contracts/out/MoolamRegistry.sol/MoolamRegistry.json.
+ */
+export const ATTESTATION_COUNT_SELECTOR = "0xd65ddd52";
+
+const WORD = /^0x[0-9a-f]{64}$/i;
+
+/**
+ * How many verdicts the registry holds for this passport, read from the registry itself in one
+ * eth_call rather than from the index, which can be hours behind. Throws on a passport id that is not
+ * 32 bytes and on any answer that is not one 32-byte word, so a bad read is never taken as zero.
+ */
+export async function attestationCount(call: RpcCall, registry: string, passportId: string): Promise<bigint> {
+  if (!WORD.test(passportId)) {
+    throw new Error("the passport id is not 0x and 64 hex digits");
+  }
+  const result = await call("eth_call", [
+    { to: registry.toLowerCase(), data: `${ATTESTATION_COUNT_SELECTOR}${passportId.slice(2).toLowerCase()}` },
+    "latest",
+  ]);
+  if (typeof result !== "string" || !WORD.test(result)) {
+    throw new Error("the registry gave no attestation count back");
+  }
+  return BigInt(result);
+}
+
 /** The latest block number, as a whole number. Throws on anything the node gives back that is not one. */
 export async function blockNumber(call: RpcCall): Promise<number> {
   const result = await call("eth_blockNumber", []);
