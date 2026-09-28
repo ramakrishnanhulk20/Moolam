@@ -115,9 +115,10 @@ the best passport, the bit distances and a confidence number.
 The Chainlink CRE workflow answers "does the registered fingerprint still describe the file the
 passport points at". A log trigger on `PassportRegistered` wakes it, it reads the passport back out
 of the registry rather than trusting the event, each node downloads the thumbnail and recomputes
-the 64-bit hash inside the sandbox. The verdict is signed into a report, delivered by Chainlink's
-KeystoneForwarder to `MoolamReceiver`, which calls `attest` on the registry. That attestation is
-public and permanent.
+the 64-bit hash inside the sandbox. The verdict is signed into a report and delivered by
+Chainlink's simulation forwarder to a `SimulationReceiver`, which takes it only in a transaction
+Moolam's CRE wallet signed and then calls `attest` on the registry. That attestation is public and
+permanent.
 
 The workflow is written so that on Chainlink's network a quorum of nodes must produce the identical
 verdict before a report is signed. Every re-check on chain today came from Chainlink's simulator

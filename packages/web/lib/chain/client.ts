@@ -18,18 +18,20 @@ export const addresses = {
   /** Where a passport holder's statement on AI use is written and read back. */
   consent: deployment.consent as Hex,
   /**
-   * The two addresses a CRE report can arrive through. The receiver is pointed
-   * at the live network forwarder and was pointed at the simulation one for the
-   * broadcast runs that wrote the re-checks on chain today, so the `to` of a
-   * report transaction is what says which kind of run produced it. The steps
-   * are in docs/developers/chainlink-workflow.md.
+   * The two addresses a CRE report can arrive through. Every re-check on chain
+   * so far came through the simulation forwarder: since 2026-09-27 into the two
+   * simulation receivers below, which take a report only in a transaction the
+   * CRE wallet signed, and before that into the older receivers for each
+   * broadcast run. A run on Chainlink's network would come through the network
+   * forwarder, so the `to` of a report transaction is what says which kind of
+   * run produced it. The detail is in docs/developers/chainlink-workflow.md.
    */
   forwarder: "0x76c9cf548b4179F8901cda1f8623568b58215E62" as Hex,
   simulationForwarder: "0x9eF6468C5f37b976E57d52054c693269479A784d" as Hex,
   /**
-   * The second receiver, written to only by the confidential workflow that
-   * re-checks a sealed picture from the small private copy Moolam keeps. A row
-   * from it is a private re-check and is labelled as one.
+   * The sealed MoolamReceiver, off the policy since 2026-09-26. The private
+   * re-checks it wrote before then stay on chain and are still labelled as
+   * private re-checks; new ones arrive through sealedSimulationReceiver.
    */
   sealedReceiver: "0x7b9eF7cD5e40Af9c29d8b7d0D22E54B80947E45A" as Hex,
   /**

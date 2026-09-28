@@ -1684,7 +1684,7 @@
     "button": "申请复核",
     "again": "再试一次",
     "checkNow": "再看一次",
-    "note": "免费。Chainlink 的工作流会重新取回图片，并把判定写到 Monad 上。申请按批次执行，通常当天就有结果。",
+    "note": "免费。Chainlink 的工作流会重新取回图片，并把判定写到 Monad 上。判定通常几分钟内就会上链。",
     "sending": "正在发送申请。",
     "queued": "{at} 提交。排在队列第 {position} 位。",
     "queuedWaiting": "{at} 提交。正在队列里等待。",
@@ -1712,7 +1712,7 @@
       "notAnswering": "校验服务现在没有回应。",
       "unknown": "申请没有送出去。"
     },
-    "notePrivate": "免费。Chainlink 的机密工作流会打开 Moolam 保留的小的私有副本，比对指纹，并把判定写到 Monad 上。申请按批次执行，通常当天就有结果。",
+    "notePrivate": "免费。Chainlink 的机密工作流会打开 Moolam 保留的小的私有副本，比对指纹，并把判定写到 Monad 上。判定通常几分钟内就会上链。",
     "runningPrivate": "正在运行：工作流正在打开私有副本并比对指纹。",
     "recheckedOn": "已于 {date} 复核",
     "claimedTx": "所报告的交易 {hash}",

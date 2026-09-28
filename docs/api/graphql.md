@@ -130,9 +130,9 @@ Run against the live endpoint:
 }
 ```
 
-`kind` is 0 for Generated, 1 for Captured, 2 for Edited. Agent 10249 shows a trust score of 50
-because nothing it made has been rechecked yet, which is what the Laplace smoothing is for: a new
-agent starts neutral rather than perfect.
+`kind` is 0 for Generated, 1 for Captured, 2 for Edited. When this answer was captured, agent 10249
+showed a trust score of 50 because nothing it made had been re-checked yet, which is what the
+Laplace smoothing is for: a new agent starts neutral rather than perfect.
 
 ## Example: what the verifiers have recorded
 
@@ -154,7 +154,7 @@ query VerifiedPassports {
 }
 ```
 
-Run against the live endpoint:
+Run against the live endpoint when this was the only re-check on chain, so it is one row rather than five:
 
 ```json
 {
@@ -184,8 +184,9 @@ Run against the live endpoint:
 }
 ```
 
-That row is a real Chainlink CRE attestation. The `id` is the transaction hash plus the log index,
-`receiver` is `MoolamReceiver`, and `distance` 0 means the fingerprint the Chainlink nodes
+That row is a real Chainlink CRE attestation, the first one, written on 2026-09-08. The `id` is the
+transaction hash plus the log index, `receiver` is `MoolamReceiver` (retired 2026-09-26; newer rows
+name a `SimulationReceiver`), and `distance` 0 means the fingerprint the Chainlink nodes
 recomputed from the thumbnail matched the one the creator registered exactly. The generator's trust
 score of 67 is `round(100 * (1 + 1) / (1 + 0 + 0 + 2))`, one matched recheck against the smoothing
 prior.

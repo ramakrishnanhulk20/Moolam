@@ -154,7 +154,7 @@ describe("where the button shows and where it does not", () => {
 
     expect(markup).toContain("data-recheck");
     expect(markup).toContain("Request a re-check");
-    expect(markup).toContain("Requests are run in batches");
+    expect(markup).toContain("The verdict usually lands on chain within a few minutes.");
   });
 
   it("is not offered on a sealed passport, which has no published picture to fetch", async () => {

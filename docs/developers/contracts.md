@@ -50,14 +50,22 @@ which catches the common mistake of pointing the treasury at a contract with no 
 token. That probe is a heuristic and nothing more. The registry's `withdrawTo` is the actual escape
 hatch.
 
-## MoolamReceiver
+## MoolamReceiver and SimulationReceiver
 
-Inherits Chainlink's own `ReceiverTemplate`, vendored word for word under `src/vendor/chainlink/`
-so it can be diffed against Chainlink's published source. Two things have to line up before it
-writes anything: the call comes from the Chainlink KeystoneForwarder, and the report metadata
-carries the workflow author and workflow name this receiver is pinned to. The deploy script pins
-both in the same batch as the deploy, and `script/ConfigureReceiver.s.sol` can repin or unpin the
-receiver later.
+Since 2026-09-27 the policy lists two `SimulationReceiver` contracts, public
+`0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` and sealed `0x52b8fE549B432920eeB061c26cAc5c2D527657f6`,
+and every new re-check lands through one of them. The two `MoolamReceiver` contracts before them
+came off the policy on 2026-09-26, and every verdict they wrote stays on chain.
+
+Both kinds inherit Chainlink's own `ReceiverTemplate`, vendored word for word under
+`src/vendor/chainlink/` so it can be diffed against Chainlink's published source. For
+`MoolamReceiver`, two things had to line up before it wrote anything: the call came from the
+Chainlink KeystoneForwarder, and the report metadata carried the workflow author and workflow name
+it was pinned to. The deploy script pinned both in the same batch as the deploy, and
+`script/ConfigureReceiver.s.sol` could repin or unpin it later. A `SimulationReceiver` listens to
+Chainlink's simulation forwarder instead, pins what the simulator stamps, and adds one lock the
+template does not have: the transaction must be signed by Moolam's CRE wallet, fixed at deployment
+with no setter, or it reverts `WrongSendingWallet`.
 
 The report also says which chain it was built for and the second the workflow ran, so a report that
 is replayed, or delivered on a second chain, is refused instead of double counted. It then calls

@@ -4,8 +4,9 @@ title: VerifierPolicy and MoolamReceiver
 
 # VerifierPolicy and MoolamReceiver
 
-The two contracts around the registry: the one that says who may attest, and the one door a
-Chainlink workflow writes through.
+The contracts around the registry: the one that says who may attest, and the receivers a Chainlink
+workflow writes through. Since 2026-09-27 those are two `SimulationReceiver` contracts, one per
+workflow. `MoolamReceiver`, below, is the contract they replaced, and its verdicts stay on chain.
 
 ## VerifierPolicy
 
@@ -184,8 +185,11 @@ same transaction batch and `script/ConfigureReceiver.s.sol` can repin later. Eac
 event: `ForwarderAddressUpdated`, `ExpectedAuthorUpdated`, `ExpectedWorkflowNameUpdated`,
 `ExpectedWorkflowIdUpdated`.
 
-Setting a workflow name without an author reverts `WorkflowNameRequiresAuthorValidation`. A zero
-forwarder reverts `InvalidForwarderAddress`.
+None of the four setters checks its argument; each reverts only `OwnableUnauthorizedAccount` for a
+caller who is not the owner. A workflow name pinned without an author is accepted by the setter and
+makes every later `onReport` revert `WorkflowNameRequiresAuthorValidation`. A zero forwarder is
+accepted too, with a `SecurityWarning` event, and turns the forwarder check off.
+`InvalidForwarderAddress` is raised only by the constructor.
 
 The `VerifierPolicy` list is a separate control. It decides which receivers the registry will
 listen to at all, and it is not a second lock on this door.

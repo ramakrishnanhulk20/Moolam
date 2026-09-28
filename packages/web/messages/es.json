@@ -1682,7 +1682,7 @@
     "button": "Pedir una revisión",
     "again": "Intentar otra vez",
     "checkNow": "Mirar otra vez",
-    "note": "Gratis. El flujo de trabajo de Chainlink vuelve a traer la imagen y escribe su veredicto en Monad. Las peticiones se atienden por tandas, normalmente el mismo día.",
+    "note": "Gratis. El flujo de trabajo de Chainlink vuelve a traer la imagen y escribe su veredicto en Monad. El veredicto suele quedar en la blockchain en pocos minutos.",
     "sending": "Enviando la petición.",
     "queued": "Pedida el {at}. Puesto {position} en la cola.",
     "queuedWaiting": "Pedida el {at}. Esperando en la cola.",
@@ -1710,7 +1710,7 @@
       "notAnswering": "El servicio de verificación no responde ahora mismo.",
       "unknown": "La petición no llegó a entrar."
     },
-    "notePrivate": "Gratis. El flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam, compara la huella y escribe su veredicto en Monad. Las peticiones se atienden por tandas, normalmente el mismo día.",
+    "notePrivate": "Gratis. El flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam, compara la huella y escribe su veredicto en Monad. El veredicto suele quedar en la blockchain en pocos minutos.",
     "runningPrivate": "En marcha: el flujo está abriendo la copia privada y comparando la huella.",
     "recheckedOn": "Recomprobada el {date}",
     "claimedTx": "Transacción declarada {hash}",

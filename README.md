@@ -33,6 +33,7 @@ Every passport gets a second opinion from a Chainlink CRE workflow, and Moolam's
 
 - **See one.** [Monsoon Fishing Nets Drying](https://moolam.vercel.app/en/passport/0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638) and its report [`0x59e6a8d5…80fa`](https://monadvision.com/tx/0x59e6a8d54cdf131dff73b539d74ba44ff665e4d02f95563fa9effeb1b9ee80fa): the passport card shows the verdict, the distance and the transaction.
 - **See the private one.** [Kanchipuram Silk Loom at First Light](https://moolam.vercel.app/en/passport/0xe83680b22c24e491f91077162804b862a6b821ac74f49b9b2d21a04864c485e4) was never published. The confidential workflow (`handlerInTee`) fetched a private copy with a secret and wrote its report [`0xa38fd971…c954`](https://monadvision.com/tx/0xa38fd971c8ac0303f4e787e45f1b2b3203ffc8a01c864ffa50843d8fbd72c954) through a second receiver.
+- **See it run itself.** Since 2026-09-27 15:12 UTC the [re-check runner](packages/recheck-runner) takes new registrations and requested re-checks every two minutes. Its first two verdicts were written with nobody pressing anything: [`0x37717b0c…e24b`](https://monadvision.com/tx/0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b) (block 108,499,297, 1 of 64 bits) and [`0x35c1302e…4c1a`](https://monadvision.com/tx/0x35c1302e7d190ef0f02e21432b483d47ef803edc13cf5fe88d00c116f3574c1a) (block 108,505,240, 0 of 64 bits), both matched, both through the public `SimulationReceiver`. Recorded in [proofs/rechecks.txt](proofs/rechecks.txt).
 - **Run one yourself.** With the CRE CLI signed in (`cre login`), this dry run sends nothing:
   `cre workflow simulate moolam-verifier --target monad-mainnet --non-interactive --trigger-index 0 --evm-tx-hash <a PassportRegistered tx> --evm-event-index 0`, from `packages/workflow`.
 - **The code.** [`packages/workflow/moolam-verifier`](packages/workflow/moolam-verifier) (public) and [`packages/workflow/moolam-sealed-verifier`](packages/workflow/moolam-sealed-verifier) (confidential), with the full walk-through in [the Chainlink workflow page](https://moolam.vercel.app/en/docs/developers/chainlink-workflow).
@@ -316,6 +317,7 @@ flowchart LR
     subgraph Monad mainnet
         R[MoolamRegistry<br/>ERC-721 passports, edit tree,<br/>attestations, disputes]
         P[VerifierPolicy<br/>who may attest, 24h delay]
+        MF[Chainlink simulation forwarder<br/>MockKeystoneForwarder]
         RC[SimulationReceiver, public<br/>0x4aD6…Aa95, CRE wallet only]
         RS[SimulationReceiver, sealed<br/>0x52b8…57f6, CRE wallet only]
         I8[ERC-8004 Identity Registry<br/>canonical, read only]
@@ -336,8 +338,10 @@ flowchart LR
     R -- WebAuthn verify --> PC
     R -- ownerOf agentId --> I8
     R -- isReceiver --> P
-    W -- writeReport --> RC -- attest --> R
-    WS -- writeReport --> RS -- attest --> R
+    W -- writeReport --> MF
+    WS -- writeReport --> MF
+    MF -- onReport --> RC -- attest --> R
+    MF -- onReport --> RS -- attest --> R
     R -- events --> X
     X -- GraphQL --> S
     S -- reads --> F
@@ -362,6 +366,7 @@ sequenceDiagram
     participant R as MoolamRegistry
     participant X as Envio
     participant W as CRE workflow
+    participant MF as Simulation forwarder
     participant RC as SimulationReceiver (public)
 
     A->>A: generate image (OpenAI image model)
@@ -382,9 +387,12 @@ sequenceDiagram
     X-->>W: log trigger fires
     W->>F: fetch image (downscaled copy under 100 KB)
     W->>W: recompute fingerprint (in the simulator today, one machine)
-    W->>RC: writeReport(passportId, matched, distance), sent by the CRE wallet
+    W->>MF: writeReport(passportId, matched, distance), sent by the CRE wallet
+    MF->>RC: onReport(metadata, report)
+    RC->>RC: check the CRE wallet signed the transaction
     RC->>R: attest(...)
     R-->>X: VerificationAttested indexed
+    Note over MF,RC: a sealed picture's private re-check takes the same path to the sealed SimulationReceiver
 ```
 
 The diagram is the path the reports take today: the workflow runs in Chainlink's simulator on one
@@ -671,11 +679,15 @@ OpenZeppelin's unmodified ERC-721 surface.
 
 ### MoolamReceiver
 
+Retired: both `MoolamReceiver` contracts came off the policy on 2026-09-26, and the verdicts they
+wrote stay on chain under their addresses. New re-checks land through the `SimulationReceiver` pair
+below.
+
 | Function | Who may call | What it does | Notable reverts |
 | --- | --- | --- | --- |
 | `onReport(metadata, report)` | The configured Chainlink KeystoneForwarder | Checks the sender, the pinned workflow author and name, the chain id and a per-passport monotonic timestamp, then calls `attest` | `InvalidSender`, `InvalidAuthor`, `InvalidWorkflowName`, `InvalidWorkflowId`, `WrongChain`, `StaleReport` |
 | `lastExecutedAt(passportId)`, `REGISTRY()`, `getForwarderAddress()`, `getExpectedAuthor()`, `getExpectedWorkflowName()`, `getExpectedWorkflowId()` | Anyone | What the receiver is pinned to, and the newest report accepted per passport | none |
-| `setForwarderAddress` / `setExpectedAuthor` / `setExpectedWorkflowName` / `setExpectedWorkflowId` | Owner | Chainlink's template setters. Each emits an event | `InvalidForwarderAddress`, `WorkflowNameRequiresAuthorValidation` |
+| `setForwarderAddress` / `setExpectedAuthor` / `setExpectedWorkflowName` / `setExpectedWorkflowId` | Owner | Chainlink's template setters. Each emits an event, and a zero forwarder is accepted with a `SecurityWarning` event rather than refused. A name pinned without an author is refused later, by `onReport`, with `WorkflowNameRequiresAuthorValidation` | `OwnableUnauthorizedAccount` |
 
 ### SimulationReceiver
 

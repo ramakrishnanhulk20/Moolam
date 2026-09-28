@@ -93,33 +93,17 @@ what every simulated report carries, and they hold for the whole judging window.
 
 ### The narrowest state that works
 
-Today, no owner transaction at all, before judging or after it. The two receivers were deployed,
-pinned and queued on 2026-09-26, and the policy listed them on 2026-09-27 once its public 24 hour
-wait had run. Nothing the runner does needs the deployer key.
+No owner transaction at all, before judging or after it. The runner writes through two
+`SimulationReceiver` contracts, public `0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95` and sealed
+`0x52b8fE549B432920eeB061c26cAc5c2D527657f6`, which listen to Chainlink's mock forwarder all the
+time and accept a report only in a transaction signed by the CRE wallet. There is nothing to open
+before a run and nothing to close after it. They were deployed, pinned and queued on 2026-09-26, and
+the policy listed them on 2026-09-27 at 14:18 UTC once its public 24 hour wait had run. Nothing the
+runner does needs the deployer key.
 
-A record, not a procedure: until 2026-09-26 the workflow wrote to the retired `MoolamReceiver`
-`0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04`, which had to be opened for a judging window with the
-owner transactions below and closed again after, in reverse. None of them is to be run again.
-
-```bash
-# 1. point the receiver at the mock forwarder (a record: this receiver is retired since 2026-09-26)
-cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setForwarderAddress(address)" \
-  0x9eF6468C5f37b976E57d52054c693269479A784d \
-  --rpc-url "$MONAD_MAINNET_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY"
-
-# 2. pin the author to what the simulator stamps, keeping the same workflow name
-cd packages/contracts
-CRE_WALLET_ADDRESS=0xaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaA \
-CRE_WORKFLOW_NAME=moolam-verifier \
-RECEIVER=0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 \
-forge script script/ConfigureReceiver.s.sol --rpc-url monad_mainnet -n monad \
-  --gas-estimate-multiplier 110 --broadcast
-
-# 3. optional, and worth it: pin the workflow id too
-cast send 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04 "setExpectedWorkflowId(bytes32)" \
-  0x1111111111111111111111111111111111111111111111111111111111111111 \
-  --rpc-url "$MONAD_MAINNET_RPC_URL" --private-key "$DEPLOYER_PRIVATE_KEY"
-```
+Before 2026-09-26 the workflow wrote to a `MoolamReceiver`, which the deployer wallet pointed at the
+mock forwarder and re-pinned around every broadcast run. It came off the policy that day, and the
+verdicts it wrote stay on chain under its address.
 
 ### What that keeps out, and what it does not
 
@@ -426,8 +410,7 @@ and no CRE_API_KEY set`. Two ways:
 it in `/etc/moolam/runner.env` as `RUNNER_TOKEN` and set the same value on Railway so the verify
 service will answer the queue routes. No receiver transaction is needed any more: the two
 `SimulationReceiver` contracts the workflow configs name have been listed since 2026-09-27 and
-accept a report only from the CRE wallet. The transactions in "The narrowest state that works"
-above were for the retired `MoolamReceiver`. The deployer key is never on the VM.
+accept a report only from the CRE wallet. The deployer key is never on the VM.
 
 ## Checks after install
 
@@ -492,8 +475,8 @@ node deploy/queue-stub.mjs 4099 dry-run-token 0x<passport id>
 
 - It does not watch for attestations it did not write. That is the first follow-up, and the reason
   is in "What that keeps out" above.
-- It does not open or close the receiver. Those are owner transactions with the deployer's key, and
-  that key is not on the VM.
+- It sends no owner transaction. The receivers need none to take a report, and the deployer's key,
+  the only one that could change them, is not on the VM.
 - It does not deploy the workflow to Chainlink's network. Nothing here changes the fact that every
   re-check on chain came from the simulator on one machine, which is what the passport page says
   under each verdict.

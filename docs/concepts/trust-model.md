@@ -113,7 +113,8 @@ lets one editing session write ten edits.
 ## Attestations
 
 `attest` is callable only by an address `VerifierPolicy.isReceiver` returns true for, which in
-practice is `MoolamReceiver`. A passport holds at most 64 attestations. Attestations stay open
+practice is the two `SimulationReceiver` contracts listed since 2026-09-27; before 2026-09-26 it was
+the `MoolamReceiver` pair. A passport holds at most 64 attestations. Attestations stay open
 while the registry is paused, so a verification already in flight can still land.
 
 An attestation is a signal, not a verdict. It says a Chainlink CRE workflow downloaded the file the

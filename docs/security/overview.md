@@ -39,7 +39,8 @@ unclaimed credit can never be swept.
 | An old bind assertion reused | `bindPasskey` consumes a nonce per wallet |
 | A stale signature | `deadline` is inside the signed struct and is checked against `block.timestamp` |
 
-**Report replay.** `MoolamReceiver` refuses a report built for another chain (`WrongChain`) and any
+**Report replay.** Both receiver contracts, the `SimulationReceiver` pair in use since 2026-09-27 and
+the `MoolamReceiver` pair retired on 2026-09-26, refuse a report built for another chain (`WrongChain`) and any
 report whose `executedAt` is not newer than the last one recorded for that passport
 (`StaleReport`). Both values travel inside the signed payload, because Chainlink's own guidance is
 that a report whose first transmission reverted can be sent again.

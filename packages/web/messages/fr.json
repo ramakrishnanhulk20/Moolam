@@ -1682,7 +1682,7 @@
     "button": "Demander une revérification",
     "again": "Réessayer",
     "checkNow": "Regarder à nouveau",
-    "note": "Gratuit. Le workflow Chainlink récupère l'image et inscrit son verdict sur Monad. Les demandes sont traitées par lots, en général dans la journée.",
+    "note": "Gratuit. Le workflow Chainlink récupère l'image et inscrit son verdict sur Monad. Le verdict arrive en général sur la blockchain en quelques minutes.",
     "sending": "Envoi de la demande.",
     "queued": "Demandée le {at}. Place {position} dans la file.",
     "queuedWaiting": "Demandée le {at}. En attente dans la file.",
@@ -1710,7 +1710,7 @@
       "notAnswering": "Le service de vérification ne répond pas pour le moment.",
       "unknown": "La demande n'est pas passée."
     },
-    "notePrivate": "Gratuit. Le workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam, compare l'empreinte et inscrit son verdict sur Monad. Les demandes sont traitées par lots, en général dans la journée.",
+    "notePrivate": "Gratuit. Le workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam, compare l'empreinte et inscrit son verdict sur Monad. Le verdict arrive en général sur la blockchain en quelques minutes.",
     "runningPrivate": "En cours : le workflow ouvre la copie privée et compare l'empreinte.",
     "recheckedOn": "Revérifiée le {date}",
     "claimedTx": "Transaction annoncée {hash}",

@@ -158,6 +158,13 @@ Finishes as "Written to Monad".
 the time, who paid the fee, and links to the passport page, the transaction on MonadVision, the
 pinned image and "Register another image".
 
+Once Monad holds the passport, the receipt also offers "Download your picture", after a public
+registration and after a picture the agent drew. It saves the exact file that was signed, with its
+Content Credentials, named after its title. The saved file's sha256 is the passport id, so a copy
+of it still verifies against this passport. A sealed registration has no such button: the picture
+is not published, so the receipt offers "Save the signed file" instead, and that file is the only
+copy.
+
 ### The statement, on the receipt
 
 The statement has its own small state beside the registration, because it is a second transaction

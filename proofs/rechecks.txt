@@ -94,3 +94,15 @@ passport id | report tx | status | gas used | attestations (receiver, matched, d
 receiver after the run: forwarder 0x76c9cf548b4179F8901cda1f8623568b58215E62, expected author 0xC79620AF233a4434b03f6B57239F8A9E71B3C178, expected workflow name 0x34623863303364663034
 attestation counts: 0 before, 1 after
 With this, every one of the seventeen real pictures on the registry carries a re-check, one of them written by the private workflow through the sealed receiver (counted on 2026-09-25 at index block 107,960,831, after Iphone 18 pro max and Old but strong were counted as test images).
+
+The first Chainlink CRE re-checks the re-check runner wrote with nobody pressing anything, written 2026-09-27
+The runner has run on a server since 2026-09-27 15:12 UTC: a round every 2 minutes, at most 5 runs a round and 40 a day, taking new registrations and requested re-checks. Both reports went from the CRE wallet 0xC79620AF233a4434b03f6B57239F8A9E71B3C178 to the simulation forwarder 0x9eF6468C5f37b976E57d52054c693269479A784d (cre workflow simulate moolam-verifier --broadcast) and were written by the public SimulationReceiver 0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95, listed in the policy since 2026-09-27 14:18 UTC. One machine, no network consensus. No receiver was opened, re-pinned or closed around either run.
+passports registered in blocks 108498846 and 108504408; reports in blocks 108499297 and 108505240
+recomputed fingerprints and distances from the runs: 0xc68a71868770868b (1), 0x70f50cc0c20d4e9a (0), both matched
+The rows below were read back on 2026-09-28 with cast: getAttestations on the registry for each passport, and each report's receipt (from the CRE wallet, to the simulation forwarder).
+
+passport id | report tx | status | gas used | attestations (receiver, matched, distance, recomputed, at)
+0xfd09a7710088e9bdcdd630904668c29e54a4042eafdab74f25749d397eef6c98 | 0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b | 1 | 1000000 | [(0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95, true, 1, 0x000000000000000000000000000000000000000000000000c68a71868770868b, 1790522385 [1.79e9])]
+0x3d41c6960a1486e29a85febcdfe282fafcbe33b558fd47578f99cb2f55f70c91 | 0x35c1302e7d190ef0f02e21432b483d47ef803edc13cf5fe88d00c116f3574c1a | 1 | 1000000 | [(0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95, true, 0, 0x00000000000000000000000000000000000000000000000070f50cc0c20d4e9a, 1790524181 [1.79e9])]
+
+receiver after the runs: nothing to put back. The SimulationReceiver's forwarder, pins and sending wallet are fixed as read back in proofs/simulation-receivers.txt.

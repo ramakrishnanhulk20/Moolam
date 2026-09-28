@@ -215,6 +215,14 @@ every check the receiver makes. They are not a run on the live Chainlink network
 machine and no quorum of nodes agreed on the answer. Deploying to the network needs a deployment access this
 project does not have.
 
+Since 2026-09-27 the re-checks after those come from the re-check runner, still `cre workflow simulate
+--broadcast`, through the two `SimulationReceiver` contracts and with no owner step at all. Its first two,
+written with nobody pressing anything, are
+[`0x37717b0c…abe24b`](https://monadvision.com/tx/0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b)
+in block 108,499,297 and
+[`0x35c1302e…4c1a`](https://monadvision.com/tx/0x35c1302e7d190ef0f02e21432b483d47ef803edc13cf5fe88d00c116f3574c1a)
+in block 108,505,240, both matched.
+
 The passport page does not take this on trust either. It reads the `to` address of each report transaction
 and prints which forwarder delivered it, so a simulation run says so under the verdict and a network run
 will say so the day the first one lands. The transactions are listed in `proofs/rechecks.txt`.

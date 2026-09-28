@@ -181,7 +181,8 @@ function attest(bytes32 passportId, bool matched, uint16 distance, bytes32 recom
 ```
 
 Writes one verifier's recheck of a passport. Only an address `VerifierPolicy.isReceiver` returns
-true for may call it, which in practice is `MoolamReceiver`. It stays open while the registry is
+true for may call it, which in practice is the two `SimulationReceiver` contracts listed since
+2026-09-27; before 2026-09-26 it was the `MoolamReceiver` pair. It stays open while the registry is
 paused, so a verification already in flight can still land.
 
 | Reverts | When |

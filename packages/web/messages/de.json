@@ -1682,7 +1682,7 @@
     "button": "Nachprüfung anfordern",
     "again": "Noch einmal versuchen",
     "checkNow": "Erneut nachsehen",
-    "note": "Kostenlos. Der Chainlink-Workflow holt das Bild erneut und schreibt sein Urteil auf Monad. Anfragen werden gebündelt abgearbeitet, meist noch am selben Tag.",
+    "note": "Kostenlos. Der Chainlink-Workflow holt das Bild erneut und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Blockchain.",
     "sending": "Die Anfrage geht raus.",
     "queued": "Angefordert am {at}. Platz {position} in der Warteschlange.",
     "queuedWaiting": "Angefordert am {at}. Wartet in der Warteschlange.",
@@ -1710,7 +1710,7 @@
       "notAnswering": "Der Prüfdienst antwortet gerade nicht.",
       "unknown": "Die Anfrage ist nicht durchgegangen."
     },
-    "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Anfragen werden gebündelt abgearbeitet, meist noch am selben Tag.",
+    "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Blockchain.",
     "runningPrivate": "Läuft gerade: der Workflow öffnet die private Kopie und vergleicht den Fingerabdruck.",
     "recheckedOn": "Nachgeprüft am {date}",
     "claimedTx": "Gemeldete Transaktion {hash}",

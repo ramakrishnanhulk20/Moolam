@@ -1683,7 +1683,7 @@
     "button": "Pedir uma reconferência",
     "again": "Tentar de novo",
     "checkNow": "Olhar de novo",
-    "note": "Gratuito. O fluxo da Chainlink busca a imagem de novo e grava o veredito dele na Monad. Os pedidos são atendidos em lotes, em geral no mesmo dia.",
+    "note": "Gratuito. O fluxo da Chainlink busca a imagem de novo e grava o veredito dele na Monad. O veredito costuma chegar à blockchain em poucos minutos.",
     "sending": "Enviando o pedido.",
     "queued": "Pedida em {at}. Posição {position} na fila.",
     "queuedWaiting": "Pedida em {at}. Esperando na fila.",
@@ -1711,7 +1711,7 @@
       "notAnswering": "O serviço de verificação não está respondendo agora.",
       "unknown": "O pedido não entrou."
     },
-    "notePrivate": "Gratuito. O fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda, compara a impressão e grava o veredito dele na Monad. Os pedidos são atendidos em lotes, em geral no mesmo dia.",
+    "notePrivate": "Gratuito. O fluxo confidencial da Chainlink abre a cópia privada pequena que a Moolam guarda, compara a impressão e grava o veredito dele na Monad. O veredito costuma chegar à blockchain em poucos minutos.",
     "runningPrivate": "Rodando agora: o fluxo está abrindo a cópia privada e comparando a impressão.",
     "recheckedOn": "Reconferida em {date}",
     "claimedTx": "Transação informada {hash}",

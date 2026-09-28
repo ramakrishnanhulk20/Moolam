@@ -1682,7 +1682,7 @@
     "button": "Request a re-check",
     "again": "Try again",
     "checkNow": "Check again",
-    "note": "Free. Chainlink's workflow re-fetches the picture and writes its verdict on Monad. Requests are run in batches, usually within the day.",
+    "note": "Free. Chainlink's workflow re-fetches the picture and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
     "sending": "Sending the request.",
     "queued": "Requested {at}. Position {position} in the queue.",
     "queuedWaiting": "Requested {at}. Waiting in the queue.",
@@ -1710,7 +1710,7 @@
       "notAnswering": "The verify service is not answering just now.",
       "unknown": "The request did not go through."
     },
-    "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. Requests are run in batches, usually within the day.",
+    "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
     "runningPrivate": "Running now: the workflow is opening the private copy and comparing the fingerprint.",
     "recheckedOn": "Re-checked on {date}",
     "claimedTx": "Claimed transaction {hash}",

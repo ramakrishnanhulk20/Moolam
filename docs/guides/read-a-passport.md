@@ -36,6 +36,14 @@ If the gateway will not hand the picture over, the poster shows the seal and say
 unavailable from IPFS right now" rather than a broken image icon. The record is on chain either
 way.
 
+A passport whose picture is public also carries "Download the original" on the poster. It saves the
+exact file that was signed and registered, with its Content Credentials, named after the title and
+read straight from IPFS through Moolam's own route, `GET /api/passports/{id}/picture`. Nothing
+re-encodes it on the way, so the saved file's sha256 is the passport id and the copy still verifies
+byte for byte. A sealed picture its holder has published downloads the same way. A sealed passport
+has no public download: the route answers 404 for it, as it does for an id no passport holds, and
+the only copy is the signed file its creator kept with "Save the signed file" in the studio.
+
 ## A sealed passport
 
 Some passports have no picture on them, and that is the record rather than a failure. A creator can
@@ -124,7 +132,7 @@ means a quorum of nodes agreed on the answer. An address that is neither gets no
 | Field | What it is |
 | --- | --- |
 | matched or did not match | Whether the recomputed hash was inside the threshold |
-| Who wrote it | "Re-checked by a Chainlink CRE workflow" when the writer is the `MoolamReceiver` deployed with the registry, otherwise "Written by an allowed receiver" and the address |
+| Who wrote it | "Checked again by a Chainlink CRE workflow" when the writer is one of Moolam's four receivers: the two `SimulationReceiver` contracts in use since 2026-09-27, or the two `MoolamReceiver` contracts retired on 2026-09-26, whose verdicts keep their name. Any other writer reads "Written on Monad by an unknown writer" |
 | "As the receiver wrote it" | How many of 64 bits the receiver itself said the two hashes were apart |
 | "At" | The block timestamp on the attestation |
 | "Written by" | The receiver address, linked to MonadVision |
@@ -134,8 +142,9 @@ means a quorum of nodes agreed on the answer. An address that is neither gets no
 The Chainlink line is not a badge Moolam awards itself. A log-triggered Chainlink CRE workflow wakes
 on `PassportRegistered`, reads the passport back out of the registry rather than trusting the event,
 downloads the thumbnail on each node, decodes the JPEG and recomputes the 64-bit hash inside the
-sandbox, and the verdict is signed into a report. Chainlink's KeystoneForwarder delivers it to
-`MoolamReceiver`, which calls `attest`. The registry checks the receiver against `VerifierPolicy`
+sandbox, and the verdict is signed into a report. Chainlink's simulation forwarder delivers it to
+a `SimulationReceiver`, which takes it only in a transaction Moolam's CRE wallet signed and then
+calls `attest`. The registry checks the receiver against `VerifierPolicy`
 before it writes. The workflow is written so that on Chainlink's network a quorum of nodes must
 produce the identical verdict before that report is signed, which is the difference the forwarder
 line above names.
@@ -147,7 +156,10 @@ linking somewhere it cannot back up.
 
 Under the block, on every passport whose picture is published, there is a button that says "Request
 a re-check": anyone can press it, it costs nothing and needs no account, and it puts the passport in
-a queue the Chainlink workflow is run against, usually within the day. The line under it reports
+a queue. The re-check runner reads that queue every two minutes and runs the Chainlink workflow on
+it, at most five passports a round and forty a day, so the verdict usually lands on chain within a
+few minutes. A new picture needs no request at all: the runner picks it up the same way a few
+minutes after it is registered. The line under the button reports
 where that request stands, from its place in the queue to the transaction the new verdict was
 written in, and a sealed passport does not show it because there is no published picture for the
 workflow to fetch.

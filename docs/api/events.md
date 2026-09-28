@@ -68,7 +68,8 @@ event VerificationAttested(
 ```
 
 Fires when a listed receiver rechecks a passport and records the result, which in practice means a
-Chainlink CRE report landed through `MoolamReceiver`.
+Chainlink CRE report landed through one of the two `SimulationReceiver` contracts the policy has
+listed since 2026-09-27. Rows from before 2026-09-26 name the retired `MoolamReceiver` pair.
 
 | Field | Meaning |
 | --- | --- |
@@ -179,7 +180,7 @@ caller reading the storage cannot disagree. The full contract is in
 
 Plus `OwnershipTransferStarted` and `OwnershipTransferred`.
 
-## MoolamReceiver
+## MoolamReceiver and SimulationReceiver
 
 Every one of these is an owner action, and each emits so the change is visible on chain.
 
@@ -189,7 +190,7 @@ Every one of these is an owner action, and each emits so the change is visible o
 | `ExpectedAuthorUpdated(address indexed previousAuthor, address indexed newAuthor)` | The pinned workflow author changes |
 | `ExpectedWorkflowNameUpdated(bytes10 indexed previousName, bytes10 indexed newName)` | The pinned workflow name changes |
 | `ExpectedWorkflowIdUpdated(bytes32 indexed previousId, bytes32 indexed newId)` | The pinned workflow id changes |
-| `SecurityWarning(string message)` | Chainlink's template warns that a pin has been loosened |
+| `SecurityWarning(string message)` | Chainlink's template warns that the forwarder was set to the zero address, which it accepts rather than refuses |
 
 Plus `OwnershipTransferred`.
 
