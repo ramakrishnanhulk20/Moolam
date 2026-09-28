@@ -12,6 +12,7 @@
     "attack:pass4": "tsx scripts/attack-pass-4.ts",
     "seed": "tsx scripts/seed.ts",
     "prove:privy": "tsx scripts/prove-privy.ts",
+    "prove:receivers": "tsx scripts/prove-receivers.ts",
     "edit:quorum": "tsx scripts/edit-quorum.ts",
     "agent": "tsx scripts/agent.ts",
     "consent:state": "tsx scripts/state-consent.ts",
