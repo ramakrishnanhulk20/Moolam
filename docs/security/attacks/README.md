@@ -10,6 +10,10 @@ mainnet where anyone can open it in the explorer. Using the same gas limit for b
 out a revert that is really an out-of-gas. If the read had gone through, the run would say so and
 would not send the transaction.
 
+The three receiver files were written again on 2026-09-28 by `npm run prove:receivers` in
+`packages/agents`, the same two steps aimed at the SimulationReceiver today's re-checks land
+through, without registering anything new.
+
 Eleven of these attacks, and one control that has to pass, can also be sent from the browser and
 answered by the live contracts while you watch, on the [Try to break it](../try-to-break-it.md) page.
 
@@ -46,7 +50,7 @@ section.
 | `edit-by-non-owner.txt` | Hang an edit off a passport somebody else holds | NotParentOwner |
 | `attest-from-stranger.txt` | Write a verification result straight into the registry from an unlisted wallet | NotReceiver. The policy is the only list, and adding to it waits 24 hours in the open |
 | `report-from-fake-forwarder.txt` | Hand the receiver a well formed Chainlink report from the wrong sender | InvalidSender, from Chainlink's own ReceiverTemplate |
-| `receiver-replay-and-wrong-chain.txt` | Deliver the same report twice, an older one, and one built for another chain | StaleReport and WrongChain. Behind the forwarder check, so it is proved by `MoolamReceiver.t.sol` rather than by a mainnet transaction, and the file says which tests |
+| `receiver-replay-and-wrong-chain.txt` | Deliver the same report twice, an older one, and one built for another chain | StaleReport and WrongChain. Behind the sending-wallet check, so it is proved by `SimulationReceiver.t.sol` and a mainnet fork test rather than by a mainnet transaction, and the file says which tests |
 | `privy-policy-refusal.txt` | Ask the generator agent's server wallet to send MON, and to call a function its policy does not name | Privy's enclave answers policy_violation. Nothing is signed, so nothing reaches Monad |
 | `revoked-session-signer.txt` | Sign an edit with the app's session key after the creator took the permission back | Privy refuses the key. The permission lives on Privy's side, not in our code |
 | `dispute-money-rules.txt` | Flag with no bond, settle a dispute without being the resolver, withdraw with nothing owed | InvalidBond, NotResolver, NothingToWithdraw |

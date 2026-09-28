@@ -1,24 +1,24 @@
 Moolam attack: report-from-fake-forwarder
 REFUSED
 
-run         2026-09-09T09:17:19.321Z
-command     npm run prove
+run         2026-09-28T07:54:34.113Z
+command     npm run prove:receivers
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-InvalidSender: a hand written report from the wrong sender, on chain in 0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4
+InvalidSender: a hand written report from the wrong sender, on chain in 0x7bdca6bea7c0b3814064bd8de89960acff17696ff29f710d765e884d1fd513cc
 
-receiver            0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
+receiver            0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95, the public SimulationReceiver
 caller              0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
 the report itself is well formed: the right chain id, a current timestamp and a real
 passport id. Only the sender is wrong, and that is enough.
 
 attack      deliver a verification report without being the Chainlink forwarder
-call        onReport on 0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
+call        onReport on 0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95
 from        0xC5ead1E4E5C6d56E87e02317f3fB3731cB0b6Ef7
 expected    InvalidSender
 eth_call    refused with InvalidSender, by the live contract at the same gas limit
-sent        0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4
-            https://monadvision.com/tx/0x0c7a4f5ce4064f73c929fc2da938b1b9fbe9c73a4c19d9c60753f457bb57cee4
-receipt     reverted in block 103287361, 150,000 gas used of the 150,000 limit set
+sent        0x7bdca6bea7c0b3814064bd8de89960acff17696ff29f710d765e884d1fd513cc
+            https://monadvision.com/tx/0x7bdca6bea7c0b3814064bd8de89960acff17696ff29f710d765e884d1fd513cc
+receipt     reverted in block 108696813, 150,000 gas used of the 150,000 limit set
 result      REFUSED

@@ -1,27 +1,33 @@
 Moolam attack: receiver-replay-and-wrong-chain
 REFUSED
 
-run         2026-09-09T09:17:19.321Z
-command     npm run prove
+run         2026-09-28T07:54:34.113Z
+command     npm run prove:receivers
 network     Monad mainnet, chain 143
 registry    0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0
 
-covered by three Foundry tests, not by a mainnet transaction: only Chainlink's forwarder can reach the check
+covered by Foundry tests, not by a mainnet transaction: only the CRE wallet's key can reach the check
 
-receiver            0x0d69055c43EAcb3B1ca687ca2263A049Bc7Eff04
-forwarder on chain  0x76c9cf548b4179F8901cda1f8623568b58215E62
-last report seen    0 for passport 0x1d9dfdba01c1ef72921337f08fafab55375f6cca15b704e2b04280a7fa6dab6e
+receiver            0x4aD66c77f961884E9e866EEEc3EafF1EdB5BAa95, the public SimulationReceiver
+forwarder on chain  0x9eF6468C5f37b976E57d52054c693269479A784d, Chainlink's MockKeystoneForwarder
+sending wallet      0xC79620AF233a4434b03f6B57239F8A9E71B3C178, fixed in the constructor with no setter
+last report seen    1790524180 for passport 0x3d41c6960a1486e29a85febcdfe282fafcbe33b558fd47578f99cb2f55f70c91
 
 onReport refuses anything that is not the forwarder before it decodes a byte, which is the
-attack in report-from-fake-forwarder.txt and it is executed live. The replay and wrong chain
-checks sit behind that door, inside _processReport, so reaching them on mainnet would mean
-sending from Chainlink's own forwarder address. Nobody can, and that is the point.
+attack in report-from-fake-forwarder.txt and it is executed live. The mock forwarder itself
+checks no signature and anyone may call it, so the door that matters here is the next one:
+_processReport refuses first any transaction the sending wallet did not sign. The replay and
+wrong chain checks sit behind it, so reaching them on mainnet would mean holding the CRE
+wallet's key. An outsider cannot, and that is the point. The holder of that key can write
+any verdict through this receiver, and the threat model names that as a non-goal.
 
-packages/contracts/test/MoolamReceiver.t.sol, run with npm test in packages/contracts:
-  test_theSameReportSentTwiceIsRefused          StaleReport
-  test_anOlderReportAfterANewerOneIsRefused     StaleReport
+packages/contracts/test/SimulationReceiver.t.sol, run with npm test in packages/contracts:
+  test_theFloorIsStrictlyMonotonic              StaleReport
   test_aReportBuiltForAnotherChainIsRefused     WrongChain
+  test_aReportFromAnyOtherOriginIsRefused       WrongSendingWallet
 
-Each of those deploys the same receiver, pranks the forwarder address, delivers a report,
-and expects the named custom error on the second delivery, on the older one, and on the one
-built for chain 1.
+The first two act as the sending wallet and expect the named error on the same report sent
+twice, on an older one, and on one built for another chain. The third sends as a stranger
+and expects nothing written. packages/contracts/test/fork/SimulationReceiver.fork.t.sol
+replays real mainnet report calldata through the real mock from a stranger and from the
+policy owner, and nothing is written either time.

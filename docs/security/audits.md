@@ -18,7 +18,7 @@ checked and by whom, not as an assurance.
 | `forge coverage` on `src/MoolamConsent.sol` | 100 percent of lines, statements, branches and functions |
 | `slither . --exclude-informational --exclude-low --exclude-dependencies` | Zero high, four medium |
 | `solhint` on `src/**` | No errors, no warnings |
-| Twelve attacks, executed as transactions | 12 of 12 refused |
+| Twelve attacks, executed, eight of them as mainnet transactions | 12 of 12 refused |
 | Eight more against the consent register, executed as simulations | 8 of 8 refused, with the control passing |
 
 The four medium slither findings are accepted false positives: an append-only mapping of arrays,
@@ -94,11 +94,15 @@ a valid statement from the real holder as the control that passes, is in
 | consent-batch-limits | A batch of 33 passports, and a batch of none | `BatchTooLarge`, `EmptyBatch` | [consent-batch-limits.txt](attacks/consent-batch-limits.txt) |
 | consent-no-money | Send MON to the consent register | An empty revert. No `receive`, no `fallback`, nothing payable | [consent-no-money.txt](attacks/consent-no-money.txt) |
 
-Two of the twelve are not mainnet transactions, and the files say so.
-`receiver-replay-and-wrong-chain` sits behind the forwarder check, so only Chainlink's own
-forwarder can reach it and three Foundry tests prove it instead. `privy-policy-refusal` and
-`revoked-session-signer` are refused by Privy's enclave before anything is signed, so no
-transaction reaches Monad at all, which is the point.
+Four of the twelve are not mainnet transactions, and the files say so.
+`receiver-replay-and-wrong-chain` sits behind the sending-wallet check, so only a transaction
+signed by Moolam's CRE wallet can reach it, and Foundry tests plus a mainnet fork test prove it
+instead. `privy-policy-refusal` and `revoked-session-signer` are refused by Privy's enclave before
+anything is signed, so no transaction reaches Monad at all, which is the point.
+`verifier-api-limits` is refused over HTTP by the verify service's own limits.
+
+The three receiver files were written again on 2026-09-28 by `npm run prove:receivers`, against
+the SimulationReceiver today's re-checks land through.
 
 ## Verified source
 
