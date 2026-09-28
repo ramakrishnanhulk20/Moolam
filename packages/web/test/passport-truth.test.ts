@@ -284,7 +284,9 @@ describe("a public re-check row", () => {
     expect(markup).toContain(words.body.replace(/'/g, "&#x27;"));
     expect(markup).toContain("A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint");
     expect(markup).toContain(words.gridNote);
-    expect(markup).toContain(en.recheck.note.replace(/'/g, "&#x27;"));
+    // A passport that already carries a verdict has no button, so no note for it (WO-195).
+    expect(markup).not.toContain(en.recheck.note.replace(/'/g, "&#x27;"));
+    expect(markup).toContain("Re-checked on");
     expect(markup).not.toContain(words.private.gridNote.replace(/'/g, "&#x27;"));
     expect(markup).not.toContain(words.sealedBody.replace(/'/g, "&#x27;"));
   });
@@ -350,8 +352,21 @@ describe("the re-check control's place once a request has finished", () => {
     stub.state = { kind: "none" };
   });
 
-  it("a finished request with no row on chain says nothing and offers the control again", async () => {
+  it("a finished request on a page drawn before its verdict says the chain's own date", async () => {
     stub.state = DONE;
+    const markup = await card({ sealed: false });
+
+    // 1_790_000_300 is 21 September 2026, the date the chain confirmed, in the
+    // client formatter's own English style (WO-195).
+    expect(markup).toContain("Re-checked on Sep 21, 2026");
+    expect(markup).not.toContain(STAMP_DONE);
+    expect(markup).not.toContain(BUTTON);
+    expect(markup).toContain('data-recheck-state="rechecked"');
+    stub.state = { kind: "none" };
+  });
+
+  it("a finished request with no date from the chain or the page says nothing and offers the control again", async () => {
+    stub.state = { kind: "done" };
     const markup = await card({ sealed: false });
 
     expect(markup).not.toContain(STAMP_DONE);
@@ -377,6 +392,13 @@ describe("the re-check control's place once a request has finished", () => {
     expect(seatOf(DONE, undefined)).toEqual({ state: DONE });
     expect(seatOf(DONE, null)).toEqual({ state: { kind: "none" } });
     expect(seatOf(DONE, "14 Sept 2026")).toEqual({ state: { kind: "none" }, rechecked: "14 Sept 2026" });
-    expect(seatOf({ kind: "none" }, "14 Sept 2026")).toEqual({ state: { kind: "none" } });
+    expect(seatOf(DONE, null, () => "21 Sept 2026")).toEqual({ state: { kind: "none" }, rechecked: "21 Sept 2026" });
+    // Nobody has asked in this tab and the page holds a verdict: its date, and no button.
+    expect(seatOf({ kind: "none" }, "14 Sept 2026")).toEqual({ state: { kind: "none" }, rechecked: "14 Sept 2026" });
+    expect(seatOf({ kind: "none" }, null)).toEqual({ state: { kind: "none" } });
+    // A failed request the queue still remembers gives way to the verdict on chain.
+    expect(seatOf({ kind: "failed", reason: "x" }, "14 Sept 2026")).toEqual({ state: { kind: "none" }, rechecked: "14 Sept 2026" });
+    expect(seatOf({ kind: "failed", reason: "x" }, null)).toEqual({ state: { kind: "failed", reason: "x" } });
+    expect(seatOf({ kind: "failed", reason: "x" }, undefined)).toEqual({ state: { kind: "failed", reason: "x" } });
   });
 });

@@ -178,11 +178,14 @@ const publicArt: Art = {
   title: "Harbour at first light",
   imageUrl: "https://gateway.example/ipfs/bafkreiimage",
   thumbnailUrl: "https://gateway.example/ipfs/bafkreithumb",
+  // The route can serve it: both the document and the image are bare content ids (WO-195).
+  original: true,
   missing: false,
 };
 
 const unsealedArt: Art = {
   ...publicArt,
+  original: undefined,
   unsealed: {
     at: "2026-09-20T06:12:44.000Z",
     by: passport.creator,

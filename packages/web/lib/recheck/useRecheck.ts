@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { readRecheckStatus, requestRecheck } from "@/lib/verifier/client";
-import { newestChainlinkRecheck } from "./chain";
+import { confirmedReport, newestChainlinkRecheck } from "./chain";
 import {
   confirmOnChain,
   describeRecheckFailure,
@@ -44,11 +44,17 @@ export interface RecheckControl {
 
 /**
  * The queue's answer, with "done" held back until the registry agrees (R10).
- * A chain read that fails reads as not yet, never as done.
+ * A finished request that names its report is judged by that transaction's
+ * receipt; one that does not, by the newest verdict's time. A chain read that
+ * fails reads as not yet, never as done.
  */
 async function checkedOnChain(passportId: Hex, state: RecheckState): Promise<RecheckState> {
   if (state.kind !== "done") {
     return state;
+  }
+  if (state.reportTx !== undefined) {
+    const report = await confirmedReport(passportId, state.reportTx).catch(() => undefined);
+    return confirmOnChain(state, undefined, report);
   }
   const newest = await newestChainlinkRecheck(passportId).catch(() => undefined);
   return confirmOnChain(state, newest);

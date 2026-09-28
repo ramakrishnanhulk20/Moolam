@@ -54,9 +54,10 @@ export function RecheckRequest({
   sealed?: boolean;
   /**
    * What the chain holds, from the passport page: the newest re-check's date,
-   * or null when there is no re-check on chain. Left out by a screen that does
-   * not read the rows, where a finished request still shows as done only after
-   * the control's own chain check (lib/recheck/chain.ts).
+   * or null when there is no re-check on chain. A date puts that date where the
+   * button would be (seatOf below). Left out by a screen that does not read the
+   * rows, where a finished request still shows as done only after the
+   * control's own chain check (lib/recheck/chain.ts).
    */
   recheckedOn?: string | null;
   /**
@@ -87,17 +88,41 @@ export function RecheckRequest({
  * The queue remembers a finished request for ever, so without this every
  * later visitor read "Done" as if they had just asked. On the passport page a
  * finished request is told by the chain instead: the date of the newest
- * re-check when there is one, and when there is none, nothing at all and the
- * button again, because a request that left no verdict is not a re-check.
+ * re-check the page holds, or, on a page drawn before that verdict landed, the
+ * date the chain confirmed for this request. A done state reaches this screen
+ * only once the chain agreed (lib/recheck/state.ts), so it always has a verdict
+ * behind it. With no date from either, it is nothing at all and the button
+ * again, because a request that left no verdict is not a re-check.
+ *
+ * A passport page that already holds a verdict, where nobody has asked in this
+ * tab, gets its date and no button. The runner closes any request for a
+ * picture that already carries a re-check, so a press there could only ever
+ * come back refused.
+ *
+ * `dayOf` writes a chain time in milliseconds the way the page writes its own.
  */
 export function seatOf(
   state: RecheckState,
   recheckedOn: string | null | undefined,
+  dayOf?: (at: number) => string,
 ): { state: RecheckState; rechecked?: string } {
-  if (state.kind !== "done" || recheckedOn === undefined) {
+  if (recheckedOn === undefined) {
     return { state };
   }
-  return recheckedOn === null ? { state: idleRecheck } : { state: idleRecheck, rechecked: recheckedOn };
+  if (state.kind === "none") {
+    return recheckedOn === null ? { state } : { state, rechecked: recheckedOn };
+  }
+  // The queue remembers a failed request for ever, and the chain's verdict outranks it: the reader
+  // gets the date this passport was re-checked, and no button, as if nobody had asked.
+  if (state.kind === "failed" && recheckedOn !== null) {
+    return { state: idleRecheck, rechecked: recheckedOn };
+  }
+  if (state.kind !== "done") {
+    return { state };
+  }
+  const rechecked =
+    recheckedOn ?? (state.finishedAt === undefined || dayOf === undefined ? undefined : dayOf(state.finishedAt));
+  return rechecked === undefined ? { state: idleRecheck } : { state: idleRecheck, rechecked };
 }
 
 function Control({
@@ -114,6 +139,7 @@ function Control({
   tuck: boolean;
 }) {
   const t = useTranslations("recheck");
+  const format = useFormatter();
   const calm = useReducedMotion() === true;
   const router = useRouter();
 
@@ -129,7 +155,8 @@ function Control({
     },
   });
 
-  const seat = seatOf(recheck.state, recheckedOn);
+  // The same day style the page writes its own newest re-check in.
+  const seat = seatOf(recheck.state, recheckedOn, (at) => format.dateTime(new Date(at), { dateStyle: "medium" }));
   const { state } = seat;
   const press = seat.rechecked === undefined ? pressFor({ ...recheck, state }) : null;
 
@@ -167,7 +194,10 @@ function Control({
         )}
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-text-faint">{t(sealed ? "notePrivate" : "note")}</p>
+      {/* The note is the button's promise, so it goes wherever the button does. */}
+      {seat.rechecked === undefined ? (
+        <p className="mt-3 text-xs leading-relaxed text-text-faint">{t(sealed ? "notePrivate" : "note")}</p>
+      ) : null}
 
       {/* Room for the longest sentence any state has, kept whether one is
           showing or not. Tucked, the same room is handed back below by an
@@ -215,6 +245,7 @@ function Sentence({
   sealed: boolean;
 }) {
   const t = useTranslations("recheck");
+  const rows = useTranslations("passport.attestations");
   const format = useFormatter();
 
   const when = (at?: number): string =>
@@ -238,9 +269,10 @@ function Sentence({
       case "confirming":
         return t("confirming");
       case "done":
-        // Reached only once the chain holds a re-check from after the request,
-        // so the date is the chain's. The transaction is the queue's word for
-        // which report wrote it, and is labelled as that claim.
+        // Reached only once the chain agreed, so the date is the chain's. A
+        // report transaction is still here only when its receipt was read and
+        // confirmed, so it is named the way the page names every verdict's
+        // transaction rather than as the queue's claim.
         return (
           <>
             {state.finishedAt === undefined ? t("doneNoTime") : t("done", { at: when(state.finishedAt) })}
@@ -253,7 +285,7 @@ function Sentence({
                   rel="noreferrer"
                   className="tap underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent hover:decoration-accent"
                 >
-                  {t("claimedTx", { hash: shortHex(state.reportTx) })}
+                  {rows("openTx", { hash: shortHex(state.reportTx) })}
                 </a>
               </>
             )}

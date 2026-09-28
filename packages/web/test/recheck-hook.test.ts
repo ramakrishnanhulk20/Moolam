@@ -50,8 +50,16 @@ vi.mock("@/lib/verifier/client", async (importOriginal) => ({
 /**
  * The registry's answer to "when was the newest Chainlink re-check written",
  * in unix seconds. Null is none on chain; "throw" is a read that failed.
+ *
+ * `report` is the chain's reading of the report transaction the queue named:
+ * the block time and verdict when it is confirmed, null when it is not.
  */
-const registry = vi.hoisted(() => ({ newest: null as number | null | "throw", reads: 0 }));
+const registry = vi.hoisted(() => ({
+  newest: null as number | null | "throw",
+  reads: 0,
+  report: null as { at: number; matched: boolean; distance: number } | null,
+  reportReads: 0,
+}));
 
 vi.mock("@/lib/recheck/chain", () => ({
   newestChainlinkRecheck: async () => {
@@ -60,6 +68,10 @@ vi.mock("@/lib/recheck/chain", () => ({
       throw new Error("the RPC endpoint did not answer");
     }
     return registry.newest;
+  },
+  confirmedReport: async () => {
+    registry.reportReads += 1;
+    return registry.report;
   },
 }));
 
@@ -144,6 +156,8 @@ beforeEach(() => {
   service.throwOnRequest = undefined;
   registry.newest = null;
   registry.reads = 0;
+  registry.report = null;
+  registry.reportReads = 0;
   held.control = null;
   held.done = 0;
   shown = "visible";
@@ -294,7 +308,7 @@ describe("what one press does", () => {
 describe("the two ways a request ends", () => {
   it("shows the verdict and asks the page to read itself again, exactly once", async () => {
     service.nextLookup = { state: "known", status: { status: "pending", requestedAt: 1_790_000_000_000 } };
-    registry.newest = 1_790_000_290;
+    registry.report = { at: 1_790_000_290, matched: true, distance: 0 };
     mount();
     await flush();
 
@@ -381,7 +395,7 @@ describe("how often it asks", () => {
   });
 
   it("asks nothing once the answer has arrived", async () => {
-    registry.newest = 1_790_000_290;
+    registry.report = { at: 1_790_000_290, matched: true, distance: 0 };
     service.nextLookup = {
       state: "known",
       status: { status: "done", requestedAt: 1_790_000_000_000, finishedAt: 1_790_000_300_000, reportTx: TX },
@@ -426,9 +440,11 @@ describe("how often it asks", () => {
 });
 
 describe("done is the chain's word, not the queue's (R10)", () => {
+  // No report transaction, so the newest verdict's time is the rule. A queue
+  // answer that names one is judged by its receipt (test/recheck-report-confirm.test.ts).
   const finished = {
     state: "known",
-    status: { status: "done", requestedAt: 1_790_000_000_000, finishedAt: 1_790_000_300_000, reportTx: TX, matched: true, distance: 0 },
+    status: { status: "done", requestedAt: 1_790_000_000_000, finishedAt: 1_790_000_300_000, matched: true, distance: 0 },
   };
 
   it("shows pending when the service says done and the chain holds no re-check from after the request", async () => {
@@ -472,7 +488,8 @@ describe("done is the chain's word, not the queue's (R10)", () => {
     expect(now.kind).toBe("done");
     if (now.kind === "done") {
       expect(now.finishedAt).toBe(1_790_000_420_000);
-      expect(now.reportTx).toBe(TX);
+      // Only a transaction whose receipt was read is ever linked.
+      expect(now.reportTx).toBeUndefined();
     }
     expect(held.done).toBe(1);
   });

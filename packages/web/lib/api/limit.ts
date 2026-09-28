@@ -41,8 +41,17 @@ export const SHARED_BUCKET = "unnamed";
  * office as one caller, which is the safe side to be wrong on.
  */
 export function callerAddress(request: Request): string {
+  return callerFromHeaders(request.headers);
+}
+
+/**
+ * The same address, read from the headers alone. A server action has no
+ * Request of its own, only the headers next/headers hands it, and it must name
+ * its caller by exactly the rule a route does.
+ */
+export function callerFromHeaders(headers: Pick<Headers, "get">): string {
   for (const header of HOST_WRITTEN) {
-    const written = request.headers.get(header)?.split(",")[0]?.trim();
+    const written = headers.get(header)?.split(",")[0]?.trim();
     if (written !== undefined && written !== "") {
       return written;
     }

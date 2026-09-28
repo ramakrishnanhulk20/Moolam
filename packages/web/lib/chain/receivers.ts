@@ -1,5 +1,18 @@
 import type { Hex } from "viem";
+import simulationDeployment from "../../../contracts/deployments/simulation-receivers-monad-mainnet.json";
 import { addresses } from "./client";
+
+/**
+ * Moolam's CRE wallet, the one account that signs a re-check report.
+ *
+ * Read from the deploy record of the two simulation receivers, where it is
+ * fixed in each receiver's constructor with no setter. Both receivers refuse a
+ * report sent from anywhere else, so a report transaction from another sender
+ * is not one of Moolam's runs.
+ */
+export function reportSender(): Hex {
+  return simulationDeployment.sendingWallet as Hex;
+}
 
 /**
  * The one form an address takes before it is compared with another.

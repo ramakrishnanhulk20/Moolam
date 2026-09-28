@@ -231,8 +231,10 @@ describe("every state the reader can meet", () => {
     expect(drawn[9][1]).toContain("never published");
     expect(drawn[10][1]).toContain("The verify service is not answering just now.");
     expect(drawn[11][1]).toContain("stopped checking after half an hour");
-    // The transaction the queue names is the queue's claim, and says so.
-    expect(drawn[6][1]).toContain(`Claimed transaction ${TX.slice(0, 8)}`);
+    // A done state keeps its transaction only once its receipt confirmed it,
+    // so it is named like any verdict's transaction, not as a claim (WO-195).
+    expect(drawn[6][1]).toContain(`Transaction ${TX.slice(0, 8)}`);
+    expect(drawn[6][1]).not.toContain("Claimed transaction");
     // Pending, with no "Done" and no transaction, until the chain agrees (R10).
     expect(drawn[12][1]).toContain(en.recheck.stamp.pending);
     expect(drawn[12][1]).toContain(en.recheck.confirming);

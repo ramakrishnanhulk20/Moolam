@@ -184,8 +184,11 @@ export async function Poster({
                 route, so the saved copy hashes to this passport's id. Only
                 where a picture is known to be public: this branch is never a
                 sealed passport, and a document the gateway would not hand over
-                says nothing either way. */}
-            {art.imageUrl === undefined ? null : (
+                says nothing either way. And only where the route can serve
+                it, which art.ts works out for a published document by the
+                route's own rule; an unsealed picture is served from the record
+                that published it. */}
+            {art.imageUrl === undefined || (art.original !== true && art.unsealed === undefined) ? null : (
               <span>
                 <a
                   href={`/api/passports/${passport.id}/picture`}

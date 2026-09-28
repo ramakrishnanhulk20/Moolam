@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { gatewayUrl } from "@/lib/chain/client";
 import { PICTURE_HOSTS, pictureSources } from "@/lib/images";
+import { bareContentId } from "@/lib/passport/original";
 
 // The content id reader moved next to the gateway list it belongs with. The
 // screens that name a link after what it points at still ask for it here.
@@ -36,6 +37,14 @@ export interface Art {
   imageUrl?: string;
   /** The small copy, for a grid. Falls back to the full image when none was pinned. */
   thumbnailUrl?: string;
+  /**
+   * True when the download route (app/api/passports/[id]/picture) can serve
+   * this picture: the document and its image are both bare IPFS content ids,
+   * by the same rule the route reads them with. A screen may draw a picture
+   * the route refuses, an ipfs://cid/path one for instance, and a link to a
+   * download that always answers 404 is worse than no link.
+   */
+  original?: true;
   /**
    * True when this passport's picture was never published. There is no image
    * and no thumbnail to ask any gateway for, and that is the record as it was
@@ -111,11 +120,12 @@ export async function readArt(metadataURI: string): Promise<Art> {
   if (pinned === undefined) {
     return { missing: true };
   }
+  const documentServed = bareContentId(metadataURI) !== null;
   for (const url of pictureSources(pinned)) {
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
       continue;
     }
-    const art = await readFrom(url);
+    const art = await readFrom(url, documentServed);
     if (art !== null) {
       return art;
     }
@@ -123,8 +133,11 @@ export async function readArt(metadataURI: string): Promise<Art> {
   return { missing: true };
 }
 
-/** One gateway's answer, or null when it did not give a document this can read. */
-async function readFrom(url: string): Promise<Art | null> {
+/**
+ * One gateway's answer, or null when it did not give a document this can read.
+ * `documentServed` is whether the download route would read this document at all.
+ */
+async function readFrom(url: string, documentServed: boolean): Promise<Art | null> {
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_MS), next: { revalidate: 300 } });
     if (!response.ok) {
@@ -156,6 +169,10 @@ async function readFrom(url: string): Promise<Art | null> {
       prompt,
       imageUrl: image === undefined ? undefined : gatewayUrl(image),
       thumbnailUrl: small === undefined ? undefined : gatewayUrl(small),
+      // The route reads the image field as it was written, so this does too.
+      ...(image !== undefined && documentServed && bareContentId(parsed.data.image) !== null
+        ? { original: true as const }
+        : {}),
       ...(sealed
         ? {
             sealed: true as const,

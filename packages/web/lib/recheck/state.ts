@@ -54,6 +54,17 @@ export type RecheckState =
 
 export const idleRecheck: RecheckState = { kind: "none" };
 
+/**
+ * What the chain says about one report transaction, once it is known to be
+ * this passport's verdict from Moolam's CRE wallet: when its block was made, in
+ * unix seconds, and the verdict the registry logged.
+ */
+export interface ConfirmedReport {
+  at: number;
+  matched: boolean;
+  distance: number;
+}
+
 /** True while the queue still owes this passport an answer, which is when the control keeps asking. */
 export function isWatched(state: RecheckState): boolean {
   return state.kind === "queued" || state.kind === "running" || state.kind === "confirming";
@@ -132,18 +143,36 @@ export function stateFromRequest(answer: RecheckRequested): RecheckState {
  * is not the chain. So "done" stands only when the registry holds a Chainlink
  * re-check written at or after the request, and its date is the chain's. Every
  * other answer, a read that failed included, is "confirming", which the control
- * draws as pending and keeps watching. The queue's report transaction survives
- * only beside that chain check, and the control labels it as the queue's claim.
+ * draws as pending and keeps watching.
+ *
+ * A finished request that names its report transaction is judged by that
+ * transaction instead. The runner answers a request for a picture it already
+ * re-checked with the report it sent before, which is older than the request,
+ * so the time rule would hold it as pending for ever. `report` is the chain's
+ * reading of that transaction (lib/recheck/chain.ts): when it is confirmed, the
+ * request is done with the block's date and the logged verdict, whenever that
+ * was. When it is not, or the read failed, it is "confirming". A done state
+ * carries a report transaction only when the chain confirmed it, so the
+ * control links it only then.
  *
  * `newestOnChain` is the newest such re-check in unix seconds, null when the
  * registry holds none, and undefined when the read failed. `requestedAt` is in
  * milliseconds, so it is floored to the second the chain counts in.
  */
-export function confirmOnChain(state: RecheckState, newestOnChain: number | null | undefined): RecheckState {
+export function confirmOnChain(
+  state: RecheckState,
+  newestOnChain: number | null | undefined,
+  report?: ConfirmedReport | null,
+): RecheckState {
   if (state.kind !== "done") {
     return state;
   }
-  const { requestedAt } = state;
+  const { requestedAt, reportTx } = state;
+  if (reportTx !== undefined) {
+    return report === undefined || report === null
+      ? { kind: "confirming", requestedAt }
+      : { kind: "done", requestedAt, finishedAt: report.at * 1000, reportTx, matched: report.matched, distance: report.distance };
+  }
   if (requestedAt === undefined || newestOnChain === null || newestOnChain === undefined) {
     return { kind: "confirming", requestedAt };
   }

@@ -73,8 +73,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return plain(502, `The IPFS gateway answered ${response.status} for this picture. Try again in a moment.`);
   }
 
+  // A gateway that compressed its answer declared the compressed length, and
+  // fetch hands over the bytes already unpacked, so that length would cut the
+  // saved file short. Such an answer is sent without one.
+  const encoding = response.headers.get("content-encoding")?.trim().toLowerCase() ?? "";
   const declared = Number(response.headers.get("content-length") ?? "");
-  const sized = Number.isFinite(declared) && declared > 0;
+  const sized = (encoding === "" || encoding === "identity") && Number.isFinite(declared) && declared > 0;
   if (sized && declared > MAX_PICTURE_BYTES) {
     await response.body.cancel().catch(() => undefined);
     return plain(502, "This picture is larger than any Moolam registers, so it is not served.");

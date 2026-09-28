@@ -32,6 +32,10 @@ export function hasSecondOpinion(
  * reader must not skim past. A service that could not tell, and an older
  * service that carries no such field, print nothing at all: silence is the only
  * honest answer to a question nobody asked the chain.
+ *
+ * The button to ask for a re-check sits only under "never". The runner closes
+ * any request for a picture that already carries a verdict, so under one a
+ * press could only come back refused.
  */
 export function SecondOpinion({
   recheck,
@@ -90,8 +94,6 @@ export function SecondOpinion({
       >
         {t("link")}
       </Link>
-
-      <RecheckRequest passportId={id} className="mt-5" />
     </Frame>
   );
 }
