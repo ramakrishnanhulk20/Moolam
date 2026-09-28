@@ -618,7 +618,7 @@ match.
 
 ### Read a passport with viem
 
-The four ABIs live in [`packages/contracts/abi`](packages/contracts/abi).
+The five ABIs live in [`packages/contracts/abi`](packages/contracts/abi).
 
 ```ts
 import { createPublicClient, http } from "viem";
@@ -856,7 +856,7 @@ Moolam/
 │   │   ├── src/            MoolamRegistry, VerifierPolicy, MoolamReceiver, SimulationReceiver, MoolamConsent, the vendored Chainlink template
 │   │   ├── test/           unit, fuzz, invariant and mainnet fork suites
 │   │   ├── script/         Deploy, the receiver deploys and listings, ConfigureReceiver, RegisterAgent, LiveProof
-│   │   ├── abi/            the four ABIs the app and the indexer read
+│   │   ├── abi/            the five contracts' ABIs
 │   │   └── deployments/    monad-mainnet.json, the source of truth for every script
 │   │
 │   ├── verifier/           The verify service: fingerprints, C2PA, the eight orientations, six routes

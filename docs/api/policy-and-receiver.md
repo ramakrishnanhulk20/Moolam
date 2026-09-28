@@ -119,7 +119,7 @@ front of the payload checks: the transaction must be signed by Moolam's CRE wall
 `0xC79620AF233a4434b03f6B57239F8A9E71B3C178`, or it reverts `WrongSendingWallet`. A report more
 than an hour ahead of the block reverts `ReportFromTheFuture`. The full account is in
 [Chainlink CRE workflow](../developers/chainlink-workflow), "The receiver, and what a simulation
-needs".
+needs". ABI in `packages/contracts/abi/SimulationReceiver.json`.
 
 ### onReport
 

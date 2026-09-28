@@ -152,7 +152,7 @@ forge build                 # compile, zero warnings
 npm test                    # 182 tests: unit, fuzz, invariant and mainnet fork
 npm run test:fork           # the fork tests only, against real Monad mainnet state
 npm run gas                 # the gas table
-npm run abi                 # regenerate the four ABIs in abi/
+npm run abi                 # regenerate the five ABIs in abi/
 slither .                   # static analysis
 npm run lint                # solhint style check
 ```
