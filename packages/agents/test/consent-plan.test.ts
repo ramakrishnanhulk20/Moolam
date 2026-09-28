@@ -2,8 +2,8 @@
 // names, the shape of a passport id, and the three constraint text rules MoolamConsent enforces.
 // Also loads the plan this package ships, so a bad edit to it fails here rather than on chain.
 // Does NOT cover the chain agreeing. The contract's own copy of these rules is tested in
-// packages/contracts, and the dry run in kitchen/reports/WO-88-dry-run.txt is what proves the two
-// agree on the live deployment.
+// packages/contracts, and a dry run of the consent script against the live deployment is what
+// proves the two agree there.
 
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
