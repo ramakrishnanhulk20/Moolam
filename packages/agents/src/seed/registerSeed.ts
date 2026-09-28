@@ -16,7 +16,6 @@ import { RegistryClient } from "../chain/registry.js";
 import {
   AI_SOURCE_TYPE,
   CAPTURED_DESCRIPTION,
-  CAPTURE_SOURCE_TYPE,
   FINGERPRINT_VERSION,
   GENERATED_DESCRIPTION,
   fileSlug,
@@ -151,8 +150,11 @@ export async function registerSeed(opts: RegisterSeedOptions): Promise<SeedResul
   const prepared = await prepareImage(opts.source, {
     title: opts.title,
     claimGenerator: CLAIM_GENERATOR,
-    action: "c2pa.created",
-    digitalSourceType: generated ? AI_SOURCE_TYPE : CAPTURE_SOURCE_TYPE,
+    // A captured seed reaches Moolam as a file, like any upload, so it states no source type:
+    // Moolam never saw the camera.
+    ...(generated
+      ? { action: "c2pa.created" as const, digitalSourceType: AI_SOURCE_TYPE }
+      : { action: "c2pa.opened" as const }),
   });
 
   const passportId = prepared.fingerprint.sha256 as Hex;
