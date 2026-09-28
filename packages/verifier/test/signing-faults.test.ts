@@ -4,7 +4,7 @@
 // unsigned file, while a file the signer truly refuses still falls back to an unsigned passport.
 // V91: a signing worker that fails after the model drew and billed a picture answers /generate 502
 // sign-failed, not model-failed, and keeps both slots spent. The /prepare and /generate logs name a
-// read-back fault as one, not as a fingerprinting failure (WO-186b and WO-186c follow-ups).
+// read-back fault as one, not as a fingerprinting failure.
 // The read-back answer is stubbed as readManifest's own "unreadable" summary rather than waiting out
 // the real five second limit, and the signer failures are thrown by a stubbed embedManifest. Does
 // NOT cover a real slow C2PA read, a real signing worker crash, a real drawing or a real pin.

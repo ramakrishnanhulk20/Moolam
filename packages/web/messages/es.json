@@ -1713,7 +1713,6 @@
     "notePrivate": "Gratis. El flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam, compara la huella y escribe su veredicto en Monad. El veredicto suele quedar en la blockchain en pocos minutos.",
     "runningPrivate": "En marcha: el flujo está abriendo la copia privada y comparando la huella.",
     "recheckedOn": "Recomprobada el {date}",
-    "claimedTx": "Transacción declarada {hash}",
     "confirming": "La cola dice que esta revisión terminó. Aparecerá como hecha cuando su veredicto se pueda leer en Monad."
   },
   "mine": {

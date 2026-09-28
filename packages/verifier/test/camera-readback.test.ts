@@ -1,4 +1,4 @@
-// Covers a WO-186b follow-up on photos that arrive with a camera's own record: when the read back of
+// Covers photos that arrive with a camera's own record: when the read back of
 // the file signed with that record runs out of time, the fault is this service's, so preparing
 // throws ReadBackFault (a FingerprintFault, which every studio route answers 503 service-fault)
 // rather than dropping the camera's record for good. A record that truly fails its checks is still

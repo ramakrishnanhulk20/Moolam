@@ -166,7 +166,7 @@ describe("a sealed passport that asked for the private re-check, before any verd
 
 describe("the same passport once a verdict is on chain", () => {
   it("says when it was re-checked instead of offering a press the runner would refuse", async () => {
-    // The runner closes any request for a passport that already carries a verdict (WO-195).
+    // The runner closes any request for a passport that already carries a verdict.
     const markup = await card({ rows: [privateRow], privateCopy: "kept" });
     expect(markup).not.toContain(BUTTON);
     expect(markup).toContain("Re-checked on");

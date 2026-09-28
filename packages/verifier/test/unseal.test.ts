@@ -1282,7 +1282,7 @@ describe("unsealing a sealed passport", () => {
     }
   }, 60_000);
 
-  // Pass 7, the WO-184b follow-up: a listing that still trails this server's own record pin reads
+  // Pass 7: a listing that still trails this server's own record pin reads
   // "none", and believing it would pin a second record and cache that one as the oldest.
   it("answers a second unseal already-unsealed within ten minutes of its own, whatever the listing says, and pins no second record", async () => {
     const on = await buildServer({ source: emptySource, logger: false, unseal: { keys: verifying } });

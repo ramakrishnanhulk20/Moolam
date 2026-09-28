@@ -5,7 +5,7 @@
 // signing routes off, and one that expires while the service runs makes each signing fail as
 // SignerUnavailable, never an unsigned file. V94: a certificate and a key that are not a pair stop the
 // signer at load, and a freshly signed file whose signature does not validate is SignerUnavailable,
-// never embedded. A camera's record is read back by the same rule (WO-187d): a kept record whose
+// never embedded. A camera's record is read back by the same rule: a kept record whose
 // camera leaf expired is no fault while a tampered one is, and a photo uploaded after its camera
 // leaf expired keeps its record, public and sealed, unless it was changed after capture.
 // Every identity is made with openssl in a temporary folder for this run.

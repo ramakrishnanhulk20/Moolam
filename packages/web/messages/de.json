@@ -1713,7 +1713,6 @@
     "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Blockchain.",
     "runningPrivate": "Läuft gerade: der Workflow öffnet die private Kopie und vergleicht den Fingerabdruck.",
     "recheckedOn": "Nachgeprüft am {date}",
-    "claimedTx": "Gemeldete Transaktion {hash}",
     "confirming": "Die Warteschlange meldet diesen Lauf als fertig. Als fertig erscheint er erst, wenn sein Ergebnis auf Monad lesbar ist."
   },
   "mine": {

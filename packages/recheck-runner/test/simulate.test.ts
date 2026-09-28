@@ -246,7 +246,7 @@ describe("the timeout, against a real child process", () => {
   }, 20_000);
 });
 
-describe("the CLI's last lines on a failed broadcast run (WO-190)", () => {
+describe("the CLI's last lines on a failed broadcast run", () => {
   const OUTPUT = [
     "\u001b[32m✓ Workflow compiled\u001b[0m",
     "RPC health check failed for https://user:pa55word@example-name.monad-mainnet.quiknode.pro/5ecre7k3y/path?key=abc (status 401)",

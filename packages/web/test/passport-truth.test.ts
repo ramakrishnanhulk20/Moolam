@@ -284,7 +284,7 @@ describe("a public re-check row", () => {
     expect(markup).toContain(words.body.replace(/'/g, "&#x27;"));
     expect(markup).toContain("A Chainlink CRE workflow re-fetched this picture and recomputed its fingerprint");
     expect(markup).toContain(words.gridNote);
-    // A passport that already carries a verdict has no button, so no note for it (WO-195).
+    // A passport that already carries a verdict has no button, so no note for it.
     expect(markup).not.toContain(en.recheck.note.replace(/'/g, "&#x27;"));
     expect(markup).toContain("Re-checked on");
     expect(markup).not.toContain(words.private.gridNote.replace(/'/g, "&#x27;"));
@@ -357,7 +357,7 @@ describe("the re-check control's place once a request has finished", () => {
     const markup = await card({ sealed: false });
 
     // 1_790_000_300 is 21 September 2026, the date the chain confirmed, in the
-    // client formatter's own English style (WO-195).
+    // client formatter's own English style.
     expect(markup).toContain("Re-checked on Sep 21, 2026");
     expect(markup).not.toContain(STAMP_DONE);
     expect(markup).not.toContain(BUTTON);

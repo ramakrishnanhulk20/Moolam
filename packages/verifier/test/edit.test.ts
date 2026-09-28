@@ -793,7 +793,7 @@ describe("POST /edit", () => {
     }, 60_000);
   });
 
-  // WO-186b follow-up (V89): one child is one appendEdit, so the send carries a key derived from the
+  // V89: one child is one appendEdit, so the send carries a key derived from the
   // child, and a send reported dead or reverted is read against the chain before it is called failed.
   describe("V89: an edit the chain holds is never answered send-failed", () => {
     /**

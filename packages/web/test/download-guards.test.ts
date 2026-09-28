@@ -7,7 +7,7 @@ import en from "@/messages/en.json";
 import type { Passport } from "@/lib/chain/registry";
 
 /**
- * The download link and the download itself agree (WO-195).
+ * The download link and the download itself agree.
  *
  * F4: a passport page may draw a picture the download route refuses, such as
  * one named as ipfs://cid/path. The poster offers the download only when the

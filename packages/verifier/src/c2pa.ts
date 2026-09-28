@@ -799,7 +799,7 @@ const MOOLAM_THUMBNAILS = 2;
  * A read back that fails is itself the fault, and the record is dropped. A read back still running
  * after READ_MANIFEST_TIMEOUT_MS says nothing about the record, only that this service was slow, so
  * it throws FingerprintFault instead: the route answers 503 service-fault and the creator retries
- * with the record, rather than losing it for good (WO-186b follow-up). A thumbnail read that runs
+ * with the record, rather than losing it for good. A thumbnail read that runs
  * out of time throws it the same way (review pass 11, V111). The answer is for the log,
  * and says which check failed without quoting any value from the upload.
  */

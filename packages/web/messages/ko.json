@@ -1715,7 +1715,6 @@
     "notePrivate": "무료입니다. Chainlink 기밀 워크플로가 Moolam이 두고 있는 작은 비공개 사본을 열어 지문을 비교하고, 그 판정을 Monad에 기록합니다. 판정은 보통 몇 분 안에 블록체인에 기록됩니다.",
     "runningPrivate": "지금 실행 중입니다. 워크플로가 비공개 사본을 열어 지문을 비교하고 있습니다.",
     "recheckedOn": "{date}에 재확인됨",
-    "claimedTx": "보고된 트랜잭션 {hash}",
     "confirming": "대기열에서는 이 실행이 끝났다고 합니다. 결과를 Monad에서 읽을 수 있게 되면 완료로 표시됩니다."
   },
   "mine": {

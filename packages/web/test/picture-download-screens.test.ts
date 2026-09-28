@@ -178,7 +178,7 @@ const publicArt: Art = {
   title: "Harbour at first light",
   imageUrl: "https://gateway.example/ipfs/bafkreiimage",
   thumbnailUrl: "https://gateway.example/ipfs/bafkreithumb",
-  // The route can serve it: both the document and the image are bare content ids (WO-195).
+  // The route can serve it: both the document and the image are bare content ids.
   original: true,
   missing: false,
 };

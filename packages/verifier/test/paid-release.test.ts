@@ -1,4 +1,4 @@
-// Covers two WO-186a follow-ups on the paid route. /verify/paid now gives its upload share back in
+// Covers two changes to the paid route. /verify/paid now gives its upload share back in
 // its own handler, as /verify does, rather than through the handler-end backstop in shared.ts: the
 // share is already back when the handler's promise settles, before the backstop's asyncEnd runs. And
 // a payer who hangs up while their turn waits at the decode gate is skipped at the gate, never

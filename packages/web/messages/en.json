@@ -1713,7 +1713,6 @@
     "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
     "runningPrivate": "Running now: the workflow is opening the private copy and comparing the fingerprint.",
     "recheckedOn": "Re-checked on {date}",
-    "claimedTx": "Claimed transaction {hash}",
     "confirming": "The queue says this run finished. It shows as done once its verdict can be read on Monad."
   },
   "mine": {

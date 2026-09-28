@@ -1715,7 +1715,6 @@
     "notePrivate": "免费。Chainlink 的机密工作流会打开 Moolam 保留的小的私有副本，比对指纹，并把判定写到 Monad 上。判定通常几分钟内就会上链。",
     "runningPrivate": "正在运行：工作流正在打开私有副本并比对指纹。",
     "recheckedOn": "已于 {date} 复核",
-    "claimedTx": "所报告的交易 {hash}",
     "confirming": "队列显示这次复核已结束。等它的结论能在 Monad 上读到，才会显示为完成。"
   },
   "mine": {

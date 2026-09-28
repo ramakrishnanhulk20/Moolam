@@ -2,8 +2,8 @@
 // never calls the library's blocking sign, its timers keep firing while a large file is signed, a
 // file signed on the worker reads back with the manifest embedManifest always wrote and validates,
 // and a refusal or a missing identity reaches the caller as the same error class as before.
-// Does NOT cover the size of the stall itself, which is measured rather than asserted (the report
-// for WO-185b gives the before and after), nor a worker that crashes or hangs, which would need a
+// Does NOT cover the size of the stall itself, which is measured rather than asserted,
+// nor a worker that crashes or hangs, which would need a
 // broken native library to provoke.
 // Review pass 11, V111: a parent whose read runs past the worker's limit is answered "slow", which
 // the main thread turns into this service's fault, not a file the library refused. The limit is set

@@ -98,7 +98,7 @@ describe("V77: the fair gate takes callers in turn", () => {
   });
 });
 
-// WO-186a follow-up: a turn queued before its caller hung up used to run anyway, spending a picture
+// A turn queued before its caller hung up used to run anyway, spending a picture
 // decode on nobody. It is now asked again as it comes up and skipped when its caller has gone.
 describe("a turn whose caller left while it waited", () => {
   it("is skipped, not run, rejects with the caller's error, and hands its slot to the next waiter", async () => {

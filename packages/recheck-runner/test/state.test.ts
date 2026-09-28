@@ -145,7 +145,7 @@ describe("leaving a passport alone after it was handled", () => {
     expect(waitFor(state, id, NOON + 21_600_000)).toBeUndefined();
   });
 
-  it("holds an undecided run for the cooldown, across a restart, and lets it go after (WO-190)", () => {
+  it("holds an undecided run for the cooldown, across a restart, and lets it go after", () => {
     const file = scratch();
     const noted = noteUndecided(noteWaiting(emptyState("2026-09-22"), id, "the gateway did not answer", NOON, 600, 21_600), id, NOON);
     expect(noted.waiting[id]).toBeUndefined();

@@ -159,7 +159,7 @@ describe("the wallet floor", () => {
   });
 });
 
-describe("finding a report the CLI printed no hash for (WO-190)", () => {
+describe("finding a report the CLI printed no hash for", () => {
   // The facts of the 2026-09-27 run on the VM: the CLI v1.35.0 sent this report and printed no hash.
   const PASSPORT = "0xfd09a7710088e9bdcdd630904668c29e54a4042eafdab74f25749d397eef6c98";
   const TX = "0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b";

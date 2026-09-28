@@ -2,7 +2,7 @@
 // upload ceiling as it arrives, as /verify does. The moment a body would pass the ceiling each
 // answers 503 busy, and what a body counted while it arrived comes back once the route's handler
 // has finished. Over real connections on this machine, because only a real socket can withhold a body.
-// Also the studio's turn at the gate (WO-185a follow-ups): one caller holds one studio turn at a
+// Also the studio's turn at the gate: one caller holds one studio turn at a
 // time while another caller's /prepare runs, and a caller who hangs up while its /prepare waits
 // for a turn keeps its share counted until that work lets go of the bytes.
 // Does NOT cover what each route does with an upload it read (test/prepare.test.ts,
@@ -184,7 +184,7 @@ describe("V69: the studio routes under the upload ceiling", () => {
   }, 30_000);
 });
 
-describe("the studio's turn at the gate (WO-185a follow-ups)", () => {
+describe("the studio's turn at the gate", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });

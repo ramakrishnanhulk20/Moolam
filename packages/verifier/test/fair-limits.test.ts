@@ -6,7 +6,7 @@
 // whose body stops arriving is closed after the idle limit and gives its share back, while a
 // request whose body is in stays open past that limit as it waits on a match. At the match gate one key holds one slot at a time, and /prepare keeps a
 // slot of its own that verifies can never take. A caller turned away hears a busy service in
-// general words (WO-185a follow-up).
+// general words.
 // Callers are told apart by X-Forwarded-For, believed here because TRUST_PROXY names loopback.
 // Does NOT cover /prepare, /edit and /unseal taking a share (test/studio-ceiling.test.ts), the
 // ceiling's plain rules (test/upload-ceiling.test.ts), or the 180 second whole-request limit, which

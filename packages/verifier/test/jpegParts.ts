@@ -1,7 +1,6 @@
 import sharp from "sharp";
 
 // Builders for JPEG files whose segments a test chooses, and the review's pictures from pass 6.
-// Kept apart from helpers.ts so the other open work order can rely on that file staying as it is.
 
 /** One JPEG marker segment: FF, the marker, a two byte length that counts itself, the payload. */
 export function segment(marker: number, payload: Buffer): Buffer {

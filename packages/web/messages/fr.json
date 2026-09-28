@@ -1713,7 +1713,6 @@
     "notePrivate": "Gratuit. Le workflow confidentiel Chainlink ouvre la petite copie privée que garde Moolam, compare l'empreinte et inscrit son verdict sur Monad. Le verdict arrive en général sur la blockchain en quelques minutes.",
     "runningPrivate": "En cours : le workflow ouvre la copie privée et compare l'empreinte.",
     "recheckedOn": "Revérifiée le {date}",
-    "claimedTx": "Transaction annoncée {hash}",
     "confirming": "La file indique que cette vérification est terminée. Elle apparaîtra comme terminée dès que son verdict sera lisible sur Monad."
   },
   "mine": {

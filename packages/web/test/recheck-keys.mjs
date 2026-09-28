@@ -2,7 +2,8 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 /**
- * Counts every string this order added, in every language file there is.
+ * Every string the re-check control reads, so the suite can check each one
+ * exists in all ten languages.
  *
  * Run it with `node test/recheck-keys.mjs` from packages/web. It prints one
  * line per key with the number of languages that say it, and exits 1 if any
@@ -29,7 +30,6 @@ const CONTROL = [
   "running",
   "done",
   "doneNoTime",
-  "claimedTx",
   "confirming",
   "failed",
   "failedNoReason",
@@ -53,7 +53,6 @@ export const RECHECK_PLACEHOLDERS = {
   "recheck.already": ["{at}", "{position}"],
   "recheck.alreadyWaiting": ["{at}"],
   "recheck.done": ["{at}"],
-  "recheck.claimedTx": ["{hash}"],
   "recheck.failed": ["{reason}"],
 };
 

@@ -921,7 +921,7 @@ function modelQueue(ids: string[]): {
   };
 }
 
-describe("the runner review findings, each shown failing on the code before WO-175", () => {
+describe("the runner review findings, each shown failing on the code before its fix", () => {
   const HOUR = 3_600_000;
 
   it("hands back every request it claims, on every way a run can stop (tally R1)", async () => {
@@ -1224,7 +1224,7 @@ describe("a report whose done never reached the service (verifier review pass 4,
   });
 });
 
-describe("a broadcast run the CLI printed no report hash for (WO-190)", () => {
+describe("a broadcast run the CLI printed no report hash for", () => {
   /** The passport and the report the droplet's CLI v1.35.0 sent on 2026-09-27 without printing its hash. */
   const OBSERVED = "0xfd09a7710088e9bdcdd630904668c29e54a4042eafdab74f25749d397eef6c98";
   const OBSERVED_TX = "0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b";
@@ -1387,7 +1387,7 @@ describe("a broadcast run the CLI printed no report hash for (WO-190)", () => {
   });
 });
 
-describe("a report still being mined, and an index that is behind the chain (WO-196)", () => {
+describe("a report still being mined, and an index that is behind the chain", () => {
   const LATE = "0xfd09a7710088e9bdcdd630904668c29e54a4042eafdab74f25749d397eef6c98";
   const LATE_TX = "0x37717b0c067afcc65bf79d036de55c2bcc1b22b08143b3ac28c3320bd3abe24b";
   const ZERO_HASH_OUTPUT = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "simulate-dry-run.txt"), "utf8");
