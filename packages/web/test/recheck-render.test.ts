@@ -268,7 +268,7 @@ describe("every state the reader can meet", () => {
     for (const [caption, state, spent] of scenes) {
       const markup = control(state, spent);
       expect(markup, caption).toContain("min-h-[2.75rem]");
-      expect(markup, caption).toContain("min-h-[4.25rem]");
+      expect(markup, caption).toContain("min-h-[4.875rem]");
     }
   });
 

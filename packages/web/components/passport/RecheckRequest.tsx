@@ -205,7 +205,7 @@ function Control({
           equal pull, so it lies in the padding of the section it ends. */}
       <div
         data-recheck-room={tuck ? "tucked" : "kept"}
-        className={`mt-3 min-h-[4.25rem] sm:min-h-[3.25rem] ${tuck ? TUCKED_ROOM : ""}`}
+        className={`mt-3 min-h-[4.875rem] sm:min-h-[3.25rem] ${tuck ? TUCKED_ROOM : ""}`}
       >
         <AnimatePresence mode="wait" initial={false}>
           <Sentence key={state.kind} state={state} spent={recheck.spent} calm={calm} sealed={sealed} />

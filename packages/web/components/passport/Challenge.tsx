@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { useEffect, useSyncExternalStore } from "react";
 import { formatEther, type Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { useRouter } from "@/lib/i18n/routing";
@@ -45,11 +46,106 @@ export function Challenge({
     },
   });
 
-  if (disputeOpen || !flag.ready || !flag.authenticated || flag.isOwner) {
-    return null;
-  }
+  const kept = useSyncExternalStore(
+    subscribe,
+    () => keptChallenge(passportId),
+    () => keptChallenge(passportId),
+  );
+  // A flag can only have landed once the wallet is up, so nothing about the
+  // flag's own state is read before then.
+  const landed = flag.ready && isFlagDone(flag.state);
+  const landedHash = landed ? flag.state.hash : undefined;
+  const landedBlock = landed ? flag.state.block : null;
+  useEffect(() => {
+    if (landed) {
+      keepChallenge(passportId, { hash: landedHash, block: landedBlock });
+    }
+  }, [landed, landedHash, landedBlock, passportId]);
 
-  return <Panel flag={flag} />;
+  const view = challengeView({
+    kept: kept !== undefined,
+    disputeOpen,
+    ready: flag.ready,
+    authenticated: flag.authenticated,
+    isOwner: flag.isOwner,
+  });
+  if (view === "receipt" && kept !== undefined) {
+    return <KeptReceipt receipt={kept} />;
+  }
+  return view === "panel" ? <Panel flag={flag} /> : null;
+}
+
+/** What a challenge that landed leaves behind: its transaction and the block Monad put it in. */
+export interface ChallengeReceipt {
+  hash: Hex | undefined;
+  block: bigint | null;
+}
+
+// Held at module level, not in the hook's state, because the refresh after the
+// flag lands opens the dispute on the page, and a passport with an open dispute
+// draws no panel. These last until the tab is closed or reloaded, which is the
+// visit, the same as the unseal receipt next door.
+const challengeReceipts = new Map<string, ChallengeReceipt>();
+const listeners = new Set<() => void>();
+
+const keyOf = (passportId: string): string => passportId.toLowerCase();
+
+/** Keeps the Recorded receipt for this passport for the rest of the visit. */
+export function keepChallenge(passportId: Hex, receipt: ChallengeReceipt): void {
+  const key = keyOf(passportId);
+  const held = challengeReceipts.get(key);
+  if (held !== undefined && held.hash === receipt.hash && held.block === receipt.block) {
+    return;
+  }
+  challengeReceipts.set(key, receipt);
+  for (const notify of listeners) {
+    notify();
+  }
+}
+
+/** The receipt this visit kept for a passport, if a challenge landed from here. */
+export function keptChallenge(passportId: Hex): ChallengeReceipt | undefined {
+  return challengeReceipts.get(keyOf(passportId));
+}
+
+function subscribe(notify: () => void): () => void {
+  listeners.add(notify);
+  return () => {
+    listeners.delete(notify);
+  };
+}
+
+/**
+ * Which of the three the passport page draws. A receipt this visit kept wins
+ * over everything, the open dispute and a sign-out included, because it is a
+ * public transaction the reader was just shown and has every right to keep
+ * reading.
+ */
+export function challengeView(standing: {
+  kept: boolean;
+  disputeOpen: boolean;
+  ready: boolean;
+  authenticated: boolean;
+  isOwner: boolean;
+}): "receipt" | "panel" | "none" {
+  if (standing.kept) {
+    return "receipt";
+  }
+  if (standing.disputeOpen || !standing.ready || !standing.authenticated || standing.isOwner) {
+    return "none";
+  }
+  return "panel";
+}
+
+/** The kept receipt in the same frame the form stood in, without the toggle: a challenge that is on chain cannot be closed. */
+export function KeptReceipt({ receipt }: { receipt: ChallengeReceipt }) {
+  return (
+    <section data-dispute-panel data-challenge-kept className="mt-12 border-t border-line pt-6">
+      <div className="mt-7 border-s-2 border-failed bg-failed/5 p-6 sm:p-8">
+        <Recorded receipt={receipt} />
+      </div>
+    </section>
+  );
 }
 
 function Panel({ flag }: { flag: FlagPassport }) {
@@ -87,7 +183,11 @@ function Panel({ flag }: { flag: FlagPassport }) {
             className="overflow-hidden"
           >
             <div className="mt-7 border-s-2 border-failed bg-failed/5 p-6 sm:p-8">
-              {isFlagDone(state) ? <Recorded flag={flag} /> : <Form flag={flag} />}
+              {isFlagDone(state) ? (
+                <Recorded receipt={{ hash: state.hash, block: state.block }} />
+              ) : (
+                <Form flag={flag} />
+              )}
             </div>
           </motion.div>
         ) : null}
@@ -182,12 +282,11 @@ function Form({ flag }: { flag: FlagPassport }) {
 }
 
 /** The receipt: the challenge is on the record, and where to read the transaction. */
-function Recorded({ flag }: { flag: FlagPassport }) {
+function Recorded({ receipt }: { receipt: ChallengeReceipt }) {
   const t = useTranslations("passport.dispute.flag");
-  const { state } = flag;
-  // A receipt link is only ever offered for a hash the chain has shown. A hash
-  // from a send that has not been confirmed is not a receipt.
-  const hash = isFlagDone(state) ? state.hash : undefined;
+  // Only a flag the chain has shown is ever turned into a receipt, so the hash
+  // here is always one Monad confirmed, never a send still out.
+  const { hash, block } = receipt;
 
   return (
     <div>
@@ -204,7 +303,7 @@ function Recorded({ flag }: { flag: FlagPassport }) {
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.block")}</dt>
           <dd className="mt-1.5 font-mono text-sm tabular-nums">
-            {state.block === null ? t("done.blockPending") : state.block.toString()}
+            {block === null ? t("done.blockPending") : block.toString()}
           </dd>
         </div>
         <div className="min-w-0">
