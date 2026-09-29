@@ -980,18 +980,13 @@ class GatewaySilent extends Error {
   }
 }
 
-const heldDocument = unstable_cache(
+const heldDocumentRead = unstable_cache(
   async (metadataURI: string) => {
     const art = await readArt(metadataURI);
-    const said =
-      art.title !== undefined ||
-      art.description !== undefined ||
-      art.prompt !== undefined ||
-      art.thumbnailUrl !== undefined ||
-      // A sealed document is a real answer with no picture in it, so it is held
-      // like any other rather than read again on every view.
-      art.sealed === true;
-    if (!said) {
+    // readArt writes the title key on every document it read, sealed or empty,
+    // and leaves it off only when no gateway handed one over. A document that
+    // was read and names nothing is still an answer, and is held like any other.
+    if (!Object.hasOwn(art, "title")) {
       throw new GatewaySilent(metadataURI);
     }
     return art;
@@ -999,6 +994,18 @@ const heldDocument = unstable_cache(
   ["moolam-passport-art"],
   { revalidate: METADATA_HOLD_SECONDS, tags: [CACHE_TAGS.metadata] },
 );
+
+/**
+ * A document that was read, as the cache kept it.
+ *
+ * The cache stores its answer as JSON, which drops a key whose value is
+ * undefined, and the title key is what recordUnread (components/passport/unread.ts)
+ * tells a read record by. Everything that comes out of the cache was read, so
+ * the key is put back here, or an empty document would come back as unread.
+ */
+async function heldDocument(metadataURI: string): Promise<Art> {
+  return { title: undefined, ...(await heldDocumentRead(metadataURI)) };
+}
 
 /**
  * One passport's pinned metadata, held for a day.
