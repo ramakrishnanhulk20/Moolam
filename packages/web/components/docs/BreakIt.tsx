@@ -256,35 +256,17 @@ export function BreakIt() {
 
                   {/* The height is fixed so that twelve answers arriving one by
                       one move nothing else on the page. A long answer scrolls
-                      inside this box instead. */}
+                      inside this box instead. The plain sentence leads when
+                      there is one, since it is the answer a reader came for,
+                      and the decoded call with its long hex arguments goes
+                      under it, where scrolling to it is a choice. */}
                   <div
                     tabIndex={0}
                     role="status"
                     aria-live="polite"
                     className="mt-3 h-[12.5rem] overflow-y-auto overflow-x-hidden rounded-[8px] border border-line bg-bg px-3 py-2 font-mono text-xs leading-[1.7] text-text-muted [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:h-[11.5rem]"
                   >
-                    <p className={isAsked(row) ? "text-text" : "text-text-faint"}>{headline(attack, row)}</p>
-                    {sentence === null ? null : (
-                      <p className="mt-2 font-body text-base leading-relaxed text-text-muted">{sentence}</p>
-                    )}
-                    {isAsked(row) && row.kind !== "unknown" ? (
-                      <p className="mt-1 text-text-faint">simulated at block {row.block.toLocaleString("en-US")}</p>
-                    ) : null}
-                    {isAsked(row) && row.kind === "unknown" ? (
-                      <p className="mt-2 font-body text-base leading-relaxed text-text-muted">
-                        The endpoint did not answer, so there is no result to show. Nothing was sent. Press Run again in
-                        a moment.
-                      </p>
-                    ) : null}
-                    {isAsked(row) ? null : (
-                      <p className="mt-1 text-text-faint">
-                        {attack.expected === null
-                          ? attack.answer === "passes"
-                            ? "the saved run went through with no revert"
-                            : "the saved run got a revert with no data"
-                          : `the saved run answered ${attack.expected}`}
-                      </p>
-                    )}
+                    <AnswerLines attack={attack} row={row} sentence={sentence} />
                   </div>
                 </div>
               </motion.article>
@@ -300,5 +282,46 @@ export function BreakIt() {
         </footer>
       </div>
     </section>
+  );
+}
+
+/**
+ * What one answer box says. Exported for the test: when Monad refused with an
+ * error a sentence was written for, the sentence comes before the decoded call.
+ */
+export function AnswerLines({ attack, row, sentence }: { attack: Attack; row: Row; sentence: string | null }) {
+  return (
+    <>
+      {sentence === null ? (
+        <p className={isAsked(row) ? "text-text" : "text-text-faint"}>{headline(attack, row)}</p>
+      ) : (
+        <>
+          <p data-refusal-sentence className="font-body text-base leading-relaxed text-text">
+            {sentence}
+          </p>
+          <p data-refusal-call className="mt-2 text-text-muted">
+            {headline(attack, row)}
+          </p>
+        </>
+      )}
+      {isAsked(row) && row.kind !== "unknown" ? (
+        <p className="mt-1 text-text-faint">simulated at block {row.block.toLocaleString("en-US")}</p>
+      ) : null}
+      {isAsked(row) && row.kind === "unknown" ? (
+        <p className="mt-2 font-body text-base leading-relaxed text-text-muted">
+          The endpoint did not answer, so there is no result to show. Nothing was sent. Press Run again in
+          a moment.
+        </p>
+      ) : null}
+      {isAsked(row) ? null : (
+        <p className="mt-1 text-text-faint">
+          {attack.expected === null
+            ? attack.answer === "passes"
+              ? "the saved run went through with no revert"
+              : "the saved run got a revert with no data"
+            : `the saved run answered ${attack.expected}`}
+        </p>
+      )}
+    </>
   );
 }
