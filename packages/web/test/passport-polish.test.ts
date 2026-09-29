@@ -190,7 +190,11 @@ describe("a facts link to a section lower on the page", () => {
   it("takes over a plain click through the link itself", () => {
     const { target, history } = stubs();
     vi.stubGlobal("document", { getElementById: (id: string) => (id === FACT_ANCHORS.madeBy ? target : null) });
-    vi.stubGlobal("window", { history, matchMedia: () => ({ matches: false }) });
+    vi.stubGlobal("window", {
+      history,
+      location: { pathname: "/en/passport/0x1", search: "" },
+      matchMedia: () => ({ matches: false }),
+    });
 
     const link = FactJumpLink({ href: `#${FACT_ANCHORS.madeBy}`, children: "Made by" });
     const event = click();
@@ -198,6 +202,8 @@ describe("a facts link to a section lower on the page", () => {
 
     expect(event.preventDefault).toHaveBeenCalled();
     expect(history.replaceState).toHaveBeenCalledTimes(1);
+    // The entry keeps the page's own address: a fragment there sent Back to the section.
+    expect(history.replaceState).toHaveBeenCalledWith(history.state, "", "/en/passport/0x1");
     expect(history.pushState).not.toHaveBeenCalled();
     expect(target.focus).toHaveBeenCalled();
   });
