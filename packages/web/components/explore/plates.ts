@@ -1,4 +1,5 @@
 import { unstable_cache } from "next/cache";
+import { recordUnread } from "@/components/passport/unread";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { disputedReach } from "@/lib/data/lineage";
 import {
@@ -14,16 +15,6 @@ import {
 import { filterFor, picturesFor, type ExploreSearch } from "./query";
 import { answersTerm, searchesTitles } from "./search";
 import { isTestCard, type ExplorePlate } from "./sort";
-
-/**
- * Whether a passport's pinned record never reached this server: no document at
- * all, or a gateway that gave back nothing with a title in it. Such a plate has
- * no title to judge, so it is judged by its passport's own kind and stays a
- * picture, rather than turning into a test card for a gateway's bad minute.
- */
-export function recordUnread(art: { missing: boolean; title?: string } | null): boolean {
-  return art === null || (art.missing && art.title === undefined);
-}
 
 /**
  * The index's rows with the picture each one points at.

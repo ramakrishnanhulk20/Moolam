@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import type { Hex } from "viem";
-import { recordUnread } from "@/components/explore/plates";
 import { isTestCard } from "@/components/explore/sort";
+import { recordUnread } from "@/components/passport/unread";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { isChainlinkReceiver } from "@/lib/chain/receivers";
 import { anyDisputed, LINEAGE_DEPTH, type AncestorRow } from "@/lib/data/lineage";
@@ -148,13 +148,15 @@ async function stripOf(generator: GeneratorStrip): Promise<AgentStrip> {
 /**
  * The tiles a row draws, out of the passports read for it, newest first.
  *
- * A sealed picture is a real one with nothing to look at, so it stays off a
- * strip of pictures; its plate is one press away on Explore. `complete` says
- * whether the read reached the agent's oldest passport.
+ * Only a picture that can be drawn takes a place. A sealed one is real with
+ * nothing to look at, and a record that was not read, or was read and names
+ * no picture, would be a tile holding only the seal; each of them is one press
+ * away on Explore. `complete` says whether the read reached the agent's oldest
+ * passport.
  */
 export function pickStrip(read: (StripTile & { test: boolean })[], complete: boolean): AgentStrip {
   const tiles = read
-    .filter((tile) => !tile.test && tile.sealed !== true)
+    .filter((tile) => !tile.test && tile.sealed !== true && tile.thumbnailUrl !== null)
     .slice(0, STRIP_PLACES)
     .map((tile) => ({
       id: tile.id,
