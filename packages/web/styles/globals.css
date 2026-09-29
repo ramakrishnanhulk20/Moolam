@@ -188,6 +188,46 @@ body {
   letter-spacing: 0.06em;
 }
 
+/* Every other label the site tracks out, from 0.1 to 0.3 em and at any width:
+   the evidence board's captions, the drop's kicker, the passports kicker under
+   it, the filters and the story's cards. The same wide letterforms fall apart
+   at those widths too. The class list is one class deep on purpose, so the two
+   rules above, which name more, still set the kickers at 0.08 em. Like them it
+   sits outside Tailwind's layers, which is what lets it beat the utilities. A
+   Latin word inside one of these labels, MONAD or an id, loses its spacing
+   here, which is the price of the label reading as words. */
+:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko), html:lang(ta))
+  :is(
+    .tracking-\[0\.1em\],
+    .tracking-\[0\.12em\],
+    .tracking-\[0\.14em\],
+    .tracking-\[0\.16em\],
+    .tracking-\[0\.18em\],
+    .tracking-\[0\.2em\],
+    .tracking-\[0\.22em\],
+    .tracking-\[0\.24em\],
+    .tracking-\[0\.28em\],
+    .tracking-\[0\.3em\],
+    .tracking-\[0\.4em\],
+    .sm\:tracking-\[0\.16em\],
+    .sm\:tracking-\[0\.18em\],
+    .lg\:tracking-\[0\.1em\],
+    .lg\:tracking-\[0\.14em\],
+    .lg\:tracking-\[0\.2em\],
+    .focus\:tracking-\[0\.2em\]
+  ) {
+  letter-spacing: 0.06em;
+}
+
+/* The mono face draws a space as wide as a letter, 0.6 em, where the Tamil,
+   Devanagari and Hangul faces draw about 0.25 em, so a label in one of those
+   scripts set in mono left a gap of two letters between its words. Taking 0.35
+   em off the space gives it the width the script's own face gives it. Code keeps
+   its spaces, because there they are indentation. */
+:where(html:lang(hi), html:lang(ko), html:lang(ta)) .font-mono:not(pre, pre *, code, code *) {
+  word-spacing: -0.35em;
+}
+
 /* Tailwind's reset leaves buttons with the arrow. A cursor utility on the
    element itself still wins, because this sits in the base layer under them. */
 @layer base {
@@ -1245,13 +1285,13 @@ html.light .story-frame [data-beat="opening"] {
   top: 2.4rem;
   right: 0.55rem;
   z-index: 1;
-  max-width: min(18rem, calc(100% - 1.1rem));
+  max-width: min(24rem, calc(100% - 1.1rem));
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--bg-raised);
-  font-size: 0.78rem;
-  line-height: 1.45;
+  font-size: 1rem;
+  line-height: 1.5;
   color: var(--text);
 }
 
