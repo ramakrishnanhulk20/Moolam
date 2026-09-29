@@ -569,8 +569,10 @@ describe("the compact openings on the real routes", () => {
     expect(markup).toContain(en.explore.marksToggle);
     expect(tagOf(markup, "data-marks-key")).toMatch(/\bhidden\b/);
     expect(tagOf(markup, "data-marks-key")).toContain("sm:flex");
-    // The chips and the AI row keep their sm values, so a laptop's bar is today's.
-    expect(wide(classAt(markup, /<div class="([^"]*border-y border-line[^"]*)"/))).toEqual(["sm:mt-10", "sm:py-5"]);
+    // The tablet keeps its sm values, and the laptop's compact opening tightens the bar from 1024 px.
+    expect(wide(classAt(markup, /<div class="([^"]*border-y border-line[^"]*)"/))).toEqual(
+      ["sm:mt-10", "sm:py-5", "lg:mt-5", "lg:py-3"].sort(),
+    );
   });
 
   it("fold Explore's four counts into one line on a phone", async () => {
@@ -586,43 +588,45 @@ describe("the compact openings on the real routes", () => {
     expect(grid).not.toContain("grid-cols-2 sm:");
   });
 
-  it("leave Explore's laptop masthead exactly as it was", async () => {
+  it("open Explore compact on a laptop: one title row, the counts strip, the chips before the grid", async () => {
     const counts = { total: 41, generated: 32, rechecked: 20, stated: 17, capped: false };
     const split = { real: 17, test: 24, scanned: 41, capped: false };
     const markup = renderToStaticMarkup(
       await ExploreMasthead({ locale: "en", counts, countsError: null, split, view: "pictures" }),
     );
 
-    // The classes from 640 px up, as they were before the phone opening came in.
-    expect(wide(classAt(markup, /<div class="(grid gap-x-16[^"]*)"/))).toEqual(
-      ["lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)]", "lg:items-end", "sm:gap-y-10"].sort(),
-    );
-    expect(wide(classAt(markup, /<h1 class="([^"]*)"/))).toEqual(["sm:mt-6", "sm:text-[clamp(2.4rem,8.5vw,6.5rem)]"]);
-    expect(wide(classAt(markup, new RegExp(`<p class="([^"]*)"[^>]*>${en.explore.lede.slice(0, 20)}`)))).toEqual([
-      "sm:mt-7",
-      "sm:text-lg",
-    ]);
-    expect(wide(classAt(markup, /<div class="(rise sm:border-t[^"]*)"/))).toEqual(
-      [
-        "sm:border-t",
-        "sm:border-line",
-        "sm:pt-6",
-        "lg:border-t-0",
-        "lg:border-s",
-        "lg:border-line",
-        "lg:pt-0",
-        "lg:ps-12",
-      ].sort(),
-    );
-    expect(wide(tagOf(markup, "data-counts-grid").match(/class="([^"]*)"/)?.[1].split(" ") ?? [])).toEqual(
-      ["sm:grid", "sm:grid-cols-4", "lg:grid-cols-2"].sort(),
-    );
-    expect(wide(classAt(markup, /<p class="([^"]*tracking-\[0\.2em\][^"]*)"/))).toEqual(["sm:mt-10"]);
-
-    // Every phone value that changed has a laptop value beside it that wins from 640 px.
+    // The title on one row with the lede beside it, and no poster left over.
+    expect(tagOf(markup, 'data-opening="compact"')).toContain("lg:grid-cols-2");
     const title = classAt(markup, /<h1 class="([^"]*)"/);
+    expect(title).toEqual(expect.arrayContaining(["lg:whitespace-nowrap", "lg:text-[3rem]"]));
+    expect(wide(classAt(markup, new RegExp(`<p class="([^"]*)"[^>]*>${en.explore.lede.slice(0, 20)}`)))).toContain(
+      "lg:justify-self-end",
+    );
+    expect(markup).not.toContain("vertical-rl");
+    expect(markup).toContain(en.explore.rail);
+
+    // The four counts and the split on one strip under it.
+    expect(tagOf(markup, "data-counts-strip")).toContain("lg:flex");
+    expect(tagOf(markup, "data-counts-grid")).toContain("lg:flex");
+    for (const label of Object.values(en.explore.counts)) {
+      expect(markup).toContain(label);
+    }
+
+    // The chips in one row, the AI-use answers behind one chip in it.
+    const chips = render(createElement(Filters, { search: { view: "pictures" as const, search: "", agent: null, ai: null } }));
+    expect(tagOf(chips, "data-ai-toggle")).toContain("lg:inline-flex");
+    expect(tagOf(chips, "data-ai-row")).toContain("lg:hidden");
+
+    // And the chips come before the grid on the page.
+    const { readFileSync } = await import("node:fs");
+    const sheet = readFileSync(new URL("../components/explore/Sheet.tsx", import.meta.url), "utf8");
+    expect(sheet.indexOf("<Masthead")).toBeLessThan(sheet.indexOf("<Filters"));
+    expect(sheet.indexOf("<Filters")).toBeLessThan(sheet.indexOf("<Grid"));
+
+    // Every phone value keeps its place under the laptop ones.
     expect(title).toContain("mt-2.5");
     expect(title).toContain("text-[clamp(1.75rem,8vw,2.25rem)]");
+    expect(title).toContain("sm:text-[clamp(2.4rem,8.5vw,6.5rem)]");
   });
 
   it("keep the openings' words free of the long dash in every language they ship in", () => {

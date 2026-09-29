@@ -32,6 +32,12 @@ export interface ExplorePlate {
   sealed?: boolean;
   /** The 256 bit block hash a sealed plate is drawn from, read from the pinned document. */
   blockhash?: string;
+  /**
+   * True when the pinned record never arrived, a slow gateway for one. The plate
+   * has no title because nobody could read it, not because the record has none,
+   * so it is still a picture of its own kind.
+   */
+  unread?: boolean;
 }
 
 /**
@@ -59,21 +65,30 @@ const TEST_IDS: ReadonlySet<string> = new Set([
  *
  * The title is what separates the scripts' cards. The agent id does not: the
  * seed script signs every card it writes with the demo generator, so "has a
- * generator" would call every seed card a real picture. A plate whose metadata
- * would not load has no title to judge, and those sort with the test cards
- * rather than above pictures a reader can actually see.
+ * generator" would call every seed card a real picture. A record that was
+ * read and carries no title sorts with the test cards. A record the gateway
+ * never handed over is different: on 28 September a slow gateway turned real
+ * pictures into test cards, dropped them off the Pictures sheet and out of the
+ * pictures count, and left the sheet saying nothing matched. Those keep their
+ * place among the pictures.
  *
  * The id is optional so a caller holding only a title still gets the title
  * rule; every caller that has the id should pass it, or the chips, the counts
  * and the order stop agreeing.
  */
-export function isTestCard(title: string | null, id?: string | null): boolean {
+export function isTestCard(title: string | null, id?: string | null, unread = false): boolean {
   if (id !== undefined && id !== null && TEST_IDS.has(id.toLowerCase())) {
     return true;
+  }
+  if (unread) {
+    return false;
   }
   const clean = (title ?? "").trim();
   return clean === "" || TEST_TITLE.test(clean);
 }
+
+/** What the sort and the merge read off a plate. */
+type Sortable = { id: string; registeredAt: number; title: string | null; unread?: boolean };
 
 /**
  * Newest first, with the real pictures ahead of the seed test cards.
@@ -82,9 +97,10 @@ export function isTestCard(title: string | null, id?: string | null): boolean {
  * order the page states in one line above the grid. Ties inside a second fall
  * back to the id so the same set always lands in the same order.
  */
-export function sortPlates<T extends { id: string; registeredAt: number; title: string | null }>(plates: T[]): T[] {
+export function sortPlates<T extends Sortable>(plates: T[]): T[] {
   return [...plates].sort((left, right) => {
-    const rank = Number(isTestCard(left.title, left.id)) - Number(isTestCard(right.title, right.id));
+    const rank =
+      Number(isTestCard(left.title, left.id, left.unread)) - Number(isTestCard(right.title, right.id, right.unread));
     if (rank !== 0) {
       return rank;
     }
@@ -104,7 +120,7 @@ export function sortPlates<T extends { id: string; registeredAt: number; title: 
  * the button they pressed showed nothing new. A plate already held is dropped,
  * so a slow second press cannot show one twice.
  */
-export function mergePlates<T extends { id: string; registeredAt: number; title: string | null }>(
+export function mergePlates<T extends Sortable>(
   held: T[],
   arriving: T[],
 ): T[] {

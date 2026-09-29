@@ -28,7 +28,7 @@ export const DEFAULT_VIEW: ExploreView = "pictures";
 /** Everything the URL says about what the grid is showing. */
 export interface ExploreSearch {
   view: ExploreView;
-  /** The term typed into the search box, matched against the passport id. */
+  /** The term typed into the search box: a passport id, or words from a title (see search.ts). */
   search: string;
   /** An agent id, when a reader arrived from the agents page. */
   agent: string | null;

@@ -34,7 +34,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   const kinds = useTranslations("kind");
   const common = useTranslations("common");
   const format = useFormatter();
-  const test = isTestCard(plate.title, plate.id);
+  const test = isTestCard(plate.title, plate.id, plate.unread === true);
   const sealed = plate.sealed === true;
 
   // Centred on the whole plate, the seal sat under the title and the id on a

@@ -7,6 +7,7 @@ import { UseBlock } from "@/components/consent/Marks";
 import { SUMMARY_TONES } from "@/components/consent/tones";
 import type { Consent } from "@/lib/chain/consent";
 import { Link, useRouter } from "@/lib/i18n/routing";
+import { useAiWord } from "./aiWord";
 import { useReading } from "./Reading";
 import {
   AI_VIEWS,
@@ -49,6 +50,10 @@ export function Filters({ search }: { search: ExploreSearch }) {
   // A phone keeps the key to the letters behind one small press, so the first
   // pictures reach the first screen. From 640 px up the key is always shown.
   const [keyShown, setKeyShown] = useState(false);
+  // From 1024 px the AI-use answers fold behind one chip at the end of the
+  // row, so every chip is on one line and the pictures reach the first screen.
+  const [aiShown, setAiShown] = useState(false);
+  const aiWord = useAiWord();
   const router = useRouter();
   const { reading, hold } = useReading();
   const [searching, startSearching] = useTransition();
@@ -58,7 +63,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
   useEffect(() => (searching ? hold() : undefined), [searching, hold]);
 
   return (
-    <div className="mt-4 border-y border-line py-3 sm:mt-10 sm:py-5">
+    <div className="mt-4 border-y border-line py-3 sm:mt-10 sm:py-5 lg:mt-5 lg:py-3">
       <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
         {/* Nine chips wrapped onto four rows at 375 px and took a third of the
             first screen, which is the screen the pictures are meant to be on. On a
@@ -66,15 +71,38 @@ export function Filters({ search }: { search: ExploreSearch }) {
             it reads as a row that carries on. From 640 px they wrap as before. */}
         <nav
           aria-label={t("chipsLabel")}
-          className="-mx-5 flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:-mx-1 sm:flex-wrap sm:overflow-x-visible sm:px-1"
+          className="-mx-5 flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:-mx-1 sm:flex-wrap sm:overflow-x-visible sm:px-1 lg:gap-1"
         >
           {PICTURE_VIEWS.map((view) => (
             <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
           ))}
-          <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-line-strong sm:block" />
+          <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-line-strong sm:block lg:mx-1" />
           {RECORD_VIEWS.map((view) => (
             <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
           ))}
+          <span aria-hidden className="mx-1 hidden h-4 w-px shrink-0 bg-line-strong lg:block" />
+          <button
+            type="button"
+            data-ai-toggle
+            aria-expanded={aiShown}
+            aria-controls="explore-ai-row"
+            onClick={() => setAiShown((shown) => !shown)}
+            className={`tap hidden shrink-0 items-center gap-2 rounded-[8px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-200 lg:inline-flex ${
+              search.ai === null
+                ? "border-line text-text-muted hover:border-line-strong hover:text-text"
+                : "border-accent bg-accent-soft text-accent hover:border-line-strong"
+            }`}
+          >
+            {search.ai === null ? null : (
+              <span aria-hidden className={`h-[6px] w-[6px] shrink-0 ${SUMMARY_TONES[search.ai].fill}`} />
+            )}
+            <span>
+              {t("ai.label")}: {aiWord(search.ai)}
+            </span>
+            <span aria-hidden className={`inline-block transition-transform duration-200 ${aiShown ? "rotate-90" : ""}`}>
+              &rsaquo;
+            </span>
+          </button>
           {search.agent === null ? null : (
             <Link
               href={exploreHref({ ...search, agent: null })}
@@ -100,7 +128,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
           className="flex items-center gap-2"
         >
           <label htmlFor="explore-search" className="sr-only">
-            {t("searchLabel")}
+            {t("searchAnyLabel")}
           </label>
           {/* Uncontrolled, and keyed by the term in the URL: a chip is a navigation,
               and the box has to follow it rather than keep a word the grid is no
@@ -110,14 +138,14 @@ export function Filters({ search }: { search: ExploreSearch }) {
             id="explore-search"
             name="q"
             defaultValue={search.search}
-            placeholder={t("searchPlaceholder")}
+            placeholder={t("searchAnyPlaceholder")}
             spellCheck={false}
             autoComplete="off"
-            className="min-h-[44px] w-full min-w-0 rounded-[8px] border border-line bg-bg-raised px-4 py-2.5 font-mono text-[12px] text-text outline-none transition-colors duration-200 placeholder:text-text-faint hover:border-line-strong focus:border-accent lg:w-[22rem]"
+            className="min-h-[44px] w-full min-w-0 rounded-[8px] border border-line bg-bg-raised px-4 py-2.5 font-mono text-[12px] text-text outline-none transition-colors duration-200 placeholder:text-text-faint hover:border-line-strong focus:border-accent lg:w-[13.5rem] lg:px-3.5"
           />
           <button
             type="submit"
-            className={`relative min-h-[44px] rounded-[8px] border px-4 py-2.5 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 ${
+            className={`relative min-h-[44px] rounded-[8px] border px-4 py-2.5 font-mono lg:px-3.5 text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 ${
               searching
                 ? "border-accent text-text-faint"
                 : "border-line-strong text-text hover:border-accent hover:text-accent"
@@ -140,7 +168,11 @@ export function Filters({ search }: { search: ExploreSearch }) {
           record says, and a reader narrowing by it should be able to see that
           they have. The row scrolls sideways on a phone, like the one above it,
           and the label stays put while it does. */}
-      <div className="mt-2 flex items-center gap-3 sm:mt-5">
+      <div
+        id="explore-ai-row"
+        data-ai-row
+        className={`mt-2 flex items-center gap-3 sm:mt-5 ${aiShown ? "rise lg:mt-3" : "lg:hidden"}`}
+      >
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
           {t("ai.label")}
         </span>
@@ -159,7 +191,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
           a thumb, so on a phone they were three unexplained letters. The row
           keeps its height whether or not the sheet is being read, so nothing on
           the page moves when the mark lights. */}
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5">
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 lg:mt-3">
         <button
           type="button"
           data-marks-toggle
@@ -238,7 +270,7 @@ function Chip({ view, search, label }: { view: ExploreView; search: ExploreSearc
       href={exploreHref({ ...search, view })}
       prefetch={false}
       aria-current={on ? "true" : undefined}
-      className={`tap inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 ${
+      className={`tap inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 lg:px-3 lg:tracking-[0.14em] ${
         on
           ? "border-accent bg-accent-soft text-accent"
           : "border-line text-text-muted hover:border-line-strong hover:text-text"
@@ -252,16 +284,13 @@ function Chip({ view, search, label }: { view: ExploreView; search: ExploreSearc
 /**
  * One chip in the AI-use row, including the way back to any answer at all.
  *
- * Two of the four words are read straight out of the passport page's own
- * vocabulary, so a picture called "Not for AI training" there can never be
- * called something else here. Each answer carries the colour it is drawn in on
- * that page as well, from the cold status family rather than the one accent.
+ * Each answer carries the colour it is drawn in on the passport page, from the
+ * cold status family rather than the one accent.
  */
 function AiChip({ ai, search }: { ai: ExploreAi | null; search: ExploreSearch }) {
-  const t = useTranslations("explore");
-  const said = useTranslations("passport.consent.summary");
+  const aiWord = useAiWord();
   const on = search.ai === ai;
-  const label = ai === null ? t("ai.any") : ai === "ask" || ai === "none" ? t(`ai.${ai}`) : said(ai);
+  const label = aiWord(ai);
 
   return (
     <Link

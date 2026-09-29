@@ -30,54 +30,65 @@ export async function Masthead({
   const t = await getTranslations("explore");
   // A phone gets a short opening so the first pictures reach its first screen.
   // Every phone class here is paired with an sm value, and those draw the
-  // laptop's masthead from 640 px up.
+  // tablet's masthead from 640 px up.
+  //
+  // From 1024 px the page opens the way Verify does: the title on one row with
+  // the lede beside it and the counts as one strip, so the whole first row of
+  // pictures is on a 1440 by 900 laptop's first screen. Under the poster-size
+  // title those pictures started below the fold.
 
   // Tamil letters carry marks above and below the line, so the tight leading the
   // display face wants in Latin makes two lines touch.
-  const leading = locale === "ta" ? "leading-[1.12]" : "leading-[0.86]";
+  const leading = locale === "ta" ? "leading-[1.12]" : "leading-[0.86] lg:leading-[0.92]";
 
   return (
     <header className="relative">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute right-0 top-16 hidden select-none font-mono text-[11px] uppercase tracking-[0.4em] text-text-faint lg:block"
-        style={{ writingMode: "vertical-rl" }}
+      <div
+        data-opening="compact"
+        className="max-w-[54ch] lg:grid lg:max-w-none lg:grid-cols-2 lg:items-end lg:gap-x-12 lg:border-b lg:border-line lg:pb-6"
       >
-        {t("rail")}
-      </span>
-
-      <div className="grid gap-x-16 gap-y-3 sm:gap-y-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:items-end">
-        <div className="max-w-[54ch]">
+        <div>
           <p className="rise flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-accent">
             <span className="motif h-[10px] w-[10px]" />
             {t("kicker")}
+            {/* The rail stood on its side down the poster's right edge. The
+                compact opening has no free edge, so it follows the kicker. */}
+            <span aria-hidden className="hidden items-center gap-3 text-text-faint lg:inline-flex">
+              <span className="h-px w-6 bg-line-strong" />
+              {t("rail")}
+            </span>
           </p>
 
           <h1
-            className={`rise mt-2.5 max-w-[11ch] font-display text-[clamp(1.75rem,8vw,2.25rem)] font-semibold uppercase tracking-[-0.035em] sm:mt-6 sm:text-[clamp(2.4rem,8.5vw,6.5rem)] ${leading}`}
+            className={`rise mt-2.5 max-w-[11ch] font-display text-[clamp(1.75rem,8vw,2.25rem)] font-semibold uppercase tracking-[-0.035em] sm:mt-6 sm:text-[clamp(2.4rem,8.5vw,6.5rem)] lg:mt-3 lg:max-w-none lg:whitespace-nowrap lg:text-[3rem] ${leading}`}
             style={{ animationDelay: "60ms" }}
           >
             {t("title")}
           </h1>
-
-          <p
-            className="rise mt-2.5 max-w-[52ch] text-sm leading-relaxed text-text-muted sm:mt-7 sm:text-lg"
-            style={{ animationDelay: "120ms" }}
-          >
-            {t("lede")}
-          </p>
         </div>
 
+        <p
+          className="rise mt-2.5 max-w-[52ch] text-sm leading-relaxed text-text-muted sm:mt-7 sm:text-lg lg:mt-0 lg:max-w-[56ch] lg:justify-self-end lg:text-base"
+          style={{ animationDelay: "120ms" }}
+        >
+          {t("lede")}
+        </p>
+      </div>
+
+      <div
+        data-counts-strip
+        className="mt-3 sm:mt-10 lg:mt-5 lg:flex lg:flex-wrap lg:items-baseline lg:gap-x-4 lg:gap-y-2"
+      >
         {countsError !== null || counts === null ? (
           <p
-            className="rise max-w-[40ch] border-t border-line pt-5 text-sm leading-relaxed text-failed sm:pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
+            className="rise max-w-[40ch] border-t border-line pt-5 text-sm leading-relaxed text-failed sm:pt-6 lg:max-w-none lg:flex-1 lg:border-t-0 lg:pt-0"
             style={{ animationDelay: "180ms" }}
           >
             {t("countsError", { reason: countsError ?? t("countsMissing") })}
           </p>
         ) : (
           <div
-            className="rise sm:border-t sm:border-line sm:pt-6 lg:border-t-0 lg:border-s lg:border-line lg:pt-0 lg:ps-12"
+            className="rise sm:border-t sm:border-line sm:pt-6 lg:flex lg:flex-1 lg:flex-wrap lg:items-baseline lg:gap-x-10 lg:gap-y-2 lg:border-t-0 lg:pt-0"
             style={{ animationDelay: "180ms" }}
           >
             {/* On a phone the four counts are one line, the way the split
@@ -98,10 +109,12 @@ export async function Masthead({
                 </>
               )}
             </p>
-            {/* Four across from 640 px and two up in the narrow column beside
-                the title, so a five word label never has to fit in a quarter of
-                400 px. */}
-            <dl data-counts-grid className="hidden gap-x-6 gap-y-5 sm:grid sm:grid-cols-4 lg:grid-cols-2">
+            {/* Four across from 640 px, so a five word label never has to fit
+                in a quarter of 400 px, and one strip of figures from 1024 px. */}
+            <dl
+              data-counts-grid
+              className="hidden gap-x-6 gap-y-5 sm:grid sm:grid-cols-4 lg:flex lg:flex-wrap lg:items-baseline lg:gap-x-10 lg:gap-y-2"
+            >
               <Count label={t("counts.total")} value={counts.total} lead />
               <Count label={t("counts.generated")} value={counts.generated} capped={counts.capped} />
               <Count label={t("counts.rechecked")} value={counts.rechecked} capped={counts.capped} />
@@ -112,7 +125,7 @@ export async function Masthead({
             </dl>
 
             {split === null ? null : (
-              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5">
+              <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 lg:ms-auto lg:mt-0">
                 <span className="text-accent">{t("split.real", { count: split.real })}</span>
                 <span aria-hidden className="h-[9px] w-px bg-line-strong" />
                 <span>
@@ -124,12 +137,12 @@ export async function Masthead({
             )}
           </div>
         )}
-      </div>
 
-      <p className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint sm:mt-10">
-        <span aria-hidden className="h-px w-8 bg-line-strong" />
-        {isMixedView(view) ? t("sortRule") : t("sortNewest")}
-      </p>
+        <p className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint sm:mt-10 lg:mt-0">
+          <span aria-hidden className="h-px w-8 bg-line-strong" />
+          {isMixedView(view) ? t("sortRule") : t("sortNewest")}
+        </p>
+      </div>
     </header>
   );
 }
@@ -146,15 +159,15 @@ function CountWord({ value, label, lead, capped }: { value: number; label: strin
 
 function Count({ label, value, lead, capped }: { label: string; value: number; lead?: boolean; capped?: boolean }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 lg:flex lg:items-baseline lg:gap-2.5">
       <dd
-        className={`font-display font-semibold tabular-nums tracking-[-0.04em] ${
+        className={`font-display font-semibold tabular-nums tracking-[-0.04em] lg:text-[1.9rem] lg:leading-none ${
           lead ? "text-[clamp(2.4rem,6vw,4rem)] leading-[0.85] text-accent" : "text-[clamp(1.6rem,4vw,2.6rem)] leading-[0.9] text-text"
         }`}
       >
         {capped === true ? `${value}+` : value}
       </dd>
-      <dt className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-3">{label}</dt>
+      <dt className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-3 lg:mt-0">{label}</dt>
     </div>
   );
 }

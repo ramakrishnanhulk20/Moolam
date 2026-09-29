@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { IndexRetry } from "@/components/IndexRetry";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { PassportCursor } from "@/lib/data/passports";
@@ -43,11 +43,17 @@ export function Grid({
   cursor,
   search,
   indexError,
+  empty,
 }: {
   first: ExplorePlate[];
   cursor: PassportCursor | null;
   search: ExploreSearch;
   indexError: string | null;
+  /**
+   * What stands in for a sheet that matched nothing, drawn by the page that
+   * knows what narrowed it. Only the first page can be empty: Load more adds.
+   */
+  empty?: ReactNode;
 }) {
   const t = useTranslations("explore");
   const reduced = useIsReducedMotion();
@@ -80,7 +86,7 @@ export function Grid({
   }
 
   if (plates.length === 0) {
-    return <p className="mt-12 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>;
+    return empty ?? <p className="mt-12 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>;
   }
 
   return (
@@ -93,7 +99,7 @@ export function Grid({
           five on a phone, and the picture beside it fills the same height
           rather than leaving a band of empty ground under it. */}
       <ul
-        className={`mt-6 grid grid-cols-2 gap-px border border-line bg-line transition-opacity duration-300 sm:mt-10 sm:grid-cols-3 xl:grid-cols-4 ${
+        className={`mt-6 grid grid-cols-2 gap-px border border-line bg-line transition-opacity duration-300 sm:mt-10 sm:grid-cols-3 lg:mt-6 xl:grid-cols-4 ${
           reading ? "opacity-60" : "opacity-100"
         }`}
       >

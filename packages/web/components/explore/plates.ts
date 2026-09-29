@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { disputedReach } from "@/lib/data/lineage";
 import {
+  EXPLORE_PAGE,
   explorePassports,
   heldArt,
   passportMetadata,
@@ -11,7 +12,18 @@ import {
   type PassportPictures,
 } from "@/lib/data/passports";
 import { filterFor, picturesFor, type ExploreSearch } from "./query";
+import { answersTerm, searchesTitles } from "./search";
 import { isTestCard, type ExplorePlate } from "./sort";
+
+/**
+ * Whether a passport's pinned record never reached this server: no document at
+ * all, or a gateway that gave back nothing with a title in it. Such a plate has
+ * no title to judge, so it is judged by its passport's own kind and stays a
+ * picture, rather than turning into a test card for a gateway's bad minute.
+ */
+export function recordUnread(art: { missing: boolean; title?: string } | null): boolean {
+  return art === null || (art.missing && art.title === undefined);
+}
 
 /**
  * The index's rows with the picture each one points at.
@@ -45,6 +57,7 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         consent: row.consent,
         sealed: art?.sealed === true,
         blockhash: art?.blockhash,
+        unread: recordUnread(art),
       };
     }),
   );
@@ -67,8 +80,14 @@ export interface PlateSheet {
  * drawn reads the gateway once per row rather than once per pass. The test is
  * the same isTestCard the sort rule uses, so the chip and the order can never
  * disagree about what a test card is.
+ *
+ * `answers` is the second sieve a title search adds, read off the same plates,
+ * so a title costs no gateway read the sheet was not already making.
  */
-export function plateSheet(pictures: PassportPictures | undefined): PlateSheet {
+export function plateSheet(
+  pictures: PassportPictures | undefined,
+  answers?: (plate: ExplorePlate) => boolean,
+): PlateSheet {
   const built = new Map<string, ExplorePlate>();
 
   return {
@@ -76,10 +95,16 @@ export function plateSheet(pictures: PassportPictures | undefined): PlateSheet {
       for (const plate of await buildPlates(rows)) {
         built.set(plate.id, plate);
       }
-      if (pictures === undefined) {
-        return rows;
-      }
-      return rows.filter((row) => isTestCard(built.get(row.id)?.title ?? null, row.id) === (pictures === "test"));
+      return rows.filter((row) => {
+        const plate = built.get(row.id);
+        if (answers !== undefined && (plate === undefined || !answers(plate))) {
+          return false;
+        }
+        return (
+          pictures === undefined ||
+          isTestCard(plate?.title ?? null, row.id, plate?.unread ?? true) === (pictures === "test")
+        );
+      });
     },
     platesFor: (rows) => rows.map((row) => built.get(row.id)).filter((plate): plate is ExplorePlate => plate !== undefined),
   };
@@ -114,7 +139,7 @@ export async function pictureSplit(): Promise<PictureSplit> {
     const wave = await Promise.all(
       rows.slice(at, at + SPLIT_WAVE).map(async (row) => {
         const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI);
-        return isTestCard(art?.title ?? null, row.id);
+        return isTestCard(art?.title ?? null, row.id, recordUnread(art));
       }),
     );
     real += wave.filter((test) => !test).length;
@@ -139,6 +164,48 @@ export interface SheetPage {
   cursor: PassportCursor | null;
 }
 
+/**
+ * How many rows one page of a title search reads: every passport today, since
+ * the registry holds 43, and the same cap the split line reads under.
+ */
+export const TITLE_SCAN = SPLIT_CAP;
+
+/**
+ * One page of a search by title.
+ *
+ * The index cannot match a title, so this asks it once for every row the chips
+ * allow from the cursor on, reads each title through the held documents the
+ * sheet already reads, and keeps the rows whose title or id holds the term. One
+ * index query per page, the same as any other sheet. A page is cut at the same
+ * size as any other, and the cursor then points at its last row, so Load more
+ * carries on from there; a scan that stopped at the cap hands back the index's
+ * own cursor instead.
+ */
+async function titleSheet(search: ExploreSearch, cursor: PassportCursor | null): Promise<SheetPage> {
+  const sheet = plateSheet(picturesFor(search.view), (plate) => answersTerm(search.search, plate.id, plate.title));
+  const filter = filterFor({ ...search, search: "" });
+  // The halves are sifted by the sheet above. Left on the filter, a search that
+  // matched a handful of rows would page on through the whole index for more.
+  delete filter.pictures;
+
+  const page = await explorePassports({
+    filter: { ...filter, disputedReach: await disputedReach() },
+    cursor,
+    limit: TITLE_SCAN,
+    keep: sheet.keep,
+  });
+
+  const matched = page.passports;
+  if (matched.length > EXPLORE_PAGE) {
+    const last = matched[EXPLORE_PAGE - 1];
+    return {
+      plates: sheet.platesFor(matched.slice(0, EXPLORE_PAGE)),
+      cursor: { registeredAt: String(last.registeredAt), id: last.id },
+    };
+  }
+  return { plates: sheet.platesFor(matched), cursor: page.cursor };
+}
+
 const heldSheet = unstable_cache(
   async (
     view: ExploreSearch["view"],
@@ -147,6 +214,9 @@ const heldSheet = unstable_cache(
     ai: ExploreSearch["ai"],
     cursor: PassportCursor | null,
   ) => {
+    if (searchesTitles(search)) {
+      return await titleSheet({ view, search, agent, ai }, cursor);
+    }
     const sheet = plateSheet(picturesFor(view));
     // Worked out once for the whole page rather than per row: the chip needs it
     // for its query, and every other chip needs it to light the D on an edit

@@ -6,6 +6,7 @@ import { heldRegistryCounts, type PassportCursor, type RegistryCounts } from "@/
 import { Filters } from "./Filters";
 import { Grid } from "./Grid";
 import { Masthead } from "./Masthead";
+import { NoMatch } from "./NoMatch";
 import { heldPictureSplit, sheetPage, type PictureSplit } from "./plates";
 import type { ExploreSearch } from "./query";
 import { ReadingProvider } from "./Reading";
@@ -99,7 +100,7 @@ export async function ExploreSheet({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 pb-16 pt-7 sm:px-8 sm:py-24">
+    <div className="mx-auto w-full max-w-[1400px] px-5 pb-16 pt-7 sm:px-8 sm:py-24 lg:pt-9">
       <Masthead
         locale={locale}
         counts={counts}
@@ -112,7 +113,9 @@ export async function ExploreSheet({
       <ReadingProvider>
         <Filters search={search} />
         <StatedLine ai={search.ai} />
-        <Grid key={sheetKey(search)} first={plates} cursor={cursor} search={search} indexError={gridError} />
+        {/* The empty sheet is drawn here and handed in, so the grid itself
+            never has to load the site's navigation. */}
+        <Grid key={sheetKey(search)} first={plates} cursor={cursor} search={search} indexError={gridError} empty={<NoMatch search={search} />} />
       </ReadingProvider>
     </div>
   );
