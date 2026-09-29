@@ -40,7 +40,7 @@ export async function Signing({
           <h2 className="max-w-[14ch] font-display text-[clamp(1.8rem,4vw,3rem)] font-semibold uppercase leading-[0.95] tracking-[-0.03em]">
             {t("heading")}
           </h2>
-          <p className="mt-6 max-w-[42ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+          <p className="mt-6 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
         </div>
 
         <div className="rise" style={{ animationDelay: "90ms" }}>
@@ -52,7 +52,7 @@ export async function Signing({
                 </span>
                 <div className="min-w-0">
                   <p className="font-display text-lg leading-snug tracking-[-0.01em]">{t(`${step}.title`)}</p>
-                  <p className="mt-2 max-w-[56ch] text-sm leading-relaxed text-text-muted">
+                  <p className="mt-2 max-w-[56ch] text-base leading-relaxed text-text-muted">
                     {t(`${step}.body`, { id: agentId.toString() })}
                   </p>
                 </div>
@@ -86,7 +86,7 @@ export async function Signing({
                 {/* A card carried inside the token URI is a wall of base64. The
                     document it decodes to is the useful thing, and it stays
                     folded away until a reader asks for it. */}
-                <p className="mt-1.5 max-w-[52ch] text-sm leading-relaxed text-text-muted">{a("cardInline")}</p>
+                <p className="mt-1.5 max-w-[52ch] text-base leading-relaxed text-text-muted">{a("cardInline")}</p>
                 {json === null ? null : (
                   <details className="mt-3 border border-line bg-bg-raised">
                     <summary className="cursor-pointer px-4 py-3 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent">
@@ -115,7 +115,7 @@ export async function Signing({
           {card?.privy == null ? null : (
             <div className="mt-10 border border-line bg-bg-raised p-6">
               <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("privy")}</p>
-              <p className="mt-4 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("privyBody")}</p>
+              <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-text-muted">{t("privyBody")}</p>
               <dl className="mt-5 space-y-4">
                 {card.privy.walletId === undefined ? null : (
                   <div>

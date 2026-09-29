@@ -108,7 +108,7 @@ export async function AgentPoster({
 
         {card === null ? (
           <p
-            className="rise mt-7 flex max-w-[52ch] items-start gap-2.5 text-sm leading-relaxed text-text-muted"
+            className="rise mt-7 flex max-w-[52ch] items-start gap-2.5 text-base leading-relaxed text-text-muted"
             style={{ animationDelay: "120ms" }}
           >
             {/* A card that would not read is a failure, but not an alarm: the

@@ -28,7 +28,7 @@ export function PictureStrip({ strip }: { strip: AgentStrip }) {
 
   if (strip.onlyTest) {
     return (
-      <p data-agent-strip="test" className="relative mt-5 max-w-[46ch] text-sm leading-relaxed text-text-muted">
+      <p data-agent-strip="test" className="relative mt-5 max-w-[46ch] text-base leading-relaxed text-text-muted">
         {works("onlyTest")}
       </p>
     );

@@ -50,7 +50,7 @@ export async function Standing({
 
           {recordError !== null ? (
             <div data-index-unread className="mt-6 max-w-[46ch]">
-              <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+              <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
                 <WarningMark className="mt-[3px]" />
                 <span className="min-w-0">{t("index.error", { reason: recordError })}</span>
               </p>
@@ -60,7 +60,7 @@ export async function Standing({
               <IndexRetry said={recordError} />
             </div>
           ) : record === null ? (
-            <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("index.empty")}</p>
+            <p className="mt-6 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("index.empty")}</p>
           ) : (
             <>
               <div className="mt-6 flex flex-wrap items-end gap-x-10 gap-y-4">
@@ -71,7 +71,7 @@ export async function Standing({
                   <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
                     {t("index.trustScore")}
                   </p>
-                  <p className="mt-1.5 max-w-[34ch] text-sm text-text-muted">{t("index.trustScoreBody")}</p>
+                  <p className="mt-1.5 max-w-[44ch] text-base leading-relaxed text-text-muted">{t("index.trustScoreBody")}</p>
                 </div>
               </div>
 
@@ -82,7 +82,7 @@ export async function Standing({
                 <Count label={t("index.disputesUpheld")} value={record.disputesUpheld} tone="failed" />
               </dl>
 
-              <p className="mt-8 max-w-[58ch] text-sm leading-relaxed text-text-muted">{t("index.formulaPlain")}</p>
+              <p className="mt-8 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("index.formulaPlain")}</p>
               <p className="mt-3 flex flex-wrap items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-line-strong" />
                 {/* Normal case, as on the Agents board: the formula in capitals
@@ -114,12 +114,12 @@ export async function Standing({
           </p>
 
           {reputationError !== null ? (
-            <p className="mt-6 flex max-w-[46ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
+            <p className="mt-6 flex max-w-[46ch] items-start gap-2.5 text-base leading-relaxed text-failed">
               <WarningMark className="mt-[3px]" />
               <span className="min-w-0">{t("reputation.error", { reason: reputationError })}</span>
             </p>
           ) : reputation === null || reputation.count === 0n ? (
-            <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("reputation.empty")}</p>
+            <p className="mt-6 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("reputation.empty")}</p>
           ) : (
             <p className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-text">
@@ -135,7 +135,7 @@ export async function Standing({
             </p>
           )}
 
-          <p className="mt-7 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("reputation.body")}</p>
+          <p className="mt-7 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("reputation.body")}</p>
           <a
             href={`${MONAD_EXPLORER}/address/${REPUTATION_REGISTRY}`}
             target="_blank"

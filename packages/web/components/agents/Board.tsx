@@ -48,7 +48,7 @@ export async function Board({
       </summary>
 
       <div className="mt-5 flex flex-col items-start gap-4 border-s border-line ps-5">
-        <p className="text-sm leading-relaxed text-text-muted">{t("formulaPlain")}</p>
+        <p className="text-base leading-relaxed text-text-muted">{t("formulaPlain")}</p>
         <code className="block font-mono text-[12px] leading-relaxed text-text">{t("formula")}</code>
         <Link
           href={TRUST_DOC}
@@ -63,14 +63,14 @@ export async function Board({
   const list =
     error !== null ? (
       <div className="mt-14 max-w-[54ch]">
-        <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+        <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
           <WarningMark className="mt-[3px]" />
           <span className="min-w-0">{t("error", { reason: error })}</span>
         </p>
         <IndexRetry said={error} />
       </div>
     ) : agents.length === 0 ? (
-      <p className="mt-14 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>
+      <p className="mt-14 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("empty")}</p>
     ) : (
       <ul>
         {agents.map((agent, place) => (
@@ -91,7 +91,7 @@ export async function Board({
         aside={
           <div
             data-agents-explainer
-            className="rise max-w-[60ch] text-sm leading-relaxed text-text-muted lg:justify-self-end"
+            className="rise max-w-[54ch] text-base leading-relaxed text-text-muted lg:justify-self-end"
             style={{ animationDelay: "120ms" }}
           >
             <p>{t("lede")}</p>

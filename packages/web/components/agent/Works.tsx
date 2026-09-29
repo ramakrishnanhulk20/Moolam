@@ -103,20 +103,20 @@ export async function Works({
 
       {error !== null ? (
         <div data-index-unread className="mt-10 max-w-[54ch]">
-          <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+          <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
             <WarningMark className="mt-[3px]" />
             <span className="min-w-0">{t("error", { reason: error })}</span>
           </p>
           {retry ? <IndexRetry said={error} /> : null}
         </div>
       ) : works.length === 0 ? (
-        <p className="mt-10 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>
+        <p className="mt-10 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("empty")}</p>
       ) : (
         <>
           {real.length > 0 ? (
             <PlateGrid plates={real} words={words} className="rise mt-10" />
           ) : complete ? (
-            <p data-agent-only-test className="rise mt-10 max-w-[54ch] text-sm leading-relaxed text-text-muted">
+            <p data-agent-only-test className="rise mt-10 max-w-[54ch] text-base leading-relaxed text-text-muted">
               {t("onlyTest")}
             </p>
           ) : null}

@@ -131,7 +131,7 @@ function Desk({
 
         {listError !== null ? (
           <div data-queue-unread className="mt-14 max-w-[58ch] border-t border-line pt-10">
-            <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+            <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
               <WarningMark className="mt-[3px]" />
               <span className="min-w-0">{t("unavailable", { reason: listError })}</span>
             </p>
@@ -175,7 +175,7 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       role={pending ? "status" : "alert"}
       data-tone={pending ? "pending" : "failed"}
-      className={`mt-10 max-w-[58ch] border-s-2 py-3 ps-4 text-sm leading-relaxed ${
+      className={`mt-10 max-w-[54ch] border-s-2 py-3 ps-4 text-base leading-relaxed ${
         pending ? "border-text-muted bg-text-muted/5 text-text-muted" : "border-failed bg-failed/10 text-failed"
       }`}
     >
@@ -255,7 +255,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
         >
           <Mono value={resolver} className="text-base normal-case" />
         </a>
-        <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("policyNote")}</p>
+        <p className="mt-4 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("policyNote")}</p>
 
         {!desk.ready ? (
           // The sign-in block holds its place, unseen and inert, until the
@@ -263,7 +263,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
           // most readers are signed out, so for them nothing under it moves.
           isPrivyConfigured ? (
             <div data-sign-in-held aria-hidden className="invisible mt-5">
-              <p className="max-w-[46ch] text-sm leading-relaxed">{t("signedOut")}</p>
+              <p className="max-w-[46ch] text-base leading-relaxed">{t("signedOut")}</p>
               <button type="button" disabled tabIndex={-1} className="mt-4 rounded-[8px] border px-5 py-3 text-[11px] uppercase tracking-[0.18em]">
                 {t("signIn")}
               </button>
@@ -275,7 +275,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
             {t("youAre")}
           </p>
         ) : desk.authenticated ? (
-          <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-text-muted">
+          <p className="mt-5 max-w-[46ch] text-base leading-relaxed text-text-muted">
             {t("stranger")}{" "}
             <span className="text-text-faint">
               {withHex(t("strangerBody", { wallet: HEX_MARK }), desk.wallet === undefined ? "" : shortHex(desk.wallet))}
@@ -283,7 +283,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
           </p>
         ) : (
           <div className="mt-5">
-            <p className="max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("signedOut")}</p>
+            <p className="max-w-[46ch] text-base leading-relaxed text-text-muted">{t("signedOut")}</p>
             <button
               type="button"
               onClick={desk.actions.signIn}
@@ -313,7 +313,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
             {t("mon", { amount: formatEther(owed) })}
           </p>
         )}
-        <p className="mt-4 max-w-[40ch] text-sm leading-relaxed text-text-muted">{t("creditBody")}</p>
+        <p className="mt-4 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("creditBody")}</p>
 
         {owed !== null && owed > 0n && desk.authenticated ? (
           <button
@@ -400,7 +400,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
         )}
 
         {dispute.reason === null ? (
-          <p className="mt-6 max-w-[54ch] text-sm leading-relaxed text-text-faint">
+          <p className="mt-6 max-w-[54ch] text-base leading-relaxed text-text-faint">
             {dispute.verified ? t("noReason", { uri: dispute.evidenceURI ?? "" }) : t("unverified")}
           </p>
         ) : (
@@ -465,7 +465,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
                 {t("reject")}
               </button>
             </div>
-            <p className="mt-4 max-w-[54ch] text-xs leading-relaxed text-text-faint">
+            <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-faint">
               {t("upholdWhat")} {t("rejectWhat")}
             </p>
 
