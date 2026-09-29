@@ -52,7 +52,17 @@ export function Filters({ search }: { search: ExploreSearch }) {
   const [keyShown, setKeyShown] = useState(false);
   // From 1024 px the AI-use answers fold behind one chip at the end of the
   // row, so every chip is on one line and the pictures reach the first screen.
-  const [aiShown, setAiShown] = useState(false);
+  // An answer that is narrowing the sheet opens the row, on the first render
+  // and whenever the answer changes, so a reader who came in on a filtered
+  // link sees what narrowed it. The reader may still fold it again.
+  const [aiShown, setAiShown] = useState(search.ai !== null);
+  const [aiSeen, setAiSeen] = useState(search.ai);
+  if (aiSeen !== search.ai) {
+    setAiSeen(search.ai);
+    if (search.ai !== null) {
+      setAiShown(true);
+    }
+  }
   const aiWord = useAiWord();
   const router = useRouter();
   const { reading, hold } = useReading();
