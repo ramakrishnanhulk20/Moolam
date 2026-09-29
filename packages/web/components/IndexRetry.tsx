@@ -145,7 +145,7 @@ export function IndexRetry({ said, again }: { said: string; again?: () => void }
   return (
     <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
       {wait === null ? (
-        <p role="status" className="max-w-[54ch] text-sm leading-relaxed text-text-muted">
+        <p role="status" className="max-w-[62ch] text-base leading-relaxed text-text-muted">
           {t("stopped")}
         </p>
       ) : (

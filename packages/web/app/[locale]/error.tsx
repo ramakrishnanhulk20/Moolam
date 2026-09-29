@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
+import { WarningMark } from "@/components/WarningMark";
 import { Link } from "@/lib/i18n/routing";
 
 /** How long after a press on Try again a failure still counts as that try failing. */
@@ -120,11 +121,11 @@ export default function LocaleError({
 
       {/* Filled only when the page is back here after a try, and kept in the
           page from the start so a screen reader hears it when it is. */}
-      <p role="status" className="mt-4 min-h-[1lh] max-w-[46ch] text-sm leading-relaxed text-failed">
+      <p role="status" className="mt-4 min-h-[1lh] max-w-[60ch] text-base leading-relaxed text-failed">
         {again ? (
           <span data-tried-again className="rise flex items-start gap-2.5">
-            <span aria-hidden className="mt-[0.45em] h-1.5 w-1.5 shrink-0 bg-failed" />
-            {trying("stopped")}
+            <WarningMark className="mt-[5px]" />
+            <span className="min-w-0">{trying("stopped")}</span>
           </span>
         ) : null}
       </p>

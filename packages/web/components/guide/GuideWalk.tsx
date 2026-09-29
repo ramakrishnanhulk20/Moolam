@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
@@ -464,6 +464,12 @@ export function GuideCard({
   onForward: () => void;
 }) {
   const t = useTranslations("guide");
+  // Tamil's step titles take two lines beside the drawing and its sentences
+  // one more row, so at 375 by 812 its phone card stood 26 px taller than the
+  // room between the headline and Choose an image and lay on the button. The
+  // card gives it back in air below a laptop: a little less padding and gap,
+  // and body leading at 1.5, still well clear of the 1.25 its headings need.
+  const tamil = useLocale() === "ta";
   const forwardButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -485,26 +491,30 @@ export function GuideCard({
         duration: reduced ? 0.2 : 0.5,
         ease: [0.16, 1, 0.3, 1],
       }}
-      className="rounded-[8px] border border-line bg-[color:var(--bg-raised)] p-4 shadow-[0_24px_60px_rgb(0_0_0/0.5)] lg:p-5"
+      className={`rounded-[8px] border border-line bg-[color:var(--bg-raised)] ${tamil ? "p-3" : "p-4"} shadow-[0_24px_60px_rgb(0_0_0/0.5)] lg:p-5`}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
             {counter}
           </p>
-          <h3 className="mt-2 font-display lg:max-w-[16ch] text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]">
+          <h3 className={`${tamil ? "mt-1 lg:mt-2" : "mt-2"} font-display lg:max-w-[16ch] text-[1.15rem] font-semibold leading-[1.1] tracking-[-0.03em]`}>
             {t(`steps.${step.id}.title`)}
           </h3>
         </div>
         <GuideMarkDrawing mark={step.mark} reduced={reduced} />
       </div>
 
-      <p className="mt-3 text-[13px] leading-relaxed text-text-muted">
+      {/* The sentences are read at body size. Below a laptop the air between
+          the card's rows is tighter instead, because a phone card has to fit
+          between the headline and Choose an image, and the larger lines took
+          the height the gaps give back. */}
+      <p className={`${tamil ? "mt-1.5 leading-normal lg:leading-relaxed" : "mt-2 leading-relaxed"} text-base text-text-muted lg:mt-3`}>
         {t(`steps.${step.id}.line`)}
       </p>
 
       {!lit ? (
-        <p className="mt-3 border-t border-line pt-3 text-[12px] leading-relaxed text-text-faint">
+        <p className={`${tamil ? "mt-1.5 pt-1.5 leading-normal lg:leading-relaxed" : "mt-2 pt-2 leading-relaxed"} border-t border-line text-base text-text-faint lg:mt-3 lg:pt-3`}>
           {t(`steps.${step.id}.elsewhere`)}
         </p>
       ) : null}
@@ -516,7 +526,7 @@ export function GuideCard({
         href={step.href}
         prefetch={false}
         onClick={() => onClose("go")}
-        className="group mt-4 inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:text-text focus-visible:text-text"
+        className={`group ${tamil ? "mt-2" : "mt-3"} inline-flex items-center gap-2 font-mono lg:mt-4 text-[10px] uppercase tracking-[0.14em] text-accent transition-colors duration-200 hover:text-text focus-visible:text-text`}
       >
         {t(`steps.${step.id}.action`)}
         <span
@@ -527,7 +537,7 @@ export function GuideCard({
         </span>
       </Link>
 
-      <div className="mt-5 flex items-center justify-between gap-4">
+      <div className={`${tamil ? "mt-2" : "mt-3"} flex items-center justify-between gap-4 lg:mt-5`}>
         <span aria-hidden className="flex items-center gap-1.5">
           {guideSteps.map((dot, at) => (
             <span
