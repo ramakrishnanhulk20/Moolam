@@ -352,17 +352,17 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
                   >
                     {t("choose")}
                   </button>
-                  <div data-no-account className="max-w-[30ch]">
+                  <div data-no-account className="max-w-[36ch]">
                     <p className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.24em] text-verified">
                       <span className="motif h-[8px] w-[8px]" />
                       {t("noAccount")}
                     </p>
-                    <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{t("noAccountWhy")}</p>
+                    <p className="mt-1.5 text-pretty text-base leading-relaxed text-text-muted">{t("noAccountWhy")}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="max-w-[46ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
-                  <p data-paste-hint className="mt-1.5 hidden max-w-[46ch] text-xs leading-relaxed text-text-faint pointer-fine:block">
+                  <p className="max-w-[54ch] text-pretty text-base leading-relaxed text-text-muted">{t("hint")}</p>
+                  <p data-paste-hint className="mt-1.5 hidden max-w-[60ch] text-base leading-relaxed text-text-faint pointer-fine:block">
                     {t("paste")}
                   </p>
                 </div>
@@ -430,7 +430,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
                 {busy ? t("busy") : t("again")}
               </button>
             )}
-            <p className="max-w-[38ch] text-xs leading-relaxed text-text-muted">
+            <p className="max-w-[60ch] text-base leading-relaxed text-text-muted">
               <Privacy line={t("privacy", { host: HOST_MARK })} host={verifierHost()} />
             </p>
           </div>

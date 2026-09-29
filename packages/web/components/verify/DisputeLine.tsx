@@ -40,7 +40,7 @@ export function DisputeLine({
         : "text-text-faint";
 
   return (
-    <p data-dispute-line className={`max-w-[52ch] text-xs leading-relaxed ${tone} ${className}`}>
+    <p data-dispute-line className={`max-w-[60ch] text-base leading-relaxed ${tone} ${className}`}>
       {t(status)}
     </p>
   );

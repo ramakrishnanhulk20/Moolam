@@ -17,7 +17,7 @@ export function StaleIndex({ minutes, className = "mt-3" }: { minutes: number | 
     return null;
   }
   return (
-    <p data-stale-index className={`${className} max-w-[44ch] text-xs leading-relaxed text-text-faint`}>
+    <p data-stale-index className={`${className} max-w-[60ch] text-base leading-relaxed text-text-faint`}>
       {t("staleIndex", { minutes })}
     </p>
   );

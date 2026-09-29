@@ -77,7 +77,7 @@ export function ShareAnswer({ sampleId }: { sampleId: string }) {
       </button>
       {typeof state === "object" ? (
         <div data-share-failed className="mt-3 max-w-[44ch]">
-          <p className="text-xs leading-relaxed text-failed">{common("copyFailed")}</p>
+          <p className="text-base leading-relaxed text-failed">{common("copyFailed")}</p>
           <p className="mt-1.5 select-all font-mono text-[11px] text-text-muted [overflow-wrap:anywhere]">{state.failed}</p>
         </div>
       ) : null}

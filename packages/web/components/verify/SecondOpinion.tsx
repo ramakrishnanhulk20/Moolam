@@ -61,7 +61,7 @@ export function SecondOpinion({
         <p className="mt-3 max-w-[30ch] font-display text-[clamp(1.1rem,2.4vw,1.6rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-text-muted">
           {t("none")}
         </p>
-        <p className="mt-3 max-w-[56ch] text-xs leading-relaxed text-text-faint">{t("noneNote")}</p>
+        <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-text-faint">{t("noneNote")}</p>
         <RecheckRequest passportId={id} className="mt-5" />
       </Frame>
     );
@@ -78,7 +78,7 @@ export function SecondOpinion({
       className={className}
     >
       <p
-        className={`mt-3 max-w-[52ch] text-sm leading-relaxed ${latest.matched ? "text-text" : "text-failed"}`}
+        className={`mt-3 max-w-[60ch] text-base leading-relaxed ${latest.matched ? "text-text" : "text-failed"}`}
       >
         {latest.matched
           ? t("matched", { at, count: latest.distance })

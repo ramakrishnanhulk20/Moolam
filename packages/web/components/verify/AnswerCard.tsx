@@ -127,7 +127,7 @@ function Idle() {
               <span className="mt-0.5 font-mono text-[11px] tabular-nums text-text-faint">
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span className="text-sm leading-relaxed text-text-muted">{t(`steps.${step}`)}</span>
+              <span className="text-base leading-relaxed text-text-muted">{t(`steps.${step}`)}</span>
             </li>
           ))}
         </ol>
@@ -203,14 +203,14 @@ function Checking({ name }: { name: string }) {
           {steps.map((step, index) => (
             <li key={step} className="flex items-baseline gap-5 border-b border-line py-3.5">
               <span className="font-mono text-[11px] tabular-nums text-accent/80">{String(index + 1).padStart(2, "0")}</span>
-              <span className="text-sm leading-relaxed text-text-muted">{t(`wait.${step}`)}</span>
+              <span className="text-base leading-relaxed text-text-muted">{t(`wait.${step}`)}</span>
             </li>
           ))}
         </ol>
 
         <div aria-live="polite">
           {seconds >= SLOW_AFTER_SECONDS ? (
-            <p data-wait-slow className="mt-5 max-w-[46ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+            <p data-wait-slow className="mt-5 max-w-[60ch] border-s-2 border-accent/50 ps-4 text-base leading-relaxed text-text">
               {t("wait.slow")}
             </p>
           ) : null}
@@ -246,7 +246,7 @@ function Result({
             {t("none")}
           </p>
           <StaleIndex minutes={answer.staleMinutes} />
-          <p className="mt-5 max-w-[44ch] text-sm leading-relaxed text-text-muted">{t("noneHint")}</p>
+          <p className="mt-5 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("noneHint")}</p>
 
           <Link
             href="/studio"
@@ -299,7 +299,7 @@ function Result({
         {/* A file the service could not decode was matched by its bytes alone. Nothing about
             its look was compared, so there are no distances to print, not zeros. */}
         {answer.pixelsUnread ? (
-          <p data-pixels-unread className="mt-8 max-w-[52ch] border-t border-line pt-7 text-sm leading-relaxed text-text-muted">
+          <p data-pixels-unread className="mt-8 max-w-[60ch] border-t border-line pt-7 text-base leading-relaxed text-text-muted">
             {t("pixelsUnread")}
           </p>
         ) : (
@@ -311,14 +311,14 @@ function Result({
         )}
 
         {answer.others === 0 ? null : (
-          <p className="mt-6 text-sm leading-relaxed text-text-muted">{t("others", { count: answer.others })}</p>
+          <p className="mt-6 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("others", { count: answer.others })}</p>
         )}
 
         {/* The closest match leads, but a near-copy registered later can sit closer than the
             original. The service always keeps the first registration in the answer, and this is
             where the reader is told it is a different passport from the one on the card. */}
         {firstRegisteredId === undefined ? null : (
-          <p data-first-registered className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+          <p data-first-registered className="mt-6 max-w-[60ch] border-s-2 border-accent/50 ps-4 text-base leading-relaxed text-text">
             {t.rich("firstRegistered", {
               link: (chunks) => (
                 <Link
@@ -340,7 +340,7 @@ function Result({
           </div>
         )}
         {answer.laterSameFingerprint === undefined ? null : (
-          <p data-later-copies className="mt-3 max-w-[44ch] text-xs leading-relaxed text-text-faint">
+          <p data-later-copies className="mt-3 max-w-[60ch] text-base leading-relaxed text-text-faint">
             {t("laterSameFingerprint", { count: answer.laterSameFingerprint })}
           </p>
         )}
@@ -349,7 +349,7 @@ function Result({
             That is said here, right under the verdict, rather than left to the
             reader to work out from an empty frame. */}
         {sealed ? (
-          <p className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+          <p className="mt-6 max-w-[60ch] border-s-2 border-accent/50 ps-4 text-base leading-relaxed text-text">
             {t("sealed.matched")}
           </p>
         ) : passport?.unsealedAt === undefined ? null : (
@@ -357,19 +357,19 @@ function Result({
           // saying: it was registered with nothing published and its holder
           // published it later, which is why the copy in hand matches a
           // passport older than the picture's own address.
-          <p className="mt-6 max-w-[44ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+          <p className="mt-6 max-w-[60ch] border-s-2 border-accent/50 ps-4 text-base leading-relaxed text-text">
             {t("unsealed.matched", { date: format.dateTime(new Date(passport.unsealedAt), { dateStyle: "medium" }) })}
           </p>
         )}
 
-        <p data-manifest-line className="mt-6 max-w-[44ch] text-sm leading-relaxed text-text-muted">
+        <p data-manifest-line className="mt-6 max-w-[60ch] text-base leading-relaxed text-text-muted">
           {t(manifestLine)}
         </p>
         {/* Moolam signs with no trusted timestamp, so a certificate that expires later makes the
             C2PA library fail a file nobody touched. The record is still intact, and this line
             says what changed without calling the file tampered. */}
         {answer.manifestCredential === undefined ? null : (
-          <p data-manifest-credential className="mt-2 max-w-[44ch] text-xs leading-relaxed text-text-faint">
+          <p data-manifest-credential className="mt-2 max-w-[60ch] text-base leading-relaxed text-text-faint">
             {t(answer.manifestCredential === "expired" ? "manifestCredentialExpired" : "manifestCredentialUntrusted")}
           </p>
         )}
@@ -384,7 +384,7 @@ function Result({
         {/* The registry marks only the passport a challenge named, so an edit of a picture that
             lost one reads clean on the line above. This is where the reader learns otherwise. */}
         {inheritedAncestor === null ? null : (
-          <p data-inherited-dispute className="mt-2 max-w-[52ch] text-xs leading-relaxed text-failed">
+          <p data-inherited-dispute className="mt-2 max-w-[60ch] text-base leading-relaxed text-failed">
             {t.rich("dispute.inherited", {
               link: (chunks) => (
                 <Link
@@ -403,7 +403,7 @@ function Result({
         {sealed ? (
           <div data-second-opinion className="mt-6 border-s-2 border-line ps-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("recheck.label")}</p>
-            <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("sealed.recheck")}</p>
+            <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("sealed.recheck")}</p>
           </div>
         ) : hasSecondOpinion(answer.recheck) ? (
           <SecondOpinion recheck={answer.recheck} id={answer.id} className="mt-6" />
@@ -417,7 +417,7 @@ function Result({
             answer a reader might take for more than it is. */}
         <div data-verify-limits className="mt-8 border-s-2 border-line ps-5">
           <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("limits.label")}</p>
-          <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("limits.line")}</p>
+          <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("limits.line")}</p>
         </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-3">
@@ -441,7 +441,7 @@ function Result({
         <p className="mt-6 font-mono text-[11px] text-text-faint">
           <Mono value={answer.id} />
         </p>
-        {passport === null ? <p className="mt-3 max-w-[44ch] text-sm text-text-muted">{t("lookupFailed")}</p> : null}
+        {passport === null ? <p className="mt-3 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("lookupFailed")}</p> : null}
 
         <Measured answer={answer} />
       </div>
