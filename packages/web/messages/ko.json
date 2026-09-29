@@ -41,7 +41,7 @@
     "languageIs": "{language}, 언어 바꾸기",
     "themeDarkAction": "테마: 다크, 라이트 테마로 바꾸기",
     "themeLightAction": "테마: 라이트, 다크 테마로 바꾸기",
-    "languageOpening": "Opening {language}"
+    "languageOpening": "{language} 페이지를 여는 중"
   },
   "shell": {
     "label": "섹션",
@@ -113,10 +113,10 @@
     "yes": "예",
     "no": "아니오",
     "registeredPicture": "등록된 이미지",
-    "details": "Details",
-    "openingPage": "Opening the page",
-    "tryAgain": "Try again",
-    "copyFailed": "Could not copy. Select the text and copy it yourself."
+    "details": "세부 정보",
+    "openingPage": "페이지를 여는 중",
+    "tryAgain": "다시 시도",
+    "copyFailed": "복사하지 못했습니다. 텍스트를 선택해 직접 복사해 주세요."
   },
   "kind": {
     "0": "생성",
@@ -175,12 +175,12 @@
       "manifest": "Content Credentials 있음",
       "rechecked": "체인에서 재확인됨",
       "chainlink": "Chainlink 워크플로가 재확인",
-      "disputed": "이의 있음"
+      "disputed": "이의 받아들여짐"
     },
     "legend": {
       "manifest": "Content Credentials 있음",
       "rechecked": "체인에서 재확인됨",
-      "disputed": "이의 있음",
+      "disputed": "이의 받아들여짐",
       "consent": "AI 사용 선언, 네 가지 용도에 네 개의 표시"
     },
     "untitled": "제목 없음",
@@ -204,10 +204,10 @@
       "word": "봉인됨"
     },
     "marksToggle": "표시의 뜻",
-    "searchAnyLabel": "Search by title or passport id",
-    "searchAnyPlaceholder": "A title or a passport id",
-    "noMatchQuery": "No passport matches {query}.",
-    "backToAll": "Back to all pictures"
+    "searchAnyLabel": "제목이나 여권 id로 검색",
+    "searchAnyPlaceholder": "제목 또는 여권 id",
+    "noMatchQuery": "{query}에 맞는 여권이 없습니다.",
+    "backToAll": "모든 이미지로 돌아가기"
   },
   "agents": {
     "kicker": "에이전트",
@@ -230,7 +230,7 @@
     "error": "인덱스를 읽지 못했습니다: {reason}.",
     "formulaPlain": "일치한 재확인은 점수를 올리고 빗나간 재확인은 내립니다. 받아들여진 이의는 빗나감 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다.",
     "strip": {
-      "label": "Newest pictures this agent signed"
+      "label": "이 에이전트가 최근에 서명한 이미지"
     }
   },
   "home": {
@@ -275,7 +275,7 @@
         "chainlink": "Chainlink 재확인",
         "envio": "Envio 인덱싱"
       },
-      "unstarted": "The check did not start. Reload the page and press again."
+      "unstarted": "확인이 시작되지 않았습니다. 페이지를 새로 고친 뒤 다시 눌러 주세요."
     }
   },
   "story": {
@@ -285,12 +285,12 @@
       "title": "여권이 작동하는 방식"
     },
     "scrollCue": "스크롤",
-    "noWebgl": "이 브라우저는 3D 화면을 열지 못해서, 이야기를 여기에 한 페이지로 담았습니다. 여기 숫자는 모두 같은 실시간 조회 결과입니다.",
+    "noWebgl": "이 브라우저에서는 영상을 3D로 재생할 수 없어, 이야기를 한 페이지로 담았습니다. 여기 숫자도 모두 영상과 똑같이 실시간으로 읽어 온 것입니다.",
     "made": {
       "kicker": "생성",
       "title": "이 한 장은 AI가 만들었습니다.",
-      "body": "누군가 그림을 보기도 전에, 에이전트 {agent}가 자기 보안 영역 안에서 그 지문에 서명했습니다.",
-      "readout": "생성 에이전트 {agent}, ERC-8004 신원 레지스트리",
+      "body": "에이전트 {agent}가 이 그림을 그렸고, 여권이 기록되기 전에 Privy가 보관하는 자기 지갑으로 그 지문에 서명했습니다.",
+      "readout": "생성 에이전트 {agent}, 공개 에이전트 레지스트리(ERC-8004)에 등록됨",
       "titleNoAgent": "이 한 장은 사람이 등록했습니다.",
       "bodyNoAgent": "이 지문에 서명한 에이전트는 없습니다. 창작자가 올린 파일로 등록된 것이고, 여권에도 그렇게 적혀 있습니다.",
       "readoutNoAgent": "이 여권에는 생성 에이전트가 없습니다"
@@ -328,7 +328,7 @@
         "social-chain": "소셜 앱에서 두 번 공유한 사본",
         "resize-10": "십분의 일로 줄인 사본"
       },
-      "similarity": "유사도 {value}: {result}",
+      "similarity": "64비트 중 {value}비트 차이: {result}",
       "matched": "일치함",
       "notMatched": "일치하지 않음",
       "attestation": "Chainlink CRE 워크플로가 다시 확인해 답을 체인에 기록했습니다. {result}, {distance}비트 차이입니다.",
@@ -344,7 +344,7 @@
       "noScore": "아직 점수 없음",
       "counts": "{rechecks, plural, other {재확인 #건}}, {passports, plural, other {여권 #건}}",
       "body": "체인에 다시 기록된 재확인은 모두 이 에이전트의 id로 세고, 인덱스가 그것을 모아 이 점수로 만듭니다. 평판은 일의 합이지 웹사이트의 주장이 아닙니다.",
-      "noAgent": "이 한 장은 에이전트가 만들지 않았으므로 걸려 있는 에이전트 평판도 없습니다. 에이전트가 서명한 이미지라면 검증 서비스의 모든 확인이 그 에이전트의 id 아래 ERC-8004 평판 레지스트리에 다시 기록됩니다."
+      "noAgent": "이 한 장은 에이전트가 만들지 않았으므로 걸려 있는 에이전트 평판도 없습니다. 에이전트가 서명한 경우에는, 그 에이전트의 이미지에 대한 Chainlink 재확인이 모두 그 에이전트 자신의 점수에 반영됩니다."
     },
     "tryIt": {
       "kicker": "직접 해 보기",
@@ -353,8 +353,8 @@
       "samples": "또는 이 중 하나로 해 보세요",
       "hint": "JPEG, PNG, WebP. Moolam 검증 서비스로 가서 지문을 세 가지로 뜨고, 저장하지는 않습니다.",
       "pending": "지문을 뜨고 레지스트리를 찾는 중",
-      "offline": "검증 서비스가 응답하지 않습니다. 저장소 최상위에서 npm run dev:verifier로 띄운 뒤 파일을 다시 놓아 주세요.",
-      "error": "확인이 실행되지 않았습니다: {reason}",
+      "offline": "검증 서비스가 지금 응답하지 않습니다. 아무것도 저장되지 않았습니다. 1분쯤 기다렸다가 파일을 다시 놓아 주세요.",
+      "error": "확인이 실행되지 않았습니다. 1분 뒤에 다시 시도해 주세요.",
       "tooLarge": "이 파일은 20MB를 넘습니다. 더 작은 사본으로 해 보세요.",
       "notAnImage": "이미지 파일이 아닙니다. JPEG, PNG, WebP를 놓아 주세요.",
       "empty": "이 파일은 비어 있습니다. 사진을 다시 골라 주세요.",
@@ -364,7 +364,7 @@
       "noMatchBody": "레지스트리의 어떤 여권도 이 이미지와 맞지 않습니다. 생성기에서 막 나와 한 번도 등록된 적 없는 파일이 꼭 이렇게 보입니다.",
       "exact": "바이트까지 동일",
       "match": "확신도",
-      "noManifest": "이 파일에는 C2PA 매니페스트가 남아 있지 않습니다. 그래도 기록을 찾아냈습니다.",
+      "noManifest": "이 파일에는 Content Credentials가 남아 있지 않습니다. 그래도 기록을 찾아냈습니다.",
       "openPassport": "이 여권 열기"
     },
     "close": {
@@ -374,10 +374,10 @@
       "verify": "이미지 검증",
       "proof": "증거 보기",
       "passports": "여권",
-      "attestations": "체인 위의 검증",
+      "attestations": "체인 위의 재확인",
       "chain": "Monad에서, 체인 {chainId}",
       "unread": "읽지 못함",
-      "error": "인덱스를 읽지 못했습니다: {reason}"
+      "error": "지금은 인덱스를 읽지 못했습니다. 잠시 뒤에 페이지를 새로 고쳐 주세요."
     },
     "skip": "영상 건너뛰기",
     "failed": {
@@ -398,19 +398,19 @@
     "none": "이 이미지와 맞는 여권이 없습니다.",
     "noneHint": "이 그림은 레지스트리에 없습니다. Moolam은 아직 잘라낸 조각을 맞추지 않으므로 등록된 그림의 일부는 찾을 수 없습니다. 그림 전체로 시도해 보세요.",
     "confidence": "확신도",
-    "phashDistance": "지각 해시",
-    "blockhashDistance": "블록 해시",
+    "phashDistance": "겉모습 지문 (pHash)",
+    "blockhashDistance": "배치 지문 (블록 해시)",
     "variant": "방향",
-    "manifestPresent": "서명된 C2PA 기록이 이 파일 안에 그대로 있습니다.",
-    "manifestMissing": "서명된 C2PA 기록이 이 파일에서 지워졌습니다. 그래도 지문은 일치했습니다.",
+    "manifestPresent": "이 파일에는 Content Credentials(C2PA)가 그대로 남아 있습니다.",
+    "manifestMissing": "이 파일의 Content Credentials(C2PA)는 지워졌습니다. 그래도 지문은 일치했습니다.",
     "openPassport": "여권 열기",
     "error": "확인이 실행되지 않았습니다: {reason}",
-    "offline": "검증 서비스가 응답하지 않습니다. 저장소 최상위에서 npm run dev:verifier로 띄운 뒤 다시 시도해 주세요.",
+    "offline": "검증 서비스가 지금 응답하지 않습니다. 아무것도 저장되지 않았습니다. 1분 뒤에 다시 시도해 주세요.",
     "kicker": "어떤 사본이든 확인",
     "rail": "검증",
     "dropTitle": "이미지를 고르거나, 여기에 끌어다 놓으세요.",
     "replace": "다른 것 고르기",
-    "privacy": "파일은 브라우저가 Moolam 검증 서비스 {host} 로 바로 보냅니다. 거기서 지문을 뜨고 등록부와 대조하며, 저장하지 않습니다.",
+    "privacy": "브라우저가 파일을 Moolam 검증 서비스({host})로 바로 보냅니다. 거기서 지문을 뜨고 레지스트리와 대조할 뿐, 저장하지는 않습니다.",
     "checkingHeading": "파일 이름이 아니라 그림을 읽습니다.",
     "checkingDetail": "지문 세 가지, 여덟 방향 전부, 그다음 등록된 모든 여권 검색. 몇 초면 됩니다.",
     "idleHeading": "아직 답이 없습니다",
@@ -447,10 +447,10 @@
       "notAnImage": "이 파일은 이미지로 읽히지 않았습니다. JPEG, PNG, WebP를 써 주세요.",
       "empty": "이 파일은 비어 있습니다. 사진을 다시 골라 주세요.",
       "rateLimited": "여기에서 보낸 확인이 너무 많습니다. 1분 뒤 다시 시도해 주세요.",
-      "badRequest": "검증 서비스가 이 요청을 받지 않았습니다.",
-      "badResponse": "검증 서비스가 이 페이지가 모르는 형태로 답했습니다.",
-      "serviceFailed": "검증 서비스가 이 확인을 끝내지 못했습니다.",
-      "refused": "검증 서비스가 이 요청을 거절했습니다.",
+      "badRequest": "검증 서비스가 이 파일을 받지 않았습니다. JPEG, PNG, WebP 이미지를 골라 다시 시도해 주세요.",
+      "badResponse": "검증 서비스가 이 페이지가 읽을 수 없는 형태로 답했습니다. 1분 뒤에 다시 시도해 주세요.",
+      "serviceFailed": "검증 서비스가 이 확인을 끝내지 못했습니다. 1분 뒤에 다시 시도해 주세요.",
+      "refused": "검증 서비스가 이 요청을 거절했습니다. 페이지를 새로 고친 뒤 다시 시도해 주세요.",
       "serviceFault": "Moolam 쪽의 오류이며, 사진의 문제가 아닙니다. 아무것도 저장되지 않았습니다. 1분 뒤에 다시 시도해 주세요.",
       "busy": "Moolam이 다른 사진을 확인하느라 바쁩니다. 1분 뒤에 다시 시도해 주세요."
     },
@@ -478,7 +478,7 @@
       "tail": {
         "open": "AI 사용에 열려 있음, 학습 포함",
         "closed": "AI 학습에는 안 됨",
-        "ask": "먼저 물어볼 것, 조건 있음",
+        "ask": "보유자에게 먼저 물어볼 것",
         "mixed": "어떤 용도는 허용, 어떤 용도는 불허",
         "none": "AI 사용에 대해 아무 말 없음"
       }
@@ -491,8 +491,8 @@
       "count": "{count, plural, other {재확인 #건}}",
       "none": "아직 재확인되지 않았습니다.",
       "noneNote": "이 이미지를 가져와 지문을 다시 계산한 독립 워크플로가 아직 없습니다.",
-      "matched": "{at}에 Chainlink CRE 워크플로가 다시 확인했습니다. 이미지를 다시 가져와 지문을 다시 계산했고 일치했습니다. 64비트 중 {count}비트 차이입니다.",
-      "mismatched": "{at}에 Chainlink CRE 워크플로가 이 이미지를 다시 가져와 지문을 다시 계산했고, 일치하지 않았습니다. 64비트 중 {count}비트 차이입니다.",
+      "matched": "{at}에 Chainlink(CRE 워크플로)가 재확인했습니다. 이미지를 직접 가져와 지문을 다시 뜬 결과 일치했고, 64비트 중 {count}비트 차이였습니다.",
+      "mismatched": "{at}에 Chainlink(CRE 워크플로)가 재확인했습니다. 이미지를 직접 가져와 지문을 다시 뜬 결과 일치하지 않았고, 64비트 중 {count}비트 차이였습니다.",
       "link": "재확인 기록 보기"
     },
     "dispute": {
@@ -511,39 +511,39 @@
       "matched": "이 여권은 봉인된 채 등록되었고, {date}에 보유자가 사진을 공개했습니다."
     },
     "share": {
-      "copy": "Copy a link to this answer",
-      "copied": "Link copied"
+      "copy": "이 답의 링크 복사",
+      "copied": "링크 복사됨"
     },
-    "noAccount": "No account needed",
-    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "noAccount": "계정 필요 없음",
+    "noAccountWhy": "확인은 Monad의 공개 레지스트리를 읽기만 하고, 당신의 파일은 어디에도 남기지 않습니다.",
     "limits": {
-      "label": "What a match cannot prove",
-      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+      "label": "일치가 증명하지 못하는 것",
+      "line": "일치는 누가 언제 이 이미지를 Monad에 등록했는지 보여 줍니다. 그 사람이 만들었다는 증명은 아닙니다. 잘못된 여권에는 그 여권의 페이지에서 이의를 제기할 수 있습니다."
     },
     "wait": {
-      "fingerprint": "Fingerprinting the file",
-      "turns": "Trying all eight turns and flips",
-      "search": "Searching every passport",
-      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
-      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+      "fingerprint": "파일 지문 뜨기",
+      "turns": "돌리거나 뒤집은 여덟 가지 모두 시도하기",
+      "search": "모든 여권 검색하기",
+      "seconds": "{seconds, plural, other {#초}}",
+      "slow": "평소보다 느립니다. 이 페이지는 검증 서비스를 2분까지 기다리고, 그래도 답이 없으면 멈춥니다."
     },
-    "dropAnywhere": "Let go anywhere to check it",
-    "paste": "Or paste a picture you copied",
-    "dropTitleTouch": "Choose an image to check it.",
-    "checkAgain": "Check this file again",
+    "dropAnywhere": "아무 곳에나 놓으면 확인합니다",
+    "paste": "또는 복사한 이미지를 붙여 넣으세요",
+    "dropTitleTouch": "이미지를 골라 확인하세요.",
+    "checkAgain": "이 파일 다시 확인",
     "compare": {
-      "yours": "Your copy",
-      "registered": "The registered picture",
-      "drag": "Drag to compare",
-      "hold": "Hold to compare",
-      "label": "Compare your copy with the registered picture"
+      "yours": "내 사본",
+      "registered": "등록된 이미지",
+      "drag": "끌어서 비교",
+      "hold": "길게 눌러 비교",
+      "label": "내 사본과 등록된 이미지 비교"
     }
   },
   "passport": {
     "title": "여권",
     "pending": "레지스트리를 읽는 중입니다.",
     "notFound": "그 id의 여권이 없습니다. id를 확인하거나, 검증 페이지에서 찾아 들어오세요.",
-    "error": "레지스트리를 읽지 못했습니다: {reason}. 페이지를 새로 고쳐 주세요.",
+    "error": "Moolam이 지금 Monad에서 이 여권을 읽지 못했습니다. 다시 시도하거나 둘러보기로 가 보세요.",
     "creator": "제작자",
     "owner": "소유자",
     "agent": "생성 에이전트",
@@ -558,10 +558,10 @@
     "disputed": "이의 제기됨",
     "attestations": {
       "heading": "다른 사람이 다시 확인했습니다",
-      "empty": "이 여권에는 아직 검증이 기록되지 않았습니다. Chainlink 워크플로가 이미지를 다시 확인하면 한 건이 추가됩니다.",
+      "empty": "이 여권에는 아직 재확인이 기록되지 않았습니다. Chainlink 워크플로가 이미지를 재확인하면 한 건을 기록합니다.",
       "matched": "일치함",
       "notMatched": "일치하지 않음",
-      "distance": "64비트 중 {distance}비트",
+      "distance": "64비트 중 {distance}비트 차이",
       "receiver": "Moolam의 Chainlink 수신 컨트랙트가 Monad에 기록",
       "at": "시각",
       "kicker": "두 번째 의견",
@@ -677,7 +677,7 @@
         "tooLarge": "이 파일은 20MB 한도를 넘습니다. 더 작은 사본을 고르세요.",
         "fingerprintUnstable": "이 편집본은 좌우로 변화가 너무 적어 복사를 거쳐도 남는 지문을 만들 수 없어서, Chainlink 재확인도 사본 검색도 이 편집본을 찾지 못합니다. 아무것도 고정하지 않았고 보내지 않았습니다. 가로 방향으로 세부가 더 많은 편집본은 등록됩니다.",
         "signedFileTooLarge": "여권 서명을 더하면 이 파일이 확인에서 다시 읽을 수 있는 최대 크기인 20MB를 넘게 됩니다. 더 작게 내보낸 뒤 다시 시도해 주세요. 아무것도 고정하지 않았고 보내지 않았습니다.",
-        "thumbnailTooLarge": "이 사진은 Chainlink 검증자가 가져갈 수 있을 만큼 작은 썸네일로 줄일 수 없어서, 이 여권은 다시 확인될 수 없습니다. 아무것도 고정하지 않았고 보내지 않았습니다.",
+        "thumbnailTooLarge": "이 사진은 Chainlink 재확인이 가져갈 수 있을 만큼 작은 썸네일로 줄일 수 없어서, 이 여권은 재확인될 수 없습니다. 아무것도 고정하지 않았고 보내지 않았습니다.",
         "notAnImage": "이것은 이미지 파일이 아닙니다. JPEG, PNG 또는 WebP를 고르세요.",
         "empty": "이 파일은 비어 있습니다. 사진을 다시 골라 주세요.",
         "rateLimited": "지금은 이곳에서 온 요청이 너무 많습니다. 잠시 뒤에 다시 시도하세요.",
@@ -703,8 +703,8 @@
       "lineageNote": "편집은 소유자만 추가할 수 있습니다. 앱의 Privy 권한은 편집 추가만 할 수 있고 그 밖에는 아무것도 못 합니다."
     },
     "untitled": "제목 없음",
-    "noPicture": "지금은 그림을 보관한 곳이 응답하지 않습니다",
-    "fingerprintVersion": "지문 방식 {version}",
+    "noPicture": "지금은 그림을 보관한 곳이 응답하지 않습니다. 1분 뒤에 다시 시도해 주세요",
+    "fingerprintVersion": "지문 버전 {version}",
     "record": "이 기록",
     "passkeyBound": "이 제작자는 자기 계정에 묶인 패스키로 서명합니다.",
     "passkeyNone": "이 제작자의 계정에 묶인 패스키가 없습니다.",
@@ -713,12 +713,12 @@
     "about": "이 이미지에 대하여",
     "prompt": "프롬프트",
     "fingerprints": "지문",
-    "fingerprintsBody": "검증 서비스는 이미지를 가져와 해시를 다시 구하고 이것들과 견줍니다. 여기 어느 것도 파일 이름이나 메타데이터의 주장에 기대지 않습니다.",
+    "fingerprintsBody": "누구나 이미지를 가져와 지문을 다시 뜨고 이것들과 견주어 볼 수 있습니다. Chainlink의 재확인이 바로 그 일을 합니다. 여기 어느 것도 파일 이름이나 메타데이터의 주장에 기대지 않습니다.",
     "exactHash": "파일 그대로의 지문 (SHA-256)",
     "passportId": "여권 id",
     "tokenId": "이 여권은 같은 id를 가진 Monad 위의 NFT이기도 합니다",
     "standing": {
-      "verified": "체인 위의 검증자가 확인함",
+      "verified": "체인에서 재확인되어 일치함",
       "mismatched": "재확인이 일치하지 않았음",
       "disputed": "이의 제기됨",
       "unverified": "아직 재확인되지 않음"
@@ -730,7 +730,7 @@
       "choose": "이미지 고르기",
       "hint": "크기를 바꾸거나, 다시 인코딩하거나, 돌리거나, 뒤집은 사본도 여전히 맞습니다. 잘라 낸 것은 아직 아닙니다.",
       "checking": "이 사본을 확인하는 중",
-      "failed": "확인이 실행되지 않았습니다.",
+      "failed": "확인이 실행되지 않았습니다. 1분 뒤에 다시 시도하거나, 검증 페이지에서 사본을 확인해 보세요.",
       "tooLarge": "이 파일은 20MB 한도를 넘습니다. 더 작은 사본을 보내 주세요.",
       "notAnImage": "이미지 파일이 아닙니다. JPEG, PNG, WebP를 놓아 주세요.",
       "empty": "이 파일은 비어 있습니다. 사진을 다시 골라 주세요.",
@@ -738,7 +738,7 @@
       "same": "네. 같은 그림입니다.",
       "sameExact": "네. 바이트 하나까지 이 파일입니다.",
       "different": "아니요. 이 사본은 다른 여권의 것입니다.",
-      "openOther": "Open that passport"
+      "openOther": "그 여권 열기"
     },
     "dispute": {
       "kicker": "이의 제기",
@@ -860,7 +860,7 @@
       "chip": {
         "open": "AI에 개방",
         "closed": "AI 사용 불가",
-        "ask": "조건부",
+        "ask": "먼저 묻기",
         "mixed": "용도별",
         "none": "선언 없음"
       },
@@ -880,12 +880,12 @@
         "unspecified": "선언 없음",
         "allowed": "허용",
         "notAllowed": "불허",
-        "constrained": "조건부"
+        "constrained": "먼저 묻기"
       },
       "writtenOn": "{when}에 기록",
       "nothingBy": "그때까지는 아무 말도 없었습니다",
       "asking": "그날에 대해 체인에 묻는 중",
-      "askFailed": "그날에 대해 체인이 답하지 않았습니다",
+      "askFailed": "그날에 대해 체인이 답하지 않았습니다. 날짜 눈금자를 움직여 다시 물어보세요",
       "scrub": "눈금자를 끌거나 화살표 키를 쓰세요",
       "scrubStep": ", 한 칸에 하루",
       "scrubTouch": "눈금자를 끄세요",
@@ -912,7 +912,7 @@
         "notHolder": "이 지갑은 더 이상 이 여권을 갖고 있지 않습니다. 보유자만 쓸 수 있습니다.",
         "tooSoon": "같은 사진에 대해 등록부는 한 지갑에서 십 분에 한 번만 선언을 받습니다. 다음은 {at}에 열립니다.",
         "conditionsRequired": "조건이 있는 선언은 그 조건을 적어야 합니다. 적은 뒤 다시 보내세요.",
-        "conditionsNotAllowed": "조건은 조건을 요구하는 선언의 것입니다. 글을 지우거나 먼저 물어보라를 고르세요.",
+        "conditionsNotAllowed": "조건은 조건을 요구하는 선언에만 붙습니다. 글을 지우거나 ‘먼저 물어보세요’를 고르세요.",
         "conditionsTooLong": "조건이 등록부가 보관하는 256바이트보다 깁니다. 줄인 뒤 다시 보내세요.",
         "conditionsNotPrintable": "A부터 Z까지의 영문자, 숫자, 흔한 문장 부호만 쓰세요. 줄바꿈이나 악센트가 붙은 글자를 빼고 다시 보내세요.",
         "reverted": "Monad가 이 거래를 처리했지만 아무 일도 일어나지 않았습니다. 기록된 것이 없으니 다시 시도해도 안전합니다.",
@@ -1018,7 +1018,7 @@
         "noPassport": "이 아이디의 여권은 레지스트리에 없습니다.",
         "notSealed": "이 여권의 사진은 이미 공개되어 있어 더 공개할 것이 없습니다.",
         "alreadyUnsealed": "이 여권은 이미 공개되었습니다. 페이지를 다시 열면 사진이 보입니다.",
-        "thumbnailTooLarge": "이 사진은 Chainlink 검증기가 가져갈 만큼 작은 썸네일로 줄일 수 없습니다. 공개하면 누구도 다시 확인할 수 없는 여권이 남습니다. 아무것도 올리지 않았습니다.",
+        "thumbnailTooLarge": "이 사진은 Chainlink 재확인이 가져갈 만큼 작은 썸네일로 줄일 수 없습니다. 공개하면 누구도 재확인할 수 없는 여권이 남습니다. 아무것도 올리지 않았습니다.",
         "quota": "오늘 {limit}건 중 {used}건을 썼습니다. 한도는 {at}에 돌아옵니다.",
         "todayFull": "오늘 모두가 함께 쓰는 공개 한도가 다 찼습니다. 아무것도 올리지 않았고 아무것도 쓰지 않았습니다. 내일 다시 시도해 주세요.",
         "pinFailed": "사진을 IPFS에 올리지 못해 아무것도 공개되지 않았습니다.",
@@ -1094,28 +1094,28 @@
       "chainlink": "Chainlink",
       "unknownWriter": "알 수 없는 기록자"
     },
-    "ownerHint": "Made this? Sign in to manage it.",
+    "ownerHint": "직접 만드셨나요? 로그인해서 관리하세요.",
     "share": {
-      "copy": "Copy link",
-      "copied": "Link copied"
+      "copy": "링크 복사",
+      "copied": "링크 복사됨"
     },
-    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
-    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
-    "titleUnread": "Title not read yet"
+    "downloading": "IPFS에서 원본을 가져오는 중입니다. 1분까지 걸릴 수 있습니다.",
+    "downloadFailed": "지금은 IPFS에서 원본을 받아 오지 못했습니다. 1분 뒤에 다시 시도해 주세요.",
+    "titleUnread": "제목을 아직 읽지 못함"
   },
   "agent": {
     "title": "에이전트",
-    "notFound": "ERC-8004 신원 레지스트리에 그 id의 에이전트가 없습니다.",
-    "error": "신원 레지스트리를 읽지 못했습니다: {reason}. 페이지를 새로 고쳐 주세요.",
+    "notFound": "공개 에이전트 레지스트리(ERC-8004)에 그 id의 에이전트가 없습니다. id를 확인하거나 에이전트 목록으로 가 보세요.",
+    "error": "Moolam이 지금 공개 에이전트 레지스트리(ERC-8004)에서 이 에이전트를 읽지 못했습니다. 다시 시도하거나 에이전트 목록으로 가 보세요.",
     "owner": "소유자",
-    "cardMissing": "그 URI에서 에이전트 카드를 읽지 못했습니다.",
+    "cardMissing": "이 에이전트의 카드를 저장된 곳에서 읽지 못했습니다. 잠시 뒤에 다시 시도해 주세요.",
     "reputation": {
-      "heading": "ERC-8004 레지스트리의 피드백",
-      "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 검증 서비스는 확인할 때마다 한 건씩 남깁니다.",
+      "heading": "공개 에이전트 평가판(ERC-8004)의 피드백",
+      "empty": "이 에이전트에 대한 피드백이 아직 없습니다. 피드백은 Moolam이 여기에 수동으로 올리며, 확인할 때마다 올리지는 않습니다.",
       "error": "평판 레지스트리를 읽지 못했습니다: {reason}.",
       "body": "피드백은 Monad의 공개 에이전트 평가판(ERC-8004 평판 레지스트리)에 Moolam의 확인 항목으로 올라 있습니다. 이 페이지는 그 요약을 읽습니다. 옆의 신뢰 점수는 인덱스 자체의 재확인에서 나오므로, 둘을 더하는 일은 없습니다.",
       "registry": "레지스트리 {address}",
-      "secondary": "검증자가 체인에 쓴 기록이며 재확인 점수가 아닙니다",
+      "secondary": "체인에 수동으로 올린 피드백이며, 재확인 점수와는 별개입니다",
       "entries": "{count, plural, other {#건}}",
       "latest": "최신 값"
     },
@@ -1155,7 +1155,7 @@
       "registry": "레지스트리 {address}",
       "identity": "신원 {address}",
       "privy": "키가 있는 곳",
-      "privyBody": "이 값들은 에이전트 자신의 카드에서 온 것이지, 이 앱에서 온 것이 아닙니다.",
+      "privyBody": "이 에이전트의 키는 Privy가 보관하고, Privy 정책이 이 키로 서명할 수 있는 것을 제한합니다. 이 id들은 이 앱이 아니라 에이전트 자신의 카드에서 왔습니다.",
       "privyWallet": "Privy 계정 id",
       "privyPolicy": "이 계정이 서명할 수 있는 것"
     },
@@ -1163,19 +1163,19 @@
       "heading": "서명해 온 것들",
       "source": "인덱스에서",
       "empty": "아직 이 에이전트를 적은 여권이 없습니다.",
-      "error": "인덱스를 읽지 못했습니다: {reason}.",
+      "error": "지금은 인덱스를 읽지 못했습니다. 잠시 뒤에 다시 시도해 주세요.",
       "untitled": "제목 없음",
       "noThumbnail": "고정된 미리보기 없음",
-      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
-      "hideTest": "Hide the test images",
-      "onlyTest": "Every picture this agent has signed so far is a test image.",
-      "seeAll": "See all its pictures"
+      "showTest": "테스트 이미지 {count, plural, other {#장}} 보기",
+      "hideTest": "테스트 이미지 숨기기",
+      "onlyTest": "이 에이전트가 지금까지 서명한 이미지는 모두 테스트 이미지입니다.",
+      "seeAll": "이 에이전트의 이미지 전부 보기"
     },
     "cardLabel": "에이전트 카드",
     "cardInline": "이 카드는 토큰 URI 안에 담겨 있어서 따로 열 곳이 없습니다.",
     "cardShow": "카드 JSON 보기",
     "ipfsCid": "IPFS에 저장된 기록 열기",
-    "unnamedTitle": "Unnamed agent"
+    "unnamedTitle": "이름 없는 에이전트"
   },
   "studio": {
     "kicker": "스튜디오",
@@ -1183,7 +1183,7 @@
     "lede": "여기서 등록하는 이미지마다 Monad 위에 제 기록을 갖습니다. 지문이 떠지고, 당신이 서명하고, 어떤 사본에서든 찾을 수 있습니다.",
     "opening": "계정을 여는 중",
     "noWallet": "로그인은 되었지만 Monad에 계정이 아직 만들어지지 않았습니다. 페이지를 새로 고치거나, 로그아웃한 뒤 다시 로그인해 주세요.",
-    "notConfigured": "Privy가 설정되지 않아 여기서는 아무도 로그인할 수 없습니다. packages/web/.env.local에 NEXT_PUBLIC_PRIVY_APP_ID를 넣고 개발 서버를 다시 시작하세요.",
+    "notConfigured": "이 Moolam 사이트에서는 로그인이 꺼져 있어 스튜디오를 열 수 없습니다. 검증과 둘러보기는 계정 없이도 쓸 수 있습니다.",
     "signOut": "로그아웃",
     "identity": {
       "account": "로그인 계정",
@@ -1274,18 +1274,18 @@
       "body": "한 번에 한 장입니다. 지문을 뜨고 고정한 뒤, 당신이 잠금 해제로 서명하면 Moolam이 Monad로 보냅니다.",
       "drop": "이미지를 여기에 놓으세요",
       "choose": "파일 고르기",
-      "hint": "JPEG, PNG, WebP, 20MB까지. Moolam이 C2PA 매니페스트를 심고, 서명된 바이트의 지문을 뜨고, 파일을 IPFS에 고정합니다.",
+      "hint": "JPEG, PNG, WebP, 20MB까지. Moolam이 Content Credentials(C2PA)를 붙이고, 서명된 파일의 지문을 뜬 뒤 공개 저장소(IPFS)에 저장합니다.",
       "replace": "다른 것 고르기",
       "title": "제목",
       "titlePlaceholder": "이 이미지는 무엇인가요",
-      "titleHint": "매니페스트와 메타데이터에 들어가니, 평소 그 그림을 부르던 이름 그대로 두세요.",
+      "titleHint": "파일의 Content Credentials와 여권 기록에 들어가니, 평소 그 그림을 부르던 이름 그대로 두세요.",
       "submit": "이 이미지 등록하기",
       "balance": "계정에 {mon} MON이 있습니다.",
       "steps": {
         "prepare": {
           "waiting": "파일 지문을 뜨고 고정, 약 10초",
           "running": "지문을 뜨고 고정하는 중, 약 10초",
-          "done": "지문을 뜨고, 매니페스트를 심고, IPFS에 고정했습니다",
+          "done": "지문을 뜨고, Content Credentials를 붙이고, IPFS에 저장했습니다",
           "failed": "파일이 준비되지 않았습니다"
         },
         "sign": {
@@ -1318,8 +1318,8 @@
       "openAddress": "MonadVision의 내 계정 {wallet}",
       "openImage": "고정된 이미지",
       "another": "이미지 하나 더 등록하기",
-      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
-      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
+      "balanceEmpty": "계정 잔액이 0 MON이라 수수료를 직접 낼 수 없습니다. 먼저 계정에 MON을 조금 보내거나, 나중에 다시 시도해 주세요.",
+      "anotherWaits": "AI 사용에 대한 당신의 말이 아직 Monad로 가고 있습니다. Monad에 보이면 누를 수 있습니다."
     },
     "generate": {
       "kicker": "에이전트",
@@ -1337,7 +1337,7 @@
       },
       "title": "제목",
       "titlePlaceholder": "이 그림을 뭐라고 부를까요",
-      "titleHint": "매니페스트와 메타데이터에 프롬프트와 나란히 들어갑니다.",
+      "titleHint": "파일의 Content Credentials와 여권 기록에 프롬프트와 나란히 들어갑니다.",
       "submit": "만들고 등록하기",
       "quota": "오늘 {limit}장 중 {used}장",
       "quotaResets": "다음 한 장은 {time}에 열립니다.",
@@ -1464,7 +1464,7 @@
         },
         "generator": {
           "label": "에이전트 아이디",
-          "line": "어느 Moolam 에이전트가 그렸는지, 그리고 어느 ERC-8004 등록부에 있는지입니다."
+          "line": "어느 Moolam 에이전트가 그렸는지, 그리고 그 에이전트가 올라 있는 공개 에이전트 레지스트리(ERC-8004)입니다."
         },
         "createdAt": {
           "label": "날짜",
@@ -1472,7 +1472,7 @@
         },
         "training": {
           "label": "AI 사용에 대한 내 표시",
-          "line": "위에서 고른 네 가지 답을 CAWG 표준의 말로 옮긴 것입니다."
+          "line": "위에서 고른 네 가지 답을 AI 학습과 데이터 마이닝을 위한 표준(CAWG)의 말로 옮긴 것입니다."
         },
         "sealed": {
           "label": "봉인이라는 말",
@@ -1517,7 +1517,7 @@
         "label": "Monad 위에 봉인됨",
         "detail": "사진은 공개되지 않습니다. Moolam은 사본을 두지 않습니다.",
         "detailPrivate": "사진은 공개되지 않습니다. Moolam은 당신이 요청한 작은 비공개 사본만 둡니다.",
-        "fingerprintDetail": "이 브라우저를 떠난 적 없는 서명된 파일에서 얻었습니다. C2PA 매니페스트 삽입: {manifest}.",
+        "fingerprintDetail": "이 브라우저를 떠난 적 없는 서명된 파일에서 얻었습니다. Content Credentials(C2PA) 추가: {manifest}.",
         "privateLabel": "비공개 사본 보관됨",
         "privateDetail": "Chainlink의 비공개 재확인을 위한 것입니다. <page>원할 때 언제든 여권 페이지에서 삭제하세요.</page>",
         "noPrivateLabel": "비공개 사본 없음",
@@ -1534,16 +1534,16 @@
       "walletDetail": "로그인할 때 만들어졌습니다. 시드 문구도, Moolam이 쥔 키도 없습니다.",
       "passkey": "패스키 연결됨",
       "passkeyDetail": "이 기기 잠금 해제의 공개된 쪽 절반을 레지스트리가 보관합니다.",
-      "fingerprint": "정확한 해시",
-      "fingerprintDetail": "{width} 곱하기 {height} 픽셀. C2PA 매니페스트 심음: {manifest}.",
+      "fingerprint": "파일 그대로의 지문 (SHA-256)",
+      "fingerprintDetail": "{width} 곱하기 {height} 픽셀. Content Credentials(C2PA) 추가: {manifest}.",
       "manifestYes": "예",
       "manifestNo": "아니오",
       "pinned": "IPFS에 고정됨",
       "pinnedDetail": "서명된 바이트, 미리보기, 메타데이터가 모두 IPFS로 갔습니다.",
       "download": "내 이미지 다운로드",
       "downloadHelp": "Content Credentials가 담긴 서명된 파일입니다. 복사본도 이 여권과 대조해 검증됩니다.",
-      "signed": "서명한 다이제스트",
-      "signedDetail": "컨트랙트에서 읽어 와, 당신의 잠금 해제로 서명하고, 보내기 전에 여기서 확인했습니다.",
+      "signed": "서명한 내용 (다이제스트)",
+      "signedDetail": "여권의 짧은 요약입니다. 레지스트리에서 읽어 와 당신의 잠금 해제로 서명했고, 보내기 전에 여기서 확인했습니다.",
       "sent": "Monad로 보냄",
       "sentSponsored": "네트워크 수수료는 Moolam이 Privy를 통해 부담했습니다.",
       "sentOwn": "네트워크 수수료는 내 잔액에서 지불했습니다.",
@@ -1565,13 +1565,13 @@
     },
     "passports": {
       "heading": "내 이미지",
-      "source": "인덱스에서 실시간으로 읽음",
+      "source": "인덱스(Envio)에서 실시간으로 읽음",
       "reading": "이 계정이 등록한 것을 모두 읽는 중입니다.",
-      "unreadable": "여권을 읽지 못했습니다: {reason}. 페이지를 새로 고쳐 주세요.",
+      "unreadable": "지금은 내 이미지를 읽지 못했습니다. 다시 시도해 주세요.",
       "empty": "이 계정에서 등록한 것이 아직 없습니다. 처음 등록하는 이미지는 블록 하나 안에 여기에 나타납니다.",
       "noThumbnail": "미리보기 없음",
       "untitled": "제목 없음",
-      "retry": "Try again"
+      "retry": "다시 시도"
     },
     "failure": {
       "serviceOffline": "Moolam 검증 서비스가 응답하지 않아 아무것도 올라가지 않았습니다. 잠시 뒤 다시 시도해 주세요.",
@@ -1586,7 +1586,7 @@
       "badResponse": "검증 서비스가 이 페이지가 이해하지 못하는 형태로 답해서 아무것도 서명되지 않았습니다. 다시 시도해 주세요.",
       "authCheck": "이 기기의 서명은 레지스트리가 거절할 내용이라 보내지 않았습니다. 연결해 둔 것과 같은 잠금 해제로 다시 시도해 주세요.",
       "passkeyCancelled": "잠금 해제 창이 닫혔거나 시간이 지났습니다. 아무것도 서명되지 않았습니다.",
-      "passkeyOrigin": "이 패스키는 다른 사이트의 것이라 이 페이지에서는 쓸 수 없습니다.",
+      "passkeyOrigin": "이 패스키는 다른 사이트의 것이라 이 페이지에서는 쓸 수 없습니다. 대신 이 기기의 잠금 해제를 계정에 연결하세요.",
       "passkeyUnsupported": "이 브라우저나 기기는 레지스트리가 요구하는 종류의 패스키를 만들지 못합니다. 지문이나 얼굴 잠금 해제를 지원하는 브라우저로 해 보세요.",
       "passkeyOther": "잠금 해제가 끝나지 않았습니다. 기기가 이렇게 말했습니다:",
       "alreadyRegistered": "똑같은 이미지가 이미 등록되어 있습니다. 먼저 등록한 쪽이 유효하니, 그 이미지를 가진 여권을 열어 보세요.",
@@ -1602,11 +1602,11 @@
       "confirmPending": "보내기는 받아들여졌고 Monad에는 아직 보이지 않습니다. 아직 도착할 수 있어 두 번 보내지 않았습니다. 아래에서 계정을 열어 확인하거나, Monad에 다시 물어보세요.",
       "sendCancelled": "확인 창을 닫아서 아무것도 보내지 않았습니다.",
       "sendFailed": "이 단계가 끝나지 않았습니다. 네트워크가 한 말은 아래에 있습니다. 잠시 뒤 다시 시도해 주세요.",
-      "digestMismatch": "네트워크가 이 페이지에 있는 것과 다른 기록을 돌려주어 아무것도 서명되지 않았습니다. 다른 네트워크 설정으로 시도해 보세요.",
+      "digestMismatch": "네트워크가 이 페이지에 있는 것과 다른 기록을 돌려주어 아무것도 서명되지 않았습니다. 다시 시도해 보고, 같은 일이 두 번 생기면 페이지를 새로 고쳐 주세요.",
       "passkeyNotReady": "이 페이지가 Monad에서 패스키를 아직 다 읽지 못했습니다. 잠시 뒤 다시 시도해 주세요.",
       "unknown": "무엇을 보내기도 전에 문제가 생겼습니다. 메시지는 아래에 있습니다.",
       "fileMissing": "먼저 이미지를 고르세요.",
-      "titleMissing": "먼저 이미지에 제목을 붙여 주세요. 매니페스트에 들어갑니다.",
+      "titleMissing": "먼저 이미지에 제목을 붙여 주세요. 파일의 Content Credentials에 들어갑니다.",
       "quotaReached": "에이전트가 한 계정에 하루 동안 그려 주는 만큼을 모두 썼습니다. 버튼 아래 숫자가 다음 한 장이 열리는 때를 알려 줍니다.",
       "promptRefused": "모델이 이 프롬프트는 그리지 않았습니다. 모델이 밝힌 이유가 아래에 있습니다. 프롬프트를 고쳐 다시 요청해 주세요.",
       "creatorMismatch": "지금 로그인한 계정은 이 그림을 그려 주려던 계정이 아닙니다. 로그아웃한 뒤 다시 로그인하고 한 번 더 요청하세요.",
@@ -1623,7 +1623,7 @@
       "privateRecheckNeedsSealed": "검증 서비스는 봉인되지 않은 사진의 비공개 사본을 두지 않아 아무것도 고정되지 않았고 등록되지 않았습니다. 스튜디오를 새로 고친 뒤 다시 시도하세요.",
       "privateCopyNotPrivate": "저장소 제공자가 작은 사본을 비공개로 두지 않아 Moolam이 멈췄고, 아무것도 고정되지 않았고 등록되지 않았습니다. 비공개 재확인을 끄면 이 사진을 그것 없이 봉인해 등록할 수 있습니다.",
       "privateChainUnreachable": "이 사진이 새것인지 확인하려고 Monad에 닿지 못해 비공개 사본을 두지 않았고 아무것도 등록되지 않았습니다. 잠시 뒤 다시 시도해 주세요.",
-      "privateThumbnailTooLarge": "이 사진은 Chainlink 검증자가 가져갈 수 있을 만큼 작은 썸네일로 줄일 수 없어서, 이 패스포트는 다시 확인될 수 없고, 봉인한 패스포트는 나중에 공개할 수도 없습니다. 아무것도 고정되지 않았습니다.",
+      "privateThumbnailTooLarge": "이 사진은 Chainlink 재확인이 가져갈 수 있을 만큼 작은 썸네일로 줄일 수 없어서, 이 여권은 재확인될 수 없고, 봉인한 여권은 나중에 공개할 수도 없습니다. 아무것도 고정되지 않았습니다.",
       "fingerprintUnstable": "이 사진은 좌우로 변화가 너무 적어 복사를 거쳐도 남는 지문을 만들 수 없습니다. 자기 자신의 작은 사본조차 다른 사진으로 읽혀서 Chainlink 재확인도, 사본 검색도 이 사진을 찾지 못합니다. 아무것도 고정되지 않았고 등록되지 않았습니다. 가로 방향으로 세부가 더 많은 사진은 등록됩니다.",
       "serviceFault": "Moolam 쪽의 오류이며, 사진의 문제가 아닙니다. 아무것도 저장되지 않았습니다. 1분 뒤에 다시 시도해 주세요."
     },
@@ -1639,7 +1639,7 @@
       "generateAgain": "다시 만들기"
     },
     "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다.",
-    "titleNeeded": "Give the picture a title."
+    "titleNeeded": "이미지에 제목을 붙여 주세요."
   },
   "docs": {
     "home": "문서",
@@ -1686,8 +1686,8 @@
     "withdrawn": "지급됐습니다. 적립금은 다시 0입니다.",
     "mon": "{amount} MON",
     "empty": "열려 있는 이의가 없습니다. 여기서 당신을 기다리는 일은 없습니다.",
-    "error": "정책을 읽지 못했습니다: {reason}",
-    "unavailable": "열린 분쟁 목록은 인덱스에서 오는데, 인덱스가 응답하지 않았습니다: {reason}",
+    "error": "지금은 정책을 읽지 못했습니다. 잠시 뒤에 다시 시도해 주세요.",
+    "unavailable": "열린 분쟁 목록은 인덱스에서 오는데, 인덱스가 응답하지 않았습니다. 잠시 뒤에 다시 시도해 주세요.",
     "passport": "여권",
     "noPicture": "사진 없음",
     "claim": "주장 내용",
@@ -1768,7 +1768,7 @@
       "sealed": "이 여권의 사진은 공개된 적이 없어서 워크플로가 가져올 것이 없습니다.",
       "queueFull": "아직 아무도 처리하지 않은 요청으로 대기열이 가득 찼습니다. 나중에 다시 시도해 주세요.",
       "rateLimited": "이곳에서 요청이 너무 많습니다. 1분만 기다려 주세요.",
-      "notAnswering": "검증 서비스가 지금 응답하지 않습니다.",
+      "notAnswering": "검증 서비스가 지금 응답하지 않습니다. 1분 뒤에 다시 시도해 주세요.",
       "unknown": "요청이 들어가지 않았습니다."
     },
     "notePrivate": "무료입니다. Chainlink 기밀 워크플로가 Moolam이 두고 있는 작은 비공개 사본을 열어 지문을 비교하고, 그 판정을 Monad에 기록합니다. 판정은 보통 몇 분 안에 블록체인에 기록됩니다.",
@@ -1793,14 +1793,14 @@
       "body": "이 목록은 계정 주소로 인덱스에서 읽습니다. 로그인만 하면 어느 기기에서나 같은 이미지가 나옵니다."
     },
     "showcaseCaption": "Monad 위의 실제 여권. 내 여권도 여기 이렇게 놓입니다.",
-    "makeFirst": "Register your first picture",
-    "signedInAs": "Signed in as {account}"
+    "makeFirst": "첫 이미지 등록하기",
+    "signedInAs": "로그인 계정: {account}"
   },
   "crMark": {
     "name": "Content Credentials",
-    "alt": "Content Credentials: open this picture's record",
-    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
-    "inspect": "Open it in the official Content Credentials inspect tool",
-    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
+    "alt": "Content Credentials: 이 이미지의 기록 열기",
+    "line": "이 파일에는 Content Credentials가 있습니다. 파일이 어디서 왔는지 적은 서명된 기록이고, 그 기록은 지금도 파일과 일치합니다.",
+    "inspect": "공식 Content Credentials 검사 도구에서 열기",
+    "untrustedSigner": "서명자의 신원을 확인할 수 없습니다. 이 기록에 서명한 키가 C2PA Trust List에 없습니다."
   }
 }
