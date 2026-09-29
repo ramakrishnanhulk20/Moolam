@@ -21,7 +21,9 @@ type Copy = "idle" | "copied" | { failed: string };
  * than a box of its own, so the credit line's rules fall between them.
  *
  * Both labels are laid in the same cell, so the button is as wide as the longer
- * one in every language and the line never shifts when it confirms. A refusal
+ * one in every language and the line never shifts when it confirms. Each starts
+ * at the cell's start edge: a button centres its words, which set the shorter
+ * label 9 px in from the line above and slid it left when it changed. A refusal
  * gets a line of its own under the row, because the sentence is far longer than
  * any label, with the address under it ready to select, since the sentence asks
  * the reader to copy it by hand.
@@ -62,7 +64,7 @@ export function ShareLink({ words }: { words: { copy: string; copied: string; co
           type="button"
           onClick={press}
           data-copy-link
-          className="group/share -my-3.5 inline-grid py-3.5 uppercase text-text-muted transition-colors duration-200 hover:text-accent"
+          className="group/share -my-3.5 inline-grid justify-items-start py-3.5 text-start uppercase text-text-muted transition-colors duration-200 hover:text-accent"
         >
           <span
             className={`[grid-area:1/1] bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover/share:bg-[length:100%_1px] ${copied ? "invisible" : ""}`}
