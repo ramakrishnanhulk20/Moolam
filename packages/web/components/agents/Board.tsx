@@ -1,9 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { IndexRetry } from "@/components/IndexRetry";
 import { ToolOpening } from "@/components/studio/ToolOpening";
+import { WarningMark } from "@/components/WarningMark";
 import { Link } from "@/lib/i18n/routing";
 import { Row } from "./Row";
 import type { AgentRow } from "./roster";
+import type { AgentStrip } from "./strip";
 
 /** Where the formula behind the trust score is written out in full. */
 const TRUST_DOC = "/docs/developers/envio-indexer#the-trust-score";
@@ -14,8 +16,22 @@ const TRUST_DOC = "/docs/developers/envio-indexer#the-trust-score";
  * Nothing on this page is placed by hand: the order is the passport count, which
  * is why the two demo agents lead it. An index that will not answer says so, and
  * an index with nothing in it says that instead of showing an empty ruled page.
+ *
+ * `strips` is each agent's newest pictures by id. Null when that read failed,
+ * which costs the pictures and nothing else: every row still stands on its
+ * number.
  */
-export async function Board({ agents, error, locale }: { agents: AgentRow[]; error: string | null; locale: string }) {
+export async function Board({
+  agents,
+  error,
+  locale,
+  strips = null,
+}: {
+  agents: AgentRow[];
+  error: string | null;
+  locale: string;
+  strips?: Record<string, AgentStrip> | null;
+}) {
   const t = await getTranslations("agents");
 
   // The formula led this page in capitals once, which is the one thing about a
@@ -47,7 +63,10 @@ export async function Board({ agents, error, locale }: { agents: AgentRow[]; err
   const list =
     error !== null ? (
       <div className="mt-14 max-w-[54ch]">
-        <p className="text-sm leading-relaxed text-failed">{t("error", { reason: error })}</p>
+        <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+          <WarningMark className="mt-[3px]" />
+          <span className="min-w-0">{t("error", { reason: error })}</span>
+        </p>
         <IndexRetry said={error} />
       </div>
     ) : agents.length === 0 ? (
@@ -55,7 +74,7 @@ export async function Board({ agents, error, locale }: { agents: AgentRow[]; err
     ) : (
       <ul>
         {agents.map((agent, place) => (
-          <Row key={agent.id} agent={agent} place={place} />
+          <Row key={agent.id} agent={agent} place={place} strip={strips?.[agent.id] ?? null} />
         ))}
       </ul>
     );

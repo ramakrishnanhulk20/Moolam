@@ -12,6 +12,9 @@ import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
 import { IndexRetry } from "@/components/IndexRetry";
+import { WarningMark } from "@/components/WarningMark";
+import { Picture } from "@/components/passport/Picture";
+import { pictureSources } from "@/lib/images";
 import { isPrivyConfigured } from "@/lib/env";
 
 const NOTHING = () => undefined;
@@ -128,7 +131,10 @@ function Desk({
 
         {listError !== null ? (
           <div data-queue-unread className="mt-14 max-w-[58ch] border-t border-line pt-10">
-            <p className="text-sm leading-relaxed text-failed">{t("unavailable", { reason: listError })}</p>
+            <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+              <WarningMark className="mt-[3px]" />
+              <span className="min-w-0">{t("unavailable", { reason: listError })}</span>
+            </p>
             <IndexRetry said={listError} />
           </div>
         ) : disputes.length === 0 ? (
@@ -173,7 +179,10 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
         pending ? "border-text-muted bg-text-muted/5 text-text-muted" : "border-failed bg-failed/10 text-failed"
       }`}
     >
-      {t(`failure.${key}`)}
+      <span className="flex items-start gap-2.5">
+        {pending ? null : <WarningMark className="mt-[3px]" />}
+        <span className="min-w-0">{t(`failure.${key}`)}</span>
+      </span>
       {failure.reason === undefined ? null : (
         <span className="mt-2 block break-words font-mono text-[11px] text-text-faint">{failure.reason}</span>
       )}
@@ -336,6 +345,13 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
   // the others: nothing is sent again while Monad may already hold it.
   const locked = desk.busy !== null || pendingWrite(desk) || outcome !== undefined;
 
+  const seal = (
+    <span className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
+      <span className="motif h-6 w-6 opacity-70" />
+      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("noPicture")}</span>
+    </span>
+  );
+
   return (
     <motion.li
       initial={calm ? false : { opacity: 0, y: 28 }}
@@ -348,13 +364,19 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
         <span className="font-mono text-[11px] tabular-nums text-text-faint">{String(index + 1).padStart(2, "0")}</span>
         <div className="grain relative aspect-[4/3] w-full overflow-hidden border border-line bg-bg-raised">
           {dispute.thumbnailUrl === null ? (
-            <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-              {t("noPicture")}
-            </span>
+            seal
           ) : (
             <>
-              {/* The pinned picture the challenge is about, read through the gateway. */}
-              <img src={dispute.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+              {/* The pinned picture the challenge is about, through the same
+                  optimizer and gateway list as every other plate, so a gateway
+                  miss leaves the seal rather than a broken image. */}
+              <Picture
+                sources={pictureSources(dispute.thumbnailUrl)}
+                alt=""
+                sizes="(min-width: 1024px) 26vw, 80vw"
+                className="object-cover"
+                fallback={seal}
+              />
               {/* Nothing is written over the thumbnail, so light, where the
                   scrim is cream, draws none and the picture reads as it is. */}
               <span data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />

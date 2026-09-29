@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
-import type { ReactNode } from "react";
 import { IndexRetry } from "@/components/IndexRetry";
+import { WarningMark } from "@/components/WarningMark";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { REPUTATION_REGISTRY, MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { GeneratorRecord } from "@/lib/data/passports";
 import { Link } from "@/lib/i18n/routing";
@@ -49,7 +50,10 @@ export async function Standing({
 
           {recordError !== null ? (
             <div data-index-unread className="mt-6 max-w-[46ch]">
-              <p className="text-sm leading-relaxed text-failed">{t("index.error", { reason: recordError })}</p>
+              <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+                <WarningMark className="mt-[3px]" />
+                <span className="min-w-0">{t("index.error", { reason: recordError })}</span>
+              </p>
               {/* The one way back on this page. The pictures further down come
                   from the same index, and a second countdown there would ask
                   the shared endpoint twice for the same page. */}
@@ -81,9 +85,9 @@ export async function Standing({
               <p className="mt-8 max-w-[58ch] text-sm leading-relaxed text-text-muted">{t("index.formulaPlain")}</p>
               <p className="mt-3 flex flex-wrap items-center gap-3">
                 <span aria-hidden className="h-px w-8 bg-line-strong" />
-                <code className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-faint">
-                  {t("index.formula")}
-                </code>
+                {/* Normal case, as on the Agents board: the formula in capitals
+                    was the one thing about a trust score nobody could read. */}
+                <code className="font-mono text-[12px] leading-relaxed text-text-muted">{t("index.formula")}</code>
                 <Link
                   href={TRUST_DOC}
                   className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent"
@@ -110,8 +114,9 @@ export async function Standing({
           </p>
 
           {reputationError !== null ? (
-            <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-failed">
-              {t("reputation.error", { reason: reputationError })}
+            <p className="mt-6 flex max-w-[46ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
+              <WarningMark className="mt-[3px]" />
+              <span className="min-w-0">{t("reputation.error", { reason: reputationError })}</span>
             </p>
           ) : reputation === null || reputation.count === 0n ? (
             <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("reputation.empty")}</p>
@@ -142,26 +147,6 @@ export async function Standing({
         </div>
       </div>
     </section>
-  );
-}
-
-/**
- * Stands in for an address inside a translated sentence, so the address can be
- * drawn in its own normal-case span while the words around it keep the label's
- * capitals. A private-use character, so no language's sentence contains it.
- */
-const HEX_MARK = "\uE000";
-
-function withHex(sentence: string, hex: string): ReactNode {
-  const [before, after = ""] = sentence.split(HEX_MARK);
-  return (
-    <>
-      {before}
-      <span data-hex className="normal-case">
-        {hex}
-      </span>
-      {after}
-    </>
   );
 }
 

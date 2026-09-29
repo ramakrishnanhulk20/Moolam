@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const holds = vi.hoisted(() => ({
   standings: vi.fn(),
   roster: vi.fn(),
+  strips: vi.fn(),
   connection: vi.fn(),
 }));
 
@@ -19,6 +20,7 @@ vi.mock("next/server", async (real) => ({
 
 vi.mock("@/lib/data/passports", () => ({ heldGeneratorStandings: holds.standings }));
 vi.mock("@/components/agents/roster", () => ({ roster: holds.roster }));
+vi.mock("@/components/agents/strip", () => ({ boardStrips: holds.strips }));
 
 vi.mock("@/lib/chain/client", () => ({
   reason: (error: unknown) => (error instanceof Error ? error.message : String(error)),
@@ -33,6 +35,7 @@ describe("a roster that could not be read", () => {
     holds.connection.mockReset().mockResolvedValue(undefined);
     holds.standings.mockReset().mockResolvedValue([]);
     holds.roster.mockReset().mockImplementation(async (rows: unknown[]) => rows);
+    holds.strips.mockReset().mockResolvedValue({});
   });
 
   it("is never left in the page the host keeps", async () => {

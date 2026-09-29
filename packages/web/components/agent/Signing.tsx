@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { cidOf } from "@/components/passport/art";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { Mono } from "@/components/passport/Mono";
 import { cardText, type AgentCard } from "./card";
 
@@ -66,7 +67,7 @@ export async function Signing({
               rel="noreferrer"
               className="transition-colors duration-200 hover:text-accent"
             >
-              {t("registry", { address: shortHex(addresses.registry) })}
+              {withHex(t("registry", { address: HEX_MARK }), shortHex(addresses.registry))}
             </a>
             <a
               href={`${MONAD_EXPLORER}/address/${addresses.agentIdentity}`}
@@ -74,7 +75,7 @@ export async function Signing({
               rel="noreferrer"
               className="transition-colors duration-200 hover:text-accent"
             >
-              {t("identity", { address: shortHex(addresses.agentIdentity) })}
+              {withHex(t("identity", { address: HEX_MARK }), shortHex(addresses.agentIdentity))}
             </a>
           </div>
 
@@ -121,7 +122,7 @@ export async function Signing({
                     <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
                       {t("privyWallet")}
                     </dt>
-                    <dd className="mt-1.5 break-all font-mono text-sm">{card.privy.walletId}</dd>
+                    <dd className="mt-1.5 break-all font-mono text-sm normal-case">{card.privy.walletId}</dd>
                   </div>
                 )}
                 {card.privy.policyIds.length === 0 ? null : (
@@ -129,7 +130,7 @@ export async function Signing({
                     <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
                       {t("privyPolicy")}
                     </dt>
-                    <dd className="mt-1.5 space-y-1 break-all font-mono text-sm">
+                    <dd className="mt-1.5 space-y-1 break-all font-mono text-sm normal-case">
                       {card.privy.policyIds.map((policy) => (
                         <p key={policy}>{policy}</p>
                       ))}

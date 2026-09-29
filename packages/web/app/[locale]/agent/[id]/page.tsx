@@ -8,14 +8,15 @@ import { Signing } from "@/components/agent/Signing";
 import { Standing } from "@/components/agent/Standing";
 import { indexKnowsAgent } from "@/components/agent/known";
 import { Works } from "@/components/agent/Works";
-import { signedWorks, type SignedWork } from "@/components/agent/signed";
+import { WarningMark } from "@/components/WarningMark";
+import { agentSheet, type AgentSheet } from "@/components/agent/signed";
 import { AgentNotFound } from "@/lib/chain/agents";
 import { reason } from "@/lib/chain/client";
 import { heldAgent, heldReputation } from "@/lib/chain/registry";
 import { heldGeneratorRecord, type GeneratorRecord } from "@/lib/data/passports";
 import { knownAgentIds } from "@/lib/data/prerender";
 
-// Four chain reads, two index queries and a dozen gateway fetches make this
+// Four chain reads, a few index queries and two dozen gateway fetches make this
 // page, and they answer the same for everybody. So it is built once and rebuilt
 // a minute at a time, and a visitor gets the finished page rather than the wait.
 export const revalidate = 300;
@@ -23,7 +24,7 @@ export const revalidate = 300;
 /**
  * Every agent the index has seen sign a picture is built when the site is, so
  * the first person to open one after a deploy is handed a page rather than four
- * chain reads, two index queries and a dozen gateway fetches. Best effort on
+ * chain reads, a few index queries and two dozen gateway fetches. Best effort on
  * purpose: a list that cannot be read costs that one first visit and never the
  * build. An agent minted after the deploy still renders on demand.
  */
@@ -110,10 +111,12 @@ export default async function AgentPage({
     notFound();
   }
 
-  let works: SignedWork[] = [];
+  // The pictures are read as Explore's sheet for this agent, so the page and
+  // the "see all" link it offers share one held read.
+  let sheet: AgentSheet = { plates: [], complete: true };
   let worksError: string | null = null;
   try {
-    works = await signedWorks(agentId);
+    sheet = await agentSheet(agentId);
   } catch (error) {
     worksError = reason(error);
   }
@@ -122,7 +125,7 @@ export default async function AgentPage({
 
   return (
     <article>
-      <AgentPoster agentId={agentId} owner={agent.owner} card={card} works={works} />
+      <AgentPoster agentId={agentId} owner={agent.owner} card={card} works={sheet.plates} />
 
       <Standing
         reputation={reputation}
@@ -134,7 +137,14 @@ export default async function AgentPage({
 
       <Signing agentId={agentId} card={card} document={agent.card} uri={agent.uri} />
 
-      <Works works={works} error={worksError} locale={locale} retry={recordError === null} />
+      <Works
+        agentId={agentId}
+        works={sheet.plates}
+        complete={sheet.complete}
+        error={worksError}
+        locale={locale}
+        retry={recordError === null}
+      />
     </article>
   );
 }
@@ -143,11 +153,10 @@ function Notice({ text, tone }: { text: string; tone?: "failed" }) {
   return (
     <div className="mx-auto w-full max-w-[1400px] px-5 py-24 sm:px-8">
       <p
-        className={
-          tone === "failed" ? "rise max-w-[52ch] text-base text-failed" : "rise max-w-[52ch] text-base text-text-muted"
-        }
+        className={`rise flex max-w-[52ch] items-start gap-2.5 text-base ${tone === "failed" ? "text-failed" : "text-text-muted"}`}
       >
-        {text}
+        {tone === "failed" ? <WarningMark className="mt-[5px]" /> : null}
+        <span className="min-w-0">{text}</span>
       </p>
     </div>
   );

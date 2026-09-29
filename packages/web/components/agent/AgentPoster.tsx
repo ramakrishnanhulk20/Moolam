@@ -1,15 +1,18 @@
 import { getTranslations } from "next-intl/server";
 import type { Hex } from "viem";
+import { WarningMark } from "@/components/WarningMark";
 import { Picture } from "@/components/passport/Picture";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import { pictureSources } from "@/lib/images";
+import type { ExplorePlate } from "@/components/explore/sort";
 import type { AgentCard } from "./card";
-import type { SignedWork } from "./signed";
+import { splitTestPlates } from "./signed";
 
 /**
  * The agent as a contact sheet: every picture it has signed, tiled behind its
  * name, with a scrim under the words. An agent that has signed nothing gets the
  * seal on a dark plate instead of an empty grid, which would read as broken.
+ * The wall leads with its real pictures, the same order as the grid below.
  */
 export async function AgentPoster({
   agentId,
@@ -20,10 +23,16 @@ export async function AgentPoster({
   agentId: bigint;
   owner: Hex;
   card: AgentCard | null;
-  works: SignedWork[];
+  works: ExplorePlate[];
 }) {
   const t = await getTranslations("agent");
-  const pictures = works.filter((work): work is SignedWork & { thumbnailUrl: string } => work.thumbnailUrl !== undefined);
+  const { real, tests } = splitTestPlates(works);
+  const pictures = [...real, ...tests].filter(
+    (work): work is ExplorePlate & { thumbnailUrl: string } => work.thumbnailUrl !== null && work.sealed !== true,
+  );
+  // A card with no name, or a name of nothing but spaces, gets a title that
+  // reads as one. The sentence that used to stand here was set in 6 rem capitals.
+  const name = card?.name?.trim() ?? "";
   // The sheet is a fixed twelve cells so it fills the frame at any width. With
   // fewer pictures than cells the agent's own pictures come round again rather
   // than leaving holes in the wall.
@@ -85,7 +94,7 @@ export async function AgentPoster({
           className="rise mt-6 max-w-[15ch] font-display text-[clamp(2.4rem,7.5vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]"
           style={{ animationDelay: "60ms" }}
         >
-          {card?.name ?? t("unnamed")}
+          {name === "" ? t("unnamedTitle") : name}
         </h1>
 
         {card?.description === undefined ? null : (
@@ -98,8 +107,14 @@ export async function AgentPoster({
         )}
 
         {card === null ? (
-          <p className="rise mt-7 max-w-[52ch] text-sm leading-relaxed text-text-muted" style={{ animationDelay: "120ms" }}>
-            {t("cardMissing")}
+          <p
+            className="rise mt-7 flex max-w-[52ch] items-start gap-2.5 text-sm leading-relaxed text-text-muted"
+            style={{ animationDelay: "120ms" }}
+          >
+            {/* A card that would not read is a failure, but not an alarm: the
+                page still stands on the registry, so the mark keeps the muted ink. */}
+            <WarningMark className="mt-[3px]" />
+            <span className="min-w-0">{t("cardMissing")}</span>
           </p>
         ) : null}
 

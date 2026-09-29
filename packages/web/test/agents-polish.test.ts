@@ -43,7 +43,8 @@ const reads = vi.hoisted(() => ({
   art: {} as Record<string, { title?: string; thumbnailUrl?: string }>,
 }));
 
-vi.mock("@/lib/data/passports", () => ({
+vi.mock("@/lib/data/passports", async (original) => ({
+  ...(await original<typeof import("@/lib/data/passports")>()),
   heldPassportsByGenerator: async () => reads.listings,
   heldArt: async (uri: string) => reads.art[uri] ?? {},
 }));
@@ -68,6 +69,23 @@ function id(byte: string): Hex {
 
 function listing(byte: string, at: number) {
   return { id: id(byte), kind: 0, registeredAt: BigInt(at), registeredBlock: BigInt(at), metadataURI: `ipfs://${byte}` };
+}
+
+/** One passport as the Explore sheet hands it to the agent page. */
+function plate(byte: string, title: string) {
+  return {
+    id: id(byte),
+    kind: 0,
+    registeredAt: 100,
+    title,
+    thumbnailUrl: `https://gw/${byte}`,
+    manifest: false,
+    rechecked: false,
+    chainlink: false,
+    disputed: false,
+    agentId: "10248",
+    consent: null,
+  };
 }
 
 function inEnglish(node: ReactNode): string {
@@ -157,12 +175,14 @@ describe("the agent page offers one way back when the index does not answer", ()
   });
 
   it("puts it under the pictures when the counts read fine, and holds it back when they already carry one", async () => {
-    const own = inEnglish(await Works({ works: [], error: "the Envio endpoint answered 502", locale: "en" }));
+    const own = inEnglish(
+      await Works({ agentId: 10248n, works: [], error: "the Envio endpoint answered 502", locale: "en" }),
+    );
     expect(own).toContain("The index could not be read");
     expect(own).toContain(en.retry.now);
 
     const shared = inEnglish(
-      await Works({ works: [], error: "the Envio endpoint answered 502", locale: "en", retry: false }),
+      await Works({ agentId: 10248n, works: [], error: "the Envio endpoint answered 502", locale: "en", retry: false }),
     );
     expect(shared).toContain("The index could not be read");
     expect(shared).not.toContain(en.retry.now);
@@ -170,7 +190,7 @@ describe("the agent page offers one way back when the index does not answer", ()
 });
 
 describe("ids keep their case", () => {
-  const work = { ...listing("7e", 100), id: id("7e"), title: "Harbour lights", thumbnailUrl: "https://gw/7e" };
+  const work = plate("7e", "Harbour lights");
 
   it("sets the owner inside a normal-case span in the capitalised row", async () => {
     const html = renderToStaticMarkup(await AgentPoster({ agentId: 10248n, owner: OWNER, card: null, works: [work] }));
@@ -183,7 +203,7 @@ describe("ids keep their case", () => {
     );
     expect(standing).toMatch(/Registry <span data-hex="true" class="normal-case">0x/);
 
-    const works = renderToStaticMarkup(await Works({ works: [work], error: null, locale: "en" }));
+    const works = renderToStaticMarkup(await Works({ agentId: 10248n, works: [work], error: null, locale: "en" }));
     expect(works).toMatch(HEX_SPAN);
   });
 
@@ -209,10 +229,10 @@ describe("ids keep their case", () => {
 });
 
 describe("in the light class the agent's pictures carry no cream scrim", () => {
-  const work = { ...listing("7e", 100), id: id("7e"), title: "Harbour lights", thumbnailUrl: "https://gw/7e" };
+  const work = plate("7e", "Harbour lights");
 
   it("hides every scrim on the picture tiles in light", async () => {
-    const html = renderToStaticMarkup(await Works({ works: [work], error: null, locale: "en" }));
+    const html = renderToStaticMarkup(await Works({ agentId: 10248n, works: [work], error: null, locale: "en" }));
     const scrims = scrimClasses(html);
 
     expect(scrims.length).toBeGreaterThan(0);

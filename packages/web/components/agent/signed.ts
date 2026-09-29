@@ -1,4 +1,6 @@
-import { isTestCard } from "@/components/explore/sort";
+import { sheetPage } from "@/components/explore/plates";
+import { readExploreSearch } from "@/components/explore/query";
+import { isTestCard, type ExplorePlate } from "@/components/explore/sort";
 import { heldArt, heldPassportsByGenerator, type PassportListing } from "@/lib/data/passports";
 
 /** One passport this agent signed, with the picture the metadata points at. */
@@ -42,4 +44,40 @@ export async function signedWorks(agentId: bigint): Promise<SignedWork[]> {
     }),
   );
   return realPicturesFirst(works);
+}
+
+/** What the agent page draws its pictures from. */
+export interface AgentSheet {
+  /** The agent's newest passports as Explore's plates, newest first. */
+  plates: ExplorePlate[];
+  /** True when the read reached the agent's oldest passport, so nothing it signed is missing from the plates. */
+  complete: boolean;
+}
+
+/**
+ * The agent's passports read as the Explore sheet filtered to this agent.
+ *
+ * The search is built the way Explore reads the "see all its pictures" link,
+ * so the page and the sheet that link opens are one held read: the second of
+ * the two is answered from the minute the first one bought. The plates are the
+ * same records Explore draws, marks and all, which is what keeps a passport
+ * looking the same on both pages.
+ */
+export async function agentSheet(agentId: bigint | string): Promise<AgentSheet> {
+  const page = await sheetPage(readExploreSearch({ agent: agentId.toString() }));
+  return { plates: page.plates, complete: page.cursor === null };
+}
+
+/** The address of that same sheet on Explore. */
+export function agentSheetHref(agentId: bigint | string): string {
+  return `/explore/view?agent=${agentId.toString()}`;
+}
+
+/**
+ * The plates split into the real pictures and the test images, each keeping
+ * the newest first order, by the same rule Explore sorts with.
+ */
+export function splitTestPlates(plates: ExplorePlate[]): { real: ExplorePlate[]; tests: ExplorePlate[] } {
+  const test = (plate: ExplorePlate) => isTestCard(plate.title, plate.id, plate.unread);
+  return { real: plates.filter((plate) => !test(plate)), tests: plates.filter(test) };
 }
