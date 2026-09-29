@@ -474,8 +474,10 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
 
         {/* On a phone the answer is scrolled up to meet the reader, which leaves
             the Choose another over the picture a screen or more above. The next
-            check starts here instead, one press from the answer. On a wide
-            screen the card sits beside the picture and the one there is enough. */}
+            check starts beside the verdict inside the card, and here at its foot
+            as well, so a reader who read the card to the end is one press away
+            too. On a wide screen the card sits beside the picture, and the
+            verdict's own button is enough. */}
         {landed ? (
           <div data-choose-after className="-mt-4 lg:hidden">
             <button

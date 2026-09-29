@@ -151,9 +151,8 @@ function Still({ src }: { src: string }) {
  * verifier's file names (reencode-q30 and the rest) in every language.
  *
  * The figure comes from the same bitsApart the film writes, so the two pages
- * can never print different numbers for one rung. A copy the verifier could
- * not fingerprint still counts as the whole width apart, and says it did not
- * match rather than borrowing the film's "match".
+ * can never print different numbers for one rung, and a copy nobody measured
+ * is refused there before it gets any words.
  */
 export function useCopyWords() {
   const t = useTranslations("story.verified");
@@ -162,7 +161,7 @@ export function useCopyWords() {
     distance: (step: Pick<DegradeStep, "phashDistance">) =>
       t("similarity", {
         value: bitsApart(step),
-        result: step.phashDistance === null ? t("notMatched") : t("match"),
+        result: t("match"),
       }),
   };
 }
