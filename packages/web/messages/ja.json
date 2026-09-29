@@ -40,7 +40,8 @@
     "languageChange": "言語を変える",
     "languageIs": "{language}、言語を変える",
     "themeDarkAction": "テーマ: ダーク、ライトテーマに切り替える",
-    "themeLightAction": "テーマ: ライト、ダークテーマに切り替える"
+    "themeLightAction": "テーマ: ライト、ダークテーマに切り替える",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "セクション",
@@ -111,7 +112,11 @@
     "unknown": "不明",
     "yes": "はい",
     "no": "いいえ",
-    "registeredPicture": "登録された画像"
+    "registeredPicture": "登録された画像",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "生成",
@@ -198,7 +203,11 @@
       "legend": "封印済み、公開画像なし",
       "word": "封印済み"
     },
-    "marksToggle": "印の意味"
+    "marksToggle": "印の意味",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "エージェント",
@@ -219,7 +228,10 @@
     "seeWorks": "このエージェントのパスポート",
     "empty": "パスポートに署名したエージェントを、インデックスはまだ見ていません。",
     "error": "インデックスを読み取れませんでした: {reason}。",
-    "formulaPlain": "一致した再検証はスコアを上げ、外れた再検証は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。"
+    "formulaPlain": "一致した再検証はスコアを上げ、外れた再検証は下げます。認められた異議は外れ二回分です。新しいエージェントは 50 から始まります。",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -262,7 +274,8 @@
         "privy": "Privy のパスキー",
         "chainlink": "Chainlink が再検証",
         "envio": "Envio がインデックス"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -496,6 +509,34 @@
     },
     "unsealed": {
       "matched": "このパスポートは封印して登録され、{date} に保有者が画像を公開しました。"
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
@@ -696,7 +737,8 @@
       "none": "このコピーは、どのパスポートとも一致しません。",
       "same": "はい。同じ絵です。",
       "sameExact": "はい。バイト単位で、このファイルそのものです。",
-      "different": "いいえ。このコピーは別のパスポートのものです。"
+      "different": "いいえ。このコピーは別のパスポートのものです。",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "異議申し立て",
@@ -1051,7 +1093,15 @@
       "noAgent": "エージェントの記載なし",
       "chainlink": "Chainlink",
       "unknownWriter": "不明な書き手"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "エージェント",
@@ -1115,12 +1165,17 @@
       "empty": "このエージェントの名前が入ったパスポートはまだありません。",
       "error": "インデックスを読めませんでした: {reason}。",
       "untitled": "無題",
-      "noThumbnail": "サムネイルは未固定"
+      "noThumbnail": "サムネイルは未固定",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "エージェントカード",
     "cardInline": "このカードはトークン URI の中に入っているので、開く先はありません。",
     "cardShow": "カードの JSON を見る",
-    "ipfsCid": "IPFS に保存された記録を開く"
+    "ipfsCid": "IPFS に保存された記録を開く",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "スタジオ",
@@ -1262,7 +1317,9 @@
       "openTx": "トランザクション {hash}",
       "openAddress": "MonadVision のあなたのアカウント {wallet}",
       "openImage": "固定された画像",
-      "another": "もう一枚登録する"
+      "another": "もう一枚登録する",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "エージェント",
@@ -1513,7 +1570,8 @@
       "unreadable": "あなたのパスポートを読めませんでした: {reason}。ページを再読み込みしてください。",
       "empty": "このアカウントからの登録はまだありません。最初に登録した画像は、一ブロックのうちにここへ現れます。",
       "noThumbnail": "サムネイルなし",
-      "untitled": "無題"
+      "untitled": "無題",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "Moolam の検証サービスが応答しないため、何もアップロードされていません。少し経ってからもう一度お試しください。",
@@ -1580,7 +1638,8 @@
       "openAddress": "MonadVision で {wallet} を開く",
       "generateAgain": "もう一度作る"
     },
-    "showcaseCaption": "Monad 上の本物のパスポート。手に入るのはこれです。"
+    "showcaseCaption": "Monad 上の本物のパスポート。手に入るのはこれです。",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "ドキュメント",
@@ -1733,6 +1792,15 @@
       "button": "サインインして表示する",
       "body": "この一覧はアカウントのアドレスでインデックスから読み出します。サインインすれば、どの端末でも同じ画像が並びます。"
     },
-    "showcaseCaption": "Monad 上の本物のパスポート。あなたのものも、ここにこのように並びます。"
+    "showcaseCaption": "Monad 上の本物のパスポート。あなたのものも、ここにこのように並びます。",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }

@@ -188,7 +188,7 @@ describe("the second opinion once the picture is published", () => {
   it("reads like any other passport nobody has re-checked yet", async () => {
     const markup = await attestations(unsealedArt);
 
-    expect(markup).toContain(en.passport.attestations.empty);
+    expect(markup).toContain(en.passport.attestations.empty.replaceAll("'", "&#x27;"));
     expect(markup).not.toContain(en.passport.sealed.recheck);
   });
 });

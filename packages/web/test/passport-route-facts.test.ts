@@ -179,7 +179,7 @@ describe("the real passport route", () => {
       madeBy: "0x85a88C…39a6",
       drawnBy: "Agent 10249",
       aiUse: en.passport.consent.summary.closed,
-      rechecked: "Chainlink, Sep 14, 2026, 0 of 64 bits",
+      rechecked: "Chainlink, Sep 14, 2026, 0 of 64 bits apart",
     });
     // The strip sits inside the poster, after the title.
     expect(markup.indexOf("<h1")).toBeLessThan(markup.indexOf("data-top-facts"));

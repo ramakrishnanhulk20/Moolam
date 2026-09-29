@@ -39,7 +39,8 @@
     "languageChange": "भाषा बदलें",
     "languageIs": "{language}, भाषा बदलें",
     "themeDarkAction": "थीम: गहरी, हल्की थीम पर जाएँ",
-    "themeLightAction": "थीम: हल्की, गहरी थीम पर जाएँ"
+    "themeLightAction": "थीम: हल्की, गहरी थीम पर जाएँ",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "अनुभाग",
@@ -110,7 +111,11 @@
     "unknown": "अज्ञात",
     "yes": "हाँ",
     "no": "नहीं",
-    "registeredPicture": "दर्ज तस्वीर"
+    "registeredPicture": "दर्ज तस्वीर",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "बनाई गई",
@@ -197,7 +202,11 @@
       "legend": "सील, कोई तस्वीर प्रकाशित नहीं",
       "word": "सील"
     },
-    "marksToggle": "निशानों का मतलब"
+    "marksToggle": "निशानों का मतलब",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "एजेंट",
@@ -218,7 +227,10 @@
     "seeWorks": "इसके पासपोर्ट देखें",
     "empty": "इंडेक्स ने अभी किसी एजेंट को पासपोर्ट पर हस्ताक्षर करते नहीं देखा।",
     "error": "इंडेक्स नहीं पढ़ा जा सका: {reason}.",
-    "formulaPlain": "मेल खाने वाली हर दोबारा जाँच अंक बढ़ाती है और हर चूक उसे घटाती है; स्वीकृत विवाद दो चूकों के बराबर गिना जाता है। नया एजेंट 50 से शुरू होता है।"
+    "formulaPlain": "मेल खाने वाली हर दोबारा जाँच अंक बढ़ाती है और हर चूक उसे घटाती है; स्वीकृत विवाद दो चूकों के बराबर गिना जाता है। नया एजेंट 50 से शुरू होता है।",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -261,7 +273,8 @@
         "privy": "Privy से पासकी",
         "chainlink": "Chainlink से दोबारा जाँच",
         "envio": "Envio से इंडेक्स"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -495,6 +508,34 @@
     },
     "unsealed": {
       "matched": "यह पासपोर्ट सीलबंद पंजीकृत हुआ था और {date} को इसके धारक ने तस्वीर प्रकाशित कर दी।"
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
@@ -695,7 +736,8 @@
       "none": "यह नकल किसी भी पासपोर्ट से मेल नहीं खाती।",
       "same": "हाँ। यह वही तस्वीर है।",
       "sameExact": "हाँ। बाइट दर बाइट यही फ़ाइल है।",
-      "different": "नहीं। यह नकल किसी दूसरे पासपोर्ट की है।"
+      "different": "नहीं। यह नकल किसी दूसरे पासपोर्ट की है।",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "चुनौती दी गई",
@@ -1050,7 +1092,15 @@
       "noAgent": "कोई एजेंट नहीं बताया",
       "chainlink": "Chainlink",
       "unknownWriter": "अज्ञात लेखक"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "एजेंट",
@@ -1114,12 +1164,17 @@
       "empty": "अभी किसी पासपोर्ट पर इस एजेंट का नाम नहीं है।",
       "error": "इंडेक्स पढ़ा नहीं जा सका: {reason}।",
       "untitled": "बिना शीर्षक",
-      "noThumbnail": "कोई थंबनेल पिन नहीं"
+      "noThumbnail": "कोई थंबनेल पिन नहीं",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "एजेंट कार्ड",
     "cardInline": "यह कार्ड टोकन URI के भीतर ही रखा है, इसलिए खोलने को कुछ नहीं है।",
     "cardShow": "कार्ड का JSON देखें",
-    "ipfsCid": "IPFS पर रखा रिकॉर्ड खोलें"
+    "ipfsCid": "IPFS पर रखा रिकॉर्ड खोलें",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "स्टूडियो",
@@ -1261,7 +1316,9 @@
       "openTx": "लेनदेन {hash}",
       "openAddress": "MonadVision पर आपका खाता {wallet}",
       "openImage": "पिन की गई तस्वीर",
-      "another": "एक और तस्वीर दर्ज करें"
+      "another": "एक और तस्वीर दर्ज करें",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "एजेंट",
@@ -1512,7 +1569,8 @@
       "unreadable": "आपके पासपोर्ट पढ़े नहीं जा सके: {reason}। पन्ना फिर से लोड करें।",
       "empty": "इस खाते से अभी कुछ दर्ज नहीं हुआ। आप जो पहली तस्वीर दर्ज करेंगे वह एक ब्लॉक के भीतर यहाँ दिखेगी।",
       "noThumbnail": "कोई थंबनेल नहीं",
-      "untitled": "बिना शीर्षक"
+      "untitled": "बिना शीर्षक",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "Moolam सत्यापन सेवा जवाब नहीं दे रही, इसलिए कुछ भी अपलोड नहीं हुआ। थोड़ी देर में दोबारा कोशिश करें।",
@@ -1579,7 +1637,8 @@
       "openAddress": "MonadVision पर {wallet} खोलें",
       "generateAgain": "फिर से बनवाएँ"
     },
-    "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपको यही मिलता है।"
+    "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपको यही मिलता है।",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "दस्तावेज़",
@@ -1732,6 +1791,15 @@
       "button": "साइन इन करें और दिखाएँ",
       "body": "यह सूची आपके खाते के पते से इंडेक्स में पढ़ी जाती है, इसलिए जिस भी डिवाइस पर आप साइन इन करें वही तस्वीरें मिलेंगी।"
     },
-    "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपके पासपोर्ट भी यहाँ ऐसे ही दिखेंगे।"
+    "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपके पासपोर्ट भी यहाँ ऐसे ही दिखेंगे।",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }

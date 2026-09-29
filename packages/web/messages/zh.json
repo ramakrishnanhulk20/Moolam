@@ -40,7 +40,8 @@
     "languageChange": "切换语言",
     "languageIs": "{language}，切换语言",
     "themeDarkAction": "主题：深色，切换到浅色主题",
-    "themeLightAction": "主题：浅色，切换到深色主题"
+    "themeLightAction": "主题：浅色，切换到深色主题",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "版块",
@@ -111,7 +112,11 @@
     "unknown": "未知",
     "yes": "是",
     "no": "否",
-    "registeredPicture": "已登记的图片"
+    "registeredPicture": "已登记的图片",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "生成",
@@ -198,7 +203,11 @@
       "legend": "已封存，没有公开图片",
       "word": "已封存"
     },
-    "marksToggle": "标记的含义"
+    "marksToggle": "标记的含义",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "智能体",
@@ -219,7 +228,10 @@
     "seeWorks": "查看它的护照",
     "empty": "索引还没有见过任何智能体在护照上签名。",
     "error": "无法读取索引：{reason}。",
-    "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。"
+    "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -262,7 +274,8 @@
         "privy": "Privy 通行密钥",
         "chainlink": "Chainlink 复核",
         "envio": "Envio 索引"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -496,6 +509,34 @@
     },
     "unsealed": {
       "matched": "这本护照是封存注册的，持有者在 {date} 公开了图片。"
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
@@ -696,7 +737,8 @@
       "none": "这份副本与任何护照都不相符。",
       "same": "是。就是同一张图。",
       "sameExact": "是。逐字节一致，就是这个文件。",
-      "different": "不是。这份副本属于另一本护照。"
+      "different": "不是。这份副本属于另一本护照。",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "被提出异议",
@@ -1051,7 +1093,15 @@
       "noAgent": "未注明智能体",
       "chainlink": "Chainlink",
       "unknownWriter": "未知写入方"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "智能体",
@@ -1115,12 +1165,17 @@
       "empty": "还没有护照写着这个智能体。",
       "error": "索引无法读取：{reason}。",
       "untitled": "无标题",
-      "noThumbnail": "没有固定缩略图"
+      "noThumbnail": "没有固定缩略图",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "代理卡片",
     "cardInline": "这张卡片就装在代币 URI 里面，没有另外的地址可打开。",
     "cardShow": "查看卡片 JSON",
-    "ipfsCid": "打开 IPFS 上存放的记录"
+    "ipfsCid": "打开 IPFS 上存放的记录",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "工作室",
@@ -1262,7 +1317,9 @@
       "openTx": "交易 {hash}",
       "openAddress": "在 MonadVision 上查看你的账户 {wallet}",
       "openImage": "已固定的图片",
-      "another": "再登记一张图片"
+      "another": "再登记一张图片",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "智能体",
@@ -1513,7 +1570,8 @@
       "unreadable": "读不到你的护照：{reason}。请刷新页面。",
       "empty": "这个账户还没有登记过任何东西。你登记的第一张图片会在一个区块之内出现在这里。",
       "noThumbnail": "没有缩略图",
-      "untitled": "无标题"
+      "untitled": "无标题",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "Moolam 验证服务没有响应，所以什么都没有上传。稍后再试一次。",
@@ -1580,7 +1638,8 @@
       "openAddress": "在 MonadVision 上打开 {wallet}",
       "generateAgain": "再生成一张"
     },
-    "showcaseCaption": "Monad 上一本真实的护照。你得到的就是这个。"
+    "showcaseCaption": "Monad 上一本真实的护照。你得到的就是这个。",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "文档",
@@ -1733,6 +1792,15 @@
       "button": "登录并显示",
       "body": "这份列表按你账户的地址从索引读取，所以在任何一台登录的设备上看到的都是同一批图片。"
     },
-    "showcaseCaption": "Monad 上一本真实的护照。你的护照也会像这样出现在这里。"
+    "showcaseCaption": "Monad 上一本真实的护照。你的护照也会像这样出现在这里。",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }

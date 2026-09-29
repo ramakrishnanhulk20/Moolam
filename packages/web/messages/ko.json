@@ -40,7 +40,8 @@
     "languageChange": "언어 바꾸기",
     "languageIs": "{language}, 언어 바꾸기",
     "themeDarkAction": "테마: 다크, 라이트 테마로 바꾸기",
-    "themeLightAction": "테마: 라이트, 다크 테마로 바꾸기"
+    "themeLightAction": "테마: 라이트, 다크 테마로 바꾸기",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "섹션",
@@ -111,7 +112,11 @@
     "unknown": "알 수 없음",
     "yes": "예",
     "no": "아니오",
-    "registeredPicture": "등록된 이미지"
+    "registeredPicture": "등록된 이미지",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "생성",
@@ -198,7 +203,11 @@
       "legend": "봉인됨, 공개된 사진 없음",
       "word": "봉인됨"
     },
-    "marksToggle": "표시의 뜻"
+    "marksToggle": "표시의 뜻",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "에이전트",
@@ -219,7 +228,10 @@
     "seeWorks": "이 에이전트의 여권 보기",
     "empty": "여권에 서명한 에이전트를 인덱스가 아직 보지 못했습니다.",
     "error": "인덱스를 읽지 못했습니다: {reason}.",
-    "formulaPlain": "일치한 재확인은 점수를 올리고 빗나간 재확인은 내립니다. 받아들여진 이의는 빗나감 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다."
+    "formulaPlain": "일치한 재확인은 점수를 올리고 빗나간 재확인은 내립니다. 받아들여진 이의는 빗나감 두 번으로 칩니다. 새 에이전트는 50에서 시작합니다.",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -262,7 +274,8 @@
         "privy": "Privy 패스키",
         "chainlink": "Chainlink 재확인",
         "envio": "Envio 인덱싱"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -496,6 +509,34 @@
     },
     "unsealed": {
       "matched": "이 여권은 봉인된 채 등록되었고, {date}에 보유자가 사진을 공개했습니다."
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
@@ -696,7 +737,8 @@
       "none": "이 사본은 어떤 여권과도 맞지 않습니다.",
       "same": "네. 같은 그림입니다.",
       "sameExact": "네. 바이트 하나까지 이 파일입니다.",
-      "different": "아니요. 이 사본은 다른 여권의 것입니다."
+      "different": "아니요. 이 사본은 다른 여권의 것입니다.",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "이의 제기",
@@ -1051,7 +1093,15 @@
       "noAgent": "지정된 에이전트 없음",
       "chainlink": "Chainlink",
       "unknownWriter": "알 수 없는 기록자"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "에이전트",
@@ -1115,12 +1165,17 @@
       "empty": "아직 이 에이전트를 적은 여권이 없습니다.",
       "error": "인덱스를 읽지 못했습니다: {reason}.",
       "untitled": "제목 없음",
-      "noThumbnail": "고정된 미리보기 없음"
+      "noThumbnail": "고정된 미리보기 없음",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "에이전트 카드",
     "cardInline": "이 카드는 토큰 URI 안에 담겨 있어서 따로 열 곳이 없습니다.",
     "cardShow": "카드 JSON 보기",
-    "ipfsCid": "IPFS에 저장된 기록 열기"
+    "ipfsCid": "IPFS에 저장된 기록 열기",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "스튜디오",
@@ -1262,7 +1317,9 @@
       "openTx": "트랜잭션 {hash}",
       "openAddress": "MonadVision의 내 계정 {wallet}",
       "openImage": "고정된 이미지",
-      "another": "이미지 하나 더 등록하기"
+      "another": "이미지 하나 더 등록하기",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "에이전트",
@@ -1513,7 +1570,8 @@
       "unreadable": "여권을 읽지 못했습니다: {reason}. 페이지를 새로 고쳐 주세요.",
       "empty": "이 계정에서 등록한 것이 아직 없습니다. 처음 등록하는 이미지는 블록 하나 안에 여기에 나타납니다.",
       "noThumbnail": "미리보기 없음",
-      "untitled": "제목 없음"
+      "untitled": "제목 없음",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "Moolam 검증 서비스가 응답하지 않아 아무것도 올라가지 않았습니다. 잠시 뒤 다시 시도해 주세요.",
@@ -1580,7 +1638,8 @@
       "openAddress": "MonadVision에서 {wallet} 열기",
       "generateAgain": "다시 만들기"
     },
-    "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다."
+    "showcaseCaption": "Monad 위의 실제 여권. 받게 되는 것은 이것입니다.",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "문서",
@@ -1733,6 +1792,15 @@
       "button": "로그인하고 보기",
       "body": "이 목록은 계정 주소로 인덱스에서 읽습니다. 로그인만 하면 어느 기기에서나 같은 이미지가 나옵니다."
     },
-    "showcaseCaption": "Monad 위의 실제 여권. 내 여권도 여기 이렇게 놓입니다."
+    "showcaseCaption": "Monad 위의 실제 여권. 내 여권도 여기 이렇게 놓입니다.",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }

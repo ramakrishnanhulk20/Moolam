@@ -39,7 +39,8 @@
     "languageChange": "Mudar o idioma",
     "languageIs": "{language}, mudar o idioma",
     "themeDarkAction": "Tema: escuro, mudar para o tema claro",
-    "themeLightAction": "Tema: claro, mudar para o tema escuro"
+    "themeLightAction": "Tema: claro, mudar para o tema escuro",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "Seções",
@@ -110,7 +111,11 @@
     "unknown": "desconhecido",
     "yes": "Sim",
     "no": "Não",
-    "registeredPicture": "Imagem registrada"
+    "registeredPicture": "Imagem registrada",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "Gerada",
@@ -197,7 +202,11 @@
       "legend": "Lacrado, nenhuma imagem publicada",
       "word": "Lacrado"
     },
-    "marksToggle": "O que as marcas significam"
+    "marksToggle": "O que as marcas significam",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "Agentes",
@@ -218,7 +227,10 @@
     "seeWorks": "Ver os passaportes dele",
     "empty": "O índice ainda não viu nenhum agente assinar um passaporte.",
     "error": "Não foi possível ler o índice: {reason}.",
-    "formulaPlain": "Cada reconferência que bate sobe a nota e cada erro a baixa; uma contestação aceita conta como dois erros. Um agente novo começa em 50."
+    "formulaPlain": "Cada reconferência que bate sobe a nota e cada erro a baixa; uma contestação aceita conta como dois erros. Um agente novo começa em 50.",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -261,7 +273,8 @@
         "privy": "Chaves de acesso da Privy",
         "chainlink": "Reconferido pela Chainlink",
         "envio": "Indexado pela Envio"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -495,6 +508,34 @@
     },
     "unsealed": {
       "matched": "Este passaporte foi registrado selado e quem o tem publicou a imagem em {date}."
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
@@ -695,7 +736,8 @@
       "none": "Esta cópia não bate com passaporte nenhum.",
       "same": "Sim. É a mesma imagem.",
       "sameExact": "Sim. Byte a byte, é este arquivo.",
-      "different": "Não. Esta cópia pertence a outro passaporte."
+      "different": "Não. Esta cópia pertence a outro passaporte.",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "Contestado",
@@ -1050,7 +1092,15 @@
       "noAgent": "Nenhum agente indicado",
       "chainlink": "Chainlink",
       "unknownWriter": "Autor desconhecido"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "Agente",
@@ -1114,12 +1164,17 @@
       "empty": "Nenhum passaporte cita este agente ainda.",
       "error": "O índice não pôde ser lido: {reason}.",
       "untitled": "Sem título",
-      "noThumbnail": "Sem miniatura fixada"
+      "noThumbnail": "Sem miniatura fixada",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "Cartão do agente",
     "cardInline": "Este cartão vai dentro do próprio token URI, então não há nada para abrir.",
     "cardShow": "Ver o JSON do cartão",
-    "ipfsCid": "Abrir o registro guardado no IPFS"
+    "ipfsCid": "Abrir o registro guardado no IPFS",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "Estúdio",
@@ -1261,7 +1316,9 @@
       "openTx": "Transação {hash}",
       "openAddress": "Sua conta {wallet} no MonadVision",
       "openImage": "A imagem fixada",
-      "another": "Registrar outra imagem"
+      "another": "Registrar outra imagem",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "O agente",
@@ -1512,7 +1569,8 @@
       "unreadable": "Seus passaportes não puderam ser lidos: {reason}. Recarregue a página.",
       "empty": "Nada registrado desta conta ainda. A primeira imagem que você registrar aparece aqui dentro de um bloco.",
       "noThumbnail": "Sem miniatura",
-      "untitled": "Sem título"
+      "untitled": "Sem título",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "O serviço de verificação da Moolam não responde, então nada foi enviado. Tente de novo daqui a pouco.",
@@ -1579,7 +1637,8 @@
       "openAddress": "Abrir {wallet} no MonadVision",
       "generateAgain": "Gerar de novo"
     },
-    "showcaseCaption": "Um passaporte real na Monad. É isto que você recebe."
+    "showcaseCaption": "Um passaporte real na Monad. É isto que você recebe.",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "Documentação",
@@ -1732,6 +1791,15 @@
       "button": "Entrar e mostrar",
       "body": "A lista é lida do índice pelo endereço da sua conta, então em qualquer dispositivo onde você entrar aparecem as mesmas imagens."
     },
-    "showcaseCaption": "Um passaporte real na Monad. Os seus vão aparecer aqui como este."
+    "showcaseCaption": "Um passaporte real na Monad. Os seus vão aparecer aqui como este.",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }

@@ -230,14 +230,14 @@ for (const locale of ["en", "ta"] as const) {
       const markup = card(locale, { manifest: { present: false, validation: "unreadable" } });
 
       expect(markup).toContain(words(locale)("manifestUnreadable"));
-      expect(markup).not.toContain(words(locale)("manifestMissing"));
+      expect(markup).not.toContain(words(locale)("manifestMissing").replaceAll("'", "&#x27;"));
       expect(markup).not.toContain(words(locale)("manifestPresent"));
     });
 
     it("keeps the old lines for a valid manifest and for none at all", () => {
       expect(card(locale)).toContain(words(locale)("manifestPresent"));
       expect(card(locale)).not.toContain("data-manifest-credential");
-      expect(card(locale, { manifest: { present: false } })).toContain(words(locale)("manifestMissing"));
+      expect(card(locale, { manifest: { present: false } })).toContain(words(locale)("manifestMissing").replaceAll("'", "&#x27;"));
     });
 
     it("says the signature is intact and the certificate expired, never that the file was changed", () => {

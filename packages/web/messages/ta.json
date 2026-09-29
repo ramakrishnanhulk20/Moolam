@@ -38,7 +38,8 @@
     "languageChange": "மொழியை மாற்று",
     "languageIs": "{language}, மொழியை மாற்று",
     "themeDarkAction": "தோற்றம்: இருள், ஒளித் தோற்றத்திற்கு மாற்று",
-    "themeLightAction": "தோற்றம்: ஒளி, இருள் தோற்றத்திற்கு மாற்று"
+    "themeLightAction": "தோற்றம்: ஒளி, இருள் தோற்றத்திற்கு மாற்று",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "பிரிவுகள்",
@@ -109,7 +110,11 @@
     "unknown": "தெரியவில்லை",
     "yes": "ஆம்",
     "no": "இல்லை",
-    "registeredPicture": "பதிவான படம்"
+    "registeredPicture": "பதிவான படம்",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "உருவாக்கியது",
@@ -196,7 +201,11 @@
       "legend": "முத்திரை, வெளியிடப்பட்ட படம் இல்லை",
       "word": "முத்திரை"
     },
-    "marksToggle": "குறிகளின் பொருள்"
+    "marksToggle": "குறிகளின் பொருள்",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "ஏஜென்ட்கள்",
@@ -217,7 +226,10 @@
     "seeWorks": "இதன் கடவுச்சீட்டுகளைப் பார்",
     "empty": "எந்த ஏஜென்ட்டும் கடவுச்சீட்டில் கையொப்பமிட்டதாகக் குறியீடு இன்னும் காணவில்லை.",
     "error": "குறியீட்டைப் படிக்க முடியவில்லை: {reason}.",
-    "formulaPlain": "பொருந்திய ஒவ்வொரு மறுசோதனையும் மதிப்பெண்ணை உயர்த்தும், தவறிய ஒவ்வொன்றும் குறைக்கும்; ஏற்கப்பட்ட ஒரு மறுப்பு இரண்டு தவறுகளாகக் கணக்கிடப்படும். புதிய ஏஜென்ட் 50-இல் தொடங்கும்."
+    "formulaPlain": "பொருந்திய ஒவ்வொரு மறுசோதனையும் மதிப்பெண்ணை உயர்த்தும், தவறிய ஒவ்வொன்றும் குறைக்கும்; ஏற்கப்பட்ட ஒரு மறுப்பு இரண்டு தவறுகளாகக் கணக்கிடப்படும். புதிய ஏஜென்ட் 50-இல் தொடங்கும்.",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -260,7 +272,8 @@
         "privy": "Privy பாஸ்கீகள்",
         "chainlink": "Chainlink மறுசோதனை",
         "envio": "Envio குறியீடு"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -494,6 +507,34 @@
     },
     "unsealed": {
       "matched": "இந்தப் பாஸ்போர்ட் முத்திரையிட்டுப் பதிவானது; {date} அன்று அதை வைத்திருப்பவர் படத்தை வெளியிட்டார்."
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
@@ -694,7 +735,8 @@
       "none": "இந்த நகல் எந்தக் கடவுச்சீட்டோடும் பொருந்தவில்லை.",
       "same": "ஆம். இது அதே படம்தான்.",
       "sameExact": "ஆம். பைட் அளவில் இதே கோப்புதான்.",
-      "different": "இல்லை. இந்த நகல் வேறு ஒரு கடவுச்சீட்டைச் சேர்ந்தது."
+      "different": "இல்லை. இந்த நகல் வேறு ஒரு கடவுச்சீட்டைச் சேர்ந்தது.",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "மறுக்கப்பட்டது",
@@ -1049,7 +1091,15 @@
       "noAgent": "எந்த ஏஜென்டும் குறிப்பிடப்படவில்லை",
       "chainlink": "Chainlink",
       "unknownWriter": "அறியப்படாத எழுத்தாளர்"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "ஏஜென்ட்",
@@ -1113,12 +1163,17 @@
       "empty": "இந்த ஏஜென்ட்டின் பெயரில் இன்னும் கடவுச்சீட்டு எதுவும் இல்லை.",
       "error": "குறியீட்டைப் படிக்க முடியவில்லை: {reason}.",
       "untitled": "தலைப்பு இல்லை",
-      "noThumbnail": "சிறு படம் பின் செய்யப்படவில்லை"
+      "noThumbnail": "சிறு படம் பின் செய்யப்படவில்லை",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "முகவர் அட்டை",
     "cardInline": "இந்த அட்டை டோக்கன் URI க்குள்ளேயே சுமக்கப்படுகிறது, எனவே திறக்க வேறெதுவும் இல்லை.",
     "cardShow": "அட்டையின் JSON ஐப் பார்",
-    "ipfsCid": "IPFS-இல் சேமித்த பதிவைத் திற"
+    "ipfsCid": "IPFS-இல் சேமித்த பதிவைத் திற",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "ஸ்டூடியோ",
@@ -1260,7 +1315,9 @@
       "openTx": "பரிவர்த்தனை {hash}",
       "openAddress": "MonadVision-இல் உங்கள் கணக்கு {wallet}",
       "openImage": "பின் செய்யப்பட்ட படம்",
-      "another": "இன்னொரு படத்தைப் பதிவு செய்"
+      "another": "இன்னொரு படத்தைப் பதிவு செய்",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "ஏஜென்ட்",
@@ -1511,7 +1568,8 @@
       "unreadable": "உங்கள் கடவுச்சீட்டுகளைப் படிக்க முடியவில்லை: {reason}. பக்கத்தை மீண்டும் ஏற்றவும்.",
       "empty": "இந்தக் கணக்கிலிருந்து இன்னும் எதுவும் பதிவாகவில்லை. நீங்கள் பதிவு செய்யும் முதல் படம் ஒரு பிளாக்கிற்குள் இங்கே தோன்றும்.",
       "noThumbnail": "சிறுபடம் இல்லை",
-      "untitled": "தலைப்பு இல்லை"
+      "untitled": "தலைப்பு இல்லை",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "மூலம் சரிபார்ப்பு சேவை பதிலளிக்கவில்லை, எனவே எதுவும் பதிவேற்றப்படவில்லை. சிறிது நேரம் கழித்து முயற்சிக்கவும்.",
@@ -1578,7 +1636,8 @@
       "openAddress": "MonadVision-இல் {wallet}-ஐத் திற",
       "generateAgain": "மீண்டும் உருவாக்கு"
     },
-    "showcaseCaption": "Monad-இல் ஒரு உண்மையான கடவுச்சீட்டு. உங்களுக்குக் கிடைப்பது இதுதான்."
+    "showcaseCaption": "Monad-இல் ஒரு உண்மையான கடவுச்சீட்டு. உங்களுக்குக் கிடைப்பது இதுதான்.",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "ஆவணங்கள்",
@@ -1731,6 +1790,15 @@
       "button": "உள்நுழைந்து காட்டு",
       "body": "இந்தப் பட்டியல் உங்கள் கணக்கின் முகவரியைக் கொண்டு குறியீட்டிலிருந்து படிக்கப்படுகிறது, எனவே நீங்கள் உள்நுழையும் எந்தச் சாதனத்திலும் அதே படங்கள் வரும்."
     },
-    "showcaseCaption": "Monad-இல் ஒரு உண்மையான கடவுச்சீட்டு. உங்களுடையவையும் இதைப் போலவே இங்கே இருக்கும்."
+    "showcaseCaption": "Monad-இல் ஒரு உண்மையான கடவுச்சீட்டு. உங்களுடையவையும் இதைப் போலவே இங்கே இருக்கும்.",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }

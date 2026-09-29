@@ -163,14 +163,14 @@ describe("the second opinion block on a sealed passport", () => {
     const markup = await attestations(true);
 
     expect(markup).toContain(en.passport.sealed.recheck);
-    expect(markup).not.toContain(en.passport.attestations.empty);
+    expect(markup).not.toContain(en.passport.attestations.empty.replaceAll("'", "&#x27;"));
     expect(markup).not.toContain(en.passport.attestations.whatIsRecheck);
   });
 
   it("keeps the ordinary empty state for a published passport nobody has re-checked", async () => {
     const markup = await attestations(false);
 
-    expect(markup).toContain(en.passport.attestations.empty);
+    expect(markup).toContain(en.passport.attestations.empty.replaceAll("'", "&#x27;"));
     expect(markup).not.toContain(en.passport.sealed.recheck);
   });
 });

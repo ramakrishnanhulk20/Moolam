@@ -112,11 +112,11 @@ describe("the two numbers the agent page keeps apart", () => {
   it("shows the registry's feedback as entries under its own label, never as the score", async () => {
     const html = await page();
 
-    expect(html).toContain("Reputation feedback on the ERC-8004 registry");
+    expect(html).toContain("Feedback on the public agent review board (ERC-8004)");
     expect(html).toContain("2 entries");
     expect(html).toContain(">95<");
     expect(html).toContain("Latest value");
-    expect(html).toContain("Feedback the verifier wrote on chain, not the re-check score");
+    expect(html).toContain("Feedback posted on chain by hand, apart from the re-check score");
     expect(html).not.toContain("Average score");
   });
 });

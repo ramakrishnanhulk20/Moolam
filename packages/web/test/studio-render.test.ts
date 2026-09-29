@@ -331,7 +331,7 @@ describe("the register panel", () => {
     } as RegisterState;
     const markup = render("en", createElement(RegisterPanel, { state, ...handlers }));
     expect(markup).toContain("Waiting for your fingerprint or face unlock");
-    expect(markup).toContain("Fingerprinted, manifest embedded, pinned to IPFS");
+    expect(markup).toContain("Fingerprinted, Content Credentials added, stored on IPFS");
   });
 
   it("says what it is watching while Monad is asked for the passport", () => {

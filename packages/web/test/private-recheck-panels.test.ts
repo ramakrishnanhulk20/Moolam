@@ -279,7 +279,7 @@ describe("the four refusals on the panel", () => {
     it(`prints the ${key} sentence in English and Tamil`, () => {
       const state = { ...initialRegisterState, failure: { key } };
       expect(render("en", createElement(RegisterPanel, { state, onSealed: NOOP, ...uploadHandlers }))).toContain(
-        en.studio.failure[key],
+        escaped(en.studio.failure[key]),
       );
       expect(render("ta", createElement(RegisterPanel, { state, onSealed: NOOP, ...uploadHandlers }))).toContain(
         ta.studio.failure[key],

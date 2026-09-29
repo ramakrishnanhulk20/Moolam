@@ -253,7 +253,7 @@ describe("what the first screen shows of the finding", () => {
     expect(words).toContain("Exhibit A");
     expect(words).toContain("Exhibit B");
     expect(words).toContain("5 of 64 bits apart: the same picture.");
-    expect(words).toContain("Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits from its record");
+    expect(words).toContain("Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record");
     expect(words).toContain("Not for AI training");
     expect(html).toContain(COPY.image);
     expect(html.match(/class="fs-lit /g)?.length ?? 0).toBe(2 * 5);
@@ -269,7 +269,7 @@ describe("what the first screen shows of the finding", () => {
     expect(html).not.toMatch(/class="fs-lit /);
     expect(words).not.toContain("only made while");
     expect(words).toContain("Exhibit A");
-    expect(words).toContain("Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits from its record");
+    expect(words).toContain("Chainlink re-checked the registered picture itself on Sep 14, 2026: 0 of 64 bits apart from its record");
     expect(words).toContain("Not for AI training");
   });
 

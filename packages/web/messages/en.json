@@ -38,7 +38,8 @@
     "languageChange": "Change the language",
     "languageIs": "{language}, change the language",
     "themeDarkAction": "Theme: dark, switch to the light theme",
-    "themeLightAction": "Theme: light, switch to the dark theme"
+    "themeLightAction": "Theme: light, switch to the dark theme",
+    "languageOpening": "Opening {language}"
   },
   "shell": {
     "label": "Sections",
@@ -84,7 +85,7 @@
     "index": "Index: {source}",
     "sourceChain": "the chain",
     "sourceEnvio": "Envio",
-    "sourceVerifier": "the verifier service",
+    "sourceVerifier": "the verify service",
     "status": {
       "verifier": "Verify service",
       "index": "Index",
@@ -109,7 +110,11 @@
     "unknown": "unknown",
     "yes": "Yes",
     "no": "No",
-    "registeredPicture": "Registered picture"
+    "registeredPicture": "Registered picture",
+    "details": "Details",
+    "openingPage": "Opening the page",
+    "tryAgain": "Try again",
+    "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
     "0": "Generated",
@@ -168,12 +173,12 @@
       "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
       "chainlink": "Re-checked by a Chainlink workflow",
-      "disputed": "Disputed"
+      "disputed": "Dispute upheld"
     },
     "legend": {
       "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
-      "disputed": "Under dispute",
+      "disputed": "Dispute upheld",
       "consent": "Statement on AI use, four marks for the four uses"
     },
     "untitled": "Untitled",
@@ -196,7 +201,11 @@
       "legend": "Sealed, no picture published",
       "word": "Sealed"
     },
-    "marksToggle": "What the marks mean"
+    "marksToggle": "What the marks mean",
+    "searchAnyLabel": "Search by title or passport id",
+    "searchAnyPlaceholder": "A title or a passport id",
+    "noMatchQuery": "No passport matches {query}.",
+    "backToAll": "Back to all pictures"
   },
   "agents": {
     "kicker": "Agents",
@@ -217,7 +226,10 @@
     "seeWorks": "See its passports",
     "empty": "The index has not seen an agent sign a passport yet.",
     "error": "The index could not be read: {reason}.",
-    "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50."
+    "formulaPlain": "Each re-check that matched raises the score and each miss lowers it; an upheld dispute counts as two misses. A new agent starts at 50.",
+    "strip": {
+      "label": "Newest pictures this agent signed"
+    }
   },
   "home": {
     "first": {
@@ -242,12 +254,12 @@
       "copyAlt": "A trimmed, recoloured, re-encoded copy of the registered picture",
       "pictureAlt": "The registered picture",
       "printRegistry": "Fingerprint in the registry",
-      "printCopy": "Fingerprint the verifier read off the copy",
+      "printCopy": "Fingerprint the verify service read off the copy",
       "verdictFigure": "{count} of 64",
       "verdictSame": "bits apart: the same picture.",
       "verdictMissed": "bits apart, and the verify service did not find it.",
       "recheckOn": "Chainlink re-checked the registered picture itself on {date}:",
-      "recheckBits": "{count} of 64 bits from its record",
+      "recheckBits": "{count} of 64 bits apart from its record",
       "recheckMissed": "did not match, {bits}",
       "chainlink": "Chainlink:",
       "recheckNone": "no re-check of the registered picture written yet",
@@ -260,7 +272,8 @@
         "privy": "Passkeys by Privy",
         "chainlink": "Re-checked by Chainlink",
         "envio": "Indexed by Envio"
-      }
+      },
+      "unstarted": "The check did not start. Reload the page and press again."
     }
   },
   "story": {
@@ -270,12 +283,12 @@
       "title": "How a passport works"
     },
     "scrollCue": "Scroll",
-    "noWebgl": "This browser could not open a 3D context, so the story is here as a page. Every figure on it is the same live read.",
+    "noWebgl": "This browser cannot play the film in 3D, so the story is here as a page. Every figure on it is read live, the same as in the film.",
     "made": {
       "kicker": "Made",
       "title": "An AI made this one.",
-      "body": "Agent {agent} signed the fingerprint inside its own enclave before anybody had seen the picture.",
-      "readout": "Generator agent {agent}, ERC-8004 identity registry",
+      "body": "Agent {agent} drew it and signed its fingerprint with its own wallet, held by Privy, before the passport was written.",
+      "readout": "Generator agent {agent}, in the public agent registry (ERC-8004)",
       "titleNoAgent": "A person registered this one.",
       "bodyNoAgent": "No agent signed this fingerprint. It was registered from a file the creator uploaded, and the passport says exactly that.",
       "readoutNoAgent": "No generating agent on this passport"
@@ -313,13 +326,13 @@
         "social-chain": "a copy shared twice on social apps",
         "resize-10": "a copy shrunk to a tenth"
       },
-      "similarity": "similarity {value}: {result}",
+      "similarity": "{value} of 64 bits apart: {result}",
       "matched": "matched",
       "notMatched": "did not match",
       "attestation": "A Chainlink CRE workflow re-checked it and wrote the answer on chain: {result}, {distance} bits apart.",
       "noAttestation": "No re-check has been written for this passport yet.",
-      "provenance": "Ladder figures measured by the Moolam verifier on another registered image, passport {passport}, {date}.",
-      "provenanceSelf": "Figures measured by the Moolam verifier on this passport, {date}."
+      "provenance": "Ladder figures measured by the Moolam verify service on another registered image, passport {passport}, {date}.",
+      "provenanceSelf": "Figures measured by the Moolam verify service on this passport, {date}."
     },
     "trusted": {
       "kicker": "Trusted",
@@ -329,17 +342,17 @@
       "noScore": "No score yet",
       "counts": "{rechecks, plural, =1 {# re-check} other {# re-checks}}, {passports, plural, =1 {# passport} other {# passports}}",
       "body": "Every re-check written back on chain is counted against this agent's own id, and the index adds them up into this score. Its standing is the sum of its work, not a claim on a website.",
-      "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every check the verifier runs is written back to the ERC-8004 reputation registry under that agent's own id."
+      "noAgent": "No agent made this one, so no agent standing hangs on it. When an agent does sign, every Chainlink re-check of its pictures counts toward that agent's own score."
     },
     "tryIt": {
       "kicker": "Try it",
       "title": "Drop any copy of any image here, or choose a file.",
       "choose": "Choose a file",
       "samples": "Or try one of these",
-      "hint": "JPEG, PNG or WebP. It goes to the Moolam verifier, is fingerprinted three ways, and is not stored.",
+      "hint": "JPEG, PNG or WebP. It goes to the Moolam verify service, is fingerprinted three ways, and is not stored.",
       "pending": "Fingerprinting and searching the registry",
-      "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then drop the file again.",
-      "error": "The check did not run: {reason}",
+      "offline": "The verify service is not answering just now. Nothing was stored. Wait a minute, then drop the file again.",
+      "error": "The check did not run. Try again in a minute.",
       "tooLarge": "That file is over 20 MB. Try a smaller copy.",
       "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
       "empty": "That file is empty. Choose the picture again.",
@@ -349,7 +362,7 @@
       "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
       "exact": "exact bytes",
       "match": "confidence",
-      "noManifest": "No C2PA manifest left in this file. The record found it anyway.",
+      "noManifest": "No Content Credentials left in this file. The record found it anyway.",
       "openPassport": "Open its passport"
     },
     "close": {
@@ -359,10 +372,10 @@
       "verify": "Verify an image",
       "proof": "See the proof",
       "passports": "Passports",
-      "attestations": "Verifications on chain",
+      "attestations": "Re-checks on chain",
       "chain": "on Monad, chain {chainId}",
       "unread": "unread",
-      "error": "The index could not be read: {reason}"
+      "error": "The index could not be read just now. Reload the page in a moment."
     },
     "skip": "Skip the film",
     "failed": {
@@ -383,19 +396,19 @@
     "none": "No passport matches this image.",
     "noneHint": "This picture is not in the registry. Moolam does not match crops yet, so a piece of a registered picture will not be found. Try the whole picture.",
     "confidence": "Confidence",
-    "phashDistance": "Perceptual hash",
-    "blockhashDistance": "Block hash",
+    "phashDistance": "Look fingerprint (pHash)",
+    "blockhashDistance": "Layout fingerprint (block hash)",
     "variant": "Orientation",
-    "manifestPresent": "The signed C2PA record is still inside this file.",
-    "manifestMissing": "The signed C2PA record has been stripped from this file. The fingerprints matched anyway.",
+    "manifestPresent": "This file still carries its Content Credentials (C2PA).",
+    "manifestMissing": "This file's Content Credentials (C2PA) have been stripped. The fingerprints matched anyway.",
     "openPassport": "Open the passport",
     "error": "The check did not run: {reason}",
-    "offline": "The verifier service is not answering. Start it with npm run dev:verifier from the repo root, then try again.",
+    "offline": "The verify service is not answering just now. Nothing was stored. Try again in a minute.",
     "kicker": "Check any copy",
     "rail": "Verify",
     "dropTitle": "Choose an image, or drop one here.",
     "replace": "Choose another",
-    "privacy": "Your browser sends the file straight to {host}, the Moolam verify service. It is fingerprinted there, matched against the registry, and never stored.",
+    "privacy": "Your browser sends the file straight to the Moolam verify service ({host}). It is fingerprinted there, matched against the registry, and never stored.",
     "checkingHeading": "Reading the picture, not the file name.",
     "checkingDetail": "Three fingerprints, all eight orientations, then a search of every registered passport. A few seconds.",
     "idleHeading": "No answer yet",
@@ -432,10 +445,10 @@
       "notAnImage": "That file could not be read as an image. JPEG, PNG or WebP.",
       "empty": "That file is empty. Choose the picture again.",
       "rateLimited": "Too many checks from here. Wait a minute and try again.",
-      "badRequest": "The verifier would not take that request.",
-      "badResponse": "The verifier answered in a shape this page does not know.",
-      "serviceFailed": "The verifier could not finish this check.",
-      "refused": "The verifier refused this request.",
+      "badRequest": "The verify service would not take that file. Choose a JPEG, PNG or WebP picture and try again.",
+      "badResponse": "The verify service answered in a way this page cannot read. Try again in a minute.",
+      "serviceFailed": "The verify service could not finish this check. Try again in a minute.",
+      "refused": "The verify service refused this request. Reload the page and try again.",
       "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute.",
       "busy": "Moolam is busy checking other pictures. Try again in a minute."
     },
@@ -463,7 +476,7 @@
       "tail": {
         "open": "open to AI use, training included",
         "closed": "not for AI training",
-        "ask": "ask first, conditions apply",
+        "ask": "ask the holder first",
         "mixed": "allowed for some uses and not for others",
         "none": "nothing about AI use"
       }
@@ -476,8 +489,8 @@
       "count": "{count, plural, =1 {# re-check} other {# re-checks}}",
       "none": "Not re-checked yet.",
       "noneNote": "No independent workflow has fetched this picture and recomputed its fingerprint.",
-      "matched": "Checked again by a Chainlink CRE workflow on {at}: it re-fetched the picture, recomputed the fingerprint and matched, {count} of 64 bits apart.",
-      "mismatched": "A Chainlink CRE workflow re-fetched this picture on {at}, recomputed the fingerprint and did not match: {count} of 64 bits apart.",
+      "matched": "Re-checked by Chainlink (a CRE workflow) on {at}: it fetched the picture itself, fingerprinted it again and matched, {count} of 64 bits apart.",
+      "mismatched": "Re-checked by Chainlink (a CRE workflow) on {at}: it fetched the picture itself, fingerprinted it again and did not match, {count} of 64 bits apart.",
       "link": "See the second opinion"
     },
     "dispute": {
@@ -494,13 +507,41 @@
     },
     "unsealed": {
       "matched": "This passport was registered sealed and its holder published the picture on {date}."
+    },
+    "share": {
+      "copy": "Copy a link to this answer",
+      "copied": "Link copied"
+    },
+    "noAccount": "No account needed",
+    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "limits": {
+      "label": "What a match cannot prove",
+      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+    },
+    "wait": {
+      "fingerprint": "Fingerprinting the file",
+      "turns": "Trying all eight turns and flips",
+      "search": "Searching every passport",
+      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
+      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+    },
+    "dropAnywhere": "Let go anywhere to check it",
+    "paste": "Or paste a picture you copied",
+    "dropTitleTouch": "Choose an image to check it.",
+    "checkAgain": "Check this file again",
+    "compare": {
+      "yours": "Your copy",
+      "registered": "The registered picture",
+      "drag": "Drag to compare",
+      "hold": "Hold to compare",
+      "label": "Compare your copy with the registered picture"
     }
   },
   "passport": {
     "title": "Passport",
     "pending": "Reading the registry.",
     "notFound": "No passport with that id. Check the id, or find it from the verify page.",
-    "error": "The registry could not be read: {reason}. Reload the page.",
+    "error": "Moolam could not read this passport from Monad just now. Try again, or open Explore.",
     "creator": "Creator",
     "owner": "Owner",
     "agent": "Generator agent",
@@ -515,10 +556,10 @@
     "disputed": "Disputed",
     "attestations": {
       "heading": "Checked again, by someone else",
-      "empty": "No verification has been written for this passport yet. The Chainlink workflow adds one when it re-checks the image.",
+      "empty": "No re-check has been written for this passport yet. Chainlink's workflow writes one when it re-checks the picture.",
       "matched": "matched",
       "notMatched": "did not match",
-      "distance": "{distance} of 64 bits",
+      "distance": "{distance} of 64 bits apart",
       "receiver": "Written on Monad by Moolam's Chainlink receiver",
       "at": "At",
       "kicker": "The second opinion",
@@ -634,7 +675,7 @@
         "tooLarge": "That file is over the 20 MB limit. Choose a smaller copy.",
         "fingerprintUnstable": "This edit changes too little from side to side for a fingerprint that survives copying, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned or sent. An edit with more detail across its width will register.",
         "signedFileTooLarge": "Adding the passport's signature would take this file past 20 MB, the most a check can read back. Export it smaller and try again. Nothing was pinned or sent.",
-        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so its passport could never be re-checked. Nothing was pinned or sent.",
+        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's re-check to fetch, so its passport could never be re-checked. Nothing was pinned or sent.",
         "notAnImage": "That is not an image file. Choose a JPEG, PNG or WebP.",
         "empty": "That file is empty. Choose the picture again.",
         "rateLimited": "Too many requests from here for now. Wait a moment and try again.",
@@ -660,8 +701,8 @@
       "lineageNote": "Only the owner can add edits. The app's Privy permission can add edits and nothing else."
     },
     "untitled": "Untitled",
-    "noPicture": "The picture's storage is not answering right now",
-    "fingerprintVersion": "Fingerprint method {version}",
+    "noPicture": "The picture's storage is not answering right now. Try again in a minute",
+    "fingerprintVersion": "Fingerprint version {version}",
     "record": "The record",
     "passkeyBound": "This creator signs with a passkey tied to their account.",
     "passkeyNone": "No passkey is bound to this creator's wallet.",
@@ -670,12 +711,12 @@
     "about": "About",
     "prompt": "Prompt",
     "fingerprints": "The fingerprints",
-    "fingerprintsBody": "A verifier fetches the picture, hashes it again and compares it with these. Nothing here depends on the file name or on anything the metadata claims.",
+    "fingerprintsBody": "Anyone can fetch the picture, fingerprint it again and compare it with these. Chainlink's re-check does exactly that. Nothing here depends on the file name or on anything the metadata claims.",
     "exactHash": "Exact file fingerprint (SHA-256)",
     "passportId": "Passport id",
     "tokenId": "This passport is also an NFT on Monad, with the same id",
     "standing": {
-      "verified": "Checked by a verifier on chain",
+      "verified": "Re-checked on chain, and it matched",
       "mismatched": "A re-check did not match",
       "disputed": "Disputed",
       "unverified": "Not re-checked yet"
@@ -683,18 +724,19 @@
     "check": {
       "kicker": "Check a copy",
       "heading": "Is your copy this picture?",
-      "body": "Drop any copy here. It goes to the verifier, which fingerprints it and answers against this passport, not against the file name.",
+      "body": "Drop any copy here. It goes to the verify service, which fingerprints it and answers against this passport, not against the file name.",
       "choose": "Choose an image",
       "hint": "A resized, re-encoded, turned or mirrored copy still matches. A crop does not, yet.",
       "checking": "Checking this copy",
-      "failed": "The check did not run.",
+      "failed": "The check did not run. Try again in a minute, or check the copy on the Verify page.",
       "tooLarge": "That file is over the 20 MB limit. Send a smaller copy.",
       "notAnImage": "That is not an image file. Drop a JPEG, PNG or WebP.",
       "empty": "That file is empty. Choose the picture again.",
       "none": "This copy matches no passport at all.",
       "same": "Yes. This is the same picture.",
       "sameExact": "Yes. Byte for byte, this is the file.",
-      "different": "No. This copy belongs to a different passport."
+      "different": "No. This copy belongs to a different passport.",
+      "openOther": "Open that passport"
     },
     "dispute": {
       "kicker": "Challenged",
@@ -816,7 +858,7 @@
       "chip": {
         "open": "Open to AI",
         "closed": "No AI use",
-        "ask": "Conditions",
+        "ask": "Ask first",
         "mixed": "Use by use",
         "none": "Not stated"
       },
@@ -836,12 +878,12 @@
         "unspecified": "Not stated",
         "allowed": "Allowed",
         "notAllowed": "Not allowed",
-        "constrained": "Conditions apply"
+        "constrained": "Ask first"
       },
       "writtenOn": "written {when}",
       "nothingBy": "nothing stated by then",
       "asking": "asking the chain for that day",
-      "askFailed": "the chain did not answer for that day",
+      "askFailed": "the chain did not answer for that day. Move the day slider to ask again",
       "scrub": "Drag the rule, or use the arrow keys",
       "scrubStep": ", one day a step",
       "scrubTouch": "Drag the rule",
@@ -868,7 +910,7 @@
         "notHolder": "This wallet does not hold this passport any more, and only its holder can write for it.",
         "tooSoon": "The register takes one statement per wallet every ten minutes for the same picture. This one opens again at {at}.",
         "conditionsRequired": "A statement with conditions has to say what they are. Write them, and send it again.",
-        "conditionsNotAllowed": "Conditions belong to a statement that asks for them. Clear the text, or choose ask me first.",
+        "conditionsNotAllowed": "Conditions belong to a statement that asks for them. Clear the text, or choose Ask me first.",
         "conditionsTooLong": "The conditions are longer than the 256 bytes the register keeps. Shorten them and send it again.",
         "conditionsNotPrintable": "Use only the letters A to Z, numbers and common punctuation. Take out the line break or the accented letter and send it again.",
         "reverted": "Monad mined this statement and it did nothing. Nothing was written, so it is safe to try once more.",
@@ -974,7 +1016,7 @@
         "noPassport": "The registry has no passport with this id.",
         "notSealed": "This passport's picture is already public, so there is nothing left to publish.",
         "alreadyUnsealed": "This passport has been published already. Open the page again to see the picture.",
-        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so publishing it would leave a passport nobody can ever re-check. Nothing was pinned.",
+        "thumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's re-check to fetch, so publishing it would leave a passport nobody can ever re-check. Nothing was pinned.",
         "quota": "That is {used} of {limit} for today. The allowance comes back at {at}.",
         "todayFull": "Everyone's budget for publishing today is spent. Nothing was pinned and nothing was spent. Try again tomorrow.",
         "pinFailed": "The picture could not be pinned to IPFS, so nothing was published.",
@@ -1049,21 +1091,29 @@
       "noAgent": "No agent named",
       "chainlink": "Chainlink",
       "unknownWriter": "Unknown writer"
-    }
+    },
+    "ownerHint": "Made this? Sign in to manage it.",
+    "share": {
+      "copy": "Copy link",
+      "copied": "Link copied"
+    },
+    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
+    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
+    "titleUnread": "Title not read yet"
   },
   "agent": {
     "title": "Agent",
-    "notFound": "No agent with that id on the ERC-8004 identity registry.",
-    "error": "The identity registry could not be read: {reason}. Reload the page.",
+    "notFound": "No agent with that id in the public agent registry (ERC-8004). Check the id, or open the Agents board.",
+    "error": "Moolam could not read this agent from the public agent registry (ERC-8004) just now. Try again, or open the Agents board.",
     "owner": "Owner",
-    "cardMissing": "The agent card could not be read from its URI.",
+    "cardMissing": "This agent's card could not be read from where it is stored. Try again in a moment.",
     "reputation": {
-      "heading": "Reputation feedback on the ERC-8004 registry",
-      "empty": "No feedback recorded for this agent yet. The verifier writes one after every check it runs.",
+      "heading": "Feedback on the public agent review board (ERC-8004)",
+      "empty": "No feedback recorded for this agent yet. Moolam posts feedback here by hand, not after every check.",
       "error": "The reputation registry could not be read: {reason}.",
       "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), filed under Moolam's checks. This page reads its summary. The trust score beside it comes from the index's own re-checks, so the two are never added together.",
       "registry": "Registry {address}",
-      "secondary": "Feedback the verifier wrote on chain, not the re-check score",
+      "secondary": "Feedback posted on chain by hand, apart from the re-check score",
       "entries": "{count, plural, =1 {# entry} other {# entries}}",
       "latest": "Latest value"
     },
@@ -1103,7 +1153,7 @@
       "registry": "Registry {address}",
       "identity": "Identity {address}",
       "privy": "Where the key lives",
-      "privyBody": "These values come from the agent's own card, not from this app.",
+      "privyBody": "Privy holds this agent's key, and a Privy policy limits what it may sign. These ids come from the agent's own card, not from this app.",
       "privyWallet": "Privy wallet id",
       "privyPolicy": "What this wallet may sign"
     },
@@ -1111,14 +1161,19 @@
       "heading": "What it has signed",
       "source": "From the index",
       "empty": "No passport names this agent yet.",
-      "error": "The index could not be read: {reason}.",
+      "error": "The index could not be read just now. Try again in a moment.",
       "untitled": "Untitled",
-      "noThumbnail": "No thumbnail pinned"
+      "noThumbnail": "No thumbnail pinned",
+      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
+      "hideTest": "Hide the test images",
+      "onlyTest": "Every picture this agent has signed so far is a test image.",
+      "seeAll": "See all its pictures"
     },
     "cardLabel": "Agent card",
     "cardInline": "This card is carried inside the token URI itself, so there is nothing to open.",
     "cardShow": "View the card JSON",
-    "ipfsCid": "Open the stored record on IPFS"
+    "ipfsCid": "Open the stored record on IPFS",
+    "unnamedTitle": "Unnamed agent"
   },
   "studio": {
     "kicker": "Studio",
@@ -1126,7 +1181,7 @@
     "lede": "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
     "opening": "Opening your account",
     "noWallet": "You are signed in, but no account was created on Monad yet. Reload the page, or sign out and sign in again.",
-    "notConfigured": "Privy is not configured, so nobody can sign in here. Put NEXT_PUBLIC_PRIVY_APP_ID in packages/web/.env.local and restart the dev server.",
+    "notConfigured": "Sign-in is switched off on this copy of Moolam, so the studio cannot open here. Verify and Explore still work without an account.",
     "signOut": "Sign out",
     "identity": {
       "account": "Signed in as",
@@ -1217,18 +1272,18 @@
       "body": "One picture at a time. It is fingerprinted and pinned, you sign it with your unlock, and Moolam sends it to Monad.",
       "drop": "Drop an image here",
       "choose": "Choose a file",
-      "hint": "JPEG, PNG or WebP, up to 20 MB. Moolam embeds a C2PA manifest, fingerprints the signed bytes and pins the file to IPFS.",
+      "hint": "JPEG, PNG or WebP, up to 20 MB. Moolam adds Content Credentials (C2PA), fingerprints the signed file and stores it on public storage (IPFS).",
       "replace": "Choose another",
       "title": "Title",
       "titlePlaceholder": "What is this picture?",
-      "titleHint": "It goes into the manifest and the metadata, so keep it the name you would call the picture.",
+      "titleHint": "It goes into the file's Content Credentials and the passport's record, so keep it the name you would call the picture.",
       "submit": "Register this image",
       "balance": "Your account holds {mon} MON.",
       "steps": {
         "prepare": {
           "waiting": "Fingerprint and pin the file, about ten seconds",
           "running": "Fingerprinting and pinning, about ten seconds",
-          "done": "Fingerprinted, manifest embedded, pinned to IPFS",
+          "done": "Fingerprinted, Content Credentials added, stored on IPFS",
           "failed": "The file was not prepared"
         },
         "sign": {
@@ -1260,7 +1315,9 @@
       "openTx": "Transaction {hash}",
       "openAddress": "Your account {wallet} on MonadVision",
       "openImage": "The pinned image",
-      "another": "Register another image"
+      "another": "Register another image",
+      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
+      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
     },
     "generate": {
       "kicker": "The agent",
@@ -1278,7 +1335,7 @@
       },
       "title": "Title",
       "titlePlaceholder": "What should this picture be called?",
-      "titleHint": "It goes into the manifest and the metadata, beside the prompt.",
+      "titleHint": "It goes into the file's Content Credentials and the passport's record, beside the prompt.",
       "submit": "Make and register",
       "quota": "{used} of {limit} today",
       "quotaResets": "Your next one opens up at {time}.",
@@ -1405,7 +1462,7 @@
         },
         "generator": {
           "label": "The agent id",
-          "line": "Which Moolam agent drew it, and the ERC-8004 registry it is identified in."
+          "line": "Which Moolam agent drew it, and the public agent registry that lists it (ERC-8004)."
         },
         "createdAt": {
           "label": "The date",
@@ -1413,7 +1470,7 @@
         },
         "training": {
           "label": "Your statement on AI use",
-          "line": "The four answers you gave above, in the words the CAWG standard uses."
+          "line": "The four answers you gave above, in the words of the standard for AI training and data mining (CAWG)."
         },
         "sealed": {
           "label": "The word sealed",
@@ -1458,7 +1515,7 @@
         "label": "Sealed on Monad",
         "detail": "The picture is not published. Moolam keeps no copy.",
         "detailPrivate": "The picture is not published. Moolam keeps only the small private copy you asked for.",
-        "fingerprintDetail": "Taken from the signed file, which never left this browser. C2PA manifest embedded: {manifest}.",
+        "fingerprintDetail": "Taken from the signed file, which never left this browser. Content Credentials (C2PA) added: {manifest}.",
         "privateLabel": "Private copy kept",
         "privateDetail": "For Chainlink's private re-check. <page>Delete it from the passport page whenever you like.</page>",
         "noPrivateLabel": "No private copy",
@@ -1475,16 +1532,16 @@
       "walletDetail": "Created on sign in. No seed phrase, and no key Moolam holds.",
       "passkey": "Passkey bound",
       "passkeyDetail": "The public half of this device's unlock, stored by the registry.",
-      "fingerprint": "Exact hash",
-      "fingerprintDetail": "{width} by {height} pixels. C2PA manifest embedded: {manifest}.",
+      "fingerprint": "Exact file fingerprint (SHA-256)",
+      "fingerprintDetail": "{width} by {height} pixels. Content Credentials (C2PA) added: {manifest}.",
       "manifestYes": "yes",
       "manifestNo": "no",
       "pinned": "Pinned to IPFS",
       "pinnedDetail": "The signed bytes, the thumbnail and the metadata all went to IPFS.",
       "download": "Download your picture",
       "downloadHelp": "The signed file, with its Content Credentials: a copy of it still verifies against this passport.",
-      "signed": "Digest you signed",
-      "signedDetail": "Read from the contract, signed by your unlock, checked here before it was sent.",
+      "signed": "What you signed (digest)",
+      "signedDetail": "A short summary of the passport, read from the registry, signed by your unlock and checked here before it was sent.",
       "sent": "Sent to Monad",
       "sentSponsored": "Network fee paid by Moolam through Privy.",
       "sentOwn": "Network fee paid from your own balance.",
@@ -1506,12 +1563,13 @@
     },
     "passports": {
       "heading": "Your pictures",
-      "source": "Read live from the index",
+      "source": "Read live from the index (Envio)",
       "reading": "Reading everything this account has registered.",
-      "unreadable": "Your passports could not be read: {reason}. Reload the page.",
+      "unreadable": "Your pictures could not be read just now. Try again.",
       "empty": "Nothing registered from this account yet. The first image you register appears here within a block.",
       "noThumbnail": "No thumbnail",
-      "untitled": "Untitled"
+      "untitled": "Untitled",
+      "retry": "Try again"
     },
     "failure": {
       "serviceOffline": "The Moolam verify service is not answering, so nothing was uploaded. Try again in a moment.",
@@ -1526,7 +1584,7 @@
       "badResponse": "The verify service answered in a shape this page does not understand, so nothing was signed. Try again.",
       "authCheck": "The signature from your device would be refused by the registry, so it was not sent. Try again, and use the same unlock you bound.",
       "passkeyCancelled": "The unlock prompt was closed or it timed out. Nothing was signed.",
-      "passkeyOrigin": "This passkey belongs to a different website, so this page cannot use it.",
+      "passkeyOrigin": "This passkey belongs to a different website, so this page cannot use it. Bind this device's unlock to your account instead.",
       "passkeyUnsupported": "This browser or device cannot make the kind of passkey the registry needs. Try a browser with fingerprint or face unlock.",
       "passkeyOther": "The unlock did not finish. Your device said this:",
       "alreadyRegistered": "This exact image is already registered. The first registration wins, so open the passport that holds it.",
@@ -1542,11 +1600,11 @@
       "confirmPending": "Your send was accepted and Monad has not shown it yet. It may still land, so nothing has been sent a second time. Open your account below to look, or ask Monad again.",
       "sendCancelled": "You closed the confirmation, so nothing was sent.",
       "sendFailed": "This step did not finish. The network's own words are below. Try again in a moment.",
-      "digestMismatch": "The network answered with a different record than the one on this page, so nothing was signed. Try a different network setting.",
+      "digestMismatch": "The network answered with a different record than the one on this page, so nothing was signed. Try again, and reload the page if it happens twice.",
       "passkeyNotReady": "This page has not finished reading your passkey from Monad. Give it a moment and try again.",
       "unknown": "Something went wrong before anything was sent. The message is below.",
       "fileMissing": "Choose an image first.",
-      "titleMissing": "Give the picture a title first. It goes into the manifest.",
+      "titleMissing": "Give the picture a title first. It goes into the file's Content Credentials.",
       "quotaReached": "You have had every picture the agent draws for one account in a day. The count under the button says when the next one opens up.",
       "promptRefused": "The model would not draw this prompt. Its own reason is below. Edit the prompt and ask again.",
       "creatorMismatch": "The account signed in now is not the one this picture was being drawn for. Sign out, sign in again, and ask for it once more.",
@@ -1563,7 +1621,7 @@
       "privateRecheckNeedsSealed": "The verify service will not keep a private copy of a picture that is not sealed, so nothing was pinned and nothing was registered. Reload the studio and try again.",
       "privateCopyNotPrivate": "The storage provider did not keep the small copy private, so Moolam stopped and nothing was pinned or registered. Turn the private re-check off to register this picture sealed without it.",
       "privateChainUnreachable": "Moolam could not reach Monad to check this picture is new, so it kept no private copy and registered nothing. Try again in a moment.",
-      "privateThumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for the Chainlink verifier to fetch, so its passport could never be re-checked, and a sealed one could never be published later. Nothing was pinned.",
+      "privateThumbnailTooLarge": "This picture cannot be reduced to a thumbnail small enough for Chainlink's re-check to fetch, so its passport could never be re-checked, and a sealed one could never be published later. Nothing was pinned.",
       "fingerprintUnstable": "This picture changes too little from side to side for a fingerprint that survives copying: even its own small copy reads as a different picture, so the Chainlink re-check and any search for its copies would miss it. Nothing was pinned and nothing was registered. A picture with more detail across its width will register.",
       "serviceFault": "This was a fault on Moolam's side, not a problem with your picture. Nothing was saved. Try again in a minute."
     },
@@ -1578,7 +1636,8 @@
       "openAddress": "Open {wallet} on MonadVision",
       "generateAgain": "Make it again"
     },
-    "showcaseCaption": "A real passport on Monad. This is what you get."
+    "showcaseCaption": "A real passport on Monad. This is what you get.",
+    "titleNeeded": "Give the picture a title."
   },
   "docs": {
     "home": "Documentation",
@@ -1625,8 +1684,8 @@
     "withdrawn": "Paid out. The credit is back to zero.",
     "mon": "{amount} MON",
     "empty": "No challenge is open. Nothing here is waiting on you.",
-    "error": "The policy could not be read: {reason}",
-    "unavailable": "The list of open disputes comes from the index, and the index did not answer: {reason}",
+    "error": "The policy could not be read just now. Try again in a moment.",
+    "unavailable": "The list of open disputes comes from the index, and the index did not answer. Try again in a moment.",
     "passport": "Passport",
     "noPicture": "No picture",
     "claim": "The claim",
@@ -1707,7 +1766,7 @@
       "sealed": "This passport's picture was never published, so the workflow has nothing to fetch.",
       "queueFull": "The queue is full of requests nobody has run yet. Try again later.",
       "rateLimited": "Too many requests from here, wait a minute.",
-      "notAnswering": "The verify service is not answering just now.",
+      "notAnswering": "The verify service is not answering just now. Try again in a minute.",
       "unknown": "The request did not go through."
     },
     "notePrivate": "Free. Chainlink's confidential workflow opens the small private copy Moolam keeps, compares the fingerprint and writes its verdict on Monad. The verdict usually lands on chain within a few minutes.",
@@ -1731,6 +1790,15 @@
       "button": "Sign in and show them",
       "body": "The list is read from the index against your account's address, so the same pictures come back on any device you sign in on."
     },
-    "showcaseCaption": "A real passport on Monad. Yours will sit here like this one."
+    "showcaseCaption": "A real passport on Monad. Yours will sit here like this one.",
+    "makeFirst": "Register your first picture",
+    "signedInAs": "Signed in as {account}"
+  },
+  "crMark": {
+    "name": "Content Credentials",
+    "alt": "Content Credentials: open this picture's record",
+    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
+    "inspect": "Open it in the official Content Credentials inspect tool",
+    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
   }
 }
