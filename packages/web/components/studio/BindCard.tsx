@@ -26,6 +26,7 @@ export function BindCard({
   onUnsponsored,
   onCancel,
   holding,
+  balance,
 }: {
   state: BindState;
   rebind?: boolean;
@@ -44,6 +45,8 @@ export function BindCard({
    * drop in under a card that has just collapsed to one line.
    */
   holding?: string;
+  /** The account's own MON, read once a sponsored send was refused. */
+  balance?: bigint | null;
 }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
@@ -140,6 +143,7 @@ export function BindCard({
               onBind={onBind}
               onRecheck={onRecheck}
               onUnsponsored={onUnsponsored}
+              balance={balance}
             />
           </div>
         )}

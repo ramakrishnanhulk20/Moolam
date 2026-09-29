@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { WarningMark } from "@/components/WarningMark";
 import { ConsentChoice } from "@/components/consent/ConsentChoice";
 import { draftProblem, type ConsentDraft } from "@/components/consent/draft";
 import { useWide, wideOnly } from "./layout";
@@ -66,8 +67,9 @@ export function ConsentField({
       <p className={`mt-5 max-w-[56ch] text-xs leading-relaxed text-text-faint${wideOnly(wide, "lg:mt-3")}`}>{t("hint")}</p>
 
       {problem === "conditionsRequired" ? (
-        <p role="status" className="mt-3 max-w-[56ch] text-xs leading-relaxed text-failed">
-          {t("needsConditions")}
+        <p role="status" className="mt-3 flex max-w-[56ch] items-start gap-2 text-xs leading-relaxed text-failed">
+          <WarningMark className="mt-[1px]" />
+          <span className="min-w-0">{t("needsConditions")}</span>
         </p>
       ) : null}
     </motion.div>

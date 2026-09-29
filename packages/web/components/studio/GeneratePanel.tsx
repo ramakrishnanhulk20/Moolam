@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { useRef, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import type { Hex } from "viem";
 import { shortHex } from "@/lib/chain/client";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
@@ -21,7 +21,8 @@ import { ConsentField } from "./ConsentField";
 import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
-import { hasStarted, useFoldFocus } from "./press";
+import { hasStarted, pressRefusal, useFoldFocus } from "./press";
+import { TitleNeeded, titleBorder } from "./TitleNeeded";
 import {
   ACROSS,
   AT_LEFT,
@@ -62,6 +63,8 @@ export function GeneratePanel({
   onUnsponsored,
   onBind,
   onRecheck,
+  onSignIn,
+  balance,
 }: {
   state: RegisterState;
   /** Only for the fallback link, when a sponsored send landed without handing back a hash. */
@@ -84,9 +87,17 @@ export function GeneratePanel({
   onUnsponsored: () => void;
   onBind: () => void;
   onRecheck?: () => void;
+  /** Opens the sign in again, for a session that expired during the run. */
+  onSignIn?: () => void;
+  /** The account's own MON, read once a sponsored send was refused. */
+  balance?: bigint | null;
 }) {
   const t = useTranslations("studio.generate");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
+  const titleInput = useRef<HTMLInputElement>(null);
+  const needId = useId();
+  const [titleAsked, setTitleAsked] = useState(false);
+  const titleWanted = state.title.trim().length === 0 && (titleAsked || state.failure?.key === "titleMissing");
   const busy = isBusy(state);
   const done = isRegistered(state);
   const spent = atLimit(state.quota);
@@ -96,6 +107,16 @@ export function GeneratePanel({
   const folded = hasStarted(state);
   const panel = useRef<HTMLDivElement>(null);
   useFoldFocus(panel, folded);
+
+  // An empty title is answered on the field, and the press is never taken.
+  function pressGenerate() {
+    if (pressRefusal(state) === "titleMissing") {
+      setTitleAsked(true);
+      titleInput.current?.focus();
+      return;
+    }
+    onGenerate();
+  }
 
   const sealedChoice = (
     <SealedChoice
@@ -134,6 +155,8 @@ export function GeneratePanel({
               onUnsponsored={onUnsponsored}
               onRecheck={onRecheck}
               onSaved={onSaved}
+              onSignIn={onSignIn}
+              balance={balance}
               plateAtLg={false}
             />
           )}
@@ -167,6 +190,8 @@ export function GeneratePanel({
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
             onSaved={onSaved}
+            onSignIn={onSignIn}
+            balance={balance}
           />
         )}
         {done ? <DoneActions state={state} wallet={wallet} onReset={onReset} /> : null}
@@ -253,15 +278,24 @@ export function GeneratePanel({
       <label className={`mt-8 block${wideOnly(wide, "lg:order-2 lg:mt-5")}`}>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("title")}</span>
         <input
+          ref={titleInput}
           type="text"
           value={state.title}
           maxLength={120}
           disabled={busy}
-          onChange={(event) => onTitle(event.target.value)}
+          aria-invalid={titleWanted ? true : undefined}
+          aria-describedby={titleWanted ? needId : undefined}
+          onChange={(event) => {
+            if (event.target.value.trim().length > 0) {
+              setTitleAsked(false);
+            }
+            onTitle(event.target.value);
+          }}
           placeholder={t("titlePlaceholder")}
-          className="mt-2 w-full border border-line bg-bg px-4 py-3 text-base text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-accent"
+          className={`mt-2 w-full border bg-bg px-4 py-3 text-base text-text outline-none transition-colors duration-200 placeholder:text-text-faint ${titleBorder(titleWanted)}`}
         />
       </label>
+      {titleWanted ? <TitleNeeded id={needId} className={wideOnly(wide, "lg:order-2")} /> : null}
       <p data-title-hint className={`mt-2 text-xs text-text-faint${wideOnly(wide, "lg:order-2")}`}>{t("titleHint")}</p>
       {wide ? <div className="hidden lg:order-4 lg:block">{sealedChoice}</div> : null}
       </WideColumn>
@@ -278,7 +312,7 @@ export function GeneratePanel({
       <div className={`mt-8 flex flex-wrap items-center gap-5${wideOnly(wide, "lg:mt-6")}`}>
         <button
           type="button"
-          onClick={onGenerate}
+          onClick={pressGenerate}
           disabled={pressing || busy || spent || characters < PROMPT_MIN || draftProblem(state.consent) !== null}
           data-press
           className={`flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
@@ -293,16 +327,18 @@ export function GeneratePanel({
       {/* A failure on this face is a check the press itself made (no title yet,
           the passkey not read yet), so its line sits under the button that was
           pressed rather than under the seals and the steps that never started. */}
-      {state.failure === null ? null : (
+      {state.failure === null || titleWanted ? null : (
         <div className="mt-6" data-press-failure>
           <FailureNote
             failure={state.failure}
             passportId={passportId(state)}
-            onAgain={onGenerate}
-            onGenerateAgain={onGenerate}
+            onAgain={pressGenerate}
+            onGenerateAgain={pressGenerate}
             onBind={onBind}
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
+            onSignIn={onSignIn}
+            balance={balance}
           />
         </div>
       )}
@@ -344,6 +380,8 @@ function Run({
   onUnsponsored,
   onRecheck,
   onSaved,
+  onSignIn,
+  balance,
   plateAtLg = true,
 }: {
   state: RegisterState;
@@ -352,6 +390,8 @@ function Run({
   onUnsponsored: () => void;
   onRecheck?: () => void;
   onSaved: () => void;
+  onSignIn?: () => void;
+  balance?: bigint | null;
   /** False under the wide layout, where the plate has the left column to itself from lg. */
   plateAtLg?: boolean;
 }) {
@@ -399,6 +439,8 @@ function Run({
             onBind={onBind}
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
+            onSignIn={onSignIn}
+            balance={balance}
           />
         </div>
       )}

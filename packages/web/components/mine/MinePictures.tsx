@@ -4,6 +4,7 @@ import { usePrivy, useWallets } from "@privy-io/react-auth";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";
 import type { Hex } from "viem";
+import { accountName, type SignedInUser } from "@/lib/studio/account";
 import { useWalletState } from "@/lib/studio/binding";
 import { MineNoAccount, MineWaiting } from "./MineFrame";
 import { SignInCard } from "./SignInCard";
@@ -20,7 +21,7 @@ const OwnPictures = dynamic(loadOwn);
  * is mounted, and not before.
  */
 export function MinePictures() {
-  const { ready, authenticated, login, logout } = usePrivy();
+  const { ready, authenticated, user, login, logout } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
 
   // The account Privy made for this person. A wallet they connected themselves
@@ -49,5 +50,5 @@ export function MinePictures() {
   if (wallet === undefined) {
     return <MineWaiting />;
   }
-  return <OwnPictures wallet={wallet} />;
+  return <OwnPictures wallet={wallet} account={accountName(user as SignedInUser | null)} onSignOut={() => void logout()} />;
 }

@@ -187,8 +187,9 @@ export function describeFailure(error: unknown, stage: Stage, wallet?: Hex): Fai
   if (error instanceof DigestMismatch) {
     // Nothing was signed and nothing was sent: the registry described a
     // different record than the one this page built, and the two have to agree
-    // before a passkey is touched.
-    return { key: "digestMismatch", reason: error.message };
+    // before a passkey is touched. The next read usually agrees, so a second
+    // press is the honest way on.
+    return { key: "digestMismatch", reason: error.message, next: "again" };
   }
 
   if (stage === "sign") {
@@ -220,7 +221,22 @@ function signingFailure(error: unknown): Failure {
   const problem = explainPasskeyError(error);
   const keys = { cancelled: "passkeyCancelled", origin: "passkeyOrigin", unsupported: "passkeyUnsupported" } as const;
   const key = problem.code === "other" ? "passkeyOther" : keys[problem.code];
-  return { key, reason: problem.message, next: problem.code === "cancelled" ? "again" : undefined };
+  return { key, reason: problem.message, next: PASSKEY_NEXT[problem.code] };
+}
+
+/**
+ * A closed prompt is worth another press. A passkey made for another website
+ * never will be, so its way on is binding this device's own unlock instead.
+ */
+const PASSKEY_NEXT: Record<string, Failure["next"]> = { cancelled: "again", origin: "bind" };
+
+/**
+ * Whether offering to pay the fee from the account's own MON makes sense. An
+ * account holding nothing would only be refused a second time; a balance not
+ * read yet still gets the offer, since the send itself is the real check.
+ */
+export function canPayOwnFee(balance: bigint | null | undefined): boolean {
+  return balance === null || balance === undefined || balance > 0n;
 }
 
 /** Up to and including the wallet's answer. Nothing is on chain yet, so a second attempt is safe. */

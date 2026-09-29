@@ -253,7 +253,12 @@ function SaveControl({ file, saved, onSaved }: { file: SealedHandback; saved: bo
           {file.name} <span className="ms-1">{megabytes(file.size)}</span>
         </p>
       </div>
-      <p className={`mt-4 max-w-[46ch] text-xs leading-relaxed ${saved ? "text-text-faint" : "text-accent"}`}>
+      {/* A warning, so it wears the failure family rather than the accent,
+          which is kept for decoration. Once saved it is only a fact. */}
+      <p
+        data-only-copy={saved ? "saved" : "unsaved"}
+        className={`mt-4 max-w-[46ch] text-xs leading-relaxed ${saved ? "text-text-faint" : "font-medium text-failed"}`}
+      >
         {t("only")}
       </p>
       {saved ? <p className="mt-2 max-w-[46ch] text-xs leading-relaxed text-verified">{t("saved")}</p> : null}

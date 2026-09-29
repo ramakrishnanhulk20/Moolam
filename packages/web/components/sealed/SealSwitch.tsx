@@ -227,7 +227,11 @@ function RowWords({
       {/* Wraps on a phone: a long key and its tag are wider than the row at 375. */}
       <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.18em] sm:shrink-0 sm:flex-nowrap">
         {leftOut === null ? null : <span className="text-text-faint">{leftOut}</span>}
-        <span className="text-text-faint/80">{field.key}</span>
+        {/* The file's real field name, so it keeps the file's own case and is
+            never translated: it is what a reader will find if they open it. */}
+        <code data-field-key dir="ltr" className="text-[11px] normal-case tracking-normal text-text-faint/80">
+          {field.key}
+        </code>
         <span className="text-accent">{tag}</span>
       </span>
     </>

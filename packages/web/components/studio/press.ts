@@ -216,3 +216,17 @@ export function useStudioPress(
 
   return { pressing, press };
 }
+
+/**
+ * What the form's button would be refused for, known before anything is sent.
+ *
+ * A missing picture keeps the button grey with its reason beside it. A missing
+ * title is answered on the title field itself, without the press being taken,
+ * so the button never shows the first step's wait for a run that cannot start.
+ */
+export function pressRefusal(state: RegisterState): "fileMissing" | "titleMissing" | null {
+  if (state.mode !== "generate" && state.file === null) {
+    return "fileMissing";
+  }
+  return state.title.trim().length === 0 ? "titleMissing" : null;
+}

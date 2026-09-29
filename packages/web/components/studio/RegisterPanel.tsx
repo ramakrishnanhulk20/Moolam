@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import type { Hex } from "viem";
 import {
   STEPS,
@@ -20,7 +20,8 @@ import { ConsentField } from "./ConsentField";
 import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
-import { hasStarted, useFoldFocus } from "./press";
+import { hasStarted, pressRefusal, useFoldFocus } from "./press";
+import { TitleNeeded, titleBorder } from "./TitleNeeded";
 import {
   ACROSS,
   AT_LEFT,
@@ -57,6 +58,8 @@ export function RegisterPanel({
   onUnsponsored,
   onBind,
   onRecheck,
+  onSignIn,
+  balance,
 }: {
   state: RegisterState;
   /** Only for the fallback link, when a sponsored send landed without handing back a hash. */
@@ -77,10 +80,19 @@ export function RegisterPanel({
   onUnsponsored: () => void;
   onBind: () => void;
   onRecheck?: () => void;
+  /** Opens the sign in again, for a session that expired during the run. */
+  onSignIn?: () => void;
+  /** The account's own MON, read once a sponsored send was refused. */
+  balance?: bigint | null;
 }) {
   const t = useTranslations("studio");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const input = useRef<HTMLInputElement>(null);
+  const titleInput = useRef<HTMLInputElement>(null);
+  const needId = useId();
+  const fileWhyId = useId();
+  const [titleAsked, setTitleAsked] = useState(false);
+  const titleWanted = state.title.trim().length === 0 && (titleAsked || state.failure?.key === "titleMissing");
   const [over, setOver] = useState(false);
   const [rejected, setRejected] = useState<Failure | null>(null);
   const busy = isBusy(state);
@@ -116,6 +128,16 @@ export function RegisterPanel({
   const folded = hasStarted(state);
   const panel = useRef<HTMLDivElement>(null);
   useFoldFocus(panel, folded);
+
+  // An empty title is answered on the field, and the press is never taken.
+  function pressRegister() {
+    if (pressRefusal(state) === "titleMissing") {
+      setTitleAsked(true);
+      titleInput.current?.focus();
+      return;
+    }
+    onRegister();
+  }
 
   const sealedChoice = (
     <SealedChoice
@@ -175,6 +197,8 @@ export function RegisterPanel({
               onUnsponsored={onUnsponsored}
               onRecheck={onRecheck}
               onSaved={onSaved}
+              onSignIn={onSignIn}
+              balance={balance}
             />
           )}
         </div>
@@ -207,6 +231,8 @@ export function RegisterPanel({
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
             onSaved={onSaved}
+            onSignIn={onSignIn}
+            balance={balance}
           />
         )}
         {done ? <DoneActions state={state} wallet={wallet} onReset={onReset} /> : null}
@@ -304,15 +330,24 @@ export function RegisterPanel({
       <label className={`mt-8 block${wideOnly(wide, "lg:mt-6")}`}>
         <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("register.title")}</span>
         <input
+          ref={titleInput}
           type="text"
           value={state.title}
           maxLength={120}
           disabled={busy}
-          onChange={(event) => onTitle(event.target.value)}
+          aria-invalid={titleWanted ? true : undefined}
+          aria-describedby={titleWanted ? needId : undefined}
+          onChange={(event) => {
+            if (event.target.value.trim().length > 0) {
+              setTitleAsked(false);
+            }
+            onTitle(event.target.value);
+          }}
           placeholder={t("register.titlePlaceholder")}
-          className="mt-2 w-full border border-line bg-bg px-4 py-3 text-base text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-accent"
+          className={`mt-2 w-full border bg-bg px-4 py-3 text-base text-text outline-none transition-colors duration-200 placeholder:text-text-faint ${titleBorder(titleWanted)}`}
         />
       </label>
+      {titleWanted ? <TitleNeeded id={needId} /> : null}
       <p data-title-hint className="mt-2 text-xs text-text-faint">{t("register.titleHint")}</p>
       {/* On a laptop the picture, its name and whether it is published are one
           column, so the right one is the AI-use choice and the press. */}
@@ -328,30 +363,42 @@ export function RegisterPanel({
           into the first line of the run and the button goes quiet. The room for
           two lines is held from the start, because a button that grows under the
           thumb moves the whole page with it. */}
-      <button
-        type="button"
-        onClick={onRegister}
-        disabled={pressing || busy || state.file === null || draftProblem(state.consent) !== null}
-        data-press
-        className={`mt-8 flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
-          pressing ? "normal-case" : "uppercase tracking-[0.14em]"
-        }${wideOnly(wide, "lg:mt-6 lg:flex lg:w-full")}`}
-      >
-        {pressing ? t("register.steps.prepare.running") : t("register.submit")}
-      </button>
+      {/* A grey button says why beside itself, so nobody is left pressing it
+          and wondering. */}
+      <div className={`mt-8 flex flex-wrap items-center gap-x-5 gap-y-3${wideOnly(wide, "lg:mt-6")}`}>
+        <button
+          type="button"
+          onClick={pressRegister}
+          disabled={pressing || busy || state.file === null || draftProblem(state.consent) !== null}
+          aria-describedby={state.file === null ? fileWhyId : undefined}
+          data-press
+          className={`flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
+            pressing ? "normal-case" : "uppercase tracking-[0.14em]"
+          }${wideOnly(wide, "lg:flex lg:w-full")}`}
+        >
+          {pressing ? t("register.steps.prepare.running") : t("register.submit")}
+        </button>
+        {state.file === null ? (
+          <p id={fileWhyId} data-press-reason className="max-w-[34ch] text-xs leading-relaxed text-text-muted">
+            {t("failure.fileMissing")}
+          </p>
+        ) : null}
+      </div>
 
       {/* A failure on this face is a check the press itself made (no title yet,
           the passkey not read yet), so its line sits under the button that was
           pressed rather than under the list of steps that never started. */}
-      {state.failure === null ? null : (
+      {state.failure === null || titleWanted ? null : (
         <div className="mt-6" data-press-failure>
           <FailureNote
             failure={state.failure}
             passportId={passportId(state)}
-            onAgain={onRegister}
+            onAgain={pressRegister}
             onBind={onBind}
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
+            onSignIn={onSignIn}
+            balance={balance}
           />
         </div>
       )}
@@ -391,6 +438,8 @@ function Run({
   onUnsponsored,
   onRecheck,
   onSaved,
+  onSignIn,
+  balance,
 }: {
   state: RegisterState;
   wide?: boolean;
@@ -399,6 +448,8 @@ function Run({
   onUnsponsored: () => void;
   onRecheck?: () => void;
   onSaved: () => void;
+  onSignIn?: () => void;
+  balance?: bigint | null;
 }) {
   return (
     <motion.section
@@ -433,6 +484,8 @@ function Run({
             onBind={onBind}
             onUnsponsored={onUnsponsored}
             onRecheck={onRecheck}
+            onSignIn={onSignIn}
+            balance={balance}
           />
         </div>
       )}

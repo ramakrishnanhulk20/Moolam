@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { reason as oneLine } from "@/lib/chain/client";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
 import { useUnsavedFileWarning } from "@/lib/sealed/save";
@@ -120,6 +121,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
       }}
       onRecheck={studio.actions.recheck}
       onUnsponsored={() => void studio.actions.resend(true)}
+      balance={studio.balance}
       onCancel={bindRoute ? () => setRebinding(false) : undefined}
     />
   );
@@ -155,7 +157,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
             <StudioWaiting text={t("passkey.reading")} />
           ) : studio.binding.status === "unreadable" ? (
             <div>
-              <Notice text={t("passkey.unreadable", { reason: studio.binding.error ?? "" })} tone="failed" />
+              <Notice text={t("passkey.unreadable", { reason: oneLine(studio.binding.error ?? "") })} tone="failed" />
               <button
                 type="button"
                 onClick={studio.binding.refresh}
@@ -208,6 +210,8 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
                     onUnsponsored={() => void studio.actions.resend(true)}
                     onBind={toBind}
                     onRecheck={studio.actions.recheck}
+                    onSignIn={studio.login}
+                    balance={studio.balance}
                   />
                 ) : (
                   <RegisterPanel
@@ -225,18 +229,13 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
                     onUnsponsored={() => void studio.actions.resend(true)}
                     onBind={toBind}
                     onRecheck={studio.actions.recheck}
+                    onSignIn={studio.login}
+                    balance={studio.balance}
                   />
                 )}
               </div>
             </>
           )}
-
-          {(studio.register.failure?.next === "unsponsored" || studio.bind.failure?.next === "unsponsored") &&
-          studio.balance !== null ? (
-            <p className="mt-5 max-w-[54ch] font-mono text-xs leading-relaxed text-text-faint">
-              {t("register.balance", { mon: (Number(studio.balance) / 1e18).toFixed(4) })}
-            </p>
-          ) : null}
         </>
 
         {/* The stub belongs to the panel when there is one, so it lands under

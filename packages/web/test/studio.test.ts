@@ -507,10 +507,12 @@ describe("where a failure happened, not what its name looks like", () => {
     expect(describeFailure(new Error("the browser returned no assertion"), "sign").key).toBe("passkeyOther");
   });
 
-  it("stops on a digest the registry does not agree with, and offers no unlock", () => {
+  it("stops on a digest the registry does not agree with, and offers a fresh press rather than an unlock", () => {
     const mismatch = new DigestMismatch(`0x${"11".repeat(32)}`, `0x${"22".repeat(32)}`);
     const failure = describeFailure(mismatch, "sign");
-    expect(failure.next).toBeUndefined();
+    // Try again runs the whole press from the top, so the digest is read again
+    // and the passkey only opens if the two agree this time.
+    expect(failure.next).toBe("again");
     expect(failure.reason).toContain("may be signed");
     expect(failure.key).not.toContain("passkey");
   });

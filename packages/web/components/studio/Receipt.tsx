@@ -7,6 +7,7 @@ import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { plainStatement } from "@/lib/chain/consent";
 import { feeInMon } from "@/lib/chain/fee";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { WarningMark } from "@/components/WarningMark";
 import { Link } from "@/lib/i18n/routing";
 import type { SealedHandback } from "@/lib/sealed/handback";
 import { useSealedSave } from "@/lib/sealed/save";
@@ -23,7 +24,8 @@ interface Mark {
   /** Text, or text with one in-app link in it, such as the way to delete a kept copy. */
   detail?: ReactNode;
   href?: string;
-  tone?: "accent" | "verified";
+  /** A stamp for something that did not happen wears the failure red and the mark. */
+  tone?: "accent" | "verified" | "failed";
   /** The one figure on this mark worth reading from across the room. */
   big?: { caption: string; value: string; unit: string };
   /** Extra lines under the detail, each one something this run measured. */
@@ -87,10 +89,12 @@ export function Receipt({ studio }: { studio: Studio }) {
                 className="border border-line bg-bg-raised p-4"
               >
                 <p
-                  className={`font-mono text-[10px] uppercase tracking-[0.2em] ${
-                    mark.tone === "verified" ? "text-verified" : "text-accent"
+                  data-stamp-tone={mark.tone ?? "accent"}
+                  className={`flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] ${
+                    mark.tone === "verified" ? "text-verified" : mark.tone === "failed" ? "text-failed" : "text-accent"
                   }`}
                 >
+                  {mark.tone === "failed" ? <WarningMark /> : null}
                   {mark.label}
                 </p>
                 {mark.big === undefined ? null : (
@@ -431,6 +435,7 @@ function statementMark(studio: Studio, t: Translate, words: Words, format: Forma
       detail: failureLine(statement.failure, words, format),
       lines: [t("consent.receipt.later")],
       action: again,
+      tone: "failed",
     };
   }
 

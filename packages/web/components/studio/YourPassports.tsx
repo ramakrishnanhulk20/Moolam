@@ -2,11 +2,14 @@
 
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
+import type { ReactNode } from "react";
+import { WarningMark } from "@/components/WarningMark";
 import { shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
 import type { CreatorPassports } from "@/lib/studio/useCreatorPassports";
 import { useWide, wideOnly } from "./layout";
 import { useHeadingLeading } from "./leading";
+import { FailureDetails } from "./FailureDetails";
 import { hasPassportEnd, passportEnd, passportEndClasses } from "./passportsEnd";
 
 /**
@@ -22,34 +25,82 @@ import { hasPassportEnd, passportEnd, passportEndClasses } from "./passportsEnd"
  * its own Load more, the same press /mine puts under its copy of this grid, and
  * a short last row is closed by one quiet cell rather than grey gaps.
  */
-export function YourPassports({ passports, heading }: { passports: CreatorPassports; heading?: string }) {
+export function YourPassports({
+  passports,
+  heading,
+  lead,
+  empty,
+}: {
+  passports: CreatorPassports;
+  heading?: string;
+  /**
+   * A page whose whole subject is this grid already has its title and its
+   * hairline above it, so it passes the row that heads the grid instead: the
+   * display heading and the second rule are left out and the heading stays for
+   * a screen reader only.
+   */
+  lead?: ReactNode;
+  /** The way on from an account with nothing in it yet. */
+  empty?: ReactNode;
+}) {
   const t = useTranslations("studio");
   const common = useTranslations("common");
   const leading = useHeadingLeading("leading-[0.95]", "leading-[1.15]");
   const kinds = useTranslations("kind");
   const format = useFormatter();
   const wide = useWide();
+  const onPage = lead !== undefined;
 
   return (
     <section
       data-studio-passports={wide ? "wide" : undefined}
-      className={`mt-24 border-t border-line pt-10 sm:mt-32${wideOnly(wide, "lg:mt-14 lg:border-t-0 lg:pt-0")}`}
+      data-passports-on-page={onPage ? "" : undefined}
+      className={
+        onPage
+          ? ""
+          : `mt-24 border-t border-line pt-10 sm:mt-32${wideOnly(wide, "lg:mt-14 lg:border-t-0 lg:pt-0")}`
+      }
     >
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <h2 className={`font-display text-[clamp(1.6rem,3.2vw,2.6rem)] uppercase tracking-[-0.02em] ${leading}`}>
-          {heading ?? t("passports.heading")}
-        </h2>
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("passports.source")}</p>
-      </div>
+      {onPage ? (
+        <>
+          <h2 className="sr-only">{heading ?? t("passports.heading")}</h2>
+          <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+            {lead}
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("passports.source")}</p>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className={`font-display text-[clamp(1.6rem,3.2vw,2.6rem)] uppercase tracking-[-0.02em] ${leading}`}>
+            {heading ?? t("passports.heading")}
+          </h2>
+          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("passports.source")}</p>
+        </div>
+      )}
 
       {passports.status === "reading" ? (
-        <p className="mt-8 text-sm text-text-muted">{t("passports.reading")}</p>
+        <ReadingOutlines wide={wide} words={t("passports.reading")} />
       ) : passports.status === "unreadable" ? (
-        <p className="mt-8 max-w-[54ch] text-sm leading-relaxed text-failed">
-          {t("passports.unreadable", { reason: passports.error ?? "" })}
-        </p>
+        <div role="alert" data-passports-unreadable className="mt-8 max-w-[54ch]">
+          <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+            <WarningMark className="mt-[3px]" />
+            <span className="min-w-0">{t("passports.unreadable", { reason: "" })}</span>
+          </p>
+          <button
+            type="button"
+            onClick={passports.refresh}
+            data-passports-retry
+            className="ms-[23px] mt-4 rounded-[8px] border border-line px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+          >
+            {t("passports.retry")}
+          </button>
+          {passports.error === null ? null : <FailureDetails reason={passports.error} className="ms-[23px] mt-4" />}
+        </div>
       ) : passports.passports.length === 0 ? (
-        <p className="mt-8 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("passports.empty")}</p>
+        <div className="mt-8">
+          <p className="max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("passports.empty")}</p>
+          {empty}
+        </div>
       ) : (
         <ul
           className={`mt-10 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3${wideOnly(wide, "xl:grid-cols-4")}`}
@@ -100,6 +151,40 @@ export function YourPassports({ passports, heading }: { passports: CreatorPasspo
 
       {wide ? <LoadMore passports={passports} /> : null}
     </section>
+  );
+}
+
+/**
+ * The grid's shape while the index is asked, so the page does not jump when
+ * the cards arrive. Two outlines on a phone, a full row from lg, four across
+ * on the wide studio's widest laptop, matching the grid they stand in for.
+ */
+function ReadingOutlines({ wide, words }: { wide: boolean; words: string }) {
+  const cells = ["", "", "hidden lg:block", wide ? "hidden xl:block" : null];
+
+  return (
+    <div data-passports-reading aria-busy="true" className="mt-8">
+      <p role="status" className="text-sm text-text-muted">
+        {words}
+      </p>
+      <ul
+        aria-hidden
+        className={`mt-6 grid gap-px border border-line bg-line sm:grid-cols-2 lg:grid-cols-3${wideOnly(wide, "xl:grid-cols-4")}`}
+      >
+        {cells.map((shown, index) =>
+          shown === null ? null : (
+            <li key={index} data-outline className={`bg-bg-raised ${shown}`.trim()}>
+              <div className="grain relative aspect-[4/3] animate-pulse bg-bg-sunken motion-reduce:animate-none" />
+              <div className="p-5">
+                <span className="block h-3 w-2/3 bg-line" />
+                <span className="mt-3 block h-2.5 w-1/2 bg-line" />
+                <span className="mt-2 block h-2.5 w-1/3 bg-line" />
+              </div>
+            </li>
+          ),
+        )}
+      </ul>
+    </div>
   );
 }
 
@@ -158,8 +243,9 @@ function LoadMore({ passports }: { passports: CreatorPassports }) {
         {passports.loadingMore ? t("loading") : t("loadMore")}
       </button>
       {passports.moreError === null ? null : (
-        <p role="alert" className="max-w-[54ch] text-sm leading-relaxed text-failed">
-          {t("error", { reason: passports.moreError })}
+        <p role="alert" className="flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
+          <WarningMark className="mt-[3px]" />
+          <span className="min-w-0">{t("error", { reason: passports.moreError })}</span>
         </p>
       )}
     </div>

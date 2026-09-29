@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useId } from "react";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
@@ -37,6 +38,8 @@ export function DoneActions({
   const drawn = state.generated;
   const holding = holdsUnsavedFile(state);
   const stating = isStating(state);
+  const holdId = useId();
+  const stateId = useId();
 
   return (
     <div className="mt-8" data-done-actions>
@@ -94,6 +97,7 @@ export function DoneActions({
           type="button"
           onClick={onReset}
           disabled={stating || holding}
+          aria-describedby={waitIds(holding, stating, holdId, stateId)}
           data-again
           className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
         >
@@ -102,8 +106,21 @@ export function DoneActions({
       </div>
 
       {holding ? (
-        <p className="mt-3.5 max-w-[46ch] text-xs leading-relaxed text-text-faint">{t("sealed.handback.only")}</p>
+        <p id={holdId} className="mt-3.5 max-w-[46ch] text-xs leading-relaxed text-text-faint">
+          {t("sealed.handback.only")}
+        </p>
+      ) : null}
+      {stating ? (
+        <p id={stateId} data-another-waits className="mt-3.5 max-w-[46ch] text-xs leading-relaxed text-text-faint">
+          {t("register.anotherWaits")}
+        </p>
       ) : null}
     </div>
   );
+}
+
+/** Every line that says why Register another is grey, for the button to name as its description. */
+function waitIds(holding: boolean, stating: boolean, holdId: string, stateId: string): string | undefined {
+  const ids = [holding ? holdId : null, stating ? stateId : null].filter((id) => id !== null);
+  return ids.length === 0 ? undefined : ids.join(" ");
 }

@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { WarningMark } from "@/components/WarningMark";
 import {
   GENERATE_STEPS,
   STEPS,
@@ -60,12 +61,16 @@ export function StatusBand({ state }: { state: RegisterState }) {
         tabIndex={-1}
         className="flex h-[3.4rem] items-center gap-3 px-4 focus-visible:-outline-offset-2! sm:h-[3.8rem] sm:gap-4 sm:px-6"
       >
-        <span
-          aria-hidden
-          className={`h-[9px] w-[9px] shrink-0 ${
-            failed ? "bg-failed" : done ? "motif" : "animate-pulse bg-accent"
-          }`}
-        />
+        {failed ? (
+          <span data-band-mark className="flex shrink-0 text-failed">
+            <WarningMark />
+          </span>
+        ) : (
+          <span
+            aria-hidden
+            className={`h-[9px] w-[9px] shrink-0 ${done ? "motif" : "animate-pulse bg-accent"}`}
+          />
+        )}
 
         {/* The title holds a floor of its own and the step line gives way
             first, because in German or Tamil the step line alone is wider than

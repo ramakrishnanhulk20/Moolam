@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { WarningMark } from "@/components/WarningMark";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { useWide } from "./layout";
 import { SignedOut } from "./SignedOut";
@@ -99,8 +100,12 @@ export function NoAccount({ onSignOut }: { onSignOut: () => void }) {
 
 export function Notice({ text, tone = "muted" }: { text: string; tone?: "muted" | "failed" }) {
   return (
-    <p className={`max-w-[54ch] text-sm leading-relaxed ${tone === "failed" ? "text-failed" : "text-text-muted"}`}>
-      {text}
+    <p
+      role={tone === "failed" ? "alert" : undefined}
+      className={`flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${tone === "failed" ? "text-failed" : "text-text-muted"}`}
+    >
+      {tone === "failed" ? <WarningMark className="mt-[3px]" /> : null}
+      <span className="min-w-0">{text}</span>
     </p>
   );
 }

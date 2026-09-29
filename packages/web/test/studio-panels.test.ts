@@ -208,8 +208,10 @@ describe("a failure on a phone", () => {
   });
 
   it("puts a check made at the press straight under the button that was pressed", () => {
-    const untitled = { ...fixtureState("upload", "idle"), title: "", failure: { key: "titleMissing" } };
-    for (const markup of [render(wide(upload(untitled))), render(upload(untitled))]) {
+    // An empty title is answered on its own field now, so the press check held
+    // here is the passkey that has not been read yet.
+    const unread = { ...fixtureState("upload", "idle"), failure: { key: "passkeyNotReady", next: "again" as const } };
+    for (const markup of [render(wide(upload(unread))), render(upload(unread))]) {
       const press = markup.indexOf("data-press");
       const note = markup.indexOf("data-press-failure");
       expect(note).toBeGreaterThan(press);
