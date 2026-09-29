@@ -8,15 +8,17 @@ import { LocaleSwitch, PageAddress } from "@/components/LocaleSwitch";
 import { ScriptFace } from "@/components/ScriptFace";
 import { ShowGuideAgain } from "@/components/guide/ShowGuideAgain";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { BottomBar, IntentLink } from "@/components/shell/BottomBar";
+import { BottomBar } from "@/components/shell/BottomBar";
+import { HeaderNav } from "@/components/shell/HeaderNav";
 import { LateInsights } from "@/components/shell/LateInsights";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
+import { ThemeColor } from "@/components/shell/ThemeColor";
 import type { Tab } from "@/components/shell/tabs";
 import { IntlProvider } from "@/components/providers/IntlProvider";
 import { LenisProvider } from "@/components/providers/LenisProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { StatusPending, SystemStatus } from "@/components/status/SystemStatus";
-import { CHAIN_ID, MONAD_EXPLORER, addresses } from "@/lib/chain/client";
+import { CHAIN_ID, MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import { activeSource } from "@/lib/data/source";
 import { hasIndex } from "@/lib/status/read";
 import { labPagesOn } from "@/lib/docs/drafts";
@@ -27,6 +29,9 @@ import "@/styles/globals.css";
 
 const SOURCE_URL = "https://github.com/ramakrishnanhulk20/Moolam";
 
+/** One footer row: 44 px tall, which is the tap pad every footer link carries. */
+const FOOTER_ROW = "inline-flex min-h-11 items-center";
+
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
@@ -35,7 +40,9 @@ export function generateStaticParams() {
  * The colour a phone paints its own bar with. Two of them, because the site
  * carries two palettes and the browser picks by the reader's system setting:
  * the same two values --bg holds in globals.css. Without either, the bar stayed
- * grey above a black film and above a cream page alike.
+ * grey above a black film and above a cream page alike. These are what a page
+ * paints with before its script runs; ThemeColor then rewrites both to the
+ * theme the reader actually chose.
  */
 export const viewport: Viewport = {
   themeColor: [
@@ -122,9 +129,9 @@ export default async function LocaleLayout({
   // given one.
   const counted = process.env.VERCEL === "1" && !labPagesOn();
 
-  // The studio is the one route in this bar that carries the wallet. Left to
-  // prefetch, a reader of any other page quietly pulls half a megabyte of a
-  // screen they may never open, so that link is fetched when it is clicked.
+  // The studio and My pictures carry the wallet. Left to prefetch, a reader of
+  // any other page quietly pulls half a megabyte of a screen they may never
+  // open, so those two are fetched when they are clicked.
   //
   // Verify and Explore are fetched on intent, the way the phone's tabs are
   // (see IntentLink): Verify's page carries the whole check, and both landed
@@ -132,18 +139,24 @@ export default async function LocaleLayout({
   // Docs stay as they were: neither was fetched in the home page's first five
   // seconds on a phone.
   //
-  // The last two carry the name the first visit guide points at, the same names
-  // the phone's tabs carry below. Only one of the two is ever on the screen, so
-  // the guide can look for the name and take whichever answers.
+  // The last three carry the name the first visit guide points at, the same names
+  // the phone's tabs carry below. Only one of each pair is ever on the screen,
+  // so the guide can look for the name and take whichever answers.
   //
   // There is no Home link: the logo is the way home on a laptop. The phone's
   // bar keeps its Home tab, because it has no logo under the thumb.
+  //
+  // My pictures is last and shown to everyone, signed in or not: a first
+  // visitor should see that the page exists, and pressing it signed out lands
+  // on the card that offers the sign in. Not prefetched, because that page
+  // carries the wallet.
   const nav = [
     { href: "/explore", label: t("nav.explore"), prefetch: "intent", anchor: undefined },
     { href: "/agents", label: t("nav.agents"), prefetch: undefined, anchor: undefined },
     { href: "/docs", label: t("nav.docs"), prefetch: undefined, anchor: undefined },
     { href: "/verify", label: t("nav.verify"), prefetch: "intent", anchor: "verify" },
     { href: "/studio", label: t("nav.studio"), prefetch: false, anchor: "studio" },
+    { href: "/mine", label: mine("entry"), prefetch: false, anchor: "mine" },
   ] as const;
 
   // The phone's whole navigation, in the order a thumb reads it: the raised
@@ -173,6 +186,9 @@ export default async function LocaleLayout({
               siteName={m("title")}
               ogLocale={OG_LOCALES[locale] ?? OG_LOCALES[routing.defaultLocale]}
             />
+            {/* The browser's own bar follows the theme the reader picked,
+                not only the system setting the head's two tags choose by. */}
+            <ThemeColor />
             <LenisProvider>
               <div className="flex min-h-dvh flex-col">
                 {/* Below md the top of the screen is the wordmark and the two
@@ -183,7 +199,7 @@ export default async function LocaleLayout({
                 <PhoneHeader brand={t("brand")} className="app-header md:hidden" />
 
                 <header className="app-header sticky top-0 z-40 hidden border-b border-line bg-bg/85 backdrop-blur-md md:block">
-                  <div className="mx-auto flex h-[55px] w-full max-w-[1400px] items-center gap-x-6 px-5 sm:px-8 md:h-auto md:flex-wrap md:gap-y-3 md:py-4">
+                  <div className="mx-auto flex h-[55px] w-full max-w-[1400px] items-center gap-x-6 px-5 sm:px-8 md:h-auto md:flex-wrap md:gap-x-4 md:gap-y-5 md:py-3 lg:gap-y-3 lg:py-4 xl:gap-x-6">
                     {/* The lockup files carry clear space on every side, so the box is 63 px
                         tall for 24 px of cap height and the negative margin keeps the bar the
                         height the ink asks for. The theme class picks the variant, and the
@@ -232,52 +248,28 @@ export default async function LocaleLayout({
                         The empty first item is what lets it drop: a tagline
                         wider than its box wraps to the second line of this
                         one-line box, which is clipped. */}
-                    <span className="hidden h-[1lh] min-w-0 grow basis-0 flex-wrap overflow-hidden text-xs uppercase tracking-[0.24em] text-text-faint md:flex">
+                    <span className="hidden h-[1lh] min-w-0 grow basis-0 flex-wrap overflow-hidden text-xs uppercase tracking-[0.24em] text-text-faint lg:flex">
                       <span aria-hidden className="h-[1lh] w-0" />
                       <span className="whitespace-nowrap">{t("tagline")}</span>
                     </span>
-                    {/* gap-4 rather than gap-5: at 20 px between links the
-                        language and theme chips dropped to a second row. */}
-                    <nav className="ml-auto hidden items-center gap-4 text-sm md:flex">
-                      {nav.map((item) =>
-                        item.prefetch === "intent" ? (
-                          <IntentLink
-                            key={item.href}
-                            href={item.href}
-                            data-guide-anchor={item.anchor}
-                            className="tap text-text-muted transition-colors duration-200 hover:text-accent"
-                          >
-                            {item.label}
-                          </IntentLink>
-                        ) : (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            prefetch={item.prefetch}
-                            data-guide-anchor={item.anchor}
-                            className="tap text-text-muted transition-colors duration-200 hover:text-accent"
-                          >
-                            {item.label}
-                          </Link>
-                        ),
-                      )}
-                      {/* The way back to your own pictures. Everyone gets it,
-                          signed in or not: a first visitor should be able to see
-                          that the page exists, and pressing it signed out lands
-                          on the card that offers the sign in. Not prefetched,
-                          because that page carries the wallet. */}
-                      <Link
-                        href="/mine"
-                        prefetch={false}
-                        data-guide-anchor="mine"
-                        className="tap whitespace-nowrap text-text-muted transition-colors duration-200 hover:text-accent"
-                      >
-                        {mine("entry")}
-                      </Link>
-                    </nav>
+                    {/* The page being read is lit the way the phone bar lights
+                        its tab. The words come from here, so the client part
+                        carries no messages of its own.
+
+                        Between md and lg the bar is two rows by design: the
+                        wordmark and the two chips on top, the links on a row
+                        of their own under them. Left to wrap where they fell,
+                        the links, the chips and the tagline took three rows
+                        and 130 px at 768, and German took three at every
+                        width below a laptop. The tagline waits for lg. The 20
+                        px between the rows keeps the chips' 44 px tap pads
+                        off the links below them. Up to xl the gaps stay
+                        tight, so English holds one row at 1024 with a
+                        scrollbar taking 15 px of it. */}
+                    <HeaderNav links={nav} label={bar("label")} />
                     {/* tap-row grows both chips to a 44 px target the same way
                         the phone menu grows them, without moving anything. */}
-                    <div className="tap-row hidden items-center gap-2 md:flex">
+                    <div className="tap-row ml-auto hidden items-center gap-2 md:flex lg:ml-0">
                       <LocaleSwitch />
                       <ThemeToggle />
                     </div>
@@ -293,24 +285,39 @@ export default async function LocaleLayout({
                     room is the bar's 56 px plus whatever the phone keeps for
                     its home indicator, which is --bar-room in globals.css. */}
                 <footer className="border-t border-line pb-[var(--bar-room)] md:pb-0">
-                  <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-x-8 gap-y-3 px-5 py-6 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:px-8">
-                    <span>{f("network", { chainId: CHAIN_ID })}</span>
+                  {/* Every row is 44 px tall, the same as the invisible pad
+                      globals.css hangs on each footer link, so a pad ends
+                      where its row does. With rows the height of their text,
+                      the pad of Show the guide again reached up over Docs,
+                      Privacy and Terms on a phone, and a thumb on Privacy
+                      opened the guide. items-start keeps each link as wide as
+                      its words rather than the whole column. */}
+                  <div className="mx-auto flex w-full max-w-[1400px] flex-col items-start gap-x-8 px-5 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-y-1 sm:px-8">
+                    <span className={FOOTER_ROW}>{f("network", { chainId: CHAIN_ID })}</span>
                     <a
                       href={`${MONAD_EXPLORER}/address/${addresses.registry}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="break-all transition-colors duration-200 hover:text-accent"
+                      title={addresses.registry}
+                      aria-label={`${f("registry")} ${addresses.registry}`}
+                      className={`${FOOTER_ROW} gap-[0.6em] transition-colors duration-200 hover:text-accent`}
                     >
-                      {f("registry")} {addresses.registry}
+                      {/* The row is set in capitals, which turned the address
+                          into 0X and a run of capital hex that reads as a
+                          different string from the one an explorer shows. A
+                          short lowercase id is enough to recognise it; the
+                          full address is in the title and the link's name. */}
+                      {f("registry")}
+                      <span className="normal-case">{shortHex(addresses.registry.toLowerCase())}</span>
                     </a>
-                    <span>{f("index", { source: f(`source${source[0].toUpperCase()}${source.slice(1)}`) })}</span>
+                    <span className={FOOTER_ROW}>{f("index", { source: f(`source${source[0].toUpperCase()}${source.slice(1)}`) })}</span>
                     {/* The one thing a judge on the live URL could not reach from
                         anywhere on the site: the code itself. */}
                     <a
                       href={SOURCE_URL}
                       target="_blank"
                       rel="noreferrer"
-                      className="transition-colors duration-200 hover:text-accent"
+                      className={`${FOOTER_ROW} transition-colors duration-200 hover:text-accent`}
                     >
                       {f("source")}
                     </a>
@@ -323,41 +330,43 @@ export default async function LocaleLayout({
                         languages. Released on 22 September 2026; a page that is
                         still a draft is held back by its flag in docs/nav.json,
                         never by this footer. */}
-                    <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <Link href="/docs" className="transition-colors duration-200 hover:text-accent">
+                    <span className="flex flex-wrap items-center gap-x-4">
+                      <Link href="/docs" className={`${FOOTER_ROW} transition-colors duration-200 hover:text-accent`}>
                         {t("nav.docs")}
                       </Link>
                       <Link
                         href="/docs/legal/privacy"
-                        className="transition-colors duration-200 hover:text-accent"
+                        className={`${FOOTER_ROW} transition-colors duration-200 hover:text-accent`}
                       >
                         {f("privacy")}
                       </Link>
-                      <Link href="/docs/legal/terms" className="transition-colors duration-200 hover:text-accent">
+                      <Link href="/docs/legal/terms" className={`${FOOTER_ROW} transition-colors duration-200 hover:text-accent`}>
                         {f("terms")}
                       </Link>
                       {/* The way back to the first visit guide, for anyone who
                           skipped it or wants it again. It forgets the mark on
                           this device and shouts; the home page hears it. */}
-                      <ShowGuideAgain label={g("again")} />
+                      <ShowGuideAgain label={g("again")} className={FOOTER_ROW} />
                     </span>
 
                     {/* The three services, read while the page is rendered. The boundary
                         keeps a slow service off the critical path: the rest of the footer
                         is already on screen while the line is still waiting. */}
-                    <Suspense
-                      fallback={
-                        <StatusPending
-                          labels={[
-                            f("status.verifier"),
-                            ...(hasIndex() ? [f("status.index")] : []),
-                            f("status.chain"),
-                          ]}
-                        />
-                      }
-                    >
-                      <SystemStatus />
-                    </Suspense>
+                    <div className={FOOTER_ROW}>
+                      <Suspense
+                        fallback={
+                          <StatusPending
+                            labels={[
+                              f("status.verifier"),
+                              ...(hasIndex() ? [f("status.index")] : []),
+                              f("status.chain"),
+                            ]}
+                          />
+                        }
+                      >
+                        <SystemStatus />
+                      </Suspense>
+                    </div>
                   </div>
                 </footer>
 

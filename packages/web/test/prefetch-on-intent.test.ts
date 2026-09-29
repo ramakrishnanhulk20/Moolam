@@ -157,8 +157,12 @@ describe("the header's links", () => {
   });
 
   it("draws an intent link as IntentLink, which holds the fetch until a pointer, focus or touch", async () => {
-    expect(layout).toContain('item.prefetch === "intent" ? (');
-    expect(layout).toMatch(/<IntentLink\s+key=\{item\.href\}\s+href=\{item\.href\}/);
+    // The layout hands its table to HeaderNav, which draws the links.
+    expect(layout).toContain("<HeaderNav links={nav}");
+    const nav = readFileSync("components/shell/HeaderNav.tsx", "utf8");
+    expect(nav).toContain('link.prefetch === "intent" ? (');
+    expect(nav).toMatch(/<IntentLink\s+key=\{link\.href\}\s+\{\.\.\.props\}>/);
+    expect(nav).toContain("href: link.href,");
 
     for (const reach of [pointAt, focus, touch]) {
       const host = await mount(createElement(IntentLink, { href: "/verify", className: "tap" }, "Verify"));

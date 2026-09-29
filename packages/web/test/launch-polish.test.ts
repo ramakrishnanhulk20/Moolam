@@ -286,9 +286,15 @@ describe("the controls a screen reader and a voice can reach", () => {
   });
 
   it("hangs the 44 px pad on the header nav and the two chips", () => {
+    // The links are drawn by HeaderNav, where every one of them shares one class list.
+    const nav = source("components/shell/HeaderNav.tsx");
+    expect(nav).toContain("className: `tap whitespace-nowrap");
+    expect(nav.match(/className: `tap /g)).toHaveLength(1);
     const layout = source("app/[locale]/layout.tsx");
-    expect(layout).toContain('className="tap text-text-muted');
-    expect(layout).toContain('className="tap-row hidden items-center gap-2 md:flex"');
+    expect(layout).toMatch(/className="tap-row [^"]*md:flex[^"]*"/);
+    const chips = layout.slice(layout.indexOf('className="tap-row '), layout.indexOf("</div>", layout.indexOf('className="tap-row ')));
+    expect(chips).toContain("<LocaleSwitch />");
+    expect(chips).toContain("<ThemeToggle />");
   });
 
   it("takes the film's canvas out of the way and leaves its words in the page", () => {

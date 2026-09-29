@@ -70,23 +70,32 @@ function onScreen(node: HTMLElement): boolean {
 }
 
 /**
+ * The element carrying a step's anchor that a reader can actually see.
+ *
+ * The header's copy comes first in the document and is display none on a
+ * phone, so taking the first match would light nothing there; the visible one
+ * is taken wherever it sits.
+ */
+export function anchorOnScreen(anchor: string, root: ParentNode): HTMLElement | null {
+  return [...root.querySelectorAll<HTMLElement>(`[data-guide-anchor="${anchor}"]`)].find(onScreen) ?? null;
+}
+
+/**
  * Finds the thing a step talks about and measures it against the stage.
  *
  * Both the header and the bottom bar carry the same anchor, and only one of
- * them is ever on the screen, so the first visible one is the right one without
- * this having to know anything about widths. Nothing visible is a normal
- * answer, not a fault: "My pictures" only appears for a device that has signed
- * in before, which a first-time visitor is not.
+ * them is ever on the screen, so the visible one is the right one without this
+ * having to know anything about widths. All three are drawn for everyone,
+ * signed in or not, so nothing visible means the step's place is off this
+ * screen, which the card then says in words.
  */
 export function spotFor(
   anchor: string,
   root: ParentNode,
   origin: Stage,
 ): Spot | null {
-  const node = [
-    ...root.querySelectorAll<HTMLElement>(`[data-guide-anchor="${anchor}"]`),
-  ].find(onScreen);
-  if (node === undefined) {
+  const node = anchorOnScreen(anchor, root);
+  if (node === null) {
     return null;
   }
 
@@ -125,6 +134,42 @@ export function heroCalls(root: ParentNode, origin: Stage): Box[] {
 }
 
 /**
+ * Runs a look once now and then once a frame, and hands back the one call that
+ * stops it for good.
+ *
+ * One chain only, and a flag as well as the cancel: a look that started two
+ * chains had only the last one cancelled, so the previous step kept measuring
+ * its own anchor behind the new one. On a phone the Mine step changes the
+ * card's height, the stale loop saw that as news, and its answer put the light
+ * back on Make.
+ */
+export function everyFrame(
+  look: () => void,
+  frames: {
+    request: (run: () => void) => number;
+    cancel: (id: number) => void;
+  } = {
+    request: (run) => requestAnimationFrame(run),
+    cancel: (id) => cancelAnimationFrame(id),
+  },
+): () => void {
+  let stopped = false;
+  let frame = 0;
+  const tick = () => {
+    if (stopped) {
+      return;
+    }
+    look();
+    frame = frames.request(tick);
+  };
+  tick();
+  return () => {
+    stopped = true;
+    frames.cancel(frame);
+  };
+}
+
+/**
  * The walk: one step at a time, with the light on the real thing.
  *
  * The dim is painted by the spotlight itself, as a very large shadow around the
@@ -147,6 +192,10 @@ export function GuideWalk({
   const t = useTranslations("guide");
   const reduced = useIsReducedMotion();
   const [index, setIndex] = useState(0);
+  // True once Next has been pressed in this opening. The card is drawn afresh
+  // for every step, which takes the pressed button, and the focus on it, away;
+  // the new card takes focus back only when a press is what replaced it.
+  const [moved, setMoved] = useState(false);
   // null until the walk has looked at least once. Nothing may be drawn before
   // that: see the note on measured below.
   const [view, setView] = useState<View | null>(null);
@@ -163,6 +212,7 @@ export function GuideWalk({
     setWasOpen(open);
     if (open) {
       setView(null);
+      setMoved(false);
       if (index !== 0) {
         setIndex(0);
       }
@@ -184,7 +234,6 @@ export function GuideWalk({
     if (!open) {
       return;
     }
-    let frame = 0;
     let held: string | null = null;
     const from = performance.now();
 
@@ -234,12 +283,9 @@ export function GuideWalk({
           setView(next);
         }
       }
-      frame = requestAnimationFrame(look);
     };
 
-    look();
-    frame = requestAnimationFrame(look);
-    return () => cancelAnimationFrame(frame);
+    return everyFrame(look);
   }, [open, scope, stage, step.anchor]);
 
   const forward = () => {
@@ -248,6 +294,7 @@ export function GuideWalk({
       onClose("done");
     } else {
       setIndex(after);
+      setMoved(true);
     }
   };
 
@@ -347,6 +394,18 @@ export function GuideWalk({
               starts at nought, the top left corner of the screen, which is
               where the card used to be seen for a frame before it slid across
               the window to its anchor. */}
+          {/* Outside the card on purpose: a live region that is drawn afresh
+              with its words already in it is not read out, so this one stays
+              put and only its words change when the step does. */}
+          <p aria-live="polite" aria-atomic="true" className="sr-only">
+            {moved
+              ? `${t("step", {
+                  shown: String(index + 1).padStart(2, "0"),
+                  total: String(guideSteps.length).padStart(2, "0"),
+                })} ${t(`steps.${step.id}.title`)}`
+              : ""}
+          </p>
+
           <motion.div
             key={place === null ? "measuring" : "placed"}
             ref={holder}
@@ -369,6 +428,7 @@ export function GuideWalk({
               index={index}
               lit={spot !== null}
               reduced={reduced}
+              takeFocus={moved}
               onClose={onClose}
               onForward={forward}
             />
@@ -390,6 +450,7 @@ export function GuideCard({
   index,
   lit,
   reduced,
+  takeFocus = false,
   onClose,
   onForward,
 }: {
@@ -397,10 +458,19 @@ export function GuideCard({
   /** False when the step's thing is not on this screen, which the card then says. */
   lit: boolean;
   reduced: boolean;
+  /** True when this card replaced one whose Next was just pressed: the keyboard lands on this card's own Next. */
+  takeFocus?: boolean;
   onClose: (reason: GuideClose) => void;
   onForward: () => void;
 }) {
   const t = useTranslations("guide");
+  const forwardButton = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (takeFocus) {
+      forwardButton.current?.focus({ preventScroll: true });
+    }
+  }, [takeFocus]);
   const step = guideSteps[index];
   const counter = t("step", {
     shown: String(index + 1).padStart(2, "0"),
@@ -478,6 +548,7 @@ export function GuideCard({
             {t("skip")}
           </button>
           <button
+            ref={forwardButton}
             type="button"
             onClick={onForward}
             className="tap group inline-flex items-center gap-2 rounded-[8px] bg-accent px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:scale-[1.04] focus-visible:scale-[1.04]"
