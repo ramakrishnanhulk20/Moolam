@@ -1,5 +1,5 @@
 import type { Hex } from "viem";
-import { readArt } from "@/components/passport/art";
+import { pinnedUri, readArt } from "@/components/passport/art";
 import { gatewayUrl } from "@/lib/chain/client";
 import { getPassport } from "@/lib/chain/registry";
 import { readUnsealRecord } from "@/lib/verifier/client";
@@ -53,7 +53,12 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
   // its id. This page already talks to the verify service directly, which is
   // the point of it, so it asks there rather than through this app's server.
   const lookup = art.sealed === true ? await readUnsealRecord(passport.id) : ({ state: "sealed" } as const);
-  const published = lookup.state === "unsealed" ? lookup.record : null;
+  // The same rule as every other picture on the site, and as the server's own
+  // read of this record (lib/data/unseal.ts): a record that names anything but
+  // a pinned file leaves the answer sealed, so no visitor's browser is sent to
+  // a host the record chose.
+  const thumbnail = lookup.state === "unsealed" ? pinnedUri(lookup.record.thumbnail.uri) : undefined;
+  const published = lookup.state === "unsealed" && thumbnail !== undefined ? lookup.record : null;
 
   return {
     id: passport.id,
@@ -63,7 +68,7 @@ export async function matchedPassport(id: string): Promise<MatchedPassport | nul
     generatorAgentId: passport.generatorAgentId.toString(),
     disputed: passport.disputed,
     title: art.title,
-    thumbnailUrl: published === null ? art.thumbnailUrl : gatewayUrl(published.thumbnail.uri),
+    thumbnailUrl: published === null || thumbnail === undefined ? art.thumbnailUrl : gatewayUrl(thumbnail),
     sealed: art.sealed === true && published === null,
     blockhash256: passport.blockhash256,
     unsealedAt: published?.unsealedAt,
