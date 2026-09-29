@@ -248,7 +248,7 @@ describe("the one box", () => {
     }
   });
 
-  it("ends a landed run with the passport and Make another, after the stub", () => {
+  it("ends a landed run with the passport and Make another, before the stub", () => {
     const markup = render(
       createElement(RegisterPanel, {
         state: upload(REGISTERED),
@@ -259,7 +259,8 @@ describe("the one box", () => {
     expect(markup).toContain(en.studio.register.doneHeading);
     expect(markup).toContain(en.studio.register.openPassport);
     expect(markup).toContain(en.studio.register.another);
-    expect(markup.indexOf("the stub")).toBeLessThan(markup.indexOf("data-done-actions"));
+    // The ways on sit under the done card, not under the whole receipt.
+    expect(markup.indexOf("data-done-actions")).toBeLessThan(markup.indexOf("the stub"));
   });
 });
 

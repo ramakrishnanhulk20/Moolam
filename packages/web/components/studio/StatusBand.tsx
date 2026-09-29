@@ -19,6 +19,11 @@ import {
  * published in the middle, and the studio's own word for the step it is on at
  * the end. It is the same line the row under it reads, so the band never says
  * anything the run does not.
+ *
+ * The row is the band's heading and takes focus when the form folds, because
+ * the button a keyboard was on has just gone. The band is a polite live region,
+ * so a screen reader hears the step line each time it changes and nothing else,
+ * since nothing else in the band changes during a run.
  */
 export function StatusBand({ state }: { state: RegisterState }) {
   const t = useTranslations("studio");
@@ -39,14 +44,22 @@ export function StatusBand({ state }: { state: RegisterState }) {
       : state.file === null
         ? ""
         : `${state.file.name} ${megabytes(state.file)}`;
+  const line = word(state, steps, model);
 
   return (
     <div
       data-studio-band
       data-tone={failed ? "failed" : done ? "done" : "running"}
+      aria-live="polite"
       className="relative overflow-hidden border border-line bg-bg/90 backdrop-blur-md"
     >
-      <div className="flex h-[3.4rem] items-center gap-3 px-4 sm:h-[3.8rem] sm:gap-4 sm:px-6">
+      <div
+        data-band-heading
+        role="heading"
+        aria-level={2}
+        tabIndex={-1}
+        className="flex h-[3.4rem] items-center gap-3 px-4 focus-visible:-outline-offset-2! sm:h-[3.8rem] sm:gap-4 sm:px-6"
+      >
         <span
           aria-hidden
           className={`h-[9px] w-[9px] shrink-0 ${
@@ -54,10 +67,14 @@ export function StatusBand({ state }: { state: RegisterState }) {
           }`}
         />
 
-        <p className="hidden min-w-0 flex-1 items-baseline gap-3 sm:flex">
-          <span className="truncate text-sm text-text">{title === "" ? t("sealed.plate.untitled") : title}</span>
+        {/* The title holds a floor of its own and the step line gives way
+            first, because in German or Tamil the step line alone is wider than
+            the band beside a laptop's picture. What it was made from gives way
+            before the title does. */}
+        <p className="hidden min-w-0 flex-1 items-baseline gap-3 sm:flex sm:min-w-[8rem]">
+          <span className="min-w-0 truncate text-sm text-text">{title === "" ? t("sealed.plate.untitled") : title}</span>
           {made === "" ? null : (
-            <span className="hidden shrink-0 truncate font-mono text-[11px] text-text-faint md:inline">{made}</span>
+            <span className="hidden min-w-0 shrink-[4] truncate font-mono text-[11px] text-text-faint md:inline">{made}</span>
           )}
         </p>
 
@@ -66,11 +83,13 @@ export function StatusBand({ state }: { state: RegisterState }) {
         </span>
 
         <span
-          className={`min-w-0 flex-1 truncate text-sm sm:flex-none sm:text-end ${
+          data-band-step
+          title={line}
+          className={`min-w-0 flex-1 truncate text-sm sm:flex-initial sm:text-end ${
             failed ? "text-failed" : done ? "text-verified" : "text-text"
           }`}
         >
-          {word(state, steps, model)}
+          {line}
         </span>
       </div>
 

@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import type { Hex } from "viem";
 import { shortHex } from "@/lib/chain/client";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
@@ -21,7 +21,7 @@ import { ConsentField } from "./ConsentField";
 import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedDrawing, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
-import { hasStarted } from "./press";
+import { hasStarted, useFoldFocus } from "./press";
 import {
   ACROSS,
   AT_LEFT,
@@ -94,6 +94,8 @@ export function GeneratePanel({
   const wide = useWide();
 
   const folded = hasStarted(state);
+  const panel = useRef<HTMLDivElement>(null);
+  useFoldFocus(panel, folded);
 
   const sealedChoice = (
     <SealedChoice
@@ -114,7 +116,7 @@ export function GeneratePanel({
   // in the right column, where the button was pressed.
   if ((done || folded) && wide) {
     return (
-      <div data-studio-panel="generate" data-face={done ? "receipt" : "run"} data-studio-layout="wide" className={WIDE_FACE}>
+      <div ref={panel} data-studio-panel="generate" data-face={done ? "receipt" : "run"} data-studio-layout="wide" className={WIDE_FACE}>
         <div data-studio-column="picture" className={`hidden lg:block ${AT_LEFT} ${WIDE_STAGE}`}>
           {done ? <Generated state={state} onSaved={onSaved} media="only" /> : <Plate state={state} wide />}
         </div>
@@ -136,19 +138,22 @@ export function GeneratePanel({
             />
           )}
         </div>
-        <div className={ACROSS}>{receipt}</div>
+        {/* Before the receipt in the markup so a phone, which reads it top to
+            bottom, has the ways on straight under the done card and not under
+            nine stamps. On a laptop the grid places both. */}
         {done ? (
           <div className={UNDER_RIGHT}>
             <DoneActions state={state} wallet={wallet} onReset={onReset} />
           </div>
         ) : null}
+        <div className={ACROSS}>{receipt}</div>
       </div>
     );
   }
 
   if (done || folded) {
     return (
-      <div data-studio-panel="generate" data-face={done ? "receipt" : "run"}>
+      <div ref={panel} data-studio-panel="generate" data-face={done ? "receipt" : "run"}>
         <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
           <StatusBand state={state} />
         </div>
@@ -164,14 +169,14 @@ export function GeneratePanel({
             onSaved={onSaved}
           />
         )}
-        {receipt}
         {done ? <DoneActions state={state} wallet={wallet} onReset={onReset} /> : null}
+        {receipt}
       </div>
     );
   }
 
   return (
-    <div data-studio-panel="generate" data-face="form" data-studio-layout={wide ? "wide" : undefined}>
+    <div ref={panel} data-studio-panel="generate" data-face="form" data-studio-layout={wide ? "wide" : undefined}>
     <motion.section
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -285,19 +290,11 @@ export function GeneratePanel({
         <Quota state={state} />
       </div>
 
-      <Signatures state={state} />
-
-      {/* What the press is about to do, in the same five lines the run itself
-          uses. A creator should be able to read the whole of it before they
-          start, which is the one thing a folded run cannot show them. */}
-      <ol className="mt-9 space-y-px border-t border-line pt-1">
-        {GENERATE_STEPS.map((step, index) => (
-          <StepRow key={step} step={step} index={index} state={state} />
-        ))}
-      </ol>
-
+      {/* A failure on this face is a check the press itself made (no title yet,
+          the passkey not read yet), so its line sits under the button that was
+          pressed rather than under the seals and the steps that never started. */}
       {state.failure === null ? null : (
-        <div className="mt-7">
+        <div className="mt-6" data-press-failure>
           <FailureNote
             failure={state.failure}
             passportId={passportId(state)}
@@ -309,6 +306,17 @@ export function GeneratePanel({
           />
         </div>
       )}
+
+      <Signatures state={state} />
+
+      {/* What the press is about to do, in the same five lines the run itself
+          uses. A creator should be able to read the whole of it before they
+          start, which is the one thing a folded run cannot show them. */}
+      <ol className="mt-9 space-y-px border-t border-line pt-1">
+        {GENERATE_STEPS.map((step, index) => (
+          <StepRow key={step} step={step} index={index} state={state} />
+        ))}
+      </ol>
       </WideColumn>
     </motion.section>
     {receipt}
@@ -324,6 +332,10 @@ export function GeneratePanel({
  * The plate and the seals stay through the run because they are the answer
  * arriving: a minute of five step labels and nothing else is the wait this
  * screen was built to make readable.
+ *
+ * Below lg that answer is a screen tall, so when the run fails the note and its
+ * one button are lifted over the plate to sit straight under the red band. On a
+ * laptop the plate has the left column and the note keeps its place.
  */
 function Run({
   state,
@@ -348,7 +360,7 @@ function Run({
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-      className="border border-line bg-bg-raised p-6 sm:p-9"
+      className={`border border-line bg-bg-raised p-6 sm:p-9${wideOnly(!plateAtLg, "max-lg:flex max-lg:flex-col")}`}
     >
       {plateAtLg ? (
         <Plate state={state} />
@@ -378,7 +390,7 @@ function Run({
       <Signatures state={state} />
 
       {state.failure === null ? null : (
-        <div className="mt-7">
+        <div data-run-failure className={`mt-7${wideOnly(!plateAtLg, "max-lg:order-first max-lg:mt-0")}`}>
           <FailureNote
             failure={state.failure}
             passportId={passportId(state)}

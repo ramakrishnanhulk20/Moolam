@@ -1,6 +1,6 @@
 "use client";
 
-import { PrivyProvider as Privy } from "@privy-io/react-auth";
+import { PrivyProvider as Privy, type PrivyClientConfig } from "@privy-io/react-auth";
 import { WagmiProvider, createConfig } from "@privy-io/wagmi";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useTheme } from "next-themes";
@@ -18,6 +18,33 @@ export const wagmiConfig = createConfig({
   chains: [monad],
   transports: { [monad.id]: http(publicEnv.monadRpcUrl) },
 });
+
+type SignInTheme = "light" | "dark";
+type HexColor = `#${string}`;
+
+/**
+ * The sign-in window in Moolam's own palette for the theme in use. Privy takes a
+ * hex for its theme and builds the rest of the window's greys from it, so the
+ * ground is the site's raised card colour rather than Privy's navy. The accent
+ * must follow the theme too: the dark pink sits almost invisible on the light
+ * ground. The logo files carry their own width and height, because an SVG with
+ * only a viewBox gives Privy's image no size and it collapses to nothing.
+ */
+const SIGN_IN_LOOK: Record<SignInTheme, { ground: HexColor; accent: HexColor; logo: string }> = {
+  light: { ground: "#fbf9f5", accent: "#a92a48", logo: "/brand/seal-o/signin-mark-light.svg" },
+  dark: { ground: "#101014", accent: "#ffb7c5", logo: "/brand/seal-o/signin-mark-dark.svg" },
+};
+
+export function signInAppearance(resolvedTheme: string | undefined): NonNullable<PrivyClientConfig["appearance"]> {
+  const look = SIGN_IN_LOOK[resolvedTheme === "light" ? "light" : "dark"];
+  return {
+    theme: look.ground,
+    accentColor: look.accent,
+    walletChainType: "ethereum-only",
+    landingHeader: "Moolam",
+    logo: look.logo,
+  };
+}
 
 /**
  * Login by email, Google or passkey, and a wallet is created for anyone who
@@ -48,13 +75,7 @@ export function PrivyProvider({ children }: { children: ReactNode }) {
         // tells a Monad reviewer their own chain is unsupported. Asking for the
         // plain wallet skips that whole path.
         externalWallets: { coinbaseWallet: { config: { preference: { options: "eoaOnly" } } } },
-        appearance: {
-          theme: resolvedTheme === "light" ? "light" : "dark",
-          accentColor: "#ffb7c5",
-          walletChainType: "ethereum-only",
-          landingHeader: "Moolam",
-          logo: "/brand/seal-o/mark.svg",
-        },
+        appearance: signInAppearance(resolvedTheme),
       }}
     >
       <QueryClientProvider client={queryClient}>

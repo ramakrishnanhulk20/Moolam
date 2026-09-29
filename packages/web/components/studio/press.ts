@@ -110,6 +110,62 @@ export function useStickyTop(box: RefObject<HTMLElement | null>): number | null 
   return top;
 }
 
+/** The band's own heading, which takes focus when the form folds into the run. */
+export const BAND_HEADING = "[data-band-heading]";
+
+/** Anything a keyboard can land on in a fresh form, in the order the markup gives. */
+export const FORM_CONTROL =
+  'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), button:not([disabled]), a[href]';
+
+/** Where focus goes when the panel changes face: the band after a fold, the form's first control after Register another. */
+export function foldFocusTarget(folded: boolean): string {
+  return folded ? BAND_HEADING : FORM_CONTROL;
+}
+
+/**
+ * Keeps keyboard focus in the box when the face it was on goes away.
+ *
+ * Register folds the form, and Register another (Make another on the agent
+ * path) brings it back. Both times the button that held focus is removed with
+ * the face it sat on, so focus falls to the top of the page. This puts it on
+ * the band's heading after a fold and on the first control of the fresh form
+ * after a return.
+ *
+ * The page has already been moved by useStudioPress, so focus is placed without
+ * a scroll of its own. It only moves when the press took focus down with it: a
+ * creator who has since tabbed somewhere else keeps their place.
+ */
+export function useFoldFocus(panel: RefObject<HTMLElement | null>, folded: boolean): void {
+  const was = useRef(folded);
+
+  useEffect(() => {
+    if (was.current === folded) {
+      return;
+    }
+    was.current = folded;
+
+    const root = panel.current;
+    if (root === null) {
+      return;
+    }
+    const held = document.activeElement;
+    if (held !== null && held !== document.body && !root.contains(held)) {
+      return;
+    }
+    firstShown(root, foldFocusTarget(folded))?.focus({ preventScroll: true });
+  }, [panel, folded]);
+}
+
+/** The first match that is drawn: a hidden file input or a laptop-only copy is skipped. */
+function firstShown(root: HTMLElement, selector: string): HTMLElement | null {
+  for (const node of root.querySelectorAll<HTMLElement>(selector)) {
+    if (node.getClientRects().length > 0) {
+      return node;
+    }
+  }
+  return null;
+}
+
 /** True once this run has actually started, which is what folds the form away. */
 export function hasStarted(state: RegisterState): boolean {
   const steps = state.mode === "generate" ? GENERATE_STEPS : STEPS;

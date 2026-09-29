@@ -131,7 +131,15 @@ function unwatched(): () => void {
   return () => undefined;
 }
 
-/** The same fork, same words, a size down: two segments side by side on the opening's row. */
+/**
+ * The same fork, same words, a size down: two segments side by side on the opening's row.
+ *
+ * The frame clips its corners to the button radius, which would clip a focus ring
+ * drawn outside a segment as well, so each segment draws its ring inside its own
+ * edge. The ring has to be marked important: the site's one focus rule sits
+ * outside Tailwind's layers and would otherwise win. The segments carry the
+ * frame's inner radius so the ring follows the rounded corner.
+ */
 export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolean; onMode: (mode: Mode) => void }) {
   const t = useTranslations("studio.choice");
   const modes: Mode[] = ["upload", "generate"];
@@ -148,7 +156,7 @@ export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolea
         {t("kicker")}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-line bg-line">
-        {modes.map((entry) => {
+        {modes.map((entry, index) => {
           const active = mode === entry;
           return (
             <button
@@ -157,9 +165,9 @@ export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolea
               disabled={busy}
               aria-pressed={active}
               onClick={() => onMode(entry)}
-              className={`group relative min-w-0 px-4 py-2.5 text-start transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 ${
-                active ? "bg-bg-raised" : "bg-bg hover:bg-bg-raised"
-              }`}
+              className={`group relative min-w-0 px-4 py-2.5 text-start transition-colors duration-200 focus-visible:-outline-offset-2! disabled:cursor-not-allowed disabled:opacity-60 ${
+                index === 0 ? "rounded-s-[7px]" : "rounded-e-[7px]"
+              } ${active ? "bg-bg-raised" : "bg-bg hover:bg-bg-raised"}`}
             >
               {active ? (
                 <motion.span

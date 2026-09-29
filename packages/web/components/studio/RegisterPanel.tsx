@@ -20,7 +20,7 @@ import { ConsentField } from "./ConsentField";
 import { DoneActions, FailureNote } from "./afterPress";
 import { SealedChoice, SealedDoneBand, SealedFileCard, sketchOf } from "./SealedFile";
 import { StatusBand } from "./StatusBand";
-import { hasStarted } from "./press";
+import { hasStarted, useFoldFocus } from "./press";
 import {
   ACROSS,
   AT_LEFT,
@@ -114,6 +114,8 @@ export function RegisterPanel({
   }
 
   const folded = hasStarted(state);
+  const panel = useRef<HTMLDivElement>(null);
+  useFoldFocus(panel, folded);
 
   const sealedChoice = (
     <SealedChoice
@@ -137,6 +139,7 @@ export function RegisterPanel({
   if ((done || folded) && wide) {
     return (
       <div
+        ref={panel}
         data-studio-panel="upload"
         data-face={done ? "receipt" : "run"}
         data-studio-layout="wide"
@@ -166,6 +169,7 @@ export function RegisterPanel({
           ) : (
             <Run
               state={state}
+              wide
               onRegister={onRegister}
               onBind={onBind}
               onUnsponsored={onUnsponsored}
@@ -174,19 +178,22 @@ export function RegisterPanel({
             />
           )}
         </div>
-        <div className={ACROSS}>{receipt}</div>
+        {/* Before the receipt in the markup so a phone, which reads it top to
+            bottom, has the ways on straight under the done card and not under
+            nine stamps. On a laptop the grid places both. */}
         {done ? (
           <div className={UNDER_RIGHT}>
             <DoneActions state={state} wallet={wallet} onReset={onReset} />
           </div>
         ) : null}
+        <div className={ACROSS}>{receipt}</div>
       </div>
     );
   }
 
   if (done || folded) {
     return (
-      <div data-studio-panel="upload" data-face={done ? "receipt" : "run"}>
+      <div ref={panel} data-studio-panel="upload" data-face={done ? "receipt" : "run"}>
         <div className="sticky top-[var(--studio-top,var(--header-h))] z-30">
           <StatusBand state={state} />
         </div>
@@ -202,14 +209,14 @@ export function RegisterPanel({
             onSaved={onSaved}
           />
         )}
-        {receipt}
         {done ? <DoneActions state={state} wallet={wallet} onReset={onReset} /> : null}
+        {receipt}
       </div>
     );
   }
 
   return (
-    <div data-studio-panel="upload" data-face="form" data-studio-layout={wide ? "wide" : undefined}>
+    <div ref={panel} data-studio-panel="upload" data-face="form" data-studio-layout={wide ? "wide" : undefined}>
     <motion.section
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
@@ -333,17 +340,11 @@ export function RegisterPanel({
         {pressing ? t("register.steps.prepare.running") : t("register.submit")}
       </button>
 
-      {/* What the press is about to do, in the same three lines the run itself
-          uses. A creator should be able to read the whole of it before they
-          start, which is the one thing a folded run cannot show them. */}
-      <ol className="mt-9 space-y-px border-t border-line pt-1">
-        {STEPS.map((step, index) => (
-          <StepRow key={step} step={step} index={index} state={state} />
-        ))}
-      </ol>
-
+      {/* A failure on this face is a check the press itself made (no title yet,
+          the passkey not read yet), so its line sits under the button that was
+          pressed rather than under the list of steps that never started. */}
       {state.failure === null ? null : (
-        <div className="mt-7">
+        <div className="mt-6" data-press-failure>
           <FailureNote
             failure={state.failure}
             passportId={passportId(state)}
@@ -354,6 +355,15 @@ export function RegisterPanel({
           />
         </div>
       )}
+
+      {/* What the press is about to do, in the same three lines the run itself
+          uses. A creator should be able to read the whole of it before they
+          start, which is the one thing a folded run cannot show them. */}
+      <ol className="mt-9 space-y-px border-t border-line pt-1">
+        {STEPS.map((step, index) => (
+          <StepRow key={step} step={step} index={index} state={state} />
+        ))}
+      </ol>
       </WideColumn>
     </motion.section>
     {receipt}
@@ -368,9 +378,14 @@ export function RegisterPanel({
  * The form is gone by now and the band above carries the name, so this is only
  * the progress. The rows keep the place they had at the foot of the form, which
  * is where a creator already looks for them.
+ *
+ * Below lg the band is the only thing on screen that turns red, so the note
+ * that explains it and its one button are lifted to sit straight under it.
+ * On a laptop the whole card is beside the band already and keeps its order.
  */
 function Run({
   state,
+  wide = false,
   onRegister,
   onBind,
   onUnsponsored,
@@ -378,6 +393,7 @@ function Run({
   onSaved,
 }: {
   state: RegisterState;
+  wide?: boolean;
   onRegister: () => void;
   onBind: () => void;
   onUnsponsored: () => void;
@@ -389,7 +405,7 @@ function Run({
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, delay: 0.08, ease: [0.16, 1, 0.3, 1] }}
-      className="border border-line bg-bg-raised p-6 sm:p-9"
+      className={`border border-line bg-bg-raised p-6 sm:p-9${wideOnly(wide, "max-lg:flex max-lg:flex-col")}`}
     >
       <ol className="space-y-px">
         {STEPS.map((step, index) => (
@@ -409,7 +425,7 @@ function Run({
       )}
 
       {state.failure === null ? null : (
-        <div className="mt-7">
+        <div data-run-failure className={`mt-7${wideOnly(wide, "max-lg:order-first max-lg:mt-0 max-lg:mb-5")}`}>
           <FailureNote
             failure={state.failure}
             passportId={passportId(state)}
