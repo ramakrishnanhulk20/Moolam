@@ -88,7 +88,10 @@ export function Grid({
       {/* While a chip is being read the sheet under it is the old one, so it
           steps back rather than pretending to be the answer. Opacity only:
           nothing moves, and the reduced-motion rule in globals.css cuts the
-          fade to nothing. */}
+          fade to nothing. Each cell is a column so its plate can grow to the
+          height of the row: a plate with no picture is taller than four by
+          five on a phone, and the picture beside it fills the same height
+          rather than leaving a band of empty ground under it. */}
       <ul
         className={`mt-6 grid grid-cols-2 gap-px border border-line bg-line transition-opacity duration-300 sm:mt-10 sm:grid-cols-3 xl:grid-cols-4 ${
           reading ? "opacity-60" : "opacity-100"
@@ -104,7 +107,7 @@ export function Grid({
             // visible in the first paint and still arrives rather than appears.
             <li
               key={plate.id}
-              className="rise min-w-0 bg-bg-raised"
+              className="rise flex min-w-0 flex-col bg-bg-raised"
               style={{ animationDelay: `${index * 70}ms` }}
             >
               <Plate plate={plate} first={index < NAMED_EARLY} />
@@ -116,7 +119,7 @@ export function Grid({
               whileInView={reduced ? undefined : { opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-40px" }}
               transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1], delay: (index % 8) * 0.045 }}
-              className="min-w-0 bg-bg-raised"
+              className="flex min-w-0 flex-col bg-bg-raised"
             >
               <Plate plate={plate} />
             </motion.li>

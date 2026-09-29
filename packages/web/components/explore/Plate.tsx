@@ -1,5 +1,6 @@
 "use client";
 
+import { useLinkStatus } from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { UseBlock } from "@/components/consent/Marks";
 import { SUMMARY_TONES } from "@/components/consent/tones";
@@ -36,12 +37,29 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   const test = isTestCard(plate.title, plate.id);
   const sealed = plate.sealed === true;
 
+  // Centred on the whole plate, the seal sat under the title and the id on a
+  // phone, where the words at the foot take more than half of a 166 px plate.
+  // It is in the flow instead, between the marks and the title, and the plate
+  // reads the attribute to turn into a column around it. That holds for a
+  // gateway that fails after the page is drawn as well, because the seal
+  // arrives as the picture's own fallback.
   const seal = (
-    <span className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-4 text-center">
-      <span className="motif h-7 w-7 opacity-70 transition-opacity duration-500 group-hover:opacity-100" />
+    <span
+      data-plate-seal
+      className="pointer-events-none relative flex min-h-[5rem] flex-1 flex-col items-center justify-center gap-2.5 px-4 py-3 text-center @[17rem]:gap-4"
+    >
+      <span className="motif h-6 w-6 shrink-0 opacity-70 transition-opacity duration-500 group-hover:opacity-100 @[17rem]:h-7 @[17rem]:w-7" />
       <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint">{t("noPicture")}</span>
     </span>
   );
+
+  // Every seal-only class hangs off the seal being there, so a picture plate
+  // keeps the overlay it always had.
+  const ifSeal = {
+    plate: "has-[[data-plate-seal]]:flex has-[[data-plate-seal]]:flex-col has-[[data-plate-seal]]:overflow-visible",
+    top: "group-has-[[data-plate-seal]]:relative group-has-[[data-plate-seal]]:order-first",
+    foot: "group-has-[[data-plate-seal]]:relative group-has-[[data-plate-seal]]:pt-3 [.light_&]:group-has-[[data-plate-seal]]:pt-3",
+  };
 
   // In light the picture has no band across its top, so each group of words
   // up here stands on a small tag of the page's own ground instead. The tag
@@ -59,7 +77,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     <span
       data-plate-top
       className={`pointer-events-none grid grid-cols-1 content-start items-start gap-x-3 gap-y-2 p-3 @[17rem]:grid-cols-[minmax(0,1fr)_auto] ${
-        sealed ? "relative shrink-0" : "absolute inset-x-0 top-0"
+        sealed ? "relative shrink-0" : `absolute inset-x-0 top-0 ${ifSeal.top}`
       }`}
     >
       {/* A sealed plate on a phone has its marks in a column beside the
@@ -110,8 +128,8 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     <Link
       href={`/passport/${plate.id}`}
       data-plate={sealed ? "sealed" : "picture"}
-      className={`group @container relative aspect-[4/5] min-w-0 overflow-hidden bg-bg-sunken outline-offset-[-2px] ${
-        sealed ? "flex flex-col" : "block"
+      className={`group @container relative aspect-[4/5] min-w-0 grow overflow-hidden bg-bg-sunken outline-offset-[-2px] ${
+        sealed ? "flex flex-col" : `block ${ifSeal.plate}`
       }`}
     >
       {sealed ? (
@@ -200,7 +218,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
           // pt-8 on a wide screen and the title would start inside the fade.
           sealed
             ? "relative border-t border-line bg-bg-raised"
-            : "absolute inset-x-0 bottom-0 pt-8 [.light_&]:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))]"
+            : `absolute inset-x-0 bottom-0 pt-8 [.light_&]:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))] ${ifSeal.foot}`
         }`}
       >
         {/* Two lines, not one with a tail of dots. At 375 px a plate is 166 px
@@ -213,7 +231,11 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
             they are read at 11 px in muted ink rather than 9 px in the faintest,
             which measured 3.4:1 on the light theme. */}
         <span className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.14em] text-text-muted">
-          <span>{shortHex(plate.id, 6, 4)}</span>
+          {/* The row is set in capitals, but an id is lower case hex everywhere
+              else on the site, and 0X reads as a different value. */}
+          <span data-plate-id className="normal-case">
+            {shortHex(plate.id, 6, 4)}
+          </span>
           <span aria-hidden className="h-[8px] w-px bg-line-strong" />
           <span>{format.dateTime(new Date(plate.registeredAt * 1000), { dateStyle: "medium" })}</span>
           {test ? (
@@ -236,7 +258,46 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
           className="mt-3 block h-px w-0 bg-accent transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:w-full"
         />
       </span>
+
+      <Opening />
     </Link>
+  );
+}
+
+/**
+ * What a pressed plate shows while the passport it opens is on its way.
+ *
+ * The passport page is drawn on the server and took up to 1.6 s to swap in,
+ * with nothing on the pressed plate until then, so a reader pressed again. The
+ * plate steps back and carries the same pulsing seal a chip carries while its
+ * sheet is read. It sits inside the link because that is where the router says
+ * whether this navigation is the one in flight, and the router clears it when
+ * the navigation ends or another one replaces it. Opacity and a pulse only:
+ * the reduced-motion rule in globals.css cuts both to a still.
+ */
+function Opening() {
+  const t = useTranslations("explore");
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      <span
+        aria-hidden
+        data-plate-opening={pending ? "true" : undefined}
+        className={`pointer-events-none absolute inset-0 bg-bg transition-opacity duration-200 ${
+          pending ? "opacity-45" : "opacity-0"
+        }`}
+      />
+      {pending ? (
+        <>
+          <span
+            aria-hidden
+            className="motif pointer-events-none absolute inset-0 m-auto h-4 w-4 animate-pulse"
+          />
+          <span className="sr-only">{t("reading")}</span>
+        </>
+      ) : null}
+    </>
   );
 }
 

@@ -95,11 +95,26 @@ export function sortPlates<T extends { id: string; registeredAt: number; title: 
   });
 }
 
-/** Drops the plates already on screen, so a slow "load more" click cannot show one twice. */
+/**
+ * The next page added under the plates already on screen.
+ *
+ * The held plates keep their places and the new ones go after them, ordered
+ * among themselves only. Sorting the whole sheet again put older real pictures
+ * above the test cards a reader had already scrolled past, out of sight, while
+ * the button they pressed showed nothing new. A plate already held is dropped,
+ * so a slow second press cannot show one twice.
+ */
 export function mergePlates<T extends { id: string; registeredAt: number; title: string | null }>(
   held: T[],
   arriving: T[],
 ): T[] {
   const seen = new Set(held.map((plate) => plate.id));
-  return sortPlates([...held, ...arriving.filter((plate) => !seen.has(plate.id))]);
+  const fresh = arriving.filter((plate) => {
+    if (seen.has(plate.id)) {
+      return false;
+    }
+    seen.add(plate.id);
+    return true;
+  });
+  return [...held, ...sortPlates(fresh)];
 }

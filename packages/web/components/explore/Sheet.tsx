@@ -19,6 +19,19 @@ export async function exploreMetadata(locale: string): Promise<Metadata> {
 }
 
 /**
+ * Which sheet a search asks for, as one string the grid is keyed on.
+ *
+ * The grid holds its plates and its cursor from the first page it was handed,
+ * and every chip shares the /explore/view route, so without a key a new chip
+ * kept the old grid: All after Test images showed the test cards with no Load
+ * more. A JSON array rather than a joined string, so a search term carrying the
+ * separator can never make two different searches read as one.
+ */
+export function sheetKey(search: ExploreSearch): string {
+  return JSON.stringify([search.view, search.search, search.agent, search.ai]);
+}
+
+/**
  * The registry as a contact sheet: every passport on Monad, newest first, with
  * the chips that narrow it and the search that finds one.
  *
@@ -99,7 +112,7 @@ export async function ExploreSheet({
       <ReadingProvider>
         <Filters search={search} />
         <StatedLine ai={search.ai} />
-        <Grid first={plates} cursor={cursor} search={search} indexError={gridError} />
+        <Grid key={sheetKey(search)} first={plates} cursor={cursor} search={search} indexError={gridError} />
       </ReadingProvider>
     </div>
   );
