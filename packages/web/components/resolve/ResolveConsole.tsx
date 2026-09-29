@@ -12,6 +12,7 @@ import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
 import { IndexRetry } from "@/components/IndexRetry";
+import { FailureDetails } from "@/components/studio/FailureDetails";
 import { WarningMark } from "@/components/WarningMark";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
@@ -133,8 +134,9 @@ function Desk({
           <div data-queue-unread className="mt-14 max-w-[58ch] border-t border-line pt-10">
             <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
               <WarningMark className="mt-[3px]" />
-              <span className="min-w-0">{t("unavailable", { reason: listError })}</span>
+              <span className="min-w-0">{t("unavailable")}</span>
             </p>
+            <FailureDetails reason={listError} className="ms-[24px] mt-2" />
             <IndexRetry said={listError} />
           </div>
         ) : disputes.length === 0 ? (
