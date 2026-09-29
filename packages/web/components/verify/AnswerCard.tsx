@@ -210,7 +210,7 @@ function Checking({ name }: { name: string }) {
 
         <div aria-live="polite">
           {seconds >= SLOW_AFTER_SECONDS ? (
-            <p data-wait-slow className="mt-5 max-w-[60ch] border-s-2 border-accent/50 ps-4 text-base leading-relaxed text-text">
+            <p data-wait-slow className="mt-5 max-w-[60ch] border-s-2 border-pending/60 ps-4 text-base leading-relaxed text-text">
               {t("wait.slow")}
             </p>
           ) : null}
