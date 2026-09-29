@@ -1,4 +1,5 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import { IndexRetry } from "@/components/IndexRetry";
 import { Picture } from "@/components/passport/Picture";
 import { shortHex } from "@/lib/chain/client";
 import { pictureSources } from "@/lib/images";
@@ -6,7 +7,7 @@ import { Link } from "@/lib/i18n/routing";
 import type { SignedWork } from "./signed";
 
 /**
- * Everything this agent signed, newest first. Each tile is the pinned picture
+ * Everything this agent signed, real pictures first. Each tile is the pinned picture
  * with its passport under it, so a reader can go from the agent straight to any
  * one record. An agent with nothing registered says so in a sentence.
  */
@@ -14,10 +15,17 @@ export async function Works({
   works,
   error,
   locale,
+  retry = true,
 }: {
   works: SignedWork[];
   error: string | null;
   locale: string;
+  /**
+   * Whether a failed read offers the way back here. False when the counts above
+   * already show one: both reads refresh the same page, so one countdown is
+   * enough and two would ask the shared index twice.
+   */
+  retry?: boolean;
 }) {
   const t = await getTranslations("agent.works");
   const kinds = await getTranslations("kind");
@@ -34,7 +42,10 @@ export async function Works({
       </div>
 
       {error !== null ? (
-        <p className="mt-10 max-w-[54ch] text-sm leading-relaxed text-failed">{t("error", { reason: error })}</p>
+        <div data-index-unread className="mt-10 max-w-[54ch]">
+          <p className="text-sm leading-relaxed text-failed">{t("error", { reason: error })}</p>
+          {retry ? <IndexRetry said={error} /> : null}
+        </div>
       ) : works.length === 0 ? (
         <p className="mt-10 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>
       ) : (
@@ -66,14 +77,21 @@ export async function Works({
                       }
                     />
                   )}
-                  <div className="scrim pointer-events-none absolute inset-0" />
+                  {/* No words sit on the tile, so the scrim is only depth. In
+                      light it is cream and would wash the picture out, so light
+                      shows the picture at full strength, as Explore does. */}
+                  <div data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />
                 </div>
 
                 <div className="p-5">
                   <p className="truncate text-sm text-text transition-colors duration-200 group-hover:text-accent">
                     {work.title ?? t("untitled")}
                   </p>
-                  <p className="mt-2 font-mono text-[11px] text-text-faint">{shortHex(work.id, 10, 8)}</p>
+                  <p className="mt-2 font-mono text-[11px] text-text-faint">
+                    <span data-hex className="normal-case">
+                      {shortHex(work.id, 10, 8)}
+                    </span>
+                  </p>
                   <p className="mt-1 font-mono text-[11px] text-text-faint">
                     {kinds(String(work.kind))} <span className="mx-1">/</span>
                     {format.dateTime(new Date(Number(work.registeredAt) * 1000), {

@@ -8,7 +8,7 @@ import type { SignedWork } from "./signed";
 
 /**
  * The agent as a contact sheet: every picture it has signed, tiled behind its
- * name, with the scrim over the lot. An agent that has signed nothing gets the
+ * name, with a scrim under the words. An agent that has signed nothing gets the
  * seal on a dark plate instead of an empty grid, which would read as broken.
  */
 export async function AgentPoster({
@@ -38,7 +38,7 @@ export async function AgentPoster({
       ) : (
         <div
           aria-hidden
-          className="absolute inset-0 grid auto-rows-fr grid-cols-3 grid-rows-4 opacity-45 sm:grid-cols-4 sm:grid-rows-3 lg:grid-cols-6 lg:grid-rows-2"
+          className="absolute inset-0 grid auto-rows-fr grid-cols-3 grid-rows-4 opacity-45 sm:grid-cols-4 sm:grid-rows-3 lg:grid-cols-6 lg:grid-rows-2 [.light_&]:opacity-80"
         >
           {tiles.map((work, cell) => (
             // Pinned thumbnails of this agent's own passports. The same few
@@ -54,11 +54,25 @@ export async function AgentPoster({
           ))}
         </div>
       )}
-      <div className="scrim pointer-events-none absolute inset-0" />
+      {/* Dark keeps the poster scrim over the whole wall. In light it is cream,
+          and over the wall's right half, where no words sit on a laptop, it
+          read as a pale haze, so from lg up light keeps ground only under the
+          text column and the pictures beside it show at their own strength. A
+          phone has words across the full width, so it keeps both. */}
+      <div data-scrim="dark" className="scrim pointer-events-none absolute inset-0 lg:[.light_&]:hidden" />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0"
+        data-scrim="dark"
+        className="pointer-events-none absolute inset-0 lg:[.light_&]:hidden"
         style={{ background: "linear-gradient(to right, var(--scrim-from) 8%, var(--scrim-to) 78%)" }}
+      />
+      <div
+        aria-hidden
+        data-scrim="light"
+        className="pointer-events-none absolute inset-0 hidden lg:[.light_&]:block"
+        style={{
+          background: "linear-gradient(to right, var(--scrim-from) 0%, rgb(242 239 233 / 0.88) 45%, var(--scrim-to) 70%)",
+        }}
       />
 
       <div className="relative mx-auto flex min-h-[30rem] w-full max-w-[1400px] flex-col justify-end px-5 py-12 sm:min-h-[38rem] sm:px-8 sm:py-16">
@@ -100,7 +114,11 @@ export async function AgentPoster({
             rel="noreferrer"
             className="text-text transition-colors duration-200 hover:text-accent"
           >
-            {shortHex(owner)}
+            {/* The row is set in capitals, and an address in capitals reads as
+                0XA374 rather than the value an explorer shows. */}
+            <span data-hex className="normal-case">
+              {shortHex(owner)}
+            </span>
           </a>
           <a
             href={`${MONAD_EXPLORER}/address/${addresses.agentIdentity}`}

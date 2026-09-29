@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { formatEther, type Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { Link, useRouter } from "@/lib/i18n/routing";
@@ -11,6 +11,7 @@ import { useResolveDisputes, type ResolveDisputes } from "@/lib/disputes/useReso
 import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
+import { IndexRetry } from "@/components/IndexRetry";
 import { isPrivyConfigured } from "@/lib/env";
 
 const NOTHING = () => undefined;
@@ -45,17 +46,34 @@ const WAITING: ResolveDisputes = {
  * console on every render that happens without it, so until it is up the queue
  * is drawn from the same standing the hook would report: nothing read yet.
  */
-export function ResolveConsole({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
+export function ResolveConsole({
+  resolver,
+  disputes,
+  listError = null,
+}: {
+  resolver: Hex;
+  disputes: OpenDispute[];
+  /** Why the index would not give the open disputes, or null when it did. */
+  listError?: string | null;
+}) {
   const mounted = useWalletMounted();
 
   return mounted ? (
-    <Console resolver={resolver} disputes={disputes} />
+    <Console resolver={resolver} disputes={disputes} listError={listError} />
   ) : (
-    <Desk desk={WAITING} resolver={resolver} disputes={disputes} />
+    <Desk desk={WAITING} resolver={resolver} disputes={disputes} listError={listError} />
   );
 }
 
-function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[] }) {
+function Console({
+  resolver,
+  disputes,
+  listError,
+}: {
+  resolver: Hex;
+  disputes: OpenDispute[];
+  listError: string | null;
+}) {
   const router = useRouter();
   // Which passport the settle that is out belongs to. The hook reports the busy
   // one and sets it before the wallet is even asked, so by the time a settle
@@ -81,32 +99,53 @@ function Console({ resolver, disputes }: { resolver: Hex; disputes: OpenDispute[
     }
   }, [desk.busy]);
 
-  return <Desk desk={desk} resolver={resolver} disputes={disputes} />;
+  return <Desk desk={desk} resolver={resolver} disputes={disputes} listError={listError} />;
 }
 
-function Desk({ desk, resolver, disputes }: { desk: ResolveDisputes; resolver: Hex; disputes: OpenDispute[] }) {
+function Desk({
+  desk,
+  resolver,
+  disputes,
+  listError,
+}: {
+  desk: ResolveDisputes;
+  resolver: Hex;
+  disputes: OpenDispute[];
+  listError: string | null;
+}) {
   const t = useTranslations("resolve");
 
   // The two cards start just under the page's short opening, inside the first
-  // screen of a laptop.
+  // screen of a laptop. "Nothing is waiting" is only said after the index
+  // answered: under a failed read it would contradict the line above it.
+  // MotionConfig carries a reader's ask for less motion to every Framer
+  // animation on the desk, the failure line included, which the site's CSS rule
+  // cannot reach.
   return (
-    <div data-resolve-desk className="mt-7 sm:mt-8">
-      <Standing desk={desk} resolver={resolver} />
+    <MotionConfig reducedMotion="user">
+      <div data-resolve-desk className="mt-7 sm:mt-8">
+        <Standing desk={desk} resolver={resolver} />
 
-      {disputes.length === 0 ? (
-        <p className="mt-14 max-w-[46ch] border-t border-line pt-10 font-display text-[clamp(1.4rem,3vw,2.4rem)] leading-[1.06] tracking-[-0.03em] text-text-muted">
-          {t("empty")}
-        </p>
-      ) : (
-        <ol className="mt-14 border-t border-line">
-          {disputes.map((dispute, index) => (
-            <Row key={dispute.passportId} dispute={dispute} index={index} desk={desk} />
-          ))}
-        </ol>
-      )}
+        {listError !== null ? (
+          <div data-queue-unread className="mt-14 max-w-[58ch] border-t border-line pt-10">
+            <p className="text-sm leading-relaxed text-failed">{t("unavailable", { reason: listError })}</p>
+            <IndexRetry said={listError} />
+          </div>
+        ) : disputes.length === 0 ? (
+          <p className="mt-14 max-w-[46ch] border-t border-line pt-10 font-display text-[clamp(1.4rem,3vw,2.4rem)] leading-[1.06] tracking-[-0.03em] text-text-muted">
+            {t("empty")}
+          </p>
+        ) : (
+          <ol className="mt-14 border-t border-line">
+            {disputes.map((dispute, index) => (
+              <Row key={dispute.passportId} dispute={dispute} index={index} desk={desk} />
+            ))}
+          </ol>
+        )}
 
-      {desk.failure === null ? null : <FailureLine desk={desk} />}
-    </div>
+        {desk.failure === null ? null : <FailureLine desk={desk} />}
+      </div>
+    </MotionConfig>
   );
 }
 
@@ -146,7 +185,7 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
           rel="noreferrer"
           className="mt-4 block font-mono text-[11px] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
         >
-          {t("actions.openAddress", { wallet: shortHex(failure.address) })}
+          {withHex(t("actions.openAddress", { wallet: HEX_MARK }), shortHex(failure.address))}
         </a>
       )}
 
@@ -162,6 +201,26 @@ function FailureLine({ desk }: { desk: ResolveDisputes }) {
         </button>
       )}
     </motion.div>
+  );
+}
+
+/**
+ * Stands in for an address inside a translated sentence, so the address is drawn
+ * in its own normal-case span whatever case the words around it are set in. A
+ * private-use character, so no language's sentence contains it.
+ */
+const HEX_MARK = "\uE000";
+
+function withHex(sentence: string, hex: string): ReactNode {
+  const [before, after = ""] = sentence.split(HEX_MARK);
+  return (
+    <>
+      {before}
+      <span data-hex className="normal-case">
+        {hex}
+      </span>
+      {after}
+    </>
   );
 }
 
@@ -185,7 +244,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
           rel="noreferrer"
           className="mt-2 block min-w-0 transition-colors duration-200 hover:text-accent"
         >
-          <Mono value={resolver} className="text-base" />
+          <Mono value={resolver} className="text-base normal-case" />
         </a>
         <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("policyNote")}</p>
 
@@ -210,7 +269,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
           <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-text-muted">
             {t("stranger")}{" "}
             <span className="text-text-faint">
-              {t("strangerBody", { wallet: desk.wallet === undefined ? "" : shortHex(desk.wallet) })}
+              {withHex(t("strangerBody", { wallet: HEX_MARK }), desk.wallet === undefined ? "" : shortHex(desk.wallet))}
             </span>
           </p>
         ) : (
@@ -296,7 +355,9 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
             <>
               {/* The pinned picture the challenge is about, read through the gateway. */}
               <img src={dispute.thumbnailUrl} alt="" className="h-full w-full object-cover" />
-              <span className="scrim pointer-events-none absolute inset-0" />
+              {/* Nothing is written over the thumbnail, so light, where the
+                  scrim is cream, draws none and the picture reads as it is. */}
+              <span data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />
             </>
           )}
         </div>
@@ -308,7 +369,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
           href={`/passport/${dispute.passportId}`}
           className="mt-1.5 block min-w-0 transition-colors duration-200 hover:text-accent"
         >
-          <Mono value={dispute.passportId} className="text-sm" />
+          <Mono value={dispute.passportId} className="text-sm normal-case" />
         </Link>
         {dispute.title === null ? null : (
           <p className="mt-3 max-w-[32ch] font-display text-[clamp(1.2rem,2.2vw,1.7rem)] leading-[1.08] tracking-[-0.03em]">
@@ -337,7 +398,9 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
                 rel="noreferrer"
                 className="transition-colors duration-200 hover:text-accent"
               >
-                {shortHex(dispute.challenger)}
+                <span data-hex className="normal-case">
+                  {shortHex(dispute.challenger)}
+                </span>
               </a>
             </dd>
           </div>

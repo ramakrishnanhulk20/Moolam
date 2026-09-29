@@ -134,7 +134,7 @@ export default async function AgentPage({
 
       <Signing agentId={agentId} card={card} document={agent.card} uri={agent.uri} />
 
-      <Works works={works} error={worksError} locale={locale} />
+      <Works works={works} error={worksError} locale={locale} retry={recordError === null} />
     </article>
   );
 }

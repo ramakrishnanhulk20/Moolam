@@ -51,21 +51,14 @@ export default async function ResolvePage({ params }: { params: Promise<{ locale
   }
 
   // The console is the only thing on this route that signs, so the wallet is
-  // asked for here rather than in the layout every page shares.
+  // asked for here rather than in the layout every page shares. A queue that
+  // could not be read goes in as its reason, so the desk says that in the
+  // list's place instead of calling the list empty.
   return (
     <Shell locale={locale}>
-      {problem === null ? (
-        <WalletProvider>
-          <ResolveConsole resolver={policyResolver} disputes={queue} />
-        </WalletProvider>
-      ) : (
-        <>
-          <Notice text={t("unavailable", { reason: problem })} />
-          <WalletProvider>
-            <ResolveConsole resolver={policyResolver} disputes={[]} />
-          </WalletProvider>
-        </>
-      )}
+      <WalletProvider>
+        <ResolveConsole resolver={policyResolver} disputes={queue} listError={problem} />
+      </WalletProvider>
     </Shell>
   );
 }

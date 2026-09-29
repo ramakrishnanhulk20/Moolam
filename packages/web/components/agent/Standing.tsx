@@ -1,4 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
+import { IndexRetry } from "@/components/IndexRetry";
 import { REPUTATION_REGISTRY, MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { GeneratorRecord } from "@/lib/data/passports";
 import { Link } from "@/lib/i18n/routing";
@@ -46,9 +48,13 @@ export async function Standing({
           <h2 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">{t("index.heading")}</h2>
 
           {recordError !== null ? (
-            <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-failed">
-              {t("index.error", { reason: recordError })}
-            </p>
+            <div data-index-unread className="mt-6 max-w-[46ch]">
+              <p className="text-sm leading-relaxed text-failed">{t("index.error", { reason: recordError })}</p>
+              {/* The one way back on this page. The pictures further down come
+                  from the same index, and a second countdown there would ask
+                  the shared endpoint twice for the same page. */}
+              <IndexRetry said={recordError} />
+            </div>
           ) : record === null ? (
             <p className="mt-6 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("index.empty")}</p>
           ) : (
@@ -131,11 +137,31 @@ export async function Standing({
             rel="noreferrer"
             className="mt-4 inline-block font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:text-accent"
           >
-            {t("reputation.registry", { address: shortHex(REPUTATION_REGISTRY) })}
+            {withHex(t("reputation.registry", { address: HEX_MARK }), shortHex(REPUTATION_REGISTRY))}
           </a>
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * Stands in for an address inside a translated sentence, so the address can be
+ * drawn in its own normal-case span while the words around it keep the label's
+ * capitals. A private-use character, so no language's sentence contains it.
+ */
+const HEX_MARK = "\uE000";
+
+function withHex(sentence: string, hex: string): ReactNode {
+  const [before, after = ""] = sentence.split(HEX_MARK);
+  return (
+    <>
+      {before}
+      <span data-hex className="normal-case">
+        {hex}
+      </span>
+      {after}
+    </>
   );
 }
 
