@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { WarningMark } from "@/components/WarningMark";
 import { Link } from "@/lib/i18n/routing";
 
@@ -22,6 +22,29 @@ export function noteTry(path: string, at: number): void {
 /** Whether this page is here because a press on Try again, on this address, just failed. */
 export function failedAfterTry(path: string, at: number): boolean {
   return lastTry !== null && lastTry.path === path && at - lastTry.at >= 0 && at - lastTry.at < RETRY_WINDOW_MS;
+}
+
+/** How many of these pages are on screen. */
+let showing = 0;
+
+/**
+ * Counts this page in while it is on screen, and out when it goes.
+ *
+ * A try that failed swaps this page for a fresh copy of it in the same commit,
+ * so by the next turn one is on screen again. A try that worked leaves none,
+ * and then the try is forgotten: a new failure on the same address a moment
+ * later is a new failure, not that try failing.
+ */
+export function showErrorPage(): () => void {
+  showing += 1;
+  return () => {
+    showing -= 1;
+    setTimeout(() => {
+      if (showing === 0) {
+        lastTry = null;
+      }
+    }, 0);
+  };
 }
 
 function here(): string {
@@ -58,6 +81,7 @@ export default function LocaleError({
   const [pending, startTrying] = useTransition();
   // Read once, on the first draw: the answer is about how this page came to be.
   const [again] = useState(() => failedAfterTry(here(), Date.now()));
+  useEffect(() => showErrorPage(), []);
 
   const tryAgain = () => {
     noteTry(here(), Date.now());
