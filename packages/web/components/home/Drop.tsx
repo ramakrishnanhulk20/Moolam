@@ -447,7 +447,7 @@ function Still({
     >
       <Corners />
       <div
-        className={`relative flex gap-5 p-6 sm:p-7 lg:p-6 ${
+        className={`relative flex gap-5 p-6 sm:p-7 lg:p-5 ${
           look === "board" ? "flex-col sm:flex-row sm:items-end sm:justify-between" : "flex-col"
         }`}
       >
@@ -492,14 +492,14 @@ function Still({
           </button>
           {unstarted ? (
             // The label alone said what went wrong and nothing about what to do.
-            <p role="alert" data-first-unstarted className="flex max-w-[34ch] items-start gap-2 text-xs font-semibold leading-relaxed text-failed">
+            <p role="alert" data-first-unstarted className="flex max-w-[40ch] items-start gap-2 text-base font-semibold leading-relaxed text-failed sm:max-w-[34ch]">
               <WarningMark className="mt-[2px]" />
               <span>{t("unstarted")}</span>
             </p>
           ) : (
             // With no passports to offer, the verify page's own hint, which
             // points at nothing below it.
-            <p data-first-hint className="max-w-[34ch] text-xs leading-relaxed text-text-muted">
+            <p data-first-hint className="max-w-[40ch] text-base leading-relaxed text-text-muted sm:max-w-[34ch]">
               {offered ? t("hint") : verify("hint")}
             </p>
           )}

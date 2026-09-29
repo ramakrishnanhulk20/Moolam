@@ -84,11 +84,11 @@ export function Board({
         <div
           data-hero-shown="true"
           data-drop-column
-          className="flex flex-col justify-between gap-8 px-5 pb-10 pt-12 sm:px-8 lg:gap-5 lg:px-14 lg:pb-6 lg:pt-[3.5svh]"
+          className="flex flex-col justify-between gap-8 px-5 pb-10 pt-12 sm:px-8 lg:gap-4 lg:px-14 lg:pb-6 lg:pt-[3svh]"
         >
           <div>
             <Headline size="board" />
-            <div className="rise mt-7 lg:mt-6" style={{ animationDelay: "240ms" }}>
+            <div className="rise mt-7 lg:mt-5" style={{ animationDelay: "240ms" }}>
               <Drop samples={samples} look="board" />
               {/* A phone reaches the evidence a scroll below, so it gets one
                   line pointing at it, carrying the copy's own measured
@@ -226,7 +226,7 @@ function Loose({ loose, failed }: { loose: LooseFinding | null; failed: string }
   return (
     <div data-first-loose className="relative">
       <div className={shown ? "" : "grain border border-line-strong bg-bg/80 p-5 sm:p-6"}>
-        <p role="status" data-first-unread data-reason={failed} className="flex max-w-[44ch] items-start gap-2.5 text-sm leading-relaxed text-text">
+        <p role="status" data-first-unread data-reason={failed} className="flex max-w-[44ch] items-start gap-2.5 text-base leading-relaxed text-text">
           <WarningMark className="mt-[3px] text-failed" />
           <span>{t("unread")}</span>
         </p>
@@ -289,7 +289,7 @@ function Lines({ lines }: { lines: Line[] }) {
   return (
     <ul className="mt-6 space-y-2 border-t border-line pt-5 lg:mt-3 lg:space-y-1 lg:pt-3">
       {lines.map((line) => (
-        <li key={line.lead} className="max-w-[60ch] text-sm leading-relaxed text-text-muted">
+        <li key={line.lead} className="max-w-[60ch] text-base leading-relaxed text-text-muted">
           {line.lead}{" "}
           <span className={line.tone === "proof" ? "text-accent" : line.tone === "miss" ? "text-failed" : "text-text"}>
             {line.fact}

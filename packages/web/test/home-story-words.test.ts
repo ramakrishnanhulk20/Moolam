@@ -313,7 +313,8 @@ describe("step 6: the closing card with no counts", () => {
       expect(figure).toContain(`<span class="sr-only">${en.story.close.unread}</span>`);
     }
     const line = html.slice(html.indexOf("data-close-error"));
-    expect(line).toMatch(/<p role="status" class="[^"]*text-sm[^"]*sm:text-base/);
+    expect(line).toMatch(/<p role="status" class="[^"]*text-base/);
+    expect(line.slice(0, line.indexOf("</p>"))).not.toContain("text-sm");
   });
 });
 

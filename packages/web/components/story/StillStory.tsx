@@ -57,7 +57,7 @@ export function StillStory({
 
       <div className="relative mx-auto flex w-full max-w-[100rem] flex-col gap-24 px-5 pb-24 pt-24 sm:px-8 lg:gap-32 lg:px-14">
         {noWebgl && (
-          <p className="max-w-[52ch] border-l-2 border-l-accent/60 bg-accent-soft px-4 py-3 text-sm leading-relaxed text-text-muted">
+          <p className="max-w-[52ch] border-l-2 border-l-accent/60 bg-accent-soft px-4 py-3 text-base leading-relaxed text-text-muted">
             {t("noWebgl")}
           </p>
         )}

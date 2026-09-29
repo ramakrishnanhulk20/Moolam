@@ -16,7 +16,7 @@ export function Billing({ className = "" }: { className?: string }) {
   const t = useTranslations("home.first.billing");
 
   return (
-    <p data-first-billing className={`overflow-hidden font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint lg:tracking-[0.14em] ${className}`}>
+    <p data-first-billing className={`overflow-hidden font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint lg:tracking-[0.1em] ${className}`}>
       <span className="-ms-[13px] flex flex-wrap items-center gap-x-3 gap-y-1.5">
         {CREDITS.map((credit) => (
           <span key={credit} data-credit className="flex items-center gap-3">

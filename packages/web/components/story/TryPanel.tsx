@@ -374,7 +374,7 @@ export function TryPanel({
           )}
 
           <div ref={said} data-try-answer className="mt-5 min-h-[5.5rem] border-t border-line pt-4">
-            {state.kind === "idle" && <p className="text-sm leading-relaxed text-text-faint">{t("hint")}</p>}
+            {state.kind === "idle" && <p className="text-base leading-relaxed text-text-faint">{t("hint")}</p>}
 
             {state.kind === "pending" && (
               <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent">
@@ -385,7 +385,7 @@ export function TryPanel({
 
             {state.kind === "error" && (
               <div data-try-failed>
-                <p role="alert" className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+                <p role="alert" className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
                   <WarningMark className="mt-[3px]" />
                   <span>{state.message}</span>
                 </p>
@@ -504,7 +504,7 @@ function Answer({ answer, name, title, named }: { answer: VerifyResponse; name: 
         </p>
         <StaleIndex minutes={read.staleMinutes} className="mt-2" />
         <p className="mt-2 break-all font-mono text-[11px] text-text-faint">{name}</p>
-        <p className="mt-2 text-sm leading-relaxed text-text-muted">{t("noMatchBody")}</p>
+        <p className="mt-2 text-base leading-relaxed text-text-muted">{t("noMatchBody")}</p>
       </div>
     );
   }
@@ -532,7 +532,7 @@ function Answer({ answer, name, title, named }: { answer: VerifyResponse; name: 
       {/* The same line the verify card prints when a match was made on the bytes
           alone: nothing about how the two pictures look was compared. */}
       {read.pixelsUnread ? (
-        <p data-pixels-unread className="mt-2 max-w-[40ch] text-xs leading-relaxed text-text-muted">
+        <p data-pixels-unread className="mt-2 max-w-[40ch] text-base leading-relaxed text-text-muted">
           {v("pixelsUnread")}
         </p>
       ) : null}
@@ -556,7 +556,7 @@ function Answer({ answer, name, title, named }: { answer: VerifyResponse; name: 
           not only on the page a reader might never open. */}
       <DisputeLine dispute={read.dispute} className="mt-3" />
 
-      {!answer.manifest.present && <p className="mt-3 text-sm leading-relaxed text-text-faint">{t("noManifest")}</p>}
+      {!answer.manifest.present && <p className="mt-3 text-base leading-relaxed text-text-faint">{t("noManifest")}</p>}
     </div>
   );
 }

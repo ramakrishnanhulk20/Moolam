@@ -150,7 +150,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             {t("title")}
           </h2>
 
-          <p className="mt-2 text-sm leading-snug text-text-muted sm:mt-5 sm:max-w-[42ch] sm:text-base sm:leading-relaxed">
+          <p className="mt-2 text-base leading-snug text-text-muted sm:mt-5 sm:max-w-[42ch] sm:leading-relaxed">
             {t("body")}
           </p>
 
@@ -222,7 +222,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
               count. The index's own words stay folded under Details. */}
           {data.error === null ? null : (
             <div data-close-error className="mt-3 sm:mt-6">
-              <p role="status" className="flex max-w-[52ch] items-start gap-2.5 text-sm leading-snug text-failed sm:text-base sm:leading-relaxed">
+              <p role="status" className="flex max-w-[52ch] items-start gap-2.5 text-base leading-snug text-failed sm:leading-relaxed">
                 <WarningMark className="mt-[0.2em]" />
                 <span>{t("error")}</span>
               </p>

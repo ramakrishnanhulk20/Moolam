@@ -30,8 +30,9 @@ const LIFT = `
 export function Headline({ size, className = "" }: { size: "poster" | "board"; className?: string }) {
   const t = useTranslations("home.first");
   const brand = useTranslations("header");
-  const tamil = useLocale() === "ta";
-  const board = boardType([...`${t("headline")} ${t("headlineTail")}`].length, tamil);
+  const locale = useLocale();
+  const tamil = locale === "ta";
+  const board = boardType([...`${t("headline")} ${t("headlineTail")}`].length, locale);
 
   return (
     <div className={className}>
@@ -58,7 +59,7 @@ export function Headline({ size, className = "" }: { size: "poster" | "board"; c
       <p
         data-first-why
         data-hero-words="line"
-        className="rise mt-6 max-w-[52ch] text-base leading-relaxed text-text-muted sm:text-[1.075rem] lg:mt-5"
+        className="rise mt-6 max-w-[52ch] text-base leading-relaxed text-text-muted sm:text-[1.075rem] lg:mt-4"
         style={{ animationDelay: "160ms" }}
       >
         {t("line")}
@@ -76,11 +77,15 @@ export function Headline({ size, className = "" }: { size: "poster" | "board"; c
  * 60, and Tamil's letters stand taller and need more room between the lines,
  * so each steps the type down just far enough to keep the same screen.
  */
-function boardType(length: number, tamil: boolean): string {
-  const step = (length <= 52 ? 0 : length <= 60 ? 1 : 2) + (tamil ? 1 : 0);
+function boardType(length: number, locale: string): string {
+  const wide = locale === "ta" || locale === "ja";
+  const step = (length <= 52 ? 0 : length <= 60 ? 1 : 2) + (wide ? 1 : 0);
   // The measure is counted in Latin zeros, and a Tamil word is two or three of
-  // those wide, so Tamil takes the whole half instead.
-  const measure = tamil ? "max-w-none" : ["max-w-[15ch]", "max-w-[16ch]", "max-w-[17ch]", "max-w-[18ch]"][Math.min(step, 3)];
+  // those wide, so Tamil takes the whole half instead. Japanese takes it too:
+  // it breaks only between phrases, and in 15 zeros its headline set in four
+  // lines and pushed Make one below the first screen at 1440 by 900. The whole
+  // half one step down sets it in three, each line a whole phrase.
+  const measure = wide ? "max-w-none" : ["max-w-[15ch]", "max-w-[16ch]", "max-w-[17ch]", "max-w-[18ch]"][Math.min(step, 3)];
   const size = [
     "text-[clamp(2.6rem,4.3vw,4.6rem)]",
     "text-[clamp(2.4rem,3.8vw,4.1rem)]",
@@ -123,7 +128,7 @@ export function MakeOne({ className = "" }: { className?: string }) {
           className="block h-px w-5 bg-current transition-transform duration-300 group-hover:translate-x-1.5 group-focus-visible:translate-x-1.5"
         />
       </Link>
-      <span className="text-xs text-text-faint">{t("makeNote")}</span>
+      <span className="text-base text-text-faint">{t("makeNote")}</span>
     </div>
   );
 }
