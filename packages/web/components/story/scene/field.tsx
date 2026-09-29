@@ -264,6 +264,62 @@ function Gather({
   );
 }
 
+/** Where the film frames itself as a phone, the same width LandingStory reads. */
+const PHONE_FILM = "(max-width: 767px)";
+
+/** How bright the picture already is on a phone while the camera comes in, before the made beat develops it. */
+const PHONE_FLOOR = 0.4;
+
+/** True while the window is as narrow as the film's phone framing. */
+function usePhoneFilm(): boolean {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(PHONE_FILM);
+    const read = () => setPhone(query.matches);
+    read();
+    query.addEventListener("change", read);
+    return () => query.removeEventListener("change", read);
+  }, []);
+  return phone;
+}
+
+/**
+ * How strongly the focal plate draws its static and its picture on one frame.
+ *
+ * On a laptop the plate comes in as grey static beside the words and the
+ * picture forms inside it as the made beat plays. On a phone the same static
+ * was the only large thing in the frame for three stops of the film, a grey
+ * square that read as a picture that failed to load, with the made beat's
+ * words laid over it. So a phone never draws the static: the picture itself
+ * fades up with the plate, held dim like a print in the developer, and comes
+ * to full strength over the same stretch of the made beat the laptop uses.
+ *
+ * A plate whose picture has not arrived shows nothing rather than a blank
+ * square: a material with no map at some opacity is a flat white card.
+ */
+export function focalInks({
+  entry,
+  made,
+  swapped,
+  pictured,
+  phone,
+}: {
+  entry: number;
+  made: number;
+  /** How far the visitor's own file has replaced the picture, 0 to 1. */
+  swapped: number;
+  pictured: boolean;
+  phone: boolean;
+}): { grain: number; picture: number } {
+  const develop = THREE.MathUtils.clamp((made - 0.35) / 0.45, 0, 1);
+  const grain = phone ? 0 : entry * Math.max(0, 1 - made * 1.5);
+  if (!pictured) {
+    return { grain, picture: 0 };
+  }
+  const strength = phone ? PHONE_FLOOR + (1 - PHONE_FLOOR) * develop : develop;
+  return { grain, picture: entry * strength * (1 - swapped) };
+}
+
 export interface FocalRefs {
   /** How close the camera is to the plate, 0 on the title frame, 1 on it. */
   approach: RefObject<number>;
@@ -276,8 +332,8 @@ export interface FocalRefs {
 }
 
 /**
- * The plate the story is about: noise, then the picture, then the seal, then
- * whatever the visitor drops on it at the end.
+ * The plate the story is about: noise (on a laptop, see focalInks), then the
+ * picture, then the seal, then whatever the visitor drops on it at the end.
  */
 export function FocalPlate({
   url,
@@ -299,6 +355,7 @@ export function FocalPlate({
 }) {
   const texture = useAsyncTexture(url);
   const droppedTexture = useAsyncTexture(dropped);
+  const phone = usePhoneFilm();
   const noise = useMemo(() => noiseTexture(72), []);
   const seal = useMemo(() => sealTexture(), []);
   const glow = useMemo(() => glowTexture(), []);
@@ -355,17 +412,18 @@ export function FocalPlate({
     const probing = refs.probe.current;
 
     // The plate is not there at all on the title frame: it fades up as the
-    // camera comes in, as static, and the picture arrives inside it.
+    // camera comes in, and the picture arrives inside it.
     const entry = refs.approach.current;
+    // Only the visitor's own file replaces the picture. The rest of the last
+    // beat leaves the registered image where it is.
+    const swapped = droppedTexture === null ? 0 : probing * 0.92;
+    const inks = focalInks({ entry, made, swapped, pictured: texture !== null, phone });
 
     if (grain.current !== null) {
-      grain.current.opacity = entry * Math.max(0, 1 - made * 1.5);
+      grain.current.opacity = inks.grain;
     }
     if (picture.current !== null) {
-      // Only the visitor's own file replaces the picture. The rest of the last
-      // beat leaves the registered image where it is.
-      const swapped = droppedTexture === null ? 0 : probing * 0.92;
-      picture.current.opacity = entry * THREE.MathUtils.clamp((made - 0.35) / 0.45, 0, 1) * (1 - swapped);
+      picture.current.opacity = inks.picture;
     }
     if (visitor.current !== null) {
       visitor.current.opacity = droppedTexture === null ? 0 : probing;
