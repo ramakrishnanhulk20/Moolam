@@ -1011,21 +1011,32 @@ html.light .story-frame [data-beat="opening"] {
   overflow-wrap: normal;
 }
 
-/* On a wide screen the column of the page is narrower than the text measure
-   plus the rail beside it, and that rail is empty below its short list. A wide
-   table takes both, measured from the article so it ends where the page ends.
-   It paints over the rail's list while it scrolls past, which is the one
-   moment that list has nothing to point at anyway. */
+/* On a wide screen a table of four or more columns needs more than the text
+   measure. A page that holds one gives up the sticky "On this page" rail, whose
+   list a table once slid over, and the article takes the rail's column too.
+   The contents move into the fold at the top of the article, the same one a
+   narrower window already shows, and the prose keeps its measure while the
+   tables run the full width of the article. */
 @media (min-width: 1280px) {
   [data-docs-article] {
     container-type: inline-size;
   }
 
+  [data-docs-article]:has(.docs-table-wide) {
+    grid-column: 1 / -1;
+  }
+
+  [data-docs-article]:has(.docs-table-wide) ~ .docs-rail {
+    display: none;
+  }
+
+  [data-docs-article]:has(.docs-table-wide) .docs-fold {
+    display: block;
+    max-width: 74ch;
+  }
+
   .docs-table-wide {
-    position: relative;
-    z-index: 1;
-    width: calc(100cqw + 16rem);
-    background: var(--bg);
+    width: 100cqw;
   }
 
   .docs-table-wide td {
@@ -1199,10 +1210,32 @@ html.light .story-frame [data-beat="opening"] {
   color: var(--accent);
 }
 
-/* The architecture drawings are wider than the column they sit in. Kept at the
-   size they were drawn, the frame cut them mid-label, so a drawing is scaled to
-   the column's width and Open full size is the way into the detail. The frame
-   keeps its sideways scroll and fade as a fallback for anything still wider. */
+/* The browser refused the clipboard. The line hangs under the button, over the
+   top of the code for the few seconds it shows, and asks the reader to copy by
+   hand. Empty, it takes no room. */
+.docs-copy-failed {
+  position: absolute;
+  top: 2.4rem;
+  right: 0.55rem;
+  z-index: 1;
+  max-width: min(18rem, calc(100% - 1.1rem));
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--bg-raised);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.docs-copy-failed:empty {
+  display: none;
+}
+
+/* The architecture drawings are wider than the column they sit in. A drawing is
+   scaled to the column's width while its labels stay readable; past that the
+   component holds it at a floor (lib/docs/diagram.ts) and the frame scrolls
+   sideways behind a fade and a hint. Open full size is the way into the rest. */
 .docs-diagram {
   position: relative;
   margin: 2rem 0;
@@ -1249,15 +1282,20 @@ html.light .story-frame [data-beat="opening"] {
 
 .docs-diagram-head {
   /* Above the fade, which runs the full height of the frame and once washed
-     out the end of Open full size. */
-  position: relative;
+     out the end of Open full size. A drawing held at its floor can be taller
+     than the window, so the button rides down the frame under the docs bar
+     rather than scrolling away with the top of it. */
+  position: sticky;
+  top: calc(var(--docs-top, 4rem) + 3.5rem);
   z-index: 1;
   display: flex;
   justify-content: flex-end;
   padding: 0.6rem 0.6rem 0;
+  pointer-events: none;
 }
 
 .docs-diagram-open {
+  pointer-events: auto;
   padding: 0.3rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1301,16 +1339,26 @@ html.light .story-frame [data-beat="opening"] {
   border-radius: 8px;
 }
 
-/* A drawing narrower than the frame keeps its own size and sits in the middle;
-   a wider one is scaled down to the frame, and its viewBox keeps the shape. */
+/* A drawing narrower than the frame keeps its own size and sits in the middle.
+   A wider one takes the width the component set on its ink, and its viewBox
+   keeps the shape at that width, so its height is settled on the first paint. */
 .docs-diagram-ink svg {
   display: block;
   max-width: 100%;
   height: auto;
 }
 
+.docs-diagram:not([data-variant="phone"]) .docs-diagram-ink {
+  margin-inline: auto;
+}
+
 .docs-diagram:not([data-variant="phone"]) .docs-diagram-ink svg {
   margin-inline: auto;
+}
+
+.docs-diagram:not([data-variant="phone"]) .docs-diagram-ink[style] svg {
+  width: 100%;
+  max-width: none;
 }
 
 .docs-lightbox-ink svg {

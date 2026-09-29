@@ -19,7 +19,7 @@ for who holds a passport. Off chain, the Chainlink CRE workflow re-fetches and r
 Envio indexes the events, and the verify service reads passports out of Envio and statements
 straight off the consent register.
 
-```mermaid height=459
+```mermaid height=1021
 flowchart LR
     subgraph People and agents
         C[Creator<br/>Privy embedded wallet + passkey]
@@ -109,7 +109,7 @@ produce the identical verdict before a report is signed. Every re-check on chain
 Chainlink's simulator with `--broadcast`, which is one machine and no consensus, and the passport
 page labels each one by the forwarder that delivered it.
 
-```mermaid height=421
+```mermaid height=948
 sequenceDiagram
     participant A as Generator agent
     participant S as Verifier service
@@ -186,7 +186,7 @@ be written later from the passport page.
 The second half of the drawing is the question a label inside a file cannot answer. A reader asks
 the register what was in force on a given day, and gets that day's entry rather than today's.
 
-```mermaid height=357
+```mermaid height=528
 sequenceDiagram
     participant C as Creator (studio)
     participant S as Verifier service
@@ -241,7 +241,7 @@ nothing but an `IERC721` view: it holds the registry address as an immutable set
 asks it `ownerOf`, which is the whole integration. The arrow points one way, so the registry does
 not know the consent register exists.
 
-```mermaid height=197
+```mermaid height=371
 flowchart TD
     MR[MoolamRegistry] --> ERC721[OpenZeppelin ERC721]
     MR --> EIP712[OpenZeppelin EIP712]

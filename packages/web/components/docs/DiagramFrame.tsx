@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
+import { diagramWidth, drawnSize } from "@/lib/docs/diagram";
 import type { DiagramVariant } from "@/lib/docs/render";
 
 const MIN_ZOOM = 0.5;
@@ -287,11 +288,11 @@ function FullSize({ svg, say, label, close }: { svg: string; say: Say; label: st
 /**
  * The frame around one architecture drawing.
  *
- * A drawing wider than the column is scaled down to the column's width, so the
- * reader sees the whole of it with every label whole, and Open full size is the
- * way into the detail. The frame still scrolls if a drawing ever comes out
- * wider than that, with the fade and the mono hint to say so. A phone redraw is
- * drawn to the width of the column, so neither ever shows on one.
+ * A drawing wider than the column is scaled down to the column's width only
+ * while its labels stay readable (see DIAGRAM_SCALE_FLOOR). Past that it holds
+ * the floor and the frame scrolls sideways, with the fade and the mono hint to
+ * say so, and Open full size stays in reach at the top of the frame. A phone
+ * redraw is drawn to the width of the column, so neither ever shows on one.
  */
 export function DiagramFrame({
   svg,
@@ -316,6 +317,10 @@ export function DiagramFrame({
 
   const regionLabel = nameIt("diagramNamed", "diagram, scrollable", say("diagramRegion", "Diagram, scrollable"));
   const fullLabel = nameIt("diagramNamedFull", "diagram, full size", say("diagramFull", "Diagram, full size"));
+
+  // A phone redraw is drawn to its column by mermaid itself and keeps that.
+  const drawn = variant === "phone" ? null : drawnSize(svg);
+  const inkStyle = drawn === null ? undefined : { width: diagramWidth(drawn.width) };
 
   const [open, setOpen] = useState(false);
   const [more, setMore] = useState(false);
@@ -363,7 +368,7 @@ export function DiagramFrame({
         aria-label={regionLabel}
         className="docs-diagram-scroll"
       >
-        <div className="docs-diagram-ink" dangerouslySetInnerHTML={{ __html: svg }} />
+        <div className="docs-diagram-ink" style={inkStyle} dangerouslySetInnerHTML={{ __html: svg }} />
       </div>
 
       <span aria-hidden className="docs-diagram-fade" />
