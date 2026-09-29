@@ -141,7 +141,7 @@ export function challengeView(standing: {
 export function KeptReceipt({ receipt }: { receipt: ChallengeReceipt }) {
   return (
     <section data-dispute-panel data-challenge-kept className="mt-12 border-t border-line pt-6">
-      <div className="mt-7 border-s-2 border-failed bg-failed/5 p-6 sm:p-8">
+      <div className="mt-7 border-s-2 border-disputed bg-disputed/5 p-6 sm:p-8">
         <Recorded receipt={receipt} />
       </div>
     </section>
@@ -159,15 +159,15 @@ function Panel({ flag }: { flag: FlagPassport }) {
         type="button"
         onClick={state.open ? flag.actions.close : flag.actions.open}
         aria-expanded={state.open}
-        className="group flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint transition-colors duration-200 hover:text-failed"
+        className="group flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint transition-colors duration-200 hover:text-disputed"
       >
         <span
           aria-hidden
           className={`h-[9px] w-[9px] border border-current transition-transform duration-300 ${
-            state.open ? "rotate-45 bg-failed" : "group-hover:rotate-45"
+            state.open ? "rotate-45 bg-disputed" : "group-hover:rotate-45"
           }`}
         />
-        <span className="underline decoration-line underline-offset-[6px] transition-colors duration-200 group-hover:decoration-failed">
+        <span className="underline decoration-line underline-offset-[6px] transition-colors duration-200 group-hover:decoration-disputed">
           {state.open ? t("close") : t("link")}
         </span>
       </button>
@@ -182,7 +182,7 @@ function Panel({ flag }: { flag: FlagPassport }) {
             transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             className="overflow-hidden"
           >
-            <div className="mt-7 border-s-2 border-failed bg-failed/5 p-6 sm:p-8">
+            <div className="mt-7 border-s-2 border-disputed bg-disputed/5 p-6 sm:p-8">
               {isFlagDone(state) ? (
                 <Recorded receipt={{ hash: state.hash, block: state.block }} />
               ) : (
@@ -248,7 +248,7 @@ function Form({ flag }: { flag: FlagPassport }) {
           disabled={busy}
           onChange={(event) => flag.actions.setReason(event.target.value)}
           placeholder={t("reasonPlaceholder")}
-          className="mt-2 w-full resize-none border border-line bg-bg px-4 py-3 text-base leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-failed"
+          className="mt-2 w-full resize-none border border-line bg-bg px-4 py-3 text-base leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-disputed"
         />
       </label>
       <p className="mt-2 max-w-[54ch] text-base leading-relaxed text-text-faint">
@@ -261,7 +261,7 @@ function Form({ flag }: { flag: FlagPassport }) {
         // A flag that is out and unconfirmed keeps this locked. The recheck under
         // the message is the only way on, because the bond can only be lost once.
         disabled={busy || unconfirmed || flag.bond === null || state.reason.trim().length < REASON_MIN}
-        className="mt-7 w-full rounded-[8px] bg-failed px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-bg transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
+        className="mt-7 w-full rounded-[8px] bg-disputed px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-bg transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50 sm:w-auto"
       >
         {bond === null ? t("submitUnknown") : t("submit", { bond })}
       </button>
@@ -317,7 +317,7 @@ function Recorded({ receipt }: { receipt: ChallengeReceipt }) {
           href={`${MONAD_EXPLORER}/tx/${hash}`}
           target="_blank"
           rel="noreferrer"
-          className="mt-7 inline-block rounded-[8px] border border-line px-5 py-3 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-failed hover:text-failed"
+          className="mt-7 inline-block rounded-[8px] border border-line px-5 py-3 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-disputed hover:text-disputed"
         >
           {t("done.openTx", { hash: shortHex(hash) })}
         </a>

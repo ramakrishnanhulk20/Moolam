@@ -48,7 +48,7 @@ describe("where a passport stands", () => {
 
   it("lets a dispute outrank a passing re-check", () => {
     expect(standingOf({ disputed: true, attestations: [{ matched: true }] })).toBe("disputed");
-    expect(standingClass("disputed")).toBe("text-failed");
+    expect(standingClass("disputed")).toBe("text-disputed");
   });
 
   it("reads an edit of a disputed picture as disputed, though the registry never marked it", () => {

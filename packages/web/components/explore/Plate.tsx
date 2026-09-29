@@ -103,7 +103,7 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
           label={plate.chainlink ? t("marks.chainlink") : t("marks.rechecked")}
           tone="verified"
         />
-        <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="failed" />
+        <Mark on={plate.disputed} letter="D" label={t("marks.disputed")} tone="disputed" />
         <Mark on={sealed} letter="S" label={t("sealed.mark")} tone="accent" />
       </span>
       {/* On a narrow plate the word sits under its letter instead of taking a
@@ -357,14 +357,14 @@ function Mark({
   on: boolean;
   letter: string;
   label: string;
-  tone: "accent" | "verified" | "failed";
+  tone: "accent" | "verified" | "disputed";
 }) {
   const lit =
     tone === "accent"
       ? "border-accent text-accent"
       : tone === "verified"
         ? "border-verified text-verified"
-        : "border-failed text-failed";
+        : "border-disputed text-disputed";
 
   return (
     <span

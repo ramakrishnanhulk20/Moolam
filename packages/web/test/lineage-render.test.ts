@@ -40,10 +40,11 @@ describe("the mark on the line up to the parent", () => {
     expect(await lineage({ parentId: PARENT, parentDisputed: true }, "ta")).toContain(ta.passport.lineageDisputed);
   });
 
-  it("colours the line it sits on with the failed tone, not the accent", async () => {
+  it("colours the line it sits on with the dispute tone, not the accent or the red", async () => {
     const markup = await lineage({ parentId: PARENT, parentDisputed: true });
-    expect(markup).toContain("border-failed/50");
-    expect(markup).toContain("text-failed");
+    expect(markup).toContain("border-disputed/50");
+    expect(markup).toContain("text-disputed");
+    expect(markup).not.toContain("text-failed");
   });
 
   it("says nothing at all when the chain above this one is clean", async () => {

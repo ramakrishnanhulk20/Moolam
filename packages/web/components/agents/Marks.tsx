@@ -49,7 +49,7 @@ export function Marks({
       label: marks.chainlink ? words.chainlink : words.rechecked,
       tone: "verified" as const,
     },
-    { on: marks.disputed, letter: "D", label: words.disputed, tone: "failed" as const },
+    { on: marks.disputed, letter: "D", label: words.disputed, tone: "disputed" as const },
     { on: marks.sealed === true, letter: "S", label: words.sealed, tone: "accent" as const },
   ];
   const shown = litOnly ? all.filter((mark) => mark.on) : all;
@@ -75,14 +75,14 @@ function Mark({
   on: boolean;
   letter: string;
   label: string;
-  tone: "accent" | "verified" | "failed";
+  tone: "accent" | "verified" | "disputed";
 }) {
   const lit =
     tone === "accent"
       ? "border-accent text-accent"
       : tone === "verified"
         ? "border-verified text-verified"
-        : "border-failed text-failed";
+        : "border-disputed text-disputed";
 
   return (
     <span

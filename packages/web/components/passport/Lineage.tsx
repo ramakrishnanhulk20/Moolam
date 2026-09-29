@@ -47,7 +47,7 @@ export async function Lineage({
           <Link
             href={`/passport/${parentId}`}
             className={`group mt-2 flex flex-wrap items-center gap-x-4 gap-y-3 border bg-bg-raised p-4 transition-colors duration-200 hover:border-accent sm:p-5 ${
-              parentDisputed ? "border-failed/50" : "border-line"
+              parentDisputed ? "border-disputed/50" : "border-line"
             }`}
           >
             <Relative id={parentId} member={family[parentId.toLowerCase()]} untitled={untitled} />
@@ -56,7 +56,7 @@ export async function Lineage({
             {parentDisputed ? (
               <span
                 title={t("lineageDisputed")}
-                className="shrink-0 rounded-[3px] border border-failed/60 px-2 py-1 font-mono text-[9px] uppercase leading-none tracking-[0.18em] text-failed sm:ms-auto"
+                className="shrink-0 rounded-[3px] border border-disputed/60 px-2 py-1 font-mono text-[9px] uppercase leading-none tracking-[0.18em] text-disputed sm:ms-auto"
               >
                 {t("lineageDisputed")}
               </span>

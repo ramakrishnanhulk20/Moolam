@@ -412,7 +412,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
             {dispute.verified ? t("noReason", { uri: dispute.evidenceURI ?? "" }) : t("unverified")}
           </p>
         ) : (
-          <figure className="mt-6 max-w-[58ch] border-s-2 border-failed ps-5">
+          <figure className="mt-6 max-w-[58ch] border-s-2 border-disputed ps-5">
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("claim")}</p>
             <blockquote className="mt-2.5 text-base leading-relaxed text-text">{dispute.reason}</blockquote>
           </figure>
@@ -460,7 +460,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
                 type="button"
                 onClick={() => void desk.actions.settle(dispute.passportId, true)}
                 disabled={locked}
-                className="rounded-[8px] bg-failed px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-bg transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
+                className="rounded-[8px] bg-disputed px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-bg transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
               >
                 {t("uphold")}
               </button>

@@ -285,11 +285,12 @@ describe("the dispute line, in all five of its states", () => {
     expect(markup).toContain("text-text-faint");
   });
 
-  it("tells a reader not to rely on the statement while a challenge is open, in the status colour", () => {
+  it("tells a reader not to rely on the statement while a challenge is open, in the dispute colour", () => {
     const markup = lineFor("open");
     expect(markup).toContain("This passport is under challenge.");
     expect(markup).toContain("Do not rely on its statement on AI use");
-    expect(markup).toContain("text-failed");
+    expect(markup).toContain("text-disputed");
+    expect(markup).not.toContain("text-failed");
     expect(markup).not.toContain("text-accent");
   });
 
@@ -297,13 +298,14 @@ describe("the dispute line, in all five of its states", () => {
     const markup = lineFor("upheld");
     expect(markup).toContain("was upheld");
     expect(markup).toContain("as unreliable");
-    expect(markup).toContain("text-failed");
+    expect(markup).toContain("text-disputed");
   });
 
   it("says a rejected challenge happened, without leaving a shadow over the record", () => {
     const markup = lineFor("rejected");
     expect(markup).toContain("raised against this passport and rejected");
     expect(markup).not.toContain("text-failed");
+    expect(markup).not.toContain("text-disputed");
   });
 
   it("prints nothing when the service could not find out, and nothing when it never said", () => {

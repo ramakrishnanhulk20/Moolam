@@ -79,7 +79,7 @@ export async function Standing({
                 <Count label={t("index.passportCount")} value={record.passportCount} />
                 <Count label={t("index.matchedCount")} value={record.matchedCount} tone="verified" />
                 <Count label={t("index.mismatchedCount")} value={record.mismatchedCount} tone="failed" />
-                <Count label={t("index.disputesUpheld")} value={record.disputesUpheld} tone="failed" />
+                <Count label={t("index.disputesUpheld")} value={record.disputesUpheld} tone="disputed" />
               </dl>
 
               <p className="mt-8 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("index.formulaPlain")}</p>
@@ -150,9 +150,10 @@ export async function Standing({
   );
 }
 
-function Count({ label, value, tone }: { label: string; value: number; tone?: "verified" | "failed" }) {
-  const colour =
-    value === 0 ? "text-text-muted" : tone === "verified" ? "text-verified" : tone === "failed" ? "text-failed" : "text-text";
+const COUNT_TONE = { verified: "text-verified", failed: "text-failed", disputed: "text-disputed" } as const;
+
+function Count({ label, value, tone }: { label: string; value: number; tone?: keyof typeof COUNT_TONE }) {
+  const colour = value === 0 ? "text-text-muted" : tone === undefined ? "text-text" : COUNT_TONE[tone];
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>

@@ -51,10 +51,16 @@ export function standingOf(passport: {
   return passport.attestations.length > 0 ? "verified" : "unverified";
 }
 
-/** The text colour each standing wears. Teal for a pass, one red for trouble, grey for silence. */
+/**
+ * The text colour each standing wears. Teal for a pass, red for a re-check that
+ * missed, the dispute colour for a challenge, grey for silence.
+ */
 export function standingClass(standing: Standing): string {
   if (standing === "verified") {
     return "text-verified";
+  }
+  if (standing === "disputed") {
+    return "text-disputed";
   }
   return standing === "unverified" ? "text-text-faint" : "text-failed";
 }

@@ -260,7 +260,7 @@ describe("the home panel's result", () => {
     expect(host.querySelector(`a[href="/passport/${ID("2b")}"]`)).not.toBeNull();
     expect(host.textContent).toContain("A church in a storm");
     expect(host.textContent).toContain("This passport is under challenge.");
-    expect(host.querySelector("[data-dispute-line]")?.className).toContain("text-failed");
+    expect(host.querySelector("[data-dispute-line]")?.className).toContain("text-disputed");
 
     await act(async () => {
       root.unmount();

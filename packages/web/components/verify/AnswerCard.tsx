@@ -384,12 +384,12 @@ function Result({
         {/* The registry marks only the passport a challenge named, so an edit of a picture that
             lost one reads clean on the line above. This is where the reader learns otherwise. */}
         {inheritedAncestor === null ? null : (
-          <p data-inherited-dispute className="mt-2 max-w-[60ch] text-base leading-relaxed text-failed">
+          <p data-inherited-dispute className="mt-2 max-w-[60ch] text-base leading-relaxed text-disputed">
             {t.rich("dispute.inherited", {
               link: (chunks) => (
                 <Link
                   href={`/passport/${inheritedAncestor}`}
-                  className="underline decoration-failed/40 underline-offset-4 transition-colors duration-200 hover:decoration-failed"
+                  className="underline decoration-disputed/40 underline-offset-4 transition-colors duration-200 hover:decoration-disputed"
                 >
                   {chunks}
                 </Link>

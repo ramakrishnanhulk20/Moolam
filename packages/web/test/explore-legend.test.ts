@@ -102,7 +102,7 @@ describe("the legend under the chips", () => {
     // D is a dispute reaching this picture or the one it was edited from.
     expect(markup).toContain(`<span class="text-accent">M</span> ${en.explore.legend.manifest}`);
     expect(markup).toContain(`<span class="text-verified">R</span> ${en.explore.legend.rechecked}`);
-    expect(markup).toContain(`<span class="text-failed">D</span> ${en.explore.legend.disputed}`);
+    expect(markup).toContain(`<span class="text-disputed">D</span> ${en.explore.legend.disputed}`);
   });
 
   it("separates the three with a middle dot and no kind of dash", () => {

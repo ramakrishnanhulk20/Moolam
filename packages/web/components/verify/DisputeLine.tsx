@@ -30,11 +30,11 @@ export function DisputeLine({
 
   const { status } = dispute;
   // A challenge that stands, or one that was upheld, is the reader's problem to
-  // know about, so it takes the cold status colour. The accent is decoration and
-  // is never used to raise an alarm.
+  // know about, so it takes the dispute colour. Red is kept for things that
+  // failed and the accent is decoration, so neither says "challenged".
   const tone =
     status === "open" || status === "upheld"
-      ? "text-failed"
+      ? "text-disputed"
       : status === "rejected"
         ? "text-text-muted"
         : "text-text-faint";

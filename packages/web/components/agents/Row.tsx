@@ -100,7 +100,7 @@ export function Row({ agent, place, strip = null }: { agent: AgentRow; place: nu
             <Count label={t("passports")} value={agent.passportCount} />
             <Count label={t("matched")} value={agent.matchedCount} tone="verified" />
             <Count label={t("mismatched")} value={agent.mismatchedCount} tone="failed" />
-            <Count label={t("upheld")} value={agent.disputesUpheld} tone="failed" />
+            <Count label={t("upheld")} value={agent.disputesUpheld} tone="disputed" />
           </dl>
         </div>
       </div>
@@ -115,9 +115,10 @@ export function Row({ agent, place, strip = null }: { agent: AgentRow; place: nu
   );
 }
 
-function Count({ label, value, tone }: { label: string; value: number; tone?: "verified" | "failed" }) {
-  const colour =
-    value === 0 ? "text-text-muted" : tone === "verified" ? "text-verified" : tone === "failed" ? "text-failed" : "text-text";
+const COUNT_TONE = { verified: "text-verified", failed: "text-failed", disputed: "text-disputed" } as const;
+
+function Count({ label, value, tone }: { label: string; value: number; tone?: keyof typeof COUNT_TONE }) {
+  const colour = value === 0 ? "text-text-muted" : tone === undefined ? "text-text" : COUNT_TONE[tone];
 
   return (
     <div className="min-w-0">

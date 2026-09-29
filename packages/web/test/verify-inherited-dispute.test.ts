@@ -163,7 +163,7 @@ describe("the inherited dispute line on the answer card", () => {
     expect(markup).toContain(LINE);
     expect(markup).toContain(`href="/passport/${ANCESTOR}"`);
     expect(markup).toContain(">Open that version</a>");
-    expect(markup).toContain("text-failed");
+    expect(markup).toContain("text-disputed");
   });
 
   it("sits right after the direct dispute line, which still reads clean", () => {

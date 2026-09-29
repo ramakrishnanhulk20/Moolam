@@ -236,7 +236,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
           </span>
           <span aria-hidden>&middot;</span>
           <span>
-            <span className="text-failed">D</span> {t("legend.disputed")}
+            <span className="text-disputed">D</span> {t("legend.disputed")}
           </span>
           <span aria-hidden>&middot;</span>
           <span>
