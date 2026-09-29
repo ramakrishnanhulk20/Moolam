@@ -111,9 +111,11 @@ export function Grid({
           fade to nothing. Each cell is a column so its plate can grow to the
           height of the row: a plate with no picture is taller than four by
           five on a phone, and the picture beside it fills the same height
-          rather than leaving a band of empty ground under it. */}
+          rather than leaving a band of empty ground under it. Four across
+          from 1024 px: three plates that wide are too tall for the whole row
+          to fit on a 1024 by 768 first screen. */}
       <ul
-        className={`mt-6 grid grid-cols-2 gap-px border border-line bg-line transition-opacity duration-300 sm:mt-10 sm:grid-cols-3 lg:mt-6 xl:grid-cols-4 ${
+        className={`mt-6 grid grid-cols-2 gap-px border border-line bg-line transition-opacity duration-300 sm:mt-10 sm:grid-cols-3 md:mt-5 lg:grid-cols-4 ${
           reading ? "opacity-60" : "opacity-100"
         }`}
       >

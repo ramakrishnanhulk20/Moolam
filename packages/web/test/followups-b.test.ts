@@ -152,20 +152,20 @@ describe("step 10: the challenge's Recorded receipt", () => {
   });
 });
 
-describe("step 11: Explore's folded AI-use row at lg", () => {
+describe("step 11: Explore's folded AI-use row from md", () => {
   const search = { view: "all" as const, search: "", agent: null, ai: null };
 
   it("opens by itself when an answer other than Any is narrowing the sheet", () => {
     const html = render(createElement(Filters, { search: { ...search, ai: "open" as const } }));
     const row = classOf(html, "data-ai-row");
-    expect(row).not.toContain("lg:hidden");
+    expect(row).not.toContain("md:hidden");
     expect(row).toContain("rise");
     expect(html).toMatch(/data-ai-toggle="true" aria-expanded="true"/);
   });
 
   it("stays folded on Any", () => {
     const html = render(createElement(Filters, { search }));
-    expect(classOf(html, "data-ai-row")).toContain("lg:hidden");
+    expect(classOf(html, "data-ai-row")).toContain("md:hidden");
     expect(html).toMatch(/data-ai-toggle="true" aria-expanded="false"/);
   });
 });

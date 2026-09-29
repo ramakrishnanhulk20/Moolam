@@ -405,9 +405,11 @@ function classAt(markup: string, pattern: RegExp): string[] {
   return (found as RegExpMatchArray)[1].split(/\s+/);
 }
 
-/** The classes that only apply from 640 px up: what a laptop draws. */
+/** The classes that only apply from 640 px up: what a tablet and a laptop draw. */
 function wide(classes: string[]): string[] {
-  return classes.filter((name) => name.startsWith("sm:") || name.startsWith("lg:") || name.startsWith("xl:")).sort();
+  return classes
+    .filter((name) => name.startsWith("sm:") || name.startsWith("md:") || name.startsWith("lg:") || name.startsWith("xl:"))
+    .sort();
 }
 
 describe("the compact openings on the real routes", () => {
@@ -569,9 +571,9 @@ describe("the compact openings on the real routes", () => {
     expect(markup).toContain(en.explore.marksToggle);
     expect(tagOf(markup, "data-marks-key")).toMatch(/\bhidden\b/);
     expect(tagOf(markup, "data-marks-key")).toContain("sm:flex");
-    // The tablet keeps its sm values, and the laptop's compact opening tightens the bar from 1024 px.
+    // A 640 px screen keeps its sm values, and the compact opening tightens the bar from 768 px.
     expect(wide(classAt(markup, /<div class="([^"]*border-y border-line[^"]*)"/))).toEqual(
-      ["sm:mt-10", "sm:py-5", "lg:mt-5", "lg:py-3"].sort(),
+      ["sm:mt-10", "sm:py-5", "md:mt-5", "md:py-3"].sort(),
     );
   });
 
@@ -598,7 +600,7 @@ describe("the compact openings on the real routes", () => {
     // The title on one row with the lede beside it, and no poster left over.
     expect(tagOf(markup, 'data-opening="compact"')).toContain("lg:grid-cols-2");
     const title = classAt(markup, /<h1 class="([^"]*)"/);
-    expect(title).toEqual(expect.arrayContaining(["lg:whitespace-nowrap", "lg:text-[3rem]"]));
+    expect(title).toEqual(expect.arrayContaining(["md:whitespace-nowrap", "md:text-[3rem]"]));
     expect(wide(classAt(markup, new RegExp(`<p class="([^"]*)"[^>]*>${en.explore.lede.slice(0, 20)}`)))).toContain(
       "lg:justify-self-end",
     );
@@ -606,16 +608,16 @@ describe("the compact openings on the real routes", () => {
     expect(markup).toContain(en.explore.rail);
 
     // The four counts and the split on one strip under it.
-    expect(tagOf(markup, "data-counts-strip")).toContain("lg:flex");
-    expect(tagOf(markup, "data-counts-grid")).toContain("lg:flex");
+    expect(tagOf(markup, "data-counts-strip")).toContain("md:flex");
+    expect(tagOf(markup, "data-counts-grid")).toContain("md:flex");
     for (const label of Object.values(en.explore.counts)) {
       expect(markup).toContain(label);
     }
 
     // The chips in one row, the AI-use answers behind one chip in it.
     const chips = render(createElement(Filters, { search: { view: "pictures" as const, search: "", agent: null, ai: null } }));
-    expect(tagOf(chips, "data-ai-toggle")).toContain("lg:inline-flex");
-    expect(tagOf(chips, "data-ai-row")).toContain("lg:hidden");
+    expect(tagOf(chips, "data-ai-toggle")).toContain("md:inline-flex");
+    expect(tagOf(chips, "data-ai-row")).toContain("md:hidden");
 
     // And the chips come before the grid on the page.
     const { readFileSync } = await import("node:fs");

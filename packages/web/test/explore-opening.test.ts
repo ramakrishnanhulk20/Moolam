@@ -10,7 +10,7 @@ import type { ExplorePlate } from "@/components/explore/sort";
  * Explore's opening, its search and its empty sheet (WO-215).
  *
  * Four things are held here, all against a fixture index and a fixture
- * gateway, never the live ones: from 1024 px the page opens compact with the
+ * gateway, never the live ones: from 768 px the page opens compact with the
  * pictures right under the chips; the search box finds a picture by its title
  * as well as by its id, with one index query per page; a sheet that matched
  * nothing says what narrowed it and offers the way back; and a plate whose
@@ -236,7 +236,7 @@ function html(text: string): string {
   return text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;");
 }
 
-describe("the opening from 1024 px up", () => {
+describe("the opening from 768 px up", () => {
   async function openingMarkup(): Promise<string> {
     const rows = [0, 1, 2, 3, 4].map((index) => row(index));
     rows.forEach((one, index) => picture(index, `Picture ${index}`));
@@ -257,11 +257,11 @@ describe("the opening from 1024 px up", () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it("sets the title on one row with the lede beside it, and leaves the poster behind", async () => {
+  it("sets the title on one row with the lede beside it from 1024 px, and leaves the poster behind", async () => {
     const markup = await openingMarkup();
     const title = tagOf(markup, "<h1");
-    expect(title).toContain("lg:whitespace-nowrap");
-    expect(title).toContain("lg:text-[3rem]");
+    expect(title).toContain("md:whitespace-nowrap");
+    expect(title).toContain("md:text-[3rem]");
     expect(tagOf(markup, 'data-opening="compact"')).toContain("lg:grid-cols-2");
     const lede = markup.slice(markup.lastIndexOf("<p", markup.indexOf(html(en.explore.lede))), markup.indexOf(html(en.explore.lede)));
     expect(lede).toContain("lg:justify-self-end");
@@ -272,8 +272,8 @@ describe("the opening from 1024 px up", () => {
 
   it("keeps every count and the split on the one strip", async () => {
     const markup = await openingMarkup();
-    expect(tagOf(markup, "data-counts-strip")).toContain("lg:flex");
-    expect(tagOf(markup, "data-counts-grid")).toContain("lg:flex");
+    expect(tagOf(markup, "data-counts-strip")).toContain("md:flex");
+    expect(tagOf(markup, "data-counts-grid")).toContain("md:flex");
     for (const label of Object.values(en.explore.counts)) {
       expect(markup).toContain(label);
     }
@@ -282,9 +282,9 @@ describe("the opening from 1024 px up", () => {
 
   it("folds the AI-use answers behind one chip in the row, and keeps every answer's link", async () => {
     const markup = await openingMarkup();
-    expect(tagOf(markup, "data-ai-toggle")).toContain("lg:inline-flex");
+    expect(tagOf(markup, "data-ai-toggle")).toContain("md:inline-flex");
     expect(markup).toContain(`${en.explore.ai.label}: ${en.explore.ai.any}`);
-    expect(tagOf(markup, "data-ai-row")).toContain("lg:hidden");
+    expect(tagOf(markup, "data-ai-row")).toContain("md:hidden");
     for (const ai of ["open", "closed", "ask", "none"]) {
       expect(markup).toMatch(new RegExp(`href="/explore/view[?][^"]*ai=${ai}"`));
     }

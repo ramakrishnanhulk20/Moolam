@@ -50,8 +50,9 @@ export function Filters({ search }: { search: ExploreSearch }) {
   // A phone keeps the key to the letters behind one small press, so the first
   // pictures reach the first screen. From 640 px up the key is always shown.
   const [keyShown, setKeyShown] = useState(false);
-  // From 1024 px the AI-use answers fold behind one chip at the end of the
-  // row, so every chip is on one line and the pictures reach the first screen.
+  // From 768 px the AI-use answers fold behind one chip at the end of the
+  // row, so the chips keep to their own rows and the pictures reach the first
+  // screen.
   // An answer that is narrowing the sheet opens the row, on the first render
   // and whenever the answer changes, so a reader who came in on a filtered
   // link sees what narrowed it. The reader may still fold it again.
@@ -73,31 +74,31 @@ export function Filters({ search }: { search: ExploreSearch }) {
   useEffect(() => (searching ? hold() : undefined), [searching, hold]);
 
   return (
-    <div className="mt-3 border-y border-line py-2.5 sm:mt-10 sm:py-5 lg:mt-5 lg:py-3">
-      <div className="flex flex-col gap-3 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
+    <div className="relative mt-3 border-y border-line py-2.5 sm:mt-10 sm:py-5 md:mt-5 md:py-3">
+      <div className="flex flex-col gap-3 sm:gap-5 md:gap-3 lg:flex-row lg:items-center lg:justify-between">
         {/* Nine chips wrapped onto four rows at 375 px and took a third of the
             first screen, which is the screen the pictures are meant to be on. On a
             phone they are one row that scrolls sideways, bleeding to both edges so
             it reads as a row that carries on. From 640 px they wrap as before. */}
         <nav
           aria-label={t("chipsLabel")}
-          className="-mx-5 flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:-mx-1 sm:flex-wrap sm:overflow-x-visible sm:px-1 lg:gap-1"
+          className="-mx-5 flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] sm:-mx-1 sm:flex-wrap sm:overflow-x-visible sm:px-1 md:gap-1"
         >
           {PICTURE_VIEWS.map((view) => (
             <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
           ))}
-          <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-line-strong sm:block lg:mx-1" />
+          <span aria-hidden className="mx-1.5 hidden h-4 w-px shrink-0 bg-line-strong sm:block md:mx-1" />
           {RECORD_VIEWS.map((view) => (
             <Chip key={view} view={view} search={search} label={t(`chips.${view}`)} />
           ))}
-          <span aria-hidden className="mx-1 hidden h-4 w-px shrink-0 bg-line-strong lg:block" />
+          <span aria-hidden className="mx-1 hidden h-4 w-px shrink-0 bg-line-strong md:block" />
           <button
             type="button"
             data-ai-toggle
             aria-expanded={aiShown}
             aria-controls="explore-ai-row"
             onClick={() => setAiShown((shown) => !shown)}
-            className={`tap hidden shrink-0 items-center gap-2 rounded-[8px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-200 lg:inline-flex ${
+            className={`tap hidden shrink-0 items-center gap-2 rounded-[8px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-200 md:inline-flex ${
               search.ai === null
                 ? "border-line text-text-muted hover:border-line-strong hover:text-text"
                 : "border-accent bg-accent-soft text-accent hover:border-line-strong"
@@ -181,7 +182,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
       <div
         id="explore-ai-row"
         data-ai-row
-        className={`mt-2 flex items-center gap-3 sm:mt-5 ${aiShown ? "rise lg:mt-3" : "lg:hidden"}`}
+        className={`mt-2 flex items-center gap-3 sm:mt-5 ${aiShown ? "rise md:mt-3" : "md:hidden"}`}
       >
         <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
           {t("ai.label")}
@@ -200,8 +201,11 @@ export function Filters({ search }: { search: ExploreSearch }) {
       {/* The three letters on a plate, said in words. A title never fires under
           a thumb, so on a phone they were three unexplained letters. The row
           keeps its height whether or not the sheet is being read, so nothing on
-          the page moves when the mark lights. */}
-      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 lg:mt-3">
+          the page moves when the mark lights. From 768 px the key wraps to a
+          second line, and the mark sat on a third line of its own, blank until
+          a chip was pressed; there it stands on the rule under the bar
+          instead, so it takes no height at all. */}
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 md:mt-3">
         <button
           type="button"
           data-marks-toggle
@@ -255,7 +259,8 @@ export function Filters({ search }: { search: ExploreSearch }) {
 
         <p
           aria-hidden={!reading}
-          className={`flex items-center gap-2 text-accent transition-opacity duration-200 ${
+          data-reading-mark
+          className={`flex items-center gap-2 text-accent transition-opacity duration-200 md:absolute md:bottom-0 md:end-0 md:translate-y-1/2 md:bg-bg md:ps-3 ${
             reading ? "opacity-100" : "opacity-0"
           }`}
         >
@@ -280,7 +285,7 @@ function Chip({ view, search, label }: { view: ExploreView; search: ExploreSearc
       href={exploreHref({ ...search, view })}
       prefetch={false}
       aria-current={on ? "true" : undefined}
-      className={`tap inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 lg:px-3 lg:tracking-[0.14em] ${
+      className={`tap inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 md:px-3 md:tracking-[0.14em] ${
         on
           ? "border-accent bg-accent-soft text-accent"
           : "border-line text-text-muted hover:border-line-strong hover:text-text"
