@@ -16,7 +16,7 @@ export function FailureDetails({ reason, className = "" }: { reason: string; cla
 
   return (
     <details data-failure-details className={`group max-w-[54ch] ${className}`.trim()}>
-      <summary className="w-fit cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent [&::-webkit-details-marker]:hidden">
+      <summary className="w-fit cursor-pointer list-none font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent [&::-webkit-details-marker]:hidden">
         <span
           aria-hidden
           className="me-2 inline-block transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none"
