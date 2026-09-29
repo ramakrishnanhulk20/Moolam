@@ -374,7 +374,7 @@ function collect(
               value: format.number(studio.register.timing.waitedMs),
               unit: t("receipt.msUnit"),
             },
-      detail: format.dateTime(new Date(studio.register.registeredAt), { dateStyle: "medium", timeStyle: "short" }),
+      detail: format.dateTime(new Date(studio.register.registeredAt), "moment"),
       lines: chainLines(studio, t, fee),
       tone: "verified",
     });
@@ -474,7 +474,7 @@ function failureLine(
   }
   const key = words.has(`failure.${failure.key}`) ? failure.key : "unknown";
   return words(`failure.${key}`, {
-    at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1_000), { timeStyle: "short" }),
+    at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1_000), "time"),
   });
 }
 

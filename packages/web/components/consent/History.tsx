@@ -38,7 +38,7 @@ export function ConsentHistory({ entries, className = "" }: { entries: ConsentEn
 
             <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-mono text-[11px] tracking-[0.12em] text-text-muted">
-                {format.dateTime(new Date(Number(entry.at) * 1000), { dateStyle: "medium", timeStyle: "short" })}
+                {format.dateTime(new Date(Number(entry.at) * 1000), "moment")}
               </span>
               {at === 0 ? (
                 <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint">

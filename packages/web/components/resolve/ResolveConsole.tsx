@@ -413,7 +413,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
           <div className="min-w-0">
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("openedAt")}</dt>
             <dd className="mt-1.5 font-mono text-sm">
-              {format.dateTime(new Date(dispute.openedAt * 1000), { dateStyle: "medium", timeStyle: "short" })}
+              {format.dateTime(new Date(dispute.openedAt * 1000), "moment")}
             </dd>
           </div>
         </dl>

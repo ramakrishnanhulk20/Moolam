@@ -120,7 +120,7 @@ describe("the second opinion, drawn", () => {
 
   it("keeps the honest empty state, and says what a re-check is", async () => {
     const markup = await attestations([]);
-    expect(markup).toContain(en.passport.attestations.empty);
+    expect(markup).toContain(en.passport.attestations.empty.replaceAll("'", "&#x27;"));
     expect(markup).toContain(en.passport.attestations.whatIsRecheck);
     expect(markup).not.toContain("grid-cols-8");
   });

@@ -1,6 +1,9 @@
+"use client";
+
 import Image from "next/image";
+import { useTheme } from "next-themes";
+import { useTranslations } from "next-intl";
 import { LocaleSwitch } from "@/components/LocaleSwitch";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Link } from "@/lib/i18n/routing";
 
 /**
@@ -51,13 +54,91 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
           />
         </Link>
 
-        {/* Both chips are drawn small on purpose and grown to a 44 px target by
-            the tap-row rule in globals.css. */}
-        <div className="tap-row ms-auto flex items-center gap-2">
-          <LocaleSwitch />
-          <ThemeToggle />
+        {/* The language chip is drawn small on purpose and grown to a 44 px
+            target by the tap-row rule in globals.css. The theme square carries
+            its own pad, which that rule would narrow to the square's width. */}
+        <div className="ms-auto flex items-center gap-2">
+          <div className="tap-row flex items-center">
+            <LocaleSwitch />
+          </div>
+          <PhoneThemeSquare />
         </div>
       </div>
     </header>
+  );
+}
+
+const SQUARE =
+  "relative h-[30px] w-[30px] shrink-0 place-items-center rounded-[8px] border border-line text-text-muted transition-colors duration-200 after:absolute after:-inset-[7px] after:content-[''] hover:border-accent hover:text-accent";
+
+/**
+ * The theme as a mark rather than a word. "Theme: dark" in Tamil is wider than
+ * a 375 px row leaves beside the logo and the language, so the chip was cut on
+ * every page. The mark shows the theme you are in, a moon or a sun, and the
+ * whole sentence the laptop chip says is still the name a screen reader hears
+ * and the title a long press shows.
+ *
+ * Two buttons, as in ThemeToggle, so the class next-themes sets on the html tag
+ * picks the right one in the first painted frame.
+ */
+function PhoneThemeSquare() {
+  const t = useTranslations("header");
+  const { setTheme } = useTheme();
+
+  return (
+    <>
+      <button
+        type="button"
+        title={t("themeDarkAction")}
+        aria-label={t("themeDarkAction")}
+        onClick={() => setTheme("light")}
+        className={`hidden dark:grid ${SQUARE}`}
+      >
+        <ThemeMark name="moon" />
+      </button>
+      <button
+        type="button"
+        title={t("themeLightAction")}
+        aria-label={t("themeLightAction")}
+        onClick={() => setTheme("dark")}
+        className={`grid dark:hidden ${SQUARE}`}
+      >
+        <ThemeMark name="sun" />
+      </button>
+    </>
+  );
+}
+
+/** Drawn with the tab marks' pen: one weight of line, square ends, the seal's filled square at the heart of the sun. */
+function ThemeMark({ name }: { name: "sun" | "moon" }) {
+  return (
+    <svg
+      aria-hidden
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      shapeRendering="geometricPrecision"
+    >
+      {name === "sun" ? (
+        <>
+          <rect x="8.5" y="8.5" width="7" height="7" fill="currentColor" stroke="none" />
+          <line x1="12" y1="2.5" x2="12" y2="5" />
+          <line x1="12" y1="19" x2="12" y2="21.5" />
+          <line x1="2.5" y1="12" x2="5" y2="12" />
+          <line x1="19" y1="12" x2="21.5" y2="12" />
+          <line x1="5.3" y1="5.3" x2="6.8" y2="6.8" />
+          <line x1="17.2" y1="17.2" x2="18.7" y2="18.7" />
+          <line x1="5.3" y1="18.7" x2="6.8" y2="17.2" />
+          <line x1="17.2" y1="6.8" x2="18.7" y2="5.3" />
+        </>
+      ) : (
+        <path d="M19.5 14.6A8 8 0 1 1 9.4 4.5a6.4 6.4 0 0 0 10.1 10.1Z" />
+      )}
+    </svg>
   );
 }

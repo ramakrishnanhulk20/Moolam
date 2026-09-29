@@ -249,7 +249,7 @@ function Sentence({
   const format = useFormatter();
 
   const when = (at?: number): string =>
-    at === undefined || at === 0 ? "" : format.dateTime(new Date(at), { dateStyle: "medium", timeStyle: "short" });
+    at === undefined || at === 0 ? "" : format.dateTime(new Date(at), "moment");
 
   const body = ((): React.ReactNode => {
     switch (state.kind) {

@@ -789,7 +789,7 @@ function Generated({
         <p className="mt-6 font-mono text-[11px] text-text-faint">
           {state.registeredAt === null
             ? ""
-            : format.dateTime(new Date(state.registeredAt), { dateStyle: "medium", timeStyle: "short" })}
+            : format.dateTime(new Date(state.registeredAt), "moment")}
         </p>
       </div>
     </motion.section>
@@ -811,8 +811,11 @@ function Row({ label, value, mono = false }: { label: string; value: string; mon
  * Everything dated on this site is a chain fact and is shown in UTC so the
  * server and the browser agree. This one is neither: it is a promise about the
  * reader's day, and it only ever renders after an answer has come back in the
- * browser, so there is no server markup for it to disagree with.
+ * browser, so there is no server markup for it to disagree with. It names
+ * the zone like every other time here, so the two clocks never look alike.
  */
 function localTime(unixSeconds: number, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(new Date(unixSeconds * 1000));
+  return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZoneName: "short" }).format(
+    new Date(unixSeconds * 1000),
+  );
 }

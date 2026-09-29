@@ -137,10 +137,7 @@ export async function Attestations({
                     txHash={txHash}
                     delivery={delivery}
                     privateCopy={privateCopy}
-                    when={format.dateTime(new Date(Number(attestation.at) * 1000), {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    when={format.dateTime(new Date(Number(attestation.at) * 1000), "moment")}
                   />
                 ))}
               </ul>

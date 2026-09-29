@@ -88,10 +88,7 @@ export function YourPassports({ passports, heading }: { passports: CreatorPasspo
                   <p className="mt-2 font-mono text-[11px] text-text-faint">{shortHex(passport.id, 10, 8)}</p>
                   <p className="mt-1 font-mono text-[11px] text-text-faint">
                     {kinds(String(passport.kind))} <span className="mx-1">/</span>
-                    {format.dateTime(new Date(Number(passport.registeredAt) * 1000), {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    {format.dateTime(new Date(Number(passport.registeredAt) * 1000), "moment")}
                   </p>
                 </div>
               </Link>

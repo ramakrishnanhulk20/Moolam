@@ -153,10 +153,7 @@ export function ConsentSection({
                   />
                   <Field
                     label={t("writtenLabel")}
-                    value={format.dateTime(new Date(Number(entry.at) * 1000), {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    value={format.dateTime(new Date(Number(entry.at) * 1000), "moment")}
                   />
                 </dl>
               </>

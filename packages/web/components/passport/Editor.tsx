@@ -374,7 +374,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
         <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
           {t("allowance", { used: state.quota.used, limit: state.quota.limit })}{" "}
           {t("done.resets", {
-            at: format.dateTime(new Date(state.quota.resetsAt * 1000), { timeStyle: "short" }),
+            at: format.dateTime(new Date(state.quota.resetsAt * 1000), "time"),
           })}
         </p>
       )}
@@ -515,7 +515,7 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
         {t(`failure.${failure.key}`, {
           used: quota?.used ?? 0,
           limit: quota?.limit ?? 0,
-          at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), { timeStyle: "short" }),
+          at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), "time"),
         })}
       </p>
       {failure.reason === undefined ? null : (

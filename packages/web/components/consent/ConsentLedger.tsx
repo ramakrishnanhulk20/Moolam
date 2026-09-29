@@ -206,10 +206,7 @@ export function ConsentLedger({
               <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
                 {shown.stated && shown.entry !== null
                   ? t("writtenOn", {
-                      when: format.dateTime(new Date(shown.entry.at * 1000), {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      }),
+                      when: format.dateTime(new Date(shown.entry.at * 1000), "moment"),
                     })
                   : t("nothingBy")}
               </span>

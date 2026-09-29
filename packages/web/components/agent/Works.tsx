@@ -94,10 +94,7 @@ export async function Works({
                   </p>
                   <p className="mt-1 font-mono text-[11px] text-text-faint">
                     {kinds(String(work.kind))} <span className="mx-1">/</span>
-                    {format.dateTime(new Date(Number(work.registeredAt) * 1000), {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    {format.dateTime(new Date(Number(work.registeredAt) * 1000), "moment")}
                   </p>
                 </div>
               </Link>

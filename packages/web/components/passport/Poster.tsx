@@ -166,10 +166,7 @@ export async function Poster({
             <span>{kinds(String(passport.kind))}</span>
             <span>
               {t("registered")}{" "}
-              {format.dateTime(new Date(Number(passport.registeredAt) * 1000), {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
+              {format.dateTime(new Date(Number(passport.registeredAt) * 1000), "moment")}
             </span>
             <span>{t("fingerprintVersion", { version: passport.fingerprintVersion })}</span>
             {/* Where the sealed line stood. This passport was registered with

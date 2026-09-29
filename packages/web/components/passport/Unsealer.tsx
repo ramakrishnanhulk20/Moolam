@@ -263,7 +263,7 @@ function Published({
 
       <p className="mt-6 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("done.body")}</p>
       <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
-        {t("done.at", { when: format.dateTime(new Date(result.unsealedAt), { dateStyle: "medium", timeStyle: "short" }) })}
+        {t("done.at", { when: format.dateTime(new Date(result.unsealedAt), "moment") })}
       </p>
 
       <dl className="mt-6 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-2">
@@ -353,7 +353,7 @@ function FailureLine({ failure, unseal }: { failure: UnsealFailure; unseal: Pass
         {t(`failure.${failure.key}`, {
           used: quota?.used ?? 0,
           limit: quota?.limit ?? 0,
-          at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), { timeStyle: "short" }),
+          at: quota == null ? "" : format.dateTime(new Date(quota.resetsAt * 1000), "time"),
         })}
       </p>
       {failure.reason === undefined ? null : (

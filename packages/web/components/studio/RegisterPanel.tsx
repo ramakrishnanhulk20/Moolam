@@ -596,7 +596,7 @@ function Registered({
             value={
               state.registeredAt === null
                 ? ""
-                : format.dateTime(new Date(state.registeredAt), { dateStyle: "medium", timeStyle: "short" })
+                : format.dateTime(new Date(state.registeredAt), "moment")
             }
           />
           <Row label={t("register.fee")} value={state.unsponsored ? t("register.feeOwn") : t("register.feeSponsored")} />

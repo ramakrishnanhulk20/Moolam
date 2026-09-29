@@ -123,7 +123,7 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
           this holder cannot press it right now. */}
       <p className="mt-4 max-w-[54ch] text-xs leading-relaxed text-text-faint">
         {locked && consent.opensAt !== null
-          ? t("locked", { at: format.dateTime(new Date(consent.opensAt * 1000), { timeStyle: "short" }) })
+          ? t("locked", { at: format.dateTime(new Date(consent.opensAt * 1000), "time") })
           : problem === "conditionsRequired"
             ? t("needsConditions")
             : unchanged
@@ -144,7 +144,7 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
               when:
                 state.at === null
                   ? ""
-                  : format.dateTime(new Date(state.at * 1000), { dateStyle: "medium", timeStyle: "short" }),
+                  : format.dateTime(new Date(state.at * 1000), "moment"),
             })}
           </p>
           {state.hash === undefined ? null : (
@@ -197,7 +197,7 @@ function Failure({ consent }: { consent: SetConsent }) {
     >
       <p className={`max-w-[54ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
         {t(`failure.${key}`, {
-          at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1000), { timeStyle: "short" }),
+          at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1000), "time"),
         })}
       </p>
       {failure.reason === undefined ? null : (
