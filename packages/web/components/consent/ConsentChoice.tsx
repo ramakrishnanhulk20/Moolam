@@ -18,6 +18,7 @@ import {
   type ConsentDraft,
 } from "./draft";
 import { USE_TONES } from "./tones";
+import { WarningMark } from "@/components/WarningMark";
 
 /** The order the four values are offered in: the two plain answers first, then the two careful ones. */
 const VALUES: Use[] = ["allowed", "notAllowed", "constrained", "unspecified"];
@@ -221,7 +222,8 @@ export function ConsentChoice({
               </div>
 
               {unprintable === null ? null : (
-                <p className="mt-3 max-w-[52ch] text-xs leading-relaxed text-failed">
+                <p className="mt-3 flex max-w-[52ch] items-start gap-2 text-xs leading-relaxed text-failed">
+                  <WarningMark className="mt-[1px]" />
                   {t("control.notPrintable", { at: unprintable + 1 })}
                 </p>
               )}

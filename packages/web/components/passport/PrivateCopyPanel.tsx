@@ -10,6 +10,7 @@ import { useRouter } from "@/lib/i18n/routing";
 import { ownsPassport } from "@/lib/passport/owner";
 import { refreshPassport } from "@/lib/passport/refresh";
 import { VerifierError, forgetPrivateCopy, type SealedCopyLookup } from "@/lib/verifier/client";
+import { WarningMark } from "@/components/WarningMark";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -309,7 +310,7 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
             transition={{ duration: 0.3, ease: EASE }}
             className="mt-5"
           >
-            <p className="max-w-[52ch] border-s-2 border-accent/60 ps-4 text-sm leading-relaxed text-text">
+            <p className="max-w-[52ch] border-s-2 border-failed/60 ps-4 text-sm leading-relaxed text-text">
               {t("confirm")}
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-4">
@@ -317,7 +318,8 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
                 type="button"
                 onClick={actions.forget}
                 disabled={sending}
-                className="rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
+                data-confirm-delete
+                className="rounded-[8px] bg-failed px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-bg transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-50"
               >
                 {t("confirmDelete")}
               </button>
@@ -334,9 +336,9 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
             {sending ? (
               <p
                 role="status"
-                className="mt-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-accent"
+                className="mt-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending"
               >
-                <span aria-hidden className={`inline-block h-2 w-2 bg-accent ${calm ? "" : "animate-pulse"}`} />
+                <span aria-hidden className={`inline-block h-2 w-2 bg-pending ${calm ? "" : "animate-pulse"}`} />
                 {t("sending")}
               </p>
             ) : null}
@@ -362,7 +364,10 @@ function FailureLine({ failure, signIn }: { failure: PrivateCopyFailure; signIn:
       data-failure={failure.key}
       className="mt-6 border-s-2 border-failed bg-failed/5 py-3 ps-4"
     >
-      <p className="max-w-[52ch] text-sm leading-relaxed text-failed">{t(`failure.${failure.key}`)}</p>
+      <p className="flex max-w-[52ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
+        <WarningMark className="mt-[3px]" />
+        {t(`failure.${failure.key}`)}
+      </p>
       {failure.reason === undefined ? null : (
         <p className="mt-2 max-w-[52ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
           {failure.reason}

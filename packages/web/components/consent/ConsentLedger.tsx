@@ -19,6 +19,20 @@ import {
   type LedgerEntry,
 } from "./ledger";
 import { SUMMARY_TONES } from "./tones";
+import { WarningMark } from "@/components/WarningMark";
+
+/**
+ * The range input is the real control, so it keeps the site's focus ring. Only
+ * its own thumb and track are made invisible, because the rule and the thumb
+ * are drawn by hand underneath it. Hiding the whole input with opacity hid the
+ * ring with it.
+ */
+export const HIDDEN_THUMB = [
+  "[&::-webkit-slider-runnable-track]:bg-transparent",
+  "[&::-webkit-slider-thumb]:h-11 [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:opacity-0",
+  "[&::-moz-range-track]:bg-transparent [&::-moz-range-progress]:bg-transparent",
+  "[&::-moz-range-thumb]:h-11 [&::-moz-range-thumb]:w-6 [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:opacity-0",
+].join(" ");
 
 /** How long one reading of the browser's clock is kept still, in seconds. */
 const CLOCK_HELD = 60;
@@ -170,6 +184,9 @@ export function ConsentLedger({
   const tone = SUMMARY_TONES[summary];
   const live = segmentAt(segments, asked);
   const askedDay = format.dateTime(new Date(shownAt * 1000), { dateStyle: "medium" });
+  // The day under the thumb, which a screen reader hears as it moves, before
+  // the chain has answered for it.
+  const thumbDay = format.dateTime(new Date(asked * 1000), { dateStyle: "medium" });
 
   return (
     <div className={className}>
@@ -214,13 +231,7 @@ export function ConsentLedger({
             <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t(`line.${summary}`)}</p>
           </motion.div>
 
-          <p className="mt-5 h-4 font-mono text-[10px] uppercase tracking-[0.2em]">
-            {failed !== null ? (
-              <span className="text-failed">{t("askFailed")}</span>
-            ) : asking ? (
-              <span className="text-text-faint">{t("asking")}</span>
-            ) : null}
-          </p>
+          <DayAnswerLine state={failed !== null ? "failed" : asking ? "asking" : null} />
         </div>
 
         {/* The four marks land with the answer they belong to rather than
@@ -306,8 +317,8 @@ export function ConsentLedger({
           value={onDay}
           onChange={(event) => setDay(Number(event.target.value))}
           aria-label={t("dayLabel")}
-          aria-valuetext={askedDay}
-          className="peer absolute inset-x-0 top-1/2 h-11 w-full -translate-y-1/2 cursor-ew-resize appearance-none bg-transparent opacity-0"
+          aria-valuetext={thumbDay}
+          className={`peer absolute inset-x-0 top-1/2 h-11 w-full -translate-y-1/2 cursor-ew-resize appearance-none bg-transparent ${HIDDEN_THUMB}`}
         />
 
         <span
@@ -323,6 +334,35 @@ export function ConsentLedger({
           <span className="shrink-0">{t("today")}</span>
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The line under the statement while a day is asked, and when it could not be.
+ *
+ * The wait is one mono word and keeps the row's height. The failure is two
+ * sentences with a next step in it, so it is set in the reading face at a size
+ * that can be read and the row grows to hold it in every language, rather
+ * than spilling out of a row cut for one word.
+ */
+export function DayAnswerLine({ state }: { state: "failed" | "asking" | null }) {
+  const t = useTranslations("passport.consent");
+
+  return (
+    <div className="mt-5 min-h-4">
+      {state === "failed" ? (
+        <p
+          role="alert"
+          data-day-failed
+          className="flex max-w-[46ch] items-start gap-2.5 text-sm leading-relaxed text-failed"
+        >
+          <WarningMark className="mt-[3px]" />
+          {t("askFailed")}
+        </p>
+      ) : state === "asking" ? (
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("asking")}</p>
+      ) : null}
     </div>
   );
 }

@@ -5,17 +5,19 @@ import { useTranslations } from "next-intl";
 import { useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { readAnswer, percent, verifyProblem, type Answer, type Problem } from "@/components/verify/answer";
+import type { MatchedPassport } from "@/components/verify/lookup";
 import { StaleIndex } from "@/components/verify/StaleIndex";
 import { checkImage, type RefusalCode } from "@/lib/upload/checkImage";
 import { Link } from "@/lib/i18n/routing";
 import { shortHex } from "@/lib/chain/client";
 import { verify } from "@/lib/verifier/client";
+import { WarningMark } from "@/components/WarningMark";
 
 type State =
   | { kind: "idle" }
   | { kind: "checking"; name: string }
-  | { kind: "answer"; answer: Answer; name: string }
-  | { kind: "problem"; problem: Problem };
+  | { kind: "answer"; answer: Answer; name: string; other?: MatchedPassport | null }
+  | { kind: "problem"; problem: Problem; file?: File };
 
 /**
  * Drop a copy and find out whether it is this picture.
@@ -39,11 +41,29 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
     }
 
     setState({ kind: "checking", name: file.name });
+    let answer: Answer;
     try {
-      setState({ kind: "answer", answer: readAnswer(await verify({ file })), name: file.name });
+      answer = readAnswer(await verify({ file }));
     } catch (error) {
-      setState({ kind: "problem", problem: verifyProblem(error) });
+      // The file is kept, so Try again sends the same copy rather than asking for it twice.
+      setState({ kind: "problem", problem: verifyProblem(error), file });
+      return;
     }
+    setState({ kind: "answer", answer, name: file.name });
+
+    if (answer.kind === "miss" || answer.id.toLowerCase() === passportId.toLowerCase()) {
+      return;
+    }
+    // A copy of another passport is named by that passport's title. The verdict
+    // stands without it, so a lookup that fails leaves the link on its id.
+    const { matchedPassport } = await import("@/components/verify/lookup");
+    const other = await matchedPassport(answer.id).catch(() => null);
+    // Only onto the answer it was asked for: a newer drop has moved on from it.
+    setState((current) => (current.kind === "answer" && current.answer === answer ? { ...current, other } : current));
+  }
+
+  function againFor(file: File | undefined): (() => void) | undefined {
+    return file === undefined ? undefined : () => void check(file);
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -108,21 +128,14 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
             {state.kind === "idle" ? (
               <p className="max-w-[44ch] text-sm leading-relaxed text-text-faint">{t("hint")}</p>
             ) : state.kind === "checking" ? (
-              <p className="flex items-center gap-3 font-mono text-[12px] uppercase tracking-[0.16em] text-accent">
-                <span className="inline-block h-2 w-2 animate-pulse bg-accent" />
+              <p role="status" className="flex items-center gap-3 font-mono text-[12px] uppercase tracking-[0.16em] text-pending">
+                <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
                 {t("checking")}
               </p>
             ) : state.kind === "problem" ? (
-              <div>
-                <p className="max-w-[46ch] text-sm leading-relaxed text-failed">{t(sentenceFor(state.problem))}</p>
-                {state.problem.reason === undefined ? null : (
-                  <p className="mt-2 max-w-[46ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
-                    {state.problem.reason}
-                  </p>
-                )}
-              </div>
+              <ProblemLine problem={state.problem} again={againFor(state.file)} />
             ) : (
-              <Verdict answer={state.answer} name={state.name} passportId={passportId} />
+              <Verdict answer={state.answer} name={state.name} passportId={passportId} other={state.other} />
             )}
           </motion.div>
         </AnimatePresence>
@@ -152,22 +165,87 @@ export function copyRefusal(file: File): Problem | null {
 }
 
 /**
- * Which sentence a problem takes. The two the browser catches have their own
- * words; anything the verifier raises keeps the general line with the service's
- * own message under it, since this panel has no advice for those.
+ * Which sentence a problem takes. The ones the browser catches have their own
+ * words; anything the verifier raises gets the general line, whose next steps
+ * are Try again and the Verify page, with the service's own message folded
+ * under Details.
  */
 export function sentenceFor(problem: Problem): string {
   return Object.values(REFUSALS).includes(problem.key) ? problem.key : "failed";
 }
 
-function Verdict({ answer, name, passportId }: { answer: Answer; name: string; passportId: Hex }) {
+/**
+ * A check that did not run: the sentence, the two ways on, and the service's own
+ * words folded under Details for anyone reporting it. A file this panel refused
+ * itself has nothing to try again, only a different file to choose.
+ */
+export function ProblemLine({ problem, again }: { problem: Problem; again?: () => void }) {
+  const t = useTranslations("passport.check");
+  const common = useTranslations("common");
+  const back = useTranslations("notFound");
+  const sentence = sentenceFor(problem);
+  const serviceFailed = sentence === "failed";
+
+  return (
+    <div role="alert" data-check-failed={sentence}>
+      <p className="flex max-w-[46ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
+        <WarningMark className="mt-[3px]" />
+        {t(sentence)}
+      </p>
+      {serviceFailed ? (
+        <div className="ms-[23px] mt-4 flex flex-wrap items-center gap-3">
+          {again === undefined ? null : (
+            <button
+              type="button"
+              onClick={again}
+              className="rounded-[8px] border border-line-strong px-4 py-2 text-[11px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+            >
+              {common("tryAgain")}
+            </button>
+          )}
+          <Link
+            href="/verify"
+            className="rounded-[8px] border border-line px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+          >
+            {back("verify")}
+          </Link>
+        </div>
+      ) : null}
+      {problem.reason === undefined ? null : (
+        <details className="group ms-[23px] mt-4 max-w-[46ch]">
+          <summary className="tap cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint transition-colors duration-200 hover:text-accent [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="me-2 inline-block transition-transform duration-200 group-open:rotate-90">
+              &rsaquo;
+            </span>
+            {common("details")}
+          </summary>
+          <p className="mt-2 break-words font-mono text-[11px] leading-relaxed text-text-faint">{problem.reason}</p>
+        </details>
+      )}
+    </div>
+  );
+}
+
+export function Verdict({
+  answer,
+  name,
+  passportId,
+  other,
+}: {
+  answer: Answer;
+  name: string;
+  passportId: Hex;
+  /** The other passport's own record, once read. Undefined while it is asked, null when it could not be. */
+  other?: MatchedPassport | null;
+}) {
   const t = useTranslations("passport.check");
   const v = useTranslations("verify");
 
   if (answer.kind === "miss") {
     return (
       <div>
-        <p className="font-display text-[clamp(1.3rem,2.4vw,1.8rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-failed">
+        <p className="flex items-start gap-3 font-display text-[clamp(1.3rem,2.4vw,1.8rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-failed">
+          <WarningMark className="mt-[0.3em]" />
           {t("none")}
         </p>
         <StaleIndex minutes={answer.staleMinutes} />
@@ -181,8 +259,9 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
   return (
     <div>
       <p
-        className={`font-display text-[clamp(1.3rem,2.4vw,1.8rem)] font-semibold leading-[1.05] tracking-[-0.03em] ${same ? "text-verified" : "text-failed"}`}
+        className={`flex items-start gap-3 font-display text-[clamp(1.3rem,2.4vw,1.8rem)] font-semibold leading-[1.05] tracking-[-0.03em] ${same ? "text-verified" : "text-failed"}`}
       >
+        {same ? null : <WarningMark className="mt-[0.3em]" />}
         {same ? (answer.kind === "exact" ? t("sameExact") : t("same")) : t("different")}
       </p>
       <StaleIndex minutes={answer.staleMinutes} />
@@ -209,9 +288,21 @@ function Verdict({ answer, name, passportId }: { answer: Answer; name: string; p
       {same ? null : (
         <Link
           href={`/passport/${answer.id}`}
-          className="mt-5 inline-block break-all font-mono text-[12px] text-text-muted underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
+          data-open-other
+          className="group mt-6 flex max-w-[46ch] flex-col gap-1.5 border-s-2 border-line ps-4 transition-colors duration-200 hover:border-accent"
         >
-          {shortHex(answer.id, 10, 8)}
+          <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-text transition-colors duration-200 group-hover:text-accent">
+            {t("openOther")}
+            <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-0.5 rtl:-scale-x-100">
+              &rarr;
+            </span>
+          </span>
+          {other?.title === undefined ? null : (
+            <span className="truncate font-display text-lg font-semibold leading-tight tracking-[-0.02em]">
+              {other.title}
+            </span>
+          )}
+          <span className="break-all font-mono text-[11px] text-text-faint">{shortHex(answer.id, 10, 8)}</span>
         </Link>
       )}
 

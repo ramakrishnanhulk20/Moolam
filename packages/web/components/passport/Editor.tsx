@@ -21,6 +21,7 @@ import {
 import { refreshPassport } from "@/lib/passport/refresh";
 import { useEditPassport, type PassportEdit } from "@/lib/passport/useEditPassport";
 import { Mono } from "./Mono";
+import { WarningMark } from "@/components/WarningMark";
 
 /**
  * The owner's panel itself, in a file of its own so that nothing on a passport page reaches the
@@ -110,8 +111,8 @@ function AskForSigner({ edit }: { edit: PassportEdit }) {
       </button>
 
       {edit.granting ? (
-        <p className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
-          <span className="inline-block h-2 w-2 animate-pulse bg-accent" />
+        <p role="status" className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending">
+          <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
           {t("signer.granting")}
         </p>
       ) : null}
@@ -413,17 +414,17 @@ function Recorded({ edit }: { edit: PassportEdit }) {
 /** What a row is painted as, which is not always what the reducer stored. */
 type Tone = StepState | "pending";
 
-const NUMBER_TONE: Record<Tone, string> = {
+export const NUMBER_TONE: Record<Tone, string> = {
   waiting: "text-text-faint",
-  running: "text-accent",
-  done: "text-accent",
+  running: "text-pending",
+  done: "text-verified",
   failed: "text-failed",
   pending: "text-text-muted",
 };
 
-const MARKER_TONE: Record<Tone, string> = {
+export const MARKER_TONE: Record<Tone, string> = {
   waiting: "bg-line-strong",
-  running: "animate-pulse bg-accent",
+  running: "motion-safe:animate-pulse bg-pending",
   done: "bg-verified",
   failed: "bg-failed",
   pending: "border border-text-muted bg-transparent",
@@ -511,7 +512,8 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
       data-tone={pending ? "pending" : "failed"}
       className={`border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
-      <p className={`max-w-[50ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+      <p className={`flex max-w-[50ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {pending ? null : <WarningMark className="mt-[3px]" />}
         {t(`failure.${failure.key}`, {
           used: quota?.used ?? 0,
           limit: quota?.limit ?? 0,

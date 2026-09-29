@@ -7,6 +7,7 @@ import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { NOTHING_STATED } from "@/lib/chain/consent";
 import { ConsentChoice } from "@/components/consent/ConsentChoice";
+import { WarningMark } from "@/components/WarningMark";
 import type { LedgerAnswer } from "@/components/consent/ledger";
 import { draftProblem, sameAsStanding, type ConsentDraft } from "@/components/consent/draft";
 import { useSetConsent, type SetConsent } from "@/lib/consent/useSetConsent";
@@ -112,8 +113,8 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
         </button>
 
         {consent.busy ? (
-          <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
-            <span aria-hidden className="inline-block h-2 w-2 animate-pulse bg-accent" />
+          <p role="status" className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending">
+            <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
             {t(`steps.${state.step === "done" ? "confirming" : state.step}`)}
           </p>
         ) : null}
@@ -195,7 +196,8 @@ function Failure({ consent }: { consent: SetConsent }) {
       data-tone={pending ? "pending" : "failed"}
       className={`mt-7 border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/10"}`}
     >
-      <p className={`max-w-[54ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+      <p className={`flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {pending ? null : <WarningMark className="mt-[3px]" />}
         {t(`failure.${key}`, {
           at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1000), "time"),
         })}

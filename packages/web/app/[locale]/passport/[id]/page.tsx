@@ -13,6 +13,7 @@ import { DisputeNote } from "@/components/passport/DisputeNote";
 import { DisputePanel } from "@/components/passport/DisputePanel";
 import { EditPanel } from "@/components/passport/EditPanel";
 import { Facts } from "@/components/passport/Facts";
+import { familyOf } from "@/components/passport/family";
 import { heldIndexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
@@ -21,6 +22,7 @@ import { Poster } from "@/components/passport/Poster";
 import { ANCHOR_MARGIN, FACT_ANCHORS } from "@/components/passport/top-facts";
 import { TopFacts } from "@/components/passport/TopFacts";
 import { PrivateCopyPanel } from "@/components/passport/PrivateCopyPanel";
+import { ReadFailed } from "@/components/passport/ReadFailed";
 import { UnsealPanel } from "@/components/passport/UnsealPanel";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { HOLD_SECONDS, reason } from "@/lib/chain/client";
@@ -146,7 +148,18 @@ export default async function PassportPage({ params }: { params: Promise<{ local
     // build leaves the page to be drawn on the request, and a refresh keeps the
     // last good page it already has and tries the chain again on the next one.
     await connection();
-    return <Notice text={t("error", { reason: reason(error) })} tone="failed" />;
+    const common = await getTranslations("common");
+    const back = await getTranslations("notFound");
+    return (
+      <ReadFailed
+        sentence={t("error")}
+        retry={common("tryAgain")}
+        explore={back("explore")}
+        exploreHref={`/${locale}/explore`}
+        details={common("details")}
+        reason={reason(error)}
+      />
+    );
   }
 
   const { passport, attestations, edits, owner, dispute, hasPasskey } = record;
@@ -157,7 +170,7 @@ export default async function PassportPage({ params }: { params: Promise<{ local
   // The picture, the transaction links and the lineage's standing are the three
   // things this page can do without, so none of them is allowed to fail the
   // render.
-  const [art, indexed, registration, ancestorDisputed, consent] = await Promise.all([
+  const [art, indexed, registration, ancestorDisputed, consent, family] = await Promise.all([
     // A sealed document keeps saying sealed for ever, because the chain points
     // at it and it cannot be rewritten. The record pinned beside it is what
     // says the holder has published the picture since, so every screen below
@@ -167,6 +180,9 @@ export default async function PassportPage({ params }: { params: Promise<{ local
     registrationOf(passport.id),
     ancestorsDisputed(passport.parentId),
     consentOf(passport.id),
+    // Names and small pictures for the lineage. A relative that cannot be read
+    // is drawn by its id, so this never fails the page either.
+    familyOf(passport.parentId === ZERO_ID ? edits : [passport.parentId, ...edits]).catch(() => ({})),
   ]);
   const standing = standingOf({ disputed: passport.disputed, inherited: ancestorDisputed, attestations });
   // Asked only of a sealed document that asked for the private re-check, so
@@ -233,7 +249,7 @@ export default async function PassportPage({ params }: { params: Promise<{ local
 
             <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
               <div className="rise">
-                <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
+                <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} family={family} />
                 {/* Only the wallet that holds a still sealed passport sees this one. */}
                 <UnsealPanel passportId={passport.id} owner={owner} sealed={art.sealed === true} />
                 {/* Only the holder, and only while Moolam keeps the private copy. */}
@@ -357,18 +373,4 @@ async function registrationOf(id: Hex): Promise<Hex | null> {
   } catch {
     return null;
   }
-}
-
-function Notice({ text, tone }: { text: string; tone?: "failed" }) {
-  return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 py-24 sm:px-8">
-      <p
-        className={
-          tone === "failed" ? "rise max-w-[52ch] text-base text-failed" : "rise max-w-[52ch] text-base text-text-muted"
-        }
-      >
-        {text}
-      </p>
-    </div>
-  );
 }

@@ -9,6 +9,7 @@ import type { SealedCopyLookup } from "@/lib/verifier/client";
 import { transactionFor, type IndexedAttestation } from "./indexed";
 import { attestationSource } from "./labels";
 import { RecheckRequest } from "./RecheckRequest";
+import { WarningMark } from "@/components/WarningMark";
 
 /** What getTranslations hands back, so a row can be given one rather than await its own. */
 type Translate = Awaited<ReturnType<typeof getTranslations>>;
@@ -210,7 +211,7 @@ function Row({
     <li className="bg-bg p-6 sm:p-8">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <p className={`flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] ${attestation.matched ? "text-verified" : "text-failed"}`}>
-          <span aria-hidden className={`h-2 w-2 ${attestation.matched ? "bg-verified" : "bg-failed"}`} />
+          {attestation.matched ? <span aria-hidden className="h-2 w-2 bg-verified" /> : <WarningMark />}
           {attestation.matched ? t("matched") : t("notMatched")}
         </p>
         {isPrivate ? (

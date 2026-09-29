@@ -19,6 +19,7 @@ import type { UnsealResponse } from "@/lib/verifier/client";
 import { Mono } from "./Mono";
 import { Picture } from "./Picture";
 import type { PublishedVisit } from "./UnsealPanel";
+import { WarningMark } from "@/components/WarningMark";
 
 /**
  * Publishing the picture, in a file of its own so that nothing on a passport
@@ -308,9 +309,9 @@ function Line({ tone, text }: { tone: "running"; text: string }) {
       transition={{ duration: 0.3 }}
       role="status"
       data-tone={tone}
-      className="mt-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-accent"
+      className="mt-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending"
     >
-      <span aria-hidden className="inline-block h-2 w-2 animate-pulse bg-accent" />
+      <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
       {text}
     </motion.p>
   );
@@ -349,7 +350,8 @@ function FailureLine({ failure, unseal }: { failure: UnsealFailure; unseal: Pass
       data-tone={settled ? "settled" : "failed"}
       className={`border-s-2 py-3 ps-4 ${settled ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
-      <p className={`max-w-[52ch] text-sm leading-relaxed ${settled ? "text-text-muted" : "text-failed"}`}>
+      <p className={`flex max-w-[52ch] items-start gap-2.5 text-sm leading-relaxed ${settled ? "text-text-muted" : "text-failed"}`}>
+        {settled ? null : <WarningMark className="mt-[3px]" />}
         {t(`failure.${failure.key}`, {
           used: quota?.used ?? 0,
           limit: quota?.limit ?? 0,

@@ -192,7 +192,8 @@ describe("the credit line under the title", () => {
     const line = markup.slice(markup.indexOf("data-meta-line"));
     expect(line).not.toMatch(/<span aria-hidden="true" class="h-\[10px\] w-px/);
     expect(line).toContain(en.kind["0"]);
-    expect(line).toContain(en.passport.fingerprintVersion.replace("{version}", "1"));
+    // The method moved to the record's fingerprints (R53), so the credit line no longer carries it.
+    expect(line).not.toContain(en.passport.fingerprintVersion.replace("{version}", "1"));
   });
 });
 

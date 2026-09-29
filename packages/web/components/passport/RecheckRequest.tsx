@@ -9,6 +9,7 @@ import { useRouter } from "@/lib/i18n/routing";
 import { refreshPassport } from "@/lib/passport/refresh";
 import { idleRecheck, type RecheckState } from "@/lib/recheck/state";
 import { useRecheckRequest, type RecheckControl } from "@/lib/recheck/useRecheck";
+import { WarningMark } from "@/components/WarningMark";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const EASE = [0.16, 1, 0.3, 1] as const;
@@ -224,10 +225,14 @@ function Stamp({ state, calm }: { state: RecheckState; calm: boolean }) {
 
   return (
     <p className={`flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.22em] ${stamp.tone}`}>
-      <span
-        aria-hidden
-        className={`h-[7px] w-[7px] ${stamp.mark} ${stamp.moving && !calm ? "animate-pulse" : ""}`}
-      />
+      {stamp.tone === "text-failed" ? (
+        <WarningMark className="h-[11px] w-[11px]" />
+      ) : (
+        <span
+          aria-hidden
+          className={`h-[7px] w-[7px] ${stamp.mark} ${stamp.moving && !calm ? "animate-pulse" : ""}`}
+        />
+      )}
       {t(stamp.key)}
     </p>
   );
@@ -317,7 +322,10 @@ function Sentence({
       transition={{ duration: 0.28, ease: EASE }}
       role="status"
     >
-      <p className={`text-sm leading-relaxed ${tone}`}>{body}</p>
+      <p className={`text-sm leading-relaxed ${tone} ${tone === "text-failed" ? "flex items-start gap-2.5" : ""}`}>
+        {tone === "text-failed" ? <WarningMark className="mt-[3px]" /> : null}
+        {tone === "text-failed" ? <span>{body}</span> : body}
+      </p>
 
       {/* Said only when the control has given up watching, so a reader who left
           the tab open for an afternoon knows why nothing is moving. */}
@@ -354,18 +362,18 @@ function pressFor(recheck: RecheckControl): { label: string; act: () => void; bu
   return null;
 }
 
-function stampFor(state: RecheckState): { key: string; tone: string; mark: string; moving: boolean } | null {
+export function stampFor(state: RecheckState): { key: string; tone: string; mark: string; moving: boolean } | null {
   switch (state.kind) {
     case "none":
       return null;
     case "sending":
-      return { key: "stamp.sending", tone: "text-accent", mark: "bg-accent", moving: true };
+      return { key: "stamp.sending", tone: "text-pending", mark: "bg-pending", moving: true };
     case "queued":
-      return { key: "stamp.queued", tone: "text-accent", mark: "motif", moving: false };
+      return { key: "stamp.queued", tone: "text-pending", mark: "border border-pending", moving: false };
     case "running":
-      return { key: "stamp.running", tone: "text-accent", mark: "bg-accent", moving: true };
+      return { key: "stamp.running", tone: "text-pending", mark: "bg-pending", moving: true };
     case "confirming":
-      return { key: "stamp.pending", tone: "text-accent", mark: "bg-accent", moving: true };
+      return { key: "stamp.pending", tone: "text-pending", mark: "bg-pending", moving: true };
     case "done":
       return { key: "stamp.done", tone: "text-verified", mark: "bg-verified", moving: false };
     case "failed":

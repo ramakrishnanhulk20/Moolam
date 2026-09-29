@@ -4,6 +4,7 @@ import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import type { ConsentEntry, ConsentReading } from "@/lib/chain/consent";
 import { NOTHING_STATED, constrainedUses } from "@/lib/chain/consent";
 import { ConsentPanel } from "@/components/passport/ConsentPanel";
+import { OwnerHint } from "@/components/passport/OwnerHint";
 import { ConsentHistory } from "./History";
 import { ConsentLedger } from "./ConsentLedger";
 import { ledgerEntry } from "./ledger";
@@ -177,6 +178,8 @@ export function ConsentSection({
           standing={{ stated: reading.stated, entry: entry === null ? null : ledgerEntry(entry) }}
           minInterval={minInterval}
         />
+        {/* The same place, for the reader the panel cannot see yet: signed out. */}
+        <OwnerHint owner={owner} />
       </div>
     </section>
   );

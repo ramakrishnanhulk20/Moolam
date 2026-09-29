@@ -17,6 +17,7 @@ import {
 } from "@/lib/disputes/flag";
 import { useFlagPassport, type FlagPassport } from "@/lib/disputes/useFlagPassport";
 import { refreshPassport } from "@/lib/passport/refresh";
+import { WarningMark } from "@/components/WarningMark";
 
 /**
  * The challenge panel itself, in a file of its own so that nothing on a passport page reaches the
@@ -190,8 +191,8 @@ function Recorded({ flag }: { flag: FlagPassport }) {
 
   return (
     <div>
-      <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-failed">
-        <span aria-hidden className="h-2 w-2 bg-failed" />
+      <p data-challenge-recorded className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
+        <span aria-hidden className="h-2 w-2 bg-verified" />
         {t("done.label")}
       </p>
       <h3 className="mt-5 max-w-[22ch] font-display text-[clamp(1.4rem,2.6vw,2rem)] font-semibold uppercase leading-[1.02] tracking-[-0.03em]">
@@ -226,21 +227,21 @@ function Recorded({ flag }: { flag: FlagPassport }) {
   );
 }
 
-const NUMBER_TONE: Record<StepState, string> = {
+export const NUMBER_TONE: Record<StepState, string> = {
   waiting: "text-text-faint",
-  running: "text-failed",
-  done: "text-failed",
+  running: "text-pending",
+  done: "text-verified",
   failed: "text-failed",
   // A send that is out and unshown is not a failure, so it never takes the alarm ink.
   unconfirmed: "text-text-muted",
 };
 
-const MARKER_TONE: Record<StepState, string> = {
+export const MARKER_TONE: Record<StepState, string> = {
   waiting: "bg-line-strong",
-  running: "animate-pulse bg-failed",
-  done: "bg-failed",
+  running: "motion-safe:animate-pulse bg-pending",
+  done: "bg-verified",
   failed: "border border-failed bg-transparent",
-  unconfirmed: "animate-pulse border border-text-muted bg-transparent",
+  unconfirmed: "motion-safe:animate-pulse border border-text-muted bg-transparent",
 };
 
 const LABEL_TONE: Record<StepState, string> = {
@@ -318,7 +319,8 @@ function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPasspo
       data-tone={pending ? "pending" : "failed"}
       className={`border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/10"}`}
     >
-      <p className={`max-w-[54ch] text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+      <p className={`flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {pending ? null : <WarningMark className="mt-[3px]" />}
         {t(`failure.${key}`, {
           short: failure.shortfall === undefined ? "0" : formatEther(failure.shortfall),
           min: REASON_MIN,

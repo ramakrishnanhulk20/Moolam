@@ -235,8 +235,22 @@ export async function Facts({
       </section>
 
       <section className="rise lg:border-s lg:border-line lg:ps-12" style={{ animationDelay: "90ms" }}>
-        <h2 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">{t("fingerprints")}</h2>
-        <p className="mt-5 max-w-[40ch] text-sm leading-relaxed text-text-muted">{t("fingerprintsBody")}</p>
+        {/* The method sits with the values it produced: a verifier needs both to
+            recompute them, and on the poster it read as a credit. */}
+        <div className="flex flex-wrap items-baseline justify-between gap-x-5 gap-y-2">
+          <h2 className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">{t("fingerprints")}</h2>
+          <p data-fingerprint-version className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-muted">
+            {t("fingerprintVersion", { version: passport.fingerprintVersion })}
+          </p>
+        </div>
+        {/* The paragraph says anyone can fetch the picture and re-check it, which
+            is untrue of a sealed one. That passport's commitment line in the
+            record already says what can be compared, so it gets nothing here. */}
+        {art.sealed === true ? null : (
+          <p data-fingerprints-body className="mt-5 max-w-[40ch] text-sm leading-relaxed text-text-muted">
+            {t("fingerprintsBody")}
+          </p>
+        )}
 
         <dl className="mt-8 space-y-6">
           <Hash label={t("phash")} value={`0x${passport.phash.toString(16).padStart(16, "0")}`} />

@@ -5,8 +5,11 @@ import { shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
 import { pictureSources } from "@/lib/images";
 import type { Art } from "./art";
+import { DownloadOriginal } from "./DownloadOriginal";
 import { Picture } from "./Picture";
 import { sealedBits } from "./sealed";
+import { ShareLink } from "./ShareLink";
+import { recordUnread } from "./unread";
 
 /**
  * The passport as a poster: the registered picture full-bleed, the scrim over
@@ -83,6 +86,7 @@ export async function Poster({
   // A picture that is missing, or that every gateway refused, leaves this mark
   // where it would have been. The seal further down only shows beside it.
   const missing = <span data-no-picture hidden />;
+  const unread = recordUnread(art);
 
   return (
     <header className="group/poster grain relative h-[74svh] min-h-[34rem] w-full overflow-hidden border-b border-line bg-bg-sunken sm:h-[min(78vh,46rem)]">
@@ -156,19 +160,39 @@ export async function Poster({
           </div>
         </div>
         <div className="pointer-events-auto mx-auto mt-auto w-full max-w-[1400px]">
-          <h1
-            className="rise max-w-[16ch] font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]"
-            style={{ animationDelay: "60ms" }}
-          >
-            {art.title ?? t("untitled")}
-          </h1>
+          {unread ? (
+            // The record never arrived, so there is no name to print and
+            // "Untitled" would say the creator gave none. The id is the one
+            // name this passport certainly has.
+            <>
+              <h1
+                data-title-unread
+                className="rise max-w-[16ch] break-all font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold leading-[0.9] tracking-[-0.04em]"
+                style={{ animationDelay: "60ms" }}
+              >
+                {shortHex(passport.id, 6, 4)}
+              </h1>
+              <p
+                className="rise mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted"
+                style={{ animationDelay: "90ms" }}
+              >
+                {t("titleUnread")}
+              </p>
+            </>
+          ) : (
+            <h1
+              className="rise max-w-[16ch] font-display text-[clamp(2.2rem,7vw,5.5rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]"
+              style={{ animationDelay: "60ms" }}
+            >
+              {art.title ?? t("untitled")}
+            </h1>
+          )}
           <MetaLine className="rise mt-5" style={{ animationDelay: "120ms" }}>
             <span>{kinds(String(passport.kind))}</span>
             <span>
               {t("registered")}{" "}
               {format.dateTime(new Date(Number(passport.registeredAt) * 1000), "moment")}
             </span>
-            <span>{t("fingerprintVersion", { version: passport.fingerprintVersion })}</span>
             {/* Where the sealed line stood. This passport was registered with
                 no picture behind it and its holder published one later, which
                 is worth one quiet clause on the poster and a full sentence in
@@ -180,6 +204,9 @@ export async function Poster({
                 })}
               </span>
             )}
+            <ShareLink
+              words={{ copy: t("share.copy"), copied: t("share.copied"), copyFailed: common("copyFailed") }}
+            />
             {/* The exact signed file, straight from IPFS through this app's own
                 route, so the saved copy hashes to this passport's id. Only
                 where a picture is known to be public: this branch is never a
@@ -189,21 +216,11 @@ export async function Poster({
                 route's own rule; an unsealed picture is served from the record
                 that published it. */}
             {art.imageUrl === undefined || (art.original !== true && art.unsealed === undefined) ? null : (
-              <span>
-                <a
-                  href={`/api/passports/${passport.id}/picture`}
-                  download
-                  data-download-original
-                  className="group/download -my-3.5 inline-flex items-center gap-2 py-3.5 text-text-muted transition-colors duration-200 hover:text-accent"
-                >
-                  <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover/download:bg-[length:100%_1px]">
-                    {t("download")}
-                  </span>
-                  <span aria-hidden className="transition-transform duration-200 group-hover/download:translate-y-0.5">
-                    &darr;
-                  </span>
-                </a>
-              </span>
+              <DownloadOriginal
+                href={`/api/passports/${passport.id}/picture`}
+                fallbackName={`moolam-${passport.id.slice(2, 10)}`}
+                words={{ download: t("download"), downloading: t("downloading"), downloadFailed: t("downloadFailed") }}
+              />
             )}
           </MetaLine>
           <div className="mt-6 sm:mt-8">{strip}</div>
