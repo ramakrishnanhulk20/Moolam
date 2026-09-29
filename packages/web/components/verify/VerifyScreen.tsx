@@ -1,8 +1,9 @@
 "use client";
 
-import { MotionConfig, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { verify, verifierHost } from "@/lib/verifier/client";
 import type { TrySample } from "@/lib/data/samples";
 import { AnswerCard, type Stage } from "./AnswerCard";
@@ -10,7 +11,8 @@ import { chosenProblem, passportFor, readAnswer, verifyProblem, type Problem } f
 import { matchedPassport } from "./lookup";
 import { fileFromSample } from "./sample";
 import { Samples } from "./Samples";
-import { sizeLabel, uploadProblem } from "./upload";
+import { sampleAsked } from "./ShareAnswer";
+import { carriesFiles, droppedFile, pastedImage, pastedIntoText, sizeLabel, uploadProblem } from "./upload";
 
 /** Stands in for the host while the sentence is translated, so the host can be set as one piece. */
 const HOST_MARK = "\u0000host\u0000";
@@ -38,6 +40,11 @@ export function Privacy({ line, host }: { line: string; host: string }) {
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
+const noSubscription = () => () => undefined;
+
+/** Where the file on the card came from: the reader's own, or one of the offered pictures. */
+type Source = { kind: "file" } | { kind: "sample"; id: string };
+
 /**
  * Drop any copy of any image and the running verifier says which passport it
  * belongs to. A reader with no Moolam picture of their own presses one of the
@@ -58,8 +65,13 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
   const input = useRef<HTMLInputElement>(null);
   const card = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<File | null>(null);
-  const [over, setOver] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [source, setSource] = useState<Source | null>(null);
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
+  const veil = useRef<HTMLDivElement>(null);
+  // False for the server's render and the hydrating one, true after, so the
+  // veil's portal never appears in a tree React is matching against HTML.
+  const hydrated = useSyncExternalStore(noSubscription, () => true, () => false);
   // Bumped by every plate pressed and every file chosen or dropped. A check
   // only writes to the card while its number is still the newest, so the card
   // ends on the answer to the last thing the reader did, never on a slower
@@ -120,6 +132,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
       void check(chosen, started);
       return;
     }
+    setSource({ kind: "file" });
     const mine = ++run.current;
     void screen(chosen, mine);
   }
@@ -154,6 +167,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
    */
   async function pick(sample: TrySample) {
     const mine = ++run.current;
+    setSource({ kind: "sample", id: sample.id });
     setStage({ kind: "checking", name: sample.title ?? sample.id });
     let file: File;
     try {
@@ -191,11 +205,112 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
     }
   }
 
-  function onDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault();
-    setOver(false);
-    take(event.dataTransfer.files?.[0]);
+  function checkAgain() {
+    if (file === null) {
+      return;
+    }
+    const mine = ++run.current;
+    void check(file, mine);
   }
+
+  // The window listeners below are set once, so they reach the newest render's
+  // functions through this rather than holding the first render's.
+  const latest = useRef({ take, pick });
+  useEffect(() => {
+    latest.current = { take, pick };
+  });
+
+  // A file dragged anywhere over the page is taken wherever it is let go, and
+  // a picture pasted anywhere is taken the same way. Both go through `take`,
+  // so they get the same first-bytes check a chosen file gets.
+  useEffect(() => {
+    const enter = (event: globalThis.DragEvent) => {
+      if (carriesFiles(event.dataTransfer)) {
+        event.preventDefault();
+        setDragging(true);
+      }
+    };
+    const over = (event: globalThis.DragEvent) => {
+      if (carriesFiles(event.dataTransfer)) {
+        // Without this the browser opens a file let go outside the box in
+        // place of the page.
+        event.preventDefault();
+        if (event.dataTransfer !== null) {
+          event.dataTransfer.dropEffect = "copy";
+        }
+      }
+    };
+    // Once the veil is up it is the only thing under the pointer, so a leave
+    // from it, or a leave with nowhere to go, is the drag leaving the window.
+    const leave = (event: globalThis.DragEvent) => {
+      if (event.target === veil.current || event.relatedTarget === null) {
+        setDragging(false);
+      }
+    };
+    const drop = (event: globalThis.DragEvent) => {
+      setDragging(false);
+      if (!carriesFiles(event.dataTransfer)) {
+        return;
+      }
+      event.preventDefault();
+      latest.current.take(droppedFile(event.dataTransfer));
+    };
+    const paste = (event: ClipboardEvent) => {
+      if (pastedIntoText(event.target)) {
+        return;
+      }
+      const picture = pastedImage(event.clipboardData);
+      if (picture !== undefined) {
+        event.preventDefault();
+        latest.current.take(picture);
+      }
+    };
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    window.addEventListener("paste", paste);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", over);
+      window.removeEventListener("dragleave", leave);
+      window.removeEventListener("drop", drop);
+      window.removeEventListener("paste", paste);
+    };
+  }, []);
+
+  // A shared answer link, /verify?sample=<passport id>, runs that picture's
+  // check as the page opens. An offered picture is pressed as if by hand; any
+  // other passport is read from Monad first, and runs only when it has a
+  // published picture to fetch. A reader who presses something while that read
+  // is out has done the newer thing, and the link gives way to it.
+  const askedOnce = useRef(false);
+  useEffect(() => {
+    if (askedOnce.current) {
+      return;
+    }
+    askedOnce.current = true;
+    const wanted = sampleAsked(window.location.search);
+    if (wanted === null) {
+      return;
+    }
+    const offered = samples.find((sample) => sample.id.toLowerCase() === wanted.toLowerCase());
+    if (offered !== undefined) {
+      void latest.current.pick(offered);
+      return;
+    }
+    const before = run.current;
+    matchedPassport(wanted)
+      .then((found) => {
+        if (found === null || found.sealed === true || found.thumbnailUrl === undefined || run.current !== before) {
+          return;
+        }
+        void latest.current.pick({ id: found.id, url: found.thumbnailUrl, title: found.title });
+      })
+      .catch(() => undefined);
+  }, [samples]);
+
+  const fromFile = source?.kind === "file";
 
   return (
     <MotionConfig reducedMotion="user">
@@ -216,29 +331,41 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
           />
 
           <div
-            onDragOver={(event) => {
-              event.preventDefault();
-              setOver(true);
-            }}
-            onDragLeave={() => setOver(false)}
-            onDrop={onDrop}
             className={`grain relative overflow-hidden border border-dashed transition-colors duration-200 ${
-              over ? "border-accent bg-accent-soft" : "border-line-strong"
+              dragging ? "border-accent bg-accent-soft" : "border-line-strong"
             }`}
           >
             {preview === null ? (
               <div className="flex flex-col items-start gap-5 p-6 sm:p-9">
+                {/* A phone has nothing to drag a file from, so it is told only
+                    what it can do. Chosen by the pointer in CSS, so the server's
+                    HTML is already right for the device reading it. */}
                 <p className="max-w-[18ch] font-display text-[clamp(1.6rem,3.4vw,2.6rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-                  {t("dropTitle")}
+                  <span className="pointer-coarse:hidden">{t("dropTitle")}</span>
+                  <span className="hidden pointer-coarse:inline">{t("dropTitleTouch")}</span>
                 </p>
-                <button
-                  type="button"
-                  onClick={() => input.current?.click()}
-                  className="rounded-[8px] bg-accent px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
-                >
-                  {t("choose")}
-                </button>
-                <p className="max-w-[46ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                  <button
+                    type="button"
+                    onClick={() => input.current?.click()}
+                    className="rounded-[8px] bg-accent px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
+                  >
+                    {t("choose")}
+                  </button>
+                  <div data-no-account className="max-w-[30ch]">
+                    <p className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.24em] text-verified">
+                      <span className="motif h-[8px] w-[8px]" />
+                      {t("noAccount")}
+                    </p>
+                    <p className="mt-1.5 text-xs leading-relaxed text-text-muted">{t("noAccountWhy")}</p>
+                  </div>
+                </div>
+                <div>
+                  <p className="max-w-[46ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
+                  <p data-paste-hint className="mt-1.5 hidden max-w-[46ch] text-xs leading-relaxed text-text-faint pointer-fine:block">
+                    {t("paste")}
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="relative">
@@ -315,7 +442,12 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
           className="rise scroll-mt-24 lg:sticky lg:top-28 lg:self-start"
           style={{ animationDelay: "280ms" }}
         >
-          <AnswerCard stage={stage} />
+          <AnswerCard
+            stage={stage}
+            copy={fromFile && stage.kind === "answer" && preview !== null ? preview : undefined}
+            sampleId={source?.kind === "sample" && stage.kind === "answer" ? source.id : undefined}
+            onCheckAgain={fromFile && stage.kind === "problem" && file !== null ? checkAgain : undefined}
+          />
         </div>
 
         {/* On a phone the answer is scrolled up to meet the reader, which leaves
@@ -334,6 +466,40 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
           </div>
         ) : null}
       </div>
+
+      {/* Hung on the body, so no transformed parent can pin the veil inside
+          its own box instead of the window. */}
+      {hydrated ? createPortal(<DropVeil shown={dragging} veil={veil} line={t("dropAnywhere")} />, document.body) : null}
     </MotionConfig>
+  );
+}
+
+/** The whole window, while a file is dragged over the page: let go anywhere. */
+function DropVeil({ shown, veil, line }: { shown: boolean; veil: RefObject<HTMLDivElement | null>; line: string }) {
+  return (
+    <AnimatePresence>
+      {shown ? (
+        <motion.div
+          ref={veil}
+          data-drop-veil
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[90] flex items-end bg-bg/80 p-5 backdrop-blur-md sm:p-10"
+        >
+          <div className="pointer-events-none absolute inset-4 border-2 border-dashed border-accent sm:inset-8" />
+          <motion.p
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="pointer-events-none relative max-w-[14ch] p-4 font-display text-[clamp(3rem,9vw,8rem)] font-semibold leading-[0.9] tracking-[-0.045em] sm:p-8"
+          >
+            <span className="motif mb-6 block h-4 w-4" />
+            {line}
+          </motion.p>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

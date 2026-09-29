@@ -52,3 +52,52 @@ export function sizeLabel(bytes: number | undefined): string {
   }
   return bytes < 1_000_000 ? `${Math.max(1, Math.round(bytes / 1_000))} KB` : `${(bytes / 1_000_000).toFixed(1)} MB`;
 }
+
+/** Whether a drag is carrying files, as opposed to a link or a run of selected text. */
+export function carriesFiles(transfer: { types?: ArrayLike<string> | null } | null | undefined): boolean {
+  return transfer?.types != null && Array.from(transfer.types).includes("Files");
+}
+
+/** The first file a drop brought, if it brought any. */
+export function droppedFile(transfer: { files?: ArrayLike<File> | null } | null | undefined): File | undefined {
+  return transfer?.files?.[0] ?? undefined;
+}
+
+type ClipboardItemLike = { kind: string; type: string; getAsFile(): File | null };
+
+/**
+ * The picture on the clipboard, if a paste carried one.
+ *
+ * A picture copied from a web page or a screenshot tool arrives as an item
+ * rather than a file in some browsers, so both lists are read. Anything that is
+ * not an image, text above all, is left alone for the page to paste as usual.
+ * The picture still goes through the same first-bytes check as a chosen file.
+ */
+export function pastedImage(
+  data: { files?: ArrayLike<File> | null; items?: ArrayLike<ClipboardItemLike> | null } | null | undefined,
+): File | undefined {
+  if (data == null) {
+    return undefined;
+  }
+  const file = Array.from(data.files ?? []).find((one) => one.type.startsWith("image/"));
+  if (file !== undefined) {
+    return file;
+  }
+  for (const item of Array.from(data.items ?? [])) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const found = item.getAsFile();
+      if (found !== null) {
+        return found;
+      }
+    }
+  }
+  return undefined;
+}
+
+/** Whether a paste landed in a place that takes typed text, where it must stay a normal paste. */
+export function pastedIntoText(target: EventTarget | null): boolean {
+  if (typeof HTMLElement === "undefined" || !(target instanceof HTMLElement)) {
+    return false;
+  }
+  return target.isContentEditable || target.closest("input, textarea, select, [contenteditable]") !== null;
+}

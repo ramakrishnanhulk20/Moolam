@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 import { shortHex } from "@/lib/chain/client";
 import { ConsentStamp } from "@/components/consent/ConsentStamp";
 import { pictureSources } from "@/lib/images";
@@ -12,9 +13,12 @@ import { SealedSketch } from "@/components/sealed/Sketch";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link } from "@/lib/i18n/routing";
 import { RecheckRequest } from "@/components/passport/RecheckRequest";
+import { WarningMark } from "@/components/WarningMark";
+import { CompareSlider } from "./CompareSlider";
 import { DisputeLine } from "./DisputeLine";
 import { StaleIndex } from "./StaleIndex";
 import { SecondOpinion, hasSecondOpinion } from "./SecondOpinion";
+import { ShareAnswer } from "./ShareAnswer";
 import { agentChipId, percent, upheldAncestor, type Answer, type Problem } from "./answer";
 import type { MatchedPassport } from "./lookup";
 
@@ -35,7 +39,24 @@ const EASE = [0.16, 1, 0.3, 1] as const;
  * swapping text in place. Anyone who has asked for less motion gets a fade
  * between the same two faces.
  */
-export function AnswerCard({ stage }: { stage: Stage }) {
+export function AnswerCard({
+  stage,
+  copy,
+  sampleId,
+  onCheckAgain,
+}: {
+  stage: Stage;
+  /**
+   * The reader's own file as a blob address, handed over only when the answer
+   * is about a file they chose, dropped or pasted. On a match it turns the
+   * picture into a wipe between their copy and the registered one.
+   */
+  copy?: string;
+  /** The offered picture this answer is about, which gives the answer a link of its own. */
+  sampleId?: string;
+  /** Sends the file still in hand again, offered on a failed check. */
+  onCheckAgain?: () => void;
+}) {
   const reduced = useIsReducedMotion();
   const flipped = stage.kind === "answer" || stage.kind === "problem";
 
@@ -66,9 +87,9 @@ export function AnswerCard({ stage }: { stage: Stage }) {
           }}
         >
           {stage.kind === "problem" ? (
-            <Refused problem={stage.problem} />
+            <Refused problem={stage.problem} onCheckAgain={onCheckAgain} />
           ) : stage.kind === "answer" ? (
-            <Result answer={stage.answer} passport={stage.passport} />
+            <Result answer={stage.answer} passport={stage.passport} copy={copy} sampleId={sampleId} />
           ) : (
             <Plate />
           )}
@@ -115,9 +136,39 @@ function Idle() {
   );
 }
 
+/** After this long a check is slower than the service's usual one to four seconds, and the card says so. */
+export const SLOW_AFTER_SECONDS = 10;
+
+/**
+ * Whole seconds since the component mounted, read off the clock on every tick
+ * rather than counted, so a tab the browser slowed down in the background still
+ * shows the true wait when the reader comes back to it.
+ */
+function useSecondsWaited(): number {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const started = Date.now();
+    const tick = setInterval(() => setSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(tick);
+  }, []);
+  return seconds;
+}
+
+/**
+ * The wait, as it happens.
+ *
+ * The three steps are what the verify service does with every file, listed as
+ * a plain description and never ticked off: the page sends one request and
+ * gets one answer, so it cannot see which step the service is on, and a tick
+ * on a timer would be a guess dressed as progress. The clock is the one thing
+ * the page does know, so it counts, and past ten seconds the card says the
+ * check is slow and how long the page will keep waiting.
+ */
 function Checking({ name }: { name: string }) {
   const t = useTranslations("verify");
   const reduced = useIsReducedMotion();
+  const seconds = useSecondsWaited();
+  const steps = ["fingerprint", "turns", "search"] as const;
 
   return (
     <Plate>
@@ -131,21 +182,56 @@ function Checking({ name }: { name: string }) {
         />
       )}
       <div className="relative p-7 sm:p-9">
-        <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
-          <span className="inline-block h-2 w-2 animate-pulse bg-accent" />
-          {t("pending")}
-        </p>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+          <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
+            <span className="inline-block h-2 w-2 bg-accent motion-safe:animate-pulse" />
+            {t("pending")}
+          </p>
+          <p
+            role="timer"
+            data-wait-seconds={seconds}
+            className="font-mono text-[11px] uppercase tabular-nums tracking-[0.2em] text-text-muted"
+          >
+            {t("wait.seconds", { seconds })}
+          </p>
+        </div>
         <p className="mt-6 max-w-[26ch] font-display text-[clamp(1.6rem,3vw,2.4rem)] font-semibold leading-[1.02] tracking-[-0.035em]">
           {t("checkingHeading")}
         </p>
-        <p className="mt-5 max-w-[42ch] text-sm leading-relaxed text-text-muted">{t("checkingDetail")}</p>
-        <p className="mt-8 break-words font-mono text-[11px] text-text-faint">{name}</p>
+
+        <ol data-wait-steps className="mt-7 border-t border-line">
+          {steps.map((step, index) => (
+            <li key={step} className="flex items-baseline gap-5 border-b border-line py-3.5">
+              <span className="font-mono text-[11px] tabular-nums text-accent/80">{String(index + 1).padStart(2, "0")}</span>
+              <span className="text-sm leading-relaxed text-text-muted">{t(`wait.${step}`)}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div aria-live="polite">
+          {seconds >= SLOW_AFTER_SECONDS ? (
+            <p data-wait-slow className="mt-5 max-w-[46ch] border-s-2 border-accent/50 ps-4 text-sm leading-relaxed text-text">
+              {t("wait.slow")}
+            </p>
+          ) : null}
+        </div>
+        <p className="mt-7 break-words font-mono text-[11px] text-text-faint">{name}</p>
       </div>
     </Plate>
   );
 }
 
-function Result({ answer, passport }: { answer: Answer; passport: MatchedPassport | null }) {
+function Result({
+  answer,
+  passport,
+  copy,
+  sampleId,
+}: {
+  answer: Answer;
+  passport: MatchedPassport | null;
+  copy?: string;
+  sampleId?: string;
+}) {
   const t = useTranslations("verify");
   const format = useFormatter();
   const agentId = agentChipId(passport);
@@ -168,6 +254,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           >
             {t("registerCta")}
           </Link>
+          {sampleId === undefined ? null : <div className="mt-4"><ShareAnswer sampleId={sampleId} /></div>}
 
           <Measured answer={answer} />
         </div>
@@ -188,7 +275,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
 
   return (
     <Plate tone="verified">
-      <Still passport={passport} exact={answer.kind === "exact"} />
+      <Still passport={passport} exact={answer.kind === "exact"} copy={copy} />
 
       <div className="p-7 sm:p-9">
         {/* The plain answer first, in the same words the passport page's drop
@@ -326,6 +413,13 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
           <RecheckRequest passportId={answer.id} className="mt-6 border-s-2 border-line ps-5" />
         )}
 
+        {/* Said under every match and never under a miss: a match is the one
+            answer a reader might take for more than it is. */}
+        <div data-verify-limits className="mt-8 border-s-2 border-line ps-5">
+          <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("limits.label")}</p>
+          <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("limits.line")}</p>
+        </div>
+
         <div className="mt-8 flex flex-wrap items-center gap-3">
           <Link
             href={`/passport/${answer.id}`}
@@ -341,6 +435,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
               {t("openAgent", { id: agentId })}
             </Link>
           )}
+          {sampleId === undefined ? null : <ShareAnswer sampleId={sampleId} />}
         </div>
 
         <p className="mt-6 font-mono text-[11px] text-text-faint">
@@ -358,7 +453,7 @@ function Result({ answer, passport }: { answer: Answer; passport: MatchedPasspor
  * The matched passport as a film still: the picture, the block hash when the
  * picture was never published, or the seal when IPFS will not hand it over.
  */
-function Still({ passport, exact }: { passport: MatchedPassport | null; exact: boolean }) {
+function Still({ passport, exact, copy }: { passport: MatchedPassport | null; exact: boolean; copy?: string }) {
   const t = useTranslations("verify");
   const format = useFormatter();
   const kinds = useTranslations("kind");
@@ -372,6 +467,20 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
       </span>
     </span>
   );
+
+  // The reader's own file against the registered picture, when there is one of
+  // each to lay side by side. A sample press sent the registered file itself,
+  // so both sides would be the same picture, and it never gets here.
+  if (copy !== undefined && !sealed && passport?.thumbnailUrl !== undefined) {
+    return (
+      <CompareSlider
+        copy={copy}
+        registered={passport.thumbnailUrl}
+        title={passport.title ?? t("untitled")}
+        fallback={seal}
+      />
+    );
+  }
 
   return (
     <div className="grain relative aspect-[16/9] overflow-hidden border-b border-line bg-bg-sunken">
@@ -447,20 +556,48 @@ function Measured({ answer }: { answer: Answer }) {
   );
 }
 
-function Refused({ problem }: { problem: Problem }) {
+function Refused({ problem, onCheckAgain }: { problem: Problem; onCheckAgain?: () => void }) {
   const t = useTranslations("verify");
+  const common = useTranslations("common");
 
   return (
     <Plate tone="failed">
       <div className="p-7 sm:p-9">
         <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-failed">{t("problemLabel")}</p>
-        <p className="mt-5 max-w-[26ch] font-display text-[clamp(1.5rem,2.8vw,2.2rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-failed">
-          {t(problem.key)}
+        <p
+          data-failure-line
+          className="mt-5 flex max-w-[28ch] items-start gap-3 font-display text-[clamp(1.5rem,2.8vw,2.2rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-failed"
+        >
+          <WarningMark className="mt-[0.14em] h-[0.8em] w-[0.8em]" />
+          <span>{t(problem.key)}</span>
         </p>
+
+        {onCheckAgain === undefined ? null : (
+          <button
+            type="button"
+            data-check-again
+            onClick={onCheckAgain}
+            className="mt-8 rounded-[8px] bg-accent px-6 py-3.5 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5"
+          >
+            {t("checkAgain")}
+          </button>
+        )}
+
+        {/* The service's or the browser's own words, kept for anyone who reports
+            the fault, and closed so they never read as the answer. They are
+            printed as they came, untranslated. */}
         {problem.reason === undefined ? null : (
-          <p className="mt-5 max-w-[46ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
-            {problem.reason}
-          </p>
+          <details data-failure-details className="group mt-7 border-t border-line pt-4">
+            <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint transition-colors duration-200 hover:text-text [&::-webkit-details-marker]:hidden">
+              <span aria-hidden className="me-2 inline-block transition-transform duration-200 group-open:rotate-90 motion-reduce:transition-none">
+                &rsaquo;
+              </span>
+              {common("details")}
+            </summary>
+            <p className="mt-3 max-w-[46ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
+              {problem.reason}
+            </p>
+          </details>
         )}
       </div>
     </Plate>
