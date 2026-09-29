@@ -248,6 +248,20 @@ body {
   outline-offset: 2px;
 }
 
+/* iOS Safari zooms the whole page into any field set under 16 px the moment it
+   is focused, and leaves it zoomed. Below sm every field a reader types into is
+   held at 16 px. It sits outside every layer so it beats the text-[12px] and
+   text-xs utilities on the fields themselves; no field on the site is set
+   larger than 16 px, so none is made smaller. From 640 px up the fields keep
+   the sizes their own classes give them. */
+@media (max-width: 639px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="button"], [type="submit"], [type="reset"], [type="image"], [type="color"], [type="hidden"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 /* Film grain. Sits over an image or a section as a pseudo element so nothing in
    the markup has to carry it, and it never eats a click. */
 .grain::after {
