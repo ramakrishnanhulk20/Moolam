@@ -87,8 +87,12 @@ function verifyAnswer(id: string) {
   };
 }
 
+// The page reads a file's first bytes before sending it, so the fixture opens
+// with a real PNG or JPEG signature.
 function image(name: string): File {
-  return new File([new Uint8Array([1, 2, 3])], name, { type: name.endsWith(".png") ? "image/png" : "image/jpeg" });
+  const png = name.endsWith(".png");
+  const head = png ? [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] : [0xff, 0xd8, 0xff, 0xe0];
+  return new File([new Uint8Array([...head, 1, 2, 3])], name, { type: png ? "image/png" : "image/jpeg" });
 }
 
 let root: Root;

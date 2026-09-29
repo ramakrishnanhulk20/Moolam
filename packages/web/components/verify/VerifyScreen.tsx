@@ -6,10 +6,11 @@ import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { verify, verifierHost } from "@/lib/verifier/client";
 import type { TrySample } from "@/lib/data/samples";
 import { AnswerCard, type Stage } from "./AnswerCard";
-import { chosenProblem, readAnswer, verifyProblem } from "./answer";
+import { chosenProblem, passportFor, readAnswer, verifyProblem, type Problem } from "./answer";
 import { matchedPassport } from "./lookup";
 import { fileFromSample } from "./sample";
 import { Samples } from "./Samples";
+import { sizeLabel, uploadProblem } from "./upload";
 
 /** Stands in for the host while the sentence is translated, so the host can be set as one piece. */
 const HOST_MARK = "\u0000host\u0000";
@@ -79,7 +80,10 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
     if (box.top >= 0 && box.bottom <= window.innerHeight) {
       return;
     }
-    node.scrollIntoView({ block: "start", behavior: "smooth" });
+    // Read at the moment of the jump, so a setting changed while the page is
+    // open counts, and the same way the Studio's own scroll reads it.
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    node.scrollIntoView({ block: "start", behavior: reduced ? "instant" : "smooth" });
   }, [landed]);
 
   // The chosen picture is drawn from the file itself, so nothing is uploaded to
@@ -103,17 +107,44 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
     if (chosen === undefined) {
       return;
     }
-    const mine = started ?? ++run.current;
-    // A file the service would refuse is refused here instead, so the answer is
-    // instant and nothing is uploaded to earn it.
-    const problem = chosenProblem(chosen);
+    // A plate's bytes are a registered picture read back from its pin, which the
+    // service has already decoded once, so only a reader's own file has its
+    // first bytes read before it is sent.
+    if (started !== undefined) {
+      const problem = chosenProblem(chosen);
+      if (problem !== null) {
+        refuse(chosen, problem);
+        return;
+      }
+      setFile(chosen);
+      void check(chosen, started);
+      return;
+    }
+    const mine = ++run.current;
+    void screen(chosen, mine);
+  }
+
+  /**
+   * A file the service would refuse is refused here instead, so the answer is
+   * instant and nothing is uploaded to earn it.
+   */
+  async function screen(chosen: File, mine: number) {
+    const problem = await uploadProblem(chosen);
+    if (!owns(mine)) {
+      return;
+    }
     if (problem !== null) {
-      setFile(null);
-      setStage({ kind: "problem", problem: { ...problem, reason: `${chosen.name} ${fileSize(chosen)}` } });
+      refuse(chosen, problem);
       return;
     }
     setFile(chosen);
     void check(chosen, mine);
+  }
+
+  function refuse(chosen: File, problem: Problem) {
+    setFile(null);
+    const reason = [chosen.name, sizeLabel(chosen.size)].filter((part) => part !== "").join(" ");
+    setStage({ kind: "problem", problem: { ...problem, reason } });
   }
 
   /**
@@ -142,18 +173,21 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
   async function check(chosen: File, mine: number) {
     setStage({ kind: "checking", name: chosen.name });
 
+    let answer;
     try {
-      const answer = readAnswer(await verify({ file: chosen }));
-      // The service answers with an id and nothing else, so the passport behind
-      // it is read from the chain while the card is still turning.
-      const passport = answer.kind === "miss" ? null : await matchedPassport(answer.id);
-      if (owns(mine)) {
-        setStage({ kind: "answer", answer, passport });
-      }
+      answer = readAnswer(await verify({ file: chosen }));
     } catch (error) {
       if (owns(mine)) {
         setStage({ kind: "problem", problem: verifyProblem(error) });
       }
+      return;
+    }
+    // The service answers with an id and nothing else, so the passport behind
+    // it is read from the chain while the card is still turning. That read
+    // failing leaves the answer standing.
+    const passport = await passportFor(answer, matchedPassport);
+    if (owns(mine)) {
+      setStage({ kind: "answer", answer, passport });
     }
   }
 
@@ -169,11 +203,10 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
         data-verify-tool
         className="mt-7 grid gap-12 sm:mt-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-16"
       >
-        <motion.section
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        >
+        {/* The CSS rise rather than a motion component, so the server's HTML
+            carries the drop box visible and a slow phone can use it before the
+            script arrives. The reduced-motion rule in globals.css turns it off. */}
+        <section data-verify-drop className="rise" style={{ animationDelay: "200ms" }}>
           <input
             ref={input}
             type="file"
@@ -220,7 +253,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
                       and breaks inside a word only if one piece is wider than
                       the caption. */}
                   <p className="max-w-[30ch] font-mono text-[11px] text-text [overflow-wrap:anywhere]">
-                    {file?.name} <span className="text-text-muted">{fileSize(file)}</span>
+                    {file?.name} <span className="text-text-muted">{sizeLabel(file?.size)}</span>
                   </p>
                   <button
                     type="button"
@@ -274,27 +307,33 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
               <Privacy line={t("privacy", { host: HOST_MARK })} host={verifierHost()} />
             </p>
           </div>
-        </motion.section>
+        </section>
 
-        <motion.div
+        <div
           ref={card}
           data-answer-card
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.28, ease: [0.16, 1, 0.3, 1] }}
-          className="scroll-mt-24 lg:sticky lg:top-28 lg:self-start"
+          className="rise scroll-mt-24 lg:sticky lg:top-28 lg:self-start"
+          style={{ animationDelay: "280ms" }}
         >
           <AnswerCard stage={stage} />
-        </motion.div>
+        </div>
+
+        {/* On a phone the answer is scrolled up to meet the reader, which leaves
+            the Choose another over the picture a screen or more above. The next
+            check starts here instead, one press from the answer. On a wide
+            screen the card sits beside the picture and the one there is enough. */}
+        {landed ? (
+          <div data-choose-after className="-mt-4 lg:hidden">
+            <button
+              type="button"
+              onClick={() => input.current?.click()}
+              className="w-full rounded-[8px] bg-accent px-7 py-4 text-sm font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 sm:w-auto"
+            >
+              {t("replace")}
+            </button>
+          </div>
+        ) : null}
       </div>
     </MotionConfig>
   );
-}
-
-/** A file size a person can read: a 46 KB screenshot must not print as 0.0 MB. */
-function fileSize(file: File | null): string {
-  if (file === null) {
-    return "";
-  }
-  return file.size < 1_000_000 ? `${Math.round(file.size / 1_000)} KB` : `${(file.size / 1_000_000).toFixed(1)} MB`;
 }

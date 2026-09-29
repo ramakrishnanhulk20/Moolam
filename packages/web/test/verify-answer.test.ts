@@ -82,7 +82,9 @@ describe("what a reader is told when the check does not run", () => {
     it(`turns ${code} into ${key}`, () => {
       const problem = verifyProblem(new VerifierError(code as never, status, "the service said so"));
       expect(problem.key).toBe(key);
-      expect(problem.reason).toBe(key === "offline" ? undefined : "the service said so");
+      // The offline line names the service already, and the not-an-image
+      // sentence says in the reader's language what the English reason says.
+      expect(problem.reason).toBe(key === "offline" || key === "problem.notAnImage" ? undefined : "the service said so");
     });
   }
 

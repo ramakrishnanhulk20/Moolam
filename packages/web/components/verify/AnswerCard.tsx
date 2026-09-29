@@ -410,9 +410,12 @@ function Still({ passport, exact }: { passport: MatchedPassport | null; exact: b
           <p className="max-w-[28ch] font-display text-[clamp(1.2rem,2.4vw,1.9rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
             {passport.title ?? t("untitled")}
           </p>
-          <p className="mt-2 font-mono text-[11px] text-text-faint">
-            {kinds(String(passport.kind))} <span className="mx-1">/</span>
-            {format.dateTime(new Date(Number(passport.registeredAt) * 1000), { dateStyle: "medium" })}
+          {/* Three pieces in a gapped row, so the slash sits evenly between the
+              kind and the date and a line break never strands it. */}
+          <p data-still-meta className="mt-2 flex flex-wrap items-center gap-x-2 font-mono text-[11px] text-text-faint">
+            <span>{kinds(String(passport.kind))}</span>
+            <span aria-hidden>/</span>
+            <span>{format.dateTime(new Date(Number(passport.registeredAt) * 1000), { dateStyle: "medium" })}</span>
           </p>
         </div>
       )}

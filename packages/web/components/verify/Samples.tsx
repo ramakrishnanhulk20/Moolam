@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { shortHex } from "@/lib/chain/client";
 import { pictureSources } from "@/lib/images";
@@ -34,15 +33,12 @@ export function Samples({
     return null;
   }
 
+  // The plates rise with the CSS rise, not a motion component, so they are in
+  // the server's HTML and visible before the script runs, which is when a judge
+  // on a slow phone is looking for something to press. The drop box around them
+  // already rises, so only the plates are staggered.
   return (
-    <motion.div
-      data-verify-samples
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.3 }}
-      transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-      className="mt-5"
-    >
+    <div data-verify-samples className="mt-5">
       <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
         <span className="motif h-[8px] w-[8px] opacity-50" />
         {t("samples")}
@@ -50,13 +46,7 @@ export function Samples({
 
       <ul className="mt-4 grid grid-cols-3 gap-3 sm:gap-4">
         {samples.map((sample, index) => (
-          <motion.li
-            key={sample.id}
-            initial={{ opacity: 0, y: 14 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.6, delay: 0.06 * index, ease: [0.16, 1, 0.3, 1] }}
-          >
+          <li key={sample.id} className="rise" style={{ animationDelay: `${320 + 60 * index}ms` }}>
             <button
               type="button"
               onClick={() => onPick(sample)}
@@ -79,9 +69,9 @@ export function Samples({
                 {sample.title ?? shortHex(sample.id, 6, 4)}
               </span>
             </button>
-          </motion.li>
+          </li>
         ))}
       </ul>
-    </motion.div>
+    </div>
   );
 }

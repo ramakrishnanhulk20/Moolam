@@ -12,6 +12,7 @@ import {
   isMeasured,
 } from "@/lib/verifier/client";
 import { checkImage, MAX_UPLOAD_BYTES, type RefusalCode } from "@/lib/upload/checkImage";
+import type { MatchedPassport } from "./lookup";
 
 /** The limit lives in lib/upload with the check; the passport page reads it from here. */
 export { MAX_UPLOAD_BYTES };
@@ -230,6 +231,9 @@ export interface Problem {
   reason?: string;
 }
 
+/** How the verify route opens its refusal of a file it could not decode (packages/verifier/src/routes/shared.ts). */
+const NOT_AN_IMAGE = /^the upload is not an image\b/i;
+
 export function verifyProblem(error: unknown): Problem {
   if (error instanceof VerifierError) {
     // The service failing to read a picture it was sent is its own fault, not the file's, and its
@@ -241,6 +245,12 @@ export function verifyProblem(error: unknown): Problem {
     // the one word "busy" under the sentence would only say it again.
     if (error.code === "busy") {
       return { key: "problem.busy" };
+    }
+    // The service refuses a file it cannot decode with a 400 and a lowercase English reason. The
+    // page has its own sentence for that, in the reader's language, and the reason under it would
+    // only say it again.
+    if (error.code === "not-an-image" || (error.code === "bad-request" && NOT_AN_IMAGE.test(error.message))) {
+      return { key: "problem.notAnImage" };
     }
     const key = PROBLEMS[error.code] ?? "problem.badResponse";
     // The offline line already names the service and the port, so repeating the
@@ -273,4 +283,27 @@ const CHOSEN: Record<RefusalCode, string> = {
 export function chosenProblem(file: File): Problem | null {
   const refusal = checkImage(file);
   return refusal === null ? null : { key: CHOSEN[refusal.code] };
+}
+
+/**
+ * The passport behind a match, read from Monad, or null when there is no match
+ * or the read fails.
+ *
+ * The match is the service's answer and it stands on its own. A chain read that
+ * fails, on a rate-limited RPC for example, costs the card its title and date,
+ * and the card says so with its lookupFailed line. It must never turn a found
+ * match into a failed check with the RPC client's raw error on it.
+ */
+export async function passportFor(
+  answer: Answer,
+  read: (id: Hex) => Promise<MatchedPassport | null>,
+): Promise<MatchedPassport | null> {
+  if (answer.kind === "miss") {
+    return null;
+  }
+  try {
+    return await read(answer.id);
+  } catch {
+    return null;
+  }
 }
