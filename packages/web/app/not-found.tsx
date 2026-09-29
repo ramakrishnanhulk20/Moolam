@@ -1,8 +1,31 @@
 import Link from "next/link";
+import Script from "next/script";
 import { fontVariables } from "@/lib/fonts";
 import { routing } from "@/lib/i18n/routing";
 import messages from "@/messages/en.json";
 import "@/styles/globals.css";
+
+/**
+ * Sends an address with no language in it to the same address in the reader's
+ * language: /verify becomes /ta/verify for a phone set to Tamil, and /en/verify
+ * for a language the site does not carry.
+ *
+ * It runs in the browser, before the page below is painted, because nothing on
+ * the server can see the reader's languages without a proxy on every route and
+ * that proxy is kept to Explore on purpose. An address that already starts with
+ * a language is left alone, so a miss under one can never loop. A crawler, or a
+ * browser without scripts, still gets an honest 404.
+ *
+ * It is written twice into the page. The plain tag runs while the served HTML
+ * is read, before anything is painted. When Next has to draw this page in the
+ * browser instead, which is what happens in development when the locale layout
+ * turns the address away, React never runs a tag it draws, so the loader runs
+ * the same line once the page is live. Whichever runs first hides the page, and
+ * the other sees that and stands down.
+ */
+function languageRedirect(locales: readonly string[], fallback: string): string {
+  return `(function(){var l=${JSON.stringify(locales)},p=location.pathname,s=p.split("/")[1]||"",h=document.documentElement;if(h.style.visibility==="hidden"||l.indexOf(s)!==-1||s==="_next"||s==="api")return;var w=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""],c=${JSON.stringify(fallback)};for(var i=0;i<w.length;i++){var b=String(w[i]).toLowerCase().split("-")[0];if(l.indexOf(b)!==-1){c=b;break}}h.style.visibility="hidden";location.replace("/"+c+(p==="/"?"":p)+location.search+location.hash)})();`;
+}
 
 /**
  * The same page, for an address with no language in it at all.
@@ -10,15 +33,19 @@ import "@/styles/globals.css";
  * The root layout is a pass-through: every real page lives under a locale and
  * that layout carries the html and body tags. A miss above the locale segment
  * never reaches it, so this page carries its own shell, its own fonts and the
- * English words, and every link goes to the default language.
+ * English words, and every link goes to the default language. A reader with
+ * scripts on never sees it: the line at the top of the body sends them on.
  */
 export default function RootNotFound() {
   const t = messages.notFound;
   const home = `/${routing.defaultLocale}`;
+  const redirect = languageRedirect(routing.locales, routing.defaultLocale);
 
   return (
     <html lang={routing.defaultLocale} className={fontVariables}>
       <body className="min-h-dvh bg-bg text-text antialiased">
+        <script dangerouslySetInnerHTML={{ __html: redirect }} />
+        <Script id="language-redirect" strategy="afterInteractive" dangerouslySetInnerHTML={{ __html: redirect }} />
         <div className="relative mx-auto flex min-h-dvh w-full max-w-[1400px] flex-col justify-center px-5 py-24 sm:px-8">
           <span aria-hidden className="motif rise h-12 w-12 sm:h-16 sm:w-16" />
 
@@ -52,7 +79,7 @@ export default function RootNotFound() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="rounded-[8px] border border-line-strong px-5 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+                className="inline-flex min-h-11 items-center rounded-[8px] border border-line-strong px-5 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
               >
                 {link.label}
               </Link>

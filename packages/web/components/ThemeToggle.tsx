@@ -6,8 +6,13 @@ import { useTranslations } from "next-intl";
 const SHELL =
   "items-center gap-2 rounded-[8px] border border-line px-3 py-1.5 text-xs uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent";
 
-/** The mark and the name, laid out exactly as the language chip lays out its own. */
-const LABEL = "max-w-[14ch] truncate normal-case tracking-[0.06em]";
+/**
+ * The mark and the name, set the way the language chip sets its own. The name
+ * is never cut: under a 14 character cap, a wide script or a long word could
+ * lose the half that says which theme it is. This chip only shows on a laptop,
+ * where the bar has the room.
+ */
+const LABEL = "whitespace-nowrap normal-case tracking-[0.06em]";
 
 /**
  * The theme, named as it is right now, with the switch it offers in the label

@@ -50,7 +50,7 @@ export default async function NotFound() {
           <Link
             key={link.href}
             href={link.href}
-            className="rounded-[8px] border border-line-strong px-5 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
+            className="inline-flex min-h-11 items-center rounded-[8px] border border-line-strong px-5 py-3 font-mono text-[11px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent"
           >
             {link.label}
           </Link>

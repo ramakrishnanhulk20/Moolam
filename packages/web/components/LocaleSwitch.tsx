@@ -3,9 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
-import { localeLabels, routing, usePathname, useRouter } from "@/lib/i18n/routing";
+import { localeLabels, routing, usePathname, useRouter, type Locale } from "@/lib/i18n/routing";
 
 /**
  * Where this page lives: its own social address, and the same page in the other
@@ -50,6 +50,85 @@ function useActiveLocale(): string {
   return (routing.locales as readonly string[]).includes(raw) ? raw : routing.defaultLocale;
 }
 
+/** Everything under the header: the parts that fade while another language is on its way. */
+const FRAME_PARTS = "main, main ~ footer";
+
+/**
+ * Dims the page to 60 percent while it is drawn again in another language, and
+ * hands back the undo.
+ *
+ * The whole frame is replaced on a language change, because it lives in the
+ * locale's layout. Left alone, the old page sat untouched for up to half a
+ * second and then vanished at once, which read as a fault rather than an
+ * answer. Faded first, the swap reads as the answer to the press. Reduced
+ * motion still dims the page; it just does not animate the dimming.
+ */
+export function dimFrame(root: Pick<ParentNode, "querySelectorAll">, reduced: boolean): () => void {
+  const parts = Array.from(root.querySelectorAll<HTMLElement>(FRAME_PARTS));
+  const before = parts.map((part) => ({ opacity: part.style.opacity, transition: part.style.transition }));
+  for (const part of parts) {
+    part.style.transition = reduced ? "none" : "opacity 320ms cubic-bezier(0.16, 1, 0.3, 1)";
+    part.style.opacity = "0.6";
+  }
+  return () => {
+    parts.forEach((part, index) => {
+      part.style.opacity = before[index].opacity;
+      part.style.transition = before[index].transition;
+    });
+  };
+}
+
+/**
+ * Where focus goes in the open list for a key, or null for a key the list
+ * leaves alone. The arrows wrap, so the last language is one press from the
+ * first.
+ */
+export function stepOption(from: number, key: string, count: number): number | null {
+  if (count <= 0) return null;
+  const at = Math.min(Math.max(from, 0), count - 1);
+  switch (key) {
+    case "ArrowDown":
+      return (at + 1) % count;
+    case "ArrowUp":
+      return (at - 1 + count) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+
+/** The rows of the open list, in the order they are drawn. */
+function rowsOf(list: HTMLUListElement | null): HTMLButtonElement[] {
+  return Array.from(list?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []);
+}
+
+/**
+ * The tag that hangs under the chip while the chosen language is on its way,
+ * naming it in its own script. The chip itself is too narrow for the sentence
+ * in most of the ten languages, and growing it would shove the header about
+ * in the very moment the page is meant to hold still.
+ */
+export function OpeningNote({ language, reduced }: { language: string; reduced: boolean }) {
+  const t = useTranslations("header");
+  return (
+    <motion.span
+      aria-hidden
+      data-language-opening
+      initial={reduced ? { opacity: 0 } : { opacity: 0, y: -4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+      className="pointer-events-none absolute end-0 top-[calc(100%+8px)] z-50 flex items-center gap-2 whitespace-nowrap rounded-[8px] border border-accent/60 bg-bg-raised px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-accent shadow-[0_18px_40px_-24px_rgb(0_0_0/0.9)]"
+    >
+      <span aria-hidden className="motif h-[7px] w-[7px] shrink-0 animate-pulse motion-reduce:animate-none" />
+      <span className="normal-case tracking-[0.06em]">{t("languageOpening", { language })}</span>
+    </motion.span>
+  );
+}
+
 /**
  * Switches language without leaving the page: the pathname next-intl hands back
  * has the locale segment stripped, so the same route is re-rendered in the other
@@ -58,6 +137,11 @@ function useActiveLocale(): string {
  * Ten languages will not sit in a header row at 375 px, so the current one is
  * the button and the rest live in a panel under it. Each is named in its own
  * script, which is the only name a reader who needs it can recognise.
+ *
+ * Opened from the keyboard, focus lands on the current language and the arrows
+ * walk the list. Only one row at a time takes a Tab stop, so Tab leaves the list
+ * in one press, and leaving closes it. Escape closes it and puts focus back on
+ * the chip rather than on the top of the page.
  */
 export function LocaleSwitch() {
   const t = useTranslations("header");
@@ -65,9 +149,15 @@ export function LocaleSwitch() {
   const pathname = usePathname();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  const [fromKeys, setFromKeys] = useState(false);
+  const [target, setTarget] = useState<Locale | null>(null);
   const reduced = useIsReducedMotion();
   const shell = useRef<HTMLDivElement>(null);
+  const chip = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLUListElement>(null);
   const active = useActiveLocale();
+  const opening = pending && target !== null ? target : null;
+  const shown = localeLabels[(opening ?? active) as Locale];
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +166,10 @@ export function LocaleSwitch() {
       if (shell.current !== null && !shell.current.contains(event.target as Node)) setOpen(false);
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key !== "Escape") return;
+      const inside = shell.current?.contains(document.activeElement) ?? false;
+      setOpen(false);
+      if (inside) chip.current?.focus();
     };
 
     document.addEventListener("pointerdown", onPointer);
@@ -87,42 +180,107 @@ export function LocaleSwitch() {
     };
   }, [open]);
 
-  const choose = (locale: string) => {
+  useEffect(() => {
+    if (!open || !fromKeys) return;
+    const all = rowsOf(list.current);
+    (all.find((row) => row.getAttribute("aria-selected") === "true") ?? all[0])?.focus();
+  }, [open, fromKeys]);
+
+  useEffect(() => {
+    if (!pending) return;
+    return dimFrame(document, reduced);
+  }, [pending, reduced]);
+
+  const choose = (locale: Locale) => {
     setOpen(false);
+    chip.current?.focus();
     if (locale === active) return;
+    setTarget(locale);
     startTransition(() => {
-      router.replace(pathname, { locale: locale as (typeof routing.locales)[number] });
+      router.replace(pathname, { locale });
     });
   };
 
+  const walk = (event: ReactKeyboardEvent<HTMLUListElement>) => {
+    const all = rowsOf(list.current);
+    const to = stepOption(all.indexOf(document.activeElement as HTMLButtonElement), event.key, all.length);
+    if (to === null) return;
+    event.preventDefault();
+    all[to]?.focus();
+  };
+
   return (
-    <div ref={shell} className="relative">
+    <div
+      ref={shell}
+      className="relative"
+      onBlur={(event) => {
+        // Only a move to something else on the page closes the list. A blur
+        // with nowhere named is a press on a row in a browser that never
+        // focuses buttons, and closing then would swallow the press.
+        const next = event.relatedTarget as Node | null;
+        if (open && next !== null && !event.currentTarget.contains(next)) setOpen(false);
+      }}
+    >
       <button
+        ref={chip}
         type="button"
         // The chip shows the language's own name, so that name leads the label
         // a screen reader hears and the one voice control listens for. Named
         // "Language" while it read "English", neither could reach it.
-        aria-label={t("languageIs", { language: localeLabels[active as keyof typeof localeLabels] })}
+        aria-label={
+          opening === null
+            ? t("languageIs", { language: localeLabels[active as keyof typeof localeLabels] })
+            : t("languageOpening", { language: shown })
+        }
         title={t("languageChange")}
         aria-expanded={open}
         aria-haspopup="listbox"
-        disabled={pending}
-        onClick={() => setOpen((was) => !was)}
+        aria-busy={pending}
+        // Not disabled while the new language loads: a disabled button drops
+        // the keyboard focus that just chose it onto the top of the page.
+        aria-disabled={pending}
+        onClick={(event) => {
+          if (pending) return;
+          // A press from Enter or Space reports no mouse clicks at all.
+          setFromKeys(event.detail === 0);
+          setOpen((was) => !was);
+        }}
+        onKeyDown={(event) => {
+          if (pending || open || (event.key !== "ArrowDown" && event.key !== "ArrowUp")) return;
+          event.preventDefault();
+          setFromKeys(true);
+          setOpen(true);
+        }}
         className={`flex items-center gap-2 rounded-[8px] border px-3 py-1.5 text-xs uppercase tracking-[0.18em] transition-colors duration-200 ${
-          open ? "border-accent text-accent" : "border-line text-text-muted hover:border-accent hover:text-accent"
-        }`}
+          open || opening !== null
+            ? "border-accent text-accent"
+            : "border-line text-text-muted hover:border-accent hover:text-accent"
+        } ${pending ? "cursor-progress" : ""}`}
       >
-        <span className="motif h-[7px] w-[7px]" aria-hidden />
-        <span className="max-w-[9ch] truncate normal-case tracking-[0.06em]">
-          {localeLabels[active as keyof typeof localeLabels]}
-        </span>
+        <span
+          className={`motif h-[7px] w-[7px] ${opening === null ? "" : "animate-pulse motion-reduce:animate-none"}`}
+          aria-hidden
+        />
+        <span className="max-w-[9ch] truncate normal-case tracking-[0.06em]">{shown}</span>
       </button>
+
+      {/* Kept in the page from the start, so the sentence is read out the
+          moment it is filled rather than lost as a region that just appeared. */}
+      <span role="status" className="sr-only">
+        {opening === null ? "" : t("languageOpening", { language: shown })}
+      </span>
+
+      <AnimatePresence>
+        {opening !== null ? <OpeningNote key="opening" language={shown} reduced={reduced} /> : null}
+      </AnimatePresence>
 
       <AnimatePresence>
         {open ? (
           <motion.ul
+            ref={list}
             role="listbox"
             aria-label={t("language")}
+            onKeyDown={walk}
             initial={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
@@ -140,8 +298,9 @@ export function LocaleSwitch() {
                     type="button"
                     role="option"
                     aria-selected={current}
+                    tabIndex={current ? 0 : -1}
                     onClick={() => choose(locale)}
-                    className={`group flex w-full items-center gap-3 px-4 py-2.5 text-start transition-colors duration-200 ${
+                    className={`group flex min-h-11 w-full items-center gap-3 px-4 py-2 text-start transition-colors duration-200 focus-visible:bg-accent-soft ${
                       current ? "text-accent" : "text-text-muted hover:bg-accent-soft hover:text-text"
                     }`}
                   >
@@ -150,7 +309,7 @@ export function LocaleSwitch() {
                       className={
                         current
                           ? "motif h-[7px] w-[7px] shrink-0"
-                          : "h-[7px] w-[7px] shrink-0 border border-line-strong transition-colors duration-200 group-hover:border-accent"
+                          : "h-[7px] w-[7px] shrink-0 border border-line-strong transition-colors duration-200 group-hover:border-accent group-focus-visible:border-accent"
                       }
                     />
                     <span className="flex-1 truncate text-sm">{localeLabels[locale]}</span>
