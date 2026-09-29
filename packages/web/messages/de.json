@@ -125,7 +125,7 @@
     "kicker": "Entdecken",
     "title": "Das Register",
     "rail": "Jeder Pass auf Monad",
-    "lede": "Jedes auf Monad eingetragene Bild, das neueste zuerst, beim Laden dieser Seite aus dem Index gelesen. Öffne eines, um Fingerabdruck, Content Credentials und Nachprüfungen zu sehen.",
+    "lede": "Jedes auf Monad eingetragene Bild, neueste zuerst, beim Laden aus dem Index gelesen. Öffne eines für Fingerabdruck, Content Credentials und Nachprüfungen.",
     "counts": {
       "total": "Pässe",
       "generated": "Erzeugt",
