@@ -57,9 +57,16 @@ export function Row({ agent, place, strip = null }: { agent: AgentRow; place: nu
               data-agent-link
               className="outline-offset-4 after:absolute after:inset-0 after:content-['']"
             >
-              {agent.name ?? t("unnamed")}
+              {agent.name ?? t("unnamedTitle")}
             </Link>
           </h2>
+          {/* A title is what a line in a ledger needs, so the sentence saying
+              why there is no name sits under it, at reading size. */}
+          {agent.name === null ? (
+            <p data-agent-unnamed className="mt-2 text-base leading-relaxed text-text-muted">
+              {t("unnamed")}
+            </p>
+          ) : null}
 
           <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">
             {t("since", { when: format.dateTime(new Date(agent.firstSeenAt * 1000), { dateStyle: "medium" }) })}

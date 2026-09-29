@@ -84,7 +84,7 @@ export function YourPassports({
         <div role="alert" data-passports-unreadable className="mt-8 max-w-[54ch]">
           <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
             <WarningMark className="mt-[5px]" />
-            <span className="min-w-0">{t("passports.unreadable", { reason: "" })}</span>
+            <span className="min-w-0">{t("passports.unreadable")}</span>
           </p>
           <button
             type="button"
