@@ -68,7 +68,7 @@ export async function Masthead({
         </div>
 
         <p
-          className="rise mt-2.5 max-w-[52ch] text-sm leading-relaxed text-text-muted sm:mt-7 sm:text-lg lg:mt-0 lg:max-w-[56ch] lg:justify-self-end lg:text-base"
+          className="rise mt-2.5 max-w-[52ch] text-base leading-relaxed text-text-muted sm:mt-7 sm:text-lg lg:mt-0 lg:max-w-[56ch] lg:justify-self-end lg:text-base"
           style={{ animationDelay: "120ms" }}
         >
           {t("lede")}
@@ -77,11 +77,11 @@ export async function Masthead({
 
       <div
         data-counts-strip
-        className="mt-3 sm:mt-10 lg:mt-5 lg:flex lg:flex-wrap lg:items-baseline lg:gap-x-4 lg:gap-y-2"
+        className="mt-2.5 sm:mt-10 lg:mt-5 lg:flex lg:flex-wrap lg:items-baseline lg:gap-x-4 lg:gap-y-2"
       >
         {countsError !== null || counts === null ? (
           <p
-            className="rise max-w-[40ch] border-t border-line pt-5 text-sm leading-relaxed text-failed sm:pt-6 lg:max-w-none lg:flex-1 lg:border-t-0 lg:pt-0"
+            className="rise max-w-[60ch] border-t border-line pt-5 text-base leading-relaxed text-failed sm:pt-6 lg:max-w-none lg:flex-1 lg:border-t-0 lg:pt-0"
             style={{ animationDelay: "180ms" }}
           >
             {t("countsError", { reason: countsError ?? t("countsMissing") })}
@@ -138,7 +138,7 @@ export async function Masthead({
           </div>
         )}
 
-        <p className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint sm:mt-10 lg:mt-0">
+        <p className="mt-2 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint sm:mt-10 lg:mt-0">
           <span aria-hidden className="h-px w-8 bg-line-strong" />
           {isMixedView(view) ? t("sortRule") : t("sortNewest")}
         </p>

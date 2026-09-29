@@ -100,7 +100,7 @@ export async function ExploreSheet({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-5 pb-16 pt-7 sm:px-8 sm:py-24 lg:pt-9">
+    <div className="mx-auto w-full max-w-[1400px] px-5 pb-16 pt-4 sm:px-8 sm:py-24 lg:pt-9">
       <Masthead
         locale={locale}
         counts={counts}

@@ -42,7 +42,7 @@ export function EndCard({ count }: { count: number }) {
         </p>
         {/* A single phone cell is too narrow for the sentence as well; the line
             and the button carry the invitation there. */}
-        <p className="hidden text-sm leading-relaxed text-text-muted @[17rem]:block @[28rem]:text-base">{t("body")}</p>
+        <p className="hidden text-base leading-relaxed text-text-muted @[17rem]:block">{t("body")}</p>
         <Link
           href="/studio"
           prefetch={false}

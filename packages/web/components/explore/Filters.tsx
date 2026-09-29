@@ -63,8 +63,8 @@ export function Filters({ search }: { search: ExploreSearch }) {
   useEffect(() => (searching ? hold() : undefined), [searching, hold]);
 
   return (
-    <div className="mt-4 border-y border-line py-3 sm:mt-10 sm:py-5 lg:mt-5 lg:py-3">
-      <div className="flex flex-col gap-4 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
+    <div className="mt-3 border-y border-line py-2.5 sm:mt-10 sm:py-5 lg:mt-5 lg:py-3">
+      <div className="flex flex-col gap-3 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
         {/* Nine chips wrapped onto four rows at 375 px and took a third of the
             first screen, which is the screen the pictures are meant to be on. On a
             phone they are one row that scrolls sideways, bleeding to both edges so
@@ -191,7 +191,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
           a thumb, so on a phone they were three unexplained letters. The row
           keeps its height whether or not the sheet is being read, so nothing on
           the page moves when the mark lights. */}
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 lg:mt-3">
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint sm:mt-5 lg:mt-3">
         <button
           type="button"
           data-marks-toggle

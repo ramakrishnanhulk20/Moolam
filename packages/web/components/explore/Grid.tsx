@@ -79,14 +79,14 @@ export function Grid({
   if (indexError !== null) {
     return (
       <div className="mt-12 max-w-[54ch]">
-        <p className="text-sm leading-relaxed text-failed">{t("error", { reason: indexError })}</p>
+        <p className="text-base leading-relaxed text-failed">{t("error", { reason: indexError })}</p>
         <IndexRetry said={indexError} />
       </div>
     );
   }
 
   if (plates.length === 0) {
-    return empty ?? <p className="mt-12 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("empty")}</p>;
+    return empty ?? <p className="mt-12 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("empty")}</p>;
   }
 
   return (
@@ -154,7 +154,7 @@ export function Grid({
 
       {problem === null ? null : (
         <div className="mt-6 max-w-[54ch]">
-          <p className="text-sm leading-relaxed text-failed">{t("error", { reason: problem })}</p>
+          <p className="text-base leading-relaxed text-failed">{t("error", { reason: problem })}</p>
           {/* The next page knows how to fetch itself, so the retry asks the
               action again rather than redrawing the whole sheet and losing the
               pages already under the reader. */}

@@ -25,7 +25,7 @@ export async function StatedLine({ ai }: { ai: ExploreAi | null }) {
 
   return (
     <p
-      className={`rise mt-8 flex max-w-[70ch] flex-wrap items-baseline gap-x-3 gap-y-2 border-s-2 ps-5 text-sm leading-relaxed text-text-muted sm:mt-10 sm:text-base ${
+      className={`rise mt-8 flex max-w-[70ch] flex-wrap items-baseline gap-x-3 gap-y-2 border-s-2 ps-5 text-base leading-relaxed text-text-muted sm:mt-10 ${
         SUMMARY_TONES[ai].edge
       }`}
     >
