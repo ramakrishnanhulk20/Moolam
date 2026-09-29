@@ -14,7 +14,7 @@ export function pageAddress(href: string): string {
   return url.href;
 }
 
-type Copy = "idle" | "copied" | "failed";
+type Copy = "idle" | "copied" | { failed: string };
 
 /**
  * Copy link, for the poster's credit line. It returns parts of that line rather
@@ -23,7 +23,8 @@ type Copy = "idle" | "copied" | "failed";
  * Both labels are laid in the same cell, so the button is as wide as the longer
  * one in every language and the line never shifts when it confirms. A refusal
  * gets a line of its own under the row, because the sentence is far longer than
- * any label.
+ * any label, with the address under it ready to select, since the sentence asks
+ * the reader to copy it by hand.
  *
  * The words arrive translated from the server poster, so the line needs no
  * translation context of its own.
@@ -40,14 +41,15 @@ export function ShareLink({ words }: { words: { copy: string; copied: string; co
   }, [copy]);
 
   const press = () => {
+    const address = pageAddress(window.location.href);
     const clipboard = typeof navigator === "undefined" ? undefined : navigator.clipboard;
     if (clipboard === undefined) {
-      setCopy("failed");
+      setCopy({ failed: address });
       return;
     }
-    clipboard.writeText(pageAddress(window.location.href)).then(
+    clipboard.writeText(address).then(
       () => setCopy("copied"),
-      () => setCopy("failed"),
+      () => setCopy({ failed: address }),
     );
   };
 
@@ -73,14 +75,22 @@ export function ShareLink({ words }: { words: { copy: string; copied: string; co
           {copied ? words.copied : ""}
         </span>
       </span>
-      {copy === "failed" ? (
+      {typeof copy === "object" ? (
         <span
           role="alert"
           data-copy-failed
           className="order-last flex basis-full items-start gap-2.5 font-body text-base normal-case tracking-normal text-failed"
         >
           <WarningMark className="mt-[5px]" />
-          {words.copyFailed}
+          <span className="min-w-0">
+            <span className="block">{words.copyFailed}</span>
+            <span
+              data-copy-address
+              className="mt-1.5 block select-all font-mono text-[11px] text-text-muted [overflow-wrap:anywhere]"
+            >
+              {copy.failed}
+            </span>
+          </span>
         </span>
       ) : null}
     </>

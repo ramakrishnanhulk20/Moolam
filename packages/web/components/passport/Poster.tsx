@@ -67,6 +67,7 @@ export async function Poster({
             line: t(art.privateRecheck === true ? "sealed.posterLinePrivate" : "sealed.posterLine", { date: registered }),
             untitled: t("untitled"),
           }}
+          share={{ copy: t("share.copy"), copied: t("share.copied"), copyFailed: common("copyFailed") }}
         />
         {/* The plate is drawn by a component three screens share, so the strip
             hangs off its foot rather than inside it, on the ground the

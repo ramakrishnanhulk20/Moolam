@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { ShareLink } from "@/components/passport/ShareLink";
 import { SealedSketch, type SketchDrawing } from "./Sketch";
 
 /**
@@ -16,6 +17,13 @@ export interface SealedPlateWords {
   line: string;
   /** What a passport that pinned no name is called. */
   untitled: string;
+}
+
+/** The Copy link words, the same three the public poster hands its credit line. */
+export interface SealedShareWords {
+  copy: string;
+  copied: string;
+  copyFailed: string;
 }
 
 /**
@@ -38,6 +46,11 @@ export const POSTER_HEIGHT = "h-[57vh] min-h-[26rem] sm:h-[min(78vh,46rem)]";
  * type as the poster that carries a real picture and, from 640 px up, the same
  * height. "plate" is the
  * four by five tile Explore lays out in its sheet.
+ *
+ * `share` gives the poster the same Copy link the public poster carries, under
+ * the date line where the public one sits in its credit line. A sealed passport
+ * is shared as often as a public one, and its page is the whole of what there is
+ * to send.
  */
 export function SealedPlate({
   bits,
@@ -47,6 +60,7 @@ export function SealedPlate({
   size = "plate",
   shortId,
   as = "h2",
+  share,
 }: {
   /** 256 bits from sketchBits, read off the chain. */
   bits: boolean[];
@@ -58,6 +72,8 @@ export function SealedPlate({
   shortId?: string;
   /** The heading level, because a passport page opens on this and a sheet does not. */
   as?: "h1" | "h2" | "h3";
+  /** Only the poster draws it. */
+  share?: SealedShareWords;
 }) {
   const reduced = useIsReducedMotion();
   const Heading = as;
@@ -115,6 +131,15 @@ export function SealedPlate({
             >
               {words.line}
             </p>
+            {share === undefined ? null : (
+              <div
+                data-sealed-share
+                className="rise mt-3 flex flex-wrap items-center gap-y-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted sm:mt-4"
+                style={{ animationDelay: "160ms" }}
+              >
+                <ShareLink words={share} />
+              </div>
+            )}
           </div>
         </div>
       </div>
