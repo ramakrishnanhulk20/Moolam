@@ -2,6 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
+import { WarningMark } from "@/components/WarningMark";
 
 /** How long the button says the link was copied before it offers to copy again. */
 const CONFIRM_MS = 2400;
@@ -76,9 +77,12 @@ export function ShareAnswer({ sampleId }: { sampleId: string }) {
         {state === "copied" ? t("copied") : t("copy")}
       </button>
       {typeof state === "object" ? (
-        <div data-share-failed className="mt-3 max-w-[44ch]">
-          <p className="text-base leading-relaxed text-failed">{common("copyFailed")}</p>
-          <p className="mt-1.5 select-all font-mono text-[11px] text-text-muted [overflow-wrap:anywhere]">{state.failed}</p>
+        <div role="alert" data-share-failed className="mt-3 flex max-w-[44ch] items-start gap-2.5 text-failed">
+          <WarningMark className="mt-[5px]" />
+          <div className="min-w-0">
+            <p className="text-base leading-relaxed">{common("copyFailed")}</p>
+            <p className="mt-1.5 select-all font-mono text-[11px] text-text-muted [overflow-wrap:anywhere]">{state.failed}</p>
+          </div>
         </div>
       ) : null}
     </div>

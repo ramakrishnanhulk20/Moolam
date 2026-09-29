@@ -15,25 +15,46 @@ import { sampleAsked } from "./ShareAnswer";
 import { carriesFiles, droppedFile, pastedImage, pastedIntoText, sizeLabel, uploadProblem } from "./upload";
 
 /** Stands in for the host while the sentence is translated, so the host can be set as one piece. */
-const HOST_MARK = "\u0000host\u0000";
+export const HOST_MARK = "\u0000host\u0000";
+
+/** A bracket that opens right before the host, in Latin or full-width type. */
+const OPENS_HOST = /[(［（「]+$/u;
+/** The bracket that closes it and any stop that follows, so no line starts with them. */
+const CLOSES_HOST = /^[)］）」]+[.,;:!?。、，．]*/u;
 
 /**
- * The privacy line with the service's host kept whole: it moves to the next
- * line as one piece rather than breaking at a hyphen, and only a host wider
- * than the whole column breaks inside itself.
+ * The privacy line with the service's host set as one piece together with the
+ * brackets around it, so an opening bracket is never left alone at a line's
+ * end. The piece moves to the next line whole. Only when it is wider than the
+ * column does it break, and then at the host's dots, never at its hyphens.
  */
 export function Privacy({ line, host }: { line: string; host: string }) {
   const at = line.indexOf(HOST_MARK);
   if (at < 0) {
     return <>{line}</>;
   }
+  const before = line.slice(0, at);
+  const after = line.slice(at + HOST_MARK.length);
+  const open = OPENS_HOST.exec(before)?.[0] ?? "";
+  const close = CLOSES_HOST.exec(after)?.[0] ?? "";
+  const labels = host.split(".");
+
   return (
     <>
-      {line.slice(0, at)}
-      <span data-privacy-host className="inline-block max-w-full [overflow-wrap:anywhere]">
-        {host}
+      {before.slice(0, before.length - open.length)}
+      <span data-privacy-host className="inline-block max-w-full">
+        {labels.map((label, index) => (
+          <span key={index}>
+            <span className="whitespace-nowrap">
+              {index === 0 ? open : null}
+              {label}
+              {index < labels.length - 1 ? "." : close}
+            </span>
+            {index < labels.length - 1 ? <wbr /> : null}
+          </span>
+        ))}
       </span>
-      {line.slice(at + HOST_MARK.length)}
+      {after.slice(close.length)}
     </>
   );
 }
@@ -447,6 +468,7 @@ export function VerifyScreen({ samples = [] }: { samples?: TrySample[] }) {
             copy={fromFile && stage.kind === "answer" && preview !== null ? preview : undefined}
             sampleId={source?.kind === "sample" && stage.kind === "answer" ? source.id : undefined}
             onCheckAgain={fromFile && stage.kind === "problem" && file !== null ? checkAgain : undefined}
+            onChooseAnother={stage.kind === "answer" ? () => input.current?.click() : undefined}
           />
         </div>
 

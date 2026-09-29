@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { shortHex } from "@/lib/chain/client";
+import { reason as oneLine, shortHex } from "@/lib/chain/client";
 import { ConsentStamp } from "@/components/consent/ConsentStamp";
 import { pictureSources } from "@/lib/images";
 import { Mono } from "@/components/passport/Mono";
@@ -44,6 +44,7 @@ export function AnswerCard({
   copy,
   sampleId,
   onCheckAgain,
+  onChooseAnother,
 }: {
   stage: Stage;
   /**
@@ -56,6 +57,12 @@ export function AnswerCard({
   sampleId?: string;
   /** Sends the file still in hand again, offered on a failed check. */
   onCheckAgain?: () => void;
+  /**
+   * Opens the page's own file chooser for the next check. A phone scrolls the
+   * answer up to meet the reader, so the way to the next picture is put under
+   * the verdict rather than two screens down at the card's foot.
+   */
+  onChooseAnother?: () => void;
 }) {
   const reduced = useIsReducedMotion();
   const flipped = stage.kind === "answer" || stage.kind === "problem";
@@ -89,7 +96,13 @@ export function AnswerCard({
           {stage.kind === "problem" ? (
             <Refused problem={stage.problem} onCheckAgain={onCheckAgain} />
           ) : stage.kind === "answer" ? (
-            <Result answer={stage.answer} passport={stage.passport} copy={copy} sampleId={sampleId} />
+            <Result
+              answer={stage.answer}
+              passport={stage.passport}
+              copy={copy}
+              sampleId={sampleId}
+              onChooseAnother={onChooseAnother}
+            />
           ) : (
             <Plate />
           )}
@@ -226,11 +239,13 @@ function Result({
   passport,
   copy,
   sampleId,
+  onChooseAnother,
 }: {
   answer: Answer;
   passport: MatchedPassport | null;
   copy?: string;
   sampleId?: string;
+  onChooseAnother?: () => void;
 }) {
   const t = useTranslations("verify");
   const format = useFormatter();
@@ -245,6 +260,7 @@ function Result({
           <p className="mt-5 max-w-[18ch] font-display text-[clamp(2rem,4.4vw,3.2rem)] font-semibold uppercase leading-[0.92] tracking-[-0.04em]">
             {t("none")}
           </p>
+          <ChooseAnother onPress={onChooseAnother} />
           <StaleIndex minutes={answer.staleMinutes} />
           <p className="mt-5 max-w-[60ch] text-base leading-relaxed text-text-muted">{t("noneHint")}</p>
 
@@ -286,6 +302,7 @@ function Result({
             ? t("verdictExact", { title: passport?.title ?? t("untitled") })
             : t("verdict", { title: passport?.title ?? t("untitled") })}
         </p>
+        <ChooseAnother onPress={onChooseAnother} />
         <StaleIndex minutes={answer.staleMinutes} />
 
         <div className="mt-7 flex flex-wrap items-end gap-x-6 gap-y-2">
@@ -556,6 +573,30 @@ function Measured({ answer }: { answer: Answer }) {
   );
 }
 
+/**
+ * The next check, under the verdict, on a phone only: a wide screen has the
+ * card beside the picture and its own Choose another there. Set in the same
+ * quiet outline as the Choose another over the picture, so it never outshouts
+ * the answer it sits under.
+ */
+function ChooseAnother({ onPress }: { onPress?: () => void }) {
+  const t = useTranslations("verify");
+
+  if (onPress === undefined) {
+    return null;
+  }
+  return (
+    <button
+      type="button"
+      data-choose-near
+      onClick={onPress}
+      className="tap mt-5 rounded-[8px] border border-line-strong bg-bg/70 px-4 py-2 text-[10px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent lg:hidden"
+    >
+      {t("replace")}
+    </button>
+  );
+}
+
 function Refused({ problem, onCheckAgain }: { problem: Problem; onCheckAgain?: () => void }) {
   const t = useTranslations("verify");
   const common = useTranslations("common");
@@ -585,7 +626,8 @@ function Refused({ problem, onCheckAgain }: { problem: Problem; onCheckAgain?: (
 
         {/* The service's or the browser's own words, kept for anyone who reports
             the fault, and closed so they never read as the answer. They are
-            printed as they came, untranslated. */}
+            untranslated, cut to their first line with every address taken
+            out, the way the studio's Details are. */}
         {problem.reason === undefined ? null : (
           <details data-failure-details className="group mt-7 border-t border-line pt-4">
             <summary className="cursor-pointer list-none font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint transition-colors duration-200 hover:text-text [&::-webkit-details-marker]:hidden">
@@ -595,7 +637,7 @@ function Refused({ problem, onCheckAgain }: { problem: Problem; onCheckAgain?: (
               {common("details")}
             </summary>
             <p className="mt-3 max-w-[46ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
-              {problem.reason}
+              {oneLine(problem.reason)}
             </p>
           </details>
         )}

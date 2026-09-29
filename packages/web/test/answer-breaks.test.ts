@@ -109,7 +109,7 @@ describe("the answer card's word breaks", () => {
 });
 
 describe("the verify page's own captions", () => {
-  it("keeps the service's host whole in the privacy line, breaking inside it only when it is wider than the column", async () => {
+  it("keeps the service's host whole in the privacy line, with its brackets, breaking inside it only at its dots", async () => {
     const { Privacy } = await import("@/components/verify/VerifyScreen");
     const line = en.verify.privacy.replace("{host}", "\u0000host\u0000");
     const doc = new DOMParser().parseFromString(
@@ -117,10 +117,10 @@ describe("the verify page's own captions", () => {
       "text/html",
     );
     const host = doc.querySelector("[data-privacy-host]");
-    expect(host?.textContent).toBe("verifier-production-d76f.up.railway.app");
+    expect(host?.textContent).toBe("(verifier-production-d76f.up.railway.app).");
     expect(host?.className).toContain("inline-block");
-    expect(host?.className).toContain("[overflow-wrap:anywhere]");
     expect(host?.className).not.toContain("break-all");
+    expect(host?.querySelectorAll("wbr").length).toBe(3);
     expect(doc.body.textContent).toBe(en.verify.privacy.replace("{host}", "verifier-production-d76f.up.railway.app"));
   });
 
