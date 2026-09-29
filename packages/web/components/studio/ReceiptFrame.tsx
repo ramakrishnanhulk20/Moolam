@@ -31,7 +31,7 @@ export function ReceiptFrame({ children }: { children: ReactNode }) {
       />
 
       <p className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">{t("receipt.heading")}</p>
-      <p className="mt-3 max-w-[34ch] text-sm leading-relaxed text-text-muted">{t("receipt.body")}</p>
+      <p className="mt-3 max-w-[40ch] text-base leading-relaxed text-text-muted">{t("receipt.body")}</p>
 
       {children}
     </aside>
@@ -41,7 +41,7 @@ export function ReceiptFrame({ children }: { children: ReactNode }) {
 /** The line a stub with nothing stamped on it says. */
 export function EmptyStamps() {
   const t = useTranslations("studio");
-  return <p className="mt-8 max-w-[32ch] text-sm leading-relaxed text-text-faint">{t("receipt.empty")}</p>;
+  return <p className="mt-8 max-w-[36ch] text-base leading-relaxed text-text-faint">{t("receipt.empty")}</p>;
 }
 
 /** The stub before anyone has signed in: nothing has been done in anyone's name yet. */

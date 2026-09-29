@@ -106,12 +106,12 @@ export function DoneActions({
       </div>
 
       {holding ? (
-        <p id={holdId} className="mt-3.5 max-w-[46ch] text-xs leading-relaxed text-text-faint">
+        <p id={holdId} className="mt-3.5 max-w-[46ch] text-base leading-relaxed text-text-faint">
           {t("sealed.handback.only")}
         </p>
       ) : null}
       {stating ? (
-        <p id={stateId} data-another-waits className="mt-3.5 max-w-[46ch] text-xs leading-relaxed text-text-faint">
+        <p id={stateId} data-another-waits className="mt-3.5 max-w-[46ch] text-base leading-relaxed text-text-faint">
           {t("register.anotherWaits")}
         </p>
       ) : null}

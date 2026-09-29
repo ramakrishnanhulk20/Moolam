@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 /** The opening's one line, wherever a page seats it. */
-export const OPENING_LINE = "rise max-w-[56ch] text-sm leading-relaxed text-text-muted sm:text-base";
+export const OPENING_LINE = "rise max-w-[56ch] text-base leading-relaxed text-text-muted";
 
 /**
  * The compact opening a tool page gets: the kicker, the page's name at a size

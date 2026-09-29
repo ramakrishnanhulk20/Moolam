@@ -82,8 +82,8 @@ export function YourPassports({
         <ReadingOutlines wide={wide} words={t("passports.reading")} />
       ) : passports.status === "unreadable" ? (
         <div role="alert" data-passports-unreadable className="mt-8 max-w-[54ch]">
-          <p className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
-            <WarningMark className="mt-[3px]" />
+          <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
+            <WarningMark className="mt-[5px]" />
             <span className="min-w-0">{t("passports.unreadable", { reason: "" })}</span>
           </p>
           <button
@@ -98,7 +98,7 @@ export function YourPassports({
         </div>
       ) : passports.passports.length === 0 ? (
         <div className="mt-8">
-          <p className="max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("passports.empty")}</p>
+          <p className="max-w-[54ch] text-base leading-relaxed text-text-muted">{t("passports.empty")}</p>
           {empty}
         </div>
       ) : (
@@ -164,7 +164,7 @@ function ReadingOutlines({ wide, words }: { wide: boolean; words: string }) {
 
   return (
     <div data-passports-reading aria-busy="true" className="mt-8">
-      <p role="status" className="text-sm text-text-muted">
+      <p role="status" className="text-base leading-relaxed text-text-muted">
         {words}
       </p>
       <ul
@@ -243,8 +243,8 @@ function LoadMore({ passports }: { passports: CreatorPassports }) {
         {passports.loadingMore ? t("loading") : t("loadMore")}
       </button>
       {passports.moreError === null ? null : (
-        <p role="alert" className="flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
-          <WarningMark className="mt-[3px]" />
+        <p role="alert" className="flex max-w-[54ch] items-start gap-2.5 text-base leading-relaxed text-failed">
+          <WarningMark className="mt-[5px]" />
           <span className="min-w-0">{t("error", { reason: passports.moreError })}</span>
         </p>
       )}

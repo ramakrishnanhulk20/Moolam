@@ -55,10 +55,10 @@ export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
         >
           {t("signedOut.button")}
         </button>
-        <p className="max-w-[26ch] text-xs text-text-faint">{studio("signedOut.methods")}</p>
+        <p className="max-w-[30ch] text-base leading-relaxed text-text-faint">{studio("signedOut.methods")}</p>
       </div>
 
-      <p className="mt-7 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("signedOut.body")}</p>
+      <p className="mt-7 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("signedOut.body")}</p>
     </section>
   );
 }

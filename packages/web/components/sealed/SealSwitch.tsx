@@ -97,7 +97,7 @@ export function SealSwitch({
       <span aria-hidden className="pointer-events-none absolute -top-px start-0 h-px w-20 bg-accent" />
 
       <Switch on={on} onChange={onChange} disabled={disabled} label={words.label} reduced={reduced} />
-      <p className="mt-4 max-w-[58ch] text-sm leading-relaxed text-text-muted">{words.note}</p>
+      <p className="mt-4 max-w-[58ch] text-base leading-relaxed text-text-muted">{words.note}</p>
 
       <AnimatePresence initial={false}>
         {on ? (
@@ -122,8 +122,8 @@ export function SealSwitch({
                   reduced={reduced}
                   small
                 />
-                <p className="mt-3 max-w-[52ch] text-xs leading-relaxed text-text-faint">{words.privateNote}</p>
-                <p className="mt-2 max-w-[52ch] text-xs leading-relaxed text-text-muted">{words.privateWho}</p>
+                <p className="mt-3 max-w-[56ch] text-base leading-relaxed text-text-faint">{words.privateNote}</p>
+                <p className="mt-2 max-w-[56ch] text-base leading-relaxed text-text-muted">{words.privateWho}</p>
               </div>
             ) : null}
 
@@ -131,7 +131,7 @@ export function SealSwitch({
               <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-6">
                 <div className="min-w-0 flex-1">
                   <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-accent">{words.panelHeading}</p>
-                  <p className="mt-3 max-w-[46ch] text-sm leading-relaxed text-text-muted">{words.panelLine}</p>
+                  <p className="mt-3 max-w-[48ch] text-base leading-relaxed text-text-muted">{words.panelLine}</p>
                 </div>
 
                 <figure className="shrink-0">
@@ -187,7 +187,7 @@ export function SealSwitch({
                     reduced={reduced}
                     small
                   />
-                  <p className="mt-3 max-w-[52ch] text-xs leading-relaxed text-text-faint">{words.promptNote}</p>
+                  <p className="mt-3 max-w-[56ch] text-base leading-relaxed text-text-faint">{words.promptNote}</p>
                 </div>
               ) : null}
             </div>

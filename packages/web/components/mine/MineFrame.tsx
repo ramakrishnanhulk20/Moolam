@@ -31,9 +31,9 @@ export function MineNotice({ text, tone = "muted" }: { text: string; tone?: "mut
   return (
     <p
       role={tone === "failed" ? "alert" : undefined}
-      className={`mt-16 flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${tone === "failed" ? "text-failed" : "text-text-muted"}`}
+      className={`mt-16 flex max-w-[54ch] items-start gap-2.5 text-base leading-relaxed ${tone === "failed" ? "text-failed" : "text-text-muted"}`}
     >
-      {tone === "failed" ? <WarningMark className="mt-[3px]" /> : null}
+      {tone === "failed" ? <WarningMark className="mt-[5px]" /> : null}
       <span className="min-w-0">{text}</span>
     </p>
   );
@@ -45,7 +45,7 @@ export function MineNoAccount({ onSignOut }: { onSignOut: () => void }) {
 
   return (
     <div className="mt-16">
-      <p className="max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("noWallet")}</p>
+      <p className="max-w-[54ch] text-base leading-relaxed text-text-muted">{t("noWallet")}</p>
       <button
         type="button"
         onClick={onSignOut}

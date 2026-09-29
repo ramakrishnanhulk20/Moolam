@@ -224,7 +224,7 @@ export function GeneratePanel({
       >
         {t("heading")}
       </h2>
-      <p className={`mt-4 max-w-[56ch] text-sm leading-relaxed text-text-muted${wideOnly(wide, "lg:mt-2")}`}>{t("body")}</p>
+      <p className={`mt-4 max-w-[56ch] text-base leading-relaxed text-text-muted${wideOnly(wide, "lg:mt-2")}`}>{t("body")}</p>
 
       <Plate state={state} wide={wide} />
 
@@ -241,7 +241,7 @@ export function GeneratePanel({
         />
       </label>
       <div className={`mt-2 flex flex-wrap items-baseline justify-between gap-3${wideOnly(wide, "lg:order-1")}`}>
-        <p className="max-w-[52ch] text-xs leading-relaxed text-text-faint">{t("promptHint")}</p>
+        <p className="max-w-[52ch] text-base leading-relaxed text-text-faint">{t("promptHint")}</p>
         <p
           className={`font-mono text-[11px] tabular-nums ${
             characters >= PROMPT_MIN ? "text-text-muted" : "text-text-faint"
@@ -296,7 +296,7 @@ export function GeneratePanel({
         />
       </label>
       {titleWanted ? <TitleNeeded id={needId} className={wideOnly(wide, "lg:order-2")} /> : null}
-      <p data-title-hint className={`mt-2 text-xs text-text-faint${wideOnly(wide, "lg:order-2")}`}>{t("titleHint")}</p>
+      <p data-title-hint className={`mt-2 max-w-[60ch] text-base leading-relaxed text-text-faint${wideOnly(wide, "lg:order-2")}`}>{t("titleHint")}</p>
       {wide ? <div className="hidden lg:order-4 lg:block">{sealedChoice}</div> : null}
       </WideColumn>
 
@@ -308,7 +308,9 @@ export function GeneratePanel({
       {/* The press is answered here before anything else moves: the label turns
           into the first line of the run and the button goes quiet. The room for
           two lines is held from the start, because a button that grows under the
-          thumb moves the whole page with it. */}
+          thumb moves the whole page with it. On a laptop the button takes the
+          column's width, as the upload press does, and the quota sentence
+          wraps under it rather than squeezing its label onto three lines. */}
       <div className={`mt-8 flex flex-wrap items-center gap-5${wideOnly(wide, "lg:mt-6")}`}>
         <button
           type="button"
@@ -317,7 +319,7 @@ export function GeneratePanel({
           data-press
           className={`flex min-h-[4.5rem] w-full items-center justify-center rounded-[8px] bg-accent px-7 py-4 text-center text-sm font-semibold text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-60 sm:inline-flex sm:min-h-0 sm:w-auto ${
             pressing ? "normal-case" : "uppercase tracking-[0.14em]"
-          }${wideOnly(wide, "lg:flex lg:flex-1")}`}
+          }${wideOnly(wide, "lg:flex lg:w-full")}`}
         >
           {pressing ? t("steps.draw.running") : t("submit")}
         </button>
@@ -464,7 +466,7 @@ function Quota({ state }: { state: RegisterState }) {
   const resets = localTime(state.quota.resetsAt, locale);
 
   return (
-    <p className="text-xs leading-relaxed text-text-faint">
+    <p className="text-base leading-relaxed text-text-faint">
       <span className="font-mono text-[11px] tabular-nums text-text-muted">
         {t("quota", { used: state.quota.used, limit: state.quota.limit })}
       </span>
@@ -575,7 +577,7 @@ function Signatures({ state }: { state: RegisterState }) {
   return (
     <div className="mt-10 border-t border-line pt-7">
       <p className="font-display text-[clamp(1.1rem,2vw,1.5rem)] uppercase tracking-[-0.01em]">{t("heading")}</p>
-      <p className="mt-2 max-w-[48ch] text-xs leading-relaxed text-text-faint">{t("body")}</p>
+      <p className="mt-2 max-w-[54ch] text-base leading-relaxed text-text-faint">{t("body")}</p>
 
       <div className="relative mt-6 grid gap-4 sm:grid-cols-2">
         <span
@@ -657,7 +659,7 @@ function Seal({
                 {line}
               </p>
             ))}
-            <p className="mt-3 max-w-[34ch] text-xs leading-relaxed text-text-faint">{detail}</p>
+            <p className="mt-3 max-w-[34ch] text-base leading-relaxed text-text-faint">{detail}</p>
           </motion.div>
         ) : (
           <motion.p
@@ -665,7 +667,7 @@ function Seal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-3 max-w-[32ch] text-xs leading-relaxed text-text-faint"
+            className="mt-3 max-w-[34ch] text-base leading-relaxed text-text-faint"
           >
             {waiting}
           </motion.p>
@@ -720,10 +722,10 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
 
   return (
     <li data-step={step} data-tone={tone} className="flex items-start gap-5 py-4">
-      <span className={`mt-0.5 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
+      <span className={`mt-1 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
+      <span aria-hidden className={`mt-2 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -732,7 +734,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.25 }}
-            className={`block text-sm leading-relaxed ${LABEL_TONE[tone]}`}
+            className={`block text-base leading-relaxed ${LABEL_TONE[tone]}`}
           >
             {label}
           </motion.span>
@@ -815,7 +817,7 @@ function Generated({
         >
           {t("doneHeading")}
         </h2>
-        <p className="mt-4 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("doneBody")}</p>
+        <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("doneBody")}</p>
 
         <dl className="mt-8 grid gap-x-8 gap-y-5 border-t border-line pt-6 sm:grid-cols-2">
           <Row label={t("kind")} value={kinds("0")} />

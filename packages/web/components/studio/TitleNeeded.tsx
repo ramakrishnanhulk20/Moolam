@@ -15,9 +15,9 @@ export function TitleNeeded({ id, className = "" }: { id: string; className?: st
       id={id}
       role="alert"
       data-title-needed
-      className={`mt-2 flex items-start gap-2 text-xs leading-relaxed text-failed ${className}`.trim()}
+      className={`mt-2 flex items-start gap-2 text-base leading-relaxed text-failed ${className}`.trim()}
     >
-      <WarningMark className="mt-[1px]" />
+      <WarningMark className="mt-[5px]" />
       <span>{t("titleNeeded")}</span>
     </p>
   );

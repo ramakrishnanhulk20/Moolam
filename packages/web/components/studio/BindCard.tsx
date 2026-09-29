@@ -80,12 +80,12 @@ export function BindCard({
           {rebind ? t("bind.headingAgain") : t("bind.heading")}
         </h2>
         <p className="mt-5 max-w-[56ch] text-base leading-relaxed text-text-muted">{t("bind.body")}</p>
-        <p className="mt-3 max-w-[56ch] text-sm leading-relaxed text-text-faint">{t("bind.plain")}</p>
+        <p className="mt-3 max-w-[56ch] text-base leading-relaxed text-text-faint">{t("bind.plain")}</p>
 
         {state.stage === "bound" ? (
           <div className="mt-8 border-s-2 border-verified ps-4">
             <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-verified">{t("bind.doneLabel")}</p>
-            <p className="mt-2 max-w-[54ch] text-sm leading-relaxed text-text">{t("bind.doneBody")}</p>
+            <p className="mt-2 max-w-[54ch] text-base leading-relaxed text-text">{t("bind.doneBody")}</p>
             {state.txHash !== null ? (
               <a
                 href={`${MONAD_EXPLORER}/tx/${state.txHash}`}

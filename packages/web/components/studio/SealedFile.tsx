@@ -146,7 +146,7 @@ export function SealedFileCard({
           <h3 className="mt-3 max-w-[22ch] font-display text-[clamp(1.2rem,2.4vw,1.7rem)] font-semibold uppercase leading-[1.05] tracking-[-0.02em]">
             {t("heading")}
           </h3>
-          <p className="mt-3 max-w-[48ch] text-sm leading-relaxed text-text-muted">
+          <p className="mt-3 max-w-[48ch] text-base leading-relaxed text-text-muted">
             {privateCopy ? t("bodyPrivate") : t("body")}
           </p>
           <SaveControl file={file} saved={saved} onSaved={onSaved} />
@@ -199,7 +199,7 @@ export function SealedDoneBand({
           <span className="motif h-[9px] w-[9px]" />
           {t("label")}
         </p>
-        <p className="mt-4 max-w-[44ch] text-sm leading-relaxed text-text-muted">
+        <p className="mt-4 max-w-[48ch] text-base leading-relaxed text-text-muted">
           {privateCopy ? t("bodyPrivate") : t("body")}
         </p>
         {file === null ? null : <SaveControl file={file} saved={saved} onSaved={onSaved} />}
@@ -257,11 +257,11 @@ function SaveControl({ file, saved, onSaved }: { file: SealedHandback; saved: bo
           which is kept for decoration. Once saved it is only a fact. */}
       <p
         data-only-copy={saved ? "saved" : "unsaved"}
-        className={`mt-4 max-w-[46ch] text-xs leading-relaxed ${saved ? "text-text-faint" : "font-medium text-failed"}`}
+        className={`mt-4 max-w-[46ch] text-base leading-relaxed ${saved ? "text-text-faint" : "font-medium text-failed"}`}
       >
         {t("only")}
       </p>
-      {saved ? <p className="mt-2 max-w-[46ch] text-xs leading-relaxed text-verified">{t("saved")}</p> : null}
+      {saved ? <p className="mt-2 max-w-[46ch] text-base leading-relaxed text-verified">{t("saved")}</p> : null}
     </div>
   );
 }

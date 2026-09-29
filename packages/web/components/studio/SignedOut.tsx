@@ -48,7 +48,7 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
         >
           {t("signedOut.button")}
         </button>
-        <p className="max-w-[26ch] text-xs text-text-faint">{t("signedOut.methods")}</p>
+        <p className="max-w-[30ch] text-base leading-relaxed text-text-faint">{t("signedOut.methods")}</p>
       </div>
 
       <p className="mt-7 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("signedOut.body")}</p>
@@ -65,7 +65,7 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
             <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
               {t(`signedOut.points.${point}.label`)}
             </p>
-            <p className="mt-2 text-sm leading-relaxed text-text">{t(`signedOut.points.${point}.body`)}</p>
+            <p className="mt-2 text-base leading-relaxed text-text">{t(`signedOut.points.${point}.body`)}</p>
           </li>
         ))}
 
@@ -79,7 +79,7 @@ export function SignedOut({ onSignIn }: { onSignIn: () => void }) {
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
             {t("signedOut.points.consent.label")}
           </p>
-          <p className="mt-2 max-w-[68ch] text-sm leading-relaxed text-text">{t("signedOut.points.consent.body")}</p>
+          <p className="mt-2 max-w-[68ch] text-base leading-relaxed text-text">{t("signedOut.points.consent.body")}</p>
         </li>
       </ul>
     </section>

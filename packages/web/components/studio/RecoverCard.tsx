@@ -71,7 +71,7 @@ export function RecoverCard({
       {failure === null ? null : (
         <div className="mt-7">
           <FailureNote failure={failure} onAgain={onRecover} onBind={onBindInstead} />
-          <p className="mt-4 max-w-[54ch] text-sm leading-relaxed text-text-faint">{t("recover.otherDevice")}</p>
+          <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-faint">{t("recover.otherDevice")}</p>
         </div>
       )}
     </motion.section>

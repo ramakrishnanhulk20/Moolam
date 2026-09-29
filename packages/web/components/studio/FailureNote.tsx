@@ -71,14 +71,14 @@ export function FailureNote({
       className={`border-s-2 ps-4 py-3 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
       <p
-        className={`flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}
+        className={`flex max-w-[54ch] items-start gap-2.5 text-base leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}
       >
-        {pending ? null : <WarningMark className="mt-[3px]" />}
+        {pending ? null : <WarningMark className="mt-[5px]" />}
         <span className="min-w-0">{t(`failure.${failure.key}`)}</span>
       </p>
 
       {broke ? (
-        <p data-balance-empty className={`${indent}mt-3 max-w-[54ch] text-sm leading-relaxed text-text-muted`}>
+        <p data-balance-empty className={`${indent}mt-3 max-w-[54ch] text-base leading-relaxed text-text-muted`}>
           {t("register.balanceEmpty")}
         </p>
       ) : null}

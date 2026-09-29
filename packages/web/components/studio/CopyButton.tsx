@@ -70,8 +70,8 @@ export function CopyButton({ value }: { value: string }) {
         </span>
       </button>
       {state === "failed" ? (
-        <span role="alert" data-copy-failed className="flex max-w-[34ch] items-start gap-2 text-xs leading-relaxed text-failed">
-          <WarningMark className="mt-[1px]" />
+        <span role="alert" data-copy-failed className="flex max-w-[40ch] items-start gap-2 text-base leading-relaxed text-failed">
+          <WarningMark className="mt-[5px]" />
           <span className="min-w-0">{t("copyFailed")}</span>
         </span>
       ) : null}

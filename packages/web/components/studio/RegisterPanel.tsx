@@ -262,7 +262,7 @@ export function RegisterPanel({
       >
         {t("register.heading")}
       </h2>
-      <p className={`mt-4 max-w-[56ch] text-sm leading-relaxed text-text-muted${wideOnly(wide, "lg:mt-2")}`}>{t("register.body")}</p>
+      <p className={`mt-4 max-w-[56ch] text-base leading-relaxed text-text-muted${wideOnly(wide, "lg:mt-2")}`}>{t("register.body")}</p>
 
       <input
         ref={input}
@@ -297,7 +297,7 @@ export function RegisterPanel({
             >
               {t("register.choose")}
             </button>
-            <p className="max-w-[46ch] text-xs leading-relaxed text-text-faint">{t("register.hint")}</p>
+            <p className="max-w-[52ch] text-base leading-relaxed text-text-faint">{t("register.hint")}</p>
           </div>
         ) : (
           <div className={`relative${wideOnly(wide, "lg:h-full")}`}>
@@ -348,7 +348,7 @@ export function RegisterPanel({
         />
       </label>
       {titleWanted ? <TitleNeeded id={needId} /> : null}
-      <p data-title-hint className="mt-2 text-xs text-text-faint">{t("register.titleHint")}</p>
+      <p data-title-hint className="mt-2 max-w-[60ch] text-base leading-relaxed text-text-faint">{t("register.titleHint")}</p>
       {/* On a laptop the picture, its name and whether it is published are one
           column, so the right one is the AI-use choice and the press. */}
       {wide ? <div className="hidden lg:block">{sealedChoice}</div> : null}
@@ -379,7 +379,7 @@ export function RegisterPanel({
           {pressing ? t("register.steps.prepare.running") : t("register.submit")}
         </button>
         {state.file === null ? (
-          <p id={fileWhyId} data-press-reason className="max-w-[34ch] text-xs leading-relaxed text-text-muted">
+          <p id={fileWhyId} data-press-reason className="max-w-[34ch] text-base leading-relaxed text-text-muted">
             {t("failure.fileMissing")}
           </p>
         ) : null}
@@ -540,10 +540,10 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
 
   return (
     <li data-step={step} data-tone={tone} className="flex items-start gap-5 py-4">
-      <span className={`mt-0.5 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
+      <span className={`mt-1 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
+      <span aria-hidden className={`mt-2 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span
@@ -552,7 +552,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.25 }}
-            className={`block text-sm leading-relaxed ${LABEL_TONE[tone]}`}
+            className={`block text-base leading-relaxed ${LABEL_TONE[tone]}`}
           >
             {label}
           </motion.span>
@@ -635,7 +635,7 @@ function Registered({
         <h2 className={`max-w-[20ch] font-display text-[clamp(1.8rem,3.6vw,2.9rem)] font-semibold uppercase tracking-[-0.02em] ${leading}`}>
           {t("register.doneHeading")}
         </h2>
-        <p className="mt-4 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("register.doneBody")}</p>
+        <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("register.doneBody")}</p>
 
         <dl className="mt-8 grid gap-x-8 gap-y-5 border-t border-line pt-6 sm:grid-cols-2">
           <Row label={t("register.passportId")} value={id ?? ""} mono />

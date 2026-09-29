@@ -60,15 +60,15 @@ export function ConsentField({
       >
         {t("heading")}
       </h3>
-      <p className="mt-3 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="mt-3 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
 
       <ConsentChoice draft={draft} onChange={onChange} disabled={disabled} size="compact" className={`mt-6${wideOnly(wide, "lg:mt-4")}`} />
 
-      <p className={`mt-5 max-w-[56ch] text-xs leading-relaxed text-text-faint${wideOnly(wide, "lg:mt-3")}`}>{t("hint")}</p>
+      <p className={`mt-5 max-w-[56ch] text-base leading-relaxed text-text-faint${wideOnly(wide, "lg:mt-3")}`}>{t("hint")}</p>
 
       {problem === "conditionsRequired" ? (
-        <p role="status" className="mt-3 flex max-w-[56ch] items-start gap-2 text-xs leading-relaxed text-failed">
-          <WarningMark className="mt-[1px]" />
+        <p role="status" className="mt-3 flex max-w-[56ch] items-start gap-2 text-base leading-relaxed text-failed">
+          <WarningMark className="mt-[5px]" />
           <span className="min-w-0">{t("needsConditions")}</span>
         </p>
       ) : null}

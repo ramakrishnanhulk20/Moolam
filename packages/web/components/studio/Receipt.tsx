@@ -23,6 +23,8 @@ interface Mark {
   value?: string;
   /** Text, or text with one in-app link in it, such as the way to delete a kept copy. */
   detail?: ReactNode;
+  /** When it happened: a meta line, so it keeps the small size the sentences around it gave up. */
+  when?: string;
   href?: string;
   /** A stamp for something that did not happen wears the failure red and the mark. */
   tone?: "accent" | "verified" | "failed";
@@ -122,13 +124,16 @@ export function Receipt({ studio }: { studio: Studio }) {
                     {mark.value}
                   </a>
                 )}
+                {mark.when === undefined ? null : (
+                  <p className="mt-1.5 text-xs leading-relaxed text-text-faint">{mark.when}</p>
+                )}
                 {mark.detail === undefined ? null : (
-                  <p className="mt-1.5 text-xs leading-relaxed text-text-faint">{mark.detail}</p>
+                  <p className="mt-1.5 text-base leading-relaxed text-text-faint">{mark.detail}</p>
                 )}
                 {mark.lines === undefined
                   ? null
                   : mark.lines.map((line) => (
-                      <p key={line} className="mt-1.5 text-xs leading-relaxed text-text-faint">
+                      <p key={line} className="mt-1.5 text-base leading-relaxed text-text-faint">
                         {line}
                       </p>
                     ))}
@@ -161,7 +166,7 @@ export function Receipt({ studio }: { studio: Studio }) {
                         &darr;
                       </span>
                     </a>
-                    <p className="mt-2 max-w-[46ch] text-xs leading-relaxed text-text-faint">{mark.download.help}</p>
+                    <p className="mt-2 max-w-[46ch] text-base leading-relaxed text-text-faint">{mark.download.help}</p>
                   </motion.div>
                 )}
               </motion.li>
@@ -378,7 +383,7 @@ function collect(
               value: format.number(studio.register.timing.waitedMs),
               unit: t("receipt.msUnit"),
             },
-      detail: format.dateTime(new Date(studio.register.registeredAt), "moment"),
+      when: format.dateTime(new Date(studio.register.registeredAt), "moment"),
       lines: chainLines(studio, t, fee),
       tone: "verified",
     });
