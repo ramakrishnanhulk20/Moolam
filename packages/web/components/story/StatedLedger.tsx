@@ -349,6 +349,24 @@ function writer() {
 }
 
 /**
+ * How the written day sits against its notch on the stacked rule.
+ *
+ * Centred on the notch it reads as the notch's own label, but a statement
+ * written on the registration day puts the notch at the rule's start, and half
+ * the date then hung off the left of a phone's screen. Near either end the
+ * date starts or ends at the notch instead, so it always stays over the rule.
+ */
+export function writtenShift(notch: number): string {
+  if (notch > 0.78) {
+    return "translateX(-100%)";
+  }
+  if (notch < 0.22) {
+    return "translateX(0)";
+  }
+  return "translateX(-50%)";
+}
+
+/**
  * The same drawing stacked with the words, for a phone and for the still page.
  *
  * On a phone the shot is the top 45 percent of the window and the words own
@@ -457,7 +475,7 @@ export function InlineLedger({
           <div className="absolute left-0 top-[-9px] h-[19px] w-[1.5px] bg-pending" />
           <span
             className="absolute left-0 top-[14px] whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.14em] text-pending"
-            style={{ transform: view.notch > 0.78 ? "translateX(-100%)" : "translateX(-50%)" }}
+            style={{ transform: writtenShift(view.notch) }}
           >
             {view.writtenShort}
           </span>
