@@ -66,14 +66,6 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
         if (next !== hidden) {
           hidden = next;
           node.inert = next;
-          // The header wears the film's dark look while the film is in view and
-          // hands it back here, where the page's own ground has arrived. The
-          // rule is CHAPTER_LOOK in LandingStory.tsx.
-          if (next) {
-            document.body.removeAttribute("data-chapter-close");
-          } else {
-            document.body.setAttribute("data-chapter-close", "true");
-          }
           if (next) {
             node.setAttribute("aria-hidden", "true");
           } else {
@@ -85,10 +77,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
     };
 
     frame = requestAnimationFrame(loop);
-    return () => {
-      cancelAnimationFrame(frame);
-      document.body.removeAttribute("data-chapter-close");
-    };
+    return () => cancelAnimationFrame(frame);
   }, [pinned]);
 
   const figures = [

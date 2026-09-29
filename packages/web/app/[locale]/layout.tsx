@@ -370,9 +370,10 @@ export default async function LocaleLayout({
                   </div>
                 </footer>
 
-                {/* The phone's navigation, under the thumb, on every page. It
-                    draws itself out of the way while the film on the home page
-                    is being scrolled and arrives with the closing card. */}
+                {/* The phone's navigation, under the thumb, on every page and
+                    through the whole film on the home page, which leaves the
+                    bar its room rather than hiding it, so Mine and the rest
+                    are one tap away at every scroll position. */}
                 <div className="md:hidden">
                   <BottomBar tabs={tabs} label={bar("label")} shape="raised" />
                 </div>

@@ -11,7 +11,7 @@ import { TryPanel, type TrySample } from "@/components/story/TryPanel";
 import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { ACCENT_RGB } from "@/components/story/palette";
-import { degradeSteps, type DegradeStep } from "@/components/story/measurements";
+import { bitsApart, degradeSteps, type DegradeStep } from "@/components/story/measurements";
 import type { BeatTable } from "@/components/story/beats";
 
 /**
@@ -149,13 +149,21 @@ function Still({ src }: { src: string }) {
  * The film's own words for each copy on the ladder, and its measure of it in
  * bits apart, so this page reads as the film does rather than printing the
  * verifier's file names (reencode-q30 and the rest) in every language.
+ *
+ * The figure comes from the same bitsApart the film writes, so the two pages
+ * can never print different numbers for one rung. A copy the verifier could
+ * not fingerprint still counts as the whole width apart, and says it did not
+ * match rather than borrowing the film's "match".
  */
 export function useCopyWords() {
   const t = useTranslations("story.verified");
   return {
     name: (transform: string) => (t.has(`copies.${transform}`) ? t(`copies.${transform}`) : transform),
     distance: (step: Pick<DegradeStep, "phashDistance">) =>
-      step.phashDistance === null ? t("notMatched") : t("similarity", { value: step.phashDistance, result: t("match") }),
+      t("similarity", {
+        value: bitsApart(step),
+        result: step.phashDistance === null ? t("notMatched") : t("match"),
+      }),
   };
 }
 
