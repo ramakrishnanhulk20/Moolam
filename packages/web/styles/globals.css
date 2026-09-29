@@ -145,30 +145,57 @@ body {
 /* Chinese, Japanese, Korean and Devanagari letters fill the whole em box, so the
    tight leading the Latin display face is set with makes two lines touch. The big
    figures keep the leading they were designed with: those are Latin digits in
-   every language, and every one of them carries tabular-nums. Tamil already gets
-   its leading picked per heading by components/studio/leading.ts. */
+   every language, and every one of them carries tabular-nums. */
 :where(html:lang(zh), html:lang(ja), html:lang(ko), html:lang(hi)) .font-display:not(.tabular-nums) {
   line-height: 1.16;
 }
 
+/* Tamil needs more than that: its vowel signs loop above and below the letter,
+   so at the Latin 1.05 the loops of one line met the dots of the next on the
+   Verify drop title at 375 px, and 1.2 still left them a hair apart there and
+   under the home headline. 1.25 is where both read clear. One number for every
+   display heading, and components/studio/leading.ts hands out the same one. */
+:where(html:lang(ta)) .font-display:not(.tabular-nums) {
+  line-height: 1.25;
+}
+
+/* Japanese headings break between phrases rather than between any two
+   characters, so a particle never lands alone at the start of a line. A browser
+   without phrase breaking keeps its own rule, which the first line names. */
+:where(html:lang(ja)) .font-display {
+  word-break: normal;
+  word-break: auto-phrase;
+}
+
 /* The mono kickers are tracked out to 0.24 or 0.28 em, which is what capitalised
-   Latin labels want. Devanagari and the CJK scripts have no capitals and much
-   wider letterforms, so the same space pulls a label apart into loose characters.
-   Everything else keeps the tracking it was set with, including the footer at
-   0.16 em. The tagline and the buttons are not mono and are handled below. */
-:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko))
+   Latin labels want. Tamil, Devanagari and the CJK scripts have no capitals and
+   much wider letterforms, so the same space pulls a label apart into loose
+   characters. Everything else keeps the tracking it was set with, including the
+   footer at 0.16 em. The tagline and the buttons are not mono and are handled
+   below. */
+:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko), html:lang(ta))
   :is(.tracking-\[0\.24em\], .tracking-\[0\.28em\]).font-mono.uppercase {
   letter-spacing: 0.08em;
 }
 
 /* The same Latin habit in two more places: the header tagline is tracked out to
    0.24 em and every button between 0.14 and 0.2 em, which is what small capitals
-   want and what Devanagari and CJK letterforms refuse. The tagline is the only
-   non-mono label at 0.24 em, and a button here is a rounded-[8px] control with
-   uppercase text, so those two shapes are what the rule names. */
-:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko))
+   want and what Tamil, Devanagari and CJK letterforms refuse. The tagline is the
+   only non-mono label at 0.24 em, and a button here is a rounded-[8px] control
+   with uppercase text, so those two shapes are what the rule names. */
+:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko), html:lang(ta))
   :is(.uppercase.tracking-\[0\.24em\]:not(.font-mono), .rounded-\[8px\].uppercase) {
   letter-spacing: 0.06em;
+}
+
+/* Tailwind's reset leaves buttons with the arrow. A cursor utility on the
+   element itself still wins, because this sits in the base layer under them. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary {
+    cursor: pointer;
+  }
 }
 
 ::selection {

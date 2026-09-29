@@ -60,7 +60,7 @@ describe("the script faces", () => {
 describe("the mono kickers", () => {
   it("lose most of their tracking in the scripts that have no capitals", () => {
     const css = read("styles/globals.css");
-    const rule = String.raw`:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko))
+    const rule = String.raw`:where(html:lang(hi), html:lang(zh), html:lang(ja), html:lang(ko), html:lang(ta))
   :is(.tracking-\[0\.24em\], .tracking-\[0\.28em\]).font-mono.uppercase {
   letter-spacing: 0.08em;
 }`;
