@@ -100,6 +100,44 @@ export function stepOption(from: number, key: string, count: number): number | n
   }
 }
 
+/**
+ * When the last language switch was pressed, in the page's own clock, or null
+ * once the new language's frame is up.
+ *
+ * The locale's layout holds the loading screen, so a switch that lands after
+ * the new frame but before its page shows that screen. It reads this to know
+ * it is standing in for a switch and should wait longer before it shows.
+ */
+let switchPressedAt: number | null = null;
+
+/** How long a pressed switch still counts as on its way, however it ended. */
+const SWITCH_WINDOW_MS = 10_000;
+
+/** Notes the moment a switch is pressed, for the loading screen the new frame may show. */
+function markSwitchPressed(): void {
+  switchPressedAt = performance.now();
+}
+
+/** True while a language switch pressed in this tab is still on its way. */
+export function switchOnItsWay(now: number = performance.now()): boolean {
+  return switchPressedAt !== null && now - switchPressedAt < SWITCH_WINDOW_MS;
+}
+
+/** Every other language this page can be read in, in the list's order. */
+export function otherLocales(active: string): Locale[] {
+  return routing.locales.filter((locale) => locale !== active);
+}
+
+/**
+ * Whether to fetch the other languages' pages when the list opens. A page in
+ * hand is what lets a choice land on the dimmed page with no loading screen
+ * between, but nine of them are real data on a phone plan, so a reader who
+ * asked the browser to save data is not sent them.
+ */
+export function shouldWarmLanguages(connection: { saveData?: boolean } | undefined): boolean {
+  return connection?.saveData !== true;
+}
+
 /** The rows of the open list, in the order they are drawn. */
 function rowsOf(list: HTMLUListElement | null): HTMLButtonElement[] {
   return Array.from(list?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? []);
@@ -191,10 +229,35 @@ export function LocaleSwitch() {
     return dimFrame(document, reduced);
   }, [pending, reduced]);
 
+  // This chip is drawn by the new language's frame, so the switch that brought
+  // it here is over as far as the loading screen is concerned.
+  useEffect(() => {
+    switchPressedAt = null;
+  }, []);
+
+  // The reader is choosing, which takes a second or two: long enough to have
+  // this page in every other language by the press, and then the router swaps
+  // the dimmed page for the new one with nothing in between. The default kind
+  // is the right one. Nearly every page here is built ahead and kept for a
+  // minute or so, and for a built page Next fetches the whole of it from its
+  // cache without drawing it again; asking for "full" would draw nine pages on
+  // the server, and their reads, on every open. The router keeps what it
+  // fetched, so opening the list again asks for nothing. Next never prefetches
+  // on the dev server, so there the loading screen still stands in.
+  useEffect(() => {
+    if (!open) return;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (!shouldWarmLanguages(connection)) return;
+    for (const locale of otherLocales(active)) {
+      router.prefetch(pathname, { locale });
+    }
+  }, [open, active, pathname, router]);
+
   const choose = (locale: Locale) => {
     setOpen(false);
     chip.current?.focus();
     if (locale === active) return;
+    markSwitchPressed();
     setTarget(locale);
     startTransition(() => {
       router.replace(pathname, { locale });
@@ -285,10 +348,13 @@ export function LocaleSwitch() {
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            // The header wraps on a phone and this control lands on the left of
-            // the second row, so the panel hangs from the same edge it does. From
-            // the width where the bar is one row again, it hangs from the right.
-            className="absolute start-0 top-[calc(100%+8px)] z-50 max-h-[70vh] w-[13.5rem] overflow-y-auto border border-line bg-bg-raised py-1 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.9)] backdrop-blur-md sm:start-auto sm:end-0"
+            // On a phone the header is one row, the wordmark on the left and
+            // this chip beside the theme square on the right, and on a laptop
+            // the chip ends the nav row. Either way it sits in the right half,
+            // so the panel hangs from its end edge and opens back across the
+            // screen, never past the right edge. The cap keeps it inside a
+            // window narrower than the panel.
+            className="absolute end-0 top-[calc(100%+8px)] z-50 max-h-[70vh] w-[13.5rem] max-w-[calc(100vw-2.5rem)] overflow-y-auto border border-line bg-bg-raised py-1 shadow-[0_24px_60px_-30px_rgb(0_0_0/0.9)] backdrop-blur-md"
           >
             {routing.locales.map((locale, index) => {
               const current = locale === active;

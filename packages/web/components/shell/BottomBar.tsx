@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, type ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Link, usePathname } from "@/lib/i18n/routing";
 import { TabMark } from "./TabMark";
@@ -63,6 +63,30 @@ function TabLink({ tab, ...rest }: { tab: Tab } & Omit<ComponentProps<typeof Lin
   return <Link href={tab.href} prefetch={tab.prefetch} {...rest} />;
 }
 
+/**
+ * Whether the bar has already risen into this tab.
+ *
+ * The bar lives in the locale's layout, and a language switch draws that whole
+ * layout again, so every switch mounted a new bar and slid it up from 56 px
+ * below as if the page had just opened. The entrance belongs to the first time
+ * the bar appears in a tab. A module outlives every remount and is fresh on a
+ * full load, which is exactly that span.
+ */
+let barHasEntered = false;
+
+/** The bar's first frame: below its place on the first mount in a tab, already in place on every mount after. */
+export function barEntrance(entered: boolean, reduced: boolean): false | { opacity: number; y?: number } {
+  if (entered) {
+    return false;
+  }
+  return reduced ? { opacity: 0 } : { opacity: 0, y: BAR_HEIGHT };
+}
+
+/** Marks the entrance as played, for the next mount in this tab. */
+export function markBarEntered(): void {
+  barHasEntered = true;
+}
+
 /** Flat is five equal tabs. Raised lifts the middle one onto a disc above the bar. */
 export type BarShape = "flat" | "raised";
 
@@ -97,12 +121,19 @@ export function BottomBar({
   const active = activeTab(route);
   const reduced = useIsReducedMotion();
   const raised = shape === "raised" ? "make" : null;
+  // Read once, on this mount's first render, so a bar that is mid-entrance is
+  // not stopped short by its own effect below.
+  const [entered] = useState(() => barHasEntered);
+
+  useEffect(() => {
+    markBarEntered();
+  }, []);
 
   return (
     <motion.nav
       aria-label={label}
       data-bar={shape}
-      initial={reduced ? { opacity: 0 } : { opacity: 0, y: BAR_HEIGHT }}
+      initial={barEntrance(entered, reduced)}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduced ? 0.2 : 0.5, ease: [0.16, 1, 0.3, 1] }}
       style={{

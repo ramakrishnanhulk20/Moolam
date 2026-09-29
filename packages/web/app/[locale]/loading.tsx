@@ -2,6 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { switchOnItsWay } from "@/components/LocaleSwitch";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 
 /**
@@ -22,6 +24,33 @@ const SHEET_PAD: Partial<Record<OpeningFrame, string>> = {
   explore: "pt-7 sm:pt-24 lg:pt-9",
 };
 
+/** How long the mark waits after a press, in seconds, so a page already fetched never flashes it. */
+const BEAT = 0.14;
+
+/**
+ * How long it waits when it stands in for a language switch. The old page was
+ * dimmed in place while the new language was fetched, and a switch that lands
+ * inside this reads as one change rather than a loading line flashed between
+ * two pages. On the dev server the page came 0.4 s after its frame.
+ */
+const SWITCH_BEAT = 0.7;
+
+/** How the mark comes in: after a beat, or after a longer one for a language switch, and without motion when less is asked for. */
+export function openingEntrance(
+  switching: boolean,
+  reduced: boolean,
+): {
+  initial: false | { opacity: number; y?: number };
+  transition: { delay: number; duration: number; ease?: [number, number, number, number] };
+} {
+  const delay = switching ? SWITCH_BEAT : BEAT;
+  if (reduced) {
+    // Still no movement, but a switch still waits before the words appear.
+    return switching ? { initial: { opacity: 0 }, transition: { delay, duration: 0 } } : { initial: false, transition: { delay: 0, duration: 0 } };
+  }
+  return { initial: { opacity: 0, y: 8 }, transition: { delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] } };
+}
+
 /**
  * What a press shows while the page it opened is still being read.
  *
@@ -38,12 +67,16 @@ export default function Opening({ frame = "page" }: { frame?: OpeningFrame }) {
   const common = useTranslations("common");
   const reduced = useIsReducedMotion();
   const poster = POSTER_HEIGHT[frame];
+  // Read once, as this screen mounts, which is in the same moment the new
+  // language's frame does.
+  const [switching] = useState(() => typeof window !== "undefined" && switchOnItsWay());
+  const entrance = openingEntrance(switching, reduced);
 
   const mark = (
     <motion.div
-      initial={reduced ? false : { opacity: 0, y: 8 }}
+      initial={entrance.initial}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.14, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      transition={entrance.transition}
       className="flex flex-col items-start"
     >
       <p
