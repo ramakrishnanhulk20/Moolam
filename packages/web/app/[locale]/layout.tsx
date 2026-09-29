@@ -345,8 +345,10 @@ export default async function LocaleLayout({
                       </Link>
                       {/* The way back to the first visit guide, for anyone who
                           skipped it or wants it again. It forgets the mark on
-                          this device and shouts; the home page hears it. */}
-                      <ShowGuideAgain label={g("again")} className={FOOTER_ROW} />
+                          this device and shouts; the home page hears it. It
+                          is a button, and a button does not take the row's
+                          capitals, so it asks for them itself. */}
+                      <ShowGuideAgain label={g("again")} className={`${FOOTER_ROW} uppercase`} />
                     </span>
 
                     {/* The three services, read while the page is rendered. The boundary
