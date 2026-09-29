@@ -5,18 +5,11 @@ import { WarningMark } from "@/components/WarningMark";
 import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { REPUTATION_REGISTRY, MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import type { GeneratorRecord } from "@/lib/data/passports";
+import { withoutReason } from "@/lib/i18n/reason";
 import { Link } from "@/lib/i18n/routing";
 
 /** Where the formula behind the trust score is written out in full, as on the Agents page. */
 const TRUST_DOC = "/docs/developers/envio-indexer#the-trust-score";
-
-/**
- * The reason's place while a failure sentence is formatted. It is cut out again
- * with the colon before it, so the translated sentence stands alone in every
- * language and the library's English waits under Details.
- */
-const REASON_SLOT = "\uE001";
-const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 export interface Reputation {
   count: bigint;
@@ -61,7 +54,7 @@ export async function Standing({
             <div data-index-unread className="mt-6 max-w-[46ch]">
               <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
                 <WarningMark className="mt-[3px]" />
-                <span className="min-w-0">{t("index.error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+                <span className="min-w-0">{withoutReason((reason) => t("index.error", { reason }))}</span>
               </p>
               <FailureDetails reason={recordError} className="ms-[24px] mt-2" />
               {/* The one way back on this page. The pictures further down come
@@ -127,7 +120,7 @@ export async function Standing({
             <div className="mt-6 max-w-[46ch]">
               <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
                 <WarningMark className="mt-[3px]" />
-                <span className="min-w-0">{t("reputation.error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+                <span className="min-w-0">{withoutReason((reason) => t("reputation.error", { reason }))}</span>
               </p>
               <FailureDetails reason={reputationError} className="ms-[24px] mt-2" />
             </div>

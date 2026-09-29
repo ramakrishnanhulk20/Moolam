@@ -200,7 +200,7 @@ describe("step 2: raw reasons out of the sentences (room 26)", () => {
 
   it("the studio's passkey line formats its sentence without the reason and folds it under", () => {
     const studio = source("components/studio/LiveStudio.tsx");
-    expect(studio).toContain('t("passkey.unreadable", { reason: REASON_SLOT }).replace(REASON_CUT, "")');
+    expect(studio).toContain('withoutReason((reason) => t("passkey.unreadable", { reason }))');
     expect(studio).toContain("<FailureDetails reason={studio.binding.error}");
     expect(studio).not.toContain("oneLine(");
   });

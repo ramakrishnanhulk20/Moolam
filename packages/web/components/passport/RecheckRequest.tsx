@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, reason as oneLine, shortHex } from "@/lib/chain/client";
+import { withoutReason } from "@/lib/i18n/reason";
 import { useRouter } from "@/lib/i18n/routing";
 import { refreshPassport } from "@/lib/passport/refresh";
 import { idleRecheck, type RecheckState } from "@/lib/recheck/state";
@@ -14,14 +15,6 @@ import { WarningMark } from "@/components/WarningMark";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const EASE = [0.16, 1, 0.3, 1] as const;
-
-/**
- * The reason's place while the failed sentence is formatted. It is cut out
- * again with the colon before it, so the translated sentence stands alone in
- * every language and the runner's own English waits under Details.
- */
-const REASON_SLOT = "\uE001";
-const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 // The pull that hands the status room back. The phone's room is taller than
 // the section's 3.5rem padding there, so only that much is handed back.
@@ -306,7 +299,7 @@ function Sentence({
           </>
         );
       case "failed":
-        return state.reason === undefined ? t("failedNoReason") : t("failed", { reason: REASON_SLOT }).replace(REASON_CUT, "");
+        return state.reason === undefined ? t("failedNoReason") : withoutReason((reason) => t("failed", { reason }));
       case "refused":
         return t(`failure.${state.key}`);
     }

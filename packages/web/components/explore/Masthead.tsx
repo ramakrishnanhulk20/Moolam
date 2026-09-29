@@ -2,16 +2,9 @@ import { getTranslations } from "next-intl/server";
 import { FailureDetails } from "@/components/studio/FailureDetails";
 import { WarningMark } from "@/components/WarningMark";
 import type { RegistryCounts } from "@/lib/data/passports";
+import { withoutReason } from "@/lib/i18n/reason";
 import type { PictureSplit } from "./plates";
 import { isMixedView, type ExploreView } from "./query";
-
-/**
- * The reason's place while the counts sentence is formatted. It is cut out again
- * with the colon before it, so the translated sentence stands alone in every
- * language and the library's English waits under Details.
- */
-const REASON_SLOT = "\uE001";
-const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * The head of the page: what this list is, how big the registry is, how it
@@ -107,7 +100,7 @@ export async function Masthead({
               <span className="min-w-0">
                 {countsError === null
                   ? t("countsError", { reason: t("countsMissing") })
-                  : t("countsError", { reason: REASON_SLOT }).replace(REASON_CUT, "")}
+                  : withoutReason((reason) => t("countsError", { reason }))}
               </span>
             </p>
             {countsError === null ? null : <FailureDetails reason={countsError} className="ms-[24px] mt-2" />}

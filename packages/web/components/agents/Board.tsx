@@ -3,6 +3,7 @@ import { IndexRetry } from "@/components/IndexRetry";
 import { FailureDetails } from "@/components/studio/FailureDetails";
 import { ToolOpening } from "@/components/studio/ToolOpening";
 import { WarningMark } from "@/components/WarningMark";
+import { withoutReason } from "@/lib/i18n/reason";
 import { Link } from "@/lib/i18n/routing";
 import { Row } from "./Row";
 import type { AgentRow } from "./roster";
@@ -10,14 +11,6 @@ import type { AgentStrip } from "./strip";
 
 /** Where the formula behind the trust score is written out in full. */
 const TRUST_DOC = "/docs/developers/envio-indexer#the-trust-score";
-
-/**
- * The reason's place while its sentence is formatted. It is cut out again with
- * the colon before it, so the translated sentence stands alone in every
- * language and the library's English waits under Details.
- */
-const REASON_SLOT = "\uE001";
-const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * Every generating agent the index has seen, the busiest first.
@@ -74,7 +67,7 @@ export async function Board({
       <div className="mt-14 max-w-[54ch]">
         <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
           <WarningMark className="mt-[3px]" />
-          <span className="min-w-0">{t("error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+          <span className="min-w-0">{withoutReason((reason) => t("error", { reason }))}</span>
         </p>
         <FailureDetails reason={error} className="ms-[24px] mt-2" />
         <IndexRetry said={error} />

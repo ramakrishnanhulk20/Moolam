@@ -8,6 +8,7 @@ import { WarningMark } from "@/components/WarningMark";
 import { FailureDetails } from "@/components/studio/FailureDetails";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { PassportCursor } from "@/lib/data/passports";
+import { withoutReason } from "@/lib/i18n/reason";
 import { EndCard } from "./EndCard";
 import { morePlates } from "./load";
 import { Plate } from "./Plate";
@@ -30,14 +31,6 @@ const FIRST_ROW = 4;
  * actually waiting for.
  */
 const NAMED_EARLY = 2;
-
-/**
- * The reason's place while its sentence is formatted. It is cut out again with
- * the colon before it, so the translated sentence stands alone in every
- * language and the library's English waits under Details.
- */
-const REASON_SLOT = "\uE001";
-const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * The contact sheet: every passport the filter matched, as plates on a grid of
@@ -91,7 +84,7 @@ export function Grid({
       <div className="mt-12 max-w-[54ch]">
         <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
           <WarningMark className="mt-[5px]" />
-          <span className="min-w-0">{t("error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+          <span className="min-w-0">{withoutReason((reason) => t("error", { reason }))}</span>
         </p>
         <FailureDetails reason={indexError} className="ms-[24px] mt-2" />
         <IndexRetry said={indexError} />
@@ -172,7 +165,7 @@ export function Grid({
         <div className="mt-6 max-w-[54ch]">
           <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
             <WarningMark className="mt-[5px]" />
-            <span className="min-w-0">{t("error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+            <span className="min-w-0">{withoutReason((reason) => t("error", { reason }))}</span>
           </p>
           <FailureDetails reason={problem} className="ms-[24px] mt-2" />
           {/* The next page knows how to fetch itself, so the retry asks the

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
+import { withoutReason } from "@/lib/i18n/reason";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
 import { useUnsavedFileWarning } from "@/lib/sealed/save";
@@ -38,14 +39,6 @@ const RegisterPanel = dynamic(loadRegister);
 // loses its height under the card.
 const Receipt = dynamic(loadReceipt, { loading: () => <EmptyReceipt /> });
 const YourPassports = dynamic(loadPassports);
-
-/**
- * The reason's place while the passkey sentence is formatted. It is cut out
- * again with the colon before it, so the translated sentence stands alone in
- * every language and Monad's own English waits under Details.
- */
-const REASON_SLOT = "\uE001";
-const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * The studio with the wallet SDK above it: the hook, the sign in, and every
@@ -165,7 +158,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
             <StudioWaiting text={t("passkey.reading")} />
           ) : studio.binding.status === "unreadable" ? (
             <div>
-              <Notice text={t("passkey.unreadable", { reason: REASON_SLOT }).replace(REASON_CUT, "")} tone="failed" />
+              <Notice text={withoutReason((reason) => t("passkey.unreadable", { reason }))} tone="failed" />
               {studio.binding.error ? <FailureDetails reason={studio.binding.error} className="ms-[24px] mt-2" /> : null}
               <button
                 type="button"
