@@ -222,7 +222,7 @@ export function DocsSearch() {
                     </p>
                   ) : null}
                   {query !== "" && entries !== null && rows.length === 0 ? (
-                    <p role="status" className="px-4 py-6 text-sm text-text-faint">
+                    <p role="status" className="px-4 py-6 text-base text-text-faint">
                       {t("noResults")}
                     </p>
                   ) : null}

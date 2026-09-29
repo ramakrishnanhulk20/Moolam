@@ -143,7 +143,7 @@ export function BreakIt() {
               <br />
               Watch them refused.
             </h2>
-            <p className="mt-3 max-w-[48ch] text-sm leading-relaxed text-text-muted">
+            <p className="mt-3 max-w-[48ch] text-base leading-relaxed text-text-muted">
               Each row is sent as the attacker, straight from this page to the deployed contracts. An eth_call runs the
               same code a transaction runs and keeps none of it, so there is no wallet, no gas and nothing to sign.
             </p>
@@ -191,7 +191,7 @@ export function BreakIt() {
                 whileInView={calm ? undefined : { opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-40px" }}
                 transition={{ duration: 0.5, delay: Math.min(index, 6) * 0.04, ease: [0.16, 1, 0.3, 1] }}
-                className="grid gap-4 border-b border-line/70 px-5 py-6 last:border-b-0 sm:grid-cols-[1fr_20rem] sm:gap-7 sm:px-7"
+                className="grid gap-4 border-b border-line/70 px-5 py-6 last:border-b-0 sm:grid-cols-[1fr_20rem] sm:gap-7 sm:px-7 xl:grid-cols-[1fr_22rem]"
               >
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-3">
@@ -228,7 +228,7 @@ export function BreakIt() {
                   </p>
                 </div>
 
-                <div className="sm:w-[20rem]">
+                <div className="sm:w-[20rem] xl:w-[22rem]">
                   <div className="flex items-center justify-between gap-3">
                     <span
                       className={`inline-flex h-7 items-center rounded-[6px] border px-2 font-mono text-xs uppercase tracking-[0.18em] ${mark.tone}`}
@@ -264,12 +264,14 @@ export function BreakIt() {
                     className="mt-3 h-[12.5rem] overflow-y-auto overflow-x-hidden rounded-[8px] border border-line bg-bg px-3 py-2 font-mono text-xs leading-[1.7] text-text-muted [overflow-wrap:anywhere] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:h-[11.5rem]"
                   >
                     <p className={isAsked(row) ? "text-text" : "text-text-faint"}>{headline(attack, row)}</p>
-                    {sentence === null ? null : <p className="mt-1 text-text-faint">{sentence}</p>}
+                    {sentence === null ? null : (
+                      <p className="mt-2 font-body text-base leading-relaxed text-text-muted">{sentence}</p>
+                    )}
                     {isAsked(row) && row.kind !== "unknown" ? (
                       <p className="mt-1 text-text-faint">simulated at block {row.block.toLocaleString("en-US")}</p>
                     ) : null}
                     {isAsked(row) && row.kind === "unknown" ? (
-                      <p className="mt-1 text-text-faint">
+                      <p className="mt-2 font-body text-base leading-relaxed text-text-muted">
                         The endpoint did not answer, so there is no result to show. Nothing was sent. Press Run again in
                         a moment.
                       </p>
@@ -290,9 +292,11 @@ export function BreakIt() {
           })}
         </div>
 
-        <footer className="border-t border-line bg-bg-raised px-5 py-5 font-mono text-xs leading-6 text-text-faint sm:px-7">
-          An eth_call cannot write. The same twelve attacks were also run as real transactions or as cast calls before
-          this page existed, and those transcripts are linked on every row.
+        <footer className="border-t border-line bg-bg-raised px-5 py-5 text-base leading-relaxed text-text-muted sm:px-7">
+          <p className="max-w-[62ch]">
+            An eth_call cannot write. The same twelve attacks were also run as real transactions or as cast calls
+            before this page existed, and those transcripts are linked on every row.
+          </p>
         </footer>
       </div>
     </section>
