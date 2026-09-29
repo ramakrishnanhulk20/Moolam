@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import {
   EDIT_STEPS,
@@ -396,7 +397,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
             rel="noreferrer"
             className="rounded-[8px] border border-line px-5 py-3 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
           >
-            {t("done.openTx", { hash: shortHex(state.result.hash) })}
+            {withHex(t("done.openTx", { hash: HEX_MARK }), shortHex(state.result.hash))}
           </a>
         )}
         <button

@@ -1,6 +1,7 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { BitGrid } from "@/components/BitGrid";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { isPrivateRecheck } from "@/lib/chain/receivers";
 import { bitsApart, bitsOf, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
@@ -139,6 +140,7 @@ export async function Attestations({
                     delivery={delivery}
                     privateCopy={privateCopy}
                     when={format.dateTime(new Date(Number(attestation.at) * 1000), "moment")}
+                    clock={format.dateTime(new Date(Number(attestation.at) * 1000), "time")}
                   />
                 ))}
               </ul>
@@ -177,6 +179,7 @@ function Row({
   delivery,
   privateCopy,
   when,
+  clock,
   t,
   common,
 }: {
@@ -188,6 +191,8 @@ function Row({
   /** Whether Moolam still keeps the private copy a private verdict was read from. */
   privateCopy?: SealedCopyLookup["state"];
   when: string;
+  /** The time of day and its zone, as they appear inside `when`. */
+  clock: string;
   t: Translate;
   common: Translate;
 }) {
@@ -279,7 +284,7 @@ function Row({
 
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
         <Field label={unknown ? t("unknown.distanceLabel") : t("distanceLabel")} value={t("distance", { distance: attestation.distance })} />
-        <Field label={t("at")} value={when} />
+        <Field label={t("at")} value={when} clock={clock} />
         <Field label={unknown ? t("unknown.field") : t("receiver")} value={shortHex(attestation.receiver)} href={`${MONAD_EXPLORER}/address/${attestation.receiver}`} />
       </dl>
 
@@ -296,7 +301,7 @@ function Row({
             rel="noreferrer"
             className="rounded-[8px] border border-line px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
           >
-            {t("openTx", { hash: shortHex(txHash) })}
+            {withHex(t("openTx", { hash: HEX_MARK }), shortHex(txHash))}
           </a>
         )}
         {source === "chainlink" ? (
@@ -318,12 +323,38 @@ function Row({
   );
 }
 
-function Field({ label, value, href }: { label: string; value: string; href?: string }) {
+/**
+ * A date split around its time of day, so the time and its zone can be kept on
+ * one line while the date wraps before them. Null when the clock is not found
+ * inside the date, which leaves the whole date to wrap at its spaces.
+ */
+export function splitClock(value: string, clock: string): { before: string; clock: string; after: string } | null {
+  const at = clock === "" ? -1 : value.lastIndexOf(clock);
+  return at === -1 ? null : { before: value.slice(0, at), clock, after: value.slice(at + clock.length) };
+}
+
+/**
+ * One fact under a re-check. An address may break anywhere so it never pushes
+ * the row wider than its column. A date is words: it wraps at its spaces, and
+ * never inside "3:49 PM UTC", which broke as "U / TC" when it was set like an
+ * address.
+ */
+function Field({ label, value, href, clock }: { label: string; value: string; href?: string; clock?: string }) {
+  const split = clock === undefined ? null : splitClock(value, clock);
+
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
-      <dd className="tap-row mt-1.5 break-all font-mono text-sm">
-        {href === undefined ? (
+      <dd className={`tap-row mt-1.5 font-mono text-sm ${clock === undefined ? "break-all" : "break-words"}`}>
+        {split !== null ? (
+          <>
+            {split.before}
+            <span data-clock className="whitespace-nowrap">
+              {split.clock}
+            </span>
+            {split.after}
+          </>
+        ) : href === undefined ? (
           value
         ) : (
           <a href={href} target="_blank" rel="noreferrer" className="transition-colors duration-200 hover:text-accent">

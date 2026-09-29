@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useId } from "react";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, gatewayUrl, shortHex } from "@/lib/chain/client";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { Link } from "@/lib/i18n/routing";
 import { holdsUnsavedFile, isStating, passportId, type RegisterState } from "@/lib/studio/flow";
 
@@ -69,7 +70,7 @@ export function DoneActions({
             rel="noreferrer"
             className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
           >
-            {t("register.openTx", { hash: shortHex(state.txHash) })}
+            {withHex(t("register.openTx", { hash: HEX_MARK }), shortHex(state.txHash))}
           </a>
         ) : wallet === undefined ? null : (
           <a
@@ -78,7 +79,7 @@ export function DoneActions({
             rel="noreferrer"
             className="rounded-[8px] border border-line px-5 py-3.5 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
           >
-            {t("register.openAddress", { wallet: shortHex(wallet) })}
+            {withHex(t("register.openAddress", { wallet: HEX_MARK }), shortHex(wallet))}
           </a>
         )}
 

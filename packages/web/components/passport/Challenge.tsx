@@ -4,7 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useEffect, useSyncExternalStore } from "react";
 import { formatEther, type Hex } from "viem";
-import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { MONAD_EXPLORER, reason as oneLine, shortHex } from "@/lib/chain/client";
 import { useRouter } from "@/lib/i18n/routing";
 import { REASON_MAX, REASON_MIN } from "@/lib/disputes/evidence";
 import {
@@ -19,6 +19,7 @@ import {
 import { useFlagPassport, type FlagPassport } from "@/lib/disputes/useFlagPassport";
 import { refreshPassport } from "@/lib/passport/refresh";
 import { WarningMark } from "@/components/WarningMark";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 
 /**
  * The challenge panel itself, in a file of its own so that nothing on a passport page reaches the
@@ -319,7 +320,7 @@ function Recorded({ receipt }: { receipt: ChallengeReceipt }) {
           rel="noreferrer"
           className="mt-7 inline-block rounded-[8px] border border-line px-5 py-3 text-xs uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-disputed hover:text-disputed"
         >
-          {t("done.openTx", { hash: shortHex(hash) })}
+          {withHex(t("done.openTx", { hash: HEX_MARK }), shortHex(hash))}
         </a>
       )}
     </div>
@@ -428,7 +429,7 @@ function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPasspo
       </p>
       {failure.reason === undefined ? null : (
         <p className="mt-2 max-w-[54ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
-          {failure.reason}
+          {oneLine(failure.reason)}
         </p>
       )}
       {failure.address === undefined ? null : (

@@ -143,7 +143,10 @@ describe("step 10: the challenge's Recorded receipt", () => {
     expect(html).toContain(flag.done.label);
     expect(html).toContain("108977352");
     expect(html).toContain(`/tx/${HASH}`);
-    expect(html).toContain(flag.done.openTx.replace("{hash}", shortHex(HASH)));
+    // The id keeps its own lower case inside the label in capitals.
+    expect(html).toContain(
+      flag.done.openTx.replace("{hash}", `<span data-hex="true" class="normal-case">${shortHex(HASH)}</span>`),
+    );
     expect(html).not.toContain("aria-expanded");
     expect(html).not.toContain(`>${flag.close}<`);
   });

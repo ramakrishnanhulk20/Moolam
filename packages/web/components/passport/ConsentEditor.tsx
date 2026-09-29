@@ -5,6 +5,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { NOTHING_STATED } from "@/lib/chain/consent";
 import { ConsentChoice } from "@/components/consent/ConsentChoice";
 import { WarningMark } from "@/components/WarningMark";
@@ -155,7 +156,7 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
               rel="noreferrer"
               className="mt-4 inline-block rounded-[8px] border border-line px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
             >
-              {t("openTx", { hash: shortHex(state.hash) })}
+              {withHex(t("openTx", { hash: HEX_MARK }), shortHex(state.hash))}
             </a>
           )}
         </motion.div>

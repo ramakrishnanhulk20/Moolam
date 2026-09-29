@@ -57,6 +57,7 @@ import { InlineLedger, PlateLedger, type LedgerView } from "@/components/story/S
 import { storyCut } from "@/components/story/stated";
 import { fractionOf } from "@/components/consent/ledger";
 import { shortHex } from "@/lib/chain/client";
+import { HEX_MARK, withHex } from "@/components/agents/hex";
 
 /**
  * The camera, read off the beats table.
@@ -540,7 +541,7 @@ function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView | null, 
           <Readout>
             {data.focal === null
               ? t("sealed.unread")
-              : t("sealed.readout", { passport: shortHex(data.focal.id, 10, 8), date: registered })}
+              : withHex(t("sealed.readout", { passport: HEX_MARK, date: registered }), shortHex(data.focal.id, 10, 8))}
           </Readout>
         </>
       ),
@@ -574,7 +575,10 @@ function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView | null, 
           <Readout>
             {data.focal?.measured === true
               ? t("verified.provenanceSelf", { date: measuredOn })
-              : t("verified.provenance", { passport: shortHex(measurement.passportId, 8, 6), date: measuredOn })}
+              : withHex(
+                  t("verified.provenance", { passport: HEX_MARK, date: measuredOn }),
+                  shortHex(measurement.passportId, 8, 6),
+                )}
           </Readout>
         </>
       ),

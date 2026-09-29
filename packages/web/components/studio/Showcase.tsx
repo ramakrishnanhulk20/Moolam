@@ -56,7 +56,7 @@ export async function Showcase({ passport, caption }: { passport: ShowcasePasspo
             <span className="line-clamp-2 max-w-[24ch] font-display text-[clamp(1.15rem,1.8vw,1.5rem)] font-semibold leading-[1.1] tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent">
               {title}
             </span>
-            <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-text-muted">
+            <span data-hex className="shrink-0 font-mono text-[10px] tracking-[0.18em] text-text-muted">
               {shortHex(passport.id, 6, 4)}
             </span>
           </span>
