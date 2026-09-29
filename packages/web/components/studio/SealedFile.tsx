@@ -7,6 +7,7 @@ import { SEALED_PUBLIC_FIELDS } from "@/components/sealed/fields";
 import { SealSwitch, type SealedFieldWords } from "@/components/sealed/SealSwitch";
 import { SealedPlate } from "@/components/sealed/SealedPlate";
 import { SealedSketch } from "@/components/sealed/Sketch";
+import { WarningMark } from "@/components/WarningMark";
 import { useSealedSave } from "@/lib/sealed/save";
 import { useWide, wideOnly } from "./layout";
 import type { SealedHandback } from "@/lib/sealed/handback";
@@ -257,9 +258,10 @@ function SaveControl({ file, saved, onSaved }: { file: SealedHandback; saved: bo
           which is kept for decoration. Once saved it is only a fact. */}
       <p
         data-only-copy={saved ? "saved" : "unsaved"}
-        className={`mt-4 max-w-[46ch] text-base leading-relaxed ${saved ? "text-text-faint" : "font-medium text-failed"}`}
+        className={`mt-4 flex max-w-[46ch] items-start gap-2.5 text-base leading-relaxed ${saved ? "text-text-faint" : "font-medium text-failed"}`}
       >
-        {t("only")}
+        {saved ? null : <WarningMark className="mt-[5px]" />}
+        <span className="min-w-0">{t("only")}</span>
       </p>
       {saved ? <p className="mt-2 max-w-[46ch] text-base leading-relaxed text-verified">{t("saved")}</p> : null}
     </div>
