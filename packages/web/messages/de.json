@@ -39,7 +39,7 @@
     "languageIs": "{language}, Sprache wechseln",
     "themeDarkAction": "Thema: dunkel, zum hellen Thema wechseln",
     "themeLightAction": "Thema: hell, zum dunklen Thema wechseln",
-    "languageOpening": "{language} wird geöffnet"
+    "languageOpening": "Wechsel zu {language}"
   },
   "shell": {
     "label": "Bereiche",
@@ -61,13 +61,13 @@
     "steps": {
       "check": {
         "title": "Jedes Bild prüfen",
-        "line": "Ein Bild hineingeben, und Moolam sagt, ob es einen Pass auf Monad hat und was beim Erstellen erlaubt wurde.",
+        "line": "Gib ein Bild hinein, und Moolam sagt, ob es einen Pass auf Monad hat und was sein Urheber erlaubt hat.",
         "action": "Bild prüfen",
         "elsewhere": "Am Laptop in der Leiste oben, am Telefon in der Leiste unten."
       },
       "make": {
         "title": "Eines machen und den Pass bekommen",
-        "line": "Ein Bild im Studio eintragen. Zwei Signaturen, etwa eine Sekunde, und ein Eintrag, den niemand still ändern kann.",
+        "line": "Trag ein Bild im Studio ein. Zwei Signaturen, etwa eine Sekunde, und ein Eintrag, den niemand still ändern kann.",
         "action": "Bild eintragen",
         "elsewhere": "Am Laptop in der Leiste oben, am Telefon der mittlere Tab."
       },
@@ -114,7 +114,7 @@
     "details": "Technische Details",
     "openingPage": "Seite wird geöffnet",
     "tryAgain": "Erneut versuchen",
-    "copyFailed": "Could not copy. Select the text and copy it yourself."
+    "copyFailed": "Das Kopieren hat nicht geklappt. Markiere den Text und kopiere ihn selbst."
   },
   "kind": {
     "0": "Erzeugt",
@@ -125,7 +125,7 @@
     "kicker": "Entdecken",
     "title": "Das Register",
     "rail": "Jeder Pass auf Monad",
-    "lede": "Jedes auf Monad eingetragene Bild, das neueste zuerst, beim Laden dieser Seite aus dem Index gelesen. Ein Klick zeigt Fingerabdruck und Nachprüfungen.",
+    "lede": "Jedes auf Monad eingetragene Bild, das neueste zuerst, beim Laden dieser Seite aus dem Index gelesen. Öffne eines, um Fingerabdruck, Content Credentials und Nachprüfungen zu sehen.",
     "counts": {
       "total": "Pässe",
       "generated": "Erzeugt",
@@ -150,8 +150,8 @@
       "captured": "Fotografiert",
       "edits": "Bearbeitungen",
       "rechecked": "Nachgeprüft",
-      "manifest": "Mit manifest",
-      "disputed": "Bestritten"
+      "manifest": "Mit Content Credentials",
+      "disputed": "Einspruch stattgegeben"
     },
     "ai": {
       "label": "KI-Nutzung",
@@ -178,7 +178,7 @@
     "legend": {
       "manifest": "Trägt Content Credentials",
       "rechecked": "Auf der Kette nachgeprüft",
-      "disputed": "Einspruch stattgegeben",
+      "disputed": "Einspruch stattgegeben, hier oder beim Bild, aus dem es bearbeitet wurde",
       "consent": "Erklärung zur KI-Nutzung, vier Zeichen für vier Nutzungen"
     },
     "untitled": "Ohne Titel",
@@ -210,26 +210,26 @@
   "agents": {
     "kicker": "Agenten",
     "title": "Agenten",
-    "lede": "Jeder erzeugende Agent, den der Index einen Pass hat unterschreiben sehen, mit allem, was er für ihn zählt. Die fleißigsten zuerst.",
-    "scoreMeaning": "Ein Vertrauenswert von 0 bis 100: wie oft die Nachprüfungen von Chainlink mit dem übereinstimmten, was dieser Agent unterschrieben hat. Bestätigte Einsprüche zählen doppelt gegen ihn.",
+    "lede": "Jeder erzeugende Agent, den der Index einen Pass hat signieren sehen, mit allem, was er für ihn zählt. Die fleißigsten zuerst.",
+    "scoreMeaning": "Ein Vertrauenswert von 0 bis 100: wie oft die Nachprüfungen von Chainlink mit dem übereinstimmten, was dieser Agent signiert hat. Stattgegebene Einsprüche zählen doppelt gegen ihn.",
     "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
     "formulaHow": "Wie der Wert entsteht",
     "formulaDoc": "Wo der Index ihn zählt",
     "agentId": "Agent {id}",
     "unnamed": "Die Karte dieses Agenten trägt keinen Namen",
-    "unnamedTitle": "Unnamed agent",
+    "unnamedTitle": "Agent ohne Namen",
     "since": "Zuerst gesehen am {when}",
     "trustScore": "Vertrauenswert",
     "passports": "Pässe",
-    "matched": "Treffende Nachprüfungen",
+    "matched": "Passende Nachprüfungen",
     "mismatched": "Verfehlte Nachprüfungen",
-    "upheld": "Bestätigte Einsprüche",
+    "upheld": "Stattgegebene Einsprüche",
     "seeWorks": "Seine Pässe ansehen",
-    "empty": "Der Index hat noch keinen Agenten einen Pass unterschreiben sehen.",
+    "empty": "Der Index hat noch keinen Agenten einen Pass signieren sehen.",
     "error": "Der Index konnte nicht gelesen werden: {reason}.",
-    "formulaPlain": "Jede passende Nachprüfung hebt den Wert, jede verfehlte senkt ihn; ein bestätigter Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50.",
+    "formulaPlain": "Jede passende Nachprüfung hebt den Wert, jede verfehlte senkt ihn; ein stattgegebener Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50.",
     "strip": {
-      "label": "Newest pictures this agent signed"
+      "label": "Die neuesten Bilder, die dieser Agent signiert hat"
     }
   },
   "home": {
@@ -245,25 +245,25 @@
       "proof": "{count} von 64 Bit Unterschied: zum Beweis",
       "again": "Noch eins prüfen",
       "make": "Einen erstellen",
-      "makeNote": "Registriere dein eigenes Bild. Kostenlos, mit einem Passkey.",
+      "makeNote": "Trag dein eigenes Bild ein. Kostenlos, mit einem Passkey.",
       "live": "Ein echter Pass und eine Kopie, die wir verändert haben",
       "unread": "Moolam konnte diesen Pass gerade nicht von Monad lesen.",
       "exhibit": "Beweisstück {mark}",
-      "compare": "Diese Kopie gegen das registrierte Bild",
-      "registered": "Auf Monad registriert, {date}",
+      "compare": "Diese Kopie gegen das eingetragene Bild",
+      "registered": "Auf Monad eingetragen, {date}",
       "copied": "Am {date} beschnitten, umgefärbt, neu kodiert: {size} KB",
-      "copyAlt": "Eine beschnittene, umgefärbte, neu kodierte Kopie des registrierten Bildes",
-      "pictureAlt": "Das registrierte Bild",
+      "copyAlt": "Eine beschnittene, umgefärbte, neu kodierte Kopie des eingetragenen Bildes",
+      "pictureAlt": "Das eingetragene Bild",
       "printRegistry": "Fingerabdruck im Register",
       "printCopy": "Fingerabdruck der Kopie, vom Prüfdienst gelesen",
       "verdictFigure": "{count} von 64",
       "verdictSame": "Bit Unterschied: dasselbe Bild.",
       "verdictMissed": "Bit Unterschied, und der Prüfdienst hat es nicht gefunden.",
-      "recheckOn": "Chainlink hat das registrierte Bild selbst am {date} nachgeprüft:",
+      "recheckOn": "Chainlink hat das eingetragene Bild selbst am {date} nachgeprüft:",
       "recheckBits": "{count} von 64 Bit Unterschied zu seinem Eintrag",
       "recheckMissed": "kein Treffer, {bits}",
       "chainlink": "Chainlink:",
-      "recheckNone": "noch keine Nachprüfung des registrierten Bildes geschrieben",
+      "recheckNone": "noch keine Nachprüfung des eingetragenen Bildes geschrieben",
       "statedOn": "Die Erklärung des Halters zur KI-Nutzung, {date}:",
       "aiUse": "KI-Nutzung:",
       "openPassport": "Pass öffnen: {title}",
@@ -307,7 +307,7 @@
       "title": "{summary}.",
       "body": "Das Wort des Urhebers zur KI-Nutzung steht mit Datum neben dem Pass auf Monad. Frag die Kette nach jedem Tag seitdem, und sie antwortet für diesen Tag.",
       "readout": "Erklärung am {written} auf Monad geschrieben und seitdem in Kraft",
-      "registered": "Registriert am {when}",
+      "registered": "Eingetragen am {when}",
       "today": "Heute"
     },
     "shared": {
@@ -330,7 +330,7 @@
       "similarity": "{value} von 64 Bit Unterschied: {result}",
       "matched": "hat gepasst",
       "notMatched": "hat nicht gepasst",
-      "attestation": "Ein Chainlink-CRE-Workflow hat es nachgeprüft und die Antwort auf die Kette geschrieben: {result}, {distance} Bit Abstand.",
+      "attestation": "Ein Chainlink-CRE-Workflow hat es nachgeprüft und die Antwort auf die Kette geschrieben: {result}, {distance} Bit Unterschied.",
       "noAttestation": "Für diesen Pass wurde noch keine Nachprüfung geschrieben.",
       "provenance": "Zahlen der Leiter, gemessen vom Moolam-Prüfdienst an einem anderen eingetragenen Bild, Pass {passport}, {date}.",
       "provenanceSelf": "Zahlen, gemessen vom Moolam-Prüfdienst an genau diesem Pass, {date}."
@@ -393,7 +393,7 @@
     "verdict": "Ja. Das ist dasselbe Bild wie {title}.",
     "verdictExact": "Ja. Byte für Byte ist das die als {title} eingetragene Datei.",
     "none": "Kein Pass passt zu diesem Bild.",
-    "noneHint": "Dieses Bild steht nicht in der Registry. Moolam gleicht Ausschnitte noch nicht ab, ein Stück eines eingetragenen Bildes wird also nicht gefunden. Versuch es mit dem ganzen Bild.",
+    "noneHint": "Dieses Bild steht nicht im Register. Moolam gleicht Ausschnitte noch nicht ab, ein Stück eines eingetragenen Bildes wird also nicht gefunden. Versuch es mit dem ganzen Bild.",
     "confidence": "Sicherheit",
     "phashDistance": "Aussehens-Fingerabdruck (pHash)",
     "blockhashDistance": "Aufbau-Fingerabdruck (Block-Hash)",
@@ -420,7 +420,7 @@
     "noMatchLabel": "Nicht eingetragen",
     "registerCta": "Dieses Bild eintragen",
     "untitled": "Ohne Titel",
-    "noPicture": "Der Speicher des Bildes antwortet gerade nicht",
+    "noPicture": "Der Speicher des Bildes antwortet gerade nicht. Versuch es in einer Minute noch einmal.",
     "measured": "Was gemessen wurde",
     "queriedSize": "Größe",
     "queriedPhash": "Aussehens-Fingerabdruck (pHash)",
@@ -428,10 +428,10 @@
     "queriedBlockhash": "Aufbau-Fingerabdruck (Block-Hash)",
     "bits": "{count} von {of} Bit Unterschied",
     "others": "{count, plural, =1 {# weiterer Pass lag im Bereich} other {# weitere Pässe lagen im Bereich}}, und dieser war der nächste.",
-    "firstRegistered": "Eine frühere Registrierung passt ebenfalls zu diesem Bild. <link>Erste Registrierung öffnen</link>.",
-    "laterSameFingerprint": "{count, plural, =1 {# spätere Registrierung trägt} other {# spätere Registrierungen tragen}} denselben Fingerabdruck.",
-    "pixelsUnread": "Das ist die registrierte Datei, Byte für Byte. Die Pixel ließen sich nicht lesen, daher wurden Aussehen und Aufbau nicht verglichen.",
-    "staleIndex": "Moolams Kopie der Registry ist {minutes} Minuten alt, daher erscheint ein seitdem eingetragenes Bild vielleicht noch nicht.",
+    "firstRegistered": "Eine frühere Eintragung passt ebenfalls zu diesem Bild. <link>Erste Eintragung öffnen</link>.",
+    "laterSameFingerprint": "{count, plural, =1 {# spätere Eintragung trägt} other {# spätere Eintragungen tragen}} denselben Fingerabdruck.",
+    "pixelsUnread": "Das ist die eingetragene Datei, Byte für Byte. Die Pixel ließen sich nicht lesen, daher wurden Aussehen und Aufbau nicht verglichen.",
+    "staleIndex": "Moolams Kopie des Registers ist {minutes} Minuten alt, daher erscheint ein seitdem eingetragenes Bild vielleicht noch nicht.",
     "manifestInvalid": "Die Content Credentials in dieser Datei bestehen die Prüfung nicht: Die Datei wurde nach dem Signieren verändert, oder der Eintrag wurde aus einer anderen Datei hineinkopiert. Die Fingerabdrücke stimmen trotzdem.",
     "manifestUnreadable": "Diese Datei enthält Content Credentials, die wir nicht lesen konnten, also können wir nicht sagen, ob sie gültig sind. Die Fingerabdrücke stimmen trotzdem.",
     "manifestCredentialExpired": "Die Signatur ist intakt. Das Zertifikat, mit dem sie erstellt wurde, ist inzwischen abgelaufen.",
@@ -444,7 +444,7 @@
       "notAnImage": "Diese Datei ließ sich nicht als Bild lesen. JPEG, PNG oder WebP.",
       "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
       "rateLimited": "Zu viele Prüfungen von hier. Warte eine Minute und versuch es noch einmal.",
-      "badRequest": "Der Prüfdienst hat diese Datei nicht angenommen. Wähle ein JPEG, PNG oder WebP und versuch es noch einmal.",
+      "badRequest": "Der Prüfdienst hat diese Anfrage nicht angenommen. Lade die Seite neu und prüfe das Bild noch einmal.",
       "badResponse": "Der Prüfdienst hat in einer Form geantwortet, die diese Seite nicht lesen kann. Versuch es in einer Minute noch einmal.",
       "serviceFailed": "Der Prüfdienst konnte diese Prüfung nicht abschließen. Versuch es in einer Minute noch einmal.",
       "refused": "Der Prüfdienst hat diese Anfrage abgelehnt. Lade die Seite neu und versuch es noch einmal.",
@@ -493,11 +493,11 @@
       "link": "Die zweite Meinung ansehen"
     },
     "dispute": {
-      "none": "Gegen diesen Pass läuft keine Anfechtung.",
-      "open": "Dieser Pass wird angefochten. Verlass dich auf seine Erklärung zur KI-Nutzung erst, wenn die Anfechtung entschieden ist.",
-      "upheld": "Eine Anfechtung gegen diesen Pass war erfolgreich. Behandle seinen Eintrag und seine Erklärung zur KI-Nutzung als nicht verlässlich.",
-      "inherited": "Gegen eine frühere Version dieses Bildes war eine Anfechtung erfolgreich. <link>Diese Version öffnen</link>.",
-      "rejected": "Gegen diesen Pass wurde eine Anfechtung erhoben und abgewiesen."
+      "none": "Gegen diesen Pass läuft kein Einspruch.",
+      "open": "Gegen diesen Pass läuft ein Einspruch. Verlass dich auf seine Erklärung zur KI-Nutzung erst, wenn der Einspruch entschieden ist.",
+      "upheld": "Einem Einspruch gegen diesen Pass wurde stattgegeben. Behandle seinen Eintrag und seine Erklärung zur KI-Nutzung als nicht verlässlich.",
+      "inherited": "Einem Einspruch gegen eine frühere Version dieses Bildes wurde stattgegeben. <link>Diese Version öffnen</link>.",
+      "rejected": "Gegen diesen Pass wurde ein Einspruch erhoben und abgewiesen."
     },
     "sealed": {
       "matched": "Passt zu einem versiegelten Pass. Das eingetragene Bild ist nicht veröffentlicht.",
@@ -505,7 +505,7 @@
       "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden."
     },
     "unsealed": {
-      "matched": "Dieser Pass wurde versiegelt eingetragen, und am {date} hat seine Halterin das Bild veröffentlicht."
+      "matched": "Dieser Pass wurde versiegelt eingetragen, und am {date} hat sein Halter das Bild veröffentlicht."
     },
     "share": {
       "copy": "Link zu dieser Antwort kopieren",
@@ -532,13 +532,13 @@
       "yours": "Deine Kopie",
       "registered": "Das eingetragene Bild",
       "drag": "Ziehen zum Vergleichen",
-      "label": "Compare your copy with the registered picture"
+      "label": "Deine Kopie mit dem eingetragenen Bild vergleichen"
     }
   },
   "passport": {
     "title": "Pass",
     "pending": "Register wird gelesen.",
-    "notFound": "Kein Pass mit dieser Id. Prüfe die Id, oder finde ihn über die Prüfseite.",
+    "notFound": "Kein Pass mit dieser Id. Prüfe die Id, oder finde ihn unter Prüfen.",
     "error": "Moolam konnte diesen Pass gerade nicht von Monad lesen. Versuch es noch einmal, oder schau unter Entdecken nach.",
     "creator": "Urheber",
     "owner": "Inhaber",
@@ -557,7 +557,7 @@
       "empty": "Für diesen Pass wurde noch keine Nachprüfung geschrieben. Der Chainlink-Workflow schreibt eine, sobald er das Bild nachprüft.",
       "matched": "hat gepasst",
       "notMatched": "hat nicht gepasst",
-      "distance": "{distance} von 64 Bit auseinander",
+      "distance": "{distance} von 64 Bit Unterschied",
       "receiver": "Auf Monad geschrieben vom Chainlink-Empfänger von Moolam",
       "at": "Am",
       "kicker": "Die zweite Meinung",
@@ -570,18 +570,18 @@
       },
       "openTx": "Transaktion {hash}",
       "noTransaction": "Der Link zur Transaktion ist für diesen Eintrag noch nicht verfügbar.",
-      "registeredGrid": "Registrierter Fingerabdruck",
+      "registeredGrid": "Eingetragener Fingerabdruck",
       "recomputedGrid": "Fingerabdruck von Chainlink",
-      "verdict": "Ein Chainlink-CRE-Workflow hat dieses Bild noch einmal geholt und seinen Fingerabdruck neu berechnet: <apart>{bits} von 64 Bit auseinander</apart>.",
-      "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den der Workflow aus der selbst geholten Datei berechnet hat. Jede Zelle, die abweicht, ist markiert.",
+      "verdict": "Ein Chainlink-CRE-Workflow hat dieses Bild noch einmal geholt und seinen Fingerabdruck neu berechnet: <apart>{bits} von 64 Bit Unterschied</apart>.",
+      "gridNote": "Das erste Raster ist der Fingerabdruck, den das Register bei der Eintragung gespeichert hat. Das zweite ist der, den der Workflow aus der selbst geholten Datei berechnet hat. Jede Zelle, die abweicht, ist markiert.",
       "whatIsRecheck": "Eine Nachprüfung heißt: ein Chainlink-CRE-Workflow holt diese Datei selbst, berechnet den Fingerabdruck erneut und schreibt die Antwort auf Monad. Über das eigene Bild kann niemand eine schreiben.",
       "private": {
         "badge": "Private Nachprüfung",
         "lead": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow, anhand der kleinen Kopie, die Moolam behält.",
         "leadEarlier": "Privat nachgeprüft von einem vertraulichen Chainlink-Workflow, anhand der kleinen Kopie, die Moolam damals behielt.",
         "limit": "Er lief in Chainlinks Simulator auf einem einzigen Rechner, nicht in der gesicherten Hardware von Chainlink.",
-        "verdict": "Ein vertraulicher Chainlink-Workflow hat die kleine private Kopie geöffnet, die Moolam von diesem Bild behielt, und seinen Fingerabdruck verglichen: <apart>{bits} von 64 Bit auseinander</apart>.",
-        "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung gespeichert hat. Das zweite ist der, den der Workflow aus der kleinen privaten Kopie von Moolam berechnet hat. Jede Zelle, die abweicht, ist markiert."
+        "verdict": "Ein vertraulicher Chainlink-Workflow hat die kleine private Kopie geöffnet, die Moolam von diesem Bild behielt, und seinen Fingerabdruck verglichen: <apart>{bits} von 64 Bit Unterschied</apart>.",
+        "gridNote": "Das erste Raster ist der Fingerabdruck, den das Register bei der Eintragung gespeichert hat. Das zweite ist der, den der Workflow aus der kleinen privaten Kopie von Moolam berechnet hat. Jede Zelle, die abweicht, ist markiert."
       },
       "sealedBody": "Jeder kann behaupten, ein Bild sei seins. Dieser Teil ist anders: eine zweite Stelle prüft den Fingerabdruck und schreibt die Antwort auf Monad. Ein versiegeltes Bild hat keine öffentliche Datei, also ist seine Prüfung privat: wenn sein Urheber darum gebeten hat, öffnet ein vertraulicher Chainlink-Workflow die kleine private Kopie, die Moolam behält, und vergleicht den Fingerabdruck.",
       "unknown": {
@@ -589,8 +589,8 @@
         "field": "Unbekannter Absender",
         "distanceLabel": "Was der Absender gemeldet hat",
         "recomputedGrid": "Fingerabdruck des Absenders",
-        "verdict": "Ein unbekannter Absender hat diesen Fingerabdruck für das Bild gemeldet: <apart>{bits} von 64 Bit auseinander</apart>.",
-        "gridNote": "Das erste Raster ist der Fingerabdruck, den die Registry bei der Registrierung dieses Bildes gespeichert hat. Das zweite ist der, den dieser Absender gemeldet hat. Moolam weiß nicht, wer diesen Absender betreibt, deshalb sagt diese Seite nicht, wie das Bild geprüft wurde."
+        "verdict": "Ein unbekannter Absender hat diesen Fingerabdruck für das Bild gemeldet: <apart>{bits} von 64 Bit Unterschied</apart>.",
+        "gridNote": "Das erste Raster ist der Fingerabdruck, den das Register bei der Eintragung dieses Bildes gespeichert hat. Das zweite ist der, den dieser Absender gemeldet hat. Moolam weiß nicht, wer diesen Absender betreibt, deshalb sagt diese Seite nicht, wie das Bild geprüft wurde."
       }
     },
     "children": {
@@ -696,18 +696,18 @@
         "openPassport": "Diesen Pass öffnen",
         "signIn": "Anmelden"
       },
-      "lineageNote": "Nur der Eigentümer kann Bearbeitungen hinzufügen. Die Privy-Erlaubnis der App kann Bearbeitungen hinzufügen und sonst nichts."
+      "lineageNote": "Nur der Inhaber kann Bearbeitungen hinzufügen. Die Privy-Erlaubnis der App kann Bearbeitungen hinzufügen und sonst nichts."
     },
     "untitled": "Ohne Titel",
-    "noPicture": "Der Speicher des Bildes antwortet gerade nicht. Versuch es in einer Minute noch einmal",
+    "noPicture": "Der Speicher des Bildes antwortet gerade nicht. Versuch es in einer Minute noch einmal.",
     "fingerprintVersion": "Fingerabdruck-Version {version}",
     "record": "Der Eintrag",
     "passkeyBound": "Dieser Urheber signiert mit einem Passkey, der an sein Konto gebunden ist.",
-    "passkeyNone": "An das Konto dieses Urhebers ist kein Passkey gebunden.",
+    "passkeyNone": "An die Wallet dieses Urhebers ist kein Passkey gebunden.",
     "noAgent": "Kein erzeugender Agent. Dieses wurde aus einer Datei eingetragen, die der Urheber hochgeladen hat.",
     "agentNumber": "Agent {id}",
     "about": "Über das Bild",
-    "prompt": "Anweisung",
+    "prompt": "Prompt",
     "fingerprints": "Die Fingerabdrücke",
     "fingerprintsBody": "Jeder kann das Bild holen, es erneut abtasten und mit diesen vergleichen. Die Nachprüfung durch Chainlink tut genau das. Nichts davon hängt am Dateinamen oder an dem, was die Metadaten behaupten.",
     "exactHash": "Fingerabdruck der exakten Datei (SHA-256)",
@@ -726,7 +726,7 @@
       "choose": "Bild wählen",
       "hint": "Eine verkleinerte, neu kodierte, gedrehte oder gespiegelte Kopie passt weiterhin. Ein Ausschnitt noch nicht.",
       "checking": "Diese Kopie wird geprüft",
-      "failed": "Die Prüfung lief nicht. Versuch es in einer Minute noch einmal, oder prüfe die Kopie auf der Prüfseite.",
+      "failed": "Die Prüfung lief nicht. Versuch es in einer Minute noch einmal, oder prüfe die Kopie unter Prüfen.",
       "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Schick eine kleinere Kopie.",
       "notAnImage": "Das ist keine Bilddatei. Zieh ein JPEG, PNG oder WebP her.",
       "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
@@ -737,9 +737,9 @@
       "openOther": "Den anderen Pass öffnen"
     },
     "dispute": {
-      "kicker": "Angefochten",
+      "kicker": "Bestritten",
       "body": "Jemand hat eine Kaution hinter die Behauptung gesetzt, dieser Eintrag sei falsch. Das Register hält die Kaution, bis der Einspruch entschieden ist.",
-      "challenger": "Einsprechender",
+      "challenger": "Einspruch von",
       "bond": "Kaution",
       "mon": "{amount} MON",
       "openedAt": "Eröffnet",
@@ -755,7 +755,7 @@
       "console": "Schlichtungskonsole",
       "outcome": {
         "open": "Wartet auf die Entscheidung der Schlichterin.",
-        "upheld": "Der Einspruch wurde bestätigt. Die Kaution ging zurück an die einspruchsführende Person, und dieser Eintrag ist dauerhaft als bestritten markiert.",
+        "upheld": "Dem Einspruch wurde stattgegeben. Die Kaution ging zurück an die einspruchsführende Person, und dieser Eintrag ist dauerhaft als bestritten markiert.",
         "rejected": "Der Einspruch wurde abgewiesen. Die Kaution ging an die Treasury, der Eintrag bleibt bestehen."
       },
       "flag": {
@@ -768,7 +768,7 @@
         "balanceLabel": "Dein Konto",
         "mon": "{amount} MON",
         "reading": "Wird gelesen",
-        "fee": "Die Netzwerkgebühr zahlt Moolam. Die Kaution kann es nicht zahlen: das sind deine eigenen MON, und sie verlassen dein Konto, sobald das hier eingetragen ist.",
+        "fee": "Die Netzgebühr zahlt Moolam. Die Kaution kann es nicht zahlen: Das sind deine eigenen MON, und sie verlassen dein Konto, sobald das hier eingetragen ist.",
         "reasonLabel": "Was an diesem Eintrag falsch ist",
         "reasonPlaceholder": "Schreibe, was du weißt, und wie jemand anderes es prüfen könnte.",
         "reasonLeft": "{left} übrig",
@@ -798,23 +798,23 @@
           "block": "Block",
           "blockPending": "Noch nicht gelesen",
           "bondHeld": "Deine Kaution",
-          "bondHeldBody": "Die Registry verwahrt sie selbst, bis der Streit entschieden ist. Niemand kann sie bewegen.",
+          "bondHeldBody": "Das Register verwahrt sie selbst, bis der Einspruch entschieden ist. Niemand kann sie bewegen.",
           "openTx": "Transaktion {hash}"
         },
         "failure": {
           "reasonShort": "Schreibe etwas mehr. Ein Einspruch braucht mindestens {min} Zeichen, damit die Schlichterin etwas zum Prüfen hat.",
-          "reasonLong": "Das sind mehr als {max} Zeichen. Alles davon geht auf die Chain, also behalte nur das Wesentliche.",
-          "notEnough": "Deinem Konto fehlen {short} MON für die Kaution. Die Netzwerkgebühr zahlt Moolam, die Kaution müssen deine eigenen MON sein.",
-          "badBond": "Die Kaution hat sich geändert, während dieses Feld offen war, deshalb hat die Registry den Betrag abgelehnt. Sie wurde neu gelesen, versuche es noch einmal.",
-          "alreadyOpen": "Jemand hat diesen Pass bereits bestritten, und die Registry lässt jeweils einen offenen Streit zu.",
+          "reasonLong": "Das sind mehr als {max} Zeichen. Alles davon geht auf die Kette, also behalte nur das Wesentliche.",
+          "notEnough": "Deinem Konto fehlen {short} MON für die Kaution. Die Netzgebühr zahlt Moolam, die Kaution müssen deine eigenen MON sein.",
+          "badBond": "Die Kaution hat sich geändert, während dieses Feld offen war, deshalb hat das Register den Betrag abgelehnt. Sie wurde neu gelesen, versuch es noch einmal.",
+          "alreadyOpen": "Jemand hat diesen Pass bereits bestritten, und das Register lässt jeweils nur einen offenen Einspruch zu.",
           "alreadyDisputed": "Dieser Pass ist bereits als bestritten markiert und kann kein zweites Mal bestritten werden.",
-          "notFound": "Die Registry kennt keinen Pass mit dieser id.",
-          "paused": "Neue Einträge und neue Einsprüche sind auf der Registry gerade pausiert.",
+          "notFound": "Das Register kennt keinen Pass mit dieser Id.",
+          "paused": "Neue Einträge und neue Einsprüche sind im Register gerade pausiert.",
           "declined": "Das Fenster wurde geschlossen, bevor die Transaktion hinausging. Es wurde nichts gesendet und nichts ausgegeben.",
           "confirmPending": "Der Einspruch wurde angenommen und Monad zeigt ihn noch nicht. Er kann noch eintreffen, also darf er nicht erneut gesendet werden.",
-          "notResolver": "Nur die Schlichterin, die die Policy benennt, kann einen Streit entscheiden.",
-          "noOpenDispute": "Zu diesem Pass ist kein Streit offen.",
-          "nothingOwed": "Die Registry schuldet diesem Konto nichts.",
+          "notResolver": "Nur die Schlichterin, die die Policy benennt, kann über einen Einspruch entscheiden.",
+          "noOpenDispute": "Zu diesem Pass ist kein Einspruch offen.",
+          "nothingOwed": "Das Register schuldet diesem Konto nichts.",
           "reverted": "Monad hat das abgelehnt, also wurde nichts geschrieben",
           "unknown": "Der Einspruch ging nicht hinaus."
         },
@@ -827,9 +827,9 @@
       }
     },
     "elsewhere": "Wo dieser Eintrag sonst noch liegt",
-    "openTransaction": "Registrierungstransaktion",
+    "openTransaction": "Transaktion der Eintragung",
     "openToken": "Token auf MonadVision",
-    "openImage": "Registrierte Datei öffnen",
+    "openImage": "Eingetragene Datei öffnen",
     "download": "Original herunterladen",
     "noManifest": "Diese Datei trug keine Content Credentials.",
     "ipfsCid": "Gespeicherten Eintrag auf IPFS öffnen",
@@ -881,11 +881,11 @@
       "writtenOn": "geschrieben am {when}",
       "nothingBy": "bis dahin war nichts erklärt",
       "asking": "die Kette wird nach diesem Tag gefragt",
-      "askFailed": "die Kette hat für diesen Tag nicht geantwortet. Zieh das Lineal, um noch einmal zu fragen",
-      "scrub": "Zieh das Lineal, oder nimm die Pfeiltasten",
+      "askFailed": "Die Kette hat für diesen Tag nicht geantwortet. Beweg den Tagesregler, um noch einmal zu fragen.",
+      "scrub": "Zieh den Tagesregler, oder nimm die Pfeiltasten",
       "scrubStep": ", ein Tag pro Schritt",
-      "scrubTouch": "Zieh das Lineal",
-      "registeredOn": "registriert am {when}",
+      "scrubTouch": "Zieh den Tagesregler",
+      "registeredOn": "eingetragen am {when}",
       "today": "heute",
       "shared": "{statement}, am {when} auf Monad festgehalten.",
       "dayLabel": "Der Tag, nach dem die Kette gefragt wird",
@@ -968,7 +968,7 @@
       "standing": "Versiegelt, also gibt es keine öffentliche Kopie",
       "commitmentLabel": "Die Festlegung",
       "commitmentAlgorithm": "Fingerabdruck mit {algorithm}, einem gängigen Datei-Fingerabdruck",
-      "commitmentLine": "Wer die Datei hat, kann sie hashen und mit der Pass-Kennung vergleichen.",
+      "commitmentLine": "Wer die Datei hat, kann sie hashen und mit der Pass-Id vergleichen.",
       "recheck": "Keine öffentliche Kopie zum Nachprüfen. Dafür müsste das Bild veröffentlicht werden.",
       "privateCopy": {
         "kept": "Eine private Nachprüfung kann auf der kleinen Kopie laufen, die Moolam behält.",
@@ -977,11 +977,11 @@
       },
       "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist.",
       "about": {
-        "noCopy": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht, und Moolam hat keine Kopie davon behalten. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "kept": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht. Auf Wunsch seines Urhebers behält Moolam eine kleine private Kopie, nur für eine private Nachprüfung durch einen Chainlink-Workflow. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "deleted": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht. Moolam hat eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow behalten, und diese Kopie wurde inzwischen gelöscht. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "asked": "Versiegelt eingetragen: das Bild wurde nie veröffentlicht. Sein Urheber hat Moolam gebeten, eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow zu behalten. Die Pass-Kennung ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "published": "Versiegelt eingetragen, ohne veröffentlichtes Bild, und am {date} von der haltenden Wallet veröffentlicht. Die Pass-Kennung ist der sha256 der Datei, also kann jeder das veröffentlichte Bild hashen und vergleichen."
+        "noCopy": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht, und Moolam hat keine Kopie davon behalten. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "kept": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Auf Wunsch seines Urhebers behält Moolam eine kleine private Kopie, nur für eine private Nachprüfung durch einen Chainlink-Workflow. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "deleted": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Moolam hat eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow behalten, und diese Kopie wurde inzwischen gelöscht. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "asked": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Sein Urheber hat Moolam gebeten, eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow zu behalten. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "published": "Versiegelt eingetragen, ohne veröffentlichtes Bild, und am {date} von seinem Halter veröffentlicht. Die Pass-Id ist der sha256 der Datei, also kann jeder das veröffentlichte Bild hashen und vergleichen."
       }
     },
     "unseal": {
@@ -993,25 +993,25 @@
       "chooseAnother": "Andere Datei wählen",
       "checking": "Die Datei wird auf deinem Gerät geprüft",
       "matched": "Das ist die eingetragene Datei",
-      "matchedLine": "Der Hash der Datei ist die Pass-Kennung {id}. Bisher hat nichts dieses Gerät verlassen.",
+      "matchedLine": "Der Hash der Datei ist die Pass-Id {id}. Bisher hat nichts dieses Gerät verlassen.",
       "publish": "Diese Datei veröffentlichen",
-      "sending": "Bild, Vorschaubild und Manifest werden gepinnt",
+      "sending": "Bild, Vorschaubild und Content Credentials werden gepinnt",
       "allowance": "{used} von {limit} Bearbeitungen und Veröffentlichungen heute",
       "done": {
         "label": "Veröffentlicht",
-        "body": "Das Bild, sein Vorschaubild und sein Manifest liegen auf IPFS, und ein kleiner Eintrag daneben sagt, wo. Auf der Chain hat sich nichts geändert, denn das geht gar nicht: die Metadaten-Adresse dieses Passes wurde einmal geschrieben und hat keinen Setter.",
+        "body": "Das Bild, sein Vorschaubild und seine Content Credentials liegen auf IPFS, und ein kleiner Eintrag daneben sagt, wo. Auf der Kette hat sich nichts geändert, denn das geht gar nicht: Die Metadaten-Adresse dieses Passes wurde einmal geschrieben und hat keinen Setter.",
         "at": "Veröffentlicht am {when}",
         "image": "Bild",
         "thumbnail": "Vorschaubild",
-        "manifest": "Manifest",
+        "manifest": "Content Credentials",
         "record": "Eintrag",
-        "check": "Jeder kann das Bild holen, es hashen und mit der Pass-Kennung auf Monad vergleichen. Das ist der ganze Beweis, und er braucht diesen Dienst nicht."
+        "check": "Jeder kann das Bild holen, es hashen und mit der Pass-Id auf Monad vergleichen. Das ist der ganze Beweis, und er braucht diesen Dienst nicht."
       },
       "failure": {
         "notTheFile": "Das ist nicht die eingetragene Datei. Der Pass steht für genau die Datei, die der Dienst signiert und zurückgegeben hat, nicht für deine eigene Kopie des Bildes.",
-        "fingerprintMismatch": "Der Hash stimmt, der daraus berechnete Fingerabdruck aber nicht mit dem auf der Chain, also wurde nichts veröffentlicht.",
-        "notHolder": "Laut Registry hält eine andere Wallet diesen Pass, und nur sie kann das Bild veröffentlichen.",
-        "noPassport": "Die Registry kennt keinen Pass mit dieser Kennung.",
+        "fingerprintMismatch": "Der Hash stimmt, der daraus berechnete Fingerabdruck aber nicht mit dem auf der Kette, also wurde nichts veröffentlicht.",
+        "notHolder": "Laut Register hält eine andere Wallet diesen Pass, und nur sie kann das Bild veröffentlichen.",
+        "noPassport": "Das Register kennt keinen Pass mit dieser Id.",
         "notSealed": "Das Bild dieses Passes ist bereits öffentlich, es gibt nichts mehr zu veröffentlichen.",
         "alreadyUnsealed": "Dieser Pass wurde schon veröffentlicht. Lade die Seite neu, um das Bild zu sehen.",
         "thumbnailTooLarge": "Aus diesem Bild lässt sich kein Vorschaubild machen, das klein genug ist, damit die Nachprüfung durch Chainlink es holen kann. Veröffentlicht bliebe ein Pass, den niemand je nachprüfen könnte. Es wurde nichts gepinnt.",
@@ -1027,7 +1027,7 @@
         "tooLarge": "Diese Datei ist größer als die Grenze von 20 MB.",
         "empty": "Diese Datei ist leer. Wähle sie noch einmal.",
         "unreadable": "Diese Datei ließ sich auf deinem Gerät nicht lesen. Wähle sie noch einmal.",
-        "rateLimited": "Zu viele Anfragen von hier im Moment. Kurz warten und noch einmal versuchen.",
+        "rateLimited": "Zurzeit kommen zu viele Anfragen von hier. Warte einen Moment und versuch es noch einmal.",
         "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
         "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
         "offline": "Der Prüfdienst hat nicht geantwortet, also wurde nichts veröffentlicht.",
@@ -1058,12 +1058,12 @@
       "done": "Gelöscht. Moolam behält jetzt nichts mehr von diesem Bild.",
       "failure": {
         "signedOut": "Diese Sitzung ist abgemeldet, der Dienst hat nichts gelöscht.",
-        "notHolder": "Laut Registry hält eine andere Wallet diesen Pass, und nur sie kann die Kopie löschen.",
-        "noPassport": "Die Registry kennt keinen Pass mit dieser Kennung.",
+        "notHolder": "Laut Register hält eine andere Wallet diesen Pass, und nur sie kann die Kopie löschen.",
+        "noPassport": "Das Register kennt keinen Pass mit dieser Id.",
         "nothingKept": "Dieser Pass hat nie um eine private Kopie gebeten, also gibt es nichts zu löschen.",
         "deleteFailed": "Ein Teil der Löschung ist nicht durchgegangen, die Kopie ist vielleicht noch da. Drück noch einmal auf Löschen, um den Vorgang abzuschließen.",
         "dependencyDown": "Ein nötiger Dienst hat nicht geantwortet, also wurde nichts gelöscht. Versuch es in einer Minute wieder.",
-        "rateLimited": "Zu viele Anfragen von hier im Moment. Kurz warten und noch einmal versuchen.",
+        "rateLimited": "Zurzeit kommen zu viele Anfragen von hier. Warte einen Moment und versuch es noch einmal.",
         "badRequest": "Der Dienst hat die Anfrage abgelehnt.",
         "badResponse": "Der Dienst hat in einer Form geantwortet, die diese App nicht kennt.",
         "offline": "Der Prüfdienst hat nicht geantwortet, also wurde nichts gelöscht.",
@@ -1076,7 +1076,7 @@
     "unsealed": {
       "poster": "Veröffentlicht am {date}",
       "label": "Zuerst versiegelt",
-      "line": "Ohne veröffentlichtes Bild eingetragen und am {date} von der haltenden Wallet veröffentlicht. Der Hash der Datei ist die Pass-Kennung."
+      "line": "Ohne veröffentlichtes Bild eingetragen und am {date} von seinem Halter veröffentlicht. Der Hash der Datei ist die Pass-Id."
     },
     "facts": {
       "madeBy": "Gemacht von",
@@ -1109,7 +1109,7 @@
       "heading": "Feedback auf der öffentlichen Bewertungstafel für Agenten (ERC-8004)",
       "empty": "Für diesen Agenten ist noch kein Feedback erfasst. Moolam trägt Feedback hier von Hand ein, nicht nach jeder Prüfung.",
       "error": "Das Reputationsregister konnte nicht gelesen werden: {reason}.",
-      "body": "Das Feedback steht auf Monads öffentlicher Bewertungstafel für Agenten (dem ERC-8004 Reputationsregister), abgelegt unter den Prüfungen von Moolam. Diese Seite liest die Zusammenfassung. Der Vertrauenswert daneben stammt aus den eigenen Nachprüfungen des Index, deshalb werden die beiden nie zusammengezählt.",
+      "body": "Das Feedback steht auf Monads öffentlicher Bewertungstafel für Agenten (dem ERC-8004-Reputationsregister), wo Moolam es von Hand einträgt. Diese Seite liest die Zusammenfassung. Der Vertrauenswert daneben zählt die Nachprüfungen von Chainlink, deshalb werden die beiden nie zusammengerechnet.",
       "registry": "Register {address}",
       "secondary": "Von Hand auf der Kette eingetragenes Feedback, unabhängig vom Nachprüfungswert",
       "entries": "{count, plural, =1 {# Eintrag} other {# Einträge}}",
@@ -1123,37 +1123,37 @@
       "trustScore": "Vertrauenswert",
       "trustScoreBody": "Von 100, aus Nachprüfungen die passten, solchen die nicht passten, und jedem stattgegebenen Einspruch. Geglättet, damit eine einzelne glückliche Prüfung nicht 100 ergibt.",
       "passportCount": "Pässe",
-      "matchedCount": "Nachprüfungen gepasst",
-      "mismatchedCount": "Nachprüfungen daneben",
-      "disputesUpheld": "Einsprüchen stattgegeben",
-      "since": "Zuerst gesehen {when}",
+      "matchedCount": "Passende Nachprüfungen",
+      "mismatchedCount": "Verfehlte Nachprüfungen",
+      "disputesUpheld": "Stattgegebene Einsprüche",
+      "since": "Zuerst gesehen am {when}",
       "empty": "Der Index hat diesen Agenten noch keinen Pass signieren sehen.",
       "error": "Der Index konnte nicht gelesen werden: {reason}.",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "Wie der Wert entsteht",
-      "formulaPlain": "Jede passende Nachprüfung hebt den Wert, jede verfehlte senkt ihn; ein bestätigter Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50."
+      "formulaPlain": "Jede passende Nachprüfung hebt den Wert, jede verfehlte senkt ihn; ein stattgegebener Einspruch zählt wie zwei verfehlte. Ein neuer Agent beginnt bei 50."
     },
     "signs": {
       "heading": "Wie dieser Agent signiert",
       "body": "Der Name eines Agenten ist nur so gut wie das Konto dahinter. Das Register prüft diese Verbindung selbst, bei jeder Eintragung, bevor es irgendetwas schreibt.",
       "sign": {
         "title": "Der Agent signiert den Fingerabdruck",
-        "body": "Das Konto, dem Agent {id} gehört, signiert eine kurze Zusammenfassung des Bildes: seine Fingerabdrücke, wer es gemacht hat, welcher Agent es gezeichnet hat und eine Frist. Das Bild verlässt den Fingerabdruck nie."
+        "body": "Die Wallet, der Agent {id} gehört, signiert eine kurze Zusammenfassung des Bildes: seine Fingerabdrücke, wer es gemacht hat, welcher Agent es gezeichnet hat und eine Frist. Das Bild verlässt den Fingerabdruck nie."
       },
       "recover": {
-        "title": "Das Register holt den Signierer zurück",
-        "body": "Das Register erkennt allein an der Signatur, wer unterschrieben hat. Nichts wird dem Absender der Transaktion einfach geglaubt."
+        "title": "Das Register ermittelt den Unterzeichner",
+        "body": "Das Register erkennt allein an der Signatur, wer signiert hat. Nichts wird dem Absender der Transaktion einfach geglaubt."
       },
       "own": {
         "title": "Es muss der Inhaber sein",
-        "body": "Dieser Unterzeichner wird mit dem Eigentümer verglichen, der im öffentlichen Agenten-Register (ERC-8004) steht. Weichen sie ab, lehnt Monad die Eintragung ab und es entsteht kein Pass."
+        "body": "Dieser Unterzeichner wird mit dem Inhaber verglichen, der im öffentlichen Agenten-Register (ERC-8004) steht. Weichen sie ab, lehnt Monad die Eintragung ab und es entsteht kein Pass."
       },
       "registry": "Register {address}",
       "identity": "Identität {address}",
       "privy": "Wo der Schlüssel liegt",
       "privyBody": "Privy verwahrt den Schlüssel dieses Agenten, und eine Privy-Richtlinie begrenzt, was er signieren darf. Diese Ids stammen aus der Karte des Agenten selbst, nicht aus dieser App.",
-      "privyWallet": "Privy Konto-Id",
-      "privyPolicy": "Was dieses Konto signieren darf"
+      "privyWallet": "Privy-Wallet-Id",
+      "privyPolicy": "Was diese Wallet signieren darf"
     },
     "works": {
       "heading": "Was er signiert hat",
@@ -1161,7 +1161,7 @@
       "empty": "Noch nennt kein Pass diesen Agenten.",
       "error": "Der Index konnte gerade nicht gelesen werden. Versuch es gleich noch einmal.",
       "untitled": "Ohne Titel",
-      "noThumbnail": "Keine Vorschau angeheftet",
+      "noThumbnail": "Kein Vorschaubild gepinnt",
       "showTest": "{count, plural, =1 {# Testbild} other {# Testbilder}} anzeigen",
       "hideTest": "Testbilder ausblenden",
       "onlyTest": "Jedes Bild, das dieser Agent bisher signiert hat, ist ein Testbild.",
@@ -1179,7 +1179,7 @@
     "lede": "Jedes Bild, das du hier einträgst, bekommt seinen eigenen Eintrag auf Monad: abgetastet, von dir signiert, von jeder Kopie aus auffindbar.",
     "opening": "Dein Konto wird geöffnet",
     "noWallet": "Du bist angemeldet, aber auf Monad wurde noch kein Konto angelegt. Lade die Seite neu, oder melde dich ab und wieder an.",
-    "notConfigured": "Auf dieser Installation von Moolam ist die Anmeldung abgeschaltet, deshalb lässt sich das Studio hier nicht öffnen. Prüfen und Entdecken funktionieren weiterhin ohne Konto.",
+    "notConfigured": "Auf dieser Website ist die Anmeldung abgeschaltet, deshalb lässt sich das Studio hier nicht öffnen. Prüfen und Entdecken funktionieren weiterhin ohne Konto.",
     "signOut": "Abmelden",
     "identity": {
       "account": "Angemeldet als",
@@ -1195,7 +1195,7 @@
       "kindPhone": "deine Telefonnummer",
       "kindPasskey": "ein Passkey, ohne E-Mail im Konto",
       "kindAccount": "dieses Konto",
-      "passkeySigned": "Mit dem eigenen Schlüssel dieses Geräts signiert, ohne Seed-Phrase."
+      "passkeySigned": "Mit dem eigenen Schlüssel dieses Geräts signiert, ohne Wiederherstellungsphrase."
     },
     "signedOut": {
       "kicker": "Du bist nicht angemeldet",
@@ -1218,7 +1218,7 @@
         },
         "consent": {
           "label": "Dein Wort zur KI-Nutzung",
-          "body": "Du sagst, wie KI es nutzen darf: offen für KI, nicht für KI-Training, oder vorher fragen. Deine Antwort wird in die Datei signiert und mit dem Datum auf Monad geschrieben, und du kannst sie später ändern."
+          "body": "Du sagst, wie KI es nutzen darf: offen für KI, nicht für KI-Training oder erst mich fragen. Deine Antwort wird in die Datei signiert und mit dem Datum auf Monad geschrieben, und du kannst sie später ändern."
         }
       }
     },
@@ -1267,7 +1267,7 @@
     "register": {
       "kicker": "Bereit",
       "heading": "Gib einem Bild seinen Pass",
-      "body": "Ein Bild nach dem anderen. Es wird abgetastet und angeheftet, du signierst es mit deiner Entsperrung, und Moolam schickt es an Monad.",
+      "body": "Ein Bild nach dem anderen. Es wird abgetastet und gepinnt, du signierst es mit deiner Entsperrung, und Moolam schickt es an Monad.",
       "drop": "Zieh ein Bild hierher",
       "choose": "Datei wählen",
       "hint": "JPEG, PNG oder WebP, bis 20 MB. Moolam fügt Content Credentials (C2PA) hinzu, tastet die signierte Datei ab und legt sie in einem öffentlichen Speicher (IPFS) ab.",
@@ -1279,8 +1279,8 @@
       "balance": "Auf deinem Konto liegen {mon} MON.",
       "steps": {
         "prepare": {
-          "waiting": "Datei abtasten und anheften, etwa zehn Sekunden",
-          "running": "Wird abgetastet und angeheftet, etwa zehn Sekunden",
+          "waiting": "Datei abtasten und pinnen, etwa zehn Sekunden",
+          "running": "Wird abgetastet und gepinnt, etwa zehn Sekunden",
           "done": "Abgetastet, Content Credentials hinzugefügt, auf IPFS abgelegt",
           "failed": "Die Datei wurde nicht vorbereitet"
         },
@@ -1301,7 +1301,7 @@
       },
       "doneLabel": "Eingetragen",
       "doneHeading": "Dieses Bild hat jetzt einen Pass",
-      "doneBody": "Jede Kopie davon, verkleinert, neu kodiert oder quer gedreht, lässt sich über die Prüfseite auf diesen Eintrag zurückführen.",
+      "doneBody": "Jede Kopie davon, verkleinert, neu kodiert oder quer gedreht, lässt sich unter Prüfen auf diesen Eintrag zurückführen.",
       "passportId": "Pass",
       "block": "Block",
       "blockPending": "Kommt aus dem Index",
@@ -1312,15 +1312,15 @@
       "openPassport": "Pass öffnen",
       "openTx": "Transaktion {hash}",
       "openAddress": "Dein Konto {wallet} auf MonadVision",
-      "openImage": "Das angeheftete Bild",
+      "openImage": "Das gepinnte Bild",
       "another": "Noch ein Bild eintragen",
       "balanceEmpty": "Dein Konto hat 0 MON und kann die Netzgebühr deshalb nicht selbst zahlen. Schick zuerst etwas MON darauf, oder versuch es später noch einmal.",
-      "anotherWaits": "Dein Wort zur KI-Nutzung ist noch auf dem Weg zu Monad. Das hier wird frei, sobald Monad es zeigt."
+      "anotherWaits": "Dein Wort zur KI-Nutzung ist noch auf dem Weg zu Monad. Sobald Monad es zeigt, kannst du ein weiteres Bild eintragen."
     },
     "generate": {
       "kicker": "Der Agent",
       "heading": "Lass den Agenten zeichnen",
-      "body": "Sag, was du willst. Der Generator-Agent zeichnet es, heftet es an IPFS und signiert den Pass mit seiner eigenen Wallet. Du signierst denselben Pass mit deiner Entsperrung. Zwei Signaturen, eine Transaktion.",
+      "body": "Sag, was du willst. Der Generator-Agent zeichnet es, pinnt es und signiert den Pass mit seiner eigenen Wallet. Du signierst denselben Pass mit deiner Entsperrung. Zwei Signaturen, eine Transaktion.",
       "prompt": "Prompt",
       "promptPlaceholder": "Ein Fischerboot, das im ersten Licht den Hafen verlässt, vom Wasser aus gesehen",
       "promptHint": "Zwischen 8 und 600 Zeichen. Dein Prompt bleibt in den Metadaten, also lesbar neben dem Bild.",
@@ -1350,10 +1350,10 @@
           "failed": "Das Bild wurde nicht gezeichnet"
         },
         "pin": {
-          "waiting": "Bild, Vorschau und Metadaten an IPFS heften",
-          "running": "Wird an IPFS geheftet",
-          "done": "An IPFS geheftet",
-          "failed": "Es wurde nicht angeheftet"
+          "waiting": "Bild, Vorschaubild und Metadaten auf IPFS pinnen",
+          "running": "Wird auf IPFS gepinnt",
+          "done": "Auf IPFS gepinnt",
+          "failed": "Es wurde nicht gepinnt"
         },
         "agentSign": {
           "waiting": "Der Agent signiert den Pass mit seiner eigenen Wallet",
@@ -1378,9 +1378,9 @@
       },
       "signatures": {
         "heading": "Zwei Signaturen, eine Transaktion",
-        "body": "Die Registry nimmt diesen Pass nur, wenn beide Namen darauf stehen. Sieh zu, wie sie ankommen.",
+        "body": "Das Register nimmt diesen Pass nur, wenn beide Namen darauf stehen. Sieh zu, wie sie ankommen.",
         "agent": "Der Agent",
-        "agentWaiting": "Signiert, sobald das Bild angeheftet ist",
+        "agentWaiting": "Signiert, sobald das Bild gepinnt ist",
         "agentDetail": "Signiert von einer Privy-Server-Wallet unter einer Richtlinie, die nur das erlaubt.",
         "agentId": "Agent {id}",
         "agentWallet": "Wallet {wallet}",
@@ -1391,7 +1391,7 @@
       "openAgent": "Der Eintrag des Agenten",
       "doneLabel": "Generiert",
       "doneHeading": "Ein Agent hat das gemacht, und ihr habt beide dafür signiert",
-      "doneBody": "Der Pass sagt, welcher Agent es gezeichnet hat und welches Konto danach gefragt hat. Jede Kopie des Bildes führt von der Prüfseite aus zu diesem Eintrag zurück.",
+      "doneBody": "Der Pass sagt, welcher Agent es gezeichnet hat und welches Konto danach gefragt hat. Jede Kopie des Bildes führt unter Prüfen zu diesem Eintrag zurück.",
       "kind": "Art",
       "agentRow": "Gezeichnet von",
       "modelRow": "Modell",
@@ -1400,33 +1400,33 @@
     "consent": {
       "kicker": "Bevor es signiert wird",
       "heading": "Sag, wie KI es nutzen darf",
-      "body": "Es steht in der Datei selbst, bevor irgendetwas signiert wird, und auf Monad, sobald der Passport geschrieben ist. Eine Aussage an zwei Stellen, die beide bestehen bleiben.",
-      "hint": "Nichts zu sagen ist auch eine Wahl, und sie erteilt niemandem eine Erlaubnis. Du kannst es später auf der Passport-Seite angeben.",
+      "body": "Es steht in der Datei selbst, bevor irgendetwas signiert wird, und auf Monad, sobald der Pass geschrieben ist. Eine Erklärung an zwei Stellen, die beide bestehen bleiben.",
+      "hint": "Nichts zu sagen ist auch eine Wahl, und sie erteilt niemandem eine Erlaubnis. Du kannst es später auf der Passseite angeben.",
       "needsConditions": "Schreib deine Bedingungen oben hinein. Sie reisen im Bild mit und gehen mit ihm auf die Kette.",
       "receipt": {
         "label": "Wie KI es nutzen darf",
-        "sending": "Deine Aussage wird geschrieben",
+        "sending": "Deine Erklärung wird geschrieben",
         "sendingDetail": "Dieselben Worte, die in die Datei kamen, gehen jetzt an das Einwilligungsregister auf Monad.",
         "pending": "Gesendet, und Monad hat es noch nicht gezeigt",
         "pendingDetail": "Nichts wurde ein zweites Mal gesendet. Frag Monad gleich noch einmal.",
         "statedIn": "Auf Monad festgehalten in {ms} ms.",
-        "sponsored": "Netzwerkgebühr von Moolam über Privy bezahlt.",
-        "own": "Netzwerkgebühr aus deinem eigenen Guthaben bezahlt.",
+        "sponsored": "Netzgebühr von Moolam über Privy bezahlt.",
+        "own": "Netzgebühr aus deinem eigenen Guthaben bezahlt.",
         "conditions": "Deine Bedingungen: {text}",
-        "failed": "Registriert, Aussage nicht geschrieben",
-        "later": "Der Passport steht auf der Kette. Du kannst die Aussage jederzeit auf seiner eigenen Seite schreiben.",
+        "failed": "Eingetragen, Erklärung nicht geschrieben",
+        "later": "Der Pass steht auf der Kette. Du kannst die Erklärung jederzeit auf seiner eigenen Seite schreiben.",
         "none": "Nichts zur KI-Nutzung gesagt",
-        "noneDetail": "Schweigen ist keine Erlaubnis. Du kannst es jederzeit auf der Passport-Seite angeben.",
-        "again": "Aussage noch einmal schreiben",
+        "noneDetail": "Schweigen ist keine Erlaubnis. Du kannst es jederzeit auf der Passseite angeben.",
+        "again": "Erklärung noch einmal schreiben",
         "recheck": "Monad noch einmal fragen"
       }
     },
     "sealed": {
       "switch": {
         "label": "Dieses Bild versiegelt lassen",
-        "note": "Moolam veröffentlicht den Passport, nicht das Bild. Sichere die Datei, die wir dir zurückgeben: sie ist die einzige Kopie, die diesen Passport wieder öffnen kann.",
+        "note": "Moolam veröffentlicht den Pass, nicht das Bild. Sichere die Datei, die wir dir zurückgeben: Sie ist die einzige Kopie, die diesen Pass wieder öffnen kann.",
         "panelHeading": "Was öffentlich wird",
-        "panelLine": "Alles hier unten geht in dem Moment hinaus, in dem du unterschreibst, und aus einem unveränderlichen Register lässt sich nichts zurückholen. Das Bild selbst steht nicht auf der Liste.",
+        "panelLine": "Alles hier unten geht in dem Moment hinaus, in dem du signierst, und aus einem unveränderlichen Register lässt sich nichts zurückholen. Das Bild selbst steht nicht auf der Liste.",
         "sketchCaption": "Mehr wird vom Bild nicht öffentlich.",
         "inFile": "Gepinnte Datei",
         "onChain": "Auf Monad",
@@ -1439,12 +1439,12 @@
       },
       "fields": {
         "commitment": {
-          "label": "Die Passport-Kennung",
+          "label": "Die Pass-Id",
           "line": "Der SHA-256 der Datei, die wir dir zurückgeben. Die Kette legt sich auf genau diese Bytes fest, ohne sie zu zeigen."
         },
         "fingerprint": {
           "label": "Die zwei Fingerabdrücke",
-          "line": "Ein 64-Bit-Wahrnehmungshash und der 16 mal 16 große Blockhash oben. Grob hell und dunkel, mehr nicht."
+          "line": "Ein 64-Bit-Wahrnehmungshash und der 16 mal 16 große Block-Hash oben. Grob hell und dunkel, mehr nicht."
         },
         "name": {
           "label": "Der Titel, den du tippst",
@@ -1452,14 +1452,14 @@
         },
         "description": {
           "label": "Die Zeile, die Moolam schreibt",
-          "line": "Ein fester Satz dazu, wie dieser Passport entstanden ist. Er beschreibt nie das Bild."
+          "line": "Ein fester Satz dazu, wie dieser Pass entstanden ist. Er beschreibt nie das Bild."
         },
         "creator": {
           "label": "Deine Wallet-Adresse",
-          "line": "Das Register hält fest, wer eingetragen hat, wie bei jedem Passport."
+          "line": "Das Register hält fest, wer eingetragen hat, wie bei jedem Pass."
         },
         "generator": {
-          "label": "Die Agenten-Kennung",
+          "label": "Die Agenten-Id",
           "line": "Welcher Moolam-Agent gezeichnet hat, und das öffentliche Agenten-Register, in dem er geführt wird (ERC-8004)."
         },
         "createdAt": {
@@ -1467,16 +1467,16 @@
           "line": "Der Moment, in dem dieser Eintrag entstand, und genau darum geht es beim frühen Eintragen."
         },
         "training": {
-          "label": "Deine Angabe zur KI-Nutzung",
+          "label": "Deine Erklärung zur KI-Nutzung",
           "line": "Die vier Antworten von oben, in den Worten des Standards für KI-Training und Data-Mining (CAWG)."
         },
         "sealed": {
           "label": "Das Wort versiegelt",
-          "line": "Damit Passport-Seite, Explore und die Linkvorschau alle sagen, dass das Bild nicht veröffentlicht ist."
+          "line": "Damit Passseite, Entdecken und die Linkvorschau alle sagen, dass das Bild nicht veröffentlicht ist."
         },
         "model": {
           "label": "Welches Modell gezeichnet hat",
-          "line": "Der Name des Bildmodells, wie bei einem veröffentlichten Passport."
+          "line": "Der Name des Bildmodells, wie bei einem veröffentlichten Pass."
         },
         "prompt": {
           "label": "Der Prompt",
@@ -1502,7 +1502,7 @@
         "bodyPrivate": "Moolam hat nichts vom Bild selbst gepinnt. Es behält nur die kleine private Kopie, um die du gebeten hast. Sichere die signierte Datei, bevor du diese Seite schließt.",
         "save": "Signierte Datei sichern",
         "saved": "Gesichert. Leg sie dorthin, wo du sie wiederfindest.",
-        "only": "Das ist die einzige Kopie, die diesen Passport wieder öffnen kann."
+        "only": "Das ist die einzige Kopie, die diesen Pass wieder öffnen kann."
       },
       "done": {
         "label": "Auf Monad versiegelt",
@@ -1527,15 +1527,15 @@
       "account": "Angemeldet",
       "accountDetail": "Privy hat das geprüft, bevor ein Konto entstand.",
       "wallet": "Dein Konto auf Monad",
-      "walletDetail": "Bei der Anmeldung angelegt. Keine Wiederherstellungsphrase, und kein Schlüssel den Moolam hält.",
+      "walletDetail": "Bei der Anmeldung angelegt. Keine Wiederherstellungsphrase und kein Schlüssel, den Moolam hält.",
       "passkey": "Passkey angebunden",
       "passkeyDetail": "Die öffentliche Hälfte der Entsperrung dieses Geräts, vom Register gespeichert.",
       "fingerprint": "Fingerabdruck der exakten Datei (SHA-256)",
       "fingerprintDetail": "{width} mal {height} Pixel. Content Credentials (C2PA) hinzugefügt: {manifest}.",
       "manifestYes": "ja",
       "manifestNo": "nein",
-      "pinned": "An IPFS geheftet",
-      "pinnedDetail": "Die signierten Bytes, die Vorschau und die Metadaten gingen alle an IPFS.",
+      "pinned": "Auf IPFS gepinnt",
+      "pinnedDetail": "Die signierten Bytes, das Vorschaubild und die Metadaten gingen alle an IPFS.",
       "download": "Dein Bild herunterladen",
       "downloadHelp": "Die signierte Datei mit ihren Content Credentials: Eine Kopie davon lässt sich weiterhin gegen diesen Pass prüfen.",
       "signed": "Was du signiert hast (Digest)",
@@ -1564,20 +1564,20 @@
       "source": "Live aus dem Index gelesen (Envio)",
       "reading": "Alles wird gelesen, was dieses Konto eingetragen hat.",
       "unreadable": "Deine Bilder konnten gerade nicht gelesen werden. Versuch es noch einmal.",
-      "empty": "Aus diesem Konto ist noch nichts eingetragen. Das erste Bild das du einträgst erscheint hier innerhalb eines Blocks.",
-      "noThumbnail": "Keine Vorschau",
+      "empty": "Aus diesem Konto ist noch nichts eingetragen. Das erste Bild, das du einträgst, erscheint hier innerhalb eines Blocks.",
+      "noThumbnail": "Kein Vorschaubild",
       "untitled": "Ohne Titel",
       "retry": "Erneut versuchen"
     },
     "failure": {
-      "serviceOffline": "Der Moolam Prüfdienst antwortet nicht, deshalb wurde nichts hochgeladen. Versuch es gleich noch einmal.",
+      "serviceOffline": "Der Moolam-Prüfdienst antwortet nicht, deshalb wurde nichts hochgeladen. Versuch es gleich noch einmal.",
       "signedOut": "Deine Sitzung ist abgelaufen. Melde dich neu an, dann klappt der Upload.",
       "tooLarge": "Diese Datei liegt über der Grenze von 20 MB. Exportier sie kleiner und versuch es noch einmal.",
       "signedFileTooLarge": "Mit der Signatur des Passes würde diese Datei über 20 MB wachsen, und mehr kann eine Prüfung nicht zurücklesen. Exportier sie kleiner und versuch es noch einmal. Nichts wurde gepinnt.",
       "notAnImage": "Diese Datei ist kein JPEG, PNG oder WebP. Wähl eine Bilddatei.",
       "empty": "Diese Datei ist leer. Wähle das Bild noch einmal.",
       "rateLimited": "Dieses Konto hat in der letzten Stunde 20 Bilder vorbereitet, das ist die Grenze. Versuch es später.",
-      "pinFailed": "Das Bild ließ sich nicht an IPFS heften, deshalb wurde nichts eingetragen. Versuch es gleich noch einmal.",
+      "pinFailed": "Das Bild ließ sich nicht auf IPFS pinnen, deshalb wurde nichts eingetragen. Versuch es gleich noch einmal.",
       "badRequest": "Der Prüfdienst hat diesen Upload abgelehnt. Was er gesagt hat, steht unten.",
       "badResponse": "Der Prüfdienst hat in einer Form geantwortet, die diese Seite nicht versteht, deshalb wurde nichts signiert. Versuch es noch einmal.",
       "authCheck": "Die Signatur deines Geräts würde vom Register abgelehnt, deshalb ging sie nicht raus. Versuch es noch einmal, und nimm dieselbe Entsperrung, die du angebunden hast.",
@@ -1598,7 +1598,7 @@
       "confirmPending": "Dein Versand wurde angenommen und Monad zeigt ihn noch nicht. Er kann noch landen, deshalb wurde nichts ein zweites Mal geschickt. Öffne unten dein Konto und schau nach, oder frag Monad noch einmal.",
       "sendCancelled": "Du hast die Bestätigung geschlossen, es wurde nichts geschickt.",
       "sendFailed": "Dieser Schritt kam nicht durch. Die eigenen Worte des Netzes stehen unten. Versuch es gleich noch einmal.",
-      "digestMismatch": "Das Netz hat einen anderen Datensatz zurückgegeben als den auf dieser Seite, deshalb wurde nichts signiert. Versuch es noch einmal, und lade die Seite neu, wenn es zweimal passiert.",
+      "digestMismatch": "Das Netz hat einen anderen Eintrag zurückgegeben als den auf dieser Seite, deshalb wurde nichts signiert. Versuch es noch einmal, und lade die Seite neu, wenn es zweimal passiert.",
       "passkeyNotReady": "Diese Seite hat deinen Passkey noch nicht fertig von Monad gelesen. Warte einen Moment und versuch es noch einmal.",
       "unknown": "Etwas ging schief, bevor irgendetwas geschickt wurde. Die Meldung steht unten.",
       "fileMissing": "Wähl zuerst ein Bild.",
@@ -1608,14 +1608,14 @@
       "creatorMismatch": "Das jetzt angemeldete Konto ist nicht das, für das dieses Bild gezeichnet wurde. Melde dich ab, wieder an und frag noch einmal danach.",
       "deadlinePassed": "Das Bild wurde gezeichnet, aber vom Signaturfenster war zu wenig übrig, damit der Agent es signieren konnte. Es zählt trotzdem gegen das heutige Kontingent. Mach es noch einmal, dann beginnt das Fenster neu.",
       "modelFailed": "Das Modell hat dieses Bild nicht fertig gezeichnet. Es kann vorher gezeichnet und abgerechnet haben, also zählt es trotzdem zum heutigen Stand.",
-      "agentSignFailed": "Das Bild wurde gezeichnet und angeheftet, und die Wallet des Agenten wollte den Pass nicht signieren. Versuch es noch einmal. Wenn es dabei bleibt, ist die Richtlinie auf der Wallet des Agenten die wahrscheinliche Ursache.",
+      "agentSignFailed": "Das Bild wurde gezeichnet und gepinnt, und die Wallet des Agenten wollte den Pass nicht signieren. Versuch es noch einmal. Wenn es dabei bleibt, ist die Richtlinie auf der Wallet des Agenten die wahrscheinliche Ursache.",
       "agentBusy": "Moolam bearbeitet gerade so viele Bilder gleichzeitig, wie es schafft. Versuch es in einer Minute noch einmal.",
       "promptTooShort": "Schreib ein paar Wörter mehr. Der Agent braucht mindestens acht Zeichen.",
       "promptTooLong": "Dieser Prompt ist länger als 600 Zeichen. Kürze ihn und frag noch einmal.",
-      "sealedMismatch": "Die Datei, die zurückkam, passt nicht zum Passport. Es wurde nichts eingetragen. Versuch es noch einmal.",
+      "sealedMismatch": "Die Datei, die zurückkam, passt nicht zum Pass. Es wurde nichts eingetragen. Versuch es noch einmal.",
       "sealedNotHeld": "Der Prüfdienst hat die versiegelte Datei nicht zurückgegeben, deshalb wurde nichts signiert. Versuch es noch einmal.",
       "sealedRecordRefused": "Der Prüfdienst hat diesen versiegelten Eintrag nicht veröffentlicht, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal.",
-      "sealedFileRefused": "Der Prüfdienst konnte keine Datei zurückgeben, die zu diesem Passport passt, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal.",
+      "sealedFileRefused": "Der Prüfdienst konnte keine Datei zurückgeben, die zu diesem Pass passt, deshalb wurde nichts gepinnt und nichts eingetragen. Versuch es noch einmal.",
       "privateRecheckNeedsSealed": "Der Prüfdienst behält keine private Kopie eines Bildes, das nicht versiegelt ist, deshalb wurde nichts gepinnt und nichts eingetragen. Lade das Studio neu und versuch es noch einmal.",
       "privateCopyNotPrivate": "Der Speicheranbieter hat die kleine Kopie nicht privat gehalten, deshalb hat Moolam angehalten: nichts wurde gepinnt und nichts eingetragen. Schalte die private Nachprüfung aus, um dieses Bild ohne sie versiegelt einzutragen.",
       "privateChainUnreachable": "Moolam hat Monad nicht erreicht, um zu prüfen, ob dieses Bild neu ist, deshalb wurde keine private Kopie behalten und nichts eingetragen. Versuch es gleich noch einmal.",
@@ -1663,32 +1663,32 @@
     "diagramNamedFull": "{name}, Diagramm, volle Größe"
   },
   "resolve": {
-    "title": "Streitfälle entscheiden",
+    "title": "Einsprüche entscheiden",
     "heading": "Offene Einsprüche entscheiden",
     "kicker": "Schlichtungskonsole",
-    "lede": "Jeder Einspruch, den die Registry noch offen hat, mit Bild, Vorwurf und Kaution. Lesen darf jede Person; entscheiden darf nur die benannte Adresse.",
+    "lede": "Jeder Einspruch, den das Register noch offen hat, mit Bild, Vorwurf und Kaution. Lesen darf jede Person; entscheiden darf nur die benannte Adresse.",
     "resolverLabel": "Die Schlichterin",
     "policyNote": "Der Policy-Vertrag benennt genau eine Adresse, und eine Änderung wartet 24 Stunden öffentlich, damit alle Zuschauenden vor dem Wirksamwerden reagieren können.",
     "youAre": "Du bist die Schlichterin",
     "stranger": "Diese Seite gehört der Schlichterin, die die Policy benennt.",
-    "strangerBody": "Du bist als {wallet} angemeldet, deshalb würde die Registry alles von hier ablehnen.",
+    "strangerBody": "Du bist als {wallet} angemeldet, deshalb würde das Register alles von hier ablehnen.",
     "signedOut": "Melde dich mit dem Konto der Schlichterin an, um einen Einspruch zu entscheiden. Zum Lesen braucht es kein Konto.",
     "signIn": "Anmelden",
-    "creditLabel": "Was die Registry dir schuldet",
+    "creditLabel": "Was das Register dir schuldet",
     "creditUnread": "Noch nicht gelesen",
-    "creditBody": "Geld wird hier abgeholt, nie zugeschoben. Ein entschiedener Streit trägt nur eine Gutschrift ein, und nichts erreicht ein Konto, bevor dieses Konto danach fragt.",
+    "creditBody": "Geld wird hier abgeholt, nie zugeschoben. Ein entschiedener Einspruch trägt nur eine Gutschrift ein, und nichts erreicht ein Konto, bevor dieses Konto danach fragt.",
     "withdraw": "{amount} MON abheben",
     "withdrawing": "Wird gesendet",
     "withdrawn": "Ausgezahlt. Die Gutschrift steht wieder auf null.",
     "mon": "{amount} MON",
     "empty": "Kein Einspruch ist offen. Hier wartet nichts auf dich.",
     "error": "Die Policy konnte gerade nicht gelesen werden. Versuch es gleich noch einmal.",
-    "unavailable": "Die Liste der offenen Streitfälle kommt aus dem Index, und der Index hat nicht geantwortet. Versuch es gleich noch einmal.",
+    "unavailable": "Die Liste der offenen Einsprüche kommt aus dem Index, und der Index hat nicht geantwortet. Versuch es gleich noch einmal.",
     "passport": "Pass",
     "noPicture": "Kein Bild",
     "claim": "Der Vorwurf",
     "noReason": "Der Beleg dazu ist ein Link und kein Text: {uri}",
-    "unverified": "Index und Registry sind sich beim Beleg dazu nicht einig, deshalb steht der Vorwurf hier nicht. Lies den Eintrag selbst, bevor du entscheidest.",
+    "unverified": "Index und Register sind sich beim Beleg dazu nicht einig, deshalb steht der Vorwurf hier nicht. Lies den Eintrag selbst, bevor du entscheidest.",
     "challenger": "Einspruch von",
     "bond": "Kaution",
     "openedAt": "Eröffnet",
@@ -1701,9 +1701,9 @@
     "settledUpheld": "Stattgegeben. Die Kaution geht zurück an die einspruchsführende Person.",
     "settledRejected": "Abgewiesen. Die Kaution geht an die Treasury.",
     "failure": {
-      "notResolver": "Die Registry hat abgelehnt: das sendende Konto ist nicht die Schlichterin, die die Policy benennt.",
-      "noOpenDispute": "Zu diesem Pass ist kein Streit mehr offen.",
-      "nothingOwed": "Die Registry schuldet diesem Konto gerade nichts.",
+      "notResolver": "Das Register hat abgelehnt: Das sendende Konto ist nicht die Schlichterin, die die Policy benennt.",
+      "noOpenDispute": "Zu diesem Pass ist kein Einspruch mehr offen.",
+      "nothingOwed": "Das Register schuldet diesem Konto gerade nichts.",
       "notEnough": "Das Konto konnte diese Transaktion nicht decken.",
       "declined": "Das Fenster wurde geschlossen, bevor die Transaktion hinausging. Es wurde nichts gesendet.",
       "confirmPending": "Es wurde angenommen und Monad zeigt es noch nicht. Es kann noch eintreffen, also darf es nicht erneut gesendet werden.",
@@ -1739,7 +1739,7 @@
     "button": "Nachprüfung anfordern",
     "again": "Noch einmal versuchen",
     "checkNow": "Erneut nachsehen",
-    "note": "Kostenlos. Der Chainlink-Workflow holt das Bild erneut und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Blockchain.",
+    "note": "Kostenlos. Der Chainlink-Workflow holt das Bild erneut und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Kette.",
     "sending": "Die Anfrage geht raus.",
     "queued": "Angefordert am {at}. Platz {position} in der Warteschlange.",
     "queuedWaiting": "Angefordert am {at}. Wartet in der Warteschlange.",
@@ -1750,7 +1750,7 @@
     "doneNoTime": "Fertig: dieses Bild wurde nachgeprüft.",
     "failed": "Konnte nicht laufen: {reason}",
     "failedNoReason": "Konnte nicht laufen. Es wurde kein Grund genannt.",
-    "stopped": "Diese Seite hat nach einer halben Stunde aufgehört nachzusehen. Zum erneuten Nachsehen drücken.",
+    "stopped": "Diese Seite hat nach einer halben Stunde aufgehört nachzusehen. Drück, um noch einmal nachzusehen.",
     "stamp": {
       "sending": "Wird gesendet",
       "queued": "In der Warteschlange",
@@ -1762,22 +1762,22 @@
     "failure": {
       "noPassport": "Der Prüfdienst kennt diesen Pass nicht, es gibt also nichts nachzuprüfen.",
       "sealed": "Das Bild dieses Passes wurde nie veröffentlicht, der Workflow hat also nichts zum Holen.",
-      "queueFull": "Die Warteschlange ist voll mit Anfragen, die noch niemand abgearbeitet hat. Später noch einmal versuchen.",
-      "rateLimited": "Zu viele Anfragen von hier, bitte eine Minute warten.",
+      "queueFull": "Die Warteschlange ist voll mit Anfragen, die noch niemand abgearbeitet hat. Versuch es später noch einmal.",
+      "rateLimited": "Zu viele Anfragen von hier, warte eine Minute.",
       "notAnswering": "Der Prüfdienst antwortet gerade nicht. Versuch es in einer Minute noch einmal.",
       "unknown": "Die Anfrage ist nicht durchgegangen."
     },
-    "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Blockchain.",
+    "notePrivate": "Kostenlos. Der vertrauliche Chainlink-Workflow öffnet die kleine private Kopie, die Moolam behält, vergleicht den Fingerabdruck und schreibt sein Urteil auf Monad. Das Urteil landet meist innerhalb weniger Minuten auf der Kette.",
     "runningPrivate": "Läuft gerade: der Workflow öffnet die private Kopie und vergleicht den Fingerabdruck.",
     "recheckedOn": "Nachgeprüft am {date}",
     "confirming": "Die Warteschlange meldet diesen Lauf als fertig. Als fertig erscheint er erst, wenn sein Ergebnis auf Monad lesbar ist."
   },
   "mine": {
     "title": "Deine Bilder",
-    "description": "Jedes Bild das du hier eingetragen hast, mit deinem eigenen Konto aus dem Index gelesen.",
+    "description": "Jedes Bild, das du hier eingetragen hast, mit deinem eigenen Konto aus dem Index gelesen.",
     "kicker": "Dein Konto",
     "heading": "Von dir gemacht",
-    "lede": "Jedes Bild das dein Konto eingetragen hat, aus dem Index gelesen.",
+    "lede": "Jedes Bild, das dein Konto eingetragen hat, aus dem Index gelesen.",
     "grid": "Deine Bilder",
     "entry": "Meine Bilder",
     "receiptLink": "Alle deine Bilder ansehen",
@@ -1786,7 +1786,7 @@
       "kicker": "Du bist nicht angemeldet",
       "heading": "Melde dich an, um jedes Bild zu sehen, das du eingetragen hast",
       "button": "Anmelden und anzeigen",
-      "body": "Die Liste wird mit der Adresse deines Kontos aus dem Index gelesen, also stehen auf jedem Gerät bei dem du dich anmeldest dieselben Bilder."
+      "body": "Die Liste wird mit der Adresse deines Kontos aus dem Index gelesen, also stehen auf jedem Gerät, auf dem du dich anmeldest, dieselben Bilder."
     },
     "showcaseCaption": "Ein echter Pass auf Monad. Deine stehen hier genauso wie dieser.",
     "makeFirst": "Dein erstes Bild eintragen",
@@ -1797,6 +1797,6 @@
     "alt": "Content Credentials: Eintrag dieses Bildes öffnen",
     "line": "Diese Datei trägt Content Credentials: einen signierten Eintrag über ihre Herkunft, der noch mit der Datei übereinstimmt.",
     "inspect": "Im offiziellen Inspect-Tool von Content Credentials öffnen",
-    "untrustedSigner": "Die Identität des Unterzeichners lässt sich nicht bestätigen: Der Schlüssel, der diesen Eintrag signiert hat, steht nicht auf der Vertrauensliste der C2PA."
+    "untrustedSigner": "Die Identität des Unterzeichners lässt sich nicht bestätigen: Der Schlüssel, der diesen Eintrag signiert hat, steht nicht auf der C2PA Trust List."
   }
 }
