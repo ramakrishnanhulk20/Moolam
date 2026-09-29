@@ -11,7 +11,7 @@ import { TryPanel, type TrySample } from "@/components/story/TryPanel";
 import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { ACCENT_RGB } from "@/components/story/palette";
-import { degradeSteps } from "@/components/story/measurements";
+import { degradeSteps, type DegradeStep } from "@/components/story/measurements";
 import type { BeatTable } from "@/components/story/beats";
 
 /**
@@ -40,6 +40,7 @@ export function StillStory({
 }) {
   const t = useTranslations("story");
   const steps = degradeSteps();
+  const said = useCopyWords();
   const picture = data.focal?.picture ?? null;
 
   return (
@@ -69,13 +70,16 @@ export function StillStory({
           <section key={entry.key} className={table.beat[entry.key]?.align === "end" ? "text-end" : ""}>
             {entry.key === "verified" ? <LadderDriver>{entry.body}</LadderDriver> : entry.body}
             {entry.key === "sealed" && picture !== null && <Still src={picture} />}
-            {entry.key === "shared" && <Frames />}
+            {entry.key === "shared" && <Frames steps={steps} />}
             {entry.key === "verified" && (
-              <ul className="mt-8 max-w-[34rem] border-t border-line">
+              <ul data-still-ladder className="mt-8 max-w-[34rem] border-t border-line text-start">
                 {steps.map((step) => (
-                  <li key={step.transform} className="flex items-baseline justify-between border-b border-line py-2.5">
-                    <span className="font-mono text-[12px] uppercase tracking-[0.08em] text-text">{step.transform}</span>
-                    <span className="font-mono text-[13px] tabular-nums text-accent">{step.confidence.toFixed(2)}</span>
+                  <li
+                    key={step.transform}
+                    className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b border-line py-2.5"
+                  >
+                    <span className="text-sm text-text">{said.name(step.transform)}</span>
+                    <span className="font-mono text-[12px] tabular-nums text-accent">{said.distance(step)}</span>
                   </li>
                 ))}
               </ul>
@@ -141,27 +145,48 @@ function Still({ src }: { src: string }) {
   );
 }
 
+/**
+ * The film's own words for each copy on the ladder, and its measure of it in
+ * bits apart, so this page reads as the film does rather than printing the
+ * verifier's file names (reencode-q30 and the rest) in every language.
+ */
+export function useCopyWords() {
+  const t = useTranslations("story.verified");
+  return {
+    name: (transform: string) => (t.has(`copies.${transform}`) ? t(`copies.${transform}`) : transform),
+    distance: (step: Pick<DegradeStep, "phashDistance">) =>
+      step.phashDistance === null ? t("notMatched") : t("similarity", { value: step.phashDistance, result: t("match") }),
+  };
+}
+
 /** The verifier's own crushed output, the same four files the copies carry in the scene. */
-function Frames() {
+function Frames({ steps }: { steps: DegradeStep[] }) {
+  const said = useCopyWords();
   const frames = [
-    { src: "/hero/frame-reencode-q60.jpg", label: "reencode-q60" },
-    { src: "/hero/frame-reencode-q30.jpg", label: "reencode-q30" },
-    { src: "/hero/frame-social-chain.jpg", label: "social-chain" },
-    { src: "/hero/frame-resize-10.jpg", label: "resize-10" },
+    { src: "/hero/frame-reencode-q60.jpg", transform: "reencode-q60" },
+    { src: "/hero/frame-reencode-q30.jpg", transform: "reencode-q30" },
+    { src: "/hero/frame-social-chain.jpg", transform: "social-chain" },
+    { src: "/hero/frame-resize-10.jpg", transform: "resize-10" },
   ];
 
   return (
-    <ul className="mt-8 grid grid-cols-2 gap-4 text-start lg:grid-cols-4">
-      {frames.map((frame) => (
-        <li key={frame.label}>
-          <div className="grain relative aspect-[4/3] overflow-hidden border border-line bg-bg-sunken">
-            {/* Produced by the verifier from the registered file, served from public/. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={frame.src} alt="" className="h-full w-full object-cover" />
-          </div>
-          <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.08em] text-text-faint">{frame.label}</p>
-        </li>
-      ))}
+    <ul data-still-frames className="mt-8 grid grid-cols-2 gap-4 text-start lg:grid-cols-4">
+      {frames.map((frame) => {
+        const step = steps.find((entry) => entry.transform === frame.transform);
+        return (
+          <li key={frame.transform}>
+            <div className="grain relative aspect-[4/3] overflow-hidden border border-line bg-bg-sunken">
+              {/* Produced by the verifier from the registered file, served from public/. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={frame.src} alt="" className="h-full w-full object-cover" />
+            </div>
+            <p className="mt-2 text-sm leading-snug text-text-muted">{said.name(frame.transform)}</p>
+            {step === undefined ? null : (
+              <p className="mt-1 font-mono text-[11px] tabular-nums text-accent">{said.distance(step)}</p>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

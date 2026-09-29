@@ -91,6 +91,14 @@ function boardType(length: number, tamil: boolean): string {
 }
 
 /**
+ * The look every quiet button on the first screen and the film shares with the
+ * site's other secondary buttons (the film's Try again, the error and missing
+ * pages): outlined, 44 px tall, 11 px mono capitals at the same tracking.
+ */
+export const SECONDARY_BUTTON =
+  "inline-flex min-h-11 items-center justify-center rounded-[8px] border border-line-strong px-5 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-text transition-colors duration-200 hover:border-accent hover:text-accent focus-visible:border-accent focus-visible:text-accent disabled:cursor-wait disabled:opacity-50";
+
+/**
  * The second call: make a passport of your own.
  *
  * Solid, in the page's own two colours turned round, so it reads as a real

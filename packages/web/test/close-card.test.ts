@@ -62,7 +62,8 @@ describe("the film's last screen", () => {
   });
 
   it("reaches it from a keyboard, as an anchor with words in it", () => {
-    expect(markup).toContain(`<a href="/docs/proof" class="transition-colors duration-200 hover:text-accent focus-visible:text-accent">${en.story.close.proof}</a>`);
+    // .tap hangs an invisible 44 px pad off the small link (WO-217, F15).
+    expect(markup).toContain(`<a href="/docs/proof" class="tap transition-colors duration-200 hover:text-accent focus-visible:text-accent">${en.story.close.proof}</a>`);
   });
 
   it("carries the reader's own words for it", () => {

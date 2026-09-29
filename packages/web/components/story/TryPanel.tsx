@@ -2,6 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState, type DragEvent } from "react";
+import { WarningMark } from "@/components/WarningMark";
+import { FailureDetails } from "@/components/studio/FailureDetails";
 import { probe, progress, resetProbe, type ProbeState } from "@/components/story/signals";
 import { Picture } from "@/components/passport/Picture";
 import { DisputeLine } from "@/components/verify/DisputeLine";
@@ -27,9 +29,21 @@ function publish(state: ProbeState, confidence = 0) {
 
 type State =
   | { kind: "idle" }
-  | { kind: "pending"; name: string }
-  | { kind: "error"; message: string }
-  | { kind: "done"; name: string; answer: VerifyResponse; title: string | null };
+  /** sample is the offered picture being checked, so its plate can say so. */
+  | { kind: "pending"; name: string; sample: string | null }
+  /** reason is the service's or the browser's own words, shown folded under the sentence. */
+  | { kind: "error"; message: string; reason: string | null }
+  /** named turns true once the matched passport's title has been asked for, found or not. */
+  | { kind: "done"; name: string; answer: VerifyResponse; title: string | null; named: boolean };
+
+/**
+ * Whether a check may still write to the panel. Every press, drop and choice
+ * takes a new number and only the newest may write, so a slow first sample can
+ * never land its answer and its plate colour under a second one.
+ */
+export function stillCurrent(run: number, mine: number): boolean {
+  return run === mine;
+}
 
 /**
  * One registered image the panel offers, for a judge with no file to hand. The
@@ -58,11 +72,17 @@ export function TryPanel({
   pinned?: boolean;
 }) {
   const t = useTranslations("story.tryIt");
+  const first = useTranslations("home.first");
+  const v = useTranslations("verify");
   const shell = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const preview = useRef<string | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const said = useRef<HTMLDivElement>(null);
+  const run = useRef(0);
   const [state, setState] = useState<State>({ kind: "idle" });
   const [over, setOver] = useState(false);
+  const busy = state.kind === "pending";
 
   useEffect(() => {
     if (!pinned) {
@@ -94,6 +114,22 @@ export function TryPanel({
     return () => cancelAnimationFrame(frame);
   }, [pinned]);
 
+  // On a phone the pinned panel has only the room above the bar, so it scrolls
+  // inside itself, and a new answer is brought up to meet the reader there.
+  // Only the panel moves: the film's own scroll is never touched.
+  useEffect(() => {
+    const frame = box.current;
+    const answer = said.current;
+    if (!pinned || state.kind === "idle" || frame === null || answer === null) {
+      return;
+    }
+    const by = answerScroll(answer.offsetTop, answer.offsetHeight, frame.scrollTop, frame.clientHeight);
+    if (by !== null) {
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      frame.scrollTo({ top: by, behavior: still ? "instant" : "smooth" });
+    }
+  }, [pinned, state]);
+
   useEffect(
     () => () => {
       if (preview.current !== null) {
@@ -109,16 +145,22 @@ export function TryPanel({
    * machine: the panel answers on the spot, with the same sentence a refusal
    * from the service would have printed.
    */
-  function take(file: File) {
-    const refused = localRefusal(file);
-    if (refused !== null) {
-      setState({ kind: "error", message: t(refused) });
-      return;
-    }
-    void check(file);
+  function begin(): number {
+    run.current += 1;
+    return run.current;
   }
 
-  async function check(file: File, known: string | null = null) {
+  function take(file: File) {
+    const mine = begin();
+    const refused = localRefusal(file);
+    if (refused !== null) {
+      setState({ kind: "error", message: t(refused), reason: null });
+      return;
+    }
+    void check(file, mine);
+  }
+
+  async function check(file: File, mine: number, sample: TrySample | null = null) {
     if (preview.current !== null) {
       URL.revokeObjectURL(preview.current);
     }
@@ -126,17 +168,26 @@ export function TryPanel({
     onPreview(preview.current);
 
     publish("pending");
-    setState({ kind: "pending", name: file.name });
+    setState({ kind: "pending", name: file.name, sample: sample?.id ?? null });
 
     try {
       const answer = await verify({ file });
+      if (!stillCurrent(run.current, mine)) {
+        return;
+      }
       const matched = answer.result.exact !== null || answer.result.best !== null;
+      const known = sample?.title ?? null;
       publish(matched ? "matched" : "refused", answer.result.confidence);
-      setState({ kind: "done", name: file.name, answer, title: known });
-      void readTitle(answer);
+      setState({ kind: "done", name: file.name, answer, title: known, named: known !== null });
+      if (known === null) {
+        void readTitle(answer);
+      }
     } catch (error) {
+      if (!stillCurrent(run.current, mine)) {
+        return;
+      }
       publish("refused");
-      setState({ kind: "error", message: refusal(error, t) });
+      setState({ kind: "error", ...refusal(error, t) });
     }
   }
 
@@ -155,13 +206,12 @@ export function TryPanel({
     }
     const { matchedPassport } = await import("@/components/verify/lookup");
     const passport = await matchedPassport(id).catch(() => null);
-    const title = passport?.title;
-    if (title === undefined) {
-      return;
-    }
+    const title = passport?.title ?? null;
     // The reader may have dropped another file while the registry answered, so
     // the name is only applied to the answer it belongs to.
-    setState((current) => (current.kind === "done" && current.answer === answer ? { ...current, title } : current));
+    setState((current) =>
+      current.kind === "done" && current.answer === answer ? { ...current, title: title ?? current.title, named: true } : current,
+    );
   }
 
   /**
@@ -178,18 +228,25 @@ export function TryPanel({
    * with nothing on its way to the verify service.
    */
   async function takeSample(sample: TrySample) {
-    setState({ kind: "pending", name: sample.title ?? shortHex(sample.id, 10, 8) });
+    const mine = begin();
+    setState({ kind: "pending", name: sample.title ?? shortHex(sample.id, 10, 8), sample: sample.id });
 
     let file: File;
     try {
       file = await fileFromSample(sample);
-    } catch {
+    } catch (error) {
+      if (!stillCurrent(run.current, mine)) {
+        return;
+      }
       publish("refused");
-      setState({ kind: "error", message: t("sampleFailed") });
+      setState({ kind: "error", message: t("sampleFailed"), reason: error instanceof Error ? error.message : null });
+      return;
+    }
+    if (!stillCurrent(run.current, mine)) {
       return;
     }
 
-    await check(file, sample.title ?? null);
+    await check(file, mine, sample);
   }
 
   function onDrop(event: DragEvent<HTMLDivElement>) {
@@ -209,17 +266,21 @@ export function TryPanel({
       style={pinned ? { opacity: 0 } : undefined}
       className={pinned ? "story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : "px-0"}
     >
-      <div className="mx-auto w-full max-w-[100rem]">
+      {/* Pinned, the panel is held to the room the film gives its words and
+          scrolls inside it, so an answer never runs under the bar on a phone. */}
+      <div className={`mx-auto w-full max-w-[100rem] ${pinned ? "flex max-h-full flex-col" : ""}`}>
         <div
+          ref={box}
+          data-try-panel
           onDragOver={(event) => {
             event.preventDefault();
             setOver(true);
           }}
           onDragLeave={() => setOver(false)}
           onDrop={onDrop}
-          className={`pointer-events-auto w-full max-w-[27rem] border border-dashed bg-black/55 p-5 backdrop-blur-md transition-colors duration-200 sm:ms-auto sm:p-6 ${
-            over ? "border-accent bg-accent-soft" : "border-line-strong"
-          }`}
+          className={`pointer-events-auto relative w-full max-w-[27rem] border border-dashed bg-black/55 p-5 backdrop-blur-md transition-colors duration-200 sm:ms-auto sm:p-6 ${
+            pinned ? "min-h-0 overflow-y-auto" : ""
+          } ${over ? "border-accent bg-accent-soft" : "border-line-strong"}`}
         >
           <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
             <span className="motif h-[9px] w-[9px]" />
@@ -227,8 +288,16 @@ export function TryPanel({
           </p>
           <div className="mt-4 flex items-start gap-3">
             <DropGlyph over={over} />
+            {/* A phone cannot drop a file, so below the laptop width the panel
+                asks for a check, as the first screen does. CSS picks one, so
+                neither flashes in after the script runs. */}
             <p className="font-display text-[clamp(1.35rem,2.6vw,2.1rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
-              {t("title")}
+              <span data-try-title="phone" className="lg:hidden">
+                {first("check")}
+              </span>
+              <span data-try-title="laptop" className="hidden lg:inline">
+                {t("title")}
+              </span>
             </p>
           </div>
 
@@ -245,45 +314,66 @@ export function TryPanel({
             }}
           />
 
+          {/* The first screen's own Choose button, filled, in its words. */}
           <button
             type="button"
+            data-try-choose
             onClick={() => input.current?.click()}
-            className="mt-5 w-full rounded-[8px] border border-line px-5 py-3 text-[11px] uppercase tracking-[0.2em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+            disabled={busy}
+            aria-busy={busy}
+            className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-accent px-6 text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-wait disabled:hover:translate-y-0"
           >
-            {t("choose")}
+            {busy ? <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent-ink" /> : null}
+            {busy ? v("busy") : v("choose")}
           </button>
 
           {samples.length > 0 && (
             <div className="mt-5">
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("samples")}</p>
-              <ul className="mt-2.5 flex gap-2.5">
-                {samples.map((sample) => (
-                  <li key={sample.id} className="flex-1">
-                    <button
-                      type="button"
-                      onClick={() => void takeSample(sample)}
-                      className="group block w-full overflow-hidden border border-line transition-colors duration-200 hover:border-accent focus-visible:border-accent"
-                    >
-                      <span className="sr-only">{shortHex(sample.id, 10, 8)}</span>
-                      {/* Registered images, read through the optimizer. The
-                          file itself is still fetched from the gateway when a
-                          reader picks one, because the verifier has to be
-                          handed the exact bytes that were registered. */}
-                      <span className="relative block aspect-[4/3] w-full overflow-hidden">
-                        <Picture
-                          sources={pictureSources(sample.url)}
-                          sizes="(min-width: 1024px) 8rem, 30vw"
-                          className="object-cover opacity-80 transition duration-300 group-hover:scale-[1.06] group-hover:opacity-100"
-                        />
-                      </span>
-                    </button>
-                  </li>
-                ))}
+              <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">{t("samples")}</p>
+              <ul data-try-samples className="mt-2.5 grid grid-cols-3 gap-2.5">
+                {samples.map((sample) => {
+                  const name = sample.title ?? shortHex(sample.id, 10, 8);
+                  const checking = state.kind === "pending" && state.sample === sample.id;
+                  return (
+                    <li key={sample.id} className="min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => void takeSample(sample)}
+                        disabled={busy}
+                        aria-busy={checking}
+                        title={name}
+                        className="group block min-h-11 w-full text-start disabled:cursor-wait"
+                      >
+                        {/* Registered images, read through the optimizer. The
+                            file itself is still fetched from the gateway when a
+                            reader picks one, because the verifier has to be
+                            handed the exact bytes that were registered. */}
+                        <span className="relative block aspect-[4/3] w-full overflow-hidden border border-line transition-colors duration-200 group-hover:border-accent group-focus-visible:border-accent">
+                          <Picture
+                            sources={pictureSources(sample.url)}
+                            alt={name}
+                            sizes="(min-width: 1024px) 8rem, 30vw"
+                            className="object-cover opacity-80 transition duration-300 group-hover:scale-[1.06] group-hover:opacity-100"
+                          />
+                          {checking ? (
+                            <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-bg/80 px-1.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent">
+                              <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent" />
+                              {v("busy")}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="mt-1.5 block hyphens-none text-[11px] leading-snug text-text-muted [overflow-wrap:normal] [word-break:normal] transition-colors duration-200 group-hover:text-accent group-focus-visible:text-accent">
+                          {name}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
 
-          <div className="mt-5 min-h-[5.5rem] border-t border-line pt-4">
+          <div ref={said} data-try-answer className="mt-5 min-h-[5.5rem] border-t border-line pt-4">
             {state.kind === "idle" && <p className="text-sm leading-relaxed text-text-faint">{t("hint")}</p>}
 
             {state.kind === "pending" && (
@@ -293,9 +383,19 @@ export function TryPanel({
               </p>
             )}
 
-            {state.kind === "error" && <p className="text-sm leading-relaxed text-failed">{state.message}</p>}
+            {state.kind === "error" && (
+              <div data-try-failed>
+                <p role="alert" className="flex items-start gap-2.5 text-sm leading-relaxed text-failed">
+                  <WarningMark className="mt-[3px]" />
+                  <span>{state.message}</span>
+                </p>
+                {state.reason === null ? null : <FailureDetails reason={state.reason} className="ms-[23px] mt-3 [&_summary]:text-[11px]" />}
+              </div>
+            )}
 
-            {state.kind === "done" && <Answer answer={state.answer} name={state.name} title={state.title} />}
+            {state.kind === "done" && (
+              <Answer answer={state.answer} name={state.name} title={state.title} named={state.named} />
+            )}
           </div>
         </div>
       </div>
@@ -362,16 +462,33 @@ export function localRefusal(file: File): string | null {
   return refusal === null ? null : LOCAL_REFUSALS[refusal.code];
 }
 
-/** What went wrong, in a sentence rather than a status code. */
-function refusal(error: unknown, t: (key: string, values?: Record<string, string>) => string): string {
+/**
+ * What went wrong: a sentence in the reader's language, and the service's or
+ * the browser's own words, which stay English and go under Details.
+ */
+function refusal(error: unknown, t: (key: string) => string): { message: string; reason: string | null } {
   if (error instanceof VerifierError) {
     const key = REFUSALS[error.code];
-    return key === undefined ? t("error", { reason: error.message }) : t(key);
+    return key === undefined ? { message: t("error"), reason: error.message } : { message: t(key), reason: null };
   }
-  return t("error", { reason: error instanceof Error ? error.message : String(error) });
+  return { message: t("error"), reason: error instanceof Error ? error.message : String(error) };
 }
 
-function Answer({ answer, name, title }: { answer: VerifyResponse; name: string; title: string | null }) {
+/**
+ * Where to scroll the pinned panel so a new answer can be read, or null when it
+ * already can. The answer's top is brought into view, and as much of it under
+ * that as the panel has room for.
+ */
+export function answerScroll(top: number, height: number, scrolled: number, room: number): number | null {
+  const seen = top >= scrolled && top + Math.min(height, room) <= scrolled + room;
+  return seen ? null : Math.max(0, top - 12);
+}
+
+/**
+ * The answer in the first screen's shape: the verdict in words first, then how
+ * many of the 64 bits the two fingerprints differ by, never a bare confidence.
+ */
+function Answer({ answer, name, title, named }: { answer: VerifyResponse; name: string; title: string | null; named: boolean }) {
   const t = useTranslations("story.tryIt");
   const v = useTranslations("verify");
   const id = answer.result.exact ?? answer.result.best?.id ?? null;
@@ -379,7 +496,7 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
   // by the one rule rather than by a second copy of it here.
   const read = readAnswer(answer);
 
-  if (id === null) {
+  if (id === null || read.kind === "miss") {
     return (
       <div>
         <p className="font-display text-[clamp(1.6rem,3vw,2.4rem)] font-semibold leading-[1] tracking-[-0.04em] text-failed">
@@ -392,33 +509,33 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
     );
   }
 
+  // Until the registry has named the picture the verdict says only that a
+  // match was found, so the words never name it Untitled and then change.
+  const said = !named
+    ? v("matched")
+    : v(read.kind === "exact" ? "verdictExact" : "verdict", { title: title ?? v("untitled") });
+
   return (
     <div>
-      <div className="flex items-end gap-3">
-        <span className="font-display text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.85] tracking-[-0.05em] tabular-nums text-verified">
-          {answer.result.confidence.toFixed(2)}
-        </span>
-        <span className="pb-1 font-mono text-[11px] uppercase tracking-[0.16em] text-text-faint">
-          {answer.result.exact !== null ? t("exact") : t("match")}
-        </span>
-      </div>
+      <p data-try-verdict className="max-w-[24ch] font-display text-[clamp(1.2rem,2.2vw,1.6rem)] font-semibold leading-[1.08] tracking-[-0.03em] text-verified">
+        {said}
+      </p>
+      {read.pixelsUnread ? null : (
+        <div data-try-bits className="mt-4">
+          <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">{v("phashDistance")}</p>
+          <p className="mt-1 font-display text-[clamp(1.5rem,2.8vw,2.2rem)] font-semibold leading-[1] tracking-[-0.04em] tabular-nums text-accent">
+            {v("bits", { count: read.phashDistance, of: 64 })}
+          </p>
+        </div>
+      )}
       <StaleIndex minutes={read.staleMinutes} className="mt-2" />
-      {/* The same line the verify card prints when a match was made on the bytes alone: the 1.00
-          above is a byte match, not a comparison of how the two pictures look. */}
-      {read.kind !== "miss" && read.pixelsUnread ? (
+      {/* The same line the verify card prints when a match was made on the bytes
+          alone: nothing about how the two pictures look was compared. */}
+      {read.pixelsUnread ? (
         <p data-pixels-unread className="mt-2 max-w-[40ch] text-xs leading-relaxed text-text-muted">
           {v("pixelsUnread")}
         </p>
       ) : null}
-      {/* What was matched, by its own name. The registry answers with a hex
-          word, which tells a reader nothing, so the picture's pinned title is
-          read after the answer lands and takes its place the moment it does. */}
-      {title !== null && (
-        <p className="mt-3 max-w-[26ch] font-display text-[1.05rem] font-semibold leading-[1.15] tracking-[-0.02em] text-text">
-          {title}
-        </p>
-      )}
-
       {/* The link says where it goes. A truncated hex word on its own was the
           only next step this panel offered, and nothing about it read as one. */}
       <Link
@@ -437,7 +554,7 @@ function Answer({ answer, name, title }: { answer: VerifyResponse; name: string;
       {/* The same sentence the verify card prints, from the same field and the
           same words: a record under challenge is worth knowing about here too,
           not only on the page a reader might never open. */}
-      <DisputeLine dispute={read.kind === "miss" ? undefined : read.dispute} className="mt-3" />
+      <DisputeLine dispute={read.dispute} className="mt-3" />
 
       {!answer.manifest.present && <p className="mt-3 text-sm leading-relaxed text-text-faint">{t("noManifest")}</p>}
     </div>

@@ -6,6 +6,16 @@ import { progress } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
 import { CHAIN_ID } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
+import { SECONDARY_BUTTON } from "@/components/home/Headline";
+import { FailureDetails } from "@/components/studio/FailureDetails";
+import { WarningMark } from "@/components/WarningMark";
+
+/**
+ * What stands in a count's place when the index could not be read: the dash
+ * the site draws for a figure it does not have. A word at display size ran
+ * off its half in the longer languages and read as the figure itself.
+ */
+export const UNREAD_FIGURE = "-";
 
 /**
  * The last screen: what this is, where to go, and how much of it is real.
@@ -82,16 +92,8 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
   }, [pinned]);
 
   const figures = [
-    {
-      key: "passports",
-      value: data.passportCount === null ? t("unread") : data.passportCount.toString(),
-      label: t("passports"),
-    },
-    {
-      key: "attestations",
-      value: data.attestationCount === null ? t("unread") : data.attestationCount.toString(),
-      label: t("attestations"),
-    },
+    { key: "passports", value: data.passportCount, label: t("passports") },
+    { key: "attestations", value: data.attestationCount, label: t("attestations") },
   ];
 
   return (
@@ -152,18 +154,18 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             {t("body")}
           </p>
 
-          {/* A phone has the lower half of the window for all of this, so the two
-              calls sit on one line there and grow back at 640 px. The padding and
-              the letter-spacing are cut to the bone below 640 px because the
-              longest labels on the site (Portuguese and Tamil) wrapped this row
-              onto two lines, which pushed the card's last line off the fold. */}
-          <div className="mt-3 flex flex-wrap gap-1.5 sm:mt-8 sm:gap-3">
+          {/* A phone has the lower half of the window for all of this, so the
+              two calls share one row as two equal cells, each 44 px tall, and a
+              long label wraps inside its own cell rather than pushing the other
+              onto a second row. From 640 px they sit side by side at their own
+              width. */}
+          <div data-close-calls className="mt-3 grid grid-cols-2 gap-1.5 sm:mt-8 sm:flex sm:flex-wrap sm:gap-3">
             {/* The studio carries the wallet SDK. Left to prefetch, this card pulled about
                 130 kB of it behind every reading of the film, so it loads on the tap. */}
             <Link
               href="/studio"
               prefetch={false}
-              className="group inline-flex items-center gap-2 rounded-[8px] bg-accent px-2 py-2.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
+              className="group inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] bg-accent px-3 py-2 text-center text-[11px] font-semibold uppercase leading-tight tracking-[0.08em] text-accent-ink transition-transform duration-200 hover:scale-[1.03] sm:px-6 sm:py-3.5 sm:tracking-[0.18em]"
             >
               {first("make")}
               <span aria-hidden className="transition-transform duration-200 group-hover:translate-x-1">
@@ -172,7 +174,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             </Link>
             <Link
               href="/verify"
-              className="rounded-[8px] border border-line px-2 py-2.5 text-[10px] uppercase tracking-[0.06em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent sm:px-6 sm:py-3.5 sm:text-[11px] sm:tracking-[0.18em]"
+              className={`${SECONDARY_BUTTON} text-center`}
             >
               {t("verify")}
             </Link>
@@ -189,7 +191,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             {figures.map((figure) => (
               <div key={figure.key}>
                 <dt
-                  className={`font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:text-[11px] sm:tracking-[0.16em] lg:flex lg:items-center lg:gap-3 lg:text-[12px] lg:tracking-[0.2em]`}
+                  className={`font-mono text-[11px] uppercase leading-[1.3] tracking-[0.1em] text-text-faint sm:tracking-[0.16em] lg:flex lg:items-center lg:gap-3 lg:text-[12px] lg:tracking-[0.2em]`}
                 >
                   {/* .motif sets its own display, so the phone's hiding is on a wrapper. */}
                   <span aria-hidden className="hidden lg:inline-flex">
@@ -198,36 +200,57 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
                   {figure.label}
                 </dt>
                 <dd
-                  className={`mt-1 font-display text-[clamp(1.4rem,3.4vw,2.8rem)] font-semibold leading-[0.9] tracking-[-0.045em] tabular-nums lg:mt-3 lg:text-[clamp(5rem,9.5vw,10rem)] lg:leading-[0.82] lg:tracking-[-0.06em]`}
+                  data-close-figure={figure.value === null ? "unread" : "read"}
+                  className={`mt-1 font-display text-[clamp(1.4rem,3.4vw,2.8rem)] font-semibold leading-[0.9] tracking-[-0.045em] tabular-nums lg:mt-3 lg:text-[clamp(5rem,9.5vw,10rem)] lg:leading-[0.82] lg:tracking-[-0.06em] ${
+                    figure.value === null ? "text-text-faint" : ""
+                  }`}
                 >
-                  {figure.value}
+                  {figure.value === null ? (
+                    <>
+                      <span aria-hidden>{UNREAD_FIGURE}</span>
+                      <span className="sr-only">{t("unread")}</span>
+                    </>
+                  ) : (
+                    figure.value.toString()
+                  )}
                 </dd>
               </div>
             ))}
           </dl>
+
+          {/* Beside the dashes, in the card's body size, the reason there is no
+              count. The index's own words stay folded under Details. */}
+          {data.error === null ? null : (
+            <div data-close-error className="mt-3 sm:mt-6">
+              <p role="status" className="flex max-w-[52ch] items-start gap-2.5 text-sm leading-snug text-failed sm:text-base sm:leading-relaxed">
+                <WarningMark className="mt-[0.2em]" />
+                <span>{t("error")}</span>
+              </p>
+              <FailureDetails reason={data.error} className="ms-[23px] mt-2 [&_summary]:text-[11px]" />
+            </div>
+          )}
 
           {/* Where the two counts were written. It sat in the row as a third
               figure, where a chain id read as a count of something.
 
               The way out to the evidence rides on this line rather than on the
               row of calls above it. At 375 px the two calls already fill that
-              row: 330 of 335 px in Portuguese, 323 in Tamil, so a third item
-              there wraps and pushes the card's last line towards the fold. This
-              line is 141 px of 335 in the longest language, so the link fits
-              beside it and every box above stays where it was. */}
+              row as two equal cells, so a third item there would squeeze both
+              into three lines; the chain line is short in every language and
+              the link fits beside it. */}
           <p
-            className={`mt-1 font-mono text-[9px] uppercase leading-[1.3] tracking-[0.12em] text-text-faint sm:mt-4 sm:text-[11px] sm:tracking-[0.16em] lg:mt-10 lg:border-t lg:border-line lg:pt-5`}
+            className={`mt-1 font-mono text-[11px] uppercase leading-[1.3] tracking-[0.1em] text-text-faint sm:mt-4 sm:tracking-[0.16em] lg:mt-10 lg:border-t lg:border-line lg:pt-5`}
           >
             {t("chain", { chainId: CHAIN_ID })}
             <span aria-hidden className="px-2 opacity-50">
               &middot;
             </span>
-            <Link href="/docs/proof" className="transition-colors duration-200 hover:text-accent focus-visible:text-accent">
+            {/* The ink stays small; the invisible .tap pad makes it a 44 px target. */}
+            <Link href="/docs/proof" className="tap transition-colors duration-200 hover:text-accent focus-visible:text-accent">
               {t("proof")}
             </Link>
           </p>
 
-          {data.error !== null && <p className="mt-6 max-w-[52ch] text-sm text-failed">{t("error", { reason: data.error })}</p>}
         </Half>
       </div>
     </div>

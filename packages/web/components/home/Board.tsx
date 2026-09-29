@@ -8,6 +8,8 @@ import { Billing } from "./Billing";
 import { Drop } from "./Drop";
 import { Headline, MakeOne } from "./Headline";
 import { Play } from "./Play";
+import { ReadAgain } from "./ReadAgain";
+import { WarningMark } from "@/components/WarningMark";
 import { ToProof } from "./ToProof";
 import { isRead, type CopyReading, type Finding, type LooseFinding, type Read } from "./finding";
 
@@ -209,6 +211,10 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
  * What is left without the registry: the line saying the record was not read,
  * then the picture, its name and, if the register answered, the holder's word.
  * No live mark: the read it would stand for is the one that failed.
+ *
+ * With nothing left at all, the line stands on a plate of its own with Try
+ * again under it, so the half is a failure with a way on rather than one
+ * sentence beside an empty board.
  */
 function Loose({ loose, failed }: { loose: LooseFinding | null; failed: string }) {
   const t = useTranslations("home.first");
@@ -219,10 +225,17 @@ function Loose({ loose, failed }: { loose: LooseFinding | null; failed: string }
 
   return (
     <div data-first-loose className="relative">
-      <p role="status" data-first-unread data-reason={failed} className="flex max-w-[44ch] items-start gap-3 text-sm leading-relaxed text-text">
-        <span aria-hidden className="mt-[0.45em] h-2 w-2 shrink-0 bg-failed" />
-        {t("unread")}
-      </p>
+      <div className={shown ? "" : "grain border border-line-strong bg-bg/80 p-5 sm:p-6"}>
+        <p role="status" data-first-unread data-reason={failed} className="flex max-w-[44ch] items-start gap-2.5 text-sm leading-relaxed text-text">
+          <WarningMark className="mt-[3px] text-failed" />
+          <span>{t("unread")}</span>
+        </p>
+        {shown ? null : (
+          <div className="ms-[23px] mt-4">
+            <ReadAgain />
+          </div>
+        )}
+      </div>
       {shown ? (
         <div className="mt-6 grid max-w-[15rem] grid-cols-1">
           <Exhibit
@@ -244,7 +257,7 @@ function LiveMark() {
   const t = useTranslations("home.first");
 
   return (
-    <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
+    <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">
       <span aria-hidden className="relative flex h-2 w-2">
         <span className="absolute inset-0 animate-ping bg-verified/60" />
         <span className="relative h-2 w-2 bg-verified" />
@@ -345,7 +358,7 @@ function Exhibit({
       >
         {still}
         <span className="scrim pointer-events-none absolute inset-0 opacity-40" />
-        <span className="absolute left-2 top-2 bg-bg/85 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+        <span className="absolute left-2 top-2 bg-bg/85 px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
           {t("exhibit", { mark })}
         </span>
       </span>
@@ -374,7 +387,7 @@ function Exhibit({
       {print === undefined ? null : (
         <>
           <p
-            className={`row-start-3 mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint sm:text-[10px] lg:mt-2 ${column}`}
+            className={`row-start-3 mt-4 font-mono text-[11px] uppercase leading-snug tracking-[0.14em] text-text-faint lg:mt-2 ${column}`}
           >
             {print.caption}
           </p>
@@ -424,7 +437,7 @@ function Verdict({ copy }: { copy: CopyReading }) {
     <div data-first-verdict className="fs-say mt-6 lg:mt-3">
       {/* Two distances sit on this board. This label says which one the big
           figure is, so it is not read as Chainlink's. */}
-      <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">{t("compare")}</p>
+      <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">{t("compare")}</p>
       <p className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:mt-1.5">
         <span
           className={`font-display text-[clamp(2.4rem,4.6vw,4.4rem)] font-semibold tracking-[-0.045em] tabular-nums text-accent ${

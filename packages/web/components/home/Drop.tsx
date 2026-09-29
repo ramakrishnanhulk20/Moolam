@@ -6,6 +6,8 @@ import type { Stage } from "@/components/verify/AnswerCard";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
 import type { TrySample } from "@/lib/data/samples";
+import { WarningMark } from "@/components/WarningMark";
+import { SECONDARY_BUTTON } from "./Headline";
 
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
@@ -382,7 +384,7 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
           type="button"
           onClick={reset}
           disabled={busy}
-          className="mt-3 inline-flex h-11 items-center rounded-[8px] border border-line-strong px-5 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent disabled:opacity-50"
+          className={`mt-3 ${SECONDARY_BUTTON}`}
         >
           {t("again")}
         </button>
@@ -450,7 +452,7 @@ function Still({
         }`}
       >
         <div>
-          <p className="flex items-center justify-between gap-6 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
+          <p className="flex items-center justify-between gap-6 font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">
             <span className="flex items-center gap-2">
               <span aria-hidden className={`h-1.5 w-1.5 bg-accent ${over ? "" : "animate-pulse"}`} />
               {verify("rail")}
@@ -489,8 +491,10 @@ function Still({
             {waiting ? verify("busy") : verify("choose")}
           </button>
           {unstarted ? (
-            <p role="alert" data-first-unstarted className="max-w-[34ch] text-xs font-semibold leading-relaxed text-failed">
-              {verify("problemLabel")}
+            // The label alone said what went wrong and nothing about what to do.
+            <p role="alert" data-first-unstarted className="flex max-w-[34ch] items-start gap-2 text-xs font-semibold leading-relaxed text-failed">
+              <WarningMark className="mt-[2px]" />
+              <span>{t("unstarted")}</span>
             </p>
           ) : (
             // With no passports to offer, the verify page's own hint, which
@@ -547,7 +551,7 @@ function Strip({
 
   return (
     <div data-first-samples className="mt-4">
-      <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.24em] text-text-faint">
+      <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">
         <span className="motif h-[8px] w-[8px]" />
         {t("samples")}
       </p>
@@ -579,7 +583,7 @@ function Strip({
                   />
                   <span className="scrim pointer-events-none absolute inset-0 opacity-60" />
                   {checking ? (
-                    <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-bg/80 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.2em] text-accent">
+                    <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-bg/80 px-2 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent">
                       <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent" />
                       {verify("busy")}
                     </span>
