@@ -1,4 +1,5 @@
 import { getFormatter, getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 import type { Hex } from "viem";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
@@ -6,7 +7,7 @@ import { CopyButton } from "@/components/studio/CopyButton";
 import { Link } from "@/lib/i18n/routing";
 import type { SealedCopyLookup } from "@/lib/verifier/client";
 import { aboutLine } from "./about";
-import { cidOf, type Art } from "./art";
+import { cidOf, pinnedUri, type Art } from "./art";
 import { Mono } from "./Mono";
 import { standingClass, type Standing } from "./labels";
 import { ANCHOR_MARGIN, FACT_ANCHORS } from "./top-facts";
@@ -51,6 +52,11 @@ export async function Facts({
   const metadataCid = cidOf(passport.metadataURI);
   const imageCid = art.imageUrl === undefined ? null : cidOf(art.imageUrl);
   const about = aboutLine(art, privateCopy);
+  // The chain and the record beside it can name any address at all. Only a
+  // pinned file is linked, through Moolam's own gateway; anything else is
+  // shown as text and never becomes a link a visitor's browser follows.
+  const metadataLink = pinnedUri(passport.metadataURI);
+  const unsealedLink = art.unsealed === undefined ? undefined : pinnedUri(art.unsealed.record.uri);
 
   return (
     <div className="mx-auto grid w-full max-w-[1400px] gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-20">
@@ -216,17 +222,12 @@ export async function Facts({
                 })}
               </p>
               <div className="tap-row mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-                <a
-                  href={gatewayUrl(art.unsealed.record.uri)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="min-w-0 text-text-muted transition-colors duration-200 hover:text-accent"
-                >
+                <AddressLink href={unsealedLink === undefined ? undefined : gatewayUrl(unsealedLink)}>
                   <Mono
                     value={t("ipfsCid", { cid: art.unsealed.record.cid })}
                     className="text-xs leading-relaxed"
                   />
-                </a>
+                </AddressLink>
                 <CopyButton value={art.unsealed.record.uri} />
               </div>
             </div>
@@ -264,17 +265,12 @@ export async function Facts({
           <div>
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("metadata")}</dt>
             <dd className="tap-row mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-              <a
-                href={gatewayUrl(passport.metadataURI)}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 text-text-muted transition-colors duration-200 hover:text-accent"
-              >
+              <AddressLink href={metadataLink === undefined ? undefined : gatewayUrl(metadataLink)}>
                 <Mono
                   value={metadataCid === null ? passport.metadataURI : t("ipfsCid", { cid: metadataCid })}
                   className="text-xs leading-relaxed"
                 />
-              </a>
+              </AddressLink>
               <CopyButton value={passport.metadataURI} />
             </dd>
           </div>
@@ -284,6 +280,23 @@ export async function Facts({
         <p className="mt-8 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint">{t("tokenId")}</p>
       </section>
     </div>
+  );
+}
+
+/** A stored address, as a link when it passed the pinned-file rule and as plain text when it did not. */
+function AddressLink({ href, children }: { href: string | undefined; children: ReactNode }) {
+  if (href === undefined) {
+    return <span className="min-w-0 text-text-muted">{children}</span>;
+  }
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="min-w-0 text-text-muted transition-colors duration-200 hover:text-accent"
+    >
+      {children}
+    </a>
   );
 }
 

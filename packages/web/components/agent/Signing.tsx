@@ -1,6 +1,6 @@
 import { getTranslations } from "next-intl/server";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
-import { cidOf } from "@/components/passport/art";
+import { cidOf, pinnedUri } from "@/components/passport/art";
 import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { Mono } from "@/components/passport/Mono";
 import { cardText, type AgentCard } from "./card";
@@ -32,6 +32,7 @@ export async function Signing({
   const inline = uri.startsWith("data:");
   const json = cardText(document);
   const cid = cidOf(uri);
+  const pinned = pinnedUri(uri);
 
   return (
     <section className="mx-auto w-full max-w-[1400px] px-5 py-16 sm:px-8 sm:py-24">
@@ -100,14 +101,24 @@ export async function Signing({
               </>
             ) : (
               <p className="mt-1.5">
-                <a
-                  href={gatewayUrl(uri)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-text-muted transition-colors duration-200 hover:text-accent"
-                >
-                  <Mono value={cid === null ? uri : a("ipfsCid", { cid })} className="text-xs leading-relaxed" />
-                </a>
+                {/* The token URI is whatever the agent's owner wrote. Only a
+                    pinned file becomes a link, read through Moolam's gateway;
+                    any other address is shown as text a visitor can read but
+                    never be sent to. */}
+                {pinned === undefined ? (
+                  <span className="text-text-muted">
+                    <Mono value={cid === null ? uri : a("ipfsCid", { cid })} className="text-xs leading-relaxed" />
+                  </span>
+                ) : (
+                  <a
+                    href={gatewayUrl(pinned)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-text-muted transition-colors duration-200 hover:text-accent"
+                  >
+                    <Mono value={cid === null ? uri : a("ipfsCid", { cid })} className="text-xs leading-relaxed" />
+                  </a>
+                )}
               </p>
             )}
           </div>

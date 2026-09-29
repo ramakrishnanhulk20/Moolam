@@ -34,6 +34,12 @@ const identityAbi = [
 
 const CARD_TIMEOUT_MS = 8_000;
 
+/** An agent card is a short JSON document; anything past this is not one. */
+export const CARD_MAX_BYTES = 64 * 1024;
+
+/** A card host may move its file once or twice, and every hop is held to the same rule. */
+const CARD_MAX_HOPS = 3;
+
 /**
  * Reads an agent's owner and card.
  *
@@ -65,7 +71,7 @@ export async function getAgent(agentId: bigint): Promise<{ owner: Hex; uri: stri
     args: [agentId],
   });
 
-  return { owner, uri, card: await readCard(uri) };
+  return { owner, uri, card: await readAgentCard(uri) };
 }
 
 /**
@@ -84,23 +90,110 @@ export const heldAgent = unstable_cache(
   { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.chain] },
 );
 
-async function readCard(uri: string): Promise<unknown | null> {
-  if (uri.startsWith("data:")) {
-    return parseDataUri(uri);
-  }
-  const url = gatewayUrl(uri);
-  if (!url.startsWith("http://") && !url.startsWith("https://")) {
-    return null;
-  }
+/**
+ * The address an agent card may be fetched from, or null.
+ *
+ * This read runs on the server only: the agent page, the agents roster and the
+ * passport facts are server components, and the answer is held in the server's
+ * cache. The token URI is whatever the agent's owner wrote on chain, so an
+ * address that points back into Moolam's own machine or network is the thing
+ * to refuse. ipfs:// is read through the gateway, and after that only https to
+ * a named host passes: no http, no IP address written as the host, no
+ * localhost. A name that resolves to a private address is not caught here.
+ */
+export function cardUrl(uri: string): URL | null {
+  let url: URL;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(CARD_TIMEOUT_MS) });
-    if (!response.ok) {
-      return null;
-    }
-    return (await response.json()) as unknown;
+    url = new URL(gatewayUrl(uri));
   } catch {
     return null;
   }
+  if (url.protocol !== "https:" || url.username !== "" || url.password !== "") {
+    return null;
+  }
+  // The URL parser already writes every IPv4 spelling (0x7f.1, 2130706433) as
+  // four decimal parts and wraps IPv6 in brackets, so these two shapes cover them.
+  const host = url.hostname.replace(/\.$/, "").toLowerCase();
+  if (host.startsWith("[") || /^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+    return null;
+  }
+  if (host === "localhost" || host.endsWith(".localhost")) {
+    return null;
+  }
+  return url;
+}
+
+/**
+ * The agent card a token URI names, or null when it is not one Moolam will read.
+ *
+ * data: is decoded in place. Everything else goes through cardUrl, with an
+ * eight second limit for the whole read, a size cap, and every redirect checked
+ * against the same rule before it is followed.
+ */
+export async function readAgentCard(uri: string): Promise<unknown | null> {
+  if (uri.startsWith("data:")) {
+    return parseDataUri(uri);
+  }
+  let url = cardUrl(uri);
+  if (url === null) {
+    return null;
+  }
+  const signal = AbortSignal.timeout(CARD_TIMEOUT_MS);
+  try {
+    for (let hop = 0; hop <= CARD_MAX_HOPS; hop += 1) {
+      const response: Response = await fetch(url, { signal, redirect: "manual" });
+      if (response.status >= 300 && response.status < 400) {
+        await response.body?.cancel().catch(() => undefined);
+        const location = response.headers.get("location");
+        const next: URL | null = location === null ? null : cardUrl(new URL(location, url).href);
+        if (next === null) {
+          return null;
+        }
+        url = next;
+        continue;
+      }
+      if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
+        return null;
+      }
+      const text = await cappedText(response, CARD_MAX_BYTES);
+      return text === null ? null : (JSON.parse(text) as unknown);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The body as text, or null past `cap` bytes. A declared length over the cap is
+ * refused unread, and otherwise reading stops at the first chunk past it.
+ */
+async function cappedText(response: Response, cap: number): Promise<string | null> {
+  const declared = Number(response.headers.get("content-length") ?? "");
+  if (Number.isFinite(declared) && declared > cap) {
+    await response.body?.cancel().catch(() => undefined);
+    return null;
+  }
+  if (response.body === null) {
+    return "";
+  }
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    length += value.byteLength;
+    if (length > cap) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 function parseDataUri(uri: string): unknown | null {

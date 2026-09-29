@@ -16,6 +16,7 @@ import {
   type UnsealFailure,
 } from "@/lib/passport/unseal";
 import type { UnsealResponse } from "@/lib/verifier/client";
+import { pinnedUri } from "./art";
 import { Mono } from "./Mono";
 import { Picture } from "./Picture";
 import type { PublishedVisit } from "./UnsealPanel";
@@ -237,6 +238,10 @@ function Published({
     return null;
   }
 
+  // The receipt is the service's answer, and a service answer is still a
+  // stored address: one that is not a pinned file draws no picture.
+  const image = pinnedUri(result.image.uri);
+
   return (
     <motion.div
       ref={box}
@@ -250,12 +255,14 @@ function Published({
       <div className="grain relative h-[16rem] overflow-hidden border border-line">
         {/* The pinned file itself, read back through the gateway: the picture a
             verifier now fetches when it re-checks this passport. */}
-        <Picture
-          sources={pictureSources(gatewayUrl(result.image.uri))}
-          alt=""
-          sizes="(max-width: 640px) 100vw, 40vw"
-          className="object-cover"
-        />
+        {image === undefined ? null : (
+          <Picture
+            sources={pictureSources(gatewayUrl(image))}
+            alt=""
+            sizes="(max-width: 640px) 100vw, 40vw"
+            className="object-cover"
+          />
+        )}
         <div className="scrim pointer-events-none absolute inset-0" />
         <p className="absolute bottom-4 start-5 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
           {t("done.label")}
@@ -282,18 +289,23 @@ function Published({
 }
 
 function Address({ label, uri, cid }: { label: string; uri: string; cid: string }) {
+  const pinned = pinnedUri(uri);
   return (
     <div className="min-w-0">
       <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</dt>
       <dd className="mt-1.5">
-        <a
-          href={gatewayUrl(uri)}
-          target="_blank"
-          rel="noreferrer"
-          className="tap min-w-0 transition-colors duration-200 hover:text-accent"
-        >
+        {pinned === undefined ? (
           <Mono value={cid} className="text-xs leading-relaxed" />
-        </a>
+        ) : (
+          <a
+            href={gatewayUrl(pinned)}
+            target="_blank"
+            rel="noreferrer"
+            className="tap min-w-0 transition-colors duration-200 hover:text-accent"
+          >
+            <Mono value={cid} className="text-xs leading-relaxed" />
+          </a>
+        )}
       </dd>
     </div>
   );
