@@ -217,6 +217,7 @@
     "formulaDoc": "Où l'index le compte",
     "agentId": "Agent {id}",
     "unnamed": "La carte de cet agent ne porte pas de nom",
+    "unnamedTitle": "Unnamed agent",
     "since": "Vu pour la première fois le {when}",
     "trustScore": "Indice de confiance",
     "passports": "Passeports",
@@ -360,8 +361,6 @@
       "sampleFailed": "Cet exemple n’est revenu d’aucune passerelle. Réessayez, ou déposez votre propre fichier.",
       "noMatch": "Pas enregistrée",
       "noMatchBody": "Aucun passeport du registre ne correspond à cette image. Un fichier sorti d’un générateur et jamais enregistré ressemble exactement à ça.",
-      "exact": "octets exacts",
-      "match": "confiance",
       "noManifest": "Ce fichier ne porte plus de Content Credentials. L’enregistrement a été retrouvé quand même.",
       "openPassport": "Ouvrir son passeport"
     },
@@ -533,7 +532,6 @@
       "yours": "Votre copie",
       "registered": "L’image enregistrée",
       "drag": "Glissez pour comparer",
-      "hold": "Maintenez pour comparer",
       "label": "Comparer votre copie avec l’image enregistrée"
     }
   },

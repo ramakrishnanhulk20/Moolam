@@ -219,6 +219,7 @@
     "formulaDoc": "インデックスがこれを数えている場所",
     "agentId": "エージェント {id}",
     "unnamed": "このエージェントのカードに名前はありません",
+    "unnamedTitle": "Unnamed agent",
     "since": "初回 {when}",
     "trustScore": "信頼スコア",
     "passports": "パスポート",
@@ -362,8 +363,6 @@
       "sampleFailed": "このサンプルはどのゲートウェイからも取得できませんでした。もう一度試すか、自分のファイルをドロップしてください。",
       "noMatch": "未登録",
       "noMatchBody": "レジストリのどのパスポートもこの画像と一致しません。生成器から出たまま一度も登録されていないファイルは、ちょうどこう見えます。",
-      "exact": "バイトまで同一",
-      "match": "確度",
       "noManifest": "このファイルに Content Credentials は残っていません。それでも記録は見つかりました。",
       "openPassport": "このパスポートを開く"
     },
@@ -535,7 +534,6 @@
       "yours": "あなたのコピー",
       "registered": "登録された画像",
       "drag": "ドラッグして比較",
-      "hold": "長押しで比較",
       "label": "Compare your copy with the registered picture"
     }
   },

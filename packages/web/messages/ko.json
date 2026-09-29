@@ -219,6 +219,7 @@
     "formulaDoc": "인덱스가 이것을 세는 곳",
     "agentId": "에이전트 {id}",
     "unnamed": "이 에이전트의 카드에는 이름이 없습니다",
+    "unnamedTitle": "Unnamed agent",
     "since": "처음 확인 {when}",
     "trustScore": "신뢰 점수",
     "passports": "여권",
@@ -362,8 +363,6 @@
       "sampleFailed": "이 샘플을 어느 게이트웨이에서도 가져오지 못했습니다. 다시 시도하거나 본인 파일을 넣어 보세요.",
       "noMatch": "등록되지 않음",
       "noMatchBody": "레지스트리의 어떤 여권도 이 이미지와 맞지 않습니다. 생성기에서 막 나와 한 번도 등록된 적 없는 파일이 꼭 이렇게 보입니다.",
-      "exact": "바이트까지 동일",
-      "match": "확신도",
       "noManifest": "이 파일에는 Content Credentials가 남아 있지 않습니다. 그래도 기록을 찾아냈습니다.",
       "openPassport": "이 여권 열기"
     },
@@ -535,7 +534,6 @@
       "yours": "내 사본",
       "registered": "등록된 이미지",
       "drag": "끌어서 비교",
-      "hold": "길게 눌러 비교",
       "label": "내 사본과 등록된 이미지 비교"
     }
   },

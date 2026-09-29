@@ -219,6 +219,7 @@
     "formulaDoc": "索引在哪里算它",
     "agentId": "智能体 {id}",
     "unnamed": "这个智能体的卡片没有名字",
+    "unnamedTitle": "Unnamed agent",
     "since": "首次出现 {when}",
     "trustScore": "信任分",
     "passports": "护照",
@@ -362,8 +363,6 @@
       "sampleFailed": "这个样本没有从任何网关取回。请再试一次，或放入你自己的文件。",
       "noMatch": "尚未登记",
       "noMatchBody": "登记处里没有护照与这张图片相符。一份刚从生成器出来、从未登记过的文件，看起来正是这样。",
-      "exact": "字节完全一致",
-      "match": "把握",
       "noManifest": "这个文件里已经没有 Content Credentials 了。记录照样找到了它。",
       "openPassport": "打开它的护照"
     },
@@ -535,7 +534,6 @@
       "yours": "你的副本",
       "registered": "登记的图片",
       "drag": "拖动对比",
-      "hold": "按住对比",
       "label": "Compare your copy with the registered picture"
     }
   },

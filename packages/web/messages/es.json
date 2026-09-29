@@ -217,6 +217,7 @@
     "formulaDoc": "Dónde lo cuenta el índice",
     "agentId": "Agente {id}",
     "unnamed": "La tarjeta de este agente no lleva nombre",
+    "unnamedTitle": "Unnamed agent",
     "since": "Visto por primera vez el {when}",
     "trustScore": "Nivel de confianza",
     "passports": "Pasaportes",
@@ -360,8 +361,6 @@
       "sampleFailed": "Esa muestra no llegó desde ninguna pasarela. Inténtalo otra vez o suelta tu propio archivo.",
       "noMatch": "Sin registrar",
       "noMatchBody": "Ningún pasaporte del registro coincide con esta imagen. Un archivo recién salido de un generador que nunca se registró se ve exactamente así.",
-      "exact": "bytes exactos",
-      "match": "confianza",
       "noManifest": "En este archivo no quedan Content Credentials. El registro lo encontró igual.",
       "openPassport": "Abrir su pasaporte"
     },
@@ -533,7 +532,6 @@
       "yours": "Tu copia",
       "registered": "La imagen registrada",
       "drag": "Arrastra para comparar",
-      "hold": "Mantén pulsado para comparar",
       "label": "Comparar tu copia con la imagen registrada"
     }
   },

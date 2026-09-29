@@ -217,6 +217,7 @@
     "formulaDoc": "Wo der Index ihn zählt",
     "agentId": "Agent {id}",
     "unnamed": "Die Karte dieses Agenten trägt keinen Namen",
+    "unnamedTitle": "Unnamed agent",
     "since": "Zuerst gesehen am {when}",
     "trustScore": "Vertrauenswert",
     "passports": "Pässe",
@@ -360,8 +361,6 @@
       "sampleFailed": "Dieses Beispiel kam von keinem Gateway zurück. Versuch es noch einmal oder zieh deine eigene Datei her.",
       "noMatch": "Nicht eingetragen",
       "noMatchBody": "Kein Pass im Register passt zu diesem Bild. Eine Datei frisch aus einem Generator, die nie eingetragen wurde, sieht genau so aus.",
-      "exact": "exakte Bytes",
-      "match": "Sicherheit",
       "noManifest": "In dieser Datei sind keine Content Credentials mehr. Der Eintrag wurde trotzdem gefunden.",
       "openPassport": "Seinen Pass öffnen"
     },
@@ -533,7 +532,6 @@
       "yours": "Deine Kopie",
       "registered": "Das eingetragene Bild",
       "drag": "Ziehen zum Vergleichen",
-      "hold": "Gedrückt halten zum Vergleichen",
       "label": "Compare your copy with the registered picture"
     }
   },

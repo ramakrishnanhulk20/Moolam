@@ -39,7 +39,7 @@
     "languageIs": "{language}, change the language",
     "themeDarkAction": "Theme: dark, switch to the light theme",
     "themeLightAction": "Theme: light, switch to the dark theme",
-    "languageOpening": "Opening {language}"
+    "languageOpening": "Switching to {language}"
   },
   "shell": {
     "label": "Sections",
@@ -125,7 +125,7 @@
     "kicker": "Explore",
     "title": "The registry",
     "rail": "Every passport on Monad",
-    "lede": "Every picture registered on Monad, newest first, read from the index as this page loads. Open one for its fingerprint, its manifest and its re-checks.",
+    "lede": "Every picture registered on Monad, newest first, read from the index as this page loads. Open one for its fingerprint, Content Credentials and re-checks.",
     "counts": {
       "total": "Passports",
       "generated": "Generated",
@@ -150,8 +150,8 @@
       "captured": "Captured",
       "edits": "Edits",
       "rechecked": "Re-checked",
-      "manifest": "With manifest",
-      "disputed": "Disputed"
+      "manifest": "With Content Credentials",
+      "disputed": "Dispute upheld"
     },
     "ai": {
       "label": "AI use",
@@ -178,7 +178,7 @@
     "legend": {
       "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
-      "disputed": "Dispute upheld",
+      "disputed": "Dispute upheld, here or on the picture it was edited from",
       "consent": "Statement on AI use, four marks for the four uses"
     },
     "untitled": "Untitled",
@@ -217,6 +217,7 @@
     "formulaDoc": "Where the index counts it",
     "agentId": "Agent {id}",
     "unnamed": "This agent's card carries no name",
+    "unnamedTitle": "Unnamed agent",
     "since": "First seen {when}",
     "trustScore": "Trust score",
     "passports": "Passports",
@@ -360,8 +361,6 @@
       "sampleFailed": "That sample would not come back from any gateway. Try again, or drop your own file.",
       "noMatch": "Not registered",
       "noMatchBody": "No passport in the registry matches this image. A file straight out of a generator that was never registered looks exactly like this.",
-      "exact": "exact bytes",
-      "match": "confidence",
       "noManifest": "No Content Credentials left in this file. The record found it anyway.",
       "openPassport": "Open its passport"
     },
@@ -421,7 +420,7 @@
     "noMatchLabel": "Not registered",
     "registerCta": "Register this image",
     "untitled": "Untitled",
-    "noPicture": "The picture's storage is not answering right now",
+    "noPicture": "The picture's storage is not answering right now. Try again in a minute.",
     "measured": "What was measured",
     "queriedSize": "Size",
     "queriedPhash": "Look fingerprint (pHash)",
@@ -445,7 +444,7 @@
       "notAnImage": "That file could not be read as an image. JPEG, PNG or WebP.",
       "empty": "That file is empty. Choose the picture again.",
       "rateLimited": "Too many checks from here. Wait a minute and try again.",
-      "badRequest": "The verify service would not take that file. Choose a JPEG, PNG or WebP picture and try again.",
+      "badRequest": "The verify service turned this request down. Reload the page and check the picture again.",
       "badResponse": "The verify service answered in a way this page cannot read. Try again in a minute.",
       "serviceFailed": "The verify service could not finish this check. Try again in a minute.",
       "refused": "The verify service refused this request. Reload the page and try again.",
@@ -533,7 +532,6 @@
       "yours": "Your copy",
       "registered": "The registered picture",
       "drag": "Drag to compare",
-      "hold": "Hold to compare",
       "label": "Compare your copy with the registered picture"
     }
   },
@@ -701,7 +699,7 @@
       "lineageNote": "Only the owner can add edits. The app's Privy permission can add edits and nothing else."
     },
     "untitled": "Untitled",
-    "noPicture": "The picture's storage is not answering right now. Try again in a minute",
+    "noPicture": "The picture's storage is not answering right now. Try again in a minute.",
     "fingerprintVersion": "Fingerprint version {version}",
     "record": "The record",
     "passkeyBound": "This creator signs with a passkey tied to their account.",
@@ -883,10 +881,10 @@
       "writtenOn": "written {when}",
       "nothingBy": "nothing stated by then",
       "asking": "asking the chain for that day",
-      "askFailed": "the chain did not answer for that day. Move the day slider to ask again",
-      "scrub": "Drag the rule, or use the arrow keys",
+      "askFailed": "The chain did not answer for that day. Move the day slider to ask again.",
+      "scrub": "Drag the day slider, or use the arrow keys",
       "scrubStep": ", one day a step",
-      "scrubTouch": "Drag the rule",
+      "scrubTouch": "Drag the day slider",
       "registeredOn": "registered {when}",
       "today": "today",
       "shared": "{statement}, stated on Monad on {when}.",
@@ -997,15 +995,15 @@
       "matched": "This is the registered file",
       "matchedLine": "Its hash is the passport id {id}. Nothing has left this device yet.",
       "publish": "Publish this file",
-      "sending": "Pinning the picture, its thumbnail and its manifest",
+      "sending": "Pinning the picture, its thumbnail and its Content Credentials",
       "allowance": "{used} of {limit} edits and publishes today",
       "done": {
         "label": "Published",
-        "body": "The picture, its thumbnail and its manifest are on IPFS, and a small record beside them says where. Nothing on chain changed, because nothing can: this passport's metadata address was written once and has no setter.",
+        "body": "The picture, its thumbnail and its Content Credentials are on IPFS, and a small record beside them says where. Nothing on chain changed, because nothing can: this passport's metadata address was written once and has no setter.",
         "at": "Published on {when}",
         "image": "Picture",
         "thumbnail": "Thumbnail",
-        "manifest": "Manifest",
+        "manifest": "Content Credentials",
         "record": "Record",
         "check": "Anyone can fetch the picture, hash it and compare it with the passport id on Monad. That is the whole proof, and it needs nothing from this service."
       },
@@ -1111,7 +1109,7 @@
       "heading": "Feedback on the public agent review board (ERC-8004)",
       "empty": "No feedback recorded for this agent yet. Moolam posts feedback here by hand, not after every check.",
       "error": "The reputation registry could not be read: {reason}.",
-      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), filed under Moolam's checks. This page reads its summary. The trust score beside it comes from the index's own re-checks, so the two are never added together.",
+      "body": "Feedback lives on Monad's public agent review board (the ERC-8004 reputation registry), where Moolam posts it by hand. This page reads its summary. The trust score beside it counts the Chainlink re-checks, so the two are never added together.",
       "registry": "Registry {address}",
       "secondary": "Feedback posted on chain by hand, apart from the re-check score",
       "entries": "{count, plural, =1 {# entry} other {# entries}}",
@@ -1181,7 +1179,7 @@
     "lede": "Every image you register here gets its own record on Monad: fingerprinted, signed by you, findable from any copy.",
     "opening": "Opening your account",
     "noWallet": "You are signed in, but no account was created on Monad yet. Reload the page, or sign out and sign in again.",
-    "notConfigured": "Sign-in is switched off on this copy of Moolam, so the studio cannot open here. Verify and Explore still work without an account.",
+    "notConfigured": "Sign-in is switched off on this site, so the studio cannot open here. Verify and Explore still work without an account.",
     "signOut": "Sign out",
     "identity": {
       "account": "Signed in as",
@@ -1317,7 +1315,7 @@
       "openImage": "The pinned image",
       "another": "Register another image",
       "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
-      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
+      "anotherWaits": "Your word on AI use is still going to Monad. Register another opens once Monad shows it."
     },
     "generate": {
       "kicker": "The agent",
