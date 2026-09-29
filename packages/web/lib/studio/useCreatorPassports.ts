@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Hex } from "viem";
+import { pinnedUri } from "@/components/passport/art";
 import { gatewayUrl, reason } from "@/lib/chain/client";
 import {
   confirmedPassports,
@@ -76,6 +77,11 @@ export function nextLook(attempt: number, waitedMs: number): number | null {
 export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): CreatorPassports {
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [tick, setTick] = useState(0);
+  // When the last Try again was pressed. A look window never starts before it,
+  // so a press after the window closed watches the index for a full one again.
+  const pressedAt = useRef(0);
+  // Which wait for a confirmed passport ran out of looks, as wallet, read and ids.
+  const [lookedOut, setLookedOut] = useState<string | null>(null);
   // Two presses inside one frame both see loadingMore false in state, so the
   // page in flight is also held here, named by the wallet and the read it
   // belongs to.
@@ -135,7 +141,10 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
   }, [wallet, tick, pageSize]);
 
   const current = answer !== null && answer.wallet === wallet && answer.tick === tick ? answer : null;
-  const refresh = useCallback(() => setTick((value) => value + 1), []);
+  const refresh = useCallback(() => {
+    pressedAt.current = Date.now();
+    setTick((value) => value + 1);
+  }, []);
 
   const more = useCallback(() => {
     if (current === null || current.error !== null || !current.hasMore) {
@@ -226,6 +235,8 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
     }
     const wanted = new Set(missingIds.split(","));
     const read = tick;
+    const wait = `${wallet}:${read}:${missingIds}`;
+    const since = Math.max(missingSince, pressedAt.current);
     const mine = (held: Answer | null): held is Answer => held !== null && held.wallet === wallet && held.tick === read;
     let live = true;
     let attempt = 0;
@@ -265,11 +276,12 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
     };
 
     function schedule() {
-      const delay = nextLook(attempt, Date.now() - missingSince);
+      const delay = nextLook(attempt, Date.now() - since);
       attempt += 1;
-      if (delay !== null) {
-        timer = setTimeout(() => void look(), delay);
-      }
+      // Out of looks is said from a timer too, even when the window was already
+      // over at the first one, so this effect never sets state while it runs.
+      timer =
+        delay === null ? setTimeout(() => setLookedOut(wait), 0) : setTimeout(() => void look(), delay);
     }
 
     schedule();
@@ -284,13 +296,19 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
   return useMemo(
     () => ({
       // An empty answer while Monad has confirmed a passport for this account
-      // is the index behind, not an empty account, so it reads as still reading.
+      // is the index behind, not an empty account, so it reads as still reading
+      // while the index is being watched, and as unreadable once it stops being
+      // watched, so the grid always ends in an answer and a Try again.
       status:
-        current === null || (current.error === null && current.passports.length === 0 && missingIds !== "")
+        current === null
           ? ("reading" as const)
-          : current.error === null
-            ? ("ready" as const)
-            : ("unreadable" as const),
+          : current.error === null && current.passports.length === 0 && missingIds !== ""
+            ? lookedOut === `${wallet}:${tick}:${missingIds}`
+              ? ("unreadable" as const)
+              : ("reading" as const)
+            : current.error === null
+              ? ("ready" as const)
+              : ("unreadable" as const),
       passports: current?.passports ?? [],
       error: current?.error ?? null,
       refresh,
@@ -299,7 +317,7 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
       moreError: current?.moreError ?? null,
       more,
     }),
-    [current, refresh, more, missingIds],
+    [current, refresh, more, missingIds, lookedOut, wallet, tick],
   );
 }
 
@@ -309,14 +327,25 @@ function fillIn(held: CreatorPassport[], decorated: CreatorPassport[]): CreatorP
   return held.map((row) => byId.get(row.id) ?? row);
 }
 
+/**
+ * A row with its title and thumbnail. The document and the picture are held to
+ * the site's one picture-address rule (pinnedUri in components/passport/art.ts)
+ * before either is asked for, because the registry takes any string and this
+ * runs in the reader's browser.
+ */
 async function withArt(row: PassportListing): Promise<CreatorPassport> {
+  const document = pinnedUri(row.metadataURI);
+  if (document === undefined) {
+    return row;
+  }
   try {
-    const response = await fetch(gatewayUrl(row.metadataURI), { signal: AbortSignal.timeout(8_000) });
+    const response = await fetch(gatewayUrl(document), { signal: AbortSignal.timeout(8_000) });
     if (!response.ok) {
       return row;
     }
     const art = passportArt(await response.json());
-    return { ...row, title: art.title, imageUrl: art.uri === undefined ? undefined : gatewayUrl(art.uri) };
+    const picture = art.uri === undefined ? undefined : pinnedUri(art.uri);
+    return { ...row, title: art.title, imageUrl: picture === undefined ? undefined : gatewayUrl(picture) };
   } catch {
     // A gateway that is slow or rate limited costs a thumbnail, never the row.
     return row;

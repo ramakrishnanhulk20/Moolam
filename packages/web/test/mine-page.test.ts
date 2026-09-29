@@ -223,7 +223,9 @@ describe("every picture, not only the newest twelve", () => {
     const markup = render("en", createElement(MineScreen));
     expect(markup).toContain("A hill at first light");
     expect(markup).toContain(`>${en.explore.loadMore}</button>`);
-    expect(markup).toContain(en.explore.error.replace("{reason}", "the Envio endpoint answered 429"));
+    // The sentence in the reader's words, and the index's own only inside the fold (WO-229 step 4).
+    expect(markup).toContain(en.studio.passports.unreadable);
+    expect(markup).toMatch(/<details data-failure-details[\s\S]*the Envio endpoint answered 429[\s\S]*<\/details>/);
   });
 
   it("offers no press while the first page is still being read or could not be", () => {

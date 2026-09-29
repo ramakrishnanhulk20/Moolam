@@ -51,7 +51,8 @@ function rows(count: number, from = 0, tag = "a"): PassportListing[] {
       kind: 0,
       registeredAt: BigInt(2_000_000_000 - n),
       registeredBlock: BigInt(100_000_000 - n),
-      metadataURI: `ipfs://meta-${tag}-${n}`,
+      // A bare content id shape, since the grid reads only a pinned document (WO-229 step 7).
+      metadataURI: `ipfs://meta${tag}${n}`,
     };
   });
 }
@@ -176,7 +177,7 @@ describe("reading an account's pictures a page at a time", () => {
     expect(seen.hasMore).toBe(false);
     expect(ids()).toEqual(rows(17).map((row) => row.id));
     expect(new Set(ids()).size).toBe(ids().length);
-    expect(seen.passports[16].title).toBe("title for meta-a-16");
+    expect(seen.passports[16].title).toBe("title for metaa16");
   });
 
   it("keeps walking while every page comes back full", async () => {
@@ -297,7 +298,7 @@ describe("reading an account's pictures a page at a time", () => {
 
     letGatewayAnswer();
     await settle();
-    expect(seen.passports[0].title).toBe("title for meta-a-0");
+    expect(seen.passports[0].title).toBe("title for metaa0");
   });
 
   it("reads nothing until there is a wallet", () => {

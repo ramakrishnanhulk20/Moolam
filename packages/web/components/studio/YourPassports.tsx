@@ -225,6 +225,7 @@ function PassportsEnd({ count }: { count: number }) {
  */
 function LoadMore({ passports }: { passports: CreatorPassports }) {
   const t = useTranslations("explore");
+  const studio = useTranslations("studio");
 
   if (passports.status !== "ready" || !passports.hasMore) {
     return null;
@@ -243,10 +244,15 @@ function LoadMore({ passports }: { passports: CreatorPassports }) {
         {passports.loadingMore ? t("loading") : t("loadMore")}
       </button>
       {passports.moreError === null ? null : (
-        <p role="alert" className="flex max-w-[54ch] items-start gap-2.5 text-base leading-relaxed text-failed">
-          <WarningMark className="mt-[5px]" />
-          <span className="min-w-0">{t("error", { reason: passports.moreError })}</span>
-        </p>
+        // The same shape as the grid's own failure above: the sentence in the
+        // reader's language, and the index's English only in the fold.
+        <div className="max-w-[54ch]">
+          <p role="alert" className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
+            <WarningMark className="mt-[5px]" />
+            <span className="min-w-0">{studio("passports.unreadable")}</span>
+          </p>
+          <FailureDetails reason={passports.moreError} className="ms-[23px] mt-3" />
+        </div>
       )}
     </div>
   );
