@@ -33,3 +33,21 @@ export function MineNotice({ text, tone = "muted" }: { text: string; tone?: "mut
     </p>
   );
 }
+
+/** Signed in, and Privy never made the account. Signing out and in again is the way on, so the button is right here. */
+export function MineNoAccount({ onSignOut }: { onSignOut: () => void }) {
+  const t = useTranslations("studio");
+
+  return (
+    <div className="mt-16">
+      <p className="max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("noWallet")}</p>
+      <button
+        type="button"
+        onClick={onSignOut}
+        className="mt-5 rounded-[8px] border border-line px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+      >
+        {t("signOut")}
+      </button>
+    </div>
+  );
+}

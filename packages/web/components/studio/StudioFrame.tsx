@@ -60,8 +60,11 @@ export function StudioBox({
  * A one line wait label here instead measured 0.296 of layout shift on a
  * phone: the card dropped in at 889 px tall and shoved the receipt and the
  * footer off the screen. Same card, same height, nothing under it moves.
+ *
+ * The same card carries every wait between the sign in and the first real
+ * card: the account opening, then the passkey read. Only the label changes.
  */
-export function StudioWaiting() {
+export function StudioWaiting({ text }: { text?: string }) {
   const t = useTranslations("studio");
 
   return (
@@ -70,8 +73,26 @@ export function StudioWaiting() {
         <SignedOut onSignIn={NOTHING} />
       </div>
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <WaitLabel text={t("opening")} />
+        <WaitLabel text={text ?? t("opening")} />
       </div>
+    </div>
+  );
+}
+
+/** Signed in, and Privy never made the account. Signing out and in again is the way on, so the button is right here. */
+export function NoAccount({ onSignOut }: { onSignOut: () => void }) {
+  const t = useTranslations("studio");
+
+  return (
+    <div>
+      <Notice text={t("noWallet")} />
+      <button
+        type="button"
+        onClick={onSignOut}
+        className="mt-5 rounded-[8px] border border-line px-5 py-3 text-[11px] uppercase tracking-[0.18em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+      >
+        {t("signOut")}
+      </button>
     </div>
   );
 }

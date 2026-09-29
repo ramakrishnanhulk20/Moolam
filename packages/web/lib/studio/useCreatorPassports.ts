@@ -1,9 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Hex } from "viem";
 import { gatewayUrl, reason } from "@/lib/chain/client";
-import { passportsByCreator, type PassportListing } from "@/lib/data/passports";
+import {
+  confirmedPassports,
+  passportsByCreator,
+  settleListedPassports,
+  subscribeConfirmedPassports,
+  type ConfirmedPassports,
+  type PassportListing,
+} from "@/lib/data/passports";
 import { passportArt } from "./metadata";
 
 export interface CreatorPassport extends PassportListing {
@@ -36,6 +43,22 @@ interface Answer {
   hasMore: boolean;
   loadingMore: boolean;
   moreError: string | null;
+}
+
+/** How long the index is watched for a passport Monad has already confirmed. */
+export const INDEX_CATCH_UP_MS = 60_000;
+
+const NOTHING_CONFIRMED: ConfirmedPassports = new Map();
+const nothingOnServer = () => NOTHING_CONFIRMED;
+
+/**
+ * How long to wait before the next look at the index, or null once the window
+ * has closed. The looks space out, 1, 2, 4, 8 and then every 16 seconds, which
+ * is about seven reads against a shared index over the minute.
+ */
+export function nextLook(attempt: number, waitedMs: number): number | null {
+  const delay = Math.min(1_000 * 2 ** attempt, 16_000);
+  return waitedMs + delay > INDEX_CATCH_UP_MS ? null : delay;
 }
 
 /**
@@ -172,11 +195,102 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
     })();
   }, [current, pageSize, release]);
 
+  // Re-renders this grid when a registration anywhere in the tab is confirmed.
+  const confirmed = useSyncExternalStore(subscribeConfirmedPassports, confirmedPassports, nothingOnServer);
+  // The confirmed passports the rows on screen do not hold yet, as one stable
+  // key, so the look below starts once per gap rather than once per render.
+  const missing = useMemo(() => {
+    const held = wallet === undefined ? undefined : confirmed.get(wallet.toLowerCase());
+    if (held === undefined || current === null || current.error !== null) {
+      return { ids: "", since: 0 };
+    }
+    const shown = new Set(current.passports.map((row) => row.id.toLowerCase()));
+    const gap = Array.from(held).filter(([id]) => !shown.has(id));
+    return { ids: gap.map(([id]) => id).join(","), since: Math.max(0, ...gap.map(([, at]) => at)) };
+  }, [wallet, current, confirmed]);
+  const { ids: missingIds, since: missingSince } = missing;
+
+  useEffect(() => {
+    if (wallet !== undefined && current !== null) {
+      settleListedPassports(wallet, current.passports);
+    }
+  }, [wallet, current]);
+
+  // The index lags Monad by a block or more, so a grid read the moment Monad
+  // answered can miss the passport it just confirmed. It looks again, spacing
+  // the looks out, until the row is there or the window closes, and puts the
+  // new rows on top of the ones already shown rather than blanking the grid.
+  useEffect(() => {
+    if (wallet === undefined || missingIds === "") {
+      return;
+    }
+    const wanted = new Set(missingIds.split(","));
+    const read = tick;
+    const mine = (held: Answer | null): held is Answer => held !== null && held.wallet === wallet && held.tick === read;
+    let live = true;
+    let attempt = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const look = async () => {
+      let found: CreatorPassport[] = [];
+      try {
+        const got = await passportsByCreator(wallet, pageSize + 1, 0);
+        found = got.slice(0, pageSize).filter((row) => wanted.has(row.id.toLowerCase()));
+      } catch {
+        // A failed look is one more reason to look again, not a grid error.
+      }
+      if (!live) {
+        return;
+      }
+      if (found.length === 0) {
+        schedule();
+        return;
+      }
+
+      // Every row added on top pushes the older ones one place down the index's
+      // order, so the next Load more starts that much further in. The rows the
+      // index still lacks start a fresh look once these land.
+      setAnswer((held) => {
+        if (!mine(held)) {
+          return held;
+        }
+        const seen = new Set(held.passports.map((row) => row.id));
+        const added = found.filter((row) => !seen.has(row.id));
+        return { ...held, passports: [...added, ...held.passports], offset: held.offset + added.length };
+      });
+      // Not gated on this effect still running: the rows above end it, and
+      // their pictures are still owed.
+      const decorated = await Promise.all(found.map(withArt));
+      setAnswer((held) => (mine(held) ? { ...held, passports: fillIn(held.passports, decorated) } : held));
+    };
+
+    function schedule() {
+      const delay = nextLook(attempt, Date.now() - missingSince);
+      attempt += 1;
+      if (delay !== null) {
+        timer = setTimeout(() => void look(), delay);
+      }
+    }
+
+    schedule();
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [wallet, tick, missingIds, missingSince, pageSize]);
+
   // One object per answer, so the panels below do not re-render on every
   // keystroke in the studio above them.
   return useMemo(
     () => ({
-      status: current === null ? ("reading" as const) : current.error === null ? ("ready" as const) : ("unreadable" as const),
+      // An empty answer while Monad has confirmed a passport for this account
+      // is the index behind, not an empty account, so it reads as still reading.
+      status:
+        current === null || (current.error === null && current.passports.length === 0 && missingIds !== "")
+          ? ("reading" as const)
+          : current.error === null
+            ? ("ready" as const)
+            : ("unreadable" as const),
       passports: current?.passports ?? [],
       error: current?.error ?? null,
       refresh,
@@ -185,7 +299,7 @@ export function useCreatorPassports(wallet: Hex | undefined, pageSize = 12): Cre
       moreError: current?.moreError ?? null,
       more,
     }),
-    [current, refresh, more],
+    [current, refresh, more, missingIds],
   );
 }
 

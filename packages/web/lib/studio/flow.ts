@@ -40,7 +40,7 @@ const ALL_STEPS: readonly Step[] = ["prepare", "draw", "pin", "agentSign", "sign
  * constant and nothing is an estimate.
  */
 export interface Timing {
-  /** From handing the send to Privy to the confirm resolving, in milliseconds. */
+  /** From handing the send to Privy to Monad showing the write, in milliseconds. Any wait on the index after that is left out. */
   waitedMs: number;
   /**
    * From the tap to the second the confirmed block carries, in milliseconds.
@@ -70,7 +70,7 @@ export function measure({
 }: {
   /** performance.now() where the send went to Privy. */
   handedAt: number;
-  /** performance.now() where the confirm resolved. */
+  /** performance.now() where Monad showed the write, before anything else was waited on. */
   answeredAt: number;
   /** Date.now() at the same moment the send went out, which is the reader's own clock. */
   tappedAt: number;
@@ -189,8 +189,16 @@ export type RegisterAction =
   | { type: "sent"; txHash: Hex }
   | { type: "watching" }
   | { type: "confirmed"; block: bigint | null; at: number; timing?: Timing; charge?: Charge }
-  | { type: "failed"; failure: Failure; quota?: QuotaState; stage?: Stage }
-  | { type: "reset" };
+  /**
+   * `step` is the row this failure ends when no row is running, which is a
+   * check made between two steps: the sealed file coming back wrong, or the
+   * agent signing for another account. Without it the band finds no failed row
+   * and keeps pulsing on a run that has stopped.
+   */
+  | { type: "failed"; failure: Failure; quota?: QuotaState; stage?: Stage; step?: Step }
+  | { type: "reset" }
+  /** Another account signed in on this tab. Nothing of the last one's run is theirs to see. */
+  | { type: "account" };
 
 const WAITING: Record<Step, StepState> = {
   prepare: "waiting",
@@ -299,12 +307,14 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
     case "sealedSaved":
       return { ...state, sealed: { ...state.sealed, saved: true } };
     case "start":
+      // A failed row belongs to the attempt that ended, the same as the failure
+      // note cleared here, so a retry never runs under a red band.
       return {
         ...state,
         failure: null,
         confirming: false,
         unsponsored: action.unsponsored ?? state.unsponsored,
-        steps: { ...state.steps, [action.step]: "running" },
+        steps: { ...clearFailed(state.steps), [action.step]: "running" },
       };
     case "prepared":
       return { ...state, prepared: action.prepared, steps: { ...state.steps, prepare: "done" } };
@@ -344,7 +354,7 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         // nothing to draw again, only a chain to ask.
         failure: state.mode === "generate" ? asGenerateFailure(action.failure, action.stage) : action.failure,
         quota: action.quota ?? state.quota,
-        steps: markRunning(state.steps, action.failure.key === "confirmPending" ? "unconfirmed" : "failed"),
+        steps: endRun(state.steps, action.failure.key === "confirmPending" ? "unconfirmed" : "failed", action.step),
       };
     // The four below move the statement and nothing else. A passport that is on
     // chain stays on chain whatever happens to the words about it, so not one of
@@ -382,7 +392,20 @@ export function registerReducer(state: RegisterState, action: RegisterAction): R
         sealed: { ...NOTHING_SEALED, on: state.sealed.on, includePrompt: state.sealed.includePrompt },
         quota: state.quota,
       };
+    case "account":
+      // Only which panel is open survives: the title, the choices, the quota
+      // and the finished run all belonged to the account that left.
+      return { ...initialRegisterState, mode: state.mode };
   }
+}
+
+/**
+ * True when a different account has signed in from the one whose run is on
+ * screen. A sign out on its own is not a change: the receipt stays for the
+ * same account signing back in.
+ */
+export function accountChanged(held: Hex | undefined, now: Hex | undefined): boolean {
+  return held !== undefined && now !== undefined && held.toLowerCase() !== now.toLowerCase();
 }
 
 /** Which line under "studio.failure" a refused file gets. */
@@ -454,11 +477,27 @@ export function passportId(state: RegisterState): Hex | null {
   return state.prepared?.passport.exactHash ?? state.failure?.passportId ?? null;
 }
 
-function markRunning(steps: Record<Step, StepState>, to: StepState): Record<Step, StepState> {
+/** The running row takes the failure. With none running, the row the failure names does. */
+function endRun(steps: Record<Step, StepState>, to: StepState, named: Step | undefined): Record<Step, StepState> {
   const next = { ...steps };
+  let ended = false;
   for (const step of ALL_STEPS) {
     if (next[step] === "running") {
       next[step] = to;
+      ended = true;
+    }
+  }
+  if (!ended && named !== undefined) {
+    next[named] = to;
+  }
+  return next;
+}
+
+function clearFailed(steps: Record<Step, StepState>): Record<Step, StepState> {
+  const next = { ...steps };
+  for (const step of ALL_STEPS) {
+    if (next[step] === "failed") {
+      next[step] = "waiting";
     }
   }
   return next;

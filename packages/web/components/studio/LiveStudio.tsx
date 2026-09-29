@@ -12,8 +12,7 @@ import { warmAfterPress } from "./afterPress";
 import { useWide } from "./layout";
 import { EmptyReceipt } from "./ReceiptFrame";
 import { SignedOut } from "./SignedOut";
-import { Notice, StudioBox, StudioWaiting } from "./StudioFrame";
-import { WaitLabel } from "./WaitLabel";
+import { NoAccount, Notice, StudioBox, StudioWaiting } from "./StudioFrame";
 import { hasStarted, useStickyTop, useStudioPress } from "./press";
 
 // Everything below is only ever drawn for someone who has signed in, so a
@@ -103,6 +102,28 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
   };
   const bindRoute = rebinding && studio.bind.stage !== "bound";
 
+  // A bind that just landed keeps its card, Bound face and transaction link,
+  // for a moment, and then through the passkey read that follows it, so the
+  // success is seen where the press was and the card never collapses first.
+  const justBound = useMoment(studio.bind.stage === "bound", BOUND_MOMENT_MS);
+  const boundCard = studio.bind.stage === "bound" && (justBound || studio.binding.status === "reading");
+  const bindCard = (holding?: string) => (
+    <BindCard
+      state={studio.bind}
+      rebind={rebinding}
+      wallet={studio.wallet}
+      confirming={studio.confirming}
+      holding={holding}
+      onBind={() => {
+        warmAfterPress();
+        return studio.actions.bindThisDevice();
+      }}
+      onRecheck={studio.actions.recheck}
+      onUnsponsored={() => void studio.actions.resend(true)}
+      onCancel={bindRoute ? () => setRebinding(false) : undefined}
+    />
+  );
+
   const identity =
     studio.authenticated && studio.wallet !== undefined ? (
       <IdentityStrip
@@ -118,16 +139,20 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
     <MotionConfig reducedMotion="user">
       {identity === null ? null : wide ? <div className="lg:hidden">{identity}</div> : identity}
 
-      <StudioBox hold={box} top={top} fill={onPanel(studio, bindRoute)}>
+      <StudioBox hold={box} top={top} fill={onPanel(studio, bindRoute || boundCard)}>
         <>
           {!studio.ready ? (
             <StudioWaiting />
           ) : !studio.authenticated ? (
             <SignedOut onSignIn={studio.login} />
           ) : studio.walletMissing ? (
-            <Notice text={t("noWallet")} />
+            <NoAccount onSignOut={studio.logout} />
+          ) : studio.wallet === undefined ? (
+            <StudioWaiting />
+          ) : boundCard ? (
+            bindCard(justBound ? undefined : t("passkey.reading"))
           ) : studio.binding.status === "reading" ? (
-            <WaitLabel text={t("passkey.reading")} />
+            <StudioWaiting text={t("passkey.reading")} />
           ) : studio.binding.status === "unreadable" ? (
             <div>
               <Notice text={t("passkey.unreadable", { reason: studio.binding.error ?? "" })} tone="failed" />
@@ -140,19 +165,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
               </button>
             </div>
           ) : studio.binding.status === "unbound" || bindRoute ? (
-            <BindCard
-              state={studio.bind}
-              rebind={rebinding}
-              wallet={studio.wallet}
-              confirming={studio.confirming}
-              onBind={() => {
-                warmAfterPress();
-                return studio.actions.bindThisDevice();
-              }}
-              onRecheck={studio.actions.recheck}
-              onUnsponsored={() => void studio.actions.resend(true)}
-              onCancel={bindRoute ? () => setRebinding(false) : undefined}
-            />
+            bindCard()
           ) : studio.binding.status === "bound-elsewhere" ? (
             <RecoverCard
               busy={studio.recovering}
@@ -229,7 +242,7 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
         {/* The stub belongs to the panel when there is one, so it lands under
             the run rather than under the card above it. Every other state of
             this screen still gets it, in the same column, under its card. */}
-        {onPanel(studio, bindRoute) ? null : receipt}
+        {onPanel(studio, bindRoute || boundCard) ? null : receipt}
       </StudioBox>
 
       {/* On a laptop the wide layout gives the first screen to the picture and
@@ -242,12 +255,36 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
 }
 
 /** True when the register or generate panel is the card on screen, and holds the stub itself. */
-function onPanel(studio: StudioState, bindRoute: boolean): boolean {
+function onPanel(studio: StudioState, onBindCard: boolean): boolean {
   return (
     studio.ready &&
     studio.authenticated &&
     !studio.walletMissing &&
+    studio.wallet !== undefined &&
     studio.binding.status === "bound" &&
-    !bindRoute
+    !onBindCard
   );
+}
+
+/** Long enough to read "Bound" and see the link to the transaction beside it. */
+const BOUND_MOMENT_MS = 2_400;
+
+/** True for `ms` after `on` turns true, and never while it is false. */
+function useMoment(on: boolean, ms: number): boolean {
+  const [shown, setShown] = useState(false);
+  const [was, setWas] = useState(on);
+  if (was !== on) {
+    setWas(on);
+    setShown(on);
+  }
+
+  useEffect(() => {
+    if (!shown) {
+      return;
+    }
+    const timer = window.setTimeout(() => setShown(false), ms);
+    return () => window.clearTimeout(timer);
+  }, [shown, ms]);
+
+  return on && shown;
 }

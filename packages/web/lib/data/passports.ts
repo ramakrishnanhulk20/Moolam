@@ -289,6 +289,73 @@ async function listRows(query: string, variables: Record<string, unknown>): Prom
   return body.data.Passport;
 }
 
+/**
+ * Passports this tab watched Monad confirm, by lowercased creator, each with the
+ * Date.now() it was confirmed at. An id leaves once the index lists it.
+ *
+ * Kept here, outside any one grid, so /mine opened a moment after a
+ * registration knows what the studio knows. Replaced whole on every change,
+ * never edited in place, so a grid can tell when it moved. Only a browser ever
+ * writes to it.
+ */
+export type ConfirmedPassports = ReadonlyMap<string, ReadonlyMap<string, number>>;
+
+let confirmed: ConfirmedPassports = new Map();
+const confirmedListeners = new Set<() => void>();
+
+function publishConfirmed(next: ConfirmedPassports): void {
+  confirmed = next;
+  for (const listener of confirmedListeners) {
+    listener();
+  }
+}
+
+export function confirmedPassports(): ConfirmedPassports {
+  return confirmed;
+}
+
+export function subscribeConfirmedPassports(listener: () => void): () => void {
+  confirmedListeners.add(listener);
+  return () => {
+    confirmedListeners.delete(listener);
+  };
+}
+
+/**
+ * Tells every grid for this creator that Monad holds this passport, so the grid
+ * reads the index again until the row is there and never calls the account
+ * empty in the meantime.
+ */
+export function awaitPassport(creator: Hex, id: Hex, at = Date.now()): void {
+  const key = creator.toLowerCase();
+  const ids = new Map(confirmed.get(key) ?? []);
+  ids.set(id.toLowerCase(), at);
+  publishConfirmed(new Map(confirmed).set(key, ids));
+}
+
+/** Drops the confirmed passports the index now lists for this creator. */
+export function settleListedPassports(creator: Hex, rows: readonly { id: Hex }[]): void {
+  const key = creator.toLowerCase();
+  const held = confirmed.get(key);
+  if (held === undefined) {
+    return;
+  }
+  const left = new Map(held);
+  for (const row of rows) {
+    left.delete(row.id.toLowerCase());
+  }
+  if (left.size === held.size) {
+    return;
+  }
+  const next = new Map(confirmed);
+  if (left.size === 0) {
+    next.delete(key);
+  } else {
+    next.set(key, left);
+  }
+  publishConfirmed(next);
+}
+
 /** Where the index says one passport was written: the block, and the transaction that carried it. */
 export interface PassportRegistration {
   registeredBlock: bigint;

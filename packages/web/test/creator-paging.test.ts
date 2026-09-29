@@ -24,13 +24,17 @@ interface Read {
   fail: (message: string) => void;
 }
 
-const index = vi.hoisted(() => ({ reads: [] as Read[] }));
+const index = vi.hoisted(() => ({ reads: [] as Read[], confirmed: new Map() }));
 
 vi.mock("@/lib/data/passports", () => ({
   passportsByCreator: (wallet: Hex, limit: number, offset: number) =>
     new Promise<PassportListing[]>((resolve, reject) => {
       index.reads.push({ wallet, limit, offset, answer: resolve, fail: (message) => reject(new Error(message)) });
     }),
+  // No registration is confirmed in these cases, so the grid never waits on the index for one.
+  confirmedPassports: () => index.confirmed,
+  subscribeConfirmedPassports: () => () => undefined,
+  settleListedPassports: () => undefined,
 }));
 
 const { useCreatorPassports } = await import("@/lib/studio/useCreatorPassports");

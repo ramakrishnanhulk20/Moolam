@@ -1,7 +1,7 @@
 "use client";
 
 import { usePrivy, useSendTransaction, useWallets, type ConnectedWallet } from "@privy-io/react-auth";
-import { useCallback, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { CHAIN_ID, addresses, chain } from "@/lib/chain/client";
 import {
@@ -14,6 +14,7 @@ import {
 import { assertDigestMatches, localBindDigest, localPassportDigest } from "@/lib/chain/digest";
 import { bindNonce, getPassport, hashBind, hashPassport } from "@/lib/chain/registry";
 import { deadlineFromChain } from "@/lib/chain/time";
+import { awaitPassport } from "@/lib/data/passports";
 import { setConsentRequest, type ConsentDraft } from "@/lib/consent/call";
 import { confirmSetConsent } from "@/lib/consent/confirm";
 import { describeConsentFailure } from "@/lib/consent/failure";
@@ -22,10 +23,11 @@ import { checkAuth } from "@/lib/passkey/verify";
 import { decideSealed } from "@/lib/sealed/handback";
 import { VerifierError, generate, prepare, type GenerateResponse, type PrepareResponse } from "@/lib/verifier/client";
 import { accountName, type AccountName, type SignedInUser } from "./account";
-import { bindReducer, initialBindState, type BindState } from "./binding";
+import { bindReducer, initialBindState, useWalletState, type BindState } from "./binding";
 import { statedFrom, trainingFrom } from "./consent";
 import { confirmBind, confirmRegister, transactionHash } from "./confirm";
 import {
+  accountChanged,
   initialRegisterState,
   measure,
   passportId,
@@ -33,6 +35,7 @@ import {
   type Charge,
   type Mode,
   type RegisterState,
+  type Step,
 } from "./flow";
 import { checkPrompt } from "./generate";
 import { AuthCheckFailed, describeFailure, isResendable, type Failure } from "./problems";
@@ -54,6 +57,11 @@ export interface Studio {
   authenticated: boolean;
   account: AccountName;
   wallet: Hex | undefined;
+  /**
+   * True only once the wallet list has been ready and empty past the grace
+   * period. Signed in, with no wallet and not missing, is an account that is
+   * still opening.
+   */
   walletMissing: boolean;
   binding: Binding;
   bind: BindState;
@@ -151,11 +159,12 @@ interface Submitted {
  */
 export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio {
   const { ready, authenticated, user, login, logout, getAccessToken } = usePrivy();
-  const { wallets } = useWallets();
+  const { wallets, ready: walletsReady } = useWallets();
   const { sendTransaction } = useSendTransaction();
 
   const embedded = useMemo(() => wallets.find((entry) => entry.walletClientType === "privy"), [wallets]);
   const wallet = embedded?.address as Hex | undefined;
+  const account = useWalletState(authenticated, walletsReady, embedded !== undefined);
 
   const binding = usePasskeyBinding(authenticated ? wallet : undefined);
   const passports = useCreatorPassports(authenticated ? wallet : undefined);
@@ -167,6 +176,21 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
   const [confirming, setConfirming] = useState(false);
   const [recovering, setRecovering] = useState(false);
   const [recovery, setRecovery] = useState<Failure | null>(null);
+
+  // Cleared in the same render the new account arrives in, so the last
+  // account's passport and receipt never show under the new account's name.
+  const [owner, setOwner] = useState<Hex | undefined>(wallet);
+  if (wallet !== undefined && wallet !== owner) {
+    setOwner(wallet);
+    if (accountChanged(owner, wallet)) {
+      dispatchRegister({ type: "account" });
+      dispatchBind({ type: "reset" });
+      setSponsorship("claimed");
+      setBalance(null);
+      setRecovering(false);
+      setRecovery(null);
+    }
+  }
 
   /** The last signed transaction, kept so a resend sends the same bytes. */
   const pending = useRef<Pending | null>(null);
@@ -182,6 +206,23 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
   const statement = useRef<{ wallet: Hex; passportId: Hex; sent: ConsentDraft; hash?: Hex; handedAt: number; tappedAt: number } | null>(
     null,
   );
+
+  // The signed bytes and the watches are the last account's too. A watch left
+  // behind would answer the new account's first press with "ask Monad again"
+  // about a send that was never theirs.
+  const heldFor = useRef<Hex | undefined>(undefined);
+  useEffect(() => {
+    if (wallet === undefined) {
+      return;
+    }
+    if (accountChanged(heldFor.current, wallet)) {
+      pending.current = null;
+      watching.current = null;
+      stated.current = null;
+      statement.current = null;
+    }
+    heldFor.current = wallet;
+  }, [wallet]);
 
   /**
    * One write, up to the moment the wallet answers.
@@ -532,7 +573,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       });
       const timing = measure({
         handedAt: watch.handedAt,
-        answeredAt: performance.now(),
+        answeredAt: landed.answeredAt,
         tappedAt: watch.tappedAt,
         sealedAt: landed.registeredAt,
       });
@@ -550,7 +591,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
       await settleSponsorship(watch.wallet, watch.balanceBefore);
       watching.current = null;
       pending.current = null;
-      passports.refresh();
+      awaitPassport(watch.wallet, watch.exactHash);
     } catch (error) {
       dispatchRegister({ type: "failed", failure: describeFailure(error, "confirm", watch.wallet), stage: "confirm" });
       return;
@@ -561,7 +602,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     if (stated.current !== null) {
       await sendStatement(watch.exactHash, stated.current);
     }
-  }, [passports, sendStatement, settleSponsorship]);
+  }, [sendStatement, settleSponsorship]);
 
   const sendRegister = useCallback(
     async (data: Hex, exactHash: Hex, unsponsored: boolean) => {
@@ -619,12 +660,12 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
    * underneath afterwards.
    */
   const holdSealedFile = useCallback(
-    async (answer: PrepareResponse | GenerateResponse, asked: boolean): Promise<boolean> => {
+    async (answer: PrepareResponse | GenerateResponse, asked: boolean, step: Step): Promise<boolean> => {
       const decision = await decideSealed(answer, asked);
       if (decision.next === "stop") {
         // Which of the three ways the check failed is this app's or the
         // service's problem to fix and stays out of the creator's way.
-        dispatchRegister({ type: "failed", failure: { key: decision.failure, next: "again" }, stage: "prepare" });
+        dispatchRegister({ type: "failed", failure: { key: decision.failure, next: "again" }, stage: "prepare", step });
         return false;
       }
       if (decision.file === null) {
@@ -702,7 +743,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
 
     // Nothing is signed until this browser holds the picture and has proved it
     // is the one the passport commits to.
-    if (!(await holdSealedFile(prepared, register.sealed.on))) {
+    if (!(await holdSealedFile(prepared, register.sealed.on, "prepare"))) {
       return;
     }
 
@@ -834,11 +875,16 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     // this screen, the registry would refuse the pair, so nobody is asked for
     // their unlock over it.
     if (drawn.passport.creator.toLowerCase() !== wallet.toLowerCase()) {
-      dispatchRegister({ type: "failed", failure: { key: "creatorMismatch", next: "signOut" }, stage: "prepare" });
+      dispatchRegister({
+        type: "failed",
+        failure: { key: "creatorMismatch", next: "signOut" },
+        stage: "prepare",
+        step: "agentSign",
+      });
       return;
     }
 
-    if (!(await holdSealedFile(drawn, register.sealed.on))) {
+    if (!(await holdSealedFile(drawn, register.sealed.on, "pin"))) {
       return;
     }
 
@@ -924,7 +970,7 @@ export function useStudio(initialMode: Mode = initialRegisterState.mode): Studio
     authenticated,
     account: accountName(user as SignedInUser | null),
     wallet,
-    walletMissing: authenticated && embedded === undefined,
+    walletMissing: authenticated && account === "missing",
     binding,
     bind,
     confirming,

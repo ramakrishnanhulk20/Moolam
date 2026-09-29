@@ -2,10 +2,10 @@
 
 import { usePrivy, useWallets } from "@privy-io/react-auth";
 import dynamic from "next/dynamic";
-import { useTranslations } from "next-intl";
 import { useEffect, useMemo } from "react";
 import type { Hex } from "viem";
-import { MineNotice, MineWaiting } from "./MineFrame";
+import { useWalletState } from "@/lib/studio/binding";
+import { MineNoAccount, MineWaiting } from "./MineFrame";
 import { SignInCard } from "./SignInCard";
 
 const loadOwn = () => import("./OwnPictures").then((module) => module.OwnPictures);
@@ -20,9 +20,8 @@ const OwnPictures = dynamic(loadOwn);
  * is mounted, and not before.
  */
 export function MinePictures() {
-  const { ready, authenticated, login } = usePrivy();
-  const { wallets } = useWallets();
-  const t = useTranslations("studio");
+  const { ready, authenticated, login, logout } = usePrivy();
+  const { wallets, ready: walletsReady } = useWallets();
 
   // The account Privy made for this person. A wallet they connected themselves
   // is not what registered anything here.
@@ -30,6 +29,7 @@ export function MinePictures() {
     () => wallets.find((entry) => entry.walletClientType === "privy")?.address as Hex | undefined,
     [wallets],
   );
+  const account = useWalletState(authenticated, walletsReady, wallet !== undefined);
 
   useEffect(() => {
     if (authenticated) {
@@ -43,8 +43,11 @@ export function MinePictures() {
   if (!authenticated) {
     return <SignInCard onSignIn={login} />;
   }
+  if (account === "missing") {
+    return <MineNoAccount onSignOut={logout} />;
+  }
   if (wallet === undefined) {
-    return <MineNotice text={t("noWallet")} />;
+    return <MineWaiting />;
   }
   return <OwnPictures wallet={wallet} />;
 }

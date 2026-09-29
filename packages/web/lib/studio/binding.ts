@@ -1,5 +1,65 @@
+import { useEffect, useState } from "react";
 import type { Hex } from "viem";
 import type { Failure } from "./problems";
+
+/**
+ * Where a signed in account's Monad wallet has got to.
+ *
+ * Privy answers "no wallets" in two situations that look the same from here:
+ * while its wallet list is still loading, and on a first sign in while it is
+ * still making the embedded wallet. Neither is a fault, so both read as the
+ * account opening. Only a list that is ready and still empty after the grace
+ * period is reported as missing.
+ */
+export type WalletState = "opening" | "ready" | "missing";
+
+/** How long a ready, empty wallet list is given before it is called missing. Making the wallet takes a few seconds. */
+export const WALLET_GRACE_MS = 15_000;
+
+export function walletState({
+  walletsReady,
+  embedded,
+  graceOver,
+}: {
+  walletsReady: boolean;
+  /** True when the list holds the wallet Privy made for this person. */
+  embedded: boolean;
+  /** True once the list has been ready and empty for WALLET_GRACE_MS. */
+  graceOver: boolean;
+}): WalletState {
+  if (!walletsReady) {
+    return "opening";
+  }
+  if (embedded) {
+    return "ready";
+  }
+  return graceOver ? "missing" : "opening";
+}
+
+/**
+ * The same answer, with the grace period timed. The clock starts only once the
+ * list is ready and empty for someone signed in, and starts again from zero if
+ * that stops being true.
+ */
+export function useWalletState(signedIn: boolean, walletsReady: boolean, embedded: boolean): WalletState {
+  const empty = signedIn && walletsReady && !embedded;
+  const [overdue, setOverdue] = useState(false);
+  const [wasEmpty, setWasEmpty] = useState(empty);
+  if (wasEmpty !== empty) {
+    setWasEmpty(empty);
+    setOverdue(false);
+  }
+
+  useEffect(() => {
+    if (!empty) {
+      return;
+    }
+    const timer = setTimeout(() => setOverdue(true), WALLET_GRACE_MS);
+    return () => clearTimeout(timer);
+  }, [empty]);
+
+  return walletState({ walletsReady, embedded, graceOver: empty && overdue });
+}
 
 /**
  * Binding a passkey is three waits in a row, and each one is a different thing

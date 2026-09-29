@@ -42,6 +42,12 @@ export interface Confirmed {
 export interface RegistrationConfirmed extends Confirmed {
   /** When the registry says the passport was written, in milliseconds. */
   registeredAt?: number;
+  /**
+   * performance.now() at the moment Monad showed the passport. Taken before the
+   * index is asked for the transaction, so the receipt's "confirmed in" figure
+   * never includes a wait on the index.
+   */
+  answeredAt: number;
 }
 
 /**
@@ -123,7 +129,8 @@ export interface RegisterConfirmation {
  * Waits until the registry holds a passport under this exact hash, then reads
  * the block and the time the receipt shows. When the send came back without a
  * usable hash, the index is asked for the transaction that carried it, so the
- * receipt still has a link a judge can open.
+ * receipt still has a link a judge can open. That wait can run to thirty
+ * seconds, which is why the moment Monad answered is stamped before it.
  */
 export async function confirmRegister({
   exactHash,
@@ -137,9 +144,11 @@ export async function confirmRegister({
     windowMs: CHAIN_WINDOW_MS,
     pollMs: POLL_MS,
   });
+  const answeredAt = performance.now();
 
   const confirmed: RegistrationConfirmed = {
     landed: true,
+    answeredAt,
     hash: linkable(watched),
     registeredAt: watched.state === null ? undefined : Number(watched.state.registeredAt) * 1_000,
   };

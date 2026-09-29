@@ -138,6 +138,7 @@ describe("confirming a registration by the passport the registry holds", () => {
 
     await expect(confirming).resolves.toEqual({
       landed: true,
+      answeredAt: expect.any(Number),
       hash: HASH,
       blockNumber: 103_059_393n,
       registeredAt: 1_788_876_542_000,
@@ -164,6 +165,7 @@ describe("confirming a registration by the passport the registry holds", () => {
 
     await expect(confirmRegister({ exactHash: ID, hash: "" })).resolves.toEqual({
       landed: true,
+      answeredAt: expect.any(Number),
       registeredAt: 1_788_876_542_000,
     });
     expect(reads.passportRegistration).not.toHaveBeenCalled();
@@ -175,6 +177,7 @@ describe("confirming a registration by the passport the registry holds", () => {
 
     await expect(confirmRegister({ exactHash: ID, hash: HASH })).resolves.toEqual({
       landed: true,
+      answeredAt: expect.any(Number),
       hash: HASH,
       registeredAt: 1_788_876_542_000,
     });
