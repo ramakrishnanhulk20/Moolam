@@ -30,7 +30,11 @@ export function BitGrid({
   return (
     <figure className="min-w-0">
       <figcaption className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{label}</figcaption>
-      <div className="relative mt-3 w-full max-w-[13rem]">
+      {/* The sweep parks at 13rem when it is done, invisible but still laid
+          out, so the wrapper clips it. Without the clip every passport grew
+          wider than a phone and slid sideways. The cells never leave the box,
+          so the clip does not touch them. */}
+      <div data-bit-clip className="relative mt-3 w-full max-w-[13rem] overflow-hidden">
         <div className="grid aspect-square grid-cols-8 gap-[3px]">
           {bits.map((bit, at) => {
             const apart = against !== undefined && against[at] !== bit;

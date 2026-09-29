@@ -16,6 +16,7 @@ import { Facts } from "@/components/passport/Facts";
 import { heldIndexedAttestations } from "@/components/passport/indexed";
 import { standingOf } from "@/components/passport/labels";
 import { Lineage } from "@/components/passport/Lineage";
+import { MotionScope } from "@/components/passport/MotionScope";
 import { Poster } from "@/components/passport/Poster";
 import { ANCHOR_MARGIN, FACT_ANCHORS } from "@/components/passport/top-facts";
 import { TopFacts } from "@/components/passport/TopFacts";
@@ -175,81 +176,83 @@ export default async function PassportPage({ params }: { params: Promise<{ local
 
   return (
     <article>
-      <Poster
-        passport={passport}
-        art={art}
-        locale={locale}
-        strip={<TopFacts passport={passport} art={art} consent={consent} attestations={attestations} locale={locale} />}
-      />
-
-      {/* The second opinion leads, straight under the poster: it is the one
-          fact on this page nobody could have written about themselves. */}
-      <Attestations
-        attestations={attestations}
-        indexed={indexed}
-        phash={passport.phash}
-        locale={locale}
-        sealed={art.sealed === true}
-        privateCopy={privateCopy}
-      />
-
-      {/* The three panels that write share one provider, so the wallet SDK is
-          fetched and mounted once for a page that may ask about the reader
-          three times. Everything inside here that is not a panel is server
-          rendered and passes straight through. */}
-      <WalletProvider load="returning">
-        {/* Everything above this line is what the picture is. This is what its
-            holder says may be done with it, which is the question anyone
-            training a model has to answer before they use it. */}
-        <div id={FACT_ANCHORS.aiUse} style={ANCHOR_MARGIN}>
-          <ConsentSection id={passport.id} owner={owner} registeredAt={Number(passport.registeredAt)} record={consent} />
-        </div>
-
-        <Facts
+      <MotionScope>
+        <Poster
           passport={passport}
           art={art}
-          owner={owner}
-          hasPasskey={hasPasskey}
-          standing={standing}
-          txHash={registration}
+          locale={locale}
+          strip={<TopFacts passport={passport} art={art} consent={consent} attestations={attestations} locale={locale} />}
+        />
+
+        {/* The second opinion leads, straight under the poster: it is the one
+            fact on this page nobody could have written about themselves. */}
+        <Attestations
+          attestations={attestations}
+          indexed={indexed}
+          phash={passport.phash}
+          locale={locale}
+          sealed={art.sealed === true}
           privateCopy={privateCopy}
         />
 
-        <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
-          {dispute === null ? null : (
-            <div className="mb-16 rise">
-              <DisputeNote dispute={dispute} passportId={passport.id} locale={locale} />
-            </div>
-          )}
+        {/* The three panels that write share one provider, so the wallet SDK is
+            fetched and mounted once for a page that may ask about the reader
+            three times. Everything inside here that is not a panel is server
+            rendered and passes straight through. */}
+        <WalletProvider load="returning">
+          {/* Everything above this line is what the picture is. This is what its
+              holder says may be done with it, which is the question anyone
+              training a model has to answer before they use it. */}
+          <div id={FACT_ANCHORS.aiUse} style={ANCHOR_MARGIN}>
+            <ConsentSection id={passport.id} owner={owner} registeredAt={Number(passport.registeredAt)} record={consent} />
+          </div>
 
-          {/* Only a signed in visitor who does not hold this passport sees this. */}
-          <DisputePanel
-            passportId={passport.id}
+          <Facts
+            passport={passport}
+            art={art}
             owner={owner}
-            disputeOpen={dispute !== null && dispute.status === DisputeStatus.Open}
+            hasPasskey={hasPasskey}
+            standing={standing}
+            txHash={registration}
+            privateCopy={privateCopy}
           />
 
-          <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
-            <div className="rise">
-              <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
-              {/* Only the wallet that holds a still sealed passport sees this one. */}
-              <UnsealPanel passportId={passport.id} owner={owner} sealed={art.sealed === true} />
-              {/* Only the holder, and only while Moolam keeps the private copy. */}
-              <PrivateCopyPanel
-                passportId={passport.id}
-                owner={owner}
-                sealed={art.sealed === true}
-                privateCopy={privateCopy}
-              />
-              {/* Only the wallet that holds this passport ever sees this panel. */}
-              <EditPanel parentId={passport.id} owner={owner} sealed={art.sealed === true} />
-            </div>
-            <div className="rise" style={{ animationDelay: "90ms" }}>
-              <CheckCopy passportId={passport.id} />
+          <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
+            {dispute === null ? null : (
+              <div className="mb-16 rise">
+                <DisputeNote dispute={dispute} passportId={passport.id} locale={locale} />
+              </div>
+            )}
+
+            {/* Only a signed in visitor who does not hold this passport sees this. */}
+            <DisputePanel
+              passportId={passport.id}
+              owner={owner}
+              disputeOpen={dispute !== null && dispute.status === DisputeStatus.Open}
+            />
+
+            <div className="grid gap-12 border-t border-line pt-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+              <div className="rise">
+                <Lineage parentId={passport.parentId} edits={edits} parentDisputed={ancestorDisputed} />
+                {/* Only the wallet that holds a still sealed passport sees this one. */}
+                <UnsealPanel passportId={passport.id} owner={owner} sealed={art.sealed === true} />
+                {/* Only the holder, and only while Moolam keeps the private copy. */}
+                <PrivateCopyPanel
+                  passportId={passport.id}
+                  owner={owner}
+                  sealed={art.sealed === true}
+                  privateCopy={privateCopy}
+                />
+                {/* Only the wallet that holds this passport ever sees this panel. */}
+                <EditPanel parentId={passport.id} owner={owner} sealed={art.sealed === true} />
+              </div>
+              <div className="rise" style={{ animationDelay: "90ms" }}>
+                <CheckCopy passportId={passport.id} />
+              </div>
             </div>
           </div>
-        </div>
-      </WalletProvider>
+        </WalletProvider>
+      </MotionScope>
     </article>
   );
 }

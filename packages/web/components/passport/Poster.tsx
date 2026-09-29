@@ -130,7 +130,10 @@ export async function Poster({
             {t("title")}
           </p>
           <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-            {shortHex(passport.id, 10, 8)}
+            {/* Hex reads as hex: an upper case X in 0x is not an address. */}
+            <span data-poster-id className="normal-case">
+              {shortHex(passport.id, 10, 8)}
+            </span>
           </p>
         </div>
       </div>
@@ -194,7 +197,7 @@ export async function Poster({
                   href={`/api/passports/${passport.id}/picture`}
                   download
                   data-download-original
-                  className="group/download -my-3 inline-flex items-center gap-2 py-3 text-text-muted transition-colors duration-200 hover:text-accent"
+                  className="group/download -my-3.5 inline-flex items-center gap-2 py-3.5 text-text-muted transition-colors duration-200 hover:text-accent"
                 >
                   <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover/download:bg-[length:100%_1px]">
                     {t("download")}
@@ -221,6 +224,10 @@ export async function Poster({
  * row is pulled back by exactly that padding inside a box that clips. The part
  * that opens a row therefore has its rule outside the box wherever the line
  * wraps, and no part has a rule after it at all.
+ *
+ * The clipping box reaches 20 px above and below the row and 4 px to each side,
+ * with margins that give the room back, so a link's tap pad and its focus ring
+ * are drawn whole. The rules sit 17 px out, so they stay clipped.
  */
 export function MetaLine({
   children,
@@ -232,10 +239,12 @@ export function MetaLine({
   style?: CSSProperties;
 }) {
   return (
-    <div data-meta-line className={`overflow-hidden ${className}`} style={style}>
-      <p className="-ms-[33px] flex flex-wrap items-center gap-y-1 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted [&>span]:relative [&>span]:ps-[33px] [&>span]:before:absolute [&>span]:before:start-4 [&>span]:before:top-1/2 [&>span]:before:h-[10px] [&>span]:before:w-px [&>span]:before:-translate-y-1/2 [&>span]:before:bg-line-strong [&>span]:before:content-['']">
-        {children}
-      </p>
+    <div className={className} style={style}>
+      <div data-meta-line className="-mx-1 -my-5 overflow-hidden px-1 py-5">
+        <p className="-ms-[33px] flex flex-wrap items-center gap-y-1 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted [&>span]:relative [&>span]:ps-[33px] [&>span]:before:absolute [&>span]:before:start-4 [&>span]:before:top-1/2 [&>span]:before:h-[10px] [&>span]:before:w-px [&>span]:before:-translate-y-1/2 [&>span]:before:bg-line-strong [&>span]:before:content-['']">
+          {children}
+        </p>
+      </div>
     </div>
   );
 }

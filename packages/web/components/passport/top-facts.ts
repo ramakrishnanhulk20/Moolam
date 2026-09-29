@@ -39,6 +39,43 @@ export const ANCHOR_MARGIN: CSSProperties = { scrollMarginTop: "calc(var(--heade
 
 export type TopFactKey = keyof typeof FACT_ANCHORS;
 
+/** The few parts of a section element an in-page jump touches. */
+export interface JumpTarget {
+  scrollIntoView(options: ScrollIntoViewOptions): void;
+  focus(options?: FocusOptions): void;
+  hasAttribute(name: string): boolean;
+  setAttribute(name: string, value: string): void;
+}
+
+/** The few parts of window.history an in-page jump touches. */
+export interface JumpHistory {
+  readonly state: unknown;
+  replaceState(data: unknown, unused: string, url?: string | URL | null): void;
+}
+
+/**
+ * Moves the reader to a fact's section without adding a history entry.
+ *
+ * The browser's own hash jump pushes an entry the Next router never wrote, and
+ * Back from the page after it then changes the address and nothing else. So
+ * the address is swapped in place, keeping the router's own state on it, and
+ * Back always lands on an entry the router knows.
+ */
+export function jumpToFact(
+  id: string,
+  { target, history, reduced }: { target: JumpTarget; history: JumpHistory; reduced: boolean },
+): void {
+  target.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "start" });
+  // A section is not focusable on its own. Focus moves there so the next Tab
+  // starts from the fact the reader asked for, not from the strip. The scroll
+  // above already did the moving, so focus must not jump the page again.
+  if (!target.hasAttribute("tabindex")) {
+    target.setAttribute("tabindex", "-1");
+  }
+  target.focus({ preventScroll: true });
+  history.replaceState(history.state, "", `#${id}`);
+}
+
 /** The ink a value is drawn in: the cold status family, never the accent. */
 export type TopFactTone = "text" | "verified" | "failed" | "pending" | "disputed" | "faint";
 

@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Hex } from "viem";
 import { gatewayUrl, shortHex } from "@/lib/chain/client";
 import { useRouter } from "@/lib/i18n/routing";
@@ -15,15 +15,26 @@ import {
   type PassportUnseal,
   type UnsealFailure,
 } from "@/lib/passport/unseal";
+import type { UnsealResponse } from "@/lib/verifier/client";
 import { Mono } from "./Mono";
 import { Picture } from "./Picture";
+import type { PublishedVisit } from "./UnsealPanel";
 
 /**
  * Publishing the picture, in a file of its own so that nothing on a passport
  * page reaches the wallet SDK until this component is asked for.
  * UnsealPanel.tsx holds the gate and pulls this in.
  */
-export function Unsealer({ passportId, owner }: { passportId: Hex; owner: Hex | null }) {
+export function Unsealer({
+  passportId,
+  owner,
+  visit,
+}: {
+  passportId: Hex;
+  owner: Hex | null;
+  /** Handed down by UnsealPanel, which outlives this panel's own state. */
+  visit?: PublishedVisit;
+}) {
   const router = useRouter();
   // The poster, the record and the second opinion above this panel are all
   // rendered on the server from the pinned document and the record beside it,
@@ -39,17 +50,28 @@ export function Unsealer({ passportId, owner }: { passportId: Hex; owner: Hex | 
     },
   });
 
+  const result = unseal.state.result;
+  const keep = visit?.keep;
+  useEffect(() => {
+    if (result !== null) {
+      keep?.(result);
+    }
+  }, [keep, result]);
+
   if (!unseal.ready || !unseal.isHolder) {
     return null;
   }
 
-  return <Panel unseal={unseal} passportId={passportId} />;
+  return <Panel unseal={unseal} passportId={passportId} visit={visit} />;
 }
 
-function Panel({ unseal, passportId }: { unseal: PassportUnseal; passportId: Hex }) {
+function Panel({ unseal, passportId, visit }: { unseal: PassportUnseal; passportId: Hex; visit?: PublishedVisit }) {
   const t = useTranslations("passport.unseal");
   const calm = useReducedMotion() === true;
   const { state } = unseal;
+  // The panel's own answer first; the kept one covers a panel drawn again after
+  // the page turned public, when its own state started empty.
+  const receipt = state.result ?? visit?.receipt ?? null;
 
   return (
     <motion.section
@@ -77,7 +99,11 @@ function Panel({ unseal, passportId }: { unseal: PassportUnseal; passportId: Hex
         {t("heading")}
       </h2>
 
-      {isUnsealDone(state) ? <Published unseal={unseal} /> : <Choose unseal={unseal} passportId={passportId} />}
+      {isUnsealDone(state) || receipt !== null ? (
+        <Published result={receipt} settled={visit?.settled === true} firstReveal={visit?.firstReveal} />
+      ) : (
+        <Choose unseal={unseal} passportId={passportId} />
+      )}
     </motion.section>
   );
 }
@@ -178,11 +204,33 @@ function Choose({ unseal, passportId }: { unseal: PassportUnseal; passportId: He
   );
 }
 
-/** The receipt: the picture that is now public, and the four addresses it lives at. */
-function Published({ unseal }: { unseal: PassportUnseal }) {
+/**
+ * The receipt: the picture that is now public, and the four addresses it lives at.
+ *
+ * The refresh that turns the page public swaps the poster above for the new
+ * picture and moves everything under the reader, so once it lands the receipt
+ * is brought back into view, once, and never again on a later visit to it.
+ */
+function Published({
+  result,
+  settled,
+  firstReveal,
+}: {
+  result: UnsealResponse | null;
+  settled: boolean;
+  firstReveal?: () => boolean;
+}) {
   const t = useTranslations("passport.unseal");
   const format = useFormatter();
-  const result = unseal.state.result;
+  const calm = useReducedMotion() === true;
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!settled || result === null || box.current === null || firstReveal?.() !== true) {
+      return;
+    }
+    box.current.scrollIntoView({ behavior: calm ? "instant" : "smooth", block: "start" });
+  }, [calm, firstReveal, result, settled]);
 
   if (result === null) {
     return null;
@@ -190,6 +238,9 @@ function Published({ unseal }: { unseal: PassportUnseal }) {
 
   return (
     <motion.div
+      ref={box}
+      data-unseal-receipt
+      style={{ scrollMarginTop: "calc(var(--header-h) + 1rem)" }}
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}

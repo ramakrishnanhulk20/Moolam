@@ -5,6 +5,7 @@ import { heldAgent } from "@/lib/chain/registry";
 import type { Attestation, Passport } from "@/lib/chain/registry";
 import { Link } from "@/lib/i18n/routing";
 import type { Art } from "./art";
+import { FactJumpLink } from "./FactJump";
 import { TOP_FACT_WORD_KEYS, topFacts, type TopFact, type TopFactTone, type TopFactWords } from "./top-facts";
 
 const TONES: Record<TopFactTone, string> = {
@@ -137,9 +138,9 @@ function Cell({ fact }: { fact: TopFact }) {
       {body}
     </Link>
   ) : (
-    <a href={fact.href} className={className}>
+    <FactJumpLink href={fact.href} className={className}>
       {body}
-    </a>
+    </FactJumpLink>
   );
 }
 

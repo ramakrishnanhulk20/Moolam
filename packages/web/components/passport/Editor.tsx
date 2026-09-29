@@ -128,6 +128,7 @@ function AskForSigner({ edit }: { edit: PassportEdit }) {
 /** State two: the edited picture, what changed, and the two steps it takes to land. */
 function AddEdit({ edit }: { edit: PassportEdit }) {
   const t = useTranslations("passport.edit");
+  const common = useTranslations("common");
   const { state } = edit;
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
@@ -213,8 +214,13 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
           </div>
         ) : (
           <div className="relative">
-            {/* The owner's edited file, shown before anything is pinned. */}
-            <img src={preview} alt="" className="max-h-[18rem] w-full object-cover" />
+            {/* The owner's edited file, shown before anything is pinned, in a box
+                of fixed height so the form under it stays put while it decodes. */}
+            <img
+              src={preview}
+              alt={editPictureAlt(state.title, state.file?.name ?? common("registeredPicture"))}
+              className="block h-64 w-full object-cover sm:h-[18rem]"
+            />
             <div className="scrim pointer-events-none absolute inset-0" />
             <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-end justify-between gap-3 p-4">
               <p className="max-w-[24ch] break-all font-mono text-[11px] text-text">
@@ -299,6 +305,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
   // The studio's own sentences, so an edit and a first registration say the same thing about a
   // camera's record.
   const receipt = useTranslations("studio.receipt");
+  const common = useTranslations("common");
   const format = useFormatter();
   const { state } = edit;
   const child = state.result?.child.exactHash ?? null;
@@ -309,7 +316,11 @@ function Recorded({ edit }: { edit: PassportEdit }) {
       {state.result === null ? null : (
         <div className="grain relative overflow-hidden border border-line">
           {/* The pinned copy, read back through the gateway: what a verifier will fetch. */}
-          <img src={state.result.image.gatewayUrl} alt="" className="max-h-[18rem] w-full object-cover" />
+          <img
+            src={state.result.image.gatewayUrl}
+            alt={editPictureAlt(state.title, common("registeredPicture"))}
+            className="block h-64 w-full object-cover sm:h-[18rem]"
+          />
           <div className="scrim pointer-events-none absolute inset-0" />
           <p className="absolute bottom-4 start-5 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
             {t("done.label")}
@@ -531,6 +542,12 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
       )}
     </motion.div>
   );
+}
+
+/** The picture's own title as its alt text, or the fallback while no title is typed yet. */
+export function editPictureAlt(title: string, fallback: string): string {
+  const named = title.trim();
+  return named === "" ? fallback : named;
 }
 
 function megabytes(file: File | null): string {
