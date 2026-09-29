@@ -228,14 +228,18 @@ describe("step 4: the still page's ladder", () => {
     probe.mockRestore();
   });
 
-  it("counts a copy that could not be fingerprinted as the whole width apart, and says it did not match", () => {
+  // WO-229 step 5 changed this on purpose: a copy nobody measured is refused,
+  // never printed as the whole width apart, and the ladder's loader refuses
+  // such a step before any page can ask for its words.
+  it("prints a measured copy's distance, and refuses a copy nobody measured rather than printing 64", () => {
     let spoken = "";
-    function Probe() {
-      spoken = useCopyWords().distance({ phashDistance: null });
+    function Probe({ distance }: { distance: number | null }) {
+      spoken = useCopyWords().distance({ phashDistance: distance });
       return null;
     }
-    render(createElement(Probe));
-    expect(spoken).toBe(said("64", en.story.verified.notMatched));
+    render(createElement(Probe, { distance: 2 }));
+    expect(spoken).toBe(said("2", en.story.verified.match));
+    expect(() => render(createElement(Probe, { distance: null }))).toThrow(/no measured distance/);
     expect(source("components/story/StillStory.tsx")).toContain("value: bitsApart(step)");
   });
 });
