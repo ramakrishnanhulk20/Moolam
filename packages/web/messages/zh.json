@@ -14,7 +14,15 @@
     "fingerprint": "指纹",
     "networkFee": "网络费",
     "block": "区块",
-    "image": "图片"
+    "image": "图片",
+    "verifyService": "验证服务",
+    "recheck": "复核",
+    "secondOpinion": "第二意见",
+    "challenge": "质疑",
+    "challenger": "质疑者",
+    "passportId": "护照 id",
+    "agentCard": "名片",
+    "daySlider": "日期滑块"
   },
   "meta": {
     "title": "Moolam",
@@ -116,7 +124,7 @@
     "details": "详情",
     "openingPage": "正在打开页面",
     "tryAgain": "再试一次",
-    "copyFailed": "Could not copy. Select the text and copy it yourself."
+    "copyFailed": "无法复制。请选中文字后自行复制。"
   },
   "kind": {
     "0": "生成",
@@ -127,7 +135,7 @@
     "kicker": "浏览",
     "title": "登记处",
     "rail": "Monad 上的每一本护照",
-    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，就能看到它的指纹、它的 manifest 和每一次复核。",
+    "lede": "Monad 上登记的每一张图片，最新的在前，在本页加载时从索引读取。打开任意一张，就能看到它的指纹、Content Credentials 和复核记录。",
     "counts": {
       "total": "护照",
       "generated": "生成",
@@ -152,8 +160,8 @@
       "captured": "拍摄",
       "edits": "编辑",
       "rechecked": "已复核",
-      "manifest": "带 manifest",
-      "disputed": "有争议"
+      "manifest": "带 Content Credentials",
+      "disputed": "争议成立"
     },
     "ai": {
       "label": "AI 使用",
@@ -180,7 +188,7 @@
     "legend": {
       "manifest": "带 Content Credentials",
       "rechecked": "已在链上复核",
-      "disputed": "争议成立",
+      "disputed": "争议成立，针对这张图片或它编辑自的那张图片",
       "consent": "AI 使用声明，四种用途四个标记"
     },
     "untitled": "无标题",
@@ -218,20 +226,20 @@
     "formulaHow": "这个分数怎么算出来",
     "formulaDoc": "索引在哪里算它",
     "agentId": "智能体 {id}",
-    "unnamed": "这个智能体的卡片没有名字",
-    "unnamedTitle": "Unnamed agent",
-    "since": "首次出现 {when}",
+    "unnamed": "这个智能体的名片上没有名字",
+    "unnamedTitle": "未命名智能体",
+    "since": "首次出现于 {when}",
     "trustScore": "信任分",
     "passports": "护照",
     "matched": "复核一致",
     "mismatched": "复核不一致",
-    "upheld": "成立的争议",
+    "upheld": "争议成立",
     "seeWorks": "查看它的护照",
     "empty": "索引还没有见过任何智能体在护照上签名。",
     "error": "无法读取索引：{reason}。",
     "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。",
     "strip": {
-      "label": "Newest pictures this agent signed"
+      "label": "这个智能体签过的最新图片"
     }
   },
   "home": {
@@ -294,7 +302,7 @@
       "readout": "生成智能体 {agent}，列于公开智能体登记处 (ERC-8004)",
       "titleNoAgent": "这一张是人登记的。",
       "bodyNoAgent": "没有智能体为这份指纹签名。它是用创作者上传的文件登记的，护照上写的就是这句话。",
-      "readoutNoAgent": "这份护照上没有生成智能体"
+      "readoutNoAgent": "这本护照上没有生成智能体"
     },
     "sealed": {
       "kicker": "签名",
@@ -332,7 +340,7 @@
       "similarity": "64 位中有 {value} 位不同：{result}",
       "matched": "匹配",
       "notMatched": "不匹配",
-      "attestation": "一个 Chainlink CRE 工作流重新核对过，并把答案写在链上：{result}，相差 {distance} 位。",
+      "attestation": "一个 Chainlink CRE 工作流复核了它，并把答案写在链上：{result}，相差 {distance} 位。",
       "noAttestation": "这本护照还没有任何复核被写上链。",
       "provenance": "阶梯上的数字由 Moolam 验证服务在另一张已登记的图片上测得，护照 {passport}，{date}。",
       "provenanceSelf": "数字由 Moolam 验证服务在这本护照上测得，{date}。"
@@ -344,8 +352,8 @@
       "score": "评分 {score}",
       "noScore": "尚无评分",
       "counts": "{rechecks, plural, other {# 次复核}}，{passports, plural, other {# 本护照}}",
-      "body": "每一次写回链上的复核都记在这个代理自己的 id 下，索引把它们算成这个分数。它的声誉是工作的总和，不是网站上的一句话。",
-      "noAgent": "这一张不是智能体做的，所以它身上没有智能体的口碑。若由智能体签名，Chainlink 对其图片的每一次复核都会计入该智能体自己的分数。"
+      "body": "每一次写回链上的复核都记在这个智能体自己的 id 下，索引把它们算成这个分数。它的声誉是工作的总和，不是网站上的一句话。",
+      "noAgent": "这一张不是智能体做的，所以不关乎任何智能体的声誉。若由智能体签名，Chainlink 对其图片的每一次复核都会计入该智能体自己的分数。"
     },
     "tryIt": {
       "kicker": "试一试",
@@ -395,7 +403,7 @@
     "verdict": "是的。这就是 {title} 那张图片。",
     "verdictExact": "是的。逐字节一致，这就是以 {title} 登记的那个文件。",
     "none": "没有护照与这张图片相符。",
-    "noneHint": "这张图片不在登记表里。Moolam 还不能匹配裁切过的部分，所以已登记图片的一小块是找不到的。请用整张图片再试一次。",
+    "noneHint": "这张图片不在登记处里。Moolam 还不能匹配裁切过的部分，所以已登记图片的一小块是找不到的。请用整张图片再试一次。",
     "confidence": "把握",
     "phashDistance": "外观指纹 (pHash)",
     "blockhashDistance": "布局指纹 (块哈希)",
@@ -422,7 +430,7 @@
     "noMatchLabel": "尚未登记",
     "registerCta": "登记这张图片",
     "untitled": "无标题",
-    "noPicture": "存放这张图的地方此刻没有响应",
+    "noPicture": "存放这张图的地方此刻没有响应。过一分钟再试。",
     "measured": "测了些什么",
     "queriedSize": "尺寸",
     "queriedPhash": "外观指纹 (pHash)",
@@ -433,7 +441,7 @@
     "firstRegistered": "还有一个更早的登记也与这张图片匹配。<link>打开最早的登记</link>。",
     "laterSameFingerprint": "{count, plural, other {之后另有 # 个登记使用同一个指纹}}。",
     "pixelsUnread": "这正是登记的那个文件，逐字节一致。它的像素无法读取，因此没有比较外观或构图。",
-    "staleIndex": "Moolam 手里的登记表副本是 {minutes} 分钟前的，所以之后登记的图片可能还显示不出来。",
+    "staleIndex": "Moolam 手里的登记处副本是 {minutes} 分钟前的，所以之后登记的图片可能还显示不出来。",
     "manifestInvalid": "这个文件里的 Content Credentials 没有通过校验：文件在签名后被改过，或者这份记录是从别的文件搬过来的。指纹仍然对上了。",
     "manifestUnreadable": "这个文件带有我们读不出来的 Content Credentials，所以没法判断它是否有效。指纹仍然对上了。",
     "manifestCredentialExpired": "签名完好无损。生成它的证书后来已经过期。",
@@ -446,7 +454,7 @@
       "notAnImage": "这个文件读不出图片。请用 JPEG、PNG 或 WebP。",
       "empty": "这个文件是空的。请重新选择图片。",
       "rateLimited": "从这里发起的核对太多了。等一分钟再试。",
-      "badRequest": "验证服务不接受这个文件。请选一张 JPEG、PNG 或 WebP 图片再试。",
+      "badRequest": "验证服务没有接受这个请求。请刷新页面，重新检查这张图片。",
       "badResponse": "验证服务返回的内容，这个页面读不懂。过一分钟再试。",
       "serviceFailed": "验证服务没能完成这次核对。过一分钟再试。",
       "refused": "验证服务拒绝了这个请求。请刷新页面后再试。",
@@ -495,11 +503,11 @@
       "link": "查看这次复核"
     },
     "dispute": {
-      "none": "没有针对这本护照的异议。",
-      "open": "这本护照正被提出异议。在异议了结之前，不要依赖它关于 AI 使用的声明。",
-      "upheld": "针对这本护照的异议成立。请把它的记录，以及它关于 AI 使用的声明，都当作不可靠。",
-      "inherited": "针对这张图片某个早期版本的异议成立。<link>打开那个版本</link>。",
-      "rejected": "曾有人对这本护照提出异议，并被驳回。"
+      "none": "没有针对这本护照的未决质疑。",
+      "open": "这本护照正受到质疑。在质疑了结之前，不要依赖它关于 AI 使用的声明。",
+      "upheld": "针对这本护照的质疑成立。请把它的记录，以及它关于 AI 使用的声明，都当作不可靠。",
+      "inherited": "针对这张图片某个早期版本的质疑成立。<link>打开那个版本</link>。",
+      "rejected": "曾有人对这本护照提出质疑，并被驳回。"
     },
     "sealed": {
       "matched": "与一本已封存的护照匹配。登记的图片没有公开。",
@@ -507,7 +515,7 @@
       "recheck": "没有可供复核的公开副本。要复核就得先公开图片。"
     },
     "unsealed": {
-      "matched": "这本护照是封存注册的，持有者在 {date} 公开了图片。"
+      "matched": "这本护照以封存方式登记，持有者在 {date} 公开了图片。"
     },
     "share": {
       "copy": "复制这个答案的链接",
@@ -517,7 +525,7 @@
     "noAccountWhy": "检查时读取的是 Monad 上公开的登记处，不会保存你文件的任何内容。",
     "limits": {
       "label": "匹配无法证明的事",
-      "line": "匹配能说明谁在什么时候把这张图片登记到 Monad 上，但不能证明图片是他们做的。护照如果有误，可以在它自己的页面上提出异议。"
+      "line": "匹配能说明谁在什么时候把这张图片登记到 Monad 上，但不能证明图片是他们做的。护照如果有误，可以在它自己的页面上提出质疑。"
     },
     "wait": {
       "fingerprint": "为文件取指纹",
@@ -534,13 +542,13 @@
       "yours": "你的副本",
       "registered": "登记的图片",
       "drag": "拖动对比",
-      "label": "Compare your copy with the registered picture"
+      "label": "对比你的副本和登记的图片"
     }
   },
   "passport": {
     "title": "护照",
     "pending": "正在读取登记处。",
-    "notFound": "没有这个 id 的护照。核对一下 id，或者从验证页面找过去。",
+    "notFound": "没有这个 id 的护照。核对一下 id，或者从验证页找过去。",
     "error": "Moolam 刚才无法从 Monad 读出这本护照。请再试一次，或者打开浏览页。",
     "creator": "创作者",
     "owner": "持有者",
@@ -562,10 +570,10 @@
       "distance": "64 位中有 {distance} 位不同",
       "receiver": "由 Moolam 的 Chainlink 接收方写入 Monad",
       "at": "时间",
-      "kicker": "第二种意见",
+      "kicker": "第二意见",
       "body": "谁都能说一张图是自己的。这一部分不一样：Chainlink 的 CRE 工作流自己下载了这张图，重新取了指纹，并把结果写到 Monad 上。",
       "distanceLabel": "Chainlink 报告的结果",
-      "byChainlink": "由 Chainlink CRE 工作流再次检查",
+      "byChainlink": "由 Chainlink CRE 工作流重新核对",
       "delivery": {
         "simulation": "这次检查由 Chainlink 的 CRE 模拟器在一台机器上运行，没有在 Chainlink 的网络上运行。",
         "network": "多台相互独立的 Chainlink 机器运行了这次检查，并对答案达成一致。"
@@ -575,7 +583,7 @@
       "registeredGrid": "登记时的指纹",
       "recomputedGrid": "Chainlink 的指纹",
       "verdict": "一个 Chainlink CRE 工作流重新取回这张图，又算了一遍指纹：<apart>64 位中差 {bits} 位</apart>。",
-      "gridNote": "第一格是登记时注册表存下的指纹。第二格是工作流用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
+      "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是工作流用自己取回的文件算出来的。每一个对不上的小格都会标出来。",
       "whatIsRecheck": "复核，就是一个 Chainlink CRE 工作流自己把这份文件取回去，重新算一遍指纹，再把答案写到 Monad 上。谁也没法给自己的图写一条。",
       "private": {
         "badge": "私下复核",
@@ -583,7 +591,7 @@
         "leadEarlier": "由 Chainlink 机密工作流私下复核，依据的是 Moolam 当时保留的小副本。",
         "limit": "它在 Chainlink 的模拟器里、在一台机器上运行，没有在 Chainlink 的安全硬件里运行。",
         "verdict": "一个 Chainlink 机密工作流打开了 Moolam 为这张图保留的小的私有副本，比对了指纹：<apart>64 位中差 {bits} 位</apart>。",
-        "gridNote": "第一格是登记时注册表存下的指纹。第二格是工作流用 Moolam 的小私有副本算出来的。每一个对不上的小格都会标出来。"
+        "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是工作流用 Moolam 的小私有副本算出来的。每一个对不上的小格都会标出来。"
       },
       "sealedBody": "谁都能说一张图是自己的。这一部分不一样：由第三方核对指纹，并把答案写到 Monad 上。封存的图片没有公开文件，所以核对是私下进行的：如果创作者提出了要求，Chainlink 机密工作流会打开 Moolam 保留的小的私有副本，比对指纹。",
       "unknown": {
@@ -592,7 +600,7 @@
         "distanceLabel": "写入方报告的结果",
         "recomputedGrid": "写入方的指纹",
         "verdict": "一个未知写入方为这张图报告了这个指纹：<apart>64 位中差 {bits} 位</apart>。",
-        "gridNote": "第一个网格是这张图登记时注册表存下的指纹。第二个是这个写入方报告的指纹。Moolam 不知道这个写入方由谁运行，所以本页不说明这张图是怎样检查的。"
+        "gridNote": "第一个网格是这张图登记时，登记处存下的指纹。第二个是这个写入方报告的指纹。Moolam 不知道这个写入方由谁运行，所以本页不说明这张图是怎样检查的。"
       }
     },
     "children": {
@@ -641,7 +649,7 @@
           "watching": "等待你的编辑版本写入 Monad。",
           "pending": "已发出，Monad 还没有显示",
           "done": "已登记",
-          "failed": "这次编辑没有送达登记表"
+          "failed": "这次编辑没有送达登记处"
         }
       },
       "done": {
@@ -649,7 +657,7 @@
         "body": "这个编辑版本自己就是一本链上护照，并写明这一本是它的母本。任何人都可以拿副本来比对。",
         "child": "子护照",
         "block": "区块",
-        "blockPending": "尚未读到",
+        "blockPending": "尚未读取",
         "fee": "费用",
         "feeSponsored": "由 Privy 代付，你没有花钱。",
         "feeOwn": "由你自己的余额支付。",
@@ -662,25 +670,25 @@
       "failure": {
         "noSigner": "这个应用还没有你的许可，不能添加编辑版本。允许这个应用添加编辑版本，编辑就能发出去。",
         "notOwner": "这个账户不持有这本护照，所以不能给它添加编辑版本。",
-        "noParent": "登记表里没有这个 id 的护照，所以没有可以添加编辑版本的对象。",
+        "noParent": "登记处里没有这个 id 的护照，所以没有可以添加编辑版本的对象。",
         "quota": "今天的 {limit} 次里已经用掉 {used} 次。额度在 {at} 恢复。",
-        "sendFailed": "登记表拒绝了这次编辑，什么都没有记录。",
+        "sendFailed": "登记处拒绝了这次编辑，什么都没有记录。",
         "sendPending": "编辑已经发出，服务没能在等待时间内看到它落块。它可能还在路上，所以不要再发一次。过一会儿再问一次 Monad。",
         "dependencyDown": "这次编辑需要的一个服务没有回应，所以什么都没发出，也什么都没花掉。过一分钟再试。",
         "signFailed": "Privy 没有为这次发送签名，什么都没有记录。",
         "pinFailed": "编辑后的图片没能固定到 IPFS，所以什么都没有发出。",
         "busy": "服务已经在同时处理它能处理的全部编辑。请稍后再试。",
-        "offline": "校验服务没有应答，所以什么都没有发出。",
+        "offline": "验证服务没有回应，所以什么都没有发出。",
         "signedOut": "这个会话已经退出登录，服务不会接受这次编辑。",
         "tooLarge": "这个文件超过了 20 MB 的上限。请选一份小一点的副本。",
-        "fingerprintUnstable": "这次编辑的画面左右方向变化太少，生成不了经得起复制的指纹，所以 Chainlink 的重新核对和任何对其副本的搜索都会错过它。什么都没有固定，也没有发出。横向细节更多的编辑版本可以登记。",
+        "fingerprintUnstable": "这次编辑的画面左右方向变化太少，生成不了经得起复制的指纹，所以 Chainlink 的复核和任何对其副本的搜索都会错过它。什么都没有固定，也没有发出。横向细节更多的编辑版本可以登记。",
         "signedFileTooLarge": "加上护照的签名会让这个文件超过 20 MB，这是一次核对能读回的上限。导出一份小一点的再试。什么都没有固定，也没有发出。",
         "thumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 复核取回，所以它的护照永远无法复核。什么都没有固定，也没有发出。",
         "notAnImage": "这不是图片文件。请选 JPEG、PNG 或 WebP。",
         "empty": "这个文件是空的。请重新选择图片。",
-        "rateLimited": "这里的请求暂时太多了。稍等一下再试。",
-        "badRequest": "服务拒绝了这个请求。",
-        "badResponse": "服务返回的格式，这个应用看不懂。",
+        "rateLimited": "这里的请求暂时太多。稍等片刻再试。",
+        "badRequest": "服务没有接受这个请求。",
+        "badResponse": "服务的回应格式是这个应用不认识的。",
         "confirmPending": "编辑已被接受，Monad 还没有显示。它仍可能落块，所以不要再发一次。",
         "fileMissing": "请先选择编辑后的图片。",
         "titleMissing": "请先给这个编辑版本写个标题。",
@@ -701,7 +709,7 @@
       "lineageNote": "只有持有者能添加编辑。这个应用的 Privy 权限只能添加编辑，别的都做不了。"
     },
     "untitled": "无标题",
-    "noPicture": "存放这张图的地方此刻没有响应。过一分钟再试",
+    "noPicture": "存放这张图的地方此刻没有响应。过一分钟再试。",
     "fingerprintVersion": "指纹版本 {version}",
     "record": "这条记录",
     "passkeyBound": "这位创作者用绑定在自己账户上的通行密钥签名。",
@@ -728,7 +736,7 @@
       "choose": "选择图片",
       "hint": "缩放过、重新编码过、旋转或镜像过的副本依然对得上。裁剪过的暂时还不行。",
       "checking": "正在核对这份副本",
-      "failed": "这次核对没有跑起来。过一分钟再试，或者到验证页面核对这份副本。",
+      "failed": "这次核对没有跑起来。过一分钟再试，或者到验证页核对这份副本。",
       "tooLarge": "这个文件超过了 20 MB 的上限。请发一份小一点的副本。",
       "notAnImage": "这不是图片文件。请拖入 JPEG、PNG 或 WebP。",
       "empty": "这个文件是空的。请重新选择图片。",
@@ -739,16 +747,16 @@
       "openOther": "打开那本护照"
     },
     "dispute": {
-      "kicker": "被提出异议",
+      "kicker": "受到质疑",
       "body": "有人押了保证金，主张这条记录有误。争议了结之前，保证金由登记处保管。",
-      "challenger": "异议人",
+      "challenger": "质疑者",
       "bond": "保证金",
       "mon": "{amount} MON",
       "openedAt": "提出时间",
       "evidence": "证据哈希",
       "status": {
         "open": "仍未了结",
-        "upheld": "成立：异议是对的",
+        "upheld": "成立：质疑是对的",
         "rejected": "驳回：记录继续有效"
       },
       "reason": "指控内容",
@@ -761,7 +769,7 @@
         "rejected": "仲裁者不支持这次质疑。保证金归入金库，记录维持原样。"
       },
       "flag": {
-        "link": "对这份护照提出质疑",
+        "link": "对这本护照提出质疑",
         "close": "收起",
         "heading": "用保证金为你的说法背书",
         "what": "提出质疑需要 {bond} MON 保证金。由政策指定的仲裁者裁决：若他认同你，保证金会记回你名下；若不认同，保证金归金库。",
@@ -770,13 +778,13 @@
         "balanceLabel": "你的账户",
         "mon": "{amount} MON",
         "reading": "读取中",
-        "fee": "网络手续费由 Moolam 支付。保证金它无法代付：那是你自己的 MON，交易一落账就会离开你的账户。",
+        "fee": "网络费由 Moolam 支付。保证金它无法代付：那是你自己的 MON，交易一落账就会离开你的账户。",
         "reasonLabel": "这条记录哪里有问题",
         "reasonPlaceholder": "写下你知道的事，以及别人可以怎样核实。",
         "reasonLeft": "还剩 {left}",
         "reasonHint": "{min} 到 {max} 个字符。它随交易一起上链，因此是公开且永久的。",
         "submit": "支付 {bond} MON 提出质疑",
-        "submitUnknown": "对这份护照提出质疑",
+        "submitUnknown": "对这本护照提出质疑",
         "steps": {
           "account": {
             "waiting": "由你的账户拿出保证金",
@@ -790,33 +798,33 @@
             "watching": "等待 Monad 显示它",
             "done": "Monad 已记录",
             "failed": "Monad 尚未显示",
-            "unconfirmed": "已发送，Monad 尚未显示"
+            "unconfirmed": "已发出，Monad 还没有显示"
           }
         },
         "done": {
           "label": "已记录",
           "heading": "质疑已写进记录",
-          "body": "在仲裁者作出裁决之前，每个打开这份护照的人都会看到它正被质疑。",
+          "body": "在仲裁者作出裁决之前，每个打开这本护照的人都会看到它正受到质疑。",
           "block": "区块",
           "blockPending": "尚未读取",
           "bondHeld": "你的保证金",
-          "bondHeldBody": "在争议了结之前由注册表本身保管，任何人都动不了。",
+          "bondHeldBody": "在争议了结之前由登记处本身保管，任何人都动不了。",
           "openTx": "交易 {hash}"
         },
         "failure": {
           "reasonShort": "再多写一点。仲裁者需要有可核实的内容，至少 {min} 个字符。",
           "reasonLong": "超过了 {max} 个字符。全部内容都会上链，只保留要紧的部分。",
-          "notEnough": "你的账户比保证金还差 {short} MON。网络手续费由 Moolam 支付，但保证金必须是你自己的 MON。",
-          "badBond": "这个面板打开期间保证金发生了变化，注册表拒绝了这笔金额。已经重新读取，请再试一次。",
-          "alreadyOpen": "已经有人质疑过这份护照，注册表同一时间只允许一个未决争议。",
-          "alreadyDisputed": "这份护照已被标记为有争议，无法再次质疑。",
-          "notFound": "注册表中没有这个 id 的护照。",
-          "paused": "注册表目前暂停了新的记录和新的质疑。",
+          "notEnough": "你的账户比保证金还差 {short} MON。网络费由 Moolam 支付，但保证金必须是你自己的 MON。",
+          "badBond": "这个面板打开期间保证金发生了变化，登记处拒绝了这笔金额。已经重新读取，请再试一次。",
+          "alreadyOpen": "已经有人质疑过这本护照，登记处同一时间只允许一个未决争议。",
+          "alreadyDisputed": "这本护照已被标记为有争议，无法再次质疑。",
+          "notFound": "登记处里没有这个 id 的护照。",
+          "paused": "登记处目前暂停了新的记录和新的质疑。",
           "declined": "交易发出前窗口被关闭了。什么都没有发送，也没有任何花费。",
           "confirmPending": "质疑已被接受，Monad 还没有显示它。它仍可能落账，因此不能重复发送。",
           "notResolver": "只有政策指定的仲裁者才能裁决争议。",
-          "noOpenDispute": "这份护照没有未决的争议。",
-          "nothingOwed": "注册表不欠这个账户任何款项。",
+          "noOpenDispute": "这本护照没有未决的争议。",
+          "nothingOwed": "登记处不欠这个账户任何款项。",
           "reverted": "Monad 拒绝了这笔操作，所以什么都没写入",
           "unknown": "质疑没有发出去。"
         },
@@ -883,10 +891,10 @@
       "writtenOn": "写于 {when}",
       "nothingBy": "那时还没有任何声明",
       "asking": "正在向链询问那一天",
-      "askFailed": "链没有回答那一天的询问。移动日期标尺，再问一次",
-      "scrub": "拖动这条标尺，或使用方向键",
+      "askFailed": "链没有回答那一天的询问。移动日期滑块，再问一次。",
+      "scrub": "拖动日期滑块，或使用方向键",
       "scrubStep": "，一步一天",
-      "scrubTouch": "拖动这条标尺",
+      "scrubTouch": "拖动日期滑块",
       "registeredOn": "{when} 登记",
       "today": "今天",
       "shared": "{statement}，于 {when} 写在 Monad 上。",
@@ -947,7 +955,7 @@
         "steps": {
           "checking": "正在询问登记簿",
           "sending": "正在发送",
-          "confirming": "等待 Monad 显示"
+          "confirming": "等待 Monad 显示它"
         },
         "locked": "你刚刚为这张图片写过。登记簿会在 {at} 接受你的下一份声明。",
         "needsConditions": "写明你的条件，它们会随声明一起上链。",
@@ -955,7 +963,7 @@
         "fee": "网络费由 Moolam 支付。声明从你自己的钱包发出。",
         "done": "已写入。登记簿自 {when} 起保存这份声明，从现在起每一个验证这张图片的人看到的都是它。",
         "openTx": "交易 {hash}",
-        "openAddress": "在浏览器中打开 {wallet}",
+        "openAddress": "在区块浏览器中打开 {wallet}",
         "actions": {
           "recheck": "再看一次",
           "signIn": "登录"
@@ -970,7 +978,7 @@
       "standing": "已封存，没有公开副本",
       "commitmentLabel": "链上的承诺",
       "commitmentAlgorithm": "用 {algorithm} 取的指纹，这是一种标准的文件指纹",
-      "commitmentLine": "拿着这个文件的人都可以算出它的哈希，再与护照编号对照。",
+      "commitmentLine": "拿着这个文件的人都可以算出它的哈希，再与护照 id 对照。",
       "recheck": "没有可供复核的公开副本。要复核就得先公开图片。",
       "privateCopy": {
         "kept": "可以在 Moolam 保留的小副本上做一次私下复核。",
@@ -979,41 +987,41 @@
       },
       "edit": "这本护照已封存，在图片公开之前无法编辑。",
       "about": {
-        "noCopy": "以封存方式登记：图片从未公开，Moolam 也没有留任何副本。护照编号是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "kept": "以封存方式登记：图片从未公开。应创作者的要求，Moolam 保留一份小的私有副本，只用于 Chainlink 工作流的私下复核。护照编号是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "deleted": "以封存方式登记：图片从未公开。Moolam 曾为 Chainlink 工作流的私下复核保留一份小的私有副本，这份副本后来已删除。护照编号是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "asked": "以封存方式登记：图片从未公开。创作者请 Moolam 保留一份小的私有副本，用于 Chainlink 工作流的私下复核。护照编号是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
-        "published": "以封存方式登记，当时没有公开图片，持有者在 {date} 把它公开。护照编号是文件的 sha256，所以谁都可以对公开的图片算哈希并对照。"
+        "noCopy": "以封存方式登记：图片从未公开，Moolam 也没有留任何副本。护照 id 是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "kept": "以封存方式登记：图片从未公开。应创作者的要求，Moolam 保留一份小的私有副本，只用于 Chainlink 工作流的私下复核。护照 id 是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "deleted": "以封存方式登记：图片从未公开。Moolam 曾为 Chainlink 工作流的私下复核保留一份小的私有副本，这份副本后来已删除。护照 id 是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "asked": "以封存方式登记：图片从未公开。创作者请 Moolam 保留一份小的私有副本，用于 Chainlink 工作流的私下复核。护照 id 是签名文件的 sha256，所以这条记录不展示内容，也锁定了确切的字节。",
+        "published": "以封存方式登记，当时没有公开图片，持有者在 {date} 把它公开。护照 id 是文件的 sha256，所以谁都可以对公开的图片算哈希并对照。"
       }
     },
     "unseal": {
       "kicker": "由你来公开",
       "heading": "公开这张图片",
-      "body": "选择注册时你保存的那份已签名文件。服务会核对它是不是已注册的文件，然后把它固定到 IPFS。",
+      "body": "选择登记时你保存的那份已签名文件。服务会核对它是不是已登记的文件，然后把它固定到 IPFS。",
       "permanent": "这一步无法撤回。图片一旦公开就永久公开，任何人都能取走。",
       "choose": "选择保存的文件",
       "chooseAnother": "换一个文件",
       "checking": "正在你的设备上核对这个文件",
-      "matched": "这就是已注册的文件",
-      "matchedLine": "它的哈希就是护照编号 {id}。目前还没有任何东西离开这台设备。",
+      "matched": "这就是已登记的文件",
+      "matchedLine": "它的哈希就是护照 id {id}。目前还没有任何东西离开这台设备。",
       "publish": "公开这个文件",
-      "sending": "正在固定图片、缩略图和清单",
+      "sending": "正在固定图片、缩略图和 Content Credentials",
       "allowance": "今天已用 {limit} 次中的 {used} 次编辑和公开",
       "done": {
         "label": "已公开",
-        "body": "图片、缩略图和清单都在 IPFS 上，旁边一份小记录说明它们在哪里。链上什么都没变，也变不了：这本护照的元数据地址只写过一次，没有改写的方法。",
+        "body": "图片、缩略图和 Content Credentials 都在 IPFS 上，旁边一份小记录说明它们在哪里。链上什么都没变，也变不了：这本护照的元数据地址只写过一次，没有改写的方法。",
         "at": "{when} 公开",
         "image": "图片",
         "thumbnail": "缩略图",
-        "manifest": "清单",
+        "manifest": "Content Credentials",
         "record": "记录",
-        "check": "任何人都可以取走图片、算出哈希，再和 Monad 上的护照编号比对。这就是全部的证明，不需要这项服务。"
+        "check": "任何人都可以取走图片、算出哈希，再和 Monad 上的护照 id 比对。这就是全部的证明，不需要这项服务。"
       },
       "failure": {
-        "notTheFile": "这不是已注册的文件。护照承诺的是服务签名后交还给你的那份文件，而不是你自己留的图片副本。",
+        "notTheFile": "这不是已登记的文件。护照承诺的是服务签名后交还给你的那份文件，而不是你自己留的图片副本。",
         "fingerprintMismatch": "哈希对得上，但从这些字节重新算出的指纹和链上的不一样，所以什么都没有公开。",
-        "notHolder": "注册表显示这本护照在另一个钱包手里，只有那个钱包能公开图片。",
-        "noPassport": "注册表里没有这个编号的护照。",
+        "notHolder": "登记处显示这本护照在另一个钱包手里，只有那个钱包能公开图片。",
+        "noPassport": "登记处里没有这个 id 的护照。",
         "notSealed": "这本护照的图片已经公开，没有什么可公开的了。",
         "alreadyUnsealed": "这本护照已经公开过了。重新打开页面就能看到图片。",
         "thumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 复核取回，公开后会留下一本谁也无法复核的护照。什么都没有固定。",
@@ -1024,7 +1032,7 @@
         "dependencyDown": "需要的一项服务没有回应，所以什么都没公开，也什么都没花掉。过一分钟再试。",
         "lookupUnavailable": "服务无法确认这本护照是否已经公开，所以什么都没公开。过一会儿再试。",
         "busy": "服务正在同时处理它能处理的最多图片。过一会儿再试。",
-        "signedOut": "这个会话已登出，服务没有收下文件。",
+        "signedOut": "这个会话已退出登录，服务没有收下文件。",
         "notAnImage": "这不是图片文件。请选择你保存的那份已签名文件。",
         "tooLarge": "这个文件超过了 20 MB 的上限。",
         "empty": "这个文件是空的。请重新选择文件。",
@@ -1032,11 +1040,11 @@
         "rateLimited": "这里的请求暂时太多。稍等片刻再试。",
         "badRequest": "服务没有接受这个请求。",
         "badResponse": "服务的回应格式是这个应用不认识的。",
-        "offline": "校验服务没有回应，所以什么都没有公开。",
+        "offline": "验证服务没有回应，所以什么都没有公开。",
         "fileMissing": "请先选择你保存的文件。",
         "unknown": "文件还没发出去就出了问题。",
         "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。",
-        "unsealInProgress": "这张图片已经在另一个标签页或设备上公开中。稍等片刻，再重新载入这本护照。",
+        "unsealInProgress": "这张图片已经在另一个标签页或设备上公开中。稍等片刻，再刷新护照页。",
         "thumbnailHeldPrivately": "什么都没公开。这张图片的一份私有副本为另一本护照保留着，挡住了它的公开副本。稍后再试。",
         "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹，所以它的公开副本永远通不过 Chainlink 的复核。什么都没公开。"
       },
@@ -1059,16 +1067,16 @@
       "sending": "正在删除私有副本",
       "done": "已删除。Moolam 现在不再保留这张图片的任何东西。",
       "failure": {
-        "signedOut": "这个会话已登出，服务什么都没有删除。",
-        "notHolder": "注册表显示这本护照在另一个钱包手里，只有那个钱包能删除副本。",
-        "noPassport": "注册表里没有这个编号的护照。",
+        "signedOut": "这个会话已退出登录，服务什么都没有删除。",
+        "notHolder": "登记处显示这本护照在另一个钱包手里，只有那个钱包能删除副本。",
+        "noPassport": "登记处里没有这个 id 的护照。",
         "nothingKept": "这本护照从没要求保留私有副本，所以没有东西可删。",
         "deleteFailed": "删除有一部分没有完成，副本可能还在。再按一次删除来完成。",
         "dependencyDown": "需要的一项服务没有回应，所以什么都没删除。过一分钟再试。",
         "rateLimited": "这里的请求暂时太多。稍等片刻再试。",
         "badRequest": "服务没有接受这个请求。",
         "badResponse": "服务的回应格式是这个应用不认识的。",
-        "offline": "校验服务没有回应，所以什么都没删除。",
+        "offline": "验证服务没有回应，所以什么都没删除。",
         "unknown": "请求还没发出去就出了问题。"
       },
       "actions": {
@@ -1078,7 +1086,7 @@
     "unsealed": {
       "poster": "{date} 公开",
       "label": "起初封存",
-      "line": "注册时没有公开图片，持有者在 {date} 把它公开。文件的哈希就是护照编号。"
+      "line": "登记时没有公开图片，持有者在 {date} 把它公开。文件的哈希就是护照 id。"
     },
     "facts": {
       "madeBy": "创作者",
@@ -1103,15 +1111,15 @@
   },
   "agent": {
     "title": "智能体",
-    "notFound": "公开智能体登记处 (ERC-8004) 里没有这个 id 的智能体。核对一下 id，或者打开智能体列表。",
-    "error": "Moolam 刚才无法从公开智能体登记处 (ERC-8004) 读出这个智能体。请再试一次，或者打开智能体列表。",
+    "notFound": "公开智能体登记处 (ERC-8004) 里没有这个 id 的智能体。核对一下 id，或者打开智能体页。",
+    "error": "Moolam 刚才无法从公开智能体登记处 (ERC-8004) 读出这个智能体。请再试一次，或者打开智能体页。",
     "owner": "持有者",
     "cardMissing": "无法从存放处读到这个智能体的名片。请稍后再试。",
     "reputation": {
       "heading": "公开智能体评价板上的反馈 (ERC-8004)",
       "empty": "这个智能体还没有任何反馈记录。反馈由 Moolam 手动写在这里，并不是每次核对后都有。",
       "error": "声誉登记处无法读取：{reason}。",
-      "body": "反馈记在 Monad 公开的智能体评价板上 (ERC-8004 声誉登记处)，归在 Moolam 的检查名下。本页读取它的汇总。旁边的信任分来自索引自己的复核，所以两者从不相加。",
+      "body": "反馈记在 Monad 公开的智能体评价板上 (ERC-8004 声誉登记处)，由 Moolam 手动写上去。本页读取它的汇总。旁边的信任分统计的是 Chainlink 的复核，所以两者从不相加。",
       "registry": "登记处 {address}",
       "secondary": "手动写在链上的反馈，不计入复核分数",
       "entries": "{count, plural, other {# 条}}",
@@ -1123,14 +1131,14 @@
     "index": {
       "heading": "索引数出来的结果",
       "trustScore": "信任分",
-      "trustScoreBody": "满分 100，由对上的复核、没对上的复核以及任何成立的争议算出。做过平滑处理，一次走运的核对不会直接变成 100。",
+      "trustScoreBody": "满分 100，由一致的复核、不一致的复核以及任何成立的争议算出。做过平滑处理，一次走运的核对不会直接变成 100。",
       "passportCount": "护照",
-      "matchedCount": "复核对上",
-      "mismatchedCount": "复核落空",
+      "matchedCount": "复核一致",
+      "mismatchedCount": "复核不一致",
       "disputesUpheld": "争议成立",
       "since": "首次出现于 {when}",
       "empty": "索引还没见过这个智能体为哪本护照签过名。",
-      "error": "索引无法读取：{reason}。",
+      "error": "无法读取索引：{reason}。",
       "formula": "round(100 x (matched + 1) / (matched + mismatched + 2 x upheld + 2))",
       "formulaLink": "这个分数怎么算出来",
       "formulaPlain": "每一次一致的复核都会让分数上升，每一次不一致都会让它下降；成立的争议算作两次不一致。新智能体从 50 分起步。"
@@ -1169,9 +1177,9 @@
       "onlyTest": "这个智能体目前签过的图片全都是测试图片。",
       "seeAll": "查看它的全部图片"
     },
-    "cardLabel": "代理卡片",
-    "cardInline": "这张卡片就装在代币 URI 里面，没有另外的地址可打开。",
-    "cardShow": "查看卡片 JSON",
+    "cardLabel": "智能体名片",
+    "cardInline": "这张名片就装在代币 URI 里面，没有另外的地址可打开。",
+    "cardShow": "查看名片 JSON",
     "ipfsCid": "打开 IPFS 上存放的记录",
     "unnamedTitle": "未命名智能体"
   },
@@ -1181,7 +1189,7 @@
     "lede": "你在这里登记的每一张图，都会在 Monad 上有自己的记录：取过指纹，由你签名，能从任何副本追回。",
     "opening": "正在打开你的账户",
     "noWallet": "你已经登录，但 Monad 上还没有为你建好账户。刷新页面，或者退出后重新登录。",
-    "notConfigured": "这个 Moolam 站点关闭了登录，所以工作室在这里打不开。验证和浏览无需账户，照常可用。",
+    "notConfigured": "本站关闭了登录，所以工作室在这里打不开。验证页和浏览页无需账户，照常可用。",
     "signOut": "退出",
     "identity": {
       "account": "登录身份",
@@ -1303,7 +1311,7 @@
       },
       "doneLabel": "已登记",
       "doneHeading": "这张图片现在有护照了",
-      "doneBody": "它的任何副本，缩放过、重新编码过或转了个方向，都能从验证页面追回这条记录。",
+      "doneBody": "它的任何副本，缩放过、重新编码过或转了个方向，都能从验证页追回这条记录。",
       "passportId": "护照",
       "block": "区块",
       "blockPending": "正从索引取回",
@@ -1317,12 +1325,12 @@
       "openImage": "已固定的图片",
       "another": "再登记一张图片",
       "balanceEmpty": "你的账户余额为 0 MON，没法自己付这笔网络费。先往账户里转一点 MON，或者稍后再试。",
-      "anotherWaits": "你对 AI 使用的表态还在发往 Monad。Monad 显示出来之后，这个按钮就能用了。"
+      "anotherWaits": "你对 AI 使用的表态还在发往 Monad。Monad 显示出来之后，就可以再登记一张了。"
     },
     "generate": {
       "kicker": "智能体",
       "heading": "让智能体来画",
-      "body": "写下你想要的画面。生成智能体把它画出来，固定到 IPFS，并用自己的钱包为通行证签名。同一份通行证，你用解锁签名。两个签名，一笔交易。",
+      "body": "写下你想要的画面。生成智能体把它画出来，固定到 IPFS，并用自己的钱包为护照签名。同一本护照，你用解锁签名。两个签名，一笔交易。",
       "prompt": "提示词",
       "promptPlaceholder": "天刚亮时驶出港口的渔船，从水面看过去",
       "promptHint": "8 到 600 个字符。提示词会留在元数据里，和图片一起可读。",
@@ -1358,15 +1366,15 @@
           "failed": "没有固定成功"
         },
         "agentSign": {
-          "waiting": "智能体用自己的钱包为通行证签名",
+          "waiting": "智能体用自己的钱包为护照签名",
           "running": "智能体正在签名",
           "done": "智能体已签名",
           "failed": "智能体没有签名"
         },
         "sign": {
-          "waiting": "用你的解锁为同一份通行证签名",
+          "waiting": "用你的解锁为同一本护照签名",
           "running": "等待你的通行密钥",
-          "done": "已在本机签名",
+          "done": "已在这台设备上签名",
           "failed": "没有完成签名"
         },
         "send": {
@@ -1380,20 +1388,20 @@
       },
       "signatures": {
         "heading": "两个签名，一笔交易",
-        "body": "只有两个名字都在，登记合约才会收下这份通行证。看着它们到齐。",
+        "body": "只有两个名字都在，登记处才会收下这本护照。看着它们到齐。",
         "agent": "智能体",
         "agentWaiting": "图片固定好就签名",
         "agentDetail": "由一个 Privy 服务器钱包签名，其策略只允许这一件事。",
         "agentId": "智能体 {id}",
         "agentWallet": "钱包 {wallet}",
         "you": "你",
-        "youWaiting": "你的解锁会为同一份通行证签名",
-        "youDetail": "本机上的指纹或人脸，对同一个摘要签名。"
+        "youWaiting": "你的解锁会为同一本护照签名",
+        "youDetail": "你在这台设备上的指纹或面容解锁，对同一个摘要签名。"
       },
       "openAgent": "智能体的记录",
       "doneLabel": "生成",
       "doneHeading": "这张由智能体画成，你们两个都签了名",
-      "doneBody": "通行证写明了是哪个智能体画的、哪个账户要的。这张图片的任何副本，都能从验证页回到这条记录。",
+      "doneBody": "护照写明了是哪个智能体画的、哪个账户要的。这张图片的任何副本，都能从验证页回到这条记录。",
       "kind": "类型",
       "agentRow": "作画",
       "modelRow": "模型",
@@ -1401,24 +1409,24 @@
     },
     "consent": {
       "kicker": "签名之前",
-      "heading": "说明 AI 可以怎样使用",
+      "heading": "说明 AI 可以如何使用",
       "body": "在任何签名之前，这句话就写进文件本身；护照一上链，它也写到 Monad 上。同一句话，两个都站得住的地方。",
-      "hint": "什么都不说也是一种选择，而且不给任何人许可。你之后也可以在护照页面上说明。",
+      "hint": "什么都不说也是一种选择，而且不给任何人许可。你之后也可以在护照页上说明。",
       "needsConditions": "把你的条件写在上面。它们随图片一起走，也随它上链。",
       "receipt": {
-        "label": "AI 可以怎样使用",
+        "label": "AI 可以如何使用",
         "sending": "正在写下你的声明",
         "sendingDetail": "写进文件的那几句话，现在发往 Monad 上的同意登记簿。",
-        "pending": "已发送，Monad 还没有显示",
+        "pending": "已发出，Monad 还没有显示",
         "pendingDetail": "没有第二次发送。过一会儿再问一次 Monad。",
         "statedIn": "在 Monad 上 {ms} 毫秒内写下。",
         "sponsored": "网络费由 Moolam 通过 Privy 支付。",
-        "own": "网络费从你自己的余额支付。",
+        "own": "网络费由你自己的余额支付。",
         "conditions": "你的条件：{text}",
         "failed": "护照已登记，声明未写入",
         "later": "护照已在链上。你随时可以在它自己的页面写下声明。",
         "none": "没有说明 AI 使用",
-        "noneDetail": "沉默不是许可。你随时可以在护照页面说明。",
+        "noneDetail": "沉默不是许可。你随时可以在护照页说明。",
         "again": "再写一次声明",
         "recheck": "再问一次 Monad"
       }
@@ -1428,7 +1436,7 @@
         "label": "让这张图片保持封存",
         "note": "Moolam 公开的是护照，不是图片。请保存我们交还的文件：它是唯一能解封这本护照的副本。",
         "panelHeading": "哪些会公开",
-        "panelLine": "下面这些在你签名的那一刻就发出去了，不可更改的登记表上什么都收不回来。图片本身不在这份清单里。",
+        "panelLine": "下面这些在你签名的那一刻就发出去了，写进不可更改的登记处后，什么都收不回来。图片本身不在这份清单里。",
         "sketchCaption": "图片能被公开的就只有这些。",
         "inFile": "固定的文件",
         "onChain": "在 Monad 上",
@@ -1441,7 +1449,7 @@
       },
       "fields": {
         "commitment": {
-          "label": "护照编号",
+          "label": "护照 id",
           "line": "我们交还的那个文件的 sha-256。链在不展示内容的情况下，锁定的正是这些字节。"
         },
         "fingerprint": {
@@ -1458,10 +1466,10 @@
         },
         "creator": {
           "label": "你的钱包地址",
-          "line": "谁登记的，登记表会记下来，每一本护照都一样。"
+          "line": "谁登记的，登记处会记下来，每一本护照都一样。"
         },
         "generator": {
-          "label": "代理的编号",
+          "label": "智能体 id",
           "line": "哪个 Moolam 智能体画的，以及列有它的公开智能体登记处 (ERC-8004)。"
         },
         "createdAt": {
@@ -1474,7 +1482,7 @@
         },
         "sealed": {
           "label": "封存这个词",
-          "line": "好让护照页、Explore 和链接预览都说明图片没有公开。"
+          "line": "好让护照页、浏览页和链接预览都说明图片没有公开。"
         },
         "model": {
           "label": "由哪个模型绘制",
@@ -1608,9 +1616,9 @@
       "quotaReached": "智能体一天为一个账户画的额度，你已经全部用完。按钮下面的计数会告诉你下一张什么时候放开。",
       "promptRefused": "模型不愿意画这条提示词。它给出的理由在下面。改一下提示词再问一次。",
       "creatorMismatch": "现在登录的账户，不是这张图片要画给的那个账户。退出登录再重新登录，然后重新来一次。",
-      "deadlinePassed": "图片画出来了，但留给签名的时间太少，代理没有签。它仍然算进今天的额度。重新生成一张，时间会重新开始。",
+      "deadlinePassed": "图片画出来了，但留给签名的时间太少，智能体没有签。它仍然算进今天的额度。重新生成一张，时间会重新开始。",
       "modelFailed": "模型没有把这张画完。它可能在失败前已经画过，所以这一张仍然计入今天的额度。",
-      "agentSignFailed": "图片已经画好并固定，但智能体的钱包没有为通行证签名。再试一次。如果一直这样，最可能的原因是那个钱包上的策略。",
+      "agentSignFailed": "图片已经画好并固定，但智能体的钱包没有为护照签名。再试一次。如果一直这样，最可能的原因是那个钱包上的策略。",
       "agentBusy": "Moolam 同时能处理的图片已经排满了。过一分钟再试。",
       "promptTooShort": "再多写几个字。智能体至少需要八个字符。",
       "promptTooLong": "这条提示词超过 600 个字符。缩短一点再问一次。",
@@ -1618,11 +1626,11 @@
       "sealedNotHeld": "验证服务没有交还封存的文件，所以什么都没有签名。请再试一次。",
       "sealedRecordRefused": "验证服务拒绝公开这条封存记录，所以什么都没有固定，也没有登记。请再试一次。",
       "sealedFileRefused": "验证服务无法交还与这本护照相符的文件，所以什么都没有固定，也没有登记。请再试一次。",
-      "privateRecheckNeedsSealed": "验证服务不会为没有封存的图片保留私有副本，所以什么都没有固定，也没有登记。重新载入工作室后再试一次。",
-      "privateCopyNotPrivate": "存储服务商没有把小副本设为私有，所以 Moolam 停了下来，什么都没有固定，也没有登记。关掉私下重新核对，就能不带它把这张图片封存登记。",
+      "privateRecheckNeedsSealed": "验证服务不会为没有封存的图片保留私有副本，所以什么都没有固定，也没有登记。刷新工作室后再试一次。",
+      "privateCopyNotPrivate": "存储服务商没有把小副本设为私有，所以 Moolam 停了下来，什么都没有固定，也没有登记。关掉私下复核，就能不带它把这张图片封存登记。",
       "privateChainUnreachable": "Moolam 连不上 Monad，无法确认这张图片是新的，所以没有保留私有副本，也什么都没有登记。稍后再试一次。",
       "privateThumbnailTooLarge": "这张图片无法缩成足够小的缩略图供 Chainlink 复核取回，所以它的护照永远无法复核，封存的护照以后也永远无法公开。什么都没有固定。",
-      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的重新核对和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。",
+      "fingerprintUnstable": "这张图片左右方向的变化太少，生成不了经得起复制的指纹：连它自己的小副本都会被读成另一张图片，所以 Chainlink 的复核和任何对其副本的搜索都会错过它。什么都没有固定，也没有登记。横向细节更多的图片可以登记。",
       "serviceFault": "这是 Moolam 这边的故障，不是你图片的问题。什么都没有保存。过一分钟再试。"
     },
     "actions": {
@@ -1668,15 +1676,15 @@
     "title": "裁决争议",
     "heading": "处理未决的质疑",
     "kicker": "仲裁者控制台",
-    "lede": "注册表上所有仍未了结的质疑，连同图片、指控和背后的保证金。任何人都可以阅读，但只有政策指定的地址才能裁决。",
+    "lede": "登记处里所有仍未了结的质疑，连同图片、指控和背后的保证金。任何人都可以阅读，但只有政策指定的地址才能裁决。",
     "resolverLabel": "仲裁者",
     "policyNote": "政策合约只指定一个地址，更换它需要公开等待 24 小时，任何关注者都能在生效前作出反应。",
     "youAre": "你就是仲裁者",
     "stranger": "本页面属于政策指定的仲裁者。",
-    "strangerBody": "你目前以 {wallet} 登录，从这里发出的交易会被注册表拒绝。",
+    "strangerBody": "你目前以 {wallet} 登录，从这里发出的交易会被登记处拒绝。",
     "signedOut": "请用仲裁者的账户登录后再裁决质疑。阅读本页不需要账户。",
     "signIn": "登录",
-    "creditLabel": "注册表欠你的金额",
+    "creditLabel": "登记处欠你的金额",
     "creditUnread": "尚未读取",
     "creditBody": "这里的钱是自取的，不会被推送。争议了结只记下一笔应收，在账户主动领取之前，任何款项都不会到账。",
     "withdraw": "提取 {amount} MON",
@@ -1690,7 +1698,7 @@
     "noPicture": "没有图片",
     "claim": "指控内容",
     "noReason": "这一条的证据是一个链接而不是文字：{uri}",
-    "unverified": "索引与注册表对这一条的证据不一致，因此这里不显示指控内容。裁决前请自行查看记录。",
+    "unverified": "索引与登记处对这一条的证据不一致，因此这里不显示指控内容。裁决前请自行查看记录。",
     "challenger": "质疑者",
     "bond": "保证金",
     "openedAt": "提出时间",
@@ -1703,9 +1711,9 @@
     "settledUpheld": "已支持。保证金记回质疑者名下。",
     "settledRejected": "已驳回。保证金记入金库。",
     "failure": {
-      "notResolver": "注册表拒绝了：发送交易的账户不是政策指定的仲裁者。",
-      "noOpenDispute": "那份护照上已经没有未决的争议了。",
-      "nothingOwed": "注册表目前不欠这个账户任何款项。",
+      "notResolver": "登记处拒绝了：发送交易的账户不是政策指定的仲裁者。",
+      "noOpenDispute": "那本护照上已经没有未决的争议了。",
+      "nothingOwed": "登记处目前不欠这个账户任何款项。",
       "notEnough": "账户不足以支付这笔交易。",
       "declined": "交易发出前窗口被关闭了，什么都没有发送。",
       "confirmPending": "交易已被接受，Monad 还没有显示。它仍可能落账，因此不能重复发送。",
@@ -1735,7 +1743,7 @@
     "countdown": "{seconds} 秒后重试",
     "now": "立即重试",
     "trying": "正在重试",
-    "stopped": "仍然联系不上。注册表本身在 Monad 上，护照页面直接读取它。"
+    "stopped": "仍然联系不上。登记处本身在 Monad 上，护照页直接读取它。"
   },
   "recheck": {
     "button": "申请复核",
@@ -1762,7 +1770,7 @@
       "pending": "待确认"
     },
     "failure": {
-      "noPassport": "校验服务不认识这本护照，所以没有可复核的东西。",
+      "noPassport": "验证服务不认识这本护照，所以没有可复核的东西。",
       "sealed": "这本护照的图片从未公开，所以工作流没有可取回的东西。",
       "queueFull": "队列里都是还没人执行的申请。请稍后再试。",
       "rateLimited": "这里的请求太多了，等一分钟。",
@@ -1799,6 +1807,6 @@
     "alt": "Content Credentials：打开这张图片的记录",
     "line": "这个文件带有 Content Credentials：一份说明它来处的签名记录，而且这份记录与文件仍然相符。",
     "inspect": "在 Content Credentials 官方查验工具中打开",
-    "untrustedSigner": "无法验证签名者的身份：签署这份记录的密钥不在 C2PA 信任列表上。"
+    "untrustedSigner": "无法验证签名者的身份：签署这份记录的密钥不在 C2PA Trust List 上。"
   }
 }
