@@ -386,18 +386,26 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
       </div>
 
       <div className="min-w-0">
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("passport")}</p>
-        <Link
-          href={`/passport/${dispute.passportId}`}
-          className="mt-1.5 block min-w-0 transition-colors duration-200 hover:text-accent"
-        >
-          <Mono value={dispute.passportId} className="text-sm normal-case" />
+        {/* The resolver recognises a dispute by its picture, so the title leads
+            and the id is only there to tell two same-named pictures apart. The
+            full id is one click away on the passport itself. */}
+        <Link data-dispute-head href={`/passport/${dispute.passportId}`} className="group block min-w-0">
+          {dispute.title === null ? null : (
+            <span className="block max-w-[32ch] font-display text-[clamp(1.2rem,2.2vw,1.7rem)] leading-[1.08] tracking-[-0.03em] transition-colors duration-200 group-hover:text-accent">
+              {dispute.title}
+            </span>
+          )}
+          <span
+            className={`flex flex-wrap items-baseline gap-x-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint ${
+              dispute.title === null ? "" : "mt-2.5"
+            }`}
+          >
+            <span>{t("passport")}</span>
+            <span data-hex className="text-sm normal-case tracking-normal transition-colors duration-200 group-hover:text-accent">
+              {shortHex(dispute.passportId)}
+            </span>
+          </span>
         </Link>
-        {dispute.title === null ? null : (
-          <p className="mt-3 max-w-[32ch] font-display text-[clamp(1.2rem,2.2vw,1.7rem)] leading-[1.08] tracking-[-0.03em]">
-            {dispute.title}
-          </p>
-        )}
 
         {dispute.reason === null ? (
           <p className="mt-6 max-w-[54ch] text-base leading-relaxed text-text-faint">

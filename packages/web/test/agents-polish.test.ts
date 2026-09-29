@@ -223,7 +223,7 @@ describe("ids keep their case", () => {
     const html = inEnglish(createElement(ResolveConsole, { resolver: RESOLVER, disputes: [dispute] }));
     // Mono cuts a value into groups of eight with a break point between them.
     expect(html).toMatch(/class="font-mono break-all text-base normal-case">0x559F35<wbr\/>7a/);
-    expect(html).toMatch(/class="font-mono break-all text-sm normal-case">0x5c5c5c<wbr\/>5c/);
+    expect(html).toMatch(/<span data-hex="true" class="text-sm normal-case[^"]*">0x5c5c5c…5c5c</);
     expect(html).toMatch(/<span data-hex="true" class="normal-case">0x85a88C/);
   });
 });
