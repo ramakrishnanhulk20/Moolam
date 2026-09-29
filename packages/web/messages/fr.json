@@ -986,11 +986,11 @@
       },
       "edit": "Ce passeport est scellé : il ne peut pas être modifié tant que l'image n'est pas publiée.",
       "about": {
-        "noCopy": "Enregistré scellé : l'image n'a jamais été publiée, et Moolam n'en a gardé aucune copie. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
-        "kept": "Enregistré scellé : l'image n'a jamais été publiée. À la demande de son créateur, Moolam garde une petite copie privée, utilisée seulement pour une revérification privée par un workflow Chainlink. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
-        "deleted": "Enregistré scellé : l'image n'a jamais été publiée. Moolam a gardé une petite copie privée pour une revérification privée par un workflow Chainlink, et cette copie a depuis été supprimée. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
-        "asked": "Enregistré scellé : l'image n'a jamais été publiée. Son créateur a demandé à Moolam de garder une petite copie privée pour une revérification privée par un workflow Chainlink. L'identifiant du passeport est le sha256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
-        "published": "Enregistré scellé, sans image publiée, puis publiée par son détenteur le {date}. L'identifiant du passeport est le sha256 du fichier, donc chacun peut hacher l'image publiée et comparer."
+        "noCopy": "Enregistré scellé : l'image n'a jamais été publiée, et Moolam n'en a gardé aucune copie. L'identifiant du passeport est le SHA-256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "kept": "Enregistré scellé : l'image n'a jamais été publiée. À la demande de son créateur, Moolam garde une petite copie privée, utilisée seulement pour une revérification privée par un workflow Chainlink. L'identifiant du passeport est le SHA-256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "deleted": "Enregistré scellé : l'image n'a jamais été publiée. Moolam a gardé une petite copie privée pour une revérification privée par un workflow Chainlink, et cette copie a depuis été supprimée. L'identifiant du passeport est le SHA-256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "asked": "Enregistré scellé : l'image n'a jamais été publiée. Son créateur a demandé à Moolam de garder une petite copie privée pour une revérification privée par un workflow Chainlink. L'identifiant du passeport est le SHA-256 du fichier signé, donc cet enregistrement est lié aux octets exacts sans les montrer.",
+        "published": "Enregistré scellé, sans image publiée, puis publiée par son détenteur le {date}. L'identifiant du passeport est le SHA-256 du fichier, donc chacun peut hacher l'image publiée et comparer."
       }
     },
     "unseal": {
@@ -1324,7 +1324,7 @@
       "openImage": "L’image épinglée",
       "another": "Enregistrer une autre image",
       "balanceEmpty": "Votre compte détient 0 MON, il ne peut donc pas payer les frais lui-même. Alimentez-le d’abord avec un peu de MON, ou réessayez plus tard.",
-      "anotherWaits": "Votre déclaration sur l’usage par l’IA est encore en route vers Monad. Le bouton Enregistrer une autre image s’active dès que Monad l’affiche."
+      "anotherWaits": "Votre déclaration sur l’usage par l’IA est encore en route vers Monad. Vous pourrez passer à l’image suivante dès que Monad l’affichera."
     },
     "generate": {
       "kicker": "L'agent",
@@ -1449,7 +1449,7 @@
       "fields": {
         "commitment": {
           "label": "L'identifiant du passeport",
-          "line": "Le sha-256 du fichier que nous vous rendons. La chaîne s'engage sur ces octets exacts sans les montrer."
+          "line": "Le SHA-256 du fichier que nous vous rendons. La chaîne s'engage sur ces octets exacts sans les montrer."
         },
         "fingerprint": {
           "label": "Les deux empreintes",

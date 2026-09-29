@@ -977,11 +977,11 @@
       },
       "edit": "This passport is sealed, so it cannot be edited until the picture is published.",
       "about": {
-        "noCopy": "Registered sealed: the picture was never published, and Moolam kept no copy of it. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "kept": "Registered sealed: the picture was never published. At its creator's request, Moolam keeps one small private copy, used only for a private re-check by a Chainlink workflow. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "deleted": "Registered sealed: the picture was never published. Moolam kept one small private copy for a private re-check by a Chainlink workflow, and that copy has since been deleted. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "asked": "Registered sealed: the picture was never published. Its creator asked Moolam to keep one small private copy for a private re-check by a Chainlink workflow. The passport id is the sha256 of the signed file, so this record commits to the exact bytes without showing them.",
-        "published": "Registered sealed, with no picture published, and published by its holder on {date}. The passport id is the sha256 of the file, so anyone can hash the published picture and compare."
+        "noCopy": "Registered sealed: the picture was never published, and Moolam kept no copy of it. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "kept": "Registered sealed: the picture was never published. At its creator's request, Moolam keeps one small private copy, used only for a private re-check by a Chainlink workflow. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "deleted": "Registered sealed: the picture was never published. Moolam kept one small private copy for a private re-check by a Chainlink workflow, and that copy has since been deleted. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "asked": "Registered sealed: the picture was never published. Its creator asked Moolam to keep one small private copy for a private re-check by a Chainlink workflow. The passport id is the SHA-256 of the signed file, so this record commits to the exact bytes without showing them.",
+        "published": "Registered sealed, with no picture published, and published by its holder on {date}. The passport id is the SHA-256 of the file, so anyone can hash the published picture and compare."
       }
     },
     "unseal": {
@@ -1315,7 +1315,7 @@
       "openImage": "The pinned image",
       "another": "Register another image",
       "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
-      "anotherWaits": "Your word on AI use is still going to Monad. Register another opens once Monad shows it."
+      "anotherWaits": "Your word on AI use is still going to Monad. You can start the next picture once Monad shows it."
     },
     "generate": {
       "kicker": "The agent",
@@ -1440,7 +1440,7 @@
       "fields": {
         "commitment": {
           "label": "The passport id",
-          "line": "The sha-256 of the file we hand back. The chain commits to the exact bytes without showing them."
+          "line": "The SHA-256 of the file we hand back. The chain commits to the exact bytes without showing them."
         },
         "fingerprint": {
           "label": "The two fingerprints",

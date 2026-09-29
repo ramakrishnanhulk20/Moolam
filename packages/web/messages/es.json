@@ -997,11 +997,11 @@
       },
       "edit": "Este pasaporte está sellado, así que no se puede editar hasta que la imagen se publique.",
       "about": {
-        "noCopy": "Registrado sellado: la imagen nunca se publicó y Moolam no guardó ninguna copia. El id del pasaporte es el sha256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
-        "kept": "Registrado sellado: la imagen nunca se publicó. A petición de su creador, Moolam guarda una copia privada pequeña, solo para una recomprobación privada con un flujo de Chainlink. El id del pasaporte es el sha256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
-        "deleted": "Registrado sellado: la imagen nunca se publicó. Moolam guardó una copia privada pequeña para una recomprobación privada con un flujo de Chainlink, y esa copia ya se borró. El id del pasaporte es el sha256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
-        "asked": "Registrado sellado: la imagen nunca se publicó. Su creador pidió a Moolam que guardara una copia privada pequeña para una recomprobación privada con un flujo de Chainlink. El id del pasaporte es el sha256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
-        "published": "Registrado sellado, sin publicar la imagen, y publicada por quien lo tiene el {date}. El id del pasaporte es el sha256 del archivo, así que cualquiera puede calcular el hash de la imagen publicada y compararlo."
+        "noCopy": "Registrado sellado: la imagen nunca se publicó y Moolam no guardó ninguna copia. El id del pasaporte es el SHA-256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
+        "kept": "Registrado sellado: la imagen nunca se publicó. A petición de su creador, Moolam guarda una copia privada pequeña, solo para una recomprobación privada con un flujo de Chainlink. El id del pasaporte es el SHA-256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
+        "deleted": "Registrado sellado: la imagen nunca se publicó. Moolam guardó una copia privada pequeña para una recomprobación privada con un flujo de Chainlink, y esa copia ya se borró. El id del pasaporte es el SHA-256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
+        "asked": "Registrado sellado: la imagen nunca se publicó. Su creador pidió a Moolam que guardara una copia privada pequeña para una recomprobación privada con un flujo de Chainlink. El id del pasaporte es el SHA-256 del archivo firmado, así que este registro se compromete con los bytes exactos sin mostrarlos.",
+        "published": "Registrado sellado, sin publicar la imagen, y publicada por quien lo tiene el {date}. El id del pasaporte es el SHA-256 del archivo, así que cualquiera puede calcular el hash de la imagen publicada y compararlo."
       }
     },
     "unseal": {
@@ -1335,7 +1335,7 @@
       "openImage": "La imagen fijada",
       "another": "Registrar otra imagen",
       "balanceEmpty": "Tu cuenta tiene 0 MON, así que no puede pagar ella misma la comisión. Envíale primero un poco de MON, o inténtalo más tarde.",
-      "anotherWaits": "Tu palabra sobre el uso por IA sigue de camino a Monad. Podrás registrar otra imagen en cuanto Monad la muestre."
+      "anotherWaits": "Tu palabra sobre el uso por IA sigue de camino a Monad. Podrás seguir con la siguiente imagen en cuanto Monad la muestre."
     },
     "generate": {
       "kicker": "El agente",
@@ -1460,7 +1460,7 @@
       "fields": {
         "commitment": {
           "label": "El id del pasaporte",
-          "line": "El sha-256 del archivo que te devolvemos. La cadena se compromete con esos bytes exactos sin mostrarlos."
+          "line": "El SHA-256 del archivo que te devolvemos. La cadena se compromete con esos bytes exactos sin mostrarlos."
         },
         "fingerprint": {
           "label": "Las dos huellas",

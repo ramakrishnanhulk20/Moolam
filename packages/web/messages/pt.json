@@ -993,11 +993,11 @@
       },
       "edit": "Este passaporte está lacrado, então não pode ser editado enquanto a imagem não for publicada.",
       "about": {
-        "noCopy": "Registrado lacrado: a imagem nunca foi publicada, e a Moolam não guardou nenhuma cópia dela. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "kept": "Registrado lacrado: a imagem nunca foi publicada. A pedido de quem a criou, a Moolam guarda uma cópia privada pequena, usada só para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "deleted": "Registrado lacrado: a imagem nunca foi publicada. A Moolam guardou uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink, e essa cópia já foi apagada. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "asked": "Registrado lacrado: a imagem nunca foi publicada. Quem a criou pediu à Moolam que guardasse uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o sha256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
-        "published": "Registrado lacrado, sem imagem publicada, e publicada por quem o detém em {date}. O identificador do passaporte é o sha256 do arquivo, então qualquer um pode calcular o hash da imagem publicada e comparar."
+        "noCopy": "Registrado lacrado: a imagem nunca foi publicada, e a Moolam não guardou nenhuma cópia dela. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "kept": "Registrado lacrado: a imagem nunca foi publicada. A pedido de quem a criou, a Moolam guarda uma cópia privada pequena, usada só para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "deleted": "Registrado lacrado: a imagem nunca foi publicada. A Moolam guardou uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink, e essa cópia já foi apagada. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "asked": "Registrado lacrado: a imagem nunca foi publicada. Quem a criou pediu à Moolam que guardasse uma cópia privada pequena para uma reconferência privada por um fluxo da Chainlink. O identificador do passaporte é o SHA-256 do arquivo assinado, então este registro fica preso aos bytes exatos sem mostrá-los.",
+        "published": "Registrado lacrado, sem imagem publicada, e publicada por quem o detém em {date}. O identificador do passaporte é o SHA-256 do arquivo, então qualquer um pode calcular o hash da imagem publicada e comparar."
       }
     },
     "unseal": {
@@ -1456,7 +1456,7 @@
       "fields": {
         "commitment": {
           "label": "O identificador do passaporte",
-          "line": "O sha-256 do arquivo que devolvemos. A rede se compromete com esses bytes exatos sem mostrá-los."
+          "line": "O SHA-256 do arquivo que devolvemos. A rede se compromete com esses bytes exatos sem mostrá-los."
         },
         "fingerprint": {
           "label": "As duas impressões",

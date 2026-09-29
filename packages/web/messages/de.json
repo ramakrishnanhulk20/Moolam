@@ -977,11 +977,11 @@
       },
       "edit": "Dieser Pass ist versiegelt und lässt sich erst bearbeiten, wenn das Bild veröffentlicht ist.",
       "about": {
-        "noCopy": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht, und Moolam hat keine Kopie davon behalten. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "kept": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Auf Wunsch seines Urhebers behält Moolam eine kleine private Kopie, nur für eine private Nachprüfung durch einen Chainlink-Workflow. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "deleted": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Moolam hat eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow behalten, und diese Kopie wurde inzwischen gelöscht. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "asked": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Sein Urheber hat Moolam gebeten, eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow zu behalten. Die Pass-Id ist der sha256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
-        "published": "Versiegelt eingetragen, ohne veröffentlichtes Bild, und am {date} von seinem Halter veröffentlicht. Die Pass-Id ist der sha256 der Datei, also kann jeder das veröffentlichte Bild hashen und vergleichen."
+        "noCopy": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht, und Moolam hat keine Kopie davon behalten. Die Pass-Id ist der SHA-256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "kept": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Auf Wunsch seines Urhebers behält Moolam eine kleine private Kopie, nur für eine private Nachprüfung durch einen Chainlink-Workflow. Die Pass-Id ist der SHA-256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "deleted": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Moolam hat eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow behalten, und diese Kopie wurde inzwischen gelöscht. Die Pass-Id ist der SHA-256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "asked": "Versiegelt eingetragen: Das Bild wurde nie veröffentlicht. Sein Urheber hat Moolam gebeten, eine kleine private Kopie für eine private Nachprüfung durch einen Chainlink-Workflow zu behalten. Die Pass-Id ist der SHA-256 der signierten Datei, also bindet dieser Eintrag die genauen Bytes, ohne sie zu zeigen.",
+        "published": "Versiegelt eingetragen, ohne veröffentlichtes Bild, und am {date} von seinem Halter veröffentlicht. Die Pass-Id ist der SHA-256 der Datei, also kann jeder das veröffentlichte Bild hashen und vergleichen."
       }
     },
     "unseal": {
@@ -1315,7 +1315,7 @@
       "openImage": "Das gepinnte Bild",
       "another": "Noch ein Bild eintragen",
       "balanceEmpty": "Dein Konto hat 0 MON und kann die Netzgebühr deshalb nicht selbst zahlen. Schick zuerst etwas MON darauf, oder versuch es später noch einmal.",
-      "anotherWaits": "Dein Wort zur KI-Nutzung ist noch auf dem Weg zu Monad. Sobald Monad es zeigt, kannst du ein weiteres Bild eintragen."
+      "anotherWaits": "Dein Wort zur KI-Nutzung ist noch auf dem Weg zu Monad. Sobald Monad es zeigt, kannst du mit dem nächsten Bild weitermachen."
     },
     "generate": {
       "kicker": "Der Agent",
