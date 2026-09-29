@@ -39,7 +39,7 @@
     "languageIs": "{language}, cambiar el idioma",
     "themeDarkAction": "Tema: oscuro, cambiar al tema claro",
     "themeLightAction": "Tema: claro, cambiar al tema oscuro",
-    "languageOpening": "Opening {language}"
+    "languageOpening": "Cambiando a {language}"
   },
   "shell": {
     "label": "Secciones",
@@ -111,10 +111,10 @@
     "yes": "Sí",
     "no": "No",
     "registeredPicture": "Imagen registrada",
-    "details": "Details",
-    "openingPage": "Opening the page",
-    "tryAgain": "Try again",
-    "copyFailed": "Could not copy. Select the text and copy it yourself."
+    "details": "Detalles",
+    "openingPage": "Abriendo la página",
+    "tryAgain": "Reintentar",
+    "copyFailed": "No se pudo copiar. Selecciona el texto y cópialo tú."
   },
   "kind": {
     "0": "Generada",
@@ -173,12 +173,12 @@
       "manifest": "Lleva Content Credentials",
       "rechecked": "Comprobada en la cadena",
       "chainlink": "Recomprobada por un flujo de Chainlink",
-      "disputed": "En disputa"
+      "disputed": "Disputa aceptada"
     },
     "legend": {
       "manifest": "Lleva Content Credentials",
       "rechecked": "Comprobada en la cadena",
-      "disputed": "En disputa",
+      "disputed": "Disputa aceptada",
       "consent": "Declaración sobre el uso por IA, cuatro marcas para los cuatro usos"
     },
     "untitled": "Sin título",
@@ -202,10 +202,10 @@
       "word": "Sellado"
     },
     "marksToggle": "Qué significan las marcas",
-    "searchAnyLabel": "Search by title or passport id",
-    "searchAnyPlaceholder": "A title or a passport id",
-    "noMatchQuery": "No passport matches {query}.",
-    "backToAll": "Back to all pictures"
+    "searchAnyLabel": "Buscar por título o id de pasaporte",
+    "searchAnyPlaceholder": "Un título o un id de pasaporte",
+    "noMatchQuery": "Ningún pasaporte coincide con {query}.",
+    "backToAll": "Volver a todas las imágenes"
   },
   "agents": {
     "kicker": "Agentes",
@@ -228,7 +228,7 @@
     "error": "No se pudo leer el índice: {reason}.",
     "formulaPlain": "Cada recomprobación que coincide sube la puntuación y cada fallo la baja; una disputa aceptada cuenta como dos fallos. Un agente nuevo empieza en 50.",
     "strip": {
-      "label": "Newest pictures this agent signed"
+      "label": "Las últimas imágenes que firmó este agente"
     }
   },
   "home": {
@@ -254,12 +254,12 @@
       "copyAlt": "Una copia recortada, recoloreada y recodificada de la imagen registrada",
       "pictureAlt": "La imagen registrada",
       "printRegistry": "Huella en el registro",
-      "printCopy": "Huella leída de la copia",
+      "printCopy": "Huella que el servicio de verificación leyó de la copia",
       "verdictFigure": "{count} de 64",
       "verdictSame": "bits de diferencia: la misma imagen.",
       "verdictMissed": "bits de diferencia, y el servicio de verificación no la encontró.",
       "recheckOn": "Chainlink volvió a comprobar la propia imagen registrada el {date}:",
-      "recheckBits": "{count} de 64 bits respecto a su registro",
+      "recheckBits": "{count} de 64 bits de diferencia con su registro",
       "recheckMissed": "no coincidió, {bits}",
       "chainlink": "Chainlink:",
       "recheckNone": "todavía no hay recomprobación escrita de la imagen registrada",
@@ -273,7 +273,7 @@
         "chainlink": "Recomprobado por Chainlink",
         "envio": "Indexado por Envio"
       },
-      "unstarted": "The check did not start. Reload the page and press again."
+      "unstarted": "La comprobación no empezó. Recarga la página y vuelve a pulsar."
     }
   },
   "story": {
@@ -283,12 +283,12 @@
       "title": "Cómo funciona un pasaporte"
     },
     "scrollCue": "Desliza",
-    "noWebgl": "Este navegador no pudo abrir un contexto 3D, así que la historia está aquí como página. Cada cifra que ves es la misma lectura en vivo.",
+    "noWebgl": "Este navegador no puede reproducir la película en 3D, así que la historia está aquí como página. Cada cifra que ves se lee en vivo, igual que en la película.",
     "made": {
       "kicker": "Creada",
       "title": "Esta la hizo una IA.",
-      "body": "El agente {agent} firmó la huella dentro de su propio enclave antes de que nadie hubiera visto la imagen.",
-      "readout": "Agente generador {agent}, registro de identidad ERC-8004",
+      "body": "El agente {agent} la dibujó y firmó su huella con su propia cartera, custodiada por Privy, antes de que se escribiera el pasaporte.",
+      "readout": "Agente generador {agent}, en el registro público de agentes (ERC-8004)",
       "titleNoAgent": "Esta la registró una persona.",
       "bodyNoAgent": "Ningún agente firmó esta huella. Se registró a partir de un archivo que subió el creador, y el pasaporte dice justo eso.",
       "readoutNoAgent": "Sin agente generador en este pasaporte"
@@ -326,13 +326,13 @@
         "social-chain": "una copia compartida dos veces en apps sociales",
         "resize-10": "una copia reducida a una décima parte"
       },
-      "similarity": "similitud {value}: {result}",
+      "similarity": "{value} de 64 bits de diferencia: {result}",
       "matched": "coincidió",
       "notMatched": "no coincidió",
       "attestation": "Un flujo CRE de Chainlink la volvió a comprobar y escribió la respuesta en cadena: {result}, a {distance} bits de distancia.",
       "noAttestation": "Todavía no se ha escrito ninguna comprobación para este pasaporte.",
-      "provenance": "Cifras de la escalera medidas por el verificador de Moolam sobre otra imagen registrada, pasaporte {passport}, {date}.",
-      "provenanceSelf": "Cifras medidas por el verificador de Moolam sobre este mismo pasaporte, {date}."
+      "provenance": "Cifras de la escalera medidas por el servicio de verificación de Moolam sobre otra imagen registrada, pasaporte {passport}, {date}.",
+      "provenanceSelf": "Cifras medidas por el servicio de verificación de Moolam sobre este mismo pasaporte, {date}."
     },
     "trusted": {
       "kicker": "De confianza",
@@ -342,17 +342,17 @@
       "noScore": "Sin puntuación todavía",
       "counts": "{rechecks, plural, =1 {# revisión} other {# revisiones}}, {passports, plural, =1 {# pasaporte} other {# pasaportes}}",
       "body": "Cada revisión escrita de vuelta en la cadena cuenta bajo el id del propio agente, y el índice las suma en este nivel. Su prestigio es la suma de su trabajo, no una afirmación en una web.",
-      "noAgent": "A esta no la hizo ningún agente, así que no hay prestigio de agente colgando de ella. Cuando sí firma un agente, cada comprobación del verificador se escribe en el registro de reputación ERC-8004 bajo el id de ese agente."
+      "noAgent": "A esta no la hizo ningún agente, así que no hay prestigio de agente colgando de ella. Cuando sí firma un agente, cada recomprobación de Chainlink de sus imágenes cuenta para la puntuación de ese mismo agente."
     },
     "tryIt": {
       "kicker": "Pruébalo",
       "title": "Suelta aquí cualquier copia de cualquier imagen, o elige un archivo.",
       "choose": "Elegir un archivo",
       "samples": "O prueba con una de estas",
-      "hint": "JPEG, PNG o WebP. Va al verificador de Moolam, se le toman tres huellas y no se guarda.",
+      "hint": "JPEG, PNG o WebP. Va al servicio de verificación de Moolam, se le toman tres huellas y no se guarda.",
       "pending": "Tomando la huella y buscando en el registro",
-      "offline": "El servicio de verificación no responde. Arráncalo con npm run dev:verifier desde la raíz del repositorio y vuelve a soltar el archivo.",
-      "error": "La comprobación no se ejecutó: {reason}",
+      "offline": "El servicio de verificación no responde ahora mismo. No se guardó nada. Espera un minuto y vuelve a soltar el archivo.",
+      "error": "La comprobación no se ejecutó. Inténtalo dentro de un minuto.",
       "tooLarge": "Ese archivo pasa de 20 MB. Prueba con una copia más pequeña.",
       "notAnImage": "Eso no es un archivo de imagen. Suelta un JPEG, un PNG o un WebP.",
       "empty": "Ese archivo está vacío. Elige la imagen otra vez.",
@@ -362,7 +362,7 @@
       "noMatchBody": "Ningún pasaporte del registro coincide con esta imagen. Un archivo recién salido de un generador que nunca se registró se ve exactamente así.",
       "exact": "bytes exactos",
       "match": "confianza",
-      "noManifest": "En este archivo no queda ningún manifiesto C2PA. El registro lo encontró igual.",
+      "noManifest": "En este archivo no quedan Content Credentials. El registro lo encontró igual.",
       "openPassport": "Abrir su pasaporte"
     },
     "close": {
@@ -372,10 +372,10 @@
       "verify": "Verificar una imagen",
       "proof": "Ver las pruebas",
       "passports": "Pasaportes",
-      "attestations": "Comprobaciones en cadena",
+      "attestations": "Recomprobaciones en cadena",
       "chain": "en Monad, cadena {chainId}",
       "unread": "sin leer",
-      "error": "No se pudo leer el índice: {reason}"
+      "error": "No se ha podido leer el índice ahora mismo. Recarga la página en un momento."
     },
     "skip": "Saltar la película",
     "failed": {
@@ -396,19 +396,19 @@
     "none": "Ningún pasaporte coincide con esta imagen.",
     "noneHint": "Esta imagen no está en el registro. Moolam todavía no compara recortes, así que un trozo de una imagen registrada no aparecerá. Prueba con la imagen entera.",
     "confidence": "Confianza",
-    "phashDistance": "Hash perceptual",
-    "blockhashDistance": "Hash de bloques",
+    "phashDistance": "Huella del aspecto (pHash)",
+    "blockhashDistance": "Huella de la composición (block hash)",
     "variant": "Orientación",
-    "manifestPresent": "El registro C2PA firmado sigue dentro de este archivo.",
-    "manifestMissing": "El registro C2PA firmado se ha quitado de este archivo. Las huellas coinciden igualmente.",
+    "manifestPresent": "Este archivo sigue llevando sus Content Credentials (C2PA).",
+    "manifestMissing": "A este archivo le han quitado sus Content Credentials (C2PA). Las huellas coinciden igualmente.",
     "openPassport": "Abrir el pasaporte",
     "error": "La comprobación no se ejecutó: {reason}",
-    "offline": "El servicio de verificación no responde. Arráncalo con npm run dev:verifier desde la raíz del repositorio y vuelve a intentarlo.",
+    "offline": "El servicio de verificación no responde ahora mismo. No se guardó nada. Inténtalo dentro de un minuto.",
     "kicker": "Comprueba cualquier copia",
     "rail": "Verificar",
     "dropTitle": "Elige una imagen, o arrastra una aquí.",
     "replace": "Elegir otra",
-    "privacy": "Tu navegador envía el archivo directamente a {host}, el servicio de verificación de Moolam. Allí se le toma la huella, se compara con el registro y no se guarda.",
+    "privacy": "Tu navegador envía el archivo directamente al servicio de verificación de Moolam ({host}). Allí se le toma la huella, se compara con el registro y nunca se guarda.",
     "checkingHeading": "Leemos la imagen, no el nombre del archivo.",
     "checkingDetail": "Tres huellas, las ocho orientaciones y después una búsqueda en todos los pasaportes registrados. Unos segundos.",
     "idleHeading": "Todavía sin respuesta",
@@ -445,10 +445,10 @@
       "notAnImage": "Ese archivo no se pudo leer como imagen. JPEG, PNG o WebP.",
       "empty": "Ese archivo está vacío. Elige la imagen otra vez.",
       "rateLimited": "Demasiadas comprobaciones desde aquí. Espera un minuto y vuelve a intentarlo.",
-      "badRequest": "El verificador no aceptó esa petición.",
-      "badResponse": "El verificador respondió con una forma que esta página no conoce.",
-      "serviceFailed": "El verificador no pudo terminar esta comprobación.",
-      "refused": "El verificador rechazó esta petición.",
+      "badRequest": "El servicio de verificación no aceptó ese archivo. Elige una imagen JPEG, PNG o WebP y vuelve a intentarlo.",
+      "badResponse": "El servicio de verificación respondió de una forma que esta página no puede leer. Inténtalo dentro de un minuto.",
+      "serviceFailed": "El servicio de verificación no pudo terminar esta comprobación. Inténtalo dentro de un minuto.",
+      "refused": "El servicio de verificación rechazó esta petición. Recarga la página y vuelve a intentarlo.",
       "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto.",
       "busy": "Moolam está ocupado comprobando otras imágenes. Inténtalo dentro de un minuto."
     },
@@ -476,7 +476,7 @@
       "tail": {
         "open": "abierta al uso por IA, entrenamiento incluido",
         "closed": "no para entrenar IA",
-        "ask": "pregunta antes, hay condiciones",
+        "ask": "pregunta antes a quien la tiene",
         "mixed": "permitida para unos usos y no para otros",
         "none": "nada sobre el uso por IA"
       }
@@ -489,8 +489,8 @@
       "count": "{count, plural, =1 {# revisión} other {# revisiones}}",
       "none": "Todavía sin revisar.",
       "noneNote": "Ningún flujo de trabajo independiente ha traído esta imagen ni ha vuelto a calcular su huella.",
-      "matched": "Revisada por un flujo de trabajo Chainlink CRE el {at}: volvió a traer la imagen, recalculó la huella y coincidió, {count} de 64 bits de diferencia.",
-      "mismatched": "Un flujo de trabajo Chainlink CRE volvió a traer esta imagen el {at}, recalculó la huella y no coincidió: {count} de 64 bits de diferencia.",
+      "matched": "Recomprobada por Chainlink (un flujo CRE) el {at}: descargó la imagen por su cuenta, volvió a tomar su huella y coincidió, {count} de 64 bits de diferencia.",
+      "mismatched": "Recomprobada por Chainlink (un flujo CRE) el {at}: descargó la imagen por su cuenta, volvió a tomar su huella y no coincidió, {count} de 64 bits de diferencia.",
       "link": "Ver la segunda opinión"
     },
     "dispute": {
@@ -509,39 +509,39 @@
       "matched": "Este pasaporte se registró sellado y quien lo tiene publicó la imagen el {date}."
     },
     "share": {
-      "copy": "Copy a link to this answer",
-      "copied": "Link copied"
+      "copy": "Copiar un enlace a esta respuesta",
+      "copied": "Enlace copiado"
     },
-    "noAccount": "No account needed",
-    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "noAccount": "No hace falta cuenta",
+    "noAccountWhy": "Una comprobación lee el registro público en Monad y no guarda nada de tu archivo.",
     "limits": {
-      "label": "What a match cannot prove",
-      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+      "label": "Lo que una coincidencia no puede probar",
+      "line": "Una coincidencia muestra quién registró esta imagen en Monad, y cuándo. No prueba que esa persona la hiciera. Un pasaporte erróneo se puede impugnar desde su propia página."
     },
     "wait": {
-      "fingerprint": "Fingerprinting the file",
-      "turns": "Trying all eight turns and flips",
-      "search": "Searching every passport",
-      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
-      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+      "fingerprint": "Tomando la huella del archivo",
+      "turns": "Probando los ocho giros y reflejos",
+      "search": "Buscando en todos los pasaportes",
+      "seconds": "{seconds, plural, =1 {# segundo} other {# segundos}}",
+      "slow": "Tarda más de lo habitual. Esta página espera al servicio de verificación hasta dos minutos antes de rendirse."
     },
-    "dropAnywhere": "Let go anywhere to check it",
-    "paste": "Or paste a picture you copied",
-    "dropTitleTouch": "Choose an image to check it.",
-    "checkAgain": "Check this file again",
+    "dropAnywhere": "Suelta en cualquier sitio para comprobarla",
+    "paste": "O pega una imagen que hayas copiado",
+    "dropTitleTouch": "Elige una imagen para comprobarla.",
+    "checkAgain": "Volver a comprobar este archivo",
     "compare": {
-      "yours": "Your copy",
-      "registered": "The registered picture",
-      "drag": "Drag to compare",
-      "hold": "Hold to compare",
-      "label": "Compare your copy with the registered picture"
+      "yours": "Tu copia",
+      "registered": "La imagen registrada",
+      "drag": "Arrastra para comparar",
+      "hold": "Mantén pulsado para comparar",
+      "label": "Comparar tu copia con la imagen registrada"
     }
   },
   "passport": {
     "title": "Pasaporte",
     "pending": "Leyendo el registro.",
     "notFound": "No hay ningún pasaporte con ese id. Revisa el id o búscalo desde la página de verificación.",
-    "error": "No se pudo leer el registro: {reason}. Recarga la página.",
+    "error": "Moolam no pudo leer este pasaporte de Monad en este momento. Inténtalo otra vez o abre Explorar.",
     "creator": "Creador",
     "owner": "Propietario",
     "agent": "Agente generador",
@@ -556,10 +556,10 @@
     "disputed": "En disputa",
     "attestations": {
       "heading": "Comprobada otra vez, por otra persona",
-      "empty": "Todavía no se ha escrito ninguna comprobación para este pasaporte. El flujo de Chainlink añade una cuando revisa la imagen.",
+      "empty": "Todavía no se ha escrito ninguna recomprobación para este pasaporte. El flujo de Chainlink escribe una cuando vuelve a comprobar la imagen.",
       "matched": "coincidió",
       "notMatched": "no coincidió",
-      "distance": "{distance} de 64 bits",
+      "distance": "{distance} de 64 bits de diferencia",
       "receiver": "Escrita en Monad por el receptor de Chainlink de Moolam",
       "at": "El",
       "kicker": "La segunda opinión",
@@ -675,7 +675,7 @@
         "tooLarge": "Ese archivo pasa del límite de 20 MB. Elige una copia más pequeña.",
         "fingerprintUnstable": "Esta edición cambia muy poco de un lado a otro para tener una huella que sobreviva a las copias, así que la comprobación de Chainlink y cualquier búsqueda de sus copias fallarían. No se fijó ni se envió nada. Una edición con más detalle a lo ancho se registrará.",
         "signedFileTooLarge": "Añadir la firma del pasaporte llevaría este archivo por encima de 20 MB, lo máximo que una comprobación puede volver a leer. Expórtalo más pequeño y vuelve a intentarlo. No se fijó ni se envió nada.",
-        "thumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que el verificador de Chainlink la descargue, así que su pasaporte nunca podría volver a comprobarse. No se fijó ni se envió nada.",
+        "thumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que la recomprobación de Chainlink la descargue, así que su pasaporte nunca podría volver a comprobarse. No se fijó ni se envió nada.",
         "notAnImage": "Eso no es un archivo de imagen. Elige un JPEG, PNG o WebP.",
         "empty": "Ese archivo está vacío. Elige la imagen otra vez.",
         "rateLimited": "Por ahora hay demasiadas peticiones desde aquí. Espera un momento y prueba otra vez.",
@@ -701,8 +701,8 @@
       "lineageNote": "Solo el dueño puede añadir ediciones. El permiso de Privy de la app puede añadir ediciones y nada más."
     },
     "untitled": "Sin título",
-    "noPicture": "El almacenamiento de la imagen no responde ahora mismo",
-    "fingerprintVersion": "Método de huella {version}",
+    "noPicture": "El almacenamiento de la imagen no responde ahora mismo. Inténtalo dentro de un minuto",
+    "fingerprintVersion": "Versión de la huella {version}",
     "record": "El registro",
     "passkeyBound": "Este creador firma con una clave de acceso vinculada a su cuenta.",
     "passkeyNone": "No hay ninguna clave de acceso vinculada a la cuenta de este creador.",
@@ -711,12 +711,12 @@
     "about": "Sobre la imagen",
     "prompt": "Instrucción",
     "fingerprints": "Las huellas",
-    "fingerprintsBody": "Un verificador descarga la imagen, la vuelve a hashear y compara con estas. Nada de esto depende del nombre del archivo ni de lo que digan los metadatos.",
+    "fingerprintsBody": "Cualquiera puede descargar la imagen, volver a tomar su huella y compararla con estas. La recomprobación de Chainlink hace justo eso. Nada de esto depende del nombre del archivo ni de lo que digan los metadatos.",
     "exactHash": "Huella exacta del archivo (SHA-256)",
     "passportId": "Id del pasaporte",
     "tokenId": "Este pasaporte también es un NFT en Monad, con el mismo id",
     "standing": {
-      "verified": "Comprobada por un verificador en cadena",
+      "verified": "Recomprobada en cadena, y coincidió",
       "mismatched": "Una revisión no coincidió",
       "disputed": "En disputa",
       "unverified": "Todavía sin revisar"
@@ -724,11 +724,11 @@
     "check": {
       "kicker": "Comprueba una copia",
       "heading": "¿Tu copia es esta imagen?",
-      "body": "Suelta aquí cualquier copia. Va al verificador, que le toma la huella y responde contra este pasaporte, no contra el nombre del archivo.",
+      "body": "Suelta aquí cualquier copia. Va al servicio de verificación, que le toma la huella y la compara con este pasaporte, no con el nombre del archivo.",
       "choose": "Elegir una imagen",
       "hint": "Una copia reescalada, recodificada, girada o reflejada sigue coincidiendo. Un recorte todavía no.",
       "checking": "Comprobando esta copia",
-      "failed": "La comprobación no se ejecutó.",
+      "failed": "La comprobación no se ejecutó. Inténtalo dentro de un minuto, o comprueba la copia en la página de verificación.",
       "tooLarge": "Ese archivo pasa del límite de 20 MB. Envía una copia más pequeña.",
       "notAnImage": "Eso no es un archivo de imagen. Suelta un JPEG, un PNG o un WebP.",
       "empty": "Ese archivo está vacío. Elige la imagen otra vez.",
@@ -736,7 +736,7 @@
       "same": "Sí. Es la misma imagen.",
       "sameExact": "Sí. Byte a byte, es el mismo archivo.",
       "different": "No. Esta copia pertenece a otro pasaporte.",
-      "openOther": "Open that passport"
+      "openOther": "Abrir ese pasaporte"
     },
     "dispute": {
       "kicker": "Impugnado",
@@ -858,7 +858,7 @@
       "chip": {
         "open": "Abierta a la IA",
         "closed": "Sin uso por IA",
-        "ask": "Con condiciones",
+        "ask": "Pregunta antes",
         "mixed": "Uso por uso",
         "none": "Sin declarar"
       },
@@ -878,12 +878,12 @@
         "unspecified": "Sin declarar",
         "allowed": "Permitido",
         "notAllowed": "No permitido",
-        "constrained": "Con condiciones"
+        "constrained": "Pregunta antes"
       },
       "writtenOn": "escrita el {when}",
       "nothingBy": "para entonces no se había dicho nada",
       "asking": "preguntando a la cadena por ese día",
-      "askFailed": "la cadena no respondió por ese día",
+      "askFailed": "la cadena no respondió por ese día. Mueve la regla para volver a preguntar",
       "scrub": "Arrastra la regla, o usa las flechas",
       "scrubStep": ", un día por paso",
       "scrubTouch": "Arrastra la regla",
@@ -910,7 +910,7 @@
         "notHolder": "Esta cartera ya no tiene este pasaporte, y solo quien lo tiene puede escribir por él.",
         "tooSoon": "Para la misma imagen, el registro acepta una declaración por cartera cada diez minutos. Esta se abre otra vez a las {at}.",
         "conditionsRequired": "Una declaración con condiciones tiene que decir cuáles son. Escríbelas y envíala otra vez.",
-        "conditionsNotAllowed": "Las condiciones pertenecen a una declaración que las pide. Borra el texto, o elige pregúntame antes.",
+        "conditionsNotAllowed": "Las condiciones pertenecen a una declaración que las pide. Borra el texto, o elige Pregúntame antes.",
         "conditionsTooLong": "Las condiciones superan los 256 bytes que guarda el registro. Acórtalas y envíala otra vez.",
         "conditionsNotPrintable": "Usa solo las letras de la A a la Z, números y signos de puntuación comunes. Quita el salto de línea o la letra acentuada y envíala otra vez.",
         "reverted": "Monad minó esta declaración y no hizo nada. No se escribió nada, así que se puede intentar de nuevo sin riesgo.",
@@ -1016,7 +1016,7 @@
         "noPassport": "El registro no tiene ningún pasaporte con este identificador.",
         "notSealed": "La imagen de este pasaporte ya es pública, no queda nada por publicar.",
         "alreadyUnsealed": "Este pasaporte ya se publicó. Abre la página otra vez para ver la imagen.",
-        "thumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que el verificador de Chainlink la descargue, así que publicarla dejaría un pasaporte que nadie podría volver a comprobar. No se fijó nada.",
+        "thumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que la recomprobación de Chainlink la descargue, así que publicarla dejaría un pasaporte que nadie podría volver a comprobar nunca. No se fijó nada.",
         "quota": "Van {used} de {limit} para hoy. El cupo vuelve a las {at}.",
         "todayFull": "El presupuesto de publicaciones de hoy para todo el mundo se ha agotado. No se fijó ni se gastó nada. Inténtalo mañana.",
         "pinFailed": "La imagen no se pudo fijar en IPFS, así que no se publicó nada.",
@@ -1092,28 +1092,28 @@
       "chainlink": "Chainlink",
       "unknownWriter": "Autor desconocido"
     },
-    "ownerHint": "Made this? Sign in to manage it.",
+    "ownerHint": "¿La hiciste tú? Entra para gestionarla.",
     "share": {
-      "copy": "Copy link",
-      "copied": "Link copied"
+      "copy": "Copiar enlace",
+      "copied": "Enlace copiado"
     },
-    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
-    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
-    "titleUnread": "Title not read yet"
+    "downloading": "Descargando el original desde IPFS. Puede tardar hasta un minuto.",
+    "downloadFailed": "El original no llegó desde IPFS esta vez. Inténtalo dentro de un minuto.",
+    "titleUnread": "Título aún sin leer"
   },
   "agent": {
     "title": "Agente",
-    "notFound": "No hay ningún agente con ese id en el registro de identidad ERC-8004.",
-    "error": "No se pudo leer el registro de identidad: {reason}. Recarga la página.",
+    "notFound": "No hay ningún agente con ese id en el registro público de agentes (ERC-8004). Revisa el id o abre la página de Agentes.",
+    "error": "Moolam no pudo leer este agente del registro público de agentes (ERC-8004) en este momento. Inténtalo otra vez o abre la página de Agentes.",
     "owner": "Propietario",
-    "cardMissing": "No se pudo leer la ficha del agente desde su URI.",
+    "cardMissing": "No se pudo leer la ficha de este agente desde donde está guardada. Inténtalo en un momento.",
     "reputation": {
-      "heading": "Valoraciones en el registro ERC-8004",
-      "empty": "Todavía no hay valoraciones para este agente. El verificador escribe una después de cada comprobación que hace.",
+      "heading": "Valoraciones en el tablón público de reseñas de agentes (ERC-8004)",
+      "empty": "Todavía no hay valoraciones para este agente. Moolam publica aquí las valoraciones a mano, no después de cada comprobación.",
       "error": "No se pudo leer el registro de reputación: {reason}.",
       "body": "Las valoraciones están en el tablón público de reseñas de agentes de Monad (el registro de reputación ERC-8004), archivadas bajo las comprobaciones de Moolam. Esta página lee su resumen. El nivel de confianza de al lado sale de las recomprobaciones del propio índice, así que los dos nunca se suman.",
       "registry": "Registro {address}",
-      "secondary": "Escritas en la cadena por el verificador, no es el nivel de revisiones",
+      "secondary": "Valoraciones publicadas a mano en la cadena, aparte del nivel de recomprobaciones",
       "entries": "{count, plural, =1 {# entrada} other {# entradas}}",
       "latest": "Último valor"
     },
@@ -1153,7 +1153,7 @@
       "registry": "Registro {address}",
       "identity": "Identidad {address}",
       "privy": "Dónde vive la clave",
-      "privyBody": "Estos valores vienen de la ficha del propio agente, no de esta aplicación.",
+      "privyBody": "Privy guarda la clave de este agente, y una política de Privy limita lo que puede firmar. Estos identificadores vienen de la ficha del propio agente, no de esta aplicación.",
       "privyWallet": "Id de cuenta Privy",
       "privyPolicy": "Qué puede firmar esta cuenta"
     },
@@ -1161,19 +1161,19 @@
       "heading": "Lo que ha firmado",
       "source": "Desde el índice",
       "empty": "Todavía ningún pasaporte nombra a este agente.",
-      "error": "No se pudo leer el índice: {reason}.",
+      "error": "No se ha podido leer el índice ahora mismo. Inténtalo en un momento.",
       "untitled": "Sin título",
       "noThumbnail": "Sin miniatura fijada",
-      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
-      "hideTest": "Hide the test images",
-      "onlyTest": "Every picture this agent has signed so far is a test image.",
-      "seeAll": "See all its pictures"
+      "showTest": "Mostrar {count, plural, =1 {# imagen de prueba} other {# imágenes de prueba}}",
+      "hideTest": "Ocultar las imágenes de prueba",
+      "onlyTest": "Hasta ahora, todas las imágenes que ha firmado este agente son de prueba.",
+      "seeAll": "Ver todas sus imágenes"
     },
     "cardLabel": "Tarjeta del agente",
     "cardInline": "Esta tarjeta va dentro del propio token URI, así que no hay nada que abrir.",
     "cardShow": "Ver el JSON de la tarjeta",
     "ipfsCid": "Abrir el registro guardado en IPFS",
-    "unnamedTitle": "Unnamed agent"
+    "unnamedTitle": "Agente sin nombre"
   },
   "studio": {
     "kicker": "Estudio",
@@ -1181,7 +1181,7 @@
     "lede": "Cada imagen que registres aquí tendrá su propio registro en Monad: con huella, firmada por ti y localizable desde cualquier copia.",
     "opening": "Abriendo tu cuenta",
     "noWallet": "Has entrado, pero todavía no se ha creado ninguna cuenta en Monad. Recarga la página, o sal y vuelve a entrar.",
-    "notConfigured": "Privy no está configurado, así que aquí no puede entrar nadie. Pon NEXT_PUBLIC_PRIVY_APP_ID en packages/web/.env.local y reinicia el servidor de desarrollo.",
+    "notConfigured": "El inicio de sesión está desactivado en esta copia de Moolam, así que el estudio no se puede abrir aquí. Verificar y Explorar siguen funcionando sin cuenta.",
     "signOut": "Salir",
     "identity": {
       "account": "Has entrado como",
@@ -1272,18 +1272,18 @@
       "body": "Una imagen cada vez. Se le toma la huella y se fija, la firmas con tu desbloqueo y Moolam la envía a Monad.",
       "drop": "Suelta una imagen aquí",
       "choose": "Elegir un archivo",
-      "hint": "JPEG, PNG o WebP, hasta 20 MB. Moolam incrusta un manifiesto C2PA, toma la huella de los bytes firmados y fija el archivo en IPFS.",
+      "hint": "JPEG, PNG o WebP, hasta 20 MB. Moolam le añade Content Credentials (C2PA), toma la huella del archivo firmado y lo guarda en almacenamiento público (IPFS).",
       "replace": "Elegir otra",
       "title": "Título",
       "titlePlaceholder": "¿Qué es esta imagen?",
-      "titleHint": "Va al manifiesto y a los metadatos, así que ponle el nombre con el que llamarías a la imagen.",
+      "titleHint": "Va a las Content Credentials del archivo y al registro del pasaporte, así que ponle el nombre con el que llamarías a la imagen.",
       "submit": "Registrar esta imagen",
       "balance": "Tu cuenta tiene {mon} MON.",
       "steps": {
         "prepare": {
           "waiting": "Tomar la huella y fijar el archivo, unos diez segundos",
           "running": "Tomando la huella y fijando, unos diez segundos",
-          "done": "Huella tomada, manifiesto incrustado, fijado en IPFS",
+          "done": "Huella tomada, Content Credentials añadidas, archivo guardado en IPFS",
           "failed": "El archivo no se preparó"
         },
         "sign": {
@@ -1316,8 +1316,8 @@
       "openAddress": "Tu cuenta {wallet} en MonadVision",
       "openImage": "La imagen fijada",
       "another": "Registrar otra imagen",
-      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
-      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
+      "balanceEmpty": "Tu cuenta tiene 0 MON, así que no puede pagar ella misma la comisión. Envíale primero un poco de MON, o inténtalo más tarde.",
+      "anotherWaits": "Tu palabra sobre el uso por IA sigue de camino a Monad. Esto se activa en cuanto Monad la muestre."
     },
     "generate": {
       "kicker": "El agente",
@@ -1335,7 +1335,7 @@
       },
       "title": "Título",
       "titlePlaceholder": "¿Cómo se va a llamar esta imagen?",
-      "titleHint": "Va al manifiesto y a los metadatos, junto a la instrucción.",
+      "titleHint": "Va a las Content Credentials del archivo y al registro del pasaporte, junto a la instrucción.",
       "submit": "Hacerla y registrarla",
       "quota": "{used} de {limit} hoy",
       "quotaResets": "La siguiente se libera a las {time}.",
@@ -1462,7 +1462,7 @@
         },
         "generator": {
           "label": "El identificador del agente",
-          "line": "Qué agente de Moolam la dibujó y en qué registro ERC-8004 está identificado."
+          "line": "Qué agente de Moolam la dibujó, y el registro público de agentes en el que figura (ERC-8004)."
         },
         "createdAt": {
           "label": "La fecha",
@@ -1470,7 +1470,7 @@
         },
         "training": {
           "label": "Tu declaración sobre el uso por IA",
-          "line": "Las cuatro respuestas que diste arriba, con las palabras del estándar CAWG."
+          "line": "Las cuatro respuestas que diste arriba, con las palabras del estándar para entrenamiento de IA y minería de datos (CAWG)."
         },
         "sealed": {
           "label": "La palabra sellado",
@@ -1515,7 +1515,7 @@
         "label": "Sellado en Monad",
         "detail": "La imagen no está publicada. Moolam no guarda ninguna copia.",
         "detailPrivate": "La imagen no está publicada. Moolam solo guarda la pequeña copia privada que pediste.",
-        "fingerprintDetail": "Tomado del archivo firmado, que nunca salió de este navegador. Manifiesto C2PA incrustado: {manifest}.",
+        "fingerprintDetail": "Tomada del archivo firmado, que nunca salió de este navegador. Content Credentials (C2PA) añadidas: {manifest}.",
         "privateLabel": "Copia privada guardada",
         "privateDetail": "Para la revisión privada de Chainlink. <page>Bórrala desde la página del pasaporte cuando quieras.</page>",
         "noPrivateLabel": "Sin copia privada",
@@ -1532,16 +1532,16 @@
       "walletDetail": "Creada al entrar. Sin frase semilla y sin ninguna clave en manos de Moolam.",
       "passkey": "Clave de acceso vinculada",
       "passkeyDetail": "La mitad pública del desbloqueo de este dispositivo, guardada por el registro.",
-      "fingerprint": "Hash exacto",
-      "fingerprintDetail": "{width} por {height} píxeles. Manifiesto C2PA incrustado: {manifest}.",
+      "fingerprint": "Huella exacta del archivo (SHA-256)",
+      "fingerprintDetail": "{width} por {height} píxeles. Content Credentials (C2PA) añadidas: {manifest}.",
       "manifestYes": "sí",
       "manifestNo": "no",
       "pinned": "Fijada en IPFS",
       "pinnedDetail": "Los bytes firmados, la miniatura y los metadatos fueron todos a IPFS.",
       "download": "Descargar tu imagen",
       "downloadHelp": "El archivo firmado, con sus Content Credentials: una copia sigue verificándose contra este pasaporte.",
-      "signed": "Resumen que firmaste",
-      "signedDetail": "Leído del contrato, firmado con tu desbloqueo y comprobado aquí antes de enviarlo.",
+      "signed": "Lo que firmaste (digest)",
+      "signedDetail": "Un breve resumen del pasaporte, leído del registro, firmado con tu desbloqueo y comprobado aquí antes de enviarlo.",
       "sent": "Enviada a Monad",
       "sentSponsored": "Comisión de red pagada por Moolam a través de Privy.",
       "sentOwn": "Comisión de red pagada con tu propio saldo.",
@@ -1563,13 +1563,13 @@
     },
     "passports": {
       "heading": "Tus imágenes",
-      "source": "Leídos en vivo del índice",
+      "source": "Leídas en vivo del índice (Envio)",
       "reading": "Leyendo todo lo que ha registrado esta cuenta.",
-      "unreadable": "No se pudieron leer tus pasaportes: {reason}. Recarga la página.",
+      "unreadable": "No se han podido leer tus imágenes ahora mismo. Inténtalo otra vez.",
       "empty": "Todavía no hay nada registrado desde esta cuenta. La primera imagen que registres aparece aquí en un bloque.",
       "noThumbnail": "Sin miniatura",
       "untitled": "Sin título",
-      "retry": "Try again"
+      "retry": "Reintentar"
     },
     "failure": {
       "serviceOffline": "El servicio de verificación de Moolam no responde, así que no se subió nada. Inténtalo de nuevo en un momento.",
@@ -1584,7 +1584,7 @@
       "badResponse": "El servicio de verificación respondió con una forma que esta página no entiende, así que no se firmó nada. Inténtalo de nuevo.",
       "authCheck": "El registro rechazaría la firma de tu dispositivo, así que no se envió. Vuelve a intentarlo y usa el mismo desbloqueo que vinculaste.",
       "passkeyCancelled": "La ventana de desbloqueo se cerró o caducó. No se firmó nada.",
-      "passkeyOrigin": "Esta clave de acceso pertenece a otra web, así que esta página no puede usarla.",
+      "passkeyOrigin": "Esta clave de acceso pertenece a otra web, así que esta página no puede usarla. En su lugar, vincula el desbloqueo de este dispositivo a tu cuenta.",
       "passkeyUnsupported": "Este navegador o dispositivo no puede crear el tipo de clave de acceso que necesita el registro. Prueba con un navegador con desbloqueo por huella o cara.",
       "passkeyOther": "El desbloqueo no terminó. Tu dispositivo dijo esto:",
       "alreadyRegistered": "Esta imagen exacta ya está registrada. Gana el primer registro, así que abre el pasaporte que la tiene.",
@@ -1600,11 +1600,11 @@
       "confirmPending": "Tu envío se aceptó y Monad todavía no lo muestra. Puede que aún llegue, así que no se ha enviado nada por segunda vez. Abre tu cuenta abajo para mirar, o vuelve a preguntar a Monad.",
       "sendCancelled": "Cerraste la confirmación, así que no se envió nada.",
       "sendFailed": "Este paso no terminó. Abajo están las palabras de la red. Inténtalo de nuevo en un momento.",
-      "digestMismatch": "La red respondió con un registro distinto del que hay en esta página, así que no se firmó nada. Prueba con otra configuración de red.",
+      "digestMismatch": "La red respondió con un registro distinto del que hay en esta página, así que no se firmó nada. Inténtalo otra vez, y recarga la página si vuelve a pasar.",
       "passkeyNotReady": "Esta página todavía no ha terminado de leer tu clave de acceso desde Monad. Espera un momento y vuelve a intentarlo.",
       "unknown": "Algo salió mal antes de enviar nada. El mensaje está abajo.",
       "fileMissing": "Elige primero una imagen.",
-      "titleMissing": "Ponle antes un título a la imagen. Va dentro del manifiesto.",
+      "titleMissing": "Ponle antes un título a la imagen. Va en las Content Credentials del archivo.",
       "quotaReached": "Ya has tenido todas las imágenes que el agente dibuja para una cuenta en un día. La cuenta que hay bajo el botón dice cuándo se libera la siguiente.",
       "promptRefused": "El modelo no quiso dibujar esta instrucción. Su propio motivo está abajo. Cámbiala y pídelo otra vez.",
       "creatorMismatch": "La cuenta con la que estás ahora no es aquella para la que se estaba dibujando esta imagen. Cierra sesión, vuelve a entrar y pídela otra vez.",
@@ -1621,7 +1621,7 @@
       "privateRecheckNeedsSealed": "El servicio de verificación no guarda una copia privada de una imagen que no está sellada, así que no se fijó ni se registró nada. Recarga el estudio e inténtalo otra vez.",
       "privateCopyNotPrivate": "El proveedor de almacenamiento no mantuvo privada la copia pequeña, así que Moolam se detuvo y no se fijó ni se registró nada. Desactiva la comprobación privada para registrar esta imagen sellada sin ella.",
       "privateChainUnreachable": "Moolam no pudo llegar a Monad para comprobar que esta imagen es nueva, así que no guardó ninguna copia privada ni registró nada. Inténtalo de nuevo en un momento.",
-      "privateThumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que el verificador de Chainlink la descargue, así que su pasaporte nunca podría volver a comprobarse, y uno sellado nunca podría publicarse más adelante. No se fijó nada.",
+      "privateThumbnailTooLarge": "Esta imagen no se puede reducir a una miniatura lo bastante pequeña para que la recomprobación de Chainlink la descargue, así que su pasaporte nunca podría volver a comprobarse, y uno sellado nunca podría publicarse más adelante. No se fijó nada.",
       "fingerprintUnstable": "Esta imagen cambia muy poco de un lado a otro para tener una huella que sobreviva a las copias: hasta su propia copia pequeña parece otra imagen, así que la comprobación de Chainlink y cualquier búsqueda de sus copias fallarían. No se fijó ni se registró nada. Una imagen con más detalle a lo ancho se registrará.",
       "serviceFault": "Fue un fallo del lado de Moolam, no un problema de tu imagen. No se guardó nada. Inténtalo dentro de un minuto."
     },
@@ -1637,7 +1637,7 @@
       "generateAgain": "Generar otra vez"
     },
     "showcaseCaption": "Un pasaporte real en Monad. Esto es lo que obtienes.",
-    "titleNeeded": "Give the picture a title."
+    "titleNeeded": "Ponle un título a la imagen."
   },
   "docs": {
     "home": "Documentación",
@@ -1684,8 +1684,8 @@
     "withdrawn": "Pagado. El abono vuelve a cero.",
     "mon": "{amount} MON",
     "empty": "No hay ninguna impugnación abierta. Aquí no te espera nada.",
-    "error": "No se pudo leer la política: {reason}",
-    "unavailable": "La lista de disputas abiertas viene del índice, y el índice no respondió: {reason}",
+    "error": "No se ha podido leer la política ahora mismo. Inténtalo en un momento.",
+    "unavailable": "La lista de disputas abiertas viene del índice, y el índice no respondió. Inténtalo en un momento.",
     "passport": "Pasaporte",
     "noPicture": "Sin imagen",
     "claim": "La acusación",
@@ -1766,7 +1766,7 @@
       "sealed": "La imagen de este pasaporte nunca se publicó, así que el flujo no tiene nada que traer.",
       "queueFull": "La cola está llena de peticiones que nadie ha ejecutado todavía. Inténtalo más tarde.",
       "rateLimited": "Demasiadas peticiones desde aquí, espera un minuto.",
-      "notAnswering": "El servicio de verificación no responde ahora mismo.",
+      "notAnswering": "El servicio de verificación no responde ahora mismo. Inténtalo dentro de un minuto.",
       "unknown": "La petición no llegó a entrar."
     },
     "notePrivate": "Gratis. El flujo confidencial de Chainlink abre la copia privada pequeña que guarda Moolam, compara la huella y escribe su veredicto en Monad. El veredicto suele quedar en la blockchain en pocos minutos.",
@@ -1791,14 +1791,14 @@
       "body": "La lista se lee del índice con la dirección de tu cuenta, así que en cualquier dispositivo donde entres aparecen las mismas imágenes."
     },
     "showcaseCaption": "Un pasaporte real en Monad. Los tuyos aparecerán aquí como este.",
-    "makeFirst": "Register your first picture",
-    "signedInAs": "Signed in as {account}"
+    "makeFirst": "Registra tu primera imagen",
+    "signedInAs": "Has entrado como {account}"
   },
   "crMark": {
     "name": "Content Credentials",
-    "alt": "Content Credentials: open this picture's record",
-    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
-    "inspect": "Open it in the official Content Credentials inspect tool",
-    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
+    "alt": "Content Credentials: abrir el registro de esta imagen",
+    "line": "Este archivo lleva Content Credentials: un registro firmado de dónde viene, y ese registro sigue coincidiendo con el archivo.",
+    "inspect": "Ábrelo en la herramienta oficial de inspección de Content Credentials",
+    "untrustedSigner": "No se puede verificar la identidad del firmante: la clave que firmó este registro no está en la C2PA Trust List."
   }
 }
