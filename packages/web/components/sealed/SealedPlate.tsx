@@ -116,7 +116,7 @@ export function SealedPlate({
             {words.sealed}
           </p>
           {shortId === undefined ? null : (
-            <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">{shortId}</p>
+            <p className="font-mono text-[11px] normal-case tracking-[0.2em] text-text-faint">{shortId}</p>
           )}
         </div>
 
