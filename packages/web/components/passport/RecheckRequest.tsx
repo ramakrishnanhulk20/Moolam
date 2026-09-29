@@ -4,15 +4,24 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import type { Hex } from "viem";
-import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import { MONAD_EXPLORER, reason as oneLine, shortHex } from "@/lib/chain/client";
 import { useRouter } from "@/lib/i18n/routing";
 import { refreshPassport } from "@/lib/passport/refresh";
 import { idleRecheck, type RecheckState } from "@/lib/recheck/state";
 import { useRecheckRequest, type RecheckControl } from "@/lib/recheck/useRecheck";
+import { FailureDetails } from "@/components/studio/FailureDetails";
 import { WarningMark } from "@/components/WarningMark";
 
 const ID_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * The reason's place while the failed sentence is formatted. It is cut out
+ * again with the colon before it, so the translated sentence stands alone in
+ * every language and the runner's own English waits under Details.
+ */
+const REASON_SLOT = "\uE001";
+const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 // The pull that hands the status room back. The phone's room is taller than
 // the section's 3.5rem padding there, so only that much is handed back.
@@ -297,7 +306,7 @@ function Sentence({
           </>
         );
       case "failed":
-        return state.reason === undefined ? t("failedNoReason") : t("failed", { reason: state.reason });
+        return state.reason === undefined ? t("failedNoReason") : t("failed", { reason: REASON_SLOT }).replace(REASON_CUT, "");
       case "refused":
         return t(`failure.${state.key}`);
     }
@@ -331,8 +340,12 @@ function Sentence({
           the tab open for an afternoon knows why nothing is moving. */}
       {spent ? <p className="mt-2 text-base leading-relaxed text-text-faint">{t("stopped")}</p> : null}
 
+      {state.kind === "failed" && state.reason !== undefined ? (
+        <FailureDetails reason={state.reason} className="ms-[24px] mt-2" />
+      ) : null}
+
       {state.kind === "refused" && state.reason !== undefined ? (
-        <p className="mt-2 break-words font-mono text-[11px] leading-relaxed text-text-faint">{state.reason}</p>
+        <p className="mt-2 break-words font-mono text-[11px] leading-relaxed text-text-faint">{oneLine(state.reason)}</p>
       ) : null}
     </motion.div>
   );

@@ -226,7 +226,9 @@ describe("every state the reader can meet", () => {
     expect(drawn[5][1]).toContain("Running now");
     expect(drawn[6][1]).toContain("Done: re-checked");
     expect(drawn[6][1]).toContain(`${TX}`);
-    expect(drawn[7][1]).toContain("Could not run: the picture could not be fetched from IPFS");
+    // The runner's own words wait under Details, not inside the sentence.
+    expect(drawn[7][1]).toContain("<span>Could not run</span>");
+    expect(drawn[7][1]).toMatch(/<details data-failure-details[\s\S]*the picture could not be fetched from IPFS<\/p><\/details>/);
     expect(drawn[8][1]).toContain("Too many requests from here, wait a minute.");
     expect(drawn[9][1]).toContain("never published");
     expect(drawn[10][1]).toContain("The verify service is not answering just now.");

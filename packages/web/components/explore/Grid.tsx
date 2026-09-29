@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useState, useTransition, type ReactNode } from "react";
 import { IndexRetry } from "@/components/IndexRetry";
+import { WarningMark } from "@/components/WarningMark";
+import { FailureDetails } from "@/components/studio/FailureDetails";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { PassportCursor } from "@/lib/data/passports";
 import { EndCard } from "./EndCard";
@@ -28,6 +30,14 @@ const FIRST_ROW = 4;
  * actually waiting for.
  */
 const NAMED_EARLY = 2;
+
+/**
+ * The reason's place while its sentence is formatted. It is cut out again with
+ * the colon before it, so the translated sentence stands alone in every
+ * language and the library's English waits under Details.
+ */
+const REASON_SLOT = "\uE001";
+const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * The contact sheet: every passport the filter matched, as plates on a grid of
@@ -79,7 +89,11 @@ export function Grid({
   if (indexError !== null) {
     return (
       <div className="mt-12 max-w-[54ch]">
-        <p className="text-base leading-relaxed text-failed">{t("error", { reason: indexError })}</p>
+        <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
+          <WarningMark className="mt-[5px]" />
+          <span className="min-w-0">{t("error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+        </p>
+        <FailureDetails reason={indexError} className="ms-[24px] mt-2" />
         <IndexRetry said={indexError} />
       </div>
     );
@@ -154,7 +168,11 @@ export function Grid({
 
       {problem === null ? null : (
         <div className="mt-6 max-w-[54ch]">
-          <p className="text-base leading-relaxed text-failed">{t("error", { reason: problem })}</p>
+          <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
+            <WarningMark className="mt-[5px]" />
+            <span className="min-w-0">{t("error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+          </p>
+          <FailureDetails reason={problem} className="ms-[24px] mt-2" />
           {/* The next page knows how to fetch itself, so the retry asks the
               action again rather than redrawing the whole sheet and losing the
               pages already under the reader. */}

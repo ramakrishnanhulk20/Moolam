@@ -1,7 +1,17 @@
 import { getTranslations } from "next-intl/server";
+import { FailureDetails } from "@/components/studio/FailureDetails";
+import { WarningMark } from "@/components/WarningMark";
 import type { RegistryCounts } from "@/lib/data/passports";
 import type { PictureSplit } from "./plates";
 import { isMixedView, type ExploreView } from "./query";
+
+/**
+ * The reason's place while the counts sentence is formatted. It is cut out again
+ * with the colon before it, so the translated sentence stands alone in every
+ * language and the library's English waits under Details.
+ */
+const REASON_SLOT = "\uE001";
+const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * The head of the page: what this list is, how big the registry is, how it
@@ -80,12 +90,20 @@ export async function Masthead({
         className="mt-2.5 sm:mt-10 lg:mt-5 lg:flex lg:flex-wrap lg:items-baseline lg:gap-x-4 lg:gap-y-2"
       >
         {countsError !== null || counts === null ? (
-          <p
-            className="rise max-w-[60ch] border-t border-line pt-5 text-base leading-relaxed text-failed sm:pt-6 lg:max-w-none lg:flex-1 lg:border-t-0 lg:pt-0"
+          <div
+            className="rise max-w-[60ch] border-t border-line pt-5 sm:pt-6 lg:max-w-none lg:flex-1 lg:border-t-0 lg:pt-0"
             style={{ animationDelay: "180ms" }}
           >
-            {t("countsError", { reason: countsError ?? t("countsMissing") })}
-          </p>
+            <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
+              <WarningMark className="mt-[5px]" />
+              <span className="min-w-0">
+                {countsError === null
+                  ? t("countsError", { reason: t("countsMissing") })
+                  : t("countsError", { reason: REASON_SLOT }).replace(REASON_CUT, "")}
+              </span>
+            </p>
+            {countsError === null ? null : <FailureDetails reason={countsError} className="ms-[24px] mt-2" />}
+          </div>
         ) : (
           <div
             className="rise sm:border-t sm:border-line sm:pt-6 lg:flex lg:flex-1 lg:flex-wrap lg:items-baseline lg:gap-x-10 lg:gap-y-2 lg:border-t-0 lg:pt-0"

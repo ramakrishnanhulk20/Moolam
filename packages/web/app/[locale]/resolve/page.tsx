@@ -4,6 +4,7 @@ import type { Hex } from "viem";
 import { WalletProvider } from "@/components/providers/WalletProvider";
 import { ResolveConsole } from "@/components/resolve/ResolveConsole";
 import { ToolOpening } from "@/components/studio/ToolOpening";
+import { WarningMark } from "@/components/WarningMark";
 import { reason } from "@/lib/chain/client";
 import { resolver as readResolver } from "@/lib/chain/registry";
 import { openDisputeQueue, type OpenDispute } from "@/lib/disputes/queue";
@@ -80,5 +81,10 @@ async function Shell({ locale, children }: { locale: string; children: React.Rea
 }
 
 function Notice({ text }: { text: string }) {
-  return <p className="mt-8 max-w-[58ch] text-sm leading-relaxed text-failed">{text}</p>;
+  return (
+    <p className="mt-8 flex max-w-[58ch] items-start gap-2.5 text-base leading-relaxed text-failed">
+      <WarningMark className="mt-[5px]" />
+      <span className="min-w-0">{text}</span>
+    </p>
+  );
 }

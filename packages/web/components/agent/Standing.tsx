@@ -1,5 +1,6 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import { IndexRetry } from "@/components/IndexRetry";
+import { FailureDetails } from "@/components/studio/FailureDetails";
 import { WarningMark } from "@/components/WarningMark";
 import { HEX_MARK, withHex } from "@/components/agents/hex";
 import { REPUTATION_REGISTRY, MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
@@ -8,6 +9,14 @@ import { Link } from "@/lib/i18n/routing";
 
 /** Where the formula behind the trust score is written out in full, as on the Agents page. */
 const TRUST_DOC = "/docs/developers/envio-indexer#the-trust-score";
+
+/**
+ * The reason's place while a failure sentence is formatted. It is cut out again
+ * with the colon before it, so the translated sentence stands alone in every
+ * language and the library's English waits under Details.
+ */
+const REASON_SLOT = "\uE001";
+const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 export interface Reputation {
   count: bigint;
@@ -52,8 +61,9 @@ export async function Standing({
             <div data-index-unread className="mt-6 max-w-[46ch]">
               <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
                 <WarningMark className="mt-[3px]" />
-                <span className="min-w-0">{t("index.error", { reason: recordError })}</span>
+                <span className="min-w-0">{t("index.error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
               </p>
+              <FailureDetails reason={recordError} className="ms-[24px] mt-2" />
               {/* The one way back on this page. The pictures further down come
                   from the same index, and a second countdown there would ask
                   the shared endpoint twice for the same page. */}
@@ -114,10 +124,13 @@ export async function Standing({
           </p>
 
           {reputationError !== null ? (
-            <p className="mt-6 flex max-w-[46ch] items-start gap-2.5 text-base leading-relaxed text-failed">
-              <WarningMark className="mt-[3px]" />
-              <span className="min-w-0">{t("reputation.error", { reason: reputationError })}</span>
-            </p>
+            <div className="mt-6 max-w-[46ch]">
+              <p className="flex items-start gap-2.5 text-base leading-relaxed text-failed">
+                <WarningMark className="mt-[3px]" />
+                <span className="min-w-0">{t("reputation.error", { reason: REASON_SLOT }).replace(REASON_CUT, "")}</span>
+              </p>
+              <FailureDetails reason={reputationError} className="ms-[24px] mt-2" />
+            </div>
           ) : reputation === null || reputation.count === 0n ? (
             <p className="mt-6 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("reputation.empty")}</p>
           ) : (

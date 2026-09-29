@@ -5,12 +5,12 @@ import dynamic from "next/dynamic";
 import { useTranslations } from "next-intl";
 import { useEffect, useRef, useState } from "react";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
-import { reason as oneLine } from "@/lib/chain/client";
 import { useStudio, type Studio as StudioState } from "@/lib/studio/useStudio";
 import { holdsUnsavedFile, isBusy, type Mode } from "@/lib/studio/flow";
 import { useUnsavedFileWarning } from "@/lib/sealed/save";
 import { warmAfterPress } from "./afterPress";
 import { useWide } from "./layout";
+import { FailureDetails } from "./FailureDetails";
 import { EmptyReceipt } from "./ReceiptFrame";
 import { SignedOut } from "./SignedOut";
 import { NoAccount, Notice, StudioBox, StudioWaiting } from "./StudioFrame";
@@ -38,6 +38,14 @@ const RegisterPanel = dynamic(loadRegister);
 // loses its height under the card.
 const Receipt = dynamic(loadReceipt, { loading: () => <EmptyReceipt /> });
 const YourPassports = dynamic(loadPassports);
+
+/**
+ * The reason's place while the passkey sentence is formatted. It is cut out
+ * again with the colon before it, so the translated sentence stands alone in
+ * every language and Monad's own English waits under Details.
+ */
+const REASON_SLOT = "\uE001";
+const REASON_CUT = /\s*[:\uFF1A]?\s*\uE001/u;
 
 /**
  * The studio with the wallet SDK above it: the hook, the sign in, and every
@@ -157,7 +165,8 @@ export function LiveStudio({ initialMode }: { initialMode?: Mode }) {
             <StudioWaiting text={t("passkey.reading")} />
           ) : studio.binding.status === "unreadable" ? (
             <div>
-              <Notice text={t("passkey.unreadable", { reason: oneLine(studio.binding.error ?? "") })} tone="failed" />
+              <Notice text={t("passkey.unreadable", { reason: REASON_SLOT }).replace(REASON_CUT, "")} tone="failed" />
+              {studio.binding.error ? <FailureDetails reason={studio.binding.error} className="ms-[24px] mt-2" /> : null}
               <button
                 type="button"
                 onClick={studio.binding.refresh}

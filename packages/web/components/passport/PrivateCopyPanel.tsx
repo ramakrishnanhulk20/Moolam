@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useCallback, useReducer, useRef } from "react";
 import type { Hex } from "viem";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
+import { reason as oneLine } from "@/lib/chain/client";
 import { useRouter } from "@/lib/i18n/routing";
 import { ownsPassport } from "@/lib/passport/owner";
 import { refreshPassport } from "@/lib/passport/refresh";
@@ -370,7 +371,7 @@ function FailureLine({ failure, signIn }: { failure: PrivateCopyFailure; signIn:
       </p>
       {failure.reason === undefined ? null : (
         <p className="mt-2 max-w-[52ch] break-words font-mono text-[11px] leading-relaxed text-text-faint">
-          {failure.reason}
+          {oneLine(failure.reason)}
         </p>
       )}
       {failure.next === "signIn" ? (
