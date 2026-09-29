@@ -315,17 +315,34 @@ function OpenPassport({ id, title }: { id: string; title: string | null }) {
   );
 }
 
-/** The right half, with the sponsor line along its foot whatever was read above it. */
+/**
+ * The panel's content box on a laptop: the first screen under the header, less
+ * the panel's own padding. The board is spread over exactly this, whatever the
+ * column beside it grows to.
+ */
+export const BOARD_SPREAD = "lg:min-h-[calc(95svh-var(--header-h))]";
+
+/**
+ * The right half, with the sponsor line along its foot whatever was read above it.
+ *
+ * The panel still runs the full height of the row, so its ground and its rule
+ * go down beside a tall answer. What is on it is spread over the first screen
+ * only: spread over the whole row, an answer that grew the left column pushed
+ * the space between the live mark and the exhibits open and the board dropped
+ * about 100 px the moment the answer landed.
+ */
 function Panel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grain relative flex flex-col justify-between gap-6 overflow-hidden border-t border-line bg-bg-sunken px-5 py-10 sm:px-8 lg:gap-3 lg:border-l lg:border-t-0 lg:px-12 lg:py-[2.5svh]">
+    <div className="grain relative overflow-hidden border-t border-line bg-bg-sunken px-5 py-10 sm:px-8 lg:border-l lg:border-t-0 lg:px-12 lg:py-[2.5svh]">
       {/* A faint rule grid, the board the exhibits are pinned to. */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.35] [background-image:linear-gradient(var(--line)_1px,transparent_1px),linear-gradient(90deg,var(--line)_1px,transparent_1px)] [background-size:48px_48px]"
       />
-      <div className="relative lg:flex lg:grow lg:flex-col">{children}</div>
-      <Billing className="relative border-t border-line pt-5 lg:pt-3" />
+      <div data-board-spread className={`relative flex flex-col justify-between gap-6 lg:gap-3 ${BOARD_SPREAD}`}>
+        <div className="relative lg:flex lg:grow lg:flex-col">{children}</div>
+        <Billing className="relative border-t border-line pt-5 lg:pt-3" />
+      </div>
     </div>
   );
 }
