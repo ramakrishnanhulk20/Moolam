@@ -41,7 +41,7 @@
     "languageIs": "{language}、言語を変える",
     "themeDarkAction": "テーマ: ダーク、ライトテーマに切り替える",
     "themeLightAction": "テーマ: ライト、ダークテーマに切り替える",
-    "languageOpening": "Opening {language}"
+    "languageOpening": "{language} に切り替え中"
   },
   "shell": {
     "label": "セクション",
@@ -113,9 +113,9 @@
     "yes": "はい",
     "no": "いいえ",
     "registeredPicture": "登録された画像",
-    "details": "Details",
-    "openingPage": "Opening the page",
-    "tryAgain": "Try again",
+    "details": "詳細",
+    "openingPage": "ページを開いています",
+    "tryAgain": "もう一度試す",
     "copyFailed": "Could not copy. Select the text and copy it yourself."
   },
   "kind": {
@@ -175,12 +175,12 @@
       "manifest": "Content Credentials 付き",
       "rechecked": "チェーン上で再検証済み",
       "chainlink": "Chainlink ワークフローが再検証",
-      "disputed": "異議あり"
+      "disputed": "異議が認められた"
     },
     "legend": {
       "manifest": "Content Credentials 付き",
       "rechecked": "チェーン上で再検証済み",
-      "disputed": "異議あり",
+      "disputed": "異議が認められた",
       "consent": "AI 利用の表明、四つの用途に四つの印"
     },
     "untitled": "無題",
@@ -204,10 +204,10 @@
       "word": "封印済み"
     },
     "marksToggle": "印の意味",
-    "searchAnyLabel": "Search by title or passport id",
-    "searchAnyPlaceholder": "A title or a passport id",
-    "noMatchQuery": "No passport matches {query}.",
-    "backToAll": "Back to all pictures"
+    "searchAnyLabel": "タイトルかパスポート id で検索",
+    "searchAnyPlaceholder": "タイトルまたはパスポート id",
+    "noMatchQuery": "「{query}」に一致するパスポートはありません。",
+    "backToAll": "すべての画像に戻る"
   },
   "agents": {
     "kicker": "エージェント",
@@ -275,7 +275,7 @@
         "chainlink": "Chainlink が再検証",
         "envio": "Envio がインデックス"
       },
-      "unstarted": "The check did not start. Reload the page and press again."
+      "unstarted": "確認が始まりませんでした。ページを再読み込みして、もう一度押してください。"
     }
   },
   "story": {
@@ -285,12 +285,12 @@
       "title": "パスポートのしくみ"
     },
     "scrollCue": "スクロール",
-    "noWebgl": "このブラウザでは 3D を開けなかったので、物語はこのページの形でお届けします。並ぶ数字はどれも同じライブの読み取りです。",
+    "noWebgl": "このブラウザでは映像を 3D で再生できないため、物語をこのページの形でお届けします。並ぶ数字はどれも、映像と同じくライブで読み取ったものです。",
     "made": {
       "kicker": "生まれる",
       "title": "この一枚は AI が描きました。",
-      "body": "誰かがその絵を見るより先に、エージェント {agent} が自分のエンクレーブの中で指紋に署名しました。",
-      "readout": "生成エージェント {agent}、ERC-8004 アイデンティティレジストリ",
+      "body": "エージェント {agent} がこの絵を描き、パスポートが書かれる前に、Privy が預かる自分のウォレットで指紋に署名しました。",
+      "readout": "生成エージェント {agent}、公開のエージェント登録簿 (ERC-8004) に掲載",
       "titleNoAgent": "この一枚は人が登録しました。",
       "bodyNoAgent": "この指紋に署名したエージェントはいません。作者がアップロードしたファイルから登録されたもので、パスポートにもそう書かれています。",
       "readoutNoAgent": "このパスポートに生成エージェントはありません"
@@ -328,7 +328,7 @@
         "social-chain": "SNS で二度共有したコピー",
         "resize-10": "十分の一に縮めたコピー"
       },
-      "similarity": "類似度 {value}: {result}",
+      "similarity": "64 ビット中 {value} ビットの差: {result}",
       "matched": "一致しました",
       "notMatched": "一致しませんでした",
       "attestation": "Chainlink CRE ワークフローが再確認し、答えをチェーンに書きました: {result}、差は {distance} ビットです。",
@@ -344,7 +344,7 @@
       "noScore": "スコアはまだありません",
       "counts": "{rechecks, plural, other {再確認 # 件}}、{passports, plural, other {パスポート # 冊}}",
       "body": "チェーンに書き戻された再確認はすべてこのエージェントの id に数えられ、インデックスがそれを足し上げてこのスコアにします。評判は仕事の積み重ねであって、サイト上の主張ではありません。",
-      "noAgent": "この一枚を作ったエージェントはいないので、結び付くエージェントの評判もありません。エージェントが署名した画像なら、検証サービスの確認はすべてそのエージェント自身の id のもとで ERC-8004 レピュテーションレジストリに書き戻されます。"
+      "noAgent": "この一枚を作ったエージェントはいないので、結び付くエージェントの評判もありません。エージェントが署名した画像なら、Chainlink の再確認はどれもそのエージェント自身のスコアに数えられます。"
     },
     "tryIt": {
       "kicker": "試す",
@@ -353,8 +353,8 @@
       "samples": "この中から試すこともできます",
       "hint": "JPEG、PNG、WebP。Moolam 検証サービスに送られ、三通りの指紋を取り、保存はしません。",
       "pending": "指紋を取ってレジストリを探しています",
-      "offline": "検証サービスが応答しません。リポジトリの直下で npm run dev:verifier を実行してから、もう一度ファイルを落としてください。",
-      "error": "確認は動きませんでした: {reason}",
+      "offline": "検証サービスが今は応答していません。何も保存していません。1 分ほど待ってから、もう一度ファイルを落としてください。",
+      "error": "確認は動きませんでした。1 分ほどしてからお試しください。",
       "tooLarge": "このファイルは 20 MB を超えています。もっと小さいコピーで試してください。",
       "notAnImage": "これは画像ファイルではありません。JPEG、PNG、WebP を落としてください。",
       "empty": "このファイルは空です。画像をもう一度選んでください。",
@@ -364,7 +364,7 @@
       "noMatchBody": "レジストリのどのパスポートもこの画像と一致しません。生成器から出たまま一度も登録されていないファイルは、ちょうどこう見えます。",
       "exact": "バイトまで同一",
       "match": "確度",
-      "noManifest": "このファイルに C2PA マニフェストは残っていません。それでも記録は見つかりました。",
+      "noManifest": "このファイルに Content Credentials は残っていません。それでも記録は見つかりました。",
       "openPassport": "このパスポートを開く"
     },
     "close": {
@@ -374,10 +374,10 @@
       "verify": "画像を検証",
       "proof": "証拠を見る",
       "passports": "パスポート",
-      "attestations": "チェーン上の検証",
+      "attestations": "チェーン上の再確認",
       "chain": "Monad 上、チェーン {chainId}",
       "unread": "読み取れず",
-      "error": "インデックスを読めませんでした: {reason}"
+      "error": "いまインデックスを読めませんでした。少ししてからページを再読み込みしてください。"
     },
     "skip": "映像をとばす",
     "failed": {
@@ -398,19 +398,19 @@
     "none": "この画像に一致するパスポートはありません。",
     "noneHint": "この画像はレジストリにありません。Moolam はまだ切り抜きを照合しないので、登録済みの画像の一部分は見つかりません。画像全体でお試しください。",
     "confidence": "確度",
-    "phashDistance": "知覚ハッシュ",
-    "blockhashDistance": "ブロックハッシュ",
+    "phashDistance": "見た目の指紋 (pHash)",
+    "blockhashDistance": "配置の指紋 (ブロックハッシュ)",
     "variant": "向き",
-    "manifestPresent": "署名済みの C2PA 記録はこのファイルの中に残っています。",
-    "manifestMissing": "署名済みの C2PA 記録はこのファイルから取り除かれています。それでも指紋は一致しました。",
+    "manifestPresent": "このファイルには、今も Content Credentials (C2PA) が付いています。",
+    "manifestMissing": "このファイルの Content Credentials (C2PA) は取り除かれています。それでも指紋は一致しました。",
     "openPassport": "パスポートを開く",
     "error": "確認は動きませんでした: {reason}",
-    "offline": "検証サービスが応答しません。リポジトリの直下で npm run dev:verifier を実行してから、もう一度お試しください。",
+    "offline": "検証サービスが今は応答していません。何も保存していません。1 分ほどしてからお試しください。",
     "kicker": "どのコピーでも確認",
     "rail": "検証",
     "dropTitle": "画像を選ぶか、ここにドロップ。",
     "replace": "別のものを選ぶ",
-    "privacy": "ファイルはブラウザから Moolam の検証サービス {host} へ直接送られます。そこで指紋を取り、登録簿と照合し、保存はしません。",
+    "privacy": "ファイルはブラウザから Moolam の検証サービス ({host}) へ直接送られます。そこで指紋を取り、登録簿と照合し、保存はしません。",
     "checkingHeading": "読むのは絵であって、ファイル名ではありません。",
     "checkingDetail": "三通りの指紋、八通りの向き、そして登録済みのパスポート全件の検索。数秒です。",
     "idleHeading": "まだ答えはありません",
@@ -447,10 +447,10 @@
       "notAnImage": "このファイルは画像として読めませんでした。JPEG、PNG、WebP をご利用ください。",
       "empty": "このファイルは空です。画像をもう一度選んでください。",
       "rateLimited": "ここからの確認が多すぎます。一分待ってからもう一度お試しください。",
-      "badRequest": "検証サービスはこのリクエストを受け取りませんでした。",
-      "badResponse": "検証サービスの返した形を、このページは知りません。",
-      "serviceFailed": "検証サービスはこの確認を終えられませんでした。",
-      "refused": "検証サービスはこのリクエストを拒否しました。",
+      "badRequest": "検証サービスはこのファイルを受け取りませんでした。JPEG、PNG、WebP の画像を選んで、もう一度お試しください。",
+      "badResponse": "検証サービスが、このページでは読めない形で応答しました。1 分ほどしてからお試しください。",
+      "serviceFailed": "検証サービスはこの確認を終えられませんでした。1 分ほどしてからお試しください。",
+      "refused": "検証サービスはこのリクエストを拒否しました。ページを再読み込みして、もう一度お試しください。",
       "serviceFault": "これは Moolam 側の障害で、あなたの画像の問題ではありません。何も保存していません。1 分ほどしてからお試しください。",
       "busy": "Moolam はほかの画像の確認で混み合っています。1 分ほどしてからお試しください。"
     },
@@ -478,7 +478,7 @@
       "tail": {
         "open": "AI 利用に開いている、学習も含めて",
         "closed": "AI 学習には使わせない",
-        "ask": "まず尋ねること、条件あり",
+        "ask": "まず保有者に尋ねる",
         "mixed": "一部の用途は許可、一部は不可",
         "none": "AI 利用については何もなし"
       }
@@ -491,8 +491,8 @@
       "count": "{count, plural, other {再確認 # 件}}",
       "none": "まだ再確認されていません。",
       "noneNote": "この画像を取得して指紋を計算し直した独立のワークフローは、まだありません。",
-      "matched": "{at} に Chainlink CRE のワークフローが再確認しました。画像を取り直し、指紋を計算し直して一致、64 ビット中 {count} ビットの差でした。",
-      "mismatched": "{at} に Chainlink CRE のワークフローがこの画像を取り直し、指紋を計算し直したところ、一致しませんでした。64 ビット中 {count} ビットの差です。",
+      "matched": "{at} に Chainlink (CRE ワークフロー) が再確認しました。自分で画像を取得し、指紋を取り直して一致、64 ビット中 {count} ビットの差でした。",
+      "mismatched": "{at} に Chainlink (CRE ワークフロー) が再確認しました。自分で画像を取得し、指紋を取り直しましたが一致せず、64 ビット中 {count} ビットの差でした。",
       "link": "再確認の記録を見る"
     },
     "dispute": {
@@ -511,31 +511,31 @@
       "matched": "このパスポートは封印して登録され、{date} に保有者が画像を公開しました。"
     },
     "share": {
-      "copy": "Copy a link to this answer",
-      "copied": "Link copied"
+      "copy": "この答えへのリンクをコピー",
+      "copied": "リンクをコピーしました"
     },
-    "noAccount": "No account needed",
-    "noAccountWhy": "A check reads the public registry on Monad and keeps nothing of your file.",
+    "noAccount": "アカウント不要",
+    "noAccountWhy": "確認は Monad 上の公開レジストリを読み、あなたのファイルは何も残しません。",
     "limits": {
-      "label": "What a match cannot prove",
-      "line": "A match shows who registered this picture on Monad, and when. It does not prove they made it. A wrong passport can be challenged from its own page."
+      "label": "一致が証明できないこと",
+      "line": "一致が示すのは、誰がいつこの画像を Monad に登録したかです。その人が作ったことまでは証明しません。誤ったパスポートには、そのページから異議を申し立てられます。"
     },
     "wait": {
-      "fingerprint": "Fingerprinting the file",
-      "turns": "Trying all eight turns and flips",
-      "search": "Searching every passport",
-      "seconds": "{seconds, plural, =1 {# second} other {# seconds}}",
-      "slow": "Slower than usual. This page waits up to two minutes for the verify service before it gives up."
+      "fingerprint": "ファイルの指紋を取っています",
+      "turns": "回転と反転の八通りをすべて試しています",
+      "search": "すべてのパスポートを探しています",
+      "seconds": "{seconds, plural, other {# 秒}}",
+      "slow": "いつもより時間がかかっています。このページは検証サービスを最大 2 分待ってから打ち切ります。"
     },
-    "dropAnywhere": "Let go anywhere to check it",
-    "paste": "Or paste a picture you copied",
-    "dropTitleTouch": "Choose an image to check it.",
-    "checkAgain": "Check this file again",
+    "dropAnywhere": "どこで離しても確認します",
+    "paste": "コピーした画像を貼り付けることもできます",
+    "dropTitleTouch": "画像を選んで確認。",
+    "checkAgain": "このファイルをもう一度確認",
     "compare": {
-      "yours": "Your copy",
-      "registered": "The registered picture",
-      "drag": "Drag to compare",
-      "hold": "Hold to compare",
+      "yours": "あなたのコピー",
+      "registered": "登録された画像",
+      "drag": "ドラッグして比較",
+      "hold": "長押しで比較",
       "label": "Compare your copy with the registered picture"
     }
   },
@@ -543,7 +543,7 @@
     "title": "パスポート",
     "pending": "レジストリを読んでいます。",
     "notFound": "その id のパスポートはありません。id を確かめるか、検証ページからたどってください。",
-    "error": "レジストリを読めませんでした: {reason}。ページを再読み込みしてください。",
+    "error": "Moolam は今、このパスポートを Monad から読み取れませんでした。もう一度試すか、一覧を開いてください。",
     "creator": "制作者",
     "owner": "保有者",
     "agent": "生成エージェント",
@@ -558,10 +558,10 @@
     "disputed": "異議あり",
     "attestations": {
       "heading": "別の誰かが、もう一度確かめました",
-      "empty": "このパスポートにはまだ検証が書かれていません。Chainlink のワークフローが画像を再確認したときに一件加わります。",
+      "empty": "このパスポートには、まだ再確認が書かれていません。Chainlink のワークフローが画像を再確認すると、ここに一件書き込まれます。",
       "matched": "一致しました",
       "notMatched": "一致しませんでした",
-      "distance": "64 ビット中 {distance} ビット",
+      "distance": "64 ビット中 {distance} ビットの差",
       "receiver": "Monad に書き込んだのは Moolam の Chainlink レシーバー",
       "at": "日時",
       "kicker": "第二の意見",
@@ -677,7 +677,7 @@
         "tooLarge": "このファイルは 20 MB の上限を超えています。もっと小さいコピーを選んでください。",
         "fingerprintUnstable": "この編集は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。そのため Chainlink の再確認でもコピーの検索でも見つかりません。何もピン留めしておらず、何も送信していません。横方向にもっと細部のある編集なら登録できます。",
         "signedFileTooLarge": "パスポートの署名を加えると、このファイルは確認で読み戻せる上限の 20 MB を超えてしまいます。小さく書き出してもう一度お試しください。何もピン留めしておらず、何も送信していません。",
-        "thumbnailTooLarge": "この画像は、Chainlink の検証役が取得できるほど小さなサムネイルに縮められないため、そのパスポートは再確認できません。何もピン留めしておらず、何も送信していません。",
+        "thumbnailTooLarge": "この画像は、Chainlink が再確認のために取得できるほど小さなサムネイルに縮められないため、そのパスポートは再確認できません。何もピン留めしておらず、何も送信していません。",
         "notAnImage": "これは画像ファイルではありません。JPEG、PNG、WebP を選んでください。",
         "empty": "このファイルは空です。画像をもう一度選んでください。",
         "rateLimited": "今はここからの要求が多すぎます。少し待ってからお試しください。",
@@ -703,8 +703,8 @@
       "lineageNote": "編集を追加できるのは所有者だけです。アプリの Privy の許可でできるのは編集の追加だけで、それ以外は何もできません。"
     },
     "untitled": "無題",
-    "noPicture": "いま画像の保存先が応答していません",
-    "fingerprintVersion": "指紋の方式 {version}",
+    "noPicture": "いま画像の保存先が応答していません。1 分ほどしてからお試しください",
+    "fingerprintVersion": "指紋のバージョン {version}",
     "record": "この記録",
     "passkeyBound": "この制作者は、自分のアカウントに結び付いたパスキーで署名します。",
     "passkeyNone": "この制作者のアカウントにパスキーは結び付けられていません。",
@@ -713,12 +713,12 @@
     "about": "この画像について",
     "prompt": "プロンプト",
     "fingerprints": "指紋",
-    "fingerprintsBody": "検証サービスは画像を取得し、ハッシュを取り直し、これらと突き合わせます。ここに、ファイル名やメタデータの主張に頼るものは一つもありません。",
+    "fingerprintsBody": "誰でも画像を取得し、指紋を取り直して、これらと突き合わせられます。Chainlink の再確認がしているのは、まさにそれです。ここに、ファイル名やメタデータの主張に頼るものは一つもありません。",
     "exactHash": "ファイルそのものの指紋 (SHA-256)",
     "passportId": "パスポート id",
     "tokenId": "このパスポートは、同じ id を持つ Monad 上の NFT でもあります",
     "standing": {
-      "verified": "チェーン上の検証者が確認済み",
+      "verified": "チェーン上の再確認で一致しました",
       "mismatched": "再確認で一致しませんでした",
       "disputed": "異議あり",
       "unverified": "まだ再確認されていません"
@@ -730,7 +730,7 @@
       "choose": "画像を選ぶ",
       "hint": "縮小、再エンコード、回転、反転されたコピーは今も一致します。切り抜きはまだです。",
       "checking": "このコピーを確認しています",
-      "failed": "確認は動きませんでした。",
+      "failed": "確認は動きませんでした。1 分ほどしてから試すか、検証ページでこのコピーを確かめてください。",
       "tooLarge": "このファイルは 20 MB の上限を超えています。もっと小さいコピーを送ってください。",
       "notAnImage": "これは画像ファイルではありません。JPEG、PNG、WebP を落としてください。",
       "empty": "このファイルは空です。画像をもう一度選んでください。",
@@ -738,7 +738,7 @@
       "same": "はい。同じ絵です。",
       "sameExact": "はい。バイト単位で、このファイルそのものです。",
       "different": "いいえ。このコピーは別のパスポートのものです。",
-      "openOther": "Open that passport"
+      "openOther": "そのパスポートを開く"
     },
     "dispute": {
       "kicker": "異議申し立て",
@@ -860,7 +860,7 @@
       "chip": {
         "open": "AI に開放",
         "closed": "AI 利用なし",
-        "ask": "条件付き",
+        "ask": "まず尋ねる",
         "mixed": "用途ごと",
         "none": "未表明"
       },
@@ -880,12 +880,12 @@
         "unspecified": "未表明",
         "allowed": "許可",
         "notAllowed": "不可",
-        "constrained": "条件付き"
+        "constrained": "まず尋ねる"
       },
       "writtenOn": "{when} に記入",
       "nothingBy": "その時点では何も表明されていません",
       "asking": "その日についてチェーンに問い合わせています",
-      "askFailed": "その日についてチェーンから返事がありませんでした",
+      "askFailed": "その日についてチェーンから返事がありませんでした。定規を動かして、もう一度尋ねてください",
       "scrub": "定規をドラッグするか、矢印キーを使ってください",
       "scrubStep": "、一目盛りで一日",
       "scrubTouch": "定規をドラッグ",
@@ -912,7 +912,7 @@
         "notHolder": "このウォレットはもうこのパスポートを持っていません。書けるのは保有者だけです。",
         "tooSoon": "同じ画像について、登録簿は同じウォレットから十分に一度しか表明を受け取りません。次に書けるのは {at} です。",
         "conditionsRequired": "条件付きの表明には、その条件を書く必要があります。書いてからもう一度送ってください。",
-        "conditionsNotAllowed": "条件は、条件を求める表明のためのものです。本文を消すか、まず私に尋ねるを選んでください。",
+        "conditionsNotAllowed": "条件は、条件を求める表明のためのものです。本文を消すか、「まず私に尋ねて」を選んでください。",
         "conditionsTooLong": "条件が登録簿の保つ 256 バイトを超えています。短くしてから送ってください。",
         "conditionsNotPrintable": "使えるのは A から Z までの英字、数字、一般的な句読点だけです。改行やアクセント付きの文字を外してから送ってください。",
         "reverted": "Monad はこの取引を取り込みましたが、何も起きませんでした。何も書かれていないので、もう一度試しても安全です。",
@@ -1018,7 +1018,7 @@
         "noPassport": "この ID のパスポートはレジストリにありません。",
         "notSealed": "このパスポートの画像はすでに公開されています。公開するものは残っていません。",
         "alreadyUnsealed": "このパスポートはすでに公開済みです。ページを開き直すと画像が見られます。",
-        "thumbnailTooLarge": "この画像は Chainlink の検証が取得できるほど小さなサムネイルにできません。公開すると、誰も再確認できないパスポートが残ってしまいます。何もピン留めしていません。",
+        "thumbnailTooLarge": "この画像は、Chainlink が再確認のために取得できるほど小さなサムネイルに縮められません。公開すると、誰も再確認できないパスポートが残ってしまいます。何もピン留めしていません。",
         "quota": "本日は {limit} 件中 {used} 件です。枠は {at} に戻ります。",
         "todayFull": "本日の公開枠は全員分を使い切りました。何もピン留めしておらず、何も消費していません。明日もう一度お試しください。",
         "pinFailed": "画像を IPFS にピン留めできなかったため、何も公開していません。",
@@ -1094,28 +1094,28 @@
       "chainlink": "Chainlink",
       "unknownWriter": "不明な書き手"
     },
-    "ownerHint": "Made this? Sign in to manage it.",
+    "ownerHint": "作ったのはあなたですか。サインインすると管理できます。",
     "share": {
-      "copy": "Copy link",
-      "copied": "Link copied"
+      "copy": "リンクをコピー",
+      "copied": "リンクをコピーしました"
     },
-    "downloading": "Fetching the original from IPFS. This can take up to a minute.",
-    "downloadFailed": "The original did not come back from IPFS just now. Try again in a minute.",
-    "titleUnread": "Title not read yet"
+    "downloading": "IPFS から元のファイルを取得しています。最大 1 分かかることがあります。",
+    "downloadFailed": "いま IPFS から元のファイルが返ってきませんでした。1 分ほどしてからお試しください。",
+    "titleUnread": "タイトルはまだ読めていません"
   },
   "agent": {
     "title": "エージェント",
-    "notFound": "ERC-8004 アイデンティティレジストリに、その id のエージェントはいません。",
-    "error": "アイデンティティレジストリを読めませんでした: {reason}。ページを再読み込みしてください。",
+    "notFound": "公開のエージェント登録簿 (ERC-8004) に、その id のエージェントはいません。id を確かめるか、エージェント一覧を開いてください。",
+    "error": "Moolam は今、このエージェントを公開のエージェント登録簿 (ERC-8004) から読み取れませんでした。もう一度試すか、エージェント一覧を開いてください。",
     "owner": "保有者",
-    "cardMissing": "その URI からエージェントカードを読めませんでした。",
+    "cardMissing": "このエージェントのカードを、保存先から読めませんでした。少ししてからお試しください。",
     "reputation": {
-      "heading": "ERC-8004 レジストリのフィードバック",
-      "empty": "このエージェントへのフィードバックはまだ記録されていません。検証サービスは確認するたびに一件書きます。",
+      "heading": "公開エージェント評価ボード (ERC-8004) のフィードバック",
+      "empty": "このエージェントへのフィードバックはまだ記録されていません。Moolam はここに手作業でフィードバックを書きます。確認のたびに書くわけではありません。",
       "error": "レピュテーションレジストリを読めませんでした: {reason}。",
       "body": "フィードバックは Monad の公開エージェント評価ボード (ERC-8004 評判レジストリ) に、Moolam のチェックとして記録されています。このページはその要約を読みます。隣の信頼スコアはインデックス自身の再検証から出したものなので、二つを足し合わせることはありません。",
       "registry": "レジストリ {address}",
-      "secondary": "検証側がチェーンに書いたもので、再確認のスコアではありません",
+      "secondary": "チェーンに手作業で書かれたフィードバックで、再確認のスコアとは別です",
       "entries": "{count, plural, other {# 件}}",
       "latest": "最新の値"
     },
@@ -1155,7 +1155,7 @@
       "registry": "レジストリ {address}",
       "identity": "アイデンティティ {address}",
       "privy": "鍵の置き場所",
-      "privyBody": "これらの値はエージェント自身のカードから来ています。このアプリのものではありません。",
+      "privyBody": "このエージェントの鍵は Privy が預かり、Privy のポリシーが署名できるものを制限しています。これらの id はエージェント自身のカードから来ています。このアプリのものではありません。",
       "privyWallet": "Privy アカウント id",
       "privyPolicy": "このアカウントが署名できるもの"
     },
@@ -1163,19 +1163,19 @@
       "heading": "署名してきたもの",
       "source": "インデックスより",
       "empty": "このエージェントの名前が入ったパスポートはまだありません。",
-      "error": "インデックスを読めませんでした: {reason}。",
+      "error": "いまインデックスを読めませんでした。少ししてからお試しください。",
       "untitled": "無題",
       "noThumbnail": "サムネイルは未固定",
-      "showTest": "Show {count, plural, =1 {# test image} other {# test images}}",
-      "hideTest": "Hide the test images",
-      "onlyTest": "Every picture this agent has signed so far is a test image.",
-      "seeAll": "See all its pictures"
+      "showTest": "{count, plural, other {テスト画像 # 件を表示}}",
+      "hideTest": "テスト画像を隠す",
+      "onlyTest": "このエージェントがこれまでに署名した画像は、すべてテスト画像です。",
+      "seeAll": "このエージェントの画像をすべて見る"
     },
     "cardLabel": "エージェントカード",
     "cardInline": "このカードはトークン URI の中に入っているので、開く先はありません。",
     "cardShow": "カードの JSON を見る",
     "ipfsCid": "IPFS に保存された記録を開く",
-    "unnamedTitle": "Unnamed agent"
+    "unnamedTitle": "名前のないエージェント"
   },
   "studio": {
     "kicker": "スタジオ",
@@ -1183,7 +1183,7 @@
     "lede": "ここで登録した画像はどれも Monad 上に自分の記録を持ちます。指紋を取り、あなたが署名し、どのコピーからでもたどれます。",
     "opening": "アカウントを開いています",
     "noWallet": "サインインは済んでいますが、Monad 上にアカウントがまだ作られていません。ページを再読み込みするか、サインアウトしてもう一度サインインしてください。",
-    "notConfigured": "Privy が設定されていないため、ここでは誰もサインインできません。packages/web/.env.local に NEXT_PUBLIC_PRIVY_APP_ID を入れて、開発サーバーを再起動してください。",
+    "notConfigured": "この Moolam のサイトではサインインが無効になっているため、スタジオを開けません。画像の検証と一覧は、アカウントがなくても使えます。",
     "signOut": "サインアウト",
     "identity": {
       "account": "サインイン中",
@@ -1274,18 +1274,18 @@
       "body": "一度に一枚です。指紋を取って固定し、あなたがロック解除で署名し、Moolam が Monad へ送ります。",
       "drop": "画像をここに落としてください",
       "choose": "ファイルを選ぶ",
-      "hint": "JPEG、PNG、WebP、20 MB まで。Moolam は C2PA マニフェストを埋め込み、署名されたバイトの指紋を取り、ファイルを IPFS に固定します。",
+      "hint": "JPEG、PNG、WebP、20 MB まで。Moolam が Content Credentials (C2PA) を付け、署名したファイルの指紋を取り、公開ストレージ (IPFS) に保存します。",
       "replace": "別のものを選ぶ",
       "title": "タイトル",
       "titlePlaceholder": "この画像は何ですか",
-      "titleHint": "マニフェストとメタデータに入ります。あなたがその絵を呼ぶときの名前のままにしてください。",
+      "titleHint": "ファイルの Content Credentials とパスポートの記録に入ります。あなたがその絵を呼ぶときの名前のままにしてください。",
       "submit": "この画像を登録する",
       "balance": "アカウントの残高は {mon} MON です。",
       "steps": {
         "prepare": {
           "waiting": "ファイルの指紋を取って固定、十秒ほど",
           "running": "指紋を取って固定しています、十秒ほど",
-          "done": "指紋を取り、マニフェストを埋め込み、IPFS に固定しました",
+          "done": "指紋を取り、Content Credentials を付け、IPFS に保存しました",
           "failed": "ファイルの準備ができませんでした"
         },
         "sign": {
@@ -1318,8 +1318,8 @@
       "openAddress": "MonadVision のあなたのアカウント {wallet}",
       "openImage": "固定された画像",
       "another": "もう一枚登録する",
-      "balanceEmpty": "Your account holds 0 MON, so it cannot pay the fee itself. Send it a little MON first, or try again later.",
-      "anotherWaits": "Your word on AI use is still going to Monad. This opens once Monad shows it."
+      "balanceEmpty": "アカウントの残高が 0 MON のため、手数料を自分で払うことはできません。先にこのアカウントへ少し MON を送るか、あとでもう一度お試しください。",
+      "anotherWaits": "AI 利用についてのあなたの表明は、まだ Monad へ向かっています。Monad に表示されしだい、押せるようになります。"
     },
     "generate": {
       "kicker": "エージェント",
@@ -1337,7 +1337,7 @@
       },
       "title": "タイトル",
       "titlePlaceholder": "この絵を何と呼びますか",
-      "titleHint": "マニフェストとメタデータに、プロンプトと並んで入ります。",
+      "titleHint": "ファイルの Content Credentials とパスポートの記録に、プロンプトと並んで入ります。",
       "submit": "作って登録する",
       "quota": "本日 {limit} 枚中 {used} 枚",
       "quotaResets": "次の一枚は {time} に空きます。",
@@ -1464,7 +1464,7 @@
         },
         "generator": {
           "label": "エージェントの ID",
-          "line": "どの Moolam エージェントが描いたか、そしてどの ERC-8004 登録簿にいるかです。"
+          "line": "どの Moolam エージェントが描いたか、そしてそれを載せている公開のエージェント登録簿 (ERC-8004) です。"
         },
         "createdAt": {
           "label": "日付",
@@ -1472,7 +1472,7 @@
         },
         "training": {
           "label": "AI の利用についてのあなたの表明",
-          "line": "上で答えた四つの選択を、CAWG 標準の言葉にしたものです。"
+          "line": "上で答えた四つの選択を、AI 学習とデータマイニングのための規格 (CAWG) の言葉にしたものです。"
         },
         "sealed": {
           "label": "封という言葉",
@@ -1517,7 +1517,7 @@
         "label": "Monad 上で封印済み",
         "detail": "画像は公開されていません。Moolam はコピーを保持しません。",
         "detailPrivate": "画像は公開されていません。Moolam が保持するのは、あなたが求めた小さな非公開コピーだけです。",
-        "fingerprintDetail": "このブラウザから出ていない署名済みファイルから取りました。C2PA マニフェストの埋め込み: {manifest}。",
+        "fingerprintDetail": "このブラウザから出ていない署名済みファイルから取りました。Content Credentials (C2PA) の付与: {manifest}。",
         "privateLabel": "非公開コピーを保持",
         "privateDetail": "Chainlink の非公開の再確認のためです。<page>パスポートのページからいつでも削除できます。</page>",
         "noPrivateLabel": "非公開コピーなし",
@@ -1534,16 +1534,16 @@
       "walletDetail": "サインイン時に作られました。シードフレーズはなく、Moolam が持つ鍵もありません。",
       "passkey": "パスキーを結び付け",
       "passkeyDetail": "この端末のロック解除の公開側の半分を、レジストリが保管しています。",
-      "fingerprint": "厳密なハッシュ",
-      "fingerprintDetail": "{width} かける {height} ピクセル。C2PA マニフェストの埋め込み: {manifest}。",
+      "fingerprint": "ファイルそのものの指紋 (SHA-256)",
+      "fingerprintDetail": "{width} かける {height} ピクセル。Content Credentials (C2PA) の付与: {manifest}。",
       "manifestYes": "あり",
       "manifestNo": "なし",
       "pinned": "IPFS に固定",
       "pinnedDetail": "署名されたバイト、サムネイル、メタデータのすべてが IPFS に上がりました。",
       "download": "画像をダウンロード",
       "downloadHelp": "Content Credentials 付きの署名済みファイルです。コピーしても、このパスポートと照合して検証できます。",
-      "signed": "あなたが署名したダイジェスト",
-      "signedDetail": "コントラクトから読み、あなたのロック解除で署名し、送る前にここで確かめました。",
+      "signed": "あなたが署名したもの (ダイジェスト)",
+      "signedDetail": "パスポートの短い要約です。レジストリから読み、あなたのロック解除で署名し、送る前にここで確かめました。",
       "sent": "Monad へ送信",
       "sentSponsored": "ネットワーク手数料は Moolam が Privy を通して負担しました。",
       "sentOwn": "ネットワーク手数料はあなた自身の残高から支払われました。",
@@ -1565,13 +1565,13 @@
     },
     "passports": {
       "heading": "あなたの画像",
-      "source": "インデックスからライブで読み取り",
+      "source": "インデックス (Envio) からライブで読み取り",
       "reading": "このアカウントが登録したものをすべて読んでいます。",
-      "unreadable": "あなたのパスポートを読めませんでした: {reason}。ページを再読み込みしてください。",
+      "unreadable": "いまあなたの画像を読めませんでした。もう一度お試しください。",
       "empty": "このアカウントからの登録はまだありません。最初に登録した画像は、一ブロックのうちにここへ現れます。",
       "noThumbnail": "サムネイルなし",
       "untitled": "無題",
-      "retry": "Try again"
+      "retry": "もう一度試す"
     },
     "failure": {
       "serviceOffline": "Moolam の検証サービスが応答しないため、何もアップロードされていません。少し経ってからもう一度お試しください。",
@@ -1586,7 +1586,7 @@
       "badResponse": "検証サービスの返した形をこのページが理解できないため、署名は行われていません。もう一度お試しください。",
       "authCheck": "この端末の署名はレジストリに拒否される内容だったので、送信していません。もう一度、結び付けたのと同じロック解除でお試しください。",
       "passkeyCancelled": "ロック解除の画面が閉じられたか、時間切れになりました。署名は行われていません。",
-      "passkeyOrigin": "このパスキーは別のサイトのものなので、このページからは使えません。",
+      "passkeyOrigin": "このパスキーは別のサイトのものなので、このページからは使えません。代わりに、この端末のロック解除をアカウントに結び付けてください。",
       "passkeyUnsupported": "このブラウザまたは端末では、レジストリが必要とする種類のパスキーを作れません。指紋や顔認証に対応したブラウザをお試しください。",
       "passkeyOther": "ロック解除が完了しませんでした。端末からの説明はこちらです:",
       "alreadyRegistered": "まったく同じ画像がすでに登録されています。先に登録したものが有効なので、その画像を持つパスポートを開いてください。",
@@ -1602,11 +1602,11 @@
       "confirmPending": "送信は受け付けられましたが、Monad にはまだ現れていません。まだ届く可能性があるので、二度目の送信はしていません。下からアカウントを開いて確かめるか、Monad にもう一度尋ねてください。",
       "sendCancelled": "確認画面を閉じたので、何も送信していません。",
       "sendFailed": "この段階が完了しませんでした。ネットワーク自身の言葉は下にあります。少し経ってからお試しください。",
-      "digestMismatch": "ネットワークはこのページのものとは別の記録を返したので、何も署名されていません。別のネットワーク設定をお試しください。",
+      "digestMismatch": "ネットワークはこのページのものとは別の記録を返したので、何も署名されていません。もう一度お試しください。二度続くようなら、ページを再読み込みしてください。",
       "passkeyNotReady": "このページは Monad からあなたのパスキーをまだ読み終えていません。少し待ってからもう一度お試しください。",
       "unknown": "何も送信しないうちに問題が起きました。メッセージは下にあります。",
       "fileMissing": "先に画像を選んでください。",
-      "titleMissing": "先に画像のタイトルを入れてください。マニフェストに入ります。",
+      "titleMissing": "先に画像のタイトルを入れてください。ファイルの Content Credentials に入ります。",
       "quotaReached": "一つの口座に対してエージェントが一日に描く枚数を、すべて使い切りました。ボタンの下の数が、次に空く時刻を示しています。",
       "promptRefused": "モデルはこのプロンプトを描きませんでした。理由は下にあります。プロンプトを直してもう一度頼んでください。",
       "creatorMismatch": "いまサインインしているアカウントは、この絵を描く相手として指定されたアカウントではありません。サインアウトしてもう一度サインインし、あらためて依頼してください。",
@@ -1623,7 +1623,7 @@
       "privateRecheckNeedsSealed": "検証サービスは封印されていない画像の非公開コピーを保管しません。何も固定されず、何も登録されていません。スタジオを読み込み直して、もう一度お試しください。",
       "privateCopyNotPrivate": "ストレージ事業者が小さなコピーを非公開にしなかったため、Moolam は止まりました。何も固定されず、何も登録されていません。非公開の再確認をオフにすれば、この画像はそれなしで封のまま登録できます。",
       "privateChainUnreachable": "この画像が新しいか確かめるために Monad へ届かなかったため、非公開コピーは保管されず、何も登録されていません。少し経ってからもう一度お試しください。",
-      "privateThumbnailTooLarge": "この画像は、Chainlink の検証役が取得できるほど小さなサムネイルに縮められないため、そのパスポートは再確認できず、封をしたものは後から公開することもできません。何も固定されていません。",
+      "privateThumbnailTooLarge": "この画像は、Chainlink が再確認のために取得できるほど小さなサムネイルに縮められないため、そのパスポートは再確認できず、封をしたものは後から公開することもできません。何も固定されていません。",
       "fingerprintUnstable": "この画像は左右方向の変化が少なすぎて、コピーされても残る指紋を作れません。自分自身の小さなコピーでさえ別の画像として読まれるため、Chainlink の再確認でもコピーの検索でも見つかりません。何も固定されず、何も登録されていません。横方向にもっと細部のある画像なら登録できます。",
       "serviceFault": "これは Moolam 側の障害で、あなたの画像の問題ではありません。何も保存していません。1 分ほどしてからお試しください。"
     },
@@ -1639,7 +1639,7 @@
       "generateAgain": "もう一度作る"
     },
     "showcaseCaption": "Monad 上の本物のパスポート。手に入るのはこれです。",
-    "titleNeeded": "Give the picture a title."
+    "titleNeeded": "画像にタイトルを付けてください。"
   },
   "docs": {
     "home": "ドキュメント",
@@ -1686,8 +1686,8 @@
     "withdrawn": "支払われました。受取分はゼロに戻りました。",
     "mon": "{amount} MON",
     "empty": "開いている異議はありません。あなたを待っているものは何もありません。",
-    "error": "ポリシーを読み取れませんでした: {reason}",
-    "unavailable": "未決の異議の一覧はインデックスから来ますが、インデックスが応答しませんでした: {reason}",
+    "error": "いまポリシーを読み取れませんでした。少ししてからお試しください。",
+    "unavailable": "未決の異議の一覧はインデックスから来ますが、インデックスが応答しませんでした。少ししてからお試しください。",
     "passport": "パスポート",
     "noPicture": "画像なし",
     "claim": "主張の内容",
@@ -1768,7 +1768,7 @@
       "sealed": "このパスポートの画像は公開されていないため、ワークフローが取得するものがありません。",
       "queueFull": "まだ誰も処理していない依頼で待ち行列がいっぱいです。しばらくしてからお試しください。",
       "rateLimited": "ここからの依頼が多すぎます。1 分ほどお待ちください。",
-      "notAnswering": "検証サービスが今は応答していません。",
+      "notAnswering": "検証サービスが今は応答していません。1 分ほどしてからお試しください。",
       "unknown": "依頼は届きませんでした。"
     },
     "notePrivate": "無料です。Chainlink の機密ワークフローが Moolam の保持する小さな非公開コピーを開き、指紋を照合して、その判定を Monad に書き込みます。判定はたいてい数分以内にブロックチェーンに記録されます。",
@@ -1793,14 +1793,14 @@
       "body": "この一覧はアカウントのアドレスでインデックスから読み出します。サインインすれば、どの端末でも同じ画像が並びます。"
     },
     "showcaseCaption": "Monad 上の本物のパスポート。あなたのものも、ここにこのように並びます。",
-    "makeFirst": "Register your first picture",
-    "signedInAs": "Signed in as {account}"
+    "makeFirst": "最初の画像を登録する",
+    "signedInAs": "{account} でサインイン中"
   },
   "crMark": {
     "name": "Content Credentials",
-    "alt": "Content Credentials: open this picture's record",
-    "line": "This file carries Content Credentials: a signed record of where it came from, and that record still matches the file.",
-    "inspect": "Open it in the official Content Credentials inspect tool",
-    "untrustedSigner": "The identity of the signer cannot be verified: the key that signed this record is not on the C2PA Trust List."
+    "alt": "Content Credentials: この画像の記録を開く",
+    "line": "このファイルには Content Credentials が付いています。出どころを示す署名済みの記録で、その記録は今もファイルと一致しています。",
+    "inspect": "公式の Content Credentials 検査ツールで開く",
+    "untrustedSigner": "署名者の身元を確認できません。この記録に署名した鍵が C2PA トラストリストに載っていないためです。"
   }
 }
