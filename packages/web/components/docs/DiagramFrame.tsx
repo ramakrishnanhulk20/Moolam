@@ -231,11 +231,14 @@ function FullSize({ svg, say, label, close }: { svg: string; say: Say; label: st
       exit={{ opacity: calm ? 1 : 0 }}
       transition={{ duration: calm ? 0 : 0.18, ease: "easeOut" }}
     >
-      <div className="flex items-center gap-2 border-b border-line px-4 py-3 sm:px-6">
+      {/* The controls wrap onto a second line rather than off the edge: in German
+          they need about 418 px, and a phone has 343 px, so Close, the only way
+          out, would otherwise sit mostly off the screen. */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3 sm:px-6">
         <span className="hidden font-mono text-[12px] uppercase tracking-[0.22em] text-text-faint sm:inline">
           {label}
         </span>
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
           <button
             type="button"
             onClick={() => step(1 / 1.25)}
@@ -284,12 +287,11 @@ function FullSize({ svg, say, label, close }: { svg: string; say: Say; label: st
 /**
  * The frame around one architecture drawing.
  *
- * A wide drawing is two to three times wider than the column of the docs, and a
- * squeezed drawing is an unreadable one, so the frame keeps it at the size
- * mermaid gave it and scrolls sideways instead. The fade at the right edge and
- * the mono hint say that there is more to the right, and both go once the reader
- * has moved. A phone redraw is already the width of the column, so neither the
- * fade nor the hint ever shows on one.
+ * A drawing wider than the column is scaled down to the column's width, so the
+ * reader sees the whole of it with every label whole, and Open full size is the
+ * way into the detail. The frame still scrolls if a drawing ever comes out
+ * wider than that, with the fade and the mono hint to say so. A phone redraw is
+ * drawn to the width of the column, so neither ever shows on one.
  */
 export function DiagramFrame({
   svg,

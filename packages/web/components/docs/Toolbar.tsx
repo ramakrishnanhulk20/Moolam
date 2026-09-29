@@ -1,9 +1,10 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { useHeldFocus } from "@/lib/docs/focus";
 import type { NavEntry } from "@/lib/docs/tree";
 import { Link } from "@/lib/i18n/routing";
 import { DocsSearch } from "./Search";
@@ -17,6 +18,10 @@ import { DocsTree } from "./Tree";
 export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
   const t = useTranslations("docs");
   const [open, setOpen] = useState(false);
+  const opener = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useHeldFocus({ open, panel, opener, onClose: close });
 
   useEffect(() => {
     if (!open) {
@@ -24,15 +29,8 @@ export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
     }
     const was = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpen(false);
-      }
-    }
-    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = was;
-      window.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
@@ -40,6 +38,7 @@ export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
     <div className="docs-bar">
       <div className="mx-auto flex w-full max-w-[1400px] items-center gap-3 px-5 py-3 sm:px-8">
         <button
+          ref={opener}
           type="button"
           onClick={() => setOpen(true)}
           aria-expanded={open}
@@ -73,52 +72,70 @@ export function DocsToolbar({ nav }: { nav: NavEntry[] }) {
           somebody opens it. */}
       {typeof document === "undefined"
         ? null
-        : createPortal(<ContentsDrawer nav={nav} open={open} onClose={() => setOpen(false)} />, document.body)}
+        : createPortal(<ContentsDrawer nav={nav} open={open} panel={panel} onClose={close} />, document.body)}
     </div>
   );
 }
 
 /** The tree on a phone: the whole window, with the list scrolling inside it. */
-function ContentsDrawer({ nav, open, onClose }: { nav: NavEntry[]; open: boolean; onClose: () => void }) {
+function ContentsDrawer({
+  nav,
+  open,
+  panel,
+  onClose,
+}: {
+  nav: NavEntry[];
+  open: boolean;
+  panel: RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}) {
   const t = useTranslations("docs");
 
+  // A reader who asked for less motion gets the drawer by a fade alone: the
+  // slide in from the left is a transform, which "user" switches off.
   return (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-[70] lg:hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.16 }}
-        >
-          <button
-            type="button"
-            aria-label={t("close")}
-            onClick={onClose}
-            className="absolute inset-0 cursor-default bg-bg/80 backdrop-blur-sm"
-          />
+    <MotionConfig reducedMotion="user">
+      <AnimatePresence>
+        {open ? (
           <motion.div
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-            className="docs-drawer relative h-full w-[19rem] max-w-[86vw] overflow-y-auto border-r border-line-strong bg-bg-raised px-5 py-6"
+            className="fixed inset-0 z-[70] lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.16 }}
           >
-            <div className="mb-5 flex items-center justify-between">
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint">{t("home")}</span>
-              <button
-                type="button"
-                onClick={onClose}
-                className="tap rounded-[8px] border border-line px-2 py-1 font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
-              >
-                {t("close")}
-              </button>
-            </div>
-            <DocsTree nav={nav} onGo={onClose} />
+            <button
+              type="button"
+              aria-label={t("close")}
+              onClick={onClose}
+              className="absolute inset-0 cursor-default bg-bg/80 backdrop-blur-sm"
+            />
+            <motion.div
+              ref={panel}
+              role="dialog"
+              aria-modal="true"
+              aria-label={t("menu")}
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+              className="docs-drawer relative h-full w-[19rem] max-w-[86vw] overflow-y-auto border-r border-line-strong bg-bg-raised px-5 py-6"
+            >
+              <div className="mb-5 flex items-center justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-text-faint">{t("home")}</span>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="tap rounded-[8px] border border-line px-2 py-1 font-mono text-[12px] uppercase tracking-[0.16em] text-text-muted transition-colors duration-200 hover:border-accent hover:text-accent"
+                >
+                  {t("close")}
+                </button>
+              </div>
+              <DocsTree nav={nav} onGo={onClose} />
+            </motion.div>
           </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+        ) : null}
+      </AnimatePresence>
+    </MotionConfig>
   );
 }

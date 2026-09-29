@@ -1,9 +1,11 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHeldFocus } from "@/lib/docs/focus";
 import type { SearchEntry } from "@/lib/docs/search";
+import { loadSearchIndex } from "@/lib/docs/searchIndex";
 import { useRouter } from "@/lib/i18n/routing";
 
 type Row = { key: string; href: string; title: string; note: string; kind: "page" | "heading" };
@@ -79,29 +81,30 @@ function rank(entries: SearchEntry[], query: string): Row[] {
  * Every word in the docs, matched in the browser.
  *
  * The index is one file built with the site and fetched the first time the box
- * is opened, so nothing a reader types is sent anywhere and the whole thing
- * works with no search service behind it.
+ * is wanted, so nothing a reader types is sent anywhere and the whole thing
+ * works with no search service behind it. Until that file is here the box gives
+ * no verdict: "Nothing found" is only ever said about the whole index.
  */
 export function DocsSearch() {
   const t = useTranslations("docs");
+  const common = useTranslations("common");
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<SearchEntry[] | null>(null);
   const [query, setQuery] = useState("");
   const [at, setAt] = useState(0);
   const field = useRef<HTMLInputElement>(null);
+  const opener = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
-    setEntries((already) => {
-      if (already === null) {
-        void fetch("/docs-search")
-          .then((answer) => answer.json())
-          .then((loaded: SearchEntry[]) => setEntries(loaded))
-          .catch(() => setEntries([]));
-      }
-      return already;
+    loadSearchIndex().then(setEntries, () => {
+      // Left unloaded, so the next open or keystroke asks again.
     });
   }, []);
+
+  const close = useCallback(() => setOpen(false), []);
+  useHeldFocus({ open, panel, opener, onClose: close });
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -109,9 +112,6 @@ export function DocsSearch() {
         event.preventDefault();
         setOpen(true);
         load();
-      }
-      if (event.key === "Escape") {
-        setOpen(false);
       }
     }
     window.addEventListener("keydown", onKey);
@@ -139,6 +139,7 @@ export function DocsSearch() {
   return (
     <>
       <button
+        ref={opener}
         type="button"
         onClick={() => {
           setOpen(true);
@@ -155,91 +156,105 @@ export function DocsSearch() {
         </span>
       </button>
 
-      <AnimatePresence>
-        {open ? (
-          <motion.div
-            className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh]"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.18 }}
-          >
-            <button
-              type="button"
-              aria-label={t("close")}
-              onClick={() => setOpen(false)}
-              className="absolute inset-0 cursor-default bg-bg/85 backdrop-blur-sm"
-            />
+      {/* Less motion keeps the fade and drops the rise and the scale. */}
+      <MotionConfig reducedMotion="user">
+        <AnimatePresence>
+          {open ? (
             <motion.div
-              role="dialog"
-              aria-modal="true"
-              aria-label={t("search")}
-              initial={{ opacity: 0, y: 18, scale: 0.985 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.99 }}
-              transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-              className="grain relative w-full max-w-[640px] overflow-hidden rounded-[8px] border border-line-strong bg-bg-raised shadow-2xl"
+              className="fixed inset-0 z-[60] flex items-start justify-center px-4 pt-[10vh]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
             >
-              <div className="flex items-center gap-3 border-b border-line px-4">
-                <span aria-hidden className="motif h-[9px] w-[9px]" />
-                <input
-                  ref={field}
-                  value={query}
-                  onChange={(event) => {
-                    setQuery(event.target.value);
-                    setAt(0);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "ArrowDown") {
-                      event.preventDefault();
-                      setAt((was) => Math.min(was + 1, rows.length - 1));
-                    }
-                    if (event.key === "ArrowUp") {
-                      event.preventDefault();
-                      setAt((was) => Math.max(was - 1, 0));
-                    }
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      go(rows[active]);
-                    }
-                  }}
-                  placeholder={t("searchPlaceholder")}
-                  className="w-full bg-transparent py-4 text-base text-text outline-none placeholder:text-text-faint"
-                />
-              </div>
-
-              <div className="max-h-[54vh] overflow-y-auto">
-                {query !== "" && rows.length === 0 ? (
-                  <p className="px-4 py-6 text-sm text-text-faint">{t("noResults")}</p>
-                ) : null}
-                {rows.map((row, index) => (
-                  <button
-                    key={row.key}
-                    type="button"
-                    onMouseEnter={() => setAt(index)}
-                    onClick={() => go(row)}
-                    className={`flex w-full flex-col gap-1 border-b border-line px-4 py-3 text-left transition-colors duration-150 ${
-                      index === active ? "bg-accent-soft" : ""
-                    }`}
-                  >
-                    <span
-                      className={
-                        row.kind === "page"
-                          ? "font-display text-sm font-semibold text-text"
-                          : "text-sm text-text-muted"
+              <button
+                type="button"
+                aria-label={t("close")}
+                onClick={close}
+                className="absolute inset-0 cursor-default bg-bg/85 backdrop-blur-sm"
+              />
+              <motion.div
+                ref={panel}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t("search")}
+                initial={{ opacity: 0, y: 18, scale: 0.985 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 8, scale: 0.99 }}
+                transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
+                className="grain relative w-full max-w-[640px] overflow-hidden rounded-[8px] border border-line-strong bg-bg-raised shadow-2xl"
+              >
+                <div className="flex items-center gap-3 border-b border-line px-4">
+                  <span aria-hidden className="motif h-[9px] w-[9px]" />
+                  <input
+                    ref={field}
+                    value={query}
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      setAt(0);
+                      if (entries === null) {
+                        load();
                       }
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "ArrowDown") {
+                        event.preventDefault();
+                        setAt((was) => Math.min(was + 1, rows.length - 1));
+                      }
+                      if (event.key === "ArrowUp") {
+                        event.preventDefault();
+                        setAt((was) => Math.max(was - 1, 0));
+                      }
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        go(rows[active]);
+                      }
+                    }}
+                    placeholder={t("searchPlaceholder")}
+                    className="w-full bg-transparent py-4 text-base text-text outline-none placeholder:text-text-faint"
+                  />
+                </div>
+
+                <div className="max-h-[54vh] overflow-y-auto">
+                  {query !== "" && entries === null ? (
+                    <p role="status" className="px-4 py-6 font-mono text-[12px] uppercase tracking-[0.18em] text-text-faint">
+                      {common("loading")}
+                    </p>
+                  ) : null}
+                  {query !== "" && entries !== null && rows.length === 0 ? (
+                    <p role="status" className="px-4 py-6 text-sm text-text-faint">
+                      {t("noResults")}
+                    </p>
+                  ) : null}
+                  {rows.map((row, index) => (
+                    <button
+                      key={row.key}
+                      type="button"
+                      onMouseEnter={() => setAt(index)}
+                      onClick={() => go(row)}
+                      className={`flex w-full flex-col gap-1 border-b border-line px-4 py-3 text-left transition-colors duration-150 ${
+                        index === active ? "bg-accent-soft" : ""
+                      }`}
                     >
-                      {row.kind === "heading" ? "# " : ""}
-                      {row.title}
-                    </span>
-                    <span className="docs-clamp font-mono text-[12px] leading-relaxed text-text-faint">{row.note}</span>
-                  </button>
-                ))}
-              </div>
+                      <span
+                        className={
+                          row.kind === "page"
+                            ? "font-display text-sm font-semibold text-text"
+                            : "text-sm text-text-muted"
+                        }
+                      >
+                        {row.kind === "heading" ? "# " : ""}
+                        {row.title}
+                      </span>
+                      <span className="docs-clamp font-mono text-[12px] leading-relaxed text-text-faint">{row.note}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+          ) : null}
+        </AnimatePresence>
+      </MotionConfig>
     </>
   );
 }

@@ -103,10 +103,13 @@ export function Mermaid({
   chart,
   variant = "both",
   caption = null,
+  height = null,
 }: {
   chart: string;
   variant?: DiagramVariant;
   caption?: string | null;
+  /** The finished frame's height from the fence, held while mermaid draws. */
+  height?: number | null;
 }) {
   const t = useTranslations("docs");
   const { resolvedTheme } = useTheme();
@@ -183,7 +186,12 @@ export function Mermaid({
 
   if (svg === null) {
     return (
-      <figure className="docs-diagram" data-variant={variant} aria-busy>
+      <figure
+        className="docs-diagram docs-diagram-held"
+        data-variant={variant}
+        aria-busy
+        style={height === null ? undefined : { height: `${height}px` }}
+      >
         <span className="docs-diagram-wait">{t("diagram")}</span>
       </figure>
     );

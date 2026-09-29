@@ -876,6 +876,109 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   border-bottom: 0;
 }
 
+/* Four or more columns. The renderer marks these and puts a break chance at every
+   word joint of the code in their cells, so a path wraps after a slash rather
+   than every fifteen characters, and the code here stops breaking anywhere else. */
+.docs-table-wide td code {
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* On a wide screen the column of the page is narrower than the text measure
+   plus the rail beside it, and that rail is empty below its short list. A wide
+   table takes both, measured from the article so it ends where the page ends.
+   It paints over the rail's list while it scrolls past, which is the one
+   moment that list has nothing to point at anyway. */
+@media (min-width: 1280px) {
+  [data-docs-article] {
+    container-type: inline-size;
+  }
+
+  .docs-table-wide {
+    position: relative;
+    z-index: 1;
+    width: calc(100cqw + 16rem);
+    background: var(--bg);
+  }
+
+  .docs-table-wide td {
+    min-width: 0;
+  }
+}
+
+/* On a phone a wide table stops being a grid: each row is a card, each cell is
+   led by its column's name, and nothing scrolls sideways. */
+@media (max-width: 639px) {
+  .docs-table-wide {
+    overflow-x: visible;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .docs-table-wide table,
+  .docs-table-wide tbody,
+  .docs-table-wide tr,
+  .docs-table-wide td {
+    display: block;
+    width: 100%;
+  }
+
+  .docs-table-wide thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .docs-table-wide tr {
+    margin-bottom: 0.9rem;
+    padding: 0.35rem 0;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--bg-raised);
+  }
+
+  .docs-table-wide tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .docs-table-wide td,
+  .docs-table-wide tr:last-child td {
+    min-width: 0;
+    padding: 0.55rem 0.95rem;
+    border-bottom: 0;
+  }
+
+  .docs-table-wide td + td {
+    border-top: 1px solid var(--line);
+  }
+
+  /* The second content line gives the label empty alternative text, so a screen
+     reader, which already names the column from the hidden header, does not say
+     it twice. A browser that cannot read that form keeps the first line. */
+  .docs-table-wide td::before {
+    content: attr(data-label);
+    content: attr(data-label) / "";
+    display: block;
+    margin-bottom: 0.2rem;
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-size: 0.66rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-faint);
+  }
+
+  .docs-table-wide td:empty {
+    display: none;
+  }
+
+  .docs-table-wide td code {
+    overflow-wrap: anywhere;
+  }
+}
+
 .docs-code {
   position: relative;
   margin: 1.6rem 0;
@@ -915,6 +1018,23 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   color: var(--code-keyword);
 }
 
+/* The same fault, the rest of the palette: on the cream ground the variable
+   orange measured 2.7:1 and the comment grey 3.7:1. Each takes a darker shade of
+   its own hue that clears 4.5:1 (5.1 and 5.0). The other colours the docs use
+   already pass. In dark, the comment grey on the near-black ground measured
+   4.2:1 and is lifted to 5.5:1. */
+.light .docs-code pre.shiki span[style*="--shiki-light:#E36209" i] {
+  color: #9a4400;
+}
+
+.light .docs-code pre.shiki span[style*="--shiki-light:#6A737D" i] {
+  color: #57606a;
+}
+
+.dark .docs-code pre.shiki span[style*="--shiki-dark:#6A737D" i] {
+  color: #7d8590;
+}
+
 .docs-copy {
   position: absolute;
   top: 0.55rem;
@@ -927,28 +1047,35 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  color: var(--text-faint);
-  opacity: 0.5;
+  /* Always at full strength: at half it measured 1.9:1, and a phone has no
+     hover to bring it up. The muted ink reads 6.8:1 in dark and 7.3:1 in light. */
+  color: var(--text-muted);
   transition:
-    opacity 0.2s ease,
     color 0.2s ease,
     border-color 0.2s ease;
 }
 
-.docs-code:hover .docs-copy,
-.docs-copy:focus-visible {
-  opacity: 1;
+/* A 44 px pad for a thumb, hung off the button so the ink stays small. */
+.docs-copy::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, 44px);
+  height: 44px;
+  transform: translate(-50%, -50%);
 }
 
-.docs-copy:hover {
+.docs-copy:hover,
+.docs-copy:focus-visible {
   border-color: var(--accent);
   color: var(--accent);
 }
 
-/* The architecture drawings are two to three times wider than the column they
-   sit in. Fitting one to the column puts its labels at 4 px, so the frame keeps
-   the drawing at the size it was drawn and scrolls sideways instead, with a fade
-   at the right edge while there is more of it to see. */
+/* The architecture drawings are wider than the column they sit in. Kept at the
+   size they were drawn, the frame cut them mid-label, so a drawing is scaled to
+   the column's width and Open full size is the way into the detail. The frame
+   keeps its sideways scroll and fade as a fallback for anything still wider. */
 .docs-diagram {
   position: relative;
   margin: 2rem 0;
@@ -994,6 +1121,10 @@ body:has([data-story="film"]):not([data-story-end]) footer {
 }
 
 .docs-diagram-head {
+  /* Above the fade, which runs the full height of the frame and once washed
+     out the end of Open full size. */
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: flex-end;
   padding: 0.6rem 0.6rem 0;
@@ -1043,12 +1174,18 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   border-radius: 8px;
 }
 
-/* max-content, so a drawing wider than the frame is never squeezed into it. */
-.docs-diagram-ink {
-  width: max-content;
+/* A drawing narrower than the frame keeps its own size and sits in the middle;
+   a wider one is scaled down to the frame, and its viewBox keeps the shape. */
+.docs-diagram-ink svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
-.docs-diagram-ink svg,
+.docs-diagram:not([data-variant="phone"]) .docs-diagram-ink svg {
+  margin-inline: auto;
+}
+
 .docs-lightbox-ink svg {
   display: block;
   max-width: none;
@@ -1137,6 +1274,16 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   text-transform: uppercase;
   letter-spacing: 0.2em;
   color: var(--text-faint);
+}
+
+/* A placeholder that knows the finished drawing's height holds all of it, with
+   the waiting line in the middle, so the page below does not jump. */
+.docs-diagram-held .docs-diagram-wait {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
 }
 
 .docs-step {

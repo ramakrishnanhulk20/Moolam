@@ -19,7 +19,7 @@ for who holds a passport. Off chain, the Chainlink CRE workflow re-fetches and r
 Envio indexes the events, and the verify service reads passports out of Envio and statements
 straight off the consent register.
 
-```mermaid
+```mermaid height=459
 flowchart LR
     subgraph People and agents
         C[Creator<br/>Privy embedded wallet + passkey]
@@ -69,7 +69,7 @@ flowchart LR
     V -- upload any copy --> S
 ```
 
-```mermaid phone "Half one: who writes to the registry, and what the registry reads."
+```mermaid phone "Half one: who writes to the registry, and what the registry reads." height=470
 flowchart TD
     C[Creator<br/>passkey] -- register --> R[Moolam<br/>Registry]
     G[Generator<br/>agent] -- register --> R
@@ -81,7 +81,7 @@ flowchart TD
     R -- isReceiver --> P[Verifier<br/>Policy]
 ```
 
-```mermaid phone "Half two: the independent re-check and the readers, off chain."
+```mermaid phone "Half two: the independent re-check and the readers, off chain." height=412
 flowchart TD
     R[Moolam<br/>Registry] -- events --> X[Envio<br/>index]
     X -- trigger --> W[CRE<br/>workflow]
@@ -109,7 +109,7 @@ produce the identical verdict before a report is signed. Every re-check on chain
 Chainlink's simulator with `--broadcast`, which is one machine and no consensus, and the passport
 page labels each one by the forwarder that delivered it.
 
-```mermaid
+```mermaid height=421
 sequenceDiagram
     participant A as Generator agent
     participant S as Verifier service
@@ -147,7 +147,7 @@ sequenceDiagram
     Note over MF,RC: a sealed picture's private re-check takes the same path to the sealed SimulationReceiver
 ```
 
-```mermaid phone "Half one: everything before the transaction, off chain and free."
+```mermaid phone "Half one: everything before the transaction, off chain and free." height=565
 flowchart TD
     A1[Agent generates image] --> A2[Service fingerprints image]
     A2 --> A3[Service embeds manifest]
@@ -157,7 +157,7 @@ flowchart TD
     A5 --> A7[Agent owner signs]
 ```
 
-```mermaid phone "Half two: one transaction, then the re-check that follows it."
+```mermaid phone "Half two: one transaction, then the re-check that follows it." height=850
 flowchart TD
     B1[register, both signatures] --> B2[P-256 precompile checks]
     B2 --> B3[ERC-8004 owner checked]
@@ -186,7 +186,7 @@ be written later from the passport page.
 The second half of the drawing is the question a label inside a file cannot answer. A reader asks
 the register what was in force on a given day, and gets that day's entry rather than today's.
 
-```mermaid
+```mermaid height=357
 sequenceDiagram
     participant C as Creator (studio)
     participant S as Verifier service
@@ -210,7 +210,7 @@ sequenceDiagram
     MC-->>V: the entry in force then, or nothing stated
 ```
 
-```mermaid phone "Half one: the statement, written into the file and then onto the chain."
+```mermaid phone "Half one: the statement, written into the file and then onto the chain." height=763
 flowchart TD
     A1[Creator picks<br/>a statement] --> A2[Service writes<br/>the assertion]
     A2 --> A3[IPFS pins<br/>the metadata]
@@ -220,7 +220,7 @@ flowchart TD
     A6 --> A7[ConsentSet<br/>emitted]
 ```
 
-```mermaid phone "Half two: what a reader asks, months later."
+```mermaid phone "Half two: what a reader asks, months later." height=467
 flowchart TD
     B1[Reader names<br/>a day] --> B2[consentAt on<br/>the register]
     B2 --> B3[Binary search<br/>of the history]
@@ -241,7 +241,7 @@ nothing but an `IERC721` view: it holds the registry address as an immutable set
 asks it `ownerOf`, which is the whole integration. The arrow points one way, so the registry does
 not know the consent register exists.
 
-```mermaid
+```mermaid height=197
 flowchart TD
     MR[MoolamRegistry] --> ERC721[OpenZeppelin ERC721]
     MR --> EIP712[OpenZeppelin EIP712]
@@ -264,12 +264,12 @@ flowchart TD
     MC[MoolamConsent] -. reads ownerOf .-> MR
 ```
 
-```mermaid phone "Half one: what MoolamRegistry is built out of."
+```mermaid phone "Half one: what MoolamRegistry is built out of." height=409
 flowchart TD
     MR[MoolamRegistry] --> OZ[OpenZeppelin v5.6.1<br/>ERC721<br/>EIP712<br/>WebAuthn and P256<br/>ECDSA<br/>Ownable2Step<br/>Pausable<br/>ReentrancyGuard<br/>SafeERC20]
 ```
 
-```mermaid phone "Half two: what it reads, and who may write a re-check."
+```mermaid phone "Half two: what it reads, and who may write a re-check." height=465
 flowchart TD
     MF[Simulation<br/>forwarder] -. onReport .-> SR[Simulation<br/>Receivers]
     SR --> RT[Chainlink<br/>Receiver<br/>Template]
