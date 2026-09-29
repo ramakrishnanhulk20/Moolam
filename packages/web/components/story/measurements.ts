@@ -41,6 +41,16 @@ export function degradeSteps(): DegradeStep[] {
   });
 }
 
+/**
+ * How far one step's copy is from the original on the 64 bit fingerprint, as
+ * the film says it. Every step the ladder shows was measured; a step the
+ * verifier could not fingerprint at all has no distance to give, and says so
+ * as the whole width of the fingerprint.
+ */
+export function bitsApart(step: Pick<DegradeStep, "phashDistance">): string {
+  return String(step.phashDistance ?? 64);
+}
+
 /** Which passport, which file and which day those figures belong to, so the caption can say so. */
 export const measurement = {
   passportId: degrade.passportId as Hex,

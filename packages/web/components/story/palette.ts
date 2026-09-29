@@ -15,6 +15,11 @@ export const ACCENT_RGB = "255, 183, 197";
 /** A paler step of it, for the hot centre of the glow under the seal. */
 export const ACCENT_LIFT = "255, 209, 218";
 
-/** Status stays cold and separate: teal for a match, one red for a refusal. */
+/**
+ * Status stays cold and separate: teal for a match, one red for a refusal. Both
+ * are the site's own status tokens (--status-verified and --status-failed on
+ * .story in globals.css), so a refusal in the film is the same red as one
+ * anywhere else. The film is dark in both themes, so these are the dark values.
+ */
 export const VERIFIED = "#3FBFA8";
-export const REFUSED = "#C2586F";
+export const REFUSED = "#FF5F4D";

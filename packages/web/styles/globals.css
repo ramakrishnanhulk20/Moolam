@@ -34,11 +34,13 @@
 }
 
 /* The light palette, and the one place inside the film that is allowed to use
-   it: the card the story ends on. The film stays dark whatever the toggle says,
-   but the last screen hands the page back, so a visitor who chose light sees
-   the toggle do something on the home page too. */
+   it: the card the story ends on, on the film and on the still page alike. The
+   film stays dark whatever the toggle says, but the last screen hands the page
+   back, so a visitor who chose light sees the toggle do something on the home
+   page too. */
 .light,
-.light .story-close {
+.light .story-close,
+.light [data-story="still"] > div > section:last-child {
   --bg: #f2efe9;
   --bg-raised: #fbf9f5;
   --bg-sunken: #e6e2da;
@@ -399,18 +401,57 @@ html:not(.light) body:has([data-story="still"]) .app-header {
 }
 
 /* The film's two framings.
-   On a phone the shot is the top 45 percent of the window and the words own the
-   bottom, so a caption, the drop panel and the close card can never sit over the
-   picture. That was the one thing a judge could not use at 375 px. From 640 px
-   up the shot goes full bleed again and the words sit in the side columns the
-   scrim darkens.
+   On a phone the shot fills the room between the header and the tab bar, and
+   each beat's words stand at the foot of it, just above the bar, on a dark fade
+   of their own. The bar stays through the whole film, so its room is kept clear:
+   no word, no panel and no card sits under it or under the raised Make. From
+   640 px up the words sit in the side columns the scrim darkens.
 
    The canvas fills the whole pinned screen in both framings. The scroller the
    scene builds is the size of the canvas, and it has to reach under the words
    for a drag there to carry the story with the browser's own momentum. On a
-   phone the renderer draws into the top 45 percent of it and leaves the rest to
-   the page's own black: the Band component in LandingStory.tsx holds the same
-   45 percent that .story-lower starts at below. */
+   phone the renderer draws around the header and the bar (Band in
+   LandingStory.tsx), and it reads how much of the canvas each one covers from
+   the two lengths below, so the shot and the words are placed from one place.
+   They are registered as lengths so the browser hands them back in pixels. */
+@property --film-top {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --film-foot {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+/* --film-top is the header over the shot. --film-foot is the bar itself, its
+   56 px and the phone's home indicator strip, which is where the shot stops.
+   --film-words-foot is the bar's whole room, the 28 px the raised Make stands
+   above it included, which is where the words stop. The bar is drawn below
+   768 px (layout.tsx), so that is where the film leaves it room. A framed film
+   under the light theme already sits between the header and the bar, so all
+   three are zero inside the frame. */
+.story {
+  --film-top: var(--header-h);
+  --film-foot: 0px;
+  --film-words-foot: 0px;
+}
+
+@media (max-width: 767px) {
+  .story {
+    --film-foot: calc(56px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)));
+    --film-words-foot: var(--bar-room);
+  }
+}
+
+html.light .story-frame .story {
+  --film-top: 0px;
+  --film-foot: 0px;
+  --film-words-foot: 0px;
+}
+
 .story-stage {
   position: absolute;
   inset: 0;
@@ -419,31 +460,59 @@ html:not(.light) body:has([data-story="still"]) .app-header {
 .story-lower {
   position: absolute;
   inset-inline: 0;
-  /* The shot's share of the window on a phone. The same fraction is PHONE_BAND
-     in LandingStory.tsx, which is what the renderer draws into. It is written
-     here rather than handed down from the film, because the film only learns
-     the window size after it has mounted and the words would move once. */
-  top: 45svh;
-  bottom: 0;
+  top: var(--film-top);
+  bottom: var(--film-words-foot);
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   padding-top: 1.25rem;
-  padding-bottom: 3.5rem;
+  padding-bottom: 1.5rem;
+}
+
+/* The words' own ground on a phone: a dark fade that rises from the bar to a
+   little above the first line, so the shot stays bright wherever no words are,
+   and the fade comes and goes with its caption because it is part of it. The
+   last child is the words in a caption, the drop panel and the closing card
+   alike. On the light closing card the ground is the page's own cream, so the
+   fade is cream there and draws nothing anyone can see. */
+@media (max-width: 639px) {
+  .story-lower > :last-child {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .story-lower > :last-child::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset-inline: -1.25rem;
+    top: -7rem;
+    bottom: -12rem;
+    pointer-events: none;
+    background: linear-gradient(
+      0deg,
+      var(--bg) 0%,
+      var(--bg) 45%,
+      color-mix(in srgb, var(--bg) 72%, transparent) calc(100% - 7rem),
+      transparent 100%
+    );
+  }
+
+  /* The opening keeps the scroll hint's line under its words (ScrollCue.tsx). */
+  .story-lower[data-beat="opening"] {
+    padding-bottom: 3.25rem;
+  }
 }
 
 /* A phone under 700 px tall.
-   At 375x667 the longest chapters ran off the bottom of the screen: in Tamil
-   the trusted one by 163 px, verified by 97, shared and stated by 36, with the
-   scroll hint sitting on the last line. The shot has already given up nine per
-   cent of the window above; here the words take the rest of it back, by
-   stepping the type down one size and closing the gaps between the lines.
-   Nothing outside the film's own caption band is touched. */
+   At 375x667 the longest chapters ran off the room above the bar: in Tamil the
+   trusted one by 163 px, verified by 97, shared and stated by 36. Here the
+   words take the room back by stepping the type down one size and closing the
+   gaps between the lines. Nothing outside the film's own caption band is
+   touched. */
 @media (max-width: 639px) and (max-height: 699px) {
   .story-lower {
-    /* SHORT_PHONE_BAND in LandingStory.tsx. */
-    top: 36svh;
     padding-top: 0.6rem;
-    padding-bottom: 3rem;
+    padding-bottom: 1rem;
   }
 
   .story-lower [data-story-line="kicker"] {
@@ -494,31 +563,29 @@ html:not(.light) body:has([data-story="still"]) .app-header {
   .story-lower {
     inset: 0;
     align-items: center;
-    padding-top: var(--header-h);
-    padding-bottom: 0;
+    padding-top: var(--film-top);
+    padding-bottom: var(--film-words-foot);
   }
 }
 
-/* Where the shot stops being a shot and becomes the ground the words stand on.
-   The three stops are the 45 percent band scaled the way the film was drawn:
-   clear until just above the seam, half dark at it, solid a little past it. */
+/* The scroll hint sits at the foot of the words' room, clear of the bar. */
+.story-cue {
+  bottom: calc(var(--film-words-foot) + 1.75rem);
+}
+
+@media (max-width: 639px) {
+  .story-cue {
+    bottom: calc(var(--film-words-foot) + 1.4rem);
+  }
+}
+
+/* The top of the shot on a phone, darkened so the header reads over it. */
 .story-seam {
-  background:
-    linear-gradient(180deg, rgba(11, 11, 12, 0) 28%, rgba(11, 11, 12, 0.72) 41%, #0b0b0c 46%),
-    linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
-}
-
-/* The same three stops scaled to the 36 percent band of a short phone. It has
-   to come after the rule above rather than beside the band it belongs to: the
-   two say the same thing about the same element, so the later one is the one
-   the browser keeps. Written the other way round it was dead and a phone under
-   700 px tall read its captions over the bright part of the shot. */
-@media (max-width: 639px) and (max-height: 699px) {
-  .story-seam {
-    background:
-      linear-gradient(180deg, rgba(11, 11, 12, 0) 22%, rgba(11, 11, 12, 0.72) 33%, #0b0b0c 37%),
-      linear-gradient(180deg, rgba(11, 11, 12, 0.86) 0%, rgba(11, 11, 12, 0) 18%);
-  }
+  background: linear-gradient(
+    180deg,
+    rgba(11, 11, 12, 0.86) 0,
+    rgba(11, 11, 12, 0) calc(var(--film-top) + 9%)
+  );
 }
 
 /* A downward drag at the top of the story is a drag at the top of its own
@@ -592,18 +659,6 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   display: none;
 }
 
-/* The same, while the film's code is still on its way.
-   Without this the page is one window of story plus a footer for the first
-   third of a second, which is a scrollbar, and the scrollbar going again when
-   the film arrives re-centres the bar's row by 7 px. Anyone who has asked for
-   less motion is left alone: they are getting the still page, which is long
-   and keeps its footer, so hiding it here would only move their bar instead. */
-@media (prefers-reduced-motion: no-preference) {
-  body:has([data-story="loading"]) footer {
-    display: none;
-  }
-}
-
 /* The card the film ends on, in light mode: the page's own ground fading up
    under the words as the last beat arrives. The card's opacity is written from
    the story's own frame, so the ground arrives with it. */
@@ -611,6 +666,78 @@ body:has([data-story="film"]):not([data-story-end]) footer {
   color-scheme: light;
   background: var(--bg);
   color: var(--text);
+}
+
+/* The still page ends on the same card, and under the light theme it hands the
+   page back the same way: its last section takes the page's palette and ground,
+   painted out to the frame's edges and down to its foot. Written by position
+   because the still page's card is the one without the pinned card's class. */
+.light [data-story="still"] > div > section:last-child {
+  color-scheme: light;
+  background: var(--bg);
+  color: var(--text);
+  border-image: conic-gradient(var(--bg) 0 0) fill 0 / 0 / 0 100vmax 100vmax;
+}
+
+/* The film under the light theme: a dark screen set into the cream page, with
+   the page round it, 8 px corners and a hairline, and the chapter title above
+   it on the page (FilmFrame.tsx). Everything inside the screen is unchanged.
+   The screen is exactly as tall as the window leaves it once the page has come
+   to the film's foot, so the pinned story still fills everything a reader sees
+   of it: the header above, the page's margin round it, and on a phone the tab
+   bar's room below. Under the dark theme none of this applies and the film
+   runs full bleed as before. */
+.story-frame-title {
+  display: none;
+}
+
+html.light .story-frame {
+  --frame-gap: 32px;
+  --frame-foot: 0px;
+  --frame-line: var(--line-strong);
+  padding-inline: var(--frame-gap);
+  padding-bottom: calc(var(--frame-gap) + var(--frame-foot));
+}
+
+@media (max-width: 767px) {
+  html.light .story-frame {
+    --frame-gap: 16px;
+    --frame-foot: var(--bar-room);
+  }
+}
+
+html.light .story-frame-title {
+  display: block;
+  margin-inline: calc(var(--frame-gap) * -1);
+}
+
+/* The title's rise plays as it scrolls into view where the browser can drive an
+   animation from the scroll. Elsewhere it is the page's plain load-time rise. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    html.light .story-frame-title {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 10% cover 35%;
+    }
+  }
+}
+
+html.light .story-frame > .story {
+  border: 1px solid var(--frame-line);
+  border-radius: 8px;
+  overflow: clip;
+}
+
+html.light .story-frame [data-story="film"],
+html.light .story-frame [data-story="loading"] {
+  height: calc(100svh - var(--header-h) - var(--frame-gap) * 2 - var(--frame-foot) - 2px);
+}
+
+/* The title stands above the screen now, so the film's own opening words and
+   the loading box's copy of them are not drawn a second time inside it. */
+html.light .story-frame [data-beat="opening"] {
+  display: none;
 }
 
 /* The entrance on the first screen: the kicker, the title and the line rise in

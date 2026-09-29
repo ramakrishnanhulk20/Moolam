@@ -227,7 +227,7 @@ describe("the chapter cut's closing card", () => {
 
   it("says unread rather than inventing a count", () => {
     const markup = render(createElement(CloseCard, { data: { ...data, passportCount: null } }));
-    expect(markup).toContain(`>${en.story.close.unread}</dd>`);
+    expect(markup).toContain(`<span class="sr-only">${en.story.close.unread}</span></dd>`);
   });
 
   it("fades the film's tail into the page on a phone, only while pinned", () => {
@@ -237,14 +237,10 @@ describe("the chapter cut's closing card", () => {
 });
 
 describe("the chapter cut's light header", () => {
-  it("keeps the light header rule to the chapter cut alone", () => {
+  it("leaves the header on the page's own cream, now the film is a framed screen under it", () => {
     const source = readFileSync("components/story/LandingStory.tsx", "utf8");
-    const look = source.slice(source.indexOf("const CHAPTER_LOOK"), source.indexOf("`;", source.indexOf("const CHAPTER_LOOK")));
-    const selectors = look.split("\n").filter((line) => line.trim().endsWith("{"));
-    expect(selectors.length).toBeGreaterThan(0);
-    for (const selector of selectors) {
-      expect(selector).toContain(':has([data-story-cut="chapter"])');
-    }
+    expect(source).not.toContain("CHAPTER_LOOK");
+    expect(source).not.toContain("html.light body[data-story-here]");
     expect(source).toContain("data-story-cut={variant}");
   });
 });

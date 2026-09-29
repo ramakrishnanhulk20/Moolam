@@ -2,6 +2,8 @@
 
 import { Component, Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { FilmFailed } from "@/components/home/FilmFailed";
+import { FilmFrame } from "@/components/story/FilmFrame";
+import { FilmLoading } from "@/components/story/FilmLoading";
 
 /** The moves that say a reader is on their way down the page. */
 const MOVES = ["wheel", "touchmove", "scroll", "keydown"] as const;
@@ -13,8 +15,8 @@ const MOVES = ["wheel", "touchmove", "scroll", "keydown"] as const;
  * its first pictures are asked for as soon as it is on the page. With the first
  * screen above it, none of that is anything a reader can see yet, and on a slow
  * phone it would share the line with the pictures they can. So the film's box
- * is held open at its full height, carrying the same attribute the film's own
- * loading box carries so the page's rules treat it the same way, and the film
+ * is held open at its full height, drawn by the same component as the film's
+ * own loading box so the page's rules treat it the same way, and the film
  * itself is only mounted on the first wheel turn, drag, scroll or key, or the
  * moment any of the box is on screen in a window tall enough to show it.
  */
@@ -53,14 +55,18 @@ export function FilmGate({ children }: { children: ReactNode }) {
     };
   }, [open]);
 
-  if (open) {
-    return <FilmCatch>{children}</FilmCatch>;
-  }
-
+  // The frame stays mounted across the swap from this box to the film, so the
+  // light theme's title above the screen does not rise a second time.
   return (
-    <div ref={box} className="story" data-motif="seal" data-film-gate>
-      <div className="h-[100svh] w-full bg-bg" data-story="loading" />
-    </div>
+    <FilmFrame>
+      {open ? (
+        <FilmCatch>{children}</FilmCatch>
+      ) : (
+        <div ref={box} className="story" data-motif="seal" data-film-gate>
+          <FilmLoading />
+        </div>
+      )}
+    </FilmFrame>
   );
 }
 

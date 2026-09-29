@@ -91,7 +91,7 @@ export function ScrollCue() {
     <div
       ref={node}
       aria-hidden
-      className="pointer-events-none absolute inset-x-0 bottom-7 z-40 px-5 opacity-100 transition-opacity duration-700 sm:px-8 lg:px-14"
+      className="story-cue pointer-events-none absolute inset-x-0 z-40 px-5 opacity-100 transition-opacity duration-700 sm:px-8 lg:px-14"
     >
       <div className="mx-auto flex w-full max-w-[100rem] items-center gap-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent/80">{t("scrollCue")}</span>

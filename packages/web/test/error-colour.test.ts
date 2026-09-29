@@ -56,7 +56,11 @@ function tint(ground: string, red: string, share = 0.05): string {
 
 const THEMES = [
   { name: "dark", selector: ":root,\n.dark", red: "#ff5f4d" },
-  { name: "light", selector: ".light,\n.light .story-close", red: "#bf2e14" },
+  {
+    name: "light",
+    selector: '.light,\n.light .story-close,\n.light [data-story="still"] > div > section:last-child',
+    red: "#bf2e14",
+  },
   { name: "story", selector: ".story", red: "#ff5f4d" },
 ] as const;
 

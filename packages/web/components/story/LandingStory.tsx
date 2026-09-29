@@ -40,7 +40,7 @@ import {
   whenRoom,
 } from "@/components/story/signals";
 import type { StoryData } from "@/components/story/data";
-import { degradeSteps, measurement } from "@/components/story/measurements";
+import { bitsApart, degradeSteps, measurement } from "@/components/story/measurements";
 import { createTierState, nextTier, startTier, tierLevel } from "@/components/story/tier";
 import {
   beatTable,
@@ -128,9 +128,9 @@ function World({
    */
   framing: number;
   /**
-   * How much further back a phone stands. The phone frame is the top 45 percent
-   * of the window rather than the whole of it, so this is the distance at which
-   * a 1.7 unit plate fills that band without leaving it.
+   * How much further back a phone stands. It was set when the phone's shot was
+   * the top 45 percent of the window; the Band keeps that shot's scale, grown
+   * by SHOT_GROW, so the distance still holds.
    */
   reach: number;
   credential: string;
@@ -290,49 +290,127 @@ function World({
 }
 
 /**
- * How much of the pinned screen the shot takes on a phone. The words own the
- * rest, and .story-lower in globals.css starts at exactly this fraction.
+ * How far a thumb travels per screen of story on a phone, as a share of the
+ * window. The shot used to be drawn into the top 45 percent of the window and
+ * the scroll was matched to it, so a beat is still exactly the drag it was.
  */
-const PHONE_BAND = 0.45;
+const PHONE_TRAVEL = 0.45;
 
 /**
- * The same, on a phone too short for the words to fit under that.
- *
- * At 375x667 the longest chapters ran off the bottom of the screen in Tamil:
- * the agent card and its three lines put the trusted chapter 163 px past it.
- * The shot gives up nine per cent of the window there and the type in the band
- * steps down with it, which is the rule under this one in globals.css.
+ * The same, on a phone under SHORT_SCREEN tall, where the shot used to take 36
+ * percent. The type in the caption band steps down there too (globals.css).
  */
-const SHORT_PHONE_BAND = 0.36;
+const SHORT_PHONE_TRAVEL = 0.36;
 
 /** Under this many pixels of window height, a phone is a short one. */
 const SHORT_SCREEN = 700;
 
+/** The phone's lens when the shot was the top 45 percent of the window. */
+const PHONE_FOV = 54;
+
 /**
- * Keeps the shot in the top band of the window on a phone.
+ * Where the camera's aim lands in the room between the header and the bar, from
+ * its top. Above the middle, because each beat's words stand at the foot of
+ * that room and the longest of them climb a good way up it.
+ */
+const SHOT_CENTRE = 0.32;
+
+/** How much larger the focal plate is drawn than in the old top band, so the taller room reads full. */
+const SHOT_GROW = 1.6;
+
+/**
+ * The widest the lens is allowed to open, as the tangent of half its angle
+ * (about 80 degrees). Past it the plates at the edges of a short phone stretch.
+ */
+const WIDEST = 0.84;
+
+/** The rectangle the renderer draws into on a phone, in CSS pixels from the canvas's foot, and the lens it draws with. */
+export interface PhoneShot {
+  y: number;
+  height: number;
+  fov: number;
+}
+
+/**
+ * The phone's shot, filling the room between the header and the tab bar.
  *
- * The canvas fills the whole screen so the scroller built on it does too, which
- * is what gives a drag over the words the browser's own momentum. The renderer
- * is then told to draw into the band alone, with the band's own aspect, so the
- * picture is the same pixels it was when the canvas itself was the band. Below
- * the band nothing is drawn and the page's black shows through.
+ * `room.top` is how much of the canvas the header covers and `room.foot` how
+ * much the bar does: both zero once the film is a framed screen under the light
+ * theme, which already sits between them. The drawn rectangle starts at the
+ * bar's top and runs up past the header far enough that its middle, which is
+ * where the camera looks, lands SHOT_CENTRE of the way down the room; the part
+ * above the canvas is simply not there. The lens is opened so a plate comes out
+ * SHOT_GROW times the size it was in the old 45 percent band, which keeps every
+ * camera pose in beats.ts as it was.
+ */
+export function phoneShot(
+  canvas: { width: number; height: number },
+  room: { top: number; foot: number },
+  travel: number,
+): PhoneShot {
+  const inside = Math.max(1, canvas.height - room.top - room.foot);
+  const height = Math.round(inside * 2 * (1 - SHOT_CENTRE));
+  const before = Math.max(1, canvas.height * travel);
+  const half = Math.min(WIDEST, (height * Math.tan((PHONE_FOV * Math.PI) / 360)) / (SHOT_GROW * before));
+  return { y: Math.round(room.foot), height, fov: (Math.atan(half) * 360) / Math.PI };
+}
+
+/** A length the stylesheet resolved, or nothing where the browser left it unresolved. */
+function pixels(value: string): number {
+  const read = Number.parseFloat(value);
+  return Number.isFinite(read) ? read : 0;
+}
+
+/**
+ * Draws the phone's shot into the room between the header and the tab bar.
+ *
+ * The canvas fills the whole pinned screen so the scroller built on it does
+ * too, which is what gives a drag over the words the browser's own momentum.
+ * The header and the bar stand over it, so the renderer is told where they are
+ * and draws around them. How much of the canvas each covers is read from the
+ * stylesheet (--film-top and --film-foot, registered as lengths in globals.css
+ * so the browser hands them back in pixels), which is the same place the words
+ * are placed from, so the two cannot disagree.
  *
  * It is set every frame rather than on a resize because a step in the adaptive
  * tier resizes the drawing buffer, and that hands the viewport back to the whole
  * canvas.
  */
-function Band({ fraction }: { fraction: number }) {
-  useFrame(({ gl, camera, size }) => {
-    if (fraction >= 1) {
+function Band({ travel }: { travel: number }) {
+  const gl = useThree((state) => state.gl);
+  const room = useRef({ top: 0, foot: 0 });
+
+  useEffect(() => {
+    const read = () => {
+      const style = getComputedStyle(gl.domElement);
+      room.current = {
+        top: pixels(style.getPropertyValue("--film-top")),
+        foot: pixels(style.getPropertyValue("--film-foot")),
+      };
+    };
+    read();
+    window.addEventListener("resize", read);
+    // The theme toggle frames or unframes the film without resizing anything.
+    const theme = new MutationObserver(read);
+    theme.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => {
+      window.removeEventListener("resize", read);
+      theme.disconnect();
+    };
+  }, [gl]);
+
+  useFrame(({ gl: renderer, camera, size }) => {
+    if (travel >= 1) {
       return;
     }
-    const height = Math.round(size.height * fraction);
-    gl.setViewport(0, size.height - height, size.width, height);
+    const shot = phoneShot(size, room.current, travel);
+    renderer.setViewport(0, shot.y, size.width, shot.height);
 
     const lens = camera as THREE.PerspectiveCamera;
-    const aspect = size.width / height;
-    if (lens.aspect !== aspect) {
+    const aspect = size.width / shot.height;
+    if (lens.aspect !== aspect || Math.abs(lens.fov - shot.fov) > 0.01) {
       lens.aspect = aspect;
+      lens.fov = shot.fov;
       lens.updateProjectionMatrix();
     }
   });
@@ -614,7 +692,8 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 767px)");
-    // The band is the phone framing, which starts where the side columns stop.
+    // The short phone's smaller type belongs to the phone framing, which starts
+    // where the side columns stop.
     const narrow = window.matchMedia("(max-width: 639px)");
     const low = window.matchMedia(`(max-height: ${SHORT_SCREEN - 1}px)`);
     // A screen that crosses the phone breakpoint is a different machine as far
@@ -674,15 +753,13 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
     return () => cancelAnimationFrame(frame);
   }, [still]);
 
+  // A thumb's travel per screen of story: the whole window on anything wider
+  // than a phone, and on a phone the share it has always been.
+  const travel = small ? (short ? SHORT_PHONE_TRAVEL : PHONE_TRAVEL) : 1;
+
   // The same list, in the same order, that StoryStage asked the document to
   // start fetching. The field hands its first pictures to the plates that stand
   // largest in the opening frame, so those are the ones already on their way.
-  // The shot's share of the window, for the renderer alone: the whole of it on
-  // anything wider than a phone, less than usual on a phone too short to fit
-  // the words under it. Nothing the page lays out reads this. Both numbers are
-  // in globals.css too, where the seam and the words are placed from them, so
-  // neither moves while the browser works out which screen this is.
-  const band = small ? (short ? SHORT_PHONE_BAND : PHONE_BAND) : 1;
 
   const pictures = useMemo(() => fieldPictures(data.plates), [data.plates]);
 
@@ -728,9 +805,6 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
       <style href="moolam-film-in-place" precedence="default">
         {IN_PLACE}
       </style>
-      <style href="moolam-film-chapter" precedence="default">
-        {CHAPTER_LOOK}
-      </style>
       <div
         ref={stage}
         className="grain relative h-[100svh] w-full overflow-hidden bg-bg"
@@ -761,7 +835,7 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
           <Canvas
             // A phone is a tall, narrow window on the same field, so it needs a
             // wider lens to see more than one plate at a time.
-            camera={{ position: [0.9, 0.35, 7.4], fov: small ? 54 : 40 }}
+            camera={{ position: [0.9, 0.35, 7.4], fov: small ? PHONE_FOV : 40 }}
             dpr={dpr}
             gl={{ antialias: true, powerPreference: "high-performance" }}
             // The shot is taken out of the screen reader's way rather than given
@@ -773,14 +847,11 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
             // twice and then stop at a picture nobody can use.
             onCreated={({ gl }) => gl.domElement.setAttribute("aria-hidden", "true")}
           >
-            {/* The scroller is as tall as the canvas, which on a phone is now
-                the whole screen rather than the shot. Handing the pages that
-                same fraction back keeps a phone's thumb travel per beat exactly
-                what it was when the scroller was the band. It is the band's own
-                fraction, the one the renderer draws into: a short phone gives
-                the shot less of the window, and the thumb has to be given the
-                same less or a beat runs longer than the shot it belongs to. */}
-            <ScrollControls pages={table.pages} distance={band} damping={0.22}>
+            {/* The scroller is as tall as the canvas, which on a phone is the
+                whole screen. Handing the pages a phone's travel share keeps its
+                thumb travel per beat exactly what it was when the shot was the
+                top band of the window. */}
+            <ScrollControls pages={table.pages} distance={travel} damping={0.22}>
               <World
                 data={data}
                 table={table}
@@ -797,7 +868,7 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
                 onTier={onTier}
               />
             </ScrollControls>
-            <Band fraction={band} />
+            <Band travel={travel} />
             <AdaptiveDpr pixelated />
             <Preload all />
           </Canvas>
@@ -816,12 +887,10 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
           }}
         />
 
-        {/* A phone has no room at the sides, so the shot ends partway down the
-            window and the words have the ground below it. The seam is a fade
-            rather than a cut, and the top strip clears the bar. Where the fade
-            sits is written in globals.css beside the band it belongs to, so the
-            seam and the words are placed by the same stylesheet and neither
-            waits for the browser to have measured the window. */}
+        {/* A phone has no room at the sides, so the words stand at the foot of
+            the shot, each on a dark fade of its own (.story-lower in
+            globals.css). This one only darkens the top, so the header reads
+            over the shot. */}
         <div aria-hidden className="story-seam pointer-events-none absolute inset-0 z-10 sm:hidden" />
 
         {/* The captions live outside the canvas, so the film scrim over the scene
@@ -884,53 +953,6 @@ body[data-story-start] [data-story="film"],
 body[data-story-start] [data-story-scroller],
 body[data-story-past] [data-story="film"] {
   overscroll-behavior-y: auto;
-}
-`;
-
-/**
- * The chapter cut's header under the light theme.
- *
- * Under the dark theme the bar already floats on the shot in the film's own
- * ink. Under the light theme it used to keep the page's cream ground over the
- * film, a light strip across the top of a black frame. In the chapter cut it
- * takes the film's look for as long as the film stands in the window, and
- * gives it back once the closing card, which carries the page's own ground,
- * has arrived (data-chapter-close, written from CloseCard's frame).
- */
-const CHAPTER_LOOK = `
-html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header {
-  --story-pullup: var(--header-h);
-  --bg: #0b0b0c;
-  --bg-raised: #121214;
-  --bg-sunken: #08080a;
-  --line: rgb(255 255 255 / 0.16);
-  --line-strong: rgb(255 255 255 / 0.26);
-  --text: #f5f3ef;
-  --text-muted: rgb(245 243 239 / 0.72);
-  --text-faint: rgb(245 243 239 / 0.5);
-  --accent: #ffb7c5;
-  --accent-ink: #0b0b0c;
-  --accent-soft: rgb(255 183 197 / 0.12);
-  color-scheme: dark;
-  color: var(--text);
-  background: transparent;
-  border-color: transparent;
-  backdrop-filter: none;
-}
-html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header::before {
-  content: "";
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline: 0;
-  height: max(0px, 100% + 1px - var(--story-pullup));
-  background: #0b0b0c;
-  z-index: -1;
-}
-html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header [data-lockup="dark"] {
-  display: block;
-}
-html.light body[data-story-here]:not([data-chapter-close]):has([data-story-cut="chapter"]) .app-header [data-lockup="light"] {
-  display: none;
 }
 `;
 
@@ -1144,14 +1166,14 @@ function Readout({ children, className = "" }: { children: ReactNode; className?
 /**
  * The verifier's own figures, ticking as the copies come home.
  *
- * The six transforms and their confidences were measured by posting the real
- * files to the running verifier, and the numbers are written straight onto the
- * three nodes from an animation frame so the scene never shares a render with
- * them.
+ * The six transforms and their fingerprint distances were measured by posting
+ * the real files to the running verifier, and the numbers are written straight
+ * onto the three nodes from an animation frame so the scene never shares a
+ * render with them.
  *
- * The caption is the same measurement in words. On its own the row read
- * "0.91 REENCODE-Q30 / MATCH", which is the verifier's vocabulary and nobody
- * else's.
+ * The figure is bits apart on the 64 bit fingerprint, the same unit the caption
+ * under it, the verify page and the passport card all use. It used to be the
+ * verifier's confidence, which put "0.97 of 64 bits apart" on screen.
  */
 function Ladder({ label }: { label: string }) {
   const t = useTranslations("story.verified");
@@ -1165,7 +1187,7 @@ function Ladder({ label }: { label: string }) {
     [t],
   );
   const measured = useCallback(
-    (confidence: number) => t("similarity", { value: confidence.toFixed(2), result: label }),
+    (bits: string) => t("similarity", { value: bits, result: label }),
     [label, t],
   );
 
@@ -1181,10 +1203,10 @@ function Ladder({ label }: { label: string }) {
           name.current.textContent = spoken(steps[at].transform);
         }
         if (value.current !== null) {
-          value.current.textContent = steps[at].confidence.toFixed(2);
+          value.current.textContent = bitsApart(steps[at]);
         }
         if (said.current !== null) {
-          said.current.textContent = measured(steps[at].confidence);
+          said.current.textContent = measured(bitsApart(steps[at]));
         }
       }
       frame = requestAnimationFrame(loop);
@@ -1200,14 +1222,14 @@ function Ladder({ label }: { label: string }) {
         ref={value}
         className="font-display text-[clamp(2.6rem,6vw,4.6rem)] font-semibold leading-[0.85] tracking-[-0.05em] tabular-nums text-accent"
       >
-        {steps[0].confidence.toFixed(2)}
+        {bitsApart(steps[0])}
       </span>
       <span className="pb-2">
         <span ref={name} className="block max-w-[26ch] font-mono text-[12px] uppercase tracking-[0.14em] text-text">
           {spoken(steps[0].transform)}
         </span>
         <span ref={said} className="block max-w-[26ch] font-mono text-[11px] uppercase tracking-[0.14em] text-text-faint">
-          {measured(steps[0].confidence)}
+          {measured(bitsApart(steps[0]))}
         </span>
       </span>
     </div>

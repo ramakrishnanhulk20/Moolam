@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { FilmLoading } from "@/components/story/FilmLoading";
 import { OPENING_PICTURES, PLATE_WIDTH, fieldPictures } from "@/components/story/scene/order";
 import type { StoryData } from "@/components/story/data";
 import type { StoryVariant } from "@/components/story/beats";
@@ -36,8 +37,9 @@ function freshStory() {
     {
       ssr: false,
       /**
-       * The film's own box, held open before the film arrives, and carrying the
-       * attribute the page's story rules hang on.
+       * The film's own box, held open before the film arrives: the film's
+       * height and ground with the chapter title on it (FilmLoading.tsx), and
+       * the attribute the page's story rules hang on.
        *
        * The home page pulls the story up under the floating bar. The markup asks
        * for 73 px and the rule in globals.css hands it the bar's real height, but
@@ -47,7 +49,7 @@ function freshStory() {
        * shift. With the attribute here the pull-up is right on the first paint and
        * the film replaces a box of exactly its own size.
        */
-      loading: () => <div className="h-[100svh] w-full bg-bg" data-story="loading" />,
+      loading: () => <FilmLoading />,
     },
   );
 }

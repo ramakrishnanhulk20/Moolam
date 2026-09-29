@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement } from "react";
+import { NextIntlClientProvider } from "next-intl";
+import en from "@/messages/en.json";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { FilmGate } from "@/components/home/FilmGate";
@@ -41,7 +43,14 @@ async function mount() {
   document.body.append(host);
   await act(async () => {
     root = createRoot(host);
-    root.render(createElement(FilmGate, null, createElement("div", { "data-the-film": true })));
+    // The box draws the chapter's title while it waits, so it needs the words.
+    root.render(
+      createElement(
+        NextIntlClientProvider,
+        { locale: "en", messages: en, timeZone: "UTC" },
+        createElement(FilmGate, null, createElement("div", { "data-the-film": true })),
+      ),
+    );
   });
 }
 
