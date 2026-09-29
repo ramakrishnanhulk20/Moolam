@@ -56,7 +56,7 @@ function render(node: ReactElement): string {
 describe("the screen a press shows while its page is on the way", () => {
   it("stands in for every page a press opens, in that page's own shape, with a seal that holds still under reduced motion", async () => {
     const routes: Array<[string, string, () => Promise<{ default: FunctionComponent }>]> = [
-      ["general", "page", () => import("@/app/[locale]/loading")],
+      ["general", "page", () => import("@/components/shell/Opening")],
       ["passport", "poster", () => import("@/app/[locale]/passport/[id]/loading")],
       ["agent", "agent", () => import("@/app/[locale]/agent/[id]/loading")],
       ["studio", "page", () => import("@/app/[locale]/studio/loading")],
@@ -75,7 +75,7 @@ describe("the screen a press shows while its page is on the way", () => {
     }
 
     // The poster frames are the exact heights of the posters they stand in for.
-    const { default: Opening } = (await import("@/app/[locale]/loading")) as {
+    const { default: Opening } = (await import("@/components/shell/Opening")) as {
       default: FunctionComponent<{ frame?: string }>;
     };
     const passport = "h-[74svh] min-h-[34rem] sm:h-[min(78vh,46rem)]";

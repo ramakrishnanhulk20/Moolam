@@ -124,7 +124,7 @@ describe("the stated beat's written day on a phone (step 3)", async () => {
 describe("the language switch (step 4)", async () => {
   const { barEntrance, markBarEntered, BottomBar } = await import("@/components/shell/BottomBar");
   const { switchOnItsWay, otherLocales, shouldWarmLanguages } = await import("@/components/LocaleSwitch");
-  const { openingEntrance } = await import("@/app/[locale]/loading");
+  const { openingEntrance } = await import("@/components/shell/Opening");
   const tabs = [
     { key: "home" as const, href: "/", label: "Home" },
     { key: "explore" as const, href: "/explore", label: "Explore" },

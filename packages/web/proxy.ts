@@ -2,8 +2,37 @@ import { NextResponse, type NextRequest } from "next/server";
 import { EXPLORE_KEYS, narrowsExplore } from "@/components/explore/query";
 import { callerAddress, tooManyPage, withinLimit } from "@/lib/api/limit";
 
+/** A passport or agent address: the language, which of the two, and the id. */
+const ID_PAGE = /^\/([^/]+)\/(passport|agent)\/([^/]+)\/?$/;
+
+/** The ids the two pages read, the same tests each page runs before it asks the chain anything. */
+const WELL_FORMED: Record<"passport" | "agent", RegExp> = {
+  passport: /^0x[0-9a-fA-F]{64}$/,
+  agent: /^[0-9]{1,20}$/,
+};
+
 /**
- * One rule, for one route.
+ * Where a passport or agent address is drawn, or null when the address is
+ * neither.
+ *
+ * Both pages open under a loading screen, and a loading screen sends the page's
+ * first bytes with a 200 before the page can say the id is nonsense; a not-found
+ * thrown after that only adds a noindex tag. So an id that cannot name anything
+ * is sent here, before any page starts, to an address under the same language
+ * that no route claims, and the catch-all there answers with a real 404. A
+ * well-formed id is handed back as it came.
+ */
+export function idPageTarget(pathname: string): string | null {
+  const match = ID_PAGE.exec(pathname);
+  if (match === null) {
+    return null;
+  }
+  const [, locale, route, id] = match as unknown as [string, string, "passport" | "agent", string];
+  return WELL_FORMED[route].test(id) ? pathname : `/${locale}/no-such-${route}`;
+}
+
+/**
+ * The Explore rule, for one route.
  *
  * An Explore address that names a chip, a search term or an agent is handed to
  * the sibling route that reads the query and draws it on the request. Every
@@ -20,6 +49,16 @@ import { callerAddress, tooManyPage, withinLimit } from "@/lib/api/limit";
  * bare page is never counted: it is built ahead of time and costs nothing.
  */
 export default function proxy(request: NextRequest): NextResponse {
+  const idTarget = idPageTarget(request.nextUrl.pathname);
+  if (idTarget !== null) {
+    if (idTarget === request.nextUrl.pathname) {
+      return NextResponse.next();
+    }
+    const missing = request.nextUrl.clone();
+    missing.pathname = idTarget;
+    return NextResponse.rewrite(missing);
+  }
+
   const onView = /\/explore\/view\/?$/.test(request.nextUrl.pathname);
   if (!onView && !narrowsExplore(request.nextUrl.searchParams)) {
     return NextResponse.next();
@@ -63,6 +102,8 @@ export default function proxy(request: NextRequest): NextResponse {
   return NextResponse.rewrite(narrowed);
 }
 
-// Only the Explore addresses reach this. Every other page on the site is served
-// with nothing in front of it.
-export const config = { matcher: ["/:locale/explore", "/:locale/explore/view"] };
+// Only the Explore, passport and agent addresses reach this. Every other page on
+// the site is served with nothing in front of it.
+export const config = {
+  matcher: ["/:locale/explore", "/:locale/explore/view", "/:locale/passport/:id", "/:locale/agent/:id"],
+};

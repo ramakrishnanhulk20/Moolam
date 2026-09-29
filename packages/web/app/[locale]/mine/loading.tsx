@@ -1,4 +1,4 @@
-import Opening from "@/app/[locale]/loading";
+import Opening from "@/components/shell/Opening";
 
 /**
  * My pictures carries the wallet and is never fetched ahead, so this is the
