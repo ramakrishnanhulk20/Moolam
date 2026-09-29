@@ -98,7 +98,7 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
       <h3 className="mt-5 max-w-[20ch] font-display text-[clamp(1.5rem,3vw,2.3rem)] font-semibold uppercase leading-[1.02] tracking-[-0.03em]">
         {t("heading")}
       </h3>
-      <p className="mt-5 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
 
       <ConsentChoice draft={draft} onChange={setDraft} disabled={consent.busy} className="mt-8" />
 
@@ -122,7 +122,7 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
 
       {/* One line under the button, and only ever one: whichever is the reason
           this holder cannot press it right now. */}
-      <p className="mt-4 max-w-[54ch] text-xs leading-relaxed text-text-faint">
+      <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-faint">
         {locked && consent.opensAt !== null
           ? t("locked", { at: format.dateTime(new Date(consent.opensAt * 1000), "time") })
           : problem === "conditionsRequired"
@@ -140,7 +140,7 @@ function Panel({ consent, standing }: { consent: SetConsent; standing: LedgerAns
           role="status"
           className="mt-7 border-s-2 border-verified bg-verified/5 py-3 ps-4"
         >
-          <p className="max-w-[54ch] text-sm leading-relaxed text-verified">
+          <p className="max-w-[54ch] text-base leading-relaxed text-verified">
             {t("done", {
               when:
                 state.at === null
@@ -196,8 +196,8 @@ function Failure({ consent }: { consent: SetConsent }) {
       data-tone={pending ? "pending" : "failed"}
       className={`mt-7 border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/10"}`}
     >
-      <p className={`flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
-        {pending ? null : <WarningMark className="mt-[3px]" />}
+      <p className={`flex max-w-[54ch] items-start gap-2.5 text-base leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {pending ? null : <WarningMark className="mt-[5px]" />}
         {t(`failure.${key}`, {
           at: failure.at === undefined ? "" : format.dateTime(new Date(failure.at * 1000), "time"),
         })}

@@ -51,7 +51,7 @@ export async function DisputeNote({
       <h2 className="mt-4 max-w-[24ch] font-display text-[clamp(1.3rem,2.4vw,1.9rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
         {t(`status.${status}`)}
       </h2>
-      <p className="mt-4 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
 
       {evidence !== null && evidence.reason !== null ? (
         <figure className="mt-7 max-w-[58ch] border-s-2 border-failed/60 ps-5">
@@ -61,7 +61,7 @@ export async function DisputeNote({
       ) : null}
 
       {evidence !== null && evidence.reason === null && evidence.uri !== null ? (
-        <p className="tap-row mt-7 max-w-[58ch] text-sm leading-relaxed text-text-muted">
+        <p className="tap-row mt-7 max-w-[58ch] text-base leading-relaxed text-text-muted">
           {t("evidenceElsewhere")}{" "}
           <a
             href={evidence.uri}
@@ -100,7 +100,7 @@ export async function DisputeNote({
         </div>
       </dl>
 
-      <p className="tap-row mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm leading-relaxed">
+      <p className="tap-row mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-base leading-relaxed">
         <span aria-hidden className={dispute.status === DisputeStatus.Open ? "h-2 w-2 animate-pulse bg-failed" : "h-2 w-2 bg-failed"} />
         <span className={dispute.status === DisputeStatus.Open ? "text-text-muted" : "text-text"}>
           {dispute.status === DisputeStatus.Open ? t("waiting") : t(`outcome.${status}`)}

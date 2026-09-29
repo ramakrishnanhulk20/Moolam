@@ -76,9 +76,9 @@ function Panel({ edit, sealed }: { edit: PassportEdit; sealed: boolean }) {
           to read the picture to make it. A sealed passport has none to read, so
           the holder is told that in one line and the drop zone is not drawn. */}
       {sealed ? (
-        <p className="mt-5 max-w-[48ch] text-sm leading-relaxed text-text-muted">{sealedWords("edit")}</p>
+        <p className="mt-5 max-w-[48ch] text-base leading-relaxed text-text-muted">{sealedWords("edit")}</p>
       ) : !edit.configured ? (
-        <p className="mt-5 max-w-[48ch] text-sm leading-relaxed text-text-muted">{t("notConfigured")}</p>
+        <p className="mt-5 max-w-[48ch] text-base leading-relaxed text-text-muted">{t("notConfigured")}</p>
       ) : isEditDone(state) ? (
         <Recorded edit={edit} />
       ) : edit.granted ? (
@@ -96,8 +96,8 @@ function AskForSigner({ edit }: { edit: PassportEdit }) {
 
   return (
     <div className="mt-5">
-      <p className="max-w-[50ch] text-sm leading-relaxed text-text-muted">{t("signer.what")}</p>
-      <p className="mt-4 max-w-[50ch] border-s-2 border-line ps-4 font-mono text-[11px] leading-relaxed text-text-faint">
+      <p className="max-w-[50ch] text-base leading-relaxed text-text-muted">{t("signer.what")}</p>
+      <p className="mt-4 max-w-[50ch] border-s-2 border-line ps-4 text-base leading-relaxed text-text-faint">
         {t("signer.policy")}
       </p>
 
@@ -177,7 +177,7 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
           {edit.revoking ? t("signer.revoking") : t("signer.revoke")}
         </button>
       </div>
-      <p className="mt-3 max-w-[50ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="mt-3 max-w-[50ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
 
       <input
         ref={input}
@@ -211,7 +211,7 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
             >
               {t("form.choose")}
             </button>
-            <p className="max-w-[44ch] text-xs leading-relaxed text-text-faint">{t("form.hint")}</p>
+            <p className="max-w-[44ch] text-base leading-relaxed text-text-faint">{t("form.hint")}</p>
           </div>
         ) : (
           <div className="relative">
@@ -268,7 +268,7 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
           className="mt-2 w-full resize-none border border-line bg-bg px-4 py-3 text-base leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-accent"
         />
       </label>
-      <p className="mt-2 text-xs leading-relaxed text-text-faint">{t("form.noteHint", { limit: NOTE_LIMIT })}</p>
+      <p className="mt-2 text-base leading-relaxed text-text-faint">{t("form.noteHint", { limit: NOTE_LIMIT })}</p>
 
       <button
         type="button"
@@ -329,9 +329,9 @@ function Recorded({ edit }: { edit: PassportEdit }) {
         </div>
       )}
 
-      <p className="mt-6 max-w-[50ch] text-sm leading-relaxed text-text-muted">{t("done.body")}</p>
+      <p className="mt-6 max-w-[50ch] text-base leading-relaxed text-text-muted">{t("done.body")}</p>
       {camera === undefined ? null : (
-        <p data-camera-record={camera} className="mt-3 max-w-[50ch] text-sm leading-relaxed text-text-muted">
+        <p data-camera-record={camera} className="mt-3 max-w-[50ch] text-base leading-relaxed text-text-muted">
           {camera === "kept"
             ? receipt("cameraKept")
             : camera === "credentials-kept"
@@ -359,7 +359,7 @@ function Recorded({ edit }: { edit: PassportEdit }) {
         </div>
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.fee")}</dt>
-          <dd className="mt-1.5 text-sm text-text-muted">
+          <dd className="mt-1.5 text-base leading-relaxed text-text-muted">
             {state.result?.sponsored === true ? t("done.feeSponsored") : t("done.feeOwn")}
           </dd>
         </div>
@@ -512,8 +512,8 @@ function FailureLine({ failure, edit }: { failure: EditFailure; edit: PassportEd
       data-tone={pending ? "pending" : "failed"}
       className={`border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
-      <p className={`flex max-w-[50ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
-        {pending ? null : <WarningMark className="mt-[3px]" />}
+      <p className={`flex max-w-[50ch] items-start gap-2.5 text-base leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {pending ? null : <WarningMark className="mt-[5px]" />}
         {t(`failure.${failure.key}`, {
           used: quota?.used ?? 0,
           limit: quota?.limit ?? 0,

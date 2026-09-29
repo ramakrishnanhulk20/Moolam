@@ -208,8 +208,8 @@ describe("the band above Stated on chain", () => {
 
     // The pull hands the room back in full from 640 px up, and on a phone it
     // hands back all the section's padding can take.
-    expect(room).toContain("sm:min-h-[3rem]");
-    expect(TUCKED_ROOM).toContain("sm:-mb-[3rem]");
+    expect(room).toContain("sm:min-h-[3.25rem]");
+    expect(TUCKED_ROOM).toContain("sm:-mb-[3.25rem]");
     expect(room).toContain("min-h-[4.25rem]");
     expect(TUCKED_ROOM).toContain("-mb-[3.5rem]");
     expect(source("components/passport/Attestations.tsx")).toContain("py-14 sm:px-8 sm:py-20");

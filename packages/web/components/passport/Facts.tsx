@@ -85,7 +85,7 @@ export async function Facts({
                 </a>
                 <CopyButton value={passport.creator} />
               </span>
-              <p className={`mt-2 text-sm leading-relaxed ${hasPasskey ? "text-verified" : "text-text-muted"}`}>
+              <p className={`mt-2 text-base leading-relaxed ${hasPasskey ? "text-verified" : "text-text-muted"}`}>
                 {hasPasskey ? t("passkeyBound") : t("passkeyNone")}
               </p>
             </dd>
@@ -116,7 +116,7 @@ export async function Facts({
             <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("agent")}</dt>
             <dd className="mt-2">
               {passport.generatorAgentId === 0n ? (
-                <p className="max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("noAgent")}</p>
+                <p className="max-w-[46ch] text-base leading-relaxed text-text-muted">{t("noAgent")}</p>
               ) : (
                 <Link
                   href={`/agent/${passport.generatorAgentId.toString()}`}
@@ -198,7 +198,7 @@ export async function Facts({
                     pinned document does not name the algorithm itself. */}
                 {t("sealed.commitmentAlgorithm", { algorithm: art.commitment?.algorithm ?? "sha-256" })}
               </p>
-              <p className="mt-4 text-sm leading-relaxed text-text-muted">{t("sealed.commitmentLine")}</p>
+              <p className="mt-4 text-base leading-relaxed text-text-muted">{t("sealed.commitmentLine")}</p>
             </div>
           ) : art.unsealed === undefined ? null : (
             // The other end of the same story. This picture has an address like
@@ -210,7 +210,7 @@ export async function Facts({
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
                 {t("unsealed.label")}
               </p>
-              <p className="mt-2 text-sm leading-relaxed text-text-muted">
+              <p className="mt-2 text-base leading-relaxed text-text-muted">
                 {t("unsealed.line", {
                   date: format.dateTime(new Date(art.unsealed.at), { dateStyle: "medium" }),
                 })}
@@ -247,7 +247,7 @@ export async function Facts({
             is untrue of a sealed one. That passport's commitment line in the
             record already says what can be compared, so it gets nothing here. */}
         {art.sealed === true ? null : (
-          <p data-fingerprints-body className="mt-5 max-w-[40ch] text-sm leading-relaxed text-text-muted">
+          <p data-fingerprints-body className="mt-5 max-w-[40ch] text-base leading-relaxed text-text-muted">
             {t("fingerprintsBody")}
           </p>
         )}
@@ -314,7 +314,7 @@ function Hash({ label, value, note }: { label: string; value: string; note?: str
         <Mono value={value} className="min-w-0 text-xs leading-relaxed text-text" />
         <CopyButton value={value} />
       </dd>
-      {note === undefined ? null : <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-text-muted">{note}</p>}
+      {note === undefined ? null : <p className="mt-2 max-w-[40ch] text-base leading-relaxed text-text-muted">{note}</p>}
     </div>
   );
 }

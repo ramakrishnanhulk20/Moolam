@@ -98,7 +98,7 @@ export function DownloadOriginal({
         <span
           role="status"
           data-download-state="fetching"
-          className="order-last flex basis-full items-center gap-2.5 font-body text-sm normal-case tracking-normal text-pending"
+          className="order-last flex basis-full items-center gap-2.5 font-body text-base normal-case tracking-normal text-pending"
         >
           <span aria-hidden className="inline-block h-2 w-2 shrink-0 bg-pending motion-safe:animate-pulse" />
           {words.downloading}
@@ -107,9 +107,9 @@ export function DownloadOriginal({
         <span
           role="alert"
           data-download-state="failed"
-          className="order-last flex basis-full items-start gap-2.5 font-body text-sm normal-case tracking-normal text-failed"
+          className="order-last flex basis-full items-start gap-2.5 font-body text-base normal-case tracking-normal text-failed"
         >
-          <WarningMark className="mt-[3px]" />
+          <WarningMark className="mt-[5px]" />
           {words.downloadFailed}
         </span>
       ) : null}

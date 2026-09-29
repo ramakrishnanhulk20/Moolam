@@ -35,7 +35,7 @@ export function ConsentStamp({ consent, className = "" }: { consent?: MatchConse
         <p className="mt-3 max-w-[24ch] font-display text-[clamp(1.1rem,2.4vw,1.6rem)] font-semibold leading-[1.05] tracking-[-0.03em] text-text-muted">
           {t("unavailable")}
         </p>
-        <p className="mt-3 max-w-[56ch] text-xs leading-relaxed text-text-faint">{t("unavailableNote")}</p>
+        <p className="mt-3 max-w-[56ch] text-base leading-relaxed text-text-faint">{t("unavailableNote")}</p>
       </Frame>
     );
   }
@@ -49,7 +49,7 @@ export function ConsentStamp({ consent, className = "" }: { consent?: MatchConse
             {t("nothing")}
           </span>
         </p>
-        <p className="mt-3 max-w-[56ch] text-xs leading-relaxed text-text-faint">{t("silence")}</p>
+        <p className="mt-3 max-w-[56ch] text-base leading-relaxed text-text-faint">{t("silence")}</p>
       </Frame>
     );
   }
@@ -78,7 +78,7 @@ export function ConsentStamp({ consent, className = "" }: { consent?: MatchConse
         </span>
       </p>
 
-      <p className="mt-3 max-w-[56ch] break-words text-xs leading-relaxed text-text-faint">
+      <p className="mt-3 max-w-[56ch] break-words text-base leading-relaxed text-text-faint">
         {conditions ? consent.constraintInfo : t("source")}
       </p>
     </Frame>

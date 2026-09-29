@@ -380,7 +380,7 @@ describe("step 11: the day slider", () => {
   it("lets the failed-day line wrap in the reading face, with the mark before it, in a row that grows", () => {
     const markup = render(createElement(DayAnswerLine, { state: "failed" }));
     const line = /<p role="alert" data-day-failed="true" class="([^"]*)">/.exec(markup)?.[1].split(/\s+/) ?? [];
-    expect(line).toContain("text-sm");
+    expect(line).toContain("text-base");
     expect(line).not.toContain("uppercase");
     expect(line).not.toContain("font-mono");
     expect(line.some((name) => /^h-\d/.test(name))).toBe(false);

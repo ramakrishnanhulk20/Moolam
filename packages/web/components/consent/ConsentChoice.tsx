@@ -81,8 +81,8 @@ export function ConsentChoice({
               onClick={() => onChange({ consent: consentForChoice(choice), constraintInfo: draft.constraintInfo })}
               aria-pressed={picked}
               data-choice={choice}
-              className={`group relative overflow-hidden rounded-[8px] border text-start transition-all duration-200 disabled:opacity-60 ${
-                small ? "p-4" : "p-5"
+              className={`group relative flex flex-col overflow-hidden rounded-[8px] border text-start transition-all duration-200 disabled:opacity-60 ${
+                small ? "p-3.5" : "p-5"
               } ${
                 picked
                   ? "border-accent bg-accent-soft"
@@ -112,7 +112,7 @@ export function ConsentChoice({
               </span>
               <span
                 className={`block max-w-[34ch] leading-relaxed text-text-muted ${
-                  small ? "mt-1.5 text-[11px]" : "mt-2 text-xs"
+                  small ? "mt-1.5 text-sm" : "mt-2 text-base"
                 }`}
               >
                 {t(`control.choices.${choice}.line`)}
@@ -202,7 +202,7 @@ export function ConsentChoice({
                 disabled={disabled}
                 onChange={(event) => onChange({ ...draft, constraintInfo: event.target.value })}
                 placeholder={t("control.conditionsPlaceholder")}
-                className="mt-3 w-full rounded-[8px] border border-line bg-bg-raised p-4 text-sm leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint hover:border-line-strong focus:border-accent disabled:opacity-60"
+                className="mt-3 w-full rounded-[8px] border border-line bg-bg-raised p-4 text-base leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint hover:border-line-strong focus:border-accent disabled:opacity-60"
               />
 
               <div className="mt-3 flex items-center gap-4">
@@ -222,8 +222,8 @@ export function ConsentChoice({
               </div>
 
               {unprintable === null ? null : (
-                <p className="mt-3 flex max-w-[52ch] items-start gap-2 text-xs leading-relaxed text-failed">
-                  <WarningMark className="mt-[1px]" />
+                <p className="mt-3 flex max-w-[52ch] items-start gap-2.5 text-base leading-relaxed text-failed">
+                  <WarningMark className="mt-[5px]" />
                   {t("control.notPrintable", { at: unprintable + 1 })}
                 </p>
               )}

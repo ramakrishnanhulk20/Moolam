@@ -60,7 +60,7 @@ export function ConsentSection({
           <h2 className="rise mt-6 max-w-[15ch] font-display text-[clamp(1.8rem,4vw,3.2rem)] font-semibold uppercase leading-[0.95] tracking-[-0.03em]">
             {t("heading")}
           </h2>
-          <p className="rise mt-6 max-w-[52ch] border-s-2 border-line ps-5 text-sm leading-relaxed text-text-muted">
+          <p className="rise mt-6 max-w-[52ch] border-s-2 border-line ps-5 text-base leading-relaxed text-text-muted">
             {t("unavailable")}
           </p>
         </div>
@@ -93,7 +93,7 @@ export function ConsentSection({
           <h2 className="max-w-[15ch] font-display text-[clamp(1.8rem,4vw,3.2rem)] font-semibold uppercase leading-[0.95] tracking-[-0.03em]">
             {t("heading")}
           </h2>
-          <p className="max-w-[54ch] text-sm leading-relaxed text-text-muted lg:mt-3">{t("lede")}</p>
+          <p className="max-w-[54ch] text-base leading-relaxed text-text-muted lg:mt-3">{t("lede")}</p>
         </div>
 
         <ConsentLedger
@@ -114,15 +114,15 @@ export function ConsentSection({
         <div className="mt-20 grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-20">
           <div className="rise min-w-0">
             <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">{t("fourUses")}</p>
-            <p className="mt-3 max-w-[40ch] text-xs leading-relaxed text-text-faint">{t("fourUsesNote")}</p>
+            <p className="mt-3 max-w-[52ch] text-base leading-relaxed text-text-faint">{t("fourUsesNote")}</p>
             <UseRows consent={consent} className="mt-5" />
           </div>
 
           <div className="rise min-w-0 lg:mt-12" style={{ animationDelay: "90ms" }}>
             {entry === null ? (
               <div className="max-w-[52ch] border-s-2 border-line ps-5">
-                <p className="text-sm leading-relaxed text-text-muted">{t("empty.body")}</p>
-                <p className="mt-4 text-sm leading-relaxed text-text-faint">{t("empty.holder")}</p>
+                <p className="text-base leading-relaxed text-text-muted">{t("empty.body")}</p>
+                <p className="mt-4 text-base leading-relaxed text-text-faint">{t("empty.holder")}</p>
               </div>
             ) : (
               <>
@@ -133,7 +133,7 @@ export function ConsentSection({
                     </p>
                     <p className="mt-2.5 max-w-[56ch] break-words text-base leading-relaxed text-text">{conditions}</p>
                     {conditional.length === 0 ? null : (
-                      <p className="mt-2.5 max-w-[56ch] text-xs leading-relaxed text-text-faint">
+                      <p className="mt-2.5 max-w-[56ch] text-base leading-relaxed text-text-faint">
                         {t("conditionsApplyTo", {
                           uses: conditional.map((field) => t(`uses.${field}`)).join(", "),
                         })}

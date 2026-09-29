@@ -21,7 +21,7 @@ export function ConsentHistory({ entries, className = "" }: { entries: ConsentEn
 
   if (entries.length === 0) {
     return (
-      <p className={`max-w-[46ch] text-sm leading-relaxed text-text-muted ${className}`}>{t("historyEmpty")}</p>
+      <p className={`max-w-[46ch] text-base leading-relaxed text-text-muted ${className}`}>{t("historyEmpty")}</p>
     );
   }
 
@@ -53,7 +53,7 @@ export function ConsentHistory({ entries, className = "" }: { entries: ConsentEn
             </p>
 
             {entry.constraintInfo.length === 0 ? null : (
-              <p className="mt-2 max-w-[52ch] break-words text-xs leading-relaxed text-text-muted">
+              <p className="mt-2 max-w-[52ch] break-words text-base leading-relaxed text-text-muted">
                 {entry.constraintInfo}
               </p>
             )}

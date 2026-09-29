@@ -118,9 +118,9 @@ function Choose({ unseal, passportId }: { unseal: PassportUnseal; passportId: He
 
   return (
     <div className="mt-5">
-      <p className="max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="max-w-[52ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
 
-      <p className="mt-5 max-w-[52ch] border-s-2 border-accent/60 ps-4 text-sm leading-relaxed text-text">
+      <p className="mt-5 max-w-[52ch] border-s-2 border-accent/60 ps-4 text-base leading-relaxed text-text">
         {t("permanent")}
       </p>
 
@@ -183,7 +183,7 @@ function Choose({ unseal, passportId }: { unseal: PassportUnseal; passportId: He
             <p className="mt-2 break-all font-mono text-[11px] text-text">
               {state.kept.name} <span className="text-text-faint">{megabytes(state.kept.size)}</span>
             </p>
-            <p className="mt-2 max-w-[48ch] text-sm leading-relaxed text-text-muted">
+            <p className="mt-2 max-w-[48ch] text-base leading-relaxed text-text-muted">
               {t("matchedLine", { id: shortHex(passportId, 8, 6) })}
             </p>
           </motion.div>
@@ -262,7 +262,7 @@ function Published({
         </p>
       </div>
 
-      <p className="mt-6 max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("done.body")}</p>
+      <p className="mt-6 max-w-[52ch] text-base leading-relaxed text-text-muted">{t("done.body")}</p>
       <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
         {t("done.at", { when: format.dateTime(new Date(result.unsealedAt), "moment") })}
       </p>
@@ -276,7 +276,7 @@ function Published({
         <Address label={t("done.record")} uri={result.record.uri} cid={result.record.cid} />
       </dl>
 
-      <p className="mt-6 max-w-[52ch] text-sm leading-relaxed text-text-faint">{t("done.check")}</p>
+      <p className="mt-6 max-w-[52ch] text-base leading-relaxed text-text-faint">{t("done.check")}</p>
     </motion.div>
   );
 }
@@ -350,8 +350,8 @@ function FailureLine({ failure, unseal }: { failure: UnsealFailure; unseal: Pass
       data-tone={settled ? "settled" : "failed"}
       className={`border-s-2 py-3 ps-4 ${settled ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/5"}`}
     >
-      <p className={`flex max-w-[52ch] items-start gap-2.5 text-sm leading-relaxed ${settled ? "text-text-muted" : "text-failed"}`}>
-        {settled ? null : <WarningMark className="mt-[3px]" />}
+      <p className={`flex max-w-[52ch] items-start gap-2.5 text-base leading-relaxed ${settled ? "text-text-muted" : "text-failed"}`}>
+        {settled ? null : <WarningMark className="mt-[5px]" />}
         {t(`failure.${failure.key}`, {
           used: quota?.used ?? 0,
           limit: quota?.limit ?? 0,

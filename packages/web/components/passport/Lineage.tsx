@@ -68,7 +68,7 @@ export async function Lineage({
       <div className="mt-8">
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("children.edits")}</p>
         {edits.length === 0 ? (
-          <p className="mt-3 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("children.empty")}</p>
+          <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("children.empty")}</p>
         ) : (
           <ol className="mt-3 space-y-px">
             {edits.map((child, index) => (
@@ -88,7 +88,7 @@ export async function Lineage({
         )}
 
         {/* Says what a reader is looking at: who may add an edit here, and what holds them to it. */}
-        <p className="mt-6 max-w-[46ch] border-t border-line pt-5 text-xs leading-relaxed text-text-faint">
+        <p className="mt-6 max-w-[54ch] border-t border-line pt-5 text-base leading-relaxed text-text-faint">
           {t("edit.lineageNote")}
         </p>
       </div>

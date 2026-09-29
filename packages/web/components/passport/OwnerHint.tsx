@@ -84,7 +84,7 @@ export function HintLine({ onSignIn }: { onSignIn: () => void }) {
       className="mt-16 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-6"
     >
       <span aria-hidden className="motif h-[8px] w-[8px] opacity-60" />
-      <p className="text-sm leading-relaxed text-text-muted">{t("ownerHint")}</p>
+      <p className="text-base leading-relaxed text-text-muted">{t("ownerHint")}</p>
       <button
         type="button"
         onClick={onSignIn}

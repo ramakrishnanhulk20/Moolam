@@ -228,7 +228,7 @@ export function ConsentLedger({
                   : t("nothingBy")}
               </span>
             </p>
-            <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t(`line.${summary}`)}</p>
+            <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-muted">{t(`line.${summary}`)}</p>
           </motion.div>
 
           <DayAnswerLine state={failed !== null ? "failed" : asking ? "asking" : null} />
@@ -355,9 +355,9 @@ export function DayAnswerLine({ state }: { state: "failed" | "asking" | null }) 
         <p
           role="alert"
           data-day-failed
-          className="flex max-w-[46ch] items-start gap-2.5 text-sm leading-relaxed text-failed"
+          className="flex max-w-[46ch] items-start gap-2.5 text-base leading-relaxed text-failed"
         >
-          <WarningMark className="mt-[3px]" />
+          <WarningMark className="mt-[5px]" />
           {t("askFailed")}
         </p>
       ) : state === "asking" ? (

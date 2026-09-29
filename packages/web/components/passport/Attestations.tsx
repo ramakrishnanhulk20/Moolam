@@ -97,7 +97,7 @@ export async function Attestations({
             </h2>
             {/* A sealed picture has no public file for anyone to fetch, so its
                 intro says what the private check really does. */}
-            <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-text-muted">
+            <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">
               {sealed ? t("sealedBody") : t("body")}
             </p>
           </div>
@@ -115,14 +115,14 @@ export async function Attestations({
                       <span className="motif h-[9px] w-[9px]" />
                       {sealedWords("label")}
                     </p>
-                    <p data-private-copy={privateCopy} className="mt-4 text-sm leading-relaxed text-text-muted">
+                    <p data-private-copy={privateCopy} className="mt-4 text-base leading-relaxed text-text-muted">
                       {copyLine ?? sealedWords("recheck")}
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm leading-relaxed text-text-muted">{t("empty")}</p>
-                    <p className="mt-4 text-sm leading-relaxed text-text-faint">{t("whatIsRecheck")}</p>
+                    <p className="text-base leading-relaxed text-text-muted">{t("empty")}</p>
+                    <p className="mt-4 text-base leading-relaxed text-text-faint">{t("whatIsRecheck")}</p>
                   </>
                 )}
               </div>
@@ -154,7 +154,7 @@ export async function Attestations({
             ) : attestations.length > 0 && copyLine !== null ? (
               // Under earlier verdicts the control's place says why there is
               // no control now, so a deleted copy reads as a choice, not a fault.
-              <p data-private-copy={privateCopy} className="mt-8 max-w-[54ch] border-t border-line pt-7 text-sm leading-relaxed text-text-muted">
+              <p data-private-copy={privateCopy} className="mt-8 max-w-[54ch] border-t border-line pt-7 text-base leading-relaxed text-text-muted">
                 {copyLine}
               </p>
             ) : null}
@@ -235,7 +235,7 @@ function Row({
             {privateCopy === "kept" ? t("private.lead") : t("private.leadEarlier")}
           </p>
           {delivery === "network" ? null : (
-            <p data-private-limit className="mt-3 max-w-[52ch] text-sm leading-relaxed text-text-muted">
+            <p data-private-limit className="mt-3 max-w-[52ch] text-base leading-relaxed text-text-muted">
               {t("private.limit")}
             </p>
           )}
@@ -272,7 +272,7 @@ function Row({
           forwarder, so for a writer the app cannot name, which forwarder
           carried it says nothing about Chainlink and is left out. */}
       {unknown || delivery === "unknown" || (isPrivate && delivery === "simulation") ? null : (
-        <p className="mt-5 max-w-[52ch] border-s-2 border-line ps-4 text-xs leading-relaxed text-text-faint">
+        <p className="mt-5 max-w-[52ch] border-s-2 border-line ps-4 text-base leading-relaxed text-text-faint">
           {delivery === "simulation" ? t("delivery.simulation") : t("delivery.network")}
         </p>
       )}

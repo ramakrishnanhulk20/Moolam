@@ -92,7 +92,7 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
       <h2 className="mt-5 max-w-[20ch] font-display text-[clamp(1.4rem,2.6vw,2rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
         {t("heading")}
       </h2>
-      <p className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
 
       <input
         ref={input}
@@ -126,7 +126,7 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
             transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           >
             {state.kind === "idle" ? (
-              <p className="max-w-[44ch] text-sm leading-relaxed text-text-faint">{t("hint")}</p>
+              <p className="max-w-[54ch] text-base leading-relaxed text-text-faint">{t("hint")}</p>
             ) : state.kind === "checking" ? (
               <p role="status" className="flex items-center gap-3 font-mono text-[12px] uppercase tracking-[0.16em] text-pending">
                 <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
@@ -188,8 +188,8 @@ export function ProblemLine({ problem, again }: { problem: Problem; again?: () =
 
   return (
     <div role="alert" data-check-failed={sentence}>
-      <p className="flex max-w-[46ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
-        <WarningMark className="mt-[3px]" />
+      <p className="flex max-w-[46ch] items-start gap-2.5 text-base leading-relaxed text-failed">
+        <WarningMark className="mt-[5px]" />
         {t(sentence)}
       </p>
       {serviceFailed ? (
@@ -280,7 +280,7 @@ export function Verdict({
         )}
       </dl>
       {answer.pixelsUnread ? (
-        <p data-pixels-unread className="mt-4 max-w-[46ch] text-sm leading-relaxed text-text-muted">
+        <p data-pixels-unread className="mt-4 max-w-[54ch] text-base leading-relaxed text-text-muted">
           {v("pixelsUnread")}
         </p>
       ) : null}

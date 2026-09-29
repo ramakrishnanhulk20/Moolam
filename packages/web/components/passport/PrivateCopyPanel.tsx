@@ -279,7 +279,7 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: EASE }}
             role="status"
-            className="mt-6 max-w-[52ch] border-s-2 border-verified bg-verified/5 py-3 ps-4 text-sm leading-relaxed text-text"
+            className="mt-6 max-w-[52ch] border-s-2 border-verified bg-verified/5 py-3 ps-4 text-base leading-relaxed text-text"
           >
             {t("done")}
           </motion.p>
@@ -292,7 +292,7 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
             transition={{ duration: 0.3, ease: EASE }}
             className="mt-5"
           >
-            <p className="max-w-[52ch] text-sm leading-relaxed text-text-muted">{t("body")}</p>
+            <p className="max-w-[52ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
             <button
               type="button"
               onClick={actions.ask}
@@ -310,7 +310,7 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
             transition={{ duration: 0.3, ease: EASE }}
             className="mt-5"
           >
-            <p className="max-w-[52ch] border-s-2 border-failed/60 ps-4 text-sm leading-relaxed text-text">
+            <p className="max-w-[52ch] border-s-2 border-failed/60 ps-4 text-base leading-relaxed text-text">
               {t("confirm")}
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-4">
@@ -364,8 +364,8 @@ function FailureLine({ failure, signIn }: { failure: PrivateCopyFailure; signIn:
       data-failure={failure.key}
       className="mt-6 border-s-2 border-failed bg-failed/5 py-3 ps-4"
     >
-      <p className="flex max-w-[52ch] items-start gap-2.5 text-sm leading-relaxed text-failed">
-        <WarningMark className="mt-[3px]" />
+      <p className="flex max-w-[52ch] items-start gap-2.5 text-base leading-relaxed text-failed">
+        <WarningMark className="mt-[5px]" />
         {t(`failure.${failure.key}`)}
       </p>
       {failure.reason === undefined ? null : (

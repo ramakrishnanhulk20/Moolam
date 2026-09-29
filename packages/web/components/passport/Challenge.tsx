@@ -109,7 +109,7 @@ function Form({ flag }: { flag: FlagPassport }) {
       <h3 className="max-w-[22ch] font-display text-[clamp(1.4rem,2.6vw,2rem)] font-semibold uppercase leading-[1.02] tracking-[-0.03em]">
         {t("heading")}
       </h3>
-      <p className="mt-5 max-w-[54ch] text-sm leading-relaxed text-text-muted">
+      <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">
         {bond === null ? t("whatUnknown") : t("what", { bond })}
       </p>
 
@@ -132,7 +132,7 @@ function Form({ flag }: { flag: FlagPassport }) {
         </div>
       </dl>
 
-      <p className="mt-5 max-w-[54ch] border-s-2 border-line ps-4 font-mono text-[11px] leading-relaxed text-text-faint">
+      <p className="mt-5 max-w-[54ch] border-s-2 border-line ps-4 text-base leading-relaxed text-text-faint">
         {t("fee")}
       </p>
 
@@ -151,7 +151,7 @@ function Form({ flag }: { flag: FlagPassport }) {
           className="mt-2 w-full resize-none border border-line bg-bg px-4 py-3 text-base leading-relaxed text-text outline-none transition-colors duration-200 placeholder:text-text-faint focus:border-failed"
         />
       </label>
-      <p className="mt-2 max-w-[54ch] text-xs leading-relaxed text-text-faint">
+      <p className="mt-2 max-w-[54ch] text-base leading-relaxed text-text-faint">
         {t("reasonHint", { min: REASON_MIN, max: REASON_MAX })}
       </p>
 
@@ -198,7 +198,7 @@ function Recorded({ flag }: { flag: FlagPassport }) {
       <h3 className="mt-5 max-w-[22ch] font-display text-[clamp(1.4rem,2.6vw,2rem)] font-semibold uppercase leading-[1.02] tracking-[-0.03em]">
         {t("done.heading")}
       </h3>
-      <p className="mt-5 max-w-[54ch] text-sm leading-relaxed text-text-muted">{t("done.body")}</p>
+      <p className="mt-5 max-w-[54ch] text-base leading-relaxed text-text-muted">{t("done.body")}</p>
 
       <dl className="mt-6 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-2">
         <div className="min-w-0">
@@ -209,7 +209,7 @@ function Recorded({ flag }: { flag: FlagPassport }) {
         </div>
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("done.bondHeld")}</dt>
-          <dd className="mt-1.5 text-sm text-text-muted">{t("done.bondHeldBody")}</dd>
+          <dd className="mt-1.5 text-base leading-relaxed text-text-muted">{t("done.bondHeldBody")}</dd>
         </div>
       </dl>
 
@@ -319,8 +319,8 @@ function FailureLine({ failure, flag }: { failure: FlagFailure; flag: FlagPasspo
       data-tone={pending ? "pending" : "failed"}
       className={`border-s-2 py-3 ps-4 ${pending ? "border-text-muted bg-text-muted/5" : "border-failed bg-failed/10"}`}
     >
-      <p className={`flex max-w-[54ch] items-start gap-2.5 text-sm leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
-        {pending ? null : <WarningMark className="mt-[3px]" />}
+      <p className={`flex max-w-[54ch] items-start gap-2.5 text-base leading-relaxed ${pending ? "text-text-muted" : "text-failed"}`}>
+        {pending ? null : <WarningMark className="mt-[5px]" />}
         {t(`failure.${key}`, {
           short: failure.shortfall === undefined ? "0" : formatEther(failure.shortfall),
           min: REASON_MIN,

@@ -16,7 +16,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 
 // The pull that hands the status room back. The phone's room is taller than
 // the section's 3.5rem padding there, so only that much is handed back.
-export const TUCKED_ROOM = "-mb-[3.5rem] sm:-mb-[3rem]";
+export const TUCKED_ROOM = "-mb-[3.5rem] sm:-mb-[3.25rem]";
 
 /**
  * Ask for a second opinion, from either screen that shows one.
@@ -197,7 +197,7 @@ function Control({
 
       {/* The note is the button's promise, so it goes wherever the button does. */}
       {seat.rechecked === undefined ? (
-        <p className="mt-3 text-xs leading-relaxed text-text-faint">{t(sealed ? "notePrivate" : "note")}</p>
+        <p className="mt-3 text-base leading-relaxed text-text-faint">{t(sealed ? "notePrivate" : "note")}</p>
       ) : null}
 
       {/* Room for the longest sentence any state has, kept whether one is
@@ -205,7 +205,7 @@ function Control({
           equal pull, so it lies in the padding of the section it ends. */}
       <div
         data-recheck-room={tuck ? "tucked" : "kept"}
-        className={`mt-3 min-h-[4.25rem] sm:min-h-[3rem] ${tuck ? TUCKED_ROOM : ""}`}
+        className={`mt-3 min-h-[4.25rem] sm:min-h-[3.25rem] ${tuck ? TUCKED_ROOM : ""}`}
       >
         <AnimatePresence mode="wait" initial={false}>
           <Sentence key={state.kind} state={state} spent={recheck.spent} calm={calm} sealed={sealed} />
@@ -322,14 +322,14 @@ function Sentence({
       transition={{ duration: 0.28, ease: EASE }}
       role="status"
     >
-      <p className={`text-sm leading-relaxed ${tone} ${tone === "text-failed" ? "flex items-start gap-2.5" : ""}`}>
-        {tone === "text-failed" ? <WarningMark className="mt-[3px]" /> : null}
+      <p className={`text-base leading-relaxed ${tone} ${tone === "text-failed" ? "flex items-start gap-2.5" : ""}`}>
+        {tone === "text-failed" ? <WarningMark className="mt-[5px]" /> : null}
         {tone === "text-failed" ? <span>{body}</span> : body}
       </p>
 
       {/* Said only when the control has given up watching, so a reader who left
           the tab open for an afternoon knows why nothing is moving. */}
-      {spent ? <p className="mt-2 text-xs leading-relaxed text-text-faint">{t("stopped")}</p> : null}
+      {spent ? <p className="mt-2 text-base leading-relaxed text-text-faint">{t("stopped")}</p> : null}
 
       {state.kind === "refused" && state.reason !== undefined ? (
         <p className="mt-2 break-words font-mono text-[11px] leading-relaxed text-text-faint">{state.reason}</p>

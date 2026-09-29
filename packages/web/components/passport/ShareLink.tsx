@@ -77,9 +77,9 @@ export function ShareLink({ words }: { words: { copy: string; copied: string; co
         <span
           role="alert"
           data-copy-failed
-          className="order-last flex basis-full items-start gap-2.5 font-body text-sm normal-case tracking-normal text-failed"
+          className="order-last flex basis-full items-start gap-2.5 font-body text-base normal-case tracking-normal text-failed"
         >
-          <WarningMark className="mt-[3px]" />
+          <WarningMark className="mt-[5px]" />
           {words.copyFailed}
         </span>
       ) : null}
