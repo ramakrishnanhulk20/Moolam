@@ -1,7 +1,7 @@
 "use client";
 
 import { useLocale, useTranslations } from "next-intl";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type DragEvent } from "react";
 import type { Stage } from "@/components/verify/AnswerCard";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
@@ -10,6 +10,43 @@ import type { TrySample } from "@/lib/data/samples";
 const ACCEPT = "image/jpeg,image/png,image/webp";
 
 type Check = typeof import("./check");
+
+/** Room left between the header's foot and the card's top when the window is moved to the card. */
+const CARD_GAP = 12;
+
+/**
+ * How far to move the window so the card's top sits just under the header, or
+ * null when the top is already on screen.
+ *
+ * A card whose top can be seen is left where it is, however tall it grows: the
+ * reader is already looking at it, and on a laptop moving the page would take
+ * the headline off the screen for nothing. Only a top hidden above the header or
+ * below the window's foot is brought to meet the reader.
+ */
+export function cardScroll(top: number, header: number, foot: number): number | null {
+  if (top >= header && top <= foot) {
+    return null;
+  }
+  return top - header - CARD_GAP;
+}
+
+/** The answer a new check is running over, and the height the frame had while that answer was up. */
+export interface Held {
+  height: number;
+  under: Stage;
+}
+
+/**
+ * What the frame keeps of the last answer while the next check runs, if anything.
+ *
+ * On a phone an answer is about four times the height of the checking face, so
+ * letting the card shrink back pulled everything under it, the pressed sample
+ * included, far up past the top of the window. The frame keeps the answer's
+ * height and shows it dimmed under the checking face until the new answer lands.
+ */
+export function heldFrame(stage: Stage, held: Held | null): Held | null {
+  return stage.kind === "checking" ? held : null;
+}
 
 /** A passport id as the verify page shortens it, without bringing the chain client along. */
 function shortId(id: string): string {
@@ -41,6 +78,11 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
   const input = useRef<HTMLInputElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const [over, setOver] = useState(false);
+  // True while a file is dragged anywhere over the page. The box's words and
+  // button then stop taking the pointer, so the drag only enters and leaves
+  // the box itself and its title does not flicker as the pointer crosses them.
+  const [dragging, setDragging] = useState(false);
+  const [held, setHeld] = useState<Held | null>(null);
   const [stage, setStage] = useState<Stage>({ kind: "idle" });
   const [pressed, setPressed] = useState<string | null>(null);
   const [Card, setCard] = useState<Check["AnswerCard"] | null>(null);
@@ -52,20 +94,91 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
   const run = useRef(0);
   const busy = stage.kind === "checking";
   const landed = stage.kind === "answer" || stage.kind === "problem";
+  const hold = heldFrame(stage, held);
 
-  // On a phone the card can grow past the bottom of the window. It is brought
-  // up to meet the reader rather than left for them to find.
+  // On a phone a new answer can land with its top above the window, or a card
+  // can start below it. Its top is brought to meet the reader only when it
+  // cannot be seen.
   useEffect(() => {
     const node = frame.current;
     if (!landed || node === null) {
       return;
     }
-    const box = node.getBoundingClientRect();
-    if (box.top >= 0 && box.top <= window.innerHeight * 0.5) {
+    const header = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--header-h")) || 0;
+    const by = cardScroll(node.getBoundingClientRect().top, header, window.innerHeight);
+    if (by === null) {
       return;
     }
-    node.scrollIntoView({ block: "start", behavior: "smooth" });
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: window.scrollY + by, behavior: still ? "instant" : "smooth" });
   }, [landed]);
+
+  const strayDrop = useEffectEvent((file: File | undefined) => take(file));
+
+  // A file let go anywhere else on the page would otherwise replace the site
+  // with the picture. On the first screen's left column it is taken as though
+  // it had landed in the box; anywhere else it is ignored. A drop another zone
+  // already took, such as the film's own panel, is left to that zone.
+  useEffect(() => {
+    const box = frame.current;
+    if (box === null) {
+      return;
+    }
+    const column = box.closest("[data-drop-column]") ?? box;
+    const carriesFile = (event: globalThis.DragEvent) => event.dataTransfer?.types.includes("Files") === true;
+    const inside = (area: Element, target: EventTarget | null) => target instanceof Node && area.contains(target);
+
+    const enter = (event: globalThis.DragEvent) => {
+      if (carriesFile(event)) {
+        setDragging(true);
+      }
+    };
+    const hover = (event: globalThis.DragEvent) => {
+      if (!carriesFile(event)) {
+        return;
+      }
+      if (!inside(box, event.target)) {
+        setOver(false);
+      }
+      if (event.defaultPrevented) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer !== null) {
+        event.dataTransfer.dropEffect = inside(column, event.target) ? "copy" : "none";
+      }
+    };
+    const drop = (event: globalThis.DragEvent) => {
+      setOver(false);
+      setDragging(false);
+      if (event.defaultPrevented || !carriesFile(event)) {
+        return;
+      }
+      event.preventDefault();
+      if (inside(column, event.target)) {
+        strayDrop(event.dataTransfer?.files[0]);
+      }
+    };
+    // No mouse event reaches the page during a drag, so the first one after it
+    // means the drag is over, however it ended.
+    const done = () => {
+      setOver(false);
+      setDragging(false);
+    };
+
+    window.addEventListener("dragenter", enter);
+    window.addEventListener("dragover", hover);
+    window.addEventListener("drop", drop);
+    window.addEventListener("dragend", done);
+    window.addEventListener("pointermove", done);
+    return () => {
+      window.removeEventListener("dragenter", enter);
+      window.removeEventListener("dragover", hover);
+      window.removeEventListener("drop", drop);
+      window.removeEventListener("dragend", done);
+      window.removeEventListener("pointermove", done);
+    };
+  }, []);
 
   // Asked for once, on the first press, and shared by every check after it. A
   // fetch that failed is forgotten so the next press asks again.
@@ -96,6 +209,10 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
     run.current += 1;
     setPressed(sample);
     setUnstarted(false);
+    const node = frame.current;
+    if (landed && node !== null) {
+      setHeld({ height: node.getBoundingClientRect().height, under: stage });
+    }
     return run.current;
   }
 
@@ -110,6 +227,7 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
     }
     setStage(last);
     setPressed(null);
+    setHeld(null);
   }
 
   // Without the code there is no card to say anything on, so the frame goes
@@ -167,7 +285,16 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
   function onDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setOver(false);
+    setDragging(false);
     take(event.dataTransfer.files?.[0]);
+  }
+
+  // Only the box's own edge counts. A leave that starts on the words or the
+  // button inside is the pointer passing over them, not leaving the box.
+  function onDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      setOver(false);
+    }
   }
 
   function reset() {
@@ -189,14 +316,22 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
 
       <div
         ref={frame}
-        onDragEnter={warm}
+        data-first-frame
+        onDragEnter={(event) => {
+          warm();
+          if (event.dataTransfer.types.includes("Files")) {
+            setOver(true);
+          }
+        }}
         onDragOver={(event) => {
           event.preventDefault();
+          event.dataTransfer.dropEffect = "copy";
           setOver(true);
         }}
-        onDragLeave={() => setOver(false)}
+        onDragLeave={onDragLeave}
         onDrop={onDrop}
-        className="scroll-mt-24"
+        style={hold === null ? undefined : { minHeight: hold.height }}
+        className={`relative ${dragging ? "[&_*]:pointer-events-none" : ""}`}
       >
         {stage.kind === "idle" || Card === null ? (
           <Still
@@ -204,20 +339,41 @@ export function Drop({ samples, look }: { samples: TrySample[]; look: "poster" |
             look={look}
             waiting={busy}
             unstarted={unstarted}
+            offered={samples.length > 0}
             onWarm={warm}
             onChoose={() => input.current?.click()}
           />
         ) : (
-          // On a wide screen the card turns over inside the frame the press was in
-          // and scrolls within it, so the headline beside it never moves. A phone
-          // has nothing beside it and lets the card run down the page.
-          <div
-            data-first-answer
-            className="rise lg:max-h-[min(58svh,34rem)] lg:overflow-y-auto lg:overscroll-contain"
-            data-lenis-prevent
-          >
-            <Card stage={stage} />
-          </div>
+          <>
+            {hold === null ? null : (
+              // The answer being replaced, dimmed and out of reach, so the
+              // frame keeps its size and the pressed sample stays where the
+              // reader's thumb is.
+              <div
+                aria-hidden
+                inert
+                data-first-held
+                className="pointer-events-none absolute inset-x-0 top-0 overflow-clip opacity-25 saturate-50"
+                style={{ height: hold.height }}
+              >
+                <Card stage={hold.under} />
+              </div>
+            )}
+            {/* On a wide screen the card turns over inside the frame the press
+                was in and scrolls within it, so the headline beside it never
+                moves. A phone has nothing beside it and lets the card run down
+                the page. Over a held answer the checking face stays in the
+                window, beside the sample that was pressed. */}
+            <div
+              data-first-answer
+              className={`rise lg:max-h-[min(58svh,34rem)] lg:overflow-y-auto lg:overscroll-contain ${
+                hold === null ? "" : "sticky top-[calc(var(--header-h)+0.75rem)] z-10"
+              }`}
+              data-lenis-prevent
+            >
+              <Card stage={stage} />
+            </div>
+          </>
         )}
       </div>
 
@@ -256,6 +412,7 @@ function Still({
   look,
   waiting,
   unstarted,
+  offered,
   onWarm,
   onChoose,
 }: {
@@ -264,6 +421,8 @@ function Still({
   waiting: boolean;
   /** The check's own code would not load, so the last press did nothing. */
   unstarted: boolean;
+  /** Real passports sit under the box to press, so the hint may point at them. */
+  offered: boolean;
   onWarm: () => void;
   onChoose: () => void;
 }) {
@@ -334,7 +493,11 @@ function Still({
               {verify("problemLabel")}
             </p>
           ) : (
-            <p className="max-w-[34ch] text-xs leading-relaxed text-text-muted">{t("hint")}</p>
+            // With no passports to offer, the verify page's own hint, which
+            // points at nothing below it.
+            <p data-first-hint className="max-w-[34ch] text-xs leading-relaxed text-text-muted">
+              {offered ? t("hint") : verify("hint")}
+            </p>
           )}
         </div>
       </div>

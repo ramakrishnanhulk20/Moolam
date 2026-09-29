@@ -77,9 +77,11 @@ export function Board({
             mark is here from the start and the walk only waits for the rises
             under it to finish. What the walk keeps its card off is marked
             where it is drawn: the two calls in Drop and Headline, and the
-            headline and its line. */}
+            headline and its line. data-drop-column: a file let go anywhere
+            in this half is checked as if it had landed in the box. */}
         <div
           data-hero-shown="true"
+          data-drop-column
           className="flex flex-col justify-between gap-8 px-5 pb-10 pt-12 sm:px-8 lg:gap-5 lg:px-14 lg:pb-6 lg:pt-[3.5svh]"
         >
           <div>
@@ -135,6 +137,7 @@ function useStatementLine(): (statement: Finding["statement"]) => Line {
 
 function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading> }) {
   const t = useTranslations("home.first");
+  const verify = useTranslations("verify");
   const day = useDay();
   const stated = useStatementLine();
   const original = bitsOf(BigInt(finding.phash));
@@ -160,11 +163,14 @@ function Evidence({ finding, copy }: { finding: Finding; copy: Read<CopyReading>
           were read in this render. */}
       {isRead(copy) ? <LiveMark /> : null}
 
-      <div className={`mt-6 grid gap-4 sm:gap-8 lg:mt-3 ${isRead(copy) ? "grid-cols-2" : "max-w-[15rem] grid-cols-1"}`}>
+      {/* Each exhibit spans the same four rows, so however its words wrap in
+          any language, the two fingerprints start on one line. */}
+      <div className={`mt-6 grid gap-x-4 sm:gap-x-8 lg:mt-3 ${isRead(copy) ? "grid-cols-2" : "max-w-[15rem] grid-cols-1"}`}>
         <Exhibit
           mark="A"
           label={t("registered", { date: day(finding.registeredAt) })}
           tilt="-rotate-[1.5deg]"
+          open={{ id: finding.id, name: t("openPassport", { title: finding.title ?? verify("untitled") }) }}
           still={<Registered thumbnail={finding.thumbnail} title={finding.title} />}
           print={{ caption: t("printRegistry"), bits: original, against: measured }}
         />
@@ -223,6 +229,7 @@ function Loose({ loose, failed }: { loose: LooseFinding | null; failed: string }
             mark="A"
             label={loose.title ?? verify("untitled")}
             tilt="-rotate-[1.5deg]"
+            open={{ id: loose.id, name: t("openPassport", { title: loose.title ?? verify("untitled") }) }}
             still={<Registered thumbnail={loose.thumbnail} title={loose.title} />}
           />
         </div>
@@ -316,36 +323,67 @@ function Exhibit({
   tilt,
   still,
   print,
+  open,
 }: {
   mark: string;
   label: string;
   tilt: string;
   still: React.ReactNode;
   print?: { caption: string; bits: boolean[]; against: boolean[] | null };
+  /** The passport this picture is, when it has one to open. Only then does it answer the pointer. */
+  open?: { id: string; name: string };
 }) {
   const t = useTranslations("home.first");
+  const column = "mx-auto w-full max-w-[13.5rem] lg:max-w-[11.5rem]";
+  const picture = (
+    <>
+      <span className="absolute -top-2.5 left-1/2 z-10 h-5 w-16 -translate-x-1/2 rotate-[-3deg] bg-accent/25 backdrop-blur-sm" aria-hidden />
+      <span
+        className={`grain relative block aspect-square overflow-hidden border border-line-strong bg-bg shadow-[0_24px_60px_rgb(0_0_0/0.45)] ${
+          open === undefined ? "" : "transition-colors duration-300 group-hover:border-accent group-focus-visible:border-accent"
+        }`}
+      >
+        {still}
+        <span className="scrim pointer-events-none absolute inset-0 opacity-40" />
+        <span className="absolute left-2 top-2 bg-bg/85 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
+          {t("exhibit", { mark })}
+        </span>
+      </span>
+    </>
+  );
 
+  // The figure is a subgrid of four rows: the picture, its label, the
+  // fingerprint's caption and the fingerprint. The label is placed in the
+  // second row but written last, where a figure's caption belongs.
   return (
-    <figure className="min-w-0">
-      <div className={`group relative mx-auto w-full max-w-[13.5rem] transition-transform duration-500 hover:rotate-0 lg:max-w-[11.5rem] ${tilt}`}>
-        <span className="absolute -top-2.5 left-1/2 z-10 h-5 w-16 -translate-x-1/2 rotate-[-3deg] bg-accent/25 backdrop-blur-sm" aria-hidden />
-        <div className="grain relative aspect-square overflow-hidden border border-line-strong bg-bg shadow-[0_24px_60px_rgb(0_0_0/0.45)]">
-          {still}
-          <span className="scrim pointer-events-none absolute inset-0 opacity-40" />
-          <span className="absolute left-2 top-2 bg-bg/85 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.2em] text-accent">
-            {t("exhibit", { mark })}
-          </span>
+    <figure className="row-span-4 grid min-w-0 grid-rows-subgrid">
+      {open === undefined ? (
+        <div data-exhibit={mark} className={`relative row-start-1 ${column} ${tilt}`}>
+          {picture}
         </div>
-      </div>
-      <figcaption className="mx-auto mt-3 max-w-[13.5rem] lg:mt-2 text-[11px] leading-snug text-text-muted lg:max-w-[11.5rem]">{label}</figcaption>
+      ) : (
+        <Link
+          href={`/passport/${open.id}`}
+          aria-label={open.name}
+          data-exhibit={mark}
+          className={`group relative row-start-1 block ${column} ${tilt} transition-transform duration-500 hover:rotate-0 focus-visible:rotate-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent`}
+        >
+          {picture}
+        </Link>
+      )}
       {print === undefined ? null : (
-        <div className="mx-auto mt-4 max-w-[13.5rem] lg:mt-2 lg:max-w-[11.5rem]">
-          <p className="min-h-[2.6em] font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint sm:text-[10px]">
+        <>
+          <p
+            className={`row-start-3 mt-4 font-mono text-[9px] uppercase tracking-[0.2em] text-text-faint sm:text-[10px] lg:mt-2 ${column}`}
+          >
             {print.caption}
           </p>
-          <Grid bits={print.bits} against={print.against} />
-        </div>
+          <div className={`row-start-4 ${column}`}>
+            <Grid bits={print.bits} against={print.against} />
+          </div>
+        </>
       )}
+      <figcaption className={`row-start-2 mt-3 text-[11px] leading-snug text-text-muted lg:mt-2 ${column}`}>{label}</figcaption>
     </figure>
   );
 }

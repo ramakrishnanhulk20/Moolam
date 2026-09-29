@@ -109,7 +109,11 @@ export function MakeOne({ className = "" }: { className?: string }) {
         className="group inline-flex h-11 items-center gap-3 rounded-[8px] bg-text px-6 text-xs font-semibold uppercase tracking-[0.14em] text-bg transition duration-200 hover:-translate-y-0.5 hover:opacity-90 active:translate-y-0"
       >
         {t("make")}
-        <span aria-hidden className="block h-px w-5 bg-current transition-all duration-300 group-hover:w-8" />
+        {/* The arrow slides rather than grows, so the button keeps its width under the pointer. */}
+        <span
+          aria-hidden
+          className="block h-px w-5 bg-current transition-transform duration-300 group-hover:translate-x-1.5 group-focus-visible:translate-x-1.5"
+        />
       </Link>
       <span className="text-xs text-text-faint">{t("makeNote")}</span>
     </div>
