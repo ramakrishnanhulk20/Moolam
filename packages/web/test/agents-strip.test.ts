@@ -346,3 +346,21 @@ describe("work order 216", () => {
     expect(served).toContain('src="https://gw/5c"');
   });
 });
+
+describe("the strip's only-test line", () => {
+  const tile = (id: string, over: Record<string, unknown>) =>
+    ({ id, title: null, thumbnailUrl: null, manifest: false, rechecked: false, chainlink: false, disputed: false, sealed: undefined, test: false, ...over }) as never;
+
+  it("still shows when the only passports besides test images are records whose documents never load", async () => {
+    const { pickStrip } = await import("@/components/agents/strip");
+    const read = [tile("0x01", { test: true, thumbnailUrl: "https://gw/t1" }), tile("0x02", { test: true, thumbnailUrl: "https://gw/t2" }), tile("0x03", {})];
+    expect(pickStrip(read, true)).toEqual({ tiles: [], onlyTest: true });
+  });
+
+  it("stays away when a sealed picture is among them, or when no test image is", async () => {
+    const { pickStrip } = await import("@/components/agents/strip");
+    expect(pickStrip([tile("0x01", { test: true, thumbnailUrl: "https://gw/t1" }), tile("0x04", { sealed: true })], true).onlyTest).toBe(false);
+    expect(pickStrip([tile("0x03", {})], true).onlyTest).toBe(false);
+    expect(pickStrip([tile("0x01", { test: true, thumbnailUrl: "https://gw/t1" }), tile("0x03", {})], false).onlyTest).toBe(false);
+  });
+});

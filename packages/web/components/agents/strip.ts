@@ -33,9 +33,11 @@ export interface AgentStrip {
   /** Its newest real pictures, newest first, at most STRIP_PLACES of them. */
   tiles: StripTile[];
   /**
-   * True only when every passport this agent has signed was read and every one
-   * of them is a test image. A window that stopped short proves nothing about
-   * the rows it did not reach, so it never says this.
+   * True only when every passport this agent has signed was read, none of them
+   * can be drawn, and every one that holds a picture is a test image. A record
+   * whose document never loads holds no picture to count; a sealed one is a real
+   * picture kept out of sight, so it keeps this false. A window that stopped
+   * short proves nothing about the rows it did not reach, so it never says this.
    */
   onlyTest: boolean;
 }
@@ -171,6 +173,10 @@ export function pickStrip(read: (StripTile & { test: boolean })[], complete: boo
 
   return {
     tiles,
-    onlyTest: tiles.length === 0 && complete && read.length > 0 && read.every((tile) => tile.test),
+    onlyTest:
+      tiles.length === 0 &&
+      complete &&
+      read.some((tile) => tile.test) &&
+      read.every((tile) => tile.test || (tile.thumbnailUrl === null && tile.sealed !== true)),
   };
 }
