@@ -180,7 +180,7 @@ describe("the footer's line about the index", () => {
     status.current = { state: "live", block: 105_255_866, behind: 0 };
     locale.current = "ta";
     const markup = renderToStaticMarkup(await SystemStatus());
-    expect(markup).toContain("செயினுடன் சேர்ந்தே");
+    expect(markup).toContain("சங்கிலியுடன் சேர்ந்தே");
     locale.current = "en";
   });
 });
