@@ -1900,7 +1900,7 @@
       "unchecked": "Moolam no comprobó qué empresa hay detrás de este nombre."
     },
     "platform": {
-      "listedLine": "Dada de alta con las firmas del propietario del agente {agent} y de su propia cartera.",
+      "listedLine": "Dada de alta con las firmas del propietario del agente {agent} y de la cartera de la propia plataforma.",
       "withheldName": "Nombre retenido",
       "withheldLine": "El agente {agent} ha cambiado de propietario desde que su plataforma entró en la lista de Moolam, así que Moolam no avala el vínculo entre ambos y no nombra la plataforma.",
       "unlistedName": "No está en la lista de Moolam",
@@ -2078,7 +2078,7 @@
     "listedLabel": "En la lista de Moolam",
     "unlistedLabel": "No está en la lista de Moolam",
     "unlistedName": "Web fuera de la lista",
-    "listedLine": "Dada de alta con las firmas del propietario de su agente y de su propia cartera.",
+    "listedLine": "Dada de alta con las firmas del propietario de su agente y de la cartera de la propia web.",
     "unlistedLine": "Moolam no sabe nada de esta web. Comparte solo si has llegado aquí desde ella.",
     "usesListed": "{name} la usa para darte los pasaportes de las imágenes hechas para ti. Una dirección permite que una web te dé cosas. Con ella no se puede firmar por ti ni gastar de tu cuenta.",
     "usesUnlisted": "La web la usa para darte los pasaportes de las imágenes hechas para ti. Una dirección permite que una web te dé cosas. Con ella no se puede firmar por ti ni gastar de tu cuenta.",

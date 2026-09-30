@@ -1880,7 +1880,7 @@
       "unchecked": "Moolam did not check the company behind this name."
     },
     "platform": {
-      "listedLine": "Onboarded with signatures from agent {agent}'s owner and its wallet.",
+      "listedLine": "Onboarded with signatures from agent {agent}'s owner and from the wallet the platform registers pictures from.",
       "withheldName": "Name withheld",
       "withheldLine": "Agent {agent} has changed owner since its platform was listed, so Moolam does not vouch for the pairing and does not name it.",
       "unlistedName": "Not on Moolam's list",
@@ -2058,7 +2058,7 @@
     "listedLabel": "Listed by Moolam",
     "unlistedLabel": "Not on Moolam's list",
     "unlistedName": "Unlisted site",
-    "listedLine": "Onboarded with signatures from its agent's owner and its wallet.",
+    "listedLine": "Onboarded with signatures from its agent's owner and from the wallet it registers pictures from.",
     "unlistedLine": "Moolam knows nothing about this site. Share only if you came here from it.",
     "usesListed": "{name} uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
     "usesUnlisted": "The site uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",

@@ -389,3 +389,32 @@ describe("P14 and P16: two names, two trust levels, and a badge only while the a
     }
   });
 });
+
+describe("WO-253: the stage's outline word sits whole in its column in every language", () => {
+  it("keeps a word that fits at full size and shrinks a longer one to the column", async () => {
+    const { outlineFit } = await import("@/components/cosign/CosignSheet");
+    expect(outlineFit(520, 624)).toBe(1);
+    expect(outlineFit(1476, 624)).toBeCloseTo(624 / 1476, 6);
+    // Nothing measured yet, or a zero-width column, never collapses the word.
+    expect(outlineFit(0, 624)).toBe(1);
+    expect(outlineFit(1476, 0)).toBe(1);
+  });
+
+  it("gives the tight poster tracking to Latin words only", async () => {
+    const { tracksTight } = await import("@/components/cosign/CosignSheet");
+    const messages = ["en", "de", "es", "fr", "pt", "hi", "ta", "ja", "ko", "zh"].map(
+      (lang) => [lang, JSON.parse(readFileSync(`messages/${lang}.json`, "utf8")).cosign.outline as string] as const,
+    );
+    for (const [lang, word] of messages) {
+      expect(tracksTight(word), lang).toBe(["en", "de", "es", "fr", "pt"].includes(lang));
+    }
+  });
+
+  it("draws English at its old size and waits, unseen, for the measure", () => {
+    const markup = render(model([]));
+    const word = /<p aria-hidden="true" data-outline-word="true" style="([^"]*)" class="([^"]*)">([^<]*)<\/p>/.exec(markup);
+    expect(word?.[3]).toBe(en.cosign.outline);
+    expect(word?.[1]).toBe("font-size:calc(22cqw * 1);inset-inline-start:calc(-3cqw * 1)");
+    expect(word?.[2].split(" ")).toEqual(expect.arrayContaining(["tracking-[-0.07em]", "opacity-0", "motion-reduce:transition-none"]));
+  });
+});

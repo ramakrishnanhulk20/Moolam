@@ -721,7 +721,7 @@
     "fingerprintVersion": "Versão da impressão {version}",
     "record": "O registro",
     "passkeyBound": "Uma chave vinculada à carteira deste criador assinou a impressão desta imagem na Monad.",
-    "passkeyNone": "Nenhuma chave de acesso está vinculada à conta deste criador.",
+    "passkeyNone": "Nenhuma chave de acesso está vinculada à carteira deste criador.",
     "platform": {
       "kit": "Registrado por {platform} com o kit da Moolam para plataformas",
       "kitNote": "A própria chave de servidor de {platform} assinou como criador, e o agente da plataforma assinou como quem fez a imagem. A Moolam conferiu que a empresa tem as duas chaves, e não quem a empresa é.",

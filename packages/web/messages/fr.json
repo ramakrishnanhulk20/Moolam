@@ -714,7 +714,7 @@
     "fingerprintVersion": "Version d’empreinte {version}",
     "record": "L’enregistrement",
     "passkeyBound": "Une clé liée au portefeuille de ce créateur a signé l'empreinte de cette image sur Monad.",
-    "passkeyNone": "Aucune clé d’accès n’est liée au compte de ce créateur.",
+    "passkeyNone": "Aucune clé d’accès n’est liée au portefeuille de ce créateur.",
     "platform": {
       "kit": "Enregistré par {platform} via le kit Moolam pour plateformes",
       "kitNote": "La clé serveur propre à {platform} a signé en tant que créateur, et l'agent de la plateforme a signé en tant qu'agent générateur. Moolam a vérifié que l'entreprise détient les deux clés, pas qui est cette entreprise.",

@@ -4,7 +4,7 @@
 
 import { motion, useScroll, useTransform } from "framer-motion";
 import { useTranslations } from "next-intl";
-import { useRef, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { Hex } from "viem";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { Picture } from "@/components/passport/Picture";
@@ -402,12 +402,7 @@ export function CosignSheet({ model, agent, wallet, balance = null, onPress }: C
               <span className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_48%,var(--accent-soft),transparent_65%)]" />
             </motion.div>
 
-            <p
-              aria-hidden
-              className="pointer-events-none absolute -start-[3cqw] top-[2cqw] -z-10 select-none whitespace-nowrap font-display text-[22cqw] font-semibold uppercase leading-[0.8] tracking-[-0.07em] text-transparent opacity-60 [-webkit-text-stroke:1px_var(--accent)]"
-            >
-              {t("outline")}
-            </p>
+            <OutlineWord word={t("outline")} />
 
             <div className="relative w-full -rotate-[1.5deg] @lg/stage:w-[78%] @lg/stage:max-w-[30rem] @lg/stage:-rotate-3">
               <motion.figure
@@ -784,4 +779,75 @@ function Extras({ model }: { model: CosignModel }) {
   }
 
   return null;
+}
+
+/** The outline word's share of the stage's width once it has been fitted. */
+const OUTLINE_SHARE = 0.94;
+/** Its full size, in the stage's width units, which a short word like "Co-sign" keeps. */
+const OUTLINE_SIZE = 22;
+
+/**
+ * How much to scale the outline word so it sits whole in its column. Both widths
+ * in the same unit; a word that already fits keeps its full size.
+ */
+export function outlineFit(natural: number, available: number): number {
+  if (!(natural > 0) || !(available > 0)) return 1;
+  return Math.min(1, available / natural);
+}
+
+/** Only Latin letters take the tight poster tracking; it runs Devanagari and Tamil strokes into each other. */
+export function tracksTight(word: string): boolean {
+  return /^[\p{Script=Latin}\p{P}\p{Zs}]+$/u.test(word);
+}
+
+/**
+ * The giant outline word behind the print. "Co-sign" fits the stage at a fifth of
+ * its width, but the same word in Tamil or German runs three times as long, and a
+ * fixed size cut it mid-letter. So the browser measures the word once its fonts
+ * are in and shrinks it to the column; until then it stays unseen, so a long word
+ * never flashes at full size first.
+ */
+function OutlineWord({ word }: { word: string }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const [fit, setFit] = useState<number | null>(null);
+
+  useLayoutEffect(() => {
+    const node = ref.current;
+    const stage = node?.parentElement;
+    if (!node || !stage) return;
+    let live = true;
+    const measure = () => {
+      if (!live) return;
+      const drawn = parseFloat(getComputedStyle(node).fontSize);
+      const full = (stage.clientWidth * OUTLINE_SIZE) / 100;
+      if (!(drawn > 0) || !(full > 0)) return;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const natural = (range.getBoundingClientRect().width * full) / drawn;
+      setFit(outlineFit(natural, stage.clientWidth * OUTLINE_SHARE));
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(stage);
+    void document.fonts.ready.then(measure);
+    return () => {
+      live = false;
+      watch.disconnect();
+    };
+  }, [word]);
+
+  const scale = fit ?? 1;
+  return (
+    <p
+      ref={ref}
+      aria-hidden
+      data-outline-word
+      style={{ fontSize: `calc(${OUTLINE_SIZE}cqw * ${scale})`, insetInlineStart: `calc(-3cqw * ${scale})` }}
+      className={`pointer-events-none absolute top-[2cqw] -z-10 select-none whitespace-nowrap font-display font-semibold uppercase leading-[0.8] text-transparent transition-opacity duration-700 motion-reduce:transition-none [-webkit-text-stroke:1px_var(--accent)] ${
+        tracksTight(word) ? "tracking-[-0.07em]" : "tracking-normal"
+      } ${fit === null ? "opacity-0" : "opacity-60"}`}
+    >
+      {word}
+    </p>
+  );
 }

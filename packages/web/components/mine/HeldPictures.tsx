@@ -59,10 +59,11 @@ export function HeldGrid({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, amount: 0.2 }}
               transition={{ duration: 0.6, delay: Math.min(index, 5) * 0.05, ease: [0.16, 1, 0.3, 1] }}
-              className="group relative bg-bg-raised"
+              className="group relative grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[auto_1fr] gap-x-4 bg-bg-raised"
             >
-              <Link href={`/passport/${row.id}`} className="block">
-                <div className="grain relative aspect-[4/3] overflow-hidden bg-bg-sunken">
+              {/* The link lies on the card's own grid, so Hide takes a column of its own and the title gives way in any language. */}
+              <Link href={`/passport/${row.id}`} className="col-[1/-1] row-[1/-1] grid grid-cols-subgrid grid-rows-subgrid">
+                <div className="grain relative col-[1/-1] aspect-[4/3] overflow-hidden bg-bg-sunken">
                   {row.imageUrl === undefined ? (
                     <span className="absolute inset-0 flex items-center justify-center font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">
                       {studio("passports.noThumbnail")}
@@ -86,7 +87,7 @@ export function HeldGrid({
                   </span>
                 </div>
 
-                <div className="p-5 pe-24">
+                <div data-held-text className="min-w-0 py-5 ps-5">
                   <p className="truncate text-sm text-text transition-colors duration-200 group-hover:text-accent">
                     {row.title ?? studio("passports.untitled")}
                   </p>
@@ -102,7 +103,7 @@ export function HeldGrid({
                 type="button"
                 data-held-hide
                 onClick={() => onHide(row.id)}
-                className="tap absolute bottom-5 end-5 rounded-[8px] border border-line px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint transition-colors duration-200 hover:border-accent hover:text-accent"
+                className="tap col-start-2 row-start-2 mb-5 me-5 shrink-0 self-end whitespace-nowrap rounded-[8px] border border-line px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-text-faint transition-colors duration-200 hover:border-accent hover:text-accent"
               >
                 {t("hide")}
               </button>

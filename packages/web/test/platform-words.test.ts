@@ -426,6 +426,33 @@ describe("P25: a held passport is never shown as made, and can be hidden", () =>
     expect(markup).toContain('aria-labelledby="mine-held-heading"');
   });
 
+  it("sets Hide in a column of its own beside the title, so the longest language never runs over it (WO-253)", async () => {
+    const de = (await import("@/messages/de.json")).default;
+    const Provider = NextIntlClientProvider as unknown as FunctionComponent<{ locale: string; messages: unknown; timeZone: string }>;
+    const markup = renderToStaticMarkup(
+      createElement(
+        Provider,
+        { locale: "de", messages: de, timeZone: "UTC" },
+        createElement(HeldGrid, { rows: [row], hiddenCount: 0, onHide: () => undefined, onShowHidden: () => undefined }),
+      ),
+    );
+    const classOf = (marker: string) => new RegExp(`<[a-z]+ [^>]*${marker}[^>]*class="([^"]*)"`).exec(markup)?.[1].split(" ") ?? [];
+    const card = /<li data-held="[^"]*"[^>]*class="([^"]*)"/.exec(markup)?.[1].split(" ") ?? [];
+    const link = /<a href="\/passport\/[^"]*" class="([^"]*)"/.exec(markup)?.[1].split(" ") ?? [];
+    const text = classOf("data-held-text");
+    const hide = classOf("data-held-hide");
+
+    expect(markup).toContain(`>${de.mine.held.hide}</button>`);
+    expect(card).toEqual(expect.arrayContaining(["grid", "grid-cols-[minmax(0,1fr)_auto]", "gap-x-4"]));
+    // Both placed by line number: an auto-placed link would be pushed below the button's cell instead of lying under it.
+    expect(link).toEqual(expect.arrayContaining(["col-[1/-1]", "row-[1/-1]", "grid-cols-subgrid", "grid-rows-subgrid"]));
+    // The title's column may shrink to nothing; the button's column is its own width and never shrinks.
+    expect(text).toContain("min-w-0");
+    expect(text.some((name) => /^(pe|pr)-/.test(name))).toBe(false);
+    expect(hide).toEqual(expect.arrayContaining(["col-start-2", "row-start-2", "shrink-0", "whitespace-nowrap"]));
+    expect(hide.some((name) => /^(absolute|fixed|end-|bottom-)/.test(name))).toBe(false);
+  });
+
   it("keeps a hidden row out of view per wallet, counts it, and brings it back", () => {
     const store = new Map<string, string>();
     const storage = {

@@ -715,7 +715,7 @@
     "fingerprintVersion": "指纹版本 {version}",
     "record": "这条记录",
     "passkeyBound": "绑定在这位创作者钱包上的一把密钥，在 Monad 上为这张图片的指纹签了名。",
-    "passkeyNone": "这位创作者的账户没有绑定通行密钥。",
+    "passkeyNone": "这位创作者的钱包没有绑定通行密钥。",
     "platform": {
       "kit": "由 {platform} 通过 Moolam 平台工具包登记",
       "kitNote": "{platform} 自己的服务器密钥以创作者的身份签了名，它的智能体以作画者的身份签了名。Moolam 核实的是这家公司持有这两把密钥，而不是这家公司是谁。",

@@ -2058,7 +2058,7 @@
     "listedLabel": "Von Moolam gelistet",
     "unlistedLabel": "Nicht auf Moolams Liste",
     "unlistedName": "Nicht gelistete Website",
-    "listedLine": "In die Liste aufgenommen mit Signaturen vom Inhaber ihres Agenten und von ihrer Wallet.",
+    "listedLine": "In die Liste aufgenommen mit Signaturen vom Inhaber ihres Agenten und von der Wallet der Website.",
     "unlistedLine": "Moolam weiß nichts über diese Website. Teile deine Adresse nur, wenn du von dort hierhergekommen bist.",
     "usesListed": "{name} nutzt deine Adresse, um dir die Pässe von Bildern zu übergeben, die für dich gemacht wurden. Mit einer Adresse kann eine Website dir etwas geben. Sie kann damit weder für dich signieren noch etwas von deinem Konto ausgeben.",
     "usesUnlisted": "Die Website nutzt deine Adresse, um dir die Pässe von Bildern zu übergeben, die für dich gemacht wurden. Mit einer Adresse kann eine Website dir etwas geben. Sie kann damit weder für dich signieren noch etwas von deinem Konto ausgeben.",
