@@ -822,17 +822,28 @@ function OutlineWord({ word }: { word: string }) {
       const full = (stage.clientWidth * OUTLINE_SIZE) / 100;
       if (!(drawn > 0) || !(full > 0)) return;
       const range = document.createRange();
+      // An engine without Range geometry keeps the word at its CSS size rather than failing the page.
+      if (typeof range.getBoundingClientRect !== "function") return;
       range.selectNodeContents(node);
       const natural = (range.getBoundingClientRect().width * full) / drawn;
       setFit(outlineFit(natural, stage.clientWidth * OUTLINE_SHARE));
     };
     measure();
-    const watch = new ResizeObserver(measure);
-    watch.observe(stage);
-    void document.fonts.ready.then(measure);
+    // Without ResizeObserver the word still refits when the window changes size.
+    const watch = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    if (watch === null) {
+      window.addEventListener("resize", measure);
+    } else {
+      watch.observe(stage);
+    }
+    void document.fonts?.ready.then(measure);
     return () => {
       live = false;
-      watch.disconnect();
+      if (watch === null) {
+        window.removeEventListener("resize", measure);
+      } else {
+        watch.disconnect();
+      }
     };
   }, [word]);
 
