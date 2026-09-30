@@ -18,6 +18,7 @@ export const ONBOARDING_TYPES = {
     { name: "agentOwner", type: "address" },
     { name: "creatorWallet", type: "address" },
     { name: "keyHash", type: "bytes32" },
+    { name: "origins", type: "string[]" },
     { name: "validFrom", type: "uint64" },
   ],
 } as const;
@@ -30,6 +31,9 @@ export const MAX_NAME_LENGTH = 48;
 
 /** Far above any real list. It exists so a damaged file cannot make every page verify without end. */
 export const MAX_PLATFORMS = 500;
+
+/** A production site, a staging site and room for a rename. More is a sign the entry is doing two platforms' work. */
+export const MAX_ORIGINS = 4;
 
 const MAX_UINT256 = (1n << 256n) - 1n;
 const ZERO_HASH = `0x${"0".repeat(64)}`;
@@ -54,6 +58,7 @@ export const platformRecordSchema = z
     ownerAtOnboarding: address,
     creatorWallet: address,
     keyHash: bytes32,
+    origins: z.array(z.string()).min(1).max(MAX_ORIGINS),
     validFrom: unixSeconds,
     validTo: unixSeconds.optional(),
     acceptedAt: unixSeconds,
@@ -73,6 +78,8 @@ export interface Platform {
   ownerAtOnboarding: Address;
   creatorWallet: Address;
   keyHash: Hex;
+  /** Canonical https origins, as canonicalOrigin returns them. */
+  origins: readonly string[];
   validFrom: bigint;
   /** Exclusive. Null while the entry is the platform's current one. */
   validTo: bigint | null;
@@ -90,6 +97,7 @@ export interface OnboardingMessage {
   agentOwner: Address;
   creatorWallet: Address;
   keyHash: Hex;
+  origins: readonly string[];
   validFrom: bigint;
 }
 
@@ -128,6 +136,44 @@ export function nameProblem(name: string): string | null {
   return null;
 }
 
+/**
+ * The one parser for a platform's web origin, used for the stored list and for
+ * every value a caller asks about, so the two sides are always compared in the
+ * same form. Returns the WHATWG origin (lowercase host, default port dropped)
+ * of an https URL that carries nothing beyond scheme, host and port, or null.
+ *
+ * Covers: anything URL cannot parse, any scheme but https, a user name or
+ * password, a path other than "/", a query, a fragment. Does not cover a
+ * look-alike host (a punycode or a trailing dot spelling stays a different
+ * origin, which only means it never matches) or who controls the host.
+ */
+export function canonicalOrigin(value: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  if (url.username !== "" || url.password !== "") return null;
+  if (url.pathname !== "/" || url.search !== "" || url.hash !== "") return null;
+  return url.origin;
+}
+
+/**
+ * Why an entry's origins cannot be stored, or null. Only the canonical spelling
+ * is accepted and never repaired, because the signatures cover the stored strings.
+ */
+export function originsProblem(origins: readonly string[]): string | null {
+  if (origins.length === 0) return "origins is empty";
+  if (origins.length > MAX_ORIGINS) return `more than ${MAX_ORIGINS} origins`;
+  for (const [index, origin] of origins.entries()) {
+    if (canonicalOrigin(origin) !== origin) return `origin ${index} is not an https origin in its canonical form`;
+  }
+  if (new Set(origins).size !== origins.length) return "an origin appears twice";
+  return null;
+}
+
 /** The message a stored entry's two signatures must cover, rebuilt from its fields. */
 export function recordMessage(record: PlatformRecord): OnboardingMessage {
   return {
@@ -136,6 +182,7 @@ export function recordMessage(record: PlatformRecord): OnboardingMessage {
     agentOwner: getAddress(record.ownerAtOnboarding),
     creatorWallet: getAddress(record.creatorWallet),
     keyHash: record.keyHash as Hex,
+    origins: record.origins,
     validFrom: BigInt(record.validFrom),
   };
 }
@@ -152,7 +199,7 @@ export async function signedBy(message: OnboardingMessage, sig: Hex, expected: A
 
 /** Why one entry cannot stand on its own, or null when both signatures and every bound hold. */
 export async function recordProblem(record: PlatformRecord): Promise<string | null> {
-  const problem = nameProblem(record.name);
+  const problem = nameProblem(record.name) ?? originsProblem(record.origins);
   if (problem !== null) return problem;
   if (BigInt(record.agentId) > MAX_UINT256) return "agent id is larger than a uint256";
   if (record.validTo !== undefined && record.validTo <= record.validFrom) return "validTo is not after validFrom";
@@ -173,6 +220,7 @@ function toPlatform(record: PlatformRecord): Platform {
     ownerAtOnboarding: getAddress(record.ownerAtOnboarding),
     creatorWallet: getAddress(record.creatorWallet),
     keyHash: record.keyHash as Hex,
+    origins: [...record.origins],
     validFrom: BigInt(record.validFrom),
     validTo: record.validTo === undefined ? null : BigInt(record.validTo),
     acceptedAt: BigInt(record.acceptedAt),
@@ -235,6 +283,23 @@ export async function loadPlatforms(document: unknown = bundledList): Promise<Pl
   const problem = listProblem(platforms);
   if (problem !== null) return refuse(problem);
   return { ok: true, platforms };
+}
+
+/**
+ * The listed platform a web origin belongs to, for the connect page to name the
+ * requester and to pick the one origin it may post an address to (P22, P10).
+ * The value goes through canonicalOrigin, the same parser the stored origins
+ * passed, and is then compared by exact string equality. Only current entries
+ * (validTo null) answer, since a retired entry's site no longer speaks for the
+ * platform. A value that does not parse or is not https gives null, and so does
+ * an origin claimed by two current entries, since the page could not say which
+ * platform is asking.
+ */
+export function platformForOrigin(origin: string, platforms: readonly Platform[]): Platform | null {
+  const wanted = canonicalOrigin(origin);
+  if (wanted === null) return null;
+  const matches = platforms.filter((entry) => entry.validTo === null && entry.origins.includes(wanted));
+  return matches.length === 1 ? matches[0]! : null;
 }
 
 /** The passport fields the label reads, as the registry's getPassport returns them. */

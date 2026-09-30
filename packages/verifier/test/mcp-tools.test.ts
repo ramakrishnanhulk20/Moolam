@@ -75,6 +75,7 @@ async function platformList(): Promise<PlatformRecord[]> {
     ownerAtOnboarding: platformOwner.address,
     creatorWallet: platformCreator.address,
     keyHash: `0x${"ee".repeat(32)}`,
+    origins: ["https://acme.example"],
     validFrom: 1_000,
     acceptedAt: 1_000,
     ownerSignature: "",

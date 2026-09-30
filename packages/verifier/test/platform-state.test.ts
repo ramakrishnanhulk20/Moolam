@@ -234,6 +234,7 @@ describe("the key check", () => {
     ownerAtOnboarding: getAddress(`0x${"1".repeat(40)}`),
     creatorWallet: getAddress(`0x${"2".repeat(40)}`),
     keyHash: `0x${createHash("sha256").update(Buffer.from(key, "hex")).digest("hex")}`,
+    origins: ["https://acme.example"],
     validFrom,
     validTo,
     acceptedAt: validFrom,

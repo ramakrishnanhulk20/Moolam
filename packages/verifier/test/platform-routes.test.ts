@@ -264,6 +264,7 @@ describe("the platform routes", () => {
       ownerAtOnboarding: agentOwner.address,
       creatorWallet: platformCreator.address,
       keyHash: KEY_HASH,
+      origins: ["https://acme.example"],
       validFrom: 1,
       acceptedAt: 1,
       ownerSignature: "",

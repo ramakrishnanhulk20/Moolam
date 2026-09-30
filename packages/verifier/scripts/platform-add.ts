@@ -4,14 +4,18 @@
 //
 // 1. Make the key and the message both parties sign:
 //    npx tsx scripts/platform-add.ts message --name "Acme Images" --agent-id 42 \
-//      --owner 0x<agent owner> --creator 0x<creator wallet> --valid-from 1790000000
+//      --owner 0x<agent owner> --creator 0x<creator wallet> --valid-from 1790000000 \
+//      --origin https://acme.example --origin https://staging.acme.example
+//    Each --origin is a site the platform opens Moolam's connect page from, written
+//    exactly as the browser reports it: https, lowercase host, no default port,
+//    no path. Both parties sign these origins along with everything else.
 //    The key is printed once, for the operator to hand to the platform. It is
 //    never written to a file; only its sha256 enters the list.
 // 2. The agent's owner and the creator wallet each sign the printed typed data.
 // 3. Add the entry with both signatures:
 //    npx tsx scripts/platform-add.ts add --name ... --agent-id ... --owner ... \
-//      --creator ... --valid-from ... --key-hash 0x... --owner-sig 0x... --creator-sig 0x...
-// Rotating a key or a creator wallet is step 1 and 2 again, then "rotate" with
+//      --creator ... --valid-from ... --origin ... --key-hash 0x... --owner-sig 0x... --creator-sig 0x...
+// Rotating a key, a creator wallet or the origins is step 1 and 2 again, then "rotate" with
 // the same flags plus --replaces <old key hash>. The old entry gets validTo set
 // to the new validFrom, so its earlier passports keep the label.
 
@@ -21,9 +25,11 @@ import path from "node:path";
 import { parseArgs } from "node:util";
 import { getAddress } from "viem";
 import {
+  canonicalOrigin,
   cleanName,
   loadPlatforms,
   nameProblem,
+  originsProblem,
   onboardingTypedData,
   platformListSchema,
   platformRecordSchema,
@@ -45,6 +51,7 @@ const { positionals, values } = parseArgs({
     owner: { type: "string" },
     creator: { type: "string" },
     "valid-from": { type: "string" },
+    origin: { type: "string", multiple: true },
     "key-hash": { type: "string" },
     "owner-sig": { type: "string" },
     "creator-sig": { type: "string" },
@@ -62,6 +69,18 @@ function unixSeconds(flag: keyof typeof values): number {
   const raw = required(flag);
   if (!/^[1-9][0-9]{0,15}$/.test(raw)) throw new Refusal(`--${flag} must be unix seconds`);
   return Number(raw);
+}
+
+/** Refuses any spelling the list would refuse rather than fixing it, and says the canonical one when there is one. */
+function origins(): string[] {
+  const given = values.origin ?? [];
+  for (const origin of given) {
+    const canonical = canonicalOrigin(origin);
+    if (canonical !== null && canonical !== origin) throw new Refusal(`--origin ${origin} must be written as ${canonical}`);
+  }
+  const problem = originsProblem(given);
+  if (problem !== null) throw new Refusal(`--origin: ${problem}`);
+  return given;
 }
 
 function checksummed(flag: keyof typeof values): string {
@@ -86,6 +105,7 @@ function baseFields() {
     agentId,
     ownerAtOnboarding: checksummed("owner"),
     creatorWallet: checksummed("creator"),
+    origins: origins(),
     validFrom: unixSeconds("valid-from"),
   };
 }
@@ -115,6 +135,7 @@ function printMessage(): void {
   console.log("Platform key, shown once. Hand it to the platform over a private channel. It is not saved anywhere:");
   console.log(`  ${key.toString("hex")}`);
   console.log(`Key hash (sha256 of those 32 bytes): ${keyHash}`);
+  console.log(`Origins both parties are signing for: ${fields.origins.join(", ")}`);
   console.log("Typed data for the agent owner and the creator wallet to sign with signTypedData:");
   console.log(JSON.stringify(typed, (_key, value: unknown) => (typeof value === "bigint" ? value.toString() : value), 2));
 }

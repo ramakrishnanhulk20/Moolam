@@ -82,6 +82,7 @@ async function signedEntry(overrides: { validTo?: number } = {}): Promise<Platfo
     agentOwner: agentOwner.address,
     creatorWallet: creatorKey.address,
     keyHash: `0x${"c3".repeat(32)}` as Hex,
+    origins: ["https://acme.example"],
     validFrom: VALID_FROM,
   };
   const typed = onboardingTypedData(message);
@@ -91,6 +92,7 @@ async function signedEntry(overrides: { validTo?: number } = {}): Promise<Platfo
     ownerAtOnboarding: agentOwner.address,
     creatorWallet: creatorKey.address,
     keyHash: message.keyHash,
+    origins: message.origins,
     validFrom: Number(VALID_FROM),
     ...(overrides.validTo === undefined ? {} : { validTo: overrides.validTo }),
     acceptedAt: Number(VALID_FROM) + 60,

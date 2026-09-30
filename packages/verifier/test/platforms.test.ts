@@ -1,10 +1,12 @@
-// Covers the platform list's loader and the one label predicate: signatures recovered offline,
-// the whole list refused on any bad entry, names colliding after NFKC, case fold and trim, and
-// the label's terms including a rotation.
+// Covers the platform list's loader, the one label predicate and the origin lookup: signatures
+// recovered offline, the whole list refused on any bad entry, names colliding after NFKC, case
+// fold and trim, origins held to one canonical https form, the label's terms including a
+// rotation, and platformForOrigin against look-alike and retired origins.
 // Does NOT cover the operator script's command line, the web app's copy (platforms-copy.test.ts
 // in packages/web does), ownerOf read from the chain (agentOwnerUnchanged is only given a stub
 // here), smart contract wallets as signers (only plain keys can sign an entry), or look-alike
-// letters from two scripts, which the name rule does not claim to catch.
+// letters from two scripts, which the name rule does not claim to catch, or who controls the host
+// behind a listed origin.
 
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
@@ -15,6 +17,7 @@ import {
   loadPlatforms,
   nameKey,
   onboardingTypedData,
+  platformForOrigin,
   platformLabel,
   recordMessage,
   type LabelPassport,
@@ -39,6 +42,7 @@ interface Draft {
   owner: PrivateKeyAccount;
   creator: PrivateKeyAccount;
   key: string;
+  origins?: string[];
   validFrom: number;
   validTo?: number;
 }
@@ -50,6 +54,7 @@ async function signed(draft: Draft): Promise<PlatformRecord> {
     ownerAtOnboarding: draft.owner.address,
     creatorWallet: draft.creator.address,
     keyHash: keyHash(draft.key),
+    origins: draft.origins ?? ["https://demo.example"],
     validFrom: draft.validFrom,
     ...(draft.validTo === undefined ? {} : { validTo: draft.validTo }),
     acceptedAt: draft.validFrom,
@@ -65,7 +70,15 @@ async function signed(draft: Draft): Promise<PlatformRecord> {
 }
 
 const acme: Draft = { name: "Acme Images", agentId: "42", owner: acmeOwner, creator: acmeCreator, key: "acme-1", validFrom: 1_000 };
-const loom: Draft = { name: "Loom Studio", agentId: "77", owner: loomOwner, creator: loomCreator, key: "loom-1", validFrom: 1_000 };
+const loom: Draft = {
+  name: "Loom Studio",
+  agentId: "77",
+  owner: loomOwner,
+  creator: loomCreator,
+  key: "loom-1",
+  origins: ["https://loom.example"],
+  validFrom: 1_000,
+};
 
 function passport(overrides: Partial<LabelPassport> = {}): LabelPassport {
   return {
@@ -139,6 +152,73 @@ describe("loadPlatforms", () => {
     const first = await signed(acme);
     const second = await signed({ ...acme, creator: acmeNewCreator, key: "acme-2", validFrom: 2_000 });
     expect(await loadPlatforms([first, second])).toMatchObject({ ok: false, reason: "entries 0 and 1: two windows of one platform overlap" });
+  });
+
+  it.each([
+    ["a path", ["https://demo.example/connect"]],
+    ["a trailing slash", ["https://demo.example/"]],
+    ["a query", ["https://demo.example?from=moolam"]],
+    ["a fragment", ["https://demo.example#top"]],
+    ["http", ["http://demo.example"]],
+    ["a user name", ["https://user@demo.example"]],
+    ["an upper case host", ["https://Demo.Example"]],
+    ["an explicit :443", ["https://demo.example:443"]],
+    ["a duplicate", ["https://demo.example", "https://demo.example"]],
+    ["no origin at all", []],
+    ["five origins", ["https://a.example", "https://b.example", "https://c.example", "https://d.example", "https://e.example"]],
+  ] as const)("refuses the whole list when one entry's origins hold %s, even when correctly signed", async (_case, origins) => {
+    const list = await loadPlatforms([await signed(loom), await signed({ ...acme, origins: [...origins] })]);
+    expect(list.ok).toBe(false);
+    expect(list.platforms).toEqual([]);
+  });
+
+  it("refuses an entry whose stored origins differ from the origins both parties signed", async () => {
+    const record = await signed({ ...acme, origins: ["https://demo.example"] });
+    const swapped = { ...record, origins: ["https://evil.example"] };
+    expect(await loadPlatforms([swapped])).toMatchObject({ ok: false, reason: "entry 0: owner signature does not recover to ownerAtOnboarding" });
+    const added = { ...record, origins: ["https://demo.example", "https://evil.example"] };
+    expect((await loadPlatforms([added])).ok).toBe(false);
+  });
+});
+
+describe("platformForOrigin", () => {
+  it("finds a current entry by its canonical origin, however the caller spells that origin", async () => {
+    const platforms = await loaded([await signed({ ...acme, origins: ["https://demo.example", "https://staging.demo.example:8443"] })]);
+    expect(platformForOrigin("https://demo.example", platforms)?.name).toBe("Acme Images");
+    expect(platformForOrigin("https://Demo.Example:443", platforms)?.name).toBe("Acme Images");
+    expect(platformForOrigin("https://STAGING.demo.example:8443/", platforms)?.name).toBe("Acme Images");
+    expect(platforms[0]!.origins).toEqual(["https://demo.example", "https://staging.demo.example:8443"]);
+  });
+
+  it.each([
+    "https://demo.example.evil.com",
+    "https://demo.example.",
+    "http://demo.example",
+    "https://evil.demo.example",
+    "https://demo.example:8443",
+    "https://user@demo.example",
+    "https://demo.example/connect",
+    "null",
+    "",
+    "demo.example",
+    "javascript:alert(1)",
+  ])("gives null for %j", async (origin) => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(platformForOrigin(origin, platforms)).toBeNull();
+  });
+
+  it("answers for the current entry only, never for a retired one", async () => {
+    const platforms = await loaded([
+      await signed({ ...acme, origins: ["https://old.demo.example"], validTo: 2_000 }),
+      await signed({ ...acme, creator: acmeNewCreator, key: "acme-2", origins: ["https://demo.example"], validFrom: 2_000 }),
+    ]);
+    expect(platformForOrigin("https://old.demo.example", platforms)).toBeNull();
+    expect(platformForOrigin("https://demo.example", platforms)?.creatorWallet).toBe(acmeNewCreator.address);
+  });
+
+  it("gives null when two current platforms claim the same origin, since it cannot say which one asks", async () => {
+    const platforms = await loaded([await signed(acme), await signed({ ...loom, origins: ["https://demo.example"] })]);
+    expect(platformForOrigin("https://demo.example", platforms)).toBeNull();
   });
 });
 
