@@ -4,6 +4,8 @@ import { z } from "zod";
 import { agentFacts, historyFacts, passportFacts, recentFacts, termsFacts, type McpDeps, type Outcome } from "./facts.js";
 import {
   DEFAULT_RECENT,
+  MAX_RESULT_CHARS,
+  RESULT_TOO_LARGE,
   agentIdInput,
   atInput,
   limitInput,
@@ -13,21 +15,11 @@ import {
 } from "./inputs.js";
 import { checkPicture } from "./picture.js";
 
-/**
- * The most text one answer may carry. Claude Code keeps 25,000 tokens of a tool result by default
- * and the hosted apps about 150,000 characters; the answer goes out twice, as structured content
- * and as the same JSON in text, so 24,000 characters each stays far inside both (M4). Every field
- * is capped well below this; the check is the backstop that refuses rather than cuts.
- */
-export const MAX_RESULT_CHARS = 24_000;
-
-const TOO_LARGE = "the answer was larger than this service returns in one result";
-
 /** A tool's answer: the structured value, and the same JSON as text for clients that read only text. */
 export function answered(value: object): CallToolResult {
   const text = JSON.stringify(value);
   if (text.length > MAX_RESULT_CHARS) {
-    return refused(TOO_LARGE);
+    return refused(RESULT_TOO_LARGE);
   }
   return { content: [{ type: "text", text }], structuredContent: value as Record<string, unknown> };
 }
@@ -144,6 +136,8 @@ const pictureOutput = z.object({
   }),
   facts: z.record(z.string(), z.unknown()).nullable(),
   index: indexState.extend({ chainHeadAt: z.number().nullable(), lagSeconds: z.number().nullable() }),
+  matchesShown: z.number().int().nonnegative(),
+  matchesTotal: z.number().int().nonnegative(),
   verifyAnswer: z.object({ result: z.unknown(), manifest: z.unknown() }),
 });
 

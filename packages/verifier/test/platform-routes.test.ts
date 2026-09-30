@@ -1,12 +1,14 @@
 // Covers the platform routes end to end with Pinata answered at the fetch layer, the chain reads
 // (chain time, ownerOf on the ERC-8004 registry, getPassport) and the duplicate check stubbed, and
 // Privy tokens signed by a test key set with the wallet list stubbed: a request without a valid key
-// costs nothing; P7 the per-key quota and the ceiling for every platform refuse before any work;
-// P19 a valid key with no agent signature, or with a stranger's, makes no manifest and
-// no pin; a replayed PlatformPrepare and a second prepare of the same picture are refused; P18 a body
-// naming another creator is refused; P9 a 257-byte or non-ASCII condition is refused at prepare;
-// platform mode returns the digest hashPassport gives and pins with cid_version v1 under the ids it
-// computed, in a manifest that names the agent; co-sign mode pins nothing before /platform/sign;
+// costs nothing; P7 the per-key quota and the ceiling for every platform refuse before any work,
+// and both are read from the environment; P19 a valid key with no agent signature, or with a
+// stranger's, makes no manifest and no pin; a replayed PlatformPrepare and a second prepare of the
+// same picture are refused; P18 a body naming another creator is refused; P9 a 257-byte or
+// non-ASCII condition is refused at prepare; platform mode returns the digest hashPassport gives
+// and the signed file whose sha256 is the passport id, and pins with cid_version v1 under the ids
+// it computed, in a manifest that names the agent; co-sign mode hands back no signed file and pins
+// nothing before /platform/sign;
 // P2 a second wallet's open is refused with the agent still named; P5 a signature from a wallet
 // other than ownerOf is refused and nothing is pinned; P3 a record edited on disk, or one whose state
 // skipped a step, is refused and dropped; P12 a passed deadline is refused and never moves again;
@@ -34,6 +36,10 @@ const APP_ID = vi.hoisted(() => {
   process.env.PRIVY_APP_SECRET = "test-secret-not-a-real-privy-secret";
   process.env.PINATA_JWT = "test-token-not-a-real-pinata-jwt";
   process.env.PINATA_GATEWAY_URL = "https://moolam-test.mypinata.cloud/ipfs/";
+  // Numbers nothing else uses and above what this file spends, so the limits test below proves the
+  // route read these rather than a default that happened to match.
+  process.env.PLATFORM_PREPARES_PER_KEY_PER_DAY = "37";
+  process.env.GLOBAL_PLATFORM_PREPARES_PER_DAY = "41";
   return id;
 });
 
@@ -80,6 +86,9 @@ const { generatorDomain } = await import("../src/generate/generatorSigner.js");
 const { onboardingTypedData, recordMessage } = await import("../src/platforms/platforms.js");
 const { prepareTypedData } = await import("../src/platform/signatures.js");
 const { handleHash } = await import("../src/platform/pending.js");
+const { dailyQuota, fileQuotaStore } = await import("../src/generate/quota.js");
+const { fileDayStore, globalDay } = await import("../src/limits/globalDay.js");
+const { PLATFORM_STATE_FILES } = await import("../src/stateDir.js");
 
 const UPLOAD_URL = "https://uploads.pinata.cloud/v3/files";
 const AGENT_ID = 4242n;
@@ -380,6 +389,12 @@ describe("the platform routes", () => {
     expect(answer.passport.metadataURI).toBe(`ipfs://${answer.files.metadata.cid}`);
     const image = byCid.get(answer.files.image.cid) as Buffer;
     expect(sha256(image)).toBe(answer.passport.exactHash);
+    const handed = Buffer.from(answer.signedFile.bytes, "base64");
+    expect(sha256(handed)).toBe(answer.passport.exactHash);
+    expect(answer.signedFile).toMatchObject({ type: "image/jpeg", sha256: answer.passport.exactHash });
+    expect(answer.signedFile.name).toMatch(/\.jpg$/);
+    expect(handed.equals(image)).toBe(true);
+    expect(answer.files.image.bytes).toBe(handed.length);
     const metadata = JSON.parse((byCid.get(answer.files.metadata.cid) as Buffer).toString("utf8"));
     expect(metadata.image).toBe(`ipfs://${answer.files.image.cid}`);
     expect(metadata.generator.agentId).toBe(AGENT_ID.toString());
@@ -422,6 +437,7 @@ describe("the platform routes", () => {
     const { handle, files } = prepared.json();
     expect(handle).toMatch(/^[0-9a-f]{32}$/);
     expect(prepared.json().digest).toBeUndefined();
+    expect(prepared.json().signedFile).toBeUndefined();
     expect(prepared.json().passport.creator).toBeUndefined();
     expect(pins).toHaveLength(0);
 
@@ -539,6 +555,44 @@ describe("the platform routes", () => {
       const ceiling = await prepare({ mode: "platform" });
       expect(ceiling.statusCode).toBe(429);
       expect(ceiling.json().error).toBe("global-limit");
+      expect(stubs.embedManifest).not.toHaveBeenCalled();
+      expect(pins).toHaveLength(0);
+    } finally {
+      app = main;
+      for (const server of servers) await server.close();
+    }
+  }, 60_000);
+
+  it("the per-key quota and the ceiling for every platform come from the environment and reach the prepare route", async () => {
+    const main = app;
+    const entry = (await import("../src/platforms/platforms.js")).platformListSchema.parse(
+      JSON.parse(readFileSync(path.join(dir, "list.json"), "utf8")),
+    );
+    const keyDir = path.join(dir, "env-quota");
+    const spentByKey = dailyQuota(1_000, { store: fileQuotaStore(path.join(keyDir, PLATFORM_STATE_FILES.quota)) });
+    for (let n = 0; n < 37; n += 1) spentByKey.take(KEY_HASH);
+    const dayDir = path.join(dir, "env-day");
+    const spentToday = globalDay({ prepares: 1_000, generations: 0, edits: 0, unseals: 0, links: 0 }, Date.now, {
+      store: fileDayStore(path.join(dayDir, PLATFORM_STATE_FILES.dayCeiling)),
+    });
+    for (let n = 0; n < 41; n += 1) spentToday.tryTake("prepares");
+
+    const servers: FastifyInstance[] = [];
+    try {
+      for (const folder of [keyDir, dayDir]) {
+        const limited = await buildServer({ source: { load: async () => [] }, logger: false, platform: { keys: verifying, list: entry, dir: folder } });
+        await limited.ready();
+        servers.push(limited);
+      }
+      app = servers[0] as FastifyInstance;
+      const quota = await prepare({ mode: "platform" });
+      expect(quota.statusCode).toBe(429);
+      expect(quota.json()).toMatchObject({ error: "quota", quota: { used: 37, limit: 37 } });
+
+      app = servers[1] as FastifyInstance;
+      const ceiling = await prepare({ mode: "platform" });
+      expect(ceiling.statusCode).toBe(429);
+      expect(ceiling.json()).toMatchObject({ error: "global-limit", quota: { used: 41, limit: 41 } });
       expect(stubs.embedManifest).not.toHaveBeenCalled();
       expect(pins).toHaveLength(0);
     } finally {

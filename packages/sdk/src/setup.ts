@@ -11,7 +11,11 @@ export interface SetupPlatformOptions {
   walletClient: PlatformWalletClient;
   /** The platform's own public hostname, hashed into every assertion its server key makes. */
   rpId: string;
-  /** Replace a passkey this wallet already has bound. Without it, an existing binding is refused. */
+  /**
+   * Replace a passkey this wallet already has bound. Without it, an existing binding is refused. A
+   * working platform's wallet holds passports, so a rotation may go ahead on a wallet that holds
+   * some, but only when a key is already bound to it.
+   */
   rotate?: boolean;
 }
 
@@ -33,7 +37,8 @@ export interface PlatformSetup {
  * the platform's wallet, sent and paid for by that wallet.
  *
  * Preconditions, each checked on chain before anything is signed or sent (P20): the wallet has no
- * passkey bound unless `rotate` is true, the wallet holds no passports, and `rpId` is the platform's
+ * passkey bound unless `rotate` is true; the wallet holds no passports, unless `rotate` is true and a
+ * passkey is already bound, which is a platform replacing its own key; and `rpId` is the platform's
  * own hostname, never Moolam's and never "localhost".
  *
  * Throws MoolamPlatformError: "invalid-rp-id", "wrong-chain", "passkey-already-bound",
@@ -56,7 +61,8 @@ export async function setupPlatform(options: SetupPlatformOptions): Promise<Plat
     functionName: "getPasskey",
     args: [wallet],
   });
-  if ((boundX !== ZERO_BYTES32 || boundY !== ZERO_BYTES32) && !rotate) {
+  const alreadyBound = boundX !== ZERO_BYTES32 || boundY !== ZERO_BYTES32;
+  if (alreadyBound && !rotate) {
     throw new MoolamPlatformError(
       "passkey-already-bound",
       "this wallet already has a passkey bound; pass rotate: true to replace it on purpose",
@@ -64,14 +70,16 @@ export async function setupPlatform(options: SetupPlatformOptions): Promise<Plat
     );
   }
   // A wallet holding passports is someone's Moolam wallet or a platform already at work; binding a
-  // new creator key over it would change whose key signs for everything it makes next.
+  // new creator key over it would change whose key signs for everything it makes next. Only the
+  // platform replacing a key it already has bound may do that, and a wallet with no key bound is
+  // not rotating anything.
   const held = await reader.readContract({
     address: MOOLAM_REGISTRY,
     abi: registryAbi,
     functionName: "balanceOf",
     args: [wallet],
   });
-  if (held > 0n) {
+  if (held > 0n && !(rotate && alreadyBound)) {
     throw new MoolamPlatformError("wallet-holds-passports", "this wallet already holds passports; set a platform up on a wallet of its own", {
       wallet,
       held: held.toString(),

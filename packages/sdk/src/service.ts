@@ -9,11 +9,17 @@ export interface ServiceTarget {
   platformKey: string;
 }
 
-/** Far above any answer the platform routes give, which carry fields and ids, never a picture. */
+/** Far above any answer the platform routes give that carries fields and ids but no picture. */
 const MAX_ANSWER_BYTES = 256 * 1024;
 
-/** The verify service refuses a signed file larger than its 20 MB upload limit, so nothing larger is read. */
+/** The verify service refuses a signed file larger than its 20 MB upload limit, so nothing larger is taken. */
 export const MAX_SIGNED_FILE_BYTES = 20 * 1024 * 1024;
+
+/**
+ * The platform-mode prepare answer carries the signed file as base64: at most the upload limit
+ * written as base64, plus 64 KB for the fields around it. Only that one call reads this much.
+ */
+export const MAX_PREPARE_ANSWER_BYTES = Math.ceil(MAX_SIGNED_FILE_BYTES / 3) * 4 + 64 * 1024;
 
 /** Whether a URL hostname is this machine: the one place plain http may carry a key, for local tests. */
 function isLoopback(hostname: string): boolean {
@@ -92,7 +98,15 @@ function shortText(value: unknown): string | undefined {
  */
 export async function callService<Output>(
   target: ServiceTarget,
-  call: { method: "GET" | "POST"; path: string; what: string; body?: FormData | Record<string, unknown>; timeoutMs: number },
+  call: {
+    method: "GET" | "POST";
+    path: string;
+    what: string;
+    body?: FormData | Record<string, unknown>;
+    timeoutMs: number;
+    /** The most the answer may be. Left out, 256 KB, which every answer without a picture fits. */
+    maxAnswerBytes?: number;
+  },
   schema: z.ZodType<Output>,
 ): Promise<Output> {
   assertPlatformKey(target.platformKey);
@@ -116,7 +130,7 @@ export async function callService<Output>(
       redirect: "error",
       signal: AbortSignal.timeout(call.timeoutMs),
     });
-    bytes = await readCapped(response, MAX_ANSWER_BYTES);
+    bytes = await readCapped(response, call.maxAnswerBytes ?? MAX_ANSWER_BYTES);
   } catch (error) {
     if (error instanceof MoolamPlatformError) throw error;
     throw new MoolamPlatformError("service-unreachable", `the verify service did not answer ${call.what}`);
@@ -141,26 +155,4 @@ export async function callService<Output>(
     throw new MoolamPlatformError("unexpected-answer", `the verify service's answer to ${call.what} is not in the shape the kit expects`);
   }
   return result.data;
-}
-
-/**
- * The signed file from its gateway address, with no key sent: the platform key is for the verify
- * service only. Read up to the service's own size limit.
- *
- * Throws MoolamPlatformError "invalid-input" for a URL checkedUrl refuses, "service-unreachable"
- * when it cannot be read, and "unexpected-answer" when it is larger than the limit.
- */
-export async function fetchSignedFile(gatewayUrl: string, timeoutMs: number): Promise<Uint8Array> {
-  const url = checkedUrl(gatewayUrl, "the signed file's gateway address", { query: true });
-  let response: Response;
-  try {
-    response = await fetch(url, { method: "GET", signal: AbortSignal.timeout(timeoutMs) });
-  } catch {
-    throw new MoolamPlatformError("service-unreachable", "the signed file could not be fetched from its gateway");
-  }
-  if (!response.ok) {
-    await response.body?.cancel();
-    throw new MoolamPlatformError("service-unreachable", `the gateway answered ${response.status} for the signed file`);
-  }
-  return await readCapped(response, MAX_SIGNED_FILE_BYTES);
 }

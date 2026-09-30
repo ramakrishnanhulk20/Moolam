@@ -37,6 +37,14 @@ export interface StartCosignOptions {
 }
 
 /**
+ * What resumeCosign needs: startCosign's options without the picture's title and terms, which the
+ * record already fixed when it was made.
+ */
+export type ResumeCosignOptions = Omit<StartCosignOptions, "title" | "terms">;
+
+const HANDLE = /^[0-9a-f]{32}$/;
+
+/**
  * One picture waiting for its person. Safe to log and to store: it carries no key, and the handle
  * inside cosignUrl is the capability the person needs, so share it with that person only (P4).
  */
@@ -116,15 +124,53 @@ export async function startCosign(file: Uint8Array, options: StartCosignOptions)
   }
   assertPlatformFields(answer.passport, answer.files);
 
-  site.pathname = `${site.pathname.replace(/\/+$/, "")}/cosign/${answer.handle}`;
-  const handle: CosignHandle = Object.freeze({
-    handle: answer.handle,
-    cosignUrl: site.toString(),
-    passportId: answer.passport.exactHash,
-    openBy: answer.openBy,
-  });
+  const handle = handleFor(site, answer.handle, answer.passport.exactHash, answer.openBy);
   sessions.set(handle, { target, agentAccount, reader, fields: answer.passport, files: answer.files, terms });
   return handle;
+}
+
+function handleFor(site: URL, handle: string, passportId: Hex, openBy: number): CosignHandle {
+  const link = new URL(site);
+  link.pathname = `${link.pathname.replace(/\/+$/, "")}/cosign/${handle}`;
+  return Object.freeze({ handle, cosignUrl: link.toString(), passportId, openBy });
+}
+
+/**
+ * Picks a co-sign up again after the platform restarted and lost the handle startCosign returned:
+ * reads GET /platform/status for the handle and returns a handle of the same shape, so
+ * waitForCreator, signAsAgent and waitForPassport carry on from wherever the record is. The fields
+ * are taken from the record as the service holds it and pass the same checks a prepare's do; the
+ * digest waitForCreator rebuilds from them is still compared with the service's before anything is
+ * signed. The platform key goes only in the Authorization header.
+ *
+ * Throws MoolamPlatformError: "invalid-input" for a handle that is not 32 hex characters, "wrong-chain",
+ * the service errors from callService (a handle this key did not make is "service-refused" 404),
+ * "cosign-expired", "passport-taken", and "unexpected-answer" for fields a platform passport cannot have.
+ */
+export async function resumeCosign(handle: string, options: ResumeCosignOptions): Promise<CosignHandle> {
+  if (typeof handle !== "string" || !HANDLE.test(handle)) {
+    throw new MoolamPlatformError("invalid-input", "a co-sign handle is the 32 hex characters startCosign returned");
+  }
+  const { agentAccount, publicClient: reader } = options;
+  const site = checkedUrl(options.siteUrl ?? MOOLAM_SITE_URL, "siteUrl");
+  const target: ServiceTarget = { verifyUrl: options.verifyUrl, platformKey: options.platformKey };
+  await assertMonad(reader);
+
+  const record = await callService(
+    target,
+    { method: "GET", path: `/platform/status/${handle}`, what: "the co-sign status", timeoutMs: STATUS_TIMEOUT_MS },
+    recordAnswer,
+  );
+  refuseEnded(record);
+  const { creator: _creator, deadline: _deadline, ...fields } = record.passport;
+  if (record.exactHash !== fields.exactHash) {
+    throw new MoolamPlatformError("unexpected-answer", "the co-sign record names two different passport ids");
+  }
+  assertPlatformFields(fields, record.files);
+
+  const resumed = handleFor(site, handle, fields.exactHash, record.openBy);
+  sessions.set(resumed, { target, agentAccount, reader, fields, files: record.files, terms: undefined });
+  return resumed;
 }
 
 async function readStatus(handle: CosignHandle, session: CosignSession): Promise<RecordAnswer> {

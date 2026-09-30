@@ -1,12 +1,14 @@
 export { setupPlatform, type PlatformSetup, type SetupPlatformOptions } from "./setup.js";
 export { registerAsPlatform, type PlatformRegistration, type RegisterAsPlatformOptions } from "./register.js";
 export {
+  resumeCosign,
   signAsAgent,
   startCosign,
   waitForCreator,
   waitForPassport,
   type CosignHandle,
   type CosignedPassport,
+  type ResumeCosignOptions,
   type StartCosignOptions,
   type WaitOptions,
 } from "./cosign.js";

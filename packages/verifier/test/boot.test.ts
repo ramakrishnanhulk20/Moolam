@@ -208,7 +208,7 @@ describe("V73: a signer that cannot load turns the signing routes off, not the s
         routes: string[];
         off: { route: string; reason: string }[];
       };
-      expect(health.routes).toEqual(["verify", "unseal", "sealed", "health"]);
+      expect(health.routes).toEqual(["verify", "mcp", "unseal", "sealed", "health"]);
       expect(health.off.map((off) => off.route)).toEqual(["POST /prepare", "POST /generate", "POST /edit"]);
       expect(health.off.every((off) => /signing certificate/.test(off.reason))).toBe(true);
       expect(JSON.stringify(health)).not.toContain("not-here.pem");

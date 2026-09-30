@@ -7,10 +7,8 @@ import { passportDigest, passportTypedData } from "./eip712.js";
 import { MoolamPlatformError } from "./errors.js";
 import type { ServerPasskey } from "./passkey.js";
 import { PREPARE_TIMEOUT_MS, assertTitle, prepareForm, sha256Hex, signPlatformPrepare, type AgentAccount } from "./prepare.js";
-import { callService, fetchSignedFile, type ServiceTarget } from "./service.js";
+import { MAX_PREPARE_ANSWER_BYTES, MAX_SIGNED_FILE_BYTES, callService, type ServiceTarget } from "./service.js";
 import { assertTerms, consentCall, sameTerms, type AiUseTerms } from "./terms.js";
-
-const FILE_TIMEOUT_MS = 60_000;
 
 export interface RegisterAsPlatformOptions {
   /** The Moolam verify service, for example https://verify.example.com. */
@@ -43,11 +41,12 @@ export interface PlatformRegistration {
  * Registers one picture in platform mode: the platform's agent is the maker, its server passkey
  * signs as the creator key, and its wallet sends, pays, and holds the passport.
  *
- * In order: the agent owner signs a PlatformPrepare and the service signs the manifest and pins;
- * the passport digest is recomputed here with the registry's own EIP-712 encoder and the answer is
- * refused if the service's digest differs; the signed file is fetched and refused unless its sha256
- * is the passport id; the agent signs the digest and the passkey asserts it; register is sent from
- * the wallet; then setConsent states the same terms that went into the manifest (P24).
+ * In order: the agent owner signs a PlatformPrepare and the service signs the manifest, pins, and
+ * hands the signed file back in its answer; the file is refused unless the sha256 of its decoded
+ * bytes is the passport id, and nothing is fetched from a gateway; the passport digest is recomputed
+ * here with the registry's own EIP-712 encoder and the answer is refused if the service's digest
+ * differs; the agent signs the digest and the passkey asserts it; register is sent from the wallet;
+ * then setConsent states the same terms that went into the manifest (P24).
  *
  * Nothing is sent on chain until every check has passed, and a result is returned only from
  * receipts with status success.
@@ -89,9 +88,19 @@ export async function registerAsPlatform(file: Uint8Array, options: RegisterAsPl
       what: "the platform prepare",
       body: prepareForm(file, "platform", options.title, signed, terms),
       timeoutMs: PREPARE_TIMEOUT_MS,
+      maxAnswerBytes: MAX_PREPARE_ANSWER_BYTES,
     },
     platformPrepareAnswer,
   );
+
+  // The platform will serve these bytes as the picture, so they are checked against the passport id
+  // here, from the bytes themselves, before any key signs for the passport.
+  const signedFile = new Uint8Array(Buffer.from(answer.signedFile.bytes, "base64"));
+  if (signedFile.length === 0 || signedFile.length > MAX_SIGNED_FILE_BYTES || sha256Hex(signedFile) !== answer.passport.exactHash) {
+    throw new MoolamPlatformError("signed-file-mismatch", "the signed file's sha256 is not the passport id, so it would not carry this passport", {
+      passportId: answer.passport.exactHash,
+    });
+  }
 
   if (answer.passport.creator !== wallet) {
     throw new MoolamPlatformError("creator-mismatch", "the service named a creator other than the platform's wallet", {
@@ -111,13 +120,6 @@ export async function registerAsPlatform(file: Uint8Array, options: RegisterAsPl
     throw new MoolamPlatformError("digest-mismatch", "the service's digest is not the digest of the fields it answered", {
       local: digest,
       service: answer.digest,
-    });
-  }
-
-  const signedFile = await fetchSignedFile(answer.files.image.gatewayUrl, FILE_TIMEOUT_MS);
-  if (sha256Hex(signedFile) !== input.exactHash) {
-    throw new MoolamPlatformError("signed-file-mismatch", "the signed file's sha256 is not the passport id, so it would not carry this passport", {
-      passportId: input.exactHash,
     });
   }
 

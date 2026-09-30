@@ -1,6 +1,7 @@
 // Covers where the verify service keeps what it must remember (platform kit step 0): the one data
 // folder and the order it is chosen in (DATA_DIR, then the Railway volume, then a local folder),
-// every state file surviving a simulated restart, a ceiling file that cannot be believed being
+// every state file, the platform's included, resolving directly under that folder, every state
+// file surviving a simulated restart, a ceiling file that cannot be believed being
 // refused and read as the ceiling already reached, a quota file that cannot be believed closing
 // that allowance rather than reopening it, and the boot check: a folder that cannot be written
 // stops a production boot with the folder named, and only warns outside production.
@@ -11,7 +12,7 @@
 // writing one folder, which the host rules out by running one.
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
@@ -23,7 +24,10 @@ vi.hoisted(() => {
 });
 
 const { PACKAGE_ROOT, parseEnv } = await import("../src/env.js");
-const { STATE_FILES, openStateFolders, probeFolder } = await import("../src/stateDir.js");
+const { env } = await import("../src/env.js");
+const { PLATFORM_STATE_FILES, STATE_FILES, openStateFolders, probeFolder, stateFile } = await import("../src/stateDir.js");
+const { DEFAULT_PLATFORM_LIMITS, platformStores } = await import("../src/platform/stores.js");
+const { registryDomain } = await import("../src/platform/passport.js");
 const { fileQueueStore, recheckQueue } = await import("../src/recheck/queue.js");
 const { fileKeepTimes } = await import("../src/sealed.js");
 const { fileCursorStore } = await import("../src/sweep.js");
@@ -162,6 +166,37 @@ describe("every state file across a restart", () => {
       restart(freshFolder());
     });
   }
+});
+
+describe("where each state file lives", () => {
+  it("resolves every state file directly under the data folder, the platform's files and pending folder included", () => {
+    const dir = freshFolder();
+    const saved = { NODE_ENV: env.NODE_ENV, DATA_DIR: env.DATA_DIR };
+    // Under a test runner stateFile holds everything in memory, so the host's own settings are put
+    // in place for this one check and restored after it.
+    env.NODE_ENV = "development";
+    env.DATA_DIR = dir;
+    try {
+      for (const name of [...Object.values(STATE_FILES), ...Object.values(PLATFORM_STATE_FILES)]) {
+        expect(stateFile(name), name).toBe(path.join(dir, name));
+      }
+
+      const stores = platformStores(undefined, DEFAULT_PLATFORM_LIMITS, registryDomain(), () => undefined);
+      expect(stores.pending).toBeDefined();
+      const platform = `0x${"ab".repeat(32)}` as Hex;
+      expect(stores.quota.take(platform).ok).toBe(true);
+      expect(stores.day.tryTake("prepares").ok).toBe(true);
+      const accepted = stores.nonces.accept(
+        { platform, nonce: `0x${"cd".repeat(32)}` as Hex, picture: PASSPORT, expiresAt: Math.floor(NOW / 1000) + 600 },
+        BigInt(Math.floor(NOW / 1000)),
+      );
+      expect(accepted.ok).toBe(true);
+      expect(readdirSync(dir).sort()).toEqual(Object.values(PLATFORM_STATE_FILES).sort());
+    } finally {
+      env.NODE_ENV = saved.NODE_ENV;
+      env.DATA_DIR = saved.DATA_DIR;
+    }
+  });
 });
 
 describe("a ceiling file that cannot be believed", () => {

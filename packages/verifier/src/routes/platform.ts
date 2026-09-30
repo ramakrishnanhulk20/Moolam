@@ -57,7 +57,7 @@ import {
   type PreparedResult,
 } from "../prepare.js";
 import { readClient } from "../reputation/registry.js";
-import { registrationOf } from "../sealed.js";
+import { registrationOf, signedFile, type SignedFile } from "../sealed.js";
 import { CallerGone, SERVICE_FAULT_REASON, givesUploadsBack, statusOf, studioTurn } from "./shared.js";
 
 /** What the C2PA manifest records as the tool that made the claim: Moolam, never the platform. */
@@ -374,6 +374,15 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
     };
 
     if (upload.mode === "platform") {
+      // The platform serves these bytes and nothing else carries the passport, so the file is
+      // packed and checked against the id the chain will commit to before anything is pinned.
+      let file: SignedFile;
+      try {
+        file = { ...signedFile(prepared.bytes, set.entries.image.name, passportId), type: set.entries.image.contentType };
+      } catch (error) {
+        request.log.error({ reason: safeReason(error) }, "rejected: /platform/prepare signed file refused");
+        return reply.code(500).send({ error: "signed-file-refused", reason: "the signed file does not hash to the passport id" });
+      }
       // Platform mode pins now: the agent's signature has already been checked (P19), and the
       // platform signs and sends in one pass, so the gap is the one Moolam's own studio has.
       const pinned = await pinFileSet(set);
@@ -391,6 +400,7 @@ export async function platformRoutes(app: FastifyInstance, options: PlatformRout
         passport: passportAnswer(fields, input.creator, deadline),
         digest: signingDigest(fields, input.creator, deadline, dom),
         files: filesAnswer(set.entries),
+        signedFile: file,
         ...shared,
       });
     }

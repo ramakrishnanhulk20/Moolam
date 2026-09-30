@@ -14,7 +14,7 @@ import {
 } from "../routes/shared.js";
 import type { Hex, IndexState } from "../types.js";
 import { INDEX_BEHIND, type McpDeps, type Outcome } from "./facts.js";
-import { decodedPicture, httpsUrl } from "./inputs.js";
+import { MAX_RESULT_CHARS, RESULT_TOO_LARGE, decodedPicture, httpsUrl } from "./inputs.js";
 
 const TOO_LARGE = `the picture is larger than the ${MAX_UPLOAD_BYTES} byte limit, or has more pixels than this service decodes`;
 const NOT_A_PICTURE = "the picture could not be read: it is not a JPEG, PNG or WebP this service can decode";
@@ -71,6 +71,9 @@ export interface PictureCheck {
   contentCredentials: { present: boolean; validation: string | null; credential: string | null };
   facts: Record<string, unknown> | null;
   index: IndexState & { chainHeadAt: number | null; lagSeconds: number | null };
+  /** How many of the verify answer's matches this answer carries, and how many the verify answer had. */
+  matchesShown: number;
+  matchesTotal: number;
   verifyAnswer: { result: unknown; manifest: unknown };
 }
 
@@ -78,12 +81,54 @@ function record(value: unknown): Record<string, unknown> | undefined {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
 }
 
+/**
+ * The answer brought under MAX_RESULT_CHARS, or null when it cannot be. Near misses are dropped from
+ * the tail of the match list, which is ranked best first, so the closest ones stay. Two entries are
+ * never dropped: the best match, whose fields every headline was read from, and the first
+ * registration inside the thresholds, which the verify answer always carries with its facts so a
+ * cheap near copy cannot push the original's holder and statement out of the answer (V18). Only an
+ * answer still too long with those two alone is refused (M4, M6).
+ */
+function fitted(answer: Omit<PictureCheck, "matchesShown" | "matchesTotal">): PictureCheck | null {
+  const result = record(answer.verifyAnswer.result);
+  const all: unknown[] = Array.isArray(result?.matches) ? result.matches : [];
+  const protectedIds = [record(result?.best)?.id, result?.firstRegisteredId].filter((id): id is string => typeof id === "string");
+  const isProtected = (match: unknown): boolean => {
+    const id = record(match)?.id;
+    return typeof id === "string" && protectedIds.some((one) => one.toLowerCase() === id.toLowerCase());
+  };
+  const kept = [...all];
+  const shaped = (): PictureCheck => ({
+    ...answer,
+    matchesShown: kept.length,
+    matchesTotal: all.length,
+    verifyAnswer: {
+      ...answer.verifyAnswer,
+      result: result === undefined ? answer.verifyAnswer.result : { ...result, matches: [...kept] },
+    },
+  });
+  let candidate = shaped();
+  while (JSON.stringify(candidate).length > MAX_RESULT_CHARS) {
+    let drop = kept.length - 1;
+    while (drop >= 0 && isProtected(kept[drop])) {
+      drop -= 1;
+    }
+    if (drop === -1) {
+      return null;
+    }
+    kept.splice(drop, 1);
+    candidate = shaped();
+  }
+  return candidate;
+}
+
 const FACT_KEYS = ["consent", "dispute", "inheritedDispute", "recheck", "picture"] as const;
 
 /**
  * check_picture: the same reading, matching and facts as POST /verify, against one copy of the
- * index. The whole verify answer rides along unchanged in `verifyAnswer`, so no sealed, unsealed,
- * disputed or distance fact is dropped (M6); the headline fields are read out of it. Index
+ * index. The whole verify answer rides along in `verifyAnswer`, so no sealed, unsealed, disputed or
+ * distance fact is dropped (M6); the headline fields are read out of it. Only when it would not fit
+ * in one result are near misses cut from its match list, as `fitted` says. Index
  * freshness is the index's own block time against the chain head read now, never a constant. A
  * picture that matches nothing on an index that is behind is "unavailable", never "no match" (M3).
  */
@@ -127,28 +172,26 @@ export async function checkPicture(
   }
   const phash = best?.phashDistance;
   const blockhash = best?.blockhashDistance;
-  return {
-    ok: true,
-    value: {
-      verdict: exact !== null ? "exact" : passportId !== null ? "match" : "no-match",
-      passportId,
-      confidence: typeof result.confidence === "number" ? result.confidence : 0,
-      distances:
-        typeof phash === "number" && typeof blockhash === "number"
-          ? { phash, blockhash, variant: String(best?.variant ?? "identity") }
-          : null,
-      contentCredentials: {
-        present: manifest.present === true,
-        validation: typeof manifest.validation === "string" ? manifest.validation : null,
-        credential: typeof manifest.credential === "string" ? manifest.credential : null,
-      },
-      facts: best === undefined ? null : facts,
-      index: {
-        ...answer.index,
-        chainHeadAt,
-        lagSeconds: chainHeadAt === null || indexedAt === null ? null : Math.max(0, chainHeadAt - indexedAt),
-      },
-      verifyAnswer: { result: answer.result, manifest: answer.manifest },
+  const value = fitted({
+    verdict: exact !== null ? "exact" : passportId !== null ? "match" : "no-match",
+    passportId,
+    confidence: typeof result.confidence === "number" ? result.confidence : 0,
+    distances:
+      typeof phash === "number" && typeof blockhash === "number"
+        ? { phash, blockhash, variant: String(best?.variant ?? "identity") }
+        : null,
+    contentCredentials: {
+      present: manifest.present === true,
+      validation: typeof manifest.validation === "string" ? manifest.validation : null,
+      credential: typeof manifest.credential === "string" ? manifest.credential : null,
     },
-  };
+    facts: best === undefined ? null : facts,
+    index: {
+      ...answer.index,
+      chainHeadAt,
+      lagSeconds: chainHeadAt === null || indexedAt === null ? null : Math.max(0, chainHeadAt - indexedAt),
+    },
+    verifyAnswer: { result: answer.result, manifest: answer.manifest },
+  });
+  return value === null ? { ok: false, reason: RESULT_TOO_LARGE } : { ok: true, value };
 }

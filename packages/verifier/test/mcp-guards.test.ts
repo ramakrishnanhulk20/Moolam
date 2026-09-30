@@ -4,7 +4,7 @@
 // empty list (M3); a browser Origin that is not one of CORS_ORIGINS gets 403 while a listed one and
 // a missing one pass, a preflight is told the MCP header set, and the MCP answer carries the
 // service's security headers and no-store (M5); a body declared over the route's limit is refused
-// before any of it is read.
+// before any of it is read; GET and DELETE answer 405 with Allow: POST.
 // Does NOT cover DNS answers that point a public name inward (safeFetch.test.ts covers the guard
 // itself), a real browser enforcing CORS, the live index or chain, or the rate limiter, which is
 // the service's own per-address rule and is covered by fair-limits.test.ts.
@@ -211,6 +211,15 @@ describe("the MCP route's guards", () => {
     const allowed = String(response.headers["access-control-allow-headers"]).toLowerCase();
     for (const header of ["content-type", "mcp-protocol-version", "mcp-method", "mcp-name"]) {
       expect(allowed).toContain(header);
+    }
+  });
+
+  it("answers GET and DELETE with 405, Allow: POST and a JSON-RPC error, as a stateless server does", async () => {
+    for (const method of ["GET", "DELETE"]) {
+      const response = await fetch(url, { method, headers: { accept: "application/json, text/event-stream" } });
+      expect(response.status, method).toBe(405);
+      expect(response.headers.get("allow"), method).toBe("POST");
+      expect(await response.json()).toMatchObject({ jsonrpc: "2.0", error: { code: -32000 }, id: null });
     }
   });
 

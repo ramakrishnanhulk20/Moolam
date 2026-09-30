@@ -187,13 +187,14 @@ that has `PINATA_JWT`, `PRIVY_APP_ID` and `PRIVY_APP_SECRET`, a signer that load
 and a platform list in `src/platforms/platforms.json` whose every signature checks
 out. A refused list turns all four off and logs why; it is never half loaded.
 
-What they let through, set in `src/platform/stores.ts` and not yet in the
-environment:
+What they let through. The two prepare counts are read from the environment and
+0 closes `/platform/prepare`, like the `GLOBAL_*_PER_DAY` ceilings; the other two
+are set in `src/platform/stores.ts`:
 
 | Limit | Value | Kept in |
 | --- | --- | --- |
-| Prepares per platform key | 100 in a rolling 24 hours | `platform-quota.json` |
-| Prepares for every platform together | 500 per UTC day | `platform-day.json` |
+| Prepares per platform key | `PLATFORM_PREPARES_PER_KEY_PER_DAY`, 100 in a rolling 24 hours unless set | `platform-quota.json` |
+| Prepares for every platform together | `GLOBAL_PLATFORM_PREPARES_PER_DAY`, 500 per UTC day unless set | `platform-day.json` |
 | PlatformPrepare nonces and pictures remembered | ten minutes after each `issuedAt`, at most 20,000 | `platform-nonces.json` |
 | Frozen co-sign files per platform | 100 MiB in records still waiting | `platform-pending/` |
 
@@ -232,6 +233,7 @@ What it holds itself to:
 
 | Rule | Value |
 | --- | --- |
+| Methods | POST only. The server is stateless and keeps no stream or session, so GET and DELETE on `/mcp` answer 405 with `Allow: POST` and a JSON-RPC error |
 | Body | at most a 20 MB picture as base64 plus 64 KB, refused 413 before it is read when the declared length is over, and counted against the same upload ceilings as `/verify` |
 | Origin | a browser `Origin` that is not one of `CORS_ORIGINS` gets 403; no `Origin`, as from Claude's cloud or a script, passes |
 | Rate limit | the service's own 60 requests a minute per address. Claude connects from Anthropic's cloud, so every Claude user shares one address and one bucket. The limiter counts per process, which is one process on this host |

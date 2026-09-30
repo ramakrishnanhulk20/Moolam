@@ -1,7 +1,8 @@
 // Covers what GET /health answers: liveness, the index size, the package version, the list of
-// routes this host mounted, in the documented order, how much of the day's budget for everyone is
-// gone, the private copy sweep's mode and last run, and that the probe is never rate-limited, since
-// a probe that can be refused would read as an outage.
+// routes this host mounted, in the documented order with /mcp and the four platform routes among
+// them, how much of the day's budget for everyone is gone, the private copy sweep's mode and last
+// run, and that the probe is never rate-limited, since a probe that can be refused would read as
+// an outage.
 // The generate route and the paid route are switched off below so the list is the same on any
 // machine, whatever the developer's .env happens to hold.
 // Does NOT cover the routes themselves, which have their own files, and does not cover what a
@@ -36,7 +37,8 @@ describe("GET /health", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = await buildServer({ source: emptySource, logger: false, prepare: {}, edit: {} });
+    // The platform routes are mounted through options, with the bundled list, for the same reason.
+    app = await buildServer({ source: emptySource, logger: false, prepare: {}, edit: {}, platform: {} });
     await app.ready();
   });
 
@@ -53,7 +55,19 @@ describe("GET /health", () => {
 
   it("names the routes this host mounted, in order", async () => {
     const response = await app.inject({ method: "GET", url: "/health" });
-    expect(response.json().routes).toEqual(["verify", "prepare", "edit", "unseal", "sealed", "health"]);
+    expect(response.json().routes).toEqual([
+      "verify",
+      "mcp",
+      "prepare",
+      "edit",
+      "unseal",
+      "sealed",
+      "platform/prepare",
+      "platform/record",
+      "platform/sign",
+      "platform/status",
+      "health",
+    ]);
   });
 
   it("says how much of the day's budget for everyone is gone, with the ceilings from the environment", async () => {

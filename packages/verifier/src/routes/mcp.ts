@@ -277,6 +277,18 @@ export async function mcpRoutes(app: FastifyInstance, options: McpRouteOptions):
     return reply.send();
   });
 
+  // A stateless server opens no stream for a GET and keeps no session for a DELETE to end, so the
+  // Streamable HTTP transport's answer to both is 405 naming the one method it takes.
+  for (const method of ["GET", "DELETE"] as const) {
+    app.route({
+      method,
+      url: MCP_PATH,
+      config: { cors },
+      handler: async (_request, reply) =>
+        rpcError(reply.header("allow", "POST"), 405, -32000, "Method not allowed: this server is stateless and answers POST only"),
+    });
+  }
+
   app.post(MCP_PATH, { config: { cors } }, async (request, reply) => {
     try {
       if (!isJsonContentType(request.headers["content-type"] ?? null)) {

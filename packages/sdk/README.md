@@ -38,6 +38,8 @@ const setup = await setupPlatform({ walletClient, rpId: "images.your-platform.co
 
 `setupPlatform` refuses a wallet that already has a passkey bound (pass `rotate: true` to replace it on purpose), refuses a wallet that already holds passports, and refuses an `rpId` that is Moolam's hostname, `localhost`, an IP address, or anything that is not your own hostname written plainly.
 
+To replace the server passkey later, for example after a leak, call `setupPlatform({ walletClient, rpId, rotate: true })` from the same wallet and store the new `passkeyPrivateKey` in place of the old one. A working platform's wallet holds its passports, so rotation goes ahead on a wallet that holds some, but only when a key is already bound to it: a wallet with no key bound that holds passports is still refused, because there is nothing to rotate. Passports registered under the old key stay as they are.
+
 ## Co-sign mode
 
 ```ts
@@ -51,6 +53,8 @@ const passport = await waitForPassport(handle);
 ```
 
 `waitForCreator` rebuilds the digest from the record's fields and the person's wallet and refuses a digest the service computed differently. `waitForPassport` returns only after the registry itself holds this passport with this creator, agent, manifest and metadata.
+
+If your server restarts while a co-sign is open, keep `handle.handle` (the 32 hex characters, not the link) and pick it up again with `const handle = await resumeCosign(savedHandle, { verifyUrl, platformKey, agentAccount, publicClient })`. It reads the record's status from Moolam and returns the same kind of handle, so `waitForCreator`, `signAsAgent` and `waitForPassport` carry on from wherever the record is, with the same checks. Store the handle like the link: it is the person's key to the page.
 
 ## Handing a passport to a person
 

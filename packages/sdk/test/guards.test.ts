@@ -1,7 +1,8 @@
 // Covers the kit's refusals that need no chain: the rpId rule for a platform's server passkey (P20),
 // the terms rule shared with MoolamConsent and the verify service (P9, P24), and how the platform key
 // travels to the service (P7): only in the Authorization header, never in a URL, a body, an error or
-// a redirect, and never over plain http to another host.
+// a redirect, and never over plain http to another host; and every answer is read under 256 KB but
+// the platform prepare's, which carries the signed file.
 // Does NOT cover the chain-side refusals of setupPlatform and transferPassport, which fork.test.ts
 // runs against the real registry, or what a platform's own code does with the key.
 
@@ -11,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { termsProblem } from "../src/terms.js";
 import { rpIdProblem, ServerPasskey } from "../src/passkey.js";
-import { callService, checkedUrl } from "../src/service.js";
+import { MAX_PREPARE_ANSWER_BYTES, callService, checkedUrl } from "../src/service.js";
 
 const KEY = "0f".repeat(32);
 
@@ -85,6 +86,10 @@ describe("the platform key on the wire", () => {
           response.writeHead(302, { location: `${base}/elsewhere` }).end();
           return;
         }
+        if (request.url === "/large") {
+          response.writeHead(200, { "content-type": "application/json" }).end(JSON.stringify({ file: "A".repeat(300 * 1024) }));
+          return;
+        }
         if (request.url === "/refuse") {
           response.writeHead(403, { "content-type": "application/json" }).end(JSON.stringify({ error: "agent-signature-refused" }));
           return;
@@ -125,6 +130,14 @@ describe("the platform key on the wire", () => {
     const error = (await attempt.catch((caught: unknown) => caught)) as Error;
     expect(`${error.message} ${JSON.stringify(error)}`).not.toContain(KEY);
     expect(error.message).not.toContain("/refuse");
+  });
+
+  it("reads an answer past 256 KB only where the call names the larger cap the platform prepare uses", async () => {
+    const call = { method: "GET" as const, path: "/large", what: "a call", timeoutMs: 5_000 };
+    const schema = z.object({ file: z.string() });
+    await expect(callService({ verifyUrl: base, platformKey: KEY }, call, schema)).rejects.toMatchObject({ code: "unexpected-answer" });
+    const read = await callService({ verifyUrl: base, platformKey: KEY }, { ...call, maxAnswerBytes: MAX_PREPARE_ANSWER_BYTES }, schema);
+    expect(read.file).toHaveLength(300 * 1024);
   });
 
   it("refuses plain http to any host but this machine, and a URL carrying a query", () => {

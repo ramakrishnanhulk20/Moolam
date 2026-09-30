@@ -49,8 +49,9 @@ function fakeCid(): string {
 }
 
 /**
- * The verify service's four platform routes and a gateway, answered at the HTTP level on this
- * machine. It checks the key, the agent owner's PlatformPrepare and passport signatures with the
+ * The verify service's four platform routes, answered at the HTTP level on this machine. There is
+ * no gateway: the platform-mode prepare hands the signed file back in its answer, as the real route
+ * does. It checks the key, the agent owner's PlatformPrepare and passport signatures with the
  * service's own functions against ownerOf read from the fork, and says "registered" only after a
  * getPassport read of the fork, as the real routes do. It does not sign C2PA, fingerprint or pin:
  * its "signed file" is the picture with bytes appended, so every passport id is new to mainnet.
@@ -66,7 +67,6 @@ export class MockVerifyService {
   readonly #agentId: bigint;
   readonly #creatorWallet: Address;
   readonly #reader: PublicClient;
-  readonly #gateway = new Map<string, Buffer>();
   #server: Server | undefined;
 
   constructor(options: { platformKey: string; agentId: bigint; creatorWallet: Address; reader: PublicClient }) {
@@ -151,12 +151,6 @@ export class MockVerifyService {
       response.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(value));
     };
 
-    if (request.method === "GET" && url.startsWith("/ipfs/")) {
-      const bytes = this.#gateway.get(url.slice("/ipfs/".length));
-      if (bytes === undefined) return send(404, { error: "not-found" });
-      response.writeHead(200, { "content-type": "image/jpeg" }).end(bytes);
-      return;
-    }
     if (request.headers.authorization !== `Bearer ${this.#key}`) return send(401, { error: "unauthorized" });
 
     if (request.method === "POST" && url === "/platform/prepare") {
@@ -196,7 +190,6 @@ export class MockVerifyService {
         state: "awaiting-creator",
       };
       record.fields.metadataURI = `ipfs://${record.files.metadata.cid}`;
-      this.#gateway.set(record.files.image.cid, this.tamper === "signed-file" ? Buffer.concat([signed, Buffer.from("!")]) : signed);
 
       const trainingText = form.get("training");
       const stated = typeof trainingText === "string" ? { ...JSON.parse(trainingText), standard: "cawg.training-mining/1.1" } : undefined;
@@ -206,10 +199,12 @@ export class MockVerifyService {
       if (mode === "platform") {
         const deadline = now + WINDOW;
         const digest = this.#digest(record, this.#creatorWallet, deadline);
+        const handed = this.tamper === "signed-file" ? Buffer.concat([signed, Buffer.from("!")]) : signed;
         return send(200, {
           mode: "platform",
           passport: { ...record.fields, creator: this.#creatorWallet, deadline: deadline.toString() },
           digest: this.tamper === "digest" ? `0x${randomBytes(32).toString("hex")}` : digest,
+          signedFile: { name: "picture.jpg", type: "image/jpeg", bytes: handed.toString("base64"), sha256: record.fields.exactHash },
           ...common,
         });
       }

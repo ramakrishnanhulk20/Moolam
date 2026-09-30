@@ -1,9 +1,12 @@
 // Covers the kit end to end on a local anvil fork of Monad mainnet, against the live registry,
 // consent and ERC-8004 bytecode at their mainnet addresses: setupPlatform binds a server passkey
-// from a fresh wallet and refuses a second bind and a wallet holding passports (P20); a platform-mode
-// register with a fresh ERC-8004 agent lands with its terms stated (P19, P24), and a service that
-// lies about the digest or the signed file is refused before any transaction; a co-sign register
-// where the person's passkey is also simulated in software; transferPassport and each refusal (P22);
+// from a fresh wallet and refuses a second bind (P20); a platform wallet holding a passport rotates
+// its key only with rotate, and a wallet with no key bound that holds one is refused even with it; a
+// platform-mode register with a fresh ERC-8004 agent lands with its terms stated (P19, P24), the
+// signed file read from the prepare answer and never from a gateway, and a service that lies about
+// the digest or the signed file is refused before any transaction; a co-sign register where the
+// person's passkey is also simulated in software, and one picked up again by resumeCosign from its
+// handle alone; transferPassport and each refusal (P22);
 // and, across all of it, that the passkey's private key never leaves the process and the platform
 // key travels only in the verify service's Authorization header (P7, P21).
 // Does NOT cover the real verify service (mocked at the HTTP level, see support/mock-service.ts; its
@@ -24,6 +27,7 @@ import {
   parseEther,
   parseEventLogs,
   type Address,
+  type Chain,
   type Hex,
   type PublicClient,
 } from "viem";
@@ -37,6 +41,7 @@ import { bindDigest, passportDigest } from "../src/eip712.js";
 import {
   ServerPasskey,
   registerAsPlatform,
+  resumeCosign,
   setupPlatform,
   signAsAgent,
   startCosign,
@@ -44,6 +49,7 @@ import {
   waitForCreator,
   waitForPassport,
   type AiUseTerms,
+  type CosignHandle,
   type PlatformSetup,
   type PlatformWalletClient,
 } from "../src/index.js";
@@ -117,8 +123,11 @@ let person: PrivateKeyAccount;
 let platformWallet: PlatformWalletClient;
 let personWallet: PlatformWalletClient;
 let agentId: bigint;
+let chain: Chain;
 let setup: PlatformSetup;
+let rotated: PlatformSetup;
 let passkey: ServerPasskey;
+let personKey: SoftwarePasskey;
 let platformPassport: Hex;
 let cosignedPassport: Hex;
 const sent: Sent[] = [];
@@ -160,7 +169,7 @@ beforeAll(async () => {
   const rpcUrl = process.env.MONAD_MAINNET_RPC_URL;
   if (!rpcUrl) throw new Error("MONAD_MAINNET_RPC_URL is not set in the repo root .env, so there is no Monad mainnet to fork.");
   fork = await startAnvilFork(rpcUrl);
-  const chain = defineChain({
+  chain = defineChain({
     id: 143,
     name: "Monad mainnet fork",
     nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
@@ -270,10 +279,47 @@ describe("registerAsPlatform", () => {
     expect(await nonceOf(platformAccount.address)).toBe(before);
   });
 
-  it("refuses to set up again on a wallet that now holds passports, even with rotate", async () => {
-    await expect(setupPlatform({ walletClient: platformWallet, rpId: RP_ID, rotate: true })).rejects.toMatchObject({ code: "wallet-holds-passports" });
+  it("rotates the key of a platform wallet that holds a passport only with rotate, and refuses without it", async () => {
+    expect(await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "balanceOf", args: [platformAccount.address] })).toBe(1n);
+    const before = await nonceOf(platformAccount.address);
+    await expect(setupPlatform({ walletClient: platformWallet, rpId: RP_ID })).rejects.toMatchObject({ code: "passkey-already-bound" });
+    expect(await nonceOf(platformAccount.address)).toBe(before);
+
+    rotated = await setupPlatform({ walletClient: platformWallet, rpId: RP_ID, rotate: true });
+    await gasOf("bindPasskey rotate", rotated.bindTx);
+    expect([rotated.qx, rotated.qy]).not.toEqual([setup.qx, setup.qy]);
+    const [qx, qy] = await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "getPasskey", args: [platformAccount.address] });
+    expect([qx, qy]).toEqual([rotated.qx, rotated.qy]);
+    passkey = ServerPasskey.fromPrivateKey(rotated.passkeyPrivateKey, rotated.rpId);
   });
 });
+
+/** The person's side of a co-sign, as the Moolam page does it: sign the rebuilt digest and send register. */
+async function personRegisters(handle: CosignHandle, digest: Hex): Promise<void> {
+  const record = service.records.get(handle.handle);
+  if (record?.creator === undefined || record.deadline === undefined || record.agentSignature === undefined) throw new Error("the record was not signed");
+  const input = {
+    exactHash: record.fields.exactHash as Hex,
+    parentId: record.fields.parentId as Hex,
+    creator: record.creator,
+    generatorAgentId: BigInt(record.fields.generatorAgentId as string),
+    phash: BigInt(record.fields.phash as string),
+    blockhash256: record.fields.blockhash256 as Hex,
+    manifestHash: record.fields.manifestHash as Hex,
+    kind: 0,
+    fingerprintVersion: 1,
+    metadataURI: record.fields.metadataURI as string,
+    deadline: record.deadline,
+  };
+  expect(passportDigest(input)).toBe(digest);
+  const registered = await personWallet.writeContract({
+    address: MOOLAM_REGISTRY,
+    abi: registryAbi,
+    functionName: "register",
+    args: [input, personKey.sign(digest), record.agentSignature],
+  });
+  expect((await reader.waitForTransactionReceipt({ hash: registered })).status).toBe("success");
+}
 
 describe("co-sign", () => {
   it("registers a picture the person co-signs with their own passkey", async () => {
@@ -297,41 +343,40 @@ describe("co-sign", () => {
 
     // What the Moolam co-sign page does in the person's browser: bind their passkey once, then sign
     // the digest it rebuilt from the fields it drew and send register from their wallet.
-    const personKey = SoftwarePasskey.random({ rpId: "moolam.vercel.app" });
+    personKey = SoftwarePasskey.random({ rpId: "moolam.vercel.app" });
     const nonce = await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "bindNonce", args: [person.address] });
     const bindAuth = personKey.sign(bindDigest(person.address, personKey.qx, personKey.qy, nonce));
     await reader.waitForTransactionReceipt({
       hash: await personWallet.writeContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "bindPasskey", args: [personKey.qx, personKey.qy, bindAuth] }),
     });
-    const record = service.records.get(handle.handle);
-    if (record?.creator === undefined || record.deadline === undefined || record.agentSignature === undefined) throw new Error("the record was not signed");
-    const input = {
-      exactHash: record.fields.exactHash as Hex,
-      parentId: record.fields.parentId as Hex,
-      creator: record.creator,
-      generatorAgentId: BigInt(record.fields.generatorAgentId as string),
-      phash: BigInt(record.fields.phash as string),
-      blockhash256: record.fields.blockhash256 as Hex,
-      manifestHash: record.fields.manifestHash as Hex,
-      kind: 0,
-      fingerprintVersion: 1,
-      metadataURI: record.fields.metadataURI as string,
-      deadline: record.deadline,
-    };
-    expect(passportDigest(input)).toBe(digest);
-    const registered = await personWallet.writeContract({
-      address: MOOLAM_REGISTRY,
-      abi: registryAbi,
-      functionName: "register",
-      args: [input, personKey.sign(digest), record.agentSignature],
-    });
-    expect((await reader.waitForTransactionReceipt({ hash: registered })).status).toBe("success");
+    await personRegisters(handle, digest);
 
     const passport = await waitForPassport(handle, { pollMs: 100, timeoutMs: 30_000 });
     cosignedPassport = passport.passportId;
     expect(passport.creator).toBe(person.address);
     expect(passport.passportId).toBe(handle.passportId);
     expect(await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "ownerOf", args: [BigInt(passport.passportId)] })).toBe(person.address);
+  });
+
+  it("picks a co-sign up again after a restart from its handle alone, and finishes it", async () => {
+    const options = { verifyUrl: service.base, platformKey: PLATFORM_KEY, agentAccount: agentOwner, publicClient: reader };
+    const started = await startCosign(PICTURE, { ...options, title: "A pier at low tide", terms: TERMS });
+    const kept = started.handle;
+
+    await expect(resumeCosign("not-a-handle", options)).rejects.toMatchObject({ code: "invalid-input" });
+    const resumed = await resumeCosign(kept, options);
+    expect(resumed).not.toBe(started);
+    expect({ ...resumed }).toEqual({ ...started });
+
+    const waiting = waitForCreator(resumed, { pollMs: 100, timeoutMs: 30_000 });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await service.openAs(kept, person.address);
+    const digest = await waiting;
+    await signAsAgent(resumed, digest);
+    await personRegisters(resumed, digest);
+
+    const passport = await waitForPassport(resumed, { pollMs: 100, timeoutMs: 30_000 });
+    expect(passport).toMatchObject({ passportId: started.passportId, creator: person.address });
   });
 });
 
@@ -363,18 +408,30 @@ describe("transferPassport", () => {
   });
 });
 
+describe("rotate on a wallet with no key bound", () => {
+  it("is refused when the wallet holds a passport, since there is no key to rotate", async () => {
+    const holder = privateKeyToAccount(generatePrivateKey());
+    const holderWallet = createWalletClient({ account: holder, chain, transport: http(fork.rpc) });
+    await transferPassport(cosignedPassport, holder.address, personWallet);
+    await expect(setupPlatform({ walletClient: holderWallet, rpId: RP_ID, rotate: true })).rejects.toMatchObject({ code: "wallet-holds-passports" });
+    expect(await nonceOf(holder.address)).toBe(0);
+  });
+});
+
 describe("what left the process", () => {
   it("never sent the passkey's private key anywhere, and sent the platform key only in the service's Authorization header", () => {
-    const privateHex = setup.passkeyPrivateKey.slice(2).toLowerCase();
+    const privateHexes = [setup, rotated].map((one) => one.passkeyPrivateKey.slice(2).toLowerCase());
     expect(sent.length).toBeGreaterThan(20);
     for (const one of sent) {
-      expect(`${one.url} ${one.authorization ?? ""} ${one.body}`.toLowerCase()).not.toContain(privateHex);
+      for (const privateHex of privateHexes) {
+        expect(`${one.url} ${one.authorization ?? ""} ${one.body}`.toLowerCase()).not.toContain(privateHex);
+      }
       expect(one.url).not.toContain(PLATFORM_KEY);
       expect(one.body).not.toContain(PLATFORM_KEY);
-      const toService = one.url.startsWith(service.base) && !one.url.startsWith(`${service.base}/ipfs/`);
-      expect(one.authorization).toBe(toService ? `Bearer ${PLATFORM_KEY}` : null);
+      expect(one.authorization).toBe(one.url.startsWith(service.base) ? `Bearer ${PLATFORM_KEY}` : null);
     }
-    expect(service.seen.filter((one) => one.url.startsWith("/ipfs/")).every((one) => one.authorization === undefined)).toBe(true);
+    // The signed file comes back in the prepare answer, so nothing is ever fetched from a gateway.
+    expect(service.seen.some((one) => one.url.startsWith("/ipfs/"))).toBe(false);
     for (const spy of consoleSpies) expect(spy).not.toHaveBeenCalled();
   });
 });

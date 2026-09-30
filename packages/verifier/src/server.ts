@@ -817,6 +817,8 @@ export async function buildServer(
     });
   }
   const generatorClosed = (): string | undefined => generator?.closed();
+  // Set once the platform routes are registered below, which the route list reads on every call.
+  let platformMounted = false;
 
   // One counter per server, not per module, so two servers in one test file never share a budget.
   // Under a test runner its store is memory; on a host it is the ceiling file in the data folder.
@@ -886,11 +888,13 @@ export async function buildServer(
       return [
         "verify",
         ...(mounts["verify/paid"] ? ["verify/paid"] : []),
+        "mcp",
         ...(mounts.prepare ? ["prepare"] : []),
         ...(generating ? ["generate"] : []),
         ...(mounts.edit ? ["edit"] : []),
         ...(canUnseal && canReadHolders ? ["unseal"] : []),
         ...(canUnseal ? ["sealed"] : []),
+        ...(platformMounted ? ["platform/prepare", "platform/record", "platform/sign", "platform/status"] : []),
         "health",
       ];
     },
@@ -1031,6 +1035,7 @@ export async function buildServer(
         dir: options.platform?.dir,
         limits: options.platform?.limits,
       });
+      platformMounted = true;
     }
   } else {
     app.log.info(

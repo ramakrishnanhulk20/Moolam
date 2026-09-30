@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ZERO_BYTES32 } from "./constants.js";
 import type { PassportInput } from "./eip712.js";
 import { MoolamPlatformError } from "./errors.js";
+import { MAX_SIGNED_FILE_BYTES } from "./service.js";
 import type { AiUseTerms } from "./terms.js";
 
 // Every answer from the verify service is input to a transaction the platform pays for, so it is
@@ -48,6 +49,23 @@ const fileAnswer = z.object({
 
 const filesAnswer = z.object({ image: fileAnswer, thumbnail: fileAnswer, manifest: fileAnswer, metadata: fileAnswer });
 
+/**
+ * Moolam's signed copy of the picture, as the platform-mode prepare hands it back: strict base64 no
+ * longer than the upload limit written as base64. Its sha256 is checked against the passport id by
+ * the caller, from the decoded bytes, never taken from the answer's own sha256 field alone.
+ */
+const signedFileAnswer = z.object({
+  name: z.string().min(1).max(300),
+  type: z.string().min(1).max(100),
+  bytes: z
+    .string()
+    .min(4)
+    .max(Math.ceil(MAX_SIGNED_FILE_BYTES / 3) * 4)
+    .regex(/^[A-Za-z0-9+/]+={0,2}$/)
+    .refine((text) => text.length % 4 === 0, "not whole base64"),
+  sha256: bytes32,
+});
+
 /** The statement the service wrote into the manifest and metadata. Any field beyond these is a mismatch. */
 const trainingAnswer = z
   .strictObject({
@@ -67,6 +85,7 @@ export const platformPrepareAnswer = z.object({
   passport: z.object({ ...passportFields, creator: address, deadline: decimal }),
   digest: bytes32,
   files: filesAnswer,
+  signedFile: signedFileAnswer,
   training: trainingAnswer.optional(),
   platform: platformAnswer,
 });

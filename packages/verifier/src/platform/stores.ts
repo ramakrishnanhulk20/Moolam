@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { TypedDataDomain } from "viem";
-import { MAX_UPLOAD_BYTES } from "../env.js";
+import { MAX_UPLOAD_BYTES, env } from "../env.js";
 import { dailyQuota, fileQuotaStore, memoryQuotaStore, type DailyQuota } from "../generate/quota.js";
 import { fileDayStore, globalDay, memoryDayStore, type GlobalDay } from "../limits/globalDay.js";
 import { PLATFORM_STATE_FILES, stateFile } from "../stateDir.js";
@@ -13,7 +13,7 @@ import { pendingStore, type PendingStore } from "./pending.js";
  * ceiling bounds the disk one platform's waiting co-signs may fill.
  */
 export interface PlatformLimits {
-  /** Prepares one platform key may make in a rolling 24 hours. */
+  /** Prepares one platform key may make in a rolling 24 hours. Zero closes the routes. */
   perKeyPerDay: number;
   /** Prepares every platform together may make in one UTC day. Zero closes the routes. */
   perDay: number;
@@ -22,13 +22,14 @@ export interface PlatformLimits {
 }
 
 /**
- * Sized for the demo platform's ten pictures with a wide margin, and far under the studio's own 300
- * a day, since each prepare costs a C2PA signing and four pins. Five full uploads of frozen files per
- * platform is 100 MiB of the volume.
+ * The two prepare counts come from PLATFORM_PREPARES_PER_KEY_PER_DAY and
+ * GLOBAL_PLATFORM_PREPARES_PER_DAY, 100 and 500 unless set, so an operator can close or widen them
+ * on the host without a deploy. Five full uploads of frozen files per platform is 100 MiB of the
+ * volume.
  */
 export const DEFAULT_PLATFORM_LIMITS: PlatformLimits = {
-  perKeyPerDay: 100,
-  perDay: 500,
+  perKeyPerDay: env.PLATFORM_PREPARES_PER_KEY_PER_DAY,
+  perDay: env.GLOBAL_PLATFORM_PREPARES_PER_DAY,
   frozenBytesPerKey: 5 * MAX_UPLOAD_BYTES,
 };
 

@@ -23,6 +23,17 @@ export const DEFAULT_RECENT = 10;
 /** 1 January 2100 in unix seconds: far past any statement, and small enough to sit in a uint64. */
 export const MAX_UNIX_SECONDS = 4_102_444_800;
 
+/**
+ * The most text one answer may carry. Claude Code keeps 25,000 tokens of a tool result by default
+ * and the hosted apps about 150,000 characters; the answer goes out twice, as structured content
+ * and as the same JSON in text, so 24,000 characters each stays far inside both (M4). Every field
+ * is capped well below this; the check is the backstop that refuses rather than cuts.
+ */
+export const MAX_RESULT_CHARS = 24_000;
+
+/** The refusal for an answer that cannot be brought under MAX_RESULT_CHARS. */
+export const RESULT_TOO_LARGE = "the answer was larger than this service returns in one result";
+
 /** A browser's own practical limit on an address. Nothing longer is parsed. */
 export const MAX_URL_CHARS = 2_048;
 

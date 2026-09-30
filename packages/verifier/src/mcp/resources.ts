@@ -9,8 +9,7 @@ import {
 } from "@modelcontextprotocol/server";
 import type { Hex } from "../types.js";
 import { passportFacts, termsFacts, type McpDeps, type Outcome } from "./facts.js";
-import { PASSPORT_ID_PATTERN, passportKey } from "./inputs.js";
-import { MAX_RESULT_CHARS } from "./tools.js";
+import { MAX_RESULT_CHARS, PASSPORT_ID_PATTERN, RESULT_TOO_LARGE, passportKey } from "./inputs.js";
 
 const NOT_AN_ID = "the id in this address is not a passport id: 0x and 64 hex characters";
 
@@ -38,7 +37,7 @@ function contents(uri: URL, result: Outcome<{ found: boolean }>): ReadResourceRe
   }
   const text = JSON.stringify(result.value);
   if (text.length > MAX_RESULT_CHARS) {
-    throw new ProtocolError(ProtocolErrorCode.InternalError, "the answer was larger than this service returns in one result");
+    throw new ProtocolError(ProtocolErrorCode.InternalError, RESULT_TOO_LARGE);
   }
   return { contents: [{ uri: uri.href, mimeType: "application/json", text }] };
 }

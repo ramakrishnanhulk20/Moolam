@@ -93,6 +93,15 @@ const DEFAULT_GLOBAL_UNSEALS_PER_DAY = "50";
 const DEFAULT_GLOBAL_LINKS_PER_DAY = "100";
 
 /**
+ * What the platform routes let one platform key, and every platform together, prepare. Sized for
+ * the demo platform's ten pictures with a wide margin, and far under the studio's own 300 a day,
+ * since each prepare costs a C2PA signing and four pins. Zero closes platform prepares, like every
+ * other ceiling here.
+ */
+const DEFAULT_PLATFORM_PREPARES_PER_KEY_PER_DAY = "100";
+const DEFAULT_GLOBAL_PLATFORM_PREPARES_PER_DAY = "500";
+
+/**
  * What the hourly sweep of orphaned private copies does: nothing, log what it would delete, or
  * delete. Dry is the default so a new host only logs until an operator has read a few runs and
  * switches it on (ruling D5).
@@ -309,6 +318,8 @@ const schema = z
     GLOBAL_EDITS_PER_DAY: dayCeiling("GLOBAL_EDITS_PER_DAY", DEFAULT_GLOBAL_EDITS_PER_DAY),
     GLOBAL_UNSEALS_PER_DAY: dayCeiling("GLOBAL_UNSEALS_PER_DAY", DEFAULT_GLOBAL_UNSEALS_PER_DAY),
     GLOBAL_LINKS_PER_DAY: dayCeiling("GLOBAL_LINKS_PER_DAY", DEFAULT_GLOBAL_LINKS_PER_DAY),
+    PLATFORM_PREPARES_PER_KEY_PER_DAY: dayCeiling("PLATFORM_PREPARES_PER_KEY_PER_DAY", DEFAULT_PLATFORM_PREPARES_PER_KEY_PER_DAY),
+    GLOBAL_PLATFORM_PREPARES_PER_DAY: dayCeiling("GLOBAL_PLATFORM_PREPARES_PER_DAY", DEFAULT_GLOBAL_PLATFORM_PREPARES_PER_DAY),
     PRIVATE_SWEEP: z
       .string()
       .trim()
@@ -627,6 +638,8 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     GLOBAL_EDITS_PER_DAY: source.GLOBAL_EDITS_PER_DAY,
     GLOBAL_UNSEALS_PER_DAY: source.GLOBAL_UNSEALS_PER_DAY,
     GLOBAL_LINKS_PER_DAY: source.GLOBAL_LINKS_PER_DAY,
+    PLATFORM_PREPARES_PER_KEY_PER_DAY: source.PLATFORM_PREPARES_PER_KEY_PER_DAY,
+    GLOBAL_PLATFORM_PREPARES_PER_DAY: source.GLOBAL_PLATFORM_PREPARES_PER_DAY,
     PRIVATE_SWEEP: source.PRIVATE_SWEEP,
     RUNNER_TOKEN: source.RUNNER_TOKEN,
     SEALED_LINK_TOKEN: source.SEALED_LINK_TOKEN,
