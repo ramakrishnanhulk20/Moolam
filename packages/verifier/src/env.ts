@@ -102,14 +102,14 @@ export const PRIVATE_SWEEP_MODES = ["off", "dry", "delete"] as const;
 export type PrivateSweepMode = (typeof PRIVATE_SWEEP_MODES)[number];
 
 /**
- * Where the re-check queue is kept when nothing names a path.
- *
- * The service's own working directory, which is the package folder in development and /app in the
- * container. The container runs as a user that cannot write there, so a host that wants the queue
- * to survive a redeploy names a writable path of its own. Without one the queue still takes
- * requests and still hands them to the runner; it just forgets them when the process does.
+ * Where the service keeps what it must remember when neither DATA_DIR nor a Railway volume names a
+ * folder: the gitignored test-assets folder, so a fresh clone can run the service without a setup
+ * step. Inside the container this is part of the image's own disk, which a redeploy replaces.
  */
-const DEFAULT_RECHECK_QUEUE_PATH = path.join(process.cwd(), "recheck-queue.json");
+const DEFAULT_DATA_DIR = path.join(PACKAGE_ROOT, "test-assets", "state");
+
+/** Where a host's DATA_DIR came from, so the boot can say when state will not outlive a deploy. */
+export type DataDirSource = "DATA_DIR" | "RAILWAY_VOLUME_MOUNT_PATH" | "default";
 
 /**
  * How often the passport index is rebuilt from the source. A minute is well inside the time it
@@ -323,11 +323,9 @@ const schema = z
       24,
       "SEALED_LINK_TOKEN must be at least 24 characters: with a passport id it mints a read link to that passport's private copy",
     ),
-    RECHECK_QUEUE_PATH: z
-      .string()
-      .trim()
-      .default(DEFAULT_RECHECK_QUEUE_PATH)
-      .transform((value) => (value.length === 0 ? DEFAULT_RECHECK_QUEUE_PATH : value)),
+    DATA_DIR: absoluteFolder("DATA_DIR"),
+    RAILWAY_VOLUME_MOUNT_PATH: absoluteFolder("RAILWAY_VOLUME_MOUNT_PATH"),
+    RECHECK_QUEUE_PATH: optionalText(),
     MOOLAM_REGISTRY_ADDRESS: z
       .string()
       .trim()
@@ -439,7 +437,47 @@ const schema = z
         message: "X402_PAY_TO_ADDRESS is required when X402_ENABLED is true",
       });
     }
+  })
+  .transform(({ RAILWAY_VOLUME_MOUNT_PATH, ...value }) => {
+    // The container's start script picks the folder to hand to the node user by this same order,
+    // DATA_DIR first and then the volume Railway mounted, so the folder it prepares is the folder
+    // this process writes to.
+    const DATA_DIR_SOURCE: DataDirSource =
+      value.DATA_DIR !== undefined ? "DATA_DIR" : RAILWAY_VOLUME_MOUNT_PATH !== undefined ? "RAILWAY_VOLUME_MOUNT_PATH" : "default";
+    const DATA_DIR = value.DATA_DIR ?? RAILWAY_VOLUME_MOUNT_PATH ?? DEFAULT_DATA_DIR;
+    return {
+      ...value,
+      DATA_DIR,
+      DATA_DIR_SOURCE,
+      RECHECK_QUEUE_PATH: value.RECHECK_QUEUE_PATH ?? path.join(DATA_DIR, "recheck-queue.json"),
+    };
   });
+
+/**
+ * An optional folder that has to be an absolute path exactly as written.
+ *
+ * Only the empty string means unset, and a value with spaces around it is refused rather than
+ * trimmed, because the start script reads the same variable in sh without trimming it: a value the
+ * two read differently would hand one folder to the node user and write to another.
+ */
+function absoluteFolder(name: string): z.ZodType<string | undefined> {
+  return z
+    .string()
+    .optional()
+    .transform((value, ctx) => {
+      if (value === undefined || value.length === 0) {
+        return undefined;
+      }
+      if (value !== value.trim() || !path.isAbsolute(value)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `${name} must be an absolute path with no spaces around it, such as /data`,
+        });
+        return z.NEVER;
+      }
+      return value;
+    });
+}
 
 /**
  * A day's ceiling for everyone, where zero closes the action rather than meaning "no limit".
@@ -592,6 +630,8 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): Env {
     PRIVATE_SWEEP: source.PRIVATE_SWEEP,
     RUNNER_TOKEN: source.RUNNER_TOKEN,
     SEALED_LINK_TOKEN: source.SEALED_LINK_TOKEN,
+    DATA_DIR: source.DATA_DIR,
+    RAILWAY_VOLUME_MOUNT_PATH: source.RAILWAY_VOLUME_MOUNT_PATH,
     RECHECK_QUEUE_PATH: source.RECHECK_QUEUE_PATH,
     MOOLAM_REGISTRY_ADDRESS: source.MOOLAM_REGISTRY_ADDRESS,
     CONSENT_ADDRESS: source.CONSENT_ADDRESS,

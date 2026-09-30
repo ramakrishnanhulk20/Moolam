@@ -43,8 +43,11 @@ COPY --from=prod-deps --chown=node:node /app/packages/verifier/node_modules ./pa
 # src/server.ts reads this file for the version it reports on /health.
 COPY --chown=node:node packages/verifier/package.json ./packages/verifier/package.json
 COPY --from=build --chown=node:node /app/packages/verifier/dist ./packages/verifier/dist
-USER node
+COPY packages/verifier/container-start.sh ./packages/verifier/container-start.sh
+# No USER line on purpose. A Railway volume is mounted owned by root when the container starts, so
+# the start script runs as root just long enough to hand DATA_DIR (or the volume) to node, then
+# runs the service as node through setpriv, which util-linux ships in this base image.
 EXPOSE 4010
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.VERIFIER_PORT}/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
-CMD ["node", "packages/verifier/dist/server.js"]
+  CMD ["setpriv", "--reuid=node", "--regid=node", "--init-groups", "--no-new-privs", "--", "node", "-e", "fetch(`http://127.0.0.1:${process.env.VERIFIER_PORT}/health`).then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+CMD ["sh", "packages/verifier/container-start.sh"]

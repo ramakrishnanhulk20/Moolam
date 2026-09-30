@@ -15,7 +15,7 @@ import {
 } from "../fingerprint.js";
 import { Busy } from "../generate/gate.js";
 import { privy, privyErrorText } from "../generate/privy.js";
-import { dailyQuota } from "../generate/quota.js";
+import { dailyQuota, defaultQuotaStore } from "../generate/quota.js";
 import {
   PinNotConfirmed,
   contentIdOf,
@@ -243,7 +243,7 @@ export async function unsealRoutes(
     holder?: boolean;
   } = {},
 ): Promise<void> {
-  const quota = dailyQuota(env.EDITS_PER_DAY);
+  const quota = dailyQuota(env.EDITS_PER_DAY, { store: defaultQuotaStore("unseal"), log: (line) => app.log.warn(line) });
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
   const known: Known = new Map();

@@ -1,9 +1,12 @@
 # Deploying the Moolam verify service
 
-The verify service is a single stateless container. It loads the passport index
-from Envio at boot, holds it in memory, and answers `/verify` from that index.
-No database, no volume, no shared state, so a host can restart it or run two
-copies without any coordination.
+The verify service is a single container with one data folder. It loads the
+passport index from Envio at boot, holds it in memory, and answers `/verify` from
+that index. What it has to remember between requests (the re-check queue, the
+daily ceilings, the per-creator allowances, the private-copy keep times and the
+sweep's place) is kept as small JSON files in the data folder, described under
+"What it keeps" below. No database. Run one copy: two would count every ceiling
+and allowance separately, and a Railway volume cannot be shared by replicas.
 
 ## Build
 
@@ -29,7 +32,7 @@ Windows `node_modules` and the web app out of the context.
 | Memory to allocate | At least 2 GB. Three 40 megapixel decodes may be in flight at once, about 1.15 GB, and a full 200 MiB upload ceiling costs about 420 MB with the copies each body gets, which with the 290 MB peak comes to about 1.9 GB. Railway gives this service up to 8 GB |
 | CPU | 1 shared vCPU. A match is CPU bound for well under a second |
 | Port | 4010, and the server binds `0.0.0.0` |
-| User | runs as the non-root `node` user |
+| User | the service runs as the non-root `node` user. The container starts as root only to run `container-start.sh`, which hands the data folder to `node` and then starts the service through `setpriv` as `node`. `RAILWAY_RUN_UID=0` is never set, because that would run the whole service as root |
 | Health | `GET /health` returns `{"ok":true,"records":N,"version":"0.2.0","routes":["verify","prepare","generate","edit","health"],"off":[],...}`, where `routes` is what this host has on right now and `off` names each route it left off, as `{"route":"POST /prepare","reason":"..."}`, with a plain reason that carries no path, address or key. The image also declares a Docker `HEALTHCHECK` on the same path |
 
 ## Environment
@@ -75,6 +78,8 @@ the boot loudly and names the variable.
 | `INDEX_REFRESH_MS` | no | How often the passport index is rebuilt from the source, in milliseconds. Defaults to 60000. `0` turns the refresh off and the index is then whatever was loaded at boot |
 | `EXPECT_ROUTES` | no | Routes this host must be able to mount or it refuses to boot, comma separated from `prepare`, `generate`, `edit`, `verify/paid`. Empty, the default, mounts whatever the keys allow and logs the rest as off |
 | `MATCH_WAIT_MS` | no | How long a verification waits for a free matching slot before the caller is answered 503 `busy`, in milliseconds. Defaults to 30000 |
+| `DATA_DIR` | no on Railway, yes on any other host that should remember | The folder every state file lives in, an absolute path such as `/data`. Unset, it is `RAILWAY_VOLUME_MOUNT_PATH`, which Railway sets itself when a volume is attached, and without either it is `test-assets/state` inside the package, which in the container is the image's own disk and is emptied by every deploy |
+| `RECHECK_QUEUE_PATH` | no | The re-check queue's file. Defaults to `recheck-queue.json` in the data folder. Set it only to keep the queue somewhere else; the other state files stay in the data folder |
 
 Without `PINATA_JWT` and `PRIVY_APP_ID` the container still boots and still
 verifies images. It logs one line saying the prepare route is off and answers 404
@@ -121,8 +126,8 @@ a limit of 482,480 and cost 0.0492 MON at 102 gwei, and Monad charges the limit
 rather than the gas used. That edit also carried a generator signature; the one
 this route sends does not, so it skips a signature recovery and one external call
 and lands a little under that figure. Plus four IPFS pins. `EDITS_PER_DAY` is the
-cap on both, counted in memory against the verified Privy user id, with the same
-restart hole as the generate allowance.
+cap on both, counted against the verified Privy user id and saved in the data
+folder, so on a volume a deploy does not hand it back.
 
 ## What the generate route costs
 
@@ -141,9 +146,38 @@ figure comes from the running service. The one live check against the real model
 and the real Pinata took 35 seconds end to end for a 1024 square, so budget the
 client for a minute per request rather than a second.
 
-The count lives in the service's memory, so a restart gives everyone their
-allowance back and two copies of the container count separately. That is the
-known hole, and it is cents wide.
+The count is saved in the data folder, so on a volume a deploy or a restart does
+not give anyone their allowance back. Two copies of the container would count
+separately, which is one reason the host runs one.
+
+## What it keeps
+
+Every file below lives in the data folder (`DATA_DIR`, else the Railway volume)
+and is written to a temp name and renamed into place, so a process killed
+mid-write leaves the previous file whole. They survive a deploy and a restart
+only when the data folder is a mounted volume.
+
+| File | What it remembers | If it is missing | If it is there and cannot be believed |
+| --- | --- | --- | --- |
+| `recheck-queue.json` | who asked for a Chainlink re-check and which runner holds it (or `RECHECK_QUEUE_PATH`) | starts empty | starts empty, and logs why |
+| `global-day.json` | today's count for each daily ceiling in `GLOBAL_*_PER_DAY` | counts today from zero | refused and logged: today's ceiling for every action reads as already reached until midnight UTC |
+| `quota-generate.json`, `quota-edit.json`, `quota-unseal.json` | each creator's spends in the last 24 hours | counts from zero | refused and logged: every creator reads as having spent that allowance for 24 hours from the boot |
+| `private-copy-kept.json` | when this service last kept each private copy, which the sweep ages copies by | no keeps, so the sweep uses Pinata's upload time | the same |
+| `private-sweep-cursor.json` | where the hourly sweep stopped in the private listing | the sweep starts at the first page | the same |
+
+A refused ceiling or allowance file writes that verdict back, so a second restart
+the same day reaches the same answer and the next day starts clean. To reopen
+early, delete the file and restart: that is an operator's choice, and it hands
+out a second budget for the day.
+
+At boot in production a data folder that cannot be written stops the service
+with one line naming the folder. In development the service warns once and holds
+everything in memory. A production host with neither `DATA_DIR` nor a volume
+boots, and says once that its state will not outlive a deploy.
+
+Still lost on every deploy, by design: the per-address rate-limit counts (one
+minute long), the private-copy status and unseal miss memory (short caches), and
+the development signing identity described above.
 
 ## Railway
 
@@ -173,9 +207,18 @@ two pages do not state is marked as a dashboard check rather than guessed.
    where the health check path is set. Check the dashboard. The container listens
    on 4010 and answers `GET /health`. If Railway injects its own port variable,
    set `VERIFIER_PORT` to the same number.
-6. Watch paths are optional. Setting them to `packages/verifier/**` stops a web or
+6. State: attach a volume to the service with its mount path at `/data`
+   (Railway allows one per service). Railway then sets
+   `RAILWAY_VOLUME_MOUNT_PATH=/data` itself, and the start script hands that
+   folder to the `node` user at each start, so no other variable is needed. Do
+   not set `RAILWAY_RUN_UID`. Keep the service at one replica: Railway refuses
+   replicas on a service with a volume, and each deploy has a short gap while
+   the old container lets go of the volume. The first boot on a new volume logs
+   "no ceiling file at /data/global-day.json yet"; from then on a redeploy keeps
+   the counts.
+7. Watch paths are optional. Setting them to `packages/verifier/**` stops a web or
    docs commit from rebuilding this service.
-7. Custom domain: not covered by those two guides. Check the dashboard.
+8. Custom domain: not covered by those two guides. Check the dashboard.
 
 ## Fly.io
 
@@ -195,6 +238,9 @@ Sourced from the Fly Dockerfile guide. Same rule about what is not on the page.
    rest of the table. The guide shows `flyctl secrets set MY_SECRET=romance`.
 6. Health check: not covered by that page. Check the `fly.toml` reference or the
    dashboard. The path is `/health` and a 200 means ready.
+7. State: Fly volumes were not part of the reading behind this page. Whatever
+   folder a volume is mounted at, set `DATA_DIR` to it; the start script hands it
+   to the `node` user. Without one, state lasts until the next deploy.
 
 ## The last step
 

@@ -13,7 +13,7 @@ import { generatorDomain, generatorWallet, signPassportAsGenerator } from "../ge
 import { Kind, type PassportInput } from "../generate/eip712.js";
 import { PromptRefused, billedOrUnknown, createImage, type ImageUsage } from "../generate/imageModel.js";
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
-import { dailyQuota } from "../generate/quota.js";
+import { dailyQuota, defaultQuotaStore } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { safeReason } from "../net/errorText.js";
@@ -234,7 +234,10 @@ export async function generateRoutes(
   } = {},
 ): Promise<void> {
   const gate = waitingGate(MAX_CONCURRENT_GENERATIONS, MAX_GATE_WAIT_MS);
-  const quota = dailyQuota(env.GENERATE_PER_DAY);
+  const quota = dailyQuota(env.GENERATE_PER_DAY, {
+    store: defaultQuotaStore("generate"),
+    log: (line) => app.log.warn(line),
+  });
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 

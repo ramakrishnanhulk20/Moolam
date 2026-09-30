@@ -42,8 +42,9 @@ export interface PaymentLedger {
  * the entry expires, and only to a request carrying that same payment and that
  * same file: the caller decides that by comparing `payment` and `upload`.
  *
- * Like the generation quota, this lives in this process's memory only. It is
- * gone on a restart and a second copy of the service keeps its own, so a repeat
+ * Unlike the generation quota, which is kept in the data folder, this lives in
+ * this process's memory only. It is gone on a restart and a second copy of the
+ * service keeps its own, so a repeat
  * that lands after a redeploy, or on another instance, still reaches the
  * facilitator twice. What stops that from charging twice is the chain, not this
  * map: a spent EIP-3009 nonce cannot be spent again, so the second settle call

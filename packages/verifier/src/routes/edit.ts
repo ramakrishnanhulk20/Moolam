@@ -27,7 +27,7 @@ import { FingerprintFault, ImageTooLarge, readImageHeader, type Hex } from "../f
 import { Kind, type PassportInput } from "../generate/eip712.js";
 import { Busy } from "../generate/gate.js";
 import { ownerContext, privy, privyErrorText } from "../generate/privy.js";
-import { dailyQuota } from "../generate/quota.js";
+import { dailyQuota, defaultQuotaStore } from "../generate/quota.js";
 import { gatewayUrl, pinFile, pinJson } from "../ipfs/pinata.js";
 import { takeToday } from "../limits/dayGate.js";
 import { safeReason } from "../net/errorText.js";
@@ -134,7 +134,7 @@ interface EditContext {
  * and the service fault pin nothing and send nothing, so both allowances come back.
  */
 export async function editRoutes(app: FastifyInstance, options: { keys?: PrivyKeys } = {}): Promise<void> {
-  const quota = dailyQuota(env.EDITS_PER_DAY);
+  const quota = dailyQuota(env.EDITS_PER_DAY, { store: defaultQuotaStore("edit"), log: (line) => app.log.warn(line) });
   const chain = readClient();
   const registry = env.MOOLAM_REGISTRY_ADDRESS as Hex;
 

@@ -16,7 +16,7 @@ import { disputeReader, offlineDisputeReader, type DisputeReader } from "./dispu
 import { MAX_UPLOAD_BYTES, PACKAGE_ROOT, env, type ExpectedRoute, type PrivateSweepMode } from "./env.js";
 import { fairGate, type GoneCheck } from "./generate/gate.js";
 import { HammingIndex } from "./index.js";
-import { globalDay, type GlobalDay } from "./limits/globalDay.js";
+import { defaultDayStore, globalDay, type GlobalDay } from "./limits/globalDay.js";
 import { matchImage, type MatchResult } from "./match.js";
 import { safeReason } from "./net/errorText.js";
 import {
@@ -36,6 +36,7 @@ import { BadRequest } from "./routes/shared.js";
 import { unsealRoutes } from "./routes/unseal.js";
 import { verifyRoutes } from "./routes/verify.js";
 import { verifyPaidRoutes } from "./routes/verifyPaid.js";
+import { openHostStateFolders, queueFile } from "./stateDir.js";
 import { privateSweep, type PrivateSweep, type SweepDeps } from "./sweep.js";
 import {
   offlinePictureReader,
@@ -573,6 +574,14 @@ export async function buildServer(
     requestTimeout: options.timeouts?.requestMs ?? REQUEST_ARRIVAL_MS,
   });
 
+  // First, before anything reads a store: in production a data folder that cannot be written stops
+  // the boot here with the folder named. Under a test runner every store is memory and nothing is probed.
+  if (env.NODE_ENV !== "test") {
+    openHostStateFolders((line) => {
+      app.log.warn(line);
+    });
+  }
+
   // Node's idle timeout counts silence in both directions, so on its own it would also close a
   // caller whose body is in and who is waiting on the match gate or an image model for longer than
   // the idle limit. Node closes a timed-out socket itself only when nobody listens for the timeout,
@@ -793,26 +802,35 @@ export async function buildServer(
   const generatorClosed = (): string | undefined => generator?.closed();
 
   // One counter per server, not per module, so two servers in one test file never share a budget.
+  // Under a test runner its store is memory; on a host it is the ceiling file in the data folder.
   app.decorate(
     "globalDay",
-    globalDay({
-      prepares: env.GLOBAL_PREPARES_PER_DAY,
-      generations: env.GLOBAL_GENERATIONS_PER_DAY,
-      edits: env.GLOBAL_EDITS_PER_DAY,
-      unseals: env.GLOBAL_UNSEALS_PER_DAY,
-      links: env.GLOBAL_LINKS_PER_DAY,
-    }),
+    globalDay(
+      {
+        prepares: env.GLOBAL_PREPARES_PER_DAY,
+        generations: env.GLOBAL_GENERATIONS_PER_DAY,
+        edits: env.GLOBAL_EDITS_PER_DAY,
+        unseals: env.GLOBAL_UNSEALS_PER_DAY,
+        links: env.GLOBAL_LINKS_PER_DAY,
+      },
+      Date.now,
+      {
+        store: defaultDayStore(),
+        log: (line) => {
+          app.log.warn(line);
+        },
+      },
+    ),
   );
 
   // One queue per server for the same reason, and under a test runner it keeps nothing: a unit
   // suite must not leave a file behind in the repo, and two servers in one file must not read each
   // other's requests.
+  const queuePath = queueFile();
   app.decorate(
     "recheck",
     recheckQueue({
-      store:
-        options.recheck?.store ??
-        (env.NODE_ENV === "test" ? memoryQueueStore() : fileQueueStore(env.RECHECK_QUEUE_PATH)),
+      store: options.recheck?.store ?? (queuePath === undefined ? memoryQueueStore() : fileQueueStore(queuePath)),
       log: (line) => {
         app.log.warn(line);
       },

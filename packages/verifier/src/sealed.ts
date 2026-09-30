@@ -17,6 +17,7 @@ import { PinRefused, PrivateCopyNotPrivate, deletePrivateFile, pinPrivateFile, t
 import { AGENT_IDENTITY_REGISTRY, FINGERPRINT_VERSION, phashHex } from "./metadata.js";
 import { safeReason } from "./net/errorText.js";
 import { PRIVATE_RECHECK_THUMBNAIL_TOO_LARGE_REASON, THUMBNAIL_MAX_BYTES } from "./prepare.js";
+import { STATE_FILES, stateFile } from "./stateDir.js";
 
 /**
  * How the sealed document names the hash the chain commits to.
@@ -515,9 +516,9 @@ export function memoryKeepTimes(now: () => number = () => Date.now()): KeepTimes
 
 /**
  * Keep times in a small JSON file, written to a temp name and renamed into place the way the
- * sweep's cursor is, so a redeploy between a re-keep and the next sweep does not forget it. A file
- * that is missing, unreadable or of another shape reads as no keeps, which leaves the sweep with
- * Pinata's own time, the rule it had before.
+ * sweep's cursor is. On a mounted volume that means a deploy between a re-keep and the next sweep
+ * does not forget it. A file that is missing, unreadable or of another shape reads as no keeps,
+ * which leaves the sweep with Pinata's own time, the rule it had before.
  */
 export function fileKeepTimes(filePath: string, now: () => number = () => Date.now()): KeepTimes {
   const temp = `${filePath}.tmp`;
@@ -567,14 +568,16 @@ function keepTimesOver(
 let shared: KeepTimes | undefined;
 
 /**
- * The live keep times, in a file beside the re-check queue's own, which is the one place this
- * service keeps state that survives a redeploy. Under a test runner nothing is written to disk.
+ * The live keep times, in private-copy-kept.json in the data folder (DATA_DIR, or the Railway
+ * volume). They survive a deploy only when that folder is a mounted volume; on the image's own disk
+ * a deploy starts them empty and the boot says so. Under a test runner, and on a development host
+ * whose folder cannot be written, they are held in memory only.
  */
 function keepTimes(): KeepTimes {
-  shared ??=
-    env.NODE_ENV === "test"
-      ? memoryKeepTimes()
-      : fileKeepTimes(path.join(path.dirname(env.RECHECK_QUEUE_PATH), "private-copy-kept.json"));
+  if (shared === undefined) {
+    const file = stateFile(STATE_FILES.keepTimes);
+    shared = file === undefined ? memoryKeepTimes() : fileKeepTimes(file);
+  }
   return shared;
 }
 

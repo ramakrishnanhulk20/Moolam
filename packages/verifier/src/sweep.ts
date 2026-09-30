@@ -7,6 +7,7 @@ import { PRIVATE_SWEEP_PAGES, deletePrivateFile, listPrivatePage, type PrivateLi
 import { safeReason } from "./net/errorText.js";
 import { readClient } from "./reputation/registry.js";
 import { privateCopyKeptAt, privateRecheckFor, privateThumbnailName } from "./sealed.js";
+import { STATE_FILES, stateFile } from "./stateDir.js";
 import type { Hex } from "./types.js";
 import { readMetadataDocument, registryUnsealAbi } from "./unseal.js";
 
@@ -144,14 +145,14 @@ export function fileCursorStore(filePath: string): CursorStore {
 }
 
 /**
- * The live cursor file, beside the re-check queue's own file, which is the one place this service
- * already keeps state that survives a redeploy. Under a test runner nothing is written to disk.
+ * The live cursor, in private-sweep-cursor.json in the data folder (DATA_DIR, or the Railway
+ * volume). It survives a deploy only when that folder is a mounted volume; on the image's own disk
+ * a deploy sends the sweep back to the first page and the boot says so. Under a test runner, and on
+ * a development host whose folder cannot be written, it is held in memory only.
  */
 function defaultCursorStore(): CursorStore {
-  if (env.NODE_ENV === "test") {
-    return memoryCursorStore();
-  }
-  return fileCursorStore(path.join(path.dirname(env.RECHECK_QUEUE_PATH), "private-sweep-cursor.json"));
+  const file = stateFile(STATE_FILES.sweepCursor);
+  return file === undefined ? memoryCursorStore() : fileCursorStore(file);
 }
 
 export type SweepLog = Pick<FastifyBaseLogger, "info" | "warn" | "error">;
@@ -184,9 +185,9 @@ export interface PrivateSweep {
  * the passport is registered under a document that does not ask for a private re-check of it
  * (review pass 6, V53): the same file prepared once with the private re-check and once without
  * leaves a copy no route would ever use. A document that cannot be read keeps its file.
- * The place it stopped is kept in a file beside the re-check queue's, so a redeploy goes on from
- * there rather than reading the first pages again; a place that cannot be saved is kept in memory
- * and said once. An RPC error, a listing it could not finish, or any answer it does not know ends
+ * The place it stopped is kept in a file in the data folder, so on a mounted volume a deploy goes
+ * on from there rather than reading the first pages again; a place that cannot be saved is kept in
+ * memory and said once. An RPC error, a listing it could not finish, or any answer it does not know ends
  * the run with nothing marked: deletion cannot be undone, so every doubt keeps the file. In dry it
  * logs each file it would delete by name and age; in delete it deletes them. Both log the counts.
  */
