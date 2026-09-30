@@ -258,3 +258,55 @@ export function failStuckClaims(olderThanMs: number): string[] {
   }
   return marked;
 }
+
+/**
+ * A session's own record, kept only once its visitor asks Dreamloom to send later pictures straight
+ * to their Moolam account. The file is named by the session's hash, never the session itself, and
+ * is read only for the session whose cookie hashes to that name, so no other session sees it (D2).
+ */
+const sessionSchema = z.strictObject({
+  version: z.literal(1),
+  sessionHash: z.string().regex(/^[0-9a-f]{64}$/),
+  /** Where later pictures go. It passed the kit's transfer checks (P22) when it was set. */
+  address: z.string().regex(/^0x[0-9a-fA-F]{40}$/),
+  /** The visitor's tick on "Send my future pictures straight to my Moolam account". */
+  sendStraight: z.literal(true),
+  updatedAt: z.iso.datetime(),
+});
+
+export type SessionRecord = z.infer<typeof sessionSchema>;
+
+const SESSION_HASH = /^[0-9a-f]{64}$/;
+
+function sessionPath(hash: string): string {
+  return path.join(env().dataDir, "sessions", `${hash}.json`);
+}
+
+/** The session's record, or null for a malformed hash, no record, or a record that fails the schema. */
+export function readSessionRecord(hash: string): SessionRecord | null {
+  if (!SESSION_HASH.test(hash)) return null;
+  try {
+    const parsed = sessionSchema.safeParse(JSON.parse(readFileSync(sessionPath(hash), "utf8")));
+    return parsed.success && parsed.data.sessionHash === hash && parsed.data.sendStraight ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Stores the address later pictures go to, with the flag, replacing any earlier one. The caller has checked it. */
+export function rememberAddress(hash: string, address: string): SessionRecord {
+  const record: SessionRecord = { version: 1, sessionHash: hash, address, sendStraight: true, updatedAt: new Date().toISOString() };
+  writeAtomic(sessionPath(hash), `${JSON.stringify(sessionSchema.parse(record))}\n`);
+  return record;
+}
+
+/** Removes the address and the flag. Nothing to remove is not an error. */
+export function forgetAddress(hash: string): void {
+  if (!SESSION_HASH.test(hash)) return;
+  rmSync(sessionPath(hash), { force: true });
+}
+
+/** Whether any stored picture belongs to this session, so only a session Dreamloom knows can keep a record. */
+export function sessionHasPictures(hash: string): boolean {
+  return listPictures().some((record) => record.sessionHash === hash);
+}

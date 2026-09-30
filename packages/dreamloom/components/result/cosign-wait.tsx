@@ -1,28 +1,25 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { LiveDot, OutArrow, PRIMARY_BUTTON, QUIET_BUTTON, useSecondsSince } from "./bits";
+import { LiveDot, OutArrow, QUIET_BUTTON, useSecondsSince } from "./bits";
 
 /**
  * While the visitor signs on Moolam. The page reads the picture again every few seconds and at once
- * when Moolam's page says the passport landed, so it moves on by itself. The co-sign link stays one
- * press away, and when the browser stopped the new window it is the first thing on the panel.
- *
- * The link is opened with rel="opener" because a link opened any other way in a new tab loses its
- * opener, and Moolam's page can only tell this page it is done through that opener.
+ * when Moolam's page says the passport landed, so it moves on by itself. Moolam's window stays one
+ * press away: the press focuses it when it is open and opens it again when it is not.
  */
 export function CosignWait({
   signed,
-  link,
-  blocked,
+  canReopen,
   checkedAt,
   title,
+  onReopen,
 }: {
   signed: boolean;
-  link: string | null;
-  blocked: boolean;
+  canReopen: boolean;
   checkedAt: number | null;
   title: string | undefined;
+  onReopen: () => void;
 }) {
   const sinceCheck = useSecondsSince(checkedAt);
 
@@ -47,24 +44,11 @@ export function CosignWait({
         </p>
       </div>
 
-      {blocked && link !== null ? (
-        <div className="mt-6 rounded-2xl border-2 border-sun bg-sun/20 p-4 sm:p-5">
-          <p className="text-base font-semibold text-ink">Your browser stopped the new tab from opening.</p>
-          <p className="mt-1 text-sm text-ink-soft">Open Moolam&apos;s co-sign page yourself. This page keeps waiting.</p>
-          <a href={link} target="_blank" rel="opener" className={`${PRIMARY_BUTTON} mt-4`}>
-            <span>
-              Open Moolam&apos;s <span className="whitespace-nowrap">co-sign</span> page
-            </span>
-            <OutArrow className="size-5" />
-          </a>
-        </div>
-      ) : (
-        link !== null && (
-          <a href={link} target="_blank" rel="opener" className={`group ${QUIET_BUTTON} mt-6 w-full sm:w-auto`}>
-            Open Moolam&apos;s co-sign page again
-            <OutArrow />
-          </a>
-        )
+      {canReopen && (
+        <button type="button" onClick={onReopen} className={`group ${QUIET_BUTTON} mt-6 w-full sm:w-auto`}>
+          Reopen the Moolam window
+          <OutArrow />
+        </button>
       )}
 
       <ol className="mt-7 grid gap-2 text-sm sm:grid-cols-3">

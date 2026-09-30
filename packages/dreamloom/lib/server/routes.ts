@@ -1,21 +1,25 @@
 import { MoolamPlatformError, type PlatformErrorCode } from "@moolam/platform";
-import type { Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { callerAddress } from "./address";
 import { startServer } from "./boot";
 import { followCosign } from "./cosign-worker";
 import { env } from "./env";
 import { giveBack, isClosed, take, type Action, type TakeResult, type Ticket } from "./caps";
-import { guarded, image, json, logLine, originAllowed, readJsonObject, refuse } from "./http";
+import { guarded, image, json, logLine, originAllowed, readJsonObject, refuse, type RefusalWord } from "./http";
 import { PromptRefused, billedOrUnknown, drawPicture } from "./image-model";
-import { kitReady, movePassport, openCosign, registerPicture } from "./kit";
+import { kitReady, movePassport, openCosign, recipientProblem, registerPicture } from "./kit";
 import { newSession, ownsHash, readSession, sessionCookie, sessionHash } from "./session";
 import {
   advancePicture,
   claimPicture,
   createPicture,
+  forgetAddress,
   readImage,
   readPicture,
+  readSessionRecord,
   releasePicture,
+  rememberAddress,
+  sessionHasPictures,
   type Busy,
   type PictureRecord,
 } from "./store";
@@ -196,7 +200,12 @@ export function cosignPicture(request: Request, id: string): Promise<Response> {
  */
 const REGISTER_SENT: readonly PlatformErrorCode[] = ["transaction-failed", "consent-failed"];
 
-/** POST /api/pictures/:id/register: Dreamloom registers the picture under its own name, in platform mode. */
+/**
+ * POST /api/pictures/:id/register: Dreamloom registers the picture under its own name, in platform
+ * mode. With `claim: true` it then moves the passport to the address this session asked Dreamloom
+ * to remember, in the same call: both the register and the move are counted against their daily
+ * caps before anything is spent, so a day with no moves left registers nothing.
+ */
 export function registerOwnPicture(request: Request, id: string): Promise<Response> {
   return route(request, async () => {
     const record = owned(request, id);
@@ -206,14 +215,38 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
     if (!isTermsPreset(preset)) return refuse(400, "terms");
     const title = titleFor(body, record.prompt);
     if (title === null) return refuse(400, "title");
+
+    let claimTo: string | null = null;
+    if (body?.claim === true) {
+      if (!kitReady()) return refuse(503, "closed");
+      const remembered = rememberedFor(request);
+      // An address that no longer passes the kit's checks is treated as gone, before anything is claimed.
+      if (remembered === null || recipientProblem(remembered) !== null) return refuse(409, "forgotten");
+      claimTo = remembered;
+    }
+
     if (claimPicture(id, ["woven"], "register") === null) return refuse(409, "state");
     const cap = takeFor(id, "register", "register");
     if ("refusal" in cap) return cap.refusal;
+    let moveTicket: Ticket | null = null;
+    if (claimTo !== null) {
+      const moving = isClosed("move") ? ({ ok: false, refusal: "closed" } as const) : take("move");
+      if (!moving.ok) {
+        releasePicture(id, "register");
+        giveBack(cap.ticket);
+        return capRefusal(moving);
+      }
+      moveTicket = moving.ticket;
+    }
+    const handBack = () => {
+      giveBack(cap.ticket);
+      if (moveTicket !== null) giveBack(moveTicket);
+    };
 
     const bytes = readImage(record);
     if (bytes === null) {
       releasePicture(id, "register");
-      giveBack(cap.ticket);
+      handBack();
       return notFound();
     }
     try {
@@ -227,23 +260,29 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
         { title, mode: "platform", passportId, registerTx, ...(consentTx === undefined ? {} : { consentTx }) },
         result.signedFile,
       );
-      return json(200, { passportId, registerTx, consentTx: consentTx ?? null, title });
+      const registered = { passportId, registerTx, consentTx: consentTx ?? null, title };
+      if (claimTo === null || moveTicket === null) return json(200, registered);
+      return json(200, { ...registered, ...(await moveToRemembered(id, passportId, claimTo, moveTicket)) });
     } catch (error) {
       if (error instanceof MoolamPlatformError && !REGISTER_SENT.includes(error.code)) {
         releasePicture(id, "register");
-        giveBack(cap.ticket);
+        handBack();
         logLine("register", error.code);
         return refuse(502, "upstream");
       }
+      // Nothing was moved on any path below, so the move's count goes back.
+      if (moveTicket !== null) giveBack(moveTicket);
       if (error instanceof MoolamPlatformError && error.code === "consent-failed") {
         // The kit puts the ids from the register receipt in the error, so the passport is a fact;
-        // the terms are not, and the record says so.
+        // the terms are not, and the record says so. Dreamloom keeps holding it, and the visitor can
+        // still claim it by hand.
         const passportId = String(error.details.passportId ?? "").toLowerCase();
         const registerTx = String(error.details.registerTx ?? "").toLowerCase();
         if (HEX32.test(passportId) && HEX32.test(registerTx)) {
           advancePicture(id, "registered", { title, mode: "platform", passportId, registerTx, failure: "terms" });
           logLine("register", error.code);
-          return json(200, { passportId, registerTx, consentTx: null, title });
+          const registered = { passportId, registerTx, consentTx: null, title };
+          return json(200, claimTo === null ? registered : { ...registered, claim: "upstream" });
         }
       }
       // Something may have been sent, so the picture is never offered for a second register.
@@ -252,6 +291,41 @@ export function registerOwnPicture(request: Request, id: string): Promise<Respon
       return refuse(502, "upstream");
     }
   });
+}
+
+/** The address this request's session asked Dreamloom to remember, or null. Only ever this session's own. */
+function rememberedFor(request: Request): string | null {
+  const session = readSession(request);
+  return session === null ? null : (readSessionRecord(sessionHash(session))?.address ?? null);
+}
+
+/**
+ * The move half of a claim, for a picture registered a moment ago in this same call. Its count was
+ * taken before the register. A move that fails leaves the picture registered and held by Dreamloom,
+ * so the visitor can claim it by hand, and the answer names the move's refusal word in `claim`.
+ */
+async function moveToRemembered(
+  id: string,
+  passportId: string,
+  to: string,
+  ticket: Ticket,
+): Promise<{ moveTx: string; movedTo: string } | { claim: RefusalWord }> {
+  if (claimPicture(id, ["registered"], "move") === null) {
+    giveBack(ticket);
+    return { claim: "state" };
+  }
+  try {
+    const moved = await movePassport(passportId as Hex, to);
+    const moveTx = moved.txHash.toLowerCase();
+    advancePicture(id, "moved", { moveTx, movedTo: moved.to });
+    return { moveTx, movedTo: moved.to };
+  } catch (error) {
+    releasePicture(id, "move");
+    const known = error instanceof MoolamPlatformError ? MOVE_REFUSALS[error.code] : undefined;
+    logLine("claim", error instanceof MoolamPlatformError ? error.code : "unexpected failure");
+    if (known !== undefined) giveBack(ticket);
+    return { claim: known?.word ?? "upstream" };
+  }
 }
 
 /** The kit's refusals of a move, all thrown before anything is sent, and the word each becomes (P22). */
@@ -291,5 +365,39 @@ export function movePicture(request: Request, id: string): Promise<Response> {
       }
       return refuse(502, "upstream");
     }
+  });
+}
+
+/** GET /api/session/address: the address this session asked Dreamloom to remember, or null. Only ever its own. */
+export function getRemembered(request: Request): Promise<Response> {
+  return route(request, async () => json(200, { address: rememberedFor(request) }));
+}
+
+/**
+ * POST /api/session/address: remembers where this session's later pictures go. Only a session that
+ * has woven here can keep a record, and only an address that passes the kit's transfer checks (P22)
+ * is kept. The address is never logged and never answered to another session.
+ */
+export function rememberOwnAddress(request: Request): Promise<Response> {
+  return route(request, async () => {
+    const session = readSession(request);
+    const hash = session === null ? null : sessionHash(session);
+    if (hash === null || !sessionHasPictures(hash)) return notFound();
+    const address = (await readJsonObject(request))?.address;
+    if (typeof address !== "string" || address.length > 100) return refuse(400, "address");
+    if (!kitReady()) return refuse(503, "closed");
+    const problem = recipientProblem(address);
+    if (problem !== null) return refuse(400, problem);
+    const record = rememberAddress(hash, getAddress(address.trim()));
+    return json(200, { address: record.address });
+  });
+}
+
+/** DELETE /api/session/address: forgets the address and the flag. Forgetting nothing is not an error. */
+export function forgetOwnAddress(request: Request): Promise<Response> {
+  return route(request, async () => {
+    const session = readSession(request);
+    if (session !== null) forgetAddress(sessionHash(session));
+    return json(200, { address: null });
   });
 }

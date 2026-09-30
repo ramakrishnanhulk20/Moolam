@@ -5,15 +5,17 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Wordmark } from "@/components/wordmark";
 import { Arrow, PRIMARY_BUTTON, ProblemNote } from "./bits";
 import { Celebration } from "./celebration";
+import { CheckoutOverlay } from "./checkout-card";
 import { ChoosePanel } from "./choose-panel";
 import { CosignWait } from "./cosign-wait";
 import { cosignLink, moolamOrigin, passportLink } from "./moolam-links";
 import { MoveFlow } from "./move-flow";
 import { NotHere } from "./not-here";
 import { PassportPanel } from "./passport-panel";
-import { failureWords, readPicture, type PictureView } from "./picture-api";
+import { failureWords, readPicture, readRemembered, type PictureView } from "./picture-api";
 import { PictureFrame } from "./picture-frame";
-import { isRegisteredHint } from "./window-flow";
+import { RememberAddress } from "./remember-address";
+import { checkout, takeAnswer } from "./window-flow";
 
 /** Often enough that a landed passport shows within seconds, rarely enough to be no load on Dreamloom's server. */
 export const POLL_MS = 5_000;
@@ -30,9 +32,14 @@ const LANDED = new Set(["registered", "moved"]);
 export function ResultScreen({ id, moolamSite, ownOrigin }: { id: string; moolamSite: string; ownOrigin: string }) {
   const [load, setLoad] = useState<Load>({ kind: "loading" });
   const [note, setNote] = useState<string | null>(null);
-  const [blocked, setBlocked] = useState(false);
+  /** Set while Moolam's co-sign window is open from this visit, with whether the browser refused it. */
+  const [signWindow, setSignWindow] = useState<{ blocked: boolean } | null>(null);
   const [checkedAt, setCheckedAt] = useState<number | null>(null);
   const [celebrate, setCelebrate] = useState(0);
+  /** The address this session asked Dreamloom to send later pictures to, or null. */
+  const [remembered, setRemembered] = useState<string | null>(null);
+  /** Words for a picture that got its passport while the move to the remembered address did not follow. */
+  const [claimSnag, setClaimSnag] = useState<string | null>(null);
   const lastState = useRef<string | null>(null);
   const reading = useRef(false);
 
@@ -70,17 +77,47 @@ export function ResultScreen({ id, moolamSite, ownOrigin }: { id: string; moolam
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    let live = true;
+    void readRemembered().then((address) => {
+      if (live) setRemembered(address);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+
   const changed = useCallback(() => void refresh(), [refresh]);
 
   const state = load.kind === "ready" ? load.picture.state : null;
   const waiting = state !== null && WAITING.has(state);
   const origin = moolamOrigin(moolamSite);
+  const signLink = load.kind === "ready" ? cosignLink(load.picture.cosignUrl, moolamSite) : null;
+
+  // Once the passport is here, Moolam's window has nothing left to do.
+  useEffect(() => {
+    if (state === null || waiting) return;
+    if (LANDED.has(state)) checkout.close();
+    setSignWindow(null);
+  }, [state, waiting]);
+
+  const reopenSign = useCallback(() => {
+    if (signLink === null) return;
+    setSignWindow({ blocked: checkout.reopen(signLink) === "blocked" });
+  }, [signLink]);
+
+  const cancelSign = useCallback(() => {
+    checkout.close();
+    setSignWindow(null);
+  }, []);
 
   useEffect(() => {
     if (!waiting) return;
     const timer = window.setInterval(() => void refresh(), POLL_MS);
     const hear = (event: MessageEvent) => {
-      if (isRegisteredHint(event, origin)) void refresh();
+      if (takeAnswer(event, origin, "sign", checkout) === null) return;
+      setSignWindow(null);
+      void refresh();
     };
     const back = () => {
       if (document.visibilityState === "visible") void refresh();
@@ -142,16 +179,28 @@ export function ResultScreen({ id, moolamSite, ownOrigin }: { id: string; moolam
                 picture={load.picture}
                 moolamSite={moolamSite}
                 ownOrigin={ownOrigin}
-                blocked={blocked}
                 checkedAt={checkedAt}
                 note={note}
-                onCosignOpened={setBlocked}
+                remembered={remembered}
+                claimSnag={claimSnag}
+                onRemembered={setRemembered}
+                onClaimSnag={setClaimSnag}
+                onCosignOpened={(blocked) => setSignWindow({ blocked })}
+                onReopenSign={reopenSign}
                 onChanged={changed}
               />
             )}
           </div>
         </main>
       )}
+      <CheckoutOverlay
+        open={signWindow !== null && waiting}
+        place="sign"
+        link={signLink}
+        blocked={signWindow?.blocked ?? false}
+        onReopen={reopenSign}
+        onCancel={cancelSign}
+      />
     </div>
   );
 }
@@ -161,24 +210,33 @@ function ReadySide({
   picture,
   moolamSite,
   ownOrigin,
-  blocked,
   checkedAt,
   note,
+  remembered,
+  claimSnag,
+  onRemembered,
+  onClaimSnag,
   onCosignOpened,
+  onReopenSign,
   onChanged,
 }: {
   id: string;
   picture: PictureView;
   moolamSite: string;
   ownOrigin: string;
-  blocked: boolean;
   checkedAt: number | null;
   note: string | null;
+  remembered: string | null;
+  claimSnag: string | null;
+  onRemembered: (address: string | null) => void;
+  onClaimSnag: (words: string) => void;
   onCosignOpened: (blocked: boolean) => void;
+  onReopenSign: () => void;
   onChanged: () => void;
 }) {
   const heading = picture.state === "registered" && picture.mode === "platform" ? HELD : HEADINGS[picture.state];
   const canMove = picture.state === "registered" && picture.mode === "platform";
+  const claimedTo = picture.state === "moved" ? picture.movedTo : undefined;
 
   return (
     <div>
@@ -189,23 +247,35 @@ function ReadySide({
             id={id}
             prompt={picture.prompt}
             moolamSite={moolamSite}
+            remembered={remembered}
+            onRemembered={onRemembered}
             onCosignOpened={onCosignOpened}
+            onClaimSnag={onClaimSnag}
             onChanged={onChanged}
           />
         )}
         {WAITING.has(picture.state) && (
           <CosignWait
             signed={picture.state === "cosign-signed"}
-            link={cosignLink(picture.cosignUrl, moolamSite)}
-            blocked={blocked}
+            canReopen={cosignLink(picture.cosignUrl, moolamSite) !== null}
             checkedAt={checkedAt}
             title={picture.title}
+            onReopen={onReopenSign}
           />
         )}
         {LANDED.has(picture.state) && (
           <PassportPanel picture={picture} moolamSite={moolamSite}>
-            {canMove ? <MoveFlow id={id} moolamSite={moolamSite} ownOrigin={ownOrigin} onChanged={onChanged} /> : undefined}
+            {canMove ? (
+              <MoveFlow id={id} moolamSite={moolamSite} ownOrigin={ownOrigin} onChanged={onChanged} />
+            ) : claimedTo !== undefined ? (
+              <RememberAddress address={claimedTo} remembered={remembered} onRemembered={onRemembered} />
+            ) : undefined}
           </PassportPanel>
+        )}
+        {canMove && claimSnag !== null && (
+          <div role="status" className="mt-5">
+            <ProblemNote>{claimSnag}</ProblemNote>
+          </div>
         )}
         {picture.state === "failed" && <FailedPanel failure={picture.failure} />}
       </div>

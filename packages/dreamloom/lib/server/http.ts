@@ -14,6 +14,7 @@ export type RefusalWord =
   | "recipient"
   | "state"
   | "not-holder"
+  | "forgotten"
   | "refused"
   | "limit"
   | "busy"

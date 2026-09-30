@@ -1,4 +1,5 @@
 import {
+  MOOLAM_REGISTRY,
   ServerPasskey,
   registerAsPlatform,
   resumeCosign,
@@ -13,7 +14,7 @@ import {
   type PlatformRegistration,
   type PlatformWalletClient,
 } from "@moolam/platform";
-import { createPublicClient, createWalletClient, http, type Hex } from "viem";
+import { createPublicClient, createWalletClient, getAddress, http, isAddress, zeroAddress, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { monad } from "viem/chains";
 import { EnvError, env } from "./env";
@@ -144,4 +145,19 @@ export async function reopenCosign(handle: string): Promise<CosignHandle> {
 /** Hands a passport Dreamloom's wallet holds to the visitor's address, through the kit's checks (P22). */
 export async function movePassport(passportId: Hex, to: string): Promise<PassportTransfer> {
   return await transferPassport(passportId, to, ready().walletClient);
+}
+
+/**
+ * transferPassport's own address checks, run without sending anything, for an address Dreamloom is
+ * asked to remember: strict checksum, then not the zero address, not Dreamloom's own wallet and not
+ * the registry (P22). The same checks run again inside transferPassport at every move. Null when
+ * the address passes, else the refusal word a move would answer with.
+ */
+export function recipientProblem(to: string): "address" | "recipient" | null {
+  const text = to.trim();
+  if (!isAddress(text, { strict: true })) return "address";
+  const recipient = getAddress(text);
+  const own = getAddress(ready().account.address);
+  if (recipient === zeroAddress || recipient === own || recipient === getAddress(MOOLAM_REGISTRY)) return "recipient";
+  return null;
 }

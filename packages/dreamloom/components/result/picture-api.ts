@@ -35,7 +35,7 @@ export type PictureRead =
   | { kind: "missing" }
   | { kind: "error"; words: string };
 
-export type Action = "read" | "cosign" | "register" | "move";
+export type Action = "read" | "cosign" | "register" | "move" | "claim" | "remember";
 
 export const PAGE_WORDS = {
   unreachable: "Dreamloom's server did not answer. Check your connection and try again.",
@@ -58,19 +58,24 @@ export const REFUSAL_WORDS = {
   recipient: "Moolam will not take a passport at that address. Connect your own Moolam account and try again.",
   state: "This picture has already moved on from that step. Its current state is shown below.",
   "not-holder": "Dreamloom no longer holds this passport, so it cannot move it. Its current state is shown below.",
+  forgotten: "Dreamloom no longer has your Moolam address, so nothing was registered. Choose again below.",
   busy: "Dreamloom is busy right now. Try again in a minute.",
   upstream: "Moolam's service did not answer as expected. Try again in a minute.",
   limit: {
     read: "Dreamloom has reached today's limit. Come back tomorrow.",
-    cosign: "Dreamloom has opened all the co-signs it can today. Come back tomorrow, or let Dreamloom register it.",
+    cosign: "Dreamloom has opened all the co-signs it can today. Come back tomorrow, or let Dreamloom hold it.",
     register: "Dreamloom has registered all the pictures it can today. Come back tomorrow, or sign it as the creator.",
-    move: "Dreamloom has moved all the passports it can today. It keeps holding yours; come back tomorrow to move it.",
+    move: "Dreamloom has moved all the passports it can today. It keeps holding yours; come back tomorrow to claim it.",
+    claim: "Dreamloom has put all the pictures it can into Moolam accounts today, so nothing was registered. Come back tomorrow, or sign it as the creator.",
+    remember: "Dreamloom has reached today's limit. Come back tomorrow.",
   },
   closed: {
     read: "Dreamloom is paused right now. Try again later.",
-    cosign: "Signing as the creator is paused on Dreamloom right now. Try again later, or let Dreamloom register it.",
+    cosign: "Signing as the creator is paused on Dreamloom right now. Try again later, or let Dreamloom hold it.",
     register: "Dreamloom's own registering is paused right now. Try again later, or sign it as the creator.",
     move: "Moving passports is paused on Dreamloom right now. It keeps holding yours; try again later.",
+    claim: "Sending pictures straight to Moolam accounts is paused on Dreamloom right now, so nothing was registered. Try again later, or sign it as the creator.",
+    remember: "Dreamloom cannot remember addresses right now. Try again later.",
   },
 } as const;
 
@@ -143,16 +148,16 @@ export type Posted<T> = { ok: true; value: T } | { ok: false; refusal: Refusal }
 async function post<T>(
   path: string,
   action: Action,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown> | null,
   shape: z.ZodType<T>,
   send: typeof fetch,
+  method: "POST" | "DELETE" = "POST",
 ): Promise<Posted<T>> {
   let response: Response;
   try {
     response = await send(path, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
+      method,
+      ...(payload === null ? {} : { headers: { "content-type": "application/json" }, body: JSON.stringify(payload) }),
       credentials: "same-origin",
     });
   } catch {
@@ -177,6 +182,50 @@ export function postRegister(id: string, terms: TermsChoice, title: string, send
   return post(`/api/pictures/${id}/register`, "register", { terms, title }, registerAnswer, send);
 }
 
+/**
+ * A register that also moves the passport to the session's remembered address. When the register
+ * lands and the move does not, the answer still succeeds, carrying the move's refusal word in
+ * `claim`, since the picture has its passport and Dreamloom holds it.
+ */
+const claimAnswer = registerAnswer.extend({
+  moveTx: z.string().regex(HEX32).optional(),
+  movedTo: z.string().regex(ADDRESS).optional(),
+  claim: z.string().optional(),
+});
+
+export function postClaim(id: string, terms: TermsChoice, title: string, send: typeof fetch = fetch) {
+  return post(`/api/pictures/${id}/register`, "claim", { terms, title, claim: true }, claimAnswer, send);
+}
+
+/** For a register that landed and a move to the remembered address that did not. */
+export const CLAIM_SNAG =
+  "Your picture has its passport, but Dreamloom could not hand it to your Moolam account just now. It holds it for you: claim it below.";
+
 export function postMove(id: string, address: string, send: typeof fetch = fetch) {
   return post(`/api/pictures/${id}/move`, "move", { address }, moveAnswer, send);
+}
+
+/** The address this browser's session asked Dreamloom to remember, checksummed, or null. */
+const rememberedAnswer = z.object({ address: z.string().regex(ADDRESS).nullable() });
+
+export const REMEMBERED_PATH = "/api/session/address";
+
+/** Reads the remembered address. Any failure reads as none, so the page simply offers the usual choices. */
+export async function readRemembered(send: typeof fetch = fetch): Promise<string | null> {
+  try {
+    const response = await send(REMEMBERED_PATH, { cache: "no-store", credentials: "same-origin" });
+    if (response.status !== 200) return null;
+    const parsed = rememberedAnswer.safeParse(await response.json());
+    return parsed.success ? parsed.data.address : null;
+  } catch {
+    return null;
+  }
+}
+
+export function postRemember(address: string, send: typeof fetch = fetch) {
+  return post(REMEMBERED_PATH, "remember", { address }, rememberedAnswer, send);
+}
+
+export function postForget(send: typeof fetch = fetch) {
+  return post(REMEMBERED_PATH, "remember", null, rememberedAnswer, send, "DELETE");
 }

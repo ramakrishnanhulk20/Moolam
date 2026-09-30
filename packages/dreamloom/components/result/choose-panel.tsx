@@ -4,30 +4,38 @@ import { motion } from "framer-motion";
 import { useId, useState } from "react";
 import { INK_BUTTON, PRIMARY_BUTTON, ProblemNote, Spinner, Arrow, useSecondsSince } from "./bits";
 import { cosignLink } from "./moolam-links";
-import { PAGE_WORDS, postCosign, postRegister, type TermsChoice } from "./picture-api";
+import { CLAIM_SNAG, PAGE_WORDS, postClaim, postCosign, postForget, postRegister, readRemembered, type TermsChoice } from "./picture-api";
 import { DEFAULT_TERMS, TERMS_OPTIONS } from "./terms-choices";
 import { TITLE_MAX, TITLE_WORDS, defaultTitle, titleProblem } from "./title-rule";
-import { closeWindow, openBlank, sendWindow } from "./window-flow";
+import { checkout, sendWindow } from "./window-flow";
 
-type Pending = { kind: "cosign" | "register"; since: number } | null;
+type Pending = { kind: "cosign" | "register" | "claim"; since: number } | null;
 
 const rise = { hidden: { opacity: 0, y: 24 }, shown: { opacity: 1, y: 0 } };
 
 /**
  * Before a passport: the public title, the AI-use terms, and the two ways to a passport. Both
- * choices are locked while either request is out, so one picture never asks for both.
+ * choices are locked while either request is out, so one picture never asks for both. For a session
+ * that asked Dreamloom to remember its Moolam address, the second way registers the picture and
+ * hands its passport straight to that address in one press.
  */
 export function ChoosePanel({
   id,
   prompt,
   moolamSite,
+  remembered,
+  onRemembered,
   onCosignOpened,
+  onClaimSnag,
   onChanged,
 }: {
   id: string;
   prompt: string;
   moolamSite: string;
+  remembered: string | null;
+  onRemembered: (address: string | null) => void;
   onCosignOpened: (blocked: boolean) => void;
+  onClaimSnag: (words: string) => void;
   onChanged: () => void;
 }) {
   const [title, setTitle] = useState(() => defaultTitle(prompt));
@@ -42,12 +50,12 @@ export function ChoosePanel({
   async function cosign() {
     if (locked || issue !== null) return;
     // Opened inside the click, before the request, so no popup blocker stops it.
-    const target = openBlank();
+    const target = checkout.open();
     setProblem(null);
     setPending({ kind: "cosign", since: Date.now() });
     const answer = await postCosign(id, terms, title.trim());
     if (!answer.ok) {
-      closeWindow(target);
+      checkout.close();
       setPending(null);
       setProblem(answer.refusal.words);
       if (answer.refusal.reload) onChanged();
@@ -55,7 +63,7 @@ export function ChoosePanel({
     }
     const link = cosignLink(answer.value.cosignUrl, moolamSite);
     if (link === null) {
-      closeWindow(target);
+      checkout.close();
       setPending(null);
       setProblem(PAGE_WORDS.unexpected);
       onChanged();
@@ -77,6 +85,31 @@ export function ChoosePanel({
       return;
     }
     onChanged();
+  }
+
+  async function claim() {
+    if (locked || issue !== null) return;
+    setProblem(null);
+    setPending({ kind: "claim", since: Date.now() });
+    const answer = await postClaim(id, terms, title.trim());
+    if (!answer.ok) {
+      setPending(null);
+      setProblem(answer.refusal.words);
+      // The address may have been forgotten in another tab, which is one reason a claim is refused.
+      onRemembered(await readRemembered());
+      if (answer.refusal.reload) onChanged();
+      return;
+    }
+    if (answer.value.claim !== undefined) onClaimSnag(CLAIM_SNAG);
+    onChanged();
+  }
+
+  async function forget() {
+    if (locked) return;
+    setProblem(null);
+    const answer = await postForget();
+    if (answer.ok) onRemembered(answer.value.address);
+    else setProblem(answer.refusal.words);
   }
 
   return (
@@ -167,20 +200,41 @@ export function ChoosePanel({
               Your own passkey signs it on Moolam, so the passport credits you from the first block.
             </p>
           </div>
-          <div className="flex flex-col gap-2.5 md:row-span-2 md:grid md:grid-rows-subgrid">
-            <button
-              type="button"
-              onClick={register}
-              disabled={locked || issue !== null}
-              className={INK_BUTTON}
-            >
-              {pending?.kind === "register" ? "Registering" : "Let Dreamloom hold it for me"}
-              {pending?.kind === "register" ? <Spinner /> : <Arrow />}
-            </button>
-            <p className="px-2 text-sm leading-snug text-ink-soft">
-              Dreamloom registers it now and holds it until you claim it into your own Moolam account.
-            </p>
-          </div>
+          {remembered === null ? (
+            <div className="flex flex-col gap-2.5 md:row-span-2 md:grid md:grid-rows-subgrid">
+              <button
+                type="button"
+                onClick={register}
+                disabled={locked || issue !== null}
+                className={INK_BUTTON}
+              >
+                {pending?.kind === "register" ? "Registering" : "Let Dreamloom hold it for me"}
+                {pending?.kind === "register" ? <Spinner /> : <Arrow />}
+              </button>
+              <p className="px-2 text-sm leading-snug text-ink-soft">
+                Dreamloom registers it now and holds it until you claim it into your own Moolam account.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2.5 md:row-span-2 md:grid md:grid-rows-subgrid">
+              <button type="button" onClick={claim} disabled={locked || issue !== null} className={INK_BUTTON}>
+                {pending?.kind === "claim" ? "Putting it in your account" : "Put it in my Moolam account"}
+                {pending?.kind === "claim" ? <Spinner /> : <Arrow />}
+              </button>
+              <p className="px-2 text-sm leading-snug text-ink-soft">
+                Dreamloom registers it and hands the passport straight to{" "}
+                <span className="font-mono text-[0.8rem] break-all text-ink">{remembered}</span>.{" "}
+                <button
+                  type="button"
+                  onClick={() => void forget()}
+                  disabled={locked}
+                  className="cursor-pointer font-semibold whitespace-nowrap text-violet underline decoration-violet/30 underline-offset-4 transition hover:text-tangerine hover:decoration-tangerine disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Forget my address
+                </button>
+              </p>
+            </div>
+          )}
         </div>
       </motion.div>
 
@@ -203,20 +257,31 @@ function StepLabel({ number, children }: { number: number; children: string }) {
   );
 }
 
-/** Both requests can take a while: the picture is signed and fingerprinted, and a register waits for the chain. */
+const PENDING_LINES: Record<NonNullable<Pending>["kind"], { lead: string; line: string }> = {
+  cosign: {
+    lead: "Preparing your picture on Moolam.",
+    line: "Moolam signs and fingerprints it first, which can take several seconds.",
+  },
+  register: {
+    lead: "Dreamloom is registering your picture on Monad.",
+    line: "Moolam signs it, then the passport is written on chain. This can take up to a minute.",
+  },
+  claim: {
+    lead: "Dreamloom is registering your picture and handing it to your Moolam account.",
+    line: "The passport is written on chain, then moved to your address. This can take up to two minutes.",
+  },
+};
+
+/** Every request here can take a while: the picture is signed and fingerprinted, and a register waits for the chain. */
 function PendingNote({ pending }: { pending: NonNullable<Pending> }) {
   const seconds = useSecondsSince(pending.since);
   return (
     <p className="px-1 text-base text-ink">
       <span className="font-semibold">
-        {pending.kind === "cosign"
-          ? "Preparing your picture on Moolam."
-          : "Dreamloom is registering your picture on Monad."}
+        {PENDING_LINES[pending.kind].lead}
       </span>{" "}
       <span className="text-ink-soft">
-        {pending.kind === "cosign"
-          ? "Moolam signs and fingerprints it first, which can take several seconds."
-          : "Moolam signs it, then the passport is written on chain. This can take up to a minute."}{" "}
+        {PENDING_LINES[pending.kind].line}{" "}
         <span className="tabular-nums">{seconds} s</span> so far.
       </span>
     </p>

@@ -1,12 +1,13 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 import { LiveDot, OutArrow, Spinner } from "./bits";
+import { CheckoutOverlay } from "./checkout-card";
 import { connectLink, moolamOrigin } from "./moolam-links";
 import { confirmQuestion, moveStep, type MoveState } from "./move-steps";
 import { postMove } from "./picture-api";
-import { openBlank, sendWindow } from "./window-flow";
+import { checkout, sendWindow, takeAnswer } from "./window-flow";
 
 const SUN_BUTTON =
   "group inline-flex min-h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-center font-display text-[1.05rem] leading-tight font-bold text-balance text-ink sm:px-7 sm:text-lg transition duration-200 hover:-translate-y-0.5 hover:bg-sun focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-sun disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 sm:w-auto";
@@ -15,9 +16,9 @@ const GHOST_BUTTON =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-white/20 px-5 py-2.5 text-base font-semibold text-white transition duration-200 hover:border-sun hover:text-sun focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-sun";
 
 /**
- * "Claim it into my Moolam account": opens Moolam's connect page in a window opened inside the click,
- * listens for the one message that page sends, asks the visitor to confirm the exact address, and
- * only then asks Dreamloom's server to move the passport.
+ * "Claim it into my Moolam account": opens Moolam's connect page in the checkout window, opened
+ * inside the click, listens for the one message that page sends, closes the window, asks the visitor
+ * to confirm the exact address, and only then asks Dreamloom's server to move the passport.
  */
 export function MoveFlow({
   id,
@@ -37,7 +38,10 @@ export function MoveFlow({
 
   useEffect(() => {
     if (!listening) return;
-    const hear = (event: MessageEvent) => dispatch({ type: "message", event, moolamOrigin: origin });
+    const hear = (event: MessageEvent) => {
+      // The address is here, so Moolam's window has done its job; the steps check the message again.
+      if (takeAnswer(event, origin, "share", checkout) !== null) dispatch({ type: "message", event, moolamOrigin: origin });
+    };
     window.addEventListener("message", hear);
     return () => window.removeEventListener("message", hear);
   }, [listening, origin]);
@@ -60,17 +64,32 @@ export function MoveFlow({
 
   function start() {
     const link = connectLink(moolamSite, ownOrigin);
-    const target = openBlank();
+    const target = checkout.open();
     dispatch({ type: "opened", link, blocked: sendWindow(target, link) === "blocked" });
   }
 
+  const reopen = useCallback(() => {
+    if (state.kind !== "waiting") return;
+    dispatch({ type: "opened", link: state.link, blocked: checkout.reopen(state.link) === "blocked" });
+  }, [state]);
+
+  const cancel = useCallback(() => {
+    checkout.close();
+    dispatch({ type: "cancel" });
+  }, []);
+
   return (
-    <MoveFlowView
-      state={state}
-      onStart={start}
-      onConfirm={() => dispatch({ type: "confirm" })}
-      onCancel={() => dispatch({ type: "cancel" })}
-    />
+    <>
+      <MoveFlowView state={state} onStart={start} onReopen={reopen} onConfirm={() => dispatch({ type: "confirm" })} onCancel={cancel} />
+      <CheckoutOverlay
+        open={state.kind === "waiting"}
+        place="share"
+        link={state.kind === "waiting" ? state.link : null}
+        blocked={state.kind === "waiting" && state.blocked}
+        onReopen={reopen}
+        onCancel={cancel}
+      />
+    </>
   );
 }
 
@@ -78,11 +97,13 @@ export function MoveFlow({
 export function MoveFlowView({
   state,
   onStart,
+  onReopen,
   onConfirm,
   onCancel,
 }: {
   state: MoveState;
   onStart: () => void;
+  onReopen: () => void;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -125,26 +146,14 @@ export function MoveFlowView({
                 <LiveDot />
                 Waiting for you to share your address on Moolam
               </p>
-              {state.blocked ? (
-                <div className="mt-4 rounded-2xl border-2 border-sun/50 bg-sun/10 p-4">
-                  <p className="text-base font-semibold text-sun">Your browser stopped the new tab from opening.</p>
-                  <a href={state.link} target="_blank" rel="opener" className={`${SUN_BUTTON} mt-3`}>
-                    Open Moolam&apos;s connect page
-                    <OutArrow className="size-5" />
-                  </a>
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-white/65">
-                  Moolam&apos;s connect page is open in a new tab. Press share there and come back here.
-                </p>
-              )}
+              <p className="mt-2 text-sm text-white/65">
+                Moolam&apos;s connect page is open in its own window. Press share there and this page carries on.
+              </p>
               <div className="mt-4 flex flex-wrap gap-3">
-                {!state.blocked && (
-                  <a href={state.link} target="_blank" rel="opener" className={`group ${GHOST_BUTTON}`}>
-                    Open it again
-                    <OutArrow />
-                  </a>
-                )}
+                <button type="button" onClick={onReopen} className={`group ${GHOST_BUTTON}`}>
+                  Reopen the Moolam window
+                  <OutArrow />
+                </button>
                 <button type="button" onClick={onCancel} className={GHOST_BUTTON}>
                   Not now
                 </button>

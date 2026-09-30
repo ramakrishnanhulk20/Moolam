@@ -23,7 +23,7 @@ const body = Figtree({
 export const metadata: Metadata = {
   title: "Dreamloom: describe a dream, get the picture",
   description:
-    "Dreamloom turns a few words into a picture, and every picture can carry a Moolam passport that says who made it and how AI may use it.",
+    "Dreamloom turns a few words into a picture, and every picture can carry a Moolam passport that credits the person who imagined it and says how AI may use it.",
   icons: { icon: "/icon.svg" },
 };
 

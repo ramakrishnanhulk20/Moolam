@@ -67,7 +67,7 @@ describe("moving a passport asks first", () => {
   it("the confirm step is what the flow draws when an address arrives, and nothing says it is moving", () => {
     const state = moveStep(waiting, message(ADDRESS));
     const markup = renderToStaticMarkup(
-      createElement(MoveFlowView, { state, onStart: noop, onConfirm: noop, onCancel: noop }),
+      createElement(MoveFlowView, { state, onStart: noop, onReopen: noop, onConfirm: noop, onCancel: noop }),
     );
     expect(text(markup)).toContain(confirmQuestion(ADDRESS));
     expect(text(markup)).not.toContain("Moving the passport");

@@ -1,30 +1,138 @@
 import { getAddress, isAddress } from "viem";
 
 /**
- * How this page talks to Moolam's pages in another window. A window is opened blank inside the
- * click itself, before any request, because a browser only lets a click open a window straight
- * away; it is sent to Moolam once the link is known. From Moolam's pages this page takes exactly two
- * messages, each only from Moolam's exact origin, and uses nothing from them but what is named here.
+ * How this page talks to Moolam's pages in another window. Like a checkout, Moolam opens as a small
+ * window centred over this one, never inside this page: both Moolam pages refuse to be framed, so
+ * the window always shows Moolam's own address. The window is opened inside the click itself,
+ * before any request, because a browser only lets a click open a window straight away; it is sent
+ * to Moolam once the link is known. From Moolam's pages this page takes exactly two messages, each
+ * only from Moolam's exact origin, and uses nothing from them but what is named here.
  */
 
 export interface WindowLike {
   closed: boolean;
   location: { href: string };
   close: () => void;
+  focus: () => void;
 }
 
-/** A blank window opened in the click, or null when the browser stopped it. Its opener stays set, so Moolam can answer. */
-export function openBlank(open: (url: string, target: string) => WindowLike | null = defaultOpen): WindowLike | null {
+/** One name for every Moolam window this page opens, so a second press reaches the same window. */
+export const CHECKOUT_NAME = "moolam-checkout";
+export const CHECKOUT_WIDTH = 480;
+export const CHECKOUT_HEIGHT = 760;
+
+export interface ScreenLike {
+  screenX: number;
+  screenY: number;
+  outerWidth: number;
+  outerHeight: number;
+}
+
+/**
+ * The window's features: a popup of about 480 by 760, centred over the browser window this page is
+ * in. No "noopener", because Moolam's page answers through its opener.
+ */
+export function checkoutFeatures(screen: ScreenLike): string {
+  const left = Math.round(screen.screenX + Math.max(0, (screen.outerWidth - CHECKOUT_WIDTH) / 2));
+  const top = Math.round(screen.screenY + Math.max(0, (screen.outerHeight - CHECKOUT_HEIGHT) / 2));
+  return `popup=yes,width=${CHECKOUT_WIDTH},height=${CHECKOUT_HEIGHT},left=${left},top=${top}`;
+}
+
+export type OpenWindow = (url: string, name: string, features: string) => WindowLike | null;
+
+function defaultOpen(url: string, name: string, features: string): WindowLike | null {
+  return window.open(url, name, features) as WindowLike | null;
+}
+
+function defaultScreen(): ScreenLike {
+  return { screenX: window.screenX, screenY: window.screenY, outerWidth: window.outerWidth, outerHeight: window.outerHeight };
+}
+
+/** A short line in the fresh window while Dreamloom asks Moolam for the link, so it never sits blank. */
+function holdingLine(target: WindowLike): void {
   try {
-    return open("about:blank", "_blank");
+    const doc = (target as unknown as { document?: Document }).document;
+    if (doc === undefined || doc.body === null) return;
+    doc.title = "Opening Moolam";
+    doc.body.style.cssText =
+      "margin:0;min-height:100vh;display:grid;place-items:center;background:#0e0d12;color:#f1efe8;font:16px system-ui,sans-serif";
+    doc.body.textContent = "Opening Moolam's page...";
   } catch {
-    return null;
+    // A window already on Moolam's site belongs to another origin and is left as it is.
   }
 }
 
-function defaultOpen(url: string, target: string): WindowLike | null {
-  return window.open(url, target) as WindowLike | null;
+export interface Checkout {
+  /** Opens the window in the click, or focuses it when it is already open. Null when the browser refused. */
+  open: () => WindowLike | null;
+  /** Brings the window back: focuses it when open, else opens it again straight on the link. */
+  reopen: (link: string) => "focused" | "sent" | "blocked";
+  close: () => void;
 }
+
+/**
+ * The one Moolam window this page keeps. A second press never opens a second window: it focuses the
+ * one already open, and a reopen does not send it anywhere, so a visitor midway through signing in
+ * keeps their place.
+ */
+export function createCheckout(open: OpenWindow = defaultOpen, screen: () => ScreenLike = defaultScreen): Checkout {
+  let current: WindowLike | null = null;
+
+  const live = (): WindowLike | null => {
+    try {
+      return current !== null && !current.closed ? current : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const focus = (target: WindowLike) => {
+    try {
+      target.focus();
+    } catch {
+      // A browser that will not raise the window still leaves it open behind this one.
+    }
+  };
+
+  const fresh = (url: string): WindowLike | null => {
+    try {
+      current = open(url, CHECKOUT_NAME, checkoutFeatures(screen()));
+    } catch {
+      current = null;
+    }
+    return current;
+  };
+
+  return {
+    open() {
+      const existing = live();
+      if (existing !== null) {
+        focus(existing);
+        return existing;
+      }
+      // An empty address opens a blank window, and for a window of this name that is already open it
+      // hands it back without moving it.
+      const opened = fresh("");
+      if (opened !== null) holdingLine(opened);
+      return opened;
+    },
+    reopen(link) {
+      const existing = live();
+      if (existing !== null) {
+        focus(existing);
+        return "focused";
+      }
+      return sendWindow(fresh(""), link);
+    },
+    close() {
+      closeWindow(current);
+      current = null;
+    },
+  };
+}
+
+/** The page's one checkout window. */
+export const checkout: Checkout = createCheckout();
 
 /** Sends a window this page opened to a link. "blocked" when there is no window to send, so the page shows the link instead. */
 export function sendWindow(target: WindowLike | null, link: string): "sent" | "blocked" {
@@ -59,12 +167,13 @@ function typed(event: MessageLike, expectedOrigin: string | null, type: string):
 }
 
 /**
- * Whether a message is Moolam's co-sign page saying a passport landed. It is only a hint to read the
- * picture again at once: the passport this page shows always comes from Dreamloom's server, never
- * from the message.
+ * Whether a message is Moolam's co-sign page saying a passport landed, with a well-formed passport
+ * id. It is only a hint to close the window and read the picture again at once: the passport this
+ * page shows always comes from Dreamloom's server, never from the message.
  */
 export function isRegisteredHint(event: MessageLike, expectedOrigin: string | null): boolean {
-  return typed(event, expectedOrigin, "moolam:registered") !== null;
+  const passportId = typed(event, expectedOrigin, "moolam:registered")?.passportId;
+  return typeof passportId === "string" && /^0x[0-9a-fA-F]{64}$/.test(passportId);
 }
 
 /**
@@ -76,4 +185,27 @@ export function sharedAddress(event: MessageLike, expectedOrigin: string | null)
   const address = fields?.address;
   if (typeof address !== "string" || !isAddress(address, { strict: true })) return null;
   return getAddress(address);
+}
+
+export type MoolamAnswer = { kind: "registered" } | { kind: "address"; address: string };
+
+/**
+ * A message heard while Moolam's window is open. Moolam's answer for this place (a landed passport
+ * for "sign", a shared address for "share") closes the window and comes back; anything else,
+ * including the right message from the wrong origin, closes nothing and comes back null.
+ */
+export function takeAnswer(
+  event: MessageLike,
+  expectedOrigin: string | null,
+  place: "sign" | "share",
+  target: Pick<Checkout, "close">,
+): MoolamAnswer | null {
+  let answer: MoolamAnswer | null = null;
+  if (place === "sign" && isRegisteredHint(event, expectedOrigin)) answer = { kind: "registered" };
+  if (place === "share") {
+    const address = sharedAddress(event, expectedOrigin);
+    if (address !== null) answer = { kind: "address", address };
+  }
+  if (answer !== null) target.close();
+  return answer;
 }

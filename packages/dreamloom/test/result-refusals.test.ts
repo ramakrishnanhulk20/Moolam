@@ -13,7 +13,7 @@ import {
 } from "@/components/result/picture-api";
 
 const ID = "0123456789abcdef0123456789abcdef";
-const ACTIONS: Action[] = ["read", "cosign", "register", "move"];
+const ACTIONS: Action[] = ["read", "cosign", "register", "move", "claim", "remember"];
 
 /** Every word the server's refusal type allows. A new word there fails this list until it has words here. */
 const EVERY_WORD: Record<RefusalWord, true> = {
@@ -26,6 +26,7 @@ const EVERY_WORD: Record<RefusalWord, true> = {
   recipient: true,
   state: true,
   "not-holder": true,
+  forgotten: true,
   refused: true,
   limit: true,
   busy: true,
@@ -49,7 +50,7 @@ describe("every refusal word from the server has plain words", () => {
 
   it("says the next step for the words the order names", () => {
     expect(refusalFor("register", { error: "limit", scope: "day" }).words).toMatch(/Come back tomorrow, or sign it/);
-    expect(refusalFor("cosign", { error: "limit", scope: "day" }).words).toMatch(/let Dreamloom register it/);
+    expect(refusalFor("cosign", { error: "limit", scope: "day" }).words).toMatch(/let Dreamloom hold it/);
     expect(refusalFor("move", { error: "closed" }).words).toMatch(/keeps holding yours/);
     expect(refusalFor("cosign", { error: "origin" }).words).toMatch(/Reload this page/);
     expect(refusalFor("register", { error: "title" }).words).toMatch(/1 to 120 characters/);
