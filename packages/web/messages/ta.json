@@ -2090,5 +2090,13 @@
     "noOpenerKicker": "அந்தத் தளத்திலிருந்தே திற",
     "noOpenerLine": "இந்தப் பக்கம், தன்னைத் திறந்த சாளரத்துடன் மட்டுமே உங்கள் முகவரியைப் பகிரும். கேட்ட தளத்துக்குத் திரும்பிச் சென்று, அங்கிருந்து இதைத் திறங்கள். எதுவும் பகிரப்படவில்லை.",
     "invalidLine": "இந்தப் பக்கத்தைத் திறந்த இணைப்பு எந்த https தளத்தையும் குறிப்பிடவில்லை, எனவே முகவரியை அனுப்ப இடமே இல்லை. எதுவும் பகிரப்படவில்லை."
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

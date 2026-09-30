@@ -51,6 +51,8 @@ export interface Cosign {
   binding: Binding;
   /** The account's own MON, read only once Privy refused to pay a fee. */
   balance: bigint | null;
+  /** True once the landed passport was told to the opener, so a checkout window may shut after it. */
+  reported: boolean;
   press: (press: Press) => void;
 }
 
@@ -84,6 +86,8 @@ export function useCosign(): Cosign {
   // Kept with the wallet it was read for, so another account never sees it.
   const [balanceFor, setBalanceFor] = useState<{ wallet: Hex; value: bigint | null } | null>(null);
   const balance = balanceFor !== null && balanceFor.wallet === wallet ? balanceFor.value : null;
+  // Kept with the wallet it was said for, so another account on this tab never inherits it.
+  const [reportedFor, setReportedFor] = useState<Hex | undefined>(undefined);
 
   /** The capability. Held here and nowhere else: never in state, a log, or a message. */
   const handle = useRef<string | null>(null);
@@ -397,6 +401,7 @@ export function useCosign(): Cosign {
       passportId: landed.passportId,
       txHash: landed.txHash,
     });
+    setReportedFor(heldFor.current);
   }, [model.send, agentSettled, agent]);
 
   /** The signed register going out, the first time or again with the person paying the fee. */
@@ -613,7 +618,9 @@ export function useCosign(): Cosign {
     [binding, bindThisDevice, confirmLanded, login, logout, payOwnFee, recoverThisDevice, signNow, writeTerms],
   );
 
-  return { model, agent, wallet, binding, balance, press };
+  const reported = reportedFor !== undefined && reportedFor === wallet && model.send.at === "registered";
+
+  return { model, agent, wallet, binding, balance, reported, press };
 }
 
 function randomDigest(): Hex {

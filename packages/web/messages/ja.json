@@ -2088,5 +2088,13 @@
     "noOpenerKicker": "サイトから開いてください",
     "noOpenerLine": "このページがアドレスを共有する相手は、このページを開いたウィンドウだけです。依頼したサイトに戻り、そこから開いてください。何も共有していません。",
     "invalidLine": "このページを開いたリンクには https のサイトが示されていないため、アドレスの送り先がありません。何も共有していません。"
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

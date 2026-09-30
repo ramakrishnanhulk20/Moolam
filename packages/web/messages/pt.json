@@ -2090,5 +2090,13 @@
     "noOpenerKicker": "Abra pelo site",
     "noOpenerLine": "Esta página só compartilha seu endereço com a janela que a abriu. Volte ao site que pediu e abra a página por lá. Nada foi compartilhado.",
     "invalidLine": "O link que abriu esta página não indica nenhum site https, então não há para onde mandar um endereço. Nada foi compartilhado."
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

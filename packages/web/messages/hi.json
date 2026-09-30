@@ -2089,5 +2089,13 @@
     "noOpenerKicker": "इसे साइट से खोलें",
     "noOpenerLine": "यह पन्ना आपका पता सिर्फ़ उसी विंडो के साथ साझा करता है जिसने इसे खोला। पता माँगने वाली साइट पर वापस जाएँ और वहीं से इसे खोलें। कुछ भी साझा नहीं हुआ।",
     "invalidLine": "जिस लिंक से यह पन्ना खुला, उसमें किसी https साइट का नाम नहीं है, इसलिए पता भेजने की कोई जगह नहीं है। कुछ भी साझा नहीं हुआ।"
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

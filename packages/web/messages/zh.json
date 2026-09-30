@@ -2084,5 +2084,13 @@
     "noOpenerKicker": "请从网站那边打开",
     "noOpenerLine": "本页只会把你的地址分享给打开它的那个窗口。回到发出请求的网站，从那里打开本页。什么都没有分享。",
     "invalidLine": "打开本页的链接没有指明任何 https 网站，所以地址无处可发。什么都没有分享。"
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

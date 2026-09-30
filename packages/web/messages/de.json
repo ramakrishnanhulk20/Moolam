@@ -2074,5 +2074,13 @@
     "noOpenerKicker": "Von der Website aus öffnen",
     "noOpenerLine": "Diese Seite teilt deine Adresse nur mit dem Fenster, das sie geöffnet hat. Geh zurück zu der Website, die gefragt hat, und öffne diese Seite von dort. Es wurde nichts geteilt.",
     "invalidLine": "Der Link, der diese Seite geöffnet hat, nennt keine https-Website, also gibt es kein Ziel für eine Adresse. Es wurde nichts geteilt."
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

@@ -7,7 +7,9 @@ import type { Hex } from "viem";
 import { EASE, Kicker, PRIMARY, SECONDARY, StateSwap } from "@/components/cosign/Marks";
 import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import { currentOpener, postAddress } from "@/lib/cosign/opener";
+import { useCheckoutWindow, useCloseWhenDone } from "@/lib/cosign/popup";
 import type { OriginAsker } from "@/lib/data/platform-label";
+import { ConnectCheckout } from "./ConnectCheckout";
 
 const noChange = () => () => undefined;
 
@@ -38,12 +40,15 @@ export function ConnectPanel({
   wallet,
   signedIn,
   onSignIn,
+  checkout,
 }: {
   asker: OriginAsker;
   /** The signed-in account's embedded wallet, checksummed, or null while there is none. */
   wallet: Hex | null;
   signedIn: boolean | null;
   onSignIn: () => void;
+  /** Draws the checkout window whatever the window is. Left out, the window itself decides. */
+  checkout?: boolean;
 }) {
   const t = useTranslations("connect");
   const reduced = useIsReducedMotion();
@@ -56,6 +61,11 @@ export function ConnectPanel({
     () => currentOpener() !== null,
     () => null,
   );
+
+  const inWindow = useCheckoutWindow();
+  const compact = checkout ?? inWindow;
+  // Share sets done only after postAddress went out, and Cancel sends nothing, so either way nothing is left to send.
+  const closing = useCloseWhenDone(compact, done !== null);
 
   const phase: ConnectPhase =
     done ?? (signedIn === false ? "signIn" : signedIn === null || wallet === null ? "opening" : "ready");
@@ -74,6 +84,22 @@ export function ConnectPanel({
       : listed
         ? t.rich("headingListed", { name, accent: (chunks) => <span className="text-accent">{chunks}</span> })
         : t("headingUnlisted");
+
+  if (compact) {
+    return (
+      <ConnectCheckout
+        asker={asker}
+        wallet={wallet}
+        phase={phase}
+        hasOpener={hasOpener}
+        heading={heading}
+        closing={closing}
+        onSignIn={onSignIn}
+        onShare={share}
+        onCancel={() => setDone("cancelled")}
+      />
+    );
+  }
 
   return (
     <article

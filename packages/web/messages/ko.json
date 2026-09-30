@@ -2085,5 +2085,13 @@
     "noOpenerKicker": "사이트에서 열기",
     "noOpenerLine": "이 페이지는 자신을 연 창에만 주소를 공유합니다. 요청한 사이트로 돌아가 거기서 이 페이지를 여세요. 아무것도 공유하지 않았습니다.",
     "invalidLine": "이 페이지를 연 링크에는 https 사이트가 적혀 있지 않아 주소를 보낼 곳이 없습니다. 아무것도 공유하지 않았습니다."
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

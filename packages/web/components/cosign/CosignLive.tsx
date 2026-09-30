@@ -11,6 +11,7 @@ export function CosignLive() {
       agent={cosign.agent}
       wallet={cosign.wallet ?? null}
       balance={cosign.balance}
+      reported={cosign.reported}
       onPress={cosign.press}
     />;
 }

@@ -2094,5 +2094,13 @@
     "noOpenerKicker": "Ábrela desde la web",
     "noOpenerLine": "Esta página solo comparte tu dirección con la ventana que la abrió. Vuelve a la web que te la pidió y abre esta página desde allí. No se compartió nada.",
     "invalidLine": "El enlace que abrió esta página no indica ninguna web https, así que no hay adónde enviar una dirección. No se compartió nada."
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }

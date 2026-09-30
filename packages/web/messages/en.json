@@ -2074,5 +2074,13 @@
     "noOpenerKicker": "Open it from the site",
     "noOpenerLine": "This page shares your address only with the window that opened it. Go back to the site that asked and open it from there. Nothing was shared.",
     "invalidLine": "The link that opened this page names no https site, so there is nowhere to send an address. Nothing was shared."
+  },
+  "checkout": {
+    "lockListed": "For {platform}, listed by Moolam",
+    "lockUnnamed": "For a site Moolam does not name",
+    "more": "See everything you are signing",
+    "doneListed": "Done. Taking you back to {platform}.",
+    "doneUnlisted": "Done. Taking you back to the site that sent you.",
+    "close": "Close this window"
   }
 }
