@@ -28,7 +28,8 @@ COPY packages/dreamloom/app packages/dreamloom/app
 COPY packages/dreamloom/components packages/dreamloom/components
 COPY packages/dreamloom/lib packages/dreamloom/lib
 COPY packages/dreamloom/public packages/dreamloom/public
-COPY packages/dreamloom/instrumentation.ts packages/dreamloom/next.config.ts packages/dreamloom/next-env.d.ts packages/dreamloom/postcss.config.mjs packages/dreamloom/tsconfig.json packages/dreamloom/
+# next-env.d.ts is not copied: git ignores it, and next build writes it when it is missing.
+COPY packages/dreamloom/instrumentation.ts packages/dreamloom/next.config.ts packages/dreamloom/postcss.config.mjs packages/dreamloom/tsconfig.json packages/dreamloom/
 # The build script's prebuild step builds the kit first, so the app bundles the kit's dist.
 RUN npm run build --workspace packages/dreamloom
 
