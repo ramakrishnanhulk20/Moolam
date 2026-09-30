@@ -331,7 +331,7 @@ describe("co-sign", () => {
       title: "A harbour in fog",
       terms: TERMS,
     });
-    expect(handle.cosignUrl).toBe(`https://moolam.vercel.app/cosign/${handle.handle}`);
+    expect(handle.cosignUrl).toBe(`https://moolam.vercel.app/cosign#${handle.handle}`);
     expect(JSON.stringify(handle)).not.toContain(PLATFORM_KEY);
 
     const waiting = waitForCreator(handle, { pollMs: 100, timeoutMs: 30_000 });

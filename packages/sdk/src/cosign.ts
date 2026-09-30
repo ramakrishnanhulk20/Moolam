@@ -131,7 +131,10 @@ export async function startCosign(file: Uint8Array, options: StartCosignOptions)
 
 function handleFor(site: URL, handle: string, passportId: Hex, openBy: number): CosignHandle {
   const link = new URL(site);
-  link.pathname = `${link.pathname.replace(/\/+$/, "")}/cosign/${handle}`;
+  link.pathname = `${link.pathname.replace(/\/+$/, "")}/cosign`;
+  // The handle rides in the fragment, which a browser never sends to a server, an analytics
+  // beacon or a Referer header, so the capability stays between the platform and the person (P4).
+  link.hash = handle;
   return Object.freeze({ handle, cosignUrl: link.toString(), passportId, openBy });
 }
 
