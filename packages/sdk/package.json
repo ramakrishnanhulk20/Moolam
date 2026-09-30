@@ -1,0 +1,39 @@
+{
+  "name": "@moolam/platform",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The Moolam platform kit: gives every picture an outside image generator makes a Moolam passport on Monad, registered by the platform itself or co-signed by its user.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@noble/curves": "2.4.0",
+    "@noble/hashes": "2.4.0",
+    "viem": "2.57.1",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@moolam/agents": "*",
+    "@moolam/verifier": "*",
+    "@types/node": "26.6.3",
+    "typescript": "7.0.2",
+    "vitest": "5.0.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
