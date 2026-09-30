@@ -39,8 +39,8 @@ because every prepare spends four IPFS pins and about a second of CPU.
 | At once | 2 pictures being drawn across the whole service | The service. A fourth caller waits, and is told the agent is busy rather than held forever |
 
 Three a day is about nine cents of image model spend per account, which is what keeps a public
-button off the model bill. The count is held in the service's memory, so a redeploy hands everyone a
-fresh day.
+button off the model bill. The count is saved on a volume the service keeps across deploys, so a
+redeploy hands nobody a fresh day.
 
 Nothing is added to what you type. The prompt is the only text that reaches the model, so nothing
 the service says about itself can end up inside the manifest of a picture you then register in your

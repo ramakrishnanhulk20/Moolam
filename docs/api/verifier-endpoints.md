@@ -4,14 +4,16 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Fifteen routes. Everything is JSON, including errors and 404s. The service listens on
-`VERIFIER_PORT`, which defaults to 4000. Nine of the fifteen are mounted only when the host is
-configured for them: `/verify/paid` needs `X402_ENABLED`, `/prepare` needs a Pinata token and a
-Privy app id, `/generate` and `/edit` each need those plus their own keys, and the two `/unseal`
-routes and the three `/sealed` routes need exactly what `/prepare` needs. An unmounted route answers
-`404` like any other path that does not exist. The four `/recheck` routes are mounted on every host,
-and the three of them the runner uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link`
-answers `503` until `SEALED_LINK_TOKEN` is set.
+Twenty routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
+tool call as a short event stream. The service listens on `VERIFIER_PORT`, which defaults to 4000.
+Thirteen of the twenty are mounted only when the host is configured for them: `/verify/paid` needs
+`X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id, `/generate` and `/edit` each need
+those plus their own keys, the two `/unseal` routes and the three `/sealed` routes need exactly what
+`/prepare` needs, and the four `/platform` routes need that plus `PRIVY_APP_SECRET` and a platform
+list that loads. An unmounted route answers `404` like any other path that does not exist. The four
+`/recheck` routes and `/mcp` are mounted on every host, and the three `/recheck` routes the runner
+uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link` answers `503` until
+`SEALED_LINK_TOKEN` is set.
 
 **Two routes that also need the Privy app secret.** `POST /unseal` and `POST /sealed/forget` decide
 who holds a passport by reading the caller's embedded wallets from Privy, and that read needs
@@ -905,9 +907,10 @@ what the passport id is computed from. The browser must send these fields unchan
 hours. A refused prompt and a request that never got a drawing slot hand the slot back. A model that
 failed part way keeps it, because it may have drawn and been billed before it failed, and so do a
 failed pin, a failed signature, a drawing whose fingerprint does not survive its own thumbnail and
-a fault of the service while fingerprinting it, which all happen after the picture exists. The count lives in the
-service's memory, so a redeploy resets it and two copies of the service would count separately. The
-global 60 requests a minute applies to this path as well.
+a fault of the service while fingerprinting it, which all happen after the picture exists. The count
+is saved in the data folder as `quota-generate.json`, on the Railway volume at `/data`, so a redeploy
+or a restart hands nobody their allowance back. The service runs one copy, because two would count
+separately. The global 60 requests a minute applies to this path as well.
 
 ## POST /edit
 
@@ -1543,12 +1546,282 @@ The queue never holds more than 1,000 requests, and a finished one is dropped af
 sooner if the room is needed. A request that is still waiting or running is never dropped, which is
 why a queue full of real work refuses the next caller with `queue-full` instead.
 
-The default path is the service's own working directory, which the container's user cannot write
-to. A host that wants the queue to survive a redeploy names a writable path, such as
-`/data/recheck-queue.json` on a mounted volume. Without one the queue still takes requests and
-still hands them to the runner; it forgets them when the process stops, and the cost of that is one
-press of a free button. The private copy sweep keeps its place in the listing in the same directory,
-so one writable volume serves both.
+The default path is `recheck-queue.json` in the data folder: `DATA_DIR` when it is set, else the
+volume Railway mounts, which on the live service is `/data`, so the queue survives a redeploy and a
+restart. `RECHECK_QUEUE_PATH` moves the queue alone. A host with neither a `DATA_DIR` nor a volume
+keeps the file on the image's own disk, which every deploy empties, and says so once at boot. In
+production a data folder that cannot be written stops the boot with one line naming it; in
+development the queue is held in memory and forgotten when the process stops, and the cost of that is
+one press of a free button. The private copy sweep keeps its place in the listing in the same data
+folder.
+
+## POST /platform/prepare
+
+An outside image generator's server turns a picture its agent made into passport fields: signed
+into a C2PA manifest that names the platform's ERC-8004 agent, fingerprinted, and either pinned for
+the platform to register itself (`platform` mode) or frozen for a person to co-sign (`cosign` mode).
+The guide is [For platforms](../developers/platform-kit), and `@moolam/platform` makes every call
+below for you.
+
+Mounted only when the host has `PINATA_JWT`, `PRIVY_APP_ID` and `PRIVY_APP_SECRET`, a signing
+certificate and key that load, and a platform list whose every signature checks out. A refused list
+turns all four `/platform` routes off; it is never half loaded. Not live until the next deploy.
+
+**Headers.** `Authorization: Bearer <platform key>`, the 64 hex characters Moolam issued. The key
+identifies and meters the platform and authorises nothing else.
+
+**Request.** A multipart body.
+
+| Part | Type | Rule |
+| --- | --- | --- |
+| `file` | file | The picture, a JPEG, PNG or WebP, up to 20 MB and 40 megapixels |
+| `mode` | text | `platform` or `cosign` |
+| `title` | text | 1 to 120 characters after trimming |
+| `nonce` | text | `0x` and 64 hex characters, the PlatformPrepare's nonce |
+| `issuedAt` | text | The PlatformPrepare's time in unix seconds |
+| `signature` | text | The agent owner's 65 byte EIP-712 signature over the PlatformPrepare below |
+| `training` | text | Optional. The AI-use terms as JSON, by the same rule as [`/prepare`](#post-prepare), with no space at either end of `constraintInfo` |
+| `creator`, `wallet`, `agentId` | text | Optional. In platform mode a body may repeat the creator wallet and agent id its key is listed with, and never name others. In co-sign mode it may name no creator or wallet at all |
+
+Any other part name, or a part sent twice, is a `400`.
+
+The PlatformPrepare the agent's owner signs:
+
+```ts
+{
+  domain: { name: "Moolam platform", version: "1", chainId: 143 },
+  types: {
+    PlatformPrepare: [
+      { name: "mode", type: "uint8" },          // 0 platform, 1 cosign
+      { name: "pictureHash", type: "bytes32" }, // sha256 of the file exactly as sent
+      { name: "platformId", type: "bytes32" },  // sha256 of the platform key's 32 bytes
+      { name: "nonce", type: "bytes32" },
+      { name: "issuedAt", type: "uint64" },     // chain time, at most ten minutes old
+    ],
+  },
+  primaryType: "PlatformPrepare",
+}
+```
+
+```bash
+curl -s -X POST https://<verify-service>/platform/prepare \
+  -H "Authorization: Bearer $MOOLAM_PLATFORM_KEY" \
+  -F "file=@lighthouse.png" -F "mode=cosign" -F "title=A lighthouse at dusk" \
+  -F "nonce=0x..." -F "issuedAt=1790700000" -F "signature=0x..." \
+  -F 'training={"aiTraining":"notAllowed"}'
+```
+
+**The order of checks.** The key, then the body, then the identity fields (P18), then `issuedAt`
+against the latest block's time, then the agent owner's signature, recovered by the rules the
+registry's ECDSA applies and compared with `ownerOf(agentId)` read on chain at that moment (P19),
+then the replay memory, then the platform's quota and the ceiling for every platform. Only then is
+anything signed or pinned. The P and M numbers refer to the
+[threat model](../security/threat-model#the-platform-kit-and-the-mcp-server). A request refused before the first pin or frozen file gives its quota
+slot back.
+
+**The manifest.** The claim generator is `moolam-platform-kit/0.1.0`, the action `c2pa.created` and
+the source type `trainedAlgorithmicMedia`. Its `softwareAgent` names `<platform> generator` and, under
+the key `app.vercel.moolam.erc8004`, the agent id and the registry
+`eip155:143:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432`. A picture the signer will not embed a
+manifest in is refused, because the manifest is what names the agent.
+
+**Response in platform mode.** `200`. The four files are pinned, each checked against the content id
+computed before the pin.
+
+```ts
+{
+  mode: "platform",
+  passport: {
+    exactHash: `0x${string}`,      // sha256 of signedFile, and the passport id
+    parentId: `0x${string}`,       // 32 zero bytes: a platform picture is an original
+    creator: `0x${string}`,        // the creator wallet the key is listed with
+    generatorAgentId: string,      // the listed agent, decimal
+    phash: string,
+    blockhash256: `0x${string}`,
+    manifestHash: `0x${string}`,
+    kind: 0,                       // Generated
+    fingerprintVersion: 1,
+    metadataURI: string,           // ipfs://...
+    deadline: string               // chain time plus 30 minutes, decimal
+  },
+  digest: `0x${string}`,           // hashPassport of those fields: what the agent and the passkey sign
+  files: {
+    image: { cid, uri, gatewayUrl, bytes },
+    thumbnail: { cid, uri, gatewayUrl, bytes },
+    manifest: { cid, uri, gatewayUrl, bytes },
+    metadata: { cid, uri, gatewayUrl, bytes }
+  },
+  signedFile: { name, type, bytes, sha256 },  // bytes is base64; serve this file, not the upload
+  manifest: { embedded: true },
+  training?: { ...terms, standard: "cawg.training-mining/1.1" },
+  platform: { name: string, agentId: string }
+}
+```
+
+**Response in co-sign mode.** `200`. Nothing is pinned: the four files are frozen on the service's
+volume under their computed content ids until the person has opened the link and the agent has
+signed (P6).
+
+```ts
+{
+  mode: "cosign",
+  handle: string,                  // 32 hex characters, 128 bits from the CSPRNG, shown once
+  passport: { ...the fields above, without creator and deadline },
+  files: { image, thumbnail, manifest, metadata },
+  openBy: number,                  // chain time by which the person must open the link
+  manifest: { embedded: true },
+  training?: { ...terms, standard: "cawg.training-mining/1.1" },
+  platform: { name: string, agentId: string }
+}
+```
+
+The service keeps only the handle's sha256. The person's link is `https://moolam.vercel.app/cosign#<handle>`.
+
+| Code | When |
+| --- | --- |
+| `200` | The fields, as above |
+| `400` | A missing or misnamed file, an unknown or repeated part, a mode, title, nonce or `issuedAt` out of shape, or terms the consent contract would refuse |
+| `401` | `unauthorized`: no key, or one no current entry holds. `agent-signature-required`: no `signature` part |
+| `403` | `platform-mismatch` with the `field`: the body named a creator, wallet or agent the key is not listed with |
+| `403` | `prepare-expired` with the `reason` and `chainTime`: `issuedAt` is more than ten minutes before chain time, or more than 60 seconds ahead of it |
+| `403` | `agent-signature-refused`: the signature does not recover to the agent's owner on the identity registry now |
+| `409` | `replayed`: this nonce was already accepted for this platform. `same-picture`: this picture was already prepared by this platform inside the window |
+| `409` | `already-registered` with the `passportId`: the registry already holds the signed picture |
+| `413` | Over 20 MB or 40 megapixels, or `signed-file-too-large` |
+| `415` | `not-an-image` |
+| `422` | `manifest-not-embedded`, `thumbnail-too-large` or `fingerprint-unstable`, as under [`/prepare`](#post-prepare) |
+| `429` | `quota` with `{ used, limit, resetsAt }`: past `PLATFORM_PREPARES_PER_KEY_PER_DAY` in a rolling 24 hours |
+| `429` | `global-limit`, with `retry-after`: past `GLOBAL_PLATFORM_PREPARES_PER_DAY` for every platform together today. `0` closes the route |
+| `429` | `pending-full`: this platform's waiting co-signs already hold 100 MiB of frozen files |
+| `500` | `signed-file-refused`: the signed file did not hash to the passport id. Nothing was pinned |
+| `502` | `sign-failed` or `pin-failed` |
+| `503` | `chain-unreachable`, `busy`, `service-fault`, `cosign-unavailable` (nowhere to freeze files), `pending-full` (5,000 waiting co-signs on the service), `closed` (the replay memory could not be believed after a restart, so every prepare is refused for ten minutes) or `full` (the replay memory holds 20,000 entries) |
+
+Every answer on the four `/platform` routes carries `Cache-Control: no-store`.
+
+## GET /platform/record/:handle
+
+The co-sign page's read. The first time a signed-in person opens a record, their Moolam wallet
+becomes its creator, once, and the deadline is set to chain time plus 30 minutes.
+
+**Headers.** `Authorization: Bearer <Privy access token>`, checked as under [`/prepare`](#post-prepare).
+The creator is the first embedded wallet Privy lists for that user, never a value in the request (P2).
+
+**Response.** `200` with the record, including the `digest` the person's passkey will sign:
+
+```ts
+{
+  state: "awaiting-creator" | "creator-set" | "signed" | "expired",
+  agentId: string,
+  platform: { name: string, agentId: string },
+  exactHash: `0x${string}`,
+  passport: { ...fields, creator?: `0x${string}`, deadline?: string },
+  files: { image, thumbnail, manifest, metadata },
+  openBy: number,
+  digest?: `0x${string}`,
+  agentSignature?: `0x${string}`
+}
+```
+
+| Code | When |
+| --- | --- |
+| `200` | The record |
+| `401` | `unauthorized`: no valid Privy token |
+| `403` | `creator-mismatch`: the record's creator is another wallet. `no-wallet`: the user has no embedded wallet. Both still carry `agentId`, `platform` and `exactHash`, so the person sees what they were sent |
+| `404` | `not-found`: not a handle this service issued, or no such record |
+| `409` | `record-refused` with a `reason`: the record failed its checks on read and was dropped, never repaired (P3) |
+| `410` | `expired`, with the same three public facts: the link was not opened by `openBy`, or the deadline passed |
+| `502` | `wallet-lookup-failed` |
+| `503` | `chain-unreachable` |
+
+## POST /platform/sign/:handle
+
+The platform's agent signs the passport digest, once the person has set the creator. The signature
+is kept only if it recovers to `ownerOf(agentId)` read now, over the digest rebuilt from the record's
+own fields (P5). Then the frozen files are pinned and each returned content id is checked against the
+one computed at prepare (P6). Only after that may the person's page ask for their passkey.
+
+**Headers.** `Authorization: Bearer <platform key>`, the key that made the record.
+
+**Request.** `{ "signature": "0x..." }`, 65 bytes.
+
+**Response.** `200` with the record as under `GET /platform/record/:handle`, in state `signed`, with
+`digest` and `agentSignature`.
+
+| Code | When |
+| --- | --- |
+| `200` | Signed and pinned |
+| `400` | The body is not `{ "signature": "0x..." }` with 130 hex characters |
+| `401` | `unauthorized` |
+| `403` | `agent-signature-refused` |
+| `404` | `not-found`, also for a record another key made |
+| `409` | `awaiting-creator`: nobody has opened the link yet. `already-signed`. `signing`: a signature for this record is being pinned right now. `record-refused` with a `reason`: the stored digest or a frozen file no longer matches, and the record was dropped |
+| `410` | `expired` |
+| `502` | `pin-failed`: a file could not be pinned under the id the passport names. Nothing was signed; send again |
+| `503` | `chain-unreachable` |
+
+## GET /platform/status/:handle
+
+Where a co-sign stands. The platform polls it with its key; the person may read it with their Privy
+token. `digest` is in the answer only for the platform's key.
+
+**Response.** `200` with the record, plus:
+
+- `state: "registered"` and `registeredAt` once the registry holds this very passport: this creator,
+  this agent, this metadata and this manifest (P13).
+- `state: "failed"` and `reason` when the registry holds a different passport under the same id.
+- `chain: "unknown"` when the chain could not be read, with the stored state unchanged.
+
+| Code | When |
+| --- | --- |
+| `200` | The record, as above |
+| `401` | `unauthorized`: neither a valid platform key nor a valid Privy token |
+| `403` | `creator-mismatch`: a Privy token whose wallet is not the record's creator |
+| `404` | `not-found`, also for a record another key made |
+| `409` | `record-refused` with a `reason` |
+
+**No handle in any log.** The three handle routes are mounted at log level `silent`, so no request
+line carries a handle, and their refusals are logged without the URL. The handle is compared in
+constant time, stored only as its sha256, and dies with its deadline (P4). Records are removed a day
+after their deadline.
+
+## POST /mcp
+
+The Model Context Protocol server: six read-only tools and two resources over the passport
+registry, the AI-use register, the index and the ERC-8004 identity registry. Mounted on every host,
+with no sign-in. The tools, their inputs and their answers are in
+[For AI agents (MCP)](../developers/mcp). Not live until the next deploy.
+
+**Request.** A JSON-RPC message, `Content-Type: application/json`, with `Accept` naming both
+`application/json` and `text/event-stream`. A 2026-07-28 client also sends `MCP-Protocol-Version`,
+`Mcp-Method` and, for a tool call, `Mcp-Name`. A request without the version header is answered as a
+2025-era client, statelessly.
+
+```bash
+curl -s -X POST https://<verify-service>/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_passport","arguments":{"passportId":"0x980549624f85e4ef47043383c5a746cbdd1d82797b5b5583e1f5aeb3841d010c"}}}'
+```
+
+**Response.** `200`, as JSON or as one short event stream (`event: message`, then `data:` and the
+JSON-RPC result), with `Cache-Control: no-store, no-transform`. A tool that could not answer returns
+a normal result with `isError: true` and one fixed sentence, never a protocol error: `unavailable:`
+for a failed or stale read, or the input rule that was broken.
+
+| Code | When |
+| --- | --- |
+| `200` | Any tool result, including `isError: true` |
+| `400` | JSON-RPC `-32700`: the body is not JSON or ended early. JSON-RPC `-32602`: a 2026-07-28 request missing its per-request envelope |
+| `403` | A browser `Origin` that is not one of `CORS_ORIGINS`. No `Origin` at all passes |
+| `405` | `GET` or `DELETE`, with `Allow: POST`: the server keeps no stream and no session |
+| `413` | Over a 20 MB picture as base64 plus 64 KB, refused before the body is read when the declared length says so |
+| `415` | `Content-Type` is not `application/json` |
+| `429` | Past 60 requests a minute from one address. Claude calls from Anthropic's cloud, so every Claude user shares one count |
+| `503` | `busy`: the upload ceiling is full |
+
+A browser client's preflight is told `POST` and the MCP header set are allowed, for the origins in
+`CORS_ORIGINS` only.
 
 ## Today's budget for everyone
 
@@ -1596,9 +1869,13 @@ kept the file, so they keep the slot. `/generate` counts the drawing as the spen
 provider drew keeps its slot however the request ends, and a prompt the model turned down hands it
 back.
 
-What this does not do. The counts live in one process's memory, exactly like the per-user
-allowances, so a redeploy resets them and a second copy of the service would keep its own. They
-bound how many actions a day holds, never what one of them costs. And the real bound on sponsored
+The counts are saved in the data folder as `global-day.json`, beside the per-user allowances, so a
+redeploy or a restart on the volume keeps them. A file that cannot be believed is read as today's
+ceiling already reached, until midnight UTC. The platform routes keep their own ceiling the same way,
+in `platform-day.json`.
+
+What this does not do. A second copy of the service would keep its own counts, which is one reason
+the service runs one. The counts bound how many actions a day holds, never what one of them costs. And the real bound on sponsored
 gas is the daily cap on the Privy app, which is a dashboard setting that no code here can enforce.
 
 ## Nothing on these routes is cacheable
@@ -1695,8 +1972,8 @@ a runner that has died shows up from outside: `pending` climbs and `running` sta
 `PRIVATE_SWEEP`. It first runs an hour after boot and never at boot. Each run reads two pages of
 100 from the account's private listing, asking Pinata for no name filter, and starts where the last
 run stopped, going back to the first page once the listing ends. That place is kept in
-`private-sweep-cursor.json` beside `RECHECK_QUEUE_PATH`, so a redeploy with the queue on a volume
-goes on from there rather than reading the first pages again; a file that is missing or not one it
+`private-sweep-cursor.json` in the data folder, on the volume at `/data`, so a redeploy goes on from
+there rather than reading the first pages again; a file that is missing or not one it
 wrote means the first page. The run keeps only exact thumbnail names Pinata says were uploaded more
 than 48 hours ago, and marks a file when the registry answered that its passport does not exist, or
 when the passport is registered under a document that does not ask for a private re-check of it,

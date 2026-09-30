@@ -104,6 +104,16 @@ cannot choose. The route is mounted only when the host holds both a Pinata token
 so a verify-only deployment does not carry the surface at all, and the service holds no key that can
 write to the chain either way: the browser signs the passport and sends the transaction itself.
 
+**The platform kit and the MCP server.** Two surfaces go live with the next deploy of the verify
+service. An outside image generator holding a Moolam key can have pictures signed and fingerprinted,
+but the key only identifies and meters it: every prepare also needs a signature from the owner of
+its ERC-8004 agent, read on chain at that moment, and a per-key quota and a ceiling for every
+platform bound the spend. A platform-mode passport is one company holding two keys, and Moolam says
+exactly that. The MCP server only reads, fetches only through the `/verify` guard, returns other
+people's text as data fields, and answers "unavailable" rather than "not found" when a read failed.
+The invariants, P1 to P25 and M1 to M6, with the file and test behind each, are in
+[the threat model](threat-model#the-platform-kit-and-the-mcp-server).
+
 **Browser origins.** Only the exact origins listed in `CORS_ORIGINS` get an allow header back, and
 an entry with a wildcard, a path or a trailing slash stops the boot instead of widening the list.
 `PRIVY_JWKS_OVERRIDE_PATH`, which points the token check at a local key file so tests can sign their

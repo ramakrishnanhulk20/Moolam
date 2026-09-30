@@ -128,9 +128,9 @@ their own name.
 a rolling 24 hours, which is about nine cents of image model spend per account. A refused prompt and
 a request that never got a drawing slot give the slot back. A model that failed part way keeps it,
 because it may have drawn and been billed first, and so do a failed pin and a failed signature. The
-count is held in this process's memory: a redeploy hands everyone a fresh day, and two copies of the
-service would count separately. That is deliberate, and the alternative is a Redis this service does
-not otherwise need.
+count is saved in the service's data folder, which on Railway is a volume at `/data`, so a redeploy
+or a restart hands nobody a fresh day. Two copies of the service would count separately, so it runs
+one, and a small JSON file on a volume does the job a Redis would.
 
 **Two drawings at once.** The model call and the C2PA signing run behind the same shape of gate
 `/verify` uses. Pinning and signing happen outside it, because they are network waits holding nothing

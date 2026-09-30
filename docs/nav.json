@@ -123,6 +123,14 @@
           "title": "Verifier service"
         },
         {
+          "slug": "developers/platform-kit",
+          "title": "For platforms"
+        },
+        {
+          "slug": "developers/mcp",
+          "title": "For AI agents (MCP)"
+        },
+        {
           "slug": "developers/chainlink-workflow",
           "title": "Chainlink CRE workflow",
           "label": "Chainlink workflow"
