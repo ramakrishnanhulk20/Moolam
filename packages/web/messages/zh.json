@@ -184,14 +184,14 @@
       "rechecked": "已在链上复核",
       "chainlink": "由 Chainlink 工作流复核",
       "disputed": "争议成立",
-      "platform": "通过 {platform} 登记"
+      "platform": "Drawn on {platform}"
     },
     "legend": {
       "manifest": "带 Content Credentials",
       "rechecked": "已在链上复核",
       "disputed": "争议成立，针对这张图片或它编辑自的那张图片",
       "consent": "AI 使用声明，四种用途四个标记",
-      "platform": "通过 Moolam 名单上的平台登记"
+      "platform": "Drawn on a platform Moolam lists"
     },
     "untitled": "无标题",
     "noPicture": "网关上没有图片",
@@ -717,8 +717,12 @@
     "passkeyBound": "绑定在这位创作者钱包上的一把密钥，在 Monad 上为这张图片的指纹签了名。",
     "passkeyNone": "这位创作者的钱包没有绑定通行密钥。",
     "platform": {
-      "kit": "由 {platform} 通过 Moolam 平台工具包登记",
-      "kitNote": "{platform} 自己的服务器密钥以创作者的身份签了名，它的智能体以作画者的身份签了名。Moolam 核实的是这家公司持有这两把密钥，而不是这家公司是谁。",
+      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
+      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
+      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
+      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
+      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "这个钱包在 Moolam 名单上列为 {platform}，但这张图片是在 Moolam 平台工具包之外登记的。"
     },
     "agentListed": "由 Moolam 列入名单，是 {platform} 的智能体",
@@ -1114,7 +1118,10 @@
       "noAgent": "未注明智能体",
       "chainlink": "Chainlink",
       "unknownWriter": "未知写入方",
-      "cardNamed": "{agent}，名字是它在名片上的自称"
+      "cardNamed": "{agent}，名字是它在名片上的自称",
+      "unclaimed": "Not claimed yet",
+      "heldBy": "{platform} holds it",
+      "via": "via {platform}"
     },
     "ownerHint": "这是你做的吗？登录后就能管理。",
     "share": {
@@ -1817,6 +1824,7 @@
     "showcaseCaption": "Monad 上一本真实的护照。你的护照也会像这样出现在这里。",
     "makeFirst": "登记你的第一张图片",
     "signedInAs": "已登录：{account}",
+    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
     "held": {
       "heading": "你持有，别人做的",
       "label": "你持有，不是你做的",
@@ -1861,10 +1869,10 @@
         "label": "由智能体绘制，名字为其自称"
       },
       "platform": {
-        "label": "为某个平台",
-        "listed": "为某个平台，由 Moolam 列入名单",
-        "withheld": "为某个平台，标识不予显示",
-        "unlisted": "为某个平台，未列入 Moolam 名单",
+        "label": "Drawn on",
+        "listed": "Drawn on, listed by Moolam",
+        "withheld": "Drawn on, badge withheld",
+        "unlisted": "Drawn on, not listed by Moolam",
         "reading": "读到记录之后，会对照 Moolam 名单核对。"
       },
       "terms": {
@@ -2086,8 +2094,8 @@
     "invalidLine": "打开本页的链接没有指明任何 https 网站，所以地址无处可发。什么都没有分享。"
   },
   "checkout": {
-    "lockListed": "For {platform}, listed by Moolam",
-    "lockUnnamed": "For a site Moolam does not name",
+    "lockListed": "Sent by {platform}, listed by Moolam",
+    "lockUnnamed": "Sent by a site Moolam does not name",
     "more": "See everything you are signing",
     "doneListed": "Done. Taking you back to {platform}.",
     "doneUnlisted": "Done. Taking you back to the site that sent you.",

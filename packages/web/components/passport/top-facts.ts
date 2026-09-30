@@ -5,6 +5,7 @@ import { isPrivateRecheck } from "@/lib/chain/receivers";
 import { plainStatement, type ConsentReading, type Statement } from "@/lib/chain/consent";
 import { bitsApart, phashWord } from "@/lib/chain/fingerprint";
 import type { Attestation } from "@/lib/chain/registry";
+import type { Credit } from "@/lib/platforms/platforms";
 import { attestationSource } from "./labels";
 
 /** The strip's own words, read from passport.facts in the reader's language. */
@@ -19,6 +20,7 @@ export const TOP_FACT_WORD_KEYS = [
   "noAgent",
   "chainlink",
   "unknownWriter",
+  "unclaimed",
 ] as const;
 
 export type TopFactWords = Record<(typeof TOP_FACT_WORD_KEYS)[number], string>;
@@ -83,7 +85,7 @@ export interface TopFact {
   key: TopFactKey;
   label: string;
   value: string;
-  /** A second, quieter line: the agent's number under its name, or the creator's address under a listed platform's. */
+  /** A second, quieter line: the agent's number under its name, or the platform under an unclaimed or claimed credit. */
   detail?: string;
   /** "#anchor" on this page, or a route inside the app. */
   href: string;
@@ -110,11 +112,12 @@ export interface TopFactsInput {
   sealed: boolean;
   privateRecheck: boolean;
   /**
-   * The platform name Moolam's signed list gives this passport, only when its
-   * label says "kit" (lib/data/platform-label.ts). Null or absent everywhere
-   * else, and then "Made by" is the creator's address as before.
+   * Who the one credit rule names (creditFor in lib/data/platform-label.ts).
+   * Only the unclaimed and claimed cases change "Made by"; a co-signed
+   * picture's creator is already the person, and every other passport has no
+   * credit, so "Made by" is the creator's address for both.
    */
-  platform?: string | null;
+  credit?: Credit | null;
 }
 
 /** The page's existing words, handed in so this stays a plain function a test can call. */
@@ -128,6 +131,14 @@ export interface TopFactsSay {
   privateRecheck: string;
   sealed: string;
   date: (seconds: bigint) => string;
+  /**
+   * The detail under "Not claimed yet": the platform that holds the passport
+   * until the person claims it. Optional for a caller that never hands in a
+   * credit; without it the value stands alone.
+   */
+  heldBy?: (platform: string) => string;
+  /** The detail under a claimed passport's holder: the platform that handed it over. Optional as heldBy is. */
+  via?: (platform: string) => string;
   words: TopFactWords;
 }
 
@@ -150,28 +161,17 @@ export function topFacts(input: TopFactsInput, say: TopFactsSay): TopFact[] {
   return [madeBy(input, say), drawnBy(input, say), aiUse(input, say), rechecked(input, say)];
 }
 
-function madeBy({ creator, platform }: TopFactsInput, say: TopFactsSay): TopFact {
-  const listed = platform?.trim();
-  if (listed !== undefined && listed !== "") {
-    // The list vouches for the name, so it leads; the address it vouches for
-    // stays under it, because a name alone can be spoofed across scripts.
-    return {
-      key: "madeBy",
-      label: say.words.madeBy,
-      value: listed,
-      detail: shortHex(creator),
-      href: anchor("madeBy"),
-      tone: "text",
-    };
+function madeBy({ creator, credit }: TopFactsInput, say: TopFactsSay): TopFact {
+  const base = { key: "madeBy" as const, label: say.words.madeBy, href: anchor("madeBy") };
+  if (credit?.case === "unclaimed") {
+    // Nobody is named until the person who imagined it claims it, and the
+    // platform is said only as the one holding it meanwhile.
+    return { ...base, value: say.words.unclaimed, detail: say.heldBy?.(credit.platform), tone: "faint" };
   }
-  return {
-    key: "madeBy",
-    label: say.words.madeBy,
-    value: shortHex(creator),
-    href: anchor("madeBy"),
-    tone: "text",
-    mono: true,
-  };
+  if (credit?.case === "claimed" && credit.imaginedBy !== null) {
+    return { ...base, value: shortHex(credit.imaginedBy), detail: say.via?.(credit.platform), tone: "text", mono: true };
+  }
+  return { ...base, value: shortHex(creator), tone: "text", mono: true };
 }
 
 function drawnBy({ agentId, agentName, kind }: TopFactsInput, say: TopFactsSay): TopFact {

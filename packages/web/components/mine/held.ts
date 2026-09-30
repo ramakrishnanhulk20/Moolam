@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { pinnedUri } from "@/components/passport/art";
 import { gatewayUrl } from "@/lib/chain/client";
-import { passportsHeldNotMade, type PassportListing } from "@/lib/data/passports";
+import { passportsHeldNotMade, type HeldListing, type PassportListing } from "@/lib/data/passports";
+import { creditFrom, heldPlatformList } from "@/lib/data/platform-label";
+import type { PlatformList } from "@/lib/platforms/platforms";
 import { passportArt } from "@/lib/studio/metadata";
 
 /**
@@ -15,11 +17,52 @@ import { passportArt } from "@/lib/studio/metadata";
  * as made, and the person can hide any of it. Hiding is a choice about this
  * browser's view only: it is kept in local storage, per wallet, and one press
  * brings everything back.
+ *
+ * The one exception is a platform's handover: a passport a listed platform
+ * registered for this person and then passed to them. The credit rule names
+ * the holder as the person who imagined it, so it sits with their own pictures
+ * instead, saying where it was drawn.
  */
 
 export interface HeldPassport extends PassportListing {
   title?: string;
   imageUrl?: string;
+}
+
+/** A held passport the credit rule says this wallet imagined, with the platform it was drawn on. */
+export interface ClaimedPassport extends HeldPassport {
+  platform: string;
+}
+
+/**
+ * The held rows the credit rule gives the "claimed" case with this wallet as
+ * the person who imagined them, apart from every other held row. The holder is
+ * the wallet the index answered for, so no holder is guessed; the agent's owner
+ * is not read, because it only decides the co-signed case, and a co-signed
+ * picture held here was imagined by somebody else. A refused list claims nothing.
+ */
+export function splitClaimed(
+  rows: readonly HeldListing[],
+  list: PlatformList,
+  wallet: string,
+): { claimed: (HeldListing & { platform: string })[]; held: HeldListing[] } {
+  let me: string;
+  try {
+    me = getAddress(wallet);
+  } catch {
+    return { claimed: [], held: [...rows] };
+  }
+  const claimed: (HeldListing & { platform: string })[] = [];
+  const held: HeldListing[] = [];
+  for (const row of rows) {
+    const credit = creditFrom(list, { ...row, holder: me, agentOwnerNow: null });
+    if (credit?.case === "claimed" && credit.imaginedBy === me) {
+      claimed.push({ ...row, platform: credit.platform });
+    } else {
+      held.push(row);
+    }
+  }
+  return { claimed, held };
 }
 
 /** Far more than anyone is sent. The list is one read, with no paging, so it needs a ceiling. */
@@ -82,6 +125,8 @@ function browserStorage(): Storage | null {
 
 export interface HeldPassports {
   status: "reading" | "ready" | "unreadable";
+  /** The handovers this wallet is credited with, drawn with its own pictures and never hidden. */
+  claimed: ClaimedPassport[];
   shown: HeldPassport[];
   hiddenCount: number;
   hide: (id: string) => void;
@@ -90,7 +135,9 @@ export interface HeldPassports {
 
 /** The held-not-made rows for one wallet, with this browser's hidden list applied. */
 export function useHeldPassports(wallet: Hex): HeldPassports {
-  const [answer, setAnswer] = useState<{ wallet: Hex; rows: HeldPassport[] | null } | null>(null);
+  const [answer, setAnswer] = useState<{ wallet: Hex; rows: HeldPassport[] | null; claimed: ClaimedPassport[] } | null>(
+    null,
+  );
   // This grid is only ever drawn in the browser, after sign-in, so the store
   // can be read while rendering without a server render to disagree with.
   const [hidden, setHidden] = useState<{ wallet: Hex; ids: Set<string> }>(() => ({
@@ -102,18 +149,22 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
     let live = true;
     void (async () => {
       try {
-        const rows = await passportsHeldNotMade(wallet, HELD_LIMIT);
+        const [rows, list] = await Promise.all([passportsHeldNotMade(wallet, HELD_LIMIT), heldPlatformList()]);
         if (!live) {
           return;
         }
-        setAnswer({ wallet, rows });
-        const decorated = await Promise.all(rows.map(withArt));
+        const { claimed, held } = splitClaimed(rows, list, wallet);
+        setAnswer({ wallet, rows: held, claimed });
+        const [heldArt, claimedArt] = await Promise.all([
+          Promise.all(held.map(withArt)),
+          Promise.all(claimed.map(async (row) => ({ ...(await withArt(row)), platform: row.platform }))),
+        ]);
         if (live) {
-          setAnswer({ wallet, rows: decorated });
+          setAnswer({ wallet, rows: heldArt, claimed: claimedArt });
         }
       } catch {
         if (live) {
-          setAnswer({ wallet, rows: null });
+          setAnswer({ wallet, rows: null, claimed: [] });
         }
       }
     })();
@@ -148,6 +199,7 @@ export function useHeldPassports(wallet: Hex): HeldPassports {
 
   return {
     status: current === null ? "reading" : current.rows === null ? "unreadable" : "ready",
+    claimed: current?.claimed ?? [],
     shown,
     hiddenCount,
     hide,

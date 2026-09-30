@@ -14,7 +14,9 @@ import { loadPlatforms, onboardingTypedData, type PlatformList, type PlatformRec
 /**
  * The platform kit's words on the website (WO-245a): who registered a passport
  * and who holds it, whose terms are in force, and a platform's name only where
- * Moolam's signed list gives it.
+ * Moolam's signed list gives it. Since WO-257 the person who imagined a
+ * platform picture is the one credited, and the platform is only where it was
+ * drawn.
  *
  * The lists here are real: every entry is signed by viem local accounts over
  * the onboarding message and loaded through the same loadPlatforms the site
@@ -59,8 +61,9 @@ const { Facts } = await import("@/components/passport/Facts");
 const { ConsentSection } = await import("@/components/consent/ConsentSection");
 const { Plate } = await import("@/components/explore/Plate");
 const { HeldGrid } = await import("@/components/mine/HeldPictures");
-const { readHidden, splitHeld, writeHidden, hiddenKey } = await import("@/components/mine/held");
-const { heldPlatformList, labelFrom, plateMark } = await import("@/lib/data/platform-label");
+const { ClaimedPictures } = await import("@/components/mine/ClaimedPictures");
+const { readHidden, splitClaimed, splitHeld, writeHidden, hiddenKey } = await import("@/components/mine/held");
+const { creditFrom, heldPlatformList, labelFrom, listedAgentOwner, plateMark } = await import("@/lib/data/platform-label");
 const { fileTermsOf, termsDiffer } = await import("@/lib/data/file-terms");
 const { shortHex } = await import("@/lib/chain/client");
 const { topFacts } = await import("@/components/passport/top-facts");
@@ -69,6 +72,8 @@ const { Filters } = await import("@/components/explore/Filters");
 const agentOwner = privateKeyToAccount(`0x${"a1".repeat(32)}`);
 const creatorKey = privateKeyToAccount(`0x${"b2".repeat(32)}`);
 const HOLDER = "0x551610a063BcAd79e6bd25dc55cEe92Ba3FD960a" as Hex;
+/** A person who co-signed with their own key: not a listed wallet. */
+const PERSON = privateKeyToAccount(`0x${"d4".repeat(32)}`).address;
 
 const PLATFORM = "Acme Studio";
 const CARD_NAME = "Totally Real Corp";
@@ -150,16 +155,23 @@ function words(key: string, values?: Record<string, string | number>): string {
   return asRendered(createTranslator({ locale: "en", messages: en, namespace: "passport" })(key as never, values as never));
 }
 
-async function drawFacts(passport: Passport, list: PlatformList, extra: { owner?: Hex; agentName?: string | null } = {}) {
+async function drawFacts(
+  passport: Passport,
+  list: PlatformList,
+  extra: { owner?: Hex; agentName?: string | null; agentOwnerNow?: string | null } = {},
+) {
+  const owner = extra.owner ?? passport.creator;
   return render(
     await Facts({
       passport,
       art,
-      owner: extra.owner ?? passport.creator,
+      owner,
       hasPasskey: true,
       standing: "unverified",
       txHash: null,
       platform: labelFrom(list, passport),
+      // The same rule the page reads, handed in so the fixture list is the one asked.
+      credit: creditFrom(list, { ...passport, holder: owner, agentOwnerNow: extra.agentOwnerNow ?? null }),
       agentName: extra.agentName ?? null,
     }),
   );
@@ -174,25 +186,26 @@ describe("P16: one predicate issues the label", () => {
     const markup = await drawFacts(captured, list);
     expect(markup).toContain('data-platform="outsideKit"');
     expect(markup).toContain(words("platform.outsideKit", { platform: PLATFORM }));
-    expect(markup).not.toContain(words("platform.kit", { platform: PLATFORM }));
+    expect(markup).not.toContain(words("platform.held", { platform: PLATFORM }));
+    expect(markup).not.toContain("data-credit-line");
     // The base words stand on their own beside it.
     expect(markup).toContain(words("passkeyBound"));
     // A plate never wears the name for it.
-    expect(plateMark(list, captured)).toBeNull();
+    expect(plateMark(list, captured, null)).toBeNull();
   });
 
-  it("gives a valid platform passport the label and its note, on the page and on a plate", async () => {
+  it("gives a valid platform passport the unclaimed credit and its note, on the page and on a plate", async () => {
     const list = await signedList();
     const made = passportOf({});
 
     expect(labelFrom(list, made)?.status).toBe("kit");
     const markup = await drawFacts(made, list);
-    expect(markup).toContain('data-platform="kit"');
-    expect(markup).toContain(words("platform.kit", { platform: PLATFORM }));
-    expect(markup).toContain(words("platform.kitNote", { platform: PLATFORM }));
+    expect(markup).toContain('data-platform="unclaimed"');
+    expect(markup).toContain(words("platform.held", { platform: PLATFORM }));
+    expect(markup).toContain(words("platform.heldNote", { platform: PLATFORM }));
     expect(markup).toContain(words("passkeyBound"));
 
-    const mark = plateMark(list, made);
+    const mark = plateMark(list, made, null);
     expect(mark).toBe(PLATFORM);
     const plate: ExplorePlate = {
       id: ID,
@@ -208,7 +221,7 @@ describe("P16: one predicate issues the label", () => {
       consent: null,
       platform: mark,
     };
-    expect(render(createElement(Plate, { plate }))).toContain(`Registered through ${PLATFORM}`);
+    expect(render(createElement(Plate, { plate }))).toContain(`Drawn on ${PLATFORM}`);
     expect(render(createElement(Plate, { plate: { ...plate, platform: null } }))).not.toContain("data-plate-platform");
   });
 
@@ -218,12 +231,12 @@ describe("P16: one predicate issues the label", () => {
   });
 });
 
-describe("WO-245b item 2: the kit sentence is said once", () => {
-  it("draws the kit sentence beside the creator only, and the listed line in the agent part", async () => {
+describe("WO-245b item 2: the credit sentence is said once", () => {
+  it("draws the credit sentence beside the creator only, and the listed line in the agent part", async () => {
     const list = await signedList();
     const markup = await drawFacts(passportOf({}), list, { agentName: CARD_NAME });
-    const kit = words("platform.kit", { platform: PLATFORM });
-    expect(markup.split(kit)).toHaveLength(2);
+    const held = words("platform.held", { platform: PLATFORM });
+    expect(markup.split(held)).toHaveLength(2);
     expect(markup).toContain(words("agentListed", { platform: PLATFORM }));
   });
 });
@@ -238,6 +251,8 @@ describe("WO-245b item 3: the facts strip keeps the two names apart", () => {
     privateRecheck: en.passport.attestations.private.badge,
     sealed: en.passport.sealed.label,
     date: () => "Sep 27, 2026",
+    heldBy: (platform: string) => words("facts.heldBy", { platform }),
+    via: (platform: string) => words("facts.via", { platform }),
     words: en.passport.facts,
   };
   const input = {
@@ -258,18 +273,37 @@ describe("WO-245b item 3: the facts strip keeps the two names apart", () => {
     expect(drawn.detail).toBe(`Agent ${AGENT_ID}, named by its own card`);
   });
 
-  it("leads Made by with the listed platform on a kit passport, the address under it", async () => {
+  it("says Not claimed yet on an unclaimed platform passport, with the platform only as its holder", async () => {
     const list = await signedList();
-    const label = labelFrom(list, passportOf({}));
-    const [made] = topFacts({ ...input, platform: label?.status === "kit" ? label.name : null }, say);
-    expect(made.value).toBe(PLATFORM);
-    expect(made.detail).toBe(shortHex(creatorKey.address));
+    const credit = creditFrom(list, { ...passportOf({}), holder: creatorKey.address, agentOwnerNow: null });
+    expect(credit?.case).toBe("unclaimed");
+    const [made] = topFacts({ ...input, credit }, say);
+    expect(made.value).toBe("Not claimed yet");
+    expect(made.detail).toBe(`${PLATFORM} holds it`);
     expect(made.mono).toBeUndefined();
   });
 
-  it("leaves Made by as the address for every other passport", () => {
-    for (const platform of [null, undefined, "  "]) {
-      const [made] = topFacts({ ...input, platform }, say);
+  it("names the holder on a claimed platform passport, via the platform", async () => {
+    const list = await signedList();
+    const credit = creditFrom(list, { ...passportOf({}), holder: HOLDER.toLowerCase(), agentOwnerNow: null });
+    expect(credit?.case).toBe("claimed");
+    const [made] = topFacts({ ...input, credit }, say);
+    expect(made.value).toBe(shortHex(HOLDER));
+    expect(made.detail).toBe(`via ${PLATFORM}`);
+    expect(made.mono).toBe(true);
+  });
+
+  it("leaves Made by as the creator's address on a co-signed passport and on every other one", async () => {
+    const list = await signedList();
+    const cosigned = creditFrom(list, { ...passportOf({ creator: PERSON }), holder: PERSON, agentOwnerNow: agentOwner.address });
+    expect(cosigned?.case).toBe("cosigned");
+    const [person] = topFacts({ ...input, creator: PERSON, credit: cosigned }, say);
+    expect(person.value).toBe(shortHex(PERSON));
+    expect(person.detail).toBeUndefined();
+    expect(person.mono).toBe(true);
+
+    for (const credit of [null, undefined]) {
+      const [made] = topFacts({ ...input, credit }, say);
       expect(made.value).toBe(shortHex(creatorKey.address));
       expect(made.detail).toBeUndefined();
       expect(made.mono).toBe(true);
@@ -301,10 +335,19 @@ describe("P14: the listed name and the card's own name are two facts", () => {
 describe("P23: holder and creator are two facts", () => {
   it("says registered by one wallet and held by another when they differ", async () => {
     const list = await signedList();
-    const markup = await drawFacts(passportOf({}), list, { owner: HOLDER });
+    // Captured by the listed wallet: no credit case, so the plain differs line is the one that tells it.
+    const captured = passportOf({ kind: 1, generatorAgentId: 0n, manifestHash: ZERO });
+    const markup = await drawFacts(captured, list, { owner: HOLDER });
     expect(markup).toContain(
       words("holder.differs", { creator: shortHex(creatorKey.address), holder: shortHex(HOLDER) }),
     );
+  });
+
+  it("never repeats a claimed passport's handover as the differs line", async () => {
+    const list = await signedList();
+    const markup = await drawFacts(passportOf({}), list, { owner: HOLDER });
+    expect(markup).toContain('data-platform="claimed"');
+    expect(markup).not.toContain("data-holder-differs");
   });
 
   it("says nothing extra when the creator still holds it, whatever the address case", async () => {
@@ -494,7 +537,8 @@ describe("P15: without the list the base words stand and no label shows", () => 
 
     const made = passportOf({});
     expect(labelFrom(tampered, made)).toBeNull();
-    expect(plateMark(tampered, made)).toBeNull();
+    expect(plateMark(tampered, made, null)).toBeNull();
+    expect(creditFrom(tampered, { ...made, holder: HOLDER, agentOwnerNow: agentOwner.address })).toBeNull();
 
     const markup = await drawFacts(made, tampered);
     expect(markup).not.toContain("data-platform");
@@ -520,5 +564,140 @@ describe("WO-245b item 5: the legend names the platform mark", () => {
     expect(line).toContain("motif");
     expect(line).toContain(en.explore.legend.platform);
     expect(markup.indexOf(en.explore.legend.consent)).toBeLessThan(markup.indexOf(en.explore.legend.platform));
+  });
+
+  it("says the platform is where a picture was drawn (WO-257)", () => {
+    expect(en.explore.legend.platform).toBe("Drawn on a platform Moolam lists");
+  });
+});
+
+describe("WO-257: the person who imagined a platform picture is credited, never the platform", () => {
+  it("credits the holder a platform handed the passport to, with the note on what the credit rests on", async () => {
+    const list = await signedList();
+    const markup = await drawFacts(passportOf({}), list, { owner: HOLDER, agentName: CARD_NAME });
+    const line = /<p data-credit-line[^>]*>(.*?)<\/p>/.exec(markup)?.[1] ?? "";
+    expect(line).toContain(`Imagined by ${shortHex(HOLDER)}. Drawn on ${PLATFORM}, which handed the passport to them.`);
+    expect(markup).toContain(words("platform.claimedNote", { platform: PLATFORM }));
+    expect(markup).toContain(words("agentListed", { platform: PLATFORM }));
+  });
+
+  it("credits the person who co-signed with their own key, and names the platform's agent as the one that drew it", async () => {
+    const list = await signedList();
+    const cosigned = passportOf({ creator: PERSON });
+    expect(labelFrom(list, cosigned)).toBeNull();
+
+    const markup = await drawFacts(cosigned, list, { agentOwnerNow: agentOwner.address, agentName: CARD_NAME });
+    expect(markup).toContain('data-platform="cosigned"');
+    const line = /<p data-credit-line[^>]*>(.*?)<\/p>/.exec(markup)?.[1] ?? "";
+    expect(line).toContain(asRendered(`Imagined by ${shortHex(PERSON)}. Drawn by ${PLATFORM}'s agent.`));
+    expect(markup).toContain(words("platform.cosignedNote"));
+    expect(markup).toContain(words("agentListed", { platform: PLATFORM }));
+    // The card's own name stays a separate, self-declared fact below it (P14).
+    expect(markup.indexOf("data-agent-listed")).toBeLessThan(markup.indexOf("data-agent-self-declared"));
+  });
+
+  it("says nothing about a co-signed picture whose agent changed owner since onboarding, nor lists the agent", async () => {
+    const list = await signedList();
+    const cosigned = passportOf({ creator: PERSON });
+    for (const agentOwnerNow of [HOLDER, null]) {
+      const markup = await drawFacts(cosigned, list, { agentOwnerNow, agentName: CARD_NAME });
+      expect(markup).not.toContain("data-credit-line");
+      expect(markup).not.toContain("data-platform");
+      expect(markup).not.toContain("data-agent-listed");
+      expect(markup).toContain(words("agentSelfDeclared", { name: CARD_NAME }));
+    }
+  });
+
+  it("gives a claimed passport a credit only when its holder was read", async () => {
+    const list = await signedList();
+    expect(creditFrom(list, { ...passportOf({}), holder: null, agentOwnerNow: agentOwner.address })).toBeNull();
+    // An agent the list does not name is never read for its owner.
+    expect(await listedAgentOwner(list, 7n)).toBeNull();
+    expect(await listedAgentOwner(list, 0n)).toBeNull();
+  });
+
+  it("marks a plate Drawn on the platform for every credit case, and for no other passport", async () => {
+    const list = await signedList();
+    const cosigned = passportOf({ creator: PERSON });
+    expect(plateMark(list, passportOf({}), null)).toBe(PLATFORM);
+    expect(plateMark(list, cosigned, agentOwner.address)).toBe(PLATFORM);
+    expect(plateMark(list, cosigned, HOLDER)).toBeNull();
+    expect(plateMark(list, cosigned, null)).toBeNull();
+    expect(plateMark(list, passportOf({ creator: PERSON, generatorAgentId: 7n }), agentOwner.address)).toBeNull();
+
+    const plate: ExplorePlate = {
+      id: ID,
+      kind: 0,
+      registeredAt: Number(cosigned.registeredAt),
+      title: "Kites at dusk",
+      thumbnailUrl: null,
+      manifest: true,
+      rechecked: false,
+      chainlink: false,
+      disputed: false,
+      agentId: AGENT_ID.toString(),
+      consent: null,
+      platform: PLATFORM,
+    };
+    const mark = /<span data-plate-platform[^>]*>([\s\S]*?)<\/span><\/span>/.exec(render(createElement(Plate, { plate })))?.[1] ?? "";
+    expect(mark).toContain(`Drawn on ${PLATFORM}`);
+    expect(mark).not.toMatch(/registered|made by/i);
+  });
+
+  it("reads no kit or kitNote key anywhere, in any language", async () => {
+    for (const lang of ["en", "de", "es", "fr", "hi", "ja", "ko", "pt", "ta", "zh"]) {
+      const messages = (await import(`@/messages/${lang}.json`)).default as typeof en;
+      expect(Object.keys(messages.passport.platform), lang).not.toContain("kit");
+      expect(Object.keys(messages.passport.platform), lang).not.toContain("kitNote");
+    }
+    const { readFileSync } = await import("node:fs");
+    const { fileURLToPath } = await import("node:url");
+    for (const path of ["components/passport/Facts.tsx", "components/passport/TopFacts.tsx", "components/passport/top-facts.ts"]) {
+      const text = readFileSync(fileURLToPath(new URL(`../${path}`, import.meta.url)), "utf8");
+      expect(text, path).not.toMatch(/platform\.kit(Note)?["`]/);
+    }
+  });
+});
+
+describe("WO-257: a platform's handover sits with the person's own pictures on /mine", () => {
+  const listing = {
+    id: `0x${"9e".repeat(32)}` as Hex,
+    kind: 0,
+    registeredAt: VALID_FROM + 3_600n,
+    registeredBlock: 1n,
+    metadataURI: "ipfs://bafkreiheld",
+    creator: creatorKey.address,
+    generatorAgentId: AGENT_ID,
+    manifestHash: MANIFEST,
+  };
+  const gift = { ...listing, id: `0x${"8d".repeat(32)}` as Hex, creator: PERSON };
+  const captured = { ...listing, id: `0x${"6b".repeat(32)}` as Hex, kind: 1, generatorAgentId: 0n, manifestHash: ZERO };
+
+  it("moves only the claimed handover out of the held rows, whatever the wallet's address case", async () => {
+    const list = await signedList();
+    const { claimed, held } = splitClaimed([listing, gift, captured], list, HOLDER.toLowerCase());
+    expect(claimed.map((row) => [row.id, row.platform])).toEqual([[listing.id, PLATFORM]]);
+    expect(held.map((row) => row.id)).toEqual([gift.id, captured.id]);
+
+    const refused: PlatformList = { ok: false, platforms: [], reason: "fixture" };
+    expect(splitClaimed([listing, gift], refused, HOLDER).claimed).toEqual([]);
+  });
+
+  it("draws the handover with the line that says where it was drawn, and keeps it out of the held grid", async () => {
+    const list = await signedList();
+    const { claimed, held } = splitClaimed([listing, gift], list, HOLDER);
+
+    const mine = createTranslator({ locale: "en", messages: en, namespace: "mine" });
+    const own = render(createElement(ClaimedPictures, { rows: claimed }));
+    expect(own).toContain(`data-claimed="${listing.id}"`);
+    expect(own).toContain(asRendered(mine("claimedLine", { platform: PLATFORM })));
+    expect(mine("claimedLine", { platform: PLATFORM })).toBe(`Drawn on ${PLATFORM}, which handed the passport to you.`);
+    expect(own).not.toContain("data-held-label");
+    expect(own).not.toContain("data-held-hide");
+
+    const others = render(createElement(HeldGrid, { rows: held, hiddenCount: 0, onHide: () => undefined, onShowHidden: () => undefined }));
+    expect(others).not.toContain(`data-held="${listing.id}"`);
+    expect(others).toContain(`data-held="${gift.id}"`);
+    expect(render(createElement(ClaimedPictures, { rows: [] }))).not.toContain("data-mine-claimed");
   });
 });

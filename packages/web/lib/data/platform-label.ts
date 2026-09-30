@@ -1,8 +1,12 @@
+import { heldAgent } from "@/lib/chain/registry";
 import {
   canonicalOrigin,
+  creditFor as creditRule,
   loadPlatforms,
   platformForOrigin,
   platformLabel,
+  type Credit,
+  type CreditPassport,
   type LabelPassport,
   type PlatformLabel,
   type PlatformList,
@@ -48,13 +52,73 @@ export async function labelFor(passport: LabelPassport): Promise<PlatformLabel |
 }
 
 /**
- * The platform name a plate may wear, or null. Only a "kit" label earns the
- * mark on a plate: a listed wallet's passport made outside the kit is said in
- * full on its own page, where there is room to say why it is not labelled.
+ * Who is credited with one passport, from a list already loaded: the same
+ * creditFor the MCP server calls, so the site and the server never disagree
+ * about who imagined a picture. A refused list credits nobody, and so does a
+ * holder or an agent owner that was not read, which leaves the base words.
  */
-export function plateMark(list: PlatformList, passport: LabelPassport): string | null {
+export function creditFrom(list: PlatformList, passport: CreditPassport, now?: bigint): Credit | null {
+  if (!list.ok) {
+    return null;
+  }
+  return creditRule(passport, list.platforms, now);
+}
+
+/**
+ * Today's owner of a generator agent Moolam lists, through the same held agent
+ * read the agent page and the facts strip make, or null for an agent the list
+ * does not name and for a read that failed. Only a current entry can earn the
+ * co-signed credit, so an agent named only by a retired entry is not read.
+ */
+export async function listedAgentOwner(list: PlatformList, agentId: bigint): Promise<string | null> {
+  if (!list.ok || agentId === 0n || !list.platforms.some((entry) => entry.validTo === null && entry.agentId === agentId)) {
+    return null;
+  }
+  try {
+    return (await heldAgent(agentId.toString())).owner;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The credit for one passport, read against the held list.
+ *
+ * The rule reads the holder only for a listed wallet's passport and the agent's
+ * owner only for any other, so each is asked for only where it can change the
+ * answer: every other passport on the site costs neither read. readHolder is
+ * ownerOf(passportId) as the page already holds it.
+ */
+export async function creditFor(passport: LabelPassport, readHolder: () => Promise<string | null>): Promise<Credit | null> {
+  const list = await heldPlatformList();
+  if (!list.ok) {
+    return null;
+  }
+  const listedCreator = labelFrom(list, passport) !== null;
+  const [holder, agentOwnerNow] = await Promise.all([
+    listedCreator ? readHolder().catch(() => null) : null,
+    listedCreator ? null : listedAgentOwner(list, passport.generatorAgentId),
+  ]);
+  return creditFrom(list, { ...passport, holder, agentOwnerNow });
+}
+
+/**
+ * The platform name a plate may wear, or null: the platform of any credit case.
+ * A listed wallet's passport made outside the kit is said in full on its own
+ * page, where there is room to say why it earns no mark.
+ *
+ * Claimed and unclaimed wear the same mark, and only the holder tells them
+ * apart, so a plate reads the kit label itself and never asks who holds it.
+ * Every other passport goes through the credit rule with the agent's owner
+ * read now, so a co-signed plate loses its mark the moment the agent changes
+ * hands, exactly as its page loses the credit.
+ */
+export function plateMark(list: PlatformList, passport: LabelPassport, agentOwnerNow: string | null): string | null {
   const label = labelFrom(list, passport);
-  return label?.status === "kit" ? label.name : null;
+  if (label !== null) {
+    return label.status === "kit" ? label.name : null;
+  }
+  return creditFrom(list, { ...passport, holder: null, agentOwnerNow })?.platform ?? null;
 }
 
 /** Who a site asking for an address is: its canonical origin, and the listed platform that owns it, if any. */

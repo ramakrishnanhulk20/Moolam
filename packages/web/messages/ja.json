@@ -188,14 +188,14 @@
       "rechecked": "チェーン上で再確認済み",
       "chainlink": "Chainlink ワークフローが再確認",
       "disputed": "異議が認められた",
-      "platform": "{platform} 経由で登録"
+      "platform": "Drawn on {platform}"
     },
     "legend": {
       "manifest": "Content Credentials 付き",
       "rechecked": "チェーン上で再確認済み",
       "disputed": "この画像か、その編集元の画像で異議が認められた",
       "consent": "AI 利用の表明、四つの用途に四つの印",
-      "platform": "Moolam のリストに掲載されたプラットフォーム経由で登録"
+      "platform": "Drawn on a platform Moolam lists"
     },
     "untitled": "無題",
     "noPicture": "ゲートウェイに画像がありません",
@@ -721,8 +721,12 @@
     "passkeyBound": "この制作者のウォレットに結び付いた鍵が、Monad 上でこの画像の指紋に署名しました。",
     "passkeyNone": "この制作者のウォレットにパスキーは結び付けられていません。",
     "platform": {
-      "kit": "{platform} が Moolam プラットフォームキット経由で登録",
-      "kitNote": "{platform} 自身のサーバー鍵が制作者として、そのエージェントが生成エージェントとして署名しました。Moolam が確認したのは、この会社が両方の鍵を持っていることです。会社が誰なのかは確認していません。",
+      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
+      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
+      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
+      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
+      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "このウォレットは {platform} として Moolam のリストに掲載されていますが、この画像は Moolam プラットフォームキットを経由せずに登録されました。"
     },
     "agentListed": "{platform} のエージェントとして Moolam のリストに掲載",
@@ -1118,7 +1122,10 @@
       "noAgent": "エージェントの記載なし",
       "chainlink": "Chainlink",
       "unknownWriter": "不明な書き手",
-      "cardNamed": "{agent}、名前はカードの自己申告"
+      "cardNamed": "{agent}、名前はカードの自己申告",
+      "unclaimed": "Not claimed yet",
+      "heldBy": "{platform} holds it",
+      "via": "via {platform}"
     },
     "ownerHint": "作ったのはあなたですか。サインインすると管理できます。",
     "share": {
@@ -1821,6 +1828,7 @@
     "showcaseCaption": "Monad 上の本物のパスポート。あなたのものも、ここにこのように並びます。",
     "makeFirst": "最初の画像を登録する",
     "signedInAs": "{account} でサインイン中",
+    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
     "held": {
       "heading": "あなたが保有し、ほかの人が作ったもの",
       "label": "保有中、あなたが作ったものではない",
@@ -1865,10 +1873,10 @@
         "label": "描いたエージェント、自己申告"
       },
       "platform": {
-        "label": "プラットフォーム向け",
-        "listed": "プラットフォーム向け、Moolam のリストに掲載",
-        "withheld": "プラットフォーム向け、バッジは非表示",
-        "unlisted": "プラットフォーム向け、Moolam のリストに未掲載",
+        "label": "Drawn on",
+        "listed": "Drawn on, listed by Moolam",
+        "withheld": "Drawn on, badge withheld",
+        "unlisted": "Drawn on, not listed by Moolam",
         "reading": "記録を読み取りしだい、Moolam のリストと照合します。"
       },
       "terms": {
@@ -2090,8 +2098,8 @@
     "invalidLine": "このページを開いたリンクには https のサイトが示されていないため、アドレスの送り先がありません。何も共有していません。"
   },
   "checkout": {
-    "lockListed": "For {platform}, listed by Moolam",
-    "lockUnnamed": "For a site Moolam does not name",
+    "lockListed": "Sent by {platform}, listed by Moolam",
+    "lockUnnamed": "Sent by a site Moolam does not name",
     "more": "See everything you are signing",
     "doneListed": "Done. Taking you back to {platform}.",
     "doneUnlisted": "Done. Taking you back to the site that sent you.",

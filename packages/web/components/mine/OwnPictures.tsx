@@ -7,6 +7,8 @@ import { YourPassports } from "@/components/studio/YourPassports";
 import { Link } from "@/lib/i18n/routing";
 import type { AccountName } from "@/lib/studio/account";
 import { useCreatorPassports } from "@/lib/studio/useCreatorPassports";
+import { ClaimedPictures } from "./ClaimedPictures";
+import { useHeldPassports } from "./held";
 import { HeldPictures } from "./HeldPictures";
 
 /**
@@ -33,6 +35,7 @@ export function OwnPictures({
   onSignOut: () => void;
 }) {
   const passports = useCreatorPassports(wallet);
+  const held = useHeldPassports(wallet);
   const t = useTranslations("mine");
   const studio = useTranslations("studio");
   const name = account.value ?? studio(`identity.kind${capitalise(account.kind)}`);
@@ -63,7 +66,10 @@ export function OwnPictures({
   return (
     <WideLayout>
       <YourPassports passports={passports} heading={t("grid")} lead={lead} empty={empty} />
-      <HeldPictures wallet={wallet} />
+      {/* A platform's handover is this person's own picture, so it follows their
+          grid rather than sitting under "made by others". */}
+      <ClaimedPictures rows={held.claimed} />
+      <HeldPictures held={held} />
     </WideLayout>
   );
 }

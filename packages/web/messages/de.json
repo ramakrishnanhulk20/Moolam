@@ -174,14 +174,14 @@
       "rechecked": "Auf der Kette nachgeprüft",
       "chainlink": "Von einem Chainlink-Workflow nachgeprüft",
       "disputed": "Einspruch stattgegeben",
-      "platform": "Über {platform} eingetragen"
+      "platform": "Drawn on {platform}"
     },
     "legend": {
       "manifest": "Trägt Content Credentials",
       "rechecked": "Auf der Kette nachgeprüft",
       "disputed": "Einspruch stattgegeben, hier oder beim Bild, aus dem es bearbeitet wurde",
       "consent": "Erklärung zur KI-Nutzung, vier Zeichen für vier Nutzungen",
-      "platform": "Über eine von Moolam gelistete Plattform eingetragen"
+      "platform": "Drawn on a platform Moolam lists"
     },
     "untitled": "Ohne Titel",
     "noPicture": "Kein Bild am Gateway",
@@ -707,8 +707,12 @@
     "passkeyBound": "Ein an die Wallet dieses Urhebers gebundener Schlüssel hat den Fingerabdruck dieses Bildes auf Monad signiert.",
     "passkeyNone": "An die Wallet dieses Urhebers ist kein Passkey gebunden.",
     "platform": {
-      "kit": "Von {platform} über das Moolam-Plattformkit eingetragen",
-      "kitNote": "{platform} hat mit dem eigenen Serverschlüssel als Urheber signiert und mit dem eigenen Agenten als Erzeuger. Moolam hat geprüft, dass das Unternehmen beide Schlüssel hält, aber nicht, wer das Unternehmen ist.",
+      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
+      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
+      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
+      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
+      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "Diese Wallet ist als {platform} gelistet, aber dieses Bild wurde nicht über das Moolam-Plattformkit eingetragen."
     },
     "agentListed": "Von Moolam gelistet als Agent von {platform}",
@@ -1104,7 +1108,10 @@
       "noAgent": "Kein Agent genannt",
       "chainlink": "Chainlink",
       "unknownWriter": "Unbekannter Absender",
-      "cardNamed": "{agent}, Name laut seiner eigenen Karte"
+      "cardNamed": "{agent}, Name laut seiner eigenen Karte",
+      "unclaimed": "Not claimed yet",
+      "heldBy": "{platform} holds it",
+      "via": "via {platform}"
     },
     "ownerHint": "Dein Bild? Melde dich an, um es zu verwalten.",
     "share": {
@@ -1807,6 +1814,7 @@
     "showcaseCaption": "Ein echter Pass auf Monad. Deine stehen hier genauso wie dieser.",
     "makeFirst": "Dein erstes Bild eintragen",
     "signedInAs": "Angemeldet als {account}",
+    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
     "held": {
       "heading": "Von dir gehalten, von anderen gemacht",
       "label": "Gehalten, nicht von dir gemacht",
@@ -1851,10 +1859,10 @@
         "label": "Gezeichnet von einem Agenten, laut eigener Angabe"
       },
       "platform": {
-        "label": "Für eine Plattform",
-        "listed": "Für eine Plattform, von Moolam gelistet",
-        "withheld": "Für eine Plattform, Abzeichen zurückgehalten",
-        "unlisted": "Für eine Plattform, nicht von Moolam gelistet",
+        "label": "Drawn on",
+        "listed": "Drawn on, listed by Moolam",
+        "withheld": "Drawn on, badge withheld",
+        "unlisted": "Drawn on, not listed by Moolam",
         "reading": "Wird mit Moolams Liste abgeglichen, sobald der Eintrag gelesen ist."
       },
       "terms": {
@@ -2076,8 +2084,8 @@
     "invalidLine": "Der Link, der diese Seite geöffnet hat, nennt keine https-Website, also gibt es kein Ziel für eine Adresse. Es wurde nichts geteilt."
   },
   "checkout": {
-    "lockListed": "For {platform}, listed by Moolam",
-    "lockUnnamed": "For a site Moolam does not name",
+    "lockListed": "Sent by {platform}, listed by Moolam",
+    "lockUnnamed": "Sent by a site Moolam does not name",
     "more": "See everything you are signing",
     "doneListed": "Done. Taking you back to {platform}.",
     "doneUnlisted": "Done. Taking you back to the site that sent you.",

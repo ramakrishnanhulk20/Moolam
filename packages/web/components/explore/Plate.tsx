@@ -269,9 +269,10 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
 }
 
 /**
- * The platform line at the foot of a plate, drawn only for a passport Moolam's
- * signed list says came through the kit. Shared with the agent page's plates so
- * the mark reads the same on both.
+ * The platform line at the foot of a plate, drawn only for a passport the one
+ * credit rule gives a case: it names where the picture was drawn, never who
+ * made it. Shared with the agent page's plates so the mark reads the same on
+ * both.
  */
 export function PlatformMark({ text }: { text: string }) {
   return (

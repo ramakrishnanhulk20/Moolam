@@ -2,20 +2,19 @@
 
 import { motion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import type { Hex } from "viem";
 import { shortHex } from "@/lib/chain/client";
 import { Link } from "@/lib/i18n/routing";
-import { useHeldPassports, type HeldPassport } from "./held";
+import type { HeldPassport, HeldPassports } from "./held";
 
 /**
  * The passports this wallet holds and did not make, under its own work (P25).
  *
  * Silent while the index is read, and silent when it will not answer: the grid
  * above already reads the same index and says so in words, and a second failure
- * line for the same outage would only repeat it.
+ * line for the same outage would only repeat it. The read is the page's own,
+ * shared with the handovers drawn beside the wallet's own pictures.
  */
-export function HeldPictures({ wallet }: { wallet: Hex }) {
-  const held = useHeldPassports(wallet);
+export function HeldPictures({ held }: { held: HeldPassports }) {
   if (held.status !== "ready" || (held.shown.length === 0 && held.hiddenCount === 0)) {
     return null;
   }

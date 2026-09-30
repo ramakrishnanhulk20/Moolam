@@ -390,6 +390,32 @@ describe("P14 and P16: two names, two trust levels, and a badge only while the a
   });
 });
 
+describe("WO-257: the picture was drawn on the platform, never made for it", () => {
+  it("labels the platform clause Drawn on in every state, and no co-sign line says a picture is for a platform", async () => {
+    const clause = en.cosign.clauses.platform;
+    expect(clause.label).toBe("Drawn on");
+    for (const label of [clause.listed, clause.withheld, clause.unlisted]) {
+      expect(label.startsWith("Drawn on, ")).toBe(true);
+    }
+
+    const said: string[] = [];
+    const walk = (tree: object) => {
+      for (const value of Object.values(tree)) {
+        if (typeof value === "string") said.push(value);
+        else walk(value as object);
+      }
+    };
+    walk(en.cosign);
+    expect(said.filter((line) => /\bfor (a|the) platform\b|\bfor \{platform\}/i.test(line))).toEqual([]);
+
+    stub.list = { ok: true, platforms: [platform()] };
+    const markup = render(model([{ type: "binding", status: "bound" }]), await cosignAgentFacts("4242"));
+    const drawn = /data-clause="platform"[\s\S]*?<\/li>/.exec(markup)?.[0] ?? "";
+    expect(drawn).toContain(clause.listed);
+    expect(drawn).toContain("Acme Studio");
+  });
+});
+
 describe("WO-253: the stage's outline word sits whole in its column in every language", () => {
   it("keeps a word that fits at full size and shrinks a longer one to the column", async () => {
     const { outlineFit } = await import("@/components/cosign/CosignSheet");

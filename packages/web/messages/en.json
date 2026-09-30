@@ -174,14 +174,14 @@
       "rechecked": "Re-checked on chain",
       "chainlink": "Re-checked by a Chainlink workflow",
       "disputed": "Dispute upheld",
-      "platform": "Registered through {platform}"
+      "platform": "Drawn on {platform}"
     },
     "legend": {
       "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
       "disputed": "Dispute upheld, here or on the picture it was edited from",
       "consent": "Statement on AI use, four marks for the four uses",
-      "platform": "Registered through a platform Moolam lists"
+      "platform": "Drawn on a platform Moolam lists"
     },
     "untitled": "Untitled",
     "noPicture": "No picture on the gateway",
@@ -707,8 +707,12 @@
     "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "No passkey is bound to this creator's wallet.",
     "platform": {
-      "kit": "Registered by {platform} through the Moolam platform kit",
-      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
+      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
+      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
+      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
+      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
     },
     "agentListed": "Listed by Moolam as {platform}'s agent",
@@ -1104,7 +1108,10 @@
       "noAgent": "No agent named",
       "chainlink": "Chainlink",
       "unknownWriter": "Unknown writer",
-      "cardNamed": "{agent}, named by its own card"
+      "cardNamed": "{agent}, named by its own card",
+      "unclaimed": "Not claimed yet",
+      "heldBy": "{platform} holds it",
+      "via": "via {platform}"
     },
     "ownerHint": "Made this? Sign in to manage it.",
     "share": {
@@ -1807,6 +1814,7 @@
     "showcaseCaption": "A real passport on Monad. Yours will sit here like this one.",
     "makeFirst": "Register your first picture",
     "signedInAs": "Signed in as {account}",
+    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
     "held": {
       "heading": "Held by you, made by others",
       "label": "Held, not made by you",
@@ -1851,10 +1859,10 @@
         "label": "Drawn by an agent, self-declared"
       },
       "platform": {
-        "label": "For a platform",
-        "listed": "For a platform, listed by Moolam",
-        "withheld": "For a platform, badge withheld",
-        "unlisted": "For a platform, not listed by Moolam",
+        "label": "Drawn on",
+        "listed": "Drawn on, listed by Moolam",
+        "withheld": "Drawn on, badge withheld",
+        "unlisted": "Drawn on, not listed by Moolam",
         "reading": "Checked against Moolam's list once the record is read."
       },
       "terms": {
@@ -2076,8 +2084,8 @@
     "invalidLine": "The link that opened this page names no https site, so there is nowhere to send an address. Nothing was shared."
   },
   "checkout": {
-    "lockListed": "For {platform}, listed by Moolam",
-    "lockUnnamed": "For a site Moolam does not name",
+    "lockListed": "Sent by {platform}, listed by Moolam",
+    "lockUnnamed": "Sent by a site Moolam does not name",
     "more": "See everything you are signing",
     "doneListed": "Done. Taking you back to {platform}.",
     "doneUnlisted": "Done. Taking you back to the site that sent you.",

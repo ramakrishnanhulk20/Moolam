@@ -1,8 +1,8 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import type { ConsentRecord } from "@/components/consent/ConsentSection";
 import { readCard } from "@/components/agent/card";
-import { heldAgent } from "@/lib/chain/registry";
-import { labelFor } from "@/lib/data/platform-label";
+import { heldAgent, heldPassportRecord } from "@/lib/chain/registry";
+import { creditFor } from "@/lib/data/platform-label";
 import type { Attestation, Passport } from "@/lib/chain/registry";
 import { Link } from "@/lib/i18n/routing";
 import type { Art } from "./art";
@@ -26,7 +26,8 @@ const TONES: Record<TopFactTone, string> = {
  * Everything here is read from what the page already holds. The one read of
  * its own is the agent's card, for its name, which is the same held read the
  * agent's page makes; a card that will not answer leaves the number, which is
- * still true.
+ * still true. The credit's holder is the page's own held record, asked for
+ * only when the list names the creator's wallet.
  */
 export async function TopFacts({
   passport,
@@ -44,7 +45,7 @@ export async function TopFacts({
   const t = await getTranslations("passport");
   const kinds = await getTranslations("kind");
   const format = await getFormatter({ locale });
-  const label = await labelFor(passport).catch(() => null);
+  const credit = await creditFor(passport, async () => (await heldPassportRecord(passport.id)).owner).catch(() => null);
 
   const facts = topFacts(
     {
@@ -57,7 +58,7 @@ export async function TopFacts({
       phash: passport.phash,
       sealed: art.sealed === true,
       privateRecheck: art.privateRecheck === true,
-      platform: label?.status === "kit" ? label.name : null,
+      credit,
     },
     {
       kind: (kind) => kinds(String(kind)),
@@ -68,6 +69,8 @@ export async function TopFacts({
       privateRecheck: t("attestations.private.badge"),
       sealed: t("sealed.label"),
       date: (seconds) => format.dateTime(new Date(Number(seconds) * 1000), { dateStyle: "medium" }),
+      heldBy: (platform) => t("facts.heldBy", { platform }),
+      via: (platform) => t("facts.via", { platform }),
       words: Object.fromEntries(TOP_FACT_WORD_KEYS.map((key) => [key, t(`facts.${key}`)])) as TopFactWords,
     },
   );

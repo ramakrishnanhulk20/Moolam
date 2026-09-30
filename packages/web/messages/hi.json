@@ -189,14 +189,14 @@
       "rechecked": "चेन पर दोबारा जाँची गई",
       "chainlink": "एक Chainlink वर्कफ़्लो ने दोबारा जाँचा",
       "disputed": "विवाद सही ठहरा",
-      "platform": "{platform} के ज़रिए दर्ज"
+      "platform": "Drawn on {platform}"
     },
     "legend": {
       "manifest": "Content Credentials साथ हैं",
       "rechecked": "चेन पर दोबारा जाँची गई",
       "disputed": "विवाद सही ठहरा, यहाँ या उस तस्वीर पर जिससे यह संपादित हुई",
       "consent": "AI उपयोग पर कथन, चार उपयोगों के चार निशान",
-      "platform": "Moolam की सूची में शामिल किसी प्लेटफ़ॉर्म के ज़रिए दर्ज"
+      "platform": "Drawn on a platform Moolam lists"
     },
     "untitled": "बिना शीर्षक",
     "noPicture": "गेटवे पर तस्वीर नहीं",
@@ -722,8 +722,12 @@
     "passkeyBound": "इस निर्माता के वॉलेट से जुड़ी एक चाबी ने Monad पर इस तस्वीर के फ़िंगरप्रिंट पर हस्ताक्षर किए।",
     "passkeyNone": "इस निर्माता के वॉलेट से कोई पासकी नहीं जुड़ी है।",
     "platform": {
-      "kit": "{platform} द्वारा Moolam प्लेटफ़ॉर्म किट के ज़रिए दर्ज",
-      "kitNote": "{platform} की अपनी सर्वर चाबी ने निर्माता के रूप में हस्ताक्षर किए, और उसके एजेंट ने बनाने वाले के रूप में। Moolam ने यह जाँचा कि दोनों चाबियाँ इसी कंपनी के पास हैं, यह नहीं कि कंपनी कौन है।",
+      "held": "Imagined on {platform}. {platform} holds this passport until the person who imagined it claims it.",
+      "heldNote": "{platform}'s agent drew the picture and its server key registered it the moment it was made. Moolam checked that {platform} holds both keys, not who the company is.",
+      "claimed": "Imagined by {person}. Drawn on {platform}, which handed the passport to them.",
+      "claimedNote": "The credit rests on {platform}'s handover, since the person did not sign the picture themselves.",
+      "cosigned": "Imagined by {person}. Drawn by {platform}'s agent.",
+      "cosignedNote": "A key bound to their own wallet approved this exact picture before the registry wrote it.",
       "outsideKit": "यह वॉलेट Moolam की सूची में {platform} के नाम से शामिल है, पर यह तस्वीर Moolam प्लेटफ़ॉर्म किट के बाहर दर्ज हुई।"
     },
     "agentListed": "Moolam की सूची में {platform} के एजेंट के रूप में शामिल",
@@ -1119,7 +1123,10 @@
       "noAgent": "कोई एजेंट नहीं बताया",
       "chainlink": "Chainlink",
       "unknownWriter": "अज्ञात लेखक",
-      "cardNamed": "{agent}, नाम इसके अपने कार्ड से"
+      "cardNamed": "{agent}, नाम इसके अपने कार्ड से",
+      "unclaimed": "Not claimed yet",
+      "heldBy": "{platform} holds it",
+      "via": "via {platform}"
     },
     "ownerHint": "आपने बनाई है? इसे सँभालने के लिए साइन इन करें।",
     "share": {
@@ -1822,6 +1829,7 @@
     "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपके पासपोर्ट भी यहाँ ऐसे ही दिखेंगे।",
     "makeFirst": "अपनी पहली तस्वीर दर्ज करें",
     "signedInAs": "{account} के रूप में साइन इन हैं",
+    "claimedLine": "Drawn on {platform}, which handed the passport to you.",
     "held": {
       "heading": "आपके पास, दूसरों की बनाई हुई",
       "label": "आपके पास, आपकी बनाई नहीं",
@@ -1866,10 +1874,10 @@
         "label": "एक एजेंट ने बनाई, स्वघोषित"
       },
       "platform": {
-        "label": "एक प्लेटफ़ॉर्म के लिए",
-        "listed": "एक प्लेटफ़ॉर्म के लिए, Moolam की सूची में शामिल",
-        "withheld": "एक प्लेटफ़ॉर्म के लिए, बैज रोका गया",
-        "unlisted": "एक प्लेटफ़ॉर्म के लिए, Moolam की सूची में नहीं",
+        "label": "Drawn on",
+        "listed": "Drawn on, listed by Moolam",
+        "withheld": "Drawn on, badge withheld",
+        "unlisted": "Drawn on, not listed by Moolam",
         "reading": "रिकॉर्ड पढ़ते ही इसे Moolam की सूची से मिलाया जाएगा।"
       },
       "terms": {
@@ -2091,8 +2099,8 @@
     "invalidLine": "जिस लिंक से यह पन्ना खुला, उसमें किसी https साइट का नाम नहीं है, इसलिए पता भेजने की कोई जगह नहीं है। कुछ भी साझा नहीं हुआ।"
   },
   "checkout": {
-    "lockListed": "For {platform}, listed by Moolam",
-    "lockUnnamed": "For a site Moolam does not name",
+    "lockListed": "Sent by {platform}, listed by Moolam",
+    "lockUnnamed": "Sent by a site Moolam does not name",
     "more": "See everything you are signing",
     "doneListed": "Done. Taking you back to {platform}.",
     "doneUnlisted": "Done. Taking you back to the site that sent you.",

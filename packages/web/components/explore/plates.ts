@@ -2,7 +2,7 @@ import { unstable_cache } from "next/cache";
 import { recordUnread } from "@/components/passport/unread";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { disputedReach } from "@/lib/data/lineage";
-import { heldPlatformList, plateMark } from "@/lib/data/platform-label";
+import { heldPlatformList, labelFrom, listedAgentOwner, plateMark } from "@/lib/data/platform-label";
 import {
   EXPLORE_PAGE,
   explorePassports,
@@ -27,6 +27,11 @@ import { isTestCard, type ExplorePlate } from "./sort";
  * Numbers cross to the browser as plain ones on purpose. A second since the
  * epoch and an agent id both fit, and a bigint cannot travel from a server
  * component to a client one at all.
+ *
+ * A plate wears "Drawn on {platform}" for every credit case. The co-signed case
+ * needs the agent's owner read now, which is asked only for a listed agent's
+ * passport whose creator is not a listed wallet, through the held agent read
+ * that answers every such row of one agent at once.
  */
 export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate[]> {
   const platforms = await heldPlatformList();
@@ -36,6 +41,20 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
       // published since, and the record that says so is filed under the
       // passport rather than under the document.
       const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI, row.id);
+      const passport =
+        row.creator === undefined
+          ? null
+          : {
+              creator: row.creator,
+              kind: row.kind,
+              generatorAgentId: /^[0-9]{1,78}$/.test(row.generatorId ?? "") ? BigInt(row.generatorId as string) : 0n,
+              manifestHash: row.manifestHash ?? "",
+              registeredAt: row.registeredAt,
+            };
+      const agentOwnerNow =
+        passport === null || labelFrom(platforms, passport) !== null
+          ? null
+          : await listedAgentOwner(platforms, passport.generatorAgentId);
       return {
         id: row.id,
         kind: row.kind,
@@ -51,16 +70,7 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         sealed: art?.sealed === true,
         blockhash: art?.blockhash,
         unread: recordUnread(art),
-        platform:
-          row.creator === undefined
-            ? null
-            : plateMark(platforms, {
-                creator: row.creator,
-                kind: row.kind,
-                generatorAgentId: /^[0-9]{1,78}$/.test(row.generatorId ?? "") ? BigInt(row.generatorId as string) : 0n,
-                manifestHash: row.manifestHash ?? "",
-                registeredAt: row.registeredAt,
-              }),
+        platform: passport === null ? null : plateMark(platforms, passport, agentOwnerNow),
       };
     }),
   );

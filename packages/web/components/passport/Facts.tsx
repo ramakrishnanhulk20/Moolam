@@ -5,7 +5,8 @@ import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/cli
 import type { Passport } from "@/lib/chain/registry";
 import { CopyButton } from "@/components/studio/CopyButton";
 import { Link } from "@/lib/i18n/routing";
-import type { PlatformLabel } from "@/lib/platforms/platforms";
+import { creditFor } from "@/lib/data/platform-label";
+import type { Credit, PlatformLabel } from "@/lib/platforms/platforms";
 import type { SealedCopyLookup } from "@/lib/verifier/client";
 import { aboutLine } from "./about";
 import { cidOf, pinnedUri, type Art } from "./art";
@@ -37,6 +38,7 @@ export async function Facts({
   txHash,
   privateCopy,
   platform = null,
+  credit,
   agentName = null,
 }: {
   passport: Passport;
@@ -49,6 +51,12 @@ export async function Facts({
   privateCopy?: SealedCopyLookup["state"];
   /** What Moolam's signed platform list says about this passport, from lib/data/platform-label.ts only. */
   platform?: PlatformLabel | null;
+  /**
+   * Who the one credit rule names for this picture. Left out, it is read here
+   * from the list and the holder above, so the page and the facts strip ask the
+   * same question the same way.
+   */
+  credit?: Credit | null;
   /** The name the agent's own ERC-8004 card gives itself, or null when it names nothing or would not load. */
   agentName?: string | null;
 }) {
@@ -64,6 +72,8 @@ export async function Facts({
   // shown as text and never becomes a link a visitor's browser follows.
   const metadataLink = pinnedUri(passport.metadataURI);
   const unsealedLink = art.unsealed === undefined ? undefined : pinnedUri(art.unsealed.record.uri);
+  const credited = credit !== undefined ? credit : await creditFor(passport, async () => owner).catch(() => null);
+  const said = credited === null ? null : creditWords(credited, t);
 
   return (
     <div className="mx-auto grid w-full max-w-[1400px] gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-20">
@@ -103,18 +113,22 @@ export async function Facts({
               </p>
               {/* An addition to the words above, never a replacement: without
                   the list this passport still reads true, it only loses the
-                  name. */}
-              {platform === null ? null : platform.status === "kit" ? (
-                <div data-platform="kit" className="mt-4 max-w-[58ch] border-s-2 border-accent/60 ps-5">
-                  <p className="flex items-center gap-2.5 font-display text-[17px] font-semibold leading-snug tracking-[-0.01em] text-text">
+                  credit. The person who imagined the picture leads; the
+                  platform is only where it was drawn. */}
+              {credited !== null && said !== null ? (
+                <div data-platform={credited.case} className="mt-4 max-w-[58ch] border-s-2 border-accent/60 ps-5">
+                  <p
+                    data-credit-line
+                    className="flex items-center gap-2.5 font-display text-[17px] font-semibold leading-snug tracking-[-0.01em] text-text"
+                  >
                     <span aria-hidden className="motif h-[8px] w-[8px] shrink-0" />
-                    {t("platform.kit", { platform: platform.name })}
+                    {said.line}
                   </p>
-                  <p className="mt-2 text-base leading-relaxed text-text-muted">
-                    {t("platform.kitNote", { platform: platform.name })}
+                  <p data-credit-note className="mt-2 text-base leading-relaxed text-text-muted">
+                    {said.note}
                   </p>
                 </div>
-              ) : (
+              ) : platform?.status !== "outsideKit" ? null : (
                 <p
                   data-platform="outsideKit"
                   className="mt-4 max-w-[58ch] border-s-2 border-line-strong ps-5 text-base leading-relaxed text-text-muted"
@@ -143,7 +157,8 @@ export async function Facts({
                   <CopyButton value={owner} />
                 </span>
               )}
-              {owner !== null && heldElsewhere(passport.creator, owner) ? (
+              {/* The claimed line above already names the holder and the handover. */}
+              {owner !== null && credited?.case !== "claimed" && heldElsewhere(passport.creator, owner) ? (
                 <p data-holder-differs className="mt-2 max-w-[58ch] text-base leading-relaxed text-text-muted">
                   {t("holder.differs", { creator: shortHex(passport.creator), holder: shortHex(owner) })}
                 </p>
@@ -167,10 +182,10 @@ export async function Facts({
               {/* Two names, two trust levels, never one line (P14). The first
                   is Moolam's signed list speaking; the second is whatever the
                   agent's owner wrote on its card. */}
-              {passport.generatorAgentId !== 0n && platform?.status === "kit" ? (
+              {passport.generatorAgentId !== 0n && credited !== null ? (
                 <p data-agent-listed className="mt-3 flex max-w-[58ch] items-center gap-2.5 text-base leading-relaxed text-text">
                   <span aria-hidden className="motif h-[7px] w-[7px] shrink-0" />
-                  {t("agentListed", { platform: platform.name })}
+                  {t("agentListed", { platform: credited.platform })}
                 </p>
               ) : null}
               {passport.generatorAgentId !== 0n && agentName !== null && agentName.trim() !== "" ? (
@@ -328,6 +343,30 @@ export async function Facts({
       </section>
     </div>
   );
+}
+
+type PersonKey = "platform.claimed" | "platform.claimedNote" | "platform.cosigned" | "platform.cosignedNote";
+
+/**
+ * The credit case's sentence and the note on what it rests on. A case that
+ * names a person with no address to name falls back to the held words, which
+ * claim nobody.
+ */
+export function creditWords(
+  credit: Credit,
+  t: {
+    (key: "platform.held" | "platform.heldNote", values: { platform: string }): string;
+    (key: PersonKey, values: { platform: string; person: string }): string;
+  },
+): { line: string; note: string } {
+  const { platform, imaginedBy } = credit;
+  if (imaginedBy !== null && credit.case !== "unclaimed") {
+    const values = { platform, person: shortHex(imaginedBy) };
+    return credit.case === "claimed"
+      ? { line: t("platform.claimed", values), note: t("platform.claimedNote", values) }
+      : { line: t("platform.cosigned", values), note: t("platform.cosignedNote", values) };
+  }
+  return { line: t("platform.held", { platform }), note: t("platform.heldNote", { platform }) };
 }
 
 /**

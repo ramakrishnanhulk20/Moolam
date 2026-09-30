@@ -177,7 +177,7 @@ describe("the compact co-sign keeps the full page's button and its P1 gate", () 
   });
 
   it("names a listed platform in the lock line, and no name when the badge is withheld or there is no listing", () => {
-    expect(markup(sheet(model([PASSED]), LISTED, true))).toContain("For Acme Studio, listed by Moolam");
+    expect(markup(sheet(model([PASSED]), LISTED, true))).toContain("Sent by Acme Studio, listed by Moolam");
     const withheld = markup(sheet(model([PASSED]), WITHHELD, true));
     expect(withheld).toContain(en.checkout.lockUnnamed);
     expect(withheld).not.toContain("For Acme Studio");
@@ -441,7 +441,7 @@ describe("the close, on the pages themselves", () => {
     const host = await mount(panel({ origin: "https://acme.example", name: "Acme Studio" }, true, true));
     expect(host.querySelector("[data-exact-address]")?.getAttribute("data-exact-address")).toBe(WALLET);
     expect(host.querySelector("[data-asking-origin]")?.textContent).toBe("https://acme.example");
-    expect(host.querySelector("[data-lock-line]")?.textContent).toBe("For Acme Studio, listed by Moolam");
+    expect(host.querySelector("[data-lock-line]")?.textContent).toBe("Sent by Acme Studio, listed by Moolam");
     expect(host.querySelector("[data-connect-share]")?.className).toContain("w-full");
     expect(host.querySelector("[data-connect-cancel]")?.className).not.toContain("bg-accent");
     expect(host.querySelectorAll("button.bg-accent, button[class*=' bg-accent ']").length).toBe(1);

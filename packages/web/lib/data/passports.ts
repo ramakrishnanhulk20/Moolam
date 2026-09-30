@@ -227,24 +227,52 @@ export async function passportsByCreator(address: Hex, limit = 24, offset = 0): 
   );
 }
 
+/** A held row with the fields the credit rule reads, so /mine can tell a platform's handover from a gift. */
+export interface HeldListing extends PassportListing {
+  creator: Hex;
+  /** Zero when the index names no generating agent. */
+  generatorAgentId: bigint;
+  manifestHash: string;
+}
+
+interface HeldRow extends ListingRow {
+  manifestHash: string;
+  generator: { id: string } | null;
+  creator: { id: Hex } | null;
+}
+
 /**
  * Passports this wallet holds today and did not register, newest first.
  *
  * Made and held are two facts (P23, P25): a passport transferred to someone is
  * theirs to hold, never theirs to have made, so /mine lists these apart from
  * the creator's own rows. The index writes the holder lowercased on every
- * transfer, which is the field this reads.
+ * transfer, which is the field this reads. The creator, the agent and the
+ * manifest word come in the same query, so the one case where the holder is
+ * the person who imagined the picture (a listed platform's handover) costs no
+ * second read.
  */
-export async function passportsHeldNotMade(address: Hex, limit = 24, offset = 0): Promise<PassportListing[]> {
+export async function passportsHeldNotMade(address: Hex, limit = 24, offset = 0): Promise<HeldListing[]> {
   const holder = address.toLowerCase();
-  return await listPassports(
+  const rows = await listRows<HeldRow>(
     `query PassportsHeldNotMade($holder: String!, $limit: Int!, $offset: Int!) {
       Passport(where: { owner: { _eq: $holder }, creator_id: { _neq: $holder } }, order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit, offset: $offset) {
         ${LISTING_FIELDS}
+        manifestHash
+        generator { id }
+        creator { id }
       }
     }`,
     { holder, limit, offset },
   );
+  // A row the index wrote without its creator cannot be credited, and an empty
+  // creator reads as no listed wallet, so it stays with the held pictures.
+  return rows.map((row) => ({
+    ...toListing(row),
+    creator: row.creator?.id ?? ("0x" as Hex),
+    generatorAgentId: /^[0-9]{1,78}$/.test(row.generator?.id ?? "") ? BigInt(row.generator?.id as string) : 0n,
+    manifestHash: row.manifestHash,
+  }));
 }
 
 /** Every passport one generating agent signed for, newest first. */
@@ -281,7 +309,7 @@ async function listPassports(query: string, variables: Record<string, unknown>):
   return (await listRows(query, variables)).map(toListing);
 }
 
-async function listRows(query: string, variables: Record<string, unknown>): Promise<ListingRow[]> {
+async function listRows<Row = ListingRow>(query: string, variables: Record<string, unknown>): Promise<Row[]> {
   const response = await fetch(envioUrl(), {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -296,7 +324,7 @@ async function listRows(query: string, variables: Record<string, unknown>): Prom
 
   const body = (await response.json()) as {
     errors?: { message: string }[];
-    data?: { Passport: ListingRow[] };
+    data?: { Passport: Row[] };
   };
 
   if (body.errors !== undefined && body.errors.length > 0) {
