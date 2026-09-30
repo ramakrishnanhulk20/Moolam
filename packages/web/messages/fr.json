@@ -183,14 +183,14 @@
       "rechecked": "Revérifiée sur la chaîne",
       "chainlink": "Revérifiée par un workflow Chainlink",
       "disputed": "Contestation retenue",
-      "platform": "Registered through {platform}"
+      "platform": "Enregistrée via {platform}"
     },
     "legend": {
       "manifest": "Porte des Content Credentials",
       "rechecked": "Revérifiée sur la chaîne",
       "disputed": "Contestation retenue, ici ou sur l'image dont elle est une retouche",
       "consent": "Déclaration sur l'usage par l'IA, quatre marques pour quatre usages",
-      "platform": "Registered through a platform Moolam lists"
+      "platform": "Enregistrée via une plateforme que Moolam répertorie"
     },
     "untitled": "Sans titre",
     "noPicture": "Aucune image sur la passerelle",
@@ -713,17 +713,17 @@
     "noPicture": "Le stockage de l’image ne répond pas pour le moment. Réessayez dans une minute.",
     "fingerprintVersion": "Version d’empreinte {version}",
     "record": "L’enregistrement",
-    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
+    "passkeyBound": "Une clé liée au portefeuille de ce créateur a signé l'empreinte de cette image sur Monad.",
     "passkeyNone": "Aucune clé d’accès n’est liée au compte de ce créateur.",
     "platform": {
-      "kit": "Registered by {platform} through the Moolam platform kit",
-      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
-      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+      "kit": "Enregistré par {platform} via le kit Moolam pour plateformes",
+      "kitNote": "La clé serveur propre à {platform} a signé en tant que créateur, et l'agent de la plateforme a signé en tant qu'agent générateur. Moolam a vérifié que l'entreprise détient les deux clés, pas qui est cette entreprise.",
+      "outsideKit": "Ce portefeuille est répertorié sous le nom {platform}, mais cette image a été enregistrée hors du kit Moolam pour plateformes."
     },
-    "agentListed": "Listed by Moolam as {platform}'s agent",
-    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "agentListed": "Répertorié par Moolam comme agent de la plateforme {platform}",
+    "agentSelfDeclared": "Sa propre carte l'appelle {name}. Moolam n'a pas vérifié ce nom.",
     "holder": {
-      "differs": "Registered by {creator}. Now held by {holder}."
+      "differs": "Enregistré par {creator}. Désormais détenu par {holder}."
     },
     "noAgent": "Aucun agent générateur. Celle-ci a été enregistrée à partir d’un fichier téléversé par le créateur.",
     "agentNumber": "Agent {id}",
@@ -915,9 +915,9 @@
       "conditionsLabel": "Conditions, dans les mots du détenteur",
       "conditionsApplyTo": "S'applique à {uses}.",
       "statedBy": "Déclarée par",
-      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
-      "atGeneration": "Stated at generation",
-      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
+      "platformStanding": "{platform} a fait cette déclaration. Elle vaut jusqu'à ce que le détenteur du passeport, quel qu'il soit, en écrive une nouvelle.",
+      "atGeneration": "Déclarée lors de la génération",
+      "differs": "La déclaration écrite dans le fichier diffère de celle inscrite sur Monad. C'est celle de Monad qui est en vigueur.",
       "writtenLabel": "Écrite le",
       "empty": {
         "body": "Personne n'a écrit de déclaration pour cette image. Ce silence est rapporté tel quel, parce que c'est ce qu'il est : il n'autorise aucun usage.",
@@ -1113,7 +1113,7 @@
       "noAgent": "Aucun agent nommé",
       "chainlink": "Chainlink",
       "unknownWriter": "Auteur inconnu",
-      "cardNamed": "{agent}, named by its own card"
+      "cardNamed": "{agent}, nommé ainsi par sa propre carte"
     },
     "ownerHint": "Vous l’avez créée ? Connectez-vous pour la gérer.",
     "share": {
@@ -1817,10 +1817,10 @@
     "makeFirst": "Enregistrer votre première image",
     "signedInAs": "Connecté en tant que {account}",
     "held": {
-      "heading": "Held by you, made by others",
-      "label": "Held, not made by you",
-      "hide": "Hide",
-      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+      "heading": "Détenu par vous, fait par d'autres",
+      "label": "Détenue, pas faite par vous",
+      "hide": "Masquer",
+      "showHidden": "{count, plural, one {Afficher # image masquée} many {Afficher # d'images masquées} other {Afficher # images masquées}}"
     }
   },
   "crMark": {
@@ -1831,257 +1831,257 @@
     "untrustedSigner": "L’identité du signataire ne peut pas être vérifiée : la clé qui a signé cet enregistrement ne figure pas sur la C2PA Trust List."
   },
   "cosign": {
-    "metaTitle": "Co-sign a picture",
-    "metaDescription": "Sign as the creator of a picture an AI image site made for you, with your own passkey.",
-    "outline": "Co-sign",
-    "kickerNamed": "From {platform} · {id}",
-    "kickerPlain": "Co-sign request · {id}",
-    "kickerSignedOut": "Co-sign request",
-    "untitled": "A picture made for you",
-    "sender": "the site that sent you",
-    "heading": "You are about to sign",
-    "signedOut": "Shown once you sign in.",
+    "metaTitle": "Cosigner une image",
+    "metaDescription": "Signez en tant que créateur d'une image qu'un site d'images par IA a faite pour vous, avec votre propre clé d'accès.",
+    "outline": "Cosigner",
+    "kickerNamed": "Envoyée par {platform} · {id}",
+    "kickerPlain": "Demande de cosignature · {id}",
+    "kickerSignedOut": "Demande de cosignature",
+    "untitled": "Une image faite pour vous",
+    "sender": "le site qui vous a envoyé ici",
+    "heading": "Vous êtes sur le point de signer",
+    "signedOut": "Visible une fois que vous êtes connecté.",
     "print": {
-      "signedOut": "The picture is shown here once you sign in.",
-      "waiting": "The picture is shown here once the agent has signed and it is pinned.",
-      "withheld": "Nothing is drawn: the file the gateway handed over did not match the passport.",
-      "none": "No picture to show."
+      "signedOut": "L'image s'affiche ici une fois que vous êtes connecté.",
+      "waiting": "L'image s'affiche ici une fois que l'agent a signé et qu'elle est épinglée.",
+      "withheld": "Aucune image affichée : le fichier remis par la passerelle ne correspondait pas au passeport.",
+      "none": "Aucune image à afficher."
     },
     "caption": {
       "agent": "Agent {id}"
     },
     "clauses": {
       "picture": {
-        "label": "This picture",
-        "body": "The print shown here, byte for byte.",
+        "label": "Cette image",
+        "body": "Le tirage affiché ici, octet pour octet.",
         "hash": "sha256 {hash}"
       },
       "agent": {
-        "label": "Drawn by an agent, self-declared"
+        "label": "Dessinée par un agent, autodéclaré"
       },
       "platform": {
-        "label": "For a platform",
-        "listed": "For a platform, listed by Moolam",
-        "withheld": "For a platform, badge withheld",
-        "unlisted": "For a platform, not listed by Moolam",
-        "reading": "Checked against Moolam's list once the record is read."
+        "label": "Pour une plateforme",
+        "listed": "Pour une plateforme, répertoriée par Moolam",
+        "withheld": "Pour une plateforme, badge non affiché",
+        "unlisted": "Pour une plateforme, non répertoriée par Moolam",
+        "reading": "Vérifiée dans la liste de Moolam une fois l'enregistrement lu."
       },
       "terms": {
-        "label": "Under these AI-use terms, as stated",
-        "pending": "Read from the picture's own file once it is pinned."
+        "label": "Selon cette déclaration sur l'usage par l'IA, telle que formulée",
+        "pending": "Lue dans le fichier de l'image elle-même, une fois celle-ci épinglée."
       },
       "creator": {
-        "label": "In your name",
-        "unset": "The first account to sign in becomes the creator, once and for good. Sign in with the one you want it under.",
-        "set": "You become its creator, and the passport lands in your account.",
-        "other": "Another account opened this link first and is its creator."
+        "label": "En votre nom",
+        "unset": "Le premier compte qui se connecte devient le créateur, une fois pour toutes. Connectez-vous avec le compte au nom duquel l'image doit être enregistrée.",
+        "set": "Vous devenez son créateur, et le passeport arrive dans votre compte.",
+        "other": "Un autre compte a ouvert ce lien en premier et en est le créateur."
       },
       "until": {
-        "label": "Until",
-        "body": "{time}, chain time. After that the registry refuses it and nothing is sent.",
-        "unset": "Thirty minutes from the moment the link is first opened, on the chain's clock. After that the registry refuses it and nothing is sent."
+        "label": "Jusqu'à",
+        "body": "{time}, heure de la chaîne. Au-delà, le registre refuse l'enregistrement et rien n'est envoyé.",
+        "unset": "Trente minutes à partir de la première ouverture du lien, à l'horloge de la chaîne. Au-delà, le registre refuse l'enregistrement et rien n'est envoyé."
       }
     },
     "agent": {
-      "noName": "Its card carries no name",
+      "noName": "Sa carte ne porte pas de nom",
       "id": "Agent {id}",
-      "owner": "owner {owner}",
-      "unchecked": "Moolam did not check the company behind this name."
+      "owner": "propriétaire {owner}",
+      "unchecked": "Moolam n'a pas vérifié quelle entreprise se trouve derrière ce nom."
     },
     "platform": {
-      "listedLine": "Onboarded with signatures from agent {agent}'s owner and its wallet.",
-      "withheldName": "Name withheld",
-      "withheldLine": "Agent {agent} has changed owner since its platform was listed, so Moolam does not vouch for the pairing and does not name it.",
-      "unlistedName": "Not on Moolam's list",
-      "unlistedLine": "Moolam lists no platform for agent {agent}, so no platform is named here."
+      "listedLine": "Ajoutée à la liste de Moolam avec les signatures du propriétaire de l'agent {agent} et du portefeuille de la plateforme.",
+      "withheldName": "Nom non affiché",
+      "withheldLine": "L'agent {agent} a changé de propriétaire depuis que sa plateforme a été répertoriée : Moolam ne se porte donc pas garant de cette association et ne nomme pas la plateforme.",
+      "unlistedName": "Pas sur la liste de Moolam",
+      "unlistedLine": "Moolam ne répertorie aucune plateforme pour l'agent {agent}, donc aucune plateforme n'est nommée ici."
     },
     "terms": {
-      "open": "Open to AI use, training included",
-      "closed": "Not for AI training or any other AI use",
-      "ask": "Ask the creator first",
-      "mixed": "Allowed for some uses, not others",
-      "none": "Nothing stated about AI use"
+      "open": "Ouverte à l'usage par l'IA, entraînement compris",
+      "closed": "Pas pour entraîner une IA, ni pour aucun autre usage par l'IA",
+      "ask": "Demandez d'abord au créateur",
+      "mixed": "Autorisée pour certains usages, pas pour d'autres",
+      "none": "Rien de déclaré sur l'usage par l'IA"
     },
     "states": {
       "loading": {
-        "kicker": "Reading the record",
-        "headline": "Opening this co-sign link.",
-        "line": "This page reads the link in your browser and asks for the record only once you are signed in."
+        "kicker": "Lecture de l'enregistrement",
+        "headline": "Ouverture de ce lien de cosignature.",
+        "line": "Cette page lit le lien dans votre navigateur et ne demande l'enregistrement qu'une fois que vous êtes connecté."
       },
       "notFound": {
-        "kicker": "Nothing here",
-        "headline": "This co-sign link does not lead anywhere.",
-        "line": "The link is incomplete, was already used, or was never made. Nothing was signed.",
-        "note": "Ask the site that sent you for a new link."
+        "kicker": "Rien ici",
+        "headline": "Ce lien de cosignature ne mène nulle part.",
+        "line": "Le lien est incomplet, a déjà servi ou n'a jamais été créé. Rien n'a été signé.",
+        "note": "Retournez sur le site qui vous a envoyé ici pour demander un nouveau lien."
       },
       "signIn": {
-        "kicker": "Sign in to continue",
-        "headline": "Sign in with the account this picture should be under.",
-        "line": "The first account to open this link becomes the picture's creator, and only that account can sign it. The site that sent you cannot choose it for you.",
-        "primary": "Sign in",
-        "note": "Email, Google or a passkey. An account is made for you if you have none."
+        "kicker": "Connectez-vous pour continuer",
+        "headline": "Connectez-vous avec le compte au nom duquel cette image doit être enregistrée.",
+        "line": "Le premier compte qui ouvre ce lien devient le créateur de l'image, et lui seul peut la signer. Le site qui vous a envoyé ici ne peut pas le choisir à votre place.",
+        "primary": "Se connecter",
+        "note": "E-mail, Google ou clé d'accès. Un compte est créé pour vous si vous n'en avez pas."
       },
       "makePasskey": {
-        "kicker": "One setup step",
-        "headline": "Make a passkey. It becomes your signature.",
-        "line": "A passkey is the fingerprint, face unlock or PIN this device already uses. It stays on the device: Moolam only ever sees the public half.",
-        "primary": "Make a passkey",
-        "note": "One transaction, network fee paid by Moolam."
+        "kicker": "Une étape de réglage",
+        "headline": "Créez une clé d'accès. Elle devient votre signature.",
+        "line": "Une clé d'accès, c'est l'empreinte digitale, le déverrouillage par le visage ou le code PIN que cet appareil utilise déjà. Elle reste sur l'appareil : Moolam n'en voit jamais que la moitié publique.",
+        "primary": "Créer une clé d'accès",
+        "note": "Une transaction, frais de réseau payés par Moolam."
       },
       "passkeyElsewhere": {
-        "kicker": "Your passkey lives elsewhere",
-        "headline": "This account's passkey was made on another device.",
-        "line": "Open this link on that device to sign with it, or replace it with this device's unlock. Replacing costs one transaction, and the old passkey stops working for new pictures.",
-        "primary": "Use my passkey",
-        "secondary": "Replace it with this device"
+        "kicker": "Votre clé d'accès vit ailleurs",
+        "headline": "La clé d'accès de ce compte a été créée sur un autre appareil.",
+        "line": "Ouvrez ce lien sur l'autre appareil pour signer avec cette clé, ou remplacez-la par le déverrouillage de cet appareil. Le remplacement coûte une transaction, et l'ancienne clé d'accès cesse de fonctionner pour les nouvelles images.",
+        "primary": "Utiliser ma clé d'accès",
+        "secondary": "La remplacer par cet appareil"
       },
       "wrongWallet": {
-        "kicker": "Opened by another account",
-        "headline": "This picture is waiting for a different account.",
-        "line": "Another account opened this link first, and only that account can sign it. You are signed in as {wallet}.",
-        "secondary": "Sign out",
-        "note": "Signed in with the wrong account? Sign out and back in with the right one. Otherwise ask {platform} for a new link."
+        "kicker": "Lien ouvert par un autre compte",
+        "headline": "Cette image attend un autre compte.",
+        "line": "Un autre compte a ouvert ce lien en premier, et seul ce compte peut signer. Vous êtes connecté en tant que {wallet}.",
+        "secondary": "Se déconnecter",
+        "note": "Connecté avec le mauvais compte ? Déconnectez-vous et reconnectez-vous avec le bon. Sinon, retournez sur {platform} pour demander un nouveau lien."
       },
       "waitingAgent": {
-        "kicker": "Waiting for the agent",
-        "headline": "Waiting for agent {agent} to sign.",
-        "line": "The agent signs the same record from its own key, then the picture is pinned. Your passkey step opens by itself once both are done.",
-        "note": "Usually under a minute. You can leave this tab open."
+        "kicker": "En attente de l'agent",
+        "headline": "En attente de la signature de l'agent {agent}.",
+        "line": "L'agent signe le même enregistrement avec sa propre clé, puis l'image est épinglée. L'étape de votre clé d'accès s'ouvre d'elle-même une fois les deux terminées.",
+        "note": "En général moins d'une minute. Vous pouvez laisser cet onglet ouvert."
       },
       "ready": {
-        "kicker": "Ready to sign",
-        "headline": "Everything checks out. Sign with your passkey.",
-        "line": "This browser rebuilt the record from what you see here, and it matches the one the agent signed and the one the registry expects.",
-        "primary": "Sign with passkey",
-        "note": "Network fee paid by Moolam."
+        "kicker": "Prêt à signer",
+        "headline": "Tout concorde. Signez avec votre clé d'accès.",
+        "line": "Ce navigateur a reconstitué l'enregistrement à partir de ce que vous voyez ici, et il correspond à celui que l'agent a signé ainsi qu'à celui qu'attend le registre.",
+        "primary": "Signer avec la clé d'accès",
+        "note": "Frais de réseau payés par Moolam."
       },
       "checking": {
-        "kicker": "Checking",
-        "headline": "Checking the picture and the record.",
-        "line": "This browser is hashing the picture and rebuilding the record from what you see here, to hold against the one the agent signed and the one the registry expects. The button opens when all three agree.",
-        "primary": "Checking"
+        "kicker": "Vérification",
+        "headline": "Vérification de l'image et de l'enregistrement.",
+        "line": "Ce navigateur hache l'image et reconstitue l'enregistrement à partir de ce que vous voyez ici, pour le comparer à celui que l'agent a signé et à celui qu'attend le registre. Le bouton s'active quand les trois concordent.",
+        "primary": "Vérification en cours"
       },
       "signing": {
-        "kicker": "Signing",
-        "headline": "Waiting for your fingerprint or face unlock.",
-        "headlineSending": "Sending the passport to Monad.",
-        "headlineConfirming": "Waiting for Monad's receipt.",
-        "line": "Then the passport goes to Monad, network fee paid by Moolam. It takes a few seconds."
+        "kicker": "Signature en cours",
+        "headline": "En attente de votre empreinte digitale ou du déverrouillage par le visage.",
+        "headlineSending": "Envoi du passeport sur Monad.",
+        "headlineConfirming": "En attente du reçu de Monad.",
+        "line": "Ensuite, le passeport part sur Monad, frais de réseau payés par Moolam. Cela prend quelques secondes."
       },
       "registered": {
-        "kicker": "Registered on Monad",
-        "headline": "Done. The passport is in your account.",
-        "line": "Anyone who checks a copy of this picture now finds you as its creator and agent {agent} as the agent that drew it.",
-        "primary": "Open the passport"
+        "kicker": "Enregistré sur Monad",
+        "headline": "C'est fait. Le passeport est dans votre compte.",
+        "line": "Désormais, quiconque vérifie une copie de cette image voit que vous en êtes le créateur et que l'agent {agent} est celui qui l'a dessinée.",
+        "primary": "Ouvrir le passeport"
       },
       "expired": {
-        "kicker": "This link ran out",
-        "headline": "The signing window closed at {time}.",
-        "headlinePlain": "The signing window has closed.",
-        "line": "Nothing was signed and nothing was sent.",
-        "note": "Ask {platform} for a fresh link."
+        "kicker": "Ce lien a expiré",
+        "headline": "La fenêtre de signature s'est fermée à {time}.",
+        "headlinePlain": "La fenêtre de signature s'est fermée.",
+        "line": "Rien n'a été signé et rien n'a été envoyé.",
+        "note": "Retournez sur {platform} pour demander un nouveau lien."
       },
       "failed": {
         "mismatch": {
-          "kicker": "Stopped before signing",
-          "headline": "The record did not match what this page shows.",
-          "line": "This browser rebuilt the record from the picture and facts on this page, and the registry expected something else, so your passkey was never asked. Nothing was signed.",
-          "note": "Ask {platform} for a fresh link."
+          "kicker": "Arrêt avant la signature",
+          "headline": "L'enregistrement ne correspondait pas à ce que montre cette page.",
+          "line": "Ce navigateur a reconstitué l'enregistrement à partir de l'image et des informations de cette page, et le registre attendait autre chose : votre clé d'accès n'a donc jamais été sollicitée. Rien n'a été signé.",
+          "note": "Retournez sur {platform} pour demander un nouveau lien."
         },
         "taken": {
-          "kicker": "Already registered",
-          "headline": "Another passport already holds this picture.",
-          "line": "The registry has a passport for these exact bytes, held by {holder}. The first registration wins, so there is nothing left to sign here.",
-          "linePlain": "The registry has a passport for these exact bytes. The first registration wins, so there is nothing left to sign here.",
-          "primary": "Open that passport",
-          "note": "Ask {platform} about it."
+          "kicker": "Déjà enregistrée",
+          "headline": "Un autre passeport détient déjà cette image.",
+          "line": "Le registre a déjà un passeport pour ces octets exacts, détenu par {holder}. Le premier enregistrement l'emporte : il ne reste donc rien à signer ici.",
+          "linePlain": "Le registre a déjà un passeport pour ces octets exacts. Le premier enregistrement l'emporte : il ne reste donc rien à signer ici.",
+          "primary": "Ouvrir ce passeport",
+          "note": "Interrogez {platform} à ce sujet."
         },
         "refused": {
-          "kicker": "Stopped before signing",
-          "headline": "The co-sign service refused this record.",
-          "line": "The record behind this link failed its own checks, so it was dropped and nothing was signed.",
-          "note": "Ask {platform} for a fresh link."
+          "kicker": "Arrêt avant la signature",
+          "headline": "Le service de cosignature a refusé cet enregistrement.",
+          "line": "L'enregistrement derrière ce lien n'a pas passé ses propres contrôles : il a donc été écarté, et rien n'a été signé.",
+          "note": "Retournez sur {platform} pour demander un nouveau lien."
         },
         "unavailable": {
-          "kicker": "No answer",
-          "headline": "The co-sign service or Monad did not answer.",
-          "line": "Nothing was signed and nothing was sent. Try again in a moment.",
-          "primary": "Try again"
+          "kicker": "Pas de réponse",
+          "headline": "Le service de cosignature ou Monad n'a pas répondu.",
+          "line": "Rien n'a été signé et rien n'a été envoyé. Réessayez dans un instant.",
+          "primary": "Réessayer"
         },
         "unconfirmed": {
-          "kicker": "Sent, not confirmed",
-          "headline": "Monad has not shown a receipt for this passport yet.",
-          "line": "Your passport was sent. It may still land, so nothing will be sent again from here. Check again in a moment.",
-          "primary": "Check again"
+          "kicker": "Envoyé, non confirmé",
+          "headline": "Monad n'a pas encore montré de reçu pour ce passeport.",
+          "line": "Votre passeport a été envoyé. Il peut encore arriver, donc rien ne sera renvoyé d'ici. Regardez à nouveau dans un instant.",
+          "primary": "Regarder à nouveau"
         }
       }
     },
     "steps": {
-      "agentSigns": "The agent signs",
-      "pinned": "The picture is pinned",
-      "passkey": "Your passkey",
-      "sent": "Sent to Monad",
-      "written": "Passport written"
+      "agentSigns": "L'agent signe",
+      "pinned": "L'image est épinglée",
+      "passkey": "Votre clé d'accès",
+      "sent": "Envoyé sur Monad",
+      "written": "Passeport inscrit"
     },
     "bindStage": {
-      "creating": "Making a passkey on this device",
-      "waiting": "Waiting for your fingerprint or face unlock",
-      "sending": "Sending it to Monad, network fee paid by Moolam",
-      "recovering": "Waiting for your fingerprint or face unlock"
+      "creating": "Création d'une clé d'accès sur cet appareil",
+      "waiting": "En attente de votre empreinte digitale ou du déverrouillage par le visage",
+      "sending": "Envoi sur Monad, frais de réseau payés par Moolam",
+      "recovering": "En attente de votre empreinte digitale ou du déverrouillage par le visage"
     },
-    "registeredLine": "Passport {id} · written on Monad mainnet",
-    "transaction": "View the transaction",
+    "registeredLine": "Passeport {id} · inscrit sur Monad mainnet",
+    "transaction": "Voir la transaction",
     "termsLine": {
-      "waiting": "The AI-use terms go to Monad next.",
-      "sending": "Writing the AI-use terms to Monad, network fee paid by Moolam.",
-      "written": "AI-use terms written on chain.",
-      "failed": "The passport is yours, and the AI-use terms were not written yet.",
-      "again": "Write the terms",
-      "offered": "No AI-use terms are on chain for this passport yet. The picture's own file carries the terms shown above, and you can write them now.",
-      "stated": "AI-use terms for this passport are already on chain, written by {writer}. This page changes nothing."
+      "waiting": "La déclaration sur l'usage par l'IA part ensuite sur Monad.",
+      "sending": "Écriture sur Monad de la déclaration sur l'usage par l'IA, frais de réseau payés par Moolam.",
+      "written": "Déclaration sur l'usage par l'IA écrite sur la chaîne.",
+      "failed": "Le passeport est à vous, et la déclaration sur l'usage par l'IA n'a pas encore été écrite.",
+      "again": "Écrire la déclaration",
+      "offered": "Aucune déclaration sur l'usage par l'IA n'est encore sur la chaîne pour ce passeport. Le fichier de l'image porte celle affichée plus haut, et vous pouvez l'écrire maintenant.",
+      "stated": "Une déclaration sur l'usage par l'IA est déjà sur la chaîne pour ce passeport, écrite par {writer}. Cette page n'y change rien."
     },
-    "details": "Details",
-    "detailsDigest": "This page built {local}. The record held for this link names {other}.",
-    "detailsPicture": "The picture the gateway handed over does not hash to the passport id.",
-    "detailsMetadata": "The metadata document the gateway handed over is not the one the passport names.",
-    "detailsRecord": "The record for this link is missing the agent's signature or its fields do not agree.",
-    "signHere": "Sign here",
-    "passkeySigns": "your passkey signs {digest}",
-    "passkeyWaits": "your passkey signs nothing until all three agree",
-    "sealLabel": "Registered, passport {id}",
-    "sealRing": "PASSPORT · {id} · MONAD MAINNET · "
+    "details": "Détails",
+    "detailsDigest": "Cette page a calculé {local}. L'enregistrement gardé pour ce lien indique {other}.",
+    "detailsPicture": "Le hachage de l'image remise par la passerelle ne correspond pas à l'identifiant du passeport.",
+    "detailsMetadata": "Le document de métadonnées remis par la passerelle n'est pas celui que désigne le passeport.",
+    "detailsRecord": "Il manque à l'enregistrement de ce lien la signature de l'agent, ou ses champs ne concordent pas.",
+    "signHere": "Signez ici",
+    "passkeySigns": "votre clé d'accès signe {digest}",
+    "passkeyWaits": "votre clé d'accès ne signe rien tant que les trois ne concordent pas",
+    "sealLabel": "Enregistré, passeport {id}",
+    "sealRing": "PASSEPORT · {id} · MONAD MAINNET · "
   },
   "connect": {
-    "metaTitle": "Share your Moolam address",
-    "metaDescription": "A site asks for your Moolam address so it can hand you the passports of pictures made for you.",
-    "kicker": "Share your address",
-    "headingListed": "<accent>{name}</accent> is asking for your Moolam address.",
-    "headingUnlisted": "An unlisted site is asking for your Moolam address.",
-    "headingInvalid": "This request does not name a site.",
-    "askingFrom": "Asking from {origin}",
-    "account": "Your Moolam account",
-    "exactly": "This exact address, and nothing else about you.",
-    "signInLine": "Sign in to see the exact address you would share.",
-    "signIn": "Sign in",
-    "opening": "Opening your account",
-    "listedLabel": "Listed by Moolam",
-    "unlistedLabel": "Not on Moolam's list",
-    "unlistedName": "Unlisted site",
-    "listedLine": "Onboarded with signatures from its agent's owner and its wallet.",
-    "unlistedLine": "Moolam knows nothing about this site. Share only if you came here from it.",
-    "usesListed": "{name} uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
-    "usesUnlisted": "The site uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
-    "share": "Share this address",
-    "cancel": "Not now",
-    "shareNote": "Nothing leaves this page until you press Share, and then only to {origin}.",
-    "sharedKicker": "Shared",
-    "sharedListed": "Sent to {name} at {origin}, and nowhere else. You can close this tab.",
-    "sharedUnlisted": "Sent to the site at {origin}, and nowhere else. You can close this tab.",
-    "cancelledKicker": "Nothing shared",
-    "cancelledListed": "{name} got nothing from this page. You can close this tab.",
-    "cancelledUnlisted": "The site got nothing from this page. You can close this tab.",
-    "noOpenerKicker": "Open it from the site",
-    "noOpenerLine": "This page shares your address only with the window that opened it. Go back to the site that asked and open it from there. Nothing was shared.",
-    "invalidLine": "The link that opened this page names no https site, so there is nowhere to send an address. Nothing was shared."
+    "metaTitle": "Partager votre adresse Moolam",
+    "metaDescription": "Un site demande votre adresse Moolam pour pouvoir vous remettre les passeports des images faites pour vous.",
+    "kicker": "Partager votre adresse",
+    "headingListed": "<accent>{name}</accent> demande votre adresse Moolam.",
+    "headingUnlisted": "Un site non répertorié demande votre adresse Moolam.",
+    "headingInvalid": "Cette demande ne nomme aucun site.",
+    "askingFrom": "Demande envoyée depuis {origin}",
+    "account": "Votre compte Moolam",
+    "exactly": "Cette adresse exacte, et rien d'autre sur vous.",
+    "signInLine": "Connectez-vous pour voir l'adresse exacte que vous partageriez.",
+    "signIn": "Se connecter",
+    "opening": "Ouverture de votre compte",
+    "listedLabel": "Répertorié par Moolam",
+    "unlistedLabel": "Pas sur la liste de Moolam",
+    "unlistedName": "Site non répertorié",
+    "listedLine": "Ajouté à la liste de Moolam avec les signatures du propriétaire de son agent et du portefeuille du site.",
+    "unlistedLine": "Moolam ne sait rien de ce site. Ne partagez que si vous arrivez ici depuis celui-ci.",
+    "usesListed": "{name} s'en sert pour vous remettre les passeports des images faites pour vous. Une adresse permet à un site de vous donner des choses. Elle ne permet ni de signer à votre place, ni de dépenser depuis votre compte.",
+    "usesUnlisted": "Le site s'en sert pour vous remettre les passeports des images faites pour vous. Une adresse permet à un site de vous donner des choses. Elle ne permet ni de signer à votre place, ni de dépenser depuis votre compte.",
+    "share": "Partager cette adresse",
+    "cancel": "Pas maintenant",
+    "shareNote": "Rien ne quitte cette page tant que vous n'appuyez pas sur Partager, et ensuite seulement vers {origin}.",
+    "sharedKicker": "Partagée",
+    "sharedListed": "Envoyée à {name} sur {origin}, et nulle part ailleurs. Vous pouvez fermer cet onglet.",
+    "sharedUnlisted": "Envoyée au site {origin}, et nulle part ailleurs. Vous pouvez fermer cet onglet.",
+    "cancelledKicker": "Rien de partagé",
+    "cancelledListed": "{name} n'a rien reçu de cette page. Vous pouvez fermer cet onglet.",
+    "cancelledUnlisted": "Le site n'a rien reçu de cette page. Vous pouvez fermer cet onglet.",
+    "noOpenerKicker": "Ouvrez-la depuis le site",
+    "noOpenerLine": "Cette page ne partage votre adresse qu'avec la fenêtre qui l'a ouverte. Retournez sur le site qui a fait la demande et ouvrez-la depuis celui-ci. Rien n'a été partagé.",
+    "invalidLine": "Le lien qui a ouvert cette page ne nomme aucun site https : il n'y a donc nulle part où envoyer une adresse. Rien n'a été partagé."
   }
 }

@@ -184,14 +184,14 @@
       "rechecked": "已在链上复核",
       "chainlink": "由 Chainlink 工作流复核",
       "disputed": "争议成立",
-      "platform": "Registered through {platform}"
+      "platform": "通过 {platform} 登记"
     },
     "legend": {
       "manifest": "带 Content Credentials",
       "rechecked": "已在链上复核",
       "disputed": "争议成立，针对这张图片或它编辑自的那张图片",
       "consent": "AI 使用声明，四种用途四个标记",
-      "platform": "Registered through a platform Moolam lists"
+      "platform": "通过 Moolam 名单上的平台登记"
     },
     "untitled": "无标题",
     "noPicture": "网关上没有图片",
@@ -714,17 +714,17 @@
     "noPicture": "存放这张图的地方此刻没有响应。过一分钟再试。",
     "fingerprintVersion": "指纹版本 {version}",
     "record": "这条记录",
-    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
+    "passkeyBound": "绑定在这位创作者钱包上的一把密钥，在 Monad 上为这张图片的指纹签了名。",
     "passkeyNone": "这位创作者的账户没有绑定通行密钥。",
     "platform": {
-      "kit": "Registered by {platform} through the Moolam platform kit",
-      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
-      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+      "kit": "由 {platform} 通过 Moolam 平台工具包登记",
+      "kitNote": "{platform} 自己的服务器密钥以创作者的身份签了名，它的智能体以作画者的身份签了名。Moolam 核实的是这家公司持有这两把密钥，而不是这家公司是谁。",
+      "outsideKit": "这个钱包在 Moolam 名单上列为 {platform}，但这张图片是在 Moolam 平台工具包之外登记的。"
     },
-    "agentListed": "Listed by Moolam as {platform}'s agent",
-    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "agentListed": "由 Moolam 列入名单，是 {platform} 的智能体",
+    "agentSelfDeclared": "它在自己的名片上自称 {name}。Moolam 没有核实这个名字。",
     "holder": {
-      "differs": "Registered by {creator}. Now held by {holder}."
+      "differs": "由 {creator} 登记。现在由 {holder} 持有。"
     },
     "noAgent": "没有生成它的智能体。这一张是用创作者上传的文件登记的。",
     "agentNumber": "智能体 {id}",
@@ -916,9 +916,9 @@
       "conditionsLabel": "条件，用持有者自己的话",
       "conditionsApplyTo": "适用于 {uses}。",
       "statedBy": "声明人",
-      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
-      "atGeneration": "Stated at generation",
-      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
+      "platformStanding": "这些条款由 {platform} 声明。它们一直有效，直到持有这本护照的人声明新的条款。",
+      "atGeneration": "生成时声明",
+      "differs": "写进文件的条款与 Monad 上的条款不同。生效的是 Monad 上的条款。",
       "writtenLabel": "写入时间",
       "empty": {
         "body": "没有人为这张图片写下声明。这里如实地把这份沉默记下来，因为事实就是如此：它没有允许任何用途。",
@@ -1114,7 +1114,7 @@
       "noAgent": "未注明智能体",
       "chainlink": "Chainlink",
       "unknownWriter": "未知写入方",
-      "cardNamed": "{agent}, named by its own card"
+      "cardNamed": "{agent}，名字是它在名片上的自称"
     },
     "ownerHint": "这是你做的吗？登录后就能管理。",
     "share": {
@@ -1818,10 +1818,10 @@
     "makeFirst": "登记你的第一张图片",
     "signedInAs": "已登录：{account}",
     "held": {
-      "heading": "Held by you, made by others",
-      "label": "Held, not made by you",
-      "hide": "Hide",
-      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+      "heading": "你持有，别人做的",
+      "label": "你持有，不是你做的",
+      "hide": "隐藏",
+      "showHidden": "{count, plural, other {显示 # 张已隐藏的图片}}"
     }
   },
   "crMark": {
@@ -1832,257 +1832,257 @@
     "untrustedSigner": "无法验证签名者的身份：签署这份记录的密钥不在 C2PA Trust List 上。"
   },
   "cosign": {
-    "metaTitle": "Co-sign a picture",
-    "metaDescription": "Sign as the creator of a picture an AI image site made for you, with your own passkey.",
-    "outline": "Co-sign",
-    "kickerNamed": "From {platform} · {id}",
-    "kickerPlain": "Co-sign request · {id}",
-    "kickerSignedOut": "Co-sign request",
-    "untitled": "A picture made for you",
-    "sender": "the site that sent you",
-    "heading": "You are about to sign",
-    "signedOut": "Shown once you sign in.",
+    "metaTitle": "为图片共同签名",
+    "metaDescription": "AI 图片网站为你生成了一张图片：用你自己的通行密钥，以创作者的身份为它签名。",
+    "outline": "共同签名",
+    "kickerNamed": "来自 {platform} · {id}",
+    "kickerPlain": "共同签名请求 · {id}",
+    "kickerSignedOut": "共同签名请求",
+    "untitled": "为你生成的一张图片",
+    "sender": "带你来这里的网站",
+    "heading": "你即将签署",
+    "signedOut": "登录后显示。",
     "print": {
-      "signedOut": "The picture is shown here once you sign in.",
-      "waiting": "The picture is shown here once the agent has signed and it is pinned.",
-      "withheld": "Nothing is drawn: the file the gateway handed over did not match the passport.",
-      "none": "No picture to show."
+      "signedOut": "登录之后，图片会显示在这里。",
+      "waiting": "智能体签名、图片固定之后，就会显示在这里。",
+      "withheld": "这里不显示任何图片：网关交来的文件与护照不符。",
+      "none": "没有可显示的图片。"
     },
     "caption": {
-      "agent": "Agent {id}"
+      "agent": "智能体 {id}"
     },
     "clauses": {
       "picture": {
-        "label": "This picture",
-        "body": "The print shown here, byte for byte.",
+        "label": "这张图片",
+        "body": "就是这里展示的这张图，逐字节一致。",
         "hash": "sha256 {hash}"
       },
       "agent": {
-        "label": "Drawn by an agent, self-declared"
+        "label": "由智能体绘制，名字为其自称"
       },
       "platform": {
-        "label": "For a platform",
-        "listed": "For a platform, listed by Moolam",
-        "withheld": "For a platform, badge withheld",
-        "unlisted": "For a platform, not listed by Moolam",
-        "reading": "Checked against Moolam's list once the record is read."
+        "label": "为某个平台",
+        "listed": "为某个平台，由 Moolam 列入名单",
+        "withheld": "为某个平台，标识不予显示",
+        "unlisted": "为某个平台，未列入 Moolam 名单",
+        "reading": "读到记录之后，会对照 Moolam 名单核对。"
       },
       "terms": {
-        "label": "Under these AI-use terms, as stated",
-        "pending": "Read from the picture's own file once it is pinned."
+        "label": "按所声明的这些 AI 使用条款",
+        "pending": "图片固定之后，从图片自己的文件中读取。"
       },
       "creator": {
-        "label": "In your name",
-        "unset": "The first account to sign in becomes the creator, once and for good. Sign in with the one you want it under.",
-        "set": "You become its creator, and the passport lands in your account.",
-        "other": "Another account opened this link first and is its creator."
+        "label": "以你的名义",
+        "unset": "第一个登录的账户会成为创作者，一旦定下就不再更改。请用你想让图片归属的那个账户登录。",
+        "set": "你会成为它的创作者，护照会进入你的账户。",
+        "other": "另一个账户先打开了这个链接，它是这张图片的创作者。"
       },
       "until": {
-        "label": "Until",
-        "body": "{time}, chain time. After that the registry refuses it and nothing is sent.",
-        "unset": "Thirty minutes from the moment the link is first opened, on the chain's clock. After that the registry refuses it and nothing is sent."
+        "label": "有效期至",
+        "body": "{time}，链上时间。过了这个时间，登记处会拒绝它，什么都不会发出。",
+        "unset": "从链接第一次被打开的那一刻起三十分钟，按链上的时钟计。过了这个时间，登记处会拒绝它，什么都不会发出。"
       }
     },
     "agent": {
-      "noName": "Its card carries no name",
-      "id": "Agent {id}",
-      "owner": "owner {owner}",
-      "unchecked": "Moolam did not check the company behind this name."
+      "noName": "它的名片上没有名字",
+      "id": "智能体 {id}",
+      "owner": "持有者 {owner}",
+      "unchecked": "Moolam 没有核实这个名字背后的公司。"
     },
     "platform": {
-      "listedLine": "Onboarded with signatures from agent {agent}'s owner and its wallet.",
-      "withheldName": "Name withheld",
-      "withheldLine": "Agent {agent} has changed owner since its platform was listed, so Moolam does not vouch for the pairing and does not name it.",
-      "unlistedName": "Not on Moolam's list",
-      "unlistedLine": "Moolam lists no platform for agent {agent}, so no platform is named here."
+      "listedLine": "列入名单时，智能体 {agent} 的持有者和这个平台自己的钱包都签了名。",
+      "withheldName": "名称不予显示",
+      "withheldLine": "智能体 {agent} 在它的平台列入名单之后更换了持有者，所以 Moolam 不为二者的配对担保，也不写出平台的名称。",
+      "unlistedName": "不在 Moolam 名单上",
+      "unlistedLine": "Moolam 名单上没有智能体 {agent} 对应的平台，所以这里不写平台名称。"
     },
     "terms": {
-      "open": "Open to AI use, training included",
-      "closed": "Not for AI training or any other AI use",
-      "ask": "Ask the creator first",
-      "mixed": "Allowed for some uses, not others",
-      "none": "Nothing stated about AI use"
+      "open": "对 AI 使用开放，训练也在内",
+      "closed": "不供 AI 训练，也不供其他任何 AI 使用",
+      "ask": "请先询问创作者",
+      "mixed": "部分用途允许，部分不允许",
+      "none": "没有说明 AI 使用"
     },
     "states": {
       "loading": {
-        "kicker": "Reading the record",
-        "headline": "Opening this co-sign link.",
-        "line": "This page reads the link in your browser and asks for the record only once you are signed in."
+        "kicker": "正在读取记录",
+        "headline": "正在打开这个共同签名链接。",
+        "line": "本页在你的浏览器里读取这个链接，等你登录之后才会请求记录。"
       },
       "notFound": {
-        "kicker": "Nothing here",
-        "headline": "This co-sign link does not lead anywhere.",
-        "line": "The link is incomplete, was already used, or was never made. Nothing was signed.",
-        "note": "Ask the site that sent you for a new link."
+        "kicker": "这里什么都没有",
+        "headline": "这个共同签名链接没有通向任何地方。",
+        "line": "链接不完整、已经用过，或者从未生成过。什么都没有签名。",
+        "note": "请向带你来这里的网站要一个新链接。"
       },
       "signIn": {
-        "kicker": "Sign in to continue",
-        "headline": "Sign in with the account this picture should be under.",
-        "line": "The first account to open this link becomes the picture's creator, and only that account can sign it. The site that sent you cannot choose it for you.",
-        "primary": "Sign in",
-        "note": "Email, Google or a passkey. An account is made for you if you have none."
+        "kicker": "登录后继续",
+        "headline": "用这张图片应当归属的账户登录。",
+        "line": "第一个打开这个链接的账户会成为图片的创作者，也只有这个账户能为它签名。带你来这里的网站无法替你选择。",
+        "primary": "登录",
+        "note": "邮箱、Google 或通行密钥。如果你还没有账户，会为你建一个。"
       },
       "makePasskey": {
-        "kicker": "One setup step",
-        "headline": "Make a passkey. It becomes your signature.",
-        "line": "A passkey is the fingerprint, face unlock or PIN this device already uses. It stays on the device: Moolam only ever sees the public half.",
-        "primary": "Make a passkey",
-        "note": "One transaction, network fee paid by Moolam."
+        "kicker": "一步设置",
+        "headline": "创建一把通行密钥。它会成为你的签名。",
+        "line": "通行密钥就是这台设备本来就在用的指纹、面容或 PIN。它留在设备上：Moolam 只看得到公开的那一半。",
+        "primary": "创建通行密钥",
+        "note": "一笔交易，网络费由 Moolam 支付。"
       },
       "passkeyElsewhere": {
-        "kicker": "Your passkey lives elsewhere",
-        "headline": "This account's passkey was made on another device.",
-        "line": "Open this link on that device to sign with it, or replace it with this device's unlock. Replacing costs one transaction, and the old passkey stops working for new pictures.",
-        "primary": "Use my passkey",
-        "secondary": "Replace it with this device"
+        "kicker": "你的通行密钥在别处",
+        "headline": "这个账户的通行密钥是在另一台设备上创建的。",
+        "line": "在那台设备上打开这个链接，用它签名；或者改用这台设备的解锁来替换它。替换需要一笔交易，旧的通行密钥从此不能再用于新图片。",
+        "primary": "使用我的通行密钥",
+        "secondary": "换成这台设备"
       },
       "wrongWallet": {
-        "kicker": "Opened by another account",
-        "headline": "This picture is waiting for a different account.",
-        "line": "Another account opened this link first, and only that account can sign it. You are signed in as {wallet}.",
-        "secondary": "Sign out",
-        "note": "Signed in with the wrong account? Sign out and back in with the right one. Otherwise ask {platform} for a new link."
+        "kicker": "已被另一个账户打开",
+        "headline": "这张图片在等另一个账户。",
+        "line": "另一个账户先打开了这个链接，只有那个账户能为它签名。你当前登录的是 {wallet}。",
+        "secondary": "退出登录",
+        "note": "登录错了账户？退出后用正确的账户重新登录。否则，要新链接请找 {platform}。"
       },
       "waitingAgent": {
-        "kicker": "Waiting for the agent",
-        "headline": "Waiting for agent {agent} to sign.",
-        "line": "The agent signs the same record from its own key, then the picture is pinned. Your passkey step opens by itself once both are done.",
-        "note": "Usually under a minute. You can leave this tab open."
+        "kicker": "等待智能体",
+        "headline": "等待智能体 {agent} 签名。",
+        "line": "智能体先用自己的密钥为同一条记录签名，然后图片会被固定。两步都完成后，你的通行密钥这一步会自动打开。",
+        "note": "通常不到一分钟。你可以让这个标签页开着。"
       },
       "ready": {
-        "kicker": "Ready to sign",
-        "headline": "Everything checks out. Sign with your passkey.",
-        "line": "This browser rebuilt the record from what you see here, and it matches the one the agent signed and the one the registry expects.",
-        "primary": "Sign with passkey",
-        "note": "Network fee paid by Moolam."
+        "kicker": "可以签名了",
+        "headline": "一切核对无误。用你的通行密钥签名。",
+        "line": "这个浏览器根据你在这里看到的内容重建了记录，它与智能体签过的那条一致，也与登记处期望的那条一致。",
+        "primary": "用通行密钥签名",
+        "note": "网络费由 Moolam 支付。"
       },
       "checking": {
-        "kicker": "Checking",
-        "headline": "Checking the picture and the record.",
-        "line": "This browser is hashing the picture and rebuilding the record from what you see here, to hold against the one the agent signed and the one the registry expects. The button opens when all three agree.",
-        "primary": "Checking"
+        "kicker": "核对中",
+        "headline": "正在核对图片和记录。",
+        "line": "这个浏览器正在为图片计算哈希，并根据你在这里看到的内容重建记录，再与智能体签过的那条、登记处期望的那条相比对。三者一致时，按钮才可以按。",
+        "primary": "核对中"
       },
       "signing": {
-        "kicker": "Signing",
-        "headline": "Waiting for your fingerprint or face unlock.",
-        "headlineSending": "Sending the passport to Monad.",
-        "headlineConfirming": "Waiting for Monad's receipt.",
-        "line": "Then the passport goes to Monad, network fee paid by Moolam. It takes a few seconds."
+        "kicker": "签名中",
+        "headline": "等待你的指纹或面容。",
+        "headlineSending": "正在把护照发往 Monad。",
+        "headlineConfirming": "等待 Monad 的回执。",
+        "line": "随后护照会发往 Monad，网络费由 Moolam 支付。只需几秒钟。"
       },
       "registered": {
-        "kicker": "Registered on Monad",
-        "headline": "Done. The passport is in your account.",
-        "line": "Anyone who checks a copy of this picture now finds you as its creator and agent {agent} as the agent that drew it.",
-        "primary": "Open the passport"
+        "kicker": "已在 Monad 上登记",
+        "headline": "完成。护照已在你的账户里。",
+        "line": "现在任何人核对这张图片的副本，都会看到你是它的创作者，智能体 {agent} 是画出它的智能体。",
+        "primary": "打开护照"
       },
       "expired": {
-        "kicker": "This link ran out",
-        "headline": "The signing window closed at {time}.",
-        "headlinePlain": "The signing window has closed.",
-        "line": "Nothing was signed and nothing was sent.",
-        "note": "Ask {platform} for a fresh link."
+        "kicker": "这个链接已过期",
+        "headline": "签名时限已于 {time} 截止。",
+        "headlinePlain": "签名时限已经截止。",
+        "line": "什么都没有签名，也什么都没有发出。",
+        "note": "要新链接，请找 {platform}。"
       },
       "failed": {
         "mismatch": {
-          "kicker": "Stopped before signing",
-          "headline": "The record did not match what this page shows.",
-          "line": "This browser rebuilt the record from the picture and facts on this page, and the registry expected something else, so your passkey was never asked. Nothing was signed.",
-          "note": "Ask {platform} for a fresh link."
+          "kicker": "签名前已停止",
+          "headline": "记录与本页显示的内容不符。",
+          "line": "这个浏览器根据本页上的图片和信息重建了记录，而登记处期望的是另一条，所以根本没有请求你的通行密钥。什么都没有签名。",
+          "note": "要新链接，请找 {platform}。"
         },
         "taken": {
-          "kicker": "Already registered",
-          "headline": "Another passport already holds this picture.",
-          "line": "The registry has a passport for these exact bytes, held by {holder}. The first registration wins, so there is nothing left to sign here.",
-          "linePlain": "The registry has a passport for these exact bytes. The first registration wins, so there is nothing left to sign here.",
-          "primary": "Open that passport",
-          "note": "Ask {platform} about it."
+          "kicker": "已经登记过",
+          "headline": "已有另一本护照收着这张图片。",
+          "line": "登记处里已经有一本护照对应完全相同的字节，由 {holder} 持有。先登记的一方为准，所以这里已经没有什么可签的了。",
+          "linePlain": "登记处里已经有一本护照对应完全相同的字节。先登记的一方为准，所以这里已经没有什么可签的了。",
+          "primary": "打开那本护照",
+          "note": "这件事请去问 {platform}。"
         },
         "refused": {
-          "kicker": "Stopped before signing",
-          "headline": "The co-sign service refused this record.",
-          "line": "The record behind this link failed its own checks, so it was dropped and nothing was signed.",
-          "note": "Ask {platform} for a fresh link."
+          "kicker": "签名前已停止",
+          "headline": "共同签名服务拒绝了这条记录。",
+          "line": "这个链接背后的记录没有通过它自己的检查，所以被丢弃了，什么都没有签名。",
+          "note": "要新链接，请找 {platform}。"
         },
         "unavailable": {
-          "kicker": "No answer",
-          "headline": "The co-sign service or Monad did not answer.",
-          "line": "Nothing was signed and nothing was sent. Try again in a moment.",
-          "primary": "Try again"
+          "kicker": "没有回应",
+          "headline": "共同签名服务或 Monad 没有回应。",
+          "line": "什么都没有签名，也什么都没有发出。稍后再试一次。",
+          "primary": "再试一次"
         },
         "unconfirmed": {
-          "kicker": "Sent, not confirmed",
-          "headline": "Monad has not shown a receipt for this passport yet.",
-          "line": "Your passport was sent. It may still land, so nothing will be sent again from here. Check again in a moment.",
-          "primary": "Check again"
+          "kicker": "已发出，未确认",
+          "headline": "Monad 还没有显示这本护照的回执。",
+          "line": "你的护照已经发出。它仍可能上链，所以这里不会再发送一次。稍后再看一次。",
+          "primary": "再看一次"
         }
       }
     },
     "steps": {
-      "agentSigns": "The agent signs",
-      "pinned": "The picture is pinned",
-      "passkey": "Your passkey",
-      "sent": "Sent to Monad",
-      "written": "Passport written"
+      "agentSigns": "智能体签名",
+      "pinned": "固定图片",
+      "passkey": "你的通行密钥",
+      "sent": "发往 Monad",
+      "written": "写入护照"
     },
     "bindStage": {
-      "creating": "Making a passkey on this device",
-      "waiting": "Waiting for your fingerprint or face unlock",
-      "sending": "Sending it to Monad, network fee paid by Moolam",
-      "recovering": "Waiting for your fingerprint or face unlock"
+      "creating": "正在这台设备上创建通行密钥",
+      "waiting": "等待你的指纹或面容",
+      "sending": "正在发往 Monad，网络费由 Moolam 支付",
+      "recovering": "等待你的指纹或面容"
     },
-    "registeredLine": "Passport {id} · written on Monad mainnet",
-    "transaction": "View the transaction",
+    "registeredLine": "护照 {id} · 已写入 Monad 主网",
+    "transaction": "查看交易",
     "termsLine": {
-      "waiting": "The AI-use terms go to Monad next.",
-      "sending": "Writing the AI-use terms to Monad, network fee paid by Moolam.",
-      "written": "AI-use terms written on chain.",
-      "failed": "The passport is yours, and the AI-use terms were not written yet.",
-      "again": "Write the terms",
-      "offered": "No AI-use terms are on chain for this passport yet. The picture's own file carries the terms shown above, and you can write them now.",
-      "stated": "AI-use terms for this passport are already on chain, written by {writer}. This page changes nothing."
+      "waiting": "AI 使用条款接下来会发往 Monad。",
+      "sending": "正在把 AI 使用条款写到 Monad 上，网络费由 Moolam 支付。",
+      "written": "AI 使用条款已写到链上。",
+      "failed": "护照已经是你的了，但 AI 使用条款还没有写入。",
+      "again": "写入条款",
+      "offered": "这本护照在链上还没有 AI 使用条款。图片自己的文件带有上面显示的条款，你现在就可以把它们写上链。",
+      "stated": "这本护照的 AI 使用条款已经在链上，由 {writer} 写入。本页不做任何改动。"
     },
-    "details": "Details",
-    "detailsDigest": "This page built {local}. The record held for this link names {other}.",
-    "detailsPicture": "The picture the gateway handed over does not hash to the passport id.",
-    "detailsMetadata": "The metadata document the gateway handed over is not the one the passport names.",
-    "detailsRecord": "The record for this link is missing the agent's signature or its fields do not agree.",
-    "signHere": "Sign here",
-    "passkeySigns": "your passkey signs {digest}",
-    "passkeyWaits": "your passkey signs nothing until all three agree",
-    "sealLabel": "Registered, passport {id}",
-    "sealRing": "PASSPORT · {id} · MONAD MAINNET · "
+    "details": "详情",
+    "detailsDigest": "本页算出的是 {local}。为这个链接保存的记录写的是 {other}。",
+    "detailsPicture": "网关交来的图片，哈希与护照 id 不符。",
+    "detailsMetadata": "网关交来的元数据文件，不是护照所指的那一份。",
+    "detailsRecord": "这个链接的记录缺少智能体的签名，或者其中的字段互相对不上。",
+    "signHere": "在此签名",
+    "passkeySigns": "你的通行密钥签署的是 {digest}",
+    "passkeyWaits": "三者一致之前，你的通行密钥什么都不签",
+    "sealLabel": "已登记，护照 {id}",
+    "sealRing": "护照 · {id} · MONAD 主网 · "
   },
   "connect": {
-    "metaTitle": "Share your Moolam address",
-    "metaDescription": "A site asks for your Moolam address so it can hand you the passports of pictures made for you.",
-    "kicker": "Share your address",
-    "headingListed": "<accent>{name}</accent> is asking for your Moolam address.",
-    "headingUnlisted": "An unlisted site is asking for your Moolam address.",
-    "headingInvalid": "This request does not name a site.",
-    "askingFrom": "Asking from {origin}",
-    "account": "Your Moolam account",
-    "exactly": "This exact address, and nothing else about you.",
-    "signInLine": "Sign in to see the exact address you would share.",
-    "signIn": "Sign in",
-    "opening": "Opening your account",
-    "listedLabel": "Listed by Moolam",
-    "unlistedLabel": "Not on Moolam's list",
-    "unlistedName": "Unlisted site",
-    "listedLine": "Onboarded with signatures from its agent's owner and its wallet.",
-    "unlistedLine": "Moolam knows nothing about this site. Share only if you came here from it.",
-    "usesListed": "{name} uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
-    "usesUnlisted": "The site uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
-    "share": "Share this address",
-    "cancel": "Not now",
-    "shareNote": "Nothing leaves this page until you press Share, and then only to {origin}.",
-    "sharedKicker": "Shared",
-    "sharedListed": "Sent to {name} at {origin}, and nowhere else. You can close this tab.",
-    "sharedUnlisted": "Sent to the site at {origin}, and nowhere else. You can close this tab.",
-    "cancelledKicker": "Nothing shared",
-    "cancelledListed": "{name} got nothing from this page. You can close this tab.",
-    "cancelledUnlisted": "The site got nothing from this page. You can close this tab.",
-    "noOpenerKicker": "Open it from the site",
-    "noOpenerLine": "This page shares your address only with the window that opened it. Go back to the site that asked and open it from there. Nothing was shared.",
-    "invalidLine": "The link that opened this page names no https site, so there is nowhere to send an address. Nothing was shared."
+    "metaTitle": "分享你的 Moolam 地址",
+    "metaDescription": "有网站请求你的 Moolam 地址，以便把为你生成的图片的护照交给你。",
+    "kicker": "分享你的地址",
+    "headingListed": "<accent>{name}</accent> 正在请求你的 Moolam 地址。",
+    "headingUnlisted": "一个未列入 Moolam 名单的网站正在请求你的 Moolam 地址。",
+    "headingInvalid": "这个请求没有指明是哪个网站。",
+    "askingFrom": "请求来自 {origin}",
+    "account": "你的 Moolam 账户",
+    "exactly": "就是这个地址，不含你的任何其他信息。",
+    "signInLine": "登录后就能看到你将分享的确切地址。",
+    "signIn": "登录",
+    "opening": "正在打开你的账户",
+    "listedLabel": "由 Moolam 列入名单",
+    "unlistedLabel": "不在 Moolam 名单上",
+    "unlistedName": "未列入名单的网站",
+    "listedLine": "列入名单时，这个网站的智能体持有者和网站自己的钱包都签了名。",
+    "unlistedLine": "Moolam 对这个网站一无所知。只有当你是从这个网站来到这里的，才分享。",
+    "usesListed": "{name} 用它把为你生成的图片的护照交给你。有了地址，网站可以给你东西，但不能替你签名，也不能从你的账户里花钱。",
+    "usesUnlisted": "这个网站用它把为你生成的图片的护照交给你。有了地址，网站可以给你东西，但不能替你签名，也不能从你的账户里花钱。",
+    "share": "分享这个地址",
+    "cancel": "现在不用",
+    "shareNote": "在你按下“分享这个地址”之前，什么都不会离开这个页面；按下之后，也只会发给 {origin}。",
+    "sharedKicker": "已分享",
+    "sharedListed": "已发给 {origin} 上的 {name}，没有发往别处。你可以关闭这个标签页了。",
+    "sharedUnlisted": "已发给 {origin} 上的网站，没有发往别处。你可以关闭这个标签页了。",
+    "cancelledKicker": "什么都没有分享",
+    "cancelledListed": "{name} 没有从这个页面得到任何东西。你可以关闭这个标签页了。",
+    "cancelledUnlisted": "这个网站没有从这个页面得到任何东西。你可以关闭这个标签页了。",
+    "noOpenerKicker": "请从网站那边打开",
+    "noOpenerLine": "本页只会把你的地址分享给打开它的那个窗口。回到发出请求的网站，从那里打开本页。什么都没有分享。",
+    "invalidLine": "打开本页的链接没有指明任何 https 网站，所以地址无处可发。什么都没有分享。"
   }
 }

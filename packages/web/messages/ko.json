@@ -185,14 +185,14 @@
       "rechecked": "체인에서 재확인됨",
       "chainlink": "Chainlink 워크플로가 재확인",
       "disputed": "이의 받아들여짐",
-      "platform": "Registered through {platform}"
+      "platform": "{platform}에서 등록"
     },
     "legend": {
       "manifest": "Content Credentials 있음",
       "rechecked": "체인에서 재확인됨",
       "disputed": "이의 받아들여짐, 여기 또는 편집 원본에서",
       "consent": "AI 사용 선언, 네 가지 용도에 네 개의 표시",
-      "platform": "Registered through a platform Moolam lists"
+      "platform": "Moolam 목록에 있는 플랫폼에서 등록"
     },
     "untitled": "제목 없음",
     "noPicture": "게이트웨이에 이미지가 없습니다",
@@ -715,17 +715,17 @@
     "noPicture": "지금은 이미지를 보관한 곳이 응답하지 않습니다. 1분 뒤에 다시 시도해 주세요.",
     "fingerprintVersion": "지문 버전 {version}",
     "record": "이 기록",
-    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
+    "passkeyBound": "이 제작자의 지갑에 묶인 키가 Monad에서 이 이미지의 지문에 서명했습니다.",
     "passkeyNone": "이 제작자의 지갑에 묶인 패스키가 없습니다.",
     "platform": {
-      "kit": "Registered by {platform} through the Moolam platform kit",
-      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
-      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+      "kit": "{platform}에서 Moolam 플랫폼 키트로 등록",
+      "kitNote": "{platform}의 자체 서버 키가 제작자로, {platform}의 에이전트가 생성 에이전트로 서명했습니다. Moolam은 이 회사가 두 키를 모두 가지고 있는지 확인했을 뿐, 이 회사가 누구인지는 확인하지 않았습니다.",
+      "outsideKit": "이 지갑은 Moolam 목록에 {platform}의 지갑으로 올라 있지만, 이 이미지는 Moolam 플랫폼 키트 밖에서 등록되었습니다."
     },
-    "agentListed": "Listed by Moolam as {platform}'s agent",
-    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "agentListed": "Moolam 목록에 {platform}의 에이전트로 올라 있음",
+    "agentSelfDeclared": "이 에이전트가 자기 카드에 스스로 밝힌 이름은 {name}입니다. Moolam은 그 이름을 확인하지 않았습니다.",
     "holder": {
-      "differs": "Registered by {creator}. Now held by {holder}."
+      "differs": "{creator} 지갑이 등록했습니다. 지금은 {holder} 지갑이 보유하고 있습니다."
     },
     "noAgent": "생성 에이전트 없음. 이 한 장은 제작자가 올린 파일로 등록되었습니다.",
     "agentNumber": "에이전트 {id}",
@@ -917,9 +917,9 @@
       "conditionsLabel": "조건, 보유자 자신의 말로",
       "conditionsApplyTo": "{uses}에 적용됩니다.",
       "statedBy": "선언한 주소",
-      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
-      "atGeneration": "Stated at generation",
-      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
+      "platformStanding": "{platform}에서 밝힌 선언입니다. 이 여권을 보유한 쪽이 누구든, 새로 선언하기 전까지 그대로 적용됩니다.",
+      "atGeneration": "생성 시점의 선언",
+      "differs": "파일에 적힌 선언이 Monad의 선언과 다릅니다. 적용되는 것은 Monad의 선언입니다.",
       "writtenLabel": "기록 시각",
       "empty": {
         "body": "이 이미지에 대한 선언을 쓴 사람이 없습니다. 그 침묵을 그대로 적어 둡니다. 침묵으로 허용된 용도는 하나도 없기 때문입니다.",
@@ -1115,7 +1115,7 @@
       "noAgent": "지정된 에이전트 없음",
       "chainlink": "Chainlink",
       "unknownWriter": "알 수 없는 기록자",
-      "cardNamed": "{agent}, named by its own card"
+      "cardNamed": "{agent}, 카드에 스스로 밝힌 이름"
     },
     "ownerHint": "직접 만들었나요? 로그인해서 관리하세요.",
     "share": {
@@ -1819,10 +1819,10 @@
     "makeFirst": "첫 이미지 등록하기",
     "signedInAs": "로그인 계정: {account}",
     "held": {
-      "heading": "Held by you, made by others",
-      "label": "Held, not made by you",
-      "hide": "Hide",
-      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+      "heading": "다른 사람이 만들고 내가 보유한 것",
+      "label": "보유 중, 내가 만들지 않음",
+      "hide": "숨기기",
+      "showHidden": "{count, plural, other {숨긴 이미지 #장 보기}}"
     }
   },
   "crMark": {
@@ -1833,257 +1833,257 @@
     "untrustedSigner": "서명자의 신원을 확인할 수 없습니다. 이 기록에 서명한 키가 C2PA Trust List에 없습니다."
   },
   "cosign": {
-    "metaTitle": "Co-sign a picture",
-    "metaDescription": "Sign as the creator of a picture an AI image site made for you, with your own passkey.",
-    "outline": "Co-sign",
-    "kickerNamed": "From {platform} · {id}",
-    "kickerPlain": "Co-sign request · {id}",
-    "kickerSignedOut": "Co-sign request",
-    "untitled": "A picture made for you",
-    "sender": "the site that sent you",
-    "heading": "You are about to sign",
-    "signedOut": "Shown once you sign in.",
+    "metaTitle": "이미지 공동 서명",
+    "metaDescription": "AI 이미지 사이트가 나를 위해 만든 이미지에 내 패스키로 제작자로서 서명합니다.",
+    "outline": "공동 서명",
+    "kickerNamed": "{platform}에서 보냄 · {id}",
+    "kickerPlain": "공동 서명 요청 · {id}",
+    "kickerSignedOut": "공동 서명 요청",
+    "untitled": "나를 위해 만든 이미지",
+    "sender": "여기로 보낸 사이트",
+    "heading": "서명하려는 내용",
+    "signedOut": "로그인하면 보입니다.",
     "print": {
-      "signedOut": "The picture is shown here once you sign in.",
-      "waiting": "The picture is shown here once the agent has signed and it is pinned.",
-      "withheld": "Nothing is drawn: the file the gateway handed over did not match the passport.",
-      "none": "No picture to show."
+      "signedOut": "로그인하면 여기에 이미지가 보입니다.",
+      "waiting": "에이전트가 서명하고 이미지가 고정되면 여기에 보입니다.",
+      "withheld": "아무것도 표시하지 않습니다. 게이트웨이가 넘겨준 파일이 여권과 맞지 않았습니다.",
+      "none": "보여 줄 이미지가 없습니다."
     },
     "caption": {
-      "agent": "Agent {id}"
+      "agent": "에이전트 {id}"
     },
     "clauses": {
       "picture": {
-        "label": "This picture",
-        "body": "The print shown here, byte for byte.",
+        "label": "이 이미지",
+        "body": "여기 보이는 이미지, 바이트 하나까지 그대로.",
         "hash": "sha256 {hash}"
       },
       "agent": {
-        "label": "Drawn by an agent, self-declared"
+        "label": "그린 에이전트, 스스로 밝힘"
       },
       "platform": {
-        "label": "For a platform",
-        "listed": "For a platform, listed by Moolam",
-        "withheld": "For a platform, badge withheld",
-        "unlisted": "For a platform, not listed by Moolam",
-        "reading": "Checked against Moolam's list once the record is read."
+        "label": "대상 플랫폼",
+        "listed": "대상 플랫폼, Moolam 목록에 있음",
+        "withheld": "대상 플랫폼, 배지 보류",
+        "unlisted": "대상 플랫폼, Moolam 목록에 없음",
+        "reading": "기록을 읽으면 Moolam 목록과 대조합니다."
       },
       "terms": {
-        "label": "Under these AI-use terms, as stated",
-        "pending": "Read from the picture's own file once it is pinned."
+        "label": "이 AI 사용 선언에 따라, 적힌 그대로",
+        "pending": "이미지가 고정되면 이미지 자체 파일에서 읽어 옵니다."
       },
       "creator": {
-        "label": "In your name",
-        "unset": "The first account to sign in becomes the creator, once and for good. Sign in with the one you want it under.",
-        "set": "You become its creator, and the passport lands in your account.",
-        "other": "Another account opened this link first and is its creator."
+        "label": "내 이름으로",
+        "unset": "처음 로그인하는 계정이 제작자가 되며, 한 번 정해지면 바뀌지 않습니다. 이 이미지가 속할 계정으로 로그인하세요.",
+        "set": "제작자가 되고, 여권은 내 계정으로 들어옵니다.",
+        "other": "다른 계정이 이 링크를 먼저 열었고, 그 계정이 제작자입니다."
       },
       "until": {
-        "label": "Until",
-        "body": "{time}, chain time. After that the registry refuses it and nothing is sent.",
-        "unset": "Thirty minutes from the moment the link is first opened, on the chain's clock. After that the registry refuses it and nothing is sent."
+        "label": "기한",
+        "body": "체인 시각 {time}까지. 그 뒤에는 레지스트리가 받지 않으며, 아무것도 보내지 않습니다.",
+        "unset": "링크를 처음 연 순간부터 체인 시계로 30분. 그 뒤에는 레지스트리가 받지 않으며, 아무것도 보내지 않습니다."
       }
     },
     "agent": {
-      "noName": "Its card carries no name",
-      "id": "Agent {id}",
-      "owner": "owner {owner}",
-      "unchecked": "Moolam did not check the company behind this name."
+      "noName": "이 에이전트의 카드에는 이름이 없습니다",
+      "id": "에이전트 {id}",
+      "owner": "소유자 {owner}",
+      "unchecked": "Moolam은 이 이름 뒤에 있는 회사를 확인하지 않았습니다."
     },
     "platform": {
-      "listedLine": "Onboarded with signatures from agent {agent}'s owner and its wallet.",
-      "withheldName": "Name withheld",
-      "withheldLine": "Agent {agent} has changed owner since its platform was listed, so Moolam does not vouch for the pairing and does not name it.",
-      "unlistedName": "Not on Moolam's list",
-      "unlistedLine": "Moolam lists no platform for agent {agent}, so no platform is named here."
+      "listedLine": "에이전트 {agent}의 소유자와 플랫폼 지갑이 서명해 Moolam 목록에 올랐습니다.",
+      "withheldName": "이름 보류",
+      "withheldLine": "플랫폼이 Moolam 목록에 오른 뒤 에이전트 {agent}의 소유자가 바뀌었습니다. 그래서 Moolam은 에이전트와 플랫폼의 짝을 보증하지 않으며, 그 이름도 밝히지 않습니다.",
+      "unlistedName": "Moolam 목록에 없음",
+      "unlistedLine": "Moolam 목록에는 에이전트 {agent}의 플랫폼이 없어, 여기에 플랫폼 이름을 적지 않습니다."
     },
     "terms": {
-      "open": "Open to AI use, training included",
-      "closed": "Not for AI training or any other AI use",
-      "ask": "Ask the creator first",
-      "mixed": "Allowed for some uses, not others",
-      "none": "Nothing stated about AI use"
+      "open": "AI 사용에 열려 있음, 학습 포함",
+      "closed": "AI 학습에도, 다른 어떤 AI 사용에도 안 됨",
+      "ask": "먼저 제작자에게 물어볼 것",
+      "mixed": "어떤 용도는 허용, 어떤 용도는 불허",
+      "none": "AI 사용에 대해 아무것도 밝히지 않음"
     },
     "states": {
       "loading": {
-        "kicker": "Reading the record",
-        "headline": "Opening this co-sign link.",
-        "line": "This page reads the link in your browser and asks for the record only once you are signed in."
+        "kicker": "기록을 읽는 중",
+        "headline": "이 공동 서명 링크를 여는 중입니다.",
+        "line": "이 페이지는 브라우저 안에서 링크를 읽고, 로그인한 뒤에만 기록을 요청합니다."
       },
       "notFound": {
-        "kicker": "Nothing here",
-        "headline": "This co-sign link does not lead anywhere.",
-        "line": "The link is incomplete, was already used, or was never made. Nothing was signed.",
-        "note": "Ask the site that sent you for a new link."
+        "kicker": "아무것도 없음",
+        "headline": "이 공동 서명 링크는 아무 데로도 이어지지 않습니다.",
+        "line": "링크가 불완전하거나, 이미 쓰였거나, 만들어진 적이 없습니다. 아무것도 서명되지 않았습니다.",
+        "note": "여기로 보낸 사이트에 새 링크를 요청하세요."
       },
       "signIn": {
-        "kicker": "Sign in to continue",
-        "headline": "Sign in with the account this picture should be under.",
-        "line": "The first account to open this link becomes the picture's creator, and only that account can sign it. The site that sent you cannot choose it for you.",
-        "primary": "Sign in",
-        "note": "Email, Google or a passkey. An account is made for you if you have none."
+        "kicker": "계속하려면 로그인",
+        "headline": "이 이미지가 속할 계정으로 로그인하세요.",
+        "line": "이 링크를 처음 여는 계정이 이 이미지의 제작자가 되고, 그 계정만 서명할 수 있습니다. 여기로 보낸 사이트가 대신 정해 줄 수는 없습니다.",
+        "primary": "로그인",
+        "note": "이메일, Google 또는 패스키. 계정이 없으면 새로 만들어집니다."
       },
       "makePasskey": {
-        "kicker": "One setup step",
-        "headline": "Make a passkey. It becomes your signature.",
-        "line": "A passkey is the fingerprint, face unlock or PIN this device already uses. It stays on the device: Moolam only ever sees the public half.",
-        "primary": "Make a passkey",
-        "note": "One transaction, network fee paid by Moolam."
+        "kicker": "설정은 이 한 단계",
+        "headline": "패스키를 만드세요. 이 패스키가 내 서명이 됩니다.",
+        "line": "패스키는 이 기기가 이미 쓰고 있는 지문, 얼굴 잠금 해제, PIN입니다. 기기 안에 남고, Moolam은 공개된 쪽 절반만 봅니다.",
+        "primary": "패스키 만들기",
+        "note": "트랜잭션 한 건, 네트워크 수수료는 Moolam이 부담합니다."
       },
       "passkeyElsewhere": {
-        "kicker": "Your passkey lives elsewhere",
-        "headline": "This account's passkey was made on another device.",
-        "line": "Open this link on that device to sign with it, or replace it with this device's unlock. Replacing costs one transaction, and the old passkey stops working for new pictures.",
-        "primary": "Use my passkey",
-        "secondary": "Replace it with this device"
+        "kicker": "패스키가 다른 곳에 있음",
+        "headline": "이 계정의 패스키는 다른 기기에서 만들어졌습니다.",
+        "line": "그 기기에서 이 링크를 열어 서명하거나, 이 기기의 잠금 해제로 바꾸세요. 바꾸면 트랜잭션이 한 건 들고, 이전 패스키는 새 이미지에 더 이상 쓸 수 없습니다.",
+        "primary": "내 패스키 사용",
+        "secondary": "이 기기로 바꾸기"
       },
       "wrongWallet": {
-        "kicker": "Opened by another account",
-        "headline": "This picture is waiting for a different account.",
-        "line": "Another account opened this link first, and only that account can sign it. You are signed in as {wallet}.",
-        "secondary": "Sign out",
-        "note": "Signed in with the wrong account? Sign out and back in with the right one. Otherwise ask {platform} for a new link."
+        "kicker": "다른 계정이 연 링크",
+        "headline": "이 이미지는 다른 계정을 기다리고 있습니다.",
+        "line": "다른 계정이 이 링크를 먼저 열었고, 그 계정만 서명할 수 있습니다. 지금 로그인한 계정은 {wallet}입니다.",
+        "secondary": "로그아웃",
+        "note": "다른 계정으로 로그인했나요? 로그아웃한 뒤 맞는 계정으로 다시 로그인하세요. 아니면 {platform}에 새 링크를 요청하세요."
       },
       "waitingAgent": {
-        "kicker": "Waiting for the agent",
-        "headline": "Waiting for agent {agent} to sign.",
-        "line": "The agent signs the same record from its own key, then the picture is pinned. Your passkey step opens by itself once both are done.",
-        "note": "Usually under a minute. You can leave this tab open."
+        "kicker": "에이전트를 기다리는 중",
+        "headline": "에이전트 {agent}의 서명을 기다리는 중입니다.",
+        "line": "에이전트가 자기 키로 같은 기록에 서명한 다음 이미지가 고정됩니다. 둘 다 끝나면 패스키 단계가 저절로 열립니다.",
+        "note": "보통 1분 안에 끝납니다. 이 탭은 열어 두어도 됩니다."
       },
       "ready": {
-        "kicker": "Ready to sign",
-        "headline": "Everything checks out. Sign with your passkey.",
-        "line": "This browser rebuilt the record from what you see here, and it matches the one the agent signed and the one the registry expects.",
-        "primary": "Sign with passkey",
-        "note": "Network fee paid by Moolam."
+        "kicker": "서명 준비됨",
+        "headline": "모두 확인되었습니다. 패스키로 서명하세요.",
+        "line": "이 브라우저가 여기 보이는 내용으로 기록을 다시 만들었고, 그 기록은 에이전트가 서명한 기록, 레지스트리가 기대하는 기록과 일치합니다.",
+        "primary": "패스키로 서명",
+        "note": "네트워크 수수료는 Moolam이 부담합니다."
       },
       "checking": {
-        "kicker": "Checking",
-        "headline": "Checking the picture and the record.",
-        "line": "This browser is hashing the picture and rebuilding the record from what you see here, to hold against the one the agent signed and the one the registry expects. The button opens when all three agree.",
-        "primary": "Checking"
+        "kicker": "확인 중",
+        "headline": "이미지와 기록을 확인하는 중입니다.",
+        "line": "이 브라우저가 이미지의 해시를 계산하고 여기 보이는 내용으로 기록을 다시 만들어, 에이전트가 서명한 기록, 레지스트리가 기대하는 기록과 대조하고 있습니다. 셋이 모두 일치하면 버튼이 열립니다.",
+        "primary": "확인 중"
       },
       "signing": {
-        "kicker": "Signing",
-        "headline": "Waiting for your fingerprint or face unlock.",
-        "headlineSending": "Sending the passport to Monad.",
-        "headlineConfirming": "Waiting for Monad's receipt.",
-        "line": "Then the passport goes to Monad, network fee paid by Moolam. It takes a few seconds."
+        "kicker": "서명 중",
+        "headline": "지문이나 얼굴 잠금 해제를 기다리는 중입니다.",
+        "headlineSending": "여권을 Monad로 보내는 중입니다.",
+        "headlineConfirming": "Monad의 영수증을 기다리는 중입니다.",
+        "line": "그다음 여권이 Monad로 갑니다. 네트워크 수수료는 Moolam이 부담합니다. 몇 초면 됩니다."
       },
       "registered": {
-        "kicker": "Registered on Monad",
-        "headline": "Done. The passport is in your account.",
-        "line": "Anyone who checks a copy of this picture now finds you as its creator and agent {agent} as the agent that drew it.",
-        "primary": "Open the passport"
+        "kicker": "Monad에 등록됨",
+        "headline": "끝났습니다. 여권이 내 계정에 들어왔습니다.",
+        "line": "이제 이 이미지의 사본을 확인하는 사람은 누구나, 제작자가 나이고 그린 에이전트가 에이전트 {agent}임을 알게 됩니다.",
+        "primary": "여권 열기"
       },
       "expired": {
-        "kicker": "This link ran out",
-        "headline": "The signing window closed at {time}.",
-        "headlinePlain": "The signing window has closed.",
-        "line": "Nothing was signed and nothing was sent.",
-        "note": "Ask {platform} for a fresh link."
+        "kicker": "링크 기한이 지남",
+        "headline": "서명할 시간이 {time}에 끝났습니다.",
+        "headlinePlain": "서명할 시간이 끝났습니다.",
+        "line": "아무것도 서명되지 않았고 아무것도 보내지 않았습니다.",
+        "note": "{platform}에 새 링크를 요청하세요."
       },
       "failed": {
         "mismatch": {
-          "kicker": "Stopped before signing",
-          "headline": "The record did not match what this page shows.",
-          "line": "This browser rebuilt the record from the picture and facts on this page, and the registry expected something else, so your passkey was never asked. Nothing was signed.",
-          "note": "Ask {platform} for a fresh link."
+          "kicker": "서명 전에 멈춤",
+          "headline": "기록이 이 페이지에 보이는 내용과 맞지 않았습니다.",
+          "line": "이 브라우저가 이 페이지의 이미지와 정보로 기록을 다시 만들었는데, 레지스트리가 기대한 것은 달랐습니다. 그래서 패스키는 아예 요청하지 않았습니다. 아무것도 서명되지 않았습니다.",
+          "note": "{platform}에 새 링크를 요청하세요."
         },
         "taken": {
-          "kicker": "Already registered",
-          "headline": "Another passport already holds this picture.",
-          "line": "The registry has a passport for these exact bytes, held by {holder}. The first registration wins, so there is nothing left to sign here.",
-          "linePlain": "The registry has a passport for these exact bytes. The first registration wins, so there is nothing left to sign here.",
-          "primary": "Open that passport",
-          "note": "Ask {platform} about it."
+          "kicker": "이미 등록됨",
+          "headline": "다른 여권이 이미 이 이미지를 가지고 있습니다.",
+          "line": "레지스트리에는 바로 이 바이트에 대한 여권이 있고, {holder} 지갑이 보유하고 있습니다. 먼저 등록한 쪽이 유효하므로 여기서 더 서명할 것이 없습니다.",
+          "linePlain": "레지스트리에는 바로 이 바이트에 대한 여권이 있습니다. 먼저 등록한 쪽이 유효하므로 여기서 더 서명할 것이 없습니다.",
+          "primary": "그 여권 열기",
+          "note": "{platform}에 문의하세요."
         },
         "refused": {
-          "kicker": "Stopped before signing",
-          "headline": "The co-sign service refused this record.",
-          "line": "The record behind this link failed its own checks, so it was dropped and nothing was signed.",
-          "note": "Ask {platform} for a fresh link."
+          "kicker": "서명 전에 멈춤",
+          "headline": "공동 서명 서비스가 이 기록을 거절했습니다.",
+          "line": "이 링크 뒤의 기록이 자체 검사를 통과하지 못해 폐기되었고, 아무것도 서명되지 않았습니다.",
+          "note": "{platform}에 새 링크를 요청하세요."
         },
         "unavailable": {
-          "kicker": "No answer",
-          "headline": "The co-sign service or Monad did not answer.",
-          "line": "Nothing was signed and nothing was sent. Try again in a moment.",
-          "primary": "Try again"
+          "kicker": "응답 없음",
+          "headline": "공동 서명 서비스나 Monad가 응답하지 않았습니다.",
+          "line": "아무것도 서명되지 않았고 아무것도 보내지 않았습니다. 잠시 뒤 다시 시도해 주세요.",
+          "primary": "다시 시도"
         },
         "unconfirmed": {
-          "kicker": "Sent, not confirmed",
-          "headline": "Monad has not shown a receipt for this passport yet.",
-          "line": "Your passport was sent. It may still land, so nothing will be sent again from here. Check again in a moment.",
-          "primary": "Check again"
+          "kicker": "보냄, 확정되지 않음",
+          "headline": "Monad가 아직 이 여권의 영수증을 보여 주지 않았습니다.",
+          "line": "여권은 전송되었습니다. 아직 기록될 수 있으니 여기서는 다시 보내지 않습니다. 잠시 뒤 다시 확인해 주세요.",
+          "primary": "다시 확인"
         }
       }
     },
     "steps": {
-      "agentSigns": "The agent signs",
-      "pinned": "The picture is pinned",
-      "passkey": "Your passkey",
-      "sent": "Sent to Monad",
-      "written": "Passport written"
+      "agentSigns": "에이전트 서명",
+      "pinned": "이미지 고정",
+      "passkey": "내 패스키",
+      "sent": "Monad로 보냄",
+      "written": "여권 기록됨"
     },
     "bindStage": {
-      "creating": "Making a passkey on this device",
-      "waiting": "Waiting for your fingerprint or face unlock",
-      "sending": "Sending it to Monad, network fee paid by Moolam",
-      "recovering": "Waiting for your fingerprint or face unlock"
+      "creating": "이 기기에 패스키를 만드는 중",
+      "waiting": "지문이나 얼굴 잠금 해제를 기다리는 중",
+      "sending": "Monad로 보내는 중, 네트워크 수수료는 Moolam이 부담",
+      "recovering": "지문이나 얼굴 잠금 해제를 기다리는 중"
     },
-    "registeredLine": "Passport {id} · written on Monad mainnet",
-    "transaction": "View the transaction",
+    "registeredLine": "여권 {id} · Monad 메인넷에 기록됨",
+    "transaction": "트랜잭션 보기",
     "termsLine": {
-      "waiting": "The AI-use terms go to Monad next.",
-      "sending": "Writing the AI-use terms to Monad, network fee paid by Moolam.",
-      "written": "AI-use terms written on chain.",
-      "failed": "The passport is yours, and the AI-use terms were not written yet.",
-      "again": "Write the terms",
-      "offered": "No AI-use terms are on chain for this passport yet. The picture's own file carries the terms shown above, and you can write them now.",
-      "stated": "AI-use terms for this passport are already on chain, written by {writer}. This page changes nothing."
+      "waiting": "다음으로 AI 사용 선언이 Monad로 갑니다.",
+      "sending": "AI 사용 선언을 Monad에 기록하는 중입니다. 네트워크 수수료는 Moolam이 부담합니다.",
+      "written": "AI 사용 선언이 체인에 기록되었습니다.",
+      "failed": "여권은 내 것이 되었고, AI 사용 선언은 아직 기록되지 않았습니다.",
+      "again": "선언 기록하기",
+      "offered": "이 여권의 AI 사용 선언은 아직 체인에 없습니다. 위에 보이는 선언은 이미지 자체 파일에 담긴 것이며, 지금 기록할 수 있습니다.",
+      "stated": "이 여권의 AI 사용 선언은 이미 체인에 있으며, {writer} 지갑이 기록했습니다. 이 페이지는 아무것도 바꾸지 않습니다."
     },
-    "details": "Details",
-    "detailsDigest": "This page built {local}. The record held for this link names {other}.",
-    "detailsPicture": "The picture the gateway handed over does not hash to the passport id.",
-    "detailsMetadata": "The metadata document the gateway handed over is not the one the passport names.",
-    "detailsRecord": "The record for this link is missing the agent's signature or its fields do not agree.",
-    "signHere": "Sign here",
-    "passkeySigns": "your passkey signs {digest}",
-    "passkeyWaits": "your passkey signs nothing until all three agree",
-    "sealLabel": "Registered, passport {id}",
-    "sealRing": "PASSPORT · {id} · MONAD MAINNET · "
+    "details": "세부 정보",
+    "detailsDigest": "이 페이지가 만든 값: {local}. 이 링크에 보관된 기록에 적힌 값: {other}.",
+    "detailsPicture": "게이트웨이가 넘겨준 이미지의 해시가 여권 id와 맞지 않습니다.",
+    "detailsMetadata": "게이트웨이가 넘겨준 메타데이터 문서는 여권에 적힌 문서가 아닙니다.",
+    "detailsRecord": "이 링크의 기록에 에이전트의 서명이 없거나, 기록의 항목들이 서로 맞지 않습니다.",
+    "signHere": "여기에 서명",
+    "passkeySigns": "내 패스키가 {digest}에 서명",
+    "passkeyWaits": "셋이 모두 일치할 때까지 내 패스키는 아무것에도 서명하지 않음",
+    "sealLabel": "등록됨, 여권 {id}",
+    "sealRing": "여권 · {id} · MONAD 메인넷 · "
   },
   "connect": {
-    "metaTitle": "Share your Moolam address",
-    "metaDescription": "A site asks for your Moolam address so it can hand you the passports of pictures made for you.",
-    "kicker": "Share your address",
-    "headingListed": "<accent>{name}</accent> is asking for your Moolam address.",
-    "headingUnlisted": "An unlisted site is asking for your Moolam address.",
-    "headingInvalid": "This request does not name a site.",
-    "askingFrom": "Asking from {origin}",
-    "account": "Your Moolam account",
-    "exactly": "This exact address, and nothing else about you.",
-    "signInLine": "Sign in to see the exact address you would share.",
-    "signIn": "Sign in",
-    "opening": "Opening your account",
-    "listedLabel": "Listed by Moolam",
-    "unlistedLabel": "Not on Moolam's list",
-    "unlistedName": "Unlisted site",
-    "listedLine": "Onboarded with signatures from its agent's owner and its wallet.",
-    "unlistedLine": "Moolam knows nothing about this site. Share only if you came here from it.",
-    "usesListed": "{name} uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
-    "usesUnlisted": "The site uses it to hand you the passports of pictures made for you. An address lets a site give you things. It cannot sign for you or spend from your account.",
-    "share": "Share this address",
-    "cancel": "Not now",
-    "shareNote": "Nothing leaves this page until you press Share, and then only to {origin}.",
-    "sharedKicker": "Shared",
-    "sharedListed": "Sent to {name} at {origin}, and nowhere else. You can close this tab.",
-    "sharedUnlisted": "Sent to the site at {origin}, and nowhere else. You can close this tab.",
-    "cancelledKicker": "Nothing shared",
-    "cancelledListed": "{name} got nothing from this page. You can close this tab.",
-    "cancelledUnlisted": "The site got nothing from this page. You can close this tab.",
-    "noOpenerKicker": "Open it from the site",
-    "noOpenerLine": "This page shares your address only with the window that opened it. Go back to the site that asked and open it from there. Nothing was shared.",
-    "invalidLine": "The link that opened this page names no https site, so there is nowhere to send an address. Nothing was shared."
+    "metaTitle": "내 Moolam 주소 공유",
+    "metaDescription": "사이트가 나를 위해 만든 이미지의 여권을 건네주려고 내 Moolam 주소를 요청합니다.",
+    "kicker": "내 주소 공유",
+    "headingListed": "<accent>{name}</accent>에서 내 Moolam 주소를 요청합니다.",
+    "headingUnlisted": "Moolam 목록에 없는 사이트에서 내 Moolam 주소를 요청합니다.",
+    "headingInvalid": "이 요청에는 사이트가 적혀 있지 않습니다.",
+    "askingFrom": "{origin}에서 요청",
+    "account": "내 Moolam 계정",
+    "exactly": "바로 이 주소만 공유하며, 나에 대한 다른 정보는 공유하지 않습니다.",
+    "signInLine": "공유하게 될 정확한 주소를 보려면 로그인하세요.",
+    "signIn": "로그인",
+    "opening": "계정을 여는 중",
+    "listedLabel": "Moolam 목록에 있음",
+    "unlistedLabel": "Moolam 목록에 없음",
+    "unlistedName": "목록에 없는 사이트",
+    "listedLine": "사이트 에이전트의 소유자와 사이트 지갑이 서명해 Moolam 목록에 올랐습니다.",
+    "unlistedLine": "Moolam은 이 사이트에 대해 아는 것이 없습니다. 이 사이트에서 넘어온 경우에만 공유하세요.",
+    "usesListed": "{name}에서는 이 주소로 나를 위해 만든 이미지의 여권을 건네줍니다. 주소가 있으면 사이트는 나에게 무언가를 줄 수 있습니다. 나 대신 서명하거나 내 계정에서 지출할 수는 없습니다.",
+    "usesUnlisted": "사이트는 이 주소로 나를 위해 만든 이미지의 여권을 건네줍니다. 주소가 있으면 사이트는 나에게 무언가를 줄 수 있습니다. 나 대신 서명하거나 내 계정에서 지출할 수는 없습니다.",
+    "share": "이 주소 공유하기",
+    "cancel": "지금은 안 함",
+    "shareNote": "‘공유하기’를 누르기 전에는 이 페이지에서 아무것도 나가지 않습니다. 누른 뒤에도 보내는 곳은 {origin} 하나뿐입니다.",
+    "sharedKicker": "공유함",
+    "sharedListed": "{origin}의 {name}에만 보냈고, 다른 곳으로는 보내지 않았습니다. 이 탭을 닫아도 됩니다.",
+    "sharedUnlisted": "{origin}의 사이트에만 보냈고, 다른 곳으로는 보내지 않았습니다. 이 탭을 닫아도 됩니다.",
+    "cancelledKicker": "공유하지 않음",
+    "cancelledListed": "이 페이지는 {name}에 아무것도 보내지 않았습니다. 이 탭을 닫아도 됩니다.",
+    "cancelledUnlisted": "이 페이지는 그 사이트에 아무것도 보내지 않았습니다. 이 탭을 닫아도 됩니다.",
+    "noOpenerKicker": "사이트에서 열기",
+    "noOpenerLine": "이 페이지는 자신을 연 창에만 주소를 공유합니다. 요청한 사이트로 돌아가 거기서 이 페이지를 여세요. 아무것도 공유하지 않았습니다.",
+    "invalidLine": "이 페이지를 연 링크에는 https 사이트가 적혀 있지 않아 주소를 보낼 곳이 없습니다. 아무것도 공유하지 않았습니다."
   }
 }
