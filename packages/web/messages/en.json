@@ -173,13 +173,15 @@
       "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
       "chainlink": "Re-checked by a Chainlink workflow",
-      "disputed": "Dispute upheld"
+      "disputed": "Dispute upheld",
+      "platform": "Registered through {platform}"
     },
     "legend": {
       "manifest": "Carries Content Credentials",
       "rechecked": "Re-checked on chain",
       "disputed": "Dispute upheld, here or on the picture it was edited from",
-      "consent": "Statement on AI use, four marks for the four uses"
+      "consent": "Statement on AI use, four marks for the four uses",
+      "platform": "Registered through a platform Moolam lists"
     },
     "untitled": "Untitled",
     "noPicture": "No picture on the gateway",
@@ -702,8 +704,18 @@
     "noPicture": "The picture's storage is not answering right now. Try again in a minute.",
     "fingerprintVersion": "Fingerprint version {version}",
     "record": "The record",
-    "passkeyBound": "This creator signs with a passkey tied to their account.",
+    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "No passkey is bound to this creator's wallet.",
+    "platform": {
+      "kit": "Registered by {platform} through the Moolam platform kit",
+      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+    },
+    "agentListed": "Listed by Moolam as {platform}'s agent",
+    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "holder": {
+      "differs": "Registered by {creator}. Now held by {holder}."
+    },
     "noAgent": "No generating agent. This one was registered from a file the creator uploaded.",
     "agentNumber": "Agent {id}",
     "about": "About",
@@ -894,6 +906,9 @@
       "conditionsLabel": "Conditions, in the holder's words",
       "conditionsApplyTo": "Applies to {uses}.",
       "statedBy": "Stated by",
+      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
+      "atGeneration": "Stated at generation",
+      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
       "writtenLabel": "Written on",
       "empty": {
         "body": "Nobody has written a statement for this picture. It is reported here as silence, because that is what it is: no use has been allowed by it.",
@@ -1088,7 +1103,8 @@
       "unread": "Could not be read",
       "noAgent": "No agent named",
       "chainlink": "Chainlink",
-      "unknownWriter": "Unknown writer"
+      "unknownWriter": "Unknown writer",
+      "cardNamed": "{agent}, named by its own card"
     },
     "ownerHint": "Made this? Sign in to manage it.",
     "share": {
@@ -1790,7 +1806,13 @@
     },
     "showcaseCaption": "A real passport on Monad. Yours will sit here like this one.",
     "makeFirst": "Register your first picture",
-    "signedInAs": "Signed in as {account}"
+    "signedInAs": "Signed in as {account}",
+    "held": {
+      "heading": "Held by you, made by others",
+      "label": "Held, not made by you",
+      "hide": "Hide",
+      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+    }
   },
   "crMark": {
     "name": "Content Credentials",

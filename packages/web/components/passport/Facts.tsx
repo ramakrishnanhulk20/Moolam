@@ -1,10 +1,11 @@
 import { getFormatter, getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
-import type { Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { MONAD_EXPLORER, addresses, gatewayUrl, shortHex } from "@/lib/chain/client";
 import type { Passport } from "@/lib/chain/registry";
 import { CopyButton } from "@/components/studio/CopyButton";
 import { Link } from "@/lib/i18n/routing";
+import type { PlatformLabel } from "@/lib/platforms/platforms";
 import type { SealedCopyLookup } from "@/lib/verifier/client";
 import { aboutLine } from "./about";
 import { cidOf, pinnedUri, type Art } from "./art";
@@ -35,6 +36,8 @@ export async function Facts({
   standing,
   txHash,
   privateCopy,
+  platform = null,
+  agentName = null,
 }: {
   passport: Passport;
   art: Art;
@@ -44,6 +47,10 @@ export async function Facts({
   txHash: Hex | null;
   /** Whether Moolam still keeps a sealed picture's private copy, when the page asked. */
   privateCopy?: SealedCopyLookup["state"];
+  /** What Moolam's signed platform list says about this passport, from lib/data/platform-label.ts only. */
+  platform?: PlatformLabel | null;
+  /** The name the agent's own ERC-8004 card gives itself, or null when it names nothing or would not load. */
+  agentName?: string | null;
 }) {
   const t = await getTranslations("passport");
   const common = await getTranslations("common");
@@ -94,6 +101,27 @@ export async function Facts({
               <p className={`mt-2 text-base leading-relaxed ${hasPasskey ? "text-verified" : "text-text-muted"}`}>
                 {hasPasskey ? t("passkeyBound") : t("passkeyNone")}
               </p>
+              {/* An addition to the words above, never a replacement: without
+                  the list this passport still reads true, it only loses the
+                  name. */}
+              {platform === null ? null : platform.status === "kit" ? (
+                <div data-platform="kit" className="mt-4 max-w-[58ch] border-s-2 border-accent/60 ps-5">
+                  <p className="flex items-center gap-2.5 font-display text-[17px] font-semibold leading-snug tracking-[-0.01em] text-text">
+                    <span aria-hidden className="motif h-[8px] w-[8px] shrink-0" />
+                    {t("platform.kit", { platform: platform.name })}
+                  </p>
+                  <p className="mt-2 text-base leading-relaxed text-text-muted">
+                    {t("platform.kitNote", { platform: platform.name })}
+                  </p>
+                </div>
+              ) : (
+                <p
+                  data-platform="outsideKit"
+                  className="mt-4 max-w-[58ch] border-s-2 border-line-strong ps-5 text-base leading-relaxed text-text-muted"
+                >
+                  {t("platform.outsideKit", { platform: platform.name })}
+                </p>
+              )}
             </dd>
           </div>
 
@@ -115,6 +143,11 @@ export async function Facts({
                   <CopyButton value={owner} />
                 </span>
               )}
+              {owner !== null && heldElsewhere(passport.creator, owner) ? (
+                <p data-holder-differs className="mt-2 max-w-[58ch] text-base leading-relaxed text-text-muted">
+                  {t("holder.differs", { creator: shortHex(passport.creator), holder: shortHex(owner) })}
+                </p>
+              ) : null}
             </dd>
           </div>
 
@@ -131,6 +164,20 @@ export async function Facts({
                   {t("agentNumber", { id: passport.generatorAgentId.toString() })}
                 </Link>
               )}
+              {/* Two names, two trust levels, never one line (P14). The first
+                  is Moolam's signed list speaking; the second is whatever the
+                  agent's owner wrote on its card. */}
+              {passport.generatorAgentId !== 0n && platform?.status === "kit" ? (
+                <p data-agent-listed className="mt-3 flex max-w-[58ch] items-center gap-2.5 text-base leading-relaxed text-text">
+                  <span aria-hidden className="motif h-[7px] w-[7px] shrink-0" />
+                  {t("agentListed", { platform: platform.name })}
+                </p>
+              ) : null}
+              {passport.generatorAgentId !== 0n && agentName !== null && agentName.trim() !== "" ? (
+                <p data-agent-self-declared className="mt-2 max-w-[58ch] text-base leading-relaxed text-text-muted">
+                  {t("agentSelfDeclared", { name: agentName.trim() })}
+                </p>
+              ) : null}
             </dd>
           </div>
 
@@ -281,6 +328,19 @@ export async function Facts({
       </section>
     </div>
   );
+}
+
+/**
+ * True when the wallet holding the passport now is not the one that registered
+ * it. Both go through getAddress so a checksum difference is never read as a
+ * transfer; anything that is not an address is left unsaid.
+ */
+export function heldElsewhere(creator: string, holder: string): boolean {
+  try {
+    return getAddress(creator) !== getAddress(holder);
+  } catch {
+    return false;
+  }
 }
 
 /** A stored address, as a link when it passed the pinned-file rule and as plain text when it did not. */

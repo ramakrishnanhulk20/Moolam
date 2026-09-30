@@ -1,10 +1,11 @@
 import { useFormatter, useTranslations } from "next-intl";
-import type { Hex } from "viem";
+import { getAddress, type Hex } from "viem";
 import { MONAD_EXPLORER, addresses, shortHex } from "@/lib/chain/client";
 import type { ConsentEntry, ConsentReading } from "@/lib/chain/consent";
 import { NOTHING_STATED, constrainedUses } from "@/lib/chain/consent";
 import { ConsentPanel } from "@/components/passport/ConsentPanel";
 import { OwnerHint } from "@/components/passport/OwnerHint";
+import { termsDiffer, type FileTerms } from "@/lib/data/file-terms";
 import { ConsentHistory } from "./History";
 import { ConsentLedger } from "./ConsentLedger";
 import { ledgerEntry } from "./ledger";
@@ -40,6 +41,8 @@ export function ConsentSection({
   owner,
   registeredAt,
   record,
+  platform = null,
+  fileTerms = null,
 }: {
   id: Hex;
   /** Who the registry says holds this passport, so the control knows whose it is. */
@@ -48,6 +51,14 @@ export function ConsentSection({
   registeredAt: number;
   /** Null when the register could not be read, which is said out loud rather than drawn as silence. */
   record: ConsentRecord | null;
+  /**
+   * The platform whose kit registered this picture, when its label says "kit":
+   * its listed name and the creator wallet the list names. From
+   * lib/data/platform-label.ts only.
+   */
+  platform?: { name: string; wallet: string } | null;
+  /** The terms the picture's own file carries from generation, or null when it states none. */
+  fileTerms?: FileTerms | null;
 }) {
   const t = useTranslations("passport.consent");
   const format = useFormatter();
@@ -73,6 +84,10 @@ export function ConsentSection({
   const consent = entry?.consent ?? NOTHING_STATED;
   const conditions = entry !== null && entry.constraintInfo.length > 0 ? entry.constraintInfo : null;
   const conditional = constrainedUses(consent);
+  // The platform wrote the statement that stands, and nobody has written over
+  // it since: the holder is told whose words these are and how to replace them.
+  const platformStands = entry !== null && platform !== null && sameAddress(entry.writer, platform.wallet);
+  const fileDiffers = fileTerms !== null && termsDiffer(fileTerms, entry);
 
   return (
     <section data-consent className="border-y border-line bg-bg">
@@ -157,10 +172,45 @@ export function ConsentSection({
                     value={format.dateTime(new Date(Number(entry.at) * 1000), "moment")}
                   />
                 </dl>
+                {platformStands && platform !== null ? (
+                  <p
+                    data-platform-standing
+                    className="mt-6 max-w-[56ch] border-s-2 border-accent/50 ps-5 text-base leading-relaxed text-text-muted"
+                  >
+                    {t("platformStanding", { platform: platform.name })}
+                  </p>
+                ) : null}
               </>
             )}
           </div>
         </div>
+
+        {/* The file's words sit under the chain's, set back in fainter ink, and
+            the chain's stay the ones this card calls in force. A disagreement
+            is shown, never settled here (P24). */}
+        {fileDiffers && fileTerms !== null ? (
+          <div
+            data-file-terms
+            className="mt-20 grid gap-10 border-t border-dashed border-line-strong pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-20"
+          >
+            <div className="rise min-w-0">
+              <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">{t("atGeneration")}</p>
+              <UseRows consent={fileTerms.consent} className="mt-5 opacity-75" />
+              {fileTerms.constraintInfo === "" ? null : (
+                <p className="mt-5 max-w-[56ch] break-words border-s-2 border-line ps-5 text-base leading-relaxed text-text-muted">
+                  {fileTerms.constraintInfo}
+                </p>
+              )}
+            </div>
+            <p
+              data-terms-differ
+              className="rise min-w-0 max-w-[48ch] self-start border-s-2 border-accent/60 ps-5 text-base leading-relaxed text-text lg:mt-12"
+              style={{ animationDelay: "90ms" }}
+            >
+              {t("differs")}
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-20 grid gap-8 border-t border-line pt-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-20">
           <p className="rise font-mono text-[11px] uppercase tracking-[0.28em] text-text-faint">
@@ -183,6 +233,14 @@ export function ConsentSection({
       </div>
     </section>
   );
+}
+
+function sameAddress(one: string, other: string): boolean {
+  try {
+    return getAddress(one) === getAddress(other);
+  } catch {
+    return false;
+  }
 }
 
 function Field({ label, value, href }: { label: string; value: string; href?: string }) {

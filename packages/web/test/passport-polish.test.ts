@@ -117,6 +117,7 @@ describe("a facts link to a section lower on the page", () => {
   const say = {
     kind: (kind: number) => en.kind[String(kind) as "0" | "1" | "2"],
     agentNumber: (id: string) => `Agent ${id}`,
+    cardNamed: (agent: string) => en.passport.facts.cardNamed.replace("{agent}", agent),
     statement: (statement: string) => en.passport.consent.summary[statement as "closed"],
     bits: (count: number) => `${count} of 64 bits`,
     privateRecheck: en.passport.attestations.private.badge,

@@ -113,6 +113,7 @@ const asRendered = (line: string): string => line.replace(/'/g, "&#x27;");
 const say = {
   kind: () => "",
   agentNumber: (id: string) => `Agent ${id}`,
+  cardNamed: (agent: string) => en.passport.facts.cardNamed.replace("{agent}", agent),
   statement: () => "",
   bits: (count: number) => `${count} of 64 bits`,
   privateRecheck: words.private.badge,

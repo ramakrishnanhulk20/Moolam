@@ -83,7 +83,7 @@ export interface TopFact {
   key: TopFactKey;
   label: string;
   value: string;
-  /** A second, quieter line: the agent's number under its name. */
+  /** A second, quieter line: the agent's number under its name, or the creator's address under a listed platform's. */
   detail?: string;
   /** "#anchor" on this page, or a route inside the app. */
   href: string;
@@ -109,12 +109,20 @@ export interface TopFactsInput {
   phash: bigint;
   sealed: boolean;
   privateRecheck: boolean;
+  /**
+   * The platform name Moolam's signed list gives this passport, only when its
+   * label says "kit" (lib/data/platform-label.ts). Null or absent everywhere
+   * else, and then "Made by" is the creator's address as before.
+   */
+  platform?: string | null;
 }
 
 /** The page's existing words, handed in so this stays a plain function a test can call. */
 export interface TopFactsSay {
   kind: (kind: number) => string;
   agentNumber: (id: string) => string;
+  /** The detail under a card's own name: the agent's number, and that the name is the card's word (P14). */
+  cardNamed: (agent: string) => string;
   statement: (statement: Statement) => string;
   bits: (count: number) => string;
   privateRecheck: string;
@@ -142,7 +150,20 @@ export function topFacts(input: TopFactsInput, say: TopFactsSay): TopFact[] {
   return [madeBy(input, say), drawnBy(input, say), aiUse(input, say), rechecked(input, say)];
 }
 
-function madeBy({ creator }: TopFactsInput, say: TopFactsSay): TopFact {
+function madeBy({ creator, platform }: TopFactsInput, say: TopFactsSay): TopFact {
+  const listed = platform?.trim();
+  if (listed !== undefined && listed !== "") {
+    // The list vouches for the name, so it leads; the address it vouches for
+    // stays under it, because a name alone can be spoofed across scripts.
+    return {
+      key: "madeBy",
+      label: say.words.madeBy,
+      value: listed,
+      detail: shortHex(creator),
+      href: anchor("madeBy"),
+      tone: "text",
+    };
+  }
   return {
     key: "madeBy",
     label: say.words.madeBy,
@@ -172,7 +193,9 @@ function drawnBy({ agentId, agentName, kind }: TopFactsInput, say: TopFactsSay):
     key: "drawnBy",
     label: say.words.drawnBy,
     value: name === undefined || name === "" ? number : name,
-    detail: name === undefined || name === "" ? undefined : number,
+    // The card's name is whatever the agent's owner wrote, so the line under it
+    // says so rather than letting it read as a checked fact.
+    detail: name === undefined || name === "" ? undefined : say.cardNamed(number),
     href: `/agent/${agentId.toString()}`,
     tone: "text",
   };

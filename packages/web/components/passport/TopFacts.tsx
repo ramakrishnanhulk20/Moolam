@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import type { ConsentRecord } from "@/components/consent/ConsentSection";
 import { readCard } from "@/components/agent/card";
 import { heldAgent } from "@/lib/chain/registry";
+import { labelFor } from "@/lib/data/platform-label";
 import type { Attestation, Passport } from "@/lib/chain/registry";
 import { Link } from "@/lib/i18n/routing";
 import type { Art } from "./art";
@@ -43,6 +44,7 @@ export async function TopFacts({
   const t = await getTranslations("passport");
   const kinds = await getTranslations("kind");
   const format = await getFormatter({ locale });
+  const label = await labelFor(passport).catch(() => null);
 
   const facts = topFacts(
     {
@@ -55,10 +57,12 @@ export async function TopFacts({
       phash: passport.phash,
       sealed: art.sealed === true,
       privateRecheck: art.privateRecheck === true,
+      platform: label?.status === "kit" ? label.name : null,
     },
     {
       kind: (kind) => kinds(String(kind)),
       agentNumber: (id) => t("agentNumber", { id }),
+      cardNamed: (agent) => t("facts.cardNamed", { agent }),
       statement: (statement) => t(`consent.summary.${statement}`),
       bits: (count) => t("attestations.distance", { distance: count }),
       privateRecheck: t("attestations.private.badge"),

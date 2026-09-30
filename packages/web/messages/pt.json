@@ -189,13 +189,15 @@
       "manifest": "Traz Content Credentials",
       "rechecked": "Reconferida na rede",
       "chainlink": "Reconferida por um fluxo da Chainlink",
-      "disputed": "Contestação aceita"
+      "disputed": "Contestação aceita",
+      "platform": "Registered through {platform}"
     },
     "legend": {
       "manifest": "Traz Content Credentials",
       "rechecked": "Reconferida na rede",
       "disputed": "Contestação aceita, aqui ou na imagem a partir da qual esta foi editada",
-      "consent": "Declaração sobre uso por IA, quatro marcas para os quatro usos"
+      "consent": "Declaração sobre uso por IA, quatro marcas para os quatro usos",
+      "platform": "Registered through a platform Moolam lists"
     },
     "untitled": "Sem título",
     "noPicture": "Sem imagem no gateway",
@@ -718,8 +720,18 @@
     "noPicture": "O armazenamento da imagem não está respondendo agora. Tente de novo daqui a um minuto.",
     "fingerprintVersion": "Versão da impressão {version}",
     "record": "O registro",
-    "passkeyBound": "Este criador assina com uma chave de acesso ligada à conta dele.",
+    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "Nenhuma chave de acesso está vinculada à conta deste criador.",
+    "platform": {
+      "kit": "Registered by {platform} through the Moolam platform kit",
+      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+    },
+    "agentListed": "Listed by Moolam as {platform}'s agent",
+    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "holder": {
+      "differs": "Registered by {creator}. Now held by {holder}."
+    },
     "noAgent": "Sem agente gerador. Esta foi registrada a partir de um arquivo que o criador enviou.",
     "agentNumber": "Agente {id}",
     "about": "Sobre",
@@ -910,6 +922,9 @@
       "conditionsLabel": "Condições, nas palavras de quem a detém",
       "conditionsApplyTo": "Aplica-se a {uses}.",
       "statedBy": "Declarada por",
+      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
+      "atGeneration": "Stated at generation",
+      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
       "writtenLabel": "Escrita em",
       "empty": {
         "body": "Ninguém escreveu uma declaração para esta imagem. Esse silêncio fica aqui tal como é, porque é isso mesmo: não autoriza uso nenhum.",
@@ -1104,7 +1119,8 @@
       "unread": "Não foi possível ler",
       "noAgent": "Nenhum agente indicado",
       "chainlink": "Chainlink",
-      "unknownWriter": "Autor desconhecido"
+      "unknownWriter": "Autor desconhecido",
+      "cardNamed": "{agent}, named by its own card"
     },
     "ownerHint": "Criou esta imagem? Entre para gerenciá-la.",
     "share": {
@@ -1806,7 +1822,13 @@
     },
     "showcaseCaption": "Um passaporte real na Monad. Os seus vão aparecer aqui como este.",
     "makeFirst": "Registrar sua primeira imagem",
-    "signedInAs": "Você entrou como {account}"
+    "signedInAs": "Você entrou como {account}",
+    "held": {
+      "heading": "Held by you, made by others",
+      "label": "Held, not made by you",
+      "hide": "Hide",
+      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+    }
   },
   "crMark": {
     "name": "Content Credentials",

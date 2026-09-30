@@ -183,13 +183,15 @@
       "manifest": "带 Content Credentials",
       "rechecked": "已在链上复核",
       "chainlink": "由 Chainlink 工作流复核",
-      "disputed": "争议成立"
+      "disputed": "争议成立",
+      "platform": "Registered through {platform}"
     },
     "legend": {
       "manifest": "带 Content Credentials",
       "rechecked": "已在链上复核",
       "disputed": "争议成立，针对这张图片或它编辑自的那张图片",
-      "consent": "AI 使用声明，四种用途四个标记"
+      "consent": "AI 使用声明，四种用途四个标记",
+      "platform": "Registered through a platform Moolam lists"
     },
     "untitled": "无标题",
     "noPicture": "网关上没有图片",
@@ -712,8 +714,18 @@
     "noPicture": "存放这张图的地方此刻没有响应。过一分钟再试。",
     "fingerprintVersion": "指纹版本 {version}",
     "record": "这条记录",
-    "passkeyBound": "这位创作者用绑定在自己账户上的通行密钥签名。",
+    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "这位创作者的账户没有绑定通行密钥。",
+    "platform": {
+      "kit": "Registered by {platform} through the Moolam platform kit",
+      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+    },
+    "agentListed": "Listed by Moolam as {platform}'s agent",
+    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "holder": {
+      "differs": "Registered by {creator}. Now held by {holder}."
+    },
     "noAgent": "没有生成它的智能体。这一张是用创作者上传的文件登记的。",
     "agentNumber": "智能体 {id}",
     "about": "关于这张图",
@@ -904,6 +916,9 @@
       "conditionsLabel": "条件，用持有者自己的话",
       "conditionsApplyTo": "适用于 {uses}。",
       "statedBy": "声明人",
+      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
+      "atGeneration": "Stated at generation",
+      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
       "writtenLabel": "写入时间",
       "empty": {
         "body": "没有人为这张图片写下声明。这里如实地把这份沉默记下来，因为事实就是如此：它没有允许任何用途。",
@@ -1098,7 +1113,8 @@
       "unread": "未能读取",
       "noAgent": "未注明智能体",
       "chainlink": "Chainlink",
-      "unknownWriter": "未知写入方"
+      "unknownWriter": "未知写入方",
+      "cardNamed": "{agent}, named by its own card"
     },
     "ownerHint": "这是你做的吗？登录后就能管理。",
     "share": {
@@ -1800,7 +1816,13 @@
     },
     "showcaseCaption": "Monad 上一本真实的护照。你的护照也会像这样出现在这里。",
     "makeFirst": "登记你的第一张图片",
-    "signedInAs": "已登录：{account}"
+    "signedInAs": "已登录：{account}",
+    "held": {
+      "heading": "Held by you, made by others",
+      "label": "Held, not made by you",
+      "hide": "Hide",
+      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+    }
   },
   "crMark": {
     "name": "Content Credentials",

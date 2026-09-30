@@ -117,6 +117,7 @@ const closed: ConsentReading = {
 const say = {
   kind: (kind: number) => en.kind[String(kind) as "0" | "1" | "2"],
   agentNumber: (id: string) => `Agent ${id}`,
+  cardNamed: (agent: string) => en.passport.facts.cardNamed.replace("{agent}", agent),
   statement: (statement: string) => en.passport.consent.summary[statement as "closed"],
   bits: (count: number) => `${count} of 64 bits`,
   privateRecheck: en.passport.attestations.private.badge,
@@ -274,7 +275,8 @@ describe("the facts strip", () => {
     const [made, drawn, use, checked] = facts;
     expect(made.value).toBe("0x85a88C…39a6");
     expect(drawn.value).toBe("Moolam generator on a Privy server wallet");
-    expect(drawn.detail).toBe("Agent 10249");
+    // The card's name is the card's word, and the line under it says so (P14).
+    expect(drawn.detail).toBe("Agent 10249, named by its own card");
     expect(use.value).toBe(en.passport.consent.summary.closed);
     expect(use.tone).toBe("pending");
     expect(checked.value).toBe("Chainlink, Sep 14, 2026, 0 of 64 bits");

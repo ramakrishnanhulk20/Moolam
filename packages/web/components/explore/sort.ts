@@ -33,6 +33,12 @@ export interface ExplorePlate {
   /** The 256 bit block hash a sealed plate is drawn from, read from the pinned document. */
   blockhash?: string;
   /**
+   * The platform name Moolam's signed list gives this passport, only when its
+   * label says it came through the kit (lib/data/platform-label.ts). Absent on
+   * a sheet held from before the field existed, and drawn as nothing then.
+   */
+  platform?: string | null;
+  /**
    * True when the pinned record never arrived, a slow gateway for one. The plate
    * has no title because nobody could read it, not because the record has none,
    * so it is still a picture of its own kind.

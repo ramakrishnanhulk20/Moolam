@@ -255,6 +255,12 @@ export function Filters({ search }: { search: ExploreSearch }) {
             </span>
             {t("legend.consent")}
           </span>
+          <span aria-hidden>&middot;</span>
+          {/* The same small mark the plate's platform line carries. */}
+          <span data-legend-platform className="flex items-center gap-2">
+            <span aria-hidden className="motif h-[6px] w-[6px] shrink-0" />
+            {t("legend.platform")}
+          </span>
         </p>
 
         <p

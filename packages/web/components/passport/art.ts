@@ -24,6 +24,9 @@ const metadataSchema = z.object({
   privateRecheck: z.unknown().optional(),
   commitment: z.object({ algorithm: z.string(), value: z.string() }).optional(),
   fingerprint: z.object({ blockhash: z.string().optional() }).optional(),
+  // Kept as it was written. lib/data/file-terms.ts reads it on the server, so
+  // a statement in a shape this build does not know never fails the document.
+  training: z.unknown().optional(),
 });
 
 /** A 32 byte word as the sealed document writes it, which is what the sketch is drawn from. */
@@ -74,6 +77,12 @@ export interface Art {
     by: string;
     record: { cid: string; uri: string };
   };
+  /**
+   * The AI-use statement the document carries from generation, exactly as
+   * written. Read through lib/data/file-terms.ts; the chain's statement is the
+   * one in force.
+   */
+  training?: unknown;
   /** True when the gateway did not answer or the document was not readable. */
   missing: boolean;
 }
@@ -169,6 +178,7 @@ async function readFrom(url: string, documentServed: boolean): Promise<Art | nul
       prompt,
       imageUrl: image === undefined ? undefined : gatewayUrl(image),
       thumbnailUrl: small === undefined ? undefined : gatewayUrl(small),
+      ...(parsed.data.training === undefined ? {} : { training: parsed.data.training }),
       // The route reads the image field as it was written, so this does too.
       ...(image !== undefined && documentServed && bareContentId(parsed.data.image) !== null
         ? { original: true as const }

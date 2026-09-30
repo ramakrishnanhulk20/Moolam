@@ -227,6 +227,26 @@ export async function passportsByCreator(address: Hex, limit = 24, offset = 0): 
   );
 }
 
+/**
+ * Passports this wallet holds today and did not register, newest first.
+ *
+ * Made and held are two facts (P23, P25): a passport transferred to someone is
+ * theirs to hold, never theirs to have made, so /mine lists these apart from
+ * the creator's own rows. The index writes the holder lowercased on every
+ * transfer, which is the field this reads.
+ */
+export async function passportsHeldNotMade(address: Hex, limit = 24, offset = 0): Promise<PassportListing[]> {
+  const holder = address.toLowerCase();
+  return await listPassports(
+    `query PassportsHeldNotMade($holder: String!, $limit: Int!, $offset: Int!) {
+      Passport(where: { owner: { _eq: $holder }, creator_id: { _neq: $holder } }, order_by: [{ registeredAt: desc }, { id: desc }], limit: $limit, offset: $offset) {
+        ${LISTING_FIELDS}
+      }
+    }`,
+    { holder, limit, offset },
+  );
+}
+
 /** Every passport one generating agent signed for, newest first. */
 export async function passportsByGenerator(agentId: bigint | string, limit = 24): Promise<PassportListing[]> {
   return await listPassports(BY_GENERATOR, { generator: agentId.toString(), limit });
@@ -749,6 +769,9 @@ export interface ExplorePassport {
   generatorId: string | null;
   /** What the holder has said about AI use, or null where nobody has spoken for it. */
   consent: PassportStatement | null;
+  /** The registering wallet and the raw manifest word, which the platform label reads (P16). */
+  creator?: Hex;
+  manifestHash?: string;
 }
 
 export interface ExplorePage {
@@ -816,6 +839,7 @@ interface ExploreRow extends ConsentRow {
   attestationCount: number;
   attestations: { receiver: string }[];
   generator: { id: string } | null;
+  creator?: { id: Hex } | null;
 }
 
 /** One straight read of the index, with no sifting and no second page. */
@@ -842,6 +866,7 @@ async function readPage(
       attestationCount
       attestations(limit: 5) { receiver }
       generator { id }
+      creator { id }
       consentStated
       consentSummary
       consentAt
@@ -870,6 +895,8 @@ async function readPage(
     inheritedDisputed: row.disputed || reaches(filter.disputedReach, row),
     generatorId: row.generator?.id ?? null,
     consent: statementFrom(row),
+    creator: row.creator?.id,
+    manifestHash: row.manifestHash,
   }));
 
   const last = data.Passport[data.Passport.length - 1];

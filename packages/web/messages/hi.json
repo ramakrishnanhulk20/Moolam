@@ -188,13 +188,15 @@
       "manifest": "Content Credentials साथ हैं",
       "rechecked": "चेन पर दोबारा जाँची गई",
       "chainlink": "एक Chainlink वर्कफ़्लो ने दोबारा जाँचा",
-      "disputed": "विवाद सही ठहरा"
+      "disputed": "विवाद सही ठहरा",
+      "platform": "Registered through {platform}"
     },
     "legend": {
       "manifest": "Content Credentials साथ हैं",
       "rechecked": "चेन पर दोबारा जाँची गई",
       "disputed": "विवाद सही ठहरा, यहाँ या उस तस्वीर पर जिससे यह संपादित हुई",
-      "consent": "AI उपयोग पर कथन, चार उपयोगों के चार निशान"
+      "consent": "AI उपयोग पर कथन, चार उपयोगों के चार निशान",
+      "platform": "Registered through a platform Moolam lists"
     },
     "untitled": "बिना शीर्षक",
     "noPicture": "गेटवे पर तस्वीर नहीं",
@@ -717,8 +719,18 @@
     "noPicture": "तस्वीर का स्टोरेज अभी जवाब नहीं दे रहा। एक मिनट बाद कोशिश करें।",
     "fingerprintVersion": "फ़िंगरप्रिंट संस्करण {version}",
     "record": "रिकॉर्ड",
-    "passkeyBound": "यह निर्माता अपने खाते से जुड़ी पासकी से हस्ताक्षर करता है।",
+    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "इस निर्माता के वॉलेट से कोई पासकी नहीं जुड़ी है।",
+    "platform": {
+      "kit": "Registered by {platform} through the Moolam platform kit",
+      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+    },
+    "agentListed": "Listed by Moolam as {platform}'s agent",
+    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "holder": {
+      "differs": "Registered by {creator}. Now held by {holder}."
+    },
     "noAgent": "कोई जनरेटर एजेंट नहीं। यह उस फ़ाइल से दर्ज हुई जो निर्माता ने अपलोड की थी।",
     "agentNumber": "एजेंट {id}",
     "about": "तस्वीर के बारे में",
@@ -909,6 +921,9 @@
       "conditionsLabel": "शर्तें, धारक के अपने शब्दों में",
       "conditionsApplyTo": "यह {uses} पर लागू होती हैं।",
       "statedBy": "किसने कहा",
+      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
+      "atGeneration": "Stated at generation",
+      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
       "writtenLabel": "कब लिखा गया",
       "empty": {
         "body": "इस तस्वीर के लिए किसी ने कथन नहीं लिखा है। वह चुप्पी यहाँ वैसी ही दर्ज है, क्योंकि सच यही है: उससे किसी उपयोग की अनुमति नहीं मिलती।",
@@ -1103,7 +1118,8 @@
       "unread": "पढ़ा नहीं जा सका",
       "noAgent": "कोई एजेंट नहीं बताया",
       "chainlink": "Chainlink",
-      "unknownWriter": "अज्ञात लेखक"
+      "unknownWriter": "अज्ञात लेखक",
+      "cardNamed": "{agent}, named by its own card"
     },
     "ownerHint": "आपने बनाई है? इसे सँभालने के लिए साइन इन करें।",
     "share": {
@@ -1805,7 +1821,13 @@
     },
     "showcaseCaption": "Monad पर एक असली पासपोर्ट। आपके पासपोर्ट भी यहाँ ऐसे ही दिखेंगे।",
     "makeFirst": "अपनी पहली तस्वीर दर्ज करें",
-    "signedInAs": "{account} के रूप में साइन इन हैं"
+    "signedInAs": "{account} के रूप में साइन इन हैं",
+    "held": {
+      "heading": "Held by you, made by others",
+      "label": "Held, not made by you",
+      "hide": "Hide",
+      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+    }
   },
   "crMark": {
     "name": "Content Credentials",

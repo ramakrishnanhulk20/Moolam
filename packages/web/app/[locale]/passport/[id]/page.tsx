@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getFormatter, getTranslations, setRequestLocale } from "next-intl/server";
 import type { Hex } from "viem";
+import { readCard } from "@/components/agent/card";
 import { readArt, type Art } from "@/components/passport/art";
 import { Attestations } from "@/components/passport/Attestations";
 import { CheckCopy } from "@/components/passport/CheckCopy";
@@ -28,12 +29,14 @@ import { WalletProvider } from "@/components/providers/WalletProvider";
 import { HOLD_SECONDS, reason } from "@/lib/chain/client";
 import { heldConsent, heldConsentHistory, heldMinInterval, heldStandard } from "@/lib/chain/consent";
 import type { ConsentReading } from "@/lib/chain/consent";
-import { DisputeStatus, ZERO_ID, heldPassportRecord, passportTag } from "@/lib/chain/registry";
+import { DisputeStatus, ZERO_ID, heldAgent, heldPassportRecord, passportTag } from "@/lib/chain/registry";
 import type { PassportRecordBundle } from "@/lib/chain/registry";
 import { headTimestamp } from "@/lib/chain/time";
 import { activeSource } from "@/lib/data/source";
 import { inheritedDisputed } from "@/lib/data/lineage";
 import { heldRegistration } from "@/lib/data/passports";
+import { fileTermsOf } from "@/lib/data/file-terms";
+import { labelFor } from "@/lib/data/platform-label";
 import { withUnseal } from "@/lib/data/unseal";
 import { realPictureIds } from "@/lib/data/prerender";
 import { sealedStatus, type SealedCopyLookup } from "@/lib/verifier/client";
@@ -170,7 +173,7 @@ export default async function PassportPage({ params }: { params: Promise<{ local
   // The picture, the transaction links and the lineage's standing are the three
   // things this page can do without, so none of them is allowed to fail the
   // render.
-  const [art, indexed, registration, ancestorDisputed, consent, family] = await Promise.all([
+  const [art, indexed, registration, ancestorDisputed, consent, family, platform, agentName] = await Promise.all([
     // A sealed document keeps saying sealed for ever, because the chain points
     // at it and it cannot be rewritten. The record pinned beside it is what
     // says the holder has published the picture since, so every screen below
@@ -183,6 +186,10 @@ export default async function PassportPage({ params }: { params: Promise<{ local
     // Names and small pictures for the lineage. A relative that cannot be read
     // is drawn by its id, so this never fails the page either.
     familyOf(passport.parentId === ZERO_ID ? edits : [passport.parentId, ...edits]).catch(() => ({})),
+    // Read from the chain's own fields, never the index, so the label holds
+    // while the index is down.
+    labelFor(passport).catch(() => null),
+    passport.generatorAgentId === 0n ? null : agentCardName(passport.generatorAgentId),
   ]);
   const standing = standingOf({ disputed: passport.disputed, inherited: ancestorDisputed, attestations });
   // Asked only of a sealed document that asked for the private re-check, so
@@ -220,7 +227,16 @@ export default async function PassportPage({ params }: { params: Promise<{ local
               holder says may be done with it, which is the question anyone
               training a model has to answer before they use it. */}
           <div id={FACT_ANCHORS.aiUse} style={ANCHOR_MARGIN}>
-            <ConsentSection id={passport.id} owner={owner} registeredAt={Number(passport.registeredAt)} record={consent} />
+            <ConsentSection
+              id={passport.id}
+              owner={owner}
+              registeredAt={Number(passport.registeredAt)}
+              record={consent}
+              platform={
+                platform?.status === "kit" ? { name: platform.name, wallet: platform.platform.creatorWallet } : null
+              }
+              fileTerms={fileTermsOf(art.training)}
+            />
           </div>
 
           <Facts
@@ -231,6 +247,8 @@ export default async function PassportPage({ params }: { params: Promise<{ local
             standing={standing}
             txHash={registration}
             privateCopy={privateCopy}
+            platform={platform}
+            agentName={agentName}
           />
 
           <div className="mx-auto w-full max-w-[1400px] px-5 pb-24 sm:px-8 sm:pb-32">
@@ -356,6 +374,19 @@ async function privateCopyOf(id: Hex): Promise<SealedCopyLookup["state"]> {
     }
     // Anywhere there is no cache to hold it in, the service is simply asked.
     return (await sealedStatus(id)).state;
+  }
+}
+
+/**
+ * The name the agent's own card gives itself, through the same held read the
+ * facts strip and the agent page make. Self-declared, and the facts section
+ * says so beside it (P14). A card that will not answer leaves the number.
+ */
+async function agentCardName(agentId: bigint): Promise<string | null> {
+  try {
+    return readCard((await heldAgent(agentId.toString())).card)?.name ?? null;
+  } catch {
+    return null;
   }
 }
 

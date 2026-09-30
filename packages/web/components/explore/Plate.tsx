@@ -221,6 +221,10 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
             : `absolute inset-x-0 bottom-0 pt-8 [.light_&]:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))] ${ifSeal.foot}`
         }`}
       >
+        {/* Truthiness, like the statement above: a sheet held from before
+            this field existed has no such key. The name is printed as the
+            signed list spells it, so it is never set in capitals. */}
+        {plate.platform ? <PlatformMark text={t("marks.platform", { platform: plate.platform })} /> : null}
         {/* Two lines, not one with a tail of dots. At 375 px a plate is 166 px
             wide and almost every real title was cut: "Monsoon Fishing Nets
             Drying" arrived as "Monsoon Fishing N...". */}
@@ -261,6 +265,23 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
 
       <Opening />
     </Link>
+  );
+}
+
+/**
+ * The platform line at the foot of a plate, drawn only for a passport Moolam's
+ * signed list says came through the kit. Shared with the agent page's plates so
+ * the mark reads the same on both.
+ */
+export function PlatformMark({ text }: { text: string }) {
+  return (
+    <span
+      data-plate-platform
+      className="mb-1.5 flex min-w-0 items-center gap-1.5 font-mono text-[10px] tracking-[0.06em] text-accent"
+    >
+      <span aria-hidden className="motif h-[6px] w-[6px] shrink-0" />
+      <span className="min-w-0 truncate">{text}</span>
+    </span>
   );
 }
 

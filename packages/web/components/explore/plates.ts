@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { recordUnread } from "@/components/passport/unread";
 import { CACHE_TAGS, HOLD_SECONDS } from "@/lib/chain/client";
 import { disputedReach } from "@/lib/data/lineage";
+import { heldPlatformList, plateMark } from "@/lib/data/platform-label";
 import {
   EXPLORE_PAGE,
   explorePassports,
@@ -28,6 +29,7 @@ import { isTestCard, type ExplorePlate } from "./sort";
  * component to a client one at all.
  */
 export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate[]> {
+  const platforms = await heldPlatformList();
   return await Promise.all(
     rows.map(async (row) => {
       // The id goes with the address: a sealed row's picture may have been
@@ -49,6 +51,16 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         sealed: art?.sealed === true,
         blockhash: art?.blockhash,
         unread: recordUnread(art),
+        platform:
+          row.creator === undefined
+            ? null
+            : plateMark(platforms, {
+                creator: row.creator,
+                kind: row.kind,
+                generatorAgentId: /^[0-9]{1,78}$/.test(row.generatorId ?? "") ? BigInt(row.generatorId as string) : 0n,
+                manifestHash: row.manifestHash ?? "",
+                registeredAt: row.registeredAt,
+              }),
       };
     }),
   );

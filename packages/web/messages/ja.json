@@ -187,13 +187,15 @@
       "manifest": "Content Credentials 付き",
       "rechecked": "チェーン上で再確認済み",
       "chainlink": "Chainlink ワークフローが再確認",
-      "disputed": "異議が認められた"
+      "disputed": "異議が認められた",
+      "platform": "Registered through {platform}"
     },
     "legend": {
       "manifest": "Content Credentials 付き",
       "rechecked": "チェーン上で再確認済み",
       "disputed": "この画像か、その編集元の画像で異議が認められた",
-      "consent": "AI 利用の表明、四つの用途に四つの印"
+      "consent": "AI 利用の表明、四つの用途に四つの印",
+      "platform": "Registered through a platform Moolam lists"
     },
     "untitled": "無題",
     "noPicture": "ゲートウェイに画像がありません",
@@ -716,8 +718,18 @@
     "noPicture": "いま画像の保存先が応答していません。1 分ほどしてからお試しください。",
     "fingerprintVersion": "指紋のバージョン {version}",
     "record": "この記録",
-    "passkeyBound": "この制作者は、自分のアカウントに結び付いたパスキーで署名します。",
+    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "この制作者のアカウントにパスキーは結び付けられていません。",
+    "platform": {
+      "kit": "Registered by {platform} through the Moolam platform kit",
+      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+    },
+    "agentListed": "Listed by Moolam as {platform}'s agent",
+    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "holder": {
+      "differs": "Registered by {creator}. Now held by {holder}."
+    },
     "noAgent": "生成エージェントはありません。この一枚は制作者がアップロードしたファイルから登録されました。",
     "agentNumber": "エージェント {id}",
     "about": "この画像について",
@@ -908,6 +920,9 @@
       "conditionsLabel": "条件、保有者自身の言葉で",
       "conditionsApplyTo": "{uses} に適用されます。",
       "statedBy": "表明した人",
+      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
+      "atGeneration": "Stated at generation",
+      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
       "writtenLabel": "記入日時",
       "empty": {
         "body": "この画像に表明を書いた人はいません。その沈黙をそのまま記しています。沈黙によって許可された用途はひとつもないからです。",
@@ -1102,7 +1117,8 @@
       "unread": "読めませんでした",
       "noAgent": "エージェントの記載なし",
       "chainlink": "Chainlink",
-      "unknownWriter": "不明な書き手"
+      "unknownWriter": "不明な書き手",
+      "cardNamed": "{agent}, named by its own card"
     },
     "ownerHint": "作ったのはあなたですか。サインインすると管理できます。",
     "share": {
@@ -1804,7 +1820,13 @@
     },
     "showcaseCaption": "Monad 上の本物のパスポート。あなたのものも、ここにこのように並びます。",
     "makeFirst": "最初の画像を登録する",
-    "signedInAs": "{account} でサインイン中"
+    "signedInAs": "{account} でサインイン中",
+    "held": {
+      "heading": "Held by you, made by others",
+      "label": "Held, not made by you",
+      "hide": "Hide",
+      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+    }
   },
   "crMark": {
     "name": "Content Credentials",

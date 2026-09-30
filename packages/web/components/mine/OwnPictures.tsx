@@ -7,6 +7,7 @@ import { YourPassports } from "@/components/studio/YourPassports";
 import { Link } from "@/lib/i18n/routing";
 import type { AccountName } from "@/lib/studio/account";
 import { useCreatorPassports } from "@/lib/studio/useCreatorPassports";
+import { HeldPictures } from "./HeldPictures";
 
 /**
  * One signed in account's pictures, read from the index by its address.
@@ -62,6 +63,7 @@ export function OwnPictures({
   return (
     <WideLayout>
       <YourPassports passports={passports} heading={t("grid")} lead={lead} empty={empty} />
+      <HeldPictures wallet={wallet} />
     </WideLayout>
   );
 }

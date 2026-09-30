@@ -189,13 +189,15 @@
       "manifest": "Content Credentials உள்ளது",
       "rechecked": "செயினில் மறுசோதனை செய்யப்பட்டது",
       "chainlink": "Chainlink பணிப்பாய்வு மறுசோதனை செய்தது",
-      "disputed": "மறுப்பு ஏற்கப்பட்டது"
+      "disputed": "மறுப்பு ஏற்கப்பட்டது",
+      "platform": "Registered through {platform}"
     },
     "legend": {
       "manifest": "Content Credentials உள்ளது",
       "rechecked": "செயினில் மறுசோதனை",
       "disputed": "மறுப்பு ஏற்கப்பட்டது, இங்கோ அல்லது இது எந்தப் படத்திலிருந்து திருத்தப்பட்டதோ அந்தப் படத்திலோ",
-      "consent": "AI பயன்பாட்டு அறிவிப்பு, நான்கு பயன்பாடுகளுக்கு நான்கு குறிகள்"
+      "consent": "AI பயன்பாட்டு அறிவிப்பு, நான்கு பயன்பாடுகளுக்கு நான்கு குறிகள்",
+      "platform": "Registered through a platform Moolam lists"
     },
     "untitled": "தலைப்பு இல்லை",
     "noPicture": "கேட்வேயில் படம் இல்லை",
@@ -718,8 +720,18 @@
     "noPicture": "படம் சேமிக்கப்பட்ட இடம் இப்போது பதிலளிக்கவில்லை. ஒரு நிமிடம் கழித்து மீண்டும் முயலுங்கள்.",
     "fingerprintVersion": "கைரேகைப் பதிப்பு {version}",
     "record": "பதிவு",
-    "passkeyBound": "இந்த உருவாக்கியவர் தன் கணக்குடன் இணைந்த பாஸ்கீயால் கையொப்பமிடுகிறார்.",
+    "passkeyBound": "A key bound to this creator's wallet signed this picture's fingerprint on Monad.",
     "passkeyNone": "இந்த உருவாக்கியவரின் வாலட்டுக்கு பாஸ்கீ எதுவும் இணைக்கப்படவில்லை.",
+    "platform": {
+      "kit": "Registered by {platform} through the Moolam platform kit",
+      "kitNote": "{platform}'s own server key signed as the creator, and its agent signed as the maker. Moolam checked that the company holds both keys, not who the company is.",
+      "outsideKit": "This wallet is listed as {platform}, but this picture was registered outside the Moolam platform kit."
+    },
+    "agentListed": "Listed by Moolam as {platform}'s agent",
+    "agentSelfDeclared": "Its own card calls it {name}. Moolam has not checked that name.",
+    "holder": {
+      "differs": "Registered by {creator}. Now held by {holder}."
+    },
     "noAgent": "உருவாக்கிய ஏஜென்ட் இல்லை. படைப்பாளர் பதிவேற்றிய கோப்பிலிருந்து இது பதிவானது.",
     "agentNumber": "ஏஜென்ட் {id}",
     "about": "பற்றி",
@@ -910,6 +922,9 @@
       "conditionsLabel": "நிபந்தனைகள், உரிமையாளரின் சொற்களில்",
       "conditionsApplyTo": "{uses} ஆகியவற்றுக்குப் பொருந்தும்.",
       "statedBy": "சொன்னவர்",
+      "platformStanding": "{platform} stated these terms. They stand until whoever holds the passport states new ones.",
+      "atGeneration": "Stated at generation",
+      "differs": "The terms written into the file differ from the terms on Monad. The ones on Monad are in force.",
       "writtenLabel": "எழுதப்பட்ட நேரம்",
       "empty": {
         "body": "இந்தப் படத்துக்கு யாரும் அறிவிப்பு எழுதவில்லை. அந்த மௌனம் அப்படியே இங்கே சொல்லப்படுகிறது, ஏனெனில் அதுதான் உண்மை: அதனால் எந்தப் பயன்பாடும் அனுமதிக்கப்படவில்லை.",
@@ -1104,7 +1119,8 @@
       "unread": "படிக்க முடியவில்லை",
       "noAgent": "எந்த ஏஜென்ட்டும் குறிப்பிடப்படவில்லை",
       "chainlink": "Chainlink",
-      "unknownWriter": "அறியப்படாத எழுத்தாளர்"
+      "unknownWriter": "அறியப்படாத எழுத்தாளர்",
+      "cardNamed": "{agent}, named by its own card"
     },
     "ownerHint": "இதை உருவாக்கியது நீங்களா? நிர்வகிக்க உள்நுழையுங்கள்.",
     "share": {
@@ -1806,7 +1822,13 @@
     },
     "showcaseCaption": "Monad-இல் ஒரு உண்மையான கடவுச்சீட்டு. உங்களுடையவையும் இதைப் போலவே இங்கே இருக்கும்.",
     "makeFirst": "உங்கள் முதல் படத்தைப் பதிவு செய்",
-    "signedInAs": "{account}-ஆக உள்நுழைந்துள்ளீர்கள்"
+    "signedInAs": "{account}-ஆக உள்நுழைந்துள்ளீர்கள்",
+    "held": {
+      "heading": "Held by you, made by others",
+      "label": "Held, not made by you",
+      "hide": "Hide",
+      "showHidden": "{count, plural, one {Show # hidden picture} other {Show # hidden pictures}}"
+    }
   },
   "crMark": {
     "name": "Content Credentials",

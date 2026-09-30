@@ -2,6 +2,7 @@ import { getFormatter, getTranslations } from "next-intl/server";
 import { IndexRetry } from "@/components/IndexRetry";
 import { WarningMark } from "@/components/WarningMark";
 import { Marks, type MarkWords } from "@/components/agents/Marks";
+import { PlatformMark } from "@/components/explore/Plate";
 import { isTestCard, type ExplorePlate } from "@/components/explore/sort";
 import { Picture } from "@/components/passport/Picture";
 import { sealedBits } from "@/components/passport/sealed";
@@ -21,6 +22,7 @@ interface PlateWords {
   common: (key: "registeredPicture") => string;
   kind: (kind: number) => string;
   date: (seconds: number) => string;
+  platform: (name: string) => string;
 }
 
 /**
@@ -75,6 +77,7 @@ export async function Works({
     common: (key) => common(key),
     kind: (kind) => kinds(String(kind)),
     date: (seconds) => format.dateTime(new Date(seconds * 1000), { dateStyle: "medium" }),
+    platform: (name) => explore("marks.platform", { platform: name }),
   };
 
   const { real, tests } = splitTestPlates(works);
@@ -242,6 +245,7 @@ function WorkPlate({ plate, words }: { plate: ExplorePlate; words: PlateWords })
         data-plate-foot
         className="pointer-events-none absolute inset-x-0 bottom-0 p-3 pt-8 sm:p-4 sm:pt-8 [.light_&]:bg-[linear-gradient(to_bottom,var(--scrim-to)_0,rgb(242_239_233/0.3)_0.9rem,rgb(242_239_233/0.82)_2rem,var(--scrim-from)_calc(100%-4.5rem))]"
       >
+        {plate.platform ? <PlatformMark text={words.platform(plate.platform)} /> : null}
         <span className="line-clamp-2 block font-display text-[0.95rem] font-semibold leading-tight tracking-[-0.02em] text-text transition-colors duration-300 group-hover:text-accent sm:text-[1.05rem]">
           {plate.title ?? words.untitled}
         </span>
