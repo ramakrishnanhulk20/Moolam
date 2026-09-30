@@ -24,6 +24,13 @@ const PIN_TIMEOUT_MS = 60_000;
 export interface PinOptions {
   /** How long one upload gets. Tests pass a short one; nothing in the service overrides it. */
   timeoutMs?: number;
+  /**
+   * Sent as Pinata's cid_version field when given. "v1" is Pinata's documented default and the
+   * layout contentIdOf computes, so naming it changes no id; it makes a later change of the default
+   * fail on the id check instead of pinning under a layout nobody computed. The platform routes send
+   * it; the studio routes leave it out and send exactly what they always sent.
+   */
+  cidVersion?: "v1";
 }
 
 const uploadResponseSchema = z.object({
@@ -68,6 +75,9 @@ export async function pinFile(
   form.append("file", new File([new Uint8Array(bytes)], name, { type: contentType }));
   form.append("network", "public");
   form.append("name", name);
+  if (options.cidVersion !== undefined) {
+    form.append("cid_version", options.cidVersion);
+  }
 
   let expected: string;
   try {

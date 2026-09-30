@@ -15,6 +15,18 @@ export const STATE_FILES = {
   unsealQuota: "quota-unseal.json",
 } as const;
 
+/**
+ * What the platform routes keep in the same data folder. Held apart from STATE_FILES because
+ * `pending` is a folder, one JSON record per co-sign handle with the frozen files beside it, not one
+ * file, and each of these has its own restart test in test/platform-state.test.ts.
+ */
+export const PLATFORM_STATE_FILES = {
+  quota: "platform-quota.json",
+  dayCeiling: "platform-day.json",
+  nonces: "platform-nonces.json",
+  pending: "platform-pending",
+} as const;
+
 export interface FolderCheck {
   dir: string;
   writable: boolean;

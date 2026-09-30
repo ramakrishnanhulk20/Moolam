@@ -26,9 +26,12 @@ import {
   type QueueStore,
   type RecheckQueue,
 } from "./recheck/queue.js";
+import type { PlatformLimits } from "./platform/stores.js";
+import { loadPlatforms } from "./platforms/platforms.js";
 import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
+import { platformRoutes } from "./routes/platform.js";
 import { prepareRoutes } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
 import { privateCopyStatus, sealedRoutes } from "./routes/sealed.js";
@@ -542,6 +545,11 @@ export async function buildServer(
     edit?: { keys?: PrivyKeys };
     unseal?: { keys?: PrivyKeys };
     sealed?: { keys?: PrivyKeys; linkToken?: string };
+    /**
+     * Mounts the platform routes with this Privy key set, this list document in place of the bundled
+     * one (it is loaded and checked the same way), this folder for their state and these limits.
+     */
+    platform?: { keys?: PrivyKeys; list?: unknown; dir?: string; limits?: Partial<PlatformLimits> };
     /** Replaces the sweep's mode or its Pinata, chain and clock, for tests. Given, it is scheduled even under a test runner. */
     sweep?: { mode?: PrivateSweepMode; deps?: Partial<SweepDeps> };
     consent?: ConsentReader;
@@ -738,8 +746,14 @@ export async function buildServer(
   // The signer is checked once, here, and only on a host that would mount a route that signs. A
   // signer that cannot load turns those three routes off the way a missing PINATA_JWT does, so
   // /verify and the re-check queue, which sign nothing, still serve (review pass 8, V73).
+  // The platform routes sign manifests, pin with the studio's token, check Privy tokens and read a
+  // co-signer's wallets, so they ride on /prepare's two variables plus the app secret.
+  const platformConfigured =
+    options.platform !== undefined || (canPrepare && env.PRIVY_APP_SECRET !== undefined);
   const signerProblem =
-    configured.prepare || configured.generate || configured.edit ? await signerProblemNow() : undefined;
+    configured.prepare || configured.generate || configured.edit || platformConfigured
+      ? await signerProblemNow()
+      : undefined;
   const signs = signerProblem === undefined;
   const mounts: Record<ExpectedRoute, boolean> = {
     prepare: configured.prepare && signs,
@@ -994,6 +1008,28 @@ export async function buildServer(
 
   if (payments !== undefined) {
     await app.register(verifyPaidRoutes, { payments });
+  }
+
+  // Mounted only on a list whose every entry's signatures check out: a refused list is no platform
+  // at all, never a partial one.
+  if (platformConfigured) {
+    const list = await loadPlatforms(options.platform?.list);
+    if (!list.ok) {
+      app.log.warn({ reason: list.reason }, "platform routes off: the platform list was refused");
+    } else if (!signs) {
+      app.log.warn(`platform routes off: ${SIGNER_OFF_REASON}`);
+    } else {
+      await app.register(platformRoutes, {
+        platforms: list.platforms,
+        keys: (options.platform ?? options.prepare ?? {}).keys,
+        dir: options.platform?.dir,
+        limits: options.platform?.limits,
+      });
+    }
+  } else {
+    app.log.info(
+      "platform routes off: they need PINATA_JWT, PRIVY_APP_ID and PRIVY_APP_SECRET, and this host is missing at least one",
+    );
   }
 
   // The sweep needs the same Pinata token the private copy routes use, so it rides on the same

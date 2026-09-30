@@ -179,6 +179,46 @@ Still lost on every deploy, by design: the per-address rate-limit counts (one
 minute long), the private-copy status and unseal miss memory (short caches), and
 the development signing identity described above.
 
+## The platform routes
+
+`POST /platform/prepare`, `GET /platform/record/:handle`,
+`POST /platform/sign/:handle` and `GET /platform/status/:handle` mount on a host
+that has `PINATA_JWT`, `PRIVY_APP_ID` and `PRIVY_APP_SECRET`, a signer that loads,
+and a platform list in `src/platforms/platforms.json` whose every signature checks
+out. A refused list turns all four off and logs why; it is never half loaded.
+
+What they let through, set in `src/platform/stores.ts` and not yet in the
+environment:
+
+| Limit | Value | Kept in |
+| --- | --- | --- |
+| Prepares per platform key | 100 in a rolling 24 hours | `platform-quota.json` |
+| Prepares for every platform together | 500 per UTC day | `platform-day.json` |
+| PlatformPrepare nonces and pictures remembered | ten minutes after each `issuedAt`, at most 20,000 | `platform-nonces.json` |
+| Frozen co-sign files per platform | 100 MiB in records still waiting | `platform-pending/` |
+
+Each file is refused and fails closed the way the ceilings above are: a quota or
+ceiling file that cannot be believed reads as spent, and a nonce file that cannot
+be believed refuses every platform prepare for ten minutes.
+
+`platform-pending/` holds one JSON record per co-sign, named by the sha256 of its
+handle and never by the handle, with the four frozen files beside it. Nothing of a
+co-sign picture is pinned until the person has opened the link and the agent has
+signed. A record that fails its schema, or whose recomputed digest differs from the
+one stored, is dropped and never repaired. Records and their files are removed a
+day after their deadline. The folder is trusted as far as this process is: someone
+who can write the volume and recomputes every digest could rewrite a waiting record.
+
+Every window is read against the latest block's time: a PlatformPrepare is good for
+ten minutes after its `issuedAt`, a co-sign link for 30 minutes before its person
+opens it, and the fields for 30 minutes after that. A deploy while a co-sign is in
+flight keeps it on the volume, but the person meets the short gap the one replica
+has.
+
+The three handle routes are mounted at log level `silent`, so no request line
+carries a handle; their refusals are logged without the URL. A platform key is
+never logged, stored or answered: the service keeps only its sha256, in the list.
+
 ## Railway
 
 Sourced from the Railway Dockerfiles guide and the monorepo guide. Anything those

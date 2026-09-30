@@ -191,6 +191,10 @@ export interface PrepareOptions {
   digitalSourceType?: string;
   /** What the creator said about AI use, written into the manifest. Left out means they said nothing. */
   training?: TrainingConsent;
+  /** Only with "c2pa.created": the program that made the picture, as EmbedOptions.softwareAgent. */
+  softwareAgent?: EmbedOptions["softwareAgent"];
+  /** Only with "c2pa.created": the created action's description, as EmbedOptions.description. */
+  description?: string;
   /** Where the reason a camera's record was dropped is written. Left out, it is not written. */
   log?: PrepareLog;
 }
@@ -252,6 +256,8 @@ async function signImage(source: Buffer, opts: PrepareOptions): Promise<Omit<Pre
       softBinding: { phash: sourcePrint.phash, blockhash: sourcePrint.blockhash },
       digitalSourceType: opts.digitalSourceType,
       training: opts.training,
+      ...(opts.softwareAgent === undefined ? {} : { softwareAgent: opts.softwareAgent }),
+      ...(opts.description === undefined ? {} : { description: opts.description }),
     },
     opts.log,
   );

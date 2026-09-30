@@ -328,6 +328,14 @@ export interface EmbedOptions {
   /** What the creator said about AI use. Left out means they said nothing, and nothing is written. */
   training?: TrainingConsent;
   /**
+   * Only with "c2pa.created": the program that made the picture when it is not the claim generator,
+   * C2PA 2.4's softwareAgent generator-info-map, written into the created action. The platform
+   * routes name the platform's ERC-8004 agent here. Left out, the action is exactly as before.
+   */
+  softwareAgent?: { name: string; [field: string]: unknown };
+  /** Only with "c2pa.created": the action's own description, written beside softwareAgent. */
+  description?: string;
+  /**
    * The upload exactly as it arrived, when it carries a C2PA store of its own: it becomes the one
    * parentOf ingredient, so the camera's hard binding is checked against the bytes the camera
    * signed. Never with "c2pa.created", which has no parent.
@@ -401,6 +409,12 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
   if (created && opts.parent !== undefined) {
     throw new Error(`embedManifest takes a parent ingredient only for an upload, never for ${CREATED_ACTION}`);
   }
+  if (!created && (opts.softwareAgent !== undefined || opts.description !== undefined)) {
+    throw new Error(`embedManifest names a software agent only for ${CREATED_ACTION}, never for ${opts.action}`);
+  }
+  if (opts.softwareAgent !== undefined && opts.softwareAgent.name.length === 0) {
+    throw new Error("embedManifest needs a name for the software agent");
+  }
 
   const mimeType = sniffMimeType(bytes);
 
@@ -409,7 +423,19 @@ export async function embedManifest(bytes: Buffer, opts: EmbedOptions): Promise<
   if (created) {
     const sourceType = opts.digitalSourceType ?? AI_SOURCE_TYPE;
     intent = { create: sourceType };
-    before.push({ label: "c2pa.actions", data: { actions: [{ action: CREATED_ACTION, digitalSourceType: sourceType }] } });
+    before.push({
+      label: "c2pa.actions",
+      data: {
+        actions: [
+          {
+            action: CREATED_ACTION,
+            digitalSourceType: sourceType,
+            ...(opts.softwareAgent === undefined ? {} : { softwareAgent: opts.softwareAgent }),
+            ...(opts.description === undefined ? {} : { description: opts.description }),
+          },
+        ],
+      },
+    });
   } else {
     intent = "edit";
     // Before the parent and its redactions: the library files every c2pa.redacted action into the
