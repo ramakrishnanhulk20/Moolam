@@ -219,6 +219,34 @@ The three handle routes are mounted at log level `silent`, so no request line
 carries a handle; their refusals are logged without the URL. A platform key is
 never logged, stored or answered: the service keeps only its sha256, in the list.
 
+## The MCP server
+
+`POST /mcp` is a Model Context Protocol server on every host, with no sign-in and
+nothing to configure. It only reads. Six tools: `check_picture`, `get_passport`,
+`get_ai_use_terms`, `get_history`, `get_agent` and `list_recent_passports`, and two
+resources, `moolam://passport/{id}` and `moolam://terms/{id}`. It serves the
+2026-07-28 protocol and 2025-era clients from the same handler, statelessly, so a
+deploy drops nothing but the calls in flight.
+
+What it holds itself to:
+
+| Rule | Value |
+| --- | --- |
+| Body | at most a 20 MB picture as base64 plus 64 KB, refused 413 before it is read when the declared length is over, and counted against the same upload ceilings as `/verify` |
+| Origin | a browser `Origin` that is not one of `CORS_ORIGINS` gets 403; no `Origin`, as from Claude's cloud or a script, passes |
+| Rate limit | the service's own 60 requests a minute per address. Claude connects from Anthropic's cloud, so every Claude user shares one address and one bucket. The limiter counts per process, which is one process on this host |
+| Picture URLs | fetched only through the `/verify` path: https only, no private address on any hop, 10 seconds, 20 MB |
+| Reads | single passports from the chain first, metadata through `PINATA_GATEWAY_URL`, lists and history from the index; an index that is behind or down answers "unavailable", never "not found" |
+
+Adding it to Claude: in claude.ai or Claude Desktop, Customize, Connectors, "+",
+"Add custom connector", and paste the service URL with `/mcp` on the end, such as
+`https://<your-service>.up.railway.app/mcp`. Claude connects from Anthropic's
+cloud, so the URL must be public. In Claude Code:
+
+```
+claude mcp add --transport http moolam https://<your-service>.up.railway.app/mcp
+```
+
 ## Railway
 
 Sourced from the Railway Dockerfiles guide and the monorepo guide. Anything those

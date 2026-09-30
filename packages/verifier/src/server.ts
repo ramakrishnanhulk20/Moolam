@@ -31,6 +31,7 @@ import { loadPlatforms } from "./platforms/platforms.js";
 import { editRoutes } from "./routes/edit.js";
 import { generateRoutes } from "./routes/generate.js";
 import { healthRoutes } from "./routes/health.js";
+import { mcpRoutes, type McpRouteOptions } from "./routes/mcp.js";
 import { platformRoutes } from "./routes/platform.js";
 import { prepareRoutes } from "./routes/prepare.js";
 import { recheckRoutes, type DocumentReader } from "./routes/recheck.js";
@@ -559,6 +560,8 @@ export async function buildServer(
     checks?: { registry?: () => Promise<void>; retryMs?: number };
     /** Replaces the refresh period and the clock the index's age is read on, for tests. */
     index?: { refreshMs?: number; clock?: () => number };
+    /** Replaces the MCP server's chain, gateway, card and index readers and its platform list, for tests. */
+    mcp?: McpRouteOptions;
     /** Replaces the idle and whole-request limits on a body that is arriving, for tests. */
     timeouts?: { idleMs?: number; requestMs?: number };
     recheck?: {
@@ -932,6 +935,9 @@ export async function buildServer(
 
   await app.register(healthRoutes);
   await app.register(verifyRoutes);
+  // Read only and signed by nothing, so it mounts on every host, in its own scope: its body limit,
+  // body parser, Origin check and CORS headers are its own and reach no other route.
+  await app.register(mcpRoutes, options.mcp ?? {});
 
   // One memory of which private copies are kept, shared by /sealed/status, the holder's delete and
   // the re-check queue, so the three can never disagree about a passport inside the same minute.
