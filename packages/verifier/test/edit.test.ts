@@ -441,8 +441,8 @@ describe("POST /edit", () => {
 
   it("V58: keeps the daily slot when the pins failed after their bytes left, since they may have landed", async () => {
     const user = "did:privy:pin-fail-user";
-    // pinFile retries a 500 once, so six failures is what it takes for none of the three to answer.
-    pinFailures = 6;
+    // pinFile tries a 500 three times, so nine failures is what it takes for none of the three to answer.
+    pinFailures = 9;
 
     const refused = await ask(user, goodFields());
 

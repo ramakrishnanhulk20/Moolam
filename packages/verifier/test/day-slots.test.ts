@@ -244,8 +244,8 @@ describe("the day's slot for everyone, kept or handed back", () => {
       // one that can fail with three files already paid for. It is named for the slug alone.
       const isMetadata = name.endsWith(".json") && !name.endsWith("-c2pa.json");
       if (pinata === "refuses everything" || (pinata === "refuses the last" && isMetadata)) {
-        // A 4xx rather than a 5xx, because pinFile retries a server error once and this test is
-        // about what the route does with the refusal, not about the retry.
+        // A 4xx rather than a 5xx, because pinFile retries a server error and this test is about
+        // what the route does with the refusal, not about the retry.
         return new Response("this test told Pinata to refuse", { status: 400 });
       }
       return new Response(JSON.stringify({ data: { cid: contentIdOf(bytes), size: bytes.length, network: "public" } }), {

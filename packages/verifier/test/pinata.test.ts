@@ -1,5 +1,10 @@
 // Covers the upload timeout on pinFile with fetch stubbed: an upload that never answers is
 // abandoned rather than held open forever, and the retry after a 5xx gets a clock of its own.
+// Also covers WO-255: a try that fails for a passing reason is tried again at most twice, after
+// 1 s and 3 s or a short Retry-After, inside the pin's one deadline; any other status fails at once;
+// a retry answered with the same content id is the success; each failed try is one log line with
+// its status and the file's role, never the token or the bytes. These waits are real, so the block
+// takes about fifteen seconds. It does NOT cover the private upload, which keeps its single try.
 // Also covers the four private-network calls against a recording fetch: what each one sends, the
 // 10 second bound on every one of them (B15), the refusal of an upload Pinata did not keep private
 // under the name sent (B16), whole-name matching and "cannot tell" on a bad or endless listing
@@ -31,6 +36,7 @@ const {
   PRIVATE_CALL_TIMEOUT_MS,
   PRIVATE_LIST_MAX_PAGES,
   PinNotConfirmed,
+  PinRefused,
   PrivateCopyNotPrivate,
   contentIdOf,
   deletePrivateFile,
@@ -133,13 +139,146 @@ describe("pinning through Pinata", () => {
       return await stall(signal);
     });
 
-    await expect(pinFile(BYTES, "retried.jpg", "image/jpeg", { timeoutMs: TIMEOUT_MS })).rejects.toThrow(
-      /abort|timeout|timed out/i,
-    );
+    // Long enough for the 1 s wait before the retry; the stalled retry then ends on the same deadline.
+    await expect(
+      pinFile(BYTES, "retried.jpg", "image/jpeg", { timeoutMs: 1_500, log: { warn: vi.fn() } }),
+    ).rejects.toThrow(/abort|timeout|timed out/i);
 
     expect(seen).toHaveLength(2);
     expect(seen[0]).not.toBe(seen[1]);
+  }, 10_000);
+});
+
+describe("WO-255: a pin that failed for a passing reason is tried again", () => {
+  const right = contentIdOf(BYTES);
+  const pinned = () => json({ data: { cid: right, size: BYTES.length, network: "public" } });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sent.length = 0;
   });
+
+  it("pins on the second try after the 408 Pinata answered live, and logs the failed try", async () => {
+    recording(
+      () => json({ error: { code: 408, message: "client disconnected" } }, 408),
+      pinned,
+    );
+    const log = { warn: vi.fn() };
+
+    const started = Date.now();
+    const outcome = await pinFile(BYTES, "firefly-roots-942486fb.json", "application/json", { log });
+
+    expect(outcome).toEqual({ cid: right, uri: `ipfs://${right}`, size: BYTES.length });
+    expect(sent).toHaveLength(2);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(950);
+    expect(log.warn.mock.calls).toEqual([
+      [{ role: "metadata", try: 1, status: 408, retrying: true }, "pin: a try at Pinata failed"],
+    ]);
+  }, 10_000);
+
+  it("fails with the old refusal after three 503s, as a pin that may have landed, and never logs the token or bytes", async () => {
+    recording(
+      () => new Response("down", { status: 503 }),
+      () => new Response("down", { status: 503 }),
+      () => new Response("down", { status: 503 }),
+    );
+    const log = { warn: vi.fn() };
+
+    const started = Date.now();
+    const failure = (await pinFile(BYTES, "sky-0badc0de.jpg", "image/jpeg", { log }).catch((error: unknown) => error)) as Error;
+
+    expect(failure).toBeInstanceOf(Error);
+    expect(failure).not.toBeInstanceOf(PinRefused);
+    expect(failure.message).toBe("Pinata refused to pin sky-0badc0de.jpg: 503 down (try 3)");
+    expect(sent).toHaveLength(3);
+    expect(Date.now() - started).toBeGreaterThanOrEqual(3_900);
+    expect(log.warn.mock.calls.map(([details]) => details)).toEqual([
+      { role: "image", try: 1, status: 503, retrying: true },
+      { role: "image", try: 2, status: 503, retrying: true },
+      { role: "image", try: 3, status: 503, retrying: false },
+    ]);
+    const logged = JSON.stringify(log.warn.mock.calls);
+    expect(logged).not.toContain("test-token-not-a-real-pinata-jwt");
+    expect(logged).not.toContain(BYTES.toString());
+  }, 15_000);
+
+  it("fails a 401 at once, with no retry and nothing that may have landed", async () => {
+    recording(() => new Response("invalid token", { status: 401 }));
+    const log = { warn: vi.fn() };
+
+    const started = Date.now();
+    const failure = await pinFile(BYTES, "sky-0badc0de-thumb.jpg", "image/jpeg", { log }).catch((error: unknown) => error);
+
+    expect(failure).toBeInstanceOf(PinRefused);
+    expect(sent).toHaveLength(1);
+    expect(Date.now() - started).toBeLessThan(500);
+    expect(log.warn.mock.calls.map(([details]) => details)).toEqual([
+      { role: "thumbnail", try: 1, status: 401, retrying: false },
+    ]);
+  });
+
+  it("waits a Retry-After of 2 s, and the planned 1 s when the Retry-After is 10 s or more", async () => {
+    recording(() => new Response("slow down", { status: 429, headers: { "retry-after": "2" } }), pinned);
+    let started = Date.now();
+    await pinFile(BYTES, "picture.jpg", "image/jpeg", { log: { warn: vi.fn() } });
+    const honoured = Date.now() - started;
+
+    recording(() => new Response("slow down", { status: 503, headers: { "retry-after": "10" } }), pinned);
+    started = Date.now();
+    await pinFile(BYTES, "picture.jpg", "image/jpeg", { log: { warn: vi.fn() } });
+    const capped = Date.now() - started;
+
+    expect(honoured).toBeGreaterThanOrEqual(1_950);
+    expect(honoured).toBeLessThan(2_900);
+    expect(capped).toBeGreaterThanOrEqual(950);
+    expect(capped).toBeLessThan(1_900);
+  }, 15_000);
+
+  it("counts a retry Pinata answers with the file it already holds under the same content id as the success", async () => {
+    recording(
+      () => new Response("stored, then the gateway fell over", { status: 502 }),
+      () => json({ data: { cid: right, size: BYTES.length, network: "public", is_duplicate: true } }),
+    );
+
+    const outcome = await pinFile(BYTES, "picture.jpg", "image/jpeg", { log: { warn: vi.fn() } });
+
+    expect(outcome.cid).toBe(right);
+    expect(sent).toHaveLength(2);
+    // The retry sends the very bytes the first try did, so it can only ever name the one content id.
+    const [first, second] = await Promise.all(
+      sent.map(async (call) => Buffer.from(await (call.form?.get("file") as File).arrayBuffer())),
+    );
+    expect(first?.equals(BYTES)).toBe(true);
+    expect(second?.equals(BYTES)).toBe(true);
+  }, 10_000);
+
+  it("keeps the whole pin, waits and tries included, inside the deadline", async () => {
+    // A wait that would end past the deadline is not taken: the 3 s wait after the second 503
+    // does not fit in 3.5 s, so the pin fails at about 1 s rather than trying a third time.
+    recording(() => new Response("down", { status: 503 }), () => new Response("down", { status: 503 }));
+    let started = Date.now();
+    await expect(pinFile(BYTES, "picture.jpg", "image/jpeg", { timeoutMs: 3_500, log: { warn: vi.fn() } })).rejects.toThrow(
+      /503/,
+    );
+    expect(sent).toHaveLength(2);
+    expect(Date.now() - started).toBeLessThan(1_900);
+
+    // A retry that stalls is cut off at the one deadline, not given a full timeout of its own.
+    vi.stubGlobal("fetch", async (_url: string, init?: RequestInit) => {
+      const signal = init?.signal as AbortSignal;
+      seen.push(signal);
+      return seen.length === 1 ? new Response("down", { status: 503 }) : await stall(signal);
+    });
+    started = Date.now();
+    await expect(pinFile(BYTES, "picture.jpg", "image/jpeg", { timeoutMs: 2_500, log: { warn: vi.fn() } })).rejects.toThrow(
+      /abort|timeout|timed out/i,
+    );
+    const elapsed = Date.now() - started;
+    seen.length = 0;
+
+    expect(elapsed).toBeGreaterThanOrEqual(2_400);
+    expect(elapsed).toBeLessThan(2_800);
+  }, 15_000);
 });
 
 describe("V11: a public pin is the bytes sent, on the public network", () => {

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { setTimeout as sleep } from "node:timers/promises";
 import { z } from "zod";
 import { env } from "../env.js";
 
@@ -16,14 +17,47 @@ export const PINATA_GATEWAY = env.PINATA_GATEWAY_URL;
 const IPFS_SCHEME = "ipfs://";
 
 /**
- * How long one upload gets before it is abandoned. Six times the JSON fetch timeout because this
- * request carries the whole picture, up to the 20 MB upload limit, over a home connection.
+ * How long one pin gets before it is abandoned, every try and every wait between tries included.
+ * Six times the JSON fetch timeout because this request carries the whole picture, up to the 20 MB
+ * upload limit, over a home connection.
  */
 const PIN_TIMEOUT_MS = 60_000;
 
+/**
+ * The statuses that say Pinata, or the edge in front of it, stumbled for a reason that may pass: a
+ * request it gave up waiting for (the 408 "client disconnected" seen live on 2026-09-30), one it
+ * would take later, a rate limit, and the 5xx a gateway answers when the service behind it fails.
+ * 501 and 505 are left out because they say this request will never work. Any status not here is
+ * Pinata's answer about this file, and asking again would only hear it twice.
+ */
+const PASSING_STATUSES: ReadonlySet<number> = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+/** The wait before the second try and before the third. There is no fourth. */
+const RETRY_WAITS_MS = [1_000, 3_000] as const;
+
+/**
+ * A Retry-After on a 429 or 503 is waited for only below this. A longer one is not believed over the
+ * default wait, so an answer from Pinata can never park a request for longer than the plan allows.
+ */
+const RETRY_AFTER_LIMIT_MS = 10_000;
+
+/** Where a failed try is reported. A Fastify request logger fits this shape, and so does the console. */
+export interface PinLog {
+  warn: (details: Record<string, unknown>, message: string) => void;
+}
+
+const CONSOLE_LOG: PinLog = {
+  warn: (details, message) => console.warn(message, details),
+};
+
 export interface PinOptions {
-  /** How long one upload gets. Tests pass a short one; nothing in the service overrides it. */
+  /**
+   * How long the whole pin gets, retries and the waits between them included. Tests pass a short
+   * one; nothing in the service overrides it.
+   */
   timeoutMs?: number;
+  /** Where each failed try is reported. Left out, the console. */
+  log?: PinLog;
   /**
    * Sent as Pinata's cid_version field when given. "v1" is Pinata's documented default and the
    * layout contentIdOf computes, so naming it changes no id; it makes a later change of the default
@@ -48,13 +82,20 @@ const uploadResponseSchema = z.object({
  * on the public network and names the content id computed here for the bytes sent. Anything else
  * would let a caller publish, record or delete on the strength of a file that is not this one.
  *
+ * A try that fails for a passing reason (a dropped connection, a timeout short of the deadline, or
+ * a status in PASSING_STATUSES) is tried again at most twice, after 1 s and then 3 s, or after a
+ * 429's or 503's Retry-After when that is under 10 s. The whole pin stays inside `timeoutMs`: a wait
+ * that would end past it is not taken. A retry cannot leave a second copy, because the content id is
+ * computed before the first try and Pinata keeps one file per content id on an account, answering a
+ * repeat with the file it holds; that answer names the same id and is the success it looks like.
+ * Each failed try is logged with its status and the file's role, never the token or the bytes.
+ *
  * Throws PinRefused when nothing was sent (an empty buffer, no token, a file too large to address)
- * or Pinata refused the upload with a 4xx, the two cases where it cannot hold the file. Throws a
- * plain Error when an upload stalls past the timeout, when both attempts answer a 5xx, or when the
- * answer is not the shape their API documents, and PinNotConfirmed when the answer names another
- * content id or another network: each of those may come after Pinata stored the file. A 5xx is
- * retried once, because a gateway hiccup in the middle of a seed run would otherwise cost a whole
- * set of uploads.
+ * or every try was answered with a 4xx, the two cases where Pinata cannot hold the file. Throws a
+ * plain Error when a try that may have reached Pinata (a 5xx, a timeout, a dropped connection) came
+ * before the last, when the answer is not the shape their API documents, and PinNotConfirmed when
+ * the answer names another content id or another network: each of those may come after Pinata
+ * stored the file.
  */
 export async function pinFile(
   bytes: Buffer,
@@ -85,7 +126,7 @@ export async function pinFile(
   } catch (error) {
     throw new PinRefused(`Refusing to pin ${name}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  const data = await upload(form, name, options.timeoutMs ?? PIN_TIMEOUT_MS);
+  const data = await upload(form, name, options.timeoutMs ?? PIN_TIMEOUT_MS, options.log ?? CONSOLE_LOG);
   if (data.network !== "public" || data.cid !== expected) {
     throw new PinNotConfirmed(
       `Pinata answered the public pin of ${name} with content id ${data.cid} on network ${String(data.network)}, and these bytes are ${expected} on public`,
@@ -132,9 +173,9 @@ export class PinNotConfirmed extends Error {
 }
 
 /**
- * Pinata cannot hold the file because of this call: it answered with a 4xx and nothing before
- * that answer was a 5xx, or the request never left this process (no bytes, no name, no token, a
- * file too large to address, a document that is not JSON).
+ * Pinata cannot hold the file because of this call: it answered every try with a 4xx, or the
+ * request never left this process (no bytes, no name, no token, a file too large to address, a
+ * document that is not JSON).
  *
  * It is the only pin failure after which nothing can have been stored. A 5xx, an abort after the
  * body went out, a dropped connection, an answer that would not parse and PinNotConfirmed can each
@@ -250,38 +291,97 @@ async function upload(
   form: FormData,
   what: string,
   timeoutMs: number,
+  log: PinLog,
 ): Promise<{ cid: string; size?: number; network?: string | null }> {
-  let lastServerError = "";
   const token = unsentWithout(readToken);
+  const role = roleOf(what);
+  const deadline = Date.now() + timeoutMs;
+  // Any 4xx, a 408 or 429 among them, says Pinata did not take the file. A 5xx or a request that
+  // died on the way may come after it did, and then no later 4xx can promise that nothing landed.
+  let mayHaveLanded = false;
 
-  for (let attempt = 1; attempt <= 2; attempt += 1) {
-    // A fresh signal per attempt: a retry after a stall needs its own clock, not the remains of
-    // the first one's.
-    const response = await fetch(UPLOAD_URL, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
+  /** The wait after try `tried`, or undefined when there is no next try or it would end past the deadline. */
+  const waitAfter = (tried: number, retryAfter?: number): number | undefined => {
+    const planned = RETRY_WAITS_MS[tried - 1];
+    if (planned === undefined) {
+      return undefined;
+    }
+    const chosen = retryAfter !== undefined && retryAfter < RETRY_AFTER_LIMIT_MS ? retryAfter : planned;
+    return Date.now() + chosen < deadline ? chosen : undefined;
+  };
 
-    if (response.status >= 500) {
-      lastServerError = `${response.status} ${await response.text()}`;
+  for (let tried = 1; ; tried += 1) {
+    let response: Response;
+    try {
+      // A fresh signal per try, bounded by what is left of the one deadline, so a retry after a
+      // stall gets a clock of its own and the pin as a whole still ends on time.
+      response = await fetch(UPLOAD_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+        signal: AbortSignal.timeout(Math.max(1, deadline - Date.now())),
+      });
+    } catch (error) {
+      mayHaveLanded = true;
+      const next = waitAfter(tried);
+      const status = timedOut(error) ? "timeout" : "network";
+      log.warn({ role, try: tried, status, retrying: next !== undefined }, "pin: a try at Pinata failed");
+      if (next === undefined) {
+        throw error;
+      }
+      await sleep(next);
       continue;
     }
-    if (!response.ok) {
-      const message = `Pinata refused to pin ${what}: ${response.status} ${await response.text()}`;
-      // A refusal on the retry says nothing about the first attempt, which may have been stored.
-      throw lastServerError.length === 0 ? new PinRefused(message) : new Error(message);
+
+    if (response.ok) {
+      const parsed = uploadResponseSchema.safeParse(await response.json());
+      if (!parsed.success) {
+        throw new Error(`Pinata pinned ${what} but answered in a shape this client does not know.`);
+      }
+      return parsed.data.data;
     }
 
-    const parsed = uploadResponseSchema.safeParse(await response.json());
-    if (!parsed.success) {
-      throw new Error(`Pinata pinned ${what} but answered in a shape this client does not know.`);
+    const status = response.status;
+    const text = await response.text().catch(() => "");
+    mayHaveLanded ||= status >= 500;
+    const next = PASSING_STATUSES.has(status) ? waitAfter(tried, retryAfterMs(response)) : undefined;
+    log.warn({ role, try: tried, status, retrying: next !== undefined }, "pin: a try at Pinata failed");
+    if (next === undefined) {
+      const message = `Pinata refused to pin ${what}: ${status} ${text}${tried > 1 ? ` (try ${tried})` : ""}`;
+      throw mayHaveLanded ? new Error(message) : new PinRefused(message);
     }
-    return parsed.data.data;
+    await sleep(next);
   }
+}
 
-  throw new Error(`Pinata failed twice on ${what}: ${lastServerError}`);
+/**
+ * A Retry-After in whole seconds, as milliseconds, on the two statuses that carry one. The date
+ * form and anything else unreadable give undefined, and the planned wait is used instead.
+ */
+function retryAfterMs(response: Response): number | undefined {
+  if (response.status !== 429 && response.status !== 503) {
+    return undefined;
+  }
+  const raw = response.headers.get("retry-after")?.trim() ?? "";
+  return /^\d{1,6}$/.test(raw) ? Number(raw) * 1_000 : undefined;
+}
+
+function timedOut(error: unknown): boolean {
+  const name = (error as { name?: unknown } | null)?.name;
+  return name === "TimeoutError" || name === "AbortError";
+}
+
+/**
+ * The role a file plays in a passport, read off the names this service gives its pins, for the
+ * log only: nothing decides anything on it, and a name it does not know is logged as "file".
+ */
+function roleOf(name: string): string {
+  if (name.endsWith("-thumb.jpg")) return "thumbnail";
+  if (name.endsWith("-c2pa.json")) return "manifest";
+  if (/^unseal-0x[0-9a-f]{64}\.json$/.test(name)) return "unseal-record";
+  if (name.endsWith(".json")) return "metadata";
+  if (name.endsWith(".jpg")) return "image";
+  return "file";
 }
 
 /**
