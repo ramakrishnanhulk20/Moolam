@@ -240,6 +240,10 @@ function overlaps(a: Platform, b: Platform): boolean {
  * windows overlapping. An agent and a creator wallet each belong to one name,
  * which together make at most one entry answer for any passport. A key hash
  * appears once, because the key is what identifies the platform to the service.
+ * An origin belongs to one name too, so the connect page can only ever name one
+ * platform for a site; a platform's own rotations may keep their origins. The
+ * origins are compared as stored, which is safe because each entry holds only
+ * canonicalOrigin's output.
  */
 function listProblem(platforms: Platform[]): string | null {
   for (let i = 0; i < platforms.length; i++) {
@@ -252,6 +256,7 @@ function listProblem(platforms: Platform[]): string | null {
       if (sameName && a.agentId !== b.agentId) return `${where}: one name for two agents`;
       if (!sameName && a.agentId === b.agentId) return `${where}: one agent under two names`;
       if (!sameName && a.creatorWallet === b.creatorWallet) return `${where}: one creator wallet under two names`;
+      if (!sameName && a.origins.some((origin) => b.origins.includes(origin))) return `${where}: one origin under two names`;
       if (sameName && overlaps(a, b)) return `${where}: two windows of one platform overlap`;
       if (a.keyHash === b.keyHash) return `${where}: one key hash twice`;
     }

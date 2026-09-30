@@ -172,6 +172,20 @@ describe("loadPlatforms", () => {
     expect(list.platforms).toEqual([]);
   });
 
+  it("refuses one origin listed under two platform names", async () => {
+    const clash = await signed({ ...loom, origins: ["https://loom.example", "https://demo.example"] });
+    const list = await loadPlatforms([await signed(acme), clash]);
+    expect(list).toMatchObject({ ok: false, platforms: [], reason: "entries 0 and 1: one origin under two names" });
+  });
+
+  it("lets one platform keep its origin across a rotation", async () => {
+    const platforms = await loaded([
+      await signed({ ...acme, validTo: 2_000 }),
+      await signed({ ...acme, creator: acmeNewCreator, key: "acme-2", validFrom: 2_000 }),
+    ]);
+    expect(platforms.map((platform) => platform.origins)).toEqual([["https://demo.example"], ["https://demo.example"]]);
+  });
+
   it("refuses an entry whose stored origins differ from the origins both parties signed", async () => {
     const record = await signed({ ...acme, origins: ["https://demo.example"] });
     const swapped = { ...record, origins: ["https://evil.example"] };
@@ -216,9 +230,10 @@ describe("platformForOrigin", () => {
     expect(platformForOrigin("https://demo.example", platforms)?.creatorWallet).toBe(acmeNewCreator.address);
   });
 
-  it("gives null when two current platforms claim the same origin, since it cannot say which one asks", async () => {
-    const platforms = await loaded([await signed(acme), await signed({ ...loom, origins: ["https://demo.example"] })]);
-    expect(platformForOrigin("https://demo.example", platforms)).toBeNull();
+  it("gives null when two current platforms claim the same origin, as a second line behind the list rule", async () => {
+    const [acmePlatform, loomPlatform] = await loaded([await signed(acme), await signed(loom)]);
+    const clashing = [acmePlatform!, { ...loomPlatform!, origins: ["https://demo.example"] }];
+    expect(platformForOrigin("https://demo.example", clashing)).toBeNull();
   });
 });
 
