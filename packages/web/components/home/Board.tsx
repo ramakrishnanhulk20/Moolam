@@ -69,7 +69,7 @@ export function Board({
   loose?: LooseFinding | null;
 }) {
   return (
-    <section data-drawing="b" data-motif="seal" className="relative bg-bg">
+    <section data-drawing="b" className="relative bg-bg">
       <style href="moolam-first-screen-moment" precedence="default">
         {MOMENT}
       </style>
@@ -259,8 +259,10 @@ function LiveMark() {
   return (
     <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">
       <span aria-hidden className="relative flex h-2 w-2">
-        <span className="absolute inset-0 animate-ping bg-verified/60" />
-        <span className="relative h-2 w-2 bg-verified" />
+        <span className="absolute inset-0 flex animate-ping">
+          <span className="motif h-2 w-2 bg-verified/60" />
+        </span>
+        <span className="motif h-2 w-2 bg-verified" />
       </span>
       {t("live")}
     </p>

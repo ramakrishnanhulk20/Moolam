@@ -83,7 +83,7 @@ export async function Showcase({ passport, caption }: { passport: ShowcasePasspo
           {passport.statement === null ? null : (
             <Fact label={explore("ai.label")}>
               <span className={`flex items-center gap-2 ${SUMMARY_TONES[passport.statement].ink}`}>
-                <span aria-hidden className={`h-2 w-2 shrink-0 ${SUMMARY_TONES[passport.statement].fill}`} />
+                <span aria-hidden className={`motif h-2 w-2 shrink-0 ${SUMMARY_TONES[passport.statement].fill}`} />
                 {t(`consent.summary.${passport.statement}`)}
               </span>
             </Fact>

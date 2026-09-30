@@ -339,7 +339,7 @@ export function PrivateCopyCard({ state, actions }: { state: PrivateCopyState; a
                 role="status"
                 className="mt-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending"
               >
-                <span aria-hidden className={`inline-block h-2 w-2 bg-pending ${calm ? "" : "animate-pulse"}`} />
+                <span aria-hidden className={`motif h-2 w-2 bg-pending ${calm ? "" : "animate-pulse"}`} />
                 {t("sending")}
               </p>
             ) : null}

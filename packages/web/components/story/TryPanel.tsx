@@ -323,7 +323,7 @@ export function TryPanel({
             aria-busy={busy}
             className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-accent px-6 text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-wait disabled:hover:translate-y-0"
           >
-            {busy ? <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent-ink" /> : null}
+            {busy ? <span aria-hidden className="motif h-1.5 w-1.5 animate-pulse bg-accent-ink" /> : null}
             {busy ? v("busy") : v("choose")}
           </button>
 
@@ -357,7 +357,7 @@ export function TryPanel({
                           />
                           {checking ? (
                             <span className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-bg/80 px-1.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent">
-                              <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent" />
+                              <span aria-hidden className="motif h-1.5 w-1.5 animate-pulse bg-accent" />
                               {v("busy")}
                             </span>
                           ) : null}
@@ -379,7 +379,7 @@ export function TryPanel({
             {state.kind === "pending" && (
               <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-accent">
                 {t("pending")}
-                <span className="ms-2 inline-block h-2 w-2 animate-pulse bg-accent align-middle" />
+                <span className="motif ms-2 h-2 w-2 animate-pulse bg-accent align-middle" />
               </p>
             )}
 

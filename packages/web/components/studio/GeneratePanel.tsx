@@ -530,7 +530,7 @@ function Plate({ state, wide = false }: { state: RegisterState; wide?: boolean }
             </p>
             {drawing ? (
               <p className="relative flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.18em] text-accent">
-                <span className="inline-block h-2 w-2 animate-pulse bg-accent" />
+                <span className="motif h-2 w-2 animate-pulse bg-accent" />
                 {t("steps.draw.running")}
               </p>
             ) : null}
@@ -725,7 +725,7 @@ function StepRow({ step, index, state }: { step: Step; index: number; state: Reg
       <span className={`mt-1 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span aria-hidden className={`mt-2 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
+      <span aria-hidden className={`motif mt-2 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span

@@ -14,13 +14,13 @@ import { Link } from "@/lib/i18n/routing";
 import { isTestCard, type ExplorePlate } from "./sort";
 
 /**
- * One plate: the picture, the seal, and the three marks that say what the
+ * One plate: the picture, the kolam mark, and the three marks that say what the
  * registry holds about it.
  *
  * The same language as the plates in the film on the home page, drawn in CSS
  * rather than WebGL because a grid of forty of them has to work on a phone.
- * A gateway that will not serve the picture leaves the plate dark with the seal
- * on it, never a broken image icon. A sealed passport is a different thing
+ * A gateway that will not serve the picture leaves the plate dark with the kolam
+ * mark on it, never a broken image icon. A sealed passport is a different thing
  * again: there is no picture to serve, so the plate draws the block hash and
  * says sealed, in the corner and in words.
  *
@@ -37,11 +37,11 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
   const test = isTestCard(plate.title, plate.id, plate.unread === true);
   const sealed = plate.sealed === true;
 
-  // Centred on the whole plate, the seal sat under the title and the id on a
+  // Centred on the whole plate, the kolam mark sat under the title and the id on a
   // phone, where the words at the foot take more than half of a 166 px plate.
   // It is in the flow instead, between the marks and the title, and the plate
   // reads the attribute to turn into a column around it. That holds for a
-  // gateway that fails after the page is drawn as well, because the seal
+  // gateway that fails after the page is drawn as well, because the mark
   // arrives as the picture's own fallback.
   const seal = (
     <span
@@ -53,8 +53,8 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
     </span>
   );
 
-  // Every seal-only class hangs off the seal being there, so a picture plate
-  // keeps the overlay it always had.
+  // Every no-picture class hangs off the kolam mark being there, so a picture
+  // plate keeps the overlay it always had.
   const ifSeal = {
     plate: "has-[[data-plate-seal]]:flex has-[[data-plate-seal]]:flex-col has-[[data-plate-seal]]:overflow-visible",
     top: "group-has-[[data-plate-seal]]:relative group-has-[[data-plate-seal]]:order-first",
@@ -269,9 +269,10 @@ export function Plate({ plate, first = false }: { plate: ExplorePlate; first?: b
  *
  * The passport page is drawn on the server and took up to 1.6 s to swap in,
  * with nothing on the pressed plate until then, so a reader pressed again. The
- * plate steps back and carries the same pulsing seal a chip carries while its
- * sheet is read. It sits inside the link because that is where the router says
- * whether this navigation is the one in flight, and the router clears it when
+ * plate steps back and carries the same pulsing kolam mark a chip carries
+ * while its sheet is read. It sits inside the link because that is where the
+ * router says whether this navigation is the one in flight, and the router
+ * clears it when
  * the navigation ends or another one replaces it. Opacity and a pulse only:
  * the reduced-motion rule in globals.css cuts both to a still.
  */

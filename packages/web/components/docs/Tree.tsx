@@ -78,7 +78,7 @@ export function DocsTree({ nav, onGo }: { nav: NavEntry[]; onGo?: () => void }) 
               >
                 <span
                   aria-hidden
-                  className={`inline-block h-[5px] w-[5px] shrink-0 transition-transform duration-300 ${
+                  className={`motif h-[5px] w-[5px] shrink-0 transition-transform duration-300 ${
                     open ? "rotate-45 bg-accent" : "bg-line-strong"
                   }`}
                 />

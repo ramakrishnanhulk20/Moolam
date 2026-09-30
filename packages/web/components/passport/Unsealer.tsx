@@ -178,7 +178,7 @@ function Choose({ unseal, passportId }: { unseal: PassportUnseal; passportId: He
             className="mt-6 border-s-2 border-verified bg-verified/5 py-3 ps-4"
           >
             <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.2em] text-verified">
-              <span aria-hidden className="h-2 w-2 bg-verified" />
+              <span aria-hidden className="motif h-2 w-2 bg-verified" />
               {t("matched")}
             </p>
             <p className="mt-2 break-all font-mono text-[11px] text-text">
@@ -323,7 +323,7 @@ function Line({ tone, text }: { tone: "running"; text: string }) {
       data-tone={tone}
       className="mt-6 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending"
     >
-      <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
+      <span aria-hidden className="motif h-2 w-2 bg-pending motion-safe:animate-pulse" />
       {text}
     </motion.p>
   );

@@ -25,7 +25,7 @@ export function SignInCard({ onSignIn }: { onSignIn: () => void }) {
       data-signed-out
       className="rise relative max-w-[62ch] border border-line bg-bg-raised p-7 sm:p-10"
     >
-      {/* The motif, oversized, hung off the card's own corner. The mark itself
+      {/* The kolam mark, oversized, hung off the card's own corner. The mark itself
           is wrapped rather than positioned: the .motif rule in globals.css sets
           position relative and it is written outside Tailwind's layers, so it
           wins over any position utility put on the same element. */}

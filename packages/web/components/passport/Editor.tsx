@@ -113,7 +113,7 @@ function AskForSigner({ edit }: { edit: PassportEdit }) {
 
       {edit.granting ? (
         <p role="status" className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-pending">
-          <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
+          <span aria-hidden className="motif h-2 w-2 bg-pending motion-safe:animate-pulse" />
           {t("signer.granting")}
         </p>
       ) : null}
@@ -166,7 +166,7 @@ function AddEdit({ edit }: { edit: PassportEdit }) {
     <div className="mt-5">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <p className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-verified">
-          <span aria-hidden className="h-2 w-2 bg-verified" />
+          <span aria-hidden className="motif h-2 w-2 bg-verified" />
           {t("signer.granted")}
         </p>
         <button
@@ -460,7 +460,7 @@ function StepRow({ step, index, state }: { step: EditStep; index: number; state:
       <span className={`mt-0.5 font-mono text-[11px] tabular-nums ${NUMBER_TONE[tone]}`}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
+      <span aria-hidden className={`motif mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[tone]}`} />
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span

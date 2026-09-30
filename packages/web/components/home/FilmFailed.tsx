@@ -14,7 +14,7 @@ export function FilmFailed({ onRetry }: { onRetry: () => void }) {
   const t = useTranslations("story.failed");
 
   return (
-    <section data-motif="seal" data-film-failed className="border-t border-line bg-bg">
+    <section data-film-failed className="border-t border-line bg-bg">
       <div className="mx-auto flex w-full max-w-[100rem] flex-wrap items-center gap-x-6 gap-y-4 px-5 py-10 sm:px-8 lg:px-14 lg:py-12">
         <span aria-hidden className="motif rise h-4 w-4 shrink-0" />
         <p role="status" className="rise text-base leading-relaxed text-text-muted" style={{ animationDelay: "60ms" }}>

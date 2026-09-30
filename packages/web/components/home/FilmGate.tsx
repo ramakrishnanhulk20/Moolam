@@ -62,7 +62,7 @@ export function FilmGate({ children }: { children: ReactNode }) {
       {open ? (
         <FilmCatch>{children}</FilmCatch>
       ) : (
-        <div ref={box} className="story" data-motif="seal" data-film-gate>
+        <div ref={box} className="story" data-film-gate>
           <FilmLoading />
         </div>
       )}

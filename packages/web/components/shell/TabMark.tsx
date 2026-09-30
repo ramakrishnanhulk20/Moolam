@@ -4,12 +4,28 @@ import type { TabKey } from "./tabs";
 /**
  * The five marks, drawn here rather than pulled from an icon pack.
  *
- * Every one of them is built out of the site's own motif, the seal: square
- * corners, one weight of line, a filled square where something is the subject.
- * A rounded consumer icon set beside the passport plates would read as a
- * different product, and a pack would want a licence or a credit line.
+ * Four of them are drawn with the plates' pen: square corners, one weight of
+ * line, a filled square where something is the subject. Home is the site's own
+ * mark, the kolam knot, drawn by the same .motif rule as every kicker, so the
+ * tab can never drift from the favicon. A rounded consumer icon set beside the
+ * passport plates would read as a different product, and a pack would want a
+ * licence or a credit line.
  */
 export function TabMark({ name, size = 22 }: { name: TabKey; size?: number }) {
+  if (name === "home") {
+    // The knot fills 21.4 of its 24 units where the others fill 17, so it is
+    // drawn at 80 per cent of the box to stand the same height as its neighbours.
+    return (
+      <span
+        aria-hidden
+        data-tab-mark="home"
+        className="inline-flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <span className="motif h-[80%] w-[80%] bg-current" />
+      </span>
+    );
+  }
   return (
     <svg
       aria-hidden
@@ -28,14 +44,7 @@ export function TabMark({ name, size = 22 }: { name: TabKey; size?: number }) {
   );
 }
 
-const MARKS: Record<TabKey, ReactNode> = {
-  // The seal itself: the mark on the favicon, the social card and every kicker.
-  home: (
-    <>
-      <rect x="3.5" y="3.5" width="17" height="17" />
-      <rect x="9.5" y="9.5" width="5" height="5" fill="currentColor" stroke="none" />
-    </>
-  ),
+const MARKS: Record<Exclude<TabKey, "home">, ReactNode> = {
   // The contact sheet: four plates, one of them the picture being read.
   explore: (
     <>

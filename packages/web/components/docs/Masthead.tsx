@@ -9,7 +9,7 @@ export async function Masthead({ section, title }: { section: string | null; tit
   const t = await getTranslations("docs");
 
   return (
-    <header className="docs-masthead" data-motif="seal">
+    <header className="docs-masthead">
       {/* A page outside any group would label itself "Documentation", which
           the bar above already says beside the search box on a laptop. There
           the bar's word is the one kept; on a phone the bar has no room for it,

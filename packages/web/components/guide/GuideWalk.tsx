@@ -542,7 +542,7 @@ export function GuideCard({
           {guideSteps.map((dot, at) => (
             <span
               key={dot.id}
-              className={`h-[6px] w-[6px] transition-colors duration-300 ${
+              className={`motif h-[6px] w-[6px] transition-colors duration-300 ${
                 at === index ? "bg-accent" : "bg-line-strong"
               }`}
             />

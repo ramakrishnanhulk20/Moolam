@@ -18,7 +18,7 @@ export function ConsentChip({ summary, className = "" }: { summary: Statement; c
     <p
       className={`inline-flex items-center gap-2.5 border border-line bg-bg-raised px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] ${tone.ink} ${className}`}
     >
-      <span aria-hidden className={`h-2 w-2 ${tone.fill}`} />
+      <span aria-hidden className={`motif h-2 w-2 ${tone.fill}`} />
       {t(`chip.${summary}`)}
     </p>
   );

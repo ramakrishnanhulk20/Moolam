@@ -68,7 +68,7 @@ export function StatusBand({ state }: { state: RegisterState }) {
         ) : (
           <span
             aria-hidden
-            className={`h-[9px] w-[9px] shrink-0 ${done ? "motif" : "animate-pulse bg-accent"}`}
+            className={`h-[9px] w-[9px] shrink-0 ${done ? "motif" : "motif animate-pulse"}`}
           />
         )}
 

@@ -72,7 +72,7 @@ export function IdentityStrip({
           <span className={`text-sm ${sponsorship === "proven" ? "text-verified" : "text-text"}`}>{fee}</span>
           {passkey ? (
             <span className="flex items-center gap-2 text-xs leading-relaxed text-verified">
-              <span aria-hidden className="h-[6px] w-[6px] shrink-0 bg-verified" />
+              <span aria-hidden className="motif h-[6px] w-[6px] shrink-0 bg-verified" />
               {t("identity.passkeySigned")}
             </span>
           ) : null}

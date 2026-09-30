@@ -292,7 +292,7 @@ function Recorded({ receipt }: { receipt: ChallengeReceipt }) {
   return (
     <div>
       <p data-challenge-recorded className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
-        <span aria-hidden className="h-2 w-2 bg-verified" />
+        <span aria-hidden className="motif h-2 w-2 bg-verified" />
         {t("done.label")}
       </p>
       <h3 className="mt-5 max-w-[22ch] font-display text-[clamp(1.4rem,2.6vw,2rem)] font-semibold uppercase leading-[1.02] tracking-[-0.03em]">
@@ -376,7 +376,7 @@ function StepRow({
       <span className={`mt-0.5 font-mono text-[11px] tabular-nums ${NUMBER_TONE[status]}`}>
         {String(index + 1).padStart(2, "0")}
       </span>
-      <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[status]}`} />
+      <span aria-hidden className={`motif mt-1.5 h-2 w-2 shrink-0 ${MARKER_TONE[status]}`} />
       <span className="min-w-0">
         <AnimatePresence mode="wait" initial={false}>
           <motion.span

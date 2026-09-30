@@ -197,7 +197,7 @@ function Checking({ name }: { name: string }) {
       <div className="relative p-7 sm:p-9">
         <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
           <p className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] text-accent">
-            <span className="inline-block h-2 w-2 bg-accent motion-safe:animate-pulse" />
+            <span className="motif h-2 w-2 bg-accent motion-safe:animate-pulse" />
             {t("pending")}
           </p>
           <p

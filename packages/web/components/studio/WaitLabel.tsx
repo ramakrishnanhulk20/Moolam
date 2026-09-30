@@ -14,7 +14,7 @@ export function WaitLabel({ text }: { text: string }) {
       animate={{ opacity: 1 }}
       className="flex items-center gap-3 font-mono text-[12px] uppercase tracking-[0.16em] text-accent"
     >
-      <span className="inline-block h-2 w-2 animate-pulse bg-accent" />
+      <span className="motif h-2 w-2 animate-pulse bg-accent" />
       {text}
     </motion.p>
   );

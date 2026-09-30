@@ -180,7 +180,7 @@ function Control({
           <Stamp state={state} calm={calm} />
         ) : (
           <p className="flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-[0.22em] text-verified">
-            <span aria-hidden className="h-[7px] w-[7px] bg-verified" />
+            <span aria-hidden className="motif h-[7px] w-[7px] bg-verified" />
             {t("recheckedOn", { date: seat.rechecked })}
           </p>
         )}
@@ -232,7 +232,7 @@ function Stamp({ state, calm }: { state: RecheckState; calm: boolean }) {
       ) : (
         <span
           aria-hidden
-          className={`h-[7px] w-[7px] ${stamp.mark} ${stamp.moving && !calm ? "animate-pulse" : ""}`}
+          className={`h-[7px] w-[7px] ${stamp.mark.startsWith("bg-") ? "motif" : ""} ${stamp.mark} ${stamp.moving && !calm ? "animate-pulse" : ""}`}
         />
       )}
       {t(stamp.key)}

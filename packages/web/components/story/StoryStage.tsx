@@ -71,7 +71,7 @@ export function StoryStage({ data, variant }: { data: StoryData; variant: StoryV
     .slice(0, OPENING_PICTURES);
 
   return (
-    <div className="story" data-motif="seal">
+    <div className="story">
       {opening.map((picture) => (
         // crossOrigin has to be here: the texture loader asks for the picture
         // with it, and a preload that does not match it is downloaded a second

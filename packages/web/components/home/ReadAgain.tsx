@@ -31,7 +31,7 @@ export function ReadAgain({ reload = () => window.location.reload() }: { reload?
       aria-busy={asking}
       className={`gap-2 ${SECONDARY_BUTTON}`}
     >
-      {asking ? <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent" /> : null}
+      {asking ? <span aria-hidden className="motif h-1.5 w-1.5 animate-pulse bg-accent" /> : null}
       {asking ? retry("trying") : common("tryAgain")}
     </button>
   );

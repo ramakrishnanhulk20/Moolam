@@ -124,7 +124,7 @@ export default function LocaleError({
           className="inline-flex min-h-11 items-center gap-2.5 rounded-[8px] bg-accent px-5 py-3 text-xs font-semibold uppercase tracking-[0.16em] text-accent-ink transition-[transform,opacity] duration-200 hover:-translate-y-0.5 disabled:cursor-progress disabled:opacity-80 disabled:hover:translate-y-0"
         >
           {pending ? (
-            <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent-ink motion-reduce:animate-none" />
+            <span aria-hidden className="motif h-1.5 w-1.5 animate-pulse bg-accent-ink motion-reduce:animate-none" />
           ) : null}
           {pending ? trying("trying") : t("retry")}
         </button>

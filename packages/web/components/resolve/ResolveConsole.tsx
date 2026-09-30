@@ -273,7 +273,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
           ) : null
         ) : desk.isResolver ? (
           <p className="mt-5 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-verified">
-            <span aria-hidden className="h-2 w-2 bg-verified" />
+            <span aria-hidden className="motif h-2 w-2 bg-verified" />
             {t("youAre")}
           </p>
         ) : desk.authenticated ? (
@@ -304,7 +304,7 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
             kept for the amount itself once it is read. */}
         {owed === null ? (
           <p data-credit-unread className="mt-3 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] text-text-faint">
-            <span aria-hidden className="h-1.5 w-1.5 bg-line-strong" />
+            <span aria-hidden className="motif h-1.5 w-1.5 bg-line-strong" />
             {t("creditUnread")}
           </p>
         ) : (
@@ -452,7 +452,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
 
         {outcome !== undefined ? (
           <p className="mt-7 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-verified">
-            <span aria-hidden className="h-2 w-2 bg-verified" />
+            <span aria-hidden className="motif h-2 w-2 bg-verified" />
             {t(outcome === "upheld" ? "settledUpheld" : "settledRejected")}
           </p>
         ) : desk.isResolver ? (
@@ -481,7 +481,7 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
 
             {busy ? (
               <p className="mt-4 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
-                <span aria-hidden className="inline-block h-2 w-2 animate-pulse bg-accent" />
+                <span aria-hidden className="motif h-2 w-2 animate-pulse bg-accent" />
                 {desk.confirming ? t("watching") : t("sending")}
               </p>
             ) : null}

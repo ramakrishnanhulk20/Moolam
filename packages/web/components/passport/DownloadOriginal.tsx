@@ -100,7 +100,7 @@ export function DownloadOriginal({
           data-download-state="fetching"
           className="order-last flex basis-full items-center gap-2.5 font-body text-base normal-case tracking-normal text-pending"
         >
-          <span aria-hidden className="inline-block h-2 w-2 shrink-0 bg-pending motion-safe:animate-pulse" />
+          <span aria-hidden className="motif h-2 w-2 shrink-0 bg-pending motion-safe:animate-pulse" />
           {words.downloading}
         </span>
       ) : state === "failed" ? (

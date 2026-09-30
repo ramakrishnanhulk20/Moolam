@@ -34,7 +34,10 @@ export function ConsentHistory({ entries, className = "" }: { entries: ConsentEn
         const tone = SUMMARY_TONES[summary];
         return (
           <li key={`${entry.at.toString()}-${at}`} className="relative ps-6 pb-7 last:pb-0">
-            <span aria-hidden className={`absolute -start-[4.5px] top-1.5 h-[9px] w-[9px] ${tone.fill}`} />
+            {/* .motif keeps its own position, so the wrapper is what sits on the rule. */}
+            <span aria-hidden className="absolute -start-[4.5px] top-1.5 flex">
+              <span className={`motif h-[9px] w-[9px] ${tone.fill}`} />
+            </span>
 
             <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <span className="font-mono text-[11px] tracking-[0.12em] text-text-muted">

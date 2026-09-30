@@ -129,7 +129,7 @@ export function CheckCopy({ passportId }: { passportId: Hex }) {
               <p className="max-w-[54ch] text-base leading-relaxed text-text-faint">{t("hint")}</p>
             ) : state.kind === "checking" ? (
               <p role="status" className="flex items-center gap-3 font-mono text-[12px] uppercase tracking-[0.16em] text-pending">
-                <span aria-hidden className="inline-block h-2 w-2 bg-pending motion-safe:animate-pulse" />
+                <span aria-hidden className="motif h-2 w-2 bg-pending motion-safe:animate-pulse" />
                 {t("checking")}
               </p>
             ) : state.kind === "problem" ? (

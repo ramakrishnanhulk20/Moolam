@@ -216,7 +216,7 @@ function Row({
     <li className="bg-bg p-6 sm:p-8">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <p className={`flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.24em] ${attestation.matched ? "text-verified" : "text-failed"}`}>
-          {attestation.matched ? <span aria-hidden className="h-2 w-2 bg-verified" /> : <WarningMark />}
+          {attestation.matched ? <span aria-hidden className="motif h-2 w-2 bg-verified" /> : <WarningMark />}
           {attestation.matched ? t("matched") : t("notMatched")}
         </p>
         {isPrivate ? (

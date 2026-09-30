@@ -105,7 +105,7 @@ export function Filters({ search }: { search: ExploreSearch }) {
             }`}
           >
             {search.ai === null ? null : (
-              <span aria-hidden className={`h-[6px] w-[6px] shrink-0 ${SUMMARY_TONES[search.ai].fill}`} />
+              <span aria-hidden className={`motif h-[6px] w-[6px] shrink-0 ${SUMMARY_TONES[search.ai].fill}`} />
             )}
             <span>
               {t("ai.label")}: {aiWord(search.ai)}
@@ -319,7 +319,7 @@ function AiChip({ ai, search }: { ai: ExploreAi | null; search: ExploreSearch })
       }`}
     >
       {ai === null ? null : (
-        <span aria-hidden className={`h-[6px] w-[6px] shrink-0 ${SUMMARY_TONES[ai].fill}`} />
+        <span aria-hidden className={`motif h-[6px] w-[6px] shrink-0 ${SUMMARY_TONES[ai].fill}`} />
       )}
       <ChipLabel label={label} />
     </Link>

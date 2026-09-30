@@ -454,7 +454,7 @@ function Still({
         <div>
           <p className="flex items-center justify-between gap-6 font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">
             <span className="flex items-center gap-2">
-              <span aria-hidden className={`h-1.5 w-1.5 bg-accent ${over ? "" : "animate-pulse"}`} />
+              <span aria-hidden className={`motif h-1.5 w-1.5 bg-accent ${over ? "" : "animate-pulse"}`} />
               {verify("rail")}
             </span>
             {look === "poster" ? <span>Still 01</span> : null}
@@ -487,7 +487,7 @@ function Still({
             data-hero-call="choose"
             className="inline-flex h-11 items-center gap-2 rounded-[8px] bg-accent px-6 text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 disabled:cursor-wait disabled:hover:translate-y-0"
           >
-            {waiting ? <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent-ink" /> : null}
+            {waiting ? <span aria-hidden className="motif h-1.5 w-1.5 animate-pulse bg-accent-ink" /> : null}
             {waiting ? verify("busy") : verify("choose")}
           </button>
           {unstarted ? (
@@ -584,7 +584,7 @@ function Strip({
                   <span className="scrim pointer-events-none absolute inset-0 opacity-60" />
                   {checking ? (
                     <span className="absolute inset-x-0 bottom-0 flex items-center gap-2 bg-bg/80 px-2 py-1 font-mono text-[11px] uppercase tracking-[0.12em] text-accent">
-                      <span aria-hidden className="h-1.5 w-1.5 animate-pulse bg-accent" />
+                      <span aria-hidden className="motif h-1.5 w-1.5 animate-pulse bg-accent" />
                       {verify("busy")}
                     </span>
                   ) : null}

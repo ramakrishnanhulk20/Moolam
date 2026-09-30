@@ -101,7 +101,7 @@ export async function DisputeNote({
       </dl>
 
       <p className="tap-row mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-base leading-relaxed">
-        <span aria-hidden className={dispute.status === DisputeStatus.Open ? "h-2 w-2 motion-safe:animate-pulse bg-disputed" : "h-2 w-2 bg-disputed"} />
+        <span aria-hidden className={dispute.status === DisputeStatus.Open ? "motif h-2 w-2 motion-safe:animate-pulse bg-disputed" : "motif h-2 w-2 bg-disputed"} />
         <span className={dispute.status === DisputeStatus.Open ? "text-text-muted" : "text-text"}>
           {dispute.status === DisputeStatus.Open ? t("waiting") : t(`outcome.${status}`)}
         </span>
