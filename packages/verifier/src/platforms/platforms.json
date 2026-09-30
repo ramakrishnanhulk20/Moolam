@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "name": "Dreamloom",
+    "agentId": "10273",
+    "ownerAtOnboarding": "0x80819a894AAa89e0346b715bEb897A7c2fda3F44",
+    "creatorWallet": "0x80819a894AAa89e0346b715bEb897A7c2fda3F44",
+    "keyHash": "0x92f3a06dd00fb817ea0254333754fa837858bdc12d0df5506ed0832e893ba79c",
+    "origins": [
+      "https://dreamloom-production-3e74.up.railway.app"
+    ],
+    "validFrom": 1790768921,
+    "acceptedAt": 1790769010,
+    "ownerSignature": "0xdb4a2601df4adcb355e1b20b94c25ddbbb58def2ce7e30567f4ec168ccd9165a6aa91c639429f9caa2de30c0f85da5852e756fdefefdf5020b21acca95edc8f61b",
+    "creatorSignature": "0xdb4a2601df4adcb355e1b20b94c25ddbbb58def2ce7e30567f4ec168ccd9165a6aa91c639429f9caa2de30c0f85da5852e756fdefefdf5020b21acca95edc8f61b"
+  }
+]

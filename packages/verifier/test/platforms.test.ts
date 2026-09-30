@@ -108,8 +108,13 @@ describe("loadPlatforms", () => {
     expect(platforms[0]!.validTo).toBeNull();
   });
 
-  it("starts with the shipped list empty and accepted", async () => {
-    expect(await loadPlatforms()).toEqual({ ok: true, platforms: [] });
+  it("accepts the shipped list, every entry current or retired by its own window", async () => {
+    const shipped = await loadPlatforms();
+    expect(shipped.ok).toBe(true);
+    for (const platform of shipped.platforms) {
+      expect(platform.origins.length).toBeGreaterThan(0);
+      expect(platform.validTo === null || platform.validTo > platform.validFrom).toBe(true);
+    }
   });
 
   it.each([
