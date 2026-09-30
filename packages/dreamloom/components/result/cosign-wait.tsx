@@ -42,7 +42,7 @@ export function CosignWait({
         </p>
         <p className="mt-3 max-w-[36rem] text-base text-ink-soft">
           {signed
-            ? "Dreamloom has signed as the maker. Now sign with your passkey on Moolam's page, and the passport is written on Monad."
+            ? "Dreamloom has signed its part, as the tool that drew it. Now sign with your passkey on Moolam's page, and the passport is written on Monad."
             : "On Moolam's page, sign in, check the picture and its terms, then sign with your passkey. Moolam pays the network fee."}
         </p>
       </div>

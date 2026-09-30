@@ -88,7 +88,7 @@ export function Hero() {
                 height={22}
                 className="mt-0.5 size-[22px] shrink-0 rounded-full bg-[#14121c] p-[3px]"
               />
-              Every picture can get a Moolam passport: a public record of who made it and how AI may use it.
+              Every picture can get a Moolam passport that credits you, the person who imagined it, and says how AI may use it.
             </motion.p>
           </div>
 

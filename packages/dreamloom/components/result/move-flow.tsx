@@ -15,7 +15,7 @@ const GHOST_BUTTON =
   "inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-full border-2 border-white/20 px-5 py-2.5 text-base font-semibold text-white transition duration-200 hover:border-sun hover:text-sun focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-sun";
 
 /**
- * "Move it to my Moolam account": opens Moolam's connect page in a window opened inside the click,
+ * "Claim it into my Moolam account": opens Moolam's connect page in a window opened inside the click,
  * listens for the one message that page sends, asks the visitor to confirm the exact address, and
  * only then asks Dreamloom's server to move the passport.
  */
@@ -113,7 +113,7 @@ export function MoveFlowView({
                 </p>
               )}
               <button type="button" onClick={onStart} className={SUN_BUTTON}>
-                Move it to my Moolam account
+                Claim it into my Moolam account
                 <OutArrow className="size-5" />
               </button>
             </>

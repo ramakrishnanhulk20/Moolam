@@ -4,10 +4,12 @@ title: For platforms
 
 # For platforms
 
-The platform kit lets an AI image company give every picture it makes a Moolam passport on Monad,
-naming its own ERC-8004 agent as the maker. It is a TypeScript package for the company's server,
-`@moolam/platform`, and four routes on Moolam's verify service that sign the C2PA manifest,
-fingerprint the picture and hand back the passport fields.
+The platform kit lets an AI image company give every picture made on it a Moolam passport on Monad
+that credits the person who imagined it. The company's ERC-8004 agent signs for the tool that drew
+the picture, and the person signs as its creator. A platform is where a picture was drawn, never its
+maker. It is a TypeScript package for the company's server, `@moolam/platform`, and four routes on
+Moolam's verify service that sign the C2PA manifest, fingerprint the picture and hand back the
+passport fields.
 
 > **Not live yet.** The routes, the package and the MCP server are in the code and tested, and they
 > go live with the next deploy of the verify service. Until then, `https://<verify-service>` on this
@@ -17,26 +19,30 @@ fingerprint the picture and hand back the passport fields.
 
 ## The two modes
 
-A platform picks a mode for each picture.
+A platform picks a mode for each picture. Co-sign is the main path: the person signs, and the
+passport credits them from the first block.
 
-| | Platform mode | Co-sign mode |
+| | Co-sign mode (the main path) | Platform mode |
 | --- | --- | --- |
-| Who signs as the maker | Your agent's owner key | Your agent's owner key |
-| Who signs as the creator | Your server passkey, bound once to your wallet | The person, with their own passkey, on a Moolam page |
-| Who sends the transaction and pays | Your wallet | The person's Moolam wallet, with the fee paid by Moolam |
-| Who holds the passport first | Your wallet | The person |
-| What it needs from the person | Nothing | Opening a link, signing in, one passkey signature |
-| Pick it when | You generate at volume, or your users have no Moolam account | The person should be the creator on chain from the first block |
-
-In platform mode one company holds both keys the registry asks for. The chain records the same
-fields it records for anyone, and Moolam says exactly what that proves: a key bound to the creator
-wallet signed the fingerprint, and your agent's owner signed it too. A person can hold the passport
-later through a transfer.
+| Who signs as the creator | The person, with their own passkey, on a Moolam page | Your server passkey, bound once to your wallet |
+| Who signs for the agent that drew it | Your agent's owner key | Your agent's owner key |
+| Who sends the transaction and pays | The person's Moolam wallet, with the fee paid by Moolam | Your wallet |
+| Who holds the passport first | The person | Your wallet, for the person, until they claim it |
+| Who Moolam credits | The person, from the first block | Nobody while you hold it; the holder once the person claims it |
+| What it needs from the person | Opening a link, signing in, one passkey signature | Nothing now; an address when they claim it |
+| Pick it when | The person can give one passkey signature, which is almost always | You generate at volume, or your users have no Moolam account yet |
 
 In co-sign mode your server prepares the picture and your agent signs, and the person finishes it on
 a page at `https://moolam.vercel.app/cosign#<handle>`. The handle travels after the `#`, so it never
 reaches a server log, an analytics tool or a `Referer` header. The co-sign page ships with the same
 deploy that turns the kit on.
+
+In platform mode you register the picture at once and hold the passport for the person until they
+claim it. One company holds both keys the registry asks for. The chain records the same fields it
+records for anyone, and Moolam says exactly what that proves: a key bound to the creator wallet
+signed the fingerprint, and your agent's owner signed it too. The person claims the passport later
+through a transfer from your wallet to theirs ([Handing a passport to a person](#handing-a-passport-to-a-person)).
+How Moolam credits each case is [below](#how-moolam-credits-a-platform-picture).
 
 ## Joining the list
 
@@ -117,87 +123,7 @@ carry a key, a private key or a co-sign handle, so they are safe to log.
 
 ## Quickstart
 
-### One-time setup (platform mode)
-
-```ts
-import { createWalletClient, http, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { monad } from "viem/chains";
-import { setupPlatform } from "@moolam/platform";
-
-const walletClient = createWalletClient({
-  account: privateKeyToAccount(process.env.PLATFORM_WALLET_KEY as Hex),
-  chain: monad,
-  transport: http(),
-});
-
-const setup = await setupPlatform({ walletClient, rpId: "images.example.com" });
-
-// Shown once and never again. Put it in your secret store before anything else.
-await saveSecret("MOOLAM_PASSKEY_KEY", setup.passkeyPrivateKey);
-console.log(`bound ${setup.qx} to ${setup.wallet} in ${setup.bindTx}`);
-
-declare function saveSecret(name: string, value: string): Promise<void>;
-```
-
-`setupPlatform` makes a P-256 key and binds it on the registry as your wallet's creator key, sent and
-paid by that wallet. Before anything is signed it refuses a wallet that already has a passkey bound
-(unless `rotate: true`), a wallet that already holds passports (unless it is rotating a key it
-already has), and an `rpId` that is Moolam's hostname, `localhost`, an IP address, a single word, or
-anything the URL parser would rewrite. Use your own public hostname. Nothing on chain reads the
-`rpId`, so it is your honest label for the key, not a proof.
-
-### Platform mode
-
-```ts
-import { readFile, writeFile } from "node:fs/promises";
-import { createWalletClient, http, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { monad } from "viem/chains";
-import { ServerPasskey, registerAsPlatform } from "@moolam/platform";
-
-const walletClient = createWalletClient({
-  account: privateKeyToAccount(process.env.PLATFORM_WALLET_KEY as Hex),
-  chain: monad,
-  transport: http(),
-});
-const agentAccount = privateKeyToAccount(process.env.AGENT_OWNER_KEY as Hex);
-const passkey = ServerPasskey.fromPrivateKey(process.env.MOOLAM_PASSKEY_KEY as Hex, "images.example.com");
-
-const picture = new Uint8Array(await readFile("lighthouse.png"));
-
-const registered = await registerAsPlatform(picture, {
-  verifyUrl: "https://<verify-service>",
-  platformKey: process.env.MOOLAM_PLATFORM_KEY ?? "",
-  agentAccount,
-  passkey,
-  walletClient,
-  title: "A lighthouse at dusk",
-  terms: { aiTraining: "notAllowed", aiInference: "constrained", constraintInfo: "Ask licensing@example.com" },
-});
-
-// Serve these bytes, never the original upload: their sha256 is the passport id.
-await writeFile(`${registered.passportId}.jpg`, registered.signedFile);
-console.log(registered.registerTx, registered.consentTx);
-```
-
-What happens, in order:
-
-1. Your agent owner signs a PlatformPrepare: the mode, the picture's sha256, your platform id, a fresh
-   random nonce and the latest block's time.
-2. The service checks your key, then that signature against the agent's owner read on chain now. It
-   signs a C2PA manifest naming your agent, fingerprints the signed picture, pins four files and
-   answers with the passport fields, the digest and the signed file.
-3. The kit checks the signed file hashes to the passport id, that the creator is your wallet, that
-   the terms in the manifest are the terms you sent, and rebuilds the digest itself. Any difference
-   stops it before anything is signed.
-4. Your agent signs the passport, your server passkey signs the same digest, and your wallet sends
-   `register`, then `setConsent` with the same terms.
-
-Nothing is sent on chain until every check passes, and a result comes back only from receipts with
-status success.
-
-### Co-sign mode
+### Co-sign mode, the main path
 
 ```ts
 import { readFile } from "node:fs/promises";
@@ -282,7 +208,91 @@ not found. Store the handle like the link: it opens the person's page.
 metadata document, which the chain names, gives the signed picture's IPFS address as `image`, and its
 sha256 is the passport id. Hash it before you serve it.
 
+### One-time setup (platform mode)
+
+```ts
+import { createWalletClient, http, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { monad } from "viem/chains";
+import { setupPlatform } from "@moolam/platform";
+
+const walletClient = createWalletClient({
+  account: privateKeyToAccount(process.env.PLATFORM_WALLET_KEY as Hex),
+  chain: monad,
+  transport: http(),
+});
+
+const setup = await setupPlatform({ walletClient, rpId: "images.example.com" });
+
+// Shown once and never again. Put it in your secret store before anything else.
+await saveSecret("MOOLAM_PASSKEY_KEY", setup.passkeyPrivateKey);
+console.log(`bound ${setup.qx} to ${setup.wallet} in ${setup.bindTx}`);
+
+declare function saveSecret(name: string, value: string): Promise<void>;
+```
+
+`setupPlatform` makes a P-256 key and binds it on the registry as your wallet's creator key, sent and
+paid by that wallet. Before anything is signed it refuses a wallet that already has a passkey bound
+(unless `rotate: true`), a wallet that already holds passports (unless it is rotating a key it
+already has), and an `rpId` that is Moolam's hostname, `localhost`, an IP address, a single word, or
+anything the URL parser would rewrite. Use your own public hostname. Nothing on chain reads the
+`rpId`, so it is your honest label for the key, not a proof.
+
+### Platform mode
+
+```ts
+import { readFile, writeFile } from "node:fs/promises";
+import { createWalletClient, http, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { monad } from "viem/chains";
+import { ServerPasskey, registerAsPlatform } from "@moolam/platform";
+
+const walletClient = createWalletClient({
+  account: privateKeyToAccount(process.env.PLATFORM_WALLET_KEY as Hex),
+  chain: monad,
+  transport: http(),
+});
+const agentAccount = privateKeyToAccount(process.env.AGENT_OWNER_KEY as Hex);
+const passkey = ServerPasskey.fromPrivateKey(process.env.MOOLAM_PASSKEY_KEY as Hex, "images.example.com");
+
+const picture = new Uint8Array(await readFile("lighthouse.png"));
+
+const registered = await registerAsPlatform(picture, {
+  verifyUrl: "https://<verify-service>",
+  platformKey: process.env.MOOLAM_PLATFORM_KEY ?? "",
+  agentAccount,
+  passkey,
+  walletClient,
+  title: "A lighthouse at dusk",
+  terms: { aiTraining: "notAllowed", aiInference: "constrained", constraintInfo: "Ask licensing@example.com" },
+});
+
+// Serve these bytes, never the original upload: their sha256 is the passport id.
+await writeFile(`${registered.passportId}.jpg`, registered.signedFile);
+console.log(registered.registerTx, registered.consentTx);
+```
+
+What happens, in order:
+
+1. Your agent owner signs a PlatformPrepare: the mode, the picture's sha256, your platform id, a fresh
+   random nonce and the latest block's time.
+2. The service checks your key, then that signature against the agent's owner read on chain now. It
+   signs a C2PA manifest naming your agent, fingerprints the signed picture, pins four files and
+   answers with the passport fields, the digest and the signed file.
+3. The kit checks the signed file hashes to the passport id, that the creator is your wallet, that
+   the terms in the manifest are the terms you sent, and rebuilds the digest itself. Any difference
+   stops it before anything is signed.
+4. Your agent signs the passport, your server passkey signs the same digest, and your wallet sends
+   `register`, then `setConsent` with the same terms.
+
+Nothing is sent on chain until every check passes, and a result comes back only from receipts with
+status success.
+
 ### Handing a passport to a person
+
+This is how the person claims a platform-mode passport you hold for them. From then on Moolam credits
+them as the person who imagined it, on your word that the right person claimed it
+([how the credit reads](#how-moolam-credits-a-platform-picture)).
 
 ```ts
 import { createWalletClient, http, type Hex } from "viem";
@@ -404,6 +414,38 @@ The C2PA signing and the four IPFS pins of every prepare are Moolam's cost in bo
 platform wallet that sets up, registers ten pictures with terms and hands one over spends about
 0.73 MON; fund it with 1.5 MON for the margin a gas limit and a failed attempt need.
 
+## How Moolam credits a platform picture
+
+The person who imagined a picture gets the credit. Your platform is where it was drawn, and in
+platform mode the one holding the passport until that person claims it. Moolam never names a
+platform as a picture's maker or creator.
+
+One function decides the credit, `creditFor`, beside `platformLabel` in
+`packages/verifier/src/platforms/platforms.ts`, so the site and the MCP server say the same thing. It
+reads the passport's fields from the chain, its holder read now, and for a listed agent that agent's
+owner read now, and gives one of three cases:
+
+| Case | When | What the passport says | What it proves |
+| --- | --- | --- | --- |
+| `unclaimed` | `platformLabel` gives your platform's kit label, and your wallet, the creator, still holds the passport | "Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it." | The picture was drawn on your platform and registered through the kit. Nobody is named yet, because nobody has claimed it |
+| `claimed` | The kit label, and another address holds the passport | "Imagined by *holder*. Drawn on *platform*, which handed the passport to them." with a note that the credit rests on the handover | Your wallet handed the passport to that address. That the holder is the person who imagined the picture is your platform's word: the chain records the handover, not who wrote the prompt |
+| `cosigned` | No kit label, because the creator is not a listed wallet; the passport is Generated, carries a manifest and names a current entry's agent; it was registered inside that entry's window; and the agent's owner read now is the owner that signed the entry | "Imagined by *creator*. Drawn by *platform*'s agent." with a note that a key bound to their own wallet approved this exact picture | A passkey bound to the person's own wallet signed this picture's fingerprint. The credit rests on their key, not on your word, which is why co-sign is the main path |
+
+A picture's plate carries the short form, "Drawn on *platform*". The MCP server's `get_passport`
+answers with the case as [`credit`](mcp#get_passport).
+
+**When there is no credit line.** `creditFor` gives nothing, and credit is never guessed, when:
+
+- Moolam's platform list did not load;
+- your listed wallet registered the picture outside the kit;
+- the holder could not be read;
+- the agent is not on the list, its owner could not be read, or its owner is not the one that signed
+  the entry now in force;
+- a co-signed picture was registered before the entry now in force began, for example before a key
+  rotation.
+
+The passport's base line and the holder and creator facts stand either way.
+
 ## What the label on a passport means
 
 A passport your platform registered in platform mode carries this line on its passport page:
@@ -418,7 +460,8 @@ and under it:
 Its plate in Explore carries the platform's mark, and the MCP server's `get_passport` answers with
 `platform: { status: "kit", name, creatorWallet, agentId }`.
 
-A co-sign passport's creator is the person, so it carries no platform label. Its page names your
+A co-sign passport's creator is the person, so it carries no platform label, only the `cosigned`
+credit above. Its page names your
 agent by its ERC-8004 id, with the name your agent's own card gives, marked as the card's own word,
 and the MCP server's `get_agent` answers with the name Moolam lists for that agent.
 

@@ -26,10 +26,10 @@ export function PassportPanel({
   const moved = picture.state === "moved";
 
   const holder = moved
-    ? "Dreamloom registered it, and it is now held by your Moolam account."
+    ? "You claimed it, so it sits in your own Moolam account and credits you as the person who imagined it."
     : picture.mode === "cosign"
       ? "You signed it, so Moolam names you as its creator."
-      : "Dreamloom registered it under its own name and holds it for now.";
+      : "Dreamloom registered it and holds it for you. Claim it below to take it into your own Moolam account.";
 
   return (
     <motion.div
@@ -67,8 +67,8 @@ export function PassportPanel({
         {registerHref !== null && picture.registerTx !== undefined && (
           <Fact label="Registered in" value={picture.registerTx} href={registerHref} />
         )}
-        {moveHref !== null && picture.moveTx !== undefined && <Fact label="Moved in" value={picture.moveTx} href={moveHref} />}
-        {moved && picture.movedTo !== undefined && <Fact label="Moved to" value={picture.movedTo} full />}
+        {moveHref !== null && picture.moveTx !== undefined && <Fact label="Claimed in" value={picture.moveTx} href={moveHref} />}
+        {moved && picture.movedTo !== undefined && <Fact label="Claimed by" value={picture.movedTo} full />}
       </dl>
 
       {href !== null && (

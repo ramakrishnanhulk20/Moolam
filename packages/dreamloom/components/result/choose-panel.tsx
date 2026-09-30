@@ -164,7 +164,7 @@ export function ChoosePanel({
               {pending?.kind === "cosign" ? <Spinner /> : <Arrow />}
             </button>
             <p className="px-2 text-sm leading-snug text-ink-soft">
-              You become its creator, signing with a passkey on Moolam&apos;s page. Moolam pays the network fee.
+              Your own passkey signs it on Moolam, so the passport credits you from the first block.
             </p>
           </div>
           <div className="flex flex-col gap-2.5 md:row-span-2 md:grid md:grid-rows-subgrid">
@@ -174,11 +174,11 @@ export function ChoosePanel({
               disabled={locked || issue !== null}
               className={INK_BUTTON}
             >
-              {pending?.kind === "register" ? "Registering" : "Let Dreamloom register it"}
+              {pending?.kind === "register" ? "Registering" : "Let Dreamloom hold it for me"}
               {pending?.kind === "register" ? <Spinner /> : <Arrow />}
             </button>
             <p className="px-2 text-sm leading-snug text-ink-soft">
-              Dreamloom registers it under its own name now. You can move it to your Moolam account after.
+              Dreamloom registers it now and holds it until you claim it into your own Moolam account.
             </p>
           </div>
         </div>

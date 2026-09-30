@@ -78,7 +78,7 @@ resizing, rotation or mirroring. The same matching and facts as [`POST /verify`]
 | --- | --- |
 | `creator` | The wallet that registered it |
 | `holder`, `holderRead`, `holderIsCreator` | Who holds it now, read on chain, and whether that is the creator. Two facts, never merged |
-| `agentId` | The ERC-8004 agent that made it, or `null` |
+| `agentId` | The ERC-8004 agent that drew it, or `null` |
 | `kind` | `generated`, `captured` or `edited` |
 | `parentId` | The passport it was edited from, or `null` |
 | `registeredAt` | Unix seconds |
@@ -87,7 +87,21 @@ resizing, rotation or mirroring. The same matching and facts as [`POST /verify`]
 | `title`, `titleRead` | The title from that document, read through Moolam's gateway, or `null` with `titleRead: "unavailable"` |
 | `platform` | `{ status, name, creatorWallet, agentId }` when a listed platform's wallet registered it: `kit` when it went through the [platform kit](platform-kit#what-the-label-on-a-passport-means), `outsideKit` when that wallet registered it some other way. `null` otherwise |
 | `platformList` | `loaded`, or `unavailable` when Moolam's list did not load and no label can be given |
+| `credit` | `{ case, platform, imaginedBy }` for a picture drawn on a listed platform, or `null`. `case` is `unclaimed`, `claimed` or `cosigned`; `platform` is the listed name of where it was drawn; `imaginedBy` is the address of the person who imagined it, or `null` while the platform still holds it. Decided by the same rule as the site, [`creditFor`](platform-kit#how-moolam-credits-a-platform-picture) |
 | `readAt` | When this answer was read |
+
+**Presenting `credit`.** Credit the person, and name the platform only as where the picture was
+drawn. Never call the platform its maker or creator.
+
+| `case` | Say it like this | And say |
+| --- | --- | --- |
+| `unclaimed` | Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it | No person is named yet. Do not credit the platform |
+| `claimed` | Imagined by *imaginedBy*. Drawn on *platform*, which handed the passport to them | The credit rests on the platform's handover: the chain shows who it was handed to, not who wrote the prompt |
+| `cosigned` | Imagined by *imaginedBy*. Drawn by *platform*'s agent | A key bound to their own wallet approved this exact picture |
+
+A `null` credit is not a finding against anyone. It means the picture was not drawn on a listed
+platform, or a fact behind the credit could not be read or did not hold, and credit is never guessed.
+Then say who registered and who holds the passport, from `creator` and `holder`.
 
 ### get_ai_use_terms
 
@@ -211,8 +225,9 @@ Someone asks Claude: "Can I use this picture to train an image model? https://ex
    was.
 2. **`get_ai_use_terms`** with `{ "passportId": "0x…" }`. The answer's `stated` is true,
    `aiGenerativeTraining` is `notAllowed`, and `writer` and `writerIsHolder` say the holder wrote it.
-3. **`get_passport`** with the same id, if Claude wants to say who made it: the `creator`, the
-   `holder`, the `agentId`, and `platform` when a listed platform registered it.
+3. **`get_passport`** with the same id, if Claude wants to say who imagined it: the `creator`, the
+   `holder`, the `agentId`, `platform` when a listed platform registered it, and `credit`, which
+   names the person to credit and the platform it was drawn on.
 
 Claude can then answer that the picture is registered on Monad, that its holder does not allow
 generative training, and who stated that and when, with each fact traceable to a field. Had step 1

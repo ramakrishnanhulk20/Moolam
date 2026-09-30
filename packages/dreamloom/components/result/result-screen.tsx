@@ -177,7 +177,7 @@ function ReadySide({
   onCosignOpened: (blocked: boolean) => void;
   onChanged: () => void;
 }) {
-  const heading = HEADINGS[picture.state];
+  const heading = picture.state === "registered" && picture.mode === "platform" ? HELD : HEADINGS[picture.state];
   const canMove = picture.state === "registered" && picture.mode === "platform";
 
   return (
@@ -223,7 +223,7 @@ const HEADINGS: Record<PictureView["state"], { kicker: string; lead: string; glo
     kicker: "Freshly woven",
     lead: "Your dream,",
     glow: "woven.",
-    line: "Give it a Moolam passport: a public record of who made it and how AI may use it.",
+    line: "Give it a Moolam passport: a public record that credits you, the person who imagined it, and says how AI may use it.",
   },
   "cosign-open": {
     kicker: "One step left",
@@ -241,10 +241,10 @@ const HEADINGS: Record<PictureView["state"], { kicker: string; lead: string; glo
     kicker: "Passport issued",
     lead: "It has a",
     glow: "passport.",
-    line: "Anyone can now check who made this picture and how AI may use it.",
+    line: "Anyone can now check that you imagined this picture and how AI may use it.",
   },
   moved: {
-    kicker: "Passport moved",
+    kicker: "Passport claimed",
     lead: "It is",
     glow: "yours now.",
     line: "The passport sits in your own Moolam account.",
@@ -255,6 +255,14 @@ const HEADINGS: Record<PictureView["state"], { kicker: string; lead: string; glo
     glow: "snagged.",
     line: "This picture did not get its passport here.",
   },
+};
+
+/** A passport Dreamloom registered sits in Dreamloom's wallet, so it never reads as the visitor's own until they claim it. */
+const HELD = {
+  kicker: "Passport issued",
+  lead: "Held until",
+  glow: "you claim it.",
+  line: "Dreamloom holds this passport for you until you claim it into your own Moolam account.",
 };
 
 function Heading({ kicker, lead, glow, line }: { kicker: string; lead: string; glow: string; line: string }) {
