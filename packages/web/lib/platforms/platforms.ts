@@ -349,19 +349,103 @@ export function platformLabel(
   const first = listed[0];
   if (first === undefined) return null;
 
-  const manifestHash = passport.manifestHash.toLowerCase();
-  const hasManifest = /^0x[0-9a-f]{64}$/.test(manifestHash) && manifestHash !== ZERO_HASH;
   const match = listed.find(
-    (entry) =>
-      passport.kind === KIND_GENERATED &&
-      passport.generatorAgentId === entry.agentId &&
-      hasManifest &&
-      passport.registeredAt >= entry.validFrom &&
-      (entry.validTo === null || passport.registeredAt < entry.validTo) &&
-      passport.registeredAt <= now,
+    (entry) => generatedByAgent(passport, entry.agentId) && registeredInWindow(passport.registeredAt, entry, now),
   );
   if (match !== undefined) return { status: "kit", name: match.name, platform: match };
   return { status: "outsideKit", name: first.name, platform: first };
+}
+
+/** Generated, by this agent, with a manifest: the passport terms the label and the co-sign credit share. */
+function generatedByAgent(passport: LabelPassport, agentId: bigint): boolean {
+  const manifestHash = passport.manifestHash.toLowerCase();
+  const hasManifest = /^0x[0-9a-f]{64}$/.test(manifestHash) && manifestHash !== ZERO_HASH;
+  return passport.kind === KIND_GENERATED && passport.generatorAgentId === agentId && hasManifest;
+}
+
+/** Inside [validFrom, validTo) and not after now, since a registration time from the future is not one the chain gave. */
+function registeredInWindow(registeredAt: bigint, entry: Platform, now: bigint): boolean {
+  return registeredAt >= entry.validFrom && (entry.validTo === null || registeredAt < entry.validTo) && registeredAt <= now;
+}
+
+/** What creditFor reads: the label's passport fields, today's holder and today's owner of the generator agent. */
+export interface CreditPassport extends LabelPassport {
+  /** ownerOf(passportId) read now, or null when it could not be read. */
+  holder: string | null;
+  /** ownerOf(generatorAgentId) on the ERC-8004 registry read now, or null when it was not or could not be read. */
+  agentOwnerNow: string | null;
+}
+
+export interface Credit {
+  case: "unclaimed" | "claimed" | "cosigned";
+  /** The listed platform's name: where the picture was drawn, never its maker. */
+  platform: string;
+  /** The person who imagined the picture, or null while the platform still holds it. */
+  imaginedBy: Address | null;
+}
+
+/**
+ * The one rule for who is credited with a picture drawn on a listed platform, so
+ * the site and the MCP server say the same thing: the person who imagined it,
+ * never the platform.
+ *
+ * "unclaimed" and "claimed" rest on platformLabel's "kit": the platform's wallet
+ * registered it, and the credit follows the holder. While the holder is the
+ * creator the platform still holds it and nobody is named; once it has handed the
+ * passport on, the holder is named, and that credit rests on the handover alone.
+ *
+ * "cosigned" is a creator platformLabel does not know, a Generated passport with
+ * a manifest by a current entry's agent, registered inside that entry's window,
+ * whose agent is still owned by the owner that signed at onboarding (the co-sign
+ * page's own rule). The creator's own key approved the picture, so the creator is
+ * named.
+ *
+ * Null for everything else: "outsideKit", an unlisted agent, an agent owner that
+ * changed or was not read, and a holder that was not read in the kit cases,
+ * because credit is never guessed. Every address pair is compared after
+ * getAddress on both sides.
+ *
+ * @param now unix seconds; defaults to the machine clock.
+ */
+export function creditFor(
+  input: CreditPassport,
+  entries: readonly Platform[],
+  now: bigint = BigInt(Math.floor(Date.now() / 1000)),
+): Credit | null {
+  const label = platformLabel(input, entries, now);
+  if (label !== null) {
+    if (label.status !== "kit" || input.holder === null) return null;
+    let holder: Address;
+    try {
+      holder = getAddress(input.holder);
+    } catch {
+      return null;
+    }
+    // platformLabel only says "kit" for a creator that getAddress accepted.
+    return holder === getAddress(input.creator)
+      ? { case: "unclaimed", platform: label.name, imaginedBy: null }
+      : { case: "claimed", platform: label.name, imaginedBy: holder };
+  }
+
+  if (input.agentOwnerNow === null) return null;
+  let creator: Address;
+  let agentOwner: Address;
+  try {
+    creator = getAddress(input.creator);
+    agentOwner = getAddress(input.agentOwnerNow);
+  } catch {
+    return null;
+  }
+  const matches = entries.filter(
+    (entry) =>
+      entry.validTo === null &&
+      generatedByAgent(input, entry.agentId) &&
+      registeredInWindow(input.registeredAt, entry, now) &&
+      getAddress(entry.ownerAtOnboarding) === agentOwner,
+  );
+  // The list rule allows one current entry per agent; two would leave the platform's name in doubt.
+  if (matches.length !== 1) return null;
+  return { case: "cosigned", platform: matches[0]!.name, imaginedBy: creator };
 }
 
 /** Reads ownerOf(agentId) from the ERC-8004 identity registry. Supplied by the caller that owns a chain client. */

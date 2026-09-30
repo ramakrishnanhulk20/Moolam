@@ -2,8 +2,9 @@
 // and a 2025-era client both list the six tools and read a passport from a stubbed chain; every
 // malformed input is refused before any read (M2); a registrant's title comes back only inside a
 // JSON field (M4); repeated reads of one passport share one chain read (M5); a listed platform's
-// passport carries its label and an unlisted one none (P16); holder, creator and the terms' writer
-// are separate facts (P23); metadata terms that differ from the chain's are shown beside the
+// passport carries its label and an unlisted one none (P16); the credit for who imagined a picture
+// comes back in its three cases, and an unlisted agent's owner is never read; holder, creator and
+// the terms' writer are separate facts (P23); metadata terms that differ from the chain's are shown beside the
 // chain's, never in their place (P24); check_picture carries the verify answer's facts and a
 // freshness read against the chain head (M6), and a verify answer too long for one result loses
 // near misses from its tail, never the best match or the first registration (M4, V18); an agent's
@@ -50,11 +51,15 @@ const platformOwner = privateKeyToAccount(`0x${"31".repeat(32)}`);
 const platformCreator = privateKeyToAccount(`0x${"32".repeat(32)}`);
 const buyer = getAddress("0x4444444444444444444444444444444444444444");
 const stranger = getAddress("0x5555555555555555555555555555555555555555");
+const person = getAddress("0x6666666666666666666666666666666666666666");
 
 const KIT_ID = `0x${"a1".repeat(32)}` as Hex;
 const UNLISTED_ID = `0x${"b2".repeat(32)}` as Hex;
 const UNKNOWN_ID = `0x${"c3".repeat(32)}` as Hex;
 const TERMS_ID = `0x${"d4".repeat(32)}` as Hex;
+const UNCLAIMED_ID = `0x${"e5".repeat(32)}` as Hex;
+const COSIGNED_ID = `0x${"f6".repeat(32)}` as Hex;
+const UNLISTED_AGENT_ID = `0x${"a7".repeat(32)}` as Hex;
 
 /** What TERMS_ID's metadata stated at generation: every answer differs from the chain's statement. */
 const GENERATION_TERMS = { aiTraining: "allowed", aiGenerativeTraining: "allowed", aiInference: "notAllowed", dataMining: "notAllowed" };
@@ -114,6 +119,8 @@ const CARD = {
 };
 
 const calls = { passport: 0, holder: 0, consentAt: 0, agent: 0, headTime: 0, documents: 0, recent: 0 };
+/** Every agent id the chain was asked about, in order. */
+const agentIdsRead: bigint[] = [];
 
 const chain: McpChain = {
   headTime: async () => {
@@ -125,10 +132,15 @@ const chain: McpChain = {
     if (id === KIT_ID) return passport(platformCreator.address);
     if (id === UNLISTED_ID) return passport(stranger, { kind: 1, generatorAgentId: 0n, metadataURI: "ipfs://bafyunlisted" });
     if (id === TERMS_ID) return passport(platformCreator.address, { metadataURI: "ipfs://bafyterms" });
+    if (id === UNCLAIMED_ID) return passport(platformCreator.address);
+    if (id === COSIGNED_ID) return passport(person);
+    if (id === UNLISTED_AGENT_ID) return passport(person, { generatorAgentId: 44n });
     return undefined;
   },
   holder: async (id) => {
     calls.holder += 1;
+    if (id === UNCLAIMED_ID) return platformCreator.address;
+    if (id === COSIGNED_ID || id === UNLISTED_AGENT_ID) return person;
     return id === KIT_ID ? buyer : stranger;
   },
   consentAt: async () => {
@@ -137,6 +149,7 @@ const chain: McpChain = {
   },
   agent: async (agentId) => {
     calls.agent += 1;
+    agentIdsRead.push(agentId);
     if (agentId === 42n) {
       return { owner: platformOwner.address, wallet: platformOwner.address, uri: `data:application/json,${JSON.stringify(CARD)}` };
     }
@@ -171,9 +184,9 @@ let url: URL;
 let picture: Buffer;
 let pictureId: Hex;
 
-async function modernClient(): Promise<Client> {
+async function modernClient(at: URL = url): Promise<Client> {
   const client = new Client({ name: "modern-test", version: "1.0.0" }, { versionNegotiation: { mode: { pin: "2026-07-28" } } });
-  await client.connect(new StreamableHTTPClientTransport(url));
+  await client.connect(new StreamableHTTPClientTransport(at));
   return client;
 }
 
@@ -189,41 +202,49 @@ function textOf(result: { content?: unknown }): string {
   return (content[0] as { text: string }).text;
 }
 
+/**
+ * The service with this file's stubs, listening on a free port. Each server has its own limiter,
+ * which allows one address 60 requests a minute.
+ */
+async function startServer(source: PassportSource): Promise<{ app: FastifyInstance; url: URL }> {
+  const server = await buildServer({
+    source,
+    logger: false,
+    consent,
+    dispute,
+    index: { refreshMs: 0 },
+    mcp: {
+      chain,
+      readDocument: async (uri) => {
+        calls.documents += 1;
+        if (uri === "ipfs://bafykit") return { name: INJECTION };
+        if (uri === "ipfs://bafyterms") return { name: "Stated twice", training: { standard: "cawg.training-mining/1.1", ...GENERATION_TERMS } };
+        return { name: "A quiet street" };
+      },
+      readCard: liveCardReader({
+        transport: async () => {
+          throw new Error("no card read may leave the process in this test");
+        },
+      }),
+      recent: async () => {
+        calls.recent += 1;
+        return [];
+      },
+      platforms: await platformList(),
+    },
+  });
+  await server.listen({ port: 0, host: "127.0.0.1" });
+  const address = server.server.address() as { port: number };
+  return { app: server, url: new URL(`http://127.0.0.1:${address.port}/mcp`) };
+}
+
 describe("the MCP tools", () => {
   beforeAll(async () => {
     picture = await makeImage(243);
     const print = await fingerprint(picture);
     pictureId = print.sha256;
     const source: PassportSource = { load: async () => [recordFor(print, { metadataURI: "ipfs://bafypicture" })] };
-    app = await buildServer({
-      source,
-      logger: false,
-      consent,
-      dispute,
-      index: { refreshMs: 0 },
-      mcp: {
-        chain,
-        readDocument: async (uri) => {
-          calls.documents += 1;
-          if (uri === "ipfs://bafykit") return { name: INJECTION };
-          if (uri === "ipfs://bafyterms") return { name: "Stated twice", training: { standard: "cawg.training-mining/1.1", ...GENERATION_TERMS } };
-          return { name: "A quiet street" };
-        },
-        readCard: liveCardReader({
-          transport: async () => {
-            throw new Error("no card read may leave the process in this test");
-          },
-        }),
-        recent: async () => {
-          calls.recent += 1;
-          return [];
-        },
-        platforms: await platformList(),
-      },
-    });
-    await app.listen({ port: 0, host: "127.0.0.1" });
-    const address = app.server.address() as { port: number };
-    url = new URL(`http://127.0.0.1:${address.port}/mcp`);
+    ({ app, url } = await startServer(source));
   });
 
   afterAll(async () => {
@@ -507,6 +528,46 @@ describe("the MCP tools", () => {
     expect(JSON.parse((terms.contents[0] as { text: string }).text)).toMatchObject({ writer: platformCreator.address });
     await expect(client.readResource({ uri: `moolam://passport/${UNKNOWN_ID}` })).rejects.toMatchObject({ code: -32602 });
     await expect(client.readResource({ uri: "moolam://passport/0x1234" })).rejects.toMatchObject({ code: -32602 });
+    await client.close();
+  });
+});
+
+// A server of its own: the tools above already spend 59 of the 60 requests one address may make in a minute.
+describe("the credit in get_passport", () => {
+  let creditApp: FastifyInstance;
+  let creditUrl: URL;
+
+  beforeAll(async () => {
+    ({ app: creditApp, url: creditUrl } = await startServer({ load: async () => [] }));
+  });
+
+  afterAll(async () => {
+    await creditApp.close();
+  });
+
+  it("names who imagined the picture in each case, and the platform only as where it was drawn", async () => {
+    const client = await modernClient(creditUrl);
+    const credits: unknown[] = [];
+    for (const passportId of [UNCLAIMED_ID, KIT_ID, COSIGNED_ID, UNLISTED_ID]) {
+      const result = await client.callTool({ name: "get_passport", arguments: { passportId } });
+      expect(result.isError).not.toBe(true);
+      credits.push((result.structuredContent as { credit: unknown }).credit);
+    }
+    expect(credits).toEqual([
+      { case: "unclaimed", platform: "Acme Images", imaginedBy: null },
+      { case: "claimed", platform: "Acme Images", imaginedBy: buyer },
+      { case: "cosigned", platform: "Acme Images", imaginedBy: person },
+      null,
+    ]);
+    await client.close();
+  });
+
+  it("reads no agent owner for a passport whose agent is not on the list, and gives it no credit", async () => {
+    const client = await modernClient(creditUrl);
+    agentIdsRead.length = 0;
+    const result = await client.callTool({ name: "get_passport", arguments: { passportId: UNLISTED_AGENT_ID } });
+    expect(result.structuredContent).toMatchObject({ found: true, agentId: "44", platform: null, credit: null });
+    expect(agentIdsRead).toEqual([]);
     await client.close();
   });
 });

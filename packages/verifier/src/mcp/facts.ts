@@ -3,7 +3,7 @@ import { getAddress, type Address } from "viem";
 import { TRAINING_STANDARD, trainingSchema } from "../consent.js";
 import { answerFromChain, type ConsentAnswer } from "../consentRead.js";
 import { type DisputeAnswer, INHERITED_DISPUTE_MAX_DEPTH } from "../disputeRead.js";
-import { platformLabel, type PlatformList } from "../platforms/platforms.js";
+import { creditFor, platformLabel, type Credit, type PlatformList } from "../platforms/platforms.js";
 import { recheckFor, type RecheckAnswer } from "../recheck.js";
 import type { Hex, IndexState } from "../types.js";
 import type { DocumentReader } from "../unseal.js";
@@ -74,6 +74,21 @@ async function holderOf(deps: McpDeps, id: Hex): Promise<Address | null> {
   }
 }
 
+/**
+ * ownerOf(agentId) now, only for an agent a current list entry names, since creditFor reads it for
+ * nothing else and an unlisted agent's owner would be a read spent on a caller's choice. Null when
+ * not listed, not minted or not readable, which creditFor treats as no credit.
+ */
+async function listedAgentOwner(deps: McpDeps, agentId: bigint): Promise<Address | null> {
+  const listed = deps.platforms.ok && deps.platforms.platforms.some((entry) => entry.validTo === null && entry.agentId === agentId);
+  if (!listed) return null;
+  try {
+    return (await deps.chain.agent(agentId))?.owner ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export interface PassportAnswer {
   found: true;
   passportId: Hex;
@@ -92,6 +107,7 @@ export interface PassportAnswer {
   titleRead: "gateway" | "unavailable";
   platform: { status: "kit" | "outsideKit"; name: string; creatorWallet: Address; agentId: string } | null;
   platformList: "loaded" | "unavailable";
+  credit: Credit | null;
   readAt: number;
 }
 
@@ -100,8 +116,9 @@ export type Missing = { found: false; passportId: Hex };
 /**
  * One passport, read from the chain first (getPassport), then its holder, its dispute through the
  * verify service's own reader and memory, and its metadata document's title through the configured
- * gateway. The platform label comes from platformLabel over the chain's own fields (P16). Holder
- * and creator are two fields and are never merged (P23).
+ * gateway. The platform label comes from platformLabel over the chain's own fields (P16), and the
+ * credit for who imagined the picture from creditFor over the same fields, the holder and a listed
+ * agent's owner read now. Holder and creator are two fields and are never merged (P23).
  */
 export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<PassportAnswer | Missing>> {
   let record: Awaited<ReturnType<McpChain["passport"]>>;
@@ -113,23 +130,21 @@ export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<Pas
   if (record === undefined) {
     return { ok: true, value: { found: false, passportId: id } };
   }
-  const [holder, dispute, document] = await Promise.all([
+  const [holder, dispute, document, agentOwnerNow] = await Promise.all([
     holderOf(deps, id),
     deps.app.verifier.dispute.answerFor(id),
     documentOf(deps, record.metadataURI),
+    listedAgentOwner(deps, record.generatorAgentId),
   ]);
-  const label = deps.platforms.ok
-    ? platformLabel(
-        {
-          creator: record.creator,
-          kind: record.kind,
-          generatorAgentId: record.generatorAgentId,
-          manifestHash: record.manifestHash,
-          registeredAt: record.registeredAt,
-        },
-        deps.platforms.platforms,
-      )
-    : null;
+  const fields = {
+    creator: record.creator,
+    kind: record.kind,
+    generatorAgentId: record.generatorAgentId,
+    manifestHash: record.manifestHash,
+    registeredAt: record.registeredAt,
+  };
+  const label = deps.platforms.ok ? platformLabel(fields, deps.platforms.platforms) : null;
+  const credit = deps.platforms.ok ? creditFor({ ...fields, holder, agentOwnerNow }, deps.platforms.platforms) : null;
   return {
     ok: true,
     value: {
@@ -158,6 +173,7 @@ export async function passportFacts(deps: McpDeps, id: Hex): Promise<Outcome<Pas
               agentId: label.platform.agentId.toString(),
             },
       platformList: deps.platforms.ok ? "loaded" : "unavailable",
+      credit,
       readAt: nowSeconds(),
     },
   };

@@ -66,6 +66,10 @@ const passportOutput = z.object({
     .nullable()
     .optional(),
   platformList: z.enum(["loaded", "unavailable"]).optional(),
+  credit: z
+    .object({ case: z.enum(["unclaimed", "claimed", "cosigned"]), platform: z.string(), imaginedBy: address.nullable() })
+    .nullable()
+    .optional(),
   readAt: z.number().optional(),
 });
 

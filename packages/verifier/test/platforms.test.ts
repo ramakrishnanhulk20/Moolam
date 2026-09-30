@@ -1,7 +1,8 @@
 // Covers the platform list's loader, the one label predicate and the origin lookup: signatures
 // recovered offline, the whole list refused on any bad entry, names colliding after NFKC, case
 // fold and trim, origins held to one canonical https form, the label's terms including a
-// rotation, and platformForOrigin against look-alike and retired origins.
+// rotation, platformForOrigin against look-alike and retired origins, and creditFor's three cases
+// with every way it gives null.
 // Does NOT cover the operator script's command line, the web app's copy (platforms-copy.test.ts
 // in packages/web does), ownerOf read from the chain (agentOwnerUnchanged is only given a stub
 // here), smart contract wallets as signers (only plain keys can sign an entry), or look-alike
@@ -14,12 +15,14 @@ import type { Hex } from "viem";
 import { privateKeyToAccount, type PrivateKeyAccount } from "viem/accounts";
 import {
   agentOwnerUnchanged,
+  creditFor,
   loadPlatforms,
   nameKey,
   onboardingTypedData,
   platformForOrigin,
   platformLabel,
   recordMessage,
+  type CreditPassport,
   type LabelPassport,
   type Platform,
   type PlatformRecord,
@@ -273,6 +276,80 @@ describe("platformLabel", () => {
     const platforms = await loaded([await signed(acme)]);
     expect(platformLabel(passport({ creator: stranger.address }), platforms, 3_000n)).toBeNull();
     expect(platformLabel(passport({ creator: "not an address" }), platforms, 3_000n)).toBeNull();
+  });
+});
+
+describe("creditFor", () => {
+  const person = stranger.address;
+
+  function credited(overrides: Partial<CreditPassport> = {}): CreditPassport {
+    return { ...passport(), holder: acmeCreator.address, agentOwnerNow: acmeOwner.address, ...overrides };
+  }
+
+  it("leaves a kit passport the platform still holds unclaimed, naming nobody", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited(), platforms, 3_000n)).toEqual({ case: "unclaimed", platform: "Acme Images", imaginedBy: null });
+  });
+
+  it("credits the holder once the platform has handed a kit passport on", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ holder: person }), platforms, 3_000n)).toEqual({
+      case: "claimed",
+      platform: "Acme Images",
+      imaginedBy: person,
+    });
+  });
+
+  it("credits the creator of a co-signed passport, with the platform as where it was drawn", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ creator: person, holder: null }), platforms, 3_000n)).toEqual({
+      case: "cosigned",
+      platform: "Acme Images",
+      imaginedBy: person,
+    });
+  });
+
+  it("gives null when the holder of a kit passport could not be read, or is not an address", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ holder: null }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ holder: "not an address" }), platforms, 3_000n)).toBeNull();
+  });
+
+  it("gives null for a co-signed passport whose agent changed owner, or whose owner was not read", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ creator: person, agentOwnerNow: loomOwner.address }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ creator: person, agentOwnerNow: null }), platforms, 3_000n)).toBeNull();
+  });
+
+  it("gives null for a co-signed passport outside the entry's window, or under a retired entry", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ creator: person, registeredAt: 999n }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ creator: person, registeredAt: 3_001n }), platforms, 3_000n)).toBeNull();
+    const retired = await loaded([await signed({ ...acme, validTo: 2_000 })]);
+    expect(creditFor(credited({ creator: person }), retired, 3_000n)).toBeNull();
+  });
+
+  it("gives null for outsideKit, an unlisted agent, a Captured passport and no manifest", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    expect(creditFor(credited({ generatorAgentId: 43n }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ creator: person, generatorAgentId: 43n }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ creator: person, kind: 1 }), platforms, 3_000n)).toBeNull();
+    expect(creditFor(credited({ creator: person, manifestHash: `0x${"0".repeat(64)}` }), platforms, 3_000n)).toBeNull();
+  });
+
+  it("never changes the case over a checksum difference on any address", async () => {
+    const platforms = await loaded([await signed(acme)]);
+    const lower = (address: string) => address.toLowerCase();
+    const upper = (address: string) => `0x${address.slice(2).toUpperCase()}`;
+    for (const spell of [lower, upper]) {
+      expect(creditFor(credited({ creator: spell(acmeCreator.address), holder: spell(acmeCreator.address) }), platforms, 3_000n)?.case).toBe(
+        "unclaimed",
+      );
+      expect(creditFor(credited({ holder: spell(person) }), platforms, 3_000n)).toMatchObject({ case: "claimed", imaginedBy: person });
+      expect(
+        creditFor(credited({ creator: spell(person), agentOwnerNow: spell(acmeOwner.address) }), platforms, 3_000n),
+      ).toMatchObject({ case: "cosigned", imaginedBy: person });
+    }
   });
 });
 
