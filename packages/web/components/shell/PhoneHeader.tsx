@@ -32,7 +32,7 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
             data-lockup hand the light one back. */}
         <Link href="/" className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70">
           <Image
-            src="/brand/seal-o/lockup-horizontal-dark.svg"
+            src="/brand/kolam/lockup-horizontal-dark.svg"
             alt={brand}
             width={160}
             height={63}
@@ -43,7 +43,7 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
             className="hidden dark:block [body:has([data-story])_&]:block"
           />
           <Image
-            src="/brand/seal-o/lockup-horizontal-light.svg"
+            src="/brand/kolam/lockup-horizontal-light.svg"
             alt={brand}
             width={160}
             height={63}
@@ -109,7 +109,7 @@ function PhoneThemeSquare() {
   );
 }
 
-/** Drawn with the tab marks' pen: one weight of line, square ends, the seal's filled square at the heart of the sun. */
+/** Drawn with the tab marks' pen: one weight of line, square ends, a filled square at the heart of the sun. That square is the pen's, not the kolam mark's. */
 function ThemeMark({ name }: { name: "sun" | "moon" }) {
   return (
     <svg

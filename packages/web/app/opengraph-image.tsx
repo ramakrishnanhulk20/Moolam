@@ -107,7 +107,7 @@ async function face(weight: 400 | 700, text: string): Promise<ArrayBuffer | null
  * in the display face.
  */
 const lockup: Promise<string | null> = readFile(
-  new URL("../public/brand/seal-o/lockup-stacked-dark.svg", import.meta.url),
+  new URL("../public/brand/kolam/lockup-stacked-dark.svg", import.meta.url),
 )
   .then((file) => `data:image/svg+xml;base64,${file.toString("base64")}`)
   .catch(() => null);

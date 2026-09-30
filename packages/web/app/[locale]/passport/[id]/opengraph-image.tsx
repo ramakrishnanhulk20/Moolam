@@ -191,7 +191,7 @@ async function face(family: string, weight: number, text: string): Promise<Array
 }
 
 const seal: Promise<string | null> = readFile(
-  new URL("../../../../public/brand/seal-o/mark-dark.svg", import.meta.url),
+  new URL("../../../../public/brand/kolam/mark-dark.svg", import.meta.url),
 )
   .then((file) => `data:image/svg+xml;base64,${file.toString("base64")}`)
   .catch(() => null);
@@ -200,7 +200,7 @@ const seal: Promise<string | null> = readFile(
 // the whole wordmark sits in the accent, so the letters are recoloured inside
 // the brand file rather than a second mark being drawn by hand here.
 const wordmark: Promise<string | null> = readFile(
-  new URL("../../../../public/brand/seal-o/lockup-horizontal-dark.svg", import.meta.url),
+  new URL("../../../../public/brand/kolam/lockup-horizontal-dark.svg", import.meta.url),
 )
   .then((file) => file.toString("utf8").split('fill="#F5F1EA"').join(`fill="${ACCENT}"`))
   .then((file) => `data:image/svg+xml;base64,${Buffer.from(file, "utf8").toString("base64")}`)
