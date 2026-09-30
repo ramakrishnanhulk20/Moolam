@@ -1,1 +1,124 @@
 @import "tailwindcss";
+
+@theme {
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+
+  --color-milk: #f6f4ff;
+  --color-card: #ffffff;
+  --color-ink: #17122b;
+  --color-ink-soft: #4a4463;
+  --color-violet: #5a3bff;
+  --color-violet-deep: #3f22e0;
+  --color-tangerine: #ff6a1f;
+  --color-sun: #ffd63a;
+  --color-mist: #e9e4ff;
+  --color-alert: #c2263b;
+
+  --radius-soft: 1.75rem;
+}
+
+/*
+ * Daybreak is Dreamloom's own gradient. It is mixed in oklch so the walk from
+ * violet to tangerine passes through a clean magenta instead of the muddy
+ * mauve an sRGB mix gives.
+ */
+:root {
+  --daybreak: linear-gradient(115deg in oklch, #5a3bff 0%, #ff6a1f 68%, #ffd63a 100%);
+}
+
+html {
+  background: var(--color-milk);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: var(--font-sans);
+  overflow-x: clip;
+  min-height: 100dvh;
+}
+
+.text-daybreak {
+  background-image: var(--daybreak);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.bg-daybreak {
+  background-image: var(--daybreak);
+}
+
+/* The prompt box's ring turns slowly, which needs its angle to be animatable. */
+@property --ring-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.weave-ring {
+  background: conic-gradient(from var(--ring-angle) in oklch, #5a3bff, #ff6a1f, #ffd63a, #5a3bff);
+  animation: ring-turn 9s linear infinite;
+}
+
+.weave-ring[data-busy="true"] {
+  animation-duration: 1.6s;
+}
+
+@keyframes ring-turn {
+  to {
+    --ring-angle: 360deg;
+  }
+}
+
+/* Soft colour clouds behind the hero, drifting slowly like a dream's weather. */
+.dream-cloud {
+  animation: cloud-drift 22s ease-in-out infinite alternate;
+  will-change: transform;
+}
+
+.dream-cloud:nth-child(2) {
+  animation-duration: 27s;
+  animation-delay: -6s;
+}
+
+.dream-cloud:nth-child(3) {
+  animation-duration: 31s;
+  animation-delay: -12s;
+}
+
+@keyframes cloud-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(6%, -8%, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-5%, 6%, 0) scale(0.94);
+  }
+}
+
+.shimmer {
+  background: linear-gradient(100deg, #ece8ff 30%, #f8f6ff 50%, #ece8ff 70%);
+  background-size: 300% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weave-ring,
+  .dream-cloud,
+  .shimmer {
+    animation: none;
+  }
+}
