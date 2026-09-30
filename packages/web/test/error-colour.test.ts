@@ -59,7 +59,7 @@ const THEMES = [
   {
     name: "light",
     selector: '.light,\n.light .story-close,\n.light [data-story="still"] > div > section:last-child',
-    red: "#bf2e14",
+    red: "#a92912",
   },
   { name: "story", selector: ".story", red: "#ff5f4d" },
 ] as const;

@@ -46,7 +46,7 @@ export function generateStaticParams() {
  */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2efe9" },
+    { media: "(prefers-color-scheme: light)", color: "#e4ddd0" },
     { media: "(prefers-color-scheme: dark)", color: "#08080a" },
   ],
 };
@@ -211,7 +211,7 @@ export default async function LocaleLayout({
                       className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70"
                     >
                       <Image
-                        src="/brand/seal-o/lockup-horizontal-dark.svg"
+                        src="/brand/kolam/lockup-horizontal-dark.svg"
                         alt={t("brand")}
                         width={160}
                         height={63}
@@ -229,7 +229,7 @@ export default async function LocaleLayout({
                           document, it just no longer competes with the
                           picture the first screen is actually waiting on. */}
                       <Image
-                        src="/brand/seal-o/lockup-horizontal-light.svg"
+                        src="/brand/kolam/lockup-horizontal-light.svg"
                         alt={t("brand")}
                         width={160}
                         height={63}

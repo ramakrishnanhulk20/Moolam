@@ -80,7 +80,7 @@ export async function AgentPoster({
         data-scrim="light"
         className="pointer-events-none absolute inset-0 hidden lg:[.light_&]:block"
         style={{
-          background: "linear-gradient(to right, var(--scrim-from) 0%, rgb(242 239 233 / 0.88) 45%, var(--scrim-to) 70%)",
+          background: "linear-gradient(to right, var(--scrim-from) 0%, color-mix(in srgb, var(--bg) 88%, transparent) 45%, var(--scrim-to) 70%)",
         }}
       />
 

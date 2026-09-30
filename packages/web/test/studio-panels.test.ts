@@ -148,8 +148,8 @@ function classOf(markup: string, mark: string): string {
 
 describe("the sign-in window", () => {
   const LOOKS = [
-    { theme: "light", accent: "#a92a48", ground: "#fbf9f5", other: "#ffb7c5" },
-    { theme: "dark", accent: "#ffb7c5", ground: "#101014", other: "#a92a48" },
+    { theme: "light", accent: "#a52946", ground: "#ede7dc", other: "#ffb7c5" },
+    { theme: "dark", accent: "#ffb7c5", ground: "#101014", other: "#a52946" },
   ] as const;
 
   for (const look of LOOKS) {

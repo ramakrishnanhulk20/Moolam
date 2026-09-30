@@ -31,8 +31,8 @@ type HexColor = `#${string}`;
  * only a viewBox gives Privy's image no size and it collapses to nothing.
  */
 const SIGN_IN_LOOK: Record<SignInTheme, { ground: HexColor; accent: HexColor; logo: string }> = {
-  light: { ground: "#fbf9f5", accent: "#a92a48", logo: "/brand/seal-o/signin-mark-light.svg" },
-  dark: { ground: "#101014", accent: "#ffb7c5", logo: "/brand/seal-o/signin-mark-dark.svg" },
+  light: { ground: "#ede7dc", accent: "#a52946", logo: "/brand/kolam/signin-mark-light.svg" },
+  dark: { ground: "#101014", accent: "#ffb7c5", logo: "/brand/kolam/signin-mark-dark.svg" },
 };
 
 export function signInAppearance(resolvedTheme: string | undefined): NonNullable<PrivyClientConfig["appearance"]> {

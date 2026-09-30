@@ -129,7 +129,7 @@ describe("03B: the film as a framed dark screen on the light page", () => {
 
   it("hands the still page's closing card back to cream the way the film's is (F38)", () => {
     const still = '.light [data-story="still"] > div > section:last-child';
-    expect(css).toContain(`.light,\n.light .story-close,\n${still} {\n  --bg: #f2efe9;`);
+    expect(css).toContain(`.light,\n.light .story-close,\n${still} {\n  --bg: #e4ddd0;`);
     const ground = rule(still, css.indexOf("/* The still page ends on the same card"));
     expect(ground).toContain("background: var(--bg);");
     expect(ground).toContain("color-scheme: light;");

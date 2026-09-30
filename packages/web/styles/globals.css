@@ -37,34 +37,36 @@
    it: the card the story ends on, on the film and on the still page alike. The
    film stays dark whatever the toggle says, but the last screen hands the page
    back, so a visitor who chose light sees the toggle do something on the home
-   page too. */
+   page too.
+   The ground is Linen, the unbleached page Ram picked on the brand lab on 30
+   September 2026. Every ink clears 4.5:1 on all three of its grounds, the
+   sunken one included, because the code blocks and wells are text too. The
+   faint grey, the accent and three status colours each sit the least shade
+   darker that gets there, in their own hue, and the failure red stays 16.0
+   apart from the accent in CIEDE2000 so the two never read as one. */
 .light,
 .light .story-close,
 .light [data-story="still"] > div > section:last-child {
-  --bg: #f2efe9;
-  --bg-raised: #fbf9f5;
-  --bg-sunken: #e6e2da;
-  --line: #d6d1c6;
-  --line-strong: #b9b2a3;
+  --bg: #e4ddd0;
+  --bg-raised: #ede7dc;
+  --bg-sunken: #d8d0c1;
+  --line: #c9c0b0;
+  --line-strong: #aba08b;
   --text: #14130f;
   --text-muted: #56534b;
-  --text-faint: #66635d;
+  --text-faint: #5c5954;
 
-  --accent: #a92a48;
+  --accent: #a52946;
   --accent-ink: #fff5f7;
-  --accent-soft: rgb(169 42 72 / 0.12);
+  --accent-soft: rgb(165 41 70 / 0.12);
 
-  /* The one colour in the docs that the highlighter's light theme gets wrong
-     here. See the rule beside .docs-code pre.shiki below. */
-  --code-keyword: #a92a48;
-
-  --status-verified: #17786a;
-  --status-pending: #2f5bb8;
+  --status-verified: #146458;
+  --status-pending: #2c55ac;
   --status-disputed: #6d3f96;
-  --status-failed: #bf2e14;
+  --status-failed: #a92912;
 
-  --scrim-from: rgb(242 239 233 / 0.94);
-  --scrim-to: rgb(242 239 233 / 0);
+  --scrim-from: rgb(228 221 208 / 0.94);
+  --scrim-to: rgb(228 221 208 / 0);
   --grain-opacity: 0.07;
   --grain-blend: multiply;
 }
@@ -360,20 +362,36 @@ footer a::after {
   }
 }
 
-/* The repeated mark: a filled square with a hollow square inset in it, the seal.
-   A real element rather than a square glyph, because a glyph square changes size
-   and baseline with every face. The same shape is the favicon and the social card. */
+/* The repeated mark: the kolam knot, one dot held by one looped line, as it is
+   on the favicon, the logo's o and the social cards. A real element rather than
+   a glyph, because a glyph changes size and baseline with every face.
+   The knot is a mask, so the element's own background is the ink: the accent
+   unless a status colour class names another. The ink sits in a layer so that
+   class wins; the rest stays outside one so no utility can move the mark.
+   The drawing carries its own media queries, which the browser reads against
+   the size the mark is drawn at: the line is heavier at 20 px and below and
+   heavier again, with a larger dot, at 12 px and below, so a 7 px kicker is
+   still a knot and a 64 px mark is not a rope: the weights Ram saw on the
+   brand lab at every size. */
 .motif {
   position: relative;
   display: inline-block;
-  background: var(--accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cstyle%3Epath{stroke-width:1.7}.s{display:none}@media (max-width:20px){path{stroke-width:1.95}}@media (max-width:12px){path{stroke-width:2.3}.l{display:none}.s{display:inline}}%3C/style%3E%3Cpath d='M22.7 12C22.7 11.49 22.64 10.84 22.48 10.48C22.32 10.11 22.11 9.81 21.74 9.81C21.37 9.82 20.9 10.06 20.28 10.51C19.66 10.95 18.87 11.71 18.03 12.49C17.19 13.28 16.17 14.32 15.24 15.24C14.32 16.17 13.28 17.19 12.49 18.03C11.71 18.87 10.95 19.66 10.51 20.28C10.06 20.9 9.82 21.37 9.81 21.74C9.81 22.11 10.11 22.32 10.48 22.48C10.84 22.64 11.49 22.7 12 22.7C12.51 22.7 13.16 22.64 13.52 22.48C13.89 22.32 14.19 22.11 14.19 21.74C14.18 21.37 13.94 20.9 13.49 20.28C13.05 19.66 12.29 18.87 11.51 18.03C10.72 17.19 9.68 16.17 8.76 15.24C7.83 14.32 6.81 13.28 5.97 12.49C5.13 11.71 4.34 10.95 3.72 10.51C3.1 10.06 2.63 9.82 2.26 9.81C1.89 9.81 1.68 10.11 1.52 10.48C1.36 10.84 1.3 11.49 1.3 12C1.3 12.51 1.36 13.16 1.52 13.52C1.68 13.89 1.89 14.19 2.26 14.19C2.63 14.18 3.1 13.94 3.72 13.49C4.34 13.05 5.13 12.29 5.97 11.51C6.81 10.72 7.83 9.68 8.76 8.76C9.68 7.83 10.72 6.81 11.51 5.97C12.29 5.13 13.05 4.34 13.49 3.72C13.94 3.1 14.18 2.63 14.19 2.26C14.19 1.89 13.89 1.68 13.52 1.52C13.16 1.36 12.51 1.3 12 1.3C11.49 1.3 10.84 1.36 10.48 1.52C10.11 1.68 9.81 1.89 9.81 2.26C9.82 2.63 10.06 3.1 10.51 3.72C10.95 4.34 11.71 5.13 12.49 5.97C13.28 6.81 14.32 7.83 15.24 8.76C16.17 9.68 17.19 10.72 18.03 11.51C18.87 12.29 19.66 13.05 20.28 13.49C20.9 13.94 21.37 14.18 21.74 14.19C22.11 14.19 22.32 13.89 22.48 13.52C22.64 13.16 22.7 12.51 22.7 12Z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3Ccircle class='l' cx='12' cy='12' r='2.2'/%3E%3Ccircle class='s' cx='12' cy='12' r='2.6'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cstyle%3Epath{stroke-width:1.7}.s{display:none}@media (max-width:20px){path{stroke-width:1.95}}@media (max-width:12px){path{stroke-width:2.3}.l{display:none}.s{display:inline}}%3C/style%3E%3Cpath d='M22.7 12C22.7 11.49 22.64 10.84 22.48 10.48C22.32 10.11 22.11 9.81 21.74 9.81C21.37 9.82 20.9 10.06 20.28 10.51C19.66 10.95 18.87 11.71 18.03 12.49C17.19 13.28 16.17 14.32 15.24 15.24C14.32 16.17 13.28 17.19 12.49 18.03C11.71 18.87 10.95 19.66 10.51 20.28C10.06 20.9 9.82 21.37 9.81 21.74C9.81 22.11 10.11 22.32 10.48 22.48C10.84 22.64 11.49 22.7 12 22.7C12.51 22.7 13.16 22.64 13.52 22.48C13.89 22.32 14.19 22.11 14.19 21.74C14.18 21.37 13.94 20.9 13.49 20.28C13.05 19.66 12.29 18.87 11.51 18.03C10.72 17.19 9.68 16.17 8.76 15.24C7.83 14.32 6.81 13.28 5.97 12.49C5.13 11.71 4.34 10.95 3.72 10.51C3.1 10.06 2.63 9.82 2.26 9.81C1.89 9.81 1.68 10.11 1.52 10.48C1.36 10.84 1.3 11.49 1.3 12C1.3 12.51 1.36 13.16 1.52 13.52C1.68 13.89 1.89 14.19 2.26 14.19C2.63 14.18 3.1 13.94 3.72 13.49C4.34 13.05 5.13 12.29 5.97 11.51C6.81 10.72 7.83 9.68 8.76 8.76C9.68 7.83 10.72 6.81 11.51 5.97C12.29 5.13 13.05 4.34 13.49 3.72C13.94 3.1 14.18 2.63 14.19 2.26C14.19 1.89 13.89 1.68 13.52 1.52C13.16 1.36 12.51 1.3 12 1.3C11.49 1.3 10.84 1.36 10.48 1.52C10.11 1.68 9.81 1.89 9.81 2.26C9.82 2.63 10.06 3.1 10.51 3.72C10.95 4.34 11.71 5.13 12.49 5.97C13.28 6.81 14.32 7.83 15.24 8.76C16.17 9.68 17.19 10.72 18.03 11.51C18.87 12.29 19.66 13.05 20.28 13.49C20.9 13.94 21.37 14.18 21.74 14.19C22.11 14.19 22.32 13.89 22.48 13.52C22.64 13.16 22.7 12.51 22.7 12Z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3Ccircle class='l' cx='12' cy='12' r='2.2'/%3E%3Ccircle class='s' cx='12' cy='12' r='2.6'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
 }
 
-[data-motif="seal"] .motif::after {
-  content: "";
-  position: absolute;
-  inset: 22%;
-  border: 1px solid var(--accent-ink);
+@layer components {
+  .motif {
+    background-color: var(--accent);
+  }
+}
+
+/* A mark that pulses to say a wait is live holds still for a reader who asked
+   for less motion, wherever its own classes forgot to say so. */
+@media (prefers-reduced-motion: reduce) {
+  .motif.animate-pulse {
+    animation: none;
+  }
 }
 
 /* The landing story is dark whatever the app theme is set to. Hearth has no
@@ -1228,26 +1246,33 @@ html.light .story-frame [data-beat="opening"] {
 }
 
 /* github-light was drawn for a white code block. Ours is the page's sunken
-   cream, and on that ground the theme's keyword red, rgb(215,58,73), measures
-   3.54:1 at 13 px: the one contrast failure on the whole site. The keyword takes
-   the light palette's own red instead, which is the same family two shades down
-   and clears the bar at 5.2:1. The highlighter writes its colours onto each span
-   as a custom property, so the word that carries that red is what this names. */
-.light .docs-code pre.shiki span[style*="--shiki-light:#D73A49"] {
-  color: var(--code-keyword);
+   Linen, and on that ground five of the seven colours the docs use fall under
+   4.5:1: the keyword red 2.99, the variable orange 2.28, the comment grey 3.14,
+   the function purple 4.25 and the constant blue 4.11. The keyword takes the
+   light palette's own accent, which is the same family and reads 4.56:1 there.
+   Each of the others takes the least darker shade of its own hue that clears
+   the bar: 4.55, 4.51, 4.54 and 4.51. The plain ink and the string navy already
+   pass. The highlighter writes its colours onto each span as a custom property,
+   so the word that carries each colour is what these name. In dark, the comment
+   grey on the near-black ground measured 4.2:1 and is lifted to 5.5:1. */
+.light .docs-code pre.shiki span[style*="--shiki-light:#D73A49" i] {
+  color: var(--accent);
 }
 
-/* The same fault, the rest of the palette: on the cream ground the variable
-   orange measured 2.7:1 and the comment grey 3.7:1. Each takes a darker shade of
-   its own hue that clears 4.5:1 (5.1 and 5.0). The other colours the docs use
-   already pass. In dark, the comment grey on the near-black ground measured
-   4.2:1 and is lifted to 5.5:1. */
 .light .docs-code pre.shiki span[style*="--shiki-light:#E36209" i] {
-  color: #9a4400;
+  color: #944100;
 }
 
 .light .docs-code pre.shiki span[style*="--shiki-light:#6A737D" i] {
-  color: #57606a;
+  color: #525b65;
+}
+
+.light .docs-code pre.shiki span[style*="--shiki-light:#6F42C1" i] {
+  color: #6b3dbc;
+}
+
+.light .docs-code pre.shiki span[style*="--shiki-light:#005CC5" i] {
+  color: #0056ba;
 }
 
 .dark .docs-code pre.shiki span[style*="--shiki-dark:#6A737D" i] {

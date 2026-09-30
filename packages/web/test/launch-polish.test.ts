@@ -261,12 +261,12 @@ describe("the favicon, the manifest and the phone bar", () => {
 
   it("paints the phone bar in the palette the reader's system asks for", () => {
     const layout = source("app/[locale]/layout.tsx");
-    expect(layout).toContain('{ media: "(prefers-color-scheme: light)", color: "#f2efe9" }');
+    expect(layout).toContain('{ media: "(prefers-color-scheme: light)", color: "#e4ddd0" }');
     expect(layout).toContain('{ media: "(prefers-color-scheme: dark)", color: "#08080a" }');
     // The two values are the palette's own --bg, so the bar and the page agree.
     const css = source("styles/globals.css");
     expect(css).toContain("--bg: #08080a");
-    expect(css).toContain("--bg: #f2efe9");
+    expect(css).toContain("--bg: #e4ddd0");
   });
 });
 
@@ -309,9 +309,13 @@ describe("the controls a screen reader and a voice can reach", () => {
 describe("the one contrast failure the audit found", () => {
   it("darkens the light theme's code keyword until it clears 4.5 to 1", () => {
     const css = source("styles/globals.css");
-    const keyword = /--code-keyword:\s*(#[0-9a-f]{6})/i.exec(css)?.[1];
+    // The keyword takes the light palette's accent, which clears the bar on the
+    // code block's ground since the accent was darkened for the sunken wells.
+    expect(css).toMatch(/span\[style\*="--shiki-light:#D73A49" i\] \{\n {2}color: var\(--accent\);/);
+    const from = css.indexOf(".light,\n");
+    const light = css.slice(from, css.indexOf("\n}", from));
+    const keyword = /--accent:\s*(#[0-9a-f]{6})/i.exec(light)?.[1];
     expect(keyword).toBeDefined();
-    expect(css).toContain('--shiki-light:#D73A49');
 
     const channel = (value: number) => {
       const part = value / 255;
@@ -322,10 +326,11 @@ describe("the one contrast failure the audit found", () => {
       return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
     };
     // The docs code block's ground in the light palette.
-    const ratio = (luminance("#e6e2da") + 0.05) / (luminance(keyword as string) + 0.05);
+    const ratio = (luminance("#d8d0c1") + 0.05) / (luminance(keyword as string) + 0.05);
     expect(ratio).toBeGreaterThanOrEqual(4.5);
-    // The red github-light ships, for the record: this is the 3.54 the audit measured.
-    expect((luminance("#e6e2da") + 0.05) / (luminance("#d73a49") + 0.05)).toBeLessThan(4.5);
+    // The red github-light ships, for the record: the audit measured 3.54 on the
+    // old paper, and on Linen it is 2.99.
+    expect((luminance("#d8d0c1") + 0.05) / (luminance("#d73a49") + 0.05)).toBeLessThan(4.5);
   });
 });
 

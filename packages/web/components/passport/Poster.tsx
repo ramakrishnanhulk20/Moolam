@@ -122,7 +122,7 @@ export async function Poster({
         data-scrim="light"
         className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[64%] [.light_&]:block"
         style={{
-          background: "linear-gradient(to top, var(--scrim-from) 0%, rgb(242 239 233 / 0.8) 45%, var(--scrim-to) 100%)",
+          background: "linear-gradient(to top, var(--scrim-from) 0%, color-mix(in srgb, var(--bg) 80%, transparent) 45%, var(--scrim-to) 100%)",
         }}
       />
 

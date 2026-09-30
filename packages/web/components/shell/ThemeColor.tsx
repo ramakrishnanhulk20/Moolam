@@ -7,7 +7,7 @@ import { usePathname } from "@/lib/i18n/routing";
 /** The --bg each theme paints the page with in globals.css, which the phone's own bar should match. */
 export const THEME_BAR: Record<"dark" | "light", string> = {
   dark: "#08080a",
-  light: "#f2efe9",
+  light: "#e4ddd0",
 };
 
 /** The bar colour for the theme the reader ended up with, or null before the browser knows it. */
