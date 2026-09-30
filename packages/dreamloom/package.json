@@ -1,0 +1,35 @@
+{
+  "name": "dreamloom",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dreamloom: a made-up AI image company that gives every picture it draws a Moolam passport, built as the platform kit's demo.",
+  "scripts": {
+    "predev": "npm run build --workspace @moolam/platform",
+    "dev": "next dev -p 3300",
+    "prebuild": "npm run build --workspace @moolam/platform",
+    "build": "next build",
+    "start": "next start",
+    "pretest": "npm run build --workspace @moolam/platform",
+    "test": "vitest run",
+    "pretypecheck": "npm run build --workspace @moolam/platform",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@moolam/platform": "*",
+    "next": "16.3.4",
+    "openai": "7.10.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "viem": "2.57.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "26.5.0",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.7",
+    "tailwindcss": "4.3.3",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  }
+}

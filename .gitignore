@@ -49,3 +49,10 @@ recheck-queue.json
 /SPEC.md
 /docs/RD-BRIEF.md
 scratchpad/
+
+# Dreamloom has no .gitignore of its own: its type-check cache, Next's generated types and its local
+# pictures stay out, its env template goes in.
+packages/dreamloom/*.tsbuildinfo
+packages/dreamloom/next-env.d.ts
+packages/dreamloom/.dreamloom-data/
+!packages/dreamloom/.env.example
