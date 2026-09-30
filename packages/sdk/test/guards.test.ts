@@ -4,12 +4,14 @@
 // a redirect, and never over plain http to another host; and every answer is read under 256 KB but
 // the platform prepare's, which carries the signed file.
 // Does NOT cover the chain-side refusals of setupPlatform and transferPassport, which fork.test.ts
-// runs against the real registry, or what a platform's own code does with the key.
+// runs against the real registry, or what a platform's own code does with the key. The revert
+// reason is read from an error made by a different copy of viem, as a platform's own clients throw.
 
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { revertReason } from "../src/chain.js";
 import { termsProblem } from "../src/terms.js";
 import { rpIdProblem, ServerPasskey } from "../src/passkey.js";
 import { MAX_PREPARE_ANSWER_BYTES, callService, checkedUrl } from "../src/service.js";
@@ -144,5 +146,35 @@ describe("the platform key on the wire", () => {
     expect(() => checkedUrl("http://verify.example.com", "verifyUrl")).toThrow(/https/);
     expect(() => checkedUrl(`https://verify.example.com/?key=${KEY}`, "verifyUrl")).toThrow(/query/);
     expect(checkedUrl("https://verify.example.com", "verifyUrl").host).toBe("verify.example.com");
+  });
+});
+
+describe("a revert thrown by the platform's own copy of viem", () => {
+  // Shaped like viem's classes but not them, as a second copy of viem would throw.
+  class OtherCopyRevert extends Error {
+    override name = "ContractFunctionRevertedError";
+    shortMessage = "The contract function reverted.";
+    data = { errorName: "PassportExists" };
+  }
+
+  class OtherCopyError extends Error {
+    shortMessage = "Execution reverted.";
+    constructor(readonly inner: Error) {
+      super("Execution reverted.");
+    }
+    walk(match: (inner: unknown) => boolean): unknown {
+      if (match(this)) return this;
+      return match(this.inner) ? this.inner : null;
+    }
+  }
+
+  it("names the custom error the contract reverted with", () => {
+    expect(revertReason(new OtherCopyError(new OtherCopyRevert()))).toBe("PassportExists");
+  });
+
+  it("falls back to the short message, then to the plain message", () => {
+    expect(revertReason(new OtherCopyError(new Error("inner")))).toBe("Execution reverted.");
+    expect(revertReason(new Error("plain"))).toBe("plain");
+    expect(revertReason("text")).toBe("text");
   });
 });

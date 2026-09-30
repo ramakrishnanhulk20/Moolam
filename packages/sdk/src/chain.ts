@@ -1,6 +1,4 @@
 import {
-  BaseError,
-  ContractFunctionRevertedError,
   createPublicClient,
   custom,
   getAddress,
@@ -51,11 +49,40 @@ export function walletAddress(walletClient: PlatformWalletClient): Address {
   return getAddress(walletClient.account.address);
 }
 
-/** The custom error name a revert carried, or the plain short message when there is none. */
+interface ViemErrorShape {
+  shortMessage: string;
+  walk: (match: (inner: unknown) => boolean) => unknown;
+}
+
+interface RevertShape {
+  name: "ContractFunctionRevertedError";
+  shortMessage: string;
+  reason?: string;
+  data?: { errorName?: string };
+}
+
+function isViemError(value: unknown): value is ViemErrorShape {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as ViemErrorShape).walk === "function" &&
+    typeof (value as ViemErrorShape).shortMessage === "string"
+  );
+}
+
+function isRevert(value: unknown): value is RevertShape {
+  return typeof value === "object" && value !== null && (value as { name?: unknown }).name === "ContractFunctionRevertedError";
+}
+
+/**
+ * The custom error name a revert carried, or the plain short message when there is none. Read by
+ * shape rather than instanceof: a platform brings its own copy of viem, and the errors its clients
+ * throw are not instances of this package's copy.
+ */
 export function revertReason(error: unknown): string {
-  if (error instanceof BaseError) {
-    const reverted = error.walk((inner) => inner instanceof ContractFunctionRevertedError);
-    if (reverted instanceof ContractFunctionRevertedError) {
+  if (isViemError(error)) {
+    const reverted = error.walk(isRevert);
+    if (isRevert(reverted)) {
       return reverted.data?.errorName ?? reverted.reason ?? reverted.shortMessage;
     }
     return error.shortMessage;
