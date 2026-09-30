@@ -1,4 +1,12 @@
-import { loadPlatforms, platformLabel, type LabelPassport, type PlatformLabel, type PlatformList } from "@/lib/platforms/platforms";
+import {
+  canonicalOrigin,
+  loadPlatforms,
+  platformForOrigin,
+  platformLabel,
+  type LabelPassport,
+  type PlatformLabel,
+  type PlatformList,
+} from "@/lib/platforms/platforms";
 
 /**
  * The web app's one door to Moolam's signed platform list (P16).
@@ -47,4 +55,32 @@ export async function labelFor(passport: LabelPassport): Promise<PlatformLabel |
 export function plateMark(list: PlatformList, passport: LabelPassport): string | null {
   const label = labelFrom(list, passport);
   return label?.status === "kit" ? label.name : null;
+}
+
+/** Who a site asking for an address is: its canonical origin, and the listed platform that owns it, if any. */
+export interface OriginAsker {
+  /** Null when the value is not an https origin in any spelling canonicalOrigin accepts. */
+  origin: string | null;
+  /** The listed name, or null for an unlisted site. */
+  name: string | null;
+}
+
+/**
+ * The connect page's question (P22): which listed platform, if any, a site
+ * asking for a person's address belongs to. The value is canonicalised by the
+ * same function the stored origins passed, so a look-alike spelling is its own
+ * origin and names nobody, and a refused list names nobody either.
+ */
+export function askerFrom(list: PlatformList, value: string): OriginAsker {
+  const origin = canonicalOrigin(value);
+  if (origin === null) {
+    return { origin: null, name: null };
+  }
+  const platform = list.ok ? platformForOrigin(origin, list.platforms) : null;
+  return { origin, name: platform?.name ?? null };
+}
+
+/** The same answer, read against the held list. */
+export async function askerAt(value: string): Promise<OriginAsker> {
+  return askerFrom(await heldPlatformList(), value);
 }

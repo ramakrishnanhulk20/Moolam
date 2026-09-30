@@ -11,8 +11,8 @@ const { default: config } = await import("@/next.config");
 
 async function headers(): Promise<Record<string, string>> {
   const rules = await (config.headers as () => Promise<{ source: string; headers: { key: string; value: string }[] }[]>)();
-  expect(rules).toHaveLength(1);
-  expect(rules[0].source).toBe("/:path*");
+  // The site-wide rule comes first; the co-sign and connect pages add their own after it (test/cosign-headers.test.ts).
+  expect(rules.map((rule) => rule.source)).toEqual(["/:path*", "/:locale/cosign", "/:locale/connect"]);
   return Object.fromEntries(rules[0].headers.map((header) => [header.key, header.value]));
 }
 

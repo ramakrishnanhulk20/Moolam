@@ -20,9 +20,10 @@ export function siteUrl(): string {
 /**
  * Everything is open to crawlers except the routes that are not pages of their
  * own: the search endpoint, which answers JSON, the inner route a narrowed
- * Explore address is handed to, which a reader only ever sees as /explore, and
- * the page of one person's own pictures, which says nothing to anyone who is
- * not signed in.
+ * Explore address is handed to, which a reader only ever sees as /explore, the
+ * page of one person's own pictures, which says nothing to anyone who is not
+ * signed in, and the co-sign and connect pages, which exist for one person
+ * holding one link from a platform.
  */
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -30,7 +31,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/docs-search", "/*/explore/view", "/*/mine"],
+        disallow: ["/docs-search", "/*/explore/view", "/*/mine", "/*/cosign", "/*/connect"],
       },
     ],
     sitemap: `${siteUrl()}/sitemap.xml`,

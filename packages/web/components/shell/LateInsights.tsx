@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState, type ComponentType } from "react";
+import { stripFragment } from "@/lib/cosign/handle";
+
+/** What both parts accept: a hook that sees every event before it leaves. */
+type Counted = ComponentType<{ beforeSend?: <T extends { url: string }>(event: T) => T }>;
 
 /**
  * The longest the page waits for the browser to go idle. A phone that stays
@@ -23,10 +27,11 @@ export const NO_IDLE_WAIT_MS = 2000;
  * that happened before it loaded are still handed to it.
  *
  * The code for both arrives with import(), so it is a chunk of its own rather
- * than part of the layout's.
+ * than part of the layout's. Both see every address through stripFragment, so
+ * a co-sign handle in a fragment never reaches either (P4).
  */
 export function LateInsights() {
-  const [parts, setParts] = useState<ComponentType[] | null>(null);
+  const [parts, setParts] = useState<Counted[] | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -61,7 +66,7 @@ export function LateInsights() {
   return (
     <>
       {parts.map((Part, at) => (
-        <Part key={at} />
+        <Part key={at} beforeSend={stripFragment} />
       ))}
     </>
   );

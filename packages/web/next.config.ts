@@ -111,6 +111,21 @@ const nextConfig: NextConfig = {
           { key: "content-security-policy-report-only", value: contentSecurityPolicy },
         ],
       },
+      // The co-sign and connect pages hand a platform's site something (a
+      // passport, an address), so they must never be drawn inside that site's
+      // frame, and the handle or the asking origin must never leave in a
+      // Referer (P10, P4). frame-ancestors is enforced here, on its own, so the
+      // site-wide policy can stay report-only without leaving these two open.
+      // A later rule wins for a header both set, which is how referrer-policy
+      // tightens here.
+      ...["/:locale/cosign", "/:locale/connect"].map((source) => ({
+        source,
+        headers: [
+          { key: "x-frame-options", value: "DENY" },
+          { key: "content-security-policy", value: "frame-ancestors 'none'" },
+          { key: "referrer-policy", value: "no-referrer" },
+        ],
+      })),
     ];
   },
 
