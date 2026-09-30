@@ -291,14 +291,13 @@ describe("focus when the face changes", () => {
     }
   });
 
-  it("draws the compact switch's ring inside each segment, which the frame would clip", () => {
+  it("draws the compact switch's ring inside each half, which the frame would clip", () => {
     const markup = render(createElement(CompactSwitch, { mode: "upload", busy: false, onMode: NOOP }));
     const buttons = markup.match(/<button[^>]*>/g) ?? [];
     expect(buttons).toHaveLength(2);
     for (const button of buttons) {
-      expect(button).toContain("focus-visible:-outline-offset-2!");
+      expect(button).toContain("focus-visible:-outline-offset-4!");
+      expect(button).toContain("rounded-[6px]");
     }
-    expect(buttons[0]).toContain("rounded-s-[7px]");
-    expect(buttons[1]).toContain("rounded-e-[7px]");
   });
 });

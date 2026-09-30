@@ -1,11 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useTranslations } from "next-intl";
-import { useSyncExternalStore } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { useId, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { useIsReducedMotion } from "@/components/motion/useIsReducedMotion";
 import type { Mode } from "@/lib/studio/flow";
-import { useWide, wideOnly } from "./layout";
+import { useWide } from "./layout";
+import { useRadioGroup } from "./useRadioGroup";
+
+const PATHS: readonly Mode[] = ["upload", "generate"];
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 /**
  * The fork at the top of the studio: bring a picture, or have the agent make
@@ -25,10 +30,6 @@ export function PathChoice({
   running?: boolean;
   onMode: (mode: Mode) => void;
 }) {
-  const t = useTranslations("studio.choice");
-  const modes: Mode[] = ["upload", "generate"];
-  // Under the wide layout the fork is one slim row on a laptop, label and note
-  // side by side, so the first screen goes to the picture and the form.
   const wide = useWide();
   const slot = useSwitchSlot(wide);
 
@@ -36,57 +37,9 @@ export function PathChoice({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.6, ease: EASE }}
     >
-      <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">
-        <span className="h-px w-6 bg-line-strong" />
-        {t("kicker")}
-      </p>
-
-      <div className="mt-4 grid gap-px border border-line bg-line sm:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        {modes.map((entry) => {
-          const active = mode === entry;
-          return (
-            <button
-              key={entry}
-              type="button"
-              disabled={busy}
-              aria-pressed={active}
-              onClick={() => onMode(entry)}
-              className={`group relative overflow-hidden px-6 py-5 text-start transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-60 sm:px-8 sm:py-6 ${
-                active ? "bg-bg-raised" : "bg-bg hover:bg-bg-raised"
-              }${wideOnly(wide, "lg:flex lg:items-baseline lg:gap-x-6 lg:py-4")}`}
-            >
-              {active ? (
-                <motion.span
-                  layoutId="studio-path-edge"
-                  transition={{ type: "spring", stiffness: 340, damping: 30 }}
-                  className="absolute inset-x-0 top-0 h-[2px] bg-accent"
-                />
-              ) : null}
-
-              <span className="flex items-center gap-3">
-                <span
-                  aria-hidden
-                  className={`h-[9px] w-[9px] transition-colors duration-200 ${
-                    active ? "motif" : "border border-text-faint group-hover:border-accent"
-                  }`}
-                />
-                <span
-                  className={`font-display text-[clamp(1.05rem,1.9vw,1.4rem)] uppercase tracking-[-0.01em] transition-colors duration-200 ${
-                    active ? "text-text" : "text-text-muted group-hover:text-text"
-                  }`}
-                >
-                  {t(`${entry}.label`)}
-                </span>
-              </span>
-              <span className={`mt-2 block max-w-[34ch] text-xs leading-relaxed text-text-faint${wideOnly(wide, "lg:mt-0 lg:truncate")}`}>
-                {t(`${entry}.note`)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <PathSwitch mode={mode} busy={busy} onMode={onMode} seat="column" />
     </motion.div>
   );
 
@@ -132,70 +85,156 @@ function unwatched(): () => void {
 }
 
 /**
- * The same fork, same words, a size down: two segments side by side on the opening's row.
- *
- * The frame clips its corners to the button radius, which would clip a focus ring
- * drawn outside a segment as well, so each segment draws its ring inside its own
- * edge. The ring has to be marked important: the site's one focus rule sits
- * outside Tailwind's layers and would otherwise win. The segments carry the
- * frame's inner radius so the ring follows the rounded corner.
+ * The same switch in the opening's right-hand place on a laptop, a size down:
+ * each name on one line at 1280 and up, so the switch ends level with the
+ * title block and Register keeps its place in the first screen at 900 px.
  */
 export function CompactSwitch({ mode, busy, onMode }: { mode: Mode; busy: boolean; onMode: (mode: Mode) => void }) {
-  const t = useTranslations("studio.choice");
-  const modes: Mode[] = ["upload", "generate"];
-
   return (
     <motion.div
       data-path-compact
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.5, ease: EASE }}
     >
-      <p className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">
+      <PathSwitch mode={mode} busy={busy} onMode={onMode} seat="slot" />
+    </motion.div>
+  );
+}
+
+/** Sizes for the two seats: the studio's own column, and the opening's slot beside the title. */
+const SEAT = {
+  column: {
+    frame: "mt-4 auto-rows-fr sm:grid-cols-2",
+    half: "min-h-[3.75rem] px-4 py-3 sm:min-h-[5rem] sm:px-6",
+    name: "text-[1.05rem] sm:text-[clamp(0.95rem,1.8vw,1.55rem)]",
+    note: "mt-4",
+  },
+  slot: {
+    frame: "mt-3 grid-cols-2",
+    half: "min-h-[4rem] px-5 py-2.5",
+    name: "text-[clamp(0.95rem,1.3vw,1.2rem)]",
+    note: "mt-2.5",
+  },
+} as const;
+
+/**
+ * The switch Ram picked from the lab (02B): one wide frame in two halves, the
+ * path names in the display face, and a pink block that slides to the chosen
+ * half so the eye follows the choice across rather than seeing one side switch
+ * off and the other on.
+ *
+ * The block is drawn inside the chosen half and framer's shared layout moves
+ * it, so it lands flush on either half whether the halves sit side by side or,
+ * on a phone, one above the other, and whatever height a long name gives them.
+ * A phone stacks them because side by side a path name would need three lines.
+ *
+ * Both sentences are laid in one grid cell and only the chosen one shows, so
+ * the cell is always as tall as the longer one and the form under it never
+ * jumps when the choice changes. Each half is described by its sentence, so a
+ * screen reader hears it with the name.
+ *
+ * The frame clips its corners, so a half draws its focus ring inside its own
+ * edge, marked important because the site's one focus rule sits outside
+ * Tailwind's layers. On the pink block the ring takes the ink colour, since a
+ * pink ring on pink is no ring at all.
+ */
+export function PathSwitch({
+  mode,
+  busy,
+  onMode,
+  seat,
+}: {
+  mode: Mode;
+  busy: boolean;
+  onMode: (mode: Mode) => void;
+  seat: keyof typeof SEAT;
+}) {
+  const t = useTranslations("studio.choice");
+  const reduced = useIsReducedMotion();
+  // Tamil letters carry marks above and below the line, which the display
+  // face's tight Latin leading would clip.
+  const leading = useLocale() === "ta" ? "leading-[1.2]" : "leading-[0.95]";
+  const id = useId();
+  const { group, item } = useRadioGroup(PATHS, mode, onMode, busy);
+  const size = SEAT[seat];
+
+  return (
+    <div data-path-switch={seat}>
+      <p id={`${id}-name`} className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.28em] text-text-faint">
         <span className="h-px w-6 bg-line-strong" />
         {t("kicker")}
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden rounded-[8px] border border-line bg-line">
-        {modes.map((entry, index) => {
-          const active = mode === entry;
+
+      <div
+        {...group}
+        aria-labelledby={`${id}-name`}
+        className={`relative grid overflow-hidden rounded-[8px] border border-line-strong bg-bg-sunken p-1.5 transition-opacity duration-200 ${size.frame}${
+          busy ? " opacity-60" : ""
+        }`}
+      >
+        {PATHS.map((path, at) => {
+          const chosen = path === mode;
           return (
             <button
-              key={entry}
+              key={path}
               type="button"
               disabled={busy}
-              aria-pressed={active}
-              onClick={() => onMode(entry)}
-              className={`group relative min-w-0 px-4 py-2.5 text-start transition-colors duration-200 focus-visible:-outline-offset-2! disabled:cursor-not-allowed disabled:opacity-60 ${
-                index === 0 ? "rounded-s-[7px]" : "rounded-e-[7px]"
-              } ${active ? "bg-bg-raised" : "bg-bg hover:bg-bg-raised"}`}
+              aria-describedby={`${id}-${path}`}
+              {...item(path)}
+              className={`group relative flex min-w-0 flex-col justify-center rounded-[6px] text-start transition-colors duration-200 focus-visible:-outline-offset-4! disabled:cursor-not-allowed ${size.half} ${
+                chosen ? "text-accent-ink focus-visible:outline-accent-ink!" : "text-text-muted enabled:hover:bg-accent-soft enabled:hover:text-text"
+              }`}
             >
-              {active ? (
+              {chosen ? (
                 <motion.span
-                  layoutId="studio-path-edge-compact"
-                  transition={{ type: "spring", stiffness: 340, damping: 30 }}
-                  className="absolute inset-x-0 top-0 h-[2px] bg-accent"
+                  aria-hidden
+                  data-switch-block
+                  layoutId={`studio-path-block-${seat}`}
+                  transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 420, damping: 36 }}
+                  style={{ borderRadius: 6 }}
+                  className="absolute inset-0 bg-accent shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_10px_24px_-12px_var(--accent)] transition-[filter] duration-200 group-enabled:group-hover:brightness-110"
                 />
               ) : null}
-              <span className="flex items-center gap-2.5">
-                <span
-                  aria-hidden
-                  className={`h-[7px] w-[7px] shrink-0 transition-colors duration-200 ${
-                    active ? "motif" : "border border-text-faint group-hover:border-accent"
-                  }`}
-                />
-                <span
-                  className={`truncate font-display text-[0.9rem] uppercase tracking-[-0.01em] transition-colors duration-200 ${
-                    active ? "text-text" : "text-text-muted group-hover:text-text"
-                  }`}
-                >
-                  {t(`${entry}.label`)}
-                </span>
+              <span
+                className={`relative font-mono text-[10px] tabular-nums tracking-[0.2em] transition-colors duration-200 ${
+                  chosen ? "text-accent-ink/70" : "text-text-faint group-enabled:group-hover:text-accent"
+                }`}
+              >
+                0{at + 1}
               </span>
-              <span className="mt-1 block text-[11px] leading-snug text-text-faint">{t(`${entry}.note`)}</span>
+              <span className={`relative mt-1 font-display font-semibold uppercase tracking-[-0.02em] ${size.name} ${leading}`}>
+                {t(`${path}.label`)}
+              </span>
             </button>
           );
         })}
       </div>
-    </motion.div>
+
+      <div className={`grid ${size.note}`}>
+        {PATHS.map((path) => {
+          const chosen = path === mode;
+          return (
+            <motion.p
+              key={path}
+              id={`${id}-${path}`}
+              data-switch-note={path}
+              aria-hidden={!chosen}
+              initial={false}
+              animate={chosen ? { opacity: 1, y: 0 } : { opacity: 0, y: -8 }}
+              transition={
+                reduced ? { duration: 0 } : chosen ? { duration: 0.35, delay: 0.12, ease: EASE } : { duration: 0.2, ease: EASE }
+              }
+              className={`flex items-start gap-3 text-base leading-relaxed text-text [grid-area:1/1]${chosen ? "" : " pointer-events-none"}${
+                path === "generate" ? " sm:justify-end sm:text-end" : ""
+              }`}
+            >
+              <span aria-hidden className="motif mt-[0.55em] h-[7px] w-[7px] shrink-0" />
+              <span className="max-w-[60ch]">{t(`${path}.note`)}</span>
+            </motion.p>
+          );
+        })}
+      </div>
+    </div>
   );
 }
