@@ -12,10 +12,16 @@
     "pretest": "npm run build --workspace @moolam/platform",
     "test": "vitest run",
     "pretypecheck": "npm run build --workspace @moolam/platform",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "setup:wallet": "tsx scripts/wallet.ts",
+    "setup:agent": "npm run build --workspace @moolam/platform && tsx scripts/agent.ts",
+    "setup:passkey": "npm run build --workspace @moolam/platform && tsx scripts/passkey.ts",
+    "setup:sign-onboarding": "tsx scripts/sign-onboarding.ts",
+    "setup:seed": "npm run build --workspace @moolam/platform && tsx scripts/seed.ts"
   },
   "dependencies": {
     "@moolam/platform": "*",
+    "framer-motion": "13.2.0",
     "next": "16.3.4",
     "openai": "7.10.0",
     "react": "19.2.8",
