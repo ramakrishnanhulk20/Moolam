@@ -57,20 +57,24 @@ export function answerHashOf(text: string): Hex {
   return `0x${createHash("sha256").update(text, "utf8").digest("hex")}`;
 }
 
-// Letters, marks, digits, punctuation, symbols and the plain space. One predicate over the whole
-// text rather than a list of characters to refuse, so a control byte, a newline, a direction
-// override and a lone surrogate half are all out without anyone naming them.
-const PRINTABLE_TEXT = /^[\p{L}\p{M}\p{N}\p{P}\p{S} ]+$/u;
+// Letters, marks, digits, punctuation, symbols, the plain space and the line break. One predicate
+// over the whole text rather than a list of characters to refuse, so a tab, a NUL, a lone carriage
+// return, a direction override and a lone surrogate half are all out without anyone naming them.
+const PRINTABLE_TEXT = /^[\p{L}\p{M}\p{N}\p{P}\p{S} \n]+$/u;
 
 /**
  * Why an answer's text is refused, or null when it may be pinned (L27): at least one character, at
- * most MAX_ANSWER_BYTES in UTF-8, printable Unicode with no control characters. The text is never
- * rewritten, because its hash is what the holder signed.
+ * most MAX_ANSWER_BYTES in UTF-8, printable Unicode whose only control character is the line break,
+ * so an answer can have paragraphs. A Windows line break (\r\n) is read as one \n for this check,
+ * and a carriage return on its own is refused. The text is never rewritten, because its hash is
+ * what the holder signed.
  */
 export function answerTextProblem(text: string): string | null {
   if (text.length === 0) return "the answer is empty";
   if (Buffer.byteLength(text, "utf8") > MAX_ANSWER_BYTES) return `the answer is over ${MAX_ANSWER_BYTES} bytes`;
-  if (!PRINTABLE_TEXT.test(text)) return "the answer must be printable text on one line, with no control or direction characters";
+  if (!PRINTABLE_TEXT.test(text.replace(/\r\n/g, "\n"))) {
+    return "the answer must be printable text, with line breaks as its only control characters and no direction characters";
+  }
   return null;
 }
 

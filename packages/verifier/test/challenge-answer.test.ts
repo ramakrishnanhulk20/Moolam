@@ -4,8 +4,8 @@
 // from one block in the same call and accepts only the holder's plain 65 byte signature, only while
 // that dispute is Open, within 14 days of openedAt and before the deadline, all by that block's
 // time, once per dispute, with a reused signature refused. The text is at most 4,000 bytes of
-// printable Unicode with no control characters, never rewritten, and is pinned as one document
-// naming the passport, openedAt, the challenger and the holder. GET answers only the answer whose
+// printable Unicode whose only control character is the line break, never rewritten, and is
+// pinned as one document naming the passport, openedAt, the challenger and the holder. GET answers only the answer whose
 // passport, openedAt and challenger match the dispute the chain holds now.
 // Does NOT cover the live Monad read (a stand-in answers for one block), a real pin (a stand-in
 // keeps the documents), the page that draws the answer as text (WO-277), or the host's log, which
@@ -261,11 +261,11 @@ describe("L26: a signature binds exactly one answer to one open dispute", () => 
 });
 
 describe("L27: the answer is bounded, inert and attributable", () => {
-  it("refuses text over 4,000 bytes, empty, or with control, line or direction characters, before any chain read", async () => {
+  it("refuses text over 4,000 bytes, empty, with any control character but the line break, or with direction characters, before any chain read", async () => {
     const passportId = freshPassport();
     const readsBefore = reads.length;
     const pinsBefore = pinned.length;
-    const bad = [`${"é".repeat(2_000)}x`, "", "line one\nline two", "tab\there", "nul\u0000byte", "‮reversed", "zero​width", "lone \ud800 half"];
+    const bad = [`${"é".repeat(2_000)}x`, "", "line one\rline two", "tab\there", "vertical\u000btab", "line separator", "nul\u0000byte", "‮reversed", "zero​width", "lone \ud800 half"];
     for (const text of bad) {
       const response = await post(passportId, { text, deadline: Number(world.now + 600n), signature: `0x${"11".repeat(65)}` });
       expect(response.status, JSON.stringify(text)).toBe(400);
