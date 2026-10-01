@@ -509,6 +509,14 @@ footer a::after {
   margin: 1.15rem 0;
 }
 
+/* A bare address or a long link in a sentence is one unbroken word wider than a
+   phone, and it slid the whole page sideways (443 px on a 375 px screen). Such a
+   word breaks where it has to; ordinary words never do, so wide screens read as
+   before. Set here, not page by page, so every page written later is covered. */
+.docs-prose :is(p, li, blockquote, h2, h3, h4, dt, dd) {
+  overflow-wrap: anywhere;
+}
+
 .docs-prose :is(h2, h3, h4) {
   font-family: var(--font-display), ui-sans-serif, sans-serif;
   letter-spacing: -0.02em;
@@ -768,6 +776,9 @@ footer a::after {
     display: none;
   }
 
+  /* A card is as wide as the phone, so a long test name in a cell's plain text
+     breaks too, or it slides the page (427 px on the threat model). */
+  .docs-table-wide td,
   .docs-table-wide td code {
     overflow-wrap: anywhere;
   }

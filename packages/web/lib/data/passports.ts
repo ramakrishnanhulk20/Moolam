@@ -1325,12 +1325,17 @@ export async function generatorStandings(limit = 50): Promise<GeneratorStanding[
  * of time and refreshed on that cadence. What is held is the index's own rows,
  * because the first-seen stamp is a bigint by the time a caller sees it and a
  * bigint cannot be stored.
+ *
+ * `newest` is the newest registration the board read on this visit
+ * (components/agents/fresh.ts). It is part of the name, so a new passport
+ * files the roster under a new name and it is read again at once rather than
+ * after the minute.
  */
-function heldStandingRows(limit: number): Promise<StandingRow[]> {
+function heldStandingRows(limit: number, newest: string): Promise<StandingRow[]> {
   // The limit is part of the name. Held under one name for every limit, the
   // agents board asking for fifty would be answered with whatever shorter
   // roster a caller asking for five had put there a moment earlier.
-  const held = unstable_cache(async () => await standingRows(limit), ["moolam-generator-standings", String(limit)], {
+  const held = unstable_cache(async () => await standingRows(limit), ["moolam-generator-standings", String(limit), newest], {
     revalidate: HOLD_SECONDS,
     tags: [CACHE_TAGS.index],
   });
@@ -1338,8 +1343,8 @@ function heldStandingRows(limit: number): Promise<StandingRow[]> {
   return held();
 }
 
-export async function heldGeneratorStandings(limit = 50): Promise<GeneratorStanding[]> {
-  return (await heldStandingRows(limit)).map((row) => ({ ...row, firstSeenAt: BigInt(row.firstSeenAt) }));
+export async function heldGeneratorStandings(limit = 50, newest = ""): Promise<GeneratorStanding[]> {
+  return (await heldStandingRows(limit, newest)).map((row) => ({ ...row, firstSeenAt: BigInt(row.firstSeenAt) }));
 }
 
 /** The roster rows with the one counter still a string, so they can be held. */

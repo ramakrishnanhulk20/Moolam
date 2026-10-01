@@ -20,8 +20,11 @@ export function SectionHead({
   title: string;
   aside?: ReactNode;
 }) {
+  // One column no wider than the page on a phone: Japanese headings break only
+  // between phrases, and an open column grew to the heading's 20ch cap (386 px
+  // on a 375 px phone) rather than wrapping it.
   return (
-    <Reveal className="mb-10 grid items-end gap-6 lg:mb-14 lg:grid-cols-[minmax(0,1fr)_auto]">
+    <Reveal className="mb-10 grid grid-cols-1 items-end gap-6 lg:mb-14 lg:grid-cols-[minmax(0,1fr)_auto]">
       <div>
         <Kicker number={number}>{kicker}</Kicker>
         <h2 className="mt-4 max-w-[20ch] font-display text-[clamp(2.1rem,4.4vw,4rem)] font-semibold uppercase leading-[0.95] tracking-[-0.04em]">
@@ -342,15 +345,21 @@ export function Security({ number, tally }: { number: string; tally: AttackTally
                 {tally.attacks}
               </p>
               <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">{t("attacks")}</p>
-              <dl className="mt-8 grid grid-cols-3 border-t border-line">
+              {/* Three across from 640 px. On a phone a third of the row is 95 px,
+                  narrower than one German or Tamil word ("durchgekommen" is 128 px),
+                  so there each figure takes a line of its own with its words beside it. */}
+              <dl className="mt-8 grid grid-cols-1 border-t border-line sm:grid-cols-3">
                 {[
                   { key: "refused", value: tally.refused, tone: "text-text" },
                   { key: "controls", value: tally.controls, tone: "text-verified" },
                   { key: "findings", value: tally.findings, tone: tally.findings === 0 ? "text-text" : "text-failed" },
                 ].map((item, at) => (
-                  <div key={item.key} className={`flex flex-col-reverse justify-end pt-5 ${at > 0 ? "border-s border-line ps-4" : ""}`}>
-                    <dt className="mt-2 text-base leading-snug text-text-muted">{t(item.key as "refused" | "controls" | "findings")}</dt>
-                    <dd className={`font-display text-[clamp(2rem,3.6vw,3.2rem)] font-semibold leading-none tracking-[-0.04em] tabular-nums ${item.tone}`}>
+                  <div
+                    key={item.key}
+                    className={`grid grid-cols-[minmax(3.25rem,auto)_minmax(0,1fr)] items-baseline gap-x-4 py-4 sm:flex sm:flex-col-reverse sm:justify-end sm:py-0 sm:pt-5 ${at > 0 ? "border-t border-line sm:border-t-0 sm:border-s sm:ps-4" : ""}`}
+                  >
+                    <dt className="col-start-2 row-start-1 text-base leading-snug text-text-muted sm:mt-2">{t(item.key as "refused" | "controls" | "findings")}</dt>
+                    <dd className={`col-start-1 row-start-1 font-display text-[clamp(2rem,3.6vw,3.2rem)] font-semibold leading-none tracking-[-0.04em] tabular-nums ${item.tone}`}>
                       {item.value}
                     </dd>
                   </div>

@@ -76,11 +76,15 @@ describe("the name the agents roster is held under", () => {
 
     await heldGeneratorStandings(50);
     await heldGeneratorStandings(5);
+    // The board files it under the newest registration as well, so a new
+    // passport is a new name and is read at once (WO-293a row 24).
+    await heldGeneratorStandings(50, "0xnewest");
 
     const rosters = holds.names.filter((parts) => parts[0] === "moolam-generator-standings");
     expect(rosters).toEqual([
-      ["moolam-generator-standings", "50"],
-      ["moolam-generator-standings", "5"],
+      ["moolam-generator-standings", "50", ""],
+      ["moolam-generator-standings", "5", ""],
+      ["moolam-generator-standings", "50", "0xnewest"],
     ]);
   });
 });

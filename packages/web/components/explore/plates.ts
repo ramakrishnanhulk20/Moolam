@@ -20,6 +20,7 @@ import {
 import { filterFor, isLookalikeView, picturesFor, type ExploreSearch } from "./query";
 import { answersTerm, searchesTitles } from "./search";
 import { isTestCard, type ExplorePlate } from "./sort";
+import { plateUnread } from "./unread";
 
 /**
  * The index's rows with the picture each one points at.
@@ -73,7 +74,7 @@ export async function buildPlates(rows: ExplorePassport[]): Promise<ExplorePlate
         consent: row.consent,
         sealed: art?.sealed === true,
         blockhash: art?.blockhash,
-        unread: recordUnread(art),
+        unread: plateUnread(row.metadataURI, art),
         platform: passport === null ? null : plateMark(platforms, passport, agentOwnerNow),
         ...(row.marks === undefined ? {} : { mark: plateMarkState(row.marks, pictureOf(row.metadataURI, art)) }),
       };
@@ -171,7 +172,7 @@ export async function pictureSplit(): Promise<PictureSplit> {
     const wave = await Promise.all(
       rows.slice(at, at + SPLIT_WAVE).map(async (row) => {
         const art = row.metadataURI === "" ? null : await heldArt(row.metadataURI);
-        return isTestCard(art?.title ?? null, row.id, recordUnread(art));
+        return isTestCard(art?.title ?? null, row.id, plateUnread(row.metadataURI, art));
       }),
     );
     real += wave.filter((test) => !test).length;

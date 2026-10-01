@@ -270,9 +270,9 @@ export async function Poster({
  * that opens a row therefore has its rule outside the box wherever the line
  * wraps, and no part has a rule after it at all.
  *
- * The clipping box reaches 20 px above and below the row and 4 px to each side,
- * with margins that give the room back, so a link's tap pad and its focus ring
- * are drawn whole. The rules sit 17 px out, so they stay clipped.
+ * The clipping box reaches 28 px above and below the row and 4 px to each side,
+ * with margins that give the room back, so the links' tap areas, which reach
+ * 24 px one way, are whole. The rules sit 17 px out, so they stay clipped.
  */
 export function MetaLine({
   children,
@@ -285,7 +285,7 @@ export function MetaLine({
 }) {
   return (
     <div className={className} style={style}>
-      <div data-meta-line className="-mx-1 -my-5 overflow-hidden px-1 py-5">
+      <div data-meta-line className="-mx-1 -my-7 overflow-hidden px-1 py-7">
         <p className="-ms-[33px] flex flex-wrap items-center gap-y-1 font-mono text-[11px] uppercase tracking-[0.2em] text-text-muted [&>span]:relative [&>span]:ps-[33px] [&>span]:before:absolute [&>span]:before:start-4 [&>span]:before:top-1/2 [&>span]:before:h-[10px] [&>span]:before:w-px [&>span]:before:-translate-y-1/2 [&>span]:before:bg-line-strong [&>span]:before:content-['']">
           {children}
         </p>

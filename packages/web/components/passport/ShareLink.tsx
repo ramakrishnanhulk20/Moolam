@@ -28,6 +28,13 @@ type Copy = "idle" | "copied" | { failed: string };
  * any label, with the address under it ready to select, since the sentence asks
  * the reader to copy it by hand.
  *
+ * The tap area is an invisible layer, 24 px above the words and 4 px below,
+ * rather than padding all round. Where the credit line wraps, Download sits on
+ * the next row 4 px down, and an even pad let its area cover these words, so a
+ * tap meant to copy downloaded the file. Download's layer reaches the other way,
+ * so the two meet in the gap and never cover each other's words, and the line
+ * keeps its height. The focus ring stays on the words.
+ *
  * The words arrive translated from the server poster, so the line needs no
  * translation context of its own.
  */
@@ -64,7 +71,7 @@ export function ShareLink({ words }: { words: { copy: string; copied: string; co
           type="button"
           onClick={press}
           data-copy-link
-          className="group/share -my-3.5 inline-grid justify-items-start py-3.5 text-start uppercase text-text-muted transition-colors duration-200 hover:text-accent"
+          className="group/share relative inline-grid justify-items-start text-start uppercase after:absolute after:inset-x-0 after:-top-6 after:-bottom-1 after:content-[''] text-text-muted transition-colors duration-200 hover:text-accent"
         >
           <span
             className={`[grid-area:1/1] bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover/share:bg-[length:100%_1px] ${copied ? "invisible" : ""}`}

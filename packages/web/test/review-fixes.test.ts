@@ -279,16 +279,20 @@ describe("step 3: one rule for the record was not read", () => {
         consent: null,
       })) as never,
     );
-    expect(plates.map((plate) => plate.unread)).toEqual([true, true, false, false]);
+    // A passport with no document address has nothing a gateway could still
+    // hand over, so its plate is not waiting on one: untitled with no picture,
+    // it is a test image (WO-293a row 13). Only a pinned record keeps the wait.
+    expect(plates.map((plate) => plate.unread)).toEqual([false, true, false, false]);
 
     // Each passport alone under an agent that has signed only it: a record read
-    // with no name is a test image, and one not read proves nothing either way.
+    // with no name is a test image, and so is one with no document at all. One
+    // a gateway has not handed over yet proves nothing either way.
     index.ask = {
       Generator: inputs.map((one, at) => ({ id: String(at), passportCount: 1, passports: [stripRow(one.id, one.uri)] })),
     };
     const { boardStrips } = await import("@/components/agents/strip");
     const strips = await boardStrips();
-    expect(inputs.map((_, at) => strips[String(at)].onlyTest)).toEqual([false, false, true, false]);
+    expect(inputs.map((_, at) => strips[String(at)].onlyTest)).toEqual([true, false, true, false]);
 
     const { familyOf } = await import("@/components/passport/family");
     const family = await familyOf(inputs.map((one) => one.id));

@@ -605,7 +605,14 @@ function Still({ passport, exact, copy }: { passport: MatchedPassport | null; ex
       )}
       <div className="scrim pointer-events-none absolute inset-0" />
 
-      <p className="absolute inset-x-0 top-0 flex flex-wrap items-center gap-x-4 gap-y-1 p-5 font-mono text-[11px] uppercase tracking-[0.24em] text-verified">
+      {/* Straight on the photo the green kicker could not be read over a busy
+          picture. It sits on a plate of the page's own ground, solid because the
+          light theme's green fell to 4.2:1 through a see-through plate over a
+          dark sky, and on the plate it reads in both themes over any picture. */}
+      <p
+        data-still-kicker
+        className="absolute start-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-x-4 gap-y-1 rounded-[8px] bg-bg px-2.5 py-1.5 font-mono text-[11px] uppercase tracking-[0.24em] text-verified"
+      >
         <span className="flex items-center gap-3">
           <span className="motif h-[9px] w-[9px]" />
           {exact ? t("exact") : t("matched")}

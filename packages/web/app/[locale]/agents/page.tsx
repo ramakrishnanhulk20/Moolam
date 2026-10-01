@@ -4,17 +4,14 @@ import { AgentsSheet } from "@/components/agents/Sheet";
 import { holdAgentsRoster } from "@/lib/data/prerender";
 import { routing } from "@/lib/i18n/routing";
 
-// A minute is the window the roster read is already held for, so the board is
-// made once and refreshed a minute at a time behind whoever asks for it. An
-// agent that signs a picture now is on the board on the next request after that.
-export const revalidate = 60;
+// The board is drawn on every visit (components/agents/Sheet.tsx): a page made
+// once a minute was handed out stale to the first visitor after a quiet spell.
+// Its reads stay held for a minute and are read again as soon as a new passport
+// is registered (components/agents/fresh.ts).
 
 /**
- * The board is made in all ten languages while the site is built, so the first
- * visitor after a deploy is handed the roster rather than waiting on a query to
- * the index and a card read on Monad for every agent it lists. What a build
- * writes into its data cache does not travel to the running site; a page it made
- * does.
+ * The ten languages, listed while the site is built. The roster read here warms
+ * the build's own cache only; the running site reads its own on the first visit.
  *
  * This page reads nothing out of the address, so every visitor asks for the same
  * board and there is no sibling route drawn on the request.

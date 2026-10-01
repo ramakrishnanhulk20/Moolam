@@ -3,10 +3,12 @@ import { reason } from "@/lib/chain/client";
 import { heldGeneratorStandings } from "@/lib/data/passports";
 import { Board } from "./Board";
 import { roster, type AgentRow } from "./roster";
+import { newestRegistration } from "./fresh";
 import { boardStrips, type AgentStrip } from "./strip";
 
 /**
- * The roster, read for the page the build makes.
+ * The roster, read on every visit. A failed read is therefore never kept as
+ * the page later visitors are handed.
  *
  * Three sources, each doing what only it can: the index adds up the passports
  * and the re-checks and lists each agent's newest passports, the identity
@@ -20,11 +22,16 @@ export async function AgentsSheet({ locale }: { locale: string }) {
   let error: string | null = null;
   let strips: Record<string, AgentStrip> | null = null;
 
+  // Drawn on every visit, so nobody is handed a board made before the newest
+  // passport. The reads under it stay held and are filed under that passport.
+  await connection();
+  const newest = await newestRegistration();
+
   // Read side by side: the strips are one query for the whole board and do
   // not wait on the names.
   const [listed, pictured] = await Promise.allSettled([
-    heldGeneratorStandings().then((standings) => roster(standings)),
-    boardStrips(),
+    heldGeneratorStandings(undefined, newest).then((standings) => roster(standings)),
+    boardStrips(newest),
   ]);
 
   if (listed.status === "fulfilled") {
@@ -34,16 +41,6 @@ export async function AgentsSheet({ locale }: { locale: string }) {
   }
   if (pictured.status === "fulfilled") {
     strips = pictured.value;
-  }
-
-  if (error !== null || (strips === null && agents.length > 0)) {
-    // A read that failed once must never become the page everybody is handed
-    // for the next minute. Asking for the connection takes this render out of
-    // the store: a build leaves the page to be drawn on the request instead,
-    // and a refresh keeps the last good board it already has and tries again on
-    // the next request. A board with its names and no pictures is the same
-    // kind of miss.
-    await connection();
   }
 
   return <Board agents={agents} error={error} locale={locale} strips={strips} />;

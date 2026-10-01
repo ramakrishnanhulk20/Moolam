@@ -8,6 +8,7 @@ import { SUMMARY_TONES } from "@/components/consent/tones";
 import type { Consent } from "@/lib/chain/consent";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import { useAiWord } from "./aiWord";
+import { CHOSEN_CHIP } from "./chip";
 import { useReading } from "./Reading";
 import {
   AI_VIEWS,
@@ -109,7 +110,7 @@ export function Filters({
             className={`tap hidden shrink-0 items-center gap-2 rounded-[8px] border px-3 py-2 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors duration-200 md:inline-flex ${
               search.ai === null
                 ? "border-line text-text-muted hover:border-line-strong hover:text-text"
-                : "border-accent bg-accent-soft text-accent hover:border-line-strong"
+                : `${CHOSEN_CHIP} hover:border-line-strong`
             }`}
           >
             {search.ai === null ? null : (
@@ -301,7 +302,7 @@ function Chip({ view, search, label }: { view: ExploreView; search: ExploreSearc
       aria-current={on ? "true" : undefined}
       className={`tap inline-flex min-h-[44px] shrink-0 items-center rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 md:px-3 md:tracking-[0.14em] ${
         on
-          ? "border-accent bg-accent-soft text-accent"
+          ? CHOSEN_CHIP
           : "border-line text-text-muted hover:border-line-strong hover:text-text"
       }`}
     >
@@ -328,7 +329,7 @@ function AiChip({ ai, search }: { ai: ExploreAi | null; search: ExploreSearch })
       aria-current={on ? "true" : undefined}
       className={`tap inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-[8px] border px-3.5 py-2 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors duration-200 sm:min-h-0 ${
         on
-          ? "border-accent bg-accent-soft text-accent"
+          ? CHOSEN_CHIP
           : "border-line text-text-muted hover:border-line-strong hover:text-text"
       }`}
     >

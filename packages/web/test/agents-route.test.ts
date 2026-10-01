@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
- * The agents board is a page the build makes and the host keeps for a minute,
- * so the one thing that must hold is the same one Explore holds: a roster the
- * index would not answer for is never the page everybody is handed next.
+ * The agents board is drawn on every visit, with its reads held for a minute
+ * and filed under the newest registration, so a roster the index would not
+ * answer for is never the page everybody is handed next, and a board made
+ * before the newest passport is never handed to anyone.
  */
 
 const holds = vi.hoisted(() => ({
@@ -11,6 +12,7 @@ const holds = vi.hoisted(() => ({
   roster: vi.fn(),
   strips: vi.fn(),
   connection: vi.fn(),
+  newest: vi.fn(),
 }));
 
 vi.mock("next/server", async (real) => ({
@@ -21,6 +23,7 @@ vi.mock("next/server", async (real) => ({
 vi.mock("@/lib/data/passports", () => ({ heldGeneratorStandings: holds.standings }));
 vi.mock("@/components/agents/roster", () => ({ roster: holds.roster }));
 vi.mock("@/components/agents/strip", () => ({ boardStrips: holds.strips }));
+vi.mock("@/components/agents/fresh", () => ({ newestRegistration: holds.newest }));
 
 vi.mock("@/lib/chain/client", () => ({
   reason: (error: unknown) => (error instanceof Error ? error.message : String(error)),
@@ -36,6 +39,7 @@ describe("a roster that could not be read", () => {
     holds.standings.mockReset().mockResolvedValue([]);
     holds.roster.mockReset().mockImplementation(async (rows: unknown[]) => rows);
     holds.strips.mockReset().mockResolvedValue({});
+    holds.newest.mockReset().mockResolvedValue("");
   });
 
   it("is never left in the page the host keeps", async () => {
@@ -47,10 +51,21 @@ describe("a roster that could not be read", () => {
     expect(drawn.props.error).toBe("the Envio endpoint answered 429");
   });
 
-  it("keeps a board whose read came back, including an empty one", async () => {
+  it("is drawn on every visit, a board whose read came back included", async () => {
     await AgentsSheet({ locale: "en" });
 
-    expect(holds.connection).not.toHaveBeenCalled();
+    expect(holds.connection).toHaveBeenCalledTimes(1);
+  });
+
+  it("files both held reads under the newest registration, so a new passport is read at once", async () => {
+    const newest = `0x${"ab".repeat(32)}`;
+    holds.newest.mockResolvedValue(newest);
+
+    await AgentsSheet({ locale: "en" });
+
+    expect(holds.connection.mock.invocationCallOrder[0]).toBeLessThan(holds.newest.mock.invocationCallOrder[0]);
+    expect(holds.standings).toHaveBeenCalledWith(undefined, newest);
+    expect(holds.strips).toHaveBeenCalledWith(newest);
   });
 
   it("hands the board what the index counted, not a list of its own", async () => {

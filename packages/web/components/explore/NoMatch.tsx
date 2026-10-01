@@ -3,6 +3,7 @@
 import NextLink from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useAiWord } from "./aiWord";
+import { CHOSEN_CHIP } from "./chip";
 import { DEFAULT_SEARCH, exploreHref, type ExploreSearch } from "./query";
 
 /**
@@ -110,7 +111,7 @@ export function NoMatch({ search }: { search: ExploreSearch }) {
           {named.map((word) => (
             <li
               key={word}
-              className="rounded-[8px] border border-accent bg-accent-soft px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-accent"
+              className={`rounded-[8px] border px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.18em] ${CHOSEN_CHIP}`}
             >
               {word}
             </li>

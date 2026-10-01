@@ -253,22 +253,35 @@ describe("the poster's kicker and credit line", () => {
     expect(id?.[2]).toBe(shortHex(ID, 10, 8));
   });
 
-  it("gives the Download link's tap pad and focus ring room inside the clipping box", async () => {
+  it("gives Copy link and Download tap areas that are whole, 44 px tall, and never cover each other's words", async () => {
     const markup = render(await Poster({ passport, art, locale: "en" }));
     const rem = (value: string | undefined): number => Number(value) * 4;
+    const reach = (names: string[], side: "top" | "bottom"): number =>
+      rem(names.find((name) => name.startsWith(`after:-${side}-`))?.slice(`after:-${side}-`.length));
 
     const box = classOf(markup, "data-meta-line").split(/\s+/);
     expect(box).toContain("overflow-hidden");
     const room = rem(box.find((name) => /^py-/.test(name))?.slice(3));
     expect(box).toContain(`-my-${room / 4}`);
 
-    const link = classOf(markup, "data-download-original").split(/\s+/);
-    const pad = rem(link.find((name) => /^py-/.test(name))?.slice(3));
-    expect(link).toContain(`-my-${pad / 4}`);
-    // The pad plus a 16 px line clears the 44 px tap floor, and the ring, a
-    // 2 px outline 2 px out, still fits inside the room the box keeps.
-    expect(pad * 2 + 16).toBeGreaterThanOrEqual(44);
-    expect(room).toBeGreaterThanOrEqual(pad + 4);
+    const copy = classOf(markup, "data-copy-link").split(/\s+/);
+    const download = classOf(markup, "data-download-original").split(/\s+/);
+    for (const names of [copy, download]) {
+      // The tap area is a layer, so the line keeps its height and the ring hugs the words.
+      expect(names).toContain("relative");
+      expect(names).toContain("after:absolute");
+      expect(names.some((name) => /^-?my-|^py-/.test(name))).toBe(false);
+      // A 16 px line plus the layer clears the 44 px tap floor, inside the clipping room.
+      expect(reach(names, "top") + reach(names, "bottom") + 16).toBeGreaterThanOrEqual(44);
+      expect(room).toBeGreaterThanOrEqual(Math.max(reach(names, "top"), reach(names, "bottom")));
+    }
+    // Wrapped, Download sits one 4 px row gap under Copy link: Copy link reaches
+    // no further down than the gap and Download no further up, so a press on
+    // either one's words lands on that one.
+    const row = /data-meta-line[^>]*>\s*<p class="([^"]*)"/.exec(markup)?.[1].split(/\s+/) ?? [];
+    const gap = rem(row.find((name) => /^gap-y-/.test(name))?.slice(6));
+    expect(reach(copy, "bottom")).toBeLessThanOrEqual(gap);
+    expect(reach(download, "top")).toBeLessThanOrEqual(gap);
   });
 });
 

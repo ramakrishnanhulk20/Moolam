@@ -33,6 +33,10 @@ type Fetch = "idle" | "fetching" | "failed";
  * It returns parts of the credit line rather than a box of its own, so the
  * line's rules fall between them and the status line sits under the row. The
  * words arrive translated from the server poster.
+ *
+ * Its tap area reaches 4 px above the words and 24 px below, the mirror of Copy
+ * link's, so where the line wraps and Download lands on the row under Copy link
+ * neither covers the other's words (see ShareLink).
  */
 export function DownloadOriginal({
   href,
@@ -84,7 +88,7 @@ export function DownloadOriginal({
           data-download-original
           aria-busy={state === "fetching"}
           onClick={(event) => void fetchOriginal(event)}
-          className="group/download -my-3.5 inline-flex items-center gap-2 py-3.5 text-text-muted transition-colors duration-200 hover:text-accent aria-busy:cursor-wait"
+          className="group/download relative inline-flex items-center gap-2 text-text-muted after:absolute after:inset-x-0 after:-top-1 after:-bottom-6 after:content-[''] transition-colors duration-200 hover:text-accent aria-busy:cursor-wait"
         >
           <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-left-bottom bg-no-repeat pb-0.5 transition-[background-size] duration-300 group-hover/download:bg-[length:100%_1px]">
             {words.download}
