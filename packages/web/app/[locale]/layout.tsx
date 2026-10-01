@@ -37,18 +37,16 @@ export function generateStaticParams() {
 }
 
 /**
- * The colour a phone paints its own bar with. Two of them, because the site
- * carries two palettes and the browser picks by the reader's system setting:
- * the same two values --bg holds in globals.css. Without either, the bar stayed
- * grey above a black film and above a cream page alike. These are what a page
- * paints with before its script runs; ThemeColor then rewrites both to the
- * theme the reader actually chose.
+ * The colour a phone paints its own bar with: the light theme's --bg from
+ * globals.css, because light is what every first visit gets whatever the
+ * phone is set to. One tag and no media query, so a phone set to dark is not
+ * handed a black bar over a cream page. ThemeColor rewrites it before the
+ * first paint for a reader who chose dark, and again whenever the switch is
+ * pressed. Written out rather than imported: a value exported from a client
+ * module arrives here as a reference, not as the string.
  */
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e4ddd0" },
-    { media: "(prefers-color-scheme: dark)", color: "#08080a" },
-  ],
+  themeColor: "#e4ddd0",
 };
 
 /**
@@ -186,8 +184,8 @@ export default async function LocaleLayout({
               siteName={m("title")}
               ogLocale={OG_LOCALES[locale] ?? OG_LOCALES[routing.defaultLocale]}
             />
-            {/* The browser's own bar follows the theme the reader picked,
-                not only the system setting the head's two tags choose by. */}
+            {/* The browser's own bar follows the theme in use, which the
+                head's one tag cannot know for a reader who chose dark. */}
             <ThemeColor />
             <LenisProvider>
               <div className="flex min-h-dvh flex-col">
@@ -217,16 +215,15 @@ export default async function LocaleLayout({
                         height={63}
                         unoptimized
                         loading="eager"
-                        fetchPriority="high"
                         data-lockup="dark"
                         className="hidden dark:block [body:has([data-story])_&]:block"
                       />
                       {/* Only one of the two lockups is ever painted, and the
                           server cannot know which: the theme is a class the
                           browser puts on. So the high priority goes to the
-                          dark one, which is the default theme and the one
-                          every story page uses. This one still loads with the
-                          document, it just no longer competes with the
+                          light one, which every first visit is shown, story
+                          pages included. The dark one still loads with the
+                          document, it just does not compete with the
                           picture the first screen is actually waiting on. */}
                       <Image
                         src="/brand/kolam/lockup-horizontal-light.svg"
@@ -235,6 +232,7 @@ export default async function LocaleLayout({
                         height={63}
                         unoptimized
                         loading="eager"
+                        fetchPriority="high"
                         data-lockup="light"
                         className="block dark:hidden [body:has([data-story])_&]:hidden"
                       />

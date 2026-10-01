@@ -19,16 +19,25 @@ export function themeScriptType(): string {
   return typeof window === "undefined" ? "text/javascript" : "text/plain";
 }
 
+/** The theme a visitor who has never pressed the switch is shown. */
+export const DEFAULT_THEME = "light";
+
+/** Where next-themes keeps a visitor's own choice. */
+export const THEME_STORAGE_KEY = "theme";
+
 /**
- * Dark is the product's real palette, so the system setting is ignored and the
- * light theme is something a person asks for with the toggle.
+ * Light for everyone on a first visit, whatever the device asks for. The
+ * switch offers light and dark and nothing else,
+ * so the device setting is never read, and a choice made with the switch is
+ * kept in this browser and wins on every visit after.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <NextThemes
       attribute="class"
-      defaultTheme="system"
-      enableSystem
+      defaultTheme={DEFAULT_THEME}
+      enableSystem={false}
+      storageKey={THEME_STORAGE_KEY}
       disableTransitionOnChange
       scriptProps={{ type: themeScriptType() }}
     >

@@ -109,7 +109,10 @@ export async function Poster({
       {/* Dark keeps the full poster gradient and the band along the top. In
           light both are cream, and over the whole still they read as a pale
           haze, so light keeps only the foot the title stands on and the
-          picture shows at full strength above it. */}
+          picture shows at full strength above it. On a phone the facts strip
+          takes two rows and pushes the title up into the picture, where a
+          foot of 64% left black type on a dark sky, so there the cream holds
+          firm up to the title and clears only over the top of the still. */}
       <div data-scrim="dark" className="scrim pointer-events-none absolute inset-0 [.light_&]:hidden" />
       <div
         aria-hidden
@@ -120,9 +123,10 @@ export async function Poster({
       <div
         aria-hidden
         data-scrim="light"
-        className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-[64%] [.light_&]:block"
+        className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-full [--foot-firm:72%] sm:h-[64%] sm:[--foot-firm:45%] [.light_&]:block"
         style={{
-          background: "linear-gradient(to top, var(--scrim-from) 0%, color-mix(in srgb, var(--bg) 80%, transparent) 45%, var(--scrim-to) 100%)",
+          background:
+            "linear-gradient(to top, var(--scrim-from) 0%, color-mix(in srgb, var(--bg) 80%, transparent) var(--foot-firm), var(--scrim-to) 100%)",
         }}
       />
 

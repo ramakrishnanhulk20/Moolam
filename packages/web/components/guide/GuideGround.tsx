@@ -8,15 +8,12 @@ import { lockPage, tabTarget } from "./focus";
 export type GuideStage = "window" | "frame";
 
 /**
- * The classes that make the guide dark whatever the page under it is set to.
- *
- * The first swaps every colour token for everything inside it. It cannot swap
- * the ink a child inherits, though: the body's colour was worked out against
- * the light palette before it was handed down, so a heading with no colour of
- * its own came out as the light theme's black on the guide's black card. The
- * second class makes the scope work its own ink out again, from its own tokens.
+ * The guide's own ink, taken from the theme in use like the rest of the page:
+ * a cream card on the light theme, a black one on the dark. The class makes
+ * the scope work its ink out from the tokens rather than inherit whatever an
+ * ancestor settled on, so a heading with no colour of its own still reads.
  */
-export const GUIDE_SCOPE = "dark text-text";
+export const GUIDE_SCOPE = "text-text";
 export type GuideClose = "skip" | "ground" | "escape" | "done" | "go";
 
 /**
@@ -70,9 +67,9 @@ export function GuideGround({
   );
 
   return (
-    // The guide carries the dark palette whatever the page under it is set to,
-    // for the same reason the film does: it is laid on a scrim, and the light
-    // theme's ink on that scrim is black on black.
+    // The dim stays black on both themes: it is a curtain over the page, and
+    // the card on it carries the theme's own ground, so its ink always sits on
+    // the colour it was chosen for.
     <AnimatePresence>
       {open ? (
         <div

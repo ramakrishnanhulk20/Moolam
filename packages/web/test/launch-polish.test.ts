@@ -259,11 +259,12 @@ describe("the favicon, the manifest and the phone bar", () => {
     expect(made.icons?.map((icon) => icon.src)).toEqual(["/icon.svg", "/apple-icon.png", "/favicon.ico"]);
   });
 
-  it("paints the phone bar in the palette the reader's system asks for", () => {
+  it("paints the phone bar in the light palette every first visit gets", () => {
     const layout = source("app/[locale]/layout.tsx");
-    expect(layout).toContain('{ media: "(prefers-color-scheme: light)", color: "#e4ddd0" }');
-    expect(layout).toContain('{ media: "(prefers-color-scheme: dark)", color: "#08080a" }');
-    // The two values are the palette's own --bg, so the bar and the page agree.
+    expect(layout).toContain('themeColor: "#e4ddd0"');
+    expect(layout).not.toContain("prefers-color-scheme");
+    // Both values are the palette's own --bg, so the bar and the page agree:
+    // the head carries the light one, and ThemeColor swaps in the dark one.
     const css = source("styles/globals.css");
     expect(css).toContain("--bg: #08080a");
     expect(css).toContain("--bg: #e4ddd0");

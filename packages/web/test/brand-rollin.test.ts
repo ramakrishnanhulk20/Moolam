@@ -83,7 +83,7 @@ describe("Linen", () => {
   });
 
   it("paints the phone bar, the sign-in window and the diagrams on Linen", () => {
-    expect(read("app/[locale]/layout.tsx")).toContain('{ media: "(prefers-color-scheme: light)", color: "#e4ddd0" }');
+    expect(read("app/[locale]/layout.tsx")).toContain('themeColor: "#e4ddd0"');
     expect(read("components/shell/ThemeColor.tsx")).toContain('light: "#e4ddd0"');
     expect(read("components/providers/PrivyProvider.tsx")).toContain('ground: "#ede7dc"');
     expect(read("components/docs/Mermaid.tsx")).toContain('background: "#e4ddd0"');

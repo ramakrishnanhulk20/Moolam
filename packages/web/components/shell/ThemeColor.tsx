@@ -2,6 +2,7 @@
 
 import { useTheme } from "next-themes";
 import { useEffect } from "react";
+import { themeScriptType } from "@/components/providers/ThemeProvider";
 import { usePathname } from "@/lib/i18n/routing";
 
 /** The --bg each theme paints the page with in globals.css, which the phone's own bar should match. */
@@ -16,14 +17,23 @@ export function themeBarColour(resolved: string | undefined): string | null {
 }
 
 /**
- * Keeps the browser's own top bar in the page's colour once the reader has
- * picked a theme.
+ * The few lines that set the bar before the first paint. The head carries the
+ * light colour, which is right for every first visit; a reader who chose dark
+ * would otherwise see a cream bar over a black page until React woke up. It
+ * runs after the theme script, so the class on the html tag is already the
+ * one the page will paint with.
+ */
+export function themeBarScript(): string {
+  return `(function(d,l){var c=document.documentElement.classList.contains("dark")?d:l;var m=document.querySelectorAll('meta[name="theme-color"]');for(var i=0;i<m.length;i++){m[i].content=c}})(${JSON.stringify(THEME_BAR.dark)},${JSON.stringify(THEME_BAR.light)})`;
+}
+
+/**
+ * Keeps the browser's own top bar in the page's colour, whichever theme is in
+ * use.
  *
- * The two theme-color tags in the head choose by the system setting, which is
- * right until somebody presses the toggle: a phone set to dark kept a black bar
- * over a cream page. Both tags are rewritten, so whichever one the browser is
- * reading carries the choice. The route is watched as well, in case a
- * navigation hands the head back its server copies.
+ * The script covers the first paint and this effect covers every press of the
+ * switch after it. The route is watched as well, in case a navigation hands
+ * the head back its server copy.
  */
 export function ThemeColor() {
   const { resolvedTheme } = useTheme();
@@ -39,5 +49,13 @@ export function ThemeColor() {
     }
   }, [resolvedTheme, here]);
 
-  return null;
+  // Marked as plain text when React draws it in the browser, for the reason
+  // themeScriptType gives: only the copy in the server's HTML ever runs.
+  return (
+    <script
+      type={themeScriptType()}
+      suppressHydrationWarning
+      dangerouslySetInnerHTML={{ __html: themeBarScript() }}
+    />
+  );
 }

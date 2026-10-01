@@ -15,12 +15,12 @@ import en from "@/messages/en.json";
 /**
  * The guide's ink, read by a real browser against the site's real stylesheet.
  *
- * The fault this guards against cannot be seen by anything short of a browser:
- * the guide swaps the colour tokens to the dark palette, but a heading with no
- * colour of its own inherits the colour the light body had already worked out,
- * and came out black on the guide's black card. jsdom does not resolve a single
- * var(), so this compiles globals.css with Tailwind exactly as the app does,
- * lays the card on a page set to each theme, and asks Chrome for the colours.
+ * The guide follows the theme in use, so its ink has to be the theme's own on
+ * both: a cream card with dark ink in light, a black card with light ink in
+ * dark, and every piece readable on its ground. Nothing short of a browser can
+ * say so, because jsdom does not resolve a single var(), so this compiles
+ * globals.css with Tailwind exactly as the app does, lays the card on a page
+ * set to each theme, and asks Chrome for the colours.
  */
 
 vi.mock("@/lib/i18n/routing", () => ({
@@ -246,8 +246,21 @@ async function inkOn(theme: "light" | "dark", markup: string): Promise<Ink[]> {
   return JSON.parse(read.result.value) as Ink[];
 }
 
+/** The ground and the ink each theme sets in globals.css. */
+const THEMES = {
+  light: { raised: "rgb(237, 231, 220)", text: "rgb(20, 19, 15)" },
+  dark: { raised: "rgb(16, 16, 20)", text: "rgb(244, 242, 238)" },
+} as const;
+
+describe("the guide's scope", () => {
+  it("does not force a theme of its own", () => {
+    expect(GUIDE_SCOPE.split(/\s+/)).not.toContain("dark");
+    expect(GUIDE_SCOPE.split(/\s+/)).not.toContain("light");
+  });
+});
+
 describe.skipIf(browserPath === null)("the guide card's ink, in a real browser", () => {
-  it("is the guide's own in the light theme and the dark theme alike", async () => {
+  it("takes the theme in use, light and dark alike", async () => {
     for (const [index, lit] of [
       [0, true],
       [2, false],
@@ -262,15 +275,17 @@ describe.skipIf(browserPath === null)("the guide card's ink, in a real browser",
         expect(names).toContain("elsewhere");
       }
 
-      // The same colours on the same grounds whichever theme the page is set
-      // to: nothing on the card is taking its ink from the page under it.
-      expect(light).toEqual(dark);
-
-      // The dark palette's own text colour, not the light theme's near black.
-      expect(light.find((one) => one.name === "title")?.color).toBe("rgb(244, 242, 238)");
-
-      for (const one of light) {
-        expect(one.ratio, `${one.name}: ${one.color} on ${one.ground}`).toBeGreaterThanOrEqual(4.5);
+      // Each theme's own ground and ink, read from its tokens.
+      for (const [theme, ink] of [
+        ["light", light],
+        ["dark", dark],
+      ] as const) {
+        const title = ink.find((one) => one.name === "title");
+        expect(title?.color, theme).toBe(THEMES[theme].text);
+        expect(title?.ground, theme).toBe(THEMES[theme].raised);
+        for (const one of ink) {
+          expect(one.ratio, `${theme} ${one.name}: ${one.color} on ${one.ground}`).toBeGreaterThanOrEqual(4.5);
+        }
       }
     }
   }, 60_000);
