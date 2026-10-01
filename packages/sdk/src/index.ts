@@ -13,8 +13,17 @@ export {
   type WaitOptions,
 } from "./cosign.js";
 export { transferPassport, type PassportTransfer } from "./transfer.js";
+export { runDeliveries, type DeliveryWorker, type RunDeliveriesOptions } from "./deliveries.js";
 export { ServerPasskey, rpIdProblem, type WebAuthnAuth } from "./passkey.js";
-export { platformIdOf, sha256Hex, signPlatformPrepare, type AgentAccount, type SignedPrepare } from "./prepare.js";
+export {
+  platformIdOf,
+  sha256Hex,
+  signPlatformPrepare,
+  type AgentAccount,
+  type DeliverTo,
+  type SignedPrepare,
+  type VerifiedBy,
+} from "./prepare.js";
 export { termsProblem, type AiUse, type AiUseTerms } from "./terms.js";
 export { MoolamPlatformError, type PlatformErrorCode } from "./errors.js";
 export { passportDigest, prepareDigest, type PassportInput, type PlatformMode, type PlatformPrepareMessage } from "./eip712.js";

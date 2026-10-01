@@ -88,6 +88,9 @@ export const platformPrepareAnswer = z.object({
   signedFile: signedFileAnswer,
   training: trainingAnswer.optional(),
   platform: platformAnswer,
+  // Kept as the raw string: the address is checked by checkedRecipient, the strict rule every send
+  // passes, rather than by a looser parser here that would turn a bad checksum into a good address.
+  deliverNow: z.string().max(100).optional(),
 });
 
 export const cosignPrepareAnswer = z.object({
@@ -114,7 +117,23 @@ export const recordAnswer = z.object({
   chain: z.string().optional(),
 });
 
-export type PlatformPrepareAnswer = z.infer<typeof platformPrepareAnswer>;
+/**
+ * GET /platform/deliveries: the accepted tickets of this platform waiting for their hand-over. The
+ * ticket id goes back into a URL path, so it is held to URL-safe characters; the destination stays
+ * the raw string for checkedRecipient, one entry at a time.
+ */
+export const deliveriesAnswer = z.object({
+  deliveries: z.array(
+    z.object({
+      ticketId: z.string().regex(/^[0-9A-Za-z_-]{16,128}$/),
+      passportId: bytes32,
+      destination: z.string().max(100),
+    }),
+  ),
+});
+
+export type DeliveriesAnswer = z.infer<typeof deliveriesAnswer>;
+export type PlatformPrepareAnswer =z.infer<typeof platformPrepareAnswer>;
 export type CosignPrepareAnswer = z.infer<typeof cosignPrepareAnswer>;
 export type RecordAnswer = z.infer<typeof recordAnswer>;
 export type FilesAnswer = z.infer<typeof filesAnswer>;

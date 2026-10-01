@@ -66,6 +66,37 @@ const moved = await transferPassport(passportId, claimedAddress, walletClient);
 
 It refuses a mistyped address (a wrong checksum is refused, not guessed), the zero address, your own wallet and the registry, uses `safeTransferFrom`, and returns only after a successful receipt and a fresh `ownerOf` read that names the new holder. Until the new holder states their own terms, the platform's terms stay in force.
 
+## Claim with your email
+
+In platform mode the passport starts in your wallet. Add `deliverTo` and it waits at Moolam for your user's verified email instead of waiting for you to find their wallet. When that person signs in to Moolam with the same address, they see the picture and say "these are mine" or "not mine". If they accept, Moolam tells your server where to send it, and your delivery worker hands it over.
+
+```ts
+const result = await registerAsPlatform(pictureBytes, {
+  verifyUrl, platformKey, agentAccount, passkey, walletClient, title, terms,
+  deliverTo: { email: user.email, verifiedBy: "google" },
+});
+// result.transfer is null: the passport waits for the person.
+// It is the hand-over, when the person already asked Moolam to send your pictures straight to their wallet.
+```
+
+Only send an address you verified for that user. Moolam checks that the person who sees the picture proved the address to Moolam; it cannot check that the address belongs to the person who used your platform. That part is your word, and Moolam shows it to the person as yours. `verifiedBy` says how you checked: `"google"` for a Google sign-in on your platform, `"email-code"` for a code you sent to the address, `"platform"` for anything else.
+
+The email travels only in the body of the prepare request, over https. The kit never puts it in a URL, never logs it, and its errors never quote it.
+
+When the person has already asked Moolam to send your pictures straight to their wallet, the prepare answer names that wallet, and `registerAsPlatform` registers, writes the terms and transfers in one call, after the same address checks `transferPassport` applies. A wallet the kit refuses stops the call before anything is sent.
+
+Run one delivery worker on your server:
+
+```ts
+import { runDeliveries } from "@moolam/platform";
+
+const worker = await runDeliveries({ verifyUrl, platformKey, walletClient, publicClient, intervalMs: 5_000, maxTries: 3 });
+// On shutdown:
+await worker.stop();
+```
+
+Every interval it asks Moolam which passports their people have accepted. For each one it reads the registry and skips it unless your wallet still holds it, checks the destination by the same rule as `transferPassport`, simulates the transfer and only then sends it, and never sends a ticket twice in one poll. After `maxTries` failed attempts (3 by default) it tells Moolam the hand-over failed, so the person sees it, and stops trying that one. Each hand-over costs your wallet about 95,000 gas. The worker logs nothing and throws nothing once started; `stop()` lets the hand-over in flight finish and starts no other. It keeps its count of failed attempts in memory, so a restart gives each waiting ticket a fresh `maxTries`.
+
 ## What the platform must keep secret
 
 | Secret | Where it goes | Why it matters |

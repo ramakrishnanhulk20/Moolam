@@ -21,6 +21,7 @@ export type PlatformErrorCode =
   | "timed-out"
   | "transaction-failed"
   | "consent-failed"
+  | "delivery-failed"
   | "refused-recipient"
   | "not-holder";
 

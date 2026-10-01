@@ -22,6 +22,15 @@ export interface SeenRequest {
   method: string;
   url: string;
   authorization: string | undefined;
+  /** Every header but the Authorization one, as one string, for checks that nothing else rides there. */
+  otherHeaders: string;
+}
+
+/** One accepted ticket as GET /platform/deliveries lists it. */
+export interface MockDelivery {
+  ticketId: string;
+  passportId: Hex;
+  destination: string;
 }
 
 interface FileEntry {
@@ -55,12 +64,21 @@ function fakeCid(): string {
  * service's own functions against ownerOf read from the fork, and says "registered" only after a
  * getPassport read of the fork, as the real routes do. It does not sign C2PA, fingerprint or pin:
  * its "signed file" is the picture with bytes appended, so every passport id is new to mainnet.
+ * For the email claim it keeps each prepare's deliverTo field as sent, answers deliverNow when told
+ * to, and lists whatever deliveries a test sets, so a test can list a ticket the real service would
+ * already have filtered out; a failed report removes the ticket from the list, as the service does.
  */
 export class MockVerifyService {
   readonly seen: SeenRequest[] = [];
   readonly records = new Map<string, MockRecord>();
   tamper: Tamper = null;
   base = "";
+  /** The deliverTo field of each platform prepare, as it arrived; undefined when the request carried none. */
+  readonly deliverToSeen: (string | undefined)[] = [];
+  /** The standing destination the next platform-mode answers carry, as the service would write it. */
+  deliverNow: string | undefined;
+  deliveries: MockDelivery[] = [];
+  readonly failedReports: string[] = [];
 
   readonly #key: string;
   readonly #keyHash: Hex;
@@ -146,12 +164,24 @@ export class MockVerifyService {
     for await (const chunk of request) chunks.push(chunk as Buffer);
     const body = Buffer.concat(chunks);
     const url = request.url ?? "";
-    this.seen.push({ method: request.method ?? "", url, authorization: request.headers.authorization });
+    const { authorization, ...otherHeaders } = request.headers;
+    this.seen.push({ method: request.method ?? "", url, authorization, otherHeaders: JSON.stringify(otherHeaders) });
     const send = (status: number, value: unknown): void => {
       response.writeHead(status, { "content-type": "application/json" }).end(JSON.stringify(value));
     };
 
     if (request.headers.authorization !== `Bearer ${this.#key}`) return send(401, { error: "unauthorized" });
+
+    if (request.method === "GET" && url === "/platform/deliveries") {
+      return send(200, { deliveries: this.deliveries });
+    }
+    const failed = /^\/platform\/deliveries\/([0-9A-Za-z_-]+)\/failed$/.exec(url);
+    if (request.method === "POST" && failed !== null) {
+      const ticketId = failed[1] as string;
+      this.failedReports.push(ticketId);
+      this.deliveries = this.deliveries.filter((one) => one.ticketId !== ticketId);
+      return send(200, { ok: true });
+    }
 
     if (request.method === "POST" && url === "/platform/prepare") {
       const form = await new Response(body, { headers: { "content-type": request.headers["content-type"] ?? "" } }).formData();
@@ -159,6 +189,8 @@ export class MockVerifyService {
       if (!(file instanceof Blob)) return send(400, { error: "no file" });
       const picture = new Uint8Array(await file.arrayBuffer());
       const mode = form.get("mode") as "platform" | "cosign";
+      const deliverTo = form.get("deliverTo");
+      if (mode === "platform") this.deliverToSeen.push(typeof deliverTo === "string" ? deliverTo : undefined);
       const issuedAt = BigInt(form.get("issuedAt") as string);
       const now = await this.#now();
       if (issuedAtProblem(issuedAt, now) !== null) return send(403, { error: "prepare-expired" });
@@ -206,6 +238,7 @@ export class MockVerifyService {
           digest: this.tamper === "digest" ? `0x${randomBytes(32).toString("hex")}` : digest,
           signedFile: { name: "picture.jpg", type: "image/jpeg", bytes: handed.toString("base64"), sha256: record.fields.exactHash },
           ...common,
+          ...(this.deliverNow === undefined ? {} : { deliverNow: this.deliverNow }),
         });
       }
       const handle = randomBytes(16).toString("hex");

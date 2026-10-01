@@ -88,8 +88,55 @@ export function assertTitle(title: string): void {
   }
 }
 
-/** The multipart body /platform/prepare reads: the file, the signed PlatformPrepare's parts, the title and the terms. */
-export function prepareForm(file: Uint8Array, mode: PlatformMode, title: string, signed: SignedPrepare, terms?: AiUseTerms): FormData {
+/** How the platform knows an email address belongs to its user: its claim, shown to the person as the platform's word. */
+export type VerifiedBy = "google" | "email-code" | "platform";
+
+/** The user's email a platform-mode passport waits for at Moolam, and how the platform checked it. */
+export interface DeliverTo {
+  email: string;
+  verifiedBy: VerifiedBy;
+}
+
+const VERIFIED_BY: readonly string[] = ["google", "email-code", "platform"];
+
+/** The longest address the service's rule takes, in code points. */
+const MAX_EMAIL_CODE_POINTS = 254;
+
+/**
+ * Throws MoolamPlatformError "invalid-input" unless deliverTo is an object of exactly an email and one
+ * of the three verifiedBy words. The email is only checked for shape and size here; the verify
+ * service normalises and judges it by its one rule (P28), so the kit never holds a second parser for
+ * it. Errors name the field and never the value (P29).
+ */
+export function assertDeliverTo(deliverTo: DeliverTo): void {
+  if (deliverTo === null || typeof deliverTo !== "object" || Array.isArray(deliverTo)) {
+    throw new MoolamPlatformError("invalid-input", "deliverTo must be an object of email and verifiedBy");
+  }
+  if (Object.keys(deliverTo).some((key) => key !== "email" && key !== "verifiedBy")) {
+    throw new MoolamPlatformError("invalid-input", "deliverTo carries only email and verifiedBy");
+  }
+  const email = deliverTo.email;
+  if (typeof email !== "string" || email.trim().length === 0 || [...email.trim()].length > MAX_EMAIL_CODE_POINTS) {
+    throw new MoolamPlatformError("invalid-input", `deliverTo.email must be an address of 1 to ${MAX_EMAIL_CODE_POINTS} characters`);
+  }
+  if (typeof deliverTo.verifiedBy !== "string" || !VERIFIED_BY.includes(deliverTo.verifiedBy)) {
+    throw new MoolamPlatformError("invalid-input", 'deliverTo.verifiedBy must be "google", "email-code" or "platform"');
+  }
+}
+
+/**
+ * The multipart body /platform/prepare reads: the file, the signed PlatformPrepare's parts, the title,
+ * the terms and, in platform mode, the email the passport waits for. The email travels only here, in
+ * the body over https, never in a URL or a header.
+ */
+export function prepareForm(
+  file: Uint8Array,
+  mode: PlatformMode,
+  title: string,
+  signed: SignedPrepare,
+  terms?: AiUseTerms,
+  deliverTo?: DeliverTo,
+): FormData {
   assertTitle(title);
   const form = new FormData();
   form.set("mode", mode);
@@ -99,6 +146,9 @@ export function prepareForm(file: Uint8Array, mode: PlatformMode, title: string,
   form.set("signature", signed.signature);
   if (terms !== undefined) {
     form.set("training", JSON.stringify(terms));
+  }
+  if (deliverTo !== undefined) {
+    form.set("deliverTo", JSON.stringify({ email: deliverTo.email, verifiedBy: deliverTo.verifiedBy }));
   }
   form.set("file", new Blob([new Uint8Array(file)], { type: "application/octet-stream" }), "picture");
   return form;

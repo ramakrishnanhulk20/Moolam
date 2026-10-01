@@ -2,7 +2,8 @@
 // the terms rule shared with MoolamConsent and the verify service (P9, P24), and how the platform key
 // travels to the service (P7): only in the Authorization header, never in a URL, a body, an error or
 // a redirect, and never over plain http to another host; and every answer is read under 256 KB but
-// the platform prepare's, which carries the signed file.
+// the platform prepare's, which carries the signed file. The deliverTo option is refused by shape
+// before any chain call, never quoting the email (P29), and rides only in the prepare's multipart body.
 // Does NOT cover the chain-side refusals of setupPlatform and transferPassport, which fork.test.ts
 // runs against the real registry, or what a platform's own code does with the key. The revert
 // reason is read from an error made by a different copy of viem, as a platform's own clients throw.
@@ -12,6 +13,9 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { revertReason } from "../src/chain.js";
+import type { PlatformWalletClient } from "../src/chain.js";
+import { prepareForm, type DeliverTo } from "../src/prepare.js";
+import { registerAsPlatform } from "../src/register.js";
 import { termsProblem } from "../src/terms.js";
 import { rpIdProblem, ServerPasskey } from "../src/passkey.js";
 import { MAX_PREPARE_ANSWER_BYTES, callService, checkedUrl } from "../src/service.js";
@@ -146,6 +150,39 @@ describe("the platform key on the wire", () => {
     expect(() => checkedUrl("http://verify.example.com", "verifyUrl")).toThrow(/https/);
     expect(() => checkedUrl(`https://verify.example.com/?key=${KEY}`, "verifyUrl")).toThrow(/query/);
     expect(checkedUrl("https://verify.example.com", "verifyUrl").host).toBe("verify.example.com");
+  });
+});
+
+describe("the email a platform-mode passport waits for", () => {
+  const EMAIL = "Maker.Person+art@example.com";
+
+  it("is refused by shape before any chain call, and the error never quotes it", async () => {
+    // Any chain read would throw on this wallet, so a refusal here proves the check ran first.
+    const untouchable = new Proxy({}, { get: () => { throw new Error("the chain was touched"); } }) as PlatformWalletClient;
+    const base = { verifyUrl: "https://verify.example.com", platformKey: KEY, agentAccount: {} as never, passkey: {} as never, walletClient: untouchable, title: "A title" };
+    const refused: unknown[] = [
+      { email: EMAIL, verifiedBy: "phone" },
+      { email: EMAIL },
+      { email: "   ", verifiedBy: "google" },
+      { email: `${"a".repeat(250)}@example.com`, verifiedBy: "google" },
+      { email: EMAIL, verifiedBy: "google", wallet: "0x0" },
+      [EMAIL],
+    ];
+    for (const deliverTo of refused) {
+      const attempt = registerAsPlatform(new Uint8Array([1]), { ...base, deliverTo: deliverTo as DeliverTo });
+      const error = (await attempt.catch((caught: unknown) => caught)) as Error & { code: string };
+      expect(error.code, JSON.stringify(deliverTo)).toBe("invalid-input");
+      expect(`${error.message} ${JSON.stringify(error)}`).not.toContain("Maker.Person");
+      expect(error.message).toMatch(/deliverTo/);
+    }
+  });
+
+  it("travels as one multipart field of exactly the email and the word, nowhere else", () => {
+    const signed = { message: { mode: 0, pictureHash: `0x${"11".repeat(32)}`, platformId: `0x${"22".repeat(32)}`, nonce: `0x${"33".repeat(32)}`, issuedAt: 1n }, signature: "0x44" } as const;
+    const form = prepareForm(new Uint8Array([1]), "platform", "A title", signed as never, undefined, { email: EMAIL, verifiedBy: "google" });
+    expect(JSON.parse(form.get("deliverTo") as string)).toEqual({ email: EMAIL, verifiedBy: "google" });
+    expect([...form.keys()].filter((name) => (typeof form.get(name) === "string" ? (form.get(name) as string).includes(EMAIL) : false))).toEqual(["deliverTo"]);
+    expect(prepareForm(new Uint8Array([1]), "platform", "A title", signed as never).has("deliverTo")).toBe(false);
   });
 });
 

@@ -6,7 +6,10 @@
 // signed file read from the prepare answer and never from a gateway, and a service that lies about
 // the digest or the signed file is refused before any transaction; a co-sign register where the
 // person's passkey is also simulated in software, and one picked up again by resumeCosign from its
-// handle alone; transferPassport and each refusal (P22);
+// handle alone; transferPassport and each refusal (P22); a register whose email rides only in the
+// prepare body, one whose standing destination makes register, terms and transfer land in that order,
+// each destination refused before anything is sent (P31), and the delivery worker moving an accepted
+// passport to a fresh wallet with one send while the service still lists it (P34);
 // and, across all of it, that the passkey's private key never leaves the process and the platform
 // key travels only in the verify service's Authorization header (P7, P21).
 // Does NOT cover the real verify service (mocked at the HTTP level, see support/mock-service.ts; its
@@ -48,6 +51,7 @@ import {
   transferPassport,
   waitForCreator,
   waitForPassport,
+  runDeliveries,
   type AiUseTerms,
   type CosignHandle,
   type PlatformSetup,
@@ -415,6 +419,107 @@ describe("rotate on a wallet with no key bound", () => {
     await transferPassport(cosignedPassport, holder.address, personWallet);
     await expect(setupPlatform({ walletClient: holderWallet, rpId: RP_ID, rotate: true })).rejects.toMatchObject({ code: "wallet-holds-passports" });
     expect(await nonceOf(holder.address)).toBe(0);
+  });
+});
+
+const EMAIL = "maker.person@example-platform.com";
+
+async function waitFor(check: () => Promise<boolean>, what: string): Promise<void> {
+  const giveUpAt = Date.now() + 60_000;
+  while (!(await check())) {
+    if (Date.now() > giveUpAt) throw new Error(`timed out waiting for ${what}`);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+async function holderOf(passportId: Hex): Promise<Address> {
+  return await reader.readContract({ address: MOOLAM_REGISTRY, abi: registryAbi, functionName: "ownerOf", args: [BigInt(passportId)] });
+}
+
+describe("claim with your email", () => {
+  const options = () => ({
+    verifyUrl: service.base,
+    platformKey: PLATFORM_KEY,
+    agentAccount: agentOwner,
+    passkey,
+    walletClient: platformWallet,
+    title: "A kite over the dunes",
+    terms: TERMS,
+    deliverTo: { email: EMAIL, verifiedBy: "google" as const },
+  });
+
+  it("sends the email only inside the prepare body, and the passport waits in the platform's wallet", async () => {
+    const before = sent.length;
+    const result = await registerAsPlatform(PICTURE, options());
+    expect(result.transfer).toBeNull();
+    expect(await holderOf(result.passportId)).toBe(platformAccount.address);
+    expect(JSON.parse(service.deliverToSeen.at(-1) as string)).toEqual({ email: EMAIL, verifiedBy: "google" });
+
+    const calls = sent.slice(before);
+    const carrying = calls.filter((one) => one.body.includes(EMAIL));
+    expect(carrying.map((one) => one.url)).toEqual([`${service.base}/platform/prepare`]);
+    for (const one of calls) {
+      expect(one.url.toLowerCase()).not.toContain("example-platform.com");
+      expect(one.authorization ?? "").not.toContain(EMAIL);
+    }
+    for (const one of service.seen) expect(one.otherHeaders).not.toContain(EMAIL);
+  });
+
+  it("with a standing destination, registers, writes the terms, then hands the passport over in one call", async () => {
+    const fresh = privateKeyToAccount(generatePrivateKey());
+    service.deliverNow = fresh.address.toLowerCase();
+    const result = await registerAsPlatform(PICTURE, options());
+    service.deliverNow = undefined;
+    if (result.transfer === null || result.consentTx === null) throw new Error("no transfer or no terms");
+    await gasOf("safeTransferFrom after register", result.transfer.txHash);
+
+    expect(result.transfer).toMatchObject({ passportId: result.passportId, from: platformAccount.address, to: fresh.address });
+    expect(await holderOf(result.passportId)).toBe(fresh.address);
+    const nonces = await Promise.all(
+      [result.registerTx, result.consentTx, result.transfer.txHash].map(async (hash) => (await reader.getTransaction({ hash })).nonce),
+    );
+    expect(nonces).toEqual([nonces[0], (nonces[0] as number) + 1, (nonces[0] as number) + 2]);
+  });
+
+  it("refuses a bad, zero, registry or own-wallet destination, or one for a picture with no email, and sends nothing", async () => {
+    const before = await nonceOf(platformAccount.address);
+    const refused: [string, string][] = [
+      ["0x1234", "invalid-input"],
+      [wrongChecksum(person.address), "invalid-input"],
+      ["0x0000000000000000000000000000000000000000", "refused-recipient"],
+      [MOOLAM_REGISTRY, "refused-recipient"],
+      [platformAccount.address, "refused-recipient"],
+    ];
+    for (const [deliverNow, code] of refused) {
+      service.deliverNow = deliverNow;
+      await expect(registerAsPlatform(PICTURE, options()), deliverNow).rejects.toMatchObject({ code });
+    }
+    service.deliverNow = person.address;
+    const { deliverTo: _deliverTo, ...withoutEmail } = options();
+    await expect(registerAsPlatform(PICTURE, withoutEmail)).rejects.toMatchObject({ code: "unexpected-answer" });
+    service.deliverNow = undefined;
+    expect(await nonceOf(platformAccount.address)).toBe(before);
+  });
+
+  it("the delivery worker hands an accepted passport to a fresh wallet with one send, though the list still names it", async () => {
+    const waiting = await registerAsPlatform(PICTURE, options());
+    const fresh = privateKeyToAccount(generatePrivateKey());
+    const before = await nonceOf(platformAccount.address);
+    service.deliveries = [{ ticketId: "a1b2c3d4e5f60718293a4b5c6d7e8f90", passportId: waiting.passportId, destination: fresh.address }];
+
+    const worker = await runDeliveries({ verifyUrl: service.base, platformKey: PLATFORM_KEY, walletClient: platformWallet, publicClient: reader, intervalMs: 250 });
+    try {
+      await waitFor(async () => (await holderOf(waiting.passportId)) === fresh.address, "the hand-over");
+      // The service has not swept the ticket yet, as happens between a landing and its next sweep.
+      const listedAt = service.seen.filter((one) => one.url === "/platform/deliveries").length;
+      await waitFor(async () => service.seen.filter((one) => one.url === "/platform/deliveries").length >= listedAt + 3, "three more polls");
+    } finally {
+      await worker.stop();
+      service.deliveries = [];
+    }
+    expect(await holderOf(waiting.passportId)).toBe(fresh.address);
+    expect(await nonceOf(platformAccount.address)).toBe(before + 1);
+    expect(service.failedReports).toEqual([]);
   });
 });
 
