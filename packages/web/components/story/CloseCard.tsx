@@ -23,8 +23,8 @@ export const UNREAD_FIGURE = "-";
  * The two figures are the registry's own totals through the live index, so the
  * page never claims a number nobody wrote on chain. It fades in over the
  * settling field and takes itself out of the tab order until it is there. Under
- * the light theme the story-close rule in globals.css gives this card the app's
- * own palette and ground, so the film ends by handing the page back.
+ * the light theme the .film-close rule in room.ts stands this card on the page's
+ * own ground, so the film ends by handing the page back.
  *
  * This is the page's one final call, so its first button is named exactly as
  * the first screen's, and on a laptop the two counts leave the foot of the text

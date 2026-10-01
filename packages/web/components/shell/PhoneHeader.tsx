@@ -26,10 +26,9 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
       <div className="flex h-[55px] w-full items-center gap-4 px-5">
         {/* The lockup files carry clear space on every side, so the box is 63 px
             tall for 24 px of cap height and the negative margin keeps the row
-            the height the ink asks for. The theme class picks the variant, and
-            a story page forces the dark one because that bar floats on a dark
-            film; under the light theme the two rules in globals.css that watch
-            data-lockup hand the light one back. */}
+            the height the ink asks for. The theme class picks the variant on
+            every page, the home film included, because the film follows the
+            page's theme. */}
         <Link href="/" className="-my-[18px] flex items-center transition-opacity duration-200 hover:opacity-70">
           <Image
             src="/brand/kolam/lockup-horizontal-dark.svg"
@@ -39,7 +38,7 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
             unoptimized
             loading="eager"
             data-lockup="dark"
-            className="hidden dark:block [body:has([data-story])_&]:block"
+            className="hidden dark:block"
           />
           <Image
             src="/brand/kolam/lockup-horizontal-light.svg"
@@ -50,7 +49,7 @@ export function PhoneHeader({ brand, className = "" }: { brand: string; classNam
             loading="eager"
             fetchPriority="high"
             data-lockup="light"
-            className="block dark:hidden [body:has([data-story])_&]:hidden"
+            className="block dark:hidden"
           />
         </Link>
 

@@ -118,7 +118,8 @@ export type BarShape = "flat" | "raised";
  * It stays through the film on the home page too. It used to give way while
  * the film was in the window and come back with the closing card, which left a
  * phone reader ten screens of scrolling with no way to Mine or anywhere else.
- * The film leaves the bar its room instead (.story-lower in globals.css).
+ * The film leaves the bar its room instead: on a phone its words stop above
+ * the bar (--film-words-foot under [data-film-room] in components/story/room.ts).
  */
 export function BottomBar({
   tabs,

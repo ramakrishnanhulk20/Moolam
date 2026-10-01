@@ -297,12 +297,17 @@ export function Pricing({ number }: { number: string }) {
           <Reveal
             key={plan}
             delay={at * 0.08}
-            className={`group relative px-1 py-8 transition-colors duration-300 hover:bg-bg-raised sm:px-6 lg:px-8 ${at > 0 ? "border-t border-line sm:border-s sm:border-t-0" : ""}`}
+            className={`group @container relative px-1 py-8 transition-colors duration-300 hover:bg-bg-raised sm:px-6 lg:px-8 ${at > 0 ? "border-t border-line sm:border-s sm:border-t-0" : ""}`}
           >
             <span aria-hidden className="absolute inset-x-0 top-0 h-px origin-left scale-x-0 bg-accent transition-transform duration-500 group-hover:scale-x-100" />
             <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-faint">{t(`plans.${plan}.name`)}</p>
-            <p className="mt-4 flex items-baseline gap-2">
-              <span className="font-display text-[clamp(2.8rem,5vw,4.6rem)] font-semibold leading-none tracking-[-0.05em] tabular-nums">
+            {/* "US$ 0,005" and "0,005 $" are half as long again as "$0.005", and
+                beside them "por passaporte" left no room in a third of a tablet.
+                So the price never breaks, its size is capped at what the
+                longest one needs to fit its own column, and the unit sits
+                under it on every card so the three read as one row. */}
+            <p data-price-row className="mt-4 flex flex-col items-start gap-2">
+              <span className="whitespace-nowrap font-display text-[length:min(clamp(2.8rem,5vw,4.6rem),21cqi)] font-semibold leading-none tracking-[-0.05em] tabular-nums">
                 {t(`plans.${plan}.price`)}
               </span>
               <span className="text-base text-text-muted">{t(`plans.${plan}.unit`)}</span>

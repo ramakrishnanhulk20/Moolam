@@ -145,6 +145,15 @@ describe("04A: the tab bar through the film on a phone", () => {
     expect(source).not.toContain("requestAnimationFrame");
   });
 
+  it("leaves no rule for the old black film, which nothing renders (WO-279f)", () => {
+    const header = readFileSync("components/shell/PhoneHeader.tsx", "utf8");
+    const css = readFileSync("styles/globals.css", "utf8");
+    expect(header).not.toContain("[data-story]");
+    for (const gone of [".story-stage", ".story .grain", ".story-lower", "story-close"]) {
+      expect(css).not.toContain(gone);
+    }
+  });
+
   it("keeps the rule over the active tab with less motion, so colour is not the only sign (F33)", () => {
     for (const reduced of [false, true]) {
       const markup = bar(reduced);

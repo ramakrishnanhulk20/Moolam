@@ -257,6 +257,21 @@ describe("the page", () => {
       expect(tag, tag).toMatch(/\b(min-h-11|h-11|min-h-14)\b/);
     }
   });
+
+  it("keeps every price on one line in its own column, with the unit under it (WO-279f)", async () => {
+    // "US$ 0,005" broke over two lines on a tablet and on a laptop before the
+    // size was capped to the column. kitchen/reports/film-leftovers holds the
+    // measured widths in four languages.
+    const html = await renderPage();
+    const rows = [...html.matchAll(/<p data-price-row="[^"]*" class="([^"]*)"><span class="([^"]*)">([^<]*)<\/span><span class="([^"]*)">([^<]*)<\/span><\/p>/g)];
+    expect(rows.map((row) => row[3])).toEqual(content.PLANS.map((plan) => en.business.pricing.plans[plan].price));
+    for (const [, row, price, , unit] of rows) {
+      expect(row).toContain("flex-col");
+      expect(price).toContain("whitespace-nowrap");
+      expect(price).toMatch(/text-\[length:min\([^\]]*cqi\)\]/);
+      expect(unit).not.toContain("whitespace-nowrap");
+    }
+  });
 });
 
 describe("the live figures", () => {

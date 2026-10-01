@@ -397,11 +397,6 @@ footer a::after {
   }
 }
 
-.story-stage {
-  position: absolute;
-  inset: 0;
-}
-
 /* The entrance on the first screen: the kicker, the title and the line rise in
    turn, staggered with an inline animation-delay. */
 @keyframes story-enter {
@@ -439,7 +434,6 @@ footer a::after {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .story .grain::after,
   .scroll-spark {
     display: none;
   }
