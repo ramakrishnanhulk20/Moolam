@@ -13,6 +13,8 @@
 export default function GlobalError({ reset }: { error: Error & { digest?: string }; reset: () => void }) {
   return (
     <html lang="en">
+      {/* Light, the theme every visitor starts in. The theme's own hex values
+          are written out, because no stylesheet variable can be trusted here. */}
       <body
         style={{
           margin: 0,
@@ -22,8 +24,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
           justifyContent: "center",
           gap: "1.5rem",
           padding: "6rem 1.25rem",
-          background: "#08080a",
-          color: "#f4f2ee",
+          background: "#e4ddd0",
+          color: "#14130f",
           fontFamily: "ui-sans-serif, system-ui, sans-serif",
         }}
       >
@@ -45,8 +47,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
               cursor: "pointer",
               borderRadius: 8,
               border: "none",
-              background: "#ffb7c5",
-              color: "#0b0b0c",
+              background: "#a52946",
+              color: "#fff5f7",
               padding: "0.85rem 1.4rem",
               fontSize: "0.7rem",
               fontWeight: 600,
@@ -64,8 +66,8 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
             href="/en"
             style={{
               borderRadius: 8,
-              border: "1px solid #34343f",
-              color: "#f4f2ee",
+              border: "1px solid #aba08b",
+              color: "#14130f",
               padding: "0.85rem 1.4rem",
               fontSize: "0.7rem",
               fontWeight: 600,
