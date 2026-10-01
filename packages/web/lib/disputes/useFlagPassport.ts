@@ -4,7 +4,7 @@ import { usePrivy, useSendTransaction, useWallets } from "@privy-io/react-auth";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import type { Hex } from "viem";
 import { chain, reason } from "@/lib/chain/client";
-import { disputeBond } from "@/lib/chain/registry";
+import { disputeBond, treasury as readTreasury } from "@/lib/chain/registry";
 import { transactionHash } from "@/lib/studio/confirm";
 import { ensureMonad } from "@/lib/studio/wallet";
 import { confirmFlag } from "./confirm";
@@ -40,6 +40,8 @@ export interface FlagPassport {
   balance: bigint | null;
   /** Whether that balance covers that bond, and by how much it falls short. */
   check: BondCheck | null;
+  /** Where a rejected challenge's bond is credited, as the policy names it now. Null until read, or when the read failed. */
+  treasury: Hex | null;
   /** True while the two numbers above are being read. */
   reading: boolean;
   state: FlagState;
@@ -86,6 +88,8 @@ export function useFlagPassport({
   /** The last answer to "what does the bond cost and what does this account hold". */
   const [numbers, setNumbers] = useState<Numbers | null>(null);
 
+  const [treasury, setTreasury] = useState<Hex | null>(null);
+
   /** The flag that is out, so a recheck can look again without sending a second one. */
   const watching = useRef<{ challenger: Hex; hash?: Hex } | null>(null);
 
@@ -127,6 +131,25 @@ export function useFlagPassport({
       live = false;
     };
   }, [isOwner, state.open, wallet]);
+
+  // The bond's fate is a line of its own under the rules, so a treasury that
+  // cannot be read costs that line and nothing else.
+  useEffect(() => {
+    if (!state.open || isOwner) {
+      return;
+    }
+    let live = true;
+    void readTreasury()
+      .then((address) => {
+        if (live) {
+          setTreasury(address);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [isOwner, state.open]);
 
   // An answer read for another wallet is not this wallet's answer.
   const current = numbers !== null && numbers.wallet === wallet ? numbers : null;
@@ -231,6 +254,7 @@ export function useFlagPassport({
     bond,
     balance,
     check: bondCheck(balance, bond),
+    treasury,
     reading: state.open && !isOwner && wallet !== undefined && current === null && state.failure === null,
     state,
     actions: {

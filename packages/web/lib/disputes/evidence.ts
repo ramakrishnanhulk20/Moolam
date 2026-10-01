@@ -1,4 +1,5 @@
 import { keccak256, toBytes, type Hex } from "viem";
+import { gatewayUrl } from "@/lib/chain/client";
 
 /**
  * The reason behind a flag, and how it reaches the chain.
@@ -52,6 +53,21 @@ export function reasonFrom(uri: string): string | null {
   } catch {
     return null;
   }
+}
+
+// The shape MoolamDecisions holds a reasons address to: ipfs:// and a content
+// id of letters and digits, 46 to 121 of them, with no path, query or host.
+const PINNED_ADDRESS = /^ipfs:\/\/[A-Za-z0-9]{46,121}$/;
+
+/**
+ * Where a browser may follow an address a stranger wrote, or null (L28, L29).
+ *
+ * Only ipfs://<cid> becomes a link, through this deploy's gateway, because a
+ * content id can only ever name the bytes it was made from. Anything else, an
+ * https page included, is drawn as text by the caller and never linked.
+ */
+export function pinnedLink(uri: string): string | null {
+  return PINNED_ADDRESS.test(uri) ? gatewayUrl(uri) : null;
 }
 
 /** What the registry stores for a URI: the keccak256 of its bytes. */

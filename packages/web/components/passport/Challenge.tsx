@@ -9,6 +9,7 @@ import { useRouter } from "@/lib/i18n/routing";
 import { REASON_MAX, REASON_MIN } from "@/lib/disputes/evidence";
 import {
   FLAG_STEPS,
+  bondFate,
   isFlagBusy,
   isFlagDone,
   isFlagUnconfirmed,
@@ -214,6 +215,8 @@ function Form({ flag }: { flag: FlagPassport }) {
         {bond === null ? t("whatUnknown") : t("what", { bond })}
       </p>
 
+      <Rules treasury={flag.treasury ?? null} />
+
       <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-2">
         <div className="min-w-0">
           <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("bondLabel")}</dt>
@@ -278,6 +281,65 @@ function Form({ flag }: { flag: FlagPassport }) {
           <FailureLine failure={state.failure} flag={flag} />
         </div>
       )}
+    </div>
+  );
+}
+
+const RULES = ["earlier", "proof", "verify", "licensed"] as const;
+
+/**
+ * What a challenge needs and who decides it, before the bond and the button.
+ * The rules lead and the decider sits beside them, so a challenger reads the
+ * burden of proof before they read the price.
+ */
+function Rules({ treasury }: { treasury: Hex | null }) {
+  const t = useTranslations("challenge");
+  const calm = useReducedMotion() === true;
+  const fate = bondFate(treasury);
+
+  return (
+    <div
+      data-challenge-rules
+      className="mt-8 grid gap-9 border-t border-line pt-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-12"
+    >
+      <div className="min-w-0">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("rules.heading")}</p>
+        <ol className="mt-3 border-t border-line">
+          {RULES.map((rule, index) => (
+            <motion.li
+              key={rule}
+              data-rule={rule}
+              initial={calm ? false : { opacity: 0, y: 12 }}
+              animate={calm ? undefined : { opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.12 + index * 0.06, ease: [0.16, 1, 0.3, 1] }}
+              className="group grid grid-cols-[2.25rem_minmax(0,1fr)] items-baseline border-b border-line py-3.5"
+            >
+              <span className="font-mono text-[11px] tabular-nums text-disputed transition-transform duration-200 group-hover:translate-x-0.5">
+                {String(index + 1).padStart(2, "0")}
+              </span>
+              <span className="text-base leading-relaxed text-text">{t(`rules.${rule}`)}</span>
+            </motion.li>
+          ))}
+        </ol>
+        <p className="mt-5 max-w-[54ch] border-s-2 border-disputed ps-4 text-base font-medium leading-relaxed text-text">
+          {t("rules.burden")}
+        </p>
+      </div>
+
+      <aside data-challenge-decider className="min-w-0 lg:border-s lg:border-line lg:ps-10">
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("decider.heading")}</p>
+        <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-muted">{t("decider.who")}</p>
+        <p className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-faint">{t("decider.seat")}</p>
+        {fate === "burned" ? (
+          <p data-bond-fate="burned" className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-faint">
+            {t("decider.bond")}
+          </p>
+        ) : fate === "treasury" && treasury !== null ? (
+          <p data-bond-fate="treasury" className="mt-3 max-w-[46ch] text-base leading-relaxed text-text-faint">
+            {withHex(t("decider.treasury", { treasury: HEX_MARK }), shortHex(treasury))}
+          </p>
+        ) : null}
+      </aside>
     </div>
   );
 }

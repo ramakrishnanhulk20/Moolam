@@ -276,6 +276,21 @@ describe("L27: the answer is bounded, inert and attributable", () => {
     expect((await answer(passportId, "é".repeat(2_000))).status).toBe(200);
   });
 
+  it("takes an answer in paragraphs, \\n or \\r\\n, and pins it byte for byte under the hash the holder signed", async () => {
+    for (const text of ["First paragraph.\n\nSecond paragraph.", "Windows line one.\r\nWindows line two.", "Ends with a break.\n"]) {
+      const passportId = freshPassport();
+      const accepted = await answer(passportId, text);
+      expect(accepted.status, JSON.stringify(text)).toBe(200);
+      const document = pinned.at(-1) as AnswerDocument;
+      expect(document.text).toBe(text);
+      expect(document.answerHash).toBe(`0x${createHash("sha256").update(text, "utf8").digest("hex")}`);
+      expect(answerDocumentSchema.parse(document)).toEqual(document);
+      const served = await read(passportId);
+      expect(served.status).toBe(200);
+      expect((served.json as unknown as { answer: AnswerDocument }).answer.text).toBe(text);
+    }
+  });
+
   it("pins one document naming the passport, openedAt, challenger and holder, whose hash and signature check without this service", async () => {
     const passportId = freshPassport();
     const text = "Original négatif, scanned 2019. 写真は私のものです。";

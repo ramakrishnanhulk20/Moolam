@@ -2685,7 +2685,9 @@
     "decider": {
       "who": "Moolam decides challenges today, by these rules, and publishes every decision with its reasons. Moolam is one company, not a court.",
       "seat": "The decider is one address named on Monad. Changing it takes a public 24 hour wait.",
-      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way."
+      "bond": "A rejected challenge's bond is burned, so Moolam gains nothing either way.",
+      "heading": "Who decides",
+      "treasury": "A rejected challenge's bond is credited to the treasury the policy names, {treasury}."
     },
     "answer": {
       "heading": "Answer this challenge",
@@ -2703,7 +2705,8 @@
         "label": "The holder's answer",
         "by": "Signed by {holder}",
         "none": "The holder has not answered yet. They have until {date}.",
-        "missed": "The holder did not answer within the 14 days."
+        "missed": "The holder did not answer within the 14 days.",
+        "unread": "The holder's answer could not be read just now. Try again in a moment."
       },
       "refusals": {
         "noOpenDispute": "There is no open challenge on this passport to answer.",
@@ -2720,7 +2723,7 @@
         "busy": "Too many answers are arriving right now. Wait a minute and try again.",
         "tooLong": "Your answer is over 4,000 bytes. Shorten it and sign again.",
         "empty": "Write your answer first.",
-        "notPrintable": "Line breaks and hidden characters cannot be sent. Take them out and sign again.",
+        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
         "declined": "You closed the wallet prompt, so nothing was signed.",
         "unknown": "The answer did not go through."
       }
@@ -2730,7 +2733,14 @@
       "upheld": "Upheld on {date}. Moolam agreed with the challenge.",
       "rejected": "Rejected on {date}. The record stands.",
       "reasons": "Read the reasons",
-      "noReasons": "No reasons were published with this decision."
+      "noReasons": "No reasons were published with this decision.",
+      "upheldUndated": "Upheld. Moolam agreed with the challenge.",
+      "rejectedUndated": "Rejected. The record stands.",
+      "unread": "The published reasons could not be read just now. Try again in a moment."
+    },
+    "held": {
+      "heading": "{count, plural, =1 {A picture you hold is challenged} other {# pictures you hold are challenged}}",
+      "opened": "Challenged on {date}"
     }
   }
 }

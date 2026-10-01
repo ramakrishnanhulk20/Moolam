@@ -41,6 +41,9 @@ vi.mock("@/lib/disputes/indexed", () => ({
   indexAvailable: () => true,
   indexedDispute: async () => ({ evidenceURI: "data:text/plain,claim" }),
 }));
+// The holder's answer and the chain's clock would be read over the network.
+vi.mock("@/lib/disputes/answerService", () => ({ readAnswer: async () => ({ kind: "none" }) }));
+vi.mock("@/lib/chain/time", () => ({ headTimestamp: async () => 1_788_965_000n }));
 vi.mock("@/lib/disputes/evidence", async (load) => ({
   ...(await load<object>()),
   evidenceMatches: () => true,
@@ -169,12 +172,23 @@ describe("the kept receipt", () => {
 
 describe("the dispute note", () => {
   it("draws an open challenge in the dispute colour, with no red anywhere", async () => {
+    const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
+      locale: string;
+      messages: unknown;
+      timeZone: string;
+      children?: unknown;
+    }>;
+    const note = await DisputeNote({
+      dispute: { challenger: STRANGER, bond: BOND, evidenceHash: `0x${"ab".repeat(32)}`, status: 1, openedAt: 1_788_961_533n },
+      passportId: PASSPORT,
+      locale: "en",
+    });
     const markup = renderToStaticMarkup(
-      await DisputeNote({
-        dispute: { challenger: STRANGER, bond: BOND, evidenceHash: `0x${"ab".repeat(32)}`, status: 1, openedAt: 1_788_961_533n },
-        passportId: PASSPORT,
-        locale: "en",
-      }),
+      createElement(
+        Provider,
+        { locale: "en", messages: en, timeZone: "Asia/Kolkata", formats: { dateTime: { moment: { dateStyle: "medium", timeStyle: "short" } } } } as never,
+        note,
+      ),
     );
     expect(markup).toContain("border-s-2 border-disputed bg-disputed/5");
     expect(markup).toContain("text-disputed");

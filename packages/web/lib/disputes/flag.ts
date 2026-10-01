@@ -134,6 +134,22 @@ export function bondCheck(balance: bigint | null, bond: bigint | null): BondChec
   return balance >= bond ? { enough: true, shortfall: 0n } : { enough: false, shortfall: bond - balance };
 }
 
+/** The address nobody holds a key to. Whatever the registry credits here stays locked for good. */
+export const BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD" as Hex;
+
+/**
+ * Where a rejected challenge's bond goes, from the treasury the policy names
+ * right now. The burned line is said only when that is the burn address, so the
+ * panel never promises a burn the chain has not switched on yet. Null until the
+ * treasury has been read, and then the panel says nothing about it at all.
+ */
+export function bondFate(treasury: Hex | null): "burned" | "treasury" | null {
+  if (treasury === null) {
+    return null;
+  }
+  return treasury.toLowerCase() === BURN_ADDRESS.toLowerCase() ? "burned" : "treasury";
+}
+
 /** What the wallet is asked to send: the registry, the call, and the bond riding on it. */
 export interface FlagRequest {
   to: Hex;

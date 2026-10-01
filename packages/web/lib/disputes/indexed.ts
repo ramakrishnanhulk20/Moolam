@@ -82,6 +82,25 @@ export async function openDisputes(limit = 50): Promise<IndexedDispute[]> {
   return rows.map(shape);
 }
 
+/**
+ * Every open dispute on a passport this wallet holds, oldest first, so the
+ * challenge with the least time left to answer leads. The index writes the
+ * holder lowercased on every transfer; each row is checked against the chain
+ * before anything is offered on it.
+ */
+export async function openDisputesHeldBy(holder: Hex, limit = 12): Promise<IndexedDispute[]> {
+  const rows = await ask(
+    `query OpenDisputesHeldBy($status: Int!, $holder: String!, $limit: Int!) {
+      Dispute(where: { status: { _eq: $status }, passport: { owner: { _eq: $holder } } }, order_by: { openedAt: asc }, limit: $limit) {
+        ${FIELDS}
+      }
+    }`,
+    { status: DISPUTE_OPEN, holder: holder.toLowerCase(), limit },
+  );
+
+  return rows.map(shape);
+}
+
 /** The dispute on one passport, or null when the index has not seen one. */
 export async function indexedDispute(passportId: Hex): Promise<IndexedDispute | null> {
   const rows = await ask(

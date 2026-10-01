@@ -1,27 +1,16 @@
-import { getFormatter, getTranslations } from "next-intl/server";
-import { formatEther, type Hex } from "viem";
-import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
+import type { Hex } from "viem";
 import { DisputeStatus, type Dispute } from "@/lib/chain/registry";
+import { readAnswer } from "@/lib/disputes/answerService";
+import { decisionView, readDecision, resolvedAtFromChain, type DecisionView } from "@/lib/disputes/decisions";
 import { evidenceMatches, reasonFrom } from "@/lib/disputes/evidence";
-import { indexAvailable, indexedDispute } from "@/lib/disputes/indexed";
-import { Link } from "@/lib/i18n/routing";
-import { Mono } from "./Mono";
-
-const STATUS_NAMES: Record<number, string> = {
-  [DisputeStatus.Open]: "open",
-  [DisputeStatus.Upheld]: "upheld",
-  [DisputeStatus.Rejected]: "rejected",
-};
-
-/** What the challenger said, when the index has it and the chain's hash agrees. */
-interface Evidence {
-  reason: string | null;
-  uri: string | null;
-}
+import { indexAvailable, indexedDispute, type IndexedDispute } from "@/lib/disputes/indexed";
+import { answerStanding, chainNow } from "@/lib/disputes/standing";
+import { ChallengeRecord, type ChallengeEvidence } from "@/components/challenge/ChallengeRecord";
+import { DecisionBlock } from "@/components/challenge/DecisionBlock";
 
 /**
- * A challenge against this passport, with the bond behind it and the words the
- * challenger put their money on.
+ * A challenge against this passport, with the bond behind it, the words the
+ * challenger put their money on and the holder's answer.
  *
  * Only shown when there is one: a passport nobody has challenged says nothing
  * here rather than printing an empty dispute box, which would read like an
@@ -30,97 +19,68 @@ interface Evidence {
  * The reason lives in the evidence URI, which the registry keeps only as a
  * hash, so it is read from the index and then checked against that hash. An
  * index that is behind, missing or wrong costs the sentence and never the box.
+ * The holder's answer comes from the verify service and is checked again here
+ * against this dispute and the holder's signature before a word of it is drawn.
+ * A settled dispute carries its decision and the reasons Moolam published.
  */
 export async function DisputeNote({
   dispute,
   passportId,
-  locale,
 }: {
   dispute: Dispute;
   passportId: Hex;
   locale: string;
 }) {
-  const t = await getTranslations("passport.dispute");
-  const format = await getFormatter({ locale });
-  const status = STATUS_NAMES[dispute.status] ?? "open";
-  const evidence = await evidenceFor(passportId, dispute.evidenceHash);
+  const [row, read, now] = await Promise.all([
+    indexedRow(passportId),
+    readAnswer(passportId),
+    chainNow(),
+  ]);
+  const [answer, decision] = await Promise.all([
+    answerStanding({ read, passportId, dispute, now }),
+    decisionOf(passportId, dispute, row),
+  ]);
 
   return (
-    <section className="border-s-2 border-disputed bg-disputed/5 p-6 sm:p-8">
-      <p className="font-mono text-[11px] uppercase tracking-[0.24em] text-disputed">{t("kicker")}</p>
-      <h2 className="mt-4 max-w-[24ch] font-display text-[clamp(1.3rem,2.4vw,1.9rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
-        {t(`status.${status}`)}
-      </h2>
-      <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
-
-      {evidence !== null && evidence.reason !== null ? (
-        <figure className="mt-7 max-w-[58ch] border-s-2 border-disputed/60 ps-5">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("reason")}</p>
-          <blockquote className="mt-2.5 text-base leading-relaxed text-text">{evidence.reason}</blockquote>
-        </figure>
-      ) : null}
-
-      {evidence !== null && evidence.reason === null && evidence.uri !== null ? (
-        <p className="tap-row mt-7 max-w-[58ch] text-base leading-relaxed text-text-muted">
-          {t("evidenceElsewhere")}{" "}
-          <a
-            href={evidence.uri}
-            target="_blank"
-            rel="noreferrer"
-            className="break-all underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent"
-          >
-            {evidence.uri}
-          </a>
-        </p>
-      ) : null}
-
-      <dl className="mt-7 grid gap-x-8 gap-y-5 border-t border-line pt-5 sm:grid-cols-3">
-        <div className="min-w-0">
-          <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("challenger")}</dt>
-          <dd className="tap-row mt-1.5 break-all font-mono text-sm">
-            <a
-              href={`${MONAD_EXPLORER}/address/${dispute.challenger}`}
-              target="_blank"
-              rel="noreferrer"
-              className="transition-colors duration-200 hover:text-accent"
-            >
-              {shortHex(dispute.challenger)}
-            </a>
-          </dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("bond")}</dt>
-          <dd className="mt-1.5 font-mono text-sm">{t("mon", { amount: formatEther(dispute.bond) })}</dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint">{t("openedAt")}</dt>
-          <dd className="mt-1.5 font-mono text-sm">
-            {format.dateTime(new Date(Number(dispute.openedAt) * 1000), "moment")}
-          </dd>
-        </div>
-      </dl>
-
-      <p className="tap-row mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-base leading-relaxed">
-        <span aria-hidden className={dispute.status === DisputeStatus.Open ? "motif h-2 w-2 motion-safe:animate-pulse bg-disputed" : "motif h-2 w-2 bg-disputed"} />
-        <span className={dispute.status === DisputeStatus.Open ? "text-text-muted" : "text-text"}>
-          {dispute.status === DisputeStatus.Open ? t("waiting") : t(`outcome.${status}`)}
-        </span>
-        {/* The way from a challenged record to the desk that settles it. The
-            console turns everybody but the resolver away by itself, so nobody
-            is kept from seeing where the decision is made. */}
-        <Link
-          href="/resolve"
-          className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint underline decoration-line underline-offset-4 transition-colors duration-200 hover:text-accent hover:decoration-accent"
-        >
-          {t("console")}
-        </Link>
-      </p>
-
-      <p className="mt-6 font-mono text-[11px] text-text-faint">
-        {t("evidence")} <Mono value={dispute.evidenceHash} />
-      </p>
-    </section>
+    <ChallengeRecord
+      passportId={passportId}
+      dispute={dispute}
+      evidence={evidenceOf(row, dispute.evidenceHash)}
+      answer={answer}
+      decision={decision === null ? null : <DecisionBlock view={decision} />}
+    />
   );
+}
+
+/**
+ * The decision for a settled dispute: its published reasons, and the day it was
+ * settled, from the index's row when that row is this very dispute, else from
+ * the registry's own DisputeResolved event.
+ */
+async function decisionOf(passportId: Hex, dispute: Dispute, row: IndexedDispute | null): Promise<DecisionView | null> {
+  if (dispute.status !== DisputeStatus.Upheld && dispute.status !== DisputeStatus.Rejected) {
+    return null;
+  }
+  const openedAt = Number(dispute.openedAt);
+  const indexedAt =
+    row !== null && row.openedAt === dispute.openedAt && row.resolvedAt !== null ? Number(row.resolvedAt) : null;
+  const [read, resolvedAt] = await Promise.all([
+    readDecision(passportId, openedAt),
+    indexedAt === null ? resolvedAtFromChain(passportId) : Promise.resolve(indexedAt),
+  ]);
+  return decisionView(dispute, read, resolvedAt);
+}
+
+/** The index's row for this passport's dispute, or null when the index is missing, behind or down. */
+async function indexedRow(passportId: Hex): Promise<IndexedDispute | null> {
+  if (!indexAvailable()) {
+    return null;
+  }
+  try {
+    return await indexedDispute(passportId);
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -131,21 +91,9 @@ export async function DisputeNote({
  * from a mirror next to an accusation without proving it is the text that was
  * hashed would let a wrong index put words in somebody's mouth.
  */
-async function evidenceFor(passportId: Hex, hash: Hex): Promise<Evidence | null> {
-  if (!indexAvailable()) {
+function evidenceOf(row: IndexedDispute | null, hash: Hex): ChallengeEvidence | null {
+  if (row === null || !evidenceMatches(row.evidenceURI, hash)) {
     return null;
   }
-
-  try {
-    const row = await indexedDispute(passportId);
-    if (row === null || !evidenceMatches(row.evidenceURI, hash)) {
-      return null;
-    }
-    return {
-      reason: reasonFrom(row.evidenceURI),
-      uri: row.evidenceURI,
-    };
-  } catch {
-    return null;
-  }
+  return { reason: reasonFrom(row.evidenceURI), uri: row.evidenceURI };
 }
