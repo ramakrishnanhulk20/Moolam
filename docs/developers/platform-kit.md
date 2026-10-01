@@ -11,11 +11,14 @@ maker. It is a TypeScript package for the company's server, `@moolam/platform`, 
 Moolam's verify service that sign the C2PA manifest, fingerprint the picture and hand back the
 passport fields.
 
-> **Not live yet.** The routes, the package and the MCP server are in the code and tested, and they
-> go live with the next deploy of the verify service. Until then, `https://<verify-service>` on this
-> page is a placeholder for its address. Moolam's platform list is empty today, so every platform key
-> is refused until the first signed entry is committed. The package is private to this repository
-> and not on npm yet.
+> **What is live today.** The verify service at `https://verifier-production-d76f.up.railway.app`
+> runs the four `/platform` routes and the MCP server, and `https://<verify-service>` on this page
+> stands for that address. Moolam's platform list has one entry, Dreamloom, the demo platform at
+> `https://dreamloom-production-3e74.up.railway.app`, which registers its pictures through the kit.
+> **Not live yet:** the email claim routes (`/claims` and `/platform/deliveries`), the confirmed
+> credit described below, and the co-sign and connect pages on `moolam.vercel.app`. The routes and
+> the credit go live with the next deploy of the verify service, and the pages with the next deploy
+> of the web app. The package is private to this repository and not on npm yet.
 
 ## The two modes
 
@@ -28,14 +31,14 @@ passport credits them from the first block.
 | Who signs for the agent that drew it | Your agent's owner key | Your agent's owner key |
 | Who sends the transaction and pays | The person's Moolam wallet, with the fee paid by Moolam | Your wallet |
 | Who holds the passport first | The person | Your wallet, for the person, until they claim it |
-| Who Moolam credits | The person, from the first block | Nobody while you hold it; the holder once the person claims it |
-| What it needs from the person | Opening a link, signing in, one passkey signature | Nothing now; an address when they claim it |
+| Who Moolam credits | The person, from the first block | Nobody while you hold it, nor after you hand it on. The first person you hand it to, once they confirm it by stating their own AI-use terms from their wallet |
+| What it needs from the person | Opening a link, signing in, one passkey signature | Nothing now. Later, signing in to Moolam with the email you sent, or giving you an address, and one confirm |
 | Pick it when | The person can give one passkey signature, which is almost always | You generate at volume, or your users have no Moolam account yet |
 
 In co-sign mode your server prepares the picture and your agent signs, and the person finishes it on
 a page at `https://moolam.vercel.app/cosign#<handle>`. The handle travels after the `#`, so it never
-reaches a server log, an analytics tool or a `Referer` header. The co-sign page ships with the same
-deploy that turns the kit on.
+reaches a server log, an analytics tool or a `Referer` header. The co-sign page ships with the next
+deploy of the web app.
 
 In platform mode you register the picture at once and hold the passport for the person until they
 claim it. One company holds both keys the registry asks for. The chain records the same fields it
@@ -313,8 +316,9 @@ status success.
 
 ### Handing a passport to a person
 
-This is how the person claims a platform-mode passport you hold for them. From then on Moolam credits
-them as the person who imagined it, on your word that the right person claimed it
+This is how the person claims a platform-mode passport you hold for them when they give you an
+address. The hand-over alone credits nobody: the passport reads `handed` until the first wallet you
+hand it to states its own AI-use terms, and only then names that person as the one who imagined it
 ([how the credit reads](#how-moolam-credits-a-platform-picture)).
 
 ```ts
@@ -553,6 +557,7 @@ export { register };
 | `passport-taken` | Another passport already holds this picture |
 | `transaction-failed` | A transaction would revert, so it was not sent, or it reverted |
 | `consent-failed` | The passport is registered and the terms are not. Send `setConsent` again |
+| `delivery-failed` | The passport and its terms are on chain, and the hand-over to a person's standing choice did not land. `details` carries the passport id and both transactions. The passport waits in your wallet and the delivery worker hands it over on a later poll |
 | `refused-recipient`, `not-holder` | A transfer the kit will not make |
 
 ## Limits
@@ -614,9 +619,9 @@ wallet handed it to, and who wrote each of its AI-use statements. It gives one o
 | --- | --- | --- | --- |
 | `held` | `platformLabel` gives your platform's kit label, and the passport has never left your wallet | "Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it." | The picture was drawn on your platform and registered through the kit. Nobody is named yet |
 | `handed` | The kit label; your wallet handed the passport on, and the first wallet it went to has written no AI-use terms of its own | "Drawn on *platform* and handed to *holder*, who has not confirmed it." with a note that nobody is credited until the person it was handed to states their own terms | Your wallet handed the passport to that address. A hand-over is your act, not theirs, so nobody is credited yet |
-| `confirmed` | The kit label; the first wallet you handed it to wrote its own terms on it, and still holds it | "Imagined by *person*. Drawn on *platform*, which handed the passport to them. They confirmed it on *date*." with a note that the credit rests on your word that this account asked for the picture and on their own confirmation, and that their key did not sign the picture | Your hand-over, then a statement from the person's own wallet. That they wrote the prompt is your word, which they confirmed |
+| `confirmed` | The kit label; the first wallet you handed it to wrote its own terms on it, and still holds it | "Imagined by *person*. Drawn on *platform*, which handed the passport to them. They confirmed it on *date*." with a note that the credit rests on your statement that this account asked for the picture and on their own confirmation, and that their key did not sign the picture | Your hand-over, then a statement from the person's own wallet. That they wrote the prompt is your word, which they confirmed |
 | `passedOn` | As `confirmed`, and someone else holds the passport now | "Imagined by *person*. Now held by *holder*." | The credit stays with the first recipient who confirmed. A later holder is named only as holding it |
-| `cosigned` | No kit label, because the creator is not a listed wallet; the passport is Generated, carries a manifest and names a current entry's agent; it was registered inside that entry's window; and the agent's owner read now is the owner that signed the entry | "Imagined by *creator*. Drawn by *platform*'s agent." with a note that a key bound to their own wallet approved this exact picture | A passkey bound to the person's own wallet signed this picture's fingerprint. The credit rests on their key, not on your word, which is why co-sign is the main path |
+| `cosigned` | No kit label, because the creator is not a listed wallet; the passport is Generated, carries a manifest and names a current entry's agent; it was registered inside that entry's window; and the agent's owner read now is the owner that signed the entry | "Imagined by *creator*. Drawn by *platform*'s agent." with a note that a key bound to their own wallet approved this exact picture | A passkey bound to the person's own wallet signed this picture's fingerprint. The credit rests on their key, not on anything you say, which is why co-sign is the main path |
 
 Only the first wallet you hand a passport to can ever be credited, and only once that wallet has
 written its own terms. Terms your own wallet stated at registration never count, and neither do a

@@ -87,7 +87,7 @@ resizing, rotation or mirroring. The same matching and facts as [`POST /verify`]
 | `title`, `titleRead` | The title from that document, read through Moolam's gateway, or `null` with `titleRead: "unavailable"` |
 | `platform` | `{ status, name, creatorWallet, agentId }` when a listed platform's wallet registered it: `kit` when it went through the [platform kit](platform-kit#what-the-label-on-a-passport-means), `outsideKit` when that wallet registered it some other way. `null` otherwise |
 | `platformList` | `loaded`, or `unavailable` when Moolam's list did not load and no label can be given |
-| `credit` | `{ case, platform, imaginedBy }` for a picture drawn on a listed platform, or `null`. `case` is `unclaimed`, `claimed` or `cosigned`; `platform` is the listed name of where it was drawn; `imaginedBy` is the address of the person who imagined it, or `null` while the platform still holds it. Decided by the same rule as the site, [`creditFor`](platform-kit#how-moolam-credits-a-platform-picture) |
+| `credit` | `{ case, platform, imaginedBy }` for a picture drawn on a listed platform, plus `heldBy` and `confirmedAt` in the cases that carry them, or `null`. `case` is `held`, `handed`, `confirmed`, `passedOn` or `cosigned`; `platform` is the listed name of where it was drawn; `imaginedBy` is the address of the person who imagined it, or `null` while nobody is credited; `heldBy` is who holds it now; `confirmedAt` is the unix second the first recipient confirmed. Decided by the same rule as the site, [`creditFor`](platform-kit#how-moolam-credits-a-platform-picture) |
 | `readAt` | When this answer was read |
 
 **Presenting `credit`.** Credit the person, and name the platform only as where the picture was
@@ -95,8 +95,10 @@ drawn. Never call the platform its maker or creator.
 
 | `case` | Say it like this | And say |
 | --- | --- | --- |
-| `unclaimed` | Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it | No person is named yet. Do not credit the platform |
-| `claimed` | Imagined by *imaginedBy*. Drawn on *platform*, which handed the passport to them | The credit rests on the platform's handover: the chain shows who it was handed to, not who wrote the prompt |
+| `held` | Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it | The platform's wallet has never let it go. No person is named yet. Do not credit the platform |
+| `handed` | Drawn on *platform* and handed to *heldBy*, who has not confirmed it | The platform handed it on and the first wallet it went to has stated no terms of its own. Nobody is credited, the holder included |
+| `confirmed` | Imagined by *imaginedBy*. Drawn on *platform*, which handed the passport to them. They confirmed it on *confirmedAt* | The first wallet the platform handed it to wrote its own AI-use terms and still holds it. The credit rests on the platform's hand-over and the person's own statement; their key did not sign the picture |
+| `passedOn` | Imagined by *imaginedBy*. Now held by *heldBy* | The first recipient confirmed, and someone else holds it now. Name the later holder only as holding it |
 | `cosigned` | Imagined by *imaginedBy*. Drawn by *platform*'s agent | A key bound to their own wallet approved this exact picture |
 
 A `null` credit is not a finding against anyone. It means the picture was not drawn on a listed

@@ -4,13 +4,15 @@ title: Verifier endpoints
 
 # Verifier endpoints
 
-Twenty routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
+Twenty-seven routes. Everything is JSON, including errors and 404s, except that `/mcp` may answer a
 tool call as a short event stream. The service listens on `VERIFIER_PORT`, which defaults to 4000.
-Thirteen of the twenty are mounted only when the host is configured for them: `/verify/paid` needs
+Twenty of the twenty-seven are mounted only when the host is configured for them: `/verify/paid` needs
 `X402_ENABLED`, `/prepare` needs a Pinata token and a Privy app id, `/generate` and `/edit` each need
 those plus their own keys, the two `/unseal` routes and the three `/sealed` routes need exactly what
 `/prepare` needs, and the four `/platform` routes need that plus `PRIVY_APP_SECRET` and a platform
-list that loads. An unmounted route answers `404` like any other path that does not exist. The four
+list that loads. The five `/claims` routes and the two `/platform/deliveries` routes are mounted
+with the `/platform` routes, and answer `503` `claims-unavailable` until the host has both
+`CLAIM_PEPPER` and `CLAIM_PEPPER_VERSION`. An unmounted route answers `404` like any other path that does not exist. The four
 `/recheck` routes and `/mcp` are mounted on every host, and the three `/recheck` routes the runner
 uses answer `503` until `RUNNER_TOKEN` is set. `/sealed/link` answers `503` until
 `SEALED_LINK_TOKEN` is set.
@@ -1784,6 +1786,219 @@ token. `digest` is in the answer only for the platform's key.
 line carries a handle, and their refusals are logged without the URL. The handle is compared in
 constant time, stored only as its sha256, and dies with its deadline (P4). Records are removed a day
 after their deadline.
+
+## GET /platform/deliveries
+
+The platform's delivery worker reads it to learn which passports people accepted and where each
+goes. A ticket exists only after a platform-mode `/platform/prepare` that carried a `deliverTo`
+field; the guide is [Leaving a passport for a person's email](../developers/platform-kit#leaving-a-passport-for-a-persons-email),
+and `runDeliveries` in `@moolam/platform` calls this route for you. Not live until the next deploy.
+
+**Who may call.** A platform, with its key. **Headers.** `Authorization: Bearer <platform key>`.
+**Request.** No body.
+
+**Response.** `200`:
+
+```ts
+{
+  deliveries: {
+    ticketId: string,           // 32 hex characters
+    passportId: `0x${string}`,
+    destination: `0x${string}`  // the person's Moolam wallet, checksummed
+  }[]
+}
+```
+
+Only this key's accepted tickets whose `ownerOf`, read on chain at that moment, is still the
+platform's wallet, oldest accepted first. The service reads the 64 oldest and lists at most 32 of
+them. A ticket whose holder could not be read is left out of this answer, never guessed. Every
+destination is checked again on the way out: never the zero address, the registry, the ticket's
+platform wallet or any listed platform's wallet (P31). Moolam marks a ticket delivered by itself,
+when the chain shows the destination holding the passport; the worker says nothing on success.
+
+| Code | When |
+| --- | --- |
+| `200` | The list, which may be empty |
+| `401` | `unauthorized`: no key, or one no current entry holds |
+| `503` | `claims-unavailable`: the host has no claim pepper, or the ticket file could not be read |
+
+## POST /platform/deliveries/:ticketId/failed
+
+The worker gives up on a hand-over. The ticket moves from accepted to failed, is never listed again,
+and the person's page says the platform could not hand it over (P34). Not live until the next deploy.
+
+**Who may call.** A platform, with the key that wrote the ticket. **Headers.**
+`Authorization: Bearer <platform key>`. **Request.** No body; the ticket id is in the path.
+
+**Response.** `200` with `{ "ticketId": "<id>", "state": "failed" }`.
+
+| Code | When |
+| --- | --- |
+| `200` | The ticket is now failed |
+| `401` | `unauthorized` |
+| `404` | `not-found`: not a ticket id, no such ticket, or another key's ticket, which answers like an unknown one |
+| `409` | `not-accepted`: the ticket is not waiting for a hand-over, for example because it was delivered |
+| `503` | `claims-unavailable` |
+
+## The claims routes
+
+Five routes a person's browser calls from My pictures on the Moolam web app, to see what platforms
+hold for their verified email and to answer. The guide is
+[Leaving a passport for a person's email](../developers/platform-kit#leaving-a-passport-for-a-persons-email),
+and the standards are in the [threat model](../security/threat-model#claim-with-your-email). Not live
+until the next deploy.
+
+**Who may call.** A person signed in to Moolam. **Headers.** `Authorization: Bearer <Privy access
+token>`, checked as under [`/prepare`](#post-prepare), and `Content-Type: application/json` on a
+body. The service reads the person's addresses from Privy's own record of them, server-side, never
+from the request: the email account and the Google account's email, each with Privy's verified time.
+Each is hashed by the same rule a platform's address went through, and a ticket is the person's only
+when its hash is one of theirs (P28, P32). No answer, refusal or log line carries an address or its
+hash (P29).
+
+**The order of checks, on all five.** The claim pepper (else `503` `claims-unavailable`), the token
+(else `401` `unauthorized`), the body (else `400` with the name of the first field it failed on, or
+`body` for a key the route does not read), the person's and the address's daily allowance and the
+ceiling for everyone (else `429`), then Privy's record (else `502` `privy-unavailable`). A ticket file
+that cannot be read answers `503` `claims-unavailable`, never a guess.
+
+**Limits.** 500 calls a day per Privy user and 1,000 per address, together across the five routes,
+and `CLAIM_REQUESTS_PER_DAY` for everyone, 20,000 by default; `0` closes the routes. The service's
+60 requests a minute per address holds here too. One accept or
+refuse names at most 32 tickets, `setConsentBatch`'s cap, each once. Every answer carries
+`Cache-Control: no-store`.
+
+### GET /claims
+
+**Request.** No body.
+
+**Response.** `200`:
+
+```ts
+{
+  offers: {                       // open tickets, newest first, at most 100; none from a platform this person muted
+    ticketId: string,
+    passportId: `0x${string}`,
+    platform: { name: string, keyHash: `0x${string}` },
+    verifiedBy: "google" | "email-code" | "platform",   // the platform's own word, shown as its claim
+    preview: { title: string, image: string } | null,   // image is ipfs://<cid>; null shows "No preview"
+    createdAt: number
+  }[],
+  waiting: {                      // accepted, delivered or failed, newest accepted first, at most 100
+    ticketId: string,
+    passportId: `0x${string}`,
+    platform: { name: string, keyHash: `0x${string}` },
+    state: "accepted" | "delivered" | "failed",
+    destination: `0x${string}`,
+    terms: { aiTraining, aiGenerativeTraining, aiInference, dataMining, constraintInfo }  // exactly as accepted
+  }[],
+  standing: { platform: { name, keyHash }, destination: `0x${string}` }[],
+  muted: { platform: { name, keyHash } }[]
+}
+```
+
+A preview is read only through the pinned-content rule: a bare IPFS content id through Moolam's
+gateway, a title of one printable line up to 120 code points, and a thumbnail that is itself a
+content id. Anything else, a read that fails, or one that takes more than five seconds, is `null`
+(P36).
+
+| Code | When |
+| --- | --- |
+| `200` | The lists, any of which may be empty |
+| `401`, `429`, `502`, `503` | As in the order of checks above |
+
+### POST /claims/accept
+
+"These are mine". Accepts the named tickets for the person's Moolam wallet, all or none.
+
+**Request.**
+
+```ts
+{
+  ticketIds: string[],     // 1 to 32 ticket ids, each once
+  terms: {                 // every field required; the consent contract's own rule
+    aiTraining: "unspecified" | "allowed" | "notAllowed" | "constrained",
+    aiGenerativeTraining: "unspecified" | "allowed" | "notAllowed" | "constrained",
+    aiInference: "unspecified" | "allowed" | "notAllowed" | "constrained",
+    dataMining: "unspecified" | "allowed" | "notAllowed" | "constrained",
+    constraintInfo: string // "" unless a use is constrained, then 1 to 256 printable ASCII bytes
+  },
+  sendFuture: boolean      // true: this wallet and these terms stand for each platform named
+}
+```
+
+The wallet is the first embedded Ethereum wallet in the person's Privy record, never a value in the
+body (P31). The terms are stored unchanged and later written by the person's own `setConsentBatch`
+(P37).
+
+**Response.** `200` with `{ "accepted": ["<ticket id>", ...], "destination": "0x..." }`.
+
+| Code | When |
+| --- | --- |
+| `200` | Every named ticket is accepted |
+| `400` | `ticketIds`, `terms`, `sendFuture` or `body`: the field that failed |
+| `401` | `unauthorized` |
+| `403` | `no-wallet`: the person has no embedded wallet yet. `destination`: that wallet is the registry, the ticket's platform wallet or a listed platform's wallet |
+| `404` | `not-found`: an id that is not one of this person's tickets, unknown, or another person's. The whole request is refused |
+| `409` | `not-open`: a named ticket was already answered, here or in another window. `record-refused`: the store refused the step |
+| `429` | `limit` or `global-limit`, as above. `full`: the service's list of standing choices is full |
+| `502` | `privy-unavailable` |
+| `503` | `claims-unavailable` |
+
+### POST /claims/refuse
+
+"Not mine". Refuses the named tickets for good, all or none. Each refusal also mutes that platform
+for this person's address until they allow it again, clears any standing choice for it, and counts
+against the platform's key: a key with at least 10 refusals, more than one in four of its tickets,
+stops writing tickets (P26, P38).
+
+**Request.** `{ "ticketIds": ["<ticket id>", ...] }`, 1 to 32, each once.
+
+**Response.** `200` with `{ "refused": ["<ticket id>", ...] }`.
+
+| Code | When |
+| --- | --- |
+| `200` | Every named ticket is refused |
+| `400` | `ticketIds` or `body` |
+| `401` | `unauthorized` |
+| `404` | `not-found`, as under accept |
+| `409` | `not-open` or `record-refused` |
+| `429` | `limit` or `global-limit`. `full`: the service's list of mutes is full |
+| `502` | `privy-unavailable` |
+| `503` | `claims-unavailable` |
+
+### POST /claims/unmute
+
+"Allow again". Lets a platform this person refused offer them pictures again.
+
+**Request.** `{ "platformKeyHash": "0x..." }`, the `keyHash` from `muted` in `GET /claims`: `0x` and
+64 hex characters.
+
+**Response.** `200` with `{ "ok": true }`, also when there was nothing to remove.
+
+| Code | When |
+| --- | --- |
+| `200` | Done |
+| `400` | `platformKeyHash` or `body` |
+| `401` | `unauthorized` |
+| `409` | `record-refused` |
+| `429`, `502`, `503` | As in the order of checks above |
+
+### DELETE /claims/standing/:platformKeyHash
+
+"Stop". Ends a standing choice, so that platform's future pictures wait for an answer again.
+
+**Request.** No body; the platform's `keyHash` from `standing` in `GET /claims` is in the path.
+
+**Response.** `200` with `{ "ok": true }`, also when there was nothing to remove.
+
+| Code | When |
+| --- | --- |
+| `200` | Done |
+| `400` | `platformKeyHash`: the path is not `0x` and 64 hex characters |
+| `401` | `unauthorized` |
+| `409` | `record-refused` |
+| `429`, `502`, `503` | As in the order of checks above |
 
 ## POST /mcp
 
