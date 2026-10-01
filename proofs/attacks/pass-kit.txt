@@ -1,0 +1,456 @@
+MOOLAM ATTACK PASS: THE PLATFORM KIT, THE MCP SERVER AND DREAMLOOM (WO-254)
+============================================================================
+
+What this is: every invariant the platform kit (P) and the MCP server (M) promise, and
+Dreamloom's D1 to D7, attacked from outside against the deployed services. Invariants are in
+docs/security/threat-model.md and kitchen/research/platform-kit-threat-model.md (P1 to P25,
+M1 to M6) and PLAN.md 9.3 (D1 to D7). Each attack prints what was sent, with keys, handles and
+session values shown as placeholders, and the answer's status and error word.
+
+date          2026-09-30T13:13:04.387Z
+commit        9d378fdc9809788b6ab866aba01348b4733572a1 (the script is not committed yet)
+chain         Monad mainnet, chain 143, block 109,330,915 at unix 1790773986
+verifier      https://verifier-production-d76f.up.railway.app
+dreamloom     https://dreamloom-production-3e74.up.railway.app
+web           http://localhost:3210, the Moolam dev server on this machine: the web app is not pushed yet, so
+              the co-sign and connect page headers are read from the dev server, not moolam.vercel.app
+platform      Dreamloom, agent 10273, creator wallet 0x80819a894AAa89e0346b715bEb897A7c2fda3F44 (ownerOf read on chain: the same)
+
+Spend: one co-sign prepare (3a: a C2PA signing and files frozen on the verify service's volume,
+nothing pinned, no gas) and one Dreamloom weave (5a, about a cent). No transaction is sent.
+Every other prepare carries 2 KB of random bytes that are not a picture, so a check that failed
+open would stop at the image check (415) instead of reaching the signer, and would show here.
+Requests go out one at a time, 2.2 seconds apart, with a pause between groups.
+
+STEP 2. THE PLATFORM ROUTES
+---------------------------
+2a  P7  POST /platform/prepare with no Authorization header
+      sent: a co-sign prepare signed by the agent owner, no key
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2b  P7  POST /platform/prepare with a wrong key
+      sent: Bearer and 64 random hex characters, a key never issued
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2c  P7  POST /platform/prepare with the real key in the query string only
+      sent: ?key=<platform key>&authorization=Bearer <platform key>, no header
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2d  P19  POST /platform/prepare, PlatformPrepare signed by 0x2B876C732D00CeAfcb522320e7fe35439ED98e35, not the owner of agent 10273
+      sent: the real key, a fresh nonce, issuedAt from chain time, a stranger's EIP-712 signature
+      answer: 403, error agent-signature-refused, cache-control no-store
+      REFUSED
+2e  P19  control: a valid PlatformPrepare from the agent owner over 2 KB that is not a picture
+      sent: the real key, a fresh nonce, issuedAt from chain time, the owner's signature
+      answer: 415, error not-an-image: the signature and nonce were accepted, the bytes were not a picture, nothing was signed or pinned
+      PASSED
+2f  P19  POST /platform/prepare, the same request again: same nonce, same bytes, same signature
+      sent: an exact replay of 2e inside the ten minute window
+      answer: 409, error replayed, cache-control no-store
+      REFUSED
+2g  P19  POST /platform/prepare, the same picture with a fresh nonce and a fresh owner signature
+      sent: 2e's bytes again, a new nonce, a new valid signature, inside the window
+      answer: 409, error same-picture, cache-control no-store
+      REFUSED
+2h  P12  POST /platform/prepare with issuedAt eleven minutes before chain time
+      sent: the real key, the owner's valid signature over that issuedAt
+      answer: 403, error prepare-expired, cache-control no-store
+      REFUSED
+2i  P12  POST /platform/prepare with issuedAt an hour ahead of chain time
+      sent: the real key, the owner's valid signature over that issuedAt
+      answer: 403, error prepare-expired, cache-control no-store
+      REFUSED
+2j  P18  POST /platform/prepare, a platform-mode body naming another creator
+      sent: the real key, the owner's valid signature, creator=0xfA22d801f9b36CD40F814Eff317979Bb085f3C90
+      answer: 403, error platform-mismatch, cache-control no-store
+      REFUSED
+2k  P18  POST /platform/prepare, a platform-mode body naming another wallet
+      sent: the real key, the owner's valid signature, wallet=0xfA22d801f9b36CD40F814Eff317979Bb085f3C90
+      answer: 403, error platform-mismatch, cache-control no-store
+      REFUSED
+2l  P18  POST /platform/prepare, a co-sign body naming a creator (Dreamloom's own wallet)
+      sent: the real key, the owner's valid signature, creator=0x80819a894AAa89e0346b715bEb897A7c2fda3F44
+      answer: 403, error platform-mismatch, cache-control no-store
+      REFUSED
+2m  P9  POST /platform/prepare with a 257-byte condition
+      sent: the real key, the owner's valid signature, training {aiTraining: constrained, constraintInfo: a 257-byte condition}
+      answer: 400, error training.constraintInfo: constraintInfo must be at most 256 bytes, cache-control no-store
+      REFUSED
+2n  P9  POST /platform/prepare with a non-ASCII condition
+      sent: the real key, the owner's valid signature, training {aiTraining: constrained, constraintInfo: a non-ASCII condition}
+      answer: 400, error training.constraintInfo: constraintInfo must be printable ASCII between 0x20 and 0x7E, wit..., cache-control no-store
+      REFUSED
+
+Handles: a random text, a malformed handle (31 hex characters) and a well-formed unknown one
+(32 fresh hex characters), on the three handle routes, with no credential and with a Privy-shaped
+ES256 token signed by a key made on the spot (no real Privy token is held by this script).
+2o  P4  GET /platform/record/<random handle> with no credential
+      sent: random handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2p  P4  POST /platform/sign/<random handle> with no credential
+      sent: random handle, body {signature: 0x11...11}
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2q  P4  GET /platform/status/<random handle> with no credential
+      sent: random handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2r  P4  GET /platform/record/<random handle> with a forged Privy token
+      sent: random handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2s  P4  POST /platform/sign/<random handle> with a forged Privy token
+      sent: random handle, body {signature: 0x11...11}
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2t  P4  GET /platform/status/<random handle> with a forged Privy token
+      sent: random handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2u  P4  GET /platform/record/<malformed handle> with no credential
+      sent: malformed handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2v  P4  POST /platform/sign/<malformed handle> with no credential
+      sent: malformed handle, body {signature: 0x11...11}
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2w  P4  GET /platform/status/<malformed handle> with no credential
+      sent: malformed handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2x  P4  GET /platform/record/<malformed handle> with a forged Privy token
+      sent: malformed handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2y  P4  POST /platform/sign/<malformed handle> with a forged Privy token
+      sent: malformed handle, body {signature: 0x11...11}
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2z  P4  GET /platform/status/<malformed handle> with a forged Privy token
+      sent: malformed handle
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2aa  P4  GET /platform/record/<well-formed unknown handle> with no credential
+      sent: well-formed unknown handle
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2ab  P4  POST /platform/sign/<well-formed unknown handle> with no credential
+      sent: well-formed unknown handle, body {signature: 0x11...11}
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2ac  P4  GET /platform/status/<well-formed unknown handle> with no credential
+      sent: well-formed unknown handle
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2ad  P4  GET /platform/record/<well-formed unknown handle> with a forged Privy token
+      sent: well-formed unknown handle
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2ae  P4  POST /platform/sign/<well-formed unknown handle> with a forged Privy token
+      sent: well-formed unknown handle, body {signature: 0x11...11}
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2af  P4  GET /platform/status/<well-formed unknown handle> with a forged Privy token
+      sent: well-formed unknown handle
+      answer: 401, error unauthorized, cache-control no-store
+      REFUSED
+2ag  P4  POST /platform/sign/<well-formed unknown handle> with Dreamloom's real key
+      sent: the real key, a well-formed signature from the agent owner over a random hash
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+2ah  P4  GET /platform/status/<well-formed unknown handle> with Dreamloom's real key
+      sent: the real key
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+
+STEP 3. THE POSITIVE CONTROL: ONE REAL CO-SIGN PREPARE, THEN A WRONG SIGNER
+--------------------------------------------------------------------------
+3a  P19  control: POST /platform/prepare, co-sign mode, a fresh 11129 byte 640x480 JPEG, signed by the agent owner
+      sent: the real key, a fresh nonce, issuedAt from the latest block, the owner's EIP-712 signature, no terms
+      answer: 200, mode cosign, handle <handle> (32 hex characters), passport 0xa63a97e0b1b6ea3852ffb4fb319f216c51cd3e95d25f4c545d5b31d539221226, openBy 1790775878, cache-control no-store
+      PASSED
+3b  P5   POST /platform/sign/<handle> with a signature from 0xAe7f378239Ca5a07928450187257473aB17845C1, not the owner of agent 10273
+      sent: the real key, {signature: a 65 byte signature from a key made on the spot}
+      answer: 409, error awaiting-creator, cache-control no-store
+      then GET /platform/status/<handle> with the key: 200, state awaiting-creator, agentSignature absent
+      not covered: the signature recovery itself (403 agent-signature-refused) runs only once a person's
+      verified Privy session has set the creator; this record has none, so the refusal came at the state check
+      REFUSED
+3c  P4  GET /platform/record/<the real handle> with no credential, against the unknown handle's answer in step 2
+      sent: the live handle from 3a, no key, no token
+      answer: 401, error unauthorized, cache-control no-store, byte for byte the unknown handle's answer
+      REFUSED
+3d  P4  GET /platform/status/<the real handle> with no credential, against the unknown handle's answer in step 2
+      sent: the live handle from 3a, no key, no token
+      answer: 401, error unauthorized, cache-control no-store, byte for byte the unknown handle's answer
+      REFUSED
+      the handle is left to expire: its record opens for 30 minutes of chain time, then it and its frozen files are dropped
+
+STEP 4. THE MCP SERVER
+----------------------
+      a public name that points inward: 127.0.0.1.nip.io resolves to 127.0.0.1 from this machine
+4a  M1  check_picture on https://127.0.0.1/picture.jpg
+      sent: tools/call check_picture {url: https://127.0.0.1/picture.jpg} (1 HTTP request)
+      answer: isError: that address could not be fetched
+      REFUSED
+4b  M1  check_picture on https://169.254.169.254/latest/meta-data/
+      sent: tools/call check_picture {url: https://169.254.169.254/latest/meta-data/} (1 HTTP request)
+      answer: isError: that address could not be fetched
+      REFUSED
+4c  M1  check_picture on https://[::1]/picture.jpg
+      sent: tools/call check_picture {url: https://[::1]/picture.jpg} (1 HTTP request)
+      answer: isError: that address could not be fetched
+      REFUSED
+4d  M1  check_picture on https://10.0.0.1/picture.jpg
+      sent: tools/call check_picture {url: https://10.0.0.1/picture.jpg} (1 HTTP request)
+      answer: isError: that address could not be fetched
+      REFUSED
+4e  M1  check_picture on https://127.0.0.1.nip.io/picture.jpg
+      sent: tools/call check_picture {url: https://127.0.0.1.nip.io/picture.jpg} (1 HTTP request)
+      answer: isError: that address could not be fetched
+      REFUSED
+4f  M2  get_passport with {"passportId":"0x1234"}
+      sent: tools/call get_passport {"passportId":"0x1234"} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool get_passport: passportId: passportId must be 0x followed by...
+      REFUSED
+4g  M2  get_passport with {"passportId":"0xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"}
+      sent: tools/call get_passport {"passportId":"0xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool get_passport: passportId: passportId must be 0x followed by...
+      REFUSED
+4h  M2  get_agent with {"agentId":-1}
+      sent: tools/call get_agent {"agentId":-1} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool get_agent: agentId: Too small: expected number to be >=0
+      REFUSED
+4i  M2  get_agent with {"agentId":1.5}
+      sent: tools/call get_agent {"agentId":1.5} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool get_agent: agentId: Invalid input: expected int, received n...
+      REFUSED
+4j  M2  get_agent with {"agentId":1152921504606847000}
+      sent: tools/call get_agent {"agentId":1152921504606847000} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool get_agent: agentId: Too big: expected int to be <=900719925...
+      REFUSED
+4k  M2  list_recent_passports with {"limit":0}
+      sent: tools/call list_recent_passports {"limit":0} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool list_recent_passports: limit: Too small: expected number to...
+      REFUSED
+4l  M2  list_recent_passports with {"limit":25}
+      sent: tools/call list_recent_passports {"limit":25} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool list_recent_passports: limit: Too big: expected number to b...
+      REFUSED
+4m  M2  get_ai_use_terms with {"passportId":"0xabababababababababababababababababababababababababababababababab","at":-5}
+      sent: tools/call get_ai_use_terms {"passportId":"0xabababababababababababababababababababababababababababababababab","at":-5} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool get_ai_use_terms: at: Too small: expected number to be >=1
+      REFUSED
+4n  M2  check_picture with {"url":"http://example.com/picture.jpg"}
+      sent: tools/call check_picture {"url":"http://example.com/picture.jpg"} (1 HTTP request)
+      answer: isError: Input validation error: Invalid arguments for tool check_picture: url: url must be an absolute https address w...
+      REFUSED
+      not covered from outside: that no chain or index read was made before the refusals; mcp-tools.test.ts counts that
+      4e is limited too: the service answers the same sentence whether its guard refused the resolved
+      address or the name did not resolve on its host, so this line cannot tell which of the two happened
+4o  M5  POST /mcp initialize with Origin https://evil.example
+      sent: a 2025-06-18 initialize, Origin: https://evil.example
+      answer: 403, error -32000 this origin may not call this server, cache-control (none)
+      REFUSED
+4p  M5  POST /mcp initialize with Origin https://moolam.vercel.app.evil.example
+      sent: a 2025-06-18 initialize, Origin: https://moolam.vercel.app.evil.example
+      answer: 403, error -32000 this origin may not call this server, cache-control (none)
+      REFUSED
+4q  M5  POST /mcp initialize with Origin null
+      sent: a 2025-06-18 initialize, Origin: null
+      answer: 403, error -32000 this origin may not call this server, cache-control (none)
+      REFUSED
+4r  M5  POST /mcp declaring Content-Length 28027565, one byte over the route's limit
+      sent: headers only, no body sent
+      answer: 413, error -32000 the request body is over the 28027564 byte limit for /mcp, cache-control (none)
+      REFUSED
+4s  M5  POST /mcp with Content-Type text/plain
+      sent: the body hello
+      answer: 415, error -32000 Content-Type must be application/json, cache-control (none)
+      REFUSED
+4t  M5  GET /mcp
+      sent: no body
+      answer: 405, error -32000 Method not allowed: this server is stateless and answers POST only, cache-control (none), allow POST
+      REFUSED
+4u  M5  DELETE /mcp
+      sent: no body
+      answer: 405, error -32000 Method not allowed: this server is stateless and answers POST only, cache-control (none), allow POST
+      REFUSED
+4v  M6   control: check_picture of a real Dreamloom picture, the first one in Dreamloom's gallery
+      sent: GET https://dreamloom-production-3e74.up.railway.app/api/gallery (200), then tools/call check_picture {url: https://lavender-personal-grasshopper-978.mypinata.cloud/ipfs/bafkreig2razyc52hig4wzts43tu3lv76p6wwtugjknfo4pxxr55inb46pe}
+      answer: verdict match, passportId 0xc7f3f3f00252519e5bef4f59c48285e2bbefe4c6ecf8625b9d8f6bc9e23256c4 (the gallery's same id)
+      distances {"phash":0,"blockhash":2,"variant":"identity"}, contentCredentials.present false
+      facts consent, dispute, inheritedDispute, recheck, picture
+      index.lagSeconds 51, index.stale false, chainHeadAt 1790774147
+      PASSED
+
+STEP 5. DREAMLOOM
+-----------------
+5a  D2   control: one real weave with session A (no cookie sent), Dreamloom's own Origin
+      sent: POST /api/weave {prompt: a paper lantern over a river at dusk}
+      answer: 200, pictureId <picture A>, a new dl_session cookie <session A> with HttpOnly, Secure, SameSite=Lax
+      PASSED
+5b  D2   control: session A reads its own picture
+      sent: GET /api/pictures/<picture A> with session A's cookie
+      answer: 200, state woven, keys state, prompt, createdAt
+      PASSED
+      session B: a fresh 128-bit value in the dl_session cookie, the shape Dreamloom issues, that has woven
+      nothing. Dreamloom keeps no session list, only each picture's session hash, so this is any other visitor.
+5c  D2  session B: GET /api/pictures/<picture A>
+      sent: session B's cookie
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+5d  D2  session B: GET /api/pictures/<picture A>/image
+      sent: session B's cookie
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+5e  D2  session B: POST /api/pictures/<picture A>/cosign {terms: not-a-preset}
+      sent: session B's cookie, Dreamloom's own Origin
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+5f  D2  session B: POST /api/pictures/<picture A>/register {terms: not-a-preset}
+      sent: session B's cookie, Dreamloom's own Origin
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+5g  D2  session B: POST /api/pictures/<picture A>/move {address: 101 characters}
+      sent: session B's cookie, Dreamloom's own Origin
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+5h  D2  no cookie: GET /api/pictures/<picture A>
+      sent: no cookie at all
+      answer: 404, error not-found, cache-control no-store
+      REFUSED
+5i  D1  POST /api/weave with no Origin
+      sent: Origin (none), prompt "short", which a passed check would answer 400 prompt without drawing
+      answer: 403, error origin, cache-control no-store
+      REFUSED
+5j  D1  POST /api/weave with a foreign Origin
+      sent: Origin https://evil.example, prompt "short", which a passed check would answer 400 prompt without drawing
+      answer: 403, error origin, cache-control no-store
+      REFUSED
+5k  D1  POST /api/weave with a lookalike Origin
+      sent: Origin https://dreamloom-production-3e74.up.railway.app.evil.example, prompt "short", which a passed check would answer 400 prompt without drawing
+      answer: 403, error origin, cache-control no-store
+      REFUSED
+5l  D2  POST /api/pictures/<picture A>/cosign carrying session A's own cookie from a foreign Origin
+      sent: session A's cookie, Origin https://evil.example, {terms: not-a-preset}
+      answer: 403, error origin, cache-control no-store
+      REFUSED
+5m  D2  POST /api/pictures/<picture A>/cosign by session A with a malformed title: a right-to-left override then gpj.exe
+      sent: session A's cookie, Dreamloom's Origin, {terms: noAi, title: a right-to-left override then gpj.exe}
+      answer: 400, error title, cache-control no-store
+      REFUSED
+5n  D2  POST /api/pictures/<picture A>/cosign by session A with a malformed title: 121 characters
+      sent: session A's cookie, Dreamloom's Origin, {terms: noAi, title: 121 characters}
+      answer: 400, error title, cache-control no-store
+      REFUSED
+5o  D3   every answer of the whole run so far, headers and body, scanned for every secret in .env.local
+      scanned: 77 answers, 57,833 characters, for DREAMLOOM_WALLET_KEY, DREAMLOOM_PASSKEY_KEY, DREAMLOOM_PLATFORM_KEY, OPENAI_API_KEY, MONAD_RPC_URL in 8 forms (with and without 0x, lower case, and the RPC address's long path parts)
+      found: none
+      REFUSED
+5p  D5   every answer session B (and the no-cookie caller) got, scanned for a co-sign link
+      scanned: 6 answers for "cosign", a cosignUrl field or a handle: none
+      not covered: session A's picture was never opened for co-sign, since 3a is the only costly call
+      this pass may make, so there was no live link for B to be shown; the route's owned() check that
+      guards the link is the same one 5c to 5g show refusing
+      REFUSED
+
+STEP 6. THE WEB APP (THE DEV SERVER ON THIS MACHINE; THE WEB IS NOT PUSHED YET)
+--------------------------------------------------------------------------------
+6a  P10  GET http://localhost:3210/en/cosign
+      answer: 200, x-frame-options DENY, content-security-policy frame-ancestors 'none', referrer-policy no-referrer
+      report-only policy also sent: yes (site-wide, not the one enforced here)
+      REFUSED
+6b  P10  GET http://localhost:3210/en/connect
+      answer: 200, x-frame-options DENY, content-security-policy frame-ancestors 'none', referrer-policy no-referrer
+      report-only policy also sent: yes (site-wide, not the one enforced here)
+      REFUSED
+note  the address the SDK builds from a site URL with no language, http://localhost:3210/cosign: 404
+      (not judged here: whether Dreamloom's live MOOLAM_SITE_URL carries /en is a setting this pass cannot read)
+
+Summary, one line per attack: invariant | what | answer | verdict
+================================================================
+  2a   P7   POST /platform/prepare with no Authorization header: 401 unauthorized | REFUSED
+  2b   P7   POST /platform/prepare with a wrong key: 401 unauthorized | REFUSED
+  2c   P7   POST /platform/prepare with the real key in the query string only: 401 unauthorized | REFUSED
+  2d   P19  POST /platform/prepare, PlatformPrepare signed by 0x2B876C732D00CeAfcb522320e7fe35439ED98e35, not the owner of agent 10273: 403 agent-signature-refused | REFUSED
+  2e   P19  control: a valid prepare over bytes that are not a picture: 415 not-an-image | PASSED
+  2f   P19  POST /platform/prepare, the same request again: same nonce, same bytes, same signature: 409 replayed | REFUSED
+  2g   P19  POST /platform/prepare, the same picture with a fresh nonce and a fresh owner signature: 409 same-picture | REFUSED
+  2h   P12  POST /platform/prepare with issuedAt eleven minutes before chain time: 403 prepare-expired | REFUSED
+  2i   P12  POST /platform/prepare with issuedAt an hour ahead of chain time: 403 prepare-expired | REFUSED
+  2j   P18  POST /platform/prepare, a platform-mode body naming another creator: 403 platform-mismatch | REFUSED
+  2k   P18  POST /platform/prepare, a platform-mode body naming another wallet: 403 platform-mismatch | REFUSED
+  2l   P18  POST /platform/prepare, a co-sign body naming a creator (Dreamloom's own wallet): 403 platform-mismatch | REFUSED
+  2m   P9   POST /platform/prepare with a 257-byte condition: 400 training.constraintInfo: constraintInfo must be at most 256 bytes | REFUSED
+  2n   P9   POST /platform/prepare with a non-ASCII condition: 400 training.constraintInfo: constraintInfo must be printable ASCII between 0x20 and 0x7E, wit... | REFUSED
+  2o   P4   GET /platform/record/<random handle> with no credential: 404 not-found | REFUSED
+  2p   P4   POST /platform/sign/<random handle> with no credential: 401 unauthorized | REFUSED
+  2q   P4   GET /platform/status/<random handle> with no credential: 404 not-found | REFUSED
+  2r   P4   GET /platform/record/<random handle> with a forged Privy token: 404 not-found | REFUSED
+  2s   P4   POST /platform/sign/<random handle> with a forged Privy token: 401 unauthorized | REFUSED
+  2t   P4   GET /platform/status/<random handle> with a forged Privy token: 404 not-found | REFUSED
+  2u   P4   GET /platform/record/<malformed handle> with no credential: 404 not-found | REFUSED
+  2v   P4   POST /platform/sign/<malformed handle> with no credential: 401 unauthorized | REFUSED
+  2w   P4   GET /platform/status/<malformed handle> with no credential: 404 not-found | REFUSED
+  2x   P4   GET /platform/record/<malformed handle> with a forged Privy token: 404 not-found | REFUSED
+  2y   P4   POST /platform/sign/<malformed handle> with a forged Privy token: 401 unauthorized | REFUSED
+  2z   P4   GET /platform/status/<malformed handle> with a forged Privy token: 404 not-found | REFUSED
+  2aa  P4   GET /platform/record/<well-formed unknown handle> with no credential: 401 unauthorized | REFUSED
+  2ab  P4   POST /platform/sign/<well-formed unknown handle> with no credential: 401 unauthorized | REFUSED
+  2ac  P4   GET /platform/status/<well-formed unknown handle> with no credential: 401 unauthorized | REFUSED
+  2ad  P4   GET /platform/record/<well-formed unknown handle> with a forged Privy token: 401 unauthorized | REFUSED
+  2ae  P4   POST /platform/sign/<well-formed unknown handle> with a forged Privy token: 401 unauthorized | REFUSED
+  2af  P4   GET /platform/status/<well-formed unknown handle> with a forged Privy token: 401 unauthorized | REFUSED
+  2ag  P4   POST /platform/sign/<well-formed unknown handle> with Dreamloom's real key: 404 not-found | REFUSED
+  2ah  P4   GET /platform/status/<well-formed unknown handle> with Dreamloom's real key: 404 not-found | REFUSED
+  3a   P19  control: a real co-sign prepare with the owner's signature: 200 mode cosign, a 128-bit handle | PASSED
+  3b   P5   sign with a wrong signer's signature, then status: 409 awaiting-creator; status awaiting-creator, no signature stored | REFUSED
+  3c   P4   GET /platform/record/<the real handle> with no credential, against the unknown handle's answer in step 2: 401 unauthorized | REFUSED
+  3d   P4   GET /platform/status/<the real handle> with no credential, against the unknown handle's answer in step 2: 401 unauthorized | REFUSED
+  4a   M1   check_picture on https://127.0.0.1/picture.jpg: isError: that address could not be fetched | REFUSED
+  4b   M1   check_picture on https://169.254.169.254/latest/meta-data/: isError: that address could not be fetched | REFUSED
+  4c   M1   check_picture on https://[::1]/picture.jpg: isError: that address could not be fetched | REFUSED
+  4d   M1   check_picture on https://10.0.0.1/picture.jpg: isError: that address could not be fetched | REFUSED
+  4e   M1   check_picture on https://127.0.0.1.nip.io/picture.jpg: isError: that address could not be fetched | REFUSED
+  4f   M2   get_passport with {"passportId":"0x1234"}: isError: Input validation error: Invalid arguments for tool get_passport: passportId: pass... | REFUSED
+  4g   M2   get_passport with {"passportId":"0xzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"}: isError: Input validation error: Invalid arguments for tool get_passport: passportId: pass... | REFUSED
+  4h   M2   get_agent with {"agentId":-1}: isError: Input validation error: Invalid arguments for tool get_agent: agentId: Too small:... | REFUSED
+  4i   M2   get_agent with {"agentId":1.5}: isError: Input validation error: Invalid arguments for tool get_agent: agentId: Invalid in... | REFUSED
+  4j   M2   get_agent with {"agentId":1152921504606847000}: isError: Input validation error: Invalid arguments for tool get_agent: agentId: Too big: e... | REFUSED
+  4k   M2   list_recent_passports with {"limit":0}: isError: Input validation error: Invalid arguments for tool list_recent_passports: limit: ... | REFUSED
+  4l   M2   list_recent_passports with {"limit":25}: isError: Input validation error: Invalid arguments for tool list_recent_passports: limit: ... | REFUSED
+  4m   M2   get_ai_use_terms with {"passportId":"0xabababababababababababababababababababababababababababababababab","at":-5}: isError: Input validation error: Invalid arguments for tool get_ai_use_terms: at: Too smal... | REFUSED
+  4n   M2   check_picture with {"url":"http://example.com/picture.jpg"}: isError: Input validation error: Invalid arguments for tool check_picture: url: url must b... | REFUSED
+  4o   M5   POST /mcp initialize with Origin https://evil.example: 403 -32000 this origin may not call this server | REFUSED
+  4p   M5   POST /mcp initialize with Origin https://moolam.vercel.app.evil.example: 403 -32000 this origin may not call this server | REFUSED
+  4q   M5   POST /mcp initialize with Origin null: 403 -32000 this origin may not call this server | REFUSED
+  4r   M5   POST /mcp declaring Content-Length 28027565, one byte over the route's limit: 413 -32000 the request body is over the 28027564 byte limit for /mcp | REFUSED
+  4s   M5   POST /mcp with Content-Type text/plain: 415 -32000 Content-Type must be application/json | REFUSED
+  4t   M5   GET /mcp: 405 -32000 Method not allowed: this server is stateless and answers POST only | REFUSED
+  4u   M5   DELETE /mcp: 405 -32000 Method not allowed: this server is stateless and answers POST only | REFUSED
+  4v   M6   control: check_picture of a real Dreamloom picture: match, facts and lagSeconds 51 | PASSED
+  5a   D2   control: one real weave for session A: 200, cookie flags HttpOnly Secure SameSite=Lax | PASSED
+  5b   D2   control: session A reads its own picture: 200 state woven | PASSED
+  5c   D2   session B: GET /api/pictures/<picture A>: 404 not-found | REFUSED
+  5d   D2   session B: GET /api/pictures/<picture A>/image: 404 not-found | REFUSED
+  5e   D2   session B: POST /api/pictures/<picture A>/cosign {terms: not-a-preset}: 404 not-found | REFUSED
+  5f   D2   session B: POST /api/pictures/<picture A>/register {terms: not-a-preset}: 404 not-found | REFUSED
+  5g   D2   session B: POST /api/pictures/<picture A>/move {address: 101 characters}: 404 not-found | REFUSED
+  5h   D2   no cookie: GET /api/pictures/<picture A>: 404 not-found | REFUSED
+  5i   D1   POST /api/weave with no Origin: 403 origin | REFUSED
+  5j   D1   POST /api/weave with a foreign Origin: 403 origin | REFUSED
+  5k   D1   POST /api/weave with a lookalike Origin: 403 origin | REFUSED
+  5l   D2   POST /api/pictures/<picture A>/cosign carrying session A's own cookie from a foreign Origin: 403 origin | REFUSED
+  5m   D2   POST /api/pictures/<picture A>/cosign by session A with a malformed title: a right-to-left override then gpj.exe: 400 title | REFUSED
+  5n   D2   POST /api/pictures/<picture A>/cosign by session A with a malformed title: 121 characters: 400 title | REFUSED
+  5o   D3   secret values in any answer of the run: none found | REFUSED
+  5p   D5   a co-sign link in any answer to session B: none | REFUSED
+  6a   P10  /en/cosign refuses every frame and sends no Referer: 200 XFO DENY, CSP frame-ancestors 'none', no-referrer | REFUSED
+  6b   P10  /en/connect refuses every frame and sends no Referer: 200 XFO DENY, CSP frame-ancestors 'none', no-referrer | REFUSED
+
+attacks 78: 73 REFUSED, 5 PASSED (positive controls), 0 NOT AS EXPECTED
+requests 83 in all, the most in any 60 seconds 25
+finished 2026-09-30T13:16:53.086Z
