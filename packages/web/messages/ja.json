@@ -2109,5 +2109,74 @@
     "doneListed": "Done. Taking you back to {platform}.",
     "doneUnlisted": "Done. Taking you back to the site that sent you.",
     "close": "Close this window"
+  },
+  "claims": {
+    "heading": "Waiting for you",
+    "line": "Platforms you used are holding these pictures for your email. Say which are yours.",
+    "count": "{count, plural, one {# picture} other {# pictures}}",
+    "holding": "{platform} is holding {count, plural, one {# picture} other {# pictures}} for {email}",
+    "yourEmail": "your email",
+    "verifiedBy": {
+      "google": "{platform} says it checked this address with a Google sign-in.",
+      "emailCode": "{platform} says it checked this address with a code sent to it.",
+      "platform": "{platform} says it checked this address in its own way."
+    },
+    "noPreview": "No preview",
+    "termsLabel": "AI use for these pictures",
+    "sendFuture": "Send my future {platform} pictures straight to my account",
+    "mine": "These are mine",
+    "notMine": "Not mine",
+    "notMineNote": "Not mine also stops {platform} offering you pictures. You can allow it again here.",
+    "saving": "Saving your answer",
+    "handingOver": "Waiting for {platform} to hand them over",
+    "handoverNote": "This page looks again on its own",
+    "lookAgain": "Look again",
+    "handoverFailed": "{platform} could not hand {count, plural, one {this picture} other {these pictures}} over. Ask {platform} to send {count, plural, one {it} other {them}} again.",
+    "confirm": {
+      "heading": "Confirm these as yours",
+      "line": "One press writes these AI-use terms from your own wallet, and Moolam pays the fee. Until then the passports say the platform handed them to you, not that you made them.",
+      "termsLabel": "The terms you chose",
+      "byUse": "Your own answer for each use",
+      "conditions": "Conditions",
+      "button": "{count, plural, one {Confirm it} other {Confirm all #}}",
+      "checking": "Checking your wallet holds them",
+      "sending": "Sending from your wallet",
+      "confirming": "Waiting for Monad to show it",
+      "done": "Confirmed. They now name you as the person who imagined them.",
+      "receipt": "See the transaction",
+      "changed": "These pictures moved since this page read them, so nothing was sent. Read them again before you confirm.",
+      "unreadable": "Monad did not answer, so this page cannot tell yet which of these your wallet holds.",
+      "readAgain": "Read them again",
+      "again": "Try again",
+      "recheck": "Look again"
+    },
+    "settings": {
+      "heading": "Your platform choices",
+      "standing": "Future {platform} pictures go straight to you",
+      "stop": "Stop",
+      "muted": "You said no to {platform}",
+      "allow": "Allow again"
+    },
+    "refusal": {
+      "unavailable": "Moolam cannot look up waiting pictures right now. Nothing was changed.",
+      "signIn": "Your sign-in has run out, so Moolam cannot tell this is you.",
+      "limit": "You have asked about waiting pictures many times today. It opens again tomorrow.",
+      "globalLimit": "Moolam has reached today's limit for everyone. It opens again at midnight UTC.",
+      "privy": "Moolam could not read your sign-in details just now. Nothing was changed.",
+      "noWallet": "Your account has no Moolam wallet yet, so there is nowhere to send these. Sign in again and it is made for you.",
+      "destination": "Moolam will not send these to this account's wallet, because the platform or Moolam itself uses that address.",
+      "notFound": "Some of these pictures are no longer waiting for you.",
+      "notOpen": "Some of these were already answered, here or in another window.",
+      "full": "Your list of platform choices is full. Stop or allow one of them first.",
+      "recordRefused": "Moolam could not save that answer. Nothing was changed.",
+      "badRequest": "Moolam could not read that request. Nothing was changed.",
+      "offline": "Moolam's verify service did not answer. Nothing was changed.",
+      "badResponse": "Moolam's verify service answered in a way this page does not understand."
+    },
+    "next": {
+      "again": "Try again",
+      "signIn": "Sign in again",
+      "reload": "Read the list again"
+    }
   }
 }

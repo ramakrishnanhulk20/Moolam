@@ -15,6 +15,10 @@ const loadOwn = () => import("./OwnPictures").then((module) => module.OwnPicture
 // account that has signed in, so a visitor who never does never downloads them.
 const OwnPictures = dynamic(loadOwn);
 
+// What platforms hold for this person's email. Its reads and its words are
+// only for a signed in account, so they arrive beside the grid, not before it.
+const ClaimsSection = dynamic(() => import("@/components/claims/ClaimsSection").then((module) => module.ClaimsSection));
+
 /**
  * The page once the wallet SDK is above it: who is signed in, and which
  * account's pictures to read. MineScreen loads this file once Privy's provider
@@ -50,5 +54,12 @@ export function MinePictures() {
   if (wallet === undefined) {
     return <MineWaiting />;
   }
-  return <OwnPictures wallet={wallet} account={accountName(user as SignedInUser | null)} onSignOut={() => void logout()} />;
+  return (
+    <OwnPictures
+      wallet={wallet}
+      account={accountName(user as SignedInUser | null)}
+      onSignOut={() => void logout()}
+      waiting={<ClaimsSection wallet={wallet} />}
+    />
+  );
 }

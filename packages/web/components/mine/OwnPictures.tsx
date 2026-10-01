@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import type { ReactNode } from "react";
 import type { Hex } from "viem";
 import { WideLayout } from "@/components/studio/layout";
 import { YourPassports } from "@/components/studio/YourPassports";
@@ -29,10 +30,13 @@ export function OwnPictures({
   wallet,
   account,
   onSignOut,
+  waiting,
 }: {
   wallet: Hex;
   account: AccountName;
   onSignOut: () => void;
+  /** What platforms are holding for this person's email, drawn above their own pictures when there is any. */
+  waiting?: ReactNode;
 }) {
   const passports = useCreatorPassports(wallet);
   const held = useHeldPassports(wallet);
@@ -65,6 +69,7 @@ export function OwnPictures({
 
   return (
     <WideLayout>
+      {waiting}
       <YourPassports passports={passports} heading={t("grid")} lead={lead} empty={empty} />
       {/* A platform's handover this person confirmed is their own picture, so it
           follows their grid rather than sitting under "made by others". */}
