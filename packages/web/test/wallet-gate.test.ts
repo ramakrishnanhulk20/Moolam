@@ -28,6 +28,8 @@ const privy = vi.hoisted(() => {
     useWallets: vi.fn(() => ({ wallets: [] })),
     useSendTransaction: vi.fn(() => ({ sendTransaction: NONE })),
     useSigners: vi.fn(() => ({ addSigners: NONE, removeSigners: NONE })),
+    // The resolve console's publish step signs the reasons with the wallet.
+    useSignTypedData: vi.fn(() => ({ signTypedData: NONE })),
   };
 });
 

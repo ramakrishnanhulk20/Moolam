@@ -69,7 +69,7 @@ export function ChallengeRecord({
       <h2 className="mt-4 max-w-[24ch] font-display text-[clamp(1.3rem,2.4vw,1.9rem)] font-semibold leading-[1.05] tracking-[-0.03em]">
         {t(`status.${status}`)}
       </h2>
-      <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-text-muted">{t("body")}</p>
+      <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-text-muted">{open ? t("body") : t("bodySettled")}</p>
 
       {claim === null && answerSide === null ? null : (
         <div

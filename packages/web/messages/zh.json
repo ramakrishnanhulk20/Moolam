@@ -916,7 +916,8 @@
           "openAddress": "在 MonadVision 上打开 {wallet}",
           "signIn": "登录"
         }
-      }
+      },
+      "bodySettled": "Someone put a bond behind a claim that this record was wrong, and the resolver named by the policy has settled it."
     },
     "elsewhere": "这条记录还在哪里",
     "openTransaction": "登记交易",
@@ -2736,6 +2737,49 @@
     "held": {
       "heading": "{count, plural, =1 {A picture you hold is challenged} other {# pictures you hold are challenged}}",
       "opened": "Challenged on {date}"
+    },
+    "publish": {
+      "kicker": "Publish the reasons",
+      "label": "The reasons",
+      "placeholder": "What the evidence showed, which rule decided it, and how anyone can check it.",
+      "left": "{left} left",
+      "hint": "Up to 8,000 bytes, line breaks kept. Your wallet signs them, and they are pinned for good where anyone can read them.",
+      "button": "Sign and publish, one more transaction",
+      "why": "Settling wrote the outcome on Monad, not the reasons. Publishing them is one more transaction from this wallet: it writes the pinned reasons' address beside this decision, so anyone who opens the passport can read why.",
+      "states": {
+        "signing": "Waiting for your wallet to sign the reasons",
+        "pinning": "Pinning the reasons",
+        "sending": "Sending the publish transaction",
+        "confirming": "Waiting for Monad's receipt",
+        "pending": "The publish went out and no receipt shows it yet. It may still land, so it must not be sent again."
+      },
+      "recheck": "Ask Monad again",
+      "done": "Published. Monad's receipt carries this decision's reasons, and the passport page links them.",
+      "openReasons": "Read the reasons",
+      "openTx": "Transaction {hash}",
+      "owed": {
+        "heading": "Decisions waiting for their reasons",
+        "line": "{outcome, select, upheld {Upheld} other {Rejected}} on {date}"
+      },
+      "refusals": {
+        "empty": "Write the reasons first.",
+        "tooLong": "The reasons are over 8,000 bytes. Shorten them and sign again.",
+        "notPrintable": "Hidden characters cannot be sent. Take them out and sign again.",
+        "expired": "Your signature ran out before it arrived. Sign again.",
+        "notResolver": "This wallet is not the resolver the policy names, so nothing was pinned or sent.",
+        "notSettled": "Monad does not show this dispute settled, so it has no decision to explain yet.",
+        "mismatch": "Monad shows this dispute settled another way or opened at another time. Reload the desk and look again.",
+        "alreadyPublished": "The reasons for this decision are already published.",
+        "pinning": "These reasons are being pinned from another window. Look again in a moment.",
+        "busy": "Too many reasons were pinned today, or too many requests came at once. Try again later.",
+        "pinFailed": "The reasons could not be pinned, so nothing was published. Send them again.",
+        "unavailable": "Moolam cannot pin reasons right now. Nothing was published. Try again later.",
+        "chainUnreachable": "Monad could not be read just now. Nothing was sent. Try again in a moment.",
+        "declined": "You closed the wallet prompt, so nothing was signed or sent.",
+        "invalidAddress": "MoolamDecisions would not take this address, so nothing was sent.",
+        "reverted": "Monad mined the publish and its receipt does not carry these reasons. Nothing was published.",
+        "unknown": "The publish did not go through."
+      }
     }
   }
 }

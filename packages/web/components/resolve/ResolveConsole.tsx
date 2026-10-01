@@ -2,12 +2,14 @@
 
 import { MotionConfig, motion, useReducedMotion } from "framer-motion";
 import { useFormatter, useTranslations } from "next-intl";
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { formatEther, type Hex } from "viem";
 import { MONAD_EXPLORER, shortHex } from "@/lib/chain/client";
 import { Link, useRouter } from "@/lib/i18n/routing";
 import type { OpenDispute } from "@/lib/disputes/queue";
 import { useResolveDisputes, type ResolveDisputes } from "@/lib/disputes/useResolveDisputes";
+import { IDLE_STEP, usePublishReasons, type PublishDesk } from "@/lib/disputes/usePublishReasons";
+import { waitingReasons, type WaitingReasons } from "@/lib/disputes/waitingReasons";
 import { refreshPassport } from "@/lib/passport/refresh";
 import { useWalletMounted } from "@/components/providers/WalletProvider";
 import { Mono } from "@/components/passport/Mono";
@@ -17,6 +19,7 @@ import { WarningMark } from "@/components/WarningMark";
 import { Picture } from "@/components/passport/Picture";
 import { pictureSources } from "@/lib/images";
 import { isPrivyConfigured } from "@/lib/env";
+import { PublishStep } from "./PublishStep";
 
 const NOTHING = () => undefined;
 const NOTHING_YET = async () => undefined;
@@ -36,6 +39,8 @@ const WAITING: ResolveDisputes = {
   withdrawn: false,
   actions: { settle: NOTHING_YET, withdraw: NOTHING_YET, recheck: NOTHING_YET, signIn: NOTHING },
 };
+
+const NO_PUBLISH: PublishDesk = { steps: {}, setText: NOTHING, publish: NOTHING_YET, recheck: NOTHING_YET };
 
 /**
  * The resolver's desk: every challenge still waiting, and the two buttons that
@@ -65,7 +70,7 @@ export function ResolveConsole({
   return mounted ? (
     <Console resolver={resolver} disputes={disputes} listError={listError} />
   ) : (
-    <Desk desk={WAITING} resolver={resolver} disputes={disputes} listError={listError} />
+    <Desk desk={WAITING} publish={NO_PUBLISH} waiting={[]} resolver={resolver} disputes={disputes} listError={listError} />
   );
 }
 
@@ -103,16 +108,51 @@ function Console({
     }
   }, [desk.busy]);
 
-  return <Desk desk={desk} resolver={resolver} disputes={disputes} listError={listError} />;
+  const publish = usePublishReasons();
+  // The decisions still owed their reasons are only the resolver's to read: a
+  // stranger has no button to press beside them, and the shared index is not
+  // asked on their behalf.
+  const [waiting, setWaiting] = useState<WaitingReasons[]>([]);
+  useEffect(() => {
+    if (!desk.isResolver) {
+      return;
+    }
+    let live = true;
+    void waitingReasons()
+      .then((rows) => {
+        if (live) {
+          setWaiting(rows);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [desk.isResolver]);
+
+  return (
+    <Desk
+      desk={desk}
+      publish={publish}
+      waiting={desk.isResolver ? waiting : []}
+      resolver={resolver}
+      disputes={disputes}
+      listError={listError}
+    />
+  );
 }
 
-function Desk({
+export function Desk({
   desk,
+  publish,
+  waiting,
   resolver,
   disputes,
   listError,
 }: {
   desk: ResolveDisputes;
+  publish: PublishDesk;
+  waiting: WaitingReasons[];
   resolver: Hex;
   disputes: OpenDispute[];
   listError: string | null;
@@ -146,10 +186,17 @@ function Desk({
         ) : (
           <ol className="mt-14 border-t border-line">
             {disputes.map((dispute, index) => (
-              <Row key={dispute.passportId} dispute={dispute} index={index} desk={desk} />
+              <Row key={dispute.passportId} dispute={dispute} index={index} desk={desk} publish={publish} />
             ))}
           </ol>
         )}
+
+        <Owed
+          rows={waiting.filter(
+            (row) => !disputes.some((dispute) => dispute.passportId.toLowerCase() === row.passportId.toLowerCase()),
+          )}
+          publish={publish}
+        />
 
         {desk.failure === null ? null : <FailureLine desk={desk} />}
       </div>
@@ -336,7 +383,89 @@ function Standing({ desk, resolver }: { desk: ResolveDisputes; resolver: Hex }) 
   );
 }
 
-function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; desk: ResolveDisputes }) {
+/** The step after a settle, for one passport, wired to the publish desk. */
+function Publish({ passportId, publish }: { passportId: Hex; publish: PublishDesk }) {
+  return (
+    <PublishStep
+      passportId={passportId}
+      step={publish.steps[passportId.toLowerCase()] ?? IDLE_STEP}
+      onText={(text) => publish.setText(passportId, text)}
+      onPublish={() => void publish.publish(passportId)}
+      onRecheck={() => void publish.recheck(passportId)}
+    />
+  );
+}
+
+/**
+ * Settled decisions whose reasons are not on Monad yet, so a resolver who
+ * settled one and left before publishing finds it here the next time.
+ */
+function Owed({ rows, publish }: { rows: WaitingReasons[]; publish: PublishDesk }) {
+  const t = useTranslations("challenge.publish");
+  const resolve = useTranslations("resolve");
+  const format = useFormatter();
+  const calm = useReducedMotion() === true;
+
+  if (rows.length === 0) {
+    return null;
+  }
+  return (
+    <section data-reasons-owed aria-labelledby="reasons-owed-heading" className="mt-16 border-t border-line pt-10">
+      <h2
+        id="reasons-owed-heading"
+        className="max-w-[24ch] font-display text-[clamp(1.4rem,3vw,2.4rem)] font-semibold leading-[1.02] tracking-[-0.03em]"
+      >
+        {t("owed.heading")}
+      </h2>
+      <ol className="mt-8 border-t border-line">
+        {rows.map((row, index) => (
+          <motion.li
+            key={row.passportId}
+            data-owed={row.passportId}
+            initial={calm ? false : { opacity: 0, y: 24 }}
+            whileInView={calm ? undefined : { opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-60px" }}
+            transition={{ duration: 0.6, delay: Math.min(index, 4) * 0.06, ease: [0.16, 1, 0.3, 1] }}
+            className="grid gap-6 border-b border-line py-9 lg:grid-cols-[minmax(0,0.42fr)_minmax(0,1fr)] lg:gap-14"
+          >
+            <div className="min-w-0">
+              <Link
+                href={`/passport/${row.passportId}#decision`}
+                className="group flex flex-wrap items-baseline gap-x-2.5 font-mono text-[10px] uppercase tracking-[0.2em] text-text-faint"
+              >
+                <span>{resolve("passport")}</span>
+                <span data-hex className="text-sm normal-case tracking-normal transition-colors duration-200 group-hover:text-accent">
+                  {shortHex(row.passportId)}
+                </span>
+              </Link>
+              <p className={`mt-3 font-display text-[clamp(1.1rem,1.8vw,1.4rem)] leading-[1.1] ${row.upheld ? "text-disputed" : "text-text"}`}>
+                {t("owed.line", {
+                  outcome: row.upheld ? "upheld" : "rejected",
+                  date: format.dateTime(new Date((row.resolvedAt ?? row.openedAt) * 1000), { dateStyle: "medium" }),
+                })}
+              </p>
+            </div>
+            <div className="min-w-0 [&>[data-publish-step]]:mt-0 [&>[data-publish-step]]:border-t-0 [&>[data-publish-step]]:pt-0">
+              <Publish passportId={row.passportId} publish={publish} />
+            </div>
+          </motion.li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+function Row({
+  dispute,
+  index,
+  desk,
+  publish,
+}: {
+  dispute: OpenDispute;
+  index: number;
+  desk: ResolveDisputes;
+  publish: PublishDesk;
+}) {
   const t = useTranslations("resolve");
   const format = useFormatter();
   const calm = useReducedMotion() === true;
@@ -451,10 +580,13 @@ function Row({ dispute, index, desk }: { dispute: OpenDispute; index: number; de
         </dl>
 
         {outcome !== undefined ? (
-          <p className="mt-7 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-verified">
-            <span aria-hidden className="motif h-2 w-2 bg-verified" />
-            {t(outcome === "upheld" ? "settledUpheld" : "settledRejected")}
-          </p>
+          <>
+            <p className="mt-7 flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-verified">
+              <span aria-hidden className="motif h-2 w-2 bg-verified" />
+              {t(outcome === "upheld" ? "settledUpheld" : "settledRejected")}
+            </p>
+            {desk.isResolver ? <Publish passportId={dispute.passportId} publish={publish} /> : null}
+          </>
         ) : desk.isResolver ? (
           <div className="mt-7">
             <div className="flex flex-wrap gap-3">

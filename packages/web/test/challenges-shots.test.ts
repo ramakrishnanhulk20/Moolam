@@ -17,14 +17,17 @@ import { decisionView } from "@/lib/disputes/decisions";
 import { BURN_ADDRESS, initialFlagState } from "@/lib/disputes/flag";
 import type { FlagPassport } from "@/lib/disputes/useFlagPassport";
 import type { HolderAnswer as HolderAnswerHook } from "@/lib/disputes/useHolderAnswer";
+import type { PublishDesk, PublishState } from "@/lib/disputes/usePublishReasons";
+import type { ResolveDisputes } from "@/lib/disputes/useResolveDisputes";
 
 /**
  * Pictures of the challenge screens (WO-284c) at 1440 and 375 px, light and dark, for the head
  * chef's review: the flag panel with its rules, a challenged passport as its holder sees it (the
  * form and each of its states) and as a stranger sees it, decided passports with their reasons,
- * and My pictures' challenged list. No sign-in, no wallet and no transaction: every answer is a
+ * My pictures' challenged list, and the resolver console's publish step after a settle and for a
+ * decision still owed its reasons. No sign-in, no wallet and no transaction: every answer is a
  * fixture, and the markup is the server render laid in a headless Chrome over the site's own
- * stylesheet. The resolver console's publish step is not here: it waits on WO-275c.
+ * stylesheet.
  *
  * Off by default, because it opens a browser and writes files outside the package. Run it with
  * CHALLENGES_SHOTS=1. Motion is drawn at its resting frame.
@@ -50,6 +53,7 @@ const { Challenge } = await import("@/components/passport/Challenge");
 const { ChallengeRecord } = await import("@/components/challenge/ChallengeRecord");
 const { DecisionBlock } = await import("@/components/challenge/DecisionBlock");
 const { ChallengedList } = await import("@/components/mine/ChallengedPictures");
+const { Desk } = await import("@/components/resolve/ResolveConsole");
 
 const WEB = fileURLToPath(new URL("..", import.meta.url));
 const OUT = fileURLToPath(new URL("../../../kitchen/reports/challenges/", import.meta.url));
@@ -197,6 +201,60 @@ function flag(): FlagPassport {
   };
 }
 
+const RESOLVER = getAddress("0x559F357aDa3A96d11AEa679eC0D622E4AF15F67c");
+const TX = `0x${"9a3c".repeat(16)}` as Hex;
+const REASONS =
+  "The challenger's Flickr post is dated 14 March 2019, but its own page shows it was uploaded on 3 August 2024, after this passport was registered.\n\nThe holder sent the camera's raw file with matching EXIF. The challenge does not meet rule 2, so the record stands.";
+
+/** The resolver's desk: one dispute settled this visit with its publish step, or a decision owed its reasons. */
+function console_(step: Partial<PublishState>, owed = false): () => ReactElement {
+  return function resolveDesk() {
+    const desk: ResolveDisputes = {
+      ready: true,
+      authenticated: true,
+      wallet: RESOLVER,
+      isResolver: true,
+      credit: owed ? 0n : parseEther("1"),
+      busy: null,
+      confirming: false,
+      settled: owed ? {} : { [PASSPORT.toLowerCase()]: "rejected" },
+      failure: null,
+      withdrawing: false,
+      withdrawn: false,
+      actions: { settle: ASYNC_NOOP, withdraw: ASYNC_NOOP, recheck: ASYNC_NOOP, signIn: NOOP },
+    };
+    const publish: PublishDesk = {
+      steps: { [(owed ? OWED : PASSPORT).toLowerCase()]: { text: "", phase: "idle", refusal: null, ...step } },
+      setText: NOOP,
+      publish: ASYNC_NOOP,
+      recheck: ASYNC_NOOP,
+    };
+    return createElement(Desk, {
+      desk,
+      publish,
+      waiting: owed ? [{ passportId: OWED, upheld: true, openedAt: OPENED_AT - 20 * 86_400, resolvedAt: OPENED_AT - 4 * 86_400 }] : [],
+      resolver: RESOLVER,
+      disputes: owed
+        ? []
+        : [
+            {
+              passportId: PASSPORT,
+              challenger: CHALLENGER,
+              bond: parseEther("1").toString(),
+              openedAt: OPENED_AT,
+              reason: CLAIM,
+              evidenceURI: "data:text/plain;charset=utf-8,claim",
+              verified: true,
+              title: "Tea train at Nilgiri dawn",
+              thumbnailUrl: STILL_URL,
+            },
+          ],
+      listError: null,
+    });
+  };
+}
+const OWED = `0x${"7a1f".repeat(16)}` as Hex;
+
 const answered = { kind: "answered", words: { text: ANSWER, holder: HOLDER, answerURI: `ipfs://${CID}` } } as const;
 const evidence = { reason: CLAIM, uri: "data:text/plain;charset=utf-8,claim" };
 
@@ -269,9 +327,22 @@ const SCREENS: Record<string, Screen> = {
         ],
       }),
   },
+  "11-console-publish": { node: console_({ text: REASONS }) },
+  "12-console-publish-pinning": { node: console_({ text: REASONS, phase: "pinning" }) },
+  "13-console-publish-pending": { node: console_({ text: REASONS, phase: "pending", hash: TX, reasonsURI: `ipfs://${CID}` }) },
+  "14-console-publish-refused": { node: console_({ text: REASONS, refusal: "notResolver" }) },
+  "15-console-publish-done": { node: console_({ text: REASONS, phase: "done", hash: TX, reasonsURI: `ipfs://${CID}` }) },
+  "16-console-owed": { node: console_({}, true) },
 };
 
-function page(markup: string, theme: "light" | "dark", mine: boolean): string {
+const HEADS = {
+  passport: ["Passport", "Tea train at Nilgiri dawn"],
+  mine: ["Your account", "Made by you"],
+  console: ["Resolver console", "Settle the open challenges"],
+} as const;
+
+function page(markup: string, theme: "light" | "dark", frame: keyof typeof HEADS): string {
+  const [kicker, title] = HEADS[frame];
   const still = `data:image/jpeg;base64,${readFileSync(join(STILLS, STILL)).toString("base64")}`;
   return `<!doctype html><html class="${theme}" lang="en" style="--font-display:'Archivo';--font-body:'Inter';--font-mono:'IBM Plex Mono'">
 <head>
@@ -282,8 +353,8 @@ function page(markup: string, theme: "light" | "dark", mine: boolean): string {
 </head>
 <body class="bg-bg text-text">
 <div class="relative mx-auto w-full max-w-[1400px] px-5 pb-16 pt-7 sm:px-8 sm:pb-24 sm:pt-9">
-<p class="font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint">${mine ? "Your account" : "Passport"}</p>
-<h1 class="mt-3 mb-10 font-display text-[clamp(2.4rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]">${mine ? "Made by you" : "Tea train at Nilgiri dawn"}</h1>
+<p class="font-mono text-[11px] uppercase tracking-[0.24em] text-text-faint">${kicker}</p>
+<h1 class="mt-3 mb-10 font-display text-[clamp(2.4rem,7vw,6rem)] font-semibold uppercase leading-[0.9] tracking-[-0.04em]">${title}</h1>
 ${markup.split(STILL_URL).join(still)}
 </div>
 </body></html>`;
@@ -329,7 +400,7 @@ describe.skipIf(browserPath === null)("the challenge screens, photographed", () 
         ),
       );
       for (const theme of ["light", "dark"] as const) {
-        for (const width of [1440, 375]) written.push(await shoot(name, page(markup, theme, name.includes("mine")), width, theme));
+        for (const width of [1440, 375]) written.push(await shoot(name, page(markup, theme, name.includes("mine") ? "mine" : name.includes("console") ? "console" : "passport"), width, theme));
       }
     }
     expect(written).toHaveLength(Object.keys(SCREENS).length * 4);

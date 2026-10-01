@@ -101,6 +101,20 @@ export async function openDisputesHeldBy(holder: Hex, limit = 12): Promise<Index
   return rows.map(shape);
 }
 
+/** The most recently settled disputes, newest first: the ones whose reasons the resolver may still owe. */
+export async function settledDisputes(limit = 20): Promise<IndexedDispute[]> {
+  const rows = await ask(
+    `query SettledDisputes($statuses: [Int!]!, $limit: Int!) {
+      Dispute(where: { status: { _in: $statuses } }, order_by: { resolvedAt: desc }, limit: $limit) {
+        ${FIELDS}
+      }
+    }`,
+    { statuses: [2, 3], limit },
+  );
+
+  return rows.map(shape);
+}
+
 /** The dispute on one passport, or null when the index has not seen one. */
 export async function indexedDispute(passportId: Hex): Promise<IndexedDispute | null> {
   const rows = await ask(

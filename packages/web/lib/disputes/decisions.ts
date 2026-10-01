@@ -4,22 +4,10 @@ import { z } from "zod";
 import { CACHE_TAGS, DEPLOY_BLOCK, addresses, chain } from "@/lib/chain/client";
 import { DisputeStatus, type Dispute } from "@/lib/chain/registry";
 import { activeSource, envioUrl } from "@/lib/data/source";
+import { DECISIONS_ADDRESS, DECISIONS_BLOCK, decisionPublishedEvent } from "./decisionsContract";
 import { pinnedLink } from "./evidence";
 
-/**
- * Where Moolam's resolver publishes the reasons for a decision, bound to it on
- * chain: MoolamDecisions takes a reasons address only from the policy's
- * resolver, only once the registry shows that dispute settled, and emits the
- * outcome it read from the registry beside it (L28).
- */
-export const DECISIONS_ADDRESS = "0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F" as Hex;
-
-/** The block MoolamDecisions was deployed in (packages/contracts/broadcast/DeployLookalikes.s.sol/143/run-latest.json). */
-export const DECISIONS_BLOCK = 109_555_263n;
-
-export const decisionPublishedEvent = parseAbiItem(
-  "event DecisionPublished(bytes32 indexed passportId, uint64 indexed openedAt, bool upheld, string reasonsURI, address resolver)",
-);
+export { DECISIONS_ADDRESS, DECISIONS_BLOCK, decisionPublishedEvent } from "./decisionsContract";
 
 const disputeResolvedEvent = parseAbiItem(
   "event DisputeResolved(bytes32 indexed passportId, bool upheld, address indexed resolver)",
