@@ -116,13 +116,14 @@ export interface StoryLookalike {
   at: number;
 }
 
-/** The sign-it-yourself beat's figures and its print: the newest co-signed picture. */
+/** The sign-it-yourself beat's figures and its print: the one picked co-signed picture. */
 export interface StoryYourself {
   platform: string;
   /** Passports drawn by the listed platforms' agents, from the index's generator rows. */
   count: number;
   platforms: number;
-  newest: { id: Hex; picture: string; title: string; creator: Hex };
+  /** The picked passport the beat is told on (YOURSELF_PICK). */
+  print: { id: Hex; picture: string; title: string; creator: Hex };
 }
 
 /** An independent re-check written back on chain, always this passport's own. */
@@ -188,18 +189,37 @@ export interface StoryData {
   yourself?: StoryYourself | null;
 }
 
+/** One picture the film may be told on, by its passport and the title its document carries. */
+export interface FocalPick {
+  id: Hex;
+  title: string;
+}
+
 /**
- * The picture the film is told on, the head chef's pick (DECISIONS, 1 October):
- * an original studio picture, never a famous character. It is found by its
- * title among the film's own reads, the id fetched in the same index query so
- * it is there however many passports have come since, and it still has to pass
- * every rule the chooser holds the automatic pick to. When it cannot be read or
- * does not pass, the chooser picks as it always has.
+ * The pictures the film is told on, in order: the head chef's pick (DECISIONS,
+ * 1 October) and then two more original studio pictures, each with a Chainlink
+ * verdict, nothing a home page should not show and never a famous character.
+ * Each is fetched by id in the film's own index query, so it is there however
+ * many passports have come since, and has to carry the title it was picked
+ * under and pass every rule the chooser holds the automatic pick to. Only when
+ * none of them can be read or passes does the chooser pick as it always has.
  */
-export const PINNED_FOCAL = {
-  id: "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex,
-  title: "Monsoon Fishing Nets Drying",
-} as const;
+export const FOCAL_PICKS: readonly FocalPick[] = [
+  { id: "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638", title: "Monsoon Fishing Nets Drying" },
+  { id: "0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e", title: "Marina Beach Kite Sellers at Dusk" },
+  { id: "0x5b3856dc4765c629e82f65ff920f13543f7c1ef818b52252d55b488387fe65b1", title: "Black Basalt Lighthouse at Night" },
+];
+
+/**
+ * The sign-it-yourself beat's one print: Ram's own picture, drawn on Dreamloom
+ * and co-signed by him (DECISIONS, 1 October). The beat is told on this
+ * passport or not at all: when it cannot be read or fails the beat's rule, the
+ * beat is left out rather than drawn on whatever else is newest.
+ */
+export const YOURSELF_PICK: Hex = "0xc7f3f3f00252519e5bef4f59c48285e2bbefe4c6ecf8625b9d8f6bc9e23256c4";
+
+/** Every passport the story query fetches by id, beside the newest rows. */
+const PICKED_IDS = [...FOCAL_PICKS.map((pick) => pick.id), YOURSELF_PICK].map((id) => id.toLowerCase());
 
 /** The counts the index keeps for one generating agent, as the story query asks for them. */
 export interface IndexGenerator {
@@ -222,8 +242,8 @@ export interface IndexRow {
   attestations: number;
 }
 
-const STORY_QUERY = `query Story($limit: Int!, $pinned: String!) {
-  pinned: Passport(where: { id: { _eq: $pinned } }, limit: 1) {
+const STORY_QUERY = `query Story($limit: Int!, $picked: [String!]!) {
+  picked: Passport(where: { id: { _in: $picked } }) {
     id
     metadataURI
     registeredAt
@@ -271,7 +291,7 @@ export async function storyData(): Promise<StoryData> {
   const source = activeSource();
 
   let rows: IndexRow[] = [];
-  let pinnedRow: IndexRow | null = null;
+  let picked: IndexRow[] = [];
   let attestation: StoryAttestation | null = null;
   let passportCount: number | null = null;
   let attestationCount: number | null = null;
@@ -282,7 +302,7 @@ export async function storyData(): Promise<StoryData> {
     if (source === "envio") {
       const answer = await heldIndex();
       rows = answer.rows;
-      pinnedRow = answer.pinned ?? null;
+      picked = answer.picked ?? [];
       passportCount = answer.passports;
       attestationCount = answer.attestations;
       generators = answer.generators;
@@ -293,11 +313,10 @@ export async function storyData(): Promise<StoryData> {
     error = reason(caught);
   }
 
-  // The rows the focal is chosen from: the field's own, and the pinned picture's
-  // row when it has fallen out of the newest few. It never joins the field.
-  const pin = pinnedRow;
-  const candidates =
-    pin === null || rows.some((row) => row.id.toLowerCase() === pin.id.toLowerCase()) ? rows : [...rows, pin];
+  // The rows the picks are found among: the field's own, and each picked
+  // passport's row when it has fallen out of the newest few. They never join the field.
+  const seen = new Set(rows.map((row) => row.id.toLowerCase()));
+  const candidates = [...rows, ...picked.filter((row) => !seen.has(row.id.toLowerCase()))];
   const pictures = await Promise.all(candidates.map((row) => heldPicture(row.metadataURI)));
 
   // The first screen is the one shot nobody scrolls past, and a card reading
@@ -321,7 +340,7 @@ export async function storyData(): Promise<StoryData> {
 
   const hasPicture = pictures.map((picture) => picture !== null);
   const titles = pictures.map((picture) => picture?.title ?? null);
-  const pinnedAt = pinnedFocal(candidates, hasPicture, titles, PINNED_FOCAL.title);
+  const pinnedAt = pinnedFocal(candidates, hasPicture, titles, FOCAL_PICKS);
   // The automatic choice reads the field's own rows, exactly as it always has.
   const chosen =
     pinnedAt !== null
@@ -385,26 +404,33 @@ export async function storyData(): Promise<StoryData> {
 }
 
 /**
- * The pinned picture's row, found by its title, or null when it is not among
- * the rows or does not pass. It has to clear every rule the chooser's top rung
- * holds a picture to: a real picture a reader can look at, an agent drew it,
- * Content Credentials travelled with it, and a Chainlink verdict was written on
- * it. Pure, and tested in test/story-rollin.test.ts.
+ * The first pick, in order, that is among the rows and passes, or null. A pick
+ * is its passport id carrying the title it was picked under, and it has to
+ * clear every rule the chooser's top rung holds a picture to: a real picture a
+ * reader can look at, an agent drew it, Content Credentials travelled with it,
+ * and a Chainlink verdict was written on it. Pure, and tested in
+ * test/story-rollin.test.ts.
  */
 export function pinnedFocal(
   rows: readonly IndexRow[],
   hasPicture: readonly boolean[],
   titles: readonly (string | null)[],
-  title: string,
+  picks: readonly FocalPick[],
 ): number | null {
-  const at = rows.findIndex(
-    (row, index) =>
-      titles[index] === title &&
-      hasPicture[index] === true &&
-      fits(row, "full") &&
-      !isTestCard(titles[index] ?? null, row.id),
-  );
-  return at === -1 ? null : at;
+  for (const pick of picks) {
+    const at = rows.findIndex(
+      (row, index) =>
+        row.id.toLowerCase() === pick.id.toLowerCase() &&
+        titles[index] === pick.title &&
+        hasPicture[index] === true &&
+        fits(row, "full") &&
+        !isTestCard(titles[index] ?? null, row.id),
+    );
+    if (at !== -1) {
+      return at;
+    }
+  }
+  return null;
 }
 
 /**
@@ -575,10 +601,10 @@ async function newestLookalike(): Promise<StoryLookalike | null> {
  * The sign-it-yourself beat, from what the film has already read.
  *
  * The figures are the index's own generator counts for the listed platforms'
- * agents, and the print is the newest picture among the film's rows that the
- * credit rule calls co-signed: drawn by a listed platform's agent and signed by
- * the person. Without such a picture the beat is left out rather than drawn
- * on a picture that does not say what it says.
+ * agents, and the print is the one picked passport, YOURSELF_PICK. It has to be
+ * a real picture with a title, drawn by a listed platform's agent, and one the
+ * credit rule calls co-signed: signed by the person. Otherwise the beat is left
+ * out; it is never drawn on another picture.
  */
 async function yourselfFrom(
   rows: readonly IndexRow[],
@@ -597,28 +623,25 @@ async function yourselfFrom(
     return null;
   }
 
-  const order = rows
-    .map((row, index) => ({ row, picture: pictures[index] ?? null }))
-    .filter((one) => one.row.kind === 0 && one.row.generatorId !== null)
-    .sort((a, b) => Number(b.row.registeredAt) - Number(a.row.registeredAt));
-
-  for (const { row, picture } of order) {
-    const listed = current.some((one) => one.agentId.toString() === row.generatorId);
-    if (!listed || picture === null || picture.title === null || isTestCard(picture.title, row.id)) {
-      continue;
-    }
-    const credit = await creditOf(row, list);
-    if (credit.case !== "cosigned") {
-      continue;
-    }
-    return {
-      platform: credit.platform,
-      count: counted.reduce((sum, one) => sum + one.count, 0),
-      platforms: counted.length,
-      newest: { id: row.id, picture: picture.full, title: picture.title, creator: row.creator },
-    };
+  const at = rows.findIndex((row) => row.id.toLowerCase() === YOURSELF_PICK.toLowerCase());
+  const row = rows[at];
+  const picture = at === -1 ? null : (pictures[at] ?? null);
+  if (row === undefined || picture === null || picture.title === null || isTestCard(picture.title, row.id)) {
+    return null;
   }
-  return null;
+  if (row.kind !== 0 || !current.some((one) => one.agentId.toString() === row.generatorId)) {
+    return null;
+  }
+  const credit = await creditOf(row, list);
+  if (credit.case !== "cosigned") {
+    return null;
+  }
+  return {
+    platform: credit.platform,
+    count: counted.reduce((sum, one) => sum + one.count, 0),
+    platforms: counted.length,
+    print: { id: row.id, picture: picture.full, title: picture.title, creator: row.creator },
+  };
 }
 
 const NO_STATEMENT = { statement: null, statementError: null };
@@ -688,15 +711,15 @@ export async function heldStory(): Promise<StoryData> {
  * arrive as text from GraphQL and stay that way until a caption reads them,
  * which is what lets the answer be stored at all.
  */
-const heldIndex = unstable_cache(async () => await fromIndex(), ["moolam-story-index-pinned"], {
+const heldIndex = unstable_cache(async () => await fromIndex(), ["moolam-story-index-picks"], {
   revalidate: HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 
 interface IndexAnswer {
   rows: IndexRow[];
-  /** The pinned picture's own row, read in the same query, or null when the index has none. */
-  pinned: IndexRow | null;
+  /** The picked passports' own rows, read in the same query; any the index has none of are missing. */
+  picked: IndexRow[];
   passports: number | null;
   attestations: number | null;
   generators: Record<string, IndexGenerator>;
@@ -708,7 +731,7 @@ async function fromIndex(): Promise<IndexAnswer> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       query: STORY_QUERY,
-      variables: { limit: FIELD_DEPTH, pinned: PINNED_FOCAL.id.toLowerCase() },
+      variables: { limit: FIELD_DEPTH, picked: PICKED_IDS },
     }),
     signal: AbortSignal.timeout(INDEX_TIMEOUT_MS),
     cache: "no-store",
@@ -722,7 +745,7 @@ async function fromIndex(): Promise<IndexAnswer> {
     errors?: { message: string }[];
     data?: {
       Passport: IndexPassport[];
-      pinned?: IndexPassport[];
+      picked?: IndexPassport[];
       GlobalStats: { passports: number; attestations: number }[];
       Generator: ({ id: string } & IndexGenerator)[];
     };
@@ -737,11 +760,9 @@ async function fromIndex(): Promise<IndexAnswer> {
 
   const stats = body.data.GlobalStats[0];
 
-  const pinned = body.data.pinned?.[0];
-
   return {
     rows: body.data.Passport.map(toRow),
-    pinned: pinned === undefined ? null : toRow(pinned),
+    picked: (body.data.picked ?? []).map(toRow),
     passports: stats?.passports ?? null,
     attestations: stats?.attestations ?? null,
     generators: Object.fromEntries(

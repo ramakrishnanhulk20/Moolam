@@ -70,7 +70,7 @@ export function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView |
               beat="imagined"
               from={0.55}
               to={0.85}
-              className="mt-5 inline-block border-b border-accent pb-1 font-mono text-[12px] uppercase tracking-[0.16em] text-accent"
+              className="mt-5 inline-block border-b border-accent pb-1 font-mono text-[13px] tracking-[0.06em] text-accent"
             />
           )}
         </>
@@ -251,9 +251,8 @@ export function useBeats(data: StoryData, table: BeatTable, ledger: LedgerView |
           <Eyebrow>{t("yourself.kicker")}</Eyebrow>
           <Title>{t("yourself.title")}</Title>
           <Body>{t("yourself.body")}</Body>
-          <Readout>
-            {t("yourself.readout", { count: yourself.count, platforms: yourself.platforms, title: yourself.newest.title })}
-          </Readout>
+          {/* No readout here: the approved one names the newest picture, and this
+              print is a chosen one, so that line would not be true of it. */}
         </>
       ),
     });

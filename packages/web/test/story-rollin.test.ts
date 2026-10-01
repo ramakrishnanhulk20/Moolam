@@ -23,6 +23,9 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/chain/registry", () => ({
   getAttestations: async () => [],
   getPassport: async () => null,
+  // Dreamloom's agent still belongs to the owner that signed it on, which the
+  // co-signed credit stands on.
+  heldAgent: async () => ({ owner: "0x80819a894AAa89e0346b715bEb897A7c2fda3F44" }),
 }));
 
 vi.mock("@/lib/data/passports", () => ({
@@ -72,6 +75,9 @@ function render(node: ReactElement): string {
 
 const MANIFEST = `0x${"a7".repeat(32)}` as Hex;
 const PINNED = "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex;
+const MARINA = "0x0c45b008db6a6b74b203e63e7659fc86c60c2598d762e0280c4ae12fc57e0e2e" as Hex;
+const LIGHTHOUSE = "0x5b3856dc4765c629e82f65ff920f13543f7c1ef818b52252d55b488387fe65b1" as Hex;
+const MOON = "0xc7f3f3f00252519e5bef4f59c48285e2bbefe4c6ecf8625b9d8f6bc9e23256c4" as Hex;
 
 function row(id: string, over: Partial<IndexRow> = {}): IndexRow {
   return {
@@ -88,70 +94,92 @@ function row(id: string, over: Partial<IndexRow> = {}): IndexRow {
   };
 }
 
-describe("the pinned picture", () => {
-  const rows = [row("0x01"), row("0x02"), row("0x03")];
+describe("the film's picks", () => {
+  const picks = [
+    { id: "0x01" as Hex, title: "First" },
+    { id: "0x02" as Hex, title: "Second" },
+  ];
+  const rows = [row("0x09"), row("0x02"), row("0x01")];
+  const titles = ["Newest", "Second", "First"];
   const pictured = [true, true, true];
 
-  it("is found by its title among the film's rows when it passes every rule", () => {
-    expect(story.pinnedFocal(rows, pictured, ["A", "Monsoon Fishing Nets Drying", "C"], "Monsoon Fishing Nets Drying")).toBe(1);
+  it("takes the first pick, in the picks' own order, wherever it stands among the rows", () => {
+    expect(story.pinnedFocal(rows, pictured, titles, picks)).toBe(2);
   });
 
-  it("is passed over when it is missing, has no picture, no Chainlink verdict, no agent or no credentials", () => {
-    const title = "Monsoon Fishing Nets Drying";
-    const titles = [null, title, null];
-    expect(story.pinnedFocal(rows, pictured, ["A", "B", "C"], title)).toBeNull();
-    expect(story.pinnedFocal(rows, [true, false, true], titles, title)).toBeNull();
-    expect(story.pinnedFocal([rows[0], row("0x02", { attestations: 0 }), rows[2]], pictured, titles, title)).toBeNull();
-    expect(story.pinnedFocal([rows[0], row("0x02", { generatorId: null }), rows[2]], pictured, titles, title)).toBeNull();
-    expect(story.pinnedFocal([rows[0], row("0x02", { kind: 1 }), rows[2]], pictured, titles, title)).toBeNull();
-    expect(story.pinnedFocal([rows[0], row("0x02", { manifestHash: `0x${"0".repeat(64)}` as Hex }), rows[2]], pictured, titles, title)).toBeNull();
+  it("moves on to the next pick when the first is missing, has no picture, no Chainlink verdict, no agent, no credentials, or another title", () => {
+    expect(story.pinnedFocal(rows.slice(0, 2), pictured, titles, picks)).toBe(1);
+    expect(story.pinnedFocal(rows, [true, true, false], titles, picks)).toBe(1);
+    for (const broken of [{ attestations: 0 }, { generatorId: null }, { kind: 1 }, { manifestHash: `0x${"0".repeat(64)}` as Hex }]) {
+      expect(story.pinnedFocal([rows[0], rows[1], row("0x01", broken)], pictured, titles, picks)).toBe(1);
+    }
+    expect(story.pinnedFocal(rows, pictured, ["Newest", "Second", "Renamed"], picks)).toBe(1);
   });
 
-  it("is the head chef's pick, by id and title, in one place", () => {
-    expect(story.PINNED_FOCAL).toEqual({ id: PINNED, title: "Monsoon Fishing Nets Drying" });
+  it("answers none when no pick passes, so the chooser picks as it always has", () => {
+    expect(story.pinnedFocal([rows[0]], [true], ["Newest"], picks)).toBeNull();
+  });
+
+  it("are the head chef's pick and two more original studio pictures, and Ram's moon picture for sign it yourself", () => {
+    expect(story.FOCAL_PICKS).toEqual([
+      { id: PINNED, title: "Monsoon Fishing Nets Drying" },
+      { id: MARINA, title: "Marina Beach Kite Sellers at Dusk" },
+      { id: LIGHTHOUSE, title: "Black Basalt Lighthouse at Night" },
+    ]);
+    expect(story.YOURSELF_PICK).toBe(MOON);
   });
 });
 
-/** An index whose newest rows are the given ones, with the pinned row read in the same query. */
-function indexHolding(rows: { id: Hex; title: string; registeredAt: number; attestations?: number }[], pinned: { title: string; attestations: number } | null) {
+interface Picked {
+  id: Hex;
+  title: string;
+  attestations?: number;
+  generator?: string;
+  creator?: string;
+  registeredAt?: number;
+}
+
+/**
+ * An index whose newest rows are the given ones, answering the picked
+ * passports it holds in the same query, and a gateway serving every document.
+ */
+function indexHolding(rows: { id: Hex; title: string; registeredAt: number; attestations?: number }[], picked: Picked[]) {
   const documents = new Map<string, string>();
-  const line = (one: { id: Hex; registeredAt: number; attestations?: number }) => ({
+  const line = (one: { id: Hex; registeredAt?: number; attestations?: number; generator?: string; creator?: string }) => ({
     id: one.id,
     metadataURI: `ipfs://document-${one.id}`,
-    registeredAt: String(one.registeredAt),
+    registeredAt: String(one.registeredAt ?? 1_788_881_666),
     registeredBlock: "103057874",
-    generator_id: "10249",
-    creator_id: "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6",
+    generator_id: one.generator ?? "10249",
+    creator_id: one.creator ?? "0x85a88ca81ff5f681d96ab86fa60ccb8452a139a6",
     kind: 0,
     manifestHash: MANIFEST,
     attestationCount: one.attestations ?? 1,
   });
-  for (const one of rows) {
+  for (const one of [...rows, ...picked]) {
     documents.set(`document-${one.id}`, one.title);
-  }
-  if (pinned !== null) {
-    documents.set(`document-${PINNED}`, pinned.title);
   }
 
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: { body?: string }) => {
       if (url === INDEX_URL) {
-        const body = JSON.parse(init?.body ?? "{}") as { variables?: { limit?: number; pinned?: string } };
+        const body = JSON.parse(init?.body ?? "{}") as { variables?: { limit?: number; picked?: string[] } };
         if (body.variables?.limit === undefined) {
           return { ok: true, json: async () => ({ data: {} }) } as unknown as Response;
         }
+        const asked = body.variables.picked ?? [];
         return {
           ok: true,
           json: async () => ({
             data: {
-              pinned:
-                pinned === null || body.variables?.pinned !== PINNED
-                  ? []
-                  : [line({ id: PINNED, registeredAt: 1_788_881_666, attestations: pinned.attestations })],
+              picked: picked.filter((one) => asked.includes(one.id.toLowerCase())).map(line),
               Passport: rows.map(line),
               GlobalStats: [{ passports: 54, attestations: 33 }],
-              Generator: [{ id: "10249", passportCount: 30, matchedCount: 20, trustScore: 95 }],
+              Generator: [
+                { id: "10249", passportCount: 30, matchedCount: 20, trustScore: 95 },
+                { id: "10273", passportCount: 11, matchedCount: 11, trustScore: 90 },
+              ],
             },
           }),
         } as unknown as Response;
@@ -173,9 +201,12 @@ describe("the picture the film is told on", () => {
     { id: `0x${"aa".repeat(32)}` as Hex, title: "God of War Kratos", registeredAt: 1_790_836_997 },
     { id: `0x${"bb".repeat(32)}` as Hex, title: "Clockwork hummingbird", registeredAt: 1_790_769_747 },
   ];
+  const monsoon = { id: PINNED, title: "Monsoon Fishing Nets Drying" };
+  const marina = { id: MARINA, title: "Marina Beach Kite Sellers at Dusk" };
+  const lighthouse = { id: LIGHTHOUSE, title: "Black Basalt Lighthouse at Night" };
 
-  it("is the pinned picture, read in the film's own query even when it has fallen out of the newest rows", async () => {
-    indexHolding(newest, { title: "Monsoon Fishing Nets Drying", attestations: 1 });
+  it("is the first pick, read in the film's own query even when it has fallen out of the newest rows", async () => {
+    indexHolding(newest, [monsoon, marina, lighthouse]);
     const data = await story.storyData();
     expect(data.focal?.id).toBe(PINNED);
     expect(data.focal?.pinned).toBe(true);
@@ -184,23 +215,65 @@ describe("the picture the film is told on", () => {
     expect(data.plates.map((plate) => plate.id)).toEqual(newest.map((one) => one.id));
   });
 
-  it("falls back to the automatic choice when the pinned picture cannot be read", async () => {
-    indexHolding(newest, null);
+  it("tries the second pick, then the third, before the automatic choice", async () => {
+    indexHolding(newest, [marina, lighthouse]);
+    expect((await story.storyData()).focal?.id).toBe(MARINA);
+    indexHolding(newest, [{ ...monsoon, attestations: 0 }, { ...marina, title: "Renamed" }, lighthouse]);
+    expect((await story.storyData()).focal?.id).toBe(LIGHTHOUSE);
+  });
+
+  it("falls back to the automatic choice only when no pick can be read or passes", async () => {
+    indexHolding(newest, []);
     const data = await story.storyData();
     expect(data.focal?.id).toBe(newest[0].id);
     expect(data.focal?.pinned).toBe(false);
-  });
-
-  it("falls back when the pinned picture no longer passes, or its title is not the one pinned", async () => {
-    indexHolding(newest, { title: "Monsoon Fishing Nets Drying", attestations: 0 });
-    expect((await story.storyData()).focal?.id).toBe(newest[0].id);
-    indexHolding(newest, { title: "Something else entirely", attestations: 1 });
+    indexHolding(newest, [{ ...monsoon, attestations: 0 }, { ...marina, attestations: 0 }, { ...lighthouse, title: "Other" }]);
     expect((await story.storyData()).focal?.id).toBe(newest[0].id);
   });
 
   it("credits the person for a studio picture, and names the agent only as the one that drew it", async () => {
-    indexHolding(newest, { title: "Monsoon Fishing Nets Drying", attestations: 1 });
+    indexHolding(newest, [monsoon]);
     expect((await story.storyData()).focal?.credit).toEqual({ case: "studio" });
+  });
+});
+
+describe("the sign-it-yourself print", () => {
+  const moon: Picked = {
+    id: MOON,
+    title: "A human standing alone in the moon.",
+    generator: "10273",
+    creator: "0xc3714b31a5f300d7a79f72c7aec61240d2f384e7",
+    registeredAt: 1_790_772_994,
+  };
+  const newer = [
+    {
+      id: `0x${"ee".repeat(32)}` as Hex,
+      title: "A drunk man driving",
+      registeredAt: 1_790_776_055,
+    },
+  ];
+
+  it("is Ram's co-signed moon picture, and never whatever co-signed picture is newest", async () => {
+    indexHolding(newer, [moon]);
+    const data = await story.storyData();
+    expect(data.yourself?.print.id).toBe(MOON);
+    expect(data.yourself?.print.title).toBe("A human standing alone in the moon.");
+    expect(data.yourself?.platform).toBe("Dreamloom");
+    expect(data.yourself?.count).toBe(11);
+  });
+
+  it("leaves the beat out when the moon picture cannot be read, rather than picking another", async () => {
+    indexHolding(newer, []);
+    expect((await story.storyData()).yourself).toBeNull();
+  });
+
+  it("leaves the beat out when it fails the beat's rule", async () => {
+    // Not drawn by a listed platform's agent: nobody signed it as its creator.
+    indexHolding(newer, [{ ...moon, generator: "10249" }]);
+    expect((await story.storyData()).yourself).toBeNull();
+    // Registered by the platform's own wallet: held, not co-signed.
+    indexHolding(newer, [{ ...moon, creator: "0x80819a894aaa89e0346b715beb897a7c2fda3f44" }]);
+    expect((await story.storyData()).yourself).toBeNull();
   });
 });
 
@@ -308,17 +381,19 @@ describe("gating by data", () => {
     expect(sworn).toContain(en.story.sealed.readoutSworn);
   });
 
-  it("plays sign it yourself only on a co-signed picture, with the index's own counts", () => {
+  it("plays sign it yourself only when its picked print passed, and never calls a chosen print the newest", () => {
     expect(stated.filmCut(day())).not.toContain("yourself");
     const yourself = {
       platform: "Dreamloom",
       count: 11,
       platforms: 1,
-      newest: { id: `0x${"dd".repeat(32)}` as Hex, picture: "https://example.test/d.jpg", title: "A drunk man driving", creator: WRITER },
+      print: { id: `0x${"dd".repeat(32)}` as Hex, picture: "https://example.test/d.jpg", title: "A human standing alone in the moon.", creator: WRITER },
     };
     const html = render(createElement(LandingStory, { data: day({ yourself }), variant: "chapter" as const }));
     expect(beatsOf(html)).toContain("yourself");
-    expect(html).toContain("11 pictures drawn on 1 platform. Newest: A drunk man driving.");
+    expect(html).toContain(en.story.yourself.title);
+    expect(html).toContain("Imagined by 0x85a8");
+    expect(html).not.toContain("Newest:");
   });
 
   it("credits the person, by the credit case, and never the tool", () => {
@@ -413,6 +488,33 @@ describe("the words", () => {
     const dash = String.fromCharCode(0x2014);
     for (const { file, text } of sources) {
       expect(text.includes(dash), file).toBe(false);
+    }
+  });
+});
+
+describe("the still frames of the shared beat", () => {
+  const ladder = JSON.parse(readFileSync("public/hero/degrade.json", "utf8")) as {
+    passportId: string;
+    shown: string[];
+    steps: { transform: string; matchedPassport: string | null; bytes: number }[];
+    frames: Record<string, { file: string; bytes: number }>;
+  };
+
+  it("are made from the film's first pick, the picture the film is told on, not a test pattern", () => {
+    expect(ladder.passportId).toBe(story.FOCAL_PICKS[0].id);
+  });
+
+  it("are the very files the figures were measured on", () => {
+    expect(Object.keys(ladder.frames).sort()).toEqual(["reencode-q30", "reencode-q60", "resize-10", "social-chain"]);
+    for (const [name, frame] of Object.entries(ladder.frames)) {
+      expect(statSync(`public${frame.file}`).size, name).toBe(frame.bytes);
+      expect(ladder.steps.find((step) => step.transform === name)?.bytes, name).toBe(frame.bytes);
+    }
+  });
+
+  it("show only steps that found their passport", () => {
+    for (const name of ladder.shown) {
+      expect(ladder.steps.find((step) => step.transform === name)?.matchedPassport, name).toBe(ladder.passportId);
     }
   });
 });

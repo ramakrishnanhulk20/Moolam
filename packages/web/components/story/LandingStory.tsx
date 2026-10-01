@@ -358,7 +358,7 @@ function World({
         />
       )}
       {yourself !== null && table.beat.yourself !== undefined && (
-        <GuestPrint url={yourself.newest.picture} drawnOn={words.drawnOn} imaginedBy={words.imaginedBy} parts={parts} />
+        <GuestPrint url={yourself.print.picture} drawnOn={words.drawnOn} imaginedBy={words.imaginedBy} parts={parts} />
       )}
     </>
   );
@@ -617,7 +617,7 @@ export function LandingStory({ data, variant }: { data: StoryData; variant: Stor
       checked: t("checked.mark"),
       lookalike: marks("lookalike.word"),
       drawnOn: yourself === null ? "" : t("yourself.label", { platform: yourself.platform }),
-      imaginedBy: yourself === null ? "" : t("yourself.tag", { person: shortHex(yourself.newest.creator, 6, 4) }),
+      imaginedBy: yourself === null ? "" : t("yourself.tag", { person: shortHex(yourself.print.creator, 6, 4) }),
     }),
     [data.focal, marks, t, yourself],
   );

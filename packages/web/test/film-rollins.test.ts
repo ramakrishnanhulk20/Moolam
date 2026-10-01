@@ -301,7 +301,8 @@ describe("F25: the found beat counts bits, as its caption says", () => {
     const said = en.story.verified.similarity
       .replace("{value}", bitsApart(last))
       .replace("{result}", en.story.verified.match);
-    expect(said).toBe("1 of 64 bits apart: match");
+    expect(said).toBe(`${last.phashDistance} of 64 bits apart: match`);
+    expect(last.transform).toBe("resize-10");
     expect(markup).toContain(`>${said}</span>`);
     // Ink on Linen, the film's pink in the dark room.
     expect(markup).toContain(`tabular-nums text-text [html.dark_&amp;]:text-accent">${bitsApart(last)}</span>`);

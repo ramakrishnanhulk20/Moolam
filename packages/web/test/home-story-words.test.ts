@@ -296,7 +296,8 @@ describe("step 5: the still page prints the film's own words for each copy", () 
       expect(ladder).toContain(`${step.phashDistance} of 64 bits apart: match`);
     }
     expect(frames).toContain(en.story.verified.copies["reencode-q30"]);
-    expect(frames).toContain("2 of 64 bits apart: match");
+    const social = degradeSteps().find((step) => step.transform === "social-chain");
+    expect(frames).toContain(`${social?.phashDistance} of 64 bits apart: match`);
     for (const name of ["reencode-q30", "reencode-q60", "social-chain", "resize-10", "rotate-90"]) {
       expect(ladder + frames).not.toMatch(new RegExp(`>${name}<`, "i"));
     }

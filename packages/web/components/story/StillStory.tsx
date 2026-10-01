@@ -126,9 +126,9 @@ export function StillStory({
               </div>
             )}
             {entry.key === "yourself" && yourself !== null && (
-              <Print src={yourself.newest.picture}>
-                <span className="absolute inset-x-0 -bottom-9 block text-center font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
-                  {t("yourself.tag", { person: shortHex(yourself.newest.creator, 6, 4) })}
+              <Print src={yourself.print.picture}>
+                <span className="absolute inset-x-0 -bottom-9 block text-center font-mono text-[13px] tracking-[0.06em] text-accent">
+                  {t("yourself.tag", { person: shortHex(yourself.print.creator, 6, 4) })}
                 </span>
               </Print>
             )}
