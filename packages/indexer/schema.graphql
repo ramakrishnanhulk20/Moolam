@@ -50,6 +50,13 @@ type Passport {
   consentWriter: String
   consentCount: Int!
   consentEntries: [ConsentEntry!]! @derivedFrom(field: "passport")
+  # Read from the newest Lookalike rows only (src/lookalike.ts). earlierFound is
+  # true when this passport's own newest record came through Chainlink's network,
+  # passed the order and distance checks, and names an earlier passport.
+  # laterLookalikeCount is how many passports' newest such record names this one;
+  # a record that was later replaced counts for nothing.
+  earlierFound: Boolean! @index
+  laterLookalikeCount: Int! @index
 }
 
 # One statement, kept exactly as it was written, keyed "<passportId>-<index>" from
@@ -107,6 +114,48 @@ type Attestation {
   distance: Int!
   recomputed: String!
   at: BigInt! @index
+  # True only for a result the verdict receiver wrote through Chainlink's
+  # forwarder at or after the network went live (src/network.ts). A simulator
+  # result, or one sent by whoever holds the receiver's keys, stays false.
+  network: Boolean! @index
+}
+
+# Chainlink's newest look-alike check of one passport, keyed by the passport id.
+# A newer record replaces the row. earlierId is the raw id the record named, all
+# zeros for "no earlier look-alike found", in which case earlier is null. The row
+# is kept whatever it says, so network and valid are what a reader filters on:
+# only a row with both true is Chainlink's word about two real passports in the
+# right order.
+type Lookalike {
+  id: ID!
+  passport: Passport! @index
+  earlier: Passport @index
+  earlierId: String! @index
+  phashDistance: Int!
+  blockhashDistance: Int!
+  earlierSealed: Boolean!
+  executedAt: BigInt! @index
+  blockNumber: BigInt!
+  blockTimestamp: BigInt! @index
+  txHash: String!
+  network: Boolean! @index
+  valid: Boolean! @index
+}
+
+# The reasons Moolam's resolver published for one settled challenge, keyed
+# "<passportId>-<openedAt>" because a passport whose challenge was rejected can
+# be challenged again. MoolamDecisions accepts it only from the policy's resolver
+# once the registry shows that dispute settled, and takes the outcome and openedAt
+# from the registry, so the index stores the event exactly as given.
+type Decision {
+  id: ID!
+  passport: Passport! @index
+  openedAt: BigInt! @index
+  upheld: Boolean!
+  reasonsURI: String!
+  resolver: String! @index
+  blockTimestamp: BigInt! @index
+  txHash: String!
 }
 
 type Dispute {

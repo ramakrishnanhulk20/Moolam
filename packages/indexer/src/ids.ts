@@ -36,6 +36,20 @@ export function parentPassportId(parentId: string): string | undefined {
   return normalised === ZERO_BYTES32 ? undefined : normalised;
 }
 
+/// A look-alike record names zero bytes as its earlier passport when Chainlink
+/// found none, which is never a passport and never a match.
+export function earlierPassportId(earlierId: string): string | undefined {
+  const normalised = earlierId.toLowerCase();
+  return normalised === ZERO_BYTES32 ? undefined : normalised;
+}
+
+/// One published decision per challenge. A passport whose challenge was rejected
+/// can be challenged again, so the passport alone does not name the decision; the
+/// challenge's openedAt, which the contract read from the registry, does.
+export function decisionId(passport: string, openedAt: bigint): string {
+  return `${passport.toLowerCase()}-${openedAt.toString()}`;
+}
+
 /// One attestation per log, so the transaction hash plus the log index is unique
 /// even when a receiver attests to several passports in one transaction.
 export function attestationId(txHash: string, logIndex: number): string {

@@ -23,11 +23,24 @@ contracts:
     handler: src/EventHandlers.ts
     events:
       - event: ConsentSet
+  - name: MoolamLookalikes
+    abi_file_path: ./abis/MoolamLookalikes.json
+    handler: src/EventHandlers.ts
+    events:
+      - event: LookalikeChecked
+  - name: MoolamDecisions
+    abi_file_path: ./abis/MoolamDecisions.json
+    handler: src/EventHandlers.ts
+    events:
+      - event: DecisionPublished
 # Every passport row records the transaction that created it, so the app can link
-# straight to the explorer without a second lookup.
+# straight to the explorer without a second lookup. The transaction's `to` is how
+# the index tells a write that came through Chainlink's forwarder from one sent
+# straight to a receiver by whoever holds its keys (src/network.ts).
 field_selection:
   transaction_fields:
     - hash
+    - to
 chains:
   - id: 143
     # The block the registry and the policy were deployed in on Monad mainnet,
@@ -44,3 +57,11 @@ chains:
         # The consent register was deployed ten days after the other two, so its own
         # start block saves the sync 2.7 million blocks of nothing.
         start_block: 105828247
+      # Both deployed by script/DeployLookalikes.s.sol on 2026-10-01, blocks read
+      # from packages/contracts/broadcast/DeployLookalikes.s.sol/143/run-latest.json.
+      - name: MoolamLookalikes
+        address: "0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C"
+        start_block: 109555239
+      - name: MoolamDecisions
+        address: "0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F"
+        start_block: 109555263

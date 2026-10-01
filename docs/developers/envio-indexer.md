@@ -29,12 +29,19 @@ were deployed in. Nothing this index cares about exists before it.
 | MoolamRegistry | `0xa19188801E5DC93CD925884d73e4DaFc2bcb80C0` | 103054771 | `PasskeyBound`, `PassportRegistered`, `VerificationAttested`, `PassportFlagged`, `DisputeResolved`, `Transfer` |
 | VerifierPolicy | `0x54e8Ed8c2c3Cf2A36F8B3AC4c7f02acFD2455821` | 103054771 | `ReceiverAdded`, `ReceiverRemoved` |
 | MoolamConsent | `0x1151E69a82947920546e779c4C8c785b2a3C1277` | 105828247 | `ConsentSet` |
+| MoolamLookalikes | `0xC0f3984A8116dB8BE514F649e3605A2a3aCd454C` | 109555239 | `LookalikeChecked` |
+| MoolamDecisions | `0x30AbA7747342fA3ac9d990Ec2Cf407cC968c497F` | 109555263 | `DecisionPublished` |
 
 The consent register was deployed ten days after the other two, so it carries a `start_block` of
 its own and the sync skips 2.7 million blocks it could find nothing in.
 
+The two look-alike contracts start at the blocks they were deployed in on 2026-10-01. The live
+endpoint gains them, and every field below that comes from them, at its next redeploy.
+
 Every passport row records the transaction that created it, through `field_selection`, so the app
-can link straight to the explorer without a second lookup.
+can link straight to the explorer without a second lookup. The same selection brings in each
+transaction's `to`, which is how the index tells a write that came through Chainlink's forwarder
+from one sent straight to a receiver.
 
 ## The entities
 
@@ -54,6 +61,12 @@ collected and `consentEntries` is the derived list of them. `consentSummary` rea
 picture nobody has spoken for as well as for one whose holder wrote all four uses unspecified, so
 `consentStated` is what separates silence from a holder who chose it.
 
+Two fields come from Chainlink's look-alike checks. `earlierFound` is true when this passport's own
+newest `Lookalike` row is the network's, is valid, and names an earlier passport.
+`laterLookalikeCount` is how many passports' newest such row names this one. A row that a newer
+check replaced counts for nothing, so a later run that found no look-alike, or found a different
+one, takes the mark off both passports.
+
 **ConsentEntry.** One statement, keyed `<passportId>-<index>` from the event's own index, never
 edited after it is written. It holds the four numbers, the `summary`, the `constraintInfo`, the
 `writer`, the `at` the contract recorded and the `txHash`. This is the table a reader quotes when
@@ -71,7 +84,35 @@ because only the current key can sign a registration.
 recheck record and its trust score.
 
 **Attestation.** One row per verification result written on chain, keyed by transaction hash plus
-log index.
+log index. `network` is true only when the result was written by the verdict receiver
+`0x0d69055c43eacb3b1ca687ca2263a049bc7eff04`, in a transaction sent to Chainlink's forwarder
+`0x76c9cf548b4179f8901cda1f8623568b58215e62`, at or after the moment Chainlink's network deployment
+went live. That moment is `NETWORK_ACTIVATION_TIME` in `src/network.ts`, in unix seconds; while it
+is zero, nothing is the network's. Simulator results, and anything sent to a receiver by whoever
+holds its keys, stay false. The rule reads the transaction, never a receiver's settings, so a
+receiver re-pointed at another sender cannot pass it. It does not cover the network itself writing a
+wrong result.
+
+**Lookalike.** Chainlink's newest look-alike check of one passport, keyed by the passport id; a
+newer record replaces the row, and an older one arriving later changes nothing. It holds `passport`,
+`earlier` (null when the record named no earlier passport), the raw `earlierId` it named (all zeros
+for none found), `phashDistance` out of 64 bits, `blockhashDistance` out of 256, `earlierSealed`,
+the workflow run's `executedAt`, and `blockNumber`, `blockTimestamp` and `txHash`. `network` is the
+same rule as on `Attestation`, with `MoolamLookalikes` as the writer. `valid` is true only when the
+checked passport is in the index, both distances fit their fingerprints, and any earlier passport
+is in the index, is a different passport, and was registered in a strictly earlier second. A tie
+in the same second is never "earlier". A row with all-zero `earlierId` is "none found", never a
+match, and never proof of originality: it means no earlier look-alike among the candidates Moolam's
+search proposed. Only a row with `network` and `valid` both true is Chainlink's word about two real
+passports in the right order; the rest stay in the table and are shown nowhere.
+
+**Decision.** The reasons Moolam's resolver published for one settled challenge, keyed
+`<passportId>-<openedAt>`, because a passport whose challenge was rejected can be challenged again.
+It holds `passport`, `openedAt`, `upheld`, `reasonsURI`, `resolver`, `blockTimestamp` and `txHash`,
+exactly as `MoolamDecisions` emitted them. That contract accepts a decision only from the policy's
+resolver, only once the registry shows that challenge settled, and takes `upheld` and `openedAt`
+from the registry, so the reasons are bound to the decision they explain on chain. `reasonsURI` is
+always `ipfs://` and a content id; a page fetches it only through the pinned-content rule.
 
 **Dispute.** One row per challenged passport, keyed by the passport id. `status` mirrors the
 contract's `DisputeStatus` enum: 1 open, 2 upheld, 3 rejected.

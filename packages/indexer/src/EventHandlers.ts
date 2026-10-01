@@ -6,11 +6,15 @@ import {
   addressId,
   attestationId,
   consentEntryId,
+  decisionId,
+  earlierPassportId,
   generatorId,
   parentPassportId,
   passportId,
   passportIdFromTokenId,
 } from "./ids.js";
+import { countedEarlier, isValidLookalike } from "./lookalike.js";
+import { LOOKALIKE_RECEIVER, VERDICT_RECEIVER, isNetworkWrite } from "./network.js";
 import { descendantsOf, treePosition } from "./tree.js";
 import { trustScore } from "./trust.js";
 
@@ -127,6 +131,8 @@ indexer.onEvent(
       consentAt: undefined,
       consentWriter: undefined,
       consentCount: 0,
+      earlierFound: false,
+      laterLookalikeCount: 0,
     });
 
     if (existingCreator === undefined) {
@@ -213,6 +219,12 @@ indexer.onEvent(
       distance: Number(event.params.distance),
       recomputed: event.params.recomputed,
       at: BigInt(event.block.timestamp),
+      network: isNetworkWrite({
+        writer: event.params.receiver,
+        expectedWriter: VERDICT_RECEIVER,
+        transactionTo: event.transaction.to,
+        blockTimestamp: event.block.timestamp,
+      }),
     });
 
     context.Passport.set({
@@ -499,6 +511,117 @@ indexer.onEvent(
     await bumpGlobal(context, {
       consentStatements: 1,
       passportsWithConsent: firstStatement ? 1 : 0,
+    });
+  },
+);
+
+indexer.onEvent(
+  { contract: "MoolamLookalikes", event: "LookalikeChecked" },
+  async ({ event, context }) => {
+    const targetId = passportId(event.params.passportId);
+    const earlierId = earlierPassportId(event.params.earlierId);
+    const executedAt = event.params.executedAt;
+
+    const [previous, passport, earlier] = await Promise.all([
+      context.Lookalike.get(targetId),
+      context.Passport.get(targetId),
+      earlierId === undefined ? Promise.resolve(undefined) : context.Passport.get(earlierId),
+    ]);
+
+    // The receiver refuses a report that is not newer than the one it holds, so
+    // this only fires on a replayed block. The newest record is the only one the
+    // site follows, and an older one must not take its place or its counts.
+    if (previous !== undefined && previous.executedAt >= executedAt) {
+      return;
+    }
+
+    const phashDistance = Number(event.params.phashDistance);
+    const blockhashDistance = Number(event.params.blockhashDistance);
+
+    const row = {
+      id: targetId,
+      passport_id: targetId,
+      earlier_id: earlierId,
+      earlierId: event.params.earlierId.toLowerCase(),
+      phashDistance,
+      blockhashDistance,
+      earlierSealed: event.params.earlierSealed,
+      executedAt,
+      blockNumber: BigInt(event.block.number),
+      blockTimestamp: BigInt(event.block.timestamp),
+      txHash: event.transaction.hash,
+      network: isNetworkWrite({
+        writer: event.srcAddress,
+        expectedWriter: LOOKALIKE_RECEIVER,
+        transactionTo: event.transaction.to,
+        blockTimestamp: event.block.timestamp,
+      }),
+      valid: isValidLookalike({
+        passport,
+        earlierId,
+        earlier,
+        phashDistance,
+        blockhashDistance,
+      }),
+    };
+    context.Lookalike.set(row);
+
+    const countedBefore = previous === undefined ? undefined : countedEarlier(previous);
+    const countedNow = countedEarlier(row);
+
+    if (passport === undefined) {
+      // Nothing to mark and, since a record with no passport is never valid,
+      // nothing it counts toward. The row stays so the gap can be seen.
+      context.log.warn("Look-alike record for a passport this index has not seen", {
+        passportId: targetId,
+      });
+    } else {
+      context.Passport.set({ ...passport, earlierFound: countedNow !== undefined });
+    }
+
+    if (countedBefore === countedNow) {
+      return;
+    }
+
+    // The record it replaced stops counting toward the passport it named, so a
+    // later run that found nothing, or found another passport, takes the mark off.
+    if (countedBefore !== undefined) {
+      const formerEarlier = await context.Passport.get(countedBefore);
+      if (formerEarlier !== undefined) {
+        context.Passport.set({
+          ...formerEarlier,
+          laterLookalikeCount: formerEarlier.laterLookalikeCount - 1,
+        });
+      }
+    }
+    if (countedNow !== undefined && earlier !== undefined) {
+      context.Passport.set({
+        ...earlier,
+        laterLookalikeCount: earlier.laterLookalikeCount + 1,
+      });
+    }
+  },
+);
+
+indexer.onEvent(
+  { contract: "MoolamDecisions", event: "DecisionPublished" },
+  async ({ event, context }) => {
+    // MoolamDecisions takes the resolver from the policy and the outcome and
+    // openedAt from the registry, and checks the address is ipfs:// and a content
+    // id, so the event is stored exactly as it came. A page fetches the document
+    // only by the pinned-content rule.
+    const targetId = passportId(event.params.passportId);
+    const openedAt = event.params.openedAt;
+
+    context.Decision.set({
+      id: decisionId(targetId, openedAt),
+      passport_id: targetId,
+      openedAt,
+      upheld: event.params.upheld,
+      reasonsURI: event.params.reasonsURI,
+      resolver: addressId(event.params.resolver),
+      blockTimestamp: BigInt(event.block.timestamp),
+      txHash: event.transaction.hash,
     });
   },
 );
