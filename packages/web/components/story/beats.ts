@@ -1,51 +1,68 @@
 /**
- * The one table the whole story runs on, in the two cuts it has.
+ * The one table the whole story runs on.
  *
  * Every offset below is a fraction of the total scroll. The camera path, the
  * scene's own state switches and the caption layer are all read from this
  * table, so a caption cannot arrive while the camera is still on the way to the
- * plate it is talking about: a caption starts at the exact offset its beat
+ * print it is talking about: a caption starts at the exact offset its beat
  * starts, and it has left again before the next beat starts. The gap between
  * one caption ending and the next beat starting is the travel, and nothing is
  * being read during it.
  *
- * The classic cut is the original film, to the last offset. The stated cut
- * is the same film with one more beat in it, the holder's word on AI use. The
- * home page's chapter plays the stated cut and falls back to the classic one
- * on a day with no statement to draw, so both tables stay. The film is handed
- * the cut it is playing rather than reading a table out of this module.
+ * The film is the story-v2 script: an opening, eleven beats and a closing card.
+ * The day's data decides which beats are in the cut (cut.ts), and the table is
+ * built for exactly those, each taking the screens the pace table gives it, so
+ * a beat left out takes its scroll with it rather than leaving a gap.
  */
 
-/** The two tables the film can be timed by. */
-export type BeatCut = "classic" | "stated";
+import { PACE } from "@/components/story/pace";
 
 /**
  * What the home page asks the film to play: the film told as a chapter under
  * the first screen. It opens on a chapter title and its last card is the
- * page's one final call. Its beats, offsets and camera are the stated cut's,
- * or the classic cut's on a day with no statement to draw.
+ * page's one final call.
  */
 export type StoryVariant = "chapter";
 
-/** Every beat the film can carry. "stated" belongs to the stated cut alone. */
-export type BeatName =
-  | "opening"
-  | "made"
-  | "sealed"
-  | "stated"
-  | "shared"
-  | "verified"
-  | "trusted"
-  | "offer"
-  | "close";
+/** Every beat the film can carry, in the order it plays them. */
+export const BEAT_ORDER = [
+  "opening",
+  "imagined",
+  "sealed",
+  "stated",
+  "asked",
+  "shared",
+  "verified",
+  "checked",
+  "lookalike",
+  "yourself",
+  "waiting",
+  "offer",
+  "close",
+] as const;
 
-/** The eight beats both cuts carry, whatever else is in the table. */
-export type ClassicBeatName = Exclude<BeatName, "stated">;
+export type BeatName = (typeof BEAT_ORDER)[number];
+
+/** The beats every cut carries, whatever the day's data says. */
+export const ALWAYS = ["opening", "sealed", "shared", "verified", "offer", "close"] as const;
+
+export type AlwaysBeat = (typeof ALWAYS)[number];
 
 /** Where the camera is and what it is pointed at. */
 export interface Pose {
   pos: [number, number, number];
   look: [number, number, number];
+}
+
+/**
+ * One camera pose inside a beat, at a share of the beat from 0 to 1. A phone
+ * takes the wide pose with two corrections (LandingStory.tsx), unless the shot
+ * needs its own framing on a tall screen, which is then written out whole.
+ */
+export interface BeatKey {
+  at: number;
+  pose: Pose;
+  phone?: Pose;
 }
 
 export interface Beat {
@@ -63,223 +80,230 @@ export interface Beat {
   arrive: Pose;
   /** Where it has drifted to by `captionEnd`. A shot that holds perfectly still reads as a photograph. */
   settle: Pose;
+  /** Poses between the two, at shares of the beat, for a beat that holds or turns on the way. */
+  between: BeatKey[];
+  /** Whole poses for a phone, at the arrive and settle ends, for a shot the corrections cannot frame. */
+  phone?: { arrive: Pose; settle: Pose };
 }
 
-/** Screens of scroll drei's ScrollControls hands the scene. Nine pages, eight screens of travel. */
-const CLASSIC_PAGES = 9;
-
-/** The stated cut adds exactly one screen, for the one new beat. */
-const STATED_SCREENS = 1;
-
-/** How much scroll a caption takes to fade in, and to fade out again, in the classic cut. */
-export const CAPTION_FADE = 0.016;
-
-/**
- * How much of the new beat its caption is on screen for. It is the sealed
- * beat's own share, so what is left for the camera to travel out on is the
- * travel the film already has between two close shots.
- */
-const STATED_CAPTION_SHARE = 0.66;
+/** How much scroll a caption takes to fade in, and to fade out again, in screens. */
+export const CAPTION_FADE_SCREENS = 0.128;
 
 /** How far a caption sits below its resting place before it has arrived, in pixels. */
 const CAPTION_RISE = 26;
 
-const CLASSIC_BEATS: Beat[] = [
-  {
-    name: "opening",
-    start: 0,
-    end: 0.112,
-    captionStart: 0,
-    captionEnd: 0.068,
+/** Shares of the found beat: the copy is home at `snap`, and nothing moves until `holdEnd`. */
+export const FOUND = { flightFrom: 0.04, snap: 0.45, holdEnd: 0.68 } as const;
+
+/** Shares of the signed beat: the stamp falls, lands, and its ink spreads once. */
+export const SIGNED = { fallFrom: 0.08, land: 0.3 } as const;
+
+/** Shares of the look-alike beat: the later print slides in, the rail draws, the mark lands last. */
+export const LOOKALIKE_STEPS = {
+  slideFrom: 0.06,
+  slideTo: 0.4,
+  railFrom: 0.36,
+  railTo: 0.66,
+  markFrom: 0.62,
+  markTo: 0.76,
+} as const;
+
+/** Shares of the sign-it-yourself beat: the print arrives, the press lands, the label turns into a name. */
+export const YOURSELF_STEPS = { arriveTo: 0.32, pressAt: 0.42, turnTo: 0.6 } as const;
+
+/** Shares of the checked beat: the hairline circles the print, then the mark presses in. */
+export const CHECKED_STEPS = { circleFrom: 0.08, circleTo: 0.42, markFrom: 0.42, markTo: 0.56 } as const;
+
+interface Shape {
+  captionShare: number;
+  align: "start" | "end";
+  arrive: Pose;
+  settle: Pose;
+  between?: BeatKey[];
+  phone?: { arrive: Pose; settle: Pose };
+}
+
+/** The shot and the words' side for every beat, the stays keeping the paths they had. */
+const SHAPES: Record<BeatName, Shape> = {
+  opening: {
+    captionShare: 0.6,
     align: "start",
-    // The whole field, the plate the story follows small and far off to the right of the title.
+    // The whole wall, the print the story follows small and far off to the right of the title.
     arrive: { pos: [0.9, 0.35, 7.4], look: [-0.85, 0, 0] },
     settle: { pos: [0.74, 0.3, 6.55], look: [-0.8, 0, 0] },
   },
-  {
-    name: "made",
-    start: 0.112,
-    end: 0.24,
-    captionStart: 0.112,
-    captionEnd: 0.2,
+  imagined: {
+    captionShare: 0.69,
     align: "start",
-    // Close on the plate while the particles gather into the picture.
+    // Close on the print while it inks itself into the paper.
     arrive: { pos: [0.36, 0.1, 4.05], look: [-0.75, 0, 0] },
     settle: { pos: [0.3, 0.06, 3.78], look: [-0.72, 0, 0] },
   },
-  {
-    name: "sealed",
-    start: 0.24,
-    end: 0.376,
-    captionStart: 0.24,
-    captionEnd: 0.33,
+  sealed: {
+    captionShare: 0.74,
     align: "start",
-    // Swung round to the corner the seal drops into.
-    arrive: { pos: [-0.55, 0.42, 3.5], look: [-1.05, 0.24, 0] },
-    settle: { pos: [-0.4, 0.34, 3.34], look: [-0.95, 0.2, 0] },
+    // Swung round to the corner the stamp comes down on, the whole print in the shot.
+    arrive: { pos: [-0.42, 0.38, 3.85], look: [-0.88, 0.2, 0] },
+    settle: { pos: [-0.3, 0.32, 3.65], look: [-0.82, 0.16, 0] },
   },
-  {
-    name: "shared",
-    start: 0.376,
-    end: 0.536,
-    captionStart: 0.376,
-    captionEnd: 0.48,
+  stated: {
+    captionShare: 0.66,
+    align: "end",
+    // Close enough to cut the top of the picture off, with its lower edge about
+    // two thirds down the frame and the right of the shot left to the words.
+    arrive: { pos: [-0.44, -0.26, 2.86], look: [0.64, -0.52, 0] },
+    settle: { pos: [-0.3, -0.32, 2.66], look: [0.56, -0.46, 0] },
+  },
+  asked: {
+    captionShare: 0.72,
+    align: "end",
+    // Slid right off the print's edge, so the question types in the room beside it.
+    arrive: { pos: [-0.9, 0.05, 3.7], look: [0.78, 0, 0] },
+    settle: { pos: [-0.8, 0.02, 3.5], look: [0.72, 0, 0] },
+  },
+  shared: {
+    captionShare: 0.65,
     align: "end",
     // Back and up as the copies leave, with the field on the left of the words.
     arrive: { pos: [1.3, 0.72, 6.1], look: [0.95, 0.04, -0.1] },
     settle: { pos: [2.05, 1, 7.35], look: [1.15, 0.06, -0.35] },
   },
-  {
-    name: "verified",
-    start: 0.536,
-    end: 0.692,
-    captionStart: 0.536,
-    // The ladder is the longest read in the film and the flight out of it used
-    // to leave a screen and a half of nothing before the next words arrived.
-    captionEnd: 0.668,
+  verified: {
+    captionShare: 0.86,
     align: "start",
-    // The copy that comes home enters from the right and lands back on the plate.
-    arrive: { pos: [-0.2, 0.85, 7], look: [-1.1, 0.7, 0.3] },
-    settle: { pos: [0.3, 0.3, 4.5], look: [-0.62, 0.18, 0.15] },
+    // Wide, so the copy is seen crossing the whole wall, then in on the print
+    // as it snaps home, and held there: the scroll stops at the snap.
+    arrive: { pos: [-0.2, 0.85, 7.4], look: [-1.3, 0.7, 0.3] },
+    between: [
+      { at: FOUND.snap, pose: { pos: [0.3, 0.3, 4.9], look: [-0.82, 0.2, 0.15] } },
+      { at: FOUND.holdEnd, pose: { pos: [0.3, 0.3, 4.9], look: [-0.82, 0.2, 0.15] } },
+    ],
+    settle: { pos: [0.25, 0.26, 4.6], look: [-0.78, 0.18, 0.1] },
   },
-  {
-    name: "trusted",
-    start: 0.692,
-    end: 0.824,
-    captionStart: 0.692,
-    // Same again on the way into the drop panel: the words hold almost to the
-    // moment the panel arrives, so the offer never lands in an empty shot.
-    captionEnd: 0.8,
+  checked: {
+    captionShare: 0.82,
     align: "end",
-    // Held on the sealed plate, on the left of the standing card.
-    arrive: { pos: [0.25, 0.18, 4], look: [1, 0.06, 0] },
-    settle: { pos: [0.18, 0.14, 4.35], look: [0.95, 0.05, 0] },
+    // Held on the print, on the left of the words, while the hairline circles it.
+    arrive: { pos: [0.25, 0.18, 4.2], look: [1, 0.06, 0] },
+    settle: { pos: [0.18, 0.14, 4.4], look: [0.95, 0.05, 0] },
   },
-  {
-    name: "offer",
-    start: 0.824,
-    end: 0.936,
-    captionStart: 0.824,
-    captionEnd: 0.912,
+  lookalike: {
+    captionShare: 0.86,
+    align: "start",
+    // Pulled back to hold both prints on the right, the words on the left. A
+    // phone holds them side by side across the shot, high enough that the rail
+    // and its dates stay inside it above the words.
+    arrive: { pos: [0, 0.3, 6.4], look: [-1.3, 0.05, 0] },
+    settle: { pos: [0.1, 0.22, 5.9], look: [-1.25, 0, 0] },
+    phone: {
+      arrive: { pos: [0, 0.1, 5.5], look: [0, -0.85, 0] },
+      settle: { pos: [0.05, 0.05, 5.2], look: [0, -0.85, 0] },
+    },
+  },
+  yourself: {
+    captionShare: 0.8,
+    align: "start",
+    // In on the print that came from beyond the wall's edge, the words on the left.
+    arrive: { pos: [0.3, 0.2, 5.2], look: [-1, 0.05, 0] },
+    settle: { pos: [0.25, 0.16, 4.8], look: [-0.95, 0.05, 0] },
+  },
+  waiting: {
+    captionShare: 0.75,
+    align: "start",
+    // A slow drift over the wall while the words and the tray say it.
+    arrive: { pos: [0.6, 0.5, 6.4], look: [-0.5, 0.1, -1] },
+    settle: { pos: [0.5, 0.45, 6], look: [-0.45, 0.1, -1] },
+  },
+  offer: {
+    captionShare: 0.79,
     align: "end",
-    // The plate takes the left half and the drop panel the right.
+    // The print takes the left half and the drop panel the right.
     arrive: { pos: [-1.6, 0.3, 4.5], look: [0.85, 0.06, 0] },
     settle: { pos: [-1.45, 0.24, 4.3], look: [0.78, 0.05, 0] },
   },
-  {
-    name: "close",
-    start: 0.936,
-    end: 1,
-    captionStart: 0.936,
-    captionEnd: 1,
+  close: {
+    captionShare: 1,
     align: "start",
     // Out, and the field comes back up: the last screen is about how many there are.
     arrive: { pos: [0.1, 0.45, 6.6], look: [-0.95, -0.1, -0.6] },
     settle: { pos: [0.58, 0.92, 8.5], look: [-0.55, -0.25, -1.6] },
   },
-];
-
-/**
- * The new beat, between the seal and the copies leaving.
- *
- * The camera swings round to the other side of the plate and drops to its lower
- * edge, which is where the register draws itself along the picture. The plate
- * takes the left of the frame, so the words take the right.
- */
-function statedBeat(start: number, room: number): Beat {
-  return {
-    name: "stated",
-    start,
-    end: start + room,
-    captionStart: start,
-    captionEnd: start + room * STATED_CAPTION_SHARE,
-    align: "end",
-    // Close enough to cut the top of the picture off, with its lower edge about
-    // two thirds down the frame and the dark right of the shot left to the
-    // words. The drift pushes in a little further and lifts the edge with it.
-    arrive: { pos: [-0.44, -0.26, 2.86], look: [0.64, -0.52, 0] },
-    settle: { pos: [-0.3, -0.32, 2.66], look: [0.56, -0.46, 0] },
-  };
-}
-
-/**
- * The classic beats with one screen made for the new one.
- *
- * Every existing beat keeps the number of screens it has today: the film is a
- * screen longer, so each old offset is squeezed by exactly that screen, and
- * everything after the seal is pushed along by it. The two ends stay the two
- * ends, which is what keeps the last caption held to the end of the scroll.
- */
-function statedBeats(): Beat[] {
-  const travel = CLASSIC_PAGES - 1;
-  const wider = travel + STATED_SCREENS;
-  const squeeze = travel / wider;
-  const room = STATED_SCREENS / wider;
-  const seal = CLASSIC_BEATS.findIndex((beat) => beat.name === "sealed");
-
-  const moved = (value: number, after: boolean) =>
-    value === 0 || value === 1 ? value : value * squeeze + (after ? room : 0);
-
-  const out: Beat[] = [];
-  CLASSIC_BEATS.forEach((beat, at) => {
-    const after = at > seal;
-    out.push({
-      ...beat,
-      start: moved(beat.start, after),
-      end: moved(beat.end, after),
-      captionStart: moved(beat.captionStart, after),
-      captionEnd: moved(beat.captionEnd, after),
-    });
-    if (at === seal) {
-      out.push(statedBeat(moved(beat.end, false), room));
-    }
-  });
-  return out;
-}
+};
 
 /** One cut of the film: its pages, its beats, and the camera path they make. */
 export interface BeatTable {
-  variant: BeatCut;
+  /** The beats in this cut, in playing order. */
+  names: BeatName[];
+  /** Screens of scroll drei's ScrollControls hands the scene: the travel plus the first screen. */
   pages: number;
-  /** A caption's fade, in this cut's own fractions, so it is the same scroll distance in both. */
+  /** A caption's fade, in this cut's own fractions, so it is the same scroll distance in every cut. */
   fade: number;
   beats: Beat[];
-  /** Every beat this cut carries, by name. A cut without the stated beat simply has no key for it. */
-  beat: Partial<Record<BeatName, Beat>> & Record<ClassicBeatName, Beat>;
+  /** Every beat this cut carries, by name. A beat left out simply has no key. */
+  beat: Partial<Record<BeatName, Beat>> & Record<AlwaysBeat, Beat>;
   /**
    * The camera path, straight out of the table: every beat contributes the pose
-   * it has arrived at when its caption starts and the pose it has drifted to
-   * when the caption is gone. All the travelling therefore happens between one
-   * caption leaving and the next arriving.
+   * it has arrived at when its caption starts, any poses it holds on the way,
+   * and the pose it has drifted to when the caption is gone. All the travelling
+   * therefore happens between one caption leaving and the next arriving.
    */
-  cameraKeys: { at: number; pose: Pose }[];
+  cameraKeys: BeatKey[];
 }
 
-function tableOf(variant: BeatCut): BeatTable {
-  const beats = variant === "stated" ? statedBeats() : CLASSIC_BEATS;
-  const pages = variant === "stated" ? CLASSIC_PAGES + STATED_SCREENS : CLASSIC_PAGES;
+const held = new Map<string, BeatTable>();
 
-  return {
-    variant,
-    pages,
-    fade: (CAPTION_FADE * (CLASSIC_PAGES - 1)) / (pages - 1),
+/**
+ * The table for a cut, built once per set of beats so a screen holding one
+ * holds the same object all the way through. The beats always play in the
+ * script's order whatever order they are handed in, and the six that every cut
+ * carries are put in if they were left out.
+ */
+export function beatTable(present: readonly BeatName[]): BeatTable {
+  const names = BEAT_ORDER.filter(
+    (name) => present.includes(name) || (ALWAYS as readonly BeatName[]).includes(name),
+  ) as BeatName[];
+  const key = names.join(",");
+  const ready = held.get(key);
+  if (ready !== undefined) {
+    return ready;
+  }
+
+  const travel = names.reduce((sum, name) => sum + PACE[name], 0);
+  let at = 0;
+  const beats: Beat[] = names.map((name) => {
+    const shape = SHAPES[name];
+    const length = PACE[name] / travel;
+    const start = at;
+    const end = name === "close" ? 1 : at + length;
+    at += length;
+    return {
+      name,
+      start,
+      end,
+      captionStart: start,
+      captionEnd: shape.captionShare >= 1 ? 1 : start + (end - start) * shape.captionShare,
+      align: shape.align,
+      arrive: shape.arrive,
+      settle: shape.settle,
+      between: (shape.between ?? []).map((key) => ({ ...key, at: start + (end - start) * key.at })),
+      phone: shape.phone,
+    };
+  });
+
+  const table: BeatTable = {
+    names,
+    pages: Math.round((travel + 1) * 100) / 100,
+    fade: CAPTION_FADE_SCREENS / travel,
     beats,
     beat: Object.fromEntries(beats.map((entry) => [entry.name, entry])) as BeatTable["beat"],
     cameraKeys: beats.flatMap((entry) => [
-      { at: entry.start, pose: entry.arrive },
-      { at: entry.captionEnd, pose: entry.settle },
+      { at: entry.start, pose: entry.arrive, phone: entry.phone?.arrive },
+      ...entry.between,
+      { at: entry.captionEnd, pose: entry.settle, phone: entry.phone?.settle },
     ]),
   };
-}
-
-/** Both cuts, built once: a screen holding one of these holds the same object all the way through. */
-const TABLES: Record<BeatCut, BeatTable> = {
-  classic: tableOf("classic"),
-  stated: tableOf("stated"),
-};
-
-export function beatTable(cut: BeatCut): BeatTable {
-  return TABLES[cut];
+  held.set(key, table);
+  return table;
 }
 
 export function clamp01(value: number): number {
@@ -289,6 +313,11 @@ export function clamp01(value: number): number {
 /** 0 before `from`, 1 after `to`, straight line between. */
 export function span(t: number, from: number, to: number): number {
   return to <= from ? (t >= to ? 1 : 0) : clamp01((t - from) / (to - from));
+}
+
+/** How far through one beat the scroll is, 0 to 1. */
+export function within(t: number, beat: Pick<Beat, "start" | "end">): number {
+  return span(t, beat.start, beat.end);
 }
 
 /**
@@ -312,3 +341,10 @@ export function captionCue(t: number, beat: Beat, fade: number): { shown: number
 
   return { shown: entered * (1 - left), y: (1 - entered) * CAPTION_RISE - left * CAPTION_RISE };
 }
+
+export const easeOut = (x: number, power = 3) => 1 - Math.pow(1 - clamp01(x), power);
+
+export const smooth = (x: number) => {
+  const c = clamp01(x);
+  return c * c * (3 - 2 * c);
+};

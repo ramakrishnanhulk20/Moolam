@@ -37,8 +37,8 @@ const opening = (over: Partial<StoryView> = {}): StoryView => ({
 
 const BEAT = 1000;
 
-/** The pages of the film that ships. A key press is one of its screens of travel. */
-const PAGES = beatTable("classic").pages;
+/** A film of nine pages, eight screens of travel. A key press is one of its screens. */
+const PAGES = 9;
 
 describe("the keys that drive the film", () => {
   it("moves one beat on Page Down, a beat being one of the eight screens of travel", () => {
@@ -79,16 +79,15 @@ describe("the keys that drive the film", () => {
   });
 
   it("takes its step from the cut being played, not from a number of its own", () => {
-    const stated = beatTable("stated");
-    expect(stated.pages).toBe(PAGES + 1);
-    // Nine screens of travel over the same scroller, so one press is a ninth of
-    // it. A step that stayed an eighth would stop part way into every beat.
-    expect(keyReach("PageDown", false, opening(), stated.pages)).toEqual({
-      story: { by: 8000 / (stated.pages - 1) },
+    const whole = beatTable(["opening", "imagined", "sealed", "stated", "asked", "shared", "verified", "checked", "offer", "close"]);
+    // The cut's own screens of travel over the same scroller, so one press is
+    // one of them. A step that stayed an eighth would stop part way into every beat.
+    expect(keyReach("PageDown", false, opening(), whole.pages)).toEqual({
+      story: { by: 8000 / (whole.pages - 1) },
       page: null,
     });
-    expect(keyReach("ArrowDown", false, opening(), stated.pages)).toEqual({
-      story: { by: 8000 / (stated.pages - 1) / 6 },
+    expect(keyReach("ArrowDown", false, opening(), whole.pages)).toEqual({
+      story: { by: 8000 / (whole.pages - 1) / 6 },
       page: null,
     });
   });
@@ -202,22 +201,22 @@ describe("a gesture over the film once the page has gone past it", () => {
 });
 
 /**
- * The two attributes the film writes on the body, and the rules in the
- * stylesheet that hang on them. The rules are what let a gesture out of the
- * story and onto the page, so the names have to match on both sides.
+ * The two attributes the film writes on the body, and the rules in the film's
+ * own stylesheet (room.ts) that hang on them. The rules are what let a gesture
+ * out of the story and onto the page, so the names have to match on both sides.
  */
 describe("the film's two attributes and the rules they switch", () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), "utf8");
-  const css = read("styles/globals.css");
+  const css = read("components/story/room.ts");
   const story = read("components/story/LandingStory.tsx");
 
   it("holds the scroll inside the story until the last beat has been read", () => {
     expect(css).toMatch(/\[data-story-scroller\] \{\s*overscroll-behavior-y: contain;/);
-    expect(css).toContain("body:has([data-story=\"film\"]):not([data-story-end]) footer");
+    expect(css).toContain("body:has([data-film=\"film\"]):not([data-story-end]) footer");
   });
 
   it("hands the scroll chain back at the moment the footer appears", () => {
-    expect(css).toMatch(/body\[data-story-end\] \[data-story-scroller\] \{\s*overscroll-behavior-y: auto;/);
+    expect(css).toMatch(/body\[data-story-end\] \[data-story-scroller\],[^{]*\{\s*overscroll-behavior-y: auto;/);
   });
 
   it("gives a gesture over the film to the page once the page has gone past it", () => {
@@ -235,19 +234,21 @@ describe("the film's two attributes and the rules they switch", () => {
     expect(story).toContain('document.body.removeAttribute("data-story-past")');
   });
 
-  it("keeps the bar on its own ground over the first screen, and floats it on the shot only while the film is here", () => {
+  it("keeps the bar on its own ground over the first screen, and floats it on the shot only while the dark film is here", () => {
     expect(story).toContain('flag("data-story-here", here)');
     expect(story).toContain('document.body.removeAttribute("data-story-here")');
-    expect(story).toMatch(
-      /body:has\(\[data-story="film"\]\):not\(\[data-story-here\]\) \.app-header \{\s*background: revert-layer;/,
+    expect(css).toMatch(
+      /html\.dark body\[data-story-here\]:has\(\[data-film="film"\]\) \.app-header \{\s*background: transparent;/,
     );
+    // Light, and a page with no theme class at all, keep the bar's own ground.
+    expect(css).not.toContain("html:not(.light)");
   });
 
   it("lets a gesture out of the story at its first frame and over a film only part way up the window", () => {
     expect(story).toContain('flag("data-story-start", first)');
     expect(story).toContain('document.body.removeAttribute("data-story-start")');
-    expect(story).toMatch(
-      /body\[data-story-start\] \[data-story-scroller\],\s*body\[data-story-past\] \[data-story="film"\] \{\s*overscroll-behavior-y: auto;/,
+    expect(css).toMatch(
+      /body\[data-story-start\] \[data-story-scroller\],\s*body\[data-story-past\] \[data-film="film"\] \{\s*overscroll-behavior-y: auto;/,
     );
   });
 

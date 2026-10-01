@@ -64,7 +64,14 @@ function registryHolding(rows: Row[]): { limit: () => number } {
     "fetch",
     vi.fn(async (url: string, init?: { body?: string }) => {
       if (url === INDEX_URL) {
-        asked.at = (JSON.parse(init?.body ?? "{}") as { variables: { limit: number } }).variables.limit;
+        // The film asks the index more than one question now (the trust
+        // mark's schema, this passport's verdicts); only the story query
+        // carries the field's depth, and only it is answered with rows here.
+        const limit = (JSON.parse(init?.body ?? "{}") as { variables?: { limit?: number } }).variables?.limit;
+        if (limit === undefined) {
+          return { ok: true, json: async () => ({ data: {} }) } as unknown as Response;
+        }
+        asked.at = limit;
         return {
           ok: true,
           json: async () => ({

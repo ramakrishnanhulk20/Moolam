@@ -248,14 +248,14 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
             width: `${BASE}px`,
             height: "168px",
             background:
-              "linear-gradient(90deg, rgba(11,11,12,0) 0%, rgba(11,11,12,0.66) 13%, rgba(11,11,12,0.66) 86%, rgba(11,11,12,0) 100%)",
+              "linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--bg) 66%, transparent) 13%, color-mix(in srgb, var(--bg) 66%, transparent) 86%, transparent 100%)",
           }}
         />
 
         <div
           ref={guide}
           data-rule="guide"
-          className="absolute left-0 top-0 h-px origin-left bg-white/25 will-change-transform"
+          className="absolute left-0 top-0 h-px origin-left bg-line-strong will-change-transform"
           style={{ width: `${BASE}px` }}
         />
         <div
@@ -266,7 +266,7 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
         />
         <div ref={head} className="absolute left-0 top-[-2px] h-[5px] w-[4px] bg-pending will-change-transform" />
 
-        <span className={`absolute left-0 top-[11px] whitespace-nowrap text-white/65 ${LABEL}`}>
+        <span className={`absolute left-0 top-[11px] whitespace-nowrap text-text-muted ${LABEL}`}>
           {t("registered", { when: view.registered })}
         </span>
         {/* The far end of the rule is today, so the word ends where the rule
@@ -277,7 +277,7 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
           className="absolute left-0 top-[11px] origin-left will-change-transform"
           style={{ visibility: view.dated ? undefined : "hidden" }}
         >
-          <span className={`block -translate-x-full whitespace-nowrap text-white/65 ${LABEL}`}>{t("today")}</span>
+          <span className={`block -translate-x-full whitespace-nowrap text-text-muted ${LABEL}`}>{t("today")}</span>
         </span>
 
         <div
@@ -306,7 +306,7 @@ export function PlateLedger({ view, beat, fade }: { view: LedgerView; beat: Beat
             <span className={`block ${use.tone}`}>
               <UseMark state={use.state} className="h-6 w-6" />
             </span>
-            <span className="mt-2 block whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.16em] text-white/75">
+            <span className="mt-2 block whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.16em] text-text-muted">
               {use.name}
             </span>
           </div>
@@ -460,7 +460,7 @@ export function InlineLedger({
         </span>
       </div>
 
-      <div className="relative mt-2.5 h-px w-full bg-white/25">
+      <div className="relative mt-2.5 h-px w-full bg-line-strong">
         <div
           ref={drawn}
           data-rule="drawn"

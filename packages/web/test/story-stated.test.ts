@@ -6,7 +6,7 @@ import { NextIntlClientProvider } from "next-intl";
 import type { Hex } from "viem";
 import type { Consent } from "@/lib/chain/consent";
 import type { StoryData, StoryFocal, StoryStatement } from "@/components/story/data";
-import { statedBlock, storyCut } from "@/components/story/stated";
+import { filmCut, statedBlock } from "@/components/story/stated";
 import { InlineLedger, ledgerShape, shapeInto } from "@/components/story/StatedLedger";
 import { LandingStory } from "@/components/story/LandingStory";
 import { fractionOf } from "@/components/consent/ledger";
@@ -124,11 +124,10 @@ describe("when the beat cannot be told", () => {
 });
 
 /**
- * The home page asks for the chapter cut on every visit, which is timed by the
- * stated table. What it gets on a day with nothing to draw is the classic
- * table, and that fallback is this. The page itself is read from disk, because
- * a page that quietly went back to another cut would pass every other test in
- * this file.
+ * The home page asks for the chapter cut on every visit, and the day's data
+ * decides whether the terms and asked beats are in it. The page itself is read
+ * from disk, because a page that quietly went back to another cut would pass
+ * every other test in this file.
  */
 describe("the cut the home page really plays", () => {
   it("asks for the chapter cut", () => {
@@ -136,15 +135,20 @@ describe("the cut the home page really plays", () => {
     expect(page).toContain('variant="chapter"');
   });
 
-  it("plays the stated table when the register answered for this passport", () => {
-    expect(storyCut(story())).toBe("stated");
+  it("plays the terms and asked beats when the register answered for this passport", () => {
+    expect(filmCut(story())).toEqual(expect.arrayContaining(["stated", "asked"]));
   });
 
-  it("falls back to the classic table when there is no statement to draw", () => {
-    expect(storyCut(story({ statement: null }))).toBe("classic");
-    expect(storyCut(story({ statement: null, statementError: "the endpoint answered 503" }))).toBe("classic");
-    expect(storyCut(story({ focal: null, statement: null }))).toBe("classic");
-    expect(storyCut(story({ statement: { ...statement, summary: "none", consent: NOTHING } }))).toBe("classic");
+  it("leaves both out when there is no statement to draw", () => {
+    for (const day of [
+      story({ statement: null }),
+      story({ statement: null, statementError: "the endpoint answered 503" }),
+      story({ focal: null, statement: null }),
+      story({ statement: { ...statement, summary: "none", consent: NOTHING } }),
+    ]) {
+      expect(filmCut(day)).not.toContain("stated");
+      expect(filmCut(day)).not.toContain("asked");
+    }
   });
 });
 
@@ -203,7 +207,7 @@ describe("the chapter in ten languages", () => {
   });
 
   it("says the summary in the passport card's own words rather than a second set", () => {
-    const film = readFileSync("components/story/LandingStory.tsx", "utf8");
+    const film = readFileSync("components/story/words.tsx", "utf8");
     expect(film).toContain('useTranslations("passport.consent.summary")');
     const ledger = readFileSync("components/story/StatedLedger.tsx", "utf8");
     expect(ledger).toContain('useTranslations("passport.consent.usesShort")');

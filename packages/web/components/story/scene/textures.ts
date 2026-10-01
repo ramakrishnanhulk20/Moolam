@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { ACCENT, ACCENT_LIFT, ACCENT_RGB } from "@/components/story/palette";
+import { ACCENT_LIFT, ACCENT_RGB } from "@/components/story/palette";
 import { PLATE_WIDTH } from "@/components/story/scene/order";
 import { optimizedUrl } from "@/lib/images";
 
@@ -50,58 +50,6 @@ export function noiseTexture(size = 128): THREE.DataTexture {
   }
   const texture = new THREE.DataTexture(data, size, size);
   texture.needsUpdate = true;
-  return texture;
-}
-
-/**
- * The seal: a filled square with a hollow square cut into it, the same mark the
- * eyebrows and the favicon carry, drawn once at a size that stays sharp when
- * the camera is close to the plate.
- */
-export function sealTexture(accent = ACCENT): THREE.CanvasTexture {
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext("2d");
-
-  if (context !== null) {
-    context.fillStyle = accent;
-    context.fillRect(0, 0, size, size);
-    context.globalCompositeOperation = "destination-out";
-    const inset = size * 0.26;
-    context.lineWidth = size * 0.075;
-    context.strokeStyle = "#000000";
-    context.strokeRect(inset, inset, size - inset * 2, size - inset * 2);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
-/**
- * A row of mono glyphs standing in for the credential a platform strips on
- * upload. It falls off one of the copies in the fourth beat.
- */
-export function credentialTexture(text: string, accent = ACCENT): THREE.CanvasTexture {
-  const width = 512;
-  const height = 64;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-
-  if (context !== null) {
-    context.clearRect(0, 0, width, height);
-    context.font = "600 34px ui-monospace, monospace";
-    context.fillStyle = accent;
-    context.textBaseline = "middle";
-    context.fillText(text, 8, height / 2);
-  }
-
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
 

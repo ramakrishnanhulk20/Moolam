@@ -72,7 +72,6 @@ export function TryPanel({
   pinned?: boolean;
 }) {
   const t = useTranslations("story.tryIt");
-  const first = useTranslations("home.first");
   const v = useTranslations("verify");
   const shell = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -264,7 +263,7 @@ export function TryPanel({
       inert={pinned ? true : undefined}
       aria-hidden={pinned ? "true" : undefined}
       style={pinned ? { opacity: 0 } : undefined}
-      className={pinned ? "story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : "px-0"}
+      className={pinned ? "film-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : "px-0"}
     >
       {/* Pinned, the panel is held to the room the film gives its words and
           scrolls inside it, so an answer never runs under the bar on a phone. */}
@@ -278,7 +277,7 @@ export function TryPanel({
           }}
           onDragLeave={() => setOver(false)}
           onDrop={onDrop}
-          className={`pointer-events-auto relative w-full max-w-[27rem] border border-dashed bg-black/55 p-5 backdrop-blur-md transition-colors duration-200 sm:ms-auto sm:p-6 ${
+          className={`pointer-events-auto relative w-full max-w-[27rem] border border-dashed bg-bg-raised/85 p-5 shadow-[0_24px_48px_-28px_rgb(58_51_38/0.5)] backdrop-blur-md transition-colors duration-200 sm:ms-auto sm:p-6 ${
             pinned ? "min-h-0 overflow-y-auto" : ""
           } ${over ? "border-accent bg-accent-soft" : "border-line-strong"}`}
         >
@@ -293,7 +292,7 @@ export function TryPanel({
                 neither flashes in after the script runs. */}
             <p className="font-display text-[clamp(1.35rem,2.6vw,2.1rem)] font-semibold leading-[1.05] tracking-[-0.035em]">
               <span data-try-title="phone" className="lg:hidden">
-                {first("check")}
+                {t("titleTouch")}
               </span>
               <span data-try-title="laptop" className="hidden lg:inline">
                 {t("title")}

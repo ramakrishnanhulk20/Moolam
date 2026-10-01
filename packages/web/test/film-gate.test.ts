@@ -61,7 +61,7 @@ describe("the film's box", () => {
     await mount();
 
     expect(film()).toBeNull();
-    expect(host.querySelector('[data-story="loading"]')?.className).toContain("h-[100svh]");
+    expect(host.querySelector('[data-film="loading"]')?.className).toContain("h-[100svh]");
   });
 
   for (const move of ["wheel", "touchmove", "scroll", "keydown"]) {

@@ -66,7 +66,7 @@ vi.mock("@/components/story/StoryStage", async () => {
 const { LandingStory } = await import("@/components/story/LandingStory");
 const { CloseCard } = await import("@/components/story/CloseCard");
 const { ChapterOpening } = await import("@/components/story/ChapterOpening");
-const { storyCut } = await import("@/components/story/stated");
+const { filmCut } = await import("@/components/story/stated");
 const { default: HomePage } = await import("@/app/[locale]/page");
 
 const LOCALES = ["en", "de", "es", "fr", "hi", "ja", "ko", "pt", "ta", "zh"] as const;
@@ -189,9 +189,10 @@ describe("the chapter cut's opening", () => {
     expect(source).not.toContain("HeroCredits");
   });
 
-  it("plays the stated cut's beats, and falls back to the classic cut's", () => {
-    expect(storyCut(data)).toBe("stated");
-    expect(storyCut({ ...data, statement: null })).toBe("classic");
+  it("plays the terms and asked beats only when the register answered for this passport", () => {
+    expect(filmCut(data)).toEqual(expect.arrayContaining(["stated", "asked"]));
+    expect(filmCut({ ...data, statement: null })).not.toContain("stated");
+    expect(filmCut({ ...data, statement: null })).not.toContain("asked");
   });
 });
 

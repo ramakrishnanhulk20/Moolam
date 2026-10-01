@@ -38,15 +38,7 @@ function freshStory() {
       ssr: false,
       /**
        * The film's own box, held open before the film arrives: the film's
-       * height and ground with the chapter title on it (FilmLoading.tsx), and
-       * the attribute the page's story rules hang on.
-       *
-       * The home page pulls the story up under the floating bar. The markup asks
-       * for 73 px and the rule in globals.css hands it the bar's real height, but
-       * only once a [data-story] element exists, which used to be the moment the
-       * film mounted. So the first screen sat 10 px too high (17 px on a phone) and
-       * dropped into place a third of a second in: the whole of this page's layout
-       * shift. With the attribute here the pull-up is right on the first paint and
+       * height and ground with the chapter title on it (FilmLoading.tsx), so
        * the film replaces a box of exactly its own size.
        */
       loading: () => <FilmLoading />,
@@ -71,7 +63,7 @@ export function StoryStage({ data, variant }: { data: StoryData; variant: StoryV
     .slice(0, OPENING_PICTURES);
 
   return (
-    <div className="story">
+    <div data-film-room className="relative">
       {opening.map((picture) => (
         // crossOrigin has to be here: the texture loader asks for the picture
         // with it, and a preload that does not match it is downloaded a second

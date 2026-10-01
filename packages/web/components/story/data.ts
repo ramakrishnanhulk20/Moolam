@@ -13,8 +13,14 @@ import type { Consent, Statement } from "@/lib/chain/consent";
 import { heldConsent, plainStatement } from "@/lib/chain/consent";
 import { isChainlinkReceiver } from "@/lib/chain/receivers";
 import { getAttestations, getPassport } from "@/lib/chain/registry";
+import { heldReportDelivery } from "@/lib/chain/reports";
+import { markSchema } from "@/lib/data/marks";
 import { generatorRecord, latestPassports } from "@/lib/data/passports";
+import { UNKNOWN_HANDOVER, creditFrom, heldPlatformList, listedAgentOwner } from "@/lib/data/platform-label";
 import { activeSource, envioUrl } from "@/lib/data/source";
+import type { PlatformList } from "@/lib/platforms/platforms";
+import { statementsOf } from "@/components/passport/art";
+import { heldIndexedVerdictRows, transactionFor } from "@/components/passport/indexed";
 import degrade from "@/public/hero/degrade.json";
 
 const METADATA_TIMEOUT_MS = 8_000;
@@ -54,6 +60,69 @@ export interface StoryFocal {
   why: FocalReason;
   /** True when this is the passport the verifier measured the degrade ladder on. */
   measured: boolean;
+  /** The name pinned with the picture, or null when the document gave none. */
+  title?: string | null;
+  /** True when this is the head chef's pinned picture rather than the chooser's. */
+  pinned?: boolean;
+  /** Who the imagined beat credits, by the site's one credit rule. */
+  credit?: StoryCredit;
+  /** True when the document carries the sworn line Moolam pins, word for word. */
+  sworn?: boolean;
+}
+
+/**
+ * Who the imagined beat credits, by the story-v2 script's cases.
+ *
+ * "studio" is a picture an agent drew in Moolam's own studio; "cosigned" one a
+ * listed platform's agent drew and the person signed with their own key, which
+ * the credit rule names them for; "platform" one a listed platform's agent drew
+ * where no person is named yet, so the beat names nobody; "photo" a picture no
+ * agent touched.
+ */
+export type StoryCredit =
+  | { case: "studio" }
+  | { case: "cosigned"; platform: string }
+  | { case: "platform"; platform: string }
+  | { case: "photo" };
+
+/**
+ * The checked beat's verdict, and which form the beat may honestly play.
+ *
+ * "network" is a verdict Chainlink's network delivered, the only one that turns
+ * the mark on. "test" is one the forwarder on one machine delivered: the
+ * simulator. "plain" is a verdict whose delivery could not be told, and the
+ * beat then says what it did without saying how it ran.
+ */
+export interface StoryCheck {
+  form: "network" | "test" | "plain";
+  matched: boolean;
+  distance: number;
+  at: number;
+}
+
+/** One print of the look-alike beat: a real passport the index's record names. */
+export interface StoryLookalikePrint {
+  id: Hex;
+  picture: string;
+  title: string | null;
+  registeredAt: number;
+}
+
+/** The newest look-alike record Chainlink's network wrote, with both pictures. */
+export interface StoryLookalike {
+  earlier: StoryLookalikePrint;
+  later: StoryLookalikePrint;
+  bits: number;
+  at: number;
+}
+
+/** The sign-it-yourself beat's figures and its print: the newest co-signed picture. */
+export interface StoryYourself {
+  platform: string;
+  /** Passports drawn by the listed platforms' agents, from the index's generator rows. */
+  count: number;
+  platforms: number;
+  newest: { id: Hex; picture: string; title: string; creator: Hex };
 }
 
 /** An independent re-check written back on chain, always this passport's own. */
@@ -111,7 +180,26 @@ export interface StoryData {
   attestationCount: number | null;
   /** The provider's own words when nothing could be read, shown rather than swallowed. */
   error: string | null;
+  /** The focal passport's newest Chainlink verdict and the form the checked beat plays it in. */
+  check?: StoryCheck | null;
+  /** Null until the index holds a network look-alike record with two pictures. */
+  lookalike?: StoryLookalike | null;
+  /** Null until a listed platform has a co-signed picture in the field's read. */
+  yourself?: StoryYourself | null;
 }
+
+/**
+ * The picture the film is told on, the head chef's pick (DECISIONS, 1 October):
+ * an original studio picture, never a famous character. It is found by its
+ * title among the film's own reads, the id fetched in the same index query so
+ * it is there however many passports have come since, and it still has to pass
+ * every rule the chooser holds the automatic pick to. When it cannot be read or
+ * does not pass, the chooser picks as it always has.
+ */
+export const PINNED_FOCAL = {
+  id: "0xcdb25d3755452efa3b746f168cf9cefd3a1b693ab2b81d260a2d64f13d771638" as Hex,
+  title: "Monsoon Fishing Nets Drying",
+} as const;
 
 /** The counts the index keeps for one generating agent, as the story query asks for them. */
 export interface IndexGenerator {
@@ -134,7 +222,18 @@ export interface IndexRow {
   attestations: number;
 }
 
-const STORY_QUERY = `query Story($limit: Int!) {
+const STORY_QUERY = `query Story($limit: Int!, $pinned: String!) {
+  pinned: Passport(where: { id: { _eq: $pinned } }, limit: 1) {
+    id
+    metadataURI
+    registeredAt
+    registeredBlock
+    generator_id
+    creator_id
+    kind
+    manifestHash
+    attestationCount
+  }
   Passport(order_by: { registeredAt: desc }, limit: $limit) {
     id
     metadataURI
@@ -172,6 +271,7 @@ export async function storyData(): Promise<StoryData> {
   const source = activeSource();
 
   let rows: IndexRow[] = [];
+  let pinnedRow: IndexRow | null = null;
   let attestation: StoryAttestation | null = null;
   let passportCount: number | null = null;
   let attestationCount: number | null = null;
@@ -182,6 +282,7 @@ export async function storyData(): Promise<StoryData> {
     if (source === "envio") {
       const answer = await heldIndex();
       rows = answer.rows;
+      pinnedRow = answer.pinned ?? null;
       passportCount = answer.passports;
       attestationCount = answer.attestations;
       generators = answer.generators;
@@ -192,7 +293,12 @@ export async function storyData(): Promise<StoryData> {
     error = reason(caught);
   }
 
-  const pictures = await Promise.all(rows.map((row) => heldPicture(row.metadataURI)));
+  // The rows the focal is chosen from: the field's own, and the pinned picture's
+  // row when it has fallen out of the newest few. It never joins the field.
+  const pin = pinnedRow;
+  const candidates =
+    pin === null || rows.some((row) => row.id.toLowerCase() === pin.id.toLowerCase()) ? rows : [...rows, pin];
+  const pictures = await Promise.all(candidates.map((row) => heldPicture(row.metadataURI)));
 
   // The first screen is the one shot nobody scrolls past, and a card reading
   // "Moolam seed 4" on it says the registry is a test rig. The sieve is the
@@ -213,36 +319,53 @@ export async function storyData(): Promise<StoryData> {
       registeredAt: Number(row.registeredAt),
     }));
 
-  const chosen = chooseFocal(
-    rows,
-    pictures.map((picture) => picture !== null),
-    pictures.map((picture) => picture?.title ?? null),
-  );
-  const focal =
-    chosen === null ? null : focalFrom(rows[chosen.index], (pictures[chosen.index] as Picture).full, chosen.reason);
+  const hasPicture = pictures.map((picture) => picture !== null);
+  const titles = pictures.map((picture) => picture?.title ?? null);
+  const pinnedAt = pinnedFocal(candidates, hasPicture, titles, PINNED_FOCAL.title);
+  // The automatic choice reads the field's own rows, exactly as it always has.
+  const chosen =
+    pinnedAt !== null
+      ? { index: pinnedAt, reason: "full" as const }
+      : chooseFocal(rows, hasPicture.slice(0, rows.length), titles.slice(0, rows.length));
+  const chosenPicture = chosen === null ? null : pictures[chosen.index];
+  const list = await heldPlatformList();
+  const focal: StoryFocal | null =
+    chosen === null || chosenPicture === null || chosenPicture === undefined
+      ? null
+      : {
+          ...focalFrom(candidates[chosen.index], chosenPicture.full, chosen.reason),
+          title: chosenPicture.title,
+          pinned: pinnedAt !== null,
+          sworn: chosenPicture.sworn,
+          credit: await creditOf(candidates[chosen.index], list),
+        };
 
   if (process.env.NODE_ENV === "development" && chosen !== null) {
     // Which record the story opened on, so a wrong one is caught on the dev
     // server rather than in a judge's screenshot.
     console.info(
-      `story focal: ${rows[chosen.index].id} "${pictures[chosen.index]?.title ?? "untitled"}" on the ${chosen.reason} rung, ${rows[chosen.index].attestations} re-checks`,
+      `story focal: ${candidates[chosen.index].id} "${titles[chosen.index] ?? "untitled"}" ${pinnedAt !== null ? "pinned" : `on the ${chosen.reason} rung`}, ${candidates[chosen.index].attestations} checks`,
     );
   }
 
-  // Only this passport's own re-check is ever shown. A newer one on a different
+  // Only this passport's own check is ever shown. A newer one on a different
   // record is a true sentence about a record nobody is looking at, which is how
   // the story came to quote three passports at once.
   if (focal !== null) {
     attestation = await heldAttestation(focal.id);
   }
 
-  // The trusted beat is about the generator that made this picture, so a
+  // The agent's score is about the generator that made this picture, so a
   // generator the index has no row for shows as no score rather than borrowing
   // another agent's standing.
   const agentId = focal === null ? DEMO_AGENT_ID : focal.agentId === null ? null : BigInt(focal.agentId);
-  const agent = agentId === null ? null : await agentStanding(agentId, generators[agentId.toString()]);
-
-  const { statement, statementError } = focal === null ? NO_STATEMENT : await focalStatement(focal.id);
+  const [agent, statementRead, check, lookalike, yourself] = await Promise.all([
+    agentId === null ? null : agentStanding(agentId, generators[agentId.toString()]),
+    focal === null ? NO_STATEMENT : focalStatement(focal.id),
+    attestation === null ? null : focalCheck(attestation),
+    newestLookalike(),
+    yourselfFrom(candidates, pictures, list, generators),
+  ]);
 
   return {
     source,
@@ -250,12 +373,252 @@ export async function storyData(): Promise<StoryData> {
     focal,
     attestation,
     agent,
-    statement,
-    statementError,
+    statement: statementRead.statement,
+    statementError: statementRead.statementError,
     passportCount,
     attestationCount,
     error,
+    check,
+    lookalike,
+    yourself,
   };
+}
+
+/**
+ * The pinned picture's row, found by its title, or null when it is not among
+ * the rows or does not pass. It has to clear every rule the chooser's top rung
+ * holds a picture to: a real picture a reader can look at, an agent drew it,
+ * Content Credentials travelled with it, and a Chainlink verdict was written on
+ * it. Pure, and tested in test/story-rollin.test.ts.
+ */
+export function pinnedFocal(
+  rows: readonly IndexRow[],
+  hasPicture: readonly boolean[],
+  titles: readonly (string | null)[],
+  title: string,
+): number | null {
+  const at = rows.findIndex(
+    (row, index) =>
+      titles[index] === title &&
+      hasPicture[index] === true &&
+      fits(row, "full") &&
+      !isTestCard(titles[index] ?? null, row.id),
+  );
+  return at === -1 ? null : at;
+}
+
+/**
+ * Who the imagined beat credits, by the site's one credit rule.
+ *
+ * Only an agent a listed platform owns can make a picture anything other than
+ * the studio's, so only then is the agent's owner read, which is what the
+ * co-signed credit stands on. No holder and no handover are read: those only
+ * name a person in the kit cases, and the kit cases are worded for push day,
+ * so the film names nobody there.
+ */
+export async function creditOf(row: IndexRow, list: PlatformList): Promise<StoryCredit> {
+  if (row.kind !== 0 || row.generatorId === null) {
+    return { case: "photo" };
+  }
+  const agentId = BigInt(row.generatorId);
+  const entry = list.ok ? list.platforms.find((one) => one.agentId === agentId) : undefined;
+  if (entry === undefined) {
+    return { case: "studio" };
+  }
+  const agentOwnerNow = await listedAgentOwner(list, agentId);
+  const credit = creditFrom(list, {
+    creator: row.creator,
+    kind: row.kind,
+    generatorAgentId: agentId,
+    manifestHash: row.manifestHash,
+    registeredAt: BigInt(row.registeredAt),
+    holder: null,
+    agentOwnerNow,
+    ...UNKNOWN_HANDOVER,
+  });
+  return credit?.case === "cosigned"
+    ? { case: "cosigned", platform: credit.platform }
+    : { case: "platform", platform: entry.name };
+}
+
+/**
+ * Which form the checked beat may play this verdict in.
+ *
+ * The index's own network flag decides where it serves one; otherwise the
+ * forwarder that carried the report does, as the passport page's mark reads
+ * it. A verdict whose delivery could not be told plays in the plain form, which
+ * says what was done and claims neither.
+ */
+async function focalCheck(attestation: StoryAttestation): Promise<StoryCheck> {
+  const base = { matched: attestation.matched, distance: attestation.distance, at: attestation.at };
+  const rows = await heldIndexedVerdictRows(attestation.passportId).catch(() => null);
+  if (rows === null) {
+    return { ...base, form: "plain" };
+  }
+  const written = { receiver: attestation.receiver, at: BigInt(attestation.at), distance: attestation.distance };
+  const row = rows.find(
+    (one) =>
+      one.receiver.toLowerCase() === written.receiver.toLowerCase() &&
+      one.at === written.at &&
+      one.distance === written.distance,
+  );
+  if (row?.network === true) {
+    return { ...base, form: "network" };
+  }
+  const txHash = transactionFor(rows, written);
+  if (txHash === undefined) {
+    return { ...base, form: "plain" };
+  }
+  const delivery = await heldReportDelivery(txHash).catch(() => "unknown" as const);
+  return { ...base, form: delivery === "network" ? "network" : delivery === "simulation" ? "test" : "plain" };
+}
+
+const ZERO_ID = /^0x0{64}$/;
+
+const LOOKALIKE_QUERY = `query StoryLookalike {
+  Lookalike(where: { network: { _eq: true }, valid: { _eq: true } }, order_by: [{ executedAt: desc }], limit: 4) {
+    earlierId
+    phashDistance
+    executedAt
+    passport { id registeredAt metadataURI }
+    earlier { id registeredAt metadataURI }
+  }
+}`;
+
+interface LookalikeLine {
+  id: Hex;
+  registeredAt: string | number;
+  metadataURI: string;
+}
+
+interface LookalikeRow {
+  earlierId: string;
+  phashDistance: number;
+  executedAt: string | number;
+  passport: LookalikeLine | null;
+  earlier: LookalikeLine | null;
+}
+
+/** The newest few network records, held for a minute. Asked only of an index that serves them. */
+const heldLookalikeRows = unstable_cache(
+  async (): Promise<LookalikeRow[]> => {
+    const response = await fetch(envioUrl(), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ query: LOOKALIKE_QUERY }),
+      signal: AbortSignal.timeout(INDEX_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`the Envio endpoint answered ${response.status}`);
+    }
+    const body = (await response.json()) as { errors?: unknown[]; data?: { Lookalike?: LookalikeRow[] } };
+    if (body.errors !== undefined || body.data?.Lookalike === undefined) {
+      throw new Error("the index did not answer the look-alike query");
+    }
+    return body.data.Lookalike;
+  },
+  ["moolam-story-lookalike"],
+  { revalidate: HOLD_SECONDS, tags: [CACHE_TAGS.index] },
+);
+
+/**
+ * The newest look-alike record Chainlink's network wrote and the index found
+ * valid, with both passports' pictures, or null.
+ *
+ * Until the push-day index serves the rows there is nothing to ask, and the
+ * beat is left out; a record whose either picture cannot be shown is passed
+ * over, because the beat is two prints side by side.
+ */
+async function newestLookalike(): Promise<StoryLookalike | null> {
+  if (activeSource() !== "envio" || !(await markSchema()).lookalikes) {
+    return null;
+  }
+  let records: LookalikeRow[];
+  try {
+    records = await heldLookalikeRows();
+  } catch {
+    return null;
+  }
+  for (const record of records) {
+    if (ZERO_ID.test(record.earlierId) || record.passport === null || record.earlier === null) {
+      continue;
+    }
+    const [later, earlier] = await Promise.all([
+      heldPicture(record.passport.metadataURI),
+      heldPicture(record.earlier.metadataURI),
+    ]);
+    if (later === null || earlier === null) {
+      continue;
+    }
+    return {
+      later: {
+        id: record.passport.id,
+        picture: later.thumbnail,
+        title: later.title,
+        registeredAt: Number(record.passport.registeredAt),
+      },
+      earlier: {
+        id: record.earlier.id,
+        picture: earlier.thumbnail,
+        title: earlier.title,
+        registeredAt: Number(record.earlier.registeredAt),
+      },
+      bits: record.phashDistance,
+      at: Number(record.executedAt),
+    };
+  }
+  return null;
+}
+
+/**
+ * The sign-it-yourself beat, from what the film has already read.
+ *
+ * The figures are the index's own generator counts for the listed platforms'
+ * agents, and the print is the newest picture among the film's rows that the
+ * credit rule calls co-signed: drawn by a listed platform's agent and signed by
+ * the person. Without such a picture the beat is left out rather than drawn
+ * on a picture that does not say what it says.
+ */
+async function yourselfFrom(
+  rows: readonly IndexRow[],
+  pictures: readonly (Picture | null)[],
+  list: PlatformList,
+  generators: Record<string, IndexGenerator>,
+): Promise<StoryYourself | null> {
+  if (!list.ok) {
+    return null;
+  }
+  const current = list.platforms.filter((entry) => entry.validTo === null);
+  const counted = current
+    .map((entry) => ({ entry, count: generators[entry.agentId.toString()]?.passportCount ?? 0 }))
+    .filter((one) => one.count > 0);
+  if (counted.length === 0) {
+    return null;
+  }
+
+  const order = rows
+    .map((row, index) => ({ row, picture: pictures[index] ?? null }))
+    .filter((one) => one.row.kind === 0 && one.row.generatorId !== null)
+    .sort((a, b) => Number(b.row.registeredAt) - Number(a.row.registeredAt));
+
+  for (const { row, picture } of order) {
+    const listed = current.some((one) => one.agentId.toString() === row.generatorId);
+    if (!listed || picture === null || picture.title === null || isTestCard(picture.title, row.id)) {
+      continue;
+    }
+    const credit = await creditOf(row, list);
+    if (credit.case !== "cosigned") {
+      continue;
+    }
+    return {
+      platform: credit.platform,
+      count: counted.reduce((sum, one) => sum + one.count, 0),
+      platforms: counted.length,
+      newest: { id: row.id, picture: picture.full, title: picture.title, creator: row.creator },
+    };
+  }
+  return null;
 }
 
 const NO_STATEMENT = { statement: null, statementError: null };
@@ -325,23 +688,27 @@ export async function heldStory(): Promise<StoryData> {
  * arrive as text from GraphQL and stay that way until a caption reads them,
  * which is what lets the answer be stored at all.
  */
-const heldIndex = unstable_cache(async () => await fromIndex(), ["moolam-story-index"], {
+const heldIndex = unstable_cache(async () => await fromIndex(), ["moolam-story-index-pinned"], {
   revalidate: HOLD_SECONDS,
   tags: [CACHE_TAGS.index],
 });
 
-async function fromIndex(): Promise<{
+interface IndexAnswer {
   rows: IndexRow[];
+  /** The pinned picture's own row, read in the same query, or null when the index has none. */
+  pinned: IndexRow | null;
   passports: number | null;
   attestations: number | null;
   generators: Record<string, IndexGenerator>;
-}> {
+}
+
+async function fromIndex(): Promise<IndexAnswer> {
   const response = await fetch(envioUrl(), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
       query: STORY_QUERY,
-      variables: { limit: FIELD_DEPTH },
+      variables: { limit: FIELD_DEPTH, pinned: PINNED_FOCAL.id.toLowerCase() },
     }),
     signal: AbortSignal.timeout(INDEX_TIMEOUT_MS),
     cache: "no-store",
@@ -354,17 +721,8 @@ async function fromIndex(): Promise<{
   const body = (await response.json()) as {
     errors?: { message: string }[];
     data?: {
-      Passport: {
-        id: Hex;
-        metadataURI: string;
-        registeredAt: string;
-        registeredBlock: string;
-        generator_id: string | null;
-        creator_id: Hex;
-        kind: number;
-        manifestHash: Hex;
-        attestationCount: number;
-      }[];
+      Passport: IndexPassport[];
+      pinned?: IndexPassport[];
       GlobalStats: { passports: number; attestations: number }[];
       Generator: ({ id: string } & IndexGenerator)[];
     };
@@ -379,18 +737,11 @@ async function fromIndex(): Promise<{
 
   const stats = body.data.GlobalStats[0];
 
+  const pinned = body.data.pinned?.[0];
+
   return {
-    rows: body.data.Passport.map((row) => ({
-      id: row.id,
-      metadataURI: row.metadataURI,
-      registeredAt: row.registeredAt,
-      registeredBlock: row.registeredBlock,
-      generatorId: row.generator_id,
-      creator: row.creator_id,
-      kind: row.kind,
-      manifestHash: row.manifestHash,
-      attestations: row.attestationCount,
-    })),
+    rows: body.data.Passport.map(toRow),
+    pinned: pinned === undefined ? null : toRow(pinned),
     passports: stats?.passports ?? null,
     attestations: stats?.attestations ?? null,
     generators: Object.fromEntries(
@@ -399,6 +750,33 @@ async function fromIndex(): Promise<{
         { passportCount, matchedCount, trustScore },
       ]),
     ),
+  };
+}
+
+/** One passport as the story query asks for it. */
+interface IndexPassport {
+  id: Hex;
+  metadataURI: string;
+  registeredAt: string;
+  registeredBlock: string;
+  generator_id: string | null;
+  creator_id: Hex;
+  kind: number;
+  manifestHash: Hex;
+  attestationCount: number;
+}
+
+function toRow(row: IndexPassport): IndexRow {
+  return {
+    id: row.id,
+    metadataURI: row.metadataURI,
+    registeredAt: row.registeredAt,
+    registeredBlock: row.registeredBlock,
+    generatorId: row.generator_id,
+    creator: row.creator_id,
+    kind: row.kind,
+    manifestHash: row.manifestHash,
+    attestations: row.attestationCount,
   };
 }
 
@@ -625,6 +1003,8 @@ interface Picture {
   thumbnail: string;
   /** The name pinned with the picture, which is the only thing that tells a real one from a seed card. */
   title: string | null;
+  /** True when the document carries Moolam's sworn line, word for word. */
+  sworn: boolean;
 }
 
 /**
@@ -643,9 +1023,9 @@ class GatewayQuiet extends Error {
   }
 }
 
-// The key carries "titled" because the answers held under the old one have no
-// title in them, and a day of those would send the chooser back to a seed card.
-const heldFor = unstable_cache(async (uri: string) => await pictureFor(uri), ["moolam-story-picture-titled"], {
+// The key carries "sworn" because the answers held under the old ones have no
+// sworn line in them, and a day of those would leave the signed beat without it.
+const heldFor = unstable_cache(async (uri: string) => await pictureFor(uri), ["moolam-story-picture-sworn"], {
   revalidate: METADATA_HOLD_SECONDS,
   tags: [CACHE_TAGS.metadata],
 });
@@ -688,7 +1068,13 @@ async function pictureFor(uri: string): Promise<Picture | null> {
     throw new GatewayQuiet(uri);
   }
 
-  const record = document as { image?: unknown; thumbnail?: unknown; name?: unknown; sealed?: unknown };
+  const record = document as {
+    image?: unknown;
+    thumbnail?: unknown;
+    name?: unknown;
+    sealed?: unknown;
+    sworn?: unknown;
+  };
 
   // A sealed passport is left out of the film on purpose. The film is a reel of
   // registered pictures, and this one has no picture to show: its own page,
@@ -709,5 +1095,6 @@ async function pictureFor(uri: string): Promise<Picture | null> {
     full: gatewayUrl(image ?? (thumbnail as string)),
     thumbnail: gatewayUrl(thumbnail ?? (image as string)),
     title: typeof record.name === "string" ? record.name : null,
+    sworn: statementsOf(record).sworn,
   };
 }

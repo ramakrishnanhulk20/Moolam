@@ -337,7 +337,7 @@ describe("step 5: an id inside a label in capitals keeps its own lower case (roo
         'withHex(t("register.openTx", { hash: HEX_MARK })',
         'withHex(t("register.openAddress", { wallet: HEX_MARK })',
       ],
-      "components/story/LandingStory.tsx": [
+      "components/story/words.tsx": [
         'withHex(t("sealed.readout", { passport: HEX_MARK, date: registered })',
         't("verified.provenance", { passport: HEX_MARK, date: measuredOn })',
       ],

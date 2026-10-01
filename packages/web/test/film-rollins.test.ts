@@ -10,15 +10,16 @@ import type { StoryData } from "@/components/story/data";
 import type { Tab } from "@/components/shell/tabs";
 
 /**
- * The film's two roll-ins from the polish lab, and the fixes that ride with
- * them.
+ * The film's roll-ins and the fixes that ride with them.
  *
- * 03B: under the light theme the film is a framed dark screen on the cream
- * page, its title above it. 04A: on a phone the tab bar stays through the whole
- * film, the shot fills the room between the header and the bar, and the words
- * stand just above the bar. With them: the bar keeps its rule with less motion,
- * the film's refusal red is the site's, the film's loading box is the chapter's
- * first frame rather than a black window, and the ladder counts bits.
+ * 03B was the framed dark screen on the light page; the story roll-in (WO-279c)
+ * replaced it: the film is light by default and runs edge to edge on the
+ * page's own Linen, its chapter title inside the shot. 04A: on a phone the tab
+ * bar stays through the whole film, the shot fills the room between the header
+ * and the bar, and the words stand just above the bar. With them: the bar
+ * keeps its rule with less motion, the film's refusal red is the site's, the
+ * film's loading box is the chapter's first frame, and the ladder counts bits.
+ * The film's rules live in its own room.ts now, so that is what is read.
  */
 
 const motion = vi.hoisted(() => ({ reduced: false }));
@@ -34,15 +35,16 @@ vi.mock("@/lib/i18n/routing", () => ({
   usePathname: () => "/",
 }));
 
-const { FilmFrame } = await import("@/components/story/FilmFrame");
 const { FilmLoading } = await import("@/components/story/FilmLoading");
 const { FilmGate } = await import("@/components/home/FilmGate");
 const { BottomBar } = await import("@/components/shell/BottomBar");
 const { REFUSED, VERIFIED } = await import("@/components/story/palette");
 const { phoneShot, LandingStory } = await import("@/components/story/LandingStory");
 const { bitsApart, degradeSteps } = await import("@/components/story/measurements");
+const { FILM_STYLE } = await import("@/components/story/room");
 
-const css = readFileSync("styles/globals.css", "utf8");
+const css = FILM_STYLE;
+const site = readFileSync("styles/globals.css", "utf8");
 
 function render(node: ReactElement): string {
   const Provider = NextIntlClientProvider as unknown as FunctionComponent<{
@@ -75,64 +77,34 @@ function inMedia(query: string, selector: string): string {
 
 const text = (html: string) =>
   html
+    .replace(/<style[\s\S]*?<\/style>/g, "")
     .replace(/<!-- -->/g, "")
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-describe("03B: the film as a framed dark screen on the light page", () => {
-  const markup = render(createElement(FilmFrame, null, createElement("div", { className: "story" }, "film")));
+describe("the film on the light page, edge to edge", () => {
+  const gate = render(createElement(FilmGate, null, createElement("div", null, "film")));
 
-  it("wraps the film in the frame and puts the chapter title above it, on the page", () => {
-    expect(markup).toMatch(/^<section class="story-frame" data-story-frame="true">/);
-    const title = markup.indexOf("story-frame-title");
-    expect(title).toBeGreaterThan(-1);
-    expect(title).toBeLessThan(markup.indexOf('class="story"'));
-    expect(text(markup.slice(title, markup.indexOf('class="story"')))).toContain(
-      `${en.story.chapter.kicker} ${en.story.chapter.title}`,
-    );
-    expect(markup).toMatch(/<h2[^>]*>How a picture gets its passport<\/h2>/);
+  it("is no longer framed: no frame, no title above a screen, the title inside the shot", () => {
+    expect(gate).not.toContain("story-frame");
+    expect(gate).toContain('data-film="loading"');
+    expect(gate).toMatch(/<p[^>]*>How a picture gets its passport<\/p>/);
   });
 
-  it("never hides the title behind an opacity only a script would lift", () => {
-    expect(markup).not.toMatch(/style="[^"]*opacity:\s*0/);
-    expect(markup).toMatch(/class="story-frame-title rise /);
+  it("is the page's own Linen with no theme class at all, and the shipped film only under the dark class", () => {
+    expect(css).toMatch(/html\.dark \[data-film-room\] \{\s*--bg: #0b0b0c;/);
+    // Nothing in the film's rules is keyed to "not light", which is also a page with no script.
+    expect(css).not.toContain(":not(.light)");
+    const loading = render(createElement(FilmLoading));
+    expect(loading).toContain("data-film-room");
+    expect(loading).not.toContain('class="story"');
   });
 
-  it("frames it in the light theme alone: 32 px of page, 16 on a phone, 8 px corners and a hairline", () => {
-    expect(rule(".story-frame-title")).toContain("display: none;");
-    const frame = rule("html.light .story-frame");
-    expect(frame).toContain("--frame-gap: 32px;");
-    expect(frame).toContain("padding-inline: var(--frame-gap);");
-    expect(inMedia("(max-width: 767px)", "html.light .story-frame")).toContain("--frame-gap: 16px;");
-    const screen = rule("html.light .story-frame > .story");
-    expect(screen).toContain("border: 1px solid var(--frame-line);");
-    expect(screen).toContain("border-radius: 8px;");
-    expect(screen).toContain("overflow: clip;");
-    expect(rule("html.light .story-frame-title")).toContain("display: block;");
-  });
-
-  it("sizes the screen to what the window leaves once the page is at the film's foot, so the pin still fills it", () => {
-    const height = rule('html.light .story-frame [data-story="film"],\nhtml.light .story-frame [data-story="loading"]');
-    expect(height).toContain("100svh - var(--header-h) - var(--frame-gap) * 2 - var(--frame-foot)");
-    expect(inMedia("(max-width: 767px)", "html.light .story-frame")).toContain("--frame-foot: var(--bar-room);");
-  });
-
-  it("draws the title once: above the screen in the light theme, inside the shot in the dark", () => {
-    expect(rule('html.light .story-frame [data-beat="opening"]')).toContain("display: none;");
-  });
-
-  it("leaves the header on the page's cream over the framed film", () => {
-    const film = readFileSync("components/story/LandingStory.tsx", "utf8");
-    expect(film).not.toContain("CHAPTER_LOOK");
-  });
-
-  it("hands the still page's closing card back to cream the way the film's is (F38)", () => {
-    const still = '.light [data-story="still"] > div > section:last-child';
-    expect(css).toContain(`.light,\n.light .story-close,\n${still} {\n  --bg: #e4ddd0;`);
-    const ground = rule(still, css.indexOf("/* The still page ends on the same card"));
-    expect(ground).toContain("background: var(--bg);");
-    expect(ground).toContain("color-scheme: light;");
+  it("never wears the old dark-whatever-the-theme class", () => {
+    for (const file of ["components/story/StoryStage.tsx", "components/home/FilmGate.tsx", "components/story/LandingStory.tsx"]) {
+      expect(readFileSync(file, "utf8"), file).not.toContain('className="story"');
+    }
   });
 });
 
@@ -182,22 +154,27 @@ describe("04A: the tab bar through the film on a phone", () => {
     }
   });
 
-  it("stops the words and every panel at the bar's whole room, the raised Make included", () => {
-    const lower = rule(".story-lower");
+  it("stops the words and every panel at the phone's whole bottom room", () => {
+    const lower = rule(".film-lower");
     expect(lower).toContain("top: var(--film-top);");
     expect(lower).toContain("bottom: var(--film-words-foot);");
     expect(lower).toContain("align-items: flex-end;");
-    const phone = inMedia("(max-width: 767px)", ".story");
+    const phone = inMedia("(max-width: 767px)", "[data-film-room]");
     expect(phone).toContain("--film-words-foot: var(--bar-room);");
     expect(phone).toContain("--film-foot: calc(56px + max(env(safe-area-inset-bottom), var(--bar-safe, 0px)));");
-    expect(css).toContain("\n.story {\n  --film-top: var(--header-h);\n  --film-foot: 0px;\n  --film-words-foot: 0px;\n}");
-    expect(css).toContain("--bar-room: calc(84px + env(safe-area-inset-bottom));");
-    expect(inMedia("(min-width: 640px)", ".story-lower")).toContain("padding-bottom: var(--film-words-foot);");
-    expect(rule(".story-cue")).toContain("bottom: calc(var(--film-words-foot) + 1.75rem);");
+    expect(rule("[data-film-room]")).toContain("--film-top: var(--header-h);");
+    // --bar-room is the tab bar and the menu's two sides together, set by the layout.
+    expect(site).toContain("--bar-room:");
+    expect(inMedia("(min-width: 640px)", ".film-lower")).toContain("padding-bottom: var(--film-words-foot);");
+    expect(rule(".film-cue")).toContain("bottom: calc(var(--film-words-foot) + 1.75rem);");
+    // Every caption, the drop panel and the closing card stand in that room.
+    expect(readFileSync("components/story/LandingStory.tsx", "utf8")).toContain('className="film-lower pointer-events-none');
+    expect(readFileSync("components/story/TryPanel.tsx", "utf8")).toContain('"film-lower pointer-events-none');
+    expect(readFileSync("components/story/CloseCard.tsx", "utf8")).toContain('"film-close film-lower pointer-events-none');
   });
 
-  it("stands each beat's words on a dark fade of its own, rising from the bar", () => {
-    const fade = inMedia("(max-width: 639px)", ".story-lower > :last-child::before");
+  it("stands each beat's words on a fade of the room's own ground, rising from the bar", () => {
+    const fade = inMedia("(max-width: 639px)", ".film-lower > :last-child::before");
     expect(fade).toContain("z-index: -1;");
     expect(fade).toMatch(/linear-gradient\(\s*0deg,\s*var\(--bg\) 0%/);
   });
@@ -226,7 +203,7 @@ describe("04A: the tab bar through the film on a phone", () => {
     expect(shot.fov).toBeLessThanOrEqual(80.1);
   });
 
-  it("draws the whole framed screen under the light theme, which already sits between the header and the bar", () => {
+  it("draws the whole shot when nothing covers the canvas", () => {
     const shot = phoneShot({ width: 343, height: 640 }, { top: 0, foot: 0 }, 0.45);
     expect(shot.y).toBe(0);
     expect(shot.y + shot.height).toBeGreaterThanOrEqual(640);
@@ -241,9 +218,9 @@ describe("04A: the tab bar through the film on a phone", () => {
 });
 
 describe("the film's status colours", () => {
-  const story = rule(".story");
+  const story = rule("html.dark [data-film-room]");
 
-  it("refuses in the site's own failure red (the film is dark in both themes)", () => {
+  it("refuses in the dark room in the site's own dark failure red", () => {
     expect(story).toContain(`--status-failed: ${REFUSED.toLowerCase()};`);
     expect(REFUSED.toLowerCase()).toBe("#ff5f4d");
   });
@@ -254,20 +231,21 @@ describe("the film's status colours", () => {
 });
 
 describe("F2: the film's box while its code is on its way", () => {
-  it("is the chapter's first frame on the film's dark ground, at the film's height", () => {
+  it("is the chapter's first frame on the room's own ground, at the film's height", () => {
     const markup = render(createElement(FilmLoading));
-    expect(markup).toMatch(/<div class="grain relative h-\[100svh\] w-full overflow-hidden bg-bg" data-story="loading">/);
+    expect(markup).toMatch(
+      /<div data-film-room="true" class="grain relative h-\[100svh\] w-full overflow-hidden bg-bg" data-film="loading">/,
+    );
     expect(text(markup)).toBe(`${en.story.chapter.kicker} ${en.story.chapter.title}`);
     expect(markup).toContain('data-beat="opening"');
     expect(markup).not.toMatch(/style="[^"]*opacity:\s*0/);
   });
 
-  it("is what the gate holds open before the film is asked for, inside the frame", () => {
+  it("is what the gate holds open before the film is asked for", () => {
     const markup = render(createElement(FilmGate, null, createElement("div", null, "film")));
     expect(markup).toContain("data-film-gate");
-    const box = markup.slice(markup.indexOf('data-story="loading"'));
+    const box = markup.slice(markup.indexOf('data-film="loading"'));
     expect(text(box)).toContain(en.story.chapter.title);
-    expect(markup.indexOf("story-frame")).toBeLessThan(markup.indexOf("data-film-gate"));
   });
 
   it("is what the film's own loader draws too", () => {
@@ -276,11 +254,12 @@ describe("F2: the film's box while its code is on its way", () => {
   });
 
   it("leaves the footer in place while it waits", () => {
-    expect(css).not.toContain('body:has([data-story="loading"]) footer');
+    expect(css).not.toContain('body:has([data-film="loading"]) footer');
+    expect(css).toContain('body:has([data-film="film"]):not([data-story-end]) footer');
   });
 });
 
-describe("F25: the verified beat counts bits, as its caption says", () => {
+describe("F25: the found beat counts bits, as its caption says", () => {
   const WRITER = "0x85a88Ca81ff5f681D96AB86fa60ccB8452A139a6" as Hex;
   const data: StoryData = {
     source: "envio",
@@ -314,16 +293,18 @@ describe("F25: the verified beat counts bits, as its caption says", () => {
     }
   });
 
-  it("draws the first rung as bits, big figure and caption alike, and never a confidence", () => {
-    // Without a browser the film draws its still page, which carries the same beat.
+  it("lands on the last copy's figure as bits, big figure and caption alike, and never a confidence", () => {
+    // Without a browser the film draws its still page, where the copy is home.
     const markup = render(createElement(LandingStory, { data, variant: "chapter" as const }));
-    const first = degradeSteps()[0];
+    const steps = degradeSteps();
+    const last = steps[steps.length - 1];
     const said = en.story.verified.similarity
-      .replace("{value}", bitsApart(first))
+      .replace("{value}", bitsApart(last))
       .replace("{result}", en.story.verified.match);
-    expect(said).toBe("0 of 64 bits apart: match");
+    expect(said).toBe("1 of 64 bits apart: match");
     expect(markup).toContain(`>${said}</span>`);
-    expect(markup).toMatch(new RegExp(`tabular-nums text-accent">${bitsApart(first)}</span>`));
+    // Ink on Linen, the film's pink in the dark room.
+    expect(markup).toContain(`tabular-nums text-text [html.dark_&amp;]:text-accent">${bitsApart(last)}</span>`);
     expect(markup).not.toMatch(/\d\.\d\d of 64 bits apart/);
     const film = readFileSync("components/story/LandingStory.tsx", "utf8");
     expect(film).not.toContain("confidence.toFixed(2)");

@@ -177,8 +177,8 @@ describe("the film under it", () => {
     const html = await served("en");
 
     expect(html).toContain("data-film-gate");
-    expect(html).toContain('data-story="loading"');
-    expect(html).not.toContain('data-story="film"');
+    expect(html).toContain('data-film="loading"');
+    expect(html).not.toMatch(/<div[^>]*data-film="film"/);
     expect(html).not.toContain(PLATE);
     expect(html).not.toMatch(/<link[^>]+rel="preload"[^>]+as="image"/);
   });

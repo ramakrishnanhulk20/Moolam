@@ -69,7 +69,7 @@ export function ScrollCue() {
     // Twelve seconds of reading the title is long enough for a hint to have
     // done its job either way, counted from the film reaching the window.
     const watch = () => {
-      const box = el.closest<HTMLElement>('[data-story="film"]')?.getBoundingClientRect();
+      const box = el.closest<HTMLElement>('[data-film="film"]')?.getBoundingClientRect();
       const room = document.documentElement.scrollHeight - window.innerHeight;
       if (box === undefined || filmPlace(box.top, window.scrollY, room) === "here") {
         arrived = performance.now();
@@ -91,11 +91,11 @@ export function ScrollCue() {
     <div
       ref={node}
       aria-hidden
-      className="story-cue pointer-events-none absolute inset-x-0 z-40 px-5 opacity-100 transition-opacity duration-700 sm:px-8 lg:px-14"
+      className="film-cue pointer-events-none absolute inset-x-0 z-40 px-5 opacity-100 transition-opacity duration-700 sm:px-8 lg:px-14"
     >
       <div className="mx-auto flex w-full max-w-[100rem] items-center gap-3">
         <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-accent/80">{t("scrollCue")}</span>
-        <span className="relative block h-px w-16 overflow-hidden bg-white/15">
+        <span className="relative block h-px w-16 overflow-hidden bg-line-strong">
           <span className="scroll-spark absolute inset-y-0 left-0 block w-6 bg-accent/80" />
         </span>
       </div>

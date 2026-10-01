@@ -2,7 +2,6 @@
 
 import { Component, Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { FilmFailed } from "@/components/home/FilmFailed";
-import { FilmFrame } from "@/components/story/FilmFrame";
 import { FilmLoading } from "@/components/story/FilmLoading";
 
 /** The moves that say a reader is on their way down the page. */
@@ -55,18 +54,14 @@ export function FilmGate({ children }: { children: ReactNode }) {
     };
   }, [open]);
 
-  // The frame stays mounted across the swap from this box to the film, so the
-  // light theme's title above the screen does not rise a second time.
-  return (
-    <FilmFrame>
-      {open ? (
-        <FilmCatch>{children}</FilmCatch>
-      ) : (
-        <div ref={box} className="story" data-film-gate>
-          <FilmLoading />
-        </div>
-      )}
-    </FilmFrame>
+  // The film runs edge to edge on the page's own ground in both themes, with
+  // its chapter title inside the shot, so nothing frames it.
+  return open ? (
+    <FilmCatch>{children}</FilmCatch>
+  ) : (
+    <div ref={box} data-film-gate>
+      <FilmLoading />
+    </div>
   );
 }
 

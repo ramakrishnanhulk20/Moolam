@@ -102,7 +102,7 @@ export function CloseCard({ data, pinned = true }: { data: StoryData; pinned?: b
             }
           : undefined
       }
-      className={pinned ? "story-close story-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : ""}
+      className={pinned ? "film-close film-lower pointer-events-none z-30 px-5 opacity-0 sm:px-8 lg:px-14" : ""}
     >
       {/* On a phone the card takes the lower half of the window and the shot
           keeps the top, and the shot's foot is the fog's plain black. Against

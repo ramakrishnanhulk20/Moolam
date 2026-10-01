@@ -1,212 +1,146 @@
 import { describe, expect, it } from "vitest";
-import { beatTable, type Beat } from "@/components/story/beats";
+import { BEAT_ORDER, FOUND, beatTable, type Beat, type BeatName } from "@/components/story/beats";
+import { PACE, readingSeconds, screensFor } from "@/components/story/pace";
 
 /**
  * The film's own table, pinned down.
  *
- * The pacing of the nine pages below was tuned beat by beat, so the numbers
- * are written out here in full rather than derived from the table they are
- * checking. Any cut of the film that changes one of them changes that pacing,
- * and this is the test that says so out loud.
+ * Ram approved the pace on the story lab on 1 October: every beat of the
+ * story-v2 script, twelve screens for the whole film, about two minutes. The
+ * lengths are written out here in full rather than read from the table they
+ * are checking, so a cut that changes one says so out loud.
  */
 
-/** Screens of scroll the approved film runs on: nine pages, eight screens of travel. */
-const APPROVED_PAGES = 9;
+const APPROVED_SCREENS: Record<BeatName, number> = {
+  opening: 0.6,
+  imagined: 0.9,
+  sealed: 0.85,
+  stated: 0.95,
+  asked: 0.8,
+  shared: 0.85,
+  verified: 1.35,
+  checked: 0.95,
+  lookalike: 1.05,
+  yourself: 0.95,
+  waiting: 0.8,
+  offer: 1,
+  close: 0.95,
+};
 
-const APPROVED: Beat[] = [
-  {
-    name: "opening",
-    start: 0,
-    end: 0.112,
-    captionStart: 0,
-    captionEnd: 0.068,
+/** The camera paths of the beats that stay from the film before, to the last number. */
+const KEPT_PATHS: Partial<Record<BeatName, Pick<Beat, "align" | "arrive" | "settle">>> = {
+  opening: {
     align: "start",
     arrive: { pos: [0.9, 0.35, 7.4], look: [-0.85, 0, 0] },
     settle: { pos: [0.74, 0.3, 6.55], look: [-0.8, 0, 0] },
   },
-  {
-    name: "made",
-    start: 0.112,
-    end: 0.24,
-    captionStart: 0.112,
-    captionEnd: 0.2,
+  imagined: {
     align: "start",
     arrive: { pos: [0.36, 0.1, 4.05], look: [-0.75, 0, 0] },
     settle: { pos: [0.3, 0.06, 3.78], look: [-0.72, 0, 0] },
   },
-  {
-    name: "sealed",
-    start: 0.24,
-    end: 0.376,
-    captionStart: 0.24,
-    captionEnd: 0.33,
-    align: "start",
-    arrive: { pos: [-0.55, 0.42, 3.5], look: [-1.05, 0.24, 0] },
-    settle: { pos: [-0.4, 0.34, 3.34], look: [-0.95, 0.2, 0] },
+  stated: {
+    align: "end",
+    arrive: { pos: [-0.44, -0.26, 2.86], look: [0.64, -0.52, 0] },
+    settle: { pos: [-0.3, -0.32, 2.66], look: [0.56, -0.46, 0] },
   },
-  {
-    name: "shared",
-    start: 0.376,
-    end: 0.536,
-    captionStart: 0.376,
-    captionEnd: 0.48,
+  shared: {
     align: "end",
     arrive: { pos: [1.3, 0.72, 6.1], look: [0.95, 0.04, -0.1] },
     settle: { pos: [2.05, 1, 7.35], look: [1.15, 0.06, -0.35] },
   },
-  {
-    name: "verified",
-    start: 0.536,
-    end: 0.692,
-    captionStart: 0.536,
-    captionEnd: 0.668,
-    align: "start",
-    arrive: { pos: [-0.2, 0.85, 7], look: [-1.1, 0.7, 0.3] },
-    settle: { pos: [0.3, 0.3, 4.5], look: [-0.62, 0.18, 0.15] },
-  },
-  {
-    name: "trusted",
-    start: 0.692,
-    end: 0.824,
-    captionStart: 0.692,
-    captionEnd: 0.8,
-    align: "end",
-    arrive: { pos: [0.25, 0.18, 4], look: [1, 0.06, 0] },
-    settle: { pos: [0.18, 0.14, 4.35], look: [0.95, 0.05, 0] },
-  },
-  {
-    name: "offer",
-    start: 0.824,
-    end: 0.936,
-    captionStart: 0.824,
-    captionEnd: 0.912,
+  offer: {
     align: "end",
     arrive: { pos: [-1.6, 0.3, 4.5], look: [0.85, 0.06, 0] },
     settle: { pos: [-1.45, 0.24, 4.3], look: [0.78, 0.05, 0] },
   },
-  {
-    name: "close",
-    start: 0.936,
-    end: 1,
-    captionStart: 0.936,
-    captionEnd: 1,
+  close: {
     align: "start",
     arrive: { pos: [0.1, 0.45, 6.6], look: [-0.95, -0.1, -0.6] },
     settle: { pos: [0.58, 0.92, 8.5], look: [-0.55, -0.25, -1.6] },
   },
-];
+};
 
-describe("the approved film", () => {
-  const classic = beatTable("classic");
+/** A beat's length in screens, which is what a reader's thumb actually feels. */
+const screens = (beat: Beat, pages: number) => (beat.end - beat.start) * (pages - 1);
 
-  it("runs on the nine pages and the eight beats as they were tuned, to the last offset", () => {
-    expect(classic.pages).toBe(APPROVED_PAGES);
-    expect(classic.beats).toEqual(APPROVED);
+describe("the whole film", () => {
+  const whole = beatTable([...BEAT_ORDER]);
+
+  it("plays every beat of the script, in the script's order", () => {
+    expect(whole.names).toEqual([...BEAT_ORDER]);
   });
 
-  it("hands the camera two keys per beat, the arrival and the drift, in scroll order", () => {
-    expect(classic.cameraKeys).toEqual(
-      APPROVED.flatMap((beat) => [
-        { at: beat.start, pose: beat.arrive },
-        { at: beat.captionEnd, pose: beat.settle },
-      ]),
-    );
+  it("runs in twelve screens, about two minutes", () => {
+    expect(PACE).toEqual(APPROVED_SCREENS);
+    expect(screensFor(whole.names)).toBe(12);
+    expect(whole.pages).toBe(13);
+    expect(readingSeconds(whole.names)).toBe(120);
   });
 
-  it("carries no stated beat at all, so the home page cannot reach one", () => {
-    expect(classic.beat.stated).toBeUndefined();
-    expect(classic.beats.map((beat) => beat.name)).not.toContain("stated");
+  it("gives every beat its approved length in screens", () => {
+    for (const beat of whole.beats) {
+      expect(screens(beat, whole.pages), beat.name).toBeCloseTo(APPROVED_SCREENS[beat.name], 10);
+    }
   });
 
-  it("leaves every beat some travel after its caption and no gap before the next one", () => {
-    APPROVED.forEach((beat, at) => {
+  it("gives the signature beat the most scroll, and holds the camera still at its snap", () => {
+    const longest = Math.max(...Object.values(APPROVED_SCREENS));
+    expect(APPROVED_SCREENS.verified).toBe(longest);
+    const found = whole.beat.verified;
+    const length = found.end - found.start;
+    const snap = found.between.find((key) => key.at === found.start + length * FOUND.snap);
+    const hold = found.between.find((key) => key.at === found.start + length * FOUND.holdEnd);
+    expect(snap).toBeDefined();
+    expect(snap?.pose).toEqual(hold?.pose);
+  });
+
+  it("keeps the camera paths and the sides of the beats that stay", () => {
+    for (const [name, path] of Object.entries(KEPT_PATHS)) {
+      const beat = whole.beat[name as BeatName] as Beat;
+      expect(beat.align, name).toBe(path.align);
+      expect(beat.arrive, name).toEqual(path.arrive);
+      expect(beat.settle, name).toEqual(path.settle);
+    }
+  });
+
+  it("runs from 0 to 1 with no gap and no overlap, leaves every caption before its beat ends, and holds the last", () => {
+    whole.beats.forEach((beat, at) => {
+      expect(beat.captionStart).toBe(beat.start);
       expect(beat.captionEnd).toBeLessThanOrEqual(beat.end);
-      if (at > 0) {
-        expect(beat.start).toBeCloseTo(APPROVED[at - 1].end, 10);
-      }
+      expect(beat.start).toBeCloseTo(at === 0 ? 0 : whole.beats[at - 1].end, 12);
     });
+    expect(whole.beats.at(-1)?.end).toBe(1);
+    expect(whole.beats.at(-1)?.captionEnd).toBe(1);
+  });
+
+  it("hands the camera its keys in scroll order", () => {
+    const at = whole.cameraKeys.map((key) => key.at);
+    expect(at).toEqual([...at].sort((a, b) => a - b));
+    expect(whole.cameraKeys[0].pose).toEqual(whole.beat.opening.arrive);
   });
 });
 
-/**
- * The cut with the holder's word in it. The tuned pacing is measured in
- * screens of scroll, not in fractions, so that is what is checked here: every
- * old beat is the same length of thumb travel it is today, and the film is one
- * screen longer for the one new beat.
- */
-describe("the stated cut", () => {
-  const classic = beatTable("classic");
-  const stated = beatTable("stated");
+describe("a shorter cut", () => {
+  const whole = beatTable([...BEAT_ORDER]);
+  const today = beatTable(["opening", "imagined", "sealed", "shared", "verified", "checked", "offer", "close"]);
 
-  /** A beat's length in screens, which is what a reader's thumb actually feels. */
-  const screens = (beat: Beat, pages: number) => (beat.end - beat.start) * (pages - 1);
-
-  it("adds one screen and no more", () => {
-    expect(stated.pages).toBe(classic.pages + 1);
-  });
-
-  it("puts the new beat between the seal and the copies leaving", () => {
-    expect(stated.beats.map((beat) => beat.name)).toEqual([
-      "opening",
-      "made",
-      "sealed",
-      "stated",
-      "shared",
-      "verified",
-      "trusted",
-      "offer",
-      "close",
-    ]);
-  });
-
-  it("leaves every approved beat the length in screens it has today", () => {
-    for (const beat of APPROVED) {
-      const same = stated.beat[beat.name];
-      expect(same, `the stated cut has no ${beat.name} beat`).toBeDefined();
-      expect(screens(same as Beat, stated.pages)).toBeCloseTo(screens(beat, APPROVED_PAGES), 10);
+  it("takes a left-out beat's scroll with it rather than leaving a gap", () => {
+    expect(today.pages).toBeCloseTo(1 + 0.6 + 0.9 + 0.85 + 0.85 + 1.35 + 0.95 + 1 + 0.95, 10);
+    for (const beat of today.beats) {
+      expect(screens(beat, today.pages), beat.name).toBeCloseTo(APPROVED_SCREENS[beat.name], 10);
     }
   });
 
-  it("gives the new beat exactly one screen of its own", () => {
-    expect(screens(stated.beat.stated as Beat, stated.pages)).toBeCloseTo(1, 10);
+  it("always carries the six beats every cut needs, and plays in the script's order whatever it is handed", () => {
+    expect(beatTable(["close", "opening"]).names).toEqual(["opening", "sealed", "shared", "verified", "offer", "close"]);
   });
 
-  it("keeps the camera, the sides and the reading share of every approved beat", () => {
-    for (const beat of APPROVED) {
-      const same = stated.beat[beat.name] as Beat;
-      expect(same.align).toBe(beat.align);
-      expect(same.arrive).toEqual(beat.arrive);
-      expect(same.settle).toEqual(beat.settle);
-      // How much of its own beat the caption is on screen for, which is the
-      // difference between a reading and a travelling shot.
-      expect((same.captionEnd - same.start) / (same.end - same.start)).toBeCloseTo(
-        (beat.captionEnd - beat.start) / (beat.end - beat.start),
-        10,
-      );
-    }
+  it("fades a caption over the same scroll distance in every cut, so a beat reads at one speed", () => {
+    expect(today.fade * (today.pages - 1)).toBeCloseTo(whole.fade * (whole.pages - 1), 12);
   });
 
-  it("runs from 0 to 1 with no gap and no overlap, and holds the last caption to the end", () => {
-    stated.beats.forEach((beat, at) => {
-      expect(beat.captionEnd).toBeLessThanOrEqual(beat.end);
-      expect(beat.start).toBeCloseTo(at === 0 ? 0 : stated.beats[at - 1].end, 12);
-    });
-    expect(stated.beats.at(-1)?.end).toBe(1);
-    expect(stated.beats.at(-1)?.captionEnd).toBe(1);
-  });
-
-  it("fades a caption over the same scroll distance in both cuts, so a beat reads at one speed", () => {
-    expect(stated.fade * (stated.pages - 1)).toBeCloseTo(classic.fade * (classic.pages - 1), 12);
-  });
-
-  it("arrives at the new beat before a word of it is on screen, close on the lower edge of the plate", () => {
-    const beat = stated.beat.stated as Beat;
-    expect(beat.captionStart).toBe(beat.start);
-    // The words take the right, so the shot leaves the left of the frame to the plate.
-    expect(beat.align).toBe("end");
-    expect(beat.arrive.look[1]).toBeLessThan(-0.3);
-    expect(beat.arrive.pos[2]).toBeLessThan(3.5);
-    // A shot that holds perfectly still reads as a photograph.
-    expect(beat.settle).not.toEqual(beat.arrive);
+  it("is built once per set of beats, so a screen holds the same table all the way through", () => {
+    expect(beatTable(today.names)).toBe(today);
   });
 });

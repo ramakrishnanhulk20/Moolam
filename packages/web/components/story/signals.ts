@@ -10,13 +10,16 @@
 export const progress = {
   /** 0 to 1 across the whole story. */
   scroll: 0,
-  made: 0,
-  sealed: 0,
-  /** The stated beat, 0 on every cut of the film that does not carry one. */
+  /** The terms beat, 0 on every cut of the film that does not carry one. */
   stated: 0,
-  shared: 0,
+  /** The asked beat's question and answer typing on, 0 to 1. */
+  asked: 0,
+  /** The found beat's traveller on its way home: 1 the moment it lands. */
   verified: 0,
-  trusted: 0,
+  /** The look-alike beat's rail drawing, 0 to 1. */
+  lookalike: 0,
+  /** The waiting beat's tag turning over, 0 to 1. */
+  waiting: 0,
   offer: 0,
   close: 0,
 };
