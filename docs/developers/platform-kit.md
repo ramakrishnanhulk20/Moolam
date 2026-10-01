@@ -44,6 +44,29 @@ signed the fingerprint, and your agent's owner signed it too. The person claims 
 through a transfer from your wallet to theirs ([Handing a passport to a person](#handing-a-passport-to-a-person)).
 How Moolam credits each case is [below](#how-moolam-credits-a-platform-picture).
 
+## Which way to hand passports to people
+
+There are three ways for the person who imagined a picture to end up holding its passport and named
+as its maker. Sign it yourself is the one we recommend.
+
+| | Sign it yourself (co-sign). **Recommended** | Leave it for their email | Connect once |
+| --- | --- | --- | --- |
+| How it runs | Co-sign mode | Platform mode with `deliverTo`, and the delivery worker | Platform mode, then `transferPassport` |
+| What the person does | Opens a Moolam page from your site, signs in, and approves the picture with their passkey. The first time they also make a passkey; after that it is one tap per picture | Signs in to Moolam with the email you verified, by Google or an emailed code, presses "These are mine" and picks their AI-use terms, then presses Confirm once you have handed the passports over | Opens Moolam's connect page from your site once and clicks to send you their Moolam address. Later pictures reach them with no step, and they confirm each by stating their own terms on its passport page |
+| When the credit reaches them | From the first block: their own key approved the picture | When they confirm from their own wallet, after your hand-over. Until then the passport reads held, then handed | When they state their own terms on a passport you handed them. Until then it reads handed |
+| What it costs you on chain | Nothing. Moolam pays the person's registration, about 0.068 MON, and their terms | About 0.063 MON a picture: register, your terms, the hand-over. Moolam pays the person's confirm | About 0.063 MON a picture, the same three transactions |
+| What you build | Send a link, or open it in a popup | One field on `registerAsPlatform`, and one delivery worker | A button that opens the connect page, and a place to keep each person's address |
+
+Pick sign it yourself when the person is at the screen when the picture is made, which is almost
+always. Pick leave it for their email when you generate in the background or in bulk and you have
+already verified each user's email. Pick connect once when you have no verified email for your users
+and they come back to your site.
+
+Why we recommend it: sign it yourself is the only way that puts the person's own key on the picture.
+Their passkey approves this exact picture before the registry writes it, so the credit never rests on
+your word about who asked for it, and it costs you no gas. The other two ways credit the person too,
+but only after your hand-over and their own confirmation, and the passport says so.
+
 ## Joining the list
 
 Moolam keeps one public list of platforms, `packages/verifier/src/platforms/platforms.json`, copied
@@ -328,6 +351,167 @@ new holder states their own, and the history shows who wrote each. The person ca
 address through Moolam's connect page, which ships with the co-sign page: it names your platform from
 the list and posts the address only to one of your listed origins, after they click.
 
+### Leaving a passport for a person's email
+
+When you already verified a user's email, you can register their picture in platform mode and leave
+the passport waiting for that address at Moolam. You never ask them for a wallet. Pass `deliverTo`
+to `registerAsPlatform`:
+
+```ts
+import { readFile } from "node:fs/promises";
+import { createWalletClient, http, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { monad } from "viem/chains";
+import { ServerPasskey, registerAsPlatform } from "@moolam/platform";
+
+const walletClient = createWalletClient({
+  account: privateKeyToAccount(process.env.PLATFORM_WALLET_KEY as Hex),
+  chain: monad,
+  transport: http(),
+});
+const agentAccount = privateKeyToAccount(process.env.AGENT_OWNER_KEY as Hex);
+const passkey = ServerPasskey.fromPrivateKey(process.env.MOOLAM_PASSKEY_KEY as Hex, "images.example.com");
+const picture = new Uint8Array(await readFile("lighthouse.png"));
+
+const registered = await registerAsPlatform(picture, {
+  verifyUrl: "https://<verify-service>",
+  platformKey: process.env.MOOLAM_PLATFORM_KEY ?? "",
+  agentAccount,
+  passkey,
+  walletClient,
+  title: "A lighthouse at dusk",
+  terms: { aiTraining: "notAllowed" },
+  deliverTo: { email: await verifiedEmailOf(currentUser()), verifiedBy: "google" },
+});
+console.log(registered.transfer === null ? "waiting at Moolam" : `handed to ${registered.transfer.to}`);
+
+declare function currentUser(): string;
+declare function verifiedEmailOf(userId: string): Promise<string>;
+```
+
+`deliverTo` is platform mode only; a co-sign prepare that carries it is refused. `verifiedBy` says
+how you know the address is your user's:
+
+| `verifiedBy` | Means |
+| --- | --- |
+| `"google"` | They signed in on your site with Google, and Google's ID token said the address is verified |
+| `"email-code"` | You sent a code to the address and they typed it back |
+| `"platform"` | Any other check of your own |
+
+Moolam does not check this word. It shows it to the person as your claim, beside your listed name:
+"Dreamloom says it checked this address with a Google sign-in." Send only an address you verified for
+this user, in the spelling they will sign in to Moolam with.
+
+**What Moolam keeps.** The address travels only inside the prepare request's body, and the kit never
+logs it. The verify service puts it in one form (NFKC, trimmed, lowercase, exactly one address),
+keeps only an HMAC-SHA256 of that form under a secret only the service holds, and drops the address.
+No answer, log line or error carries the address or its hash; a malformed one is refused as
+`deliverTo`, naming the field only. Nothing is folded beyond case: `r.am@gmail.com` and
+`ram@gmail.com` are two addresses, and so is `ram+art@gmail.com`.
+
+**When the offer appears.** The ticket is written pending at the prepare and opens only once the
+chain shows the passport registered by your wallet, held by your wallet and carrying your kit label.
+The service looks about once a minute. A passport that has not landed within two hours of chain time
+closes its ticket, and so does one your wallet moves before the person answers.
+
+**What the person sees at Moolam.** Dreamloom, the demo platform, tells the person "Your passport is
+waiting at Moolam. Claim it with r****@gmail.com at moolam.vercel.app/en/mine". There:
+
+1. They sign in to Moolam with Google or an emailed code. Only an address Privy verified for them,
+   their email account or their Google account's email, matches a ticket.
+2. My pictures opens with "Waiting for you": your listed name, your `verifiedBy` worded as your claim,
+   and the pictures you hold for them, each with its title and picture through Moolam's
+   pinned-picture rule, or "No preview" and its passport id.
+3. They pick the AI-use terms for those pictures and answer for all of them at once:
+   - **These are mine** accepts them for their Moolam wallet, the first embedded wallet in their
+     Privy record. Neither you nor they choose the address.
+   - **Not mine** refuses them for good, stops your offers to that address until they allow you
+     again, and counts against your key.
+   - **Send my future *platform* pictures straight to my account**, a tick beside the answer, makes
+     that wallet and those terms a standing choice for your platform.
+4. Once your worker has handed the passports over, they press **Confirm**. One `setConsentBatch`
+   from their own wallet writes their terms on up to 32 passports, with the fee paid by Moolam. That
+   is the moment the passport names them as the person who imagined it.
+5. Under "Your platform choices" they can **Stop** a standing choice, or **Allow again** a platform
+   they said no to.
+
+**The delivery worker.** Run one on your server, beside the code that registers:
+
+```ts
+import { createPublicClient, createWalletClient, http, type Hex } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { monad } from "viem/chains";
+import { runDeliveries } from "@moolam/platform";
+
+const walletClient = createWalletClient({
+  account: privateKeyToAccount(process.env.PLATFORM_WALLET_KEY as Hex),
+  chain: monad,
+  transport: http(),
+});
+const publicClient = createPublicClient({ chain: monad, transport: http() });
+
+const worker = await runDeliveries({
+  verifyUrl: "https://<verify-service>",
+  platformKey: process.env.MOOLAM_PLATFORM_KEY ?? "",
+  walletClient,
+  publicClient,
+});
+
+process.once("SIGTERM", () => {
+  void worker.stop();
+});
+```
+
+Every five seconds (`intervalMs`, 250 ms to an hour) it reads `GET /platform/deliveries`: the
+accepted tickets of your key whose passport your wallet still holds, with the wallet each goes to, at
+most 32 a poll. For each one it reads `ownerOf` again and skips a passport your wallet no longer
+holds, checks the address by the same rule `transferPassport` uses, simulates `safeTransferFrom`, and
+only then sends it from your wallet. It sends a ticket at most once a poll, logs nothing, and throws
+nothing once started. `stop()` lets a send in flight finish and starts no other. Run one worker per
+platform: two would race to send the same hand-over, and the loser pays for a failed transaction.
+Moolam marks a ticket delivered when the chain shows the person holding the passport; the worker
+reports nothing on success.
+
+**A standing choice, `deliverNow`.** When the person ticked "send my future pictures straight to my
+account" for your platform, the prepare answer carries `deliverNow`, their wallet. `registerAsPlatform`
+checks that address by the same rule before anything is sent, then registers, writes your terms and
+hands the passport over in one call, and returns the hand-over in `transfer`. The person is not asked
+again; the picture waits on My pictures for their Confirm. If the passport and its terms land and the
+hand-over does not, the call throws `delivery-failed` with the passport id and both transactions. The
+passport waits in your wallet, its ticket stands accepted, and the worker hands it over on a later
+poll.
+
+**After a failed hand-over.** A refused address, a refused simulation or a failed transaction counts
+as one failed try. After `maxTries` failed tries (3 by default, 1 to 10) the worker calls
+`POST /platform/deliveries/:ticketId/failed`. The ticket closes as failed and is never listed again,
+and the person's page says you could not hand those pictures over and asks them to ask you to send
+them again. The passport stays in your wallet and reads held. You can still hand it over with
+`transferPassport` to an address the person gives you, for example through the connect page. The try
+count lives in the worker's memory, so a restarted worker tries a ticket up to `maxTries` times again.
+
+**Limits and refusals.**
+
+| What | Value |
+| --- | --- |
+| The address | 1 to 254 characters; the `deliverTo` field at most 2,048 bytes |
+| Tickets your key writes for one address | 20 inside a ticket's 180 day life, whatever became of them |
+| Waiting tickets per key | 1,000 |
+| A passport to land after its prepare | 2 hours of chain time, or the ticket closes |
+| An offer | 180 days from the prepare |
+| Refusals | A key with at least 10 refusals, more than one in four of its tickets, stops writing tickets until a Moolam operator reopens it. Prepares without `deliverTo` carry on |
+| Hand-overs listed per poll | 32 |
+| Passports in one accept, refuse or confirm call | 32, `setConsentBatch`'s cap. A longer list goes in more than one call |
+
+A prepare with `deliverTo` is refused `400 deliverTo` for a malformed field or co-sign mode,
+`403 deliver-closed` for a key closed by refusals, `429 deliver-full` at a ticket cap, and
+`503 claims-unavailable` when the verify service's claim routes are closed. Each answer reads the
+same whether or not the address has a Moolam account, so a prepare tells you nothing about Moolam's
+users; the one difference is `deliverNow`, which only that person's own standing choice for your key
+produces.
+
+What this does not check: that the address is your user's. That is your check, and the person sees
+it as your word.
+
 ### Errors
 
 Every refusal is a `MoolamPlatformError` with a `code` to branch on and `details` that never carry a
@@ -417,19 +601,32 @@ platform wallet that sets up, registers ten pictures with terms and hands one ov
 ## How Moolam credits a platform picture
 
 The person who imagined a picture gets the credit. Your platform is where it was drawn, and in
-platform mode the one holding the passport until that person claims it. Moolam never names a
-platform as a picture's maker or creator.
+platform mode the one holding the passport until it hands it on. Moolam never names a platform as a
+picture's maker or creator.
 
 One function decides the credit, `creditFor`, beside `platformLabel` in
 `packages/verifier/src/platforms/platforms.ts`, so the site and the MCP server say the same thing. It
-reads the passport's fields from the chain, its holder read now, and for a listed agent that agent's
-owner read now, and gives one of three cases:
+reads the passport's fields from the chain, its holder read now, for a listed agent that agent's
+owner read now, and for a platform-mode passport two facts from Moolam's index: the first wallet your
+wallet handed it to, and who wrote each of its AI-use statements. It gives one of five cases:
 
 | Case | When | What the passport says | What it proves |
 | --- | --- | --- | --- |
-| `unclaimed` | `platformLabel` gives your platform's kit label, and your wallet, the creator, still holds the passport | "Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it." | The picture was drawn on your platform and registered through the kit. Nobody is named yet, because nobody has claimed it |
-| `claimed` | The kit label, and another address holds the passport | "Imagined by *holder*. Drawn on *platform*, which handed the passport to them." with a note that the credit rests on the handover | Your wallet handed the passport to that address. That the holder is the person who imagined the picture is your platform's word: the chain records the handover, not who wrote the prompt |
+| `held` | `platformLabel` gives your platform's kit label, and the passport has never left your wallet | "Imagined on *platform*. *platform* holds this passport until the person who imagined it claims it." | The picture was drawn on your platform and registered through the kit. Nobody is named yet |
+| `handed` | The kit label; your wallet handed the passport on, and the first wallet it went to has written no AI-use terms of its own | "Drawn on *platform* and handed to *holder*, who has not confirmed it." with a note that nobody is credited until the person it was handed to states their own terms | Your wallet handed the passport to that address. A hand-over is your act, not theirs, so nobody is credited yet |
+| `confirmed` | The kit label; the first wallet you handed it to wrote its own terms on it, and still holds it | "Imagined by *person*. Drawn on *platform*, which handed the passport to them. They confirmed it on *date*." with a note that the credit rests on your word that this account asked for the picture and on their own confirmation, and that their key did not sign the picture | Your hand-over, then a statement from the person's own wallet. That they wrote the prompt is your word, which they confirmed |
+| `passedOn` | As `confirmed`, and someone else holds the passport now | "Imagined by *person*. Now held by *holder*." | The credit stays with the first recipient who confirmed. A later holder is named only as holding it |
 | `cosigned` | No kit label, because the creator is not a listed wallet; the passport is Generated, carries a manifest and names a current entry's agent; it was registered inside that entry's window; and the agent's owner read now is the owner that signed the entry | "Imagined by *creator*. Drawn by *platform*'s agent." with a note that a key bound to their own wallet approved this exact picture | A passkey bound to the person's own wallet signed this picture's fingerprint. The credit rests on their key, not on your word, which is why co-sign is the main path |
+
+Only the first wallet you hand a passport to can ever be credited, and only once that wallet has
+written its own terms. Terms your own wallet stated at registration never count, and neither do a
+later buyer's.
+
+**With the email path.** The person's Confirm on My pictures is that first statement: their own
+wallet writes their AI-use terms with `setConsentBatch`, and the passport moves from `handed` to
+`confirmed`. Until then it reads `held` while it waits for their answer, and `handed` once your
+worker has moved it. A standing choice skips the wait for an answer, not the Confirm. With connect
+once, the person confirms the same way, by stating their terms on the passport page.
 
 A picture's plate carries the short form, "Drawn on *platform*". The MCP server's `get_passport`
 answers with the case as [`credit`](mcp#get_passport).
@@ -439,6 +636,8 @@ answers with the case as [`credit`](mcp#get_passport).
 - Moolam's platform list did not load;
 - your listed wallet registered the picture outside the kit;
 - the holder could not be read;
+- the index could not say who the passport was first handed to, or says it never left your wallet
+  while the chain shows someone else holding it;
 - the agent is not on the list, its owner could not be read, or its owner is not the one that signed
   the entry now in force;
 - a co-signed picture was registered before the entry now in force began, for example before a key

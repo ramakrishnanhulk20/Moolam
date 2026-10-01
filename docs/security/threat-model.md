@@ -551,6 +551,121 @@ The rules across all of it:
   at `/data` and survive a deploy. The service runs one copy, so a request in flight during a deploy
   is dropped and must be sent again.
 
+## Claim with your email
+
+Added on 2026-10-01. A platform that registers a picture in platform mode can leave the passport
+waiting for its user's email address instead of asking for a wallet. The platform sends the address
+with its prepare, and the verify service keeps only a keyed hash of it. When the person signs in to
+Moolam with Google or an emailed code, My pictures lists what platforms hold for the addresses Privy
+verified for them, and they answer "These are mine" or "Not mine". The platform's delivery worker
+hands each accepted passport to the person's Moolam wallet, and the person confirms with one
+sponsored `setConsentBatch` from that wallet, which is the moment the credit names them. Moolam
+writes nothing new on chain: the hand-overs are the platform's transactions and the confirmation is
+the person's. How a platform uses it is in
+[For platforms](../developers/platform-kit#leaving-a-passport-for-a-persons-email).
+
+This section states what the code does today. The live attack pass has not run against these routes
+yet, so every row below is proven by the route, store, SDK, fork and web tests it names. Paths are
+under `packages/verifier` unless they name another package.
+
+### A) What kind of system this is
+
+- **An identity broker between two companies.** The platform says an address belongs to its user;
+  Privy says the person signed in to Moolam proved they read that inbox. The two strings meet only
+  through one normaliser. Too loose hands a stranger someone's pictures, too strict strands them.
+- **An attribution channel.** A ticket names an address and a picture. If the person accepts and
+  confirms, the credit names them for good, so anyone who can write a ticket can try to pin a
+  picture on a real person. A ticket is therefore only ever an offer.
+- **A small multi-tenant store keyed by a hash of personal data.** An HMAC of an email under a
+  server secret can be reversed by dictionary by anyone holding both the secret and the store, and
+  the store lists the platforms each address used.
+- **A hand-over service whose output a third party acts on.** The destination wallet goes to the
+  platform, whose server moves a token to it. A damaged or swapped address is a transfer nobody can
+  undo.
+- **A public record keeper.** Waiting, delivered and confirmed are said on Moolam pages and in MCP
+  answers, so each must rest on a chain read, never on a platform's word or the ticket file alone.
+- **A state machine on disk, read back as truth.** An accept racing a refuse, two accepts, a worker
+  trying again after its transfer landed.
+- **Platform-chosen fetch targets inside a person route.** A platform-mode passport's metadata
+  address is the platform's choice, and `GET /claims` draws its title and picture.
+- **Spend by callers.** Each `/claims` read calls Privy and the gateway, each confirm is a sponsored
+  transaction, and each failed hand-over costs the platform gas.
+- **Unsolicited content sent to a named person.** Spam or a phishing-shaped title can ride a ticket.
+- **Not applicable:** SQL or shell injection (no database engine and no shell; the store is
+  schema-checked JSON on the volume); rendering user HTML (titles are drawn as text); blind signing
+  (the person's one transaction is `setConsentBatch` over ids and terms the page shows first);
+  contract changes (none).
+
+### B) Threat model
+
+**Trust boundaries.** A platform's server to `POST /platform/prepare` with `deliverTo`; Privy's user
+record to the verify service; the person's browser to `GET /claims`, `POST /claims/accept`,
+`/claims/refuse`, `/claims/unmute` and `DELETE /claims/standing/:platformKeyHash`; the ticket file
+on disk to every route that reads it back; `GET /platform/deliveries` to the platform's worker; the
+chain (the registry's record and `ownerOf`) and the Envio index (the first hand-over and the consent
+history) to the ticket states and the credit; the IPFS gateway to `GET /claims`; the stored terms to
+the browser that builds `setConsentBatch`; Google's ID token to Dreamloom's server, which is
+Dreamloom's own boundary.
+
+**What an attacker controls.** Directly: `deliverTo.email` (any string, any length, any script),
+`deliverTo.verifiedBy`, how many tickets a key writes, the ticket ids in an accept or a refuse, the
+terms and the send-future tick, a platform key, a Privy token, the picture and title of a prepare,
+and the metadata address on chain. Indirectly: the set and spelling of the addresses in a person's
+Privy record, the wallets Privy lists, every ticket field read back, what the RPC and the index
+answer and how far behind the index is, the document behind a content id, the writer and time of
+every consent entry, transfers anyone makes to anyone, and the pepper if it leaks.
+
+**What the privileged position holds.** Moolam's Privy app secret, and with it every Moolam user's
+verified addresses; the pepper; the ticket file, which after an accept links an address's hash to a
+wallet; the authority to tell a platform where to send a token; the authority to say waiting,
+delivered and confirmed on a public page and in MCP answers; the sponsorship budget.
+
+**What an attacker wants.** To pin a picture on a real person (a ticket, an accept, a confirm, a
+credit); to catch someone else's pictures, through a spelling collision or by naming another
+address's ticket ids; to learn whether an address has a Moolam account, or which wallet it owns, by
+probing prepares; to send a passport somewhere wrong, or make the worker spend for nothing; to make
+Moolam state a false chain fact: an offer for a passport that does not exist, delivered on the
+platform's word, confirmed from a stale index or the wrong writer.
+
+### C) The standards, and where each is held
+
+P26 to P39 extend the platform kit's P1 to P25 above. P35 and P39 replace P16's credit cases:
+"claimed" is retired, and the credit is `held`, `handed`, `confirmed`, `passedOn` or `cosigned`.
+
+| Invariant | Held by | What proves it |
+|---|---|---|
+| **P26 A ticket is an offer; only the person's own acts make it a fact.** No token moves and nothing is written on chain because a ticket exists. A passport reaches a person's wallet only after they press "These are mine" on My pictures while signed in with a matching verified address, or through a standing choice they made the same way and can see and stop there. Confirmed only when the first recipient's own wallet wrote a consent entry. A refusal is final and mutes that platform for that address until the person allows it again | `acceptTickets`, `refuseTickets`, `unmute` and `clearStanding` in `src/claims/store.ts`, reached only through `claimRoutes` in `src/routes/claims.ts` with a verified Privy token; `GET /platform/deliveries` in `src/routes/platform.ts` lists accepted tickets only; `confirmedAtFor` and `creditFor` in `src/platforms/platforms.ts`; the confirm press, `runConfirm` in `packages/web/lib/claims/confirm.ts` | `claims-routes.test.ts` "offers a ticket only once the chain shows it under the platform's wallet, to the matching address only, and delivers it", "P26, P30: a standing choice returns deliverNow to its key for that address only, until it is cleared" and "P26: a refusal is final and mutes that platform for the address until the person unmutes"; `platforms.test.ts` "creditFor" |
+| **P27 A ticket is shown only when the chain shows what it claims.** Written pending at prepare. It opens only when the registry's creator and `ownerOf`, both read in that pass, equal the platform's listed wallet and `platformLabel` gives the kit label. A passport that never lands, lands under another creator, or leaves the platform's wallet before an accept closes the ticket as expired or moved, never listed. Delivered only when `ownerOf` equals the destination | `claimSweeper` and its `decide` in `src/claims/sweep.ts`, run on the service's one-minute timer, where a read that fails changes nothing; `writeTicket` in `src/claims/store.ts` writes only `pending`, and `changeProblem` refuses a new ticket in any other state | `claims-store.test.ts` "opens a ticket only when creator and ownerOf both equal the platform's wallet under its label", "never opens a ticket for a passport registered under another creator, and expires it after its window", "changes nothing while the chain cannot be read, past every window included" and "moves an offer whose passport left the platform's wallet, and delivers only to the destination". Not covered: finality, since the sweep reads the latest block |
+| **P28 One normaliser, both sides, no provider rules.** NFKC, trimmed, lowercased and NFKC again, then exactly one address: one @, both sides non-empty, at most 254 code points, a dot-atom local part and a domain of letter, mark and digit labels. Anything else is refused. No dot, plus or domain folding. Only Privy's `email` account and the `google_oauth` account's email, each with a verified time, are matched | `normaliseEmail` and `emailHash` in `src/claims/email.ts`, used by `readDeliverTo` in `src/claims/service.ts` on the platform's string and by `callerOf` in `src/routes/claims.ts` on every address `verifiedEmails` in `src/claims/privyUser.ts` reads | `claims-email.test.ts` "meets two spellings of one address: case, white space around it and full-width letters", "keeps apart what only a provider's own rule would join, and a look-alike letter", "refuses anything that is not exactly one addr-spec of printable characters", "gives a fixed point: normalising the output again changes nothing, a dotted capital I included" and "reads only the email account and the Google account's email, each with a verified time". Not covered: one person with two addresses, and look-alike letters from two scripts, which stay two addresses |
+| **P29 Nothing reversible about an email leaves the request.** The address is hashed in memory and dropped. No store, log line, error, answer or validation message carries the address or its hash: a bad `deliverTo` is refused with the field's name only. The pepper is 32 to 128 bytes of hex in `CLAIM_PEPPER`, read from the environment and never logged, and its number, `CLAIM_PEPPER_VERSION`, travels inside every hash, so a new pepper expires the pending and open tickets written under the old one. A hash is linked to a wallet only in accepted tickets and the standing choices a person made | `emailHash` and `pepperFromEnv` in `src/claims/email.ts`, with the pepper's shape checked at boot in `src/env.ts`; `readDeliverTo` in `src/claims/service.ts`; the refusals in `/platform/prepare` and `claimRoutes`; `decide` in `src/claims/sweep.ts` for an older pepper; the SDK's `assertDeliverTo` in `packages/sdk/src/prepare.ts`, which names the field and never the value | `claims-routes.test.ts` "P29: no answer and no log line carries an address, in any spelling, or its hash"; `claims-email.test.ts` "keys the hash with the pepper and tags it with its version, so another pepper never matches" and "fails the boot on a short or lone pepper, naming the variable and never the value"; `claims-store.test.ts` "expires waiting offers written under an older pepper (P29)"; SDK `guards.test.ts` "is refused by shape before any chain call, and the error never quotes it". Not covered: the host's own request log, and whether the pepper came from a CSPRNG, which is the operator's step (`openssl rand -hex 32`) |
+| **P30 Nothing a platform receives varies with whether an address has a Moolam account,** except a standing choice that person made for that platform. Prepare, deliveries and every refusal read the same for a known and an unknown address. The ticket caps count only the key's own tickets, whatever became of them, so a refusal or a mute frees nothing a platform could probe for. `deliverNow` goes only to the key the choice was made for. A prepare with `deliverTo` still needs the agent's signature and counts against the key's quota | `/platform/prepare` in `src/routes/platform.ts`: `ticketRefusal` over `writeProblem` before any pin, then `standingFor` and `writeTicket`; `writeProblem` in `src/claims/store.ts`. A muted address still gets its ticket written, and only `GET /claims` hides it | `claims-routes.test.ts` "P30: answers a prepare for a Moolam user's address, a stranger's and none in the same shape"; `claims-store.test.ts` "P30: never lets a person's refusal free a slot the platform could probe for". Not covered: response times, which were not measured |
+| **P31 The destination comes from Privy, never from the request.** It is the first embedded Ethereum wallet in the person's Privy record, the selector the co-sign routes use. It is stored checksummed and schema-checked on read-back, checked again before every answer that names it, and checked a last time by the SDK's strict rule before any send. Never the zero address, the registry, the ticket's platform wallet or any listed platform's wallet | `POST /claims/accept` in `src/routes/claims.ts`, through `embeddedWallets` in `src/auth/wallet.ts`; `deliverable` in `src/claims/service.ts`, run again in `GET /platform/deliveries` and before a `deliverNow`; the `checksummed` schema in `src/claims/store.ts`; `checkedRecipient` in `packages/sdk/src/transfer.ts`, called by `runDeliveries` and by `registerAsPlatform` for `deliverNow` | `claims-routes.test.ts` "P31: the destination is Privy's first embedded wallet, never a platform's wallet, and never one the body names"; SDK `deliveries.test.ts` "never sends to a bad, zero, registry or own-wallet destination"; SDK `fork.test.ts` "refuses a bad, zero, registry or own-wallet destination, or one for a picture with no email, and sends nothing" |
+| **P32 Ticket ids are capabilities scoped by identity.** 128 bits from the operating system's CSPRNG. Accept and refuse act only on ids whose address hash is one of the caller's. A request naming any other id, an unknown id, a repeated id or more than 32 is refused whole, and an unknown id reads the same as someone else's | `newTicketId` and `ownTickets` in `src/claims/store.ts`; the `ticketIds` schema and `MAX_TICKETS_PER_CALL` in `src/routes/claims.ts`; `POST /platform/deliveries/:ticketId/failed` in `src/routes/platform.ts` answers another key's ticket as not found | `claims-store.test.ts` "writes a ticket pending, with a 128 bit id from the CSPRNG and the email only as its hash" and "refuses an id outside the caller's set whole, and an unknown id the same way (P32)"; `claims-routes.test.ts` "P32: refuses a request naming another address's ticket whole, and changes neither" |
+| **P33 The ticket store is a write-once state machine.** Pending, open, accepted, delivered, refused, expired, failed and moved only move forward; each step names the state it expects; fixed fields never change and set-once fields are set once. Every record is schema-checked on read-back and a failing one is dropped, never repaired; a file that is not JSON closes the store and every claim route answers 503. Of an accept and a refuse, or of two accepts, exactly one wins | `NEXT`, `FIXED`, `SET_ONCE`, `stepProblem`, `changeProblem`, `advance` and `claimStore` in `src/claims/store.ts`, whose `change` reads, decides and writes in one synchronous stretch | `claims-store.test.ts` "lets an accept racing a refuse, and a second accept, lose whole", "refuses a step that skips a state or rewrites a fixed field, and writes nothing" and "drops a record changed on disk and writes the file back without it; a file that is not JSON closes the store"; `claims-routes.test.ts` "P33: of an accept and a refuse sent together, exactly one wins". Not covered: two copies of the service writing one file; the service runs one |
+| **P34 The worker spends a bounded amount per ticket.** `GET /platform/deliveries` lists only accepted tickets of that key whose `ownerOf`, read now, is still the platform's wallet, at most 32 a poll. The worker reads the holder again, checks the destination, simulates and only then sends, sends a ticket at most once a poll, and after `maxTries` failed tries (3 by default) reports it, which closes it as failed and shows it to the person. Delivered stays the sweep's word, from the chain (P27) | `GET /platform/deliveries` and `POST /platform/deliveries/:ticketId/failed` in `src/routes/platform.ts`; `markFailed` in `src/claims/store.ts`; `runDeliveries` in `packages/sdk/src/deliveries.ts`, sending through `sendTransfer` in `transfer.ts`; the person's page groups failed tickets with `waitingByPlatform` in `packages/web/lib/claims/offers.ts` | `claims-routes.test.ts` "P34: lists only accepted tickets the platform still holds, and a failed one is shown to the person"; SDK `deliveries.test.ts` "skips a ticket whose passport the platform's wallet no longer holds, and never counts it as a try", "sends a ticket at most once in one poll, even when the list names it twice", "reports a ticket failed after maxTries failed sends and never sends it again" and "counts a refused simulation as a failed try without sending anything"; SDK `fork.test.ts` "the delivery worker hands an accepted passport to a fresh wallet with one send, though the list still names it". Not covered: the try count lives in the worker's memory, so a restarted worker may try a ticket up to `maxTries` times again |
+| **P35 One source for the first hand-over.** The first `Transfer` of that token whose sender is the creator and whose receiver is not, the mint skipped, recorded once by the index and never moved by a later sale or a return. The site and the MCP server both read it from the index, and when the index cannot say, there is no credit, never `held`. The consent match is one predicate: the earliest entry whose writer is that first recipient, both addresses through `getAddress` | The `Transfer` handler in `packages/indexer/src/EventHandlers.ts` (`firstTransferTo` and `firstTransferAt`); `handoverFromIndex` in `src/mcp/handover.ts` and `handoverFacts` in `packages/web/lib/data/platform-label.ts`, both failing closed on a half-written answer or a history longer than one read; `confirmedAtFor` and `kitCredit` in `src/platforms/platforms.ts` | `mcp-handover.test.ts` "credits the first recipient's earliest entry and ignores the platform's and a buyer's", "reads a first recipient with no entry of their own as not confirmed" and "refuses to say 'not confirmed' when the history is longer than one read and the recipient is not in it"; `platforms.test.ts` "keeps crediting the confirmed first recipient after a resale, and shows the buyer only as holding it". Not covered: an index running behind the chain, so a confirmation shows once the index has it |
+| **P36 Platform text and pictures reach the claims page only through the pinned-content rule.** The metadata address is read only as a bare IPFS content id through the gateway, with no redirect, a byte cap and a five second limit. The title is one line of printable text of at most 120 code points; the picture is the thumbnail's content id, which the page holds to its own pinned-picture rule again. Anything else shows "No preview" and the passport id. `verifiedBy` is one of three words, refused otherwise at prepare, and worded as the platform's claim beside its listed name: "Dreamloom says it checked this address with a Google sign-in." | `previewOf` and `previewReader` in `src/claims/preview.ts`; `VERIFIED_BY` in `src/claims/store.ts` and `deliverToSchema` in `src/claims/service.ts`; `previewUrl` and `artFor` in `packages/web/lib/claims/art.ts`; the `claims.verifiedBy` words in `packages/web/messages/en.json`, drawn by `packages/web/components/claims/PlatformOffer.tsx` | `claims-email.test.ts` "shows a title as one line of text and a thumbnail only as a bare ipfs content id" and "never reads a metadata address that is not pinned content, and shows no preview when the read fails"; web `claims-render.test.ts` "shows 'no preview' with the passport id when the service sent none, or a picture off the pinned rule" and "words how the address was checked as the platform's claim, beside the platform's name" |
+| **P37 Terms are the contract's predicate, checked twice.** Validated at accept by the same rule as `MoolamConsent`'s constraint check and stored unchanged. The browser builds `setConsentBatch` only from ids whose `ownerOf`, read now, is the signed-in wallet and that this wallet has not already written terms on, at most 32 a call; it reads them again at the press and sends nothing if they changed; and it says confirmed only from a receipt with this wallet's `ConsentSet` for every id | `termsProblem` and `termsSchema` in `src/claims/terms.ts`; `heldBatch`, `consentBatchRequest`, `runConfirm` and `receiptConfirms` in `packages/web/lib/claims/confirm.ts` | `claims-email.test.ts` "accepts what the contract accepts, the edges included, and stores it unchanged" and "refuses what the contract refuses"; `claims-routes.test.ts` "P37: a waiting entry carries exactly the terms its own person accepted, and never another person's"; web `claims-confirm.test.ts` "drops the passports this wallet does not hold, reading the holder in any case", "never holds more than 32, and reads each passport once however many tickets name it", "sends nothing when the wallet no longer holds what was shown, and says the list changed" and "is never confirmed from a receipt without ConsentSet, with it for only some ids, from another writer or register, or reverted" |
+| **P38 Person routes and ticket writing are metered.** `/claims`, accept, refuse, unmute and stop take 500 calls a day per person, 1,000 per address, and `CLAIM_REQUESTS_PER_DAY` for everyone (20,000 by default; 0 closes them). One key may write 20 tickets for one address inside a ticket's 180 day life and hold 1,000 waiting, and the service holds at most 20,000 tickets. A key with at least 10 refusals, more than one in four of its tickets, stops writing tickets (`deliver-closed`) until an operator clears its tally | `callerOf` in `src/routes/claims.ts` and `DEFAULT_CLAIM_LIMITS` in `src/claims/service.ts`; `DEFAULT_CLAIM_CAPS`, `writeProblem` and `refuseTickets` in `src/claims/store.ts` | `claims-routes.test.ts` "P38: meters each person, and the ceiling for everyone closes the routes at zero"; `claims-store.test.ts` "stops one person's tickets from one platform at the cap, and the key's waiting tickets at its own" and "closes a key's ticket writing once more than one in four of at least ten tickets were refused". Not covered: no route or script clears a closed key yet |
+| **P39 Credit words name only what the chain proves.** `held` (the platform's wallet never let it go), `handed` (the first recipient has not confirmed, and the holder is named only as holder), `confirmed` (the first recipient wrote terms and still holds it), `passedOn` (they confirmed and someone else holds it now) and `cosigned`. One function issues them for the site and the MCP server, and nobody is named as the person who imagined a picture without their own consent entry or their own key | `creditFor` and `kitCredit` in `src/platforms/platforms.ts`, copied byte for byte to `packages/web/lib/platforms`; `passportFacts` in `src/mcp/facts.ts`, which returns the case and its addresses as fields; the `passport.platform` words in `packages/web/messages/en.json` | `platforms.test.ts` "creditFor"; web `platform-words.test.ts` "says a handed passport went to its holder, who has not confirmed, and credits nobody", "credits the first recipient who confirmed, with the date and the note on what the credit rests on (WO-261b)" and "credits the confirmed first recipient after a resale and names the buyer only as the holder" |
+
+The rules across all of it:
+
+- **One rule, not a list.** One address predicate and one normaliser for both strings, one chain read
+  each for open, delivered and held, and one credit function. What they do not cover: look-alike
+  letters across scripts, and one person with two addresses.
+- **Compare after the same parser.** The same `emailHash` on the platform's string and on Privy's,
+  `getAddress` on every address pair, passport ids lowercased by one function, ticket ids by exact
+  lookup.
+- **Fail closed.** Chain unreadable: no ticket opens, nothing is delivered, no credit. Privy
+  unreadable: no list and no accept (`privy-unavailable`). No pepper: every claim route, and every
+  prepare with `deliverTo`, answers `claims-unavailable`. A record that fails its schema is dropped, a
+  metadata address that is not a content id shows no preview, and an unknown `verifiedBy` is refused
+  at prepare.
+- **Where state lives.** Tickets, standing choices, mutes and each key's tally are one JSON file on
+  the service's volume at `/data`, written whole, so a process killed mid-write leaves the previous
+  file.
+
 ## What the screens promise
 
 Three rules for what the web app draws and serves. The first two were added after the code review
@@ -679,5 +794,33 @@ a registrant wrote into their document.
   kept per process.
 - **Rules outside Moolam.** Privy's sponsorship rules and credit balance bound what co-sign mode can
   spend, and Anthropic decides where Claude's calls come from.
+- **A platform's own email check is the platform's.** Moolam does not check that the address a
+  platform sends belongs to the person who made the picture. It checks only that the Moolam user who
+  sees the offer proved that address to Privy, and it shows the platform's `verifiedBy` as the
+  platform's claim. A platform that sends the wrong address hands the offer to that address's owner,
+  who can accept and confirm it. Whoever confirms a picture they did not make has signed a public
+  statement, and Moolam records it.
+- **Gmail dots and plus tags are not folded.** `r.am@gmail.com`, `ram@gmail.com` and
+  `ram+art@gmail.com` are three addresses here, and a googlemail.com address is a fourth. Folding them
+  is one provider's rule, and a list of providers' rules misses the next provider. An offer sent to a
+  spelling the person never verified with Privy is never shown to them, and expires after 180 days.
+- **A new pepper ends what waits under the old one.** Raising `CLAIM_PEPPER_VERSION` expires every
+  pending and open ticket written under the old pepper at the next sweep. Accepted tickets keep their
+  destination and are still delivered. Standing choices, mutes and the per-address ticket counts made
+  under the old pepper stop matching, so a person has to choose again, and a platform they said no to
+  can offer again.
+- **Losing the email account.** Offers match the addresses in the person's Privy record, not live
+  access to the inbox. A person who loses the inbox but can still sign in to Moolam another way, a
+  passkey or a second linked account, still sees and answers their offers, and keeps every passport
+  already in their wallet with its credit. A person who can no longer sign in at all cannot accept:
+  their offers expire after 180 days and the passports stay in the platform's wallet, read as held.
+  Moolam has no recovery path of its own; account recovery is Privy's. Whoever takes over the inbox
+  can sign in with a code sent to it, and so can see and accept what waits for that address.
+- **A platform can credit its own second wallet.** A platform that hands a passport to another wallet
+  it controls and writes terms from it reads as confirmed for that wallet. Nothing on chain tells a
+  platform's second wallet from a person's.
+- **Pictures are not moderated.** A person can say "Not mine" and stop a platform's offers, and a key
+  that collects too many refusals stops writing tickets. Moolam does not judge what a title or a
+  picture shows.
 - **Self-audited.** No third party has audited these contracts. The attack
   scripts and their outputs are the evidence, and they are in this repo.
